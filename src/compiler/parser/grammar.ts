@@ -5,19 +5,27 @@
 
 import type { SourceText } from '../../text/source-text.ts';
 import type { ScanResult } from '../syntax/tokens.ts';
+import { parseTopLevelDeclaration } from './declarations/declaration.ts';
+import { parseDefinedFunction } from './declarations/functions.ts';
 import { continueExpression, parseExpression, startsExpression } from './expressions/expression.ts';
+import { nested } from './nesting.ts';
 import { type Grammar, Parser } from './parser.ts';
 import { parsePattern } from './patterns.ts';
+import { parseStatement } from './statements/statement.ts';
 import { parseParameterType, parseType, parseTypeArguments } from './types.ts';
 
+/** Every entry that can recurse descends one level of nesting first (nesting.ts). */
 const grammar: Grammar = {
-  expression: parseExpression,
+  expression: (parser, minLevel) => nested(parser, () => parseExpression(parser, minLevel)),
   continueExpression,
   startsExpression,
-  type: parseType,
-  parameterType: parseParameterType,
+  type: (parser) => nested(parser, () => parseType(parser)),
+  parameterType: (parser) => nested(parser, () => parseParameterType(parser)),
   typeArguments: parseTypeArguments,
-  pattern: parsePattern,
+  pattern: (parser) => nested(parser, () => parsePattern(parser)),
+  statement: (parser) => nested(parser, () => parseStatement(parser)),
+  topLevelDeclaration: parseTopLevelDeclaration,
+  functionDeclaration: parseDefinedFunction,
 };
 
 /** A parser positioned at the first token of a scanned source. */

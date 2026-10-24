@@ -2,13 +2,17 @@
 
 One folder per phase. Phases share only contracts.
 
-- `syntax/`: tokens, tree nodes, operator precedence, and traversal derived from node fields. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
+- `syntax/`: tokens, tree nodes, operator precedence, where items may stand, and traversal derived from node fields. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
 - `scanner/`: `scan.ts` turns text into tokens, comments and diagnostics. It is context-free, total and lossless.
-- `parser/`: tokens to tree.
-  - A grammar category (`expressions/`, `types.ts`, `patterns.ts`) reaches another only through the context in `parser.ts`, which `grammar.ts` wires.
+- `parser/`: tokens to tree; `parse.ts` is the entry.
+  - A grammar category (`expressions/`, `statements/`, `declarations/`, `types.ts`, `patterns.ts`) reaches another only through the context in `parser.ts`, which `grammar.ts` wires.
   - Pieces several categories share live in `parts/`, which imports no category.
   - dependency-cruiser enforces both rules.
-  - Lists and recovery go through `recovery.ts`.
+  - The machinery is shared by all categories:
+    - `cursor.ts`: line breaks and regions
+    - `layout.ts`: items separated by `;` or line breaks (blocks, braces of entries, the module), one-line bodies, annotations on items
+    - `recovery.ts`: bracketed lists and recovery
+    - `nesting.ts`: the nesting limit every recursive grammar entry goes through
 
 A phase has:
 - an entry module named for its job

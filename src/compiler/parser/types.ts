@@ -16,8 +16,8 @@ import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 import { parseFunctionKeyword } from './parts/functions.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
-import { parseField, skipStructKeyword } from './parts/structs.ts';
-import { groupedItem, parseDelimited, parseEntries } from './recovery.ts';
+import { parseFieldEntries, skipStructKeyword } from './parts/structs.ts';
+import { groupedItem, parseDelimited } from './recovery.ts';
 
 export function parseType(parser: Parser): TypeNode {
   const { cursor } = parser;
@@ -103,7 +103,7 @@ function parseStructType(parser: Parser): TypeNode {
   if (missingBrace !== undefined) {
     return missingBrace;
   }
-  const fields = parseEntries(parser, () => parseField(parser)).value;
+  const fields = parseFieldEntries(parser).value;
   return { kind: 'StructType', span: parser.spanFrom(start), fields };
 }
 

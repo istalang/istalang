@@ -11,12 +11,10 @@
  */
 
 import fc from 'fast-check';
-import type { SourceText } from '../../text/source-text.ts';
+import { byteOrderMark, type SourceText } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import type { ScanResult, Token } from '../syntax/tokens.ts';
 import { scan } from './scan.ts';
-
-export const byteOrderMark = String.fromCharCode(0xfe_ff);
 
 export interface ScannedText extends ScanResult {
   readonly source: SourceText;

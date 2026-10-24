@@ -9,6 +9,9 @@
  * Parameter). They are listed in ExpressionPart rather than Expression, so a field typed
  * Expression can't hold them.
  *
+ * `if`, `match` and `select` are expressions (§4), and so is a `{…}` block. Their bodies are
+ * Blocks (statements.ts), whatever form was written: indented, on the same line, or in braces.
+ *
  * Parentheses are kept as Parenthesized nodes: the `??` mixing rule depends on them, and the
  * formatter must not lose them. `&x` is a Reference expression wherever it is written; the parser
  * reports it everywhere except as a whole call argument (gap G11), so the tree still shows what
@@ -18,6 +21,7 @@
 import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
 import type { BinaryOperator, UnaryOperator } from './operators.ts';
 import type { Pattern } from './patterns.ts';
+import type { Block } from './statements.ts';
 import type { NamedType, TypeNode } from './types.ts';
 
 export interface IntegerLiteral extends NodeOf<'IntegerLiteral'> {
@@ -184,6 +188,52 @@ export interface Range extends NodeOf<'Range'> {
   readonly end: Expression | undefined;
 }
 
+/** `{ a; b }` in an expression: its value is the block's (§4). */
+export interface BlockExpression extends NodeOf<'BlockExpression'> {
+  readonly block: Block;
+}
+
+/** `if`, then each `elif`, as branches, and an optional `else`. */
+export interface If extends NodeOf<'If'> {
+  readonly branches: readonly ConditionalBranch[];
+  readonly elseClause: ElseClause | undefined;
+}
+
+export interface ConditionalBranch extends NodeOf<'ConditionalBranch'> {
+  readonly condition: Expression;
+  readonly body: Block;
+}
+
+export interface Match extends NodeOf<'Match'> {
+  readonly subject: Expression;
+  readonly cases: readonly (MatchCase | Invalid)[];
+}
+
+/** `case pattern if guard: body`. */
+export interface MatchCase extends NodeOf<'MatchCase'> {
+  readonly pattern: Pattern;
+  readonly guard: Expression | undefined;
+  readonly body: Block;
+}
+
+/** `else: body`, ending an `if` or a `select`. */
+export interface ElseClause extends NodeOf<'ElseClause'> {
+  readonly body: Block;
+}
+
+/** `select:`; written after `await`, it is the operand of an Await (§8). */
+export interface Select extends NodeOf<'Select'> {
+  readonly cases: readonly (SelectCase | Invalid)[];
+  readonly elseClause: ElseClause | undefined;
+}
+
+/** `case future as name: body`. */
+export interface SelectCase extends NodeOf<'SelectCase'> {
+  readonly future: Expression;
+  readonly binding: Identifier | undefined;
+  readonly body: Block;
+}
+
 export type Expression =
   | Identifier
   | Literal
@@ -205,6 +255,10 @@ export type Expression =
   | Binary
   | Is
   | Range
+  | BlockExpression
+  | If
+  | Match
+  | Select
   | Missing
   | Invalid;
 
@@ -214,4 +268,8 @@ export type ExpressionPart =
   | MapEntry
   | FieldInitializer
   | PositionalInitializer
-  | Parameter;
+  | Parameter
+  | ConditionalBranch
+  | MatchCase
+  | SelectCase
+  | ElseClause;

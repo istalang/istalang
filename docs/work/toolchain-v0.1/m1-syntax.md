@@ -10,7 +10,7 @@ tags: [plan, m1, scanner, parser]
 
 # M1 — Syntax
 
-Branch `m1-syntax`. Every phase runs with `qa` and `reviewer`: 1.1 sets the conventions everything inherits, and 1.2–1.3 define the tree, a high-fan-in contract. The spec-gap defaults (G1–G14, at the end) are proposals awaiting approval.
+Branch `m1-syntax`. Every phase runs with `qa` and `reviewer`: 1.1 sets the conventions everything inherits, and 1.2–1.3 define the tree, a high-fan-in contract. The spec-gap defaults (G1–G16, at the end) are approved.
 
 ## 1.1 Scaffold, text, diagnostics, scanner
 
@@ -82,4 +82,5 @@ Branch `m1-syntax`. Every phase runs with `qa` and `reviewer`: 1.1 sets the conv
 | G11 | `&` | Allowed only as a whole call argument, or in a parameter type. Anywhere else it is a parse error. |
 | G12 | Commas | A trailing comma is allowed in every comma-separated list. |
 | G13 | Continuation | A newline is ignored only inside `(…)`, `[…]` and struct-literal braces. There is no backslash continuation. Inside field-list braces (types, one-line struct/enum declarations), a newline separates entries just like `;`. |
-| G14 | Continuation keywords | `elif`, `else` and `case` continue a construct when they stand at the column where that construct's line starts. This covers a multi-line `if` expression used as an initializer (§4). |
+| G14 | Continuation keywords | `elif` and `else` continue an `if` when they stand at the column where that `if`'s line starts. This covers a multi-line `if` expression used as an initializer (§4). A dangling `else` binds to the nearest `if` whose line it lines up with, so in `if a: if b: x` it belongs to `if b`. Match and select cases always stay inside their indented body (human decision, 1.3). |
+| G16 | One-line bodies | A one-line body after `:` holds any one statement, not only an expression: `for x in xs: total += x` is valid (human decision, 1.3). |

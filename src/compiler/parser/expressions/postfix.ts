@@ -13,32 +13,15 @@
  */
 
 import type { Call, Expression, Spread } from '../../syntax/expressions.ts';
-import type { QualifiedName } from '../../syntax/node.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
-import { namedTypeFrom } from '../parts/names.ts';
+import { namedTypeFrom, qualifiedPath } from '../parts/names.ts';
 import { parseDelimited, parseEnclosed } from '../recovery.ts';
 import { parseReference } from './operators.ts';
 import type { InfixParselet } from './parselet.ts';
 import { parseSpread } from './spread.ts';
 import { parseStructLiteralBody } from './struct-literals.ts';
-
-/**
- * The names of a qualified name such as `m.Pair`, or undefined for any other expression. Until a
- * `{` or `<…>` follows, a qualified name parses as member accesses; this reads it back as the
- * names alone, whose spans the type keeps.
- */
-export function qualifiedPath(expression: Expression): QualifiedName | undefined {
-  if (expression.kind === 'Identifier') {
-    return [expression];
-  }
-  if (expression.kind !== 'MemberAccess' || expression.isOptional) {
-    return undefined;
-  }
-  const target = qualifiedPath(expression.target);
-  return target === undefined ? undefined : [...target, expression.member];
-}
 
 /** `name<…>(…)` or `name<…>{…}`, or undefined when the `<` is a comparison. */
 export function parseTypeApplication(parser: Parser, left: Expression): Expression | undefined {

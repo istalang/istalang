@@ -40,8 +40,6 @@ function parsePrimaryPattern(parser: Parser): Pattern {
       return parseTuplePattern(parser);
     case '-':
       return parseNegativeLiteral(parser);
-    case 'lineBreak':
-      return parser.missing('a pattern');
     default:
       return parseLiteralPattern(parser);
   }

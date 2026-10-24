@@ -16,9 +16,10 @@ import type {
   MapLiteral,
   Spread,
 } from '../../syntax/expressions.ts';
-import type { Identifier, Invalid } from '../../syntax/node.ts';
+import type { Invalid } from '../../syntax/node.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
+import { parseNames } from '../parts/names.ts';
 import { parseCommaSeparated, parseEnclosed } from '../recovery.ts';
 import { parseSpread } from './spread.ts';
 
@@ -108,19 +109,11 @@ function toMapItem(item: CollectionItem | Invalid): MapLiteral['entries'][number
 /** `for x in xs if cond: body`, inside the brackets. */
 function parseComprehension(parser: Parser): ComprehensionParts {
   parser.cursor.advance();
-  const variables = parseVariables(parser);
+  const variables = parseNames(parser, 'a loop variable');
   parser.expect('in');
   const iterable = parser.expression();
   const condition = parser.cursor.eat('if') === undefined ? undefined : parser.expression();
   parser.expect(':');
   const body = parser.expression();
   return { variables, iterable, condition, body };
-}
-
-function parseVariables(parser: Parser): Identifier[] {
-  const variables = [parser.identifier('a loop variable')];
-  while (parser.cursor.eat(',') !== undefined) {
-    variables.push(parser.identifier('a loop variable'));
-  }
-  return variables;
 }

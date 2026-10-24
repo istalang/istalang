@@ -1,8 +1,8 @@
 /**
  * Shared helpers for the parser's tests.
  *
- * Until the module entry exists, tests drive one grammar category at a time through the parsing
- * context, exactly as the grammar itself does. Helpers return observations; assertions stay in the
+ * Tests drive one grammar category at a time through the parsing context, exactly as the grammar
+ * itself does, or a whole module through the parser's entry. Helpers return observations; assertions stay in the
  * tests. `rest` counts tokens the category left unparsed, so a test can tell "parsed all of it"
  * from "stopped early".
  */
@@ -14,10 +14,11 @@ import { textOf } from '../../text/span.ts';
 import { scan } from '../scanner/scan.ts';
 import { dump } from '../syntax/tree.test-kit.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
+import { parseModule } from './declarations/declaration.ts';
 import { createParser } from './grammar.ts';
 import type { Parser } from './parser.ts';
 
-export type Category = 'expression' | 'type' | 'pattern' | 'parameterType';
+export type Category = 'expression' | 'type' | 'pattern' | 'parameterType' | 'statement' | 'module';
 
 export interface Parsed {
   readonly source: SourceText;
@@ -33,6 +34,8 @@ const categories: Record<Category, (parser: Parser) => SyntaxNode> = {
   type: (parser) => parser.type(),
   parameterType: (parser) => parser.parameterType(),
   pattern: (parser) => parser.pattern(),
+  statement: (parser) => parser.statement(),
+  module: parseModule,
 };
 
 export function parseAs(category: Category, text: string): Parsed {
@@ -69,6 +72,47 @@ export interface Reported {
 /** The Reported of a parse that reported `code` once, over `spanText`. */
 export function reportedOnce(code: number, spanText: string): Reported {
   return { codes: [code], spanTexts: [spanText] };
+}
+
+/** Lines joined into one source text, so a test can show its layout line by line. */
+export function lines(...source: readonly string[]): string {
+  return source.join('\n');
+}
+
+/** The dump of an expression statement. */
+export function expressionStatement(expression: string): string {
+  return `(ExpressionStatement ${expression})`;
+}
+
+/** The dump of a block of statements. */
+export function block(...statements: readonly string[]): string {
+  return `(Block [${statements.join(' ')}])`;
+}
+
+/** The dump of a body holding one expression, as `if a: x` holds `x`. */
+export function bodyOf(expression: string): string {
+  return block(expressionStatement(expression));
+}
+
+/** The dump of an `if` with one branch, and an `else` if `elseBody` is given. */
+export function ifThen(condition: string, body: string, elseBody?: string): string {
+  const elseClause = elseBody === undefined ? '_' : `(ElseClause ${elseBody})`;
+  return `(If [(ConditionalBranch ${condition} ${body})] ${elseClause})`;
+}
+
+/** The dump of a function with no type parameters, parameters or return type. */
+export function functionOf(name: string, body: string): string {
+  return `(FunctionDeclaration _ ${name} [] [] _ ${body})`;
+}
+
+/** The dump of a module of `items`. */
+export function moduleOf(...items: readonly string[]): string {
+  return `(Module [${items.join(' ')}])`;
+}
+
+/** The dump of a field declaration. */
+export function field(name: string, type: string): string {
+  return `(FieldDeclaration ${name} ${type})`;
 }
 
 /** The dump of a named type without type arguments. */

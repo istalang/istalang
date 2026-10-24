@@ -5,17 +5,41 @@
  * break ends what is being parsed depends on the enclosing region:
  * - Inside brackets, line breaks are ignored (gap G13).
  * - In a line-sensitive region, a token that starts a line (other than the region's first token)
- *   reads as the pseudo-kind `lineBreak`. A construct being parsed therefore stops there, as a
+ *   reads as the pseudo-token `lineBreak`. A construct being parsed therefore stops there, as a
  *   Python statement does.
- * Regions nest. A bracket region also records its closer, so recovery knows which closing
- * brackets belong to enclosing constructs and must not be consumed. A one-line region keeps the
- * closer of the region it sits in, since that closer also ends it.
+ * - In a list of items, a line break separates items, one or more to a line. A block's lines must
+ *   start at its column, and layout decides from the next line's column whether the block goes on
+ *   (layout.ts). Entries in braces, `{ a: int; b: int }`, have no column: every line continues.
+ * Regions nest. A region also records the closer that ends it, so recovery knows which closing
+ * brackets belong to enclosing constructs and must not be consumed. A region without a closer of
+ * its own keeps the closer of the region it sits in, since that closer also ends it.
+ *
+ * There is one view of the stream: `token`, `kind`, `advance` and `eat` all stop at a line break,
+ * as they stop at the end. The only way past a line break is `crossLineBreak`, which only the
+ * layout module calls, once it has decided that the next line continues the construct. Skipping a
+ * whole bracket group for recovery reads past line breaks inside the group, as the group's own
+ * region would.
+ *
+ * Inside `<…>`, a `>=` reads as `>`: the scanner can't know that `Array<int>= []` closes type
+ * arguments there. Consuming that `>` leaves the `=` behind as the next token.
+ *
+ * `mark` and `reset` undo speculation completely: the position, a `>=` split, and a line break
+ * crossed in the current region since the mark.
  */
 
+import type { Span } from '../../text/span.ts';
 import type { Token, TokenKind } from '../syntax/tokens.ts';
 
-/** What the next token reads as: its kind, or `lineBreak` where a line break ends the construct. */
-export type CursorKind = TokenKind | 'lineBreak';
+/** What stands in for the next token where a line break ends the current construct. */
+export interface LineBreak {
+  readonly kind: 'lineBreak';
+  /** Empty, just after the last token consumed. */
+  readonly span: Span;
+}
+
+export type CursorToken = Token | LineBreak;
+
+export type CursorKind = CursorToken['kind'];
 
 /**
  * Each opener's closer. `<` is also the less-than operator, so it is not a bracket: line breaks
@@ -32,19 +56,51 @@ export type Opener = keyof typeof openers;
 
 export type Closer = (typeof openers)[Opener]['closer'];
 
-interface Region {
-  readonly lineSensitive: boolean;
-  /** Index of the region's first token; that token may start a line without being a break. */
-  readonly start: number;
-  readonly closer: Closer | undefined;
+/** Each bracket opener's closer: the groups recovery skips whole, which leaves out `<`. */
+const bracketClosers: ReadonlyMap<string, Closer> = new Map(
+  Object.entries(openers)
+    .filter(([, opener]) => opener.isBracket)
+    .map(([opener, { closer }]) => [opener, closer]),
+);
+
+export function isBracketOpener(kind: CursorKind): kind is Opener {
+  return bracketClosers.has(kind);
 }
+
+export interface CursorMark {
+  readonly index: number;
+  readonly remainder: Token | undefined;
+  readonly regionStart: number;
+}
+
+interface Region {
+  /** What a line break does here: nothing (brackets), end the region, or separate items. */
+  readonly lineBreaks: 'ignored' | 'end' | 'separate';
+  /** Index of the first token that may start a line without reading as a break. */
+  start: number;
+  readonly closer: Closer | undefined;
+  /** Whether the closer is this region's own, rather than one it keeps from an enclosing region. */
+  readonly ownsCloser: boolean;
+  /** A block's column; undefined for any other region, entries in braces included. */
+  readonly column: number | undefined;
+}
+
+type LineRegionShape = Omit<Region, 'start'>;
 
 export class Cursor {
   readonly #tokens: readonly Token[];
   /** The regions enclosing the current one, outermost first. */
   readonly #enclosing: Region[] = [];
-  #current: Region = { lineSensitive: true, start: 0, closer: undefined };
+  #current: Region = {
+    lineBreaks: 'end',
+    start: 0,
+    closer: undefined,
+    ownsCloser: false,
+    column: undefined,
+  };
   #index = 0;
+  /** The `=` left of a `>=` whose `>` closed type arguments; it stands at `#index`. */
+  #remainder: Token | undefined;
 
   /** `tokens` must end with the `end` token, as a ScanResult's do. */
   constructor(tokens: readonly Token[]) {
@@ -55,24 +111,29 @@ export class Cursor {
     return this.#index;
   }
 
-  /** The next token, regardless of line breaks. */
-  get token(): Token {
+  /** The next token, or a line break that ends the current construct. */
+  get token(): CursorToken {
     return this.#tokenAt(this.#index);
   }
 
   get kind(): CursorKind {
-    return this.kindAt(0);
+    return this.token.kind;
   }
 
-  /** What the token `ahead` positions further on reads as; a line break hides all beyond it. */
+  /** What the token `ahead` positions further on reads as. */
   kindAt(ahead: number): CursorKind {
-    for (let offset = 0; offset <= ahead; offset += 1) {
-      const token = this.#tokenAt(this.#index + offset);
-      if (token.kind === 'end' || this.#breaksLine(this.#index + offset)) {
-        return token.kind === 'end' ? 'end' : 'lineBreak';
+    return this.peek(ahead).kind;
+  }
+
+  /** The token `ahead` positions further on; a line break or the end hides all beyond it. */
+  peek(ahead: number): CursorToken {
+    for (let offset = 0; offset < ahead; offset += 1) {
+      const index = this.#index + offset;
+      if (this.#breaksLine(index) || this.#rawAt(index).kind === 'end') {
+        return this.#tokenAt(index);
       }
     }
-    return this.#tokenAt(this.#index + ahead).kind;
+    return this.#tokenAt(this.#index + ahead);
   }
 
   at(kind: CursorKind): boolean {
@@ -81,26 +142,99 @@ export class Cursor {
 
   /** Where the last consumed token ends: the position of anything found missing after it. */
   get previousEnd(): number {
-    return this.#index === 0 ? 0 : this.#tokenAt(this.#index - 1).span.end;
+    if (this.#remainder !== undefined) {
+      return this.#remainder.span.start;
+    }
+    return this.#index === 0 ? 0 : this.#rawAt(this.#index - 1).span.end;
   }
 
-  /** Consumes the next token, even one that starts a line. The end token is never consumed. */
-  advance(): Token {
+  /** Consumes the next token. A line break or the end is never consumed: it is returned as is. */
+  advance(): CursorToken {
     const { token } = this;
-    if (token.kind !== 'end') {
-      this.#index += 1;
+    if (token.kind === 'lineBreak' || token.kind === 'end') {
+      return token;
     }
+    const raw = this.#rawAt(this.#index);
+    if (raw.kind === '>=' && token.kind === '>') {
+      const span = { start: token.span.end, end: raw.span.end };
+      this.#remainder = { kind: '=', span, firstOnLine: false };
+      return token;
+    }
+    this.#remainder = undefined;
+    this.#index += 1;
     return token;
   }
 
   /** Consumes the next token if it reads as `kind`. */
   eat(kind: TokenKind): Token | undefined {
-    return this.at(kind) ? this.advance() : undefined;
+    const { token } = this;
+    if (token.kind === 'lineBreak' || token.kind !== kind) {
+      return undefined;
+    }
+    this.advance();
+    return token;
   }
 
-  /** Moves back to an earlier index, for speculative parsing. */
-  rewind(index: number): void {
-    this.#index = index;
+  /** The state to return to if speculation fails. */
+  mark(): CursorMark {
+    return { index: this.#index, remainder: this.#remainder, regionStart: this.#current.start };
+  }
+
+  /** Returns to the state `mark` recorded, in the region it was recorded in. */
+  reset(mark: CursorMark): void {
+    this.#index = mark.index;
+    this.#remainder = mark.remainder;
+    this.#current.start = mark.regionStart;
+  }
+
+  /** The first token on the line where `offset` falls, whose column is the line's indentation. */
+  lineHead(offset: number): Token {
+    let low = 0;
+    let high = this.#tokens.length - 1;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if ((this.#tokens[middle]?.span.start ?? 0) <= offset) {
+        low = middle;
+      } else {
+        high = middle - 1;
+      }
+    }
+    while (low > 0 && this.#tokens[low]?.firstOnLine === false) {
+      low -= 1;
+    }
+    return this.#tokens[low] ?? endOfNothing;
+  }
+
+  /** At a line break: the token that starts the next line. */
+  get lineStart(): Token | undefined {
+    return this.#breaksLine(this.#index) ? this.#rawAt(this.#index) : undefined;
+  }
+
+  /** Makes the next line's first token visible in the current region, at a line break. */
+  crossLineBreak(): void {
+    this.#current.start = this.#index;
+  }
+
+  /**
+   * Skips a whole bracket group, the cursor at its opener. Inside the group line breaks don't
+   * count, as in the group's own region, and skipping stops early at a closer of an enclosing
+   * region. It loops rather than recursing, so no depth of nesting can exhaust the stack.
+   */
+  skipGroup(): void {
+    const pending: string[] = [];
+    do {
+      const { kind } = this.#rawAt(this.#index);
+      const closer = bracketClosers.get(kind);
+      if (closer !== undefined) {
+        pending.push(closer);
+      } else if (pending.includes(kind)) {
+        pending.splice(pending.lastIndexOf(kind));
+      } else if (kind === 'end' || this.closesAny(kind)) {
+        return;
+      }
+      this.#remainder = undefined;
+      this.#index += 1;
+    } while (pending.length > 0);
   }
 
   /** The closer that ends the current region, if any. */
@@ -108,19 +242,69 @@ export class Cursor {
     return this.#current.closer;
   }
 
+  /** Whether the current region's closer is its own, not kept from an enclosing region. */
+  get ownsCloser(): boolean {
+    return this.#current.ownsCloser;
+  }
+
+  /** Whether the current region is a list whose line breaks separate items. */
+  get separatesItems(): boolean {
+    return this.#current.lineBreaks === 'separate';
+  }
+
+  /** The current region's column, if it is a block. */
+  get blockColumn(): number | undefined {
+    return this.#current.column;
+  }
+
+  /** The column of the nearest block enclosing the current region. */
+  get enclosingBlockColumn(): number | undefined {
+    return this.#enclosing.findLast((region) => region.column !== undefined)?.column;
+  }
+
   /** Runs `parse` inside the region `opener` opens, which its closer ends. */
   within<Result>(opener: Opener, parse: () => Result): Result {
     const { closer, isBracket } = openers[opener];
     const region = isBracket
-      ? { lineSensitive: false, start: this.#index, closer }
-      : { ...this.#current, closer };
+      ? {
+          lineBreaks: 'ignored' as const,
+          start: this.#index,
+          closer,
+          ownsCloser: true,
+          column: undefined,
+        }
+      : { ...this.#current, closer, ownsCloser: true };
     return this.#inRegion(region, parse);
+  }
+
+  /** Runs `parse` inside `{…}` whose lines form a block at `column`, as a block expression's do. */
+  withinBlockBraces<Result>(column: number, parse: () => Result): Result {
+    const shape = { lineBreaks: 'separate', closer: '}', ownsCloser: true, column } as const;
+    return this.#inLineRegion(shape, parse);
+  }
+
+  /** Runs `parse` inside `{…}` whose entries are separated by `;` or line breaks, at any column. */
+  withinEntryBraces<Result>(parse: () => Result): Result {
+    const shape = {
+      lineBreaks: 'separate',
+      closer: '}',
+      ownsCloser: true,
+      column: undefined,
+    } as const;
+    return this.#inLineRegion(shape, parse);
+  }
+
+  /** Runs `parse` inside a block at `column`, starting at the next token. */
+  inBlock<Result>(column: number, parse: () => Result): Result {
+    const { closer } = this.#current;
+    return this.#inLineRegion({ lineBreaks: 'separate', closer, ownsCloser: false, column }, parse);
   }
 
   /** Runs `parse` inside a region where a line break, after its first token, ends it. */
   onOneLine<Result>(parse: () => Result): Result {
-    const region = { lineSensitive: true, start: this.#index, closer: this.#current.closer };
-    return this.#inRegion(region, parse);
+    const { closer } = this.#current;
+    const shape = { lineBreaks: 'end', closer, ownsCloser: false, column: undefined } as const;
+    return this.#inLineRegion(shape, parse);
   }
 
   /** Whether `kind` closes a region enclosing the current one. */
@@ -133,6 +317,11 @@ export class Cursor {
     return this.#current.closer === kind || this.closesEnclosing(kind);
   }
 
+  /** A line-sensitive region of `shape`, starting at the next token. */
+  #inLineRegion<Result>(shape: LineRegionShape, parse: () => Result): Result {
+    return this.#inRegion({ ...shape, start: this.#index }, parse);
+  }
+
   #inRegion<Result>(region: Region, parse: () => Result): Result {
     const outer = this.#current;
     this.#enclosing.push(outer);
@@ -143,12 +332,39 @@ export class Cursor {
     return result;
   }
 
-  #breaksLine(index: number): boolean {
-    const region = this.#current;
-    return region.lineSensitive && index > region.start && this.#tokenAt(index).firstOnLine;
+  #tokenAt(index: number): CursorToken {
+    if (!this.#breaksLine(index)) {
+      return this.#readAt(index);
+    }
+    const end = index === this.#index ? this.previousEnd : this.#rawAt(index - 1).span.end;
+    return { kind: 'lineBreak', span: { start: end, end } };
   }
 
-  #tokenAt(index: number): Token {
+  #breaksLine(index: number): boolean {
+    const region = this.#current;
+    const token = this.#rawAt(index);
+    return (
+      region.lineBreaks !== 'ignored' &&
+      index > region.start &&
+      token.firstOnLine &&
+      token.kind !== 'end'
+    );
+  }
+
+  /** The token at `index` as the current region reads it: a glued `>=` closing `<…>` reads as `>`. */
+  #readAt(index: number): Token {
+    const token = this.#rawAt(index);
+    if (token.kind !== '>=' || this.#current.closer !== '>') {
+      return token;
+    }
+    const { start } = token.span;
+    return { kind: '>', span: { start, end: start + 1 }, firstOnLine: token.firstOnLine };
+  }
+
+  #rawAt(index: number): Token {
+    if (index === this.#index && this.#remainder !== undefined) {
+      return this.#remainder;
+    }
     return this.#tokens[Math.min(index, this.#tokens.length - 1)] ?? endOfNothing;
   }
 }

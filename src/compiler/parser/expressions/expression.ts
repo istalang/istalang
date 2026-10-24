@@ -21,6 +21,7 @@ import {
 import type { CursorKind } from '../cursor.ts';
 import type { Parser } from '../parser.ts';
 import { parseLiteral, parseName, parseParenthesized } from './atoms.ts';
+import { parseBlockExpression, parseIf, parseMatch, parseSelect } from './branches.ts';
 import { parseCollection } from './collections.ts';
 import { parseLambda } from './lambdas.ts';
 import {
@@ -65,6 +66,10 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   '&': parseMisplacedReference,
   '..': parseOpenRange,
   '..=': parseOpenRange,
+  '{': parseBlockExpression,
+  if: parseIf,
+  match: parseMatch,
+  select: parseSelect,
 };
 
 const binaryParselets = Object.fromEntries(

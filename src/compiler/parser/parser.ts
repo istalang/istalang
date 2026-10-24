@@ -2,25 +2,30 @@
  * The parsing context every grammar function receives: cursor, diagnostics, speculation, and the
  * entry points of each grammar category.
  *
- * Grammar categories (expressions, types, patterns) call one another in cycles: an `is` expression
+ * Grammar categories (expressions, types, patterns, statements, declarations) call one another in
+ * cycles: an `is` expression
  * holds a pattern, and a pattern compares a field against an expression. So a category reaches
  * another only through this context, which grammar.ts wires once. What several categories share
  * without calling a category (qualified names, literals, parameters, struct parts) lives in
  * `parts/`, which every category may import. dependency-cruiser enforces both rules.
  *
- * Speculation exists for one ambiguity, `name<…>(` (gap G9). An attempt that reports anything is
- * undone completely, cursor and diagnostics together, and while speculating, recovery gives up
- * instead of skipping tokens. A failed guess therefore costs only the tokens a well-formed one
+ * Speculation settles two ambiguities: `name<…>(` against a comparison (gap G9), and `a, b = …`
+ * against a comma that belongs to an enclosing call. An attempt that reports anything is undone
+ * completely, cursor (cursor.ts) and diagnostics together, and while speculating, recovery gives
+ * up instead of skipping tokens. A failed guess therefore costs only the tokens a well-formed one
  * would have read.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { SourceText } from '../../text/source-text.ts';
+import { lineMapOf } from '../../text/line-map.ts';
+import { byteOrderMark, type SourceText } from '../../text/source-text.ts';
 import { type Span, textOf } from '../../text/span.ts';
+import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions.ts';
-import type { Identifier, Missing } from '../syntax/node.ts';
+import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
 import type { Pattern } from '../syntax/patterns.ts';
+import type { Statement } from '../syntax/statements.ts';
 import type { Token, TokenKind } from '../syntax/tokens.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { Cursor } from './cursor.ts';
@@ -46,7 +51,18 @@ export interface Grammar {
   /** `<A, B>`, starting at the `<`. */
   readonly typeArguments: (parser: Parser) => readonly TypeNode[];
   readonly pattern: (parser: Parser) => Pattern;
+  readonly statement: (parser: Parser) => Statement | Invalid;
+  /** A declaration only the top level allows, or undefined if none starts here. */
+  readonly topLevelDeclaration: (parser: Parser) => Declaration | undefined;
+  /** A function with a body, starting at `fn` or `async`: top-level or local. */
+  readonly functionDeclaration: (parser: Parser) => FunctionDeclaration;
 }
+
+/**
+ * How deeply grammar entries may nest. Each level costs a bounded number of host stack frames, so
+ * this keeps parsing far from the stack's limit while exceeding anything written by hand.
+ */
+export const nestingLimit = 200;
 
 export class Parser {
   readonly cursor: Cursor;
@@ -54,6 +70,7 @@ export class Parser {
   readonly #grammar: Grammar;
   readonly #diagnostics: Diagnostic[] = [];
   #speculationDepth = 0;
+  #nesting = 0;
 
   constructor(source: SourceText, tokens: readonly Token[], grammar: Grammar) {
     this.cursor = new Cursor(tokens);
@@ -73,15 +90,29 @@ export class Parser {
     this.#diagnostics.push(diagnostic);
   }
 
+  /**
+   * Runs `parse` one level of nesting deeper, or returns undefined without running it once the
+   * limit is reached (nesting.ts).
+   */
+  descend<Result>(parse: () => Result): Result | undefined {
+    if (this.#nesting >= nestingLimit) {
+      return undefined;
+    }
+    this.#nesting += 1;
+    const result = parse();
+    this.#nesting -= 1;
+    return result;
+  }
+
   /** Runs `attempt`; if it returns undefined or reports anything, undoes all it did. */
   speculate<Result>(attempt: () => Result | undefined): Result | undefined {
-    const { index } = this.cursor;
+    const mark = this.cursor.mark();
     const reported = this.#diagnostics.length;
     this.#speculationDepth += 1;
     const result = attempt();
     this.#speculationDepth -= 1;
     if (result === undefined || this.#diagnostics.length > reported) {
-      this.cursor.rewind(index);
+      this.cursor.reset(mark);
       this.#diagnostics.length = reported;
       return undefined;
     }
@@ -116,8 +147,40 @@ export class Parser {
     return this.#grammar.pattern(this);
   }
 
-  textOf(token: Token): string {
+  statement(): Statement | Invalid {
+    return this.#grammar.statement(this);
+  }
+
+  topLevelDeclaration(): Declaration | undefined {
+    return this.#grammar.topLevelDeclaration(this);
+  }
+
+  functionDeclaration(): FunctionDeclaration {
+    return this.#grammar.functionDeclaration(this);
+  }
+
+  textOf(token: { readonly span: Span }): string {
     return textOf(this.#source, token.span);
+  }
+
+  /**
+   * The column layout sees a token at. For the first token on a line, that is the line's
+   * indentation. A leading byte order mark takes no column (gap G2).
+   */
+  columnOf(token: { readonly span: Span }): number {
+    const { line, column } = lineMapOf(this.#source).positionAt(token.span.start);
+    return line === 0 && this.#source.text.startsWith(byteOrderMark) ? column - 1 : column;
+  }
+
+  /** The indentation of the line that `offset` is on: the column of its first token. */
+  indentationAt(offset: number): number {
+    return this.columnOf(this.cursor.lineHead(offset));
+  }
+
+  /** Whether two offsets lie on the same line. */
+  onSameLine(first: number, second: number): boolean {
+    const lineMap = lineMapOf(this.#source);
+    return lineMap.positionAt(first).line === lineMap.positionAt(second).line;
   }
 
   /**

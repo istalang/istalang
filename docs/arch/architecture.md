@@ -37,10 +37,11 @@ src/
   text/                 SourceText, Span (UTF-16 offsets), LineMap
   diagnostics/          Diagnostic model, per-phase catalog helper, renderer
   compiler/
-    syntax/             contract: token kinds, tree node types, generic traversal, node-at-offset
+    syntax/             contract: token kinds, tree node types, where items may stand, generic traversal, node-at-offset
     scanner/            text → tokens + comments + diagnostics
-    parser/             tokens → SyntaxTree
-      parser.ts grammar.ts cursor.ts recovery.ts                 context, category wiring, line regions, lists
+    parser/             tokens → SyntaxTree; parse.ts is the entry
+      parser.ts grammar.ts                                       context, category wiring
+      cursor.ts layout.ts recovery.ts nesting.ts annotations.ts  line regions, blocks and bodies, lists, depth limit, annotations
       parts/                                                     pieces every category may import; imports no category
       expressions/ patterns types statements declarations        by construct (Pratt parselets in expressions/)
     program/            Program snapshot, module graph, SourceHost + ModuleResolver seams, relative resolver

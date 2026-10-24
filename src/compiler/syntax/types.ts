@@ -4,9 +4,11 @@
  * A NamedType is a possibly qualified name with type arguments: `int`, `Self`, `Pair<A, B>`,
  * `time.Duration`. Whether the name exists and what it means is the checker's business. The
  * struct type keeps no record of whether `struct` was written before `{`, because the spec makes
- * the two spellings the same type and lets the formatter pick one (§3.1).
+ * the two spellings the same type and lets the formatter pick one (§3.1). The indented field block
+ * under a struct field is sugar for the same type, and is a StructType too.
  */
 
+import type { Annotatable } from './annotations.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
 
 export interface NamedType extends NodeOf<'NamedType'> {
@@ -40,7 +42,7 @@ export interface StructType extends NodeOf<'StructType'> {
   readonly fields: readonly (FieldDeclaration | Invalid)[];
 }
 
-export interface FieldDeclaration extends NodeOf<'FieldDeclaration'> {
+export interface FieldDeclaration extends NodeOf<'FieldDeclaration'>, Annotatable {
   readonly name: Identifier;
   readonly type: TypeNode;
 }

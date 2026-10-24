@@ -10,12 +10,12 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
+import { byteOrderMark } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import { keywords } from '../syntax/tokens.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import {
   anyUtf16,
-  byteOrderMark,
   fragmentSoup,
   kindsAndTexts,
   lexemes,

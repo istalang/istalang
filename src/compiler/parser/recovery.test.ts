@@ -28,7 +28,7 @@ import {
   tokenSoup,
 } from './parse.test-kit.ts';
 
-const categories: readonly Category[] = ['expression', 'type', 'pattern'];
+const categories: readonly Category[] = ['expression', 'type', 'pattern', 'statement', 'module'];
 
 describe('totality', () => {
   it.each(categories)('parses any token sequence as a %s into a well-nested tree', (category) => {

@@ -20,7 +20,8 @@ const layers = {
   'compiler/parser': ['text', 'diagnostics', 'compiler/syntax'],
 };
 
-const parserCategory = '^src/compiler/parser/(expressions/|types\\.ts$|patterns\\.ts$)';
+const parserCategory =
+  '^src/compiler/parser/(expressions/|statements/|declarations/|types\\.ts$|patterns\\.ts$)';
 
 export default {
   forbidden: [

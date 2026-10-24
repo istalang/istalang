@@ -3,10 +3,10 @@
  */
 
 import type { Literal } from '../../syntax/expressions.ts';
-import type { Token } from '../../syntax/tokens.ts';
+import type { CursorToken } from '../cursor.ts';
 
 /** The literal a token denotes, or undefined if it denotes none. */
-export function literalFrom(token: Token): Literal | undefined {
+export function literalFrom(token: CursorToken): Literal | undefined {
   const { span } = token;
   switch (token.kind) {
     case 'integer':

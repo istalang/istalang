@@ -1,10 +1,11 @@
 /**
  * Bracketed constructs and error recovery.
  *
- * Every bracketed construct in the grammar goes through `parseEnclosed`, so trailing commas (gap
- * G12), line-break rules (G13) and recovery behave the same everywhere. A caller names only the
- * opener; its closer and line rule come from `openers` (cursor.ts). The closer is consumed inside
- * the construct's own region, so a closer on a line of its own still closes it.
+ * Every bracketed construct in the grammar goes through `parseEnclosed` (or, for braces whose lines
+ * matter, `parseEnclosedIn`), so trailing commas (gap G12), line-break rules (G13) and recovery
+ * behave the same everywhere. A caller names only the opener; its closer comes from `openers`
+ * (cursor.ts). The closer is consumed inside the construct's own region, so a closer on a line of
+ * its own still closes it. Lists of items separated by `;` or line breaks are layout's (layout.ts).
  *
  * Recovery:
  * - It skips to the next separator, the construct's closer, or a line break.
@@ -18,8 +19,7 @@
 
 import type { Span } from '../../text/span.ts';
 import type { Invalid } from '../syntax/node.ts';
-import type { TokenKind } from '../syntax/tokens.ts';
-import { type Closer, type CursorKind, type Opener, openers } from './cursor.ts';
+import { type Closer, type CursorKind, isBracketOpener, type Opener, openers } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 
@@ -46,19 +46,37 @@ export function parseEnclosed<Value>(
   opener: Opener,
   parseInner: () => Value,
 ): Enclosed<Value> {
+  return parseEnclosedIn(
+    parser,
+    opener,
+    (parse) => parser.cursor.within(opener, parse),
+    parseInner,
+  );
+}
+
+/**
+ * `opener`, whatever `parseInner` reads, and the matching closer, inside the region `enter` opens
+ * (cursor.ts): a bracket region, or the line-sensitive one of a block or entries in braces.
+ */
+export function parseEnclosedIn<Value>(
+  parser: Parser,
+  opener: Opener,
+  enter: (parse: () => Value) => Value,
+  parseInner: () => Value,
+): Enclosed<Value> {
   const { cursor } = parser;
   const openerToken = cursor.advance();
   const { closer } = openers[opener];
-  const value = cursor.within(opener, () => {
+  const value = enter(() => {
     const reported = parser.diagnostics.length;
-    const inner = parseInner();
+    const result = parseInner();
     if (!atRegionEnd(parser)) {
       skipUnexpected(parser, reported, `'${closer}'`, [closer]);
     }
     if (cursor.eat(closer) === undefined) {
       parser.report(parserDiagnostics.unclosedBracket(openerToken.span, opener, closer));
     }
-    return inner;
+    return result;
   });
   return { value, span: parser.spanFrom(openerToken.span.start) };
 }
@@ -107,47 +125,19 @@ export function parseCommaSeparated<Item>(
 }
 
 /**
- * `{ entry; entry }`, the entries separated by `;` or line breaks (gap G13); the cursor must be at
- * the `{`. Each entry stays on one line, so a line break both ends one entry and starts the next.
+ * After an item of a `;`- or line-separated list: reports and skips whatever stands before the
+ * next `;` or the end of the region, unless an error since `reported` already explains it.
  */
-export function parseEntries<Item>(
-  parser: Parser,
-  parseItem: () => Item,
-): Enclosed<readonly (Item | Invalid)[]> {
-  const { cursor } = parser;
-  return parseEnclosed(parser, '{', () => {
-    const entries: (Item | Invalid)[] = [];
-    skipSemicolons(parser);
-    while (!atRegionEnd(parser)) {
-      const before = cursor.index;
-      entries.push(...cursor.onOneLine(() => parseEntry(parser, parseItem)));
-      if (cursor.index === before) {
-        break;
-      }
-      skipSemicolons(parser);
-    }
-    return entries;
-  });
-}
-
-function parseEntry<Item>(parser: Parser, parseItem: () => Item): (Item | Invalid)[] {
-  const reported = parser.diagnostics.length;
-  const item = parseItem();
+export function skipToSeparator(parser: Parser, reported: number): Invalid[] {
   if (parser.cursor.at(';') || atRegionEnd(parser)) {
-    return [item];
+    return [];
   }
-  return [item, ...skipUnexpected(parser, reported, "';', a line break or '}'", [';'])];
-}
-
-/** Empty entries are allowed: `{ a: int; }`. */
-function skipSemicolons(parser: Parser): void {
-  while (parser.cursor.eat(';') !== undefined) {
-    // Each iteration consumed one `;`.
-  }
+  const expected = `';', a line break or ${describeCloser(parser.cursor.closer)}`;
+  return skipUnexpected(parser, reported, expected, [';']);
 }
 
 /** Whether the next token ends the current region: its closer, an enclosing closer, a line break, or the end. */
-function atRegionEnd(parser: Parser): boolean {
+export function atRegionEnd(parser: Parser): boolean {
   const { cursor } = parser;
   const { kind } = cursor;
   return (
@@ -173,6 +163,14 @@ function skipUnexpected(
   if (parser.diagnostics.length === reported) {
     parser.reportExpected(expected);
   }
+  return skipUntil(parser, stops);
+}
+
+/**
+ * Skips tokens, a bracket group at a time, up to one of `stops` or the end of the region; returns
+ * them as an Invalid node. While speculating, nothing is skipped: the attempt will be undone.
+ */
+export function skipUntil(parser: Parser, stops: readonly CursorKind[]): Invalid[] {
   if (parser.isSpeculating) {
     return [];
   }
@@ -180,31 +178,11 @@ function skipUnexpected(
   const { start } = cursor.token.span;
   const before = cursor.index;
   while (!(stops.includes(cursor.kind) || atRegionEnd(parser))) {
-    skipGroupOrToken(parser);
+    if (isBracketOpener(cursor.kind)) {
+      cursor.skipGroup();
+    } else {
+      cursor.advance();
+    }
   }
   return cursor.index === before ? [] : [{ kind: 'Invalid', span: parser.spanFrom(start) }];
-}
-
-const bracketCloser: Partial<Record<TokenKind, Closer>> = Object.fromEntries(
-  Object.entries(openers)
-    .filter(([, opener]) => opener.isBracket)
-    .map(([opener, { closer }]) => [opener, closer]),
-);
-
-/** Skips one token, or a whole bracket group, stopping early at a closer of an open region. */
-function skipGroupOrToken(parser: Parser): void {
-  const { cursor } = parser;
-  const pending: TokenKind[] = [];
-  do {
-    const { kind } = cursor.token;
-    const closer = bracketCloser[kind];
-    if (closer !== undefined) {
-      pending.push(closer);
-    } else if (pending.includes(kind)) {
-      pending.splice(pending.lastIndexOf(kind));
-    } else if (kind === 'end' || (pending.length > 0 && cursor.closesAny(kind))) {
-      return;
-    }
-    cursor.advance();
-  } while (pending.length > 0);
 }

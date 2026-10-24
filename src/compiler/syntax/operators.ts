@@ -66,6 +66,26 @@ export const operatorLevels = {
   range: 'range',
 } as const satisfies Record<string, PrecedenceLevel>;
 
+/** `=` and the compound assignments; `x += y` means `x = x + y` (§3.9). */
+export const assignmentOperators = [
+  '=',
+  '+=',
+  '-=',
+  '*=',
+  '/=',
+  '//=',
+  '%=',
+] as const satisfies readonly TokenKind[];
+
+export type AssignmentOperator = (typeof assignmentOperators)[number];
+
+const assignmentOperatorSet: ReadonlySet<string> = new Set(assignmentOperators);
+
+/** Whether a token kind is an assignment operator. */
+export function isAssignmentOperator(kind: string): kind is AssignmentOperator {
+  return assignmentOperatorSet.has(kind);
+}
+
 /** Whether a token kind is a binary operator. */
 export function isBinaryOperator(kind: string): kind is BinaryOperator {
   return Object.hasOwn(binaryOperatorLevels, kind);

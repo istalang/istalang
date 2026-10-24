@@ -39,4 +39,67 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2007,
     message: () => "A collection literal can't mix 'key: value' entries with plain elements.",
   },
+  unexpectedIndent: {
+    code: 2008,
+    message: () => 'This line is indented deeper than the block it belongs to.',
+  },
+  inconsistentDedent: {
+    code: 2009,
+    message: () => "This line's indentation matches no enclosing block.",
+  },
+  expectedIndentedBlock: {
+    code: 2010,
+    message: (found: string) =>
+      `Expected a body on the same line or an indented block, found ${found}.`,
+  },
+  semicolonAfterInlineBody: {
+    code: 2011,
+    message: () =>
+      "';' can't follow a one-line body: wrap the statements in '{ … }', or put the next one on its own line.",
+  },
+  blockWithoutSemicolon: {
+    code: 2012,
+    message: () =>
+      "A block on one line separates its statements with ';'; a single expression needs no braces.",
+  },
+  topLevelStatement: {
+    code: 2013,
+    message: () => 'Only declarations can stand at the top level of a module.',
+  },
+  declarationInBlock: {
+    code: 2014,
+    message: () => 'This declaration is allowed only at the top level of a module.',
+  },
+  danglingAnnotation: {
+    code: 2015,
+    message: () => 'This annotation applies to nothing: no declaration or statement follows it.',
+  },
+  misplacedAnnotation: {
+    code: 2016,
+    message: () => "An annotation can't be applied here.",
+  },
+  invalidAnnotation: {
+    code: 2017,
+    message: () => "An annotation is a struct's name, optionally followed by '{…}'.",
+  },
+  invalidAssignmentTarget: {
+    code: 2018,
+    message: () => "Only a variable, a field, an index or a '$' value can be assigned to.",
+  },
+  externWithBody: {
+    code: 2019,
+    message: () => 'An extern function is implemented by the host, so it has no body.',
+  },
+  elseNotLast: {
+    code: 2020,
+    message: () => "'else' must be the last case of a select.",
+  },
+  compoundDestructuring: {
+    code: 2021,
+    message: (operator: string) => `Only '=' can assign to several targets, not '${operator}'.`,
+  },
+  nestingTooDeep: {
+    code: 2022,
+    message: (limit: number) => `This is nested more than ${limit} levels deep; split it up.`,
+  },
 });
