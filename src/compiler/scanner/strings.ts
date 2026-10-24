@@ -1,5 +1,5 @@
 /**
- * String literals (spec §2; gap G7).
+ * String literals (spec §2).
  *
  * `"…"` and `'…'` mean the same thing; each may hold the other quote unescaped. Strings are
  * single-line: a line break ends an unterminated string right there. A missing closing quote then

@@ -26,6 +26,8 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D23.
+up, so the next one is D27.
 
-None open.
+| # | Item | Source | Status |
+| --- | --- | --- | --- |
+| D23 | BOM is handled inside the core (scanner skips it, `Parser.columnOf` subtracts it on line 0, scan test-kit tolerates it). Editors never send a BOM over LSP, so strip it once at the `SourceHost` edge in M2 and delete the in-core cases (Step back: reformulate, don't branch) | merge review M1 2026-10-24 | open |

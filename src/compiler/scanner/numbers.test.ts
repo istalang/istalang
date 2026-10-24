@@ -1,5 +1,5 @@
 /**
- * Number and duration literals (spec §2, gaps G5–G6).
+ * Number and duration literals (spec §2).
  *
  * Values are checked by round trip over generated literals in every base, with random separator
  * placement and digit case, so the tests cover the encodings rather than a few hand-picked values.
@@ -8,14 +8,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
-import {
-  kindsAndTexts,
-  reportedOnce,
-  scanMalformed,
-  scanText,
-  soleToken,
-} from './scan.test-kit.ts';
+import { kindsAndTexts, scanMalformed, scannedPast, scanText, soleToken } from './scan.test-kit.ts';
 
 const {
   fractionalDuration,
@@ -137,7 +132,7 @@ describe('malformed literals', () => {
     ['1.5h', fractionalDuration.code, '1.5h'],
     ['1e3s', fractionalDuration.code, '1e3s'],
   ])('reports %s once and keeps scanning', (input, code, spanText) => {
-    expect(scanMalformed(input)).toEqual(reportedOnce(code, spanText));
+    expect(scanMalformed(input)).toEqual(scannedPast(reportedOnce(code, spanText)));
   });
 
   it('still yields one token of the intended kind', () => {

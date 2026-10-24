@@ -2,7 +2,7 @@
  * Bracketed constructs and error recovery.
  *
  * Every bracketed construct in the grammar goes through `parseEnclosed` (or, for braces whose lines
- * matter, `parseEnclosedIn`), so trailing commas (gap G12), line-break rules (G13) and recovery
+ * matter, `parseEnclosedIn`), so trailing commas (§2), line-break rules (§2) and recovery
  * behave the same everywhere. A caller names only the opener; its closer comes from `openers`
  * (cursor.ts). The closer is consumed inside the construct's own region, so a closer on a line of
  * its own still closes it. Lists of items separated by `;` or line breaks are layout's (layout.ts).

@@ -4,8 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
-import { dumpClean, int, named, reported, reportedOnce } from './parse.test-kit.ts';
+import { dumpClean, int, named, reported } from './parse.test-kit.ts';
 
 const { expected, misplacedReference, unclosedBracket } = parserDiagnostics;
 
@@ -47,7 +48,7 @@ describe('anonymous struct types', () => {
     '{ sku: string; qty: int; }',
     '{\n  sku: string\n  qty: int\n}',
     '{\n  sku: string;\n\n  qty: int\n}',
-  ])('parses %j, separated by semicolons or line breaks (G13)', (text) => {
+  ])('parses %j, separated by semicolons or line breaks (§2)', (text) => {
     expect(dumpClean('type', text)).toBe(skuQty);
   });
 
@@ -59,7 +60,7 @@ describe('anonymous struct types', () => {
   });
 });
 
-describe('references (G11)', () => {
+describe('references (§3.7)', () => {
   it("allows '&T' as a parameter's type", () => {
     expect(dumpClean('parameterType', '&Stack<T>')).toBe(
       `(ReferenceType (NamedType [Stack] [${named('T')}]))`,

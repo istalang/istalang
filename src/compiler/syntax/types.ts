@@ -47,7 +47,7 @@ export interface FieldDeclaration extends NodeOf<'FieldDeclaration'>, Annotatabl
   readonly type: TypeNode;
 }
 
-/** `&T`, valid only as a parameter's type (gap G11). */
+/** `&T`, valid only as a parameter's type (§3.7). */
 export interface ReferenceType extends NodeOf<'ReferenceType'> {
   readonly referent: TypeNode;
 }

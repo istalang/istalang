@@ -5,7 +5,7 @@
  * being parsed, so a loosely binding prefix operator (`not`, `..`) can report where it needs
  * parentheses. An infix parselet continues an expression past its left operand. It may decline a
  * left operand by returning undefined without consuming anything: `{` starts a struct literal only
- * after a name (gap G10).
+ * after a name (§2).
  */
 
 import type { Expression } from '../../syntax/expressions.ts';

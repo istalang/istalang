@@ -1,7 +1,7 @@
 /**
  * Extern declarations (§3.6, §3.8): what the host implements. After `extern` comes a function, a
  * struct (which may be `sendable`), or a constant, written `name: Type` with no value.
- * `sendable` is a keyword only right after `extern` (gap G4).
+ * `sendable` is a keyword only right after `extern` (§2).
  */
 
 import type {

@@ -1,5 +1,5 @@
 /**
- * Number and duration literals (spec §2; gaps G5, G6).
+ * Number and duration literals (spec §2).
  *
  * A number's extent is decided by the characters alone, never by what they mean, so a malformed
  * literal is still one token. After its digits, every identifier character is read as a suffix:

@@ -7,7 +7,7 @@
  * decided once, for modules and blocks alike (syntax/placement.ts, parts/items.ts).
  *
  * `struct` and `type` start a declaration only when a name follows: `struct{…}` is an anonymous
- * struct literal, and `type` is a keyword only before a declared name (gap G4).
+ * struct literal, and `type` is a keyword only before a declared name (§2).
  */
 
 import type { Declaration, Module } from '../../syntax/declarations.ts';

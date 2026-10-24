@@ -1,12 +1,13 @@
 /**
- * Struct literals (§3.1): every item form, `struct{…}`, qualified and generic types (G9), the
- * brace rule after any name (G10), and the positional-value rule.
+ * Struct literals (§3.1): every item form, `struct{…}`, qualified and generic types (§3.5), the
+ * brace rule after any name (§2), and the positional-value rule.
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { dump } from '../../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, named, parseAs, reported, reportedOnce } from '../parse.test-kit.ts';
+import { dumpClean, named, parseAs, reported } from '../parse.test-kit.ts';
 
 const literal = (type: string, items: string) => `(StructLiteral ${type} [${items}])`;
 
@@ -77,12 +78,12 @@ describe('the type before the braces', () => {
       ),
     ],
     ['pair{a: 1}', literal(named('pair'), '(FieldInitializer a 1)')],
-  ])('parses %s (G9, G10)', (text, tree) => {
+  ])('parses %s (§3.5, §2)', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
 
   it.each(['f(){a: 1}', 'xs[0]{a: 1}', 'a?.b{c: 1}', '1{a: 1}'])(
-    'leaves the braces after %s, which is not a name (G10)',
+    'leaves the braces after %s, which is not a name (§2)',
     (text) => {
       const parsed = parseAs('expression', text);
       expect(dump(parsed.node)).not.toContain('StructLiteral');

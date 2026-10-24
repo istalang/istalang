@@ -43,7 +43,7 @@ class Scanner {
   readonly #diagnostics: Diagnostic[] = [];
   #offset = 0;
   #lineHasToken = false;
-  /** Offset of the first tab in the current line's leading whitespace (gap G1). */
+  /** Offset of the first tab in the current line's leading whitespace (§2). */
   #indentationTab: number | undefined;
 
   constructor(text: string) {

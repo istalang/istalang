@@ -1,11 +1,12 @@
 /**
  * Literals, names, parentheses, tuples and bracket literals (§2, §4), including trailing commas
- * (G12) and line breaks inside brackets (G13).
+ * and line breaks inside brackets.
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, reported, reportedOnce } from '../parse.test-kit.ts';
+import { dumpClean, reported } from '../parse.test-kit.ts';
 
 describe('literals and names', () => {
   it.each([

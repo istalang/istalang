@@ -1,11 +1,12 @@
 /**
- * Postfix forms (§3.9): calls with type arguments (G9), `&` and spread arguments (G11, G12),
+ * Postfix forms (§3.9): calls with type arguments (§3.5), `&` and spread arguments (§3.7, §2),
  * indexing and slicing, member access, `?.`, `?` and `$`.
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, named, parseAs, reported, reportedOnce } from '../parse.test-kit.ts';
+import { dumpClean, named, parseAs, reported } from '../parse.test-kit.ts';
 
 describe('calls', () => {
   it.each([
@@ -22,7 +23,7 @@ describe('calls', () => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
 
-  it("reports '&' on part of an argument, or outside a call (G11)", () => {
+  it("reports '&' on part of an argument, or outside a call (§3.7)", () => {
     const { misplacedReference } = parserDiagnostics;
     expect(reported('expression', 'f(&a + b)')).toEqual(
       reportedOnce(misplacedReference.code, '&a'),
@@ -32,7 +33,7 @@ describe('calls', () => {
   });
 });
 
-describe('type arguments (G9)', () => {
+describe('type arguments (§3.5)', () => {
   it.each([
     ['swap<int, string>(p)', `(Call swap [${named('int')} ${named('string')}] [p])`],
     ['Slot.create<Verdict>()', `(Call (MemberAccess Slot create) [${named('Verdict')}] [])`],

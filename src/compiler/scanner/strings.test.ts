@@ -1,5 +1,5 @@
 /**
- * String literals (spec §2, gap G7).
+ * String literals (spec §2).
  *
  * Decoding is checked by round trip: any text, written as a literal with a random choice of
  * escapes, must decode back to itself. That covers both quotes, every escape, astral characters
@@ -8,14 +8,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
-import {
-  kindsAndTexts,
-  reportedOnce,
-  scanMalformed,
-  scanText,
-  soleToken,
-} from './scan.test-kit.ts';
+import { kindsAndTexts, scanMalformed, scannedPast, scanText, soleToken } from './scan.test-kit.ts';
 
 const { invalidEscape, invalidUnicodeEscape, unterminatedString } = scannerDiagnostics;
 
@@ -88,7 +83,7 @@ describe('malformed strings', () => {
     ['"\\u{D800}"', invalidUnicodeEscape.code, '\\u{D800}'],
     ['"\\u{41"', invalidUnicodeEscape.code, '\\u{41'],
   ])('reports %s once and keeps scanning', (input, code, spanText) => {
-    expect(scanMalformed(input)).toEqual(reportedOnce(code, spanText));
+    expect(scanMalformed(input)).toEqual(scannedPast(reportedOnce(code, spanText)));
   });
 
   it.each(['\n', '\r\n', '\r'])('ends an unterminated string at the line break %j', (lineBreak) => {

@@ -13,4 +13,4 @@ metadata:
 
 **Why:** the user's instruction at M1 start (2026-10-24). Every fork inherits the coordinator's context, so it must stay small, and the user wants to approve each phase personally.
 
-**How to apply:** every time a fork is spawned or a report is consumed in this project. Related: [[feedback-commits]].
+**How to apply:** every time a fork is spawned or a report is consumed in this project.

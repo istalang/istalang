@@ -2,12 +2,12 @@
  * Type grammar (§2, §3): named and generic types, `T?`, tuples, function types, anonymous structs,
  * and `&T`.
  *
- * Only a parameter's type may be a reference (gap G11), and `parseParameterType` is the one entry
+ * Only a parameter's type may be a reference (§3.7), and `parseParameterType` is the one entry
  * that allows it. A `&` met anywhere else is still parsed, so the tree shows what was written, but
  * it is reported. Expressions follow the same rule for `&x` in call arguments.
  *
  * `T??` arrives as one `??` token and means `T?` twice. Fields of an anonymous struct are
- * separated by `;` or line breaks (gap G13). A function type without `->` returns unit, as
+ * separated by `;` or line breaks (§2). A function type without `->` returns unit, as
  * `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 

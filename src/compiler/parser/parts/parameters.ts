@@ -1,6 +1,6 @@
 /**
  * Parameter lists, shared by lambdas and function declarations (§3.3, §3.14): defaults, rest
- * parameters, and reference types, which only a parameter's type may have (gap G11).
+ * parameters, and reference types, which only a parameter's type may have (§3.7).
  */
 
 import type { Parameter } from '../../syntax/expressions.ts';

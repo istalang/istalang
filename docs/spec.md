@@ -8,7 +8,7 @@ The whole language at a glance; each line is explained in the sections below.
 
 **Values, variables and types**
 
-```python
+```python fragment
 const limit: int = 50_000          # immutable, deeply
 let count = 0                      # mutable; type inferred
 let a, b = (1, "x")                # tuple destructuring
@@ -29,7 +29,7 @@ fn(A) -> R    async fn(A) -> R    { sku: string; qty: int }    # anonymous struc
 
 **Structs, enums and annotations**
 
-```python
+```python fragment
 struct Pair<A, B>:
     first: A
     second: B
@@ -51,7 +51,7 @@ userId: int @JsonName{"user_id"}   # annotation on a field
 
 **Functions, traits and generics**
 
-```python
+```python fragment
 fn add(a: int, b = 1):             # default parameter, types inferred
     a + b                          # the last expression is the value
 fn log(level: string, ...parts: Array<string>): ...    # rest parameter
@@ -70,7 +70,7 @@ fn sum<T is Addable & Monoid>(xs: Array<T>) -> T: ...
 
 **Control flow and patterns**
 
-```python
+```python fragment
 if amount > 100:
     escalate()
 elif amount > 10:
@@ -98,7 +98,7 @@ type UserId = string                              # type alias
 
 **Concurrency, persistence and the host**
 
-```python
+```python fragment
 const v = await fetch()            # every await commits, then waits
 const f = fetch()                  # already running; runs alongside while held
 
@@ -138,7 +138,16 @@ Design principles:
 
 ## 2. Lexical structure and types
 
-Blocks are defined by indentation, as in Python. Comments start with `#`. Top-level declarations may appear in any order. A `;` separates statements written on one line: `a = 1; b = 2`.
+Blocks are defined by indentation, as in Python. Comments start with `#` and run to the end of the line; there are no block comments. Top-level declarations may appear in any order. A `;` separates statements written on one line: `a = 1; b = 2`.
+
+**Source text.**
+
+- **Indentation** uses spaces only: a tab in a line's leading whitespace is a compile error. Any consistent width works.
+- **Line breaks** are `\n`, `\r\n` or a lone `\r`. A byte order mark at the start of a file is ignored.
+- **Continuation.** A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal, so a call or literal may span lines. Inside braces that list fields or variants, as in `{ sku: string; qty: int }`, a line break separates entries just as `;` does. There is no backslash continuation.
+- **Trailing commas** are allowed in every comma-separated list.
+- **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Three more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `from` before an import's path, and `sendable` right after `extern`. So `T.from` (§3.10) and a field named `type` (§9) are valid.
 
 Every expression has a static type, and there is no `any` type. There are no implicit conversions, with one exception: a `T` is wrapped into `T?` wherever an optional is expected (§3.11).
 
@@ -162,12 +171,12 @@ Every expression has a static type, and there is no `any` type. There are no imp
 
 Primitive types are lowercase language built-ins and are always sendable. Every other type name, built-in or user-defined, is PascalCase. The other built-in types are ordinary declarations in the prelude and standard library (§3.8).
 
-Duration literals are sugar for the standard library's `Duration`: a number plus a unit (`500ms`, `30s`, `15m`, `2h`, `5d`). For example, `5d` means `Duration{value: 5 * 24 * 60 * 60 * 1000}`.
+Duration literals are sugar for the standard library's `Duration`: an integer plus a unit, with no space between (`500ms`, `30s`, `15m`, `2h`, `5d`). For example, `5d` means `Duration{value: 5 * 24 * 60 * 60 * 1000}`. A fractional duration such as `1.5h` is a compile error; write `90m`.
 
 **Literals:**
 
-- **Strings:** `"…"` or `'…'`, with the escapes `\n`, `\t`, `\\`, `\"`, `\'` and `\u{…}`.
-- **Numbers:** `42`, `1_000_000`, `0x1F` and `0b1010` for `int`; `3.14`, `1e9` and `2.5e-3` for `float`.
+- **Strings:** `"…"` or `'…'` on a single line, with the escapes `\n`, `\t`, `\\`, `\"`, `\'` and `\u{…}`, which takes 1 to 6 hex digits naming a Unicode scalar value. Any other escape is a compile error.
+- **Numbers:** `42`, `1_000_000`, `0x1F` and `0b1010` for `int`; `3.14`, `1e9`, `2E6` and `2.5e-3` for `float`. A `_` stands only between digits, radix prefixes are lowercase, and there are no octal literals. A float has digits on both sides of its `.`, so `2.pow(10)` calls a method on the `int` `2`, and `0..10` is a range.
 - **`true`, `false` and `none`.**
 - **Arrays:** `[1, 2, 3]`, and `[]` when empty.
 - **Maps:** `["legal": 1, "cfo": 2]`, and `[:]` when empty. Keys are expressions.
@@ -177,7 +186,7 @@ Duration literals are sugar for the standard library's `Duration`: a number plus
 - **Structs and enum variants:** `Pair{first: 1, second: 2}`, `Rejected{by: "legal"}`, and `Ok{42}` for a type with a single field. A type without fields is just its name. `struct{value: 1}` is a struct literal whose type comes from context (§3.1).
 - **Lambdas:** `fn(x): x * 2` (§3.14).
 
-**What each kind of bracket means.** `[…]` is for collections: array and map literals, indexing and slicing. `{…}` is for structured values and blocks: after a type name or `struct` it constructs a value, in a type position it lists fields, and a bare `{…}` in an expression is a block (§4). `(…)` is for calls and conversions (§3.10), tuples and grouping. A map literal works for any type that satisfies `IndexAssignable<K, V>` and `Default` (§3.10), given an expected type `C`: `[k1: v1, k2: v2]` builds `C.default()` and assigns each entry with `c[k] = v`, and an empty `[]` or `[:]` builds just `C.default()`. Without an expected type, `[k: v]` makes a `Map<K, V>`.
+**What each kind of bracket means.** `[…]` is for collections: array and map literals, indexing and slicing. `{…}` is for structured values and blocks: right after a name, a qualified name, type arguments or `struct` it constructs a value, in a type position it lists fields, and any other `{…}` in an expression is a block (§4). No construct puts a block right after a name, so the parser never needs to know what a name means; the compiler reports a name before `{` that isn't a struct or variant. `(…)` is for calls and conversions (§3.10), tuples and grouping. A map literal works for any type that satisfies `IndexAssignable<K, V>` and `Default` (§3.10), given an expected type `C`: `[k1: v1, k2: v2]` builds `C.default()` and assigns each entry with `c[k] = v`, and an empty `[]` or `[:]` builds just `C.default()`. Without an expected type, `[k: v]` makes a `Map<K, V>`.
 
 **Numbers.** `int` has arbitrary precision, as in Python, so it never overflows. `float` is an IEEE 754 double. `/` always yields a `float`, and `//` is floor division on `int`s. For exact decimal arithmetic, such as money, the standard library has `Decimal`.
 
@@ -198,7 +207,7 @@ struct ReviewRequest:
     replyTo: Inbox<Verdict>
 ```
 
-Construction lists the fields in braces after the type's name: `ReviewRequest{purchaseId: "P-1", amount: 900, replyTo: replies}`. As in JavaScript, a bare name is always short for a field of the same name: `Pair{first, second}` means `Pair{first: first, second: second}`. A struct with exactly one field may take its value without the field's name, as long as that value isn't a bare name: `UserId{"u-1"}` and `UserId{prefix + id}` are positional, while `UserId{id}` always means the field `id`. To pass a variable positionally, wrap it in parentheses: `UserId{(id)}`. Both a reader and the parser can therefore tell the forms apart without knowing the struct's fields. A struct with no fields is written bare. An updated copy spreads an existing value and overrides some fields: `Req{...req, amount: 0}` is `req` with `amount` changed, and `req` itself is untouched; `struct{...req, amount: 0}` does the same, taking the type from `req`. Structs can be destructured in `match` patterns. Fields have no visibility modifiers: any code can read them, since any module could declare a method on the struct anyway. Names of functions, methods, variables and fields are camelCase, preferring JavaScript's names where one exists (`push`, `indexOf`).
+Construction lists the fields in braces after the type's name: `ReviewRequest{purchaseId: "P-1", amount: 900, replyTo: replies}`. As in JavaScript, a bare name is always short for a field of the same name: `Pair{first, second}` means `Pair{first: first, second: second}`. A struct with exactly one field may take its value without the field's name, as long as that value isn't a bare name: `UserId{"u-1"}` and `UserId{prefix + id}` are positional, while `UserId{id}` always means the field `id`. To pass a variable positionally, wrap it in parentheses: `UserId{(id)}`. Both a reader and the parser can therefore tell the forms apart without knowing the struct's fields. A struct with no fields is written bare. An updated copy spreads an existing value and overrides some fields: `Req{...req, amount: 0}` is `req` with `amount` changed, and `req` itself is untouched; `struct{...req, amount: 0}` does the same, taking the type from `req`. Structs can be destructured in `match` patterns. Fields have no visibility modifiers: any code can read them, since any module could declare a method on the struct anyway. Names of functions, methods, variables and fields are camelCase, preferring JavaScript's names where one exists (`push`, `indexOf`). A name that breaks these conventions, or the PascalCase rule for types (§2), is a compile error.
 
 **Anonymous structs.** `struct { … }` is a struct type without a name, usable anywhere a type is. In a type position the keyword may be left out, since a `{` there can only be a field list: `Array<struct { sku: string; qty: int }>` and `Array<{ sku: string; qty: int }>` are the same type, and a formatter can pick one style. An indented block under a field is sugar for one, and any struct declaration may use braces on a single line, as in `struct Req { id: int; value: string }`.
 
@@ -257,7 +266,7 @@ extern fn chargeCard(id: string, amount: int) -> Result<string>  # implemented b
 - When a block ends, including a function's body, it releases everything its variables hold, disposing whatever nothing else holds (§3.4, §7).
 - `extern fn` declares a host function with a typed signature and no body (§3.6).
 
-```python
+```python statements
 fn retry(times: int = 3, backoff: Duration = 1s): ...
 retry()                      # retry(3, 1s)
 retry(5)                     # retry(5, 1s)
@@ -273,7 +282,7 @@ log("info", "a", ...more)    # parts is "a" followed by the elements of more
 
 ### 3.4 Variables
 
-```python
+```python statements
 const limit: int = 50_000          # immutable
 let count = 0                      # mutable; inferred: int
 count = count + 1
@@ -288,7 +297,7 @@ Variables are block scoped: a variable is visible only inside the block that dec
 
 **Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§7). A loop body is a block, so each iteration releases its own holdings. `fn let` and `fn const` declare a variable whose *name* is still block scoped but whose holdings last until the enclosing function ends, which is how a loop keeps what it starts. The common unnamed case has a short form: `fn _ = expr` means `fn const _ = expr`.
 
-```python
+```python statements
 for role in roles:
     fn _ = reviewQueue(role).sendRevertible(request)   # revertible until the function returns
 ```
@@ -307,7 +316,7 @@ fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
 ```
 
 - **Explicit type arguments** use the same brackets everywhere: `swap<int, string>(p)`, `Slot.create<Verdict>()`.
-- **Parsing.** In an expression, `name<...>(` is a call with type arguments when the part inside the brackets parses as a list of types, the same rule C# uses. A comparison that happens to look like that needs parentheses: `(a < b) > c`.
+- **Parsing.** In an expression, `name<...>` takes type arguments when the part inside the brackets parses as a list of types and is followed by `(` or `{`, the same rule C# uses: `swap<int, string>(p)`, `Pair<int, string>{first: 1, second: "x"}`. A comparison that happens to look like that needs parentheses: `(a < b) > c`.
 - **When inference has nothing to go on,** give the type arguments or annotate the variable: `let xs: Array<int> = []`.
 - **Constraints.** A type parameter can be constrained by traits (§3.10) with `is`: `T is Sendable`. Several traits are joined with `&`: `T is Sendable & Comparable`.
 
@@ -362,7 +371,7 @@ async fn signContract(contract: Contract) -> Future<Array<Signature>>:
 
 The rules:
 
-- **Explicit at the call site.** An argument passed by reference is written `&x`. Only a method's `self` takes its reference implicitly.
+- **Explicit at the call site.** An argument passed by reference is written `&x`. Only a method's `self` takes its reference implicitly. `&` may stand only before a whole call argument, and `&T` only as a parameter's type; anywhere else either is a compile error.
 - **One kind of reference, and it allows mutation.** A read-only reference would add nothing, because a by-value parameter already can't change the caller's data.
 - **References aren't values.** They can't be stored in variables or struct fields, returned or sent. Aliasing exists only for the duration of a call.
 - **No references to constants.** Neither a `const` variable nor an `extern` constant can be passed by `&`.
@@ -483,7 +492,7 @@ An operator is sugar for a named function: `a + b` calls `add(a, b)`. On concret
 
 **Unwrapping.** `x$` calls `unwrap(x)`, and `x$ = v` calls `rewrap(x, v)`. A field write such as `x$.name = "Y"` is sugar for reading with `unwrap`, changing the field and writing back with `rewrap`, atomically within the segment. `rewrap` takes `self` by value, so a `const` handle stays writable; this also means only handle types, like `Shared<T>`, can usefully implement `MutableWrapper`.
 
-```python
+```python statements
 const u = Shared(User{name: "Ares", email: "a@x"})
 u$.name = "Ares K"          # writes through: every alias sees it
 const snapshot = u$         # a plain copy of the contents
@@ -613,7 +622,7 @@ A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns 
 
 **`is` outside `match`.** `x is Pattern` is a boolean expression. Its bindings exist only where the match is known to have succeeded: in the body of an `if` or `while`, and on the right-hand side of an `and`. `or` can't introduce bindings, because afterwards it isn't known which side matched.
 
-```python
+```python statements
 if r is Ok{value as y} and y > 0:
     use(y)            # y exists only here
 ```
@@ -633,7 +642,7 @@ struct Error:
     trace: string          # filled in by the runtime when the Err is created
 ```
 
-```python
+```python statements
 async fn pay(req: PurchaseRequest) -> Future<Result<string>>:
     const receipt = chargeCard(req.id, req.amount)?    # returns early on Err
     Ok{(receipt)}
@@ -708,7 +717,7 @@ fn makeCounter(start: int) -> fn() -> int:
 - **Several statements** go in a block expression (§4): `fn(msg): { log(msg); save(msg); msg.id }`, or the same block spread over several indented lines. There is no brace-less form with `;`.
 - **Overloaded names** passed as values, like `xs.map(add)`, need an expected function type to choose the overload; otherwise they are a compile error.
 
-```python
+```python statements
 bus.subscribe(fn(msg): {
     if msg.urgent:
         alert(msg)
@@ -734,7 +743,7 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 
 A tuple groups a fixed number of values by position. Its type is written `(int, string)`, and a tuple is built with parentheses: `(5, "x")`.
 
-```python
+```python statements
 fn minMax(xs: Array<int>) -> (int, int):
     (xs.min(), xs.max())
 
@@ -782,23 +791,25 @@ Every block is an expression whose value is its last expression. A block that en
 
 **Block expressions.** A bare `{ … }` in an expression position is always a block expression: its statements run in order, its variables are scoped to it, and its value is its last expression. Indentation still applies inside the braces. Written on one line, a block must contain at least one `;`, since braces around a single expression add nothing: write `if urgent: alert(msg)` rather than `if urgent: { alert(msg) }`.
 
-```python
+```python statements
 const total = { const base = price * qty; base + shipping(base) }
 
 if urgent: { alert(msg); save(msg) }     # a one-line body
 ```
 
-Braces always mean one of three things, told apart by what comes before them: after a type name or `struct`, they construct a value (§3.1); in a type position, they list fields; and a bare `{` in an expression starts a block.
+Braces always mean one of three things, told apart by what comes before them: after a name, a qualified name, type arguments or `struct`, they construct a value (§3.1); in a type position, they list fields; and any other `{` in an expression starts a block.
 
-**One-line bodies.** Any `:` that introduces a body (after `if`, `elif`, `else`, `while`, `for`, `case` or `fn`) may instead be followed by exactly one expression on the same line, with no braces. Chained on one line, `if`, `elif` and `else` form an `if` expression like any other, so every branch must have the same type:
+**One-line bodies.** Any `:` that introduces a body (after `if`, `elif`, `else`, `while`, `for`, `case` or `fn`) may instead be followed by exactly one statement on the same line, with no braces, as in `for x in xs: total += x`. Chained on one line, `if`, `elif` and `else` form an `if` expression like any other, so every branch must have the same type:
 
-```python
+```python statements
 const size = if n < 10: "small" elif n < 100: "medium" else: "large"
 const fact = fn f(n: int) -> int: if n < 2: 1 else: n * f(n - 1)
 if urgent: alert(msg)
 ```
 
 A `;` directly after a one-line body is a compile error, because readers coming from Python would expect `if x: s1; s2` to put both statements in the body. Write `if x: { s1; s2 }` for both, or put `s2` on the next line.
+
+**Continuing a construct.** `elif` and `else` continue an `if` when they stand at the column where the `if`'s line starts, which is how a multi-line `if` can be an initializer (below). A dangling `else` belongs to the nearest `if` whose line it lines up with, so after `if a: if b: x` it belongs to `if b`. The `case` lines of a `match` or `select` always stand in its indented body.
 
 **Array comprehensions.** `[for x in xs: expr]` builds an array by evaluating `expr` for each element, and an `if` clause between the iterable and `:` keeps only the elements that pass:
 
@@ -808,7 +819,7 @@ const small = [for x in doubled if x < 20: x]
 const values = [for r in results if r is Ok{value}: value]   # filter and destructure
 ```
 
-- **The body is one expression,** the same rule as a one-line `if`; a block expression gives it several statements.
+- **The body is one expression;** a block expression gives it several statements.
 - **`is` bindings in the condition flow into the body,** just as they flow from an `if` condition into its body.
 - **It works on any `Iterable` (§3.10)** and builds the whole array at once. A plain `for` without brackets stays a statement and builds nothing.
 
@@ -887,7 +898,7 @@ Competing takes are atomic: when several executions wait to `take` from one slot
 
 **Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s. It is created with `Inbox.create<T>()`:
 
-```python
+```python statements
 const box = Inbox.create<Verdict>()
 box.send(v)                            # durable
 _ = box.sendRevertible(v)              # revertible: held until this block ends
@@ -959,7 +970,7 @@ In every case, each `disposed()` future watching the value resolves afterwards.
 
 **Disposing early.** To dispose something you hold before its block ends, `drop` it. A value is disposed only when its last holder releases it, so a disposed value is never observable. To stop something that other code may also need to reach, keep the only holder in a `Shared` and share that. Setting its value to `none` releases the holder, and everyone else then sees `none` rather than a disposed value:
 
-```python
+```python statements
 const sub = Shared<Future<unit>?>(bus.subscribe(fn msg: show(msg)))
 ...
 sub$ = none               # the subscription is disposed here
@@ -1042,7 +1053,7 @@ The rules:
 
 **Future reuse.** A future resolves once and stays resolved. Create a deadline once, outside a loop, and every iteration races against the same deadline:
 
-```python
+```python statements
 const deadline: Future<unit> = time.delay(5d)    # created once
 while not done:
     await select:

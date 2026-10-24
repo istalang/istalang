@@ -5,7 +5,7 @@
  * - The full printer parenthesizes every operator.
  * - The minimal printer parenthesizes only where the table requires it. Besides levels, it knows
  *   two grammar rules: `??` operands that are `and`/`or` need parentheses (§3.9), and
- *   `name < name > (…)` reads as a generic call (gap G9), so its comparison is wrapped.
+ *   `name < name > (…)` reads as a generic call (§3.5), so its comparison is wrapped.
  * `shapeOf` turns a parsed expression back into a tree, ignoring parentheses, so the printed text
  * can be compared with the tree it came from.
  */

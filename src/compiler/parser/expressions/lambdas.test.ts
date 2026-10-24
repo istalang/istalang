@@ -4,8 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, int, reported, reportedOnce } from '../parse.test-kit.ts';
+import { dumpClean, int, reported } from '../parse.test-kit.ts';
 
 const param = (name: string, type = '_', value = '_') => `(Parameter ${name} ${type} ${value})`;
 

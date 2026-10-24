@@ -55,7 +55,7 @@ export function parseReference(parser: Parser): Reference {
   return { kind: 'Reference', span: parser.spanFrom(start), expression };
 }
 
-/** `&x` anywhere a call argument doesn't start (gap G11). */
+/** `&x` anywhere a call argument doesn't start (§3.7). */
 export const parseMisplacedReference: PrefixParselet = (parser) => {
   const reference = parseReference(parser);
   parser.report(parserDiagnostics.misplacedReference(reference.span));

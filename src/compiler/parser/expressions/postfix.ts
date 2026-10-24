@@ -3,13 +3,13 @@
  * literals after a name, and type arguments.
  *
  * `name<…>` is ambiguous with a comparison. Following C#, it is read as type arguments only when
- * the bracket contents parse as types and a `(` or `{` follows (gap G9). Otherwise it is a
+ * the bracket contents parse as types and a `(` or `{` follows (§3.5). Otherwise it is a
  * comparison, and `(a < b) > c` needs its parentheses. Only the type arguments are parsed
  * speculatively. The call or literal after them is parsed for real, so errors inside the
  * arguments are reported rather than turning the whole thing back into a comparison.
  *
- * A struct literal's `{` and type arguments both attach only to a name or a qualified name (gap
- * G10). Nothing else can stand before them, so the parser never needs to know what a name means.
+ * A struct literal's `{` and type arguments both attach only to a name or a qualified name
+ * (§2). Nothing else can stand before them, so the parser never needs to know what a name means.
  */
 
 import type { Call, Expression, Spread } from '../../syntax/expressions.ts';
@@ -52,7 +52,7 @@ function parseCall(parser: Parser, callee: Expression, typeArguments: readonly T
   return { kind: 'Call', span, callee, typeArguments, arguments: items };
 }
 
-/** An argument; `&` is allowed only on a whole argument (gap G11). */
+/** An argument; `&` is allowed only on a whole argument (§3.7). */
 function parseArgument(parser: Parser): Expression | Spread {
   const { cursor } = parser;
   if (cursor.at('...')) {

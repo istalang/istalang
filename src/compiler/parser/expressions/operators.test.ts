@@ -4,8 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, reported, reportedOnce } from '../parse.test-kit.ts';
+import { dumpClean, reported } from '../parse.test-kit.ts';
 
 describe('levels and associativity', () => {
   it.each([

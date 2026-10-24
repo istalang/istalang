@@ -7,10 +7,10 @@
  * from "stopped early".
  */
 
-import fc from 'fast-check';
+import { soupOf } from '../../../test/soup.ts';
+import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { SourceText } from '../../text/source-text.ts';
-import { textOf } from '../../text/span.ts';
 import { scan } from '../scanner/scan.ts';
 import { dump } from '../syntax/tree.test-kit.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
@@ -64,16 +64,6 @@ export function dumpClean(category: Category, text: string): string {
   return problems.length === 0 ? dump(parsed.node) : `NOT CLEAN: ${problems.join(' | ')}`;
 }
 
-export interface Reported {
-  readonly codes: readonly number[];
-  readonly spanTexts: readonly string[];
-}
-
-/** The Reported of a parse that reported `code` once, over `spanText`. */
-export function reportedOnce(code: number, spanText: string): Reported {
-  return { codes: [code], spanTexts: [spanText] };
-}
-
 /** Lines joined into one source text, so a test can show its layout line by line. */
 export function lines(...source: readonly string[]): string {
   return source.join('\n');
@@ -125,10 +115,7 @@ export const int = named('int');
 /** What a parse reported: each diagnostic's code and the text its span covers. */
 export function reported(category: Category, text: string): Reported {
   const parsed = parseAs(category, text);
-  return {
-    codes: parsed.diagnostics.map((diagnostic) => diagnostic.code),
-    spanTexts: parsed.diagnostics.map((diagnostic) => textOf(parsed.source, diagnostic.span)),
-  };
+  return reportedIn(parsed.source, parsed.diagnostics);
 }
 
 const tokenFragments = [
@@ -190,11 +177,7 @@ const tokenFragments = [
 const separators = [' ', '', '\n', '\n    '];
 
 /** Random token sequences, valid and broken, with line breaks between some of them. */
-export const tokenSoup = fc
-  .array(fc.tuple(fc.constantFrom(...tokenFragments), fc.constantFrom(...separators)), {
-    maxLength: 30,
-  })
-  .map((pairs) => pairs.map(([fragment, separator]) => fragment + separator).join(''));
+export const tokenSoup = soupOf(tokenFragments, separators, 30);
 
 /** A token soup with no `(` or `)`, so a surrounding call's parentheses are the only ones. */
 export const parenFreeSoup = tokenSoup.map((text) => text.replaceAll(/[()]/gu, ' '));

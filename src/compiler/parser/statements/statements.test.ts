@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import {
   bodyOf,
@@ -14,7 +15,6 @@ import {
   int,
   lines,
   reported,
-  reportedOnce,
 } from '../parse.test-kit.ts';
 
 const { expected, invalidAssignmentTarget, compoundDestructuring, declarationInBlock } =

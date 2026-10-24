@@ -14,7 +14,7 @@
  *
  * Parentheses are kept as Parenthesized nodes: the `??` mixing rule depends on them, and the
  * formatter must not lose them. `&x` is a Reference expression wherever it is written; the parser
- * reports it everywhere except as a whole call argument (gap G11), so the tree still shows what
+ * reports it everywhere except as a whole call argument (§3.7), so the tree still shows what
  * was written.
  */
 

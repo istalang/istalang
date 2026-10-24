@@ -10,10 +10,10 @@
  * test change. Others use `...` the same way, which only parsing tells apart from a spread;
  * `isPlaceholder` recognizes the text such a placeholder leaves in a diagnostic.
  *
- * Most examples are whole modules. The rest are listed in `classifications`, each with its reason:
- * statements shown outside any function, which a module can't hold at its top level, and the cheat
- * sheet's one-line samples. A classification names a section and, within it, the first line of
- * its example, so it survives edits elsewhere in the spec.
+ * Most examples are whole modules. The rest say what they are in their fence's info string, after
+ * the language: ` ```python statements` for statements shown outside any function, which a module
+ * can't hold at its top level, and ` ```python fragment` for samples that are neither, such as the
+ * cheat sheet's. An unknown word there fails every test at load, so a typo can't hide an example.
  */
 
 import { readFileSync } from 'node:fs';
@@ -30,55 +30,26 @@ export interface SpecExample {
   readonly form: ExampleForm;
 }
 
-export interface Classification {
-  readonly section: string;
-  /** The example's first line starts with this; undefined classifies the whole section. */
-  readonly firstLine: string | undefined;
-  readonly form: Exclude<ExampleForm, 'module'>;
-  readonly reason: string;
-}
+const specUrl = new URL('../../docs/spec.md', import.meta.url);
+const headingPattern = /^#{1,6}\s+(?<title>.+)$/u;
+const fence = '```';
+const elisionMark = '…';
+const whitespace = /\s+/u;
 
-const outsideFunction = 'statements shown outside any function';
+const formTags: Readonly<Record<string, ExampleForm>> = {
+  '': 'module',
+  statements: 'statements',
+  fragment: 'fragment',
+};
 
-export const classifications: readonly Classification[] = [
-  {
-    section: 'Cheat sheet',
-    firstLine: undefined,
-    form: 'fragment',
-    reason: 'one-line samples of literals, types, statements and declarations side by side',
-  },
-  ...[
-    ['3.3 Functions', 'fn retry('],
-    ['3.4 Variables', 'const limit: int = 50_000'],
-    ['3.4 Variables', 'for role in roles:'],
-    ['3.9 Operator overloading', 'const u = Shared('],
-    ['3.11 Enums', 'if r is Ok{'],
-    ['3.12 Errors', 'async fn pay('],
-    ['3.14 Function types and closures', 'bus.subscribe('],
-    ['3.15 Tuples', 'fn minMax('],
-    ['4. Expressions and control flow', 'const total = {'],
-    ['4. Expressions and control flow', 'const size = if'],
-    ['6. Slots and inboxes', 'const box = Inbox.create'],
-    ['7. Lifetimes and disposal', 'const sub = Shared'],
-    ['8. select', 'const deadline: Future<unit>'],
-  ].map(([section = '', firstLine]) => ({
-    section,
-    firstLine,
-    form: 'statements' as const,
-    reason: outsideFunction,
-  })),
-];
-
-/** Whether a classification covers an example. */
-export function classifies(classification: Classification, section: string, code: string): boolean {
-  const { firstLine } = classification;
-  return (
-    classification.section === section && (firstLine === undefined || code.startsWith(firstLine))
-  );
-}
-
-function formOf(section: string, code: string): ExampleForm {
-  return classifications.find((each) => classifies(each, section, code))?.form ?? 'module';
+/** The form an opening fence's info string declares: the words after the language. */
+function formOf(openingFence: string, line: number): ExampleForm {
+  const tag = openingFence.slice(fence.length).trim().split(whitespace).slice(1).join(' ');
+  const form = formTags[tag];
+  if (form === undefined) {
+    throw new Error(`docs/spec.md:${line}: unknown example form '${tag}'`);
+  }
+  return form;
 }
 
 const placeholders = ['...', '…'];
@@ -89,19 +60,14 @@ export function isPlaceholder(text: string): boolean {
   return rest !== text && rest.replaceAll(/[{}\s]/gu, '') === '';
 }
 
-const specUrl = new URL('../../docs/spec.md', import.meta.url);
-const headingPattern = /^#{1,6}\s+(?<title>.+)$/u;
-const fence = '```';
-const elisionMark = '…';
-
 function extractExamples(markdown: string): SpecExample[] {
   const examples: SpecExample[] = [];
   let section = '';
-  let open: { line: number; lines: string[] } | undefined;
+  let open: { line: number; form: ExampleForm; lines: string[] } | undefined;
   for (const [index, line] of markdown.split('\n').entries()) {
     if (line.startsWith(fence)) {
       if (open === undefined) {
-        open = { line: index + 2, lines: [] };
+        open = { line: index + 2, form: formOf(line, index + 1), lines: [] };
       } else {
         const code = open.lines.join('\n');
         examples.push({
@@ -109,7 +75,7 @@ function extractExamples(markdown: string): SpecExample[] {
           line: open.line,
           code,
           elided: code.includes(elisionMark),
-          form: formOf(section, code),
+          form: open.form,
         });
         open = undefined;
       }

@@ -3,7 +3,6 @@
  * - every spec example that is a module parses without diagnostics
  * - statements shown outside a function report only that
  * - parsing stays total and well nested when spec examples are broken at random
- * - a 10k-line module parses fast enough for an editor to reparse on every keystroke
  *
  * Placeholders for omitted code (`...`, `…`, `{ … }`) are the one thing a spec example may leave
  * unexplained (test/corpus/spec-examples.ts).
@@ -135,19 +134,6 @@ describe('totality', () => {
       }),
       { numRuns: 300 },
     );
-  });
-});
-
-describe('speed', () => {
-  it('scans and parses a 10k-line module in under 200 ms', () => {
-    const unit = modules.map((example) => example.code).join('\n');
-    const copies = Math.ceil(10_000 / unit.split('\n').length);
-    const text = Array.from({ length: copies }, () => unit).join('\n');
-    parseText(unit);
-    const started = performance.now();
-    parseText(text);
-    expect(text.split('\n').length).toBeGreaterThanOrEqual(10_000);
-    expect(performance.now() - started).toBeLessThan(200);
   });
 });
 

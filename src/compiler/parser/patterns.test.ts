@@ -4,8 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
-import { dumpClean, named, reported, reportedOnce } from './parse.test-kit.ts';
+import { dumpClean, named, reported } from './parse.test-kit.ts';
 
 const { expected, unclosedBracket } = parserDiagnostics;
 

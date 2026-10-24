@@ -1,5 +1,5 @@
 /**
- * Line map (gap G2). The round trip is a property over generated lines with every line ending,
+ * Line map (§2). The round trip is a property over generated lines with every line ending,
  * including the case where a lone `\r` and a following `\n` must merge into one break. Clamping
  * follows what LSP clients send.
  */
@@ -11,7 +11,7 @@ import { LineMap, lineBreakLength, lineMapOf } from './line-map.ts';
 const lineBreaks = ['\n', '\r\n', '\r'];
 const lineText = fc.string({ unit: fc.constantFrom('a', ' ', '😀', '\t'), maxLength: 8 });
 
-describe('line map (gap G2)', () => {
+describe('line map (§2)', () => {
   it('maps every offset to its line and column and back', () => {
     fc.assert(
       fc.property(

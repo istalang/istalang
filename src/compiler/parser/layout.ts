@@ -1,6 +1,6 @@
 /**
  * Layout: blocks of lines, the bodies that follow a `:`, and which line continues what (spec §2,
- * §4; gaps G13, G14). Every decision to move past a line break is made here, and only here.
+ * §4). Every decision to move past a line break is made here, and only here.
  *
  * A block is a run of items, one or more per line, at one column. Statements, struct fields, enum
  * variants, trait members and match cases are all laid out this way, so one loop serves them all.
@@ -19,7 +19,7 @@
  * would think `if x: a; b` puts both statements in the body.
  *
  * `elif` and `else` continue an `if` on its line, or first on a later line at the column where the
- * `if`'s line starts (G14). A dangling `else` therefore binds to the nearest `if` whose line it
+ * `if`'s line starts (§4). A dangling `else` therefore binds to the nearest `if` whose line it
  * lines up with.
  *
  * Annotations are handled here, for every kind of item. One standing alone on its line waits for
@@ -152,7 +152,7 @@ function parseLines<Item extends SyntaxNode>(parser: Parser, rules: ItemRules<It
   let separated = false;
   while (moveToItem(parser)) {
     const before = cursor.index;
-    const step = parseBlockItem(parser, rules, pending);
+    const step = parseLine(parser, rules, pending);
     items.push(...step.items);
     ({ pending } = step);
     separated = skipSemicolons(parser) || separated;
@@ -172,8 +172,8 @@ interface LineItem<Item> {
   readonly pending: readonly Annotation[];
 }
 
-/** An item of a block, on its own one-line region, and whatever is left on the line after it. */
-function parseBlockItem<Item extends SyntaxNode>(
+/** One line of a list region: its item, alone on a one-line region, and what's left after it. */
+function parseLine<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
   pending: readonly Annotation[],
@@ -309,7 +309,7 @@ function placeOfNextLine(
 
 /**
  * Moves to `keyword` if it continues the construct that starts at `constructStart`: next on this
- * line, or first on the next line at the column where the construct's line starts (G14). Returns
+ * line, or first on the next line at the column where the construct's line starts (§4). Returns
  * whether it did.
  */
 export function moveToContinuation(

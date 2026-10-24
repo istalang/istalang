@@ -45,7 +45,7 @@ export function parseTrait(parser: Parser): TraitDeclaration {
   return { kind: 'TraitDeclaration', span, name, typeParameters, members };
 }
 
-/** `type Name<T> = Type`, starting at `type`, which is a keyword only here (gap G4). */
+/** `type Name<T> = Type`, starting at `type`, which is a keyword only here (§2). */
 export function parseTypeAlias(parser: Parser): TypeAliasDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
   const type = parser.expect('=') === undefined ? parser.placeholder() : parser.type();

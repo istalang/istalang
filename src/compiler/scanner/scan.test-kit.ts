@@ -11,6 +11,8 @@
  */
 
 import fc from 'fast-check';
+import { soupOf } from '../../../test/soup.ts';
+import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
 import { byteOrderMark, type SourceText } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import type { ScanResult, Token } from '../syntax/tokens.ts';
@@ -84,9 +86,7 @@ export function losslessnessViolations(scanned: ScannedText): readonly string[] 
   return violations;
 }
 
-export interface MalformedScan {
-  readonly codes: readonly number[];
-  readonly spanTexts: readonly string[];
+export interface MalformedScan extends Reported {
   /** Whether the line after the malformed input still starts with the identifier `next`. */
   readonly resumes: boolean;
 }
@@ -96,8 +96,7 @@ export function scanMalformed(input: string): MalformedScan {
   const scanned = scanText(`${input}\nnext`);
   const last = scanned.tokens.at(-2);
   return {
-    codes: scanned.diagnostics.map((diagnostic) => diagnostic.code),
-    spanTexts: scanned.diagnostics.map((diagnostic) => textOf(scanned.source, diagnostic.span)),
+    ...reportedIn(scanned.source, scanned.diagnostics),
     resumes:
       last?.kind === 'identifier' &&
       last.firstOnLine &&
@@ -105,9 +104,9 @@ export function scanMalformed(input: string): MalformedScan {
   };
 }
 
-/** The MalformedScan of input reported once, over `spanText`, and then scanned past. */
-export function reportedOnce(code: number, spanText: string): MalformedScan {
-  return { codes: [code], spanTexts: [spanText], resumes: true };
+/** The MalformedScan of input that reported `reported` and was then scanned past. */
+export function scannedPast(reported: Reported): MalformedScan {
+  return { ...reported, resumes: true };
 }
 
 const fragments = [
@@ -160,11 +159,7 @@ const fragments = [
 const separators = [' ', '', '\n', '\r\n', '\r', '\t', '  '];
 
 /** Random sequences of valid and malformed lexemes, joined by random whitespace. */
-export const fragmentSoup = fc
-  .array(fc.tuple(fc.constantFrom(...fragments), fc.constantFrom(...separators)), {
-    maxLength: 40,
-  })
-  .map((pairs) => pairs.map(([fragment, separator]) => fragment + separator).join(''));
+export const fragmentSoup = soupOf(fragments, separators, 40);
 
 /** Arbitrary UTF-16 text, lone surrogates included. */
 export const anyUtf16 = fc.string({

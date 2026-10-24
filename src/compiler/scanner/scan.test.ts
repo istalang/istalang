@@ -10,6 +10,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
+import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { byteOrderMark } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import { keywords } from '../syntax/tokens.ts';
@@ -20,8 +21,8 @@ import {
   kindsAndTexts,
   lexemes,
   losslessnessViolations,
-  reportedOnce,
   scanMalformed,
+  scannedPast,
   scanText,
   soleToken,
 } from './scan.test-kit.ts';
@@ -62,7 +63,7 @@ describe('words', () => {
   });
 
   it.each(['type', 'from', 'sendable', 'self', 'Self', '_', 'int', 'userId', 'Pair2', '_private'])(
-    'scans %s as an identifier (gap G4)',
+    'scans %s as an identifier (§2)',
     (word) => {
       expect(soleToken(word)?.kind).toBe('identifier');
     },
@@ -98,7 +99,7 @@ describe('comments and whitespace', () => {
 
   it('reports a byte order mark anywhere else', () => {
     expect(scanMalformed(`x ${byteOrderMark}`)).toEqual(
-      reportedOnce(unexpectedCharacter.code, byteOrderMark),
+      scannedPast(reportedOnce(unexpectedCharacter.code, byteOrderMark)),
     );
   });
 });
@@ -121,12 +122,12 @@ describe('line starts', () => {
   });
 });
 
-describe('tabs (gap G1)', () => {
+describe('tabs (§2)', () => {
   it.each([
     ['\tx', '\t'],
     ['  \t  x', '\t'],
   ])('reports a tab in the indentation of %j', (input, spanText) => {
-    expect(scanMalformed(input)).toEqual(reportedOnce(tabIndentation.code, spanText));
+    expect(scanMalformed(input)).toEqual(scannedPast(reportedOnce(tabIndentation.code, spanText)));
   });
 
   it('reports one diagnostic per line, at the first tab', () => {
@@ -151,7 +152,9 @@ describe('unknown characters', () => {
     ['`', '`'],
     ['\\', '\\'],
   ])('reports %j as one unexpected run', (input, spanText) => {
-    expect(scanMalformed(input)).toEqual(reportedOnce(unexpectedCharacter.code, spanText));
+    expect(scanMalformed(input)).toEqual(
+      scannedPast(reportedOnce(unexpectedCharacter.code, spanText)),
+    );
   });
 
   it('groups a run of unknown characters into one token', () => {

@@ -9,7 +9,7 @@
  * without calling a category (qualified names, literals, parameters, struct parts) lives in
  * `parts/`, which every category may import. dependency-cruiser enforces both rules.
  *
- * Speculation settles two ambiguities: `name<…>(` against a comparison (gap G9), and `a, b = …`
+ * Speculation settles two ambiguities: `name<…>(` against a comparison (§3.5), and `a, b = …`
  * against a comma that belongs to an enclosing call. An attempt that reports anything is undone
  * completely, cursor (cursor.ts) and diagnostics together, and while speculating, recovery gives
  * up instead of skipping tokens. A failed guess therefore costs only the tokens a well-formed one
@@ -46,7 +46,7 @@ export interface Grammar {
   ) => Expression;
   readonly startsExpression: (parser: Parser) => boolean;
   readonly type: (parser: Parser) => TypeNode;
-  /** A parameter's type, the one place `&T` is allowed (gap G11). */
+  /** A parameter's type, the one place `&T` is allowed (§3.7). */
   readonly parameterType: (parser: Parser) => TypeNode;
   /** `<A, B>`, starting at the `<`. */
   readonly typeArguments: (parser: Parser) => readonly TypeNode[];
@@ -165,7 +165,7 @@ export class Parser {
 
   /**
    * The column layout sees a token at. For the first token on a line, that is the line's
-   * indentation. A leading byte order mark takes no column (gap G2).
+   * indentation. A leading byte order mark takes no column (§2).
    */
   columnOf(token: { readonly span: Span }): number {
     const { line, column } = lineMapOf(this.#source).positionAt(token.span.start);

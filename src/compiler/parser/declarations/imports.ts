@@ -1,6 +1,6 @@
 /**
  * Imports (§3.13): `import a, b from 'path'` and `import * as m from 'path'`. `from` is a keyword
- * only here (gap G4), and the path must be a string literal.
+ * only here (§2), and the path must be a string literal.
  */
 
 import type { NamedImport, NamespaceImport } from '../../syntax/declarations.ts';

@@ -2,7 +2,7 @@
  * Expressions with bodies (§4, §8): `if`, `match`, `select`, and `{…}` blocks.
  *
  * Each body follows layout (layout.ts): one statement on the construct's line, or an indented
- * block. Layout also decides when `elif` and `else` continue an `if` (gap G14), which covers a
+ * block. Layout also decides when `elif` and `else` continue an `if` (§4), which covers a
  * multi-line `if` used as a value, whose `else` lines up with the statement rather than the `if`.
  *
  * A `{…}` block in an expression has layout inside it, even within parentheses, so a lambda's

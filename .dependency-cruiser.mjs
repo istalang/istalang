@@ -5,8 +5,8 @@
  *
  * Biome's import rules match import specifiers, whose shape changes with directory depth, so they
  * can't state an allow-list reliably. This tool checks the files that imports resolve to. TypeScript
- * 7 has no JavaScript API, so it parses with swc. Tests may reach across layers for their inputs,
- * so they are excluded.
+ * 7 has no JavaScript API, so it parses with swc. Tests and benchmarks may reach across layers for
+ * their inputs, so they are excluded.
  *
  * Inside the parser, grammar categories reach one another only through the parsing context, and
  * the shared parts they all use import no category (src/compiler/parser/parser.ts).
@@ -46,6 +46,6 @@ export default {
   options: {
     parser: 'swc',
     tsConfig: { fileName: 'tsconfig.json' },
-    exclude: { path: '\\.test(-kit)?\\.ts$' },
+    exclude: { path: '\\.(test|test-kit|bench)\\.ts$' },
   },
 };

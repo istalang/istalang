@@ -1,12 +1,12 @@
 /**
  * Conversion between offsets and zero-based line/column positions.
  *
- * What counts as a line break is defined once, here (spec gap G2): `\n`, `\r\n` and a lone `\r`.
+ * What counts as a line break is defined once, here (§2): `\n`, `\r\n` and a lone `\r`.
  * The scanner uses the same definition, so it can never disagree with the line map about which
  * line a token is on.
  *
  * Columns count UTF-16 code units from the line start, like offsets. Indentation is spaces only
- * (G1), so for leading whitespace a column is also the visual indentation width.
+ * (§2), so for leading whitespace a column is also the visual indentation width.
  *
  * A LineMap is derived from its SourceText on first use and memoized by object identity, which is
  * safe because SourceText is immutable.

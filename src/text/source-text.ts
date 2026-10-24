@@ -15,5 +15,5 @@ export interface SourceText {
   readonly text: string;
 }
 
-/** A leading U+FEFF marks the encoding, not content: scanning skips it, and so does layout (G2). */
+/** A leading U+FEFF marks the encoding, not content: scanning skips it, and so does layout (§2). */
 export const byteOrderMark = '\uFEFF';

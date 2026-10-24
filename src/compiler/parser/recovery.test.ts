@@ -15,18 +15,12 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import type { MemberAccess } from '../syntax/expressions.ts';
 import { dump, errorNodes, spanViolations } from '../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { operatorTree, printFull } from './expressions/precedence.test-kit.ts';
-import {
-  type Category,
-  parenFreeSoup,
-  parseAs,
-  reported,
-  reportedOnce,
-  tokenSoup,
-} from './parse.test-kit.ts';
+import { type Category, parenFreeSoup, parseAs, reported, tokenSoup } from './parse.test-kit.ts';
 
 const categories: readonly Category[] = ['expression', 'type', 'pattern', 'statement', 'module'];
 

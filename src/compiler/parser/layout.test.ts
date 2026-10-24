@@ -1,11 +1,12 @@
 /**
- * Layout (§2, §4; gaps G13, G14): indented and one-line bodies, `;` between statements, `{…}`
+ * Layout (§2, §4): indented and one-line bodies, `;` between statements, `{…}`
  * blocks with layout inside them even within parentheses, and annotations on their own lines.
  * Each layout rule broken once costs one diagnostic at the offending token, and the declarations
  * after it still parse.
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import type { Module } from '../syntax/declarations.ts';
 import { dump } from '../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
@@ -19,7 +20,6 @@ import {
   moduleOf,
   parseAs,
   reported,
-  reportedOnce,
   expressionStatement as statement,
 } from './parse.test-kit.ts';
 
@@ -82,7 +82,7 @@ describe('bodies', () => {
   });
 });
 
-describe('if chains (G14)', () => {
+describe('if chains (§4)', () => {
   const chain = statement(
     `(If [(ConditionalBranch a ${bodyOf('1')}) (ConditionalBranch b ${bodyOf('2')})] (ElseClause ${bodyOf('3')}))`,
   );
