@@ -2,7 +2,7 @@
 
 One folder per phase. Phases share only contracts.
 
-- `syntax/`: tokens, tree nodes, operator precedence, where items may stand, and traversal derived from node fields. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
+- `syntax/`: tokens, tree nodes, operator precedence, where items may stand, traversal derived from node fields, and the exhaustive node-kind handler tables (`handlers.ts`) every phase uses. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
 - `scanner/`: `scan.ts` turns text into tokens, comments and diagnostics. It is context-free, total and lossless.
 - `parser/`: tokens to tree; `parse.ts` is the entry.
   - A grammar category (`expressions/`, `statements/`, `declarations/`, `types.ts`, `patterns.ts`) reaches another only through the context in `parser.ts`, which `grammar.ts` wires.
@@ -15,6 +15,7 @@ One folder per phase. Phases share only contracts.
     - `nesting.ts`: the nesting limit every recursive grammar entry goes through
 
 - `program/`: `program.ts` loads the module graph from roots through the `ModuleLoader` seam. It imposes no path syntax and does no I/O.
+- `binder/`: `bind.ts` binds a program's names; `entities.ts` is the vocabulary its consumers read. Each module binds on its own (`bind-module.ts`, memoized per tree), with categories wired through the context in `local-binder.ts` as the parser's are; `flow.ts` holds where bindings are visible; `link.ts` resolves what crosses modules.
 - `compile.ts`: the coordinator from a loaded Program onward. Only it knows the order of the phases after loading; apps ask it for results.
 
 A phase has:

@@ -27,14 +27,24 @@ describe('loadProject', () => {
     const { program } = loadProject(root, ['main.ista'], stdlibLoader({ time: 'fn now(): 1' }));
     expect([...program.modules.values()].map(({ tree }) => tree.source.path)).toEqual([
       'main.ista',
+      'std:prelude',
       'std:time',
     ]);
+  });
+
+  it('loads the prelude with every program, as its prelude', () => {
+    const root = tempProject({ 'main.ista': '' });
+    const { program } = loadProject(root, ['main.ista']);
+    expect(program.prelude).toBe('std:prelude');
+    expect([...program.modules.keys()]).toContain(program.prelude);
   });
 
   it('lists the given files it could not read, as given, and loads the rest', () => {
     const root = tempProject({ 'a.ista': '' });
     const { program, unreadable } = loadProject(root, ['a.ista', 'gone.ista', '.']);
     expect(unreadable).toEqual(['gone.ista', '.']);
-    expect(program.modules.size).toBe(1);
+    expect(program.roots.map((id) => program.modules.get(id)?.tree.source.path)).toEqual([
+      'a.ista',
+    ]);
   });
 });

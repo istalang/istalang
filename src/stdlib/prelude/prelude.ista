@@ -1,0 +1,86 @@
+# The prelude: what every module sees without importing it (spec §3.8, §3.10, §3.12, §3.13).
+#
+# Built-in types the runtime implements are extern declarations, the same mechanism programs use
+# (§3.6). Primitive types (int, float, bool, string, unit, never) are part of the language, not
+# declared here. Functions and methods each type offers arrive with the features that use them.
+
+extern sendable struct Array<T>
+extern sendable struct Map<K, V>
+extern struct Slot<T>
+extern struct WeakRef<T is Disposable>
+extern struct Future<T>
+extern struct Shared<T>
+
+extern fn Slot.create<T>() -> Slot<T>
+extern fn put<T>(self: Slot<T>, value: T) -> Future<unit>
+extern fn take<T>(self: Slot<T>) -> Future<T>
+extern fn read<T>(self: Slot<T>) -> Future<T>
+extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
+extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
+
+enum Optional<T>:
+  Some { value: T }
+  None
+
+enum Result<T, E = Error>:
+  Ok { value: T }
+  Err { error: E }
+
+struct Error:
+  message: string
+  code: string
+  trace: string
+
+struct Range:
+  start: int?
+  end: int?
+
+extern fn panic(message: string) -> never
+
+trait Sendable
+
+trait Disposable:
+  fn dispose(self: Self)
+
+trait Wrapper<T, W = Self>:
+  fn unwrap(self: W) -> T
+
+trait MutableWrapper<T, W = Self>:
+  fn rewrap(self: W, value: T)
+
+trait Iterable<T, C = Self>:
+  fn iterate(self: C) -> Array<T>
+
+trait Indexable<K, V, C = Self>:
+  fn index(self: C, key: K) -> V
+
+trait IndexAssignable<K, V, C = Self>:
+  fn setIndex(self: &C, key: K, value: V)
+
+trait Convertible<From, T = Self>:
+  fn Self.from(value: From) -> Self
+
+trait Default:
+  fn Self.default() -> Self
+
+trait Addable<T = Self>:
+  fn add(left: T, right: T) -> T
+
+trait Subtractable<T = Self>:
+  fn subtract(left: T, right: T) -> T
+
+trait Multipliable<T = Self>:
+  fn multiply(left: T, right: T) -> T
+
+trait Divisible<T = Self>:
+  fn divide(left: T, right: T) -> T
+
+trait FloorDivisible<T = Self>:
+  fn floorDivide(left: T, right: T) -> T
+  fn remainder(left: T, right: T) -> T
+
+trait Negatable<T = Self>:
+  fn negate(value: T) -> T
+
+trait Comparable<T = Self>:
+  fn compare(left: T, right: T) -> int

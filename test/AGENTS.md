@@ -4,5 +4,6 @@ Inputs that tests across phases share. Unit tests live beside their code (`src/*
 
 - `corpus/spec-examples.ts`: the spec's fenced examples, read from `docs/spec.md` when tests load. An example is `elided` when it contains `…` placeholders; its fence's info string says when it isn't a whole module (` ```python statements`, ` ```python fragment`).
 - `soup.ts`: random sequences of given fragments, for totality properties.
+- `broken.ts`: valid texts with lines or tokens deleted, duplicated or swapped, for totality properties.
 - `definitions/`: hand-written Definitions (the M2.4 subset program, spec §12.3), so runtime tests can run without the compiler. `fixture-kit.ts` keeps them short and finds spans in each fixture's own source.
 - Hand-written `.ista` cases, valid and invalid, go under `corpus/`. Never copy spec text there.

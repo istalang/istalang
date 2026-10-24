@@ -1,0 +1,119 @@
+# Every way a name is declared and used, across two modules, with no name errors.
+
+import helper, Shape from 'names/lib'
+import * as lib from 'names/lib'
+
+const limit: int = 50_000
+
+extern approvalLimit: int
+extern fn chargeCard(id: string, amount: int) -> Result<string>
+extern sendable struct Queue<T is Sendable>
+extern fn receive<T is Sendable>(self: Queue<T>) -> Future<T>
+
+struct Note { text: string }
+
+struct Pair<A, B>:
+  first: A
+  second: B @Note{"kept for the formatter"}
+  meta:
+    tag: string
+
+struct Money { cents: int }
+
+enum Verdict:
+  Approved { by: string }
+  Rejected { by: string; reason: string }
+  Expired
+
+trait Zero:
+  fn Self.zero() -> Self
+
+type Entries<T> = Array<(string, T)>
+
+fn Money.zero() -> Money:
+  Money{cents: 0}
+
+fn add(left: Money, right: Money) -> Money:
+  Money{cents: left.cents + right.cents}
+
+fn read(self: Note) -> string:
+  self.text
+
+fn sum<T is Zero & Addable>(xs: Array<T>) -> T:
+  let acc = T.zero()
+  for x in xs:
+    acc = acc + x
+  acc
+
+fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
+  Pair{first: p.second, second: p.first, meta: struct{tag: p.meta.tag}}
+
+fn window(start: int, end: int = start + 10) -> int:
+  end - start
+
+@Note{"matches every verdict"}
+fn describe(v: Verdict) -> string:
+  match v:
+    case Approved{by}:
+      "approved by " + by
+    case Rejected{by, reason as why} if why != "":
+      by + ": " + why
+    case Verdict.Expired:
+      "expired"
+    case _:
+      "unknown"
+
+fn positives(results: Array<Result<int>>) -> Array<int>:
+  [for r in results if r is Ok{value} and value > 0: value]
+
+fn counter(start: int) -> fn() -> int:
+  let count = start
+  fn next() -> int:
+    count += 1
+    count
+  next
+
+fn countdown(n: int) -> int:
+  fn loop(left: int) -> int: if left > 0: loop(left - 1) else: 0
+  loop(n)
+
+fn factorial() -> int:
+  const fact = fn f(n: int) -> int: if n < 2: 1 else: n * f(n - 1)
+  fact(5)
+
+fn pairs(p: (int, int)) -> int:
+  const a, b = p
+  match p:
+    case (x, _) if x > a:
+      x + b
+    case _:
+      0
+
+fn note(n: int) -> int:
+  n
+
+async fn watch(box: Queue<int>, stop: Future<unit>) -> Future<int>:
+  let seen = 0
+  defer fn(): note(seen)
+  while seen < limit:
+    const got = await select:
+      case box.receive() as message:
+        message
+      case stop:
+        return seen
+    seen += got
+  seen
+
+fn uses() -> Entries<int>:
+  const zero = Money.zero()
+  const money = zero + Money{cents: approvalLimit}
+  const shape: Shape = lib.circle()
+  drop helper(shape)
+  const verdict: Verdict = Expired
+  const first = 1
+  const short = Pair{first, second: "y", meta: struct{tag: "u"}}
+  const optional: int? = none
+  _ = chargeCard("id", limit)
+  drop [money, zero]
+  drop [verdict, describe(verdict)]
+  [(short.second, optional ?? first)]

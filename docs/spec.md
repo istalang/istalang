@@ -293,7 +293,7 @@ roles.push("cfo")                  # compile error: roles is const
 
 `let` declares a mutable variable and `const` an immutable one. A `const` is deeply immutable: it can't be reassigned, its fields and elements can't be changed, and you can't take `&` of it, so mutating methods like `push` are rejected. Immutability stops at handles: a `const` slot or inbox can still be used, and the contents of a `const` `Shared` can still change through `x$`, because that changes the state behind the handle, not the handle itself. The compiler warns about a `let` that is never reassigned or mutated.
 
-Variables are block scoped: a variable is visible only inside the block that declares it and in blocks nested within it. A variable declared inside an `if` body does not exist after the `if`. A loop variable (`for x in xs`) and every variable declared in a loop body are fresh on each iteration, so closures created in different iterations never share them. Unlike Python, assigning to an undeclared name is a compile error.
+Variables are block scoped: a variable is visible only inside the block that declares it and in blocks nested within it. A variable declared inside an `if` body does not exist after the `if`. A loop variable (`for x in xs`) and every variable declared in a loop body are fresh on each iteration, so closures created in different iterations never share them. Unlike Python, assigning to an undeclared name is a compile error. Declaring a name twice in one block is a compile error too, also for two local functions, which therefore can't be overloaded; a nested block may shadow a name from an enclosing one. Types and values share one namespace per scope.
 
 **Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§7). A loop body is a block, so each iteration releases its own holdings. `fn let` and `fn const` declare a variable whose *name* is still block scoped but whose holdings last until the enclosing function ends, which is how a loop keeps what it starts. The common unnamed case has a short form: `fn _ = expr` means `fn const _ = expr`.
 
@@ -620,7 +620,7 @@ const text: string = match decision:
 - **`field == expr`**, or any other comparison, tests it: `case Verdict{ok == false}`, `case Order{amount > 1000}`.
 - **`field is Pattern`** matches the field against a nested pattern: `case Some{value is Verdict{ok == false} as v}`. Only a pattern may follow `is`.
 
-A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns (`case (a, _):`) or `_`. There is no positional binding in struct patterns, not even for a type with a single field: a bare name always binds the field of that name, and `as` renames it, as in `case Ok{value as receipt}`. An anonymous struct is matched with `case struct{…}`. For exhaustiveness, `==` against a literal or an enum variant counts as a pattern, while other comparisons act like guards (§4) and don't count. Nested patterns count by the same rules.
+A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns (`case (a, _):`), `_`, or a bare name. A camelCase bare name binds a new variable, as `a` does in `case (a, _):`, while a PascalCase one refers to a variant or constant, as in `case Expired:`; a qualified name (`case Decision.Expired:`) always refers. There is no positional binding in struct patterns, not even for a type with a single field: a bare name always binds the field of that name, and `as` renames it, as in `case Ok{value as receipt}`. An anonymous struct is matched with `case struct{…}`. For exhaustiveness, `==` against a literal or an enum variant counts as a pattern, while other comparisons act like guards (§4) and don't count. Nested patterns count by the same rules.
 
 **`is` outside `match`.** `x is Pattern` is a boolean expression. Its bindings exist only where the match is known to have succeeded: in the body of an `if` or `while`, and on the right-hand side of an `and`. `or` can't introduce bindings, because afterwards it isn't known which side matched.
 
@@ -688,7 +688,7 @@ fn _normalize(id: string) -> string:     # private to this module
 - **Cycles.** Modules contain only declarations, never top-level code, so import cycles are allowed.
 - **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import.
 - **Externs** are bound by module-qualified name, so two modules can declare externs with the same short name.
-- **The prelude** is imported implicitly into every module.
+- **The prelude** is imported implicitly into every module. A module's top-level declarations and imports can't reuse a prelude name, with one exception: a top-level function, declared or imported, joins the prelude's overloads of its name, as `fn add(left: Time, right: Duration)` does (§3.9).
 
 ### 3.14 Function types and closures
 

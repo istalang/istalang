@@ -10,6 +10,7 @@ export const codeBlocks = {
   scanner: 1000,
   parser: 2000,
   program: 3000,
+  binder: 4000,
 } as const;
 
 export type DiagnosticPhase = keyof typeof codeBlocks;

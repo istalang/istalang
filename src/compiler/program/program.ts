@@ -66,6 +66,8 @@ export interface ProgramModule {
 
 export interface Program {
   readonly roots: readonly ModuleId[];
+  /** The module every other one sees without importing it (§3.13), when the app supplies one. */
+  readonly prelude: ModuleId | undefined;
   /** Every module reachable from the roots, in load order. */
   readonly modules: ReadonlyMap<ModuleId, ProgramModule>;
 }
@@ -79,12 +81,14 @@ export interface ProgramOptions {
    * that should win, such as an editor's open documents, goes first.
    */
   readonly loaders: readonly ModuleLoader[];
+  /** The prelude, loaded like a root; binding makes its exports visible everywhere. */
+  readonly prelude?: LocatedModule;
 }
 
 /** Loads the modules reachable from the roots, reusing unchanged trees from `previous`. */
 export function buildProgram(options: ProgramOptions, previous?: Program): Program {
   const modules = new Map<ModuleId, ProgramModule>();
-  const queue = [...options.roots];
+  const queue = [...options.roots, ...(options.prelude === undefined ? [] : [options.prelude])];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
     const { id, label, read } = next;
     if (!modules.has(id)) {
@@ -95,7 +99,11 @@ export function buildProgram(options: ProgramOptions, previous?: Program): Progr
       queue.push(...found);
     }
   }
-  return { roots: [...new Set(options.roots.map(({ id }) => id))], modules };
+  return {
+    roots: [...new Set(options.roots.map(({ id }) => id))],
+    prelude: options.prelude?.id,
+    modules,
+  };
 }
 
 function reusableTree(tree: SyntaxTree | undefined, source: SourceText): SyntaxTree | undefined {

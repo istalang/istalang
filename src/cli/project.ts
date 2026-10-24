@@ -3,14 +3,14 @@
  * the project root.
  *
  * Every command that compiles loads its program here, so they all agree on where sources are and
- * on which loaders apply: the project's files and the std modules (§3.13). The roots a command
+ * on which loaders apply: the project's files and the std modules, with the prelude (§3.13). The roots a command
  * names are read with the same file loader its imports use, so "no such file" has one meaning.
  */
 
 import { globSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildProgram, type ModuleLoader, type Program } from '../compiler/program/program.ts';
-import { stdlibLoader } from '../stdlib/stdlib-loader.ts';
+import { preludeModule, stdlibLoader } from '../stdlib/stdlib-loader.ts';
 import { fileLoader, locateFile, sourceExtension } from './file-loader.ts';
 
 /**
@@ -42,6 +42,7 @@ export function loadProject(
   const program = buildProgram({
     roots: roots.flatMap(({ module }) => module ?? []),
     loaders: [fileLoader(cwd, cwd), std],
+    prelude: preludeModule(),
   });
   return { program, unreadable: roots.filter(({ module }) => !module).map(({ file }) => file) };
 }

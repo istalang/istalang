@@ -34,18 +34,24 @@ export function memoryLoader(files: Files): ModuleLoader {
   return (path) => modules.get(path);
 }
 
-/** The program rooted at `roots` (default: the first file), loading `files`. */
+export interface ProgramOfOptions {
+  /** The keys to start from; the first file by default. */
+  readonly roots?: readonly string[] | undefined;
+  /** The snapshot whose unchanged trees the new one reuses. */
+  readonly previous?: Program | undefined;
+  readonly prelude?: LocatedModule | undefined;
+}
+
+/** The program over `files`, loaded from `roots`. */
 export function programOf(
   files: Files,
-  roots: readonly string[] = Object.keys(files).slice(0, 1),
-  previous?: Program,
+  { roots = Object.keys(files).slice(0, 1), previous, prelude }: ProgramOfOptions = {},
 ): Program {
   const load = memoryLoader(files);
   const anywhere = idOf('');
-  return buildProgram(
-    { roots: roots.flatMap((key) => load(key, anywhere) ?? []), loaders: [load] },
-    previous,
-  );
+  const located = roots.flatMap((key) => load(key, anywhere) ?? []);
+  const withPrelude = prelude === undefined ? {} : { prelude };
+  return buildProgram({ roots: located, loaders: [load], ...withPrelude }, previous);
 }
 
 /** The loaded module `key`; throws when the program didn't load it. */

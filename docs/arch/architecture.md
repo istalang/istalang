@@ -46,7 +46,7 @@ src/
       parts/                                                     pieces every category may import; imports no category
       expressions/ patterns types statements declarations        by construct (Pratt parselets in expressions/)
     program/            Program snapshot, module graph, the ModuleLoader seam; imposes no path syntax
-    binder/             symbols, scopes, imports/exports, name resolution
+    binder/             entities, scopes, imports/exports, name resolution
     checker/
       types/ declarations/ expressions/ statements/              type model and per-construct rules
       inference/ overloads/ traits/ patterns/ rules/             cross-cutting engines and semantic rules
@@ -96,10 +96,10 @@ text · diagnostics                      foundation
 | scan | `scan(source) → { tokens, comments, diagnostics }` | Context-free, total and lossless: never throws, and every character belongs to exactly one token, comment or whitespace run. It emits no INDENT/DEDENT. Tokens carry `firstOnLine`, and columns come from `LineMap`. The result type `ScanResult` lives in `syntax/`, so the parser depends on the contract, not on the scanner. |
 | parse | `parse(source, scanned) → SyntaxTree` | Total: always returns a full tree, with errors as `Missing`/`Invalid` nodes plus diagnostics. It owns layout (indentation blocks, newline-insensitive brackets, `{` as block vs struct literal vs field list), because layout depends on syntactic context. |
 | tree | immutable plain objects, discriminated by `kind`, with a `span` | No parent pointers; parents are derived on demand. Child traversal is derived generically from node fields, never hand-listed per kind. A node field is therefore a node, a node array, an optional node, or a primitive. Nodes hold no tokens and no resolved references; the binder and checker keep those in side tables. |
-| program | `buildProgram({ roots, loaders }, previous?) → Program { roots, modules: Map<ModuleId, ProgramModule { tree, imports, diagnostics }> }` | Immutable. Roots arrive located. Every loader is asked for every import path, as written; the core imposes no path syntax and does no I/O itself. Its one rule is the language's: a path names exactly one module (distinct ids); otherwise a diagnostic on the path. The core reads a module only when it loads it, once per build, and makes its SourceText. A module id is its source's URL (any scheme), branded and made only from a parsed URL; two paths to one module must yield one id. Building with the previous snapshot reuses every tree whose text is unchanged, by identity. `imports` maps each import node to its module. |
+| program | `buildProgram({ roots, loaders, prelude? }, previous?) → Program { roots, prelude, modules: Map<ModuleId, ProgramModule { tree, imports, diagnostics }> }` | Immutable. Roots arrive located. Every loader is asked for every import path, as written; the core imposes no path syntax and does no I/O itself. Its one rule is the language's: a path names exactly one module (distinct ids); otherwise a diagnostic on the path. The core reads a module only when it loads it, once per build, and makes its SourceText. A module id is its source's URL (any scheme), branded and made only from a parsed URL; two paths to one module must yield one id. Building with the previous snapshot reuses every tree whose text is unchanged, by identity. `imports` maps each import node to its module. |
 | compile | `diagnose(program) → Map<ModuleId, ModuleDiagnostics { source, diagnostics }>` | The coordinator's results, memoized per Program: every module's diagnostics from every phase so far, sorted by position, keyed by module id, clean modules included so an editor knows which documents to clear. |
-| bind | `bindModule(tree)` (local; cached per tree), `link(program)` (imports) | Top-level declarations come in any order. Names starting with `_` are private. The prelude is implicit. |
-| check | `createChecker(program)` → memoized queries: `typeOf`, `resolvedCall`, `symbolAt`, `diagnostics(module)` | Lazy, so the LSP pays only for what it asks. The CLI asks for everything. Binding happens inside: the checker calls the cached `bindModule` and `link`. |
+| bind | `bindProgram(program) → Bindings { entityOf(module, name), exportsOf, moduleOf, overloadsOf, candidatesOf, diagnosticsOf }` | Every entity is made while binding one tree, memoized on that tree (`bind-module.ts`): an unchanged module keeps the identity of every entity it declares or refers to across snapshots, and an entity points at its declaring syntax and holds nothing derived. What depends on the whole program is a query memoized per Program: imports, the prelude (the `Program`'s `prelude` module), a function set joined with the prelude's overloads (`overloadsOf`), a bare name's candidate variants (`candidatesOf`), qualified names. Lookups that need types (members, methods, static functions, ADL, picking a variant candidate) are the checker's. |
+| check | `createChecker(program)` → memoized queries: `typeOf`, `resolvedCall`, `symbolAt`, `diagnostics(module)` | Lazy, so the LSP pays only for what it asks. The CLI asks for everything. Binding happens inside: the checker calls the memoized `bindProgram`. |
 | lower | `lower(checked) → Definition` | Runs only on an error-free program. The Definition is complete: linear register code with no unresolved names and no sugar, one entry per generic instantiation, and every call targeting a function-table entry (definition.md). Loading validates indexes, call arity, closure captures, termination and where waiting is allowed, so the interpreter can trust what it reads. |
 
 Sugar is split by whether it has typing consequences:
@@ -122,11 +122,13 @@ A seam is an interface owned by its consumer. Each app's composition root picks 
 
 ## Registries
 
-An open set of handlers is an explicit typed table, assembled in one module and made exhaustive by type (`satisfies Record<Kind, Handler>`). Adding a node kind therefore fails compilation until every phase handles it. Self-registration through import side effects is not used. Tables of this kind:
+An open set of handlers is an explicit typed table, assembled in one module and made exhaustive by type. Node-kind tables use `Handlers` from `compiler/syntax/handlers.ts`. Adding a node kind therefore fails compilation until every phase handles it. Self-registration through import side effects is not used. Tables of this kind:
 
 - parser: prefix and infix parselets by token kind; statements and declarations by leading keyword
-- checker, lowering, formatter, interpreter: one handler per node kind
+- binder, checker, lowering, formatter, interpreter: one handler per node kind
 - LSP providers, CLI commands, std natives, diagnostic catalogs
+
+Node kinds are PascalCase, so a table keyed by them sits between `biome-ignore-start` and `biome-ignore-end` comments for `useNamingConvention`, and nowhere else is the rule suppressed.
 
 ## State: derive, never mirror
 

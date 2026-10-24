@@ -12,6 +12,7 @@
 
 import type { Diagnostic } from '../diagnostics/diagnostic.ts';
 import type { SourceText } from '../text/source-text.ts';
+import { bindProgram } from './binder/bind.ts';
 import type { ModuleId, Program } from './program/program.ts';
 
 export interface ModuleDiagnostics {
@@ -26,12 +27,13 @@ const diagnosed = new WeakMap<Program, ReadonlyMap<ModuleId, ModuleDiagnostics>>
 export function diagnose(program: Program): ReadonlyMap<ModuleId, ModuleDiagnostics> {
   let result = diagnosed.get(program);
   if (result === undefined) {
+    const bindings = bindProgram(program);
     result = new Map(
       [...program.modules].map(([id, { tree, diagnostics }]) => [
         id,
         {
           source: tree.source,
-          diagnostics: [...tree.diagnostics, ...diagnostics].sort(
+          diagnostics: [...tree.diagnostics, ...diagnostics, ...bindings.diagnosticsOf(id)].sort(
             (first, second) => first.span.start - second.span.start,
           ),
         },

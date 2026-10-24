@@ -56,6 +56,16 @@ describe('ista check', () => {
     expect(run.out).toMatch(summaryOfOneError);
   });
 
+  it('fails on a name error across modules, showing where', async () => {
+    const main = "import helper, missing from 'lib/helper'\n\nasync fn main(): helper()\n";
+    const run = await ista(project({ ...valid, 'main.ista': main }), 'check');
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(
+      "main.ista:1:16: error 4009: Module 'lib/helper.ista' exports no 'missing'.",
+    );
+    expect(run.out).toMatch(summaryOfOneError);
+  });
+
   it('fails on an import that names no module', async () => {
     const run = await ista(project({ 'main.ista': "import x from './gone'\n" }), 'check');
     expect(run.code).toBe(1);

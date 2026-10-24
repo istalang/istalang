@@ -29,6 +29,11 @@ export interface Identifier extends NodeOf<'Identifier'> {
 /** A possibly qualified name, `Pair` or `time.Duration`. It always has at least one part. */
 export type QualifiedName = readonly [Identifier, ...Identifier[]];
 
+/** Whether the parser expected a name here and found none: such a name has empty text. */
+export function isMissingName(name: Identifier): boolean {
+  return name.text === '';
+}
+
 export type Missing = NodeOf<'Missing'>;
 
 export type Invalid = NodeOf<'Invalid'>;

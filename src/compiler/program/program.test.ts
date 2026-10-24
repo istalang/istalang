@@ -62,7 +62,7 @@ describe('loading', () => {
   });
 
   it('starts from every root, each once', () => {
-    const program = programOf({ a: '', b: '' }, ['b', 'a', 'b']);
+    const program = programOf({ a: '', b: '' }, { roots: ['b', 'a', 'b'] });
     expect(loadedPaths(program)).toEqual(['b', 'a']);
     expect(program.roots).toEqual([idOf('b'), idOf('a')]);
   });
@@ -208,7 +208,7 @@ describe('a random module graph', () => {
   it('loads exactly the modules reachable from the root, and reports every missing target', () => {
     fc.assert(
       fc.property(graph, ([count, imports]) => {
-        const program = programOf(filesOf(imports), ['m0']);
+        const program = programOf(filesOf(imports), { roots: ['m0'] });
         const reachable = reachableFrom0(count, imports);
         expect(new Set(program.modules.keys())).toEqual(
           new Set([...reachable].map((index) => idOf(`m${index}`))),
@@ -245,7 +245,7 @@ describe('rebuilding from a previous snapshot', () => {
 
   it('reuses every unchanged tree and re-parses the edited one', () => {
     const before = programOf(files);
-    const after = programOf({ ...files, a: 'fn a(): 3' }, undefined, before);
+    const after = programOf({ ...files, a: 'fn a(): 3' }, { previous: before });
     expect(moduleAt(after, 'main').tree).toBe(moduleAt(before, 'main').tree);
     expect(moduleAt(after, 'b').tree).toBe(moduleAt(before, 'b').tree);
     expect(moduleAt(after, 'a').tree).not.toBe(moduleAt(before, 'a').tree);
@@ -253,13 +253,13 @@ describe('rebuilding from a previous snapshot', () => {
 
   it('reuses a tree when a loader hands back equal text in a new SourceText', () => {
     const before = programOf(files);
-    const after = programOf({ ...files }, undefined, before);
+    const after = programOf({ ...files }, { previous: before });
     expect(moduleAt(after, 'a').tree).toBe(moduleAt(before, 'a').tree);
   });
 
   it('drops a module nothing imports any more', () => {
     const before = programOf(files);
-    const after = programOf({ ...files, main: "import a from 'a'" }, undefined, before);
+    const after = programOf({ ...files, main: "import a from 'a'" }, { previous: before });
     expect(loadedPaths(after)).toEqual(['main', 'a']);
   });
 });
