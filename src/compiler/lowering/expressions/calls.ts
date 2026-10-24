@@ -24,15 +24,11 @@ export function call(
   argumentRegisters: readonly Register[],
   dst: Register = context.code.allocate(),
 ): Register {
-  const resolved = context.body.callOf(site);
-  if (resolved === undefined) {
-    throw new Error(`No call was resolved at ${site.span.start}.`);
-  }
   context.code.emit({
     kind: 'call',
     span: site.span,
     dst,
-    callee: { kind: 'function', function: context.tables.functionIndex(resolved.function) },
+    callee: { kind: 'function', function: context.calleeIndex(site) },
     arguments: argumentRegisters.map((register) => ({ kind: 'value', register })),
   });
   return dst;

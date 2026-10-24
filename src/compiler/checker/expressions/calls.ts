@@ -1,25 +1,30 @@
 /**
- * Calls (§3.3, §3.7): the callee names a set of overloads, and the arguments' types pick one
- * (overloads/resolve.ts). A callee is a function's name, plain or through a namespace (`m.f()`).
+ * Calls (§3.3, §3.7, §3.10): the callee names a set of candidates, and the arguments' types choose
+ * one (overloads/). A callee is written as:
  *
- * Methods, static functions, conversions (`T(x)`), calls through function values, explicit type
- * arguments, spread arguments and `&` arguments are other ways to call; each is reported as not
- * supported until the feature that adds it.
+ * - a function's name, plain or through a namespace (`m.f()`), which looks only in that module,
+ *   with no argument-dependent lookup (§3.13);
+ * - a type and a static function (`Duration.zero()`, `T.zero()`, `time.Duration.zero()`);
+ * - a type alone, a conversion (`float(3)`), which calls the type's static `from` (§3.10).
+ *
+ * Methods (`x.f()`), calls through function values, spread arguments and `&` arguments are other
+ * ways to call; each is reported as not supported until the feature that adds it.
  */
 
+import { conversionFunction, wellKnown } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { Call, Expression } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
-import { resolveCall } from '../overloads/resolve.ts';
+import { callCandidates, staticCandidates } from '../overloads/candidates.ts';
+import { resolveCall, type WrittenArgument } from '../overloads/resolve.ts';
+import { staticTargetOf } from '../traits/conformance.ts';
 import { errorType, type Type } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
+import { decidedByCall, namedType } from './variants.ts';
 
-export function checkCall(context: BodyContext, node: Call): Type {
-  const [explicit] = node.typeArguments;
-  if (explicit !== undefined) {
-    return context.unsupported(explicit, frontier.explicitTypeArguments);
-  }
+export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const argumentNodes: Expression[] = [];
   for (const argument of node.arguments) {
     if (argument.kind === 'Spread' || argument.kind === 'Reference') {
@@ -30,55 +35,121 @@ export function checkCall(context: BodyContext, node: Call): Type {
     }
     argumentNodes.push(argument);
   }
-  const call = { node, argumentNodes };
+  const call: WrittenCall = {
+    node,
+    expected,
+    typeArguments:
+      node.typeArguments.length === 0
+        ? undefined
+        : node.typeArguments.map((argument) => context.resolveType(argument)),
+    written: argumentNodes.map((argument) => {
+      const accepts = decidedByCall(context, argument);
+      return {
+        node: argument,
+        type: accepts === undefined ? context.expression(argument) : undefined,
+        accepts,
+      };
+    }),
+  };
   const { callee } = node;
   switch (callee.kind) {
     case 'Identifier':
       return callEntity(context, call, callee.text, context.entityOf(callee));
     case 'MemberAccess': {
       const entity = context.entityOf(callee.member);
-      return entity === undefined
+      if (entity !== undefined) {
+        return callEntity(context, call, callee.member.text, entity);
+      }
+      const owner = namedType(context, callee.target);
+      return owner === undefined
         ? context.unsupported(callee, frontier.methodCall)
-        : callEntity(context, call, callee.member.text, entity);
+        : callStatic(context, call, owner, callee.member.text);
     }
     default:
       return context.unsupported(callee, frontier.functionValueCall);
   }
 }
 
-/** A call with plain arguments: no spread and no `&`, which are reported before this. */
-interface PlainCall {
+/** A call with plain arguments, each checked unless the chosen function decides its type. */
+interface WrittenCall {
   readonly node: Call;
-  readonly argumentNodes: readonly Expression[];
+  readonly expected: Type | undefined;
+  readonly typeArguments: readonly Type[] | undefined;
+  readonly written: readonly WrittenArgument[];
 }
 
 function callEntity(
   context: BodyContext,
-  { node, argumentNodes }: PlainCall,
+  call: WrittenCall,
   name: string,
   entity: Entity | undefined,
 ): Type {
   switch (entity?.kind) {
     case 'functions': {
-      const argumentTypes = argumentNodes.map((argument) => context.expression(argument));
-      const candidates = context.checker.bindings.overloadsOf(entity);
-      return resolveCall(context, { site: node, name, candidates, argumentNodes, argumentTypes });
+      const { checker } = context;
+      const named = checker.bindings.overloadsOf(entity);
+      const types = call.written.map(({ type }) => type);
+      const throughNamespace = call.node.callee.kind === 'MemberAccess';
+      const candidates = throughNamespace
+        ? named.map((declaration) => ({ declaration }))
+        : callCandidates(checker, named, name, types);
+      return resolve(context, call, name, candidates);
     }
     case undefined:
-      for (const argument of argumentNodes) {
-        context.expression(argument);
-      }
       return errorType;
     case 'variable':
-      return context.unsupported(node.callee, frontier.functionValueCall);
+      return context.unsupported(call.node.callee, frontier.functionValueCall);
     case 'type':
-    case 'primitive':
-      return context.unsupported(node.callee, frontier.conversion);
-    case 'variant':
-    case 'variants':
-      return context.unsupported(node.callee, frontier.enumVariant);
+    case 'primitive': {
+      const owner = namedType(context, call.node.callee);
+      return owner === undefined ? errorType : callStatic(context, call, owner, conversionFunction);
+    }
     default:
-      context.report(checkerDiagnostics.notCallable(node.callee.span, name));
+      context.report(checkerDiagnostics.notCallable(call.node.callee.span, name));
       return errorType;
   }
+}
+
+/** A static call of `name` through the type `owner` (§3.7), a conversion being one (§3.10). */
+function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: string): Type {
+  const { checker, module } = context;
+  const target = staticTargetOf(checker, owner);
+  const candidates = target === undefined ? [] : staticCandidates(checker, module, target, name);
+  if (candidates.length === 0 && isShared(context, owner)) {
+    return context.unsupported(call.node, frontier.sharedValue);
+  }
+  if (candidates.length === 0) {
+    if (owner.kind !== 'error') {
+      context.report(checkerDiagnostics.noStaticFunction(call.node.span, typeText(owner), name));
+    }
+    return errorType;
+  }
+  return resolve(context, call, `${typeText(owner)}.${name}`, candidates);
+}
+
+/** Whether `type` is the prelude's `Shared`, whose values closures add (§3.8, §3.14). */
+function isShared(context: BodyContext, type: Type): boolean {
+  const shared = context.checker.wellKnownType(wellKnown.shared);
+  return (
+    shared?.kind === 'nominal' &&
+    type.kind === 'nominal' &&
+    type.entity.declaration === shared.entity.declaration
+  );
+}
+
+function resolve(
+  context: BodyContext,
+  call: WrittenCall,
+  name: string,
+  candidates: Parameters<typeof resolveCall>[1]['candidates'],
+): Type {
+  return resolveCall(context, {
+    site: call.node,
+    name,
+    candidates,
+    arguments: call.written,
+    typeArguments: call.typeArguments,
+    expected: call.expected,
+    form: 'call',
+  });
 }

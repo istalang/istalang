@@ -48,6 +48,11 @@ export function lowerVariableDeclaration(
 
 export function lowerAssignment(context: FunctionContext, node: Assignment): void {
   const [target] = node.targets;
+  if (target?.kind === 'Unwrap') {
+    const handle = context.expression(target.operand);
+    call(context, node, [handle, context.expression(node.value)]);
+    return;
+  }
   if (target?.kind !== 'Identifier') {
     notLowered(context, node);
     return;

@@ -1,0 +1,23 @@
+# outcome: "3 x 7 true true"
+# Type arguments inferred from the arguments, written explicitly, and taken from the type a call
+# is expected to have (§3.5).
+
+struct Pair<A, B>:
+  first: A
+  second: B
+
+fn swap<A, B>(pair: Pair<A, B>) -> Pair<B, A>:
+  Pair{first: pair.second, second: pair.first}
+
+fn identity<T>(value: T) -> T:
+  value
+
+fn empty<T>() -> T?:
+  none
+
+async fn main() -> Future<string>:
+  const pair = swap(Pair{first: "x", second: 3})
+  const explicit = identity<int>(7)
+  const nothing: int? = empty()
+  const kept = identity(true)
+  string(pair.first) + " " + pair.second + " " + string(explicit) + " " + string(nothing == none) + " " + string(kept)

@@ -1,0 +1,13 @@
+# outcome: "13 15 retry 3 1000 retry 5 1000 retry 5 2000"
+# Default parameters are overloads that fill what a call leaves out (§3.3); a default may use the
+# parameters before it, and a parameter with a default may take its type from it.
+import Duration from 'time'
+
+fn window(start: int, end: int = start + 10) -> int:
+  end
+
+fn retry(times = 3, backoff: Duration = 1s) -> string:
+  "retry " + times + " " + backoff.value
+
+async fn main() -> Future<string>:
+  string(window(3)) + " " + string(window(5, 15)) + " " + retry() + " " + retry(5) + " " + retry(5, 2s)

@@ -75,6 +75,14 @@ extern fn compare(left: int, right: float) -> int
 extern fn compare(left: float, right: int) -> int
 extern fn compare(left: string, right: string) -> int
 
+# Conversions (§3.10): only the ones that can't fail are written T(x). `int(x)` truncates toward
+# zero; a float that is no number (NaN, an infinity) has no int, which is a bug, so it panics.
+extern fn float.from(value: int) -> float
+extern fn int.from(value: float) -> int
+extern fn string.from(value: int) -> string
+extern fn string.from(value: float) -> string
+extern fn string.from(value: bool) -> string
+
 trait Sendable
 
 trait Disposable:

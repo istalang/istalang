@@ -3,39 +3,72 @@
  * resolved, and every function body is checked. A module's diagnostics are complete once each of
  * its declarations has been through here.
  *
- * Imports, extern types, traits and type aliases declare nothing that checking needs yet: traits
- * and aliases are checked where they are used, and an unsupported use is reported there, so the
- * prelude's declarations never report.
+ * - A declaration's type parameters have their constraints resolved, and so does every member of
+ *   a trait: its functions' signatures and its fields' types.
+ * - An alias is resolved, which reports one that refers to itself (§3.17).
+ * - Imports declare nothing to check.
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { Declaration } from '../../syntax/declarations.ts';
+import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
+import { type GenericDeclaration, typeParametersOf } from './resolve-type.ts';
 
 const nothingToCheck = (): void => undefined;
+
+/**
+ * Resolves the constraints and defaults of `declaration`'s type parameters where they are written,
+ * so what they misname, and what their defaults' arguments fail to meet, is reported there.
+ */
+function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclaration): void {
+  for (const parameter of typeParametersOf(declaration.typeParameters)) {
+    checker.constraintsOf(parameter);
+    if (parameter.defaultType !== undefined) {
+      checker.resolveType(checker.moduleOf(declaration), parameter.defaultType);
+    }
+  }
+}
+
+function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void {
+  checkTypeParameters(checker, node);
+  checker.parametersOf(node);
+  checker.defaultsOf(node);
+  checker.resultOf(node);
+  checker.bodyOf(node);
+}
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], void> = {
   NamedImport: nothingToCheck,
   NamespaceImport: nothingToCheck,
-  ExternStructDeclaration: nothingToCheck,
-  TraitDeclaration: nothingToCheck,
-  TypeAliasDeclaration: nothingToCheck,
+  ExternStructDeclaration: checkTypeParameters,
+  TraitDeclaration: (checker, node, module) => {
+    checkTypeParameters(checker, node);
+    for (const member of node.members) {
+      if (member.kind === 'FunctionDeclaration') {
+        checkFunction(checker, member);
+      } else if (member.kind === 'FieldDeclaration') {
+        checker.resolveType(module, member.type);
+      }
+    }
+  },
+  TypeAliasDeclaration: (checker, node) => {
+    checkTypeParameters(checker, node);
+    checker.aliasedType(node);
+  },
   StructDeclaration: (checker, node) => {
+    checkTypeParameters(checker, node);
     checker.declaredFieldsOf(node);
   },
   EnumDeclaration: (checker, node) => {
+    checkTypeParameters(checker, node);
     checker.declaredVariantsOf(node);
   },
   ExternConstantDeclaration: (checker, node, module) => {
     checker.resolveType(module, node.type);
   },
-  FunctionDeclaration: (checker, node) => {
-    checker.parametersOf(node);
-    checker.resultOf(node);
-    checker.bodyOf(node);
-  },
+  FunctionDeclaration: checkFunction,
   VariableDeclaration: (checker, node) => {
     checker.constantOf(node);
   },

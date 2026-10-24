@@ -18,6 +18,7 @@ import type { AssignmentOperator } from '../../syntax/operators.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkRewrap } from '../expressions/unwrap.ts';
 import { frontier } from '../frontier.ts';
 import { type OverloadableOperator, resolveOperator } from '../overloads/operators.ts';
 import { errorType, type Type } from '../types/type.ts';
@@ -76,6 +77,10 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
     context.unsupported(node, frontier.destructuring);
     return;
   }
+  if (target.kind === 'Unwrap' && node.operator === '=') {
+    checkRewrap(context, node, target);
+    return;
+  }
   const variable = assignedVariable(context, target);
   if (variable === undefined) {
     context.expression(node.value);
@@ -87,8 +92,8 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
   }
   const operand = context.expression(node.value);
   const result = resolveOperator(context, node, compoundOperator(node.operator), [
-    variable,
-    operand,
+    { node: target, type: variable },
+    { node: node.value, type: operand },
   ]);
   context.fit(result, variable, node.value.span);
 }

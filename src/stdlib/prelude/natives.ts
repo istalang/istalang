@@ -9,7 +9,8 @@
  * - Dividing by zero is a bug in the program, so it panics (§3.12), for floats too.
  * - `compare` on floats subtracts, so infinities compare as expected; see `sign` for NaN.
  * - Adding a primitive to a string appends its text; a whole float keeps its `.0`, so `1.0` never
- *   reads as the int `1`.
+ *   reads as the int `1`. `string(x)` spells a primitive the same way.
+ * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
  */
 
 import { byValueKey, primitiveKey } from '../../definition/extern-key.ts';
@@ -70,6 +71,14 @@ export const preludeNatives: Natives = {
       ([left, value]: readonly Value[]) => text(left) + appendedText(value),
     ]),
   ),
+  [preludeKey('float.from', 'int')]: ([value]) => Number(int(value)),
+  [preludeKey('int.from', 'float')]: ([value]) => truncated(float(value)),
+  ...Object.fromEntries(
+    (['int', 'float', 'bool'] as const).map((from) => [
+      preludeKey('string.from', from),
+      ([value]: readonly Value[]) => appendedText(value),
+    ]),
+  ),
   [preludeKey('panic', 'string')]: ([message]) => {
     throw new Panic(text(message));
   },
@@ -126,6 +135,13 @@ function compareOrdered<Ordered extends bigint | string>(left: Ordered, right: O
  */
 function sign(comparison: number): bigint {
   return Number.isNaN(comparison) ? 0n : BigInt(Math.sign(comparison));
+}
+
+function truncated(value: number): bigint {
+  if (!Number.isFinite(value)) {
+    throw new Panic(`${value} has no int.`);
+  }
+  return BigInt(Math.trunc(value));
 }
 
 function appendedText(value: Value | undefined): string {

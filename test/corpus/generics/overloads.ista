@@ -1,0 +1,27 @@
+# outcome: "int generic generic 5 5.0 1"
+# A concrete function beats a generic one; written type arguments choose the generic one (§3.7).
+# A free function may take a value or a reference to one, since `&` at the call tells them apart.
+
+fn show<T>(value: T) -> string:
+  "generic"
+
+fn show(value: int) -> string:
+  "int"
+
+fn scale(value: int, factor: int) -> int:
+  value * factor
+
+fn scale(value: float, factor: int) -> float:
+  value * factor
+
+struct Counter { count: int }
+
+fn read(counter: Counter) -> int:
+  counter.count
+
+fn read(counter: &Counter) -> int:
+  counter.count
+
+async fn main() -> Future<string>:
+  const counter = Counter{count: 1}
+  show(5) + " " + show<int>(5) + " " + show("x") + " " + scale(1, 5) + " " + scale(1.0, 5) + " " + read(counter)

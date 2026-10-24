@@ -8,7 +8,7 @@
  */
 
 import type { If } from '../../syntax/expressions.ts';
-import { type Block, tailNodeOf } from '../../syntax/statements.ts';
+import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { agreedType, type Produced } from '../rules/agreement.ts';
@@ -30,15 +30,15 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
     return unitType;
   }
   produced.push(producedBy(context, elseBody, expected));
-  const { decided, disagreeing } = agreedType(produced, expected);
+  const { decided, disagreeing } = agreedType(produced, context.checker.wrapsToFit, expected);
   if (decided === undefined) {
     return neverType;
   }
-  for (const { type, span } of disagreeing) {
-    if (expected === undefined) {
+  for (const { type, span, node: value } of disagreeing) {
+    if (expected === undefined && context.checker.wrapsToFit(type, decided) === undefined) {
       context.report(checkerDiagnostics.branchTypes(span, typeText(decided), typeText(type)));
     } else {
-      context.fit(type, decided, span);
+      context.fit(type, decided, value ?? span);
     }
   }
   return decided;
@@ -46,5 +46,9 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
 
 /** A branch's type, reported at its tail (§4). */
 function producedBy(context: BodyContext, body: Block, expected: Type | undefined): Produced {
-  return { type: context.block(body, expected), span: tailNodeOf(body).span };
+  return {
+    type: context.block(body, expected),
+    span: tailNodeOf(body).span,
+    node: tailExpressionOf(body),
+  };
 }

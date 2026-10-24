@@ -1,197 +1,183 @@
 /**
- * Choosing the function a call means among the overloads of its name (§3.7): calls are resolved
- * from the argument types alone, never from the result.
+ * Resolving a call in a body (§3.3, §3.7, §3.9): its arguments choose among the candidates
+ * (choice.ts), the choice is instantiated with its constraints met (traits/conformance.ts), and
+ * the call is recorded for lowering with its arguments fitted, so their implicit wraps are too.
  *
- * For now a candidate applies when it is not generic, takes exactly as many parameters as there
- * are arguments, takes none of them by reference, and every argument fits its parameter. That rule
- * lives in `inapplicability` alone: choosing keeps the candidates it finds nothing against, and a
- * report about a failed call explains the reason it found. Generic candidates, defaults, rest
- * parameters, references and argument-dependent lookup extend it; until then a call that only a
- * generic candidate could serve is reported as not supported.
+ * - An argument whose type the chosen function decides (`none`, a bare variant) is checked only
+ *   after choosing, against its parameter's type.
+ * - An argument of the error type was already reported, so the call reports nothing more.
+ * - A failure is explained as precisely as the candidates allow: with one candidate, what exactly
+ *   doesn't fit it.
+ * - Calling `dispose` directly is refused, since the runtime calls it once nothing holds a value
+ *   (§7). The rules every call obeys, witnesses of constraints included, apply where the call is
+ *   made (calls-made.ts).
  */
 
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import { disposeFunction } from '../../../language/well-known.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
-import { errorType, isAssignable, type Type } from '../types/type.ts';
+import { instantiate } from '../traits/conformance.ts';
+import { errorType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-
-/** Why a candidate can't take a call's arguments. */
-export type Inapplicability =
-  | { readonly kind: 'generic' }
-  | { readonly kind: 'arity'; readonly expected: number }
-  | { readonly kind: 'reference' }
-  /** The arguments that don't fit their parameters, by position, with the parameter's type. */
-  | {
-      readonly kind: 'arguments';
-      readonly misfits: readonly { readonly index: number; readonly expected: Type }[];
-    };
-
-/** Why `candidate` can't take arguments of `argumentTypes`; undefined when it can. */
-export function inapplicability(
-  context: BodyContext,
-  candidate: FunctionDeclaration,
-  argumentTypes: readonly Type[],
-): Inapplicability | undefined {
-  if (candidate.typeParameters.length > 0) {
-    return { kind: 'generic' };
-  }
-  const parameters = context.checker.parametersOf(candidate);
-  if (parameters.length !== argumentTypes.length) {
-    return { kind: 'arity', expected: parameters.length };
-  }
-  if (parameters.some((parameter) => parameter.reference)) {
-    return { kind: 'reference' };
-  }
-  const misfits = parameters.flatMap((parameter, index) =>
-    isAssignable(argumentTypes[index] ?? errorType, parameter.type)
-      ? []
-      : [{ index, expected: parameter.type }],
-  );
-  return misfits.length === 0 ? undefined : { kind: 'arguments', misfits };
-}
-
-/** The candidates a call with `argumentTypes` could mean. */
-export function applicableOverloads(
-  context: BodyContext,
-  candidates: readonly FunctionDeclaration[],
-  argumentTypes: readonly Type[],
-): readonly FunctionDeclaration[] {
-  return candidates.filter(
-    (candidate) => inapplicability(context, candidate, argumentTypes) === undefined,
-  );
-}
-
-/** A call to resolve: where it is, the functions it may mean, and its arguments' types. */
-export interface OverloadRequest {
-  readonly site: CallSite;
-  readonly candidates: readonly FunctionDeclaration[];
-  readonly argumentTypes: readonly Type[];
-}
-
-/** A call written by name: the request, with the name and the arguments it was written with. */
-export interface CallAttempt extends OverloadRequest {
-  readonly name: string;
-  readonly argumentNodes: readonly Expression[];
-}
-
-/** Why no single candidate was chosen. */
-export type OverloadFailure = 'none' | 'several';
+import { useSite } from '../use-site.ts';
+import { callMade } from './calls-made.ts';
+import type { Candidate } from './candidates.ts';
+import { type Application, choose, type Inapplicability } from './choice.ts';
 
 /**
- * Resolves `request` among its candidates by the argument types, recording its target; its result
- * type. When no single candidate applies, `fail` reports why, and the result is the error type.
- * An argument of the error type was already reported, so nothing more is.
+ * An argument as written: its node, and its type, undefined when the chosen function decides it,
+ * with which parameter types it can take (choice.ts).
  */
-export function resolveOverload(
-  context: BodyContext,
-  request: OverloadRequest,
-  fail: (failure: OverloadFailure) => void,
-): Type {
-  const { site, candidates, argumentTypes } = request;
-  if (argumentTypes.some((type) => type.kind === 'error')) {
+export interface WrittenArgument {
+  readonly node: Expression;
+  readonly type: Type | undefined;
+  readonly accepts?: ((expected: Type) => boolean) | undefined;
+}
+
+/** A call to resolve, as written. */
+export interface CallRequest {
+  readonly site: CallSite;
+  /** The function's name, or the operator, as messages name the call. */
+  readonly name: string;
+  readonly candidates: readonly Candidate[];
+  readonly arguments: readonly WrittenArgument[];
+  readonly typeArguments: readonly Type[] | undefined;
+  readonly expected: Type | undefined;
+  /** How a call no candidate takes reads: as a call, or as an operator on its operands. */
+  readonly form: 'call' | 'operator';
+}
+
+/** Resolves `request`, recording the call; what it yields, or the error type after a report. */
+export function resolveCall(context: BodyContext, request: CallRequest): Type {
+  const written = request.arguments;
+  if (written.some(({ type }) => type?.kind === 'error')) {
     return errorType;
   }
-  const matches = applicableOverloads(context, candidates, argumentTypes);
-  const [match] = matches;
-  if (matches.length === 1 && match !== undefined) {
-    return callTo(context, site, match);
+  const callArguments = written.map(({ type, accepts }) => ({ type, reference: false, accepts }));
+  const choice = choose(context.checker, request.candidates, callArguments, request.typeArguments);
+  switch (choice.kind) {
+    case 'chosen':
+      return complete(context, request, choice.application);
+    case 'several':
+      context.report(
+        checkerDiagnostics.ambiguousCall(request.site.span, request.name, typesText(written)),
+      );
+      return errorType;
+    case 'none':
+      explainNone(context, request, choice.reasons);
+      return errorType;
+    default: {
+      const unhandled: never = choice;
+      return unhandled;
+    }
   }
-  fail(matches.length === 0 ? 'none' : 'several');
-  return errorType;
 }
 
-/** Resolves a call written by name, explaining a failure as precisely as the candidates allow. */
-export function resolveCall(context: BodyContext, attempt: CallAttempt): Type {
-  const { site, name, argumentTypes } = attempt;
-  return resolveOverload(context, attempt, (failure) => {
-    if (failure === 'several') {
-      context.report(checkerDiagnostics.ambiguousCall(site.span, name, typesText(argumentTypes)));
+/** The types of written arguments, as a call's argument list reads: `int, string`. */
+export function typesText(written: readonly WrittenArgument[]): string {
+  return written.map(({ type }) => (type === undefined ? '_' : typeText(type))).join(', ');
+}
+
+function complete(context: BodyContext, request: CallRequest, application: Application): Type {
+  const { site } = request;
+  const instantiation = instantiate(
+    useSite(context.checker, context.module, site.span),
+    application,
+    request.expected,
+  );
+  if (instantiation === undefined) {
+    return errorType;
+  }
+  const { signature, candidate } = application;
+  request.arguments.forEach(({ node, type }, index) => {
+    const slot = signature.parameters[index];
+    if (slot === undefined) {
       return;
     }
-    explainNone(context, attempt);
+    const expected = substitute(slot.type, instantiation.substitution);
+    context.fit(type ?? context.expression(node, expected), expected, node);
   });
+  if (signature.declaration.name.text === disposeFunction) {
+    context.report(checkerDiagnostics.disposeCall(site.span));
+    return errorType;
+  }
+  const call = callMade(
+    useSite(context.checker, context.module, site.span),
+    candidate,
+    instantiation,
+    request.arguments.length,
+  );
+  if (call === undefined) {
+    return errorType;
+  }
+  context.recordCall(site, call);
+  return substitute(signature.result(), instantiation.substitution);
 }
 
-/** Why none of the candidates takes the call's arguments. */
-function explainNone(context: BodyContext, attempt: CallAttempt): void {
-  const { site, name, candidates, argumentTypes } = attempt;
-  const [only] = candidates;
-  const reasons = candidates.map((candidate) => inapplicability(context, candidate, argumentTypes));
+function explainNone(
+  context: BodyContext,
+  request: CallRequest,
+  reasons: readonly Inapplicability[],
+): void {
+  const { site, name, candidates } = request;
   const [reason] = reasons;
-  if (candidates.length === 1 && only !== undefined && reason !== undefined) {
-    explain(context, attempt, only, reason);
-  } else if (reasons.some((each) => each?.kind === 'generic')) {
-    context.unsupported(site, frontier.genericCall);
+  if (candidates.length === 1 && reasons.length === 1 && reason !== undefined) {
+    explain(context, request, reason);
+  } else if (candidates.length === 0 && request.form === 'call') {
+    context.report(checkerDiagnostics.noFunctionNamed(site.span, name));
+  } else if (request.form === 'operator') {
+    context.report(
+      checkerDiagnostics.operatorTypes(
+        site.span,
+        name,
+        request.arguments
+          .map(({ type }) => (type === undefined ? '_' : typeText(type)))
+          .join(' and '),
+      ),
+    );
   } else {
     context.report(
-      checkerDiagnostics.noMatchingOverload(site.span, name, typesText(argumentTypes)),
+      checkerDiagnostics.noMatchingOverload(site.span, name, typesText(request.arguments)),
     );
   }
 }
 
 /**
- * Records the call at `site` to `target`; what the call yields. Externs outside the std modules
- * need a host to implement them, so they are reported as not supported yet.
+ * With one candidate, the report says what exactly doesn't fit: the `reason` it was refused for.
+ * An argument the chosen function would have decided is checked against the type it didn't take,
+ * which says why.
  */
-export function callTo(context: BodyContext, site: CallSite, target: FunctionDeclaration): Type {
-  if (!checkCallable(context, site, target)) {
-    return errorType;
-  }
-  context.recordCall(site, { function: target, typeArguments: [] });
-  return context.checker.resultOf(target);
-}
-
-/**
- * The checker's frontier for calls: whether the rest of the toolchain can run a call to `target`
- * yet, reporting at `site` when it can't. Each feature that can run more calls moves this line.
- */
-function checkCallable(context: BodyContext, site: CallSite, target: FunctionDeclaration): boolean {
-  const { checker } = context;
-  if (target.isExtern && checker.program.modules.get(checker.moduleOf(target))?.isStd !== true) {
-    context.unsupported(site, frontier.hostExtern);
-    return false;
-  }
-  return true;
-}
-
-/** The types as a call's argument list reads: `int, string`. */
-export function typesText(types: readonly Type[]): string {
-  return types.map(typeText).join(', ');
-}
-
-/** With one candidate, the report says what exactly doesn't fit: the `reason` it was refused for. */
-function explain(
-  context: BodyContext,
-  { site, argumentNodes, argumentTypes }: CallAttempt,
-  candidate: FunctionDeclaration,
-  reason: Inapplicability,
-): void {
+function explain(context: BodyContext, request: CallRequest, reason: Inapplicability): void {
+  const { site, name } = request;
   switch (reason.kind) {
-    case 'generic':
-      context.unsupported(site, frontier.genericCall);
+    case 'arity': {
+      const count = request.arguments.length;
+      const expected = count > reason.maximum ? reason.maximum : reason.minimum;
+      context.report(checkerDiagnostics.argumentCount(site.span, name, expected, count));
       return;
-    case 'arity':
-      context.report(
-        checkerDiagnostics.argumentCount(
-          site.span,
-          candidate.name.text,
-          reason.expected,
-          argumentTypes.length,
-        ),
-      );
+    }
+    case 'typeArgumentCount': {
+      const count = request.typeArguments?.length ?? 0;
+      const expected = count > reason.maximum ? reason.maximum : reason.minimum;
+      context.report(checkerDiagnostics.typeArgumentCount(site.span, name, expected, count));
       return;
+    }
     case 'reference':
       context.unsupported(site, frontier.reference);
       return;
+    case 'conflict':
+      context.report(checkerDiagnostics.cannotInfer(site.span, name, reason.parameter.name.text));
+      return;
     case 'arguments':
       for (const { index, expected } of reason.misfits) {
-        const node = argumentNodes[index];
-        if (node !== undefined) {
-          context.fit(argumentTypes[index] ?? errorType, expected, node.span);
+        const argument = request.arguments[index];
+        if (argument?.type !== undefined) {
+          context.fit(argument.type, expected, argument.node);
+        } else if (argument !== undefined) {
+          context.expect(argument.node, expected);
         }
       }
       return;

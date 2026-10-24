@@ -58,7 +58,10 @@ export interface VariableEntity {
   readonly owner: VariableOwner;
 }
 
-/** A module's top-level functions sharing a name (§3.7); `overloadsOf` adds the prelude's. */
+/**
+ * A module's top-level functions sharing a name (§3.7); `overloadsOf` adds the prelude's. A called
+ * name no scope defines denotes a set with no overloads, which argument-dependent lookup may fill.
+ */
 export interface FunctionsEntity {
   readonly kind: 'functions';
   readonly name: string;
@@ -134,5 +137,10 @@ export interface Bindings {
   readonly overloadsOf: (functions: FunctionsEntity) => readonly FunctionDeclaration[];
   /** The variants a bare name may denote; the expected type picks one (§3.11). */
   readonly candidatesOf: (variants: VariantsEntity) => readonly VariantEntity[];
+  /**
+   * What `name` denotes at the top level of `module`: a declaration or import of its own, or the
+   * prelude's. Operators look up their function's name this way (§3.9).
+   */
+  readonly topLevelNamed: (module: ModuleId, name: string) => Entity | undefined;
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];
 }

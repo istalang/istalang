@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { runPrograms } from '../../../test/corpus/run-programs.ts';
+import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import type { Natives } from '../natives.ts';

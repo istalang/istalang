@@ -31,8 +31,12 @@ import type { VariableOwner, VariantsEntity } from './entities.ts';
 import { type Convention, conventionViolation } from './naming.ts';
 import type { LocalEntity, Miss, Scope } from './scope.ts';
 
-/** How a name is used: read as a value, named as a type, or assigned to. */
-export type Role = 'value' | 'type' | 'assignment';
+/**
+ * How a name is used: read as a value, named as a type, assigned to, or called. A called name that
+ * no scope defines may still name functions argument-dependent lookup finds (§3.13), which only the
+ * checker can tell, so it is no diagnostic here.
+ */
+export type Role = 'value' | 'type' | 'assignment' | 'callee';
 
 /** A name no scope of its tree defines, resolved when the program is linked. */
 export interface FreeName {

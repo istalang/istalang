@@ -19,6 +19,8 @@ import { checkDurationLiteral } from './literals.ts';
 import { checkName } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
 import { checkMemberAccess, checkStructLiteral } from './structs.ts';
+import { checkUnwrap } from './unwrap.ts';
+import { checkNone } from './variants.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
 const alreadyReported = (): Type => errorType;
@@ -39,7 +41,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   BlockExpression: (context, node, expected) => context.block(node.block, expected),
   If: checkIf,
   DurationLiteral: checkDurationLiteral,
-  NoneLiteral: unsupported,
+  NoneLiteral: checkNone,
   ArrayLiteral: unsupported,
   MapLiteral: unsupported,
   Comprehension: unsupported,
@@ -48,7 +50,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Reference: unsupported,
   Index: unsupported,
   Propagate: unsupported,
-  Unwrap: unsupported,
+  Unwrap: checkUnwrap,
   Await: checkAwait,
   Is: unsupported,
   Range: unsupported,

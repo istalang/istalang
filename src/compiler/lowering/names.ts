@@ -7,12 +7,17 @@
  * An extern's key is built by `externKey` (definition/extern-key.ts) from the declared parameter
  * types; this module only turns the checker's types into the key's.
  *
- * Names are of declarations, never of instantiations: a generic function's or type's entries are
- * told apart by their type arguments where the Definition records them, and whether a name should
- * spell them too is decided when generics compile.
+ * Names are of declarations: a generic type's entries are told apart by the type arguments the
+ * Definition records beside the name. A function instance's name also spells its type arguments
+ * the way keys do (instances.ts), for traces to read; definition.md, "Names", has the rule.
  */
 
-import { type ExternSignature, externKey, type KeyType } from '../../definition/extern-key.ts';
+import {
+  type ExternSignature,
+  externKey,
+  type KeyType,
+  keyTypeText,
+} from '../../definition/extern-key.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
 import type { ModuleId, ProgramModule } from '../program/program.ts';
@@ -59,6 +64,11 @@ export function externKeyOf(checker: Checker, declaration: FunctionDeclaration):
     })),
   };
   return externKey(signature);
+}
+
+/** `type` spelled as keys spell it: module-qualified, without sugar (`prelude.Optional<int>`). */
+export function spelledType(checker: Checker, type: Type): string {
+  return keyTypeText(keyType(checker, type));
 }
 
 function keyType(checker: Checker, type: Type): KeyType {

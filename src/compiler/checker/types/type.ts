@@ -11,6 +11,11 @@
  *   so one mistake is reported once instead of at every use that follows.
  * - `never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
  *   is expected.
+ * - A type parameter is keyed by its declaration. A trait's `Self` is the trait's own implicit
+ *   parameter, keyed by the trait declaration, so substituting the constrained type for it is the
+ *   same operation as for any other parameter.
+ * - Exact relations live here; fitting with the implicit wrap into `T?` needs to know which type
+ *   is `Optional`, so it lives in fit.ts.
  */
 
 import type { PrimitiveName } from '../../../language/primitives.ts';
@@ -19,6 +24,7 @@ import type {
   EnumDeclaration,
   ExternStructDeclaration,
   StructDeclaration,
+  TraitDeclaration,
   TypeParameter,
 } from '../../syntax/declarations.ts';
 
@@ -55,10 +61,13 @@ export interface FunctionType {
   readonly result: Type;
 }
 
+/** What a type parameter is keyed by: its declaration, or a trait standing for its `Self`. */
+export type ParameterKey = TypeParameter | TraitDeclaration;
+
 /** A type parameter, opaque inside the declaration that introduces it (§3.5). */
 export interface TypeParameterType {
   readonly kind: 'parameter';
-  readonly declaration: TypeParameter;
+  readonly declaration: ParameterKey;
 }
 
 export interface ErrorType {
@@ -160,7 +169,7 @@ export function comparable(first: Type, second: Type): boolean {
 }
 
 /** Type parameters mapped to the types that replace them. */
-export type Substitution = ReadonlyMap<TypeParameter, Type>;
+export type Substitution = ReadonlyMap<ParameterKey, Type>;
 
 /** `type` with every type parameter in `substitution` replaced. */
 export function substitute(type: Type, substitution: Substitution): Type {
@@ -192,6 +201,75 @@ export function substitute(type: Type, substitution: Substitution): Type {
         })),
         result: substitute(type.result, substitution),
       };
+    default: {
+      const unhandled: never = type;
+      return unhandled;
+    }
+  }
+}
+
+/** The types `type` is built from, one level down. */
+export function typeChildren(type: Type): readonly Type[] {
+  switch (type.kind) {
+    case 'nominal':
+      return type.arguments;
+    case 'tuple':
+      return type.elements;
+    case 'function':
+      return [...type.parameters.map((parameter) => parameter.type), type.result];
+    case 'primitive':
+    case 'parameter':
+    case 'error':
+      return [];
+    default: {
+      const unhandled: never = type;
+      return unhandled;
+    }
+  }
+}
+
+/** The type parameters `type` mentions, each once, in order of appearance. */
+export function parametersIn(type: Type): readonly ParameterKey[] {
+  if (type.kind === 'parameter') {
+    return [type.declaration];
+  }
+  return [...new Set(typeChildren(type).flatMap(parametersIn))];
+}
+
+/** Whether `type` is, or is built from, the error type. */
+export function mentionsError(type: Type): boolean {
+  return type.kind === 'error' || typeChildren(type).some(mentionsError);
+}
+
+const identities = new WeakMap<object, number>();
+let nextIdentity = 0;
+
+/** A string equal for two types exactly when `sameType` holds, for keying maps and sets. */
+export function typeKey(type: Type): string {
+  const idOf = (object: object): number => {
+    let id = identities.get(object);
+    if (id === undefined) {
+      id = nextIdentity;
+      nextIdentity += 1;
+      identities.set(object, id);
+    }
+    return id;
+  };
+  switch (type.kind) {
+    case 'primitive':
+      return type.name;
+    case 'error':
+      return '?';
+    case 'parameter':
+      return `'${idOf(type.declaration)}'`;
+    case 'nominal':
+      return `#${idOf(type.entity)}<${type.arguments.map(typeKey).join(',')}>`;
+    case 'tuple':
+      return `(${type.elements.map(typeKey).join(',')})`;
+    case 'function':
+      return `${type.isAsync ? 'async ' : ''}fn(${type.parameters
+        .map((parameter) => `${parameter.reference ? '&' : ''}${typeKey(parameter.type)}`)
+        .join(',')})->${typeKey(type.result)}`;
     default: {
       const unhandled: never = type;
       return unhandled;

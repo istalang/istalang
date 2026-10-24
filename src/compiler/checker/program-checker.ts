@@ -12,13 +12,21 @@
  * - A top-level constant is checked the same lazy way, and one reached while it is being checked
  *   is defined through itself (§3). Both use one lazy check with cycle reporting (lazy-checks.ts).
  * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
- *   (declarations/constants.ts), as BodyChecker composes the units of a body.
+ *   (declarations/: constants, layouts, parameters, aliases, static functions; traits/: type
+ *   parameters), as BodyChecker composes the units of a body.
+ * - Items checked by their module are its top-level items and a trait's members; type parameters
+ *   are noted with the module declaring them, where their constraints resolve.
  * - Diagnostics are kept per module, in the order found; the coordinator sorts them.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { LanguageModule, WellKnownDeclaration } from '../../language/well-known.ts';
+import {
+  type LanguageModule,
+  type WellKnownDeclaration,
+  wellKnown,
+} from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
+import type { Span } from '../../text/span.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
@@ -27,6 +35,8 @@ import type {
   EnumDeclaration,
   FunctionDeclaration,
   StructDeclaration,
+  TypeAliasDeclaration,
+  TypeParameter,
 } from '../syntax/declarations.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
@@ -40,17 +50,31 @@ import type {
   SignatureParameter,
   VariantMember,
 } from './check.ts';
-import type { CheckerContext } from './context.ts';
+import type { CheckerContext, StaticOwner } from './context.ts';
+import { Aliases } from './declarations/aliases.ts';
 import { ConstantChecks } from './declarations/constants.ts';
 import { checkDeclaration } from './declarations/declarations.ts';
 import { Layouts } from './declarations/layout.ts';
-import { resolveTypeNode } from './declarations/resolve-type.ts';
-import { callResult, declaredBodyResult, declaredParameters } from './declarations/signatures.ts';
+import { Parameters } from './declarations/parameters.ts';
+import { resolveTypeNode, typeParametersOf } from './declarations/resolve-type.ts';
+import { callResult, declaredBodyResult } from './declarations/signatures.ts';
+import { StaticFunctions } from './declarations/statics.ts';
 import { checkerDiagnostics } from './diagnostics.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
+import { checkClashes } from './rules/clashes.ts';
 import { disposalOf } from './rules/disposal.ts';
-import { errorType, type NominalType, type Type, unitType } from './types/type.ts';
+import { checkExpansion } from './rules/expansion.ts';
+import type { Constraint } from './traits/constraints.ts';
+import { TypeParameters } from './traits/type-parameters.ts';
+import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
+import {
+  errorType,
+  type NominalType,
+  type Substitution,
+  type Type,
+  unitType,
+} from './types/type.ts';
 import { notSupported } from './unsupported.ts';
 
 export class ProgramChecker implements CheckerContext {
@@ -59,8 +83,8 @@ export class ProgramChecker implements CheckerContext {
   /** Every module's top-level items, with the module declaring each. */
   readonly #modules = new Map<NodeOf<string>, ModuleId>();
   readonly #diagnostics = new Map<ModuleId, Diagnostic[]>();
-  readonly #parameters = new Map<FunctionDeclaration, readonly SignatureParameter[]>();
   readonly #declaredResults = new Map<FunctionDeclaration, Type | undefined>();
+  readonly #resolvedTypes = new Map<TypeNode, Type>();
   readonly #results = new Map<FunctionDeclaration, Type>();
   readonly #bodies = new LazyChecks<FunctionDeclaration, CheckedBody>((member) => {
     this.report(
@@ -76,6 +100,21 @@ export class ProgramChecker implements CheckerContext {
   });
   readonly #checkedModules = new Set<ModuleId>();
   readonly #layouts = new Layouts(this);
+  readonly #parameters = new Parameters({
+    checker: this,
+    defaultsBody: (module) => {
+      const body = new BodyChecker(this, module, { isAsync: false, declaredResult: undefined });
+      return {
+        check: (value, declared) => body.expect(value, declared),
+        declare: (parameter, type) => body.variables.declare(parameter.name, type),
+        checked: () => body.defaults(),
+      };
+    },
+  });
+  readonly #aliases = new Aliases(this);
+  readonly #statics = new StaticFunctions(this);
+  readonly #typeParameters = new TypeParameters(this);
+  #optional: { entity: OptionalEntity } | undefined;
 
   constructor(program: Program) {
     this.program = program;
@@ -83,7 +122,24 @@ export class ProgramChecker implements CheckerContext {
     for (const [id, module] of program.modules) {
       for (const item of module.tree.root.items) {
         if (item.kind !== 'Invalid') {
-          this.#modules.set(item, id);
+          this.#declare(item, id);
+        }
+      }
+    }
+  }
+
+  /** Notes `item` and what it declares inside (a trait's members, type parameters) as `module`'s. */
+  #declare(item: Declaration, module: ModuleId): void {
+    this.#modules.set(item, module);
+    if ('typeParameters' in item) {
+      for (const parameter of typeParametersOf(item.typeParameters)) {
+        this.#typeParameters.declare(parameter, module);
+      }
+    }
+    if (item.kind === 'TraitDeclaration') {
+      for (const member of item.members) {
+        if (member.kind === 'FunctionDeclaration') {
+          this.#declare(member, module);
         }
       }
     }
@@ -108,14 +164,57 @@ export class ProgramChecker implements CheckerContext {
     return module;
   }
 
+  /** Each type node resolves once: in its own module, it always denotes the same type. */
   resolveType(module: ModuleId, node: TypeNode): Type {
-    return resolveTypeNode(this, module, node);
+    return memo(this.#resolvedTypes, node, () => resolveTypeNode(this, module, node));
   }
 
   parametersOf(declaration: FunctionDeclaration): readonly SignatureParameter[] {
-    return memo(this.#parameters, declaration, () =>
-      declaredParameters(this, this.moduleOf(declaration), declaration),
-    );
+    return this.#parameters.parametersOf(declaration);
+  }
+
+  defaultsOf(declaration: FunctionDeclaration): CheckedBody | undefined {
+    return this.#parameters.defaultsOf(declaration);
+  }
+
+  get optionalEntity(): OptionalEntity {
+    this.#optional ??= {
+      entity: (this.wellKnownType(wellKnown.optional) as NominalType | undefined)?.entity,
+    };
+    return this.#optional.entity;
+  }
+
+  optionalOf(type: Type): NominalType {
+    const optional = this.wellKnownType(wellKnown.optional, [type]);
+    if (optional?.kind !== 'nominal') {
+      throw new Error('A value was wrapped into an optional in a program without a prelude.');
+    }
+    return optional;
+  }
+
+  /** An arrow, so the relation can be passed around on its own (rules/agreement.ts). */
+  readonly wrapsToFit = (found: Type, expected: Type): number | undefined =>
+    wrapsToFit(found, expected, this.optionalEntity);
+
+  constraintsOf(parameter: TypeParameter): readonly Constraint[] {
+    return this.#typeParameters.constraintsOf(parameter);
+  }
+
+  constrainLater(
+    module: ModuleId,
+    at: Span,
+    parameter: TypeParameter,
+    typeArguments: Substitution,
+  ): void {
+    this.#typeParameters.constrainLater(module, at, parameter, typeArguments);
+  }
+
+  staticFunctionsIn(module: ModuleId, owner: StaticOwner): readonly FunctionDeclaration[] {
+    return this.#statics.in(module, owner);
+  }
+
+  aliasedType(alias: TypeAliasDeclaration): Type {
+    return this.#aliases.aliasedType(alias);
   }
 
   resultOf(declaration: FunctionDeclaration): Type {
@@ -187,11 +286,15 @@ export class ProgramChecker implements CheckerContext {
   diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
     if (!this.#checkedModules.has(module)) {
       this.#checkedModules.add(module);
-      for (const item of this.program.modules.get(module)?.tree.root.items ?? []) {
+      const items = this.program.modules.get(module)?.tree.root.items ?? [];
+      for (const item of items) {
         if (item.kind !== 'Invalid') {
           checkDeclaration(this, module, item);
         }
       }
+      checkClashes(this, module);
+      this.#typeParameters.checkPending(module);
+      checkExpansion(this);
     }
     return this.#diagnostics.get(module) ?? [];
   }

@@ -28,7 +28,7 @@ export function typeText(type: Type): string {
       return `${type.isAsync ? 'async ' : ''}fn(${parameters.join(', ')}) -> ${typeText(type.result)}`;
     }
     case 'parameter':
-      return type.declaration.name.text;
+      return type.declaration.kind === 'TraitDeclaration' ? 'Self' : type.declaration.name.text;
     case 'error':
       return '?';
     default: {

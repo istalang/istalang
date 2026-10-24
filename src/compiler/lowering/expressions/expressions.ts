@@ -17,7 +17,9 @@ import { lowerIf } from './control.ts';
 import { lowerDurationLiteral } from './literals.ts';
 import { lowerName } from './names.ts';
 import { lowerBinary, lowerUnary } from './operators.ts';
-import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
+import { lowerFieldRead, lowerStructLiteral, nominalTypeOf } from './structs.ts';
+import { lowerUnwrap } from './unwrap.ts';
+import { lowerFieldlessVariant, lowerNone, lowerVariantLiteral } from './variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {
@@ -31,11 +33,19 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Binary: lowerBinary,
   Unary: lowerUnary,
   Call: lowerCall,
-  StructLiteral: lowerStructLiteral,
-  MemberAccess: lowerFieldRead,
+  StructLiteral: (context, node) =>
+    nominalTypeOf(context.body, node).entity.declaration.kind === 'EnumDeclaration'
+      ? lowerVariantLiteral(context, node)
+      : lowerStructLiteral(context, node),
+  MemberAccess: (context, node) => {
+    const member = context.entityOf(node.member);
+    return member?.kind === 'variant'
+      ? lowerFieldlessVariant(context, node, node.member.text)
+      : lowerFieldRead(context, node);
+  },
   If: lowerIf,
   DurationLiteral: lowerDurationLiteral,
-  NoneLiteral: notLowered,
+  NoneLiteral: lowerNone,
   ArrayLiteral: notLowered,
   MapLiteral: notLowered,
   Comprehension: notLowered,
@@ -44,7 +54,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Reference: notLowered,
   Index: notLowered,
   Propagate: notLowered,
-  Unwrap: notLowered,
+  Unwrap: lowerUnwrap,
   Await: lowerAwait,
   Is: notLowered,
   Range: notLowered,

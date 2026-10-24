@@ -237,10 +237,12 @@ A `struct{…}` literal takes its type from context: the expected type where the
 
 **Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A function that modifies a by-value parameter changes only its own copy. The only ways a function can change data its caller holds are an explicit reference (§3.7) and a `Shared` value (§3.8). `Slot<T>`, `Future<T>`, `Inbox<T>`, `Shared<T>`, `WeakRef<T>` and `Revertible<T>` are **handles**: copying one copies the handle, not the state behind it, and `==` compares handles by identity.
 
-**Sendable types.** Only sendable values can leave an instance: as `spawn` arguments, or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when either:
+**Sendable types.** Only sendable values can leave an instance: as `spawn` arguments, or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when it is:
 
-- it is an extern struct declared `sendable` (§3.8) and all its type arguments are sendable, or
-- it is a user struct whose fields are all sendable. This is derived automatically.
+- a primitive;
+- an extern struct declared `sendable` (§3.8) whose type arguments are all sendable;
+- a user struct or enum whose fields are all sendable, or a tuple whose elements are. This is derived automatically, and a recursive type is sendable unless something in its cycle isn't;
+- a type parameter constrained `is Sendable`.
 
 Futures, slots, `Shared` values, weak references and function values are never sendable, and neither is any value that contains one, such as an inbox. They therefore never leave the instance that created them: `spawn` arguments and extern declarations can't contain them, which is a compile error.
 
@@ -304,7 +306,7 @@ for role in roles:
 
 ### 3.5 Generics
 
-Structs and functions take type parameters in angle brackets. Type arguments can always be written explicitly at a call site. Inference is best-effort: it fills them in only when it can do so unambiguously.
+Structs and functions take type parameters in angle brackets. Type arguments can always be written explicitly at a call site. Otherwise they are inferred: each argument's type is matched against its parameter's type, where a `T` may fill a `T?` (§2). A type parameter the arguments leave open is taken from the type the call is expected to have, once the function is chosen, and then from its default. Two different types for one parameter, or a parameter still open, is a compile error that asks for the type arguments.
 
 ```python
 struct Pair<A, B>:
@@ -315,10 +317,12 @@ fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
     Pair{first: p.second, second: p.first}
 ```
 
-- **Explicit type arguments** use the same brackets everywhere: `swap<int, string>(p)`, `Slot.create<Verdict>()`.
+- **Explicit type arguments** use the same brackets everywhere: `swap<int, string>(p)`, `Slot.create<Verdict>()`. Trailing ones that have defaults may be left out.
+- **Defaults.** Any type parameter may have a default, on a struct, enum, trait, alias or function alike: `enum Result<T, E = Error>`. A default fills a type argument that is neither written nor inferred.
 - **Parsing.** In an expression, `name<...>` takes type arguments when the part inside the brackets parses as a list of types and is followed by `(` or `{`, the same rule C# uses: `swap<int, string>(p)`, `Pair<int, string>{first: 1, second: "x"}`. A comparison that happens to look like that needs parentheses: `(a < b) > c`.
 - **When inference has nothing to go on,** give the type arguments or annotate the variable: `let xs: Array<int> = []`.
-- **Constraints.** A type parameter can be constrained by traits (§3.10) with `is`: `T is Sendable`. Several traits are joined with `&`: `T is Sendable & Comparable`.
+- **Constraints.** A type parameter can be constrained by traits (§3.10) with `is`: `T is Sendable`. Several traits are joined with `&`: `T is Sendable & Comparable`. Every type argument, written or inferred, is checked against its parameter's constraints wherever it appears: in a call, an annotation or a literal.
+- **Checked once.** A generic body is checked once, not per instantiation: inside it, a value of a type parameter supports only what the parameter's constraints require, plus `==`. Using a generic function therefore never reports an error inside its body.
 - **Compiled per instantiation.** A generic function or type is compiled once for each set of concrete type arguments it is used with, so every call has a fixed target and the runtime never needs types to make one (§3.10). A generic function that would need endlessly many instantiations, such as `f<T>` calling `f<Array<T>>`, is therefore a compile error.
 
 ### 3.6 Extern declarations
@@ -390,7 +394,9 @@ fn scale(self: &Rect, factor: int): ...
 
 - Calls are resolved statically from the argument types and any explicit type arguments. Return types play no part.
 - A generic function is chosen through inference only when it is the single function that matches. When a concrete function matches as well, the concrete one wins: given `fn show<T>(x: T)` and `fn show(x: int)`, the call `show(5)` uses the concrete one, while `show<int>(5)` uses the generic one.
+- With explicit type arguments, only generic functions that take that many type arguments are considered.
 - Any other ambiguity is a compile error, resolved by giving the type arguments explicitly.
+- Two functions of one name whose parameters have the same types, both by value or both by `&`, are a compile error. Generic ones are compared up to the names of their type parameters, and a parameter's `T` counts as the same as `T?`, since the wrap (§2) would make every call to the pair ambiguous. This covers the prelude's overloads and those that default parameters generate.
 - A method can also be called as a plain function: `push(&s, 3)` is the same call as `s.push(3)`.
 - Free functions `g(x: S)` and `g(x: &S)` may coexist, because the `&` at the call site tells them apart.
 - The one forbidden overload is a pair that differs only in whether `self` is a value or a reference, such as `fn f(self: S)` and `fn f(self: &S)`. Method notation (`s.f()`) couldn't choose between them, so declaring both is a compile error.
@@ -404,7 +410,7 @@ fn Duration.zero() -> Duration:
 const nothing = Duration.zero()
 ```
 
-The type before the dot selects the function, so static functions never need overloading by return type. In generic code, a type parameter takes the type's place: `T.zero()` (§3.10).
+The type before the dot selects the function, so static functions never need overloading by return type. A static function is visible where a function would be: declared in the calling module, in the module of its type, in the prelude, or in a module the caller imports. Several visible static functions of one name on one type are overloads. In generic code, a type parameter takes the type's place: `T.zero()` (§3.10).
 
 ### 3.8 Prelude and standard library
 
@@ -563,11 +569,11 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 
 - **`Self` and defaults.** `Self` is the constrained type: in `T is Addable`, `Self` is `T`. Trait type parameters may have defaults, so `T is Addable` means `T is Addable<T>`. A trait may take several type parameters, such as `trait Convertible<To, From = Self>`.
 - **Several traits.** `T is X & Y` requires both. In this position `&` joins traits; it never means a reference.
-- **Structural conformance.** A type satisfies a trait when functions with the required signatures exist for it, wherever they are declared. There are no `impl` blocks.
+- **Structural conformance.** A type satisfies a trait when functions with the required signatures exist for it, wherever they are declared. There are no `impl` blocks. Conformance is checked where a type meets a constraint, such as a generic call: the required functions must be visible there, in scope or through argument-dependent lookup on the type (§3.13), and they are the functions that instantiation calls.
 - **Constraints only.** Because traits are never value types, there is no dynamic dispatch. The interpreter always knows the concrete type at a call, and snapshots and messages never have to record which type is hiding behind a trait.
-- **Fields.** A trait may require fields, written like struct fields: `value: int`.
+- **Fields.** A trait may require fields, written like struct fields: `value: int`. A struct satisfies one with a field of the same name and type.
 - **Static functions.** A trait may require a static function, declared on `Self`, such as `fn Self.zero() -> Self`. Generic code calls it through the type parameter: `T.zero()` (§3.7).
-- **Generic requirements.** A required function may have type parameters of its own, such as `fn map<U>(self: Self, f: fn(T) -> U) -> Array<U>`.
+- **Generic requirements.** A required function may have type parameters of its own, such as `fn map<U>(self: Self, f: fn(T) -> U) -> Array<U>`. A function satisfies it when it is generic in the same way, up to the names of its type parameters.
 
 **Built-in traits:**
 
@@ -586,7 +592,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 
 **Iterable.** `for x in c` calls `iterate(c)` and loops over the returned array, so any type can support `for` by declaring `iterate`. Because `iterate` returns a copy, changing `c` inside the loop doesn't affect the iteration. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), and a `Range` with both ends is `Iterable<int>` (so `for i in 0..10:` works). `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
 
-**Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction, which uses braces. Only conversions that can't fail are written this way: `float(3)`, `int(3.7)` (which truncates toward zero) and `string(42)`. Fallible ones are ordinary functions returning `Result`, such as `int.parse("42")`.
+**Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction, which uses braces. Only conversions that can't fail are written this way: `float(3)`, `int(3.7)` (which truncates toward zero) and `string(42)`. A float that is no number, NaN or an infinity, has no int, so `int(x)` of one is a bug and panics (§3.12). Fallible ones are ordinary functions returning `Result`, such as `int.parse("42")`.
 
 ### 3.11 Enums
 
@@ -608,10 +614,10 @@ const text: string = match decision:
 ```
 
 - **Construction.** Variants are declared with a field list, as in `Rejected { by: string; reason: string }`, and built like structs: `Rejected{by: "legal", reason: "missing contract"}`. A variant without fields is written bare: `Expired`. A variant with exactly one field may take its value without the field's name, under the same rule as structs (§3.1): `Ok{42}` and `Ok{(receipt)}` are positional, while `Ok{value}` means the field `value`. Like a struct, an enum may be declared on one line: `enum Color { Red; Green; Blue }`.
-- **Qualified names.** Where the expected type is known (in a `match`, or when assigning to a typed variable), bare variant names are enough. Elsewhere they are qualified: `Decision.Expired`.
-- **Generics and defaults.** Enums and structs take type parameters like functions, and, like traits, may give them defaults: `enum Result<T, E = Error>`.
+- **Qualified names.** Where an enum type is expected (in a `match`, an annotated variable, an argument, a field or a `return`), bare variant names are enough. Elsewhere they are qualified: `Decision.Expired`. A bare variant with no enum type expected is a compile error.
+- **Generics and defaults.** Enums and structs take type parameters like functions, and may give them defaults (§3.5): `enum Result<T, E = Error>`.
 - **Exhaustive `match`.** A `match` on an enum must cover every variant or end with `case _:`.
-- **Optional.** `T?` is sugar for the prelude enum `Optional<T>`, with the variants `Some { value: T }` and `None`. `none` means `None`, a `T` is wrapped in `Some` automatically where a `T?` is expected, and `?.` and `??` (§4) are sugar over `match`.
+- **Optional.** `T?` is sugar for the prelude enum `Optional<T>`, with the variants `Some { value: T }` and `None`. `none` means `None` and needs an optional type to be expected, a `T` is wrapped in `Some` automatically where a `T?` is expected, and `?.` and `??` (§4) are sugar over `match`.
 
 **Patterns** mirror construction. Inside a pattern's braces, each item is one of:
 
@@ -686,7 +692,7 @@ fn _normalize(id: string) -> string:     # private to this module
 - **The toolchain's paths.** The `ista` toolchain resolves a path as names separated by `/`, with the `.ista` extension implied. A path starting with `./` or `../` is relative to the importing file. Any other path names a standard-library module, or a module under the project root: the directory holding `ista.json` (§11), or the directory the toolchain runs in when there is none. A path that matches both a standard-library module and a project file is therefore an error.
 - **Project sources.** Without explicit files, `ista check` checks every `.ista` file under the project root, skipping the project's `vendor/` folder (§11), every `node_modules/` folder and hidden directories.
 - **Cycles.** Modules contain only declarations, never top-level code, so import cycles are allowed.
-- **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import.
+- **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import. Only the arguments' own types count, not their type arguments, only exported functions are found this way, and a call through a namespace (`m.f(x)`) looks only in `m`.
 - **Externs** are bound by module-qualified name, so two modules can declare externs with the same short name.
 - **The prelude** is imported implicitly into every module. A module's top-level declarations and imports can't reuse a prelude name, with one exception: a top-level function, declared or imported, joins the prelude's overloads of its name, as `fn add(left: Time, right: Duration)` does (§3.9).
 
@@ -787,7 +793,7 @@ struct GithubUser:
 
 ### 3.17 Type aliases
 
-`type` gives an existing type another name: `type UserId = string`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(string, T)>`. A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: string }`, which the type checker keeps apart from `string`.
+`type` gives an existing type another name: `type UserId = string`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(string, T)>`. An alias can't refer to itself, directly or through other aliases; a recursive type is a struct or an enum (§3.1). A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: string }`, which the type checker keeps apart from `string`.
 
 ## 4. Expressions and control flow
 

@@ -5,7 +5,10 @@
  * - A declared function's parameters carry types; the parser keeps them required. `&T` takes a
  *   reference (§3.7).
  * - An async function declares its real result, `Future<T>`; its body produces the `T` (§3.3).
- * - Defaults and rest parameters (§3.3) are sugar the checker doesn't expand yet.
+ * - A parameter's default (§3.3) is checked as part of one body per function, in which each
+ *   default sees the parameters before it (`DefaultValues`). A parameter with a default may omit
+ *   its type, which is then the default's. Every parameter after one with a default has one too.
+ *   Rest parameters are sugar the checker doesn't expand yet.
  * - Fields, of a struct or of an enum's variant, resolve in the declaring module.
  * - Code that would hold a future in a parameter or a field is refused (rules/futures.ts); an
  *   extern's parameters are its native's to hold, so they aren't.
@@ -17,6 +20,7 @@ import type {
   FunctionDeclaration,
   StructDeclaration,
 } from '../../syntax/declarations.ts';
+import type { Expression, Parameter } from '../../syntax/expressions.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { FieldMember, SignatureParameter } from '../check.ts';
@@ -27,24 +31,41 @@ import { futureArgument, futureOf, refuseHeldFuture } from '../rules/futures.ts'
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
-/** The parameters of `declaration`, their types resolved in its module. */
+/** Where a function's defaults are checked: one body, seeing each parameter once declared. */
+export interface DefaultValues {
+  /** Checks a default value against the parameter's declared type, if any; the value's type. */
+  readonly check: (value: Expression, declared: Type | undefined) => Type;
+  /** Makes a parameter visible to the defaults after it. */
+  readonly declare: (parameter: Parameter, type: Type) => void;
+}
+
+/** The parameters of `declaration`, their types resolved in its module, its defaults checked. */
 export function declaredParameters(
   checker: CheckerContext,
   module: ModuleId,
   declaration: FunctionDeclaration,
+  defaults: DefaultValues | undefined,
 ): readonly SignatureParameter[] {
+  let afterDefault = false;
   return declaration.parameters.flatMap((node) => {
     if (node.kind === 'Invalid') {
       return [];
     }
-    if (node.isRest || node.defaultValue !== undefined) {
-      checker.unsupported(
-        module,
-        node,
-        node.isRest ? frontier.restParameter : frontier.defaultValue,
-      );
+    if (node.isRest) {
+      checker.unsupported(module, node, frontier.restParameter);
     }
-    const type = node.type === undefined ? errorType : checker.resolveType(module, node.type);
+    const declared = node.type === undefined ? undefined : checker.resolveType(module, node.type);
+    const { defaultValue } = node;
+    if (defaultValue === undefined && afterDefault && !node.isRest) {
+      checker.report(module, checkerDiagnostics.defaultMissing(node.name.span, node.name.text));
+    }
+    afterDefault ||= defaultValue !== undefined;
+    const valueType =
+      defaultValue === undefined || defaults === undefined
+        ? undefined
+        : defaults.check(defaultValue, declared);
+    const type = declared ?? valueType ?? errorType;
+    defaults?.declare(node, type);
     if (declaration.body !== undefined) {
       refuseHeldFuture(checker, module, node, type);
     }

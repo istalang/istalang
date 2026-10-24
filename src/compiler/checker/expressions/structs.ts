@@ -1,131 +1,159 @@
 /**
  * Building structs and reading their fields (§3.1).
  *
- * A struct literal names its type and gives every field exactly once, each value fitting the
- * field's type. Reading `s.f` gives the field's type, substituted for the struct's type arguments.
+ * A struct literal names its type; the literal's fields are checked by the path variants share
+ * (literal-fields.ts), so a generic struct's type arguments are written, expected or inferred
+ * alike. A literal naming a variant builds that variant (variants.ts). Reading `s.f` gives the
+ * field's type, substituted for the struct's type arguments; through a type parameter, a field a
+ * constraint requires (§3.10).
  *
- * The other literal forms (shorthand, positional, spread, `struct{…}`), generic literals whose
- * arguments would be inferred, and enum variants are reported as not supported until the features
- * that add them. A member that isn't a field, such as a method, is reported as unknown.
+ * `struct{…}` literals are reported as not supported until the feature that adds them. A member
+ * that isn't a field, such as a method, is reported as unknown.
  */
 
 import type { MemberAccess, StructLiteral } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { FieldMember } from '../check.ts';
 import type { BodyContext } from '../context.ts';
+import { typeArgumentsFor } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { staticCandidates } from '../overloads/candidates.ts';
+import { staticTargetOf } from '../traits/conformance.ts';
+import { requiredFields, requiredFieldType } from '../traits/constraints.ts';
+import { errorType, type NominalType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { checkLiteralFields } from './literal-fields.ts';
 import { entityValueType } from './names.ts';
+import { checkVariantLiteral, checkVariantName, namedType } from './variants.ts';
 
-export function checkStructLiteral(context: BodyContext, node: StructLiteral): Type {
+export function checkStructLiteral(
+  context: BodyContext,
+  node: StructLiteral,
+  expected: Type | undefined,
+): Type {
   const typeNode = node.type;
   if (typeNode === undefined) {
     return context.unsupported(node, frontier.anonymousStructLiteral);
   }
-  const type = literalType(context, node, typeNode);
-  if (type.kind === 'error') {
-    return type;
+  const name = lastName(typeNode.path);
+  const entity = context.entityOf(name);
+  if (entity?.kind === 'variant' || entity?.kind === 'variants') {
+    return checkVariantLiteral(context, node, entity, expected);
   }
-  const fields = type.kind === 'nominal' ? context.checker.fieldsOf(type) : undefined;
-  if (fields === undefined) {
-    const name = lastName(typeNode.path);
+  if (entity === undefined) {
+    return errorType;
+  }
+  const declaration =
+    entity.kind === 'type' && entity.declaration.kind === 'StructDeclaration'
+      ? entity.declaration
+      : undefined;
+  if (declaration === undefined) {
     context.report(checkerDiagnostics.notStruct(typeNode.span, name.text));
     return errorType;
   }
-  const given = new Set<string>();
-  for (const item of node.items) {
-    checkItem(context, item, { type, fields, given });
-  }
-  for (const field of fields.filter((candidate) => !given.has(candidate.name))) {
-    context.report(checkerDiagnostics.missingField(typeNode.span, typeText(type), field.name));
-  }
-  return type;
+  const typeEntity = entity as NominalType['entity'];
+  return checkLiteralFields(
+    context,
+    node,
+    {
+      owner: declaration,
+      fields: context.checker.declaredFieldsOf(declaration),
+      typeOf: (typeArguments) => ({
+        kind: 'nominal',
+        entity: typeEntity,
+        arguments: typeArguments,
+      }),
+    },
+    knownArguments(context, typeNode, declaration, expected),
+  );
 }
 
-/** The type a literal names: a nominal type, or the error type after a report. */
-function literalType(context: BodyContext, node: StructLiteral, typeNode: NamedType): Type {
-  const entity = context.entityOf(lastName(typeNode.path));
-  if (entity?.kind === 'variant' || entity?.kind === 'variants') {
-    return context.unsupported(node, frontier.enumVariant);
-  }
-  const declaration = entity?.kind === 'type' ? entity.declaration : undefined;
-  if (
-    declaration?.kind === 'StructDeclaration' &&
-    declaration.typeParameters.length > typeNode.typeArguments.length
-  ) {
-    return context.unsupported(node, frontier.typeArgumentInference);
-  }
-  return context.resolveType(typeNode);
-}
-
-interface LiteralFields {
-  readonly type: Type;
-  readonly fields: readonly FieldMember[];
-  /** The fields given so far, so a repeat is caught. */
-  readonly given: Set<string>;
-}
-
-/** Checks one item of a literal against the struct's fields. */
-function checkItem(
+/** The type arguments a struct literal is given: written, or those of the expected type. */
+function knownArguments(
   context: BodyContext,
-  item: StructLiteral['items'][number],
-  literal: LiteralFields,
-): void {
-  if (item.kind === 'Invalid') {
-    return;
+  typeNode: NamedType,
+  declaration: NominalType['entity']['declaration'],
+  expected: Type | undefined,
+): readonly Type[] | undefined {
+  if (typeNode.typeArguments.length > 0) {
+    const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
+    return typeArgumentsFor(context.checker, context.module, {
+      at: typeNode.span,
+      declaration,
+      types: written,
+    });
   }
-  if (item.kind !== 'FieldInitializer' || item.value === undefined) {
-    context.unsupported(
-      item,
-      item.kind === 'FieldInitializer' ? frontier.shorthandField : undefined,
-    );
-    return;
-  }
-  const { type, fields, given } = literal;
-  const field = fields.find((candidate) => candidate.name === item.name.text);
-  if (field === undefined || given.has(field.name)) {
-    context.report(
-      field === undefined
-        ? checkerDiagnostics.unknownField(item.name.span, typeText(type), item.name.text)
-        : checkerDiagnostics.repeatedField(item.name.span, field.name),
-    );
-    context.expression(item.value);
-    return;
-  }
-  given.add(field.name);
-  context.expect(item.value, field.type);
+  return expected?.kind === 'nominal' && expected.entity.declaration === declaration
+    ? expected.arguments
+    : undefined;
 }
 
-export function checkMemberAccess(context: BodyContext, node: MemberAccess): Type {
+export function checkMemberAccess(
+  context: BodyContext,
+  node: MemberAccess,
+  expected: Type | undefined,
+): Type {
   if (node.isOptional) {
     return context.unsupported(node, frontier.optionalChaining);
   }
   const qualified = context.entityOf(node.member);
-  if (qualified !== undefined) {
-    return entityValueType(context, node.member, qualified);
+  if (qualified?.kind === 'variant') {
+    return checkVariantName(context, node, qualified, expected);
   }
-  if (node.target.kind === 'Identifier') {
-    const target = context.entityOf(node.target);
-    if (target?.kind === 'type' || target?.kind === 'primitive') {
-      return context.unsupported(node, frontier.staticMember);
-    }
+  if (qualified !== undefined) {
+    return entityValueType(context, node.member, qualified, expected);
+  }
+  const owner = namedType(context, node.target);
+  if (owner !== undefined) {
+    return staticMember(context, node, owner);
   }
   const type = context.expression(node.target);
   if (type.kind === 'error') {
     return errorType;
   }
-  const field =
-    type.kind === 'nominal'
-      ? context.checker.fieldsOf(type)?.find((candidate) => candidate.name === node.member.text)
-      : undefined;
+  const field = fieldOf(context, type, node.member.text);
   if (field === undefined) {
     context.report(
       checkerDiagnostics.unknownField(node.member.span, typeText(type), node.member.text),
     );
     return errorType;
   }
-  return field.type;
+  return field;
+}
+
+/**
+ * A static function named as a value through its type, which function values add; a name its
+ * type has no static function of is reported here.
+ */
+function staticMember(context: BodyContext, node: MemberAccess, owner: Type): Type {
+  const { checker, module } = context;
+  const target = staticTargetOf(checker, owner);
+  const found =
+    target !== undefined && staticCandidates(checker, module, target, node.member.text).length > 0;
+  if (!found) {
+    context.report(
+      checkerDiagnostics.noStaticFunction(node.member.span, typeText(owner), node.member.text),
+    );
+    return errorType;
+  }
+  return context.unsupported(node, frontier.staticMember);
+}
+
+/** The type of the field `name` of `type`, through a constraint for a type parameter. */
+function fieldOf(context: BodyContext, type: Type, name: string): Type | undefined {
+  const { checker } = context;
+  if (type.kind === 'nominal') {
+    return checker.fieldsOf(type)?.find((candidate) => candidate.name === name)?.type;
+  }
+  if (type.kind !== 'parameter' || type.declaration.kind !== 'TypeParameter') {
+    return undefined;
+  }
+  for (const constraint of checker.constraintsOf(type.declaration)) {
+    const field = requiredFields(constraint.trait).find((each) => each.name.text === name);
+    if (field !== undefined) {
+      return requiredFieldType(checker, constraint, field, type);
+    }
+  }
+  return undefined;
 }

@@ -1,0 +1,8 @@
+# outcome: 1000
+# An operator on a type finds its function in the module declaring the type, though nothing
+# imports it by name (§3.13): `+` on a Time and a Duration finds `time`'s `add`.
+import * as time from 'time'
+
+async fn main() -> Future<int>:
+  const start = time.now()
+  (start + 1s).value - start.value

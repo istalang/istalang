@@ -1,0 +1,28 @@
+# error: 5013 at 17:28
+# error: 5016 at 18:32
+# error: 5101 at 26:13
+# error: 5101 at 27:13
+# A generic body is checked once, against its constraints only (§3.5): `T` has no `cents`, and no
+# `<`. A type meets its constraints' fields and generic requirements exactly (§3.10).
+
+struct Money { cents: int }
+struct Cheap { price: float }
+
+trait Priced:
+  cents: int
+
+trait Mapper:
+  fn conv<U>(self: Self, x: U) -> U
+
+fn bare<T>(t: T) -> int: t.cents
+fn cmp<T>(a: T, b: T) -> bool: a < b
+fn eq<T>(a: T, b: T) -> bool: a == b
+fn price<T is Priced>(t: T) -> int: t.cents
+fn use<T is Mapper>(t: T) -> int: 1
+fn conv(self: Money, x: int) -> int: x
+fn conv<V>(self: Cheap, x: V) -> V: x
+
+async fn main():
+  const a = price(Cheap{price: 1.0})
+  const b = use(Money{cents: 1})
+  const c = use(Cheap{price: 1.0})

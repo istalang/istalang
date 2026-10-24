@@ -31,6 +31,8 @@ export const wellKnown = {
   duration: { module: 'time', name: 'Duration' },
   /** A point in time, which the host boundary writes as ISO 8601 (§9). */
   time: { module: 'time', name: 'Time' },
+  /** The marker trait of values that may leave an instance, derived rather than declared (§3.1). */
+  sendable: { module: 'prelude', name: 'Sendable' },
 } as const satisfies Record<string, WellKnownDeclaration>;
 
 /** A well-known declaration's module-qualified name, as a Definition spells it: `prelude.Shared`. */
@@ -40,6 +42,16 @@ export function qualifiedName({ module, name }: WellKnownDeclaration): string {
 
 /** The function `Disposable` requires (§3.10, §7). */
 export const disposeFunction = 'dispose';
+
+/** The variants of `Optional` (§3.11): what a value is wrapped in, and what `none` is. */
+export const optionalVariants = { some: 'Some', none: 'None' } as const;
+
+/** The static function a conversion `T(x)` calls (§3.10). */
+export const conversionFunction = 'from';
+
+/** The functions `x$` and `x$ = v` call (§3.9). */
+export const unwrapFunction = 'unwrap';
+export const rewrapFunction = 'rewrap';
 
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';

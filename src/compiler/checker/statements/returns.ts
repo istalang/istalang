@@ -9,7 +9,7 @@
 
 import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions.ts';
-import { type Block, tailNodeOf } from '../../syntax/statements.ts';
+import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { agreedType, type Produced } from '../rules/agreement.ts';
 import { type Type, unitType } from '../types/type.ts';
@@ -30,26 +30,28 @@ export class ReturnScope {
       if (expected !== undefined) {
         context.fit(unitType, expected, span);
       }
-      this.#returned.push({ type: unitType, span });
+      this.#returned.push({ type: unitType, span, node: undefined });
       return;
     }
     const type = context.expect(value, expected);
-    this.#returned.push({ type, span: value.span });
+    this.#returned.push({ type, span: value.span, node: value });
   }
 
   /** What `body` produces, given its tail's type, once every `return` in it has been checked. */
   result(context: BodyContext, body: Block, tail: Type): Type {
     const at = tailNodeOf(body).span;
+    const node = tailExpressionOf(body);
     if (this.declared !== undefined) {
-      context.fit(tail, this.declared, at);
+      context.fit(tail, this.declared, node ?? at);
       return this.declared;
     }
-    const { decided, disagreeing } = agreedType([...this.#returned, { type: tail, span: at }]);
+    const produced = [...this.#returned, { type: tail, span: at, node }];
+    const { decided, disagreeing } = agreedType(produced, context.checker.wrapsToFit);
     if (decided === undefined) {
       return tail;
     }
-    for (const { type, span } of disagreeing) {
-      context.fit(type, decided, span);
+    for (const { type, span, node: value } of disagreeing) {
+      context.fit(type, decided, value ?? span);
     }
     return decided;
   }

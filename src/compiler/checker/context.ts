@@ -13,6 +13,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { PrimitiveName } from '../../language/primitives.ts';
 import type { WellKnownDeclaration } from '../../language/well-known.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
@@ -21,6 +22,8 @@ import type {
   EnumDeclaration,
   FunctionDeclaration,
   StructDeclaration,
+  TypeAliasDeclaration,
+  TypeParameter,
 } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
@@ -31,7 +34,9 @@ import type { FrontierConstruct } from './frontier.ts';
 import type { LoopScope } from './statements/loops.ts';
 import type { ReturnScope } from './statements/returns.ts';
 import type { VariableScope } from './statements/variables.ts';
-import type { Type } from './types/type.ts';
+import type { Constraint } from './traits/constraints.ts';
+import type { OptionalEntity } from './types/fit.ts';
+import type { NominalType, Substitution, Type } from './types/type.ts';
 
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
@@ -56,9 +61,36 @@ export interface CheckerContext extends Checker {
     declaration: WellKnownDeclaration,
     typeArguments?: readonly Type[],
   ) => Type | undefined;
-  /** The prelude's functions of `name`, for the operators on primitives (§3.9). */
+  /** The prelude's functions of `name`. */
   readonly preludeFunctions: (name: string) => readonly FunctionDeclaration[];
+  /** The prelude's `Optional`, which the implicit wrap fills (§2); undefined without a prelude. */
+  readonly optionalEntity: OptionalEntity;
+  /** How many wraps into `Some` make `found` fit `expected`; undefined when nothing does (§2). */
+  readonly wrapsToFit: (found: Type, expected: Type) => number | undefined;
+  /** The constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
+  readonly constraintsOf: (parameter: TypeParameter) => readonly Constraint[];
+  /** The static functions declared on `owner` in `module` (§3.7). */
+  readonly staticFunctionsIn: (
+    module: ModuleId,
+    owner: StaticOwner,
+  ) => readonly FunctionDeclaration[];
+  /** The type an alias stands for, its own type parameters left open (§3.17). */
+  readonly aliasedType: (alias: TypeAliasDeclaration) => Type;
+  /**
+   * Notes that the argument `typeArguments` gives `parameter` at `at` in `module` must meet the
+   * parameter's constraints (§3.5), which may name the declaration's other parameters. Types resolve while signatures are still being resolved, and meeting a
+   * constraint looks at signatures, so the check runs once the module's declarations are checked.
+   */
+  readonly constrainLater: (
+    module: ModuleId,
+    at: Span,
+    parameter: TypeParameter,
+    typeArguments: Substitution,
+  ) => void;
 }
+
+/** What a static function is declared on: a declared type, or a primitive by name (§3.7). */
+export type StaticOwner = NominalType['entity']['declaration'] | PrimitiveName;
 
 export interface BodyContext {
   readonly checker: CheckerContext;
@@ -67,8 +99,11 @@ export interface BodyContext {
   readonly expression: (node: Expression, expected?: Type) => Type;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
-  /** Reports at `at` when `found`, a type already checked, doesn't fit `expected`. */
-  readonly fit: (found: Type, expected: Type, at: Span) => void;
+  /**
+   * Reports at `at` when `found`, a type already checked, doesn't fit `expected`. When the value is
+   * an expression that fits by the implicit wrap into `T?` (§2), records the wrap for lowering.
+   */
+  readonly fit: (found: Type, expected: Type, at: Expression | Span) => void;
   /** Checks a block in its own scope; its type is that of its last expression (§4). */
   readonly block: (node: Block, expected?: Type) => Type;
   /** Checks a block run only for its effects, such as a loop's body, discarding every value. */

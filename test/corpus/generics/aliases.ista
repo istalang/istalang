@@ -1,0 +1,17 @@
+# outcome: "250 x 3"
+# An alias is the type it names, and may be generic (§3.17).
+
+struct Pair<A, B>:
+  first: A
+  second: B
+
+type Cents = int
+type Labeled<T> = Pair<string, T>
+
+fn label<T>(name: string, value: T) -> Labeled<T>:
+  Pair{first: name, second: value}
+
+async fn main() -> Future<string>:
+  const price: Cents = 250
+  const tagged = label("x", 3)
+  string(price) + " " + tagged.first + " " + string(tagged.second)

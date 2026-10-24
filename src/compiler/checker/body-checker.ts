@@ -5,8 +5,9 @@
  * - Types flow both ways: a handler receives the type its context expects (bidirectional
  *   inference), and reports against it only where the spec says a value must fit (`expect`, or
  *   `fit` for a type already checked). Every type mismatch is reported through `fit`.
- * - What lowering needs is recorded as checking goes: every expression's type and every call's
- *   target. Nothing is recomputed later, so lowering sees exactly what was checked.
+ * - What lowering needs is recorded as checking goes: every expression's type, every call's
+ *   target, and every value's implicit wraps into `T?` (§2), which `fit` finds. Nothing is
+ *   recomputed later, so lowering sees exactly what was checked.
  * - The facts the body's rules gather (variables, the result, loops) are units of their own,
  *   beside those rules; this class only composes them.
  */
@@ -31,7 +32,7 @@ import { LoopScope } from './statements/loops.ts';
 import { ReturnScope } from './statements/returns.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
-import { errorType, isAssignable, type Type } from './types/type.ts';
+import { errorType, type Type, unitType } from './types/type.ts';
 import { typeText } from './types/type-text.ts';
 
 /** What a body is checked as: a function's, async or not, and what it must produce, if declared. */
@@ -49,6 +50,7 @@ export class BodyChecker implements BodyContext {
   readonly loops = new LoopScope();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
+  readonly #wraps = new Map<Expression, number>();
   /** The expressions and statements being checked, innermost last: what receives each value. */
   readonly #within: NodeOf<string>[] = [];
 
@@ -68,6 +70,11 @@ export class BodyChecker implements BodyContext {
     const result = this.returns.result(this, body, tail);
     this.variables.warnUnreassigned(this);
     return this.#checked(result);
+  }
+
+  /** What checking a function's default values found (signatures.ts), once they are all checked. */
+  defaults(): CheckedBody {
+    return this.#checked(unitType);
   }
 
   /** Checks a value of its own, such as a constant's initializer, against the declared result. */
@@ -92,14 +99,19 @@ export class BodyChecker implements BodyContext {
   expect(node: Expression, expected: Type | undefined): Type {
     const type = this.expression(node, expected);
     if (expected !== undefined) {
-      this.fit(type, expected, node.span);
+      this.fit(type, expected, node);
     }
     return type;
   }
 
-  fit(found: Type, expected: Type, at: Span): void {
-    if (!isAssignable(found, expected)) {
-      this.report(checkerDiagnostics.typeMismatch(at, typeText(expected), typeText(found)));
+  fit(found: Type, expected: Type, at: Expression | Span): void {
+    const wraps = this.checker.wrapsToFit(found, expected);
+    const isNode = 'kind' in at;
+    if (wraps === undefined || (wraps > 0 && !isNode)) {
+      const span = isNode ? at.span : at;
+      this.report(checkerDiagnostics.typeMismatch(span, typeText(expected), typeText(found)));
+    } else if (wraps > 0 && isNode) {
+      this.#wraps.set(at, wraps);
     }
   }
 
@@ -141,9 +153,11 @@ export class BodyChecker implements BodyContext {
   #checked(result: Type): CheckedBody {
     const types = this.#types;
     const calls = this.#calls;
+    const wraps = this.#wraps;
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
-      callOf: (site) => calls.get(site),
+      calls,
+      wrapsOf: (expression) => wraps.get(expression) ?? 0,
       result,
     };
   }

@@ -1,0 +1,25 @@
+# error: 5106 at 11:6
+# error: 5106 at 12:6
+# error: 5113 at 14:22
+# error: 5111 at 21:3
+# error: 5103 at 24:13
+# error: 5110 at 25:3
+# Aliases can't refer to themselves (§3.17), a parameter after a default needs one too (§3.3),
+# instantiation must end (§3.5), a called name must name a function, and only the runtime calls
+# `dispose` (§7).
+
+type First = Second
+type Second = First
+
+fn window(start = 0, end: int) -> int:
+  end
+
+struct Box<T>:
+  value: T
+
+fn nest<T>(value: T) -> int:
+  nest(Box{value: value})
+
+async fn main():
+  const n = nowhere(1)
+  dispose(Slot.create<int>())

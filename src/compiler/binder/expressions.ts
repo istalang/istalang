@@ -44,7 +44,11 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   Index: (binder, node, scope) => bindAll(binder, [node.target, node.index], scope),
   Range: (binder, node, scope) => bindAll(binder, [node.start, node.end], scope),
   Call: (binder, node, scope) => {
-    bindExpression(binder, node.callee, scope);
+    if (node.callee.kind === 'Identifier') {
+      binder.use(node.callee, scope, 'callee');
+    } else {
+      bindExpression(binder, node.callee, scope);
+    }
     for (const argument of node.typeArguments) {
       binder.walk.type(binder, argument, scope);
     }

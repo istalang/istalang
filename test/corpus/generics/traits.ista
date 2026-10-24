@@ -1,0 +1,54 @@
+# outcome: "6 30 7 cents 30"
+# Generic code calls what its constraints require (§3.10): an operator, a static function through
+# the type parameter, a field, and a function generic in its own right. Each instantiation calls
+# what the type it is made for has. A struct of sendable fields is Sendable without saying so
+# (§3.1).
+
+struct Money:
+  cents: int
+
+struct Pair<A, B>:
+  first: A
+  second: B
+
+struct Envelope<T is Sendable>:
+  value: T
+
+trait Monoid:
+  fn Self.zero() -> Self
+  fn add(left: Self, right: Self) -> Self
+
+trait Priced:
+  cents: int
+
+trait Pairable:
+  fn pairWith<U>(self: Self, other: U) -> Pair<Self, U>
+
+fn int.zero() -> int:
+  0
+
+fn Money.zero() -> Money:
+  Money{cents: 0}
+
+fn add(left: Money, right: Money) -> Money:
+  Money{cents: left.cents + right.cents}
+
+fn pairWith<U>(self: Money, other: U) -> Pair<Money, U>:
+  Pair{first: self, second: other}
+
+fn sum3<T is Monoid>(a: T, b: T, c: T) -> T:
+  let total = T.zero()
+  total = total + a
+  total = total + b
+  total + c
+
+fn priceOf<T is Priced>(item: T) -> int:
+  item.cents
+
+fn tagged<T is Pairable>(item: T) -> Pair<T, string>:
+  pairWith(item, "cents")
+
+async fn main() -> Future<string>:
+  const money = sum3(Money{cents: 5}, Money{cents: 10}, Money{cents: 15})
+  const sealed: Envelope<Pair<Money, int>> = Envelope{value: Pair{first: money, second: 1}}
+  string(sum3(1, 2, 3)) + " " + string(money.cents) + " " + string(priceOf(Money{cents: 7})) + " " + tagged(money).second + " " + string(sealed.value.first.cents)

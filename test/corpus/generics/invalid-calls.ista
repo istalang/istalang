@@ -1,0 +1,27 @@
+# error: 5020 at 23:13
+# error: 5002 at 24:13
+# error: 5100 at 25:13
+# error: 5002 at 26:13
+# error: 5103 at 27:13
+# Written type arguments must fit the function's type parameters, and choose only among generic
+# functions (§3.5, §3.7); two arguments can't give one type parameter types that disagree (§3.5);
+# a call through a namespace looks only in that module (§3.13); `x$` needs an `unwrap` (§3.9).
+import * as time from 'time'
+
+struct Money { cents: int }
+
+fn add(left: Money, right: Money) -> Money:
+  Money{cents: left.cents + right.cents}
+
+fn identity<T>(value: T) -> T:
+  value
+
+fn same<T>(first: T, second: T) -> T:
+  first
+
+async fn main():
+  const a = identity<int, string>(1)
+  const b = add<int>(Money{cents: 1}, Money{cents: 2})
+  const c = same(1, "x")
+  const d = time.add(Money{cents: 1}, Money{cents: 2})
+  const e = Money{cents: 1}$

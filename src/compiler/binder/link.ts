@@ -8,7 +8,9 @@
  *   name, as a module's `fn add(left: Time, right: Duration)` joins the prelude's `add(int, float)`
  *   (§3.9).
  * - A name still free after the prelude may be a variant that only the expected type identifies,
- *   if some enum of the program has a variant by that name; otherwise it is reported with the
+ *   if some enum of the program has a variant by that name. A called name may name functions only
+ *   argument-dependent lookup finds (§3.13), so it denotes a function set with no overloads of its
+ *   own, and the checker reports it when lookup finds none. Anything else is reported with the
  *   reason its scopes noted, or as undeclared.
  * - A qualified name walks through modules and enums part by part, and stops at the first part
  *   that is neither: what follows is a member, the checker's to resolve. In an expression, a part
@@ -58,6 +60,7 @@ export function link(program: Program): Bindings {
     moduleOf: (entity) => linker.moduleOf(entity),
     overloadsOf: (functions) => linker.overloadsOf(functions),
     candidatesOf: ({ name }) => linker.variantsNamed(name),
+    topLevelNamed: (module, name) => linker.topLevelNamed(module, name),
     diagnosticsOf: (module) => linker.diagnosticsOf(module),
   };
 }
@@ -70,6 +73,8 @@ class Linker {
   readonly #variantsByName = new Map<string, VariantEntity[]>();
   readonly #variantsOfEnum = new Map<EnumDeclaration, ReadonlyMap<string, VariantEntity>>();
   readonly #overloads = new Map<FunctionsEntity, readonly FunctionDeclaration[]>();
+  /** Per module, the empty function set each called name no scope defines denotes. */
+  readonly #unseenFunctions = new Map<ModuleId, Map<string, FunctionsEntity>>();
 
   constructor(program: Program) {
     this.#program = program;
@@ -96,6 +101,14 @@ class Linker {
     return links === undefined
       ? undefined
       : (links.resolved.get(name) ?? resolvedImport(links, links.local.entities.get(name)));
+  }
+
+  /** What `name` denotes at the top level of `module`: its own name or import, or the prelude's. */
+  topLevelNamed(module: ModuleId, name: string): Entity | undefined {
+    const links = this.#links.get(module);
+    const own = links?.local.topLevel.get(name)?.entity;
+    const linked = links === undefined ? undefined : resolvedImport(links, own);
+    return linked ?? this.#preludeFor(module)?.exports.get(name);
   }
 
   moduleOf(entity: Entity): ModuleId | undefined {
@@ -211,7 +224,9 @@ class Linker {
   #resolveFree(id: ModuleId, links: ModuleLinks, { name, role, miss, variants }: FreeName): void {
     const isVariant = variants !== undefined && this.variantsNamed(name.text).length > 0;
     const entity =
-      this.#preludeFor(id)?.exports.get(name.text) ?? (isVariant ? variants : undefined);
+      this.#preludeFor(id)?.exports.get(name.text) ??
+      (isVariant ? variants : undefined) ??
+      (role === 'callee' && miss === undefined ? this.#unseenFunction(id, name.text) : undefined);
     if (entity !== undefined) {
       links.resolved.set(name, entity);
       return;
@@ -228,6 +243,15 @@ class Linker {
     links.diagnostics.push(
       (miss === undefined ? unexplained : explained[miss])(name.span, name.text),
     );
+  }
+
+  #unseenFunction(id: ModuleId, name: string): FunctionsEntity {
+    const ofModule = memo(this.#unseenFunctions, id, () => new Map<string, FunctionsEntity>());
+    return memo(ofModule, name, () => {
+      const entity: FunctionsEntity = { kind: 'functions', name, overloads: [] };
+      this.#owners.set(entity, id);
+      return entity;
+    });
   }
 
   #resolvePath(id: ModuleId, links: ModuleLinks, { parts, inExpression }: QualifiedPath): void {

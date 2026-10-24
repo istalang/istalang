@@ -1,5 +1,5 @@
 /**
- * `ista run` end to end. Every program of test/corpus/run (run-programs.ts) runs through the CLI
+ * `ista run` end to end. Every runnable corpus program (test/corpus/programs.ts) runs through the CLI
  * in-process and must have the outcome it states, so the whole pipeline (checker, lowering,
  * runtime, boundary) is what's tested, on real time. With a store, a run killed while it waits is
  * continued by a later `--resume`, in a process of its own.
@@ -10,7 +10,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { describe, expect, it, vi } from 'vitest';
-import { runCorpusDirectory as corpus, runPrograms } from '../../../test/corpus/run-programs.ts';
+import { corpusDirectory as corpus, runPrograms } from '../../../test/corpus/programs.ts';
 import { subsetOutcome, subsetSource } from '../../../test/definitions/subset.ts';
 import { builtCli, ista, tempProject as project } from '../cli.test-kit.ts';
 

@@ -6,7 +6,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { brokenText } from '../../../test/broken.ts';
-import { runPrograms } from '../../../test/corpus/run-programs.ts';
+import { runPrograms } from '../../../test/corpus/programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import { definitionFormat } from '../../definition/definition.ts';
@@ -33,6 +33,31 @@ function externKeys(program: Program, key: string): readonly string[] {
     item.kind === 'FunctionDeclaration' && item.isExtern ? [externKeyOf(checker, item)] : [],
   );
 }
+
+describe('function-table names', () => {
+  it("spell an instance's type arguments as keys do, and a defaults entry's arity", () => {
+    const program = stdProgramOf({
+      main: [
+        "import * as a from 'a'",
+        "import * as b from 'b'",
+        'fn show<T>(value: T, times: int = 1) -> int: times',
+        'async fn main() -> Future<int>:',
+        '  show(a.Money{cents: 1}) + show(b.Money{cents: 2}, 2) + show<int?>(none)',
+      ].join('\n'),
+      a: 'struct Money { cents: int }',
+      b: 'struct Money { cents: int }',
+    });
+    const names = compiledDefinition(program, 'main').functions.map(({ name }) => name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'main.show<a.Money>/1',
+        'main.show<a.Money>',
+        'main.show<b.Money>',
+        'main.show<prelude.Optional<int>>/1',
+      ]),
+    );
+  });
+});
 
 describe('extern keys', () => {
   it('spell declared types module-qualified, without sugar, references and parameters kept', () => {

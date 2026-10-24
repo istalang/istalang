@@ -1,0 +1,9 @@
+# outcome: "1 2 1"
+# `none` fits only an optional parameter (§3.11), so it picks `g(int?)` over `g(string)`; and a
+# `T` fits a `T?` (§3.5), so `g(1)` still reaches the optional one.
+
+fn g(x: int?) -> int: 1
+fn g(x: string) -> int: 2
+
+async fn main() -> Future<string>:
+  string(g(none)) + " " + string(g("a")) + " " + string(g(1))

@@ -7,7 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { brokenText } from '../../../test/broken.ts';
-import { runPrograms } from '../../../test/corpus/run-programs.ts';
+import { runPrograms } from '../../../test/corpus/programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import {

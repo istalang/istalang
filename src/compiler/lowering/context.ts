@@ -9,11 +9,11 @@
  * feature adds a unit, not methods here.
  */
 
-import type { Register } from '../../definition/operands.ts';
+import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
-import type { CheckedBody, Checker } from '../checker/check.ts';
+import type { CallSite, CheckedBody, Checker } from '../checker/check.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
@@ -34,6 +34,8 @@ export interface FunctionContext {
   readonly block: (node: Block) => Register;
   readonly statement: (node: Statement | Invalid) => void;
   readonly entityOf: (name: Identifier) => Entity | undefined;
+  /** The function-table entry the call at `site` targets. */
+  readonly calleeIndex: (site: CallSite) => FunctionId;
   /** A fresh register holding the constant `value`. */
   readonly constant: (value: Value, span: Span) => Register;
   /** The function's code: registers, instructions and labels. */

@@ -39,6 +39,14 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
       fields: instruction.fields.map((register) => readRegister(frame, register)),
     });
   },
+  variant: (_machine, instruction, frame) => {
+    next(frame, instruction.dst, {
+      kind: 'variant',
+      type: instruction.type,
+      variant: instruction.variant,
+      fields: instruction.fields.map((register) => readRegister(frame, register)),
+    });
+  },
   field: (_machine, instruction, frame) => {
     const composite = readRegister(frame, instruction.src);
     const value = isComposite(composite) ? childValues(composite)[instruction.index] : undefined;
@@ -83,7 +91,6 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     machine.call(frame, instruction.callee.function, instruction.arguments);
   },
   tuple: notRunYet,
-  variant: notRunYet,
   store: notRunYet,
   array: notRunYet,
   map: notRunYet,

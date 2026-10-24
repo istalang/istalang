@@ -2,8 +2,8 @@
 #
 # `at` is the runtime's only time primitive and `now` its only clock, both read in the instance's
 # segment (now() is the segment's start time, §5). Everything else is code over them, so mocking
-# `now` and `at` controls all time (§10). `delay` builds its instant field by field: operators on
-# Time and Duration arrive with operator overloading.
+# `now` and `at` controls all time (§10). The operators on Time and Duration are declared here, so
+# argument-dependent lookup finds them wherever the types are used (§3.13).
 
 struct Duration:
   value: int
@@ -15,5 +15,11 @@ extern fn now() -> Time
 
 extern fn at(time: Time) -> Future<unit>
 
+fn add(left: Time, right: Duration) -> Time:
+  Time{value: left.value + right.value}
+
+fn add(left: Duration, right: Duration) -> Duration:
+  Duration{value: left.value + right.value}
+
 fn delay(duration: Duration) -> Future<unit>:
-  at(Time{value: now().value + duration.value})
+  at(now() + duration)

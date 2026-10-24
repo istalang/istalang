@@ -1,9 +1,10 @@
 /**
  * The tables a Definition is assembled from, each entry made once (docs/arch/definition.md).
  *
- * - Functions are numbered when first referenced and lowered afterwards from a worklist, so a call
- *   can name a function that isn't lowered yet, including itself. Only what `main` reaches is
- *   lowered: generics are compiled per instantiation (§3.5), which only reachability can enumerate.
+ * - Function instances (instances.ts) are numbered when first referenced and lowered afterwards
+ *   from a worklist, so a call can name one that isn't lowered yet, including itself. Only what
+ *   `main` reaches is lowered: generics are compiled per instantiation (§3.5), which only
+ *   reachability can enumerate.
  * - Types and constants are interned: one entry per distinct type or value, a value's identity
  *   being its persisted text. A nominal type's identity is its declaration's entity plus its
  *   arguments, as in the checker (types/type.ts).
@@ -25,7 +26,7 @@ import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker, FieldMember } from '../checker/check.ts';
 import type { NominalType, Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import { type FunctionInstance, instanceKey, instanceName } from './instances.ts';
 import { loadedModule, qualifiedNameOf } from './names.ts';
 
 export class DefinitionTables {
@@ -38,8 +39,8 @@ export class DefinitionTables {
   readonly #constants: Value[] = [];
   readonly #constantIndexes = new Map<string, number>();
   readonly #functions: (FunctionDefinition | undefined)[] = [];
-  readonly #functionIndexes = new Map<FunctionDeclaration, FunctionId>();
-  readonly #pending: FunctionDeclaration[] = [];
+  readonly #functionIndexes = new Map<string, FunctionId>();
+  readonly #pending: FunctionInstance[] = [];
 
   constructor(checker: Checker) {
     this.#checker = checker;
@@ -61,31 +62,30 @@ export class DefinitionTables {
     return memo(this.#constantIndexes, key, () => this.#constants.push(contents) - 1);
   }
 
-  /** What every function-table entry for `declaration` starts with: its name and where it is. */
-  entryHeader(declaration: FunctionDeclaration) {
+  /** What every function-table entry for `instance` starts with: its name and where it is. */
+  entryHeader(instance: FunctionInstance) {
+    const { declaration } = instance;
     const module = this.#checker.moduleOf(declaration);
     return {
-      name: qualifiedNameOf(this.#checker, declaration),
+      name: instanceName(this.#checker, instance),
       module: this.moduleIndex(module),
       span: declaration.name.span,
       annotations: [],
     };
   }
 
-  /** The index `declaration` is called by; it is lowered later, from the worklist. */
-  functionIndex(declaration: FunctionDeclaration): FunctionId {
-    return memo(this.#functionIndexes, declaration, () => {
-      this.#pending.push(declaration);
+  /** The index `instance` is called by; it is lowered later, from the worklist. */
+  functionIndex(instance: FunctionInstance): FunctionId {
+    return memo(this.#functionIndexes, instanceKey(instance), () => {
+      this.#pending.push(instance);
       return this.#functions.push(undefined) - 1;
     });
   }
 
-  /** The next referenced function still to be lowered, with its index. */
-  nextPending(): { declaration: FunctionDeclaration; index: FunctionId } | undefined {
-    const declaration = this.#pending.shift();
-    return declaration === undefined
-      ? undefined
-      : { declaration, index: this.functionIndex(declaration) };
+  /** The next referenced instance still to be lowered, with its index. */
+  nextPending(): { instance: FunctionInstance; index: FunctionId } | undefined {
+    const instance = this.#pending.shift();
+    return instance === undefined ? undefined : { instance, index: this.functionIndex(instance) };
   }
 
   define(index: FunctionId, entry: FunctionDefinition): void {

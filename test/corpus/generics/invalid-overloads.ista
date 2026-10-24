@@ -1,0 +1,24 @@
+# error: 5105 at 12:4
+# error: 5105 at 15:4
+# error: 5105 at 18:4
+# error: 5003 at 24:18
+# Overloads that no call could tell apart clash (§3.7): by `T` against `T?`, through a generated
+# default overload, or by `self` taken as a value and as a reference. Two generic functions that
+# both take a call are ambiguous.
+
+struct Point { x: int }
+
+fn f(value: int) -> int: 1
+fn f(value: int?) -> int: 2
+
+fn g(value: int, extra: int = 1) -> int: extra
+fn g(value: int) -> int: value
+
+fn h(self: Point) -> int: 1
+fn h(self: &Point) -> int: 2
+
+fn either<T>(value: T, other: int) -> int: other
+fn either<T>(value: int, other: T) -> int: value
+
+async fn main():
+  const chosen = either(1, 2)
