@@ -20,6 +20,7 @@ import { FormatError } from '../../definition/format.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host.ts';
 import type { InstanceState } from '../../runtime/instance-state.ts';
 import { Refusal } from '../../runtime/refusal.ts';
+import { settle } from '../../runtime/settle.ts';
 import { memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import type { CliEnvironment, CommandDefinition } from '../command.ts';
@@ -63,7 +64,7 @@ async function run(
       options.store === undefined
         ? memoryStore()
         : directoryStore(resolve(environment.cwd, options.store)),
-    now: () => BigInt(Date.now()),
+    now: clock,
   });
   const instance = options.resume;
   if (instance !== undefined) {
@@ -116,35 +117,47 @@ function resume(runtime: Runtime, name: string, environment: CliEnvironment): Pr
   return finish({ runtime, program, name }, runtime.wake(name), environment);
 }
 
-/** An instance the command drives: its name, the runtime that runs it, and its program. */
-interface Driven {
+/** The command's one clock: segment start times, and how long to sleep until a timer is due. */
+function clock(): bigint {
+  return BigInt(Date.now());
+}
+
+/** An instance the command runs: its name, the runtime that runs it, and its program. */
+interface RunningInstance {
   readonly runtime: Runtime;
   readonly program: DeployedProgram;
   readonly name: string;
 }
 
-/** Wakes the instance whenever its next timer is due until it ends; prints how it ended. */
+/** Sleeps until each timer the instance waits on is due and wakes it; prints how it ended. */
 async function finish(
-  { runtime, program, name }: Driven,
+  { runtime, program, name }: RunningInstance,
   initial: InstanceState,
   environment: CliEnvironment,
 ): Promise<number> {
-  let state = initial;
-  while (state.kind === 'waiting') {
-    if (state.until === undefined) {
+  const steps = settle(() => runtime.wake(name), initial);
+  let step = steps.next();
+  while (!step.done) {
+    // biome-ignore lint/performance/noAwaitInLoops: each wake depends on what the last one returned.
+    await sleep(Math.max(0, Number(step.value - clock())));
+    step = steps.next();
+  }
+  const settled = step.value;
+  switch (settled.kind) {
+    case 'stuck':
       environment.writeError(`ista: instance ${name} waits on nothing that can wake it.\n`);
       return 1;
+    case 'panicked':
+      environment.writeError(`panic: ${settled.message}\n${settled.trace}\n`);
+      return 1;
+    case 'finished':
+      environment.write(`${program.json(settled.outcome)}\n`);
+      return 0;
+    default: {
+      const unhandled: never = settled;
+      return unhandled;
     }
-    // biome-ignore lint/performance/noAwaitInLoops: each wake depends on what the last one returned.
-    await sleep(Math.max(0, Number(state.until - BigInt(Date.now()))));
-    state = runtime.wake(name);
   }
-  if (state.kind === 'panicked') {
-    environment.writeError(`panic: ${state.message}\n${state.trace}\n`);
-    return 1;
-  }
-  environment.write(`${program.json(state.value)}\n`);
-  return 0;
 }
 
 /**

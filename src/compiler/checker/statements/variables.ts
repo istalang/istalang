@@ -7,17 +7,54 @@
  *   A parameter is the function's own copy (§3.1), so it may be.
  * - A compound assignment `x += y` is `x = x + y` (§3.9): the operator's function is resolved for
  *   the variable's type and recorded on the assignment, and its result must fit the variable.
+ * - A `let` that nothing reassigns gets a warning once the whole body has been seen (§3.4), so the
+ *   body's VariableScope keeps which ones were.
  */
 
+import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
 import type { Expression } from '../../syntax/expressions.ts';
+import type { Identifier } from '../../syntax/node.ts';
 import type { AssignmentOperator } from '../../syntax/operators.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { type OverloadableOperator, resolveOperator } from '../overloads/operators.ts';
 import { refuseHeldFuture } from '../rules/futures.ts';
-import { errorType, isAssignable, type Type } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
+import { errorType, type Type } from '../types/type.ts';
+
+/** The variables of one body: each one's type by its declaring name, and which were reassigned. */
+export class VariableScope {
+  readonly #types = new Map<Identifier, Type>();
+  readonly #reassigned = new Set<VariableOwner>();
+
+  declare(name: Identifier, type: Type): void {
+    this.#types.set(name, type);
+  }
+
+  typeOf(variable: VariableEntity): Type {
+    return this.#types.get(variable.name) ?? errorType;
+  }
+
+  noteReassigned(owner: VariableOwner): void {
+    this.#reassigned.add(owner);
+  }
+
+  /** §3.4: a `let` never reassigned should be a `const`. */
+  warnUnreassigned(context: BodyContext): void {
+    for (const name of this.#types.keys()) {
+      const entity = context.entityOf(name);
+      const owner = entity?.kind === 'variable' ? entity.owner : undefined;
+      if (
+        owner?.kind === 'VariableDeclaration' &&
+        owner.isMutable &&
+        !this.#reassigned.has(owner) &&
+        name.text !== '_'
+      ) {
+        context.report(checkerDiagnostics.letNeverReassigned(name.span, name.text));
+      }
+    }
+  }
+}
 
 export function checkVariableDeclaration(context: BodyContext, node: VariableDeclaration): void {
   const [target, ...more] = node.targets;
@@ -34,7 +71,7 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
       ? context.expression(node.initializer)
       : context.expect(node.initializer, declared);
   refuseHeldFuture(context.checker, context.module, node.initializer, declared ?? initial);
-  context.declareVariable(target, declared ?? initial);
+  context.variables.declare(target, declared ?? initial);
 }
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
@@ -57,11 +94,7 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
     variable,
     operand,
   ]);
-  if (!isAssignable(result, variable)) {
-    context.report(
-      checkerDiagnostics.typeMismatch(node.value.span, typeText(variable), typeText(result)),
-    );
-  }
+  context.fit(result, variable, node.value.span);
 }
 
 /**
@@ -91,8 +124,8 @@ function assignedVariable(context: BodyContext, target: Expression): Type | unde
     context.report(checkerDiagnostics.constReassigned(target.span, target.text));
     return errorType;
   }
-  context.noteReassigned(owner);
-  return context.variableType(entity);
+  context.variables.noteReassigned(owner);
+  return context.variables.typeOf(entity);
 }
 
 function compoundOperator(operator: Exclude<AssignmentOperator, '='>): OverloadableOperator {

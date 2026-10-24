@@ -14,7 +14,8 @@
 
 import type { Value } from '../../definition/values.ts';
 import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
-import { float, int, nativeKey, primitiveKeyType, text } from '../natives-kit.ts';
+import { nativeKey, primitiveKeyType } from '../native-keys.ts';
+import { float, int, text } from '../native-values.ts';
 import { preludeName } from '../stdlib-loader.ts';
 
 type Primitive = 'int' | 'float' | 'string' | 'bool';

@@ -27,7 +27,7 @@ const broadcastWaiting: Snapshot = {
   definition: definitionFormat.write(broadcastDefinition).hash,
   instance: 'broadcast-1',
   status: { kind: 'active' },
-  externReads: [],
+  crashEveryAwait: false,
   ready: [],
   objects: [
     {
@@ -149,9 +149,7 @@ const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
         }),
         fc.record({ kind: fc.constant('finished' as const), outcome: valueArbitrary() }),
       ),
-      externReads: fc.array(fc.record({ function: fc.nat({ max: 9 }), value: valueArbitrary() }), {
-        maxLength: 2,
-      }),
+      crashEveryAwait: fc.boolean(),
       objects: fc.constant(objects),
       ready: fc.subarray(executions.map((execution) => execution.id)),
     });

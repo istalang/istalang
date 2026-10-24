@@ -25,8 +25,8 @@ export function lowerStructLiteral(context: FunctionContext, node: StructLiteral
     }
     return register;
   });
-  const dst = context.allocate();
-  context.emit({
+  const dst = context.code.allocate();
+  context.code.emit({
     kind: 'struct',
     span: node.span,
     dst,
@@ -45,8 +45,8 @@ export function lowerFieldRead(context: FunctionContext, node: MemberAccess): Re
   if (index < 0) {
     throw new Error(`No field '${node.member.text}'; the checker should have said so.`);
   }
-  const dst = context.allocate();
-  context.emit({ kind: 'field', span: node.span, dst, src, index });
+  const dst = context.code.allocate();
+  context.code.emit({ kind: 'field', span: node.span, dst, src, index });
   return dst;
 }
 

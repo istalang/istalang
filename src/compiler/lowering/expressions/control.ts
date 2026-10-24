@@ -8,26 +8,31 @@ import type { If } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 
 export function lowerIf(context: FunctionContext, node: If): Register {
-  const result = context.allocate();
-  const end = context.newLabel();
+  const result = context.code.allocate();
+  const end = context.code.newLabel();
   for (const branch of node.branches) {
-    const body = context.newLabel();
-    const next = context.newLabel();
-    context.branch(context.expression(branch.condition), body, next, branch.condition.span);
-    context.place(body);
-    context.emit({
+    const body = context.code.newLabel();
+    const next = context.code.newLabel();
+    context.code.branch(context.expression(branch.condition), body, next, branch.condition.span);
+    context.code.place(body);
+    context.code.emit({
       kind: 'move',
       span: branch.body.span,
       dst: result,
       src: context.block(branch.body),
     });
-    context.jump(end, branch.span);
-    context.place(next);
+    context.code.jump(end, branch.span);
+    context.code.place(next);
   }
   const elseBody = node.elseClause?.body;
   const fallback =
     elseBody === undefined ? context.constant(null, node.span) : context.block(elseBody);
-  context.emit({ kind: 'move', span: elseBody?.span ?? node.span, dst: result, src: fallback });
-  context.place(end);
+  context.code.emit({
+    kind: 'move',
+    span: elseBody?.span ?? node.span,
+    dst: result,
+    src: fallback,
+  });
+  context.code.place(end);
   return result;
 }

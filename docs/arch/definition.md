@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-24
-last_updated: 2026-10-25
+last_updated: 2026-10-24
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -13,6 +13,8 @@ tags: [definition, ir, snapshot, runtime, lowering]
 A **Definition** is the whole compiled program: flat tables of modules, types, functions and constants that refer to each other by index (`src/definition/`). A **snapshot** is a committed instance: its heap, its executions with their frames, and what determinism needs (`src/runtime/snapshot/`).
 
 Both are persisted for an instance's whole life. Each is one zod schema that validates, decodes and encodes. The texts are canonical JSON with a version envelope, and the content hash keys storage.
+
+Both formats were written for the whole language before any of it compiled, so the feature slices code against one contract instead of each inventing its part. Lowering doesn't emit every instruction yet, and the runtime doesn't run every one: the instructions and load rules for constructs still behind the checker's frontier stand untested by real programs, exercised only by random and hand-written Definitions. The slice that first emits an instruction amends what using it shows to be wrong, through the tech-lead.
 
 ## Decisions
 
@@ -46,7 +48,7 @@ Loading refuses code the interpreter couldn't run, so no instruction handler nee
 - code that doesn't end in `return`, `jump`, `branch`, `switch` or `select`
 - waiting (`await`, a `select` without `otherwise`, `currentCall`) outside an async function
 
-Release points are explicit. `release` runs at a block's end on every exit path, at a statement's end for temporaries, and for `drop`. `return` releases every register and the kept list. Whatever loses its last holder is disposed in reverse creation order (spec §7).
+Release points are explicit. `release` runs at a block's end on every exit path, at a statement's end for temporaries, and for `drop`. `return` releases every register and the kept list. Whatever loses its last holder is disposed in reverse creation order (spec §7). Lowering emits no `release` or `keep` yet, and no frame has a `kept` list: nothing in the subset it compiles is disposable but a future, and a future is only awaited or returned. The disposal slice (§7) emits them.
 
 ## Places
 
@@ -67,7 +69,7 @@ Map entries keep the runtime's order, so a restore iterates the same way.
 
 ## Externs
 
-An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop` and `setIndex` take their container by `&`. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (used by the boundary conversion) and its type arguments (for natives such as `json.parse<T>`). An extern constant is an entry with `constant` set: it is read once per instance, then pinned in the snapshot's `externReads` by its function index (spec §3.6).
+An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop` and `setIndex` take their container by `&`. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (used by the boundary conversion) and its type arguments (for natives such as `json.parse<T>`). An extern constant is an entry with `constant` set: it is read once per instance and then pinned for the instance's life (spec §3.6). Where the snapshot pins it arrives with the host externs that read one; nothing reads an extern constant yet.
 
 ## Types and locations
 
@@ -83,7 +85,8 @@ Each module carries its line starts. The runtime has neither source text nor the
 
 ## Snapshot
 
-- Status: `active`, `panicked` (message, trace, segment start) or `finished` (outcome).
+- Status: `active`, `panicked` (message, trace, segment start) or `finished` (outcome). What a host is told about an instance is derived from this status alone.
+- `crashEveryAwait`: the instance's option, set when it starts (spec §10), so every runtime that wakes it re-runs its segments.
 - Objects, in ascending id order: `cell` (typed: every cell is a `Shared<T>`), `slot` (value when full, waiting futures oldest first), `future` (resolved, or pending on a call, slot operation, timer, host, `disposed()` or `disposing()`), `weakRef`, `guard` (`defer`), `resource` (a disposable runtime or host value, such as `Revertible<T>`), `mock`, `execution`.
 - `ready`: executions in the order they became ready.
 
@@ -168,4 +171,4 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `spawn f(args)` (§9) | `spawn` |
 | Values crossing the host boundary (§9) | driven by the extern entries' types and the type table |
 | `@Suite`, `mock`, `testing.start`, `handle<T>()` (§10) | function annotations; natives over the function table and the host API |
-| `crashEveryAwait` (§10) | a runtime option: every segment runs twice before it commits |
+| `crashEveryAwait` (§10) | an option of each instance, kept in its snapshot: every segment runs twice before it commits |

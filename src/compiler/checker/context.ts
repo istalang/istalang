@@ -7,13 +7,14 @@
  * - `CheckerContext` answers program-wide questions, each memoized per Program: what later phases
  *   read (check.ts), plus reporting, type nodes' types, and the prelude's types and functions.
  * - `BodyContext` checks one function body: it records every expression's type and every call's
- *   target for lowering (CheckedBody), and the facts the body's own rules need (variable types,
- *   reassignments, loops, returns).
+ *   target for lowering (CheckedBody). The facts a body's own rules gather live in per-concern
+ *   units beside those rules (variables, returns, loops), so a feature adds a unit, not methods
+ *   here.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { Span } from '../../text/span.ts';
-import type { Entity, VariableEntity, VariableOwner } from '../binder/entities.ts';
+import type { Entity } from '../binder/entities.ts';
 import type { LanguageModule, ModuleId } from '../program/program.ts';
 import type {
   EnumDeclaration,
@@ -21,10 +22,13 @@ import type {
   StructDeclaration,
 } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions.ts';
-import type { Identifier, NodeOf } from '../syntax/node.ts';
-import type { Block } from '../syntax/statements.ts';
+import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
+import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, Checker, FieldMember, ResolvedCall, VariantMember } from './check.ts';
+import type { LoopScope } from './statements/loops.ts';
+import type { ReturnScope } from './statements/returns.ts';
+import type { VariableScope } from './statements/variables.ts';
 import type { Type } from './types/type.ts';
 
 /** The program-wide services, beyond what later phases read (check.ts). */
@@ -60,23 +64,22 @@ export interface BodyContext {
   readonly expression: (node: Expression, expected?: Type) => Type;
   /** Checks `node` and reports when its type doesn't fit `expected`. */
   readonly expect: (node: Expression, expected: Type) => Type;
+  /** Reports at `at` when `found`, a type already checked, doesn't fit `expected`. */
+  readonly fit: (found: Type, expected: Type, at: Span) => void;
   /** Checks a block in its own scope; its type is that of its last expression (§4). */
   readonly block: (node: Block, expected?: Type) => Type;
+  /** Checks a statement; its type, which only a block's last statement passes on (§4). */
+  readonly statement: (node: Statement | Invalid, expected?: Type) => Type;
   readonly report: (diagnostic: Diagnostic) => void;
   /** Reports `node` as a construct not supported yet (named by `construct`); the error type. */
   readonly unsupported: (node: NodeOf<string>, construct?: string) => Type;
   /** The type `node` denotes in this body's module. */
   readonly resolveType: (node: TypeNode) => Type;
   readonly entityOf: (name: Identifier) => Entity | undefined;
-  readonly variableType: (variable: VariableEntity) => Type;
-  readonly declareVariable: (name: Identifier, type: Type) => void;
-  readonly noteReassigned: (owner: VariableOwner) => void;
   readonly recordCall: (site: CallSite, call: ResolvedCall) => void;
-  /** Checks a returned value against the body's result type, or adds it to the inferred one. */
-  readonly checkReturn: (value: Expression | undefined, span: Span) => void;
   /** Whether the body is an async function's, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
-  /** Runs `check` inside a loop, so `break` and `continue` are allowed there. */
-  readonly insideLoop: <Result>(check: () => Result) => Result;
-  readonly inLoop: boolean;
+  readonly variables: VariableScope;
+  readonly returns: ReturnScope;
+  readonly loops: LoopScope;
 }

@@ -210,7 +210,10 @@ describe('reading an instance back', () => {
     };
     const fresh = testRuntime({ store, clock: test.clock });
     test.clock.set(10n);
-    expect(runToEnd(fresh, 'i', fresh.runtime.wake('i'))).toEqual({ kind: 'finished', value: 1n });
+    expect(runToEnd(fresh, 'i', fresh.runtime.wake('i'))).toEqual({
+      kind: 'finished',
+      outcome: 1n,
+    });
     expect(written).toEqual([]);
   });
 

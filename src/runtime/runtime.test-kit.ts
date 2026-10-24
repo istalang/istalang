@@ -7,6 +7,8 @@ import { stdNatives } from '../stdlib/natives.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';
 import type { InstanceState } from './instance-state.ts';
 import type { NativeContext, Natives } from './natives.ts';
+import type { StartOptions } from './scheduler/instance.ts';
+import { type Settled, settle } from './settle.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
 
 /** A clock that reads `at` until a test moves it. */
@@ -46,7 +48,6 @@ export interface TestRuntimeOptions {
   readonly natives?: Natives;
   readonly store?: RecordingStore;
   readonly clock?: ManualClock;
-  readonly crashEveryAwait?: boolean;
 }
 
 export interface TestRuntime {
@@ -60,10 +61,9 @@ export function testRuntime({
   natives = stdNatives,
   store = recordingStore(),
   clock = manualClock(),
-  crashEveryAwait = false,
 }: TestRuntimeOptions = {}): TestRuntime {
   return {
-    runtime: createRuntime({ natives, store, now: clock.now, crashEveryAwait }),
+    runtime: createRuntime({ natives, store, now: clock.now }),
     store,
     clock,
   };
@@ -74,22 +74,26 @@ export function runToEnd(
   { runtime, clock }: TestRuntime,
   instance: string,
   initial: InstanceState,
-): InstanceState {
-  let state = initial;
-  while (state.kind === 'waiting') {
-    if (state.until === undefined) {
-      throw new Error(`Instance ${instance} waits on nothing that can wake it.`);
-    }
-    clock.set(state.until);
-    state = runtime.wake(instance);
+): Exclude<Settled, { kind: 'stuck' }> {
+  const steps = settle(() => runtime.wake(instance), initial);
+  let step = steps.next();
+  for (; !step.done; step = steps.next()) {
+    clock.set(step.value);
   }
-  return state;
+  if (step.value.kind === 'stuck') {
+    throw new Error(`Instance ${instance} waits on nothing that can wake it.`);
+  }
+  return step.value;
 }
 
-/** Deploys `text`, starts `main` as `instance` and runs it to its end. */
-export function startToEnd(test: TestRuntime, text: string, instance = 'test'): InstanceState {
+/** Deploys `text`, starts `main` as an instance and runs it to its end. */
+export function startToEnd(
+  test: TestRuntime,
+  text: string,
+  { instance = 'test', ...options }: StartOptions & { readonly instance?: string } = {},
+): InstanceState {
   const program: DeployedProgram = test.runtime.deploy(text);
-  return runToEnd(test, instance, program.start(instance));
+  return runToEnd(test, instance, program.start(instance, options));
 }
 
 /** A context for natives that never use theirs; touching it is a bug in the test. */

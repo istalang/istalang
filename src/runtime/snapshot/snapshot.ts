@@ -2,12 +2,15 @@
  * An instance snapshot: everything a committed instance is, persisted at every await (spec §5).
  *
  * It names its Definition by content hash; frames hold function indexes and pcs into that
- * Definition, so a snapshot is meaningless without it. Besides the heap it keeps the order in which
- * executions became ready, plus the two things determinism needs:
- * - extern constant reads, pinned at first read so every later segment sees the same value
- *   (spec §3.6)
+ * Definition, so a snapshot is meaningless without it. Besides the heap it keeps:
+ * - the order in which executions became ready
+ * - whether every segment runs twice before it commits (`crashEveryAwait`, §10), an option of the
+ *   instance, so a runtime that wakes it after a restart honours it too
  * - for a panicked instance, when the failed segment started. `now()` returns its segment's
  *   start time, so an operator's retry sees the same time (docs/arch/definition.md, "Time").
+ *
+ * Extern constant reads, which spec §3.6 pins for the instance's life, join the snapshot with the
+ * host externs that need them.
  *
  * Validation checks that ids ascend and that every object id refers to an object of this
  * snapshot. Checks that need the Definition, such as pc ranges, are check.ts's, run when the
@@ -17,7 +20,7 @@
 import { z } from 'zod';
 import { contentHashText } from '../../definition/codec.ts';
 import { defineFormat } from '../../definition/format.ts';
-import { functionId, objectId } from '../../definition/operands.ts';
+import { objectId } from '../../definition/operands.ts';
 import { handlesIn, integer, type Value, value } from '../../definition/values.ts';
 import { type Frame, type HeapObject, heapObject, isReference } from './objects.ts';
 
@@ -37,8 +40,8 @@ const snapshotContents = z.strictObject({
   definition: contentHashText,
   instance: z.string(),
   status,
-  /** Extern constants read so far, by function-table entry, pinned for the instance's life. */
-  externReads: z.array(z.strictObject({ function: functionId, value })),
+  /** Every segment runs twice, the first run discarded, before it commits (§10). */
+  crashEveryAwait: z.boolean(),
   /** In ascending id order. */
   objects: z.array(heapObject),
   /** Executions ready to run, in the order they became ready. */

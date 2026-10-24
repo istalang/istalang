@@ -129,9 +129,13 @@ export class ProgramChecker implements CheckerContext {
     return memoized(this.#bodies, declaration, () => {
       this.#checking.push(declaration);
       try {
-        return new BodyChecker(this, this.moduleOf(declaration), body, declaration.isAsync).check(
+        const kind = {
+          isAsync: declaration.isAsync,
+          declaredResult: this.#declaredBodyResult(declaration),
+        };
+        return new BodyChecker(this, this.moduleOf(declaration), kind).checkFunction(
+          body,
           this.parametersOf(declaration),
-          this.#declaredBodyResult(declaration),
         );
       } finally {
         this.#checking.pop();

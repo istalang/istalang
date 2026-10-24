@@ -20,7 +20,9 @@
  * a bare name's candidate variants) is answered per query and memoized on the Program.
  *
  * Imported names are never re-exported, so resolving one module's imports needs only the others'
- * own declarations, and linking needs no fixpoint even when imports form cycles.
+ * own declarations, and linking needs no fixpoint even when imports form cycles. Every module's
+ * imports and top level are linked before any module's free names, since a free name may resolve
+ * to what an import brought in; the Linker runs both passes as it is made, in that order.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -37,8 +39,7 @@ import type {
   VariantEntity,
 } from './entities.ts';
 import type { FreeName, QualifiedPath } from './local-binder.ts';
-import { isPrivate } from './naming.ts';
-import type { ImportPlaceholder } from './scope.ts';
+import type { ImportPlaceholder, LocalEntity } from './scope.ts';
 
 interface ModuleLinks {
   readonly local: ModuleBindings;
@@ -50,12 +51,6 @@ interface ModuleLinks {
 
 export function link(program: Program): Bindings {
   const linker = new Linker(program);
-  for (const id of program.modules.keys()) {
-    linker.linkTopLevel(id);
-  }
-  for (const id of program.modules.keys()) {
-    linker.linkNames(id);
-  }
   return {
     entityOf: (module, name) => linker.entityOf(module, name),
     exportsOf: (module) => linker.local(module)?.exports ?? new Map(),
@@ -83,6 +78,12 @@ class Linker {
     for (const [id, local] of this.#locals) {
       this.#index(id, local);
     }
+    for (const id of program.modules.keys()) {
+      this.#linkTopLevel(id);
+    }
+    for (const id of program.modules.keys()) {
+      this.#linkNames(id);
+    }
   }
 
   local(module: ModuleId): ModuleBindings | undefined {
@@ -91,10 +92,9 @@ class Linker {
 
   entityOf(module: ModuleId, name: Identifier): Entity | undefined {
     const links = this.#links.get(module);
-    const local = links?.local.entities.get(name);
-    return (
-      links?.resolved.get(name) ?? (local?.kind === 'import' ? links?.imports.get(local) : local)
-    );
+    return links === undefined
+      ? undefined
+      : (links.resolved.get(name) ?? resolvedImport(links, links.local.entities.get(name)));
   }
 
   moduleOf(entity: Entity): ModuleId | undefined {
@@ -127,7 +127,7 @@ class Linker {
   }
 
   /** Resolves a module's imports and checks its top-level names against the prelude. */
-  linkTopLevel(id: ModuleId): void {
+  #linkTopLevel(id: ModuleId): void {
     const local = this.#locals.get(id);
     if (local === undefined) {
       return;
@@ -146,7 +146,7 @@ class Linker {
   }
 
   /** Resolves a module's free names, then the later parts of its qualified names. */
-  linkNames(id: ModuleId): void {
+  #linkNames(id: ModuleId): void {
     const links = this.#links.get(id);
     if (links === undefined) {
       return;
@@ -181,7 +181,7 @@ class Linker {
     if (entity === undefined && target !== undefined) {
       const label = this.#program.modules.get(module)?.tree.source.path ?? module;
       links.diagnostics.push(
-        isPrivate(name.text) && target.topLevel.has(name.text)
+        target.privateNames.has(name.text)
           ? binderDiagnostics.privateExport(name.span, label, name.text)
           : binderDiagnostics.missingExport(name.span, label, name.text),
       );
@@ -197,7 +197,7 @@ class Linker {
     const prelude = this.#preludeFor(id);
     for (const [text, { name, entity }] of links.local.topLevel) {
       const preludeEntity = prelude?.exports.get(text);
-      const linked = entity.kind === 'import' ? links.imports.get(entity) : entity;
+      const linked = resolvedImport(links, entity);
       const joins = linked?.kind === 'functions' && preludeEntity?.kind === 'functions';
       if (preludeEntity !== undefined && linked !== undefined && !joins) {
         links.diagnostics.push(binderDiagnostics.preludeClash(name.span, text));
@@ -275,4 +275,9 @@ class Linker {
       ? undefined
       : this.#program.modules.get(importer)?.imports.get(namespace.declaration);
   }
+}
+
+/** What a module-local entity denotes once linked: an import's target, or the entity itself. */
+function resolvedImport(links: ModuleLinks, entity: LocalEntity | undefined): Entity | undefined {
+  return entity?.kind === 'import' ? links.imports.get(entity) : entity;
 }

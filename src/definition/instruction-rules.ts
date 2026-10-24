@@ -23,6 +23,7 @@ import {
   type FunctionDefinition,
   takesReference,
 } from './functions.ts';
+import { waits } from './instructions/flow.ts';
 import type { Instruction, InstructionKind } from './instructions/instruction.ts';
 import type { Argument, Place } from './instructions/places.ts';
 import type { Tables } from './tables.ts';
@@ -44,8 +45,12 @@ type Rule<Kind extends InstructionKind> = (
 /** The rule of a kind that needs nothing beyond in-range indexes. */
 const none = (): undefined => undefined;
 
-const waitsOnlyInAsync = (_tables: Tables, owner: CodeFunction) =>
+/** `currentCall` names the async call it runs in, so only async code has one. */
+const asyncOnly = (_tables: Tables, owner: CodeFunction) =>
   owner.async ? undefined : 'only an async function can use it.';
+
+const waitsOnlyInAsync = (_tables: Tables, owner: CodeFunction, instruction: Instruction) =>
+  owner.async || !waits(instruction) ? undefined : 'only an async function can wait.';
 
 const rules: { readonly [Kind in InstructionKind]: Rule<Kind> } = {
   constant: none,
@@ -83,12 +88,9 @@ const rules: { readonly [Kind in InstructionKind]: Rule<Kind> } = {
       ? directCallProblem(tables, tables.functions[i.callee.function], i.arguments)
       : argumentPlacesProblem(tables, i.arguments),
   spawn: (tables, _owner, i) => spawnProblem(tables.functions[i.function], i.arguments.length),
-  currentCall: waitsOnlyInAsync,
+  currentCall: asyncOnly,
   await: waitsOnlyInAsync,
-  select: (_tables, owner, i) =>
-    owner.async || i.otherwise !== undefined
-      ? undefined
-      : 'only an async function can wait; a select without otherwise waits.',
+  select: waitsOnlyInAsync,
   release: none,
   keep: none,
   defer: none,

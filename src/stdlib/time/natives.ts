@@ -7,7 +7,8 @@
  */
 
 import type { Natives } from '../../runtime/natives.ts';
-import { fieldOf, int, namedKeyType, nativeKey, resultStruct } from '../natives-kit.ts';
+import { namedKeyType, nativeKey } from '../native-keys.ts';
+import { fieldOf, int, resultStruct } from '../native-values.ts';
 import { timeName } from '../stdlib-loader.ts';
 
 const timeType = namedKeyType(`${timeName}.Time`);

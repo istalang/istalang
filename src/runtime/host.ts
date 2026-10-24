@@ -4,11 +4,14 @@
  *
  * - A Definition arrives as its persisted text, the form the store keeps. Deploying reads and
  *   validates all of it, binds every extern to its native and stores it by hash, so a Definition
- *   that couldn't run is refused before anything runs.
- * - An instance lives in the store between calls. Starting or waking one advances it as far as it
- *   goes without waiting, committing every segment (scheduler/wake.ts), and says where it stands:
- *   waiting until its next timer, finished with a value, or panicked with a message and a trace
- *   (§3.12). The host decides when to wake it again; the runtime holds no timers of its own.
+ *   that couldn't run is refused before anything runs. A Definition this runtime already bound is
+ *   in the store already, so deploying it again writes nothing.
+ * - An instance lives in the store between calls; the options it starts with (`crashEveryAwait`,
+ *   §10) hold for its whole life. Starting or waking one advances it as far as it goes without
+ *   waiting, committing every segment (scheduler/wake.ts), and says where it stands: waiting
+ *   until its next timer, finished with its outcome, or panicked with a message and a trace
+ *   (§3.12). The host decides when to wake it again (settle.ts drives that loop for a host that
+ *   only waits); the runtime holds no timers of its own.
  * - Waking reads the instance's snapshot and the Definition it names from the store, so a fresh
  *   runtime on the same store continues where an earlier one committed (§5).
  * - A deployed program's function table is exposed, so a test or the `testing` module can replace
@@ -23,7 +26,7 @@ import type { InstanceState } from './instance-state.ts';
 import { FunctionTable } from './interpreter/function-table.ts';
 import type { Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
-import type { LoadedDefinition } from './scheduler/instance.ts';
+import type { LoadedDefinition, StartOptions } from './scheduler/instance.ts';
 import { advance, type SchedulerSeams, stateOf } from './scheduler/wake.ts';
 import { checkSnapshot } from './snapshot/check.ts';
 import { type Snapshot, snapshotFormat } from './snapshot/snapshot.ts';
@@ -34,8 +37,6 @@ export interface RuntimeSeams {
   readonly store: InstanceStore;
   /** Milliseconds since the Unix epoch: when each segment starts (§5). */
   readonly now: () => bigint;
-  /** Runs every segment twice, discarding the first run, before committing it (§10). */
-  readonly crashEveryAwait?: boolean;
 }
 
 export interface DeployedProgram {
@@ -44,7 +45,7 @@ export interface DeployedProgram {
   /** A value of this program as the JSON a host receives (§9); a Refusal for one without a form yet. */
   readonly json: (value: Value) => string;
   /** Starts `main` as a new instance named `instance`; a Refusal if the store already has one. */
-  readonly start: (instance: string) => InstanceState;
+  readonly start: (instance: string, options?: StartOptions) => InstanceState;
 }
 
 export interface Runtime {
@@ -64,12 +65,14 @@ export interface Runtime {
 }
 
 export function createRuntime(seams: RuntimeSeams): Runtime {
-  const bind = programBinder({ ...seams, crashEveryAwait: seams.crashEveryAwait ?? false });
+  const bind = programBinder(seams);
   const stored = (instance: string) => storedInstance(seams.store, bind, instance);
   return {
     deploy: (text) => {
-      const program = bind(text);
-      seams.store.writeDefinition(program.hash, definitionFormat.write(program.definition).text);
+      const { program, isNew } = bind(text);
+      if (isNew) {
+        seams.store.writeDefinition(program.hash, definitionFormat.write(program.definition).text);
+      }
       return program;
     },
     wake: (instance) => {
@@ -85,15 +88,21 @@ interface BoundProgram extends DeployedProgram, LoadedDefinition {
   readonly resume: (snapshot: Snapshot) => InstanceState;
 }
 
+/** A Definition text bound to its program, and whether this was the first time. */
+interface Binding {
+  readonly program: BoundProgram;
+  readonly isNew: boolean;
+}
+
 /** Reads and binds Definition texts, once per hash; it writes nothing. */
 function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives'>) {
   const bound = new Map<string, BoundProgram>();
-  return (text: string): BoundProgram => {
+  return (text: string): Binding => {
     const definition = definitionFormat.read(text);
     const { hash } = definitionFormat.write(definition);
     const known = bound.get(hash);
     if (known !== undefined) {
-      return known;
+      return { program: known, isNew: false };
     }
     const loaded: LoadedDefinition = {
       definition,
@@ -103,23 +112,23 @@ function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives'>) {
     const program: BoundProgram = {
       ...loaded,
       json: (value) => outboundJson(value, definition),
-      start: (instance) => {
+      start: (instance, options = {}) => {
         if (seams.store.readSnapshot(instance) !== undefined) {
           throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
         }
-        return advance(seams, loaded, { kind: 'new', name: instance });
+        return advance(seams, loaded, { kind: 'new', name: instance, options });
       },
       resume: (snapshot) => advance(seams, loaded, { kind: 'committed', snapshot }),
     };
     bound.set(hash, program);
-    return program;
+    return { program, isNew: true };
   };
 }
 
 /** A stored instance's snapshot and the program it runs, checked against each other. */
 function storedInstance(
   store: InstanceStore,
-  bind: (text: string) => BoundProgram,
+  bind: (text: string) => Binding,
   instance: string,
 ): { readonly snapshot: Snapshot; readonly program: BoundProgram } {
   const text = store.readSnapshot(instance);
@@ -134,7 +143,7 @@ function storedInstance(
       `The store holds no Definition ${snapshot.definition} for instance '${instance}'.`,
     );
   }
-  const program = bind(definition);
+  const { program } = bind(definition);
   if (program.hash !== snapshot.definition) {
     throw new Refusal(
       'snapshotMismatch',

@@ -30,8 +30,8 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
   switch (operator) {
     case '==':
     case '!=': {
-      const dst = context.allocate();
-      context.emit({ kind: 'equal', span: node.span, dst, left, right });
+      const dst = context.code.allocate();
+      context.code.emit({ kind: 'equal', span: node.span, dst, left, right });
       return operator === '==' ? dst : negated(context, dst, node.span);
     }
     case '<':
@@ -39,8 +39,8 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
     case '>':
     case '>=': {
       const comparison = call(context, node, [left, right]);
-      const dst = context.allocate();
-      context.emit({
+      const dst = context.code.allocate();
+      context.code.emit({
         kind: 'order',
         span: node.span,
         dst,
@@ -62,34 +62,34 @@ export function lowerUnary(context: FunctionContext, node: Unary): Register {
 }
 
 function negated(context: FunctionContext, src: Register, span: Span): Register {
-  const dst = context.allocate();
-  context.emit({ kind: 'not', span, dst, src });
+  const dst = context.code.allocate();
+  context.code.emit({ kind: 'not', span, dst, src });
   return dst;
 }
 
 /** `a and b` is `b` when `a` is true, else `a`; `a or b` is `a` when `a` is true, else `b`. */
 function shortCircuit(context: FunctionContext, node: Binary, operator: 'and' | 'or'): Register {
-  const result = context.allocate();
-  context.emit({
+  const result = context.code.allocate();
+  context.code.emit({
     kind: 'move',
     span: node.left.span,
     dst: result,
     src: context.expression(node.left),
   });
-  const right = context.newLabel();
-  const end = context.newLabel();
+  const right = context.code.newLabel();
+  const end = context.code.newLabel();
   if (operator === 'and') {
-    context.branch(result, right, end, node.span);
+    context.code.branch(result, right, end, node.span);
   } else {
-    context.branch(result, end, right, node.span);
+    context.code.branch(result, end, right, node.span);
   }
-  context.place(right);
-  context.emit({
+  context.code.place(right);
+  context.code.emit({
     kind: 'move',
     span: node.right.span,
     dst: result,
     src: context.expression(node.right),
   });
-  context.place(end);
+  context.code.place(end);
   return result;
 }

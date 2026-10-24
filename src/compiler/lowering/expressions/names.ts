@@ -9,7 +9,7 @@ import type { Identifier } from '../../syntax/node.ts';
 import type { FunctionContext } from '../context.ts';
 
 export function lowerName(context: FunctionContext, node: Identifier): Register {
-  return context.variable(declaringName(context, node));
+  return context.variables.registerOf(declaringName(context, node));
 }
 
 /** The name that declared the variable `node` reads or writes. */

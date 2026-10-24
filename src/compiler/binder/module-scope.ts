@@ -39,6 +39,8 @@ export interface ModuleScope {
   /** Each enum's variants by name. */
   readonly variants: ReadonlyMap<EnumDeclaration, ReadonlyMap<string, VariantEntity>>;
   readonly exports: ReadonlyMap<string, Entity>;
+  /** The module's own declarations its exports leave out because a leading `_` keeps them private. */
+  readonly privateNames: ReadonlySet<string>;
 }
 
 type Origin = 'import' | 'declaration';
@@ -56,7 +58,7 @@ export function defineModuleScope(binder: LocalBinder, module: Module, parent: S
     topLevel: definer.topLevel,
     imports: definer.imports,
     variants: variantsOf(binder, module),
-    exports: exportsOf(definer.topLevel),
+    ...ownNames(definer.topLevel),
   };
 }
 
@@ -143,15 +145,24 @@ function clashRule(previous: Origin | undefined, current: Origin) {
     : binderDiagnostics.duplicateDeclaration;
 }
 
-/** A module's own declarations, without private names; imports are never re-exported (§3.13). */
-function exportsOf(topLevel: ReadonlyMap<string, TopLevelName>): ReadonlyMap<string, Entity> {
-  return new Map(
-    [...topLevel].flatMap(([text, { entity }]) =>
-      entity.kind === 'import' || entity.kind === 'namespace' || isPrivate(text)
-        ? []
-        : [[text, entity] as const],
-    ),
-  );
+/**
+ * A module's own declarations, exported or kept private by a leading `_`; imports are never
+ * re-exported (§3.13).
+ */
+function ownNames(
+  topLevel: ReadonlyMap<string, TopLevelName>,
+): Pick<ModuleScope, 'exports' | 'privateNames'> {
+  const exports = new Map<string, Entity>();
+  const privateNames = new Set<string>();
+  for (const [text, { entity }] of topLevel) {
+    const isOwn = entity.kind !== 'import' && entity.kind !== 'namespace';
+    if (isOwn && isPrivate(text)) {
+      privateNames.add(text);
+    } else if (isOwn) {
+      exports.set(text, entity);
+    }
+  }
+  return { exports, privateNames };
 }
 
 /** A set per name of the top-level functions; static functions belong to their type instead. */

@@ -108,3 +108,8 @@ export function tailExpressionOf(block: Block): Expression | undefined {
   const last = block.statements.at(-1);
   return last?.kind === 'ExpressionStatement' ? last.expression : undefined;
 }
+
+/** Where a block's value comes from, for a report about it: its tail expression, last statement, or itself. */
+export function tailNodeOf(block: Block): NodeOf<string> {
+  return tailExpressionOf(block) ?? block.statements.at(-1) ?? block;
+}

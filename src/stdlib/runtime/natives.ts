@@ -4,7 +4,7 @@
  */
 
 import type { Natives } from '../../runtime/natives.ts';
-import { nativeKey } from '../natives-kit.ts';
+import { nativeKey } from '../native-keys.ts';
 import { runtimeName } from '../stdlib-loader.ts';
 
 export const runtimeNatives: Natives = {

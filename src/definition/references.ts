@@ -14,7 +14,8 @@
 import type { z } from 'zod';
 import { type CodeFunction, type FunctionDefinition, sharedTypeName } from './functions.ts';
 import { closureProblem, constructionProblem, instructionProblem } from './instruction-rules.ts';
-import { type Instruction, type Operands, operandsOf } from './instructions/instruction.ts';
+import { terminates } from './instructions/flow.ts';
+import { type Operands, operandsOf } from './instructions/instruction.ts';
 import type { Tables } from './tables.ts';
 import { type TypeDefinition, typesIn } from './types.ts';
 import { type CompositeValue, childValues, handlesIn, isComposite, type Value } from './values.ts';
@@ -26,15 +27,6 @@ interface Context {
   readonly tables: Tables;
   readonly report: (path: Path, message: string) => void;
 }
-
-/** Instructions after which execution never continues to the next one. */
-const terminators: ReadonlySet<Instruction['kind']> = new Set([
-  'return',
-  'jump',
-  'branch',
-  'switch',
-  'select',
-]);
 
 /** A zod refinement over a Definition's tables. */
 export function checkReferences(tables: Tables, refinement: z.RefinementCtx): void {
@@ -137,7 +129,7 @@ function checkCode(context: Context, entry: CodeFunction, path: Path): void {
     }
   });
   const last = entry.instructions.at(-1);
-  if (last !== undefined && !terminators.has(last.kind)) {
+  if (last !== undefined && !terminates(last)) {
     context.report(
       [...path, 'instructions'],
       'Code must end in return, jump, branch, switch or select.',

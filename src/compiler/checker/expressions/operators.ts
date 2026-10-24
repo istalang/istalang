@@ -11,7 +11,7 @@ import type { Binary, Unary } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { resolveOperator } from '../overloads/operators.ts';
-import { boolType, errorType, isAssignable, type Type } from '../types/type.ts';
+import { boolType, comparable, errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 export function checkBinary(context: BodyContext, node: Binary): Type {
@@ -54,7 +54,7 @@ export function checkUnary(context: BodyContext, node: Unary): Type {
 function checkEquality(context: BodyContext, node: Binary): Type {
   const left = context.expression(node.left);
   const right = context.expression(node.right, left);
-  if (!(isAssignable(right, left) || isAssignable(left, right))) {
+  if (!comparable(left, right)) {
     context.report(
       checkerDiagnostics.operatorTypes(
         node.span,

@@ -16,6 +16,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
+import { awaitedRegisters } from '../../definition/instructions/flow.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
 import type { FunctionTable } from '../interpreter/function-table.ts';
@@ -47,28 +48,39 @@ export type LiveObject = Exclude<HeapObject, { kind: 'execution' }> | LiveExecut
 export type InstanceStatus = Snapshot['status'];
 
 /** What an instance is made of, as a snapshot records it. */
-type Contents = Pick<Snapshot, 'ready' | 'externReads'> & {
+type Contents = Pick<Snapshot, 'ready' | 'crashEveryAwait'> & {
   readonly objects: readonly LiveObject[];
 };
+
+/** How a new instance runs: options it keeps for its whole life (§10). */
+export interface StartOptions {
+  /** Every segment runs twice, the first run discarded, before it commits. */
+  readonly crashEveryAwait?: boolean;
+}
 
 export class Instance {
   readonly loaded: LoadedDefinition;
   readonly name: string;
+  readonly crashEveryAwait: boolean;
   readonly #objects: Map<number, LiveObject>;
   readonly #ready: number[];
-  readonly #externReads: Snapshot['externReads'];
 
   private constructor(loaded: LoadedDefinition, name: string, contents: Contents) {
     this.loaded = loaded;
     this.name = name;
+    this.crashEveryAwait = contents.crashEveryAwait;
     this.#objects = new Map(contents.objects.map((object) => [object.id, object]));
     this.#ready = [...contents.ready];
-    this.#externReads = contents.externReads;
   }
 
   /** A new instance whose root execution is about to run `main` from its start. */
-  static start(loaded: LoadedDefinition, name: string, main: FunctionId): Instance {
-    const instance = new Instance(loaded, name, { objects: [], ready: [], externReads: [] });
+  static start(
+    loaded: LoadedDefinition,
+    name: string,
+    main: FunctionId,
+    { crashEveryAwait = false }: StartOptions,
+  ): Instance {
+    const instance = new Instance(loaded, name, { objects: [], ready: [], crashEveryAwait });
     instance.startExecution(main, []);
     return instance;
   }
@@ -91,7 +103,7 @@ export class Instance {
       definition: this.loaded.hash,
       instance: this.name,
       status,
-      externReads: this.#externReads,
+      crashEveryAwait: this.crashEveryAwait,
       objects: active ? this.#reachableObjects() : [],
       ready: active ? [...this.#ready] : [],
     };
@@ -151,7 +163,7 @@ export class Instance {
     const future = this.#futureById(id);
     this.#objects.set(id, { ...future, state: { kind: 'resolved', value } });
     for (const object of this.#objects.values()) {
-      if (object.kind === 'execution' && awaitedFuture(object) === id) {
+      if (object.kind === 'execution' && waitsOn(object, id)) {
         this.markReady(object);
       }
     }
@@ -268,14 +280,14 @@ export function topFrame(execution: LiveExecution): ActiveFrame {
   return frame;
 }
 
-/** The future `execution` waits on at its top frame's `await`, if it stands at one. */
-function awaitedFuture(execution: LiveExecution): number | undefined {
+/** Whether `execution` waits on the future `id` at its top frame. */
+function waitsOn(execution: LiveExecution, id: number): boolean {
   const frame = topFrame(execution);
   const instruction = frame.code.instructions[frame.pc];
-  if (instruction?.kind !== 'await') {
-    return undefined;
-  }
-  return handleTarget(frame.registers[instruction.future]);
+  return (
+    instruction !== undefined &&
+    awaitedRegisters(instruction).some((register) => handleTarget(frame.registers[register]) === id)
+  );
 }
 
 function liveFrame(definition: Definition, frame: Frame): ActiveFrame {

@@ -21,7 +21,7 @@ import type { Checker, FieldMember } from '../checker/check.ts';
 import type { NominalType, Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { declaredName, loadedModule, moduleName, qualifiedName } from './names.ts';
+import { loadedModule, qualifiedNameOf } from './names.ts';
 
 /**
  * The extern types the runtime itself disposes (§7, docs/arch/definition.md "Types and
@@ -81,7 +81,7 @@ export class DefinitionTables {
   entryHeader(declaration: FunctionDeclaration) {
     const module = this.#checker.moduleOf(declaration);
     return {
-      name: qualifiedName(moduleName(this.#checker, module), declaredName(declaration)),
+      name: qualifiedNameOf(this.#checker, declaration),
       module: this.moduleIndex(module),
       span: declaration.name.span,
       annotations: [],
@@ -180,8 +180,7 @@ export class DefinitionTables {
   /** The entry describing `type`: its fields, its variants, or how an extern type is disposed. */
   #layout(type: NominalType): TypeDefinition {
     const { declaration } = type.entity;
-    const module = moduleName(this.#checker, this.#checker.moduleOf(declaration));
-    const name = qualifiedName(module, declaration.name.text);
+    const name = qualifiedNameOf(this.#checker, declaration);
     const typeArguments = type.arguments.map((argument) => this.typeReference(argument));
     switch (declaration.kind) {
       case 'StructDeclaration':

@@ -13,6 +13,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import type { InstanceStore } from '../runtime/store.ts';
+import { isSystemError } from './errno.ts';
 
 export function directoryStore(directory: string): InstanceStore {
   const definitions = join(directory, 'definitions');
@@ -37,7 +38,7 @@ function readIfPresent(file: string): string | undefined {
   try {
     return readFileSync(file, 'utf8');
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+    if (isSystemError(error) && error.code === 'ENOENT') {
       return undefined;
     }
     throw error;

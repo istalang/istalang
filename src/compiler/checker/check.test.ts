@@ -10,7 +10,11 @@ import { brokenText } from '../../../test/broken.ts';
 import { runPrograms } from '../../../test/corpus/run-programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
-import { reportedIn, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
+import {
+  reportedIn,
+  reportedNothing,
+  reportedOnce,
+} from '../../diagnostics/diagnostic.test-kit.ts';
 import { preludeProgramOf, stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
@@ -206,7 +210,7 @@ describe('checking accepts', () => {
       "import Duration from 'time'\nfn f() -> Duration: 90m",
     ],
   ])('%s', (_case, text) => {
-    expect(reported(text)).toEqual({ codes: [], spanTexts: [] });
+    expect(reported(text)).toEqual(reportedNothing);
   });
 
   it('reports a duration literal where the program lacks the time module', () => {

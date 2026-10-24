@@ -1,36 +1,13 @@
 /**
- * What every std module's natives share (docs/arch/definition.md, "Externs"):
- * - the key an extern declaration binds by, built through `externKey` alone so a natives table
- *   and lowering can't disagree, with types spelled as the declaration writes them
- * - reading arguments as the values the runtime holds: an `int` is a bigint, a `float` a number,
- *   a `string` a string, a struct its fields in declaration order
+ * The values std natives receive and return, as the runtime holds them: an `int` is a bigint, a
+ * `float` a number, a `string` a string, a struct its fields in declaration order.
  *
  * An argument of another shape is a bug in lowering or loading, never in the program, so reading
  * one throws a TypeError rather than panicking.
  */
 
-import { externKey, type KeyType } from '../definition/extern-key.ts';
 import { childValues, isComposite, type Value } from '../definition/values.ts';
 import type { NativeContext } from '../runtime/natives.ts';
-
-/** A primitive parameter type as a key spells it. */
-export function primitiveKeyType(name: string): KeyType {
-  return { kind: 'primitive', name };
-}
-
-/** A named parameter type as a key spells it: module-qualified, such as `time.Time`. */
-export function namedKeyType(name: string): KeyType {
-  return { kind: 'named', name, arguments: [] };
-}
-
-/** The key of extern `name` declared in std module `module`, taking `parameters` by value. */
-export function nativeKey(module: string, name: string, ...parameters: readonly KeyType[]): string {
-  return externKey({
-    module,
-    name,
-    parameters: parameters.map((type) => ({ type, reference: false })),
-  });
-}
 
 interface ArgumentTypes {
   readonly bigint: bigint;

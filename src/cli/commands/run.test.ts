@@ -9,11 +9,10 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { runCorpusDirectory as corpus, runPrograms } from '../../../test/corpus/run-programs.ts';
 import { subsetOutcome, subsetSource } from '../../../test/definitions/subset.ts';
-import { ista, tempProject as project } from '../cli.test-kit.ts';
+import { builtCli, ista, tempProject as project } from '../cli.test-kit.ts';
 
 describe('ista run', () => {
   it.each(runPrograms.filter(({ expects }) => expects === 'outcome'))(
@@ -111,7 +110,7 @@ const instanceLine = /^ista: instance (?<name>\S+)$/mu;
 describe('ista run with a store', () => {
   it('continues an instance killed while it waits, from its last commit', async () => {
     const root = project({ 'main.ista': waitingProgram });
-    const main = fileURLToPath(new URL('../../../dist/cli/main.js', import.meta.url));
+    const main = builtCli;
     const child = spawn(process.execPath, [main, 'run', '--store', 'store', 'main.ista'], {
       cwd: root,
     });

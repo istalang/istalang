@@ -10,8 +10,8 @@ import { nominalTypeOf } from './structs.ts';
 
 export function lowerDurationLiteral(context: FunctionContext, node: DurationLiteral): Register {
   const milliseconds = context.constant(node.value, node.span);
-  const dst = context.allocate();
-  context.emit({
+  const dst = context.code.allocate();
+  context.code.emit({
     kind: 'struct',
     span: node.span,
     dst,

@@ -6,12 +6,15 @@
  *
  * An extern's key is built by `externKey` (definition/extern-key.ts) from the declared parameter
  * types; this module only turns the checker's types into the key's.
+ *
+ * Names are of declarations, never of instantiations: a generic function's or type's entries are
+ * told apart by their type arguments where the Definition records them, and whether a name should
+ * spell them too is decided when generics compile.
  */
 
 import { type ExternSignature, externKey, type KeyType } from '../../definition/extern-key.ts';
 import type { Checker } from '../checker/check.ts';
-import type { Type } from '../checker/types/type.ts';
-import { typeText } from '../checker/types/type-text.ts';
+import type { NominalDeclaration, Type } from '../checker/types/type.ts';
 import type { ModuleId, ProgramModule } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 
@@ -25,25 +28,24 @@ export function loadedModule(checker: Checker, module: ModuleId): ProgramModule 
 }
 
 /** The canonical name a module's declarations are qualified with. */
-export function moduleName(checker: Checker, module: ModuleId): string {
+function moduleName(checker: Checker, module: ModuleId): string {
   return loadedModule(checker, module).name;
 }
 
 /** A function's name as declared, with its owner type for a static function: `Slot.create`. */
-export function declaredName(declaration: FunctionDeclaration): string {
+function declaredName(declaration: FunctionDeclaration): string {
   const { owner, name } = declaration;
   return owner === undefined ? name.text : `${owner.text}.${name.text}`;
 }
 
-/** `module.name`, followed by the type arguments of an instantiation: `inbox.send<Verdict>`. */
-export function qualifiedName(
-  module: string,
-  name: string,
-  typeArguments: readonly Type[] = [],
+/** A declaration's name, qualified by its module's canonical name: `time.delay`, `prelude.Optional`. */
+export function qualifiedNameOf(
+  checker: Checker,
+  declaration: FunctionDeclaration | NominalDeclaration,
 ): string {
-  const instantiation =
-    typeArguments.length === 0 ? '' : `<${typeArguments.map(typeText).join(', ')}>`;
-  return `${module}.${name}${instantiation}`;
+  const name =
+    declaration.kind === 'FunctionDeclaration' ? declaredName(declaration) : declaration.name.text;
+  return `${moduleName(checker, checker.moduleOf(declaration))}.${name}`;
 }
 
 /** The key that binds the extern `declaration` to its native. */
@@ -69,10 +71,7 @@ function keyType(checker: Checker, type: Type): KeyType {
       const { declaration } = type.entity;
       return {
         kind: 'named',
-        name: qualifiedName(
-          moduleName(checker, checker.moduleOf(declaration)),
-          declaration.name.text,
-        ),
+        name: qualifiedNameOf(checker, declaration),
         arguments: type.arguments.map((argument) => keyType(checker, argument)),
       };
     }

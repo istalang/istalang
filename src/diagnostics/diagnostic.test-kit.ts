@@ -22,6 +22,9 @@ export function reportedIn(source: SourceText, diagnostics: readonly Diagnostic[
   };
 }
 
+/** What a phase reported when it reported nothing. */
+export const reportedNothing: Reported = { codes: [], spanTexts: [] };
+
 /** What a phase reported when it reported `code` once, over `spanText`. */
 export function reportedOnce(code: number, spanText: string): Reported {
   return { codes: [code], spanTexts: [spanText] };

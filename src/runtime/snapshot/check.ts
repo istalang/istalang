@@ -7,15 +7,16 @@
  *   frame
  * - a caller frame stands at a `call`, and an execution's innermost frame at an `await` or a
  *   `select`, the only places an execution stops (docs/arch/definition.md, "Frames")
- * - an execution at an `await` waits on a future, and is ready exactly when it has resolved
+ * - an execution that waits does so on futures, and is ready exactly when one has resolved
  * - a cell is a `Shared` instantiation and a resource of an extern type
  * - every value held anywhere names types and functions the Definition has, and agrees with them,
  *   by the same check the Definition's own constants pass (definition/references.ts)
- * - a pinned extern read names an extern constant
  */
 
 import type { Definition } from '../../definition/definition.ts';
 import { sharedTypeName } from '../../definition/functions.ts';
+import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
+import type { Instruction } from '../../definition/instructions/instruction.ts';
 import { valueProblems } from '../../definition/references.ts';
 import { handleTarget } from '../../definition/values.ts';
 import { Refusal } from '../refusal.ts';
@@ -27,17 +28,6 @@ export function checkSnapshot(definition: Definition, snapshot: Snapshot): void 
   const problems = [
     ...snapshot.objects.flatMap((object) => objectProblems(definition, object)),
     ...waitProblems(definition, snapshot),
-    ...snapshot.externReads.flatMap(({ function: index, value }) => {
-      const entry = definition.functions[index];
-      const constant =
-        entry?.kind === 'extern' && entry.constant
-          ? []
-          : [`extern read ${index} is not an extern constant`];
-      const values = valueProblems(definition, value).map(
-        ({ message }) => `extern read ${index}: ${message}`,
-      );
-      return [...constant, ...values];
-    }),
   ];
   if (problems.length > 0) {
     throw new Refusal(
@@ -58,7 +48,7 @@ function kindProblems(definition: Definition, object: HeapObject): readonly stri
   switch (object.kind) {
     case 'execution':
       return object.frames.flatMap((frame, index) =>
-        frameProblems(definition, frame, index === object.frames.length - 1 ? stops : calls).map(
+        frameProblems(definition, frame, index === object.frames.length - 1 ? waits : isCall).map(
           (problem) => `execution ${object.id}: ${problem}`,
         ),
       );
@@ -80,8 +70,9 @@ function kindProblems(definition: Definition, object: HeapObject): readonly stri
 }
 
 /**
- * An execution at an `await` waits on the future its register names, and is ready exactly when
- * that future has resolved; nothing is ready twice, and nothing ready stands anywhere else.
+ * An execution stands at an instruction that waits on the futures its registers name, and is ready
+ * exactly when one of them has resolved; nothing is ready twice, and nothing ready stands anywhere
+ * else.
  */
 function waitProblems(definition: Definition, snapshot: Snapshot): readonly string[] {
   const objects = new Map(snapshot.objects.map((object) => [object.id, object]));
@@ -103,33 +94,37 @@ function executionWaitProblems(
 ): readonly string[] {
   const top = execution.frames.at(-1);
   const instruction = top === undefined ? undefined : instructionAt(definition, top);
-  if (top === undefined || instruction?.kind !== 'await') {
-    return isReady ? [`ready execution ${execution.id} is not at an await`] : [];
+  const awaited = instruction === undefined ? [] : awaitedRegisters(instruction);
+  if (top === undefined || awaited.length === 0) {
+    return isReady ? [`ready execution ${execution.id} is not waiting`] : [];
   }
-  const awaited = top.registers.find(([register]) => register === instruction.future)?.[1];
-  const id = awaited === undefined || isReference(awaited) ? undefined : handleTarget(awaited);
-  const target = id === undefined ? undefined : objects.get(id);
-  if (target?.kind !== 'future') {
-    return [`execution ${execution.id} awaits something that is not a future`];
+  const futures = awaited.map((register) => {
+    const held = top.registers.find(([slot]) => slot === register)?.[1];
+    const id = held === undefined || isReference(held) ? undefined : handleTarget(held);
+    const target = id === undefined ? undefined : objects.get(id);
+    return target?.kind === 'future' ? target : undefined;
+  });
+  if (futures.includes(undefined)) {
+    return [`execution ${execution.id} waits on something that is not a future`];
   }
-  const resolved = target.state.kind === 'resolved';
+  const resolved = futures.some((future) => future?.state.kind === 'resolved');
   if (resolved === isReady) {
     return [];
   }
   return [
     resolved
       ? `execution ${execution.id} waits on a resolved future but is not ready`
-      : `ready execution ${execution.id} waits on an unresolved future`,
+      : `ready execution ${execution.id} waits on unresolved futures`,
   ];
 }
 
-const stops: ReadonlySet<string> = new Set(['await', 'select']);
-const calls: ReadonlySet<string> = new Set(['call']);
+const isCall = (instruction: Instruction): boolean => instruction.kind === 'call';
 
+/** A frame's problems; `standsAt` says which instructions it may stand at. */
 function frameProblems(
   definition: Definition,
   frame: Frame,
-  allowed: ReadonlySet<string>,
+  standsAt: (instruction: Instruction) => boolean,
 ): readonly string[] {
   const code = definition.functions[frame.function];
   if (code?.kind !== 'code') {
@@ -141,7 +136,7 @@ function frameProblems(
   const instruction = code.instructions[frame.pc];
   if (instruction === undefined) {
     problems.push(`pc ${frame.pc} is outside ${code.name}`);
-  } else if (!allowed.has(instruction.kind)) {
+  } else if (!standsAt(instruction)) {
     problems.push(`${code.name} stands at a '${instruction.kind}' at pc ${frame.pc}`);
   }
   return problems;

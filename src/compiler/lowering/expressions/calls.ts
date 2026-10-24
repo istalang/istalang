@@ -22,13 +22,13 @@ export function call(
   context: FunctionContext,
   site: CallSite,
   argumentRegisters: readonly Register[],
-  dst: Register = context.allocate(),
+  dst: Register = context.code.allocate(),
 ): Register {
   const resolved = context.body.callOf(site);
   if (resolved === undefined) {
     throw new Error(`No call was resolved at ${site.span.start}.`);
   }
-  context.emit({
+  context.code.emit({
     kind: 'call',
     span: site.span,
     dst,

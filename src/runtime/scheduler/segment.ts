@@ -36,7 +36,7 @@ export type SegmentEnd =
   | { readonly kind: 'awaited' }
   /** Nothing is ready: commit, then wait. */
   | { readonly kind: 'idle' }
-  | { readonly kind: 'finished'; readonly value: Value }
+  | { readonly kind: 'finished'; readonly outcome: Value }
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
 
 /**
@@ -81,7 +81,7 @@ class SegmentRunner implements Machine {
           return { kind: 'awaited' };
         }
         if (end !== 'returned') {
-          return { kind: 'finished', value: end.finished };
+          return { kind: 'finished', outcome: end.finished };
         }
       }
       return { kind: 'idle' };

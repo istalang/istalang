@@ -16,8 +16,8 @@
  * disposable as its type entry's `disposal` says (definition/types.ts), so a restore knows that a
  * `Shared<Lease>` cell has a `dispose` to call and a `Shared<int>` cell doesn't.
  *
- * The slot, future and resource parts are what M3 is expected to need; changes go through the
- * tech-lead as contract amendments (docs/work/toolchain-v0.1/m2-skeleton.md).
+ * The slot, future and resource parts are what the language's concurrency and disposal need before
+ * any code runs them, so they may still change as that code arrives (docs/arch/definition.md).
  */
 
 import { z } from 'zod';

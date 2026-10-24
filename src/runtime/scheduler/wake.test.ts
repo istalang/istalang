@@ -71,7 +71,10 @@ const committed = (texts: readonly string[]): readonly Snapshot[] =>
 describe('advancing an instance', () => {
   it("runs an async callee inside its caller's segment, so its first await commits nothing", () => {
     const test = testRuntime();
-    expect(startToEnd(test, compiledText(childAndMain))).toEqual({ kind: 'finished', value: 42n });
+    expect(startToEnd(test, compiledText(childAndMain))).toEqual({
+      kind: 'finished',
+      outcome: 42n,
+    });
     const [waiting, finished, ...more] = committed(test.store.commits);
     expect(more).toEqual([]);
     const kinds = waiting?.objects.map((object) => object.kind).sort();
@@ -96,7 +99,7 @@ describe('advancing an instance', () => {
       "import * as runtime from 'runtime'\nasync fn main():\n  await runtime.commit()\n  7",
     );
     const test = testRuntime();
-    expect(test.runtime.deploy(text).start('i')).toEqual({ kind: 'finished', value: 7n });
+    expect(test.runtime.deploy(text).start('i')).toEqual({ kind: 'finished', outcome: 7n });
     expect(test.store.commits).toHaveLength(2);
   });
 
@@ -109,7 +112,7 @@ describe('advancing an instance', () => {
     expect(first).toEqual({ kind: 'waiting', until: 5n });
     const second = testRuntime({ store, clock });
     expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
-    expect(uninterrupted).toEqual({ kind: 'finished', value: 5n });
+    expect(uninterrupted).toEqual({ kind: 'finished', outcome: 5n });
   });
 
   it('with crashEveryAwait, runs every segment twice and commits what a normal run commits', () => {
@@ -117,18 +120,35 @@ describe('advancing an instance', () => {
     const normalCalls = { count: 0 };
     const normal = testRuntime({ natives: countingAdd(normalCalls) });
     const crashingCalls = { count: 0 };
-    const crashing = testRuntime({ natives: countingAdd(crashingCalls), crashEveryAwait: true });
-    expect(startToEnd(crashing, text)).toEqual(startToEnd(normal, text));
-    expect(crashing.store.commits).toEqual(normal.store.commits);
+    const crashing = testRuntime({ natives: countingAdd(crashingCalls) });
+    expect(startToEnd(crashing, text, { crashEveryAwait: true })).toEqual(startToEnd(normal, text));
+    const withoutOption = ({ crashEveryAwait: _, ...rest }: Snapshot) => rest;
+    expect(committed(crashing.store.commits).map(withoutOption)).toEqual(
+      committed(normal.store.commits).map(withoutOption),
+    );
+    expect(committed(crashing.store.commits).every((commit) => commit.crashEveryAwait)).toBe(true);
+    expect(crashingCalls.count).toBe(2 * normalCalls.count);
+  });
+
+  it('with crashEveryAwait, keeps re-running segments on a fresh runtime after a restart', () => {
+    const text = compiledText(severalAwaits);
+    const normalCalls = { count: 0 };
+    startToEnd(testRuntime({ natives: countingAdd(normalCalls) }), text);
+    const store = recordingStore();
+    const clock = manualClock();
+    const crashingCalls = { count: 0 };
+    const first = testRuntime({ natives: countingAdd(crashingCalls), store, clock });
+    first.runtime.deploy(text).start('restarted', { crashEveryAwait: true });
+    const second = testRuntime({ natives: countingAdd(crashingCalls), store, clock });
+    runToEnd(second, 'restarted', second.runtime.wake('restarted'));
     expect(crashingCalls.count).toBe(2 * normalCalls.count);
   });
 
   it('with crashEveryAwait, panics an instance whose segment runs differently the second time', () => {
-    const crashing = testRuntime({
-      natives: countingAdd({ count: 0 }, true),
-      crashEveryAwait: true,
-    });
-    expect(startToEnd(crashing, compiledText(severalAwaits))).toMatchObject({
+    const crashing = testRuntime({ natives: countingAdd({ count: 0 }, true) });
+    expect(
+      startToEnd(crashing, compiledText(severalAwaits), { crashEveryAwait: true }),
+    ).toMatchObject({
       kind: 'panicked',
       message: 'This segment ran differently when crashEveryAwait re-ran it.',
     });
@@ -145,7 +165,7 @@ describe('advancing an instance', () => {
       ].join('\n'),
     );
     const test = testRuntime({ clock: manualClock(1000n) });
-    expect(startToEnd(test, text)).toEqual({ kind: 'finished', value: 500n });
+    expect(startToEnd(test, text)).toEqual({ kind: 'finished', outcome: 500n });
   });
 
   it('waits until the earliest timer, and wakes to nothing new before it is due', () => {
@@ -181,7 +201,7 @@ describe('advancing an instance', () => {
     const state = runToEnd(test, 'corpus', program.start('corpus'));
     const ended =
       state.kind === 'finished'
-        ? { expects: 'outcome', expected: program.json(state.value) }
+        ? { expects: 'outcome', expected: program.json(state.outcome) }
         : { expects: 'panic', expected: state.kind === 'panicked' ? state.message : '' };
     expect(ended).toEqual({ expects, expected });
   });

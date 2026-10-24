@@ -33,13 +33,13 @@ function load(natives: Natives = preludeNatives) {
 
 describe('the runtime', () => {
   it('runs the subset fixture to its outcome', () => {
-    expect(load().run()).toEqual({ kind: 'finished', value: subsetOutcome });
+    expect(load().run()).toEqual({ kind: 'finished', outcome: subsetOutcome });
   });
 
   it('calls whatever replaced a function-table entry', () => {
     const program = load();
     program.functions.replace(fib, { kind: 'native', native: () => 0n });
-    expect(program.run()).toEqual({ kind: 'finished', value: 10n });
+    expect(program.run()).toEqual({ kind: 'finished', outcome: 10n });
   });
 
   it('turns a panic into the outcome, with a trace from the innermost frame out', () => {

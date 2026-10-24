@@ -1,7 +1,7 @@
 /**
  * What an instruction handler sees of the running execution, as an interface, so the instruction
- * table depends on it and not on the class that runs the loop (execution.ts), and the frame's
- * registers, which a handler reads and writes directly.
+ * table depends on it and not on the class that runs the loop (scheduler/segment.ts), and the
+ * frame's registers, which a handler reads and writes directly.
  *
  * A frame is data, as a snapshot stores it (docs/arch/definition.md, "Frames"): a function, a pc
  * and registers. The pc of a frame that has called another stays on its `call` until the callee

@@ -6,10 +6,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { externKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import { Panic } from '../../runtime/natives.ts';
 import { unusedContext } from '../../runtime/runtime.test-kit.ts';
+import { nativeKey, primitiveKeyType } from '../native-keys.ts';
 import { preludeNatives } from './natives.ts';
 
 function call(key: string, ...argumentValues: Value[]): Value {
@@ -22,14 +22,7 @@ function call(key: string, ...argumentValues: Value[]): Value {
 
 /** The key of the prelude extern `name` over primitive parameter `types`. */
 const keyOf = (name: string, ...types: string[]) =>
-  externKey({
-    module: 'prelude',
-    name,
-    parameters: types.map((type) => ({
-      type: { kind: 'primitive', name: type },
-      reference: false,
-    })),
-  });
+  nativeKey('prelude', name, ...types.map(primitiveKeyType));
 const nonZero = fc.bigInt().filter((value) => value !== 0n);
 const finite = fc.double({ noNaN: true, noDefaultInfinity: true });
 

@@ -7,8 +7,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach } from 'vitest';
 import { runCli } from './cli.ts';
+
+/** The built `ista` executable, which the test setup builds before any test runs. */
+export const builtCli = fileURLToPath(new URL('../../dist/cli/main.js', import.meta.url));
 
 const projects: string[] = [];
 

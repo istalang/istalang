@@ -9,9 +9,9 @@
 
 import type { Expression } from '../../syntax/expressions.ts';
 import type { Handlers } from '../../syntax/handlers.ts';
-import type { NodeOf } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { boolType, errorType, floatType, intType, stringType, type Type } from '../types/type.ts';
+import { unsupportedHandler as unsupported } from '../unsupported.ts';
 import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';
 import { checkIf } from './control.ts';
@@ -19,8 +19,6 @@ import { checkDurationLiteral } from './literals.ts';
 import { checkName } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
 import { checkMemberAccess, checkStructLiteral } from './structs.ts';
-
-const unsupported = (context: BodyContext, node: NodeOf<string>): Type => context.unsupported(node);
 
 /** Missing and invalid nodes were reported by the parser. */
 const alreadyReported = (): Type => errorType;

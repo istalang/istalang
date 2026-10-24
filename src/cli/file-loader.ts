@@ -24,6 +24,7 @@ import {
   type ModuleLoader,
   moduleIdOf,
 } from '../compiler/program/program.ts';
+import { isSystemError } from './errno.ts';
 
 export const sourceExtension = '.ista';
 
@@ -60,7 +61,7 @@ function isFile(path: string): boolean {
   try {
     return statSync(path, { throwIfNoEntry: false })?.isFile() ?? false;
   } catch (error) {
-    if (isAbsentFile(error)) {
+    if (isSystemError(error) && error.code === 'ENOTDIR') {
       return false;
     }
     throw error;
@@ -85,12 +86,6 @@ function filePathOf(path: string, importer: ModuleId, projectRoot: string): stri
 /** The directory of a module on disk; `undefined` for a module that isn't a file. */
 function directoryOf(id: ModuleId): string | undefined {
   return id.startsWith('file:') ? dirname(fileURLToPath(id)) : undefined;
-}
-
-const absentFileCodes = new Set(['ENOTDIR']);
-
-function isAbsentFile(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && absentFileCodes.has(String(error.code));
 }
 
 /** A path as an import names it: without the `.ista` it implies. A root may lack it. */

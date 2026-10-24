@@ -10,7 +10,7 @@ import { brokenText } from '../../../test/broken.ts';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
-import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
+import { reportedNothing, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { preludeModule } from '../../stdlib/stdlib-loader.ts';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
 import { boundReport, preludeProgramOf } from './bind.test-kit.ts';
@@ -164,8 +164,8 @@ describe('valid programs bind without diagnostics', () => {
   });
 
   it('the names corpus, both modules', () => {
-    expect(boundReport(corpus, 'names/main')).toEqual({ codes: [], spanTexts: [] });
-    expect(boundReport(corpus, 'names/lib')).toEqual({ codes: [], spanTexts: [] });
+    expect(boundReport(corpus, 'names/main')).toEqual(reportedNothing);
+    expect(boundReport(corpus, 'names/lib')).toEqual(reportedNothing);
   });
 
   it('§12.1, its examples joined into one module', () => {
@@ -173,19 +173,19 @@ describe('valid programs bind without diagnostics', () => {
       .filter((example) => example.section === '12.1')
       .map((example) => example.code)
       .join('\n');
-    expect(boundReport({ main: purchase })).toEqual({ codes: [], spanTexts: [] });
+    expect(boundReport({ main: purchase })).toEqual(reportedNothing);
   });
 
   it('a static function of an enum, which only the checker can tell from a variant', () => {
     const text =
       'enum Color { Red; Green }\nfn Color.default() -> Color: Color.Red\nfn f() -> Color: Color.default()';
-    expect(boundReport({ main: text })).toEqual({ codes: [], spanTexts: [] });
+    expect(boundReport({ main: text })).toEqual(reportedNothing);
   });
 
   it('a top-level function extends the prelude function of its name', () => {
     expect(
       boundReport({ main: 'struct Book { title: string }\nfn read(self: Book): self.title' }),
-    ).toEqual({ codes: [], spanTexts: [] });
+    ).toEqual(reportedNothing);
   });
 });
 

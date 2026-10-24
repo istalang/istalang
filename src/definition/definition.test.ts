@@ -284,7 +284,7 @@ describe('definition format', () => {
         const { span } = instruction(json, 3, 4);
         at(json, 'functions', 3, 'instructions')[4] = { kind: 'await', span, dst: 0, future: 0 };
       },
-      'await: only an async function can use it',
+      'await: only an async function can wait',
       'functions[3].instructions[4]',
     ],
     [

@@ -7,7 +7,12 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { type Reported, reportedIn, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
+import {
+  type Reported,
+  reportedIn,
+  reportedNothing,
+  reportedOnce,
+} from '../../diagnostics/diagnostic.test-kit.ts';
 import { textOf } from '../../text/span.ts';
 import { programDiagnostics } from './diagnostics.ts';
 import {
@@ -124,7 +129,7 @@ describe('a path names exactly one module', () => {
       () => moduleOf(library, 'fn open(): 1'),
       () => moduleOf(library, 'fn saved(): 1'),
     );
-    expect(reportedFor(program)).toEqual({ codes: [], spanTexts: [] });
+    expect(reportedFor(program)).toEqual(reportedNothing);
     expect(program.modules.get(library)?.tree.source.text).toBe('fn open(): 1');
   });
 });

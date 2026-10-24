@@ -158,10 +158,8 @@ function explainSingle(
     parameters.forEach((parameter, index) => {
       const found = argumentTypes[index] ?? errorType;
       const node = argumentNodes[index];
-      if (node !== undefined && !isAssignable(found, parameter.type)) {
-        context.report(
-          checkerDiagnostics.typeMismatch(node.span, typeText(parameter.type), typeText(found)),
-        );
+      if (node !== undefined) {
+        context.fit(found, parameter.type, node.span);
       }
     });
   }

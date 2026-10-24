@@ -7,30 +7,31 @@
  *   from exactly what a restart would see.
  * - A commit writes the snapshot through the store and only then goes on (§5). With nothing ready
  *   and no timer due, nothing changed since the last commit, so nothing is written.
- * - With `crashEveryAwait` (§10), every segment runs, is discarded and runs again from the same
- *   snapshot and start time before the second run commits. A second run that ends differently
- *   panics the instance, so extern calls that aren't idempotent, and code that differs between
- *   runs, show.
+ * - With `crashEveryAwait` (§10), an option the instance keeps in its snapshot, every segment
+ *   runs, is discarded and runs again from the same snapshot and start time before the second run
+ *   commits. A second run that ends differently panics the instance, so extern calls that aren't
+ *   idempotent, and code that differs between runs, show.
  * - A panic commits nothing (§3.12): the instance stays at its last commit, marked panicked, with
  *   when the failed segment started, so a retry sees the same time.
+ * - Where the instance stands afterwards is read from the last commit (`stateOf`), the one place
+ *   a host's view of an instance comes from.
  */
 
 import type { InstanceState } from '../instance-state.ts';
 import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
-import { Instance, type LoadedDefinition } from './instance.ts';
+import { Instance, type LoadedDefinition, type StartOptions } from './instance.ts';
 import { runSegment, type SegmentEnd } from './segment.ts';
 
 export interface SchedulerSeams {
   readonly store: InstanceStore;
   /** Milliseconds since the Unix epoch. */
   readonly now: () => bigint;
-  readonly crashEveryAwait: boolean;
 }
 
 /** Where advancing starts: a new instance about to run `main`, or a committed snapshot. */
 export type Start =
-  | { readonly kind: 'new'; readonly name: string }
+  | { readonly kind: 'new'; readonly name: string; readonly options: StartOptions }
   | { readonly kind: 'committed'; readonly snapshot: Snapshot };
 
 /** Advances an instance of `loaded` from `start` as far as it goes without waiting. */
@@ -40,26 +41,31 @@ export function advance(
   start: Start,
 ): InstanceState {
   let committed = start.kind === 'committed' ? start.snapshot : undefined;
-  const name = start.kind === 'committed' ? start.snapshot.instance : start.name;
+  const from: Origin = { loaded, start };
   for (;;) {
     const startedAt = seams.now();
-    const first = runFrom(loaded, name, committed, startedAt);
+    const first = runFrom(from, committed, startedAt);
     if (first === undefined) {
       return stateOf(committed);
     }
-    const { instance, end } = seams.crashEveryAwait
-      ? rerun(first, runFrom(loaded, name, committed, startedAt))
+    const { instance, end } = first.instance.crashEveryAwait
+      ? rerun(first, runFrom(from, committed, startedAt))
       : first;
     if (end.kind === 'panicked') {
       const status = { ...end, segmentStartedAt: startedAt };
-      commit(seams.store, { ...(committed ?? emptySnapshot(loaded.hash, name)), status });
-      return end;
+      return stateOf(commit(seams.store, { ...(committed ?? emptySnapshot(instance)), status }));
     }
     committed = commit(seams.store, instance.snapshot(statusOf(end)));
     if (end.kind === 'finished') {
-      return end;
+      return stateOf(committed);
     }
   }
+}
+
+/** What every segment of one advance runs from: the program, and how the instance started. */
+interface Origin {
+  readonly loaded: LoadedDefinition;
+  readonly start: Start;
 }
 
 /** One segment's run: the instance as it left it, and how it ended. */
@@ -70,17 +76,16 @@ interface SegmentRun {
 
 /** Runs one segment from `committed`, or from `main` for a new instance; undefined when nothing can run. */
 function runFrom(
-  loaded: LoadedDefinition,
-  name: string,
+  { loaded, start }: Origin,
   committed: Snapshot | undefined,
   startedAt: bigint,
 ): SegmentRun | undefined {
   if (committed === undefined) {
     const { main } = loaded.definition;
-    if (main === undefined) {
-      throw new Error('This Definition has no main.');
+    if (main === undefined || start.kind !== 'new') {
+      throw new Error('Only a new instance of a Definition with a main starts from main.');
     }
-    const instance = Instance.start(loaded, name, main);
+    const instance = Instance.start(loaded, start.name, main, start.options);
     return { instance, end: runSegment(instance, startedAt, instance.root()) };
   }
   const instance = Instance.restore(loaded, committed);
@@ -115,22 +120,23 @@ function commit(store: InstanceStore, snapshot: Snapshot): Snapshot {
   return snapshotFormat.read(text);
 }
 
-function statusOf(
-  end: Exclude<SegmentEnd, { kind: 'panicked' }>,
-): Exclude<Snapshot['status'], { kind: 'panicked' }> {
-  return end.kind === 'finished' ? { kind: 'finished', outcome: end.value } : { kind: 'active' };
-}
-
-/** What a panicked instance that never committed is left as: its name, on its Definition. */
-function emptySnapshot(definition: string, instance: string): Snapshot {
+/** What a panicked instance that never committed is left as: its name and options, on its Definition. */
+function emptySnapshot(instance: Instance): Snapshot {
   return {
-    definition,
-    instance,
+    definition: instance.loaded.hash,
+    instance: instance.name,
     status: { kind: 'active' },
-    externReads: [],
+    crashEveryAwait: instance.crashEveryAwait,
     objects: [],
     ready: [],
   };
+}
+
+/** The status a segment that didn't panic leaves its instance in. */
+function statusOf(
+  end: Exclude<SegmentEnd, { kind: 'panicked' }>,
+): Exclude<Snapshot['status'], { kind: 'panicked' }> {
+  return end.kind === 'finished' ? end : { kind: 'active' };
 }
 
 /** What a committed snapshot says about its instance. */
@@ -140,7 +146,7 @@ export function stateOf(snapshot: Snapshot | undefined): InstanceState {
     case 'active':
       return { kind: 'waiting', until: snapshot === undefined ? undefined : nextTimerOf(snapshot) };
     case 'finished':
-      return { kind: 'finished', value: status.outcome };
+      return status;
     case 'panicked':
       return { kind: 'panicked', message: status.message, trace: status.trace };
     default: {

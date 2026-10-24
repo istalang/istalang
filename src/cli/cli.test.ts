@@ -7,9 +7,8 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ista, tempProject as project } from './cli.test-kit.ts';
+import { builtCli, ista, tempProject as project } from './cli.test-kit.ts';
 
 const summaryOfOneError = /1 error, 0 warnings\.\n$/u;
 const otherPeoplesCode = /node_modules|vendor|hidden/u;
@@ -106,7 +105,7 @@ describe('ista', () => {
   });
 
   it('runs as the built executable, exiting with the code of the command', () => {
-    const main = fileURLToPath(new URL('../../dist/cli/main.js', import.meta.url));
+    const main = builtCli;
     expect(existsSync(main), 'the test setup builds dist/cli/main.js').toBe(true);
     const root = project({ 'main.ista': 'fn f(: 1\n' });
     const result = spawnSync(process.execPath, [main, 'check'], { cwd: root, encoding: 'utf8' });

@@ -14,7 +14,7 @@
     "ista": "dist/cli/main.js"
   },
   "scripts": {
-    "build": "tsdown && tsc -p tsconfig.build.json",
+    "build": "tsdown",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "biome ci && depcruise src",
     "fix": "biome check --write",

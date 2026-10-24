@@ -13,6 +13,7 @@ import { Command, CommanderError } from 'commander';
 import type { CliEnvironment, CommandDefinition } from './command.ts';
 import { defineCheckCommand } from './commands/check.ts';
 import { defineRunCommand } from './commands/run.ts';
+import { isSystemError } from './errno.ts';
 
 const commands: readonly CommandDefinition[] = [defineCheckCommand, defineRunCommand];
 
@@ -59,9 +60,4 @@ export async function runCli(
 /** The package's own manifest sits two levels up from this module, in `src` and in `dist` alike. */
 function packageVersion(): string {
   return JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
-}
-
-/** An error the operating system raised, such as a file that can't be read (EACCES). */
-function isSystemError(error: unknown): error is Error {
-  return error instanceof Error && 'syscall' in error;
 }

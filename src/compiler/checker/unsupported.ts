@@ -7,7 +7,9 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { NodeOf } from '../syntax/node.ts';
+import type { BodyContext } from './context.ts';
 import { checkerDiagnostics } from './diagnostics.ts';
+import type { Type } from './types/type.ts';
 
 /**
  * `notSupportedYet` for `node`. The construct is named by `construct`, or else from the node's
@@ -20,4 +22,9 @@ export function notSupported(node: NodeOf<string>, construct = kindText(node.kin
 function kindText(kind: string): string {
   const words = kind.replaceAll(/(?<=[a-z])(?=[A-Z])/gu, ' ').toLowerCase();
   return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
+}
+
+/** The handler table entry of every kind the checker doesn't handle yet; the error type. */
+export function unsupportedHandler(context: BodyContext, node: NodeOf<string>): Type {
+  return context.unsupported(node);
 }
