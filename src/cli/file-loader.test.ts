@@ -29,7 +29,7 @@ function idOfFile(root: string, path: string): ModuleId {
 describe('fileLoader', () => {
   it('takes a relative path from the importing file and a bare one from the project root', () => {
     const root = tempProject(files);
-    const load = fileLoader(root, root);
+    const load = fileLoader({ projectRoot: root, cwd: root });
     const importer = idOfFile(root, 'deep/inner/m.ista');
     expect(load('../../a', importer)?.id).toBe(idOfFile(root, 'a.ista'));
     expect(load('./sib', importer)?.id).toBe(idOfFile(root, 'deep/inner/sib.ista'));
@@ -38,14 +38,24 @@ describe('fileLoader', () => {
 
   it("returns the file's text, labelled by its path from the working directory", () => {
     const root = tempProject(files);
-    const loaded = fileLoader(root, join(root, 'deep'))('a', idOfFile(root, 'deep/x.ista'));
+    const load = fileLoader({ projectRoot: root, cwd: join(root, 'deep') });
+    const loaded = load('a', idOfFile(root, 'deep/x.ista'));
     expect(loaded?.read()).toBe('fn a(): 1');
     expect(loaded?.label).toBe(join('..', 'a.ista'));
   });
 
+  it('names a module by its path from the project root, wherever the toolchain runs', () => {
+    const root = tempProject(files);
+    const importer = idOfFile(root, 'deep/x.ista');
+    const names = [root, join(root, 'deep'), join(root, 'deep', 'inner')].map(
+      (cwd) => fileLoader({ projectRoot: root, cwd })('./inner/m', importer)?.name,
+    );
+    expect(names).toEqual(['deep/inner/m', 'deep/inner/m', 'deep/inner/m']);
+  });
+
   it('names one module by every path that reaches its file', () => {
     const root = tempProject(files);
-    const load = fileLoader(root, root);
+    const load = fileLoader({ projectRoot: root, cwd: root });
     const fromX = load('../a', idOfFile(root, 'deep/x.ista'));
     const fromRoot = load('a', idOfFile(root, 'deep/x.ista'));
     expect(fromX?.id).toBe(fromRoot?.id);
@@ -67,29 +77,33 @@ describe('fileLoader', () => {
     ['C:/x'],
   ])('names nothing with %j', (path) => {
     const root = tempProject(files);
-    expect(fileLoader(root, root)(path, idOfFile(root, 'deep/x.ista'))).toBeUndefined();
+    expect(
+      fileLoader({ projectRoot: root, cwd: root })(path, idOfFile(root, 'deep/x.ista')),
+    ).toBeUndefined();
   });
 
   it('locates a file without reading it, leaving the read to the loading core', ({ skip }) => {
     skip(process.getuid?.() === 0, 'root reads files regardless of their permissions');
     const root = tempProject(files);
     chmodSync(join(root, 'a.ista'), 0o000);
-    const located = locateFile(join(root, 'a.ista'), root);
+    const located = locateFile(join(root, 'a.ista'), { projectRoot: root, cwd: root });
     expect(located?.id).toBe(idOfFile(root, 'a.ista'));
     expect(() => located?.read()).toThrow(permissionDenied);
   });
 
   it('names nothing relative to a module that is not a file', () => {
     const root = tempProject(files);
-    expect(fileLoader(root, root)('./a', moduleIdOf(new URL('std:time')))).toBeUndefined();
+    expect(
+      fileLoader({ projectRoot: root, cwd: root })('./a', moduleIdOf(new URL('std:time'))),
+    ).toBeUndefined();
   });
 
   it('names nothing where the file is missing or is a directory', () => {
     const root = tempProject(files);
     mkdirSync(join(root, 'folder.ista'));
-    const load = fileLoader(root, root);
+    const load = fileLoader({ projectRoot: root, cwd: root });
     expect(load('missing', idOfFile(root, 'a.ista'))).toBeUndefined();
     expect(load('folder', idOfFile(root, 'a.ista'))).toBeUndefined();
-    expect(locateFile(join(root, 'deep'), root)).toBeUndefined();
+    expect(locateFile(join(root, 'deep'), { projectRoot: root, cwd: root })).toBeUndefined();
   });
 });

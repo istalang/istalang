@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { reportedIn } from '../diagnostics/diagnostic.test-kit.ts';
 import { binderDiagnostics } from './binder/diagnostics.ts';
+import { checkerDiagnostics } from './checker/diagnostics.ts';
 import { diagnose, type ModuleDiagnostics } from './compile.ts';
 import { programDiagnostics } from './program/diagnostics.ts';
 import { type Files, idOf, programOf } from './program/program.test-kit.ts';
@@ -31,7 +32,14 @@ describe('diagnose', () => {
   });
 
   it('merges the diagnostics of every phase, by position', () => {
-    const text = "import a from './gone'\nconst n = 1__0\nconst m = nope\nimport b from 'gone/too'";
+    const text = [
+      "import a from './gone'",
+      'fn f():',
+      '  const n = 1__0',
+      '  const m = nope',
+      '  n + true',
+      "import b from 'gone/too'",
+    ].join('\n');
     const { source, diagnostics } = diagnosedAt({ 'main.ista': text }, 'main.ista');
     const { unresolvedImport } = programDiagnostics;
     expect(reportedIn(source, diagnostics)).toEqual({
@@ -39,9 +47,10 @@ describe('diagnose', () => {
         unresolvedImport.code,
         scannerDiagnostics.misplacedSeparator.code,
         binderDiagnostics.undeclared.code,
+        checkerDiagnostics.operatorTypes.code,
         unresolvedImport.code,
       ],
-      spanTexts: ["'./gone'", '__', 'nope', "'gone/too'"],
+      spanTexts: ["'./gone'", '__', 'nope', 'n + true', "'gone/too'"],
     });
   });
 

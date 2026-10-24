@@ -1,12 +1,14 @@
 /**
- * Real projects on disk for the CLI's tests: each is a fresh temporary directory, removed after the
- * test that made it, so tests exercise the file system the way users will.
+ * The CLI's tests run `ista` in-process on real projects on disk: each is a fresh temporary
+ * directory, removed after the test that made it, so tests exercise the file system the way users
+ * will.
  */
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach } from 'vitest';
+import { runCli } from './cli.ts';
 
 const projects: string[] = [];
 
@@ -25,4 +27,27 @@ export function tempProject(files: Readonly<Record<string, string>>): string {
     writeFileSync(join(root, path), text);
   }
   return root;
+}
+
+/** What one `ista` run produced. */
+export interface Run {
+  readonly code: number;
+  readonly out: string;
+  readonly err: string;
+}
+
+/** Runs `ista` with `args` in `cwd`, in-process. */
+export async function ista(cwd: string, ...args: string[]): Promise<Run> {
+  let out = '';
+  let err = '';
+  const code = await runCli(args, {
+    cwd,
+    write: (text) => {
+      out += text;
+    },
+    writeError: (text) => {
+      err += text;
+    },
+  });
+  return { code, out, err };
 }

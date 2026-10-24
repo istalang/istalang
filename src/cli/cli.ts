@@ -12,8 +12,9 @@ import { readFileSync } from 'node:fs';
 import { Command, CommanderError } from 'commander';
 import type { CliEnvironment, CommandDefinition } from './command.ts';
 import { defineCheckCommand } from './commands/check.ts';
+import { defineRunCommand } from './commands/run.ts';
 
-const commands: readonly CommandDefinition[] = [defineCheckCommand];
+const commands: readonly CommandDefinition[] = [defineCheckCommand, defineRunCommand];
 
 const couldNotRun = 2;
 

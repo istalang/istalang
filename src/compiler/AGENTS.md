@@ -16,6 +16,8 @@ One folder per phase. Phases share only contracts.
 
 - `program/`: `program.ts` loads the module graph from roots through the `ModuleLoader` seam. It imposes no path syntax and does no I/O.
 - `binder/`: `bind.ts` binds a program's names; `entities.ts` is the vocabulary its consumers read. Each module binds on its own (`bind-module.ts`, memoized per tree), with categories wired through the context in `local-binder.ts` as the parser's are; `flow.ts` holds where bindings are visible; `link.ts` resolves what crosses modules.
+- `checker/`: `check.ts` checks a program's types and is the surface lowering reads (each body's expression types and call targets). Construct modules recurse through `context.ts`; `program-checker.ts` and `body-checker.ts` wire them. A construct not supported yet goes through `unsupported.ts`; a feature slice replaces its table entries.
+- `lowering/`: `lower.ts` compiles what `main` reaches into a Definition, one function at a time (`function-lowering.ts`), with tables interned in `tables.ts`. Handlers live by construct in `expressions/` and `statements/`, as in the checker, and recurse through `context.ts`.
 - `compile.ts`: the coordinator from a loaded Program onward. Only it knows the order of the phases after loading; apps ask it for results.
 
 A phase has:

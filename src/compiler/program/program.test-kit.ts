@@ -2,8 +2,8 @@
  * Programs over in-memory modules, for the tests of every phase that starts from a program.
  *
  * The loader here is deliberately trivial: an import's path is the module's key, verbatim, so these
- * tests depend on the loading core alone and on no loader's path syntax. Each source is labelled
- * with its key, so diagnostics and assertions read as the files they come from.
+ * tests depend on the loading core alone and on no loader's path syntax. Each source is named and
+ * labelled with its key, so diagnostics and assertions read as the files they come from.
  */
 
 import {
@@ -28,7 +28,7 @@ export function memoryLoader(files: Files): ModuleLoader {
   const modules = new Map<string, LocatedModule>(
     Object.entries(files).map(([key, text]) => [
       key,
-      { id: idOf(key), label: key, read: () => text },
+      { id: idOf(key), name: key, label: key, read: () => text },
     ]),
   );
   return (path) => modules.get(path);

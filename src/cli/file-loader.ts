@@ -11,11 +11,12 @@
  * Locating a file only checks that it is there; the loading core reads it once, when it loads the
  * module. A path to nothing, or to a directory, is simply not a module. Any other error is the
  * system refusing, and propagates for the CLI to report. A module's label is its path relative to
- * the working directory, which is how diagnostics show it.
+ * the working directory, which is how diagnostics show it; its name is its path from the project
+ * root in this same syntax, which never depends on where `ista` runs.
  */
 
 import { readFileSync, statSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   type LocatedModule,
@@ -28,21 +29,31 @@ export const sourceExtension = '.ista';
 
 const platformSeparator = /[\\:]/u;
 
-/** The loader of the project's files under `projectRoot`, labelling them relative to `cwd`. */
-export function fileLoader(projectRoot: string, cwd: string): ModuleLoader {
+/** Where the project is, and where the toolchain runs, which labels are relative to. */
+export interface ProjectPlaces {
+  readonly projectRoot: string;
+  readonly cwd: string;
+}
+
+/** The loader of the project's files. */
+export function fileLoader(places: ProjectPlaces): ModuleLoader {
   return (path, importer) => {
-    const file = filePathOf(path, importer, projectRoot);
-    return file === undefined ? undefined : locateFile(file, cwd);
+    const file = filePathOf(path, importer, places.projectRoot);
+    return file === undefined ? undefined : locateFile(file, places);
   };
 }
 
 /** The module in `file`, an absolute path; `undefined` when there is no such file. */
-export function locateFile(file: string, cwd: string): LocatedModule | undefined {
+export function locateFile(file: string, places: ProjectPlaces): LocatedModule | undefined {
   if (!isFile(file)) {
     return;
   }
-  const id = moduleIdOf(pathToFileURL(file));
-  return { id, label: relative(cwd, file), read: () => readFileSync(file, 'utf8') };
+  return {
+    id: moduleIdOf(pathToFileURL(file)),
+    name: withoutExtension(relative(places.projectRoot, file).split(sep).join('/')),
+    label: relative(places.cwd, file),
+    read: () => readFileSync(file, 'utf8'),
+  };
 }
 
 function isFile(path: string): boolean {
@@ -80,4 +91,9 @@ const absentFileCodes = new Set(['ENOTDIR']);
 
 function isAbsentFile(error: unknown): boolean {
   return error instanceof Error && 'code' in error && absentFileCodes.has(String(error.code));
+}
+
+/** A path as an import names it: without the `.ista` it implies. A root may lack it. */
+function withoutExtension(path: string): string {
+  return path.endsWith(sourceExtension) ? path.slice(0, -sourceExtension.length) : path;
 }

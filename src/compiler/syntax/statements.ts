@@ -98,3 +98,13 @@ export type Statement =
   | Defer
   | Drop
   | Spawn;
+
+/**
+ * The expression whose value is the block's (§4): its last statement's, when that is an
+ * expression statement. A block ending in any other statement, or empty, has none, and is `unit`
+ * or `never`.
+ */
+export function tailExpressionOf(block: Block): Expression | undefined {
+  const last = block.statements.at(-1);
+  return last?.kind === 'ExpressionStatement' ? last.expression : undefined;
+}

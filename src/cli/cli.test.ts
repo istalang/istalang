@@ -9,33 +9,11 @@ import { join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { tempProject as project } from './cli.test-kit.ts';
-import { runCli } from './cli.ts';
+import { ista, tempProject as project } from './cli.test-kit.ts';
 
 const summaryOfOneError = /1 error, 0 warnings\.\n$/u;
 const otherPeoplesCode = /node_modules|vendor|hidden/u;
 const versionNumber = /^\d+\.\d+\.\d+/u;
-
-interface Run {
-  readonly code: number;
-  readonly out: string;
-  readonly err: string;
-}
-
-async function ista(cwd: string, ...args: string[]): Promise<Run> {
-  let out = '';
-  let err = '';
-  const code = await runCli(args, {
-    cwd,
-    write: (text) => {
-      out += text;
-    },
-    writeError: (text) => {
-      err += text;
-    },
-  });
-  return { code, out, err };
-}
 
 const valid = {
   'main.ista': "import helper from 'lib/helper'\n\nasync fn main(): helper()\n",

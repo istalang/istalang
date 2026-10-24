@@ -17,9 +17,12 @@ import preludeSource from './prelude/prelude.ista';
 /** Every std module's source, by name. */
 export const stdSources: Readonly<Record<string, string>> = {};
 
+/** The prelude's canonical module name, which its declarations and natives are qualified with. */
+export const preludeName = 'prelude';
+
 /** The prelude, as a module for the program to load (§3.13). */
 export function preludeModule(): LocatedModule {
-  return stdModule('prelude', preludeSource);
+  return stdModule(preludeName, preludeSource);
 }
 
 /** The loader of the std modules in `sources`. */
@@ -33,5 +36,5 @@ export function stdlibLoader(sources: Readonly<Record<string, string>> = stdSour
 
 function stdModule(name: string, text: string): LocatedModule {
   const label = `std:${name}`;
-  return { id: moduleIdOf(new URL(label)), label, read: () => text };
+  return { id: moduleIdOf(new URL(label)), name, label, read: () => text };
 }

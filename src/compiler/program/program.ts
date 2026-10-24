@@ -2,8 +2,8 @@
  * A program: the modules reachable from its roots, each parsed and with its imports resolved
  * (§3.13). This is the loading core's entry, and it declares the one seam loading depends on.
  *
- * - A `ModuleLoader` turns the string in an import into that module: its identity, its label, and
- *   a way to read its text. Whoever runs the compiler passes in its loaders (files on disk, the std
+ * - A `ModuleLoader` turns the string in an import into that module: its identity, its canonical
+ *   name, its label, and a way to read its text. Whoever runs the compiler passes in its loaders (files on disk, the std
  *   modules, an editor's open documents, a database), so the core does no I/O and imposes no path
  *   syntax; each loader owns the syntax it accepts.
  * - Finding a module and reading it are separate on purpose. Many imports name one module, and
@@ -46,6 +46,12 @@ export function moduleIdOf(url: URL): ModuleId {
 /** A module a loader found, not yet read. */
 export interface LocatedModule {
   readonly id: ModuleId;
+  /**
+   * The module's canonical name, which compiled code qualifies its declarations with: the import
+   * path that names it from anywhere (§3.13), such as `purchase/approve` or `time`. Unlike the
+   * label it never depends on where the toolchain runs, so a compiled program's identity doesn't.
+   */
+  readonly name: string;
   /** How diagnostics name the module, such as its path from the working directory. */
   readonly label: string;
   /** The module's text. The core calls it once, when it loads the module; if it throws, so does the build. */
@@ -57,6 +63,8 @@ export type ModuleLoader = (path: string, importer: ModuleId) => LocatedModule |
 
 export interface ProgramModule {
   readonly id: ModuleId;
+  /** The loader's canonical name for the module (`LocatedModule.name`). */
+  readonly name: string;
   readonly tree: SyntaxTree;
   /** The module each import names, for every import that names exactly one. */
   readonly imports: ReadonlyMap<ImportDeclaration, ModuleId>;
@@ -90,12 +98,12 @@ export function buildProgram(options: ProgramOptions, previous?: Program): Progr
   const modules = new Map<ModuleId, ProgramModule>();
   const queue = [...options.roots, ...(options.prelude === undefined ? [] : [options.prelude])];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-    const { id, label, read } = next;
+    const { id, name, label, read } = next;
     if (!modules.has(id)) {
       const source = createSourceText(label, read());
       const tree = reusableTree(previous?.modules.get(id)?.tree, source) ?? parseSource(source);
       const { imports, diagnostics, found } = resolveImports(tree, id, options.loaders);
-      modules.set(id, { id, tree, imports, diagnostics });
+      modules.set(id, { id, name, tree, imports, diagnostics });
       queue.push(...found);
     }
   }

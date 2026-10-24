@@ -1,0 +1,10 @@
+# outcome: 5000050000
+# Frames are data (§5): recursion far deeper than a host stack allows still runs.
+
+fn sum(n: int) -> int:
+  if n == 0:
+    return 0
+  n + sum(n - 1)
+
+async fn main():
+  sum(100_000)

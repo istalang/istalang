@@ -80,7 +80,7 @@ describe('a path names exactly one module', () => {
   const other = moduleIdOf(new URL('db:other/library'));
 
   function moduleOf(id: ModuleId, text = ''): LocatedModule {
-    return { id, label: `<${id}>`, read: () => text };
+    return { id, name: id, label: `<${id}>`, read: () => text };
   }
 
   function load(text: string, ...loaders: ModuleLoader[]): Program {
@@ -141,6 +141,7 @@ describe('reading', () => {
       path in files
         ? {
             id: idOf(path),
+            name: path,
             label: path,
             read: () => {
               reads.set(path, (reads.get(path) ?? 0) + 1);
@@ -157,13 +158,14 @@ describe('reading', () => {
     let read = false;
     const located = (id: ModuleId): LocatedModule => ({
       id,
+      name: id,
       label: id,
       read: () => {
         read = true;
         return '';
       },
     });
-    const main = { id: idOf('main'), label: 'main', read: () => "import x from 'x'" };
+    const main = { id: idOf('main'), name: 'main', label: 'main', read: () => "import x from 'x'" };
     buildProgram({
       roots: [main],
       loaders: [() => located(idOf('one')), () => located(idOf('two'))],
@@ -230,7 +232,7 @@ describe('a random module graph', () => {
         const extra: ModuleLoader = () =>
           key === undefined
             ? undefined
-            : { id: idOf(key), label: key, read: () => files[key] ?? '' };
+            : { id: idOf(key), name: key, label: key, read: () => files[key] ?? '' };
         const load = memoryLoader(files);
         const roots = [load('m0', idOf(''))].filter((root) => root !== undefined);
         const program = buildProgram({ roots, loaders: [load, extra] });

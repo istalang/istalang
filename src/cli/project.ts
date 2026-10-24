@@ -38,10 +38,11 @@ export function loadProject(
   files: readonly string[],
   std: ModuleLoader = stdlibLoader(),
 ): Project {
-  const roots = files.map((file) => ({ file, module: locateFile(resolve(cwd, file), cwd) }));
+  const places = { projectRoot: cwd, cwd };
+  const roots = files.map((file) => ({ file, module: locateFile(resolve(cwd, file), places) }));
   const program = buildProgram({
     roots: roots.flatMap(({ module }) => module ?? []),
-    loaders: [fileLoader(cwd, cwd), std],
+    loaders: [fileLoader(places), std],
     prelude: preludeModule(),
   });
   return { program, unreadable: roots.filter(({ module }) => !module).map(({ file }) => file) };

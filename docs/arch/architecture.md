@@ -47,15 +47,19 @@ src/
       expressions/ patterns types statements declarations        by construct (Pratt parselets in expressions/)
     program/            Program snapshot, module graph, the ModuleLoader seam; imposes no path syntax
     binder/             entities, scopes, imports/exports, name resolution
-    checker/
+    checker/            check.ts is the entry and the surface later phases read
+      context.ts program-checker.ts body-checker.ts              contexts and the classes that wire them
       types/ declarations/ expressions/ statements/              type model and per-construct rules
       inference/ overloads/ traits/ patterns/ rules/             cross-cutting engines and semantic rules
-    lowering/           typed tree → Definition (all desugaring lives here)
+    lowering/           checked program → Definition (all desugaring lives here); lower.ts is the entry
+      context.ts function-lowering.ts tables.ts names.ts         one function's code, the interned tables, qualified names
+      expressions/ statements/ not-lowered.ts                    per-construct handlers, as in the checker
     compile.ts          pipeline coordinator and public compiler API
   definition/           contract: the compiled program (docs/arch/definition.md): canonical JSON codec,
                         versioned formats, values, types, instruction set
   runtime/
     values/ interpreter/ scheduler/ handles/ disposal/ snapshot/ boundary/
+    natives.ts          the Natives seam and the Panic a native throws
     host.ts             public host API: createRuntime(seams)
   stdlib/               stdlib-loader.ts: the std ModuleLoader (simple name → embedded source); prelude/ and one folder per std module: <module>.ista + natives.ts
   formatter/            SyntaxTree → text; one printer per construct
@@ -63,7 +67,7 @@ src/
   lsp/                  LSP adapter (vscode-languageserver): server.ts root, one provider per feature
   test-runner/          discover @Suite functions, run each test in a fresh in-memory instance
   packages/             ista.json, minimal version selection, lockfile, vendor, verify, vendor loader
-  cli/                  main.ts executable, cli.ts root, file-loader.ts (the project files ModuleLoader), project.ts (sources, loaders), commands/
+  cli/                  main.ts executable, cli.ts root, file-loader.ts (the project files ModuleLoader), project.ts (sources, loaders), report.ts (diagnostics output), commands/
 test/corpus/            shared .ista corpus (spec examples, valid/invalid cases) used by every phase
 ```
 
@@ -96,11 +100,12 @@ text · diagnostics                      foundation
 | scan | `scan(source) → { tokens, comments, diagnostics }` | Context-free, total and lossless: never throws, and every character belongs to exactly one token, comment or whitespace run. It emits no INDENT/DEDENT. Tokens carry `firstOnLine`, and columns come from `LineMap`. The result type `ScanResult` lives in `syntax/`, so the parser depends on the contract, not on the scanner. |
 | parse | `parse(source, scanned) → SyntaxTree` | Total: always returns a full tree, with errors as `Missing`/`Invalid` nodes plus diagnostics. It owns layout (indentation blocks, newline-insensitive brackets, `{` as block vs struct literal vs field list), because layout depends on syntactic context. |
 | tree | immutable plain objects, discriminated by `kind`, with a `span` | No parent pointers; parents are derived on demand. Child traversal is derived generically from node fields, never hand-listed per kind. A node field is therefore a node, a node array, an optional node, or a primitive. Nodes hold no tokens and no resolved references; the binder and checker keep those in side tables. |
-| program | `buildProgram({ roots, loaders, prelude? }, previous?) → Program { roots, prelude, modules: Map<ModuleId, ProgramModule { tree, imports, diagnostics }> }` | Immutable. Roots arrive located. Every loader is asked for every import path, as written; the core imposes no path syntax and does no I/O itself. Its one rule is the language's: a path names exactly one module (distinct ids); otherwise a diagnostic on the path. The core reads a module only when it loads it, once per build, and makes its SourceText. A module id is its source's URL (any scheme), branded and made only from a parsed URL; two paths to one module must yield one id. Building with the previous snapshot reuses every tree whose text is unchanged, by identity. `imports` maps each import node to its module. |
-| compile | `diagnose(program) → Map<ModuleId, ModuleDiagnostics { source, diagnostics }>` | The coordinator's results, memoized per Program: every module's diagnostics from every phase so far, sorted by position, keyed by module id, clean modules included so an editor knows which documents to clear. |
+| program | `buildProgram({ roots, loaders, prelude? }, previous?) → Program { roots, prelude, modules: Map<ModuleId, ProgramModule { name, tree, imports, diagnostics }> }` | Immutable. Roots arrive located. Every loader is asked for every import path, as written; the core imposes no path syntax and does no I/O itself. Its one rule is the language's: a path names exactly one module (distinct ids); otherwise a diagnostic on the path. The core reads a module only when it loads it, once per build, and makes its SourceText. A module id is its source's URL (any scheme), branded and made only from a parsed URL; two paths to one module must yield one id. Building with the previous snapshot reuses every tree whose text is unchanged, by identity. `imports` maps each import node to its module. |
+| compile | `diagnose(program) → Map<ModuleId, ModuleDiagnostics { source, diagnostics }>`, `compileProgram(program, entry) → compiled { definition } \| failed \| noMain` | The coordinator's results, memoized per Program: every module's diagnostics from every phase so far, sorted by position, keyed by module id, clean modules included so an editor knows which documents to clear. A program with any error doesn't compile; `main` is the entry module's `async fn main()` (§9). |
 | bind | `bindProgram(program) → Bindings { entityOf(module, name), exportsOf, moduleOf, overloadsOf, candidatesOf, diagnosticsOf }` | Every entity is made while binding one tree, memoized on that tree (`bind-module.ts`): an unchanged module keeps the identity of every entity it declares or refers to across snapshots, and an entity points at its declaring syntax and holds nothing derived. What depends on the whole program is a query memoized per Program: imports, the prelude (the `Program`'s `prelude` module), a function set joined with the prelude's overloads (`overloadsOf`), a bare name's candidate variants (`candidatesOf`), qualified names. Lookups that need types (members, methods, static functions, ADL, picking a variant candidate) are the checker's. |
-| check | `createChecker(program)` → memoized queries: `typeOf`, `resolvedCall`, `symbolAt`, `diagnostics(module)` | Lazy, so the LSP pays only for what it asks. The CLI asks for everything. Binding happens inside: the checker calls the memoized `bindProgram`. |
-| lower | `lower(checked) → Definition` | Runs only on an error-free program. The Definition is complete: linear register code with no unresolved names and no sugar, one entry per generic instantiation, and every call targeting a function-table entry (definition.md). Loading validates indexes, call arity, closure captures, termination and where waiting is allowed, so the interpreter can trust what it reads. |
+| check | `checkProgram(program) → Checker { diagnosticsOf(module), moduleOf, parametersOf, resultOf, bodyOf(function) → CheckedBody { typeOf(expression), callOf(site) → ResolvedCall { function, typeArguments }, result }, fieldsOf(type) }` | Memoized per Program and lazy: a body is checked the first time anything needs it (its module's diagnostics, lowering, or inferring a caller's result), so the LSP pays only for what it asks. Binding happens inside: the checker calls the memoized `bindProgram`. A body records each expression's type and each call site's target (calls, operators, compound assignments) as it is checked, so lowering reads exactly what was checked and never re-derives a type. Types are `types/type.ts` values: a nominal type is its declaration's binder entity plus type arguments. |
+| lower | `lower(checker, main) → Definition` | Runs only on an error-free program. It compiles what `main` reaches, through a worklist, since generics are compiled per instantiation. The Definition is complete: linear register code with no unresolved names and no sugar, one entry per generic instantiation, and every call targeting a function-table entry (definition.md). Names are qualified with each module's canonical `name`, so a Definition and its content hash never depend on where the toolchain ran. An extern's key is built only by `externKey` (`definition/extern-key.ts`): module, name and declared parameter types, module-qualified (`prelude.add(int, float)`, `geometry.place(geometry.Point)`). Every nominal type can be laid out (struct, enum, extern). Loading validates indexes, call arity, closure captures, termination and where waiting is allowed, so the interpreter can trust what it reads. |
+| run | `createRuntime({ natives }).load(text) → { functions, json(value), run() → Outcome }` | Loads a Definition's persisted text, never an object, which is the form a store keeps. Every extern is bound to a native at load, so a missing native refuses the Definition before anything runs. A refusal, here or from `json`, is a `Refusal` (`runtime/refusal.ts`); with the FormatError of an invalid text, it is all a host catches, and anything else is a bug. `functions` is the function table that every call goes through, which `mock` replaces entries of. The outcome is a snapshot status: finished with a value, or panicked with a message and a trace. `json` turns a value into what a host receives (§9), so a host never reads the runtime's value shapes. |
 
 Sugar is split by whether it has typing consequences:
 - **Resolved in the checker** (it affects types or diagnostics): default parameters become overloads (and a clash is an error); `T?` is `Optional<T>`; operators, `$`, indexing, `for` and `T(x)` become resolved function calls; compound index assignment requires a `let`; closure captures become `Shared` values.
@@ -114,7 +119,7 @@ A seam is an interface owned by its consumer. Each app's composition root picks 
 
 | Seam | Owner | Implementations |
 | --- | --- | --- |
-| `ModuleLoader` | program | `(path, importer) → { id, label, read() } \| undefined`: locates the module the string in an import names, without reading it; the core calls `read` once, when it loads the module. Implementations: the project's files (`cli/file-loader.ts`, which owns the toolchain's path syntax, §3.13), the std modules (`stdlib/stdlib-loader.ts`, simple names, embedded sources), later vendored packages and an editor overlay, in-memory (tests). A host may pass any loaders of its own. Every loader answers every path: two different modules for one path is an error, and when two locate the same module the first one is used, so an overlay that must win is listed first. |
+| `ModuleLoader` | program | `(path, importer) → { id, name, label, read() } \| undefined`: locates the module the string in an import names, without reading it. `name` is the module's canonical name, the import path that names it from anywhere (`purchase/approve`, `time`), which compiled code is qualified with; `label` is how diagnostics show it, and may depend on where the toolchain runs; the core calls `read` once, when it loads the module. Implementations: the project's files (`cli/file-loader.ts`, which owns the toolchain's path syntax, §3.13), the std modules (`stdlib/stdlib-loader.ts`, simple names, embedded sources), later vendored packages and an editor overlay, in-memory (tests). A host may pass any loaders of its own. Every loader answers every path: two different modules for one path is an error, and when two locate the same module the first one is used, so an overlay that must win is listed first. |
 | `InstanceStore` | runtime | in-memory (tests, `ista run`) or host-provided persistence. It keeps each Definition once, by content hash, and an instance references that hash for its whole life. Definitions and snapshots both carry a format version; in v0.1 the runtime refuses any version it doesn't know. |
 | `Natives` (extern bindings by module-qualified name) | runtime | stdlib natives, host externs (`ista run --host <module>` loads a module that exports a table), test mocks |
 | `Timers` | runtime | host scheduling that wakes persisted instances when `time.at` is due. Tests fake time only through `mock(time.at, …)` (§10), not through this seam. |
@@ -127,6 +132,20 @@ An open set of handlers is an explicit typed table, assembled in one module and 
 - parser: prefix and infix parselets by token kind; statements and declarations by leading keyword
 - binder, checker, lowering, formatter, interpreter: one handler per node kind
 - LSP providers, CLI commands, std natives, diagnostic catalogs
+
+The handler types of the phases from checking on, which feature slices extend:
+
+| Table | Type | A handler… |
+| --- | --- | --- |
+| checker expressions | `Handlers<BodyContext, Expression, [expected: Type \| undefined], Type>` | gives the node's type; `expected` guides inference, and `BodyContext.expect` enforces it where the spec says a value must fit |
+| checker statements | `Handlers<BodyContext, Statement \| Invalid, [expected: Type \| undefined], Type>` | gives the statement's type: an expression statement's value, `never` for one that leaves, else `unit` |
+| checker declarations | `Handlers<CheckerContext, Declaration, [ModuleId], void>` | resolves what a top-level item declares and checks bodies |
+| checker type nodes | `Handlers<Resolution, TypeNode, [], Type>` | gives the type a type node denotes |
+| lowering expressions | `Handlers<FunctionContext, Expression, [], Register>` | emits the code and gives the register holding the value |
+| lowering statements | `Handlers<FunctionContext, Statement \| Invalid, [], void>` | emits the code |
+| interpreter | `{ [Kind in InstructionKind]: (Machine, ActiveFrame, instruction) => void }` | runs the top frame's instruction and moves its pc |
+
+Construct modules reach each other only through their context (`BodyContext`, `CheckerContext`, `FunctionContext`, `Machine`), as the parser's categories do through the grammar. A construct not supported yet shares one entry per table: the checker reports it (`notSupportedYet`, code 5000), and lowering and the interpreter refuse it. The checker is the one frontier: it also reports what lowering, the natives or the boundary can't take yet (an async call, an extern only a host implements). Lowering's totality property (every program that checks clean compiles into a Definition the runtime loads) holds the two together. A feature slice replaces its kinds' entries and moves the frontier.
 
 Node kinds are PascalCase, so a table keyed by them sits between `biome-ignore-start` and `biome-ignore-end` comments for `useNamingConvention`, and nowhere else is the rule suppressed.
 

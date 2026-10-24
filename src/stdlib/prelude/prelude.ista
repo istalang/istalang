@@ -37,6 +37,39 @@ struct Range:
 
 extern fn panic(message: string) -> never
 
+# Operators on primitives (§3.9). They are built in: the runtime implements each, and declaring
+# them here lets an operator resolve like any other call. Mixing int and float gives a float, `/`
+# always gives a float, and adding a primitive to a string appends its text.
+extern fn add(left: int, right: int) -> int
+extern fn add(left: float, right: float) -> float
+extern fn add(left: int, right: float) -> float
+extern fn add(left: float, right: int) -> float
+extern fn add(left: string, right: string) -> string
+extern fn add(left: string, right: int) -> string
+extern fn add(left: string, right: float) -> string
+extern fn add(left: string, right: bool) -> string
+extern fn subtract(left: int, right: int) -> int
+extern fn subtract(left: float, right: float) -> float
+extern fn subtract(left: int, right: float) -> float
+extern fn subtract(left: float, right: int) -> float
+extern fn multiply(left: int, right: int) -> int
+extern fn multiply(left: float, right: float) -> float
+extern fn multiply(left: int, right: float) -> float
+extern fn multiply(left: float, right: int) -> float
+extern fn divide(left: int, right: int) -> float
+extern fn divide(left: float, right: float) -> float
+extern fn divide(left: int, right: float) -> float
+extern fn divide(left: float, right: int) -> float
+extern fn floorDivide(left: int, right: int) -> int
+extern fn remainder(left: int, right: int) -> int
+extern fn negate(value: int) -> int
+extern fn negate(value: float) -> float
+extern fn compare(left: int, right: int) -> int
+extern fn compare(left: float, right: float) -> int
+extern fn compare(left: int, right: float) -> int
+extern fn compare(left: float, right: int) -> int
+extern fn compare(left: string, right: string) -> int
+
 trait Sendable
 
 trait Disposable:

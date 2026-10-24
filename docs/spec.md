@@ -1097,6 +1097,10 @@ async fn main():
 
 Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`.
 
+**Running a program locally.** `ista run <entry>` is a host for development. It compiles the program whose entry module is `entry`, which must declare `async fn main()`, and runs nothing if any module has errors. It then runs `main` in a new instance and prints the outcome as JSON, using the mapping below. A panic prints the panic's message and trace instead. Two options stand in for what a real host provides:
+- `--store <dir>` keeps instance snapshots in a directory, so a run can stop and resume.
+- `--host <module>` loads a JavaScript module that exports the program's extern implementations.
+
 **Values at the boundary.** Every value that crosses between the host and an instance has a declared type: extern constants, extern function parameters and results, and the arguments of an instance the host starts. The runtime converts JSON to and from these values itself, guided by the declared types, so workflow code needs no reflection. Inbound JSON is validated before it enters the instance; a mismatch fails the host's call, so malformed data never reaches workflow code. `json.parse<T>(s)` and `json.stringify(v)` apply the same mapping to JSON held in strings:
 
 | Type | JSON |

@@ -130,10 +130,4 @@ tags: [plan, m2, binder, definition, runtime]
 
 ## Spec gaps
 
-Resolved and stated in `docs/spec.md` §3.13: import paths (G17) and project sources (G18). The spec is their only home.
-
-Proposed defaults, folded into the spec once approved:
-
-| # | Gap | Default |
-| --- | --- | --- |
-| G19 | `ista run` | `ista run <entry> [--store dir] [--host module]`. The entry must declare `async fn main()`. The outcome is printed through the boundary JSON mapping, which covers primitives only until M3.9. |
+Resolved and stated in `docs/spec.md`, which is their only home: import paths (G17) and project sources (G18) in §3.13, and `ista run` (G19) in §9.
