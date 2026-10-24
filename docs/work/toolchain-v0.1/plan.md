@@ -28,7 +28,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 - If main has moved, a fork rebases onto it itself and reports again. The tech-lead runs e2e `qa` after each ∥ group.
 - Phase branches are rebased onto `main` and fast-forward it once the human approves. Each milestone ends with a merge review of `main` since the previous milestone.
 
-**Approval.** Before a milestone starts, each of its phases gets a detail file next to this plan (acceptance criteria, spec gaps with defaults), and a human approves it.
+**Approval.** Before a milestone starts, each of its phases gets a detail file next to this plan (acceptance criteria, spec gaps with defaults), and a human approves it. From M3 on, each slice sweeps its own spec gaps with the human as its first step.
 
 **Corpus.** `test/corpus/` is the shared e2e input:
 - spec examples, extracted from `docs/spec.md` by a script and never copied by hand
@@ -48,16 +48,16 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 4. Sync path, with full-shape engines covering a small subset: the checker core (type model, inference, registries), lowering, and the interpreter core (frames as data, calls through the mockable function table). `ista run` runs primitives, functions, `let`/`const`, `if`/`while`, `return` and basic structs.
 5. Persistence: `async`/`await`, atomic segments, snapshots through `InstanceStore`, `Timers`, the `Time`/`Duration` structs and `time.now`/`at`/`delay`, `runtime.commit`, and `crashEveryAwait`.
 
-**M3 — Feature slices.** *Done when:* every §12 example compiles and runs under `ista run --host` with a scripted stub host, and each spec section's corpus cases produce the specified diagnostics and runtime behaviour.
-1. Generics, overloads (defaults, rest, ADL, concrete over generic), operators as functions, traits and conformance, conversions, type aliases. Also owns `Optional`, `none` and implicit wrapping in `T?`, which every later slice uses.
-2. ∥ Values: structs (every literal form, spread update, anonymous), tuples, methods and static functions, value semantics, `const` and `&`.
-3. ∥ Collections: arrays, maps, ranges, indexing and slicing, comprehensions, `for`/`Iterable`.
-4. ∥ Variants: enums, `Result`, `match` and patterns (including struct and tuple patterns) with exhaustiveness, `is` narrowing, `?.`/`??`/`?`, must-use and `drop`, `panic`.
-5. ∥ Closures: lambdas, named lambdas, local functions, captures as `Shared`, `Shared`/`$`.
-6. Concurrency: slots, futures, `select` (both forms), `spawn`, sendable derivation, `inbox`, `futures.first`, and scheduler introspection (`idle`, `state`, `waitingAt`, `result`) for `testing.start`.
-7. Holders: reference counts, block release, `fn let`/`fn _`, `drop`, `defer`.
-8. ∥ with 7 — Weak side: `WeakRef`/`disposed()`, `disposing()`, revertible sends, cycle pass.
-9. ∥ with 6–8 — Host boundary: externs (functions, constants, extern structs), boundary JSON (the `Decimal` row waits for M4), annotations, the `json` module, the host API (start, outcome, operate panicked instances), `@Waypoint`, and `ista run --host`. It stubs future, revertible and disposal entry points from 6–8 against the M2.2 contract.
+**M3 — Feature slices** (details: `m3-slices.md`). *Done when:* every §12 example compiles and runs under `ista run --host` with a scripted stub host, and each spec section's corpus cases produce the specified diagnostics and runtime behaviour.
+1. ∥ with 2 — Generics and calls: generics, overloads, ADL, operators as functions, traits and `Sendable`, conversions, aliases, enum declarations, `Optional` and implicit wrapping; the corpus harness.
+2. ∥ with 1 — Values: structs, tuples, methods, value semantics, `const` and `&`.
+3. ∥ Collections: arrays, maps, ranges, indexing, comprehensions, `for`.
+4. ∥ Patterns: `match` and exhaustiveness, `is`, `?.`/`??`/`?`, `Result` and `Error`, `drop`, `panic`.
+5. ∥ Closures: lambdas, local functions, captures, `Shared`/`$`.
+6. ∥ with 9 — Concurrency: slots, futures, `select`, `spawn`, `inbox`, `futures`, scheduler introspection.
+7. Holders: reference counts, block release, `fn let`, `drop`, `defer`, cycle pass.
+8. ∥ with 7 — Weak side: `WeakRef`, `disposed()`, `disposing()`, revertible sends.
+9. ∥ with 6–8 — Host boundary: externs, boundary JSON, annotations, `json`, host API, `ista run --host`.
 
 **M4 — Standard library.** The remaining §3.8 modules, partitioned by module group and built ∥. *Done when:* every listed function exists and is exercised e2e.
 
