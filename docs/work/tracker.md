@@ -14,7 +14,7 @@ tags: [tracker]
 
 | Milestone | Status |
 | --- | --- |
-| M1 Syntax | planned |
+| M1 Syntax | done |
 | M2 Skeleton | planned |
 | M3 Feature slices | planned |
 | M4 Standard library | planned |
