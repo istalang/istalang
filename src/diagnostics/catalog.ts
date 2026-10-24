@@ -6,12 +6,13 @@
  * Diagnostic values, so a phase never assembles one by hand.
  *
  * Codes are stable public identifiers, shown to users and matched by tests and tooling, so they are
- * written out explicitly and never derived from table order. Each phase owns a block of a thousand
- * (scanner 1000s, parser 2000s, and so on). Duplicates within a catalog are a programming error and
- * throw when the module loads.
+ * written out explicitly and never derived from table order. Each phase owns a block of codes
+ * (code-blocks.ts). A code outside its phase's block, or declared twice, is a programming error and
+ * throws when the module loads, so no two catalogs can collide.
  */
 
 import type { Span } from '../text/span.ts';
+import { codeBlockSize, codeBlocks, type DiagnosticPhase } from './code-blocks.ts';
 import type { Diagnostic, Severity } from './diagnostic.ts';
 
 interface DiagnosticTemplate {
@@ -33,13 +34,20 @@ type Catalog<Templates extends Record<string, DiagnosticTemplate>> = {
   readonly [Name in keyof Templates]: DiagnosticFactory<Parameters<Templates[Name]['message']>>;
 };
 
-/** Turns a table of templates into typed diagnostic factories. */
+/** Turns a phase's table of templates into typed diagnostic factories. */
 export function defineDiagnostics<const Templates extends Record<string, DiagnosticTemplate>>(
+  phase: DiagnosticPhase,
   templates: Templates,
 ): Catalog<Templates> {
+  const block = codeBlocks[phase];
   const seen = new Set<number>();
   const factories: Record<string, DiagnosticFactory<never[]>> = {};
   for (const [name, template] of Object.entries(templates)) {
+    if (template.code < block || template.code >= block + codeBlockSize) {
+      throw new Error(
+        `Diagnostic code ${template.code} ('${name}') is outside the ${phase} block.`,
+      );
+    }
     if (seen.has(template.code)) {
       throw new Error(`Diagnostic code ${template.code} is declared twice (at '${name}').`);
     }

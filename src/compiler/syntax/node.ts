@@ -1,0 +1,34 @@
+/**
+ * What every syntax tree node shares, and the nodes that every grammar category uses.
+ *
+ * A node is an immutable plain object: a `kind` naming its shape, a `span`, and fields that are
+ * nodes, arrays of nodes, optional nodes, or primitives. That invariant is what lets traversal be
+ * derived from the fields (tree.ts) instead of being written out for each kind. Nodes hold no
+ * tokens and no resolved references; later phases keep those in side tables keyed by node.
+ *
+ * Errors are part of the tree, so every phase always gets a complete one:
+ * - `Missing` stands where the grammar required something that isn't there. Its span is empty.
+ * - `Invalid` covers tokens the parser skipped to recover. It sits in the list where they appeared.
+ * - A required name that is absent is an Identifier with empty text, so name fields never need a
+ *   union check.
+ * The parser reports a diagnostic for each of them.
+ */
+
+import type { Span } from '../../text/span.ts';
+
+export interface NodeOf<Kind extends string> {
+  readonly kind: Kind;
+  readonly span: Span;
+}
+
+/** A name. Empty `text` marks a name the parser expected but didn't find. */
+export interface Identifier extends NodeOf<'Identifier'> {
+  readonly text: string;
+}
+
+/** A possibly qualified name, `Pair` or `time.Duration`. It always has at least one part. */
+export type QualifiedName = readonly [Identifier, ...Identifier[]];
+
+export type Missing = NodeOf<'Missing'>;
+
+export type Invalid = NodeOf<'Invalid'>;

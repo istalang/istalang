@@ -7,6 +7,9 @@
  * can't state an allow-list reliably. This tool checks the files that imports resolve to. TypeScript
  * 7 has no JavaScript API, so it parses with swc. Tests may reach across layers for their inputs,
  * so they are excluded.
+ *
+ * Inside the parser, grammar categories reach one another only through the parsing context, and
+ * the shared parts they all use import no category (src/compiler/parser/parser.ts).
  */
 
 const layers = {
@@ -14,9 +17,26 @@ const layers = {
   diagnostics: ['text'],
   'compiler/syntax': ['text', 'diagnostics'],
   'compiler/scanner': ['text', 'diagnostics', 'compiler/syntax'],
+  'compiler/parser': ['text', 'diagnostics', 'compiler/syntax'],
 };
 
+const parserCategory = '^src/compiler/parser/(expressions/|types\\.ts$|patterns\\.ts$)';
+
 export default {
+  forbidden: [
+    {
+      name: 'parser-category-imports-category',
+      severity: 'error',
+      from: { path: parserCategory },
+      to: { path: parserCategory, pathNot: '^src/compiler/parser/$1' },
+    },
+    {
+      name: 'parser-part-imports-category',
+      severity: 'error',
+      from: { path: '^src/compiler/parser/parts/' },
+      to: { path: parserCategory },
+    },
+  ],
   allowed: Object.entries(layers).map(([layer, beneath]) => ({
     from: { path: `^src/${layer}/` },
     to: { path: `^src/(${[layer, ...beneath].join('|')})/` },

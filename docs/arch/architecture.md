@@ -40,8 +40,9 @@ src/
     syntax/             contract: token kinds, tree node types, generic traversal, node-at-offset
     scanner/            text → tokens + comments + diagnostics
     parser/             tokens → SyntaxTree
-      cursor/ layout/ recovery/                                  machinery
-      expressions/ patterns/ types/ statements/ declarations/    by construct (Pratt parselets in expressions/)
+      parser.ts grammar.ts cursor.ts recovery.ts                 context, category wiring, line regions, lists
+      parts/                                                     pieces every category may import; imports no category
+      expressions/ patterns types statements declarations        by construct (Pratt parselets in expressions/)
     program/            Program snapshot, module graph, SourceHost + ModuleResolver seams, relative resolver
     binder/             symbols, scopes, imports/exports, name resolution
     checker/

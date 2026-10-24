@@ -1,0 +1,65 @@
+/**
+ * Type nodes: what may follow `:` in a declaration, or sit between `<…>` (spec §2, §3).
+ *
+ * A NamedType is a possibly qualified name with type arguments: `int`, `Self`, `Pair<A, B>`,
+ * `time.Duration`. Whether the name exists and what it means is the checker's business. The
+ * struct type keeps no record of whether `struct` was written before `{`, because the spec makes
+ * the two spellings the same type and lets the formatter pick one (§3.1).
+ */
+
+import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
+
+export interface NamedType extends NodeOf<'NamedType'> {
+  readonly path: QualifiedName;
+  readonly typeArguments: readonly TypeNode[];
+}
+
+/** `T?`, sugar for `Optional<T>`. */
+export interface OptionalType extends NodeOf<'OptionalType'> {
+  readonly inner: TypeNode;
+}
+
+/** `(A, B)`, `(A,)`, and `()` for unit. */
+export interface TupleType extends NodeOf<'TupleType'> {
+  readonly elements: readonly TypeNode[];
+}
+
+export interface ParenthesizedType extends NodeOf<'ParenthesizedType'> {
+  readonly inner: TypeNode;
+}
+
+/** `fn(A) -> R` or `async fn(A)`; an absent return type means unit. */
+export interface FunctionType extends NodeOf<'FunctionType'> {
+  readonly isAsync: boolean;
+  readonly parameters: readonly TypeNode[];
+  readonly returnType: TypeNode | undefined;
+}
+
+/** An anonymous struct: `{ sku: string; qty: int }` or `struct { … }`. */
+export interface StructType extends NodeOf<'StructType'> {
+  readonly fields: readonly (FieldDeclaration | Invalid)[];
+}
+
+export interface FieldDeclaration extends NodeOf<'FieldDeclaration'> {
+  readonly name: Identifier;
+  readonly type: TypeNode;
+}
+
+/** `&T`, valid only as a parameter's type (gap G11). */
+export interface ReferenceType extends NodeOf<'ReferenceType'> {
+  readonly referent: TypeNode;
+}
+
+export type TypeNode =
+  | NamedType
+  | OptionalType
+  | TupleType
+  | ParenthesizedType
+  | FunctionType
+  | StructType
+  | ReferenceType
+  | Missing
+  | Invalid;
+
+/** Nodes that occur only as parts of a type. */
+export type TypePart = FieldDeclaration;

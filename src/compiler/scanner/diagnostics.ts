@@ -7,7 +7,7 @@
 
 import { defineDiagnostics } from '../../diagnostics/catalog.ts';
 
-export const scannerDiagnostics = defineDiagnostics({
+export const scannerDiagnostics = defineDiagnostics('scanner', {
   unexpectedCharacter: {
     code: 1001,
     message: (text: string) => `Unexpected character '${text}'.`,
