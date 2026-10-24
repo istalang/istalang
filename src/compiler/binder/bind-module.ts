@@ -9,6 +9,7 @@
  * from those entities, without anything being invalidated.
  */
 
+import { memo } from '../../structures/memo.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
 import { bindDeclaration, bindFunction } from './declarations.ts';
 import { bindExpression } from './expressions.ts';
@@ -36,8 +37,7 @@ export interface ModuleBindings extends Omit<ModuleScope, 'scope'>, LocalResult 
 const bound = new WeakMap<SyntaxTree, ModuleBindings>();
 
 export function bindModule(tree: SyntaxTree): ModuleBindings {
-  let bindings = bound.get(tree);
-  if (bindings === undefined) {
+  return memo(bound, tree, () => {
     const binder = new LocalBinder(walk);
     const { scope, ...moduleScope } = defineModuleScope(binder, tree.root, universe());
     for (const item of tree.root.items) {
@@ -45,8 +45,6 @@ export function bindModule(tree: SyntaxTree): ModuleBindings {
         bindDeclaration(binder, item, scope);
       }
     }
-    bindings = { ...moduleScope, ...binder.result() };
-    bound.set(tree, bindings);
-  }
-  return bindings;
+    return { ...moduleScope, ...binder.result() };
+  });
 }

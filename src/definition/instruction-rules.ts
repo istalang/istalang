@@ -17,6 +17,7 @@
  * constant values.
  */
 
+import { type Handlers, handlerOf } from '../structures/kind-table.ts';
 import {
   type CodeFunction,
   capturesOf,
@@ -24,7 +25,7 @@ import {
   takesReference,
 } from './functions.ts';
 import { waits } from './instructions/flow.ts';
-import type { Instruction, InstructionKind } from './instructions/instruction.ts';
+import type { Instruction } from './instructions/instruction.ts';
 import type { Argument, Place } from './instructions/places.ts';
 import type { Tables } from './tables.ts';
 
@@ -36,34 +37,28 @@ export interface Construction {
   readonly arity: number;
 }
 
-type Rule<Kind extends InstructionKind> = (
-  tables: Tables,
-  owner: CodeFunction,
-  instruction: Extract<Instruction, { kind: Kind }>,
-) => string | undefined;
-
 /** The rule of a kind that needs nothing beyond in-range indexes. */
 const none = (): undefined => undefined;
 
 /** `currentCall` names the async call it runs in, so only async code has one. */
-const asyncOnly = (_tables: Tables, owner: CodeFunction) =>
+const asyncOnly = (_tables: Tables, _instruction: Instruction, owner: CodeFunction) =>
   owner.async ? undefined : 'only an async function can use it.';
 
-const waitsOnlyInAsync = (_tables: Tables, owner: CodeFunction, instruction: Instruction) =>
+const waitsOnlyInAsync = (_tables: Tables, instruction: Instruction, owner: CodeFunction) =>
   owner.async || !waits(instruction) ? undefined : 'only an async function can wait.';
 
-const rules: { readonly [Kind in InstructionKind]: Rule<Kind> } = {
+const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> = {
   constant: none,
   move: none,
   tuple: none,
-  struct: (tables, _owner, i) =>
+  struct: (tables, i) =>
     constructionProblem(tables, {
       shape: 'struct',
       type: i.type,
       variant: 0,
       arity: i.fields.length,
     }),
-  variant: (tables, _owner, i) =>
+  variant: (tables, i) =>
     constructionProblem(tables, {
       shape: 'variant',
       type: i.type,
@@ -71,10 +66,10 @@ const rules: { readonly [Kind in InstructionKind]: Rule<Kind> } = {
       arity: i.fields.length,
     }),
   field: none,
-  store: (tables, _owner, i) => placeProblem(tables, i.place),
+  store: (tables, i) => placeProblem(tables, i.place),
   array: none,
   map: none,
-  closure: (tables, _owner, i) => closureProblem(tables, i.function, i.captures.length),
+  closure: (tables, i) => closureProblem(tables, i.function, i.captures.length),
   currentClosure: none,
   equal: none,
   not: none,
@@ -83,11 +78,11 @@ const rules: { readonly [Kind in InstructionKind]: Rule<Kind> } = {
   branch: none,
   switch: none,
   return: none,
-  call: (tables, _owner, i) =>
+  call: (tables, i) =>
     i.callee.kind === 'function'
       ? directCallProblem(tables, tables.functions[i.callee.function], i.arguments)
       : argumentPlacesProblem(tables, i.arguments),
-  spawn: (tables, _owner, i) => spawnProblem(tables.functions[i.function], i.arguments.length),
+  spawn: (tables, i) => spawnProblem(tables.functions[i.function], i.arguments.length),
   currentCall: asyncOnly,
   await: waitsOnlyInAsync,
   select: waitsOnlyInAsync,
@@ -102,7 +97,7 @@ export function instructionProblem(
   owner: CodeFunction,
   instruction: Instruction,
 ): string | undefined {
-  return (rules[instruction.kind] as Rule<InstructionKind>)(tables, owner, instruction as never);
+  return handlerOf(rules, instruction)(tables, instruction, owner);
 }
 
 /** Why a construction doesn't fit the type it names, if it doesn't. */

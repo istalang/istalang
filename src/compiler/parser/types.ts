@@ -16,8 +16,8 @@ import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 import { parseFunctionKeyword } from './parts/functions.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
-import { parseFieldEntries, skipStructKeyword } from './parts/structs.ts';
-import { groupedItem, parseDelimited } from './recovery.ts';
+import { afterStructKeyword, parseFieldEntries } from './parts/structs.ts';
+import { parseDelimited, parseGroup } from './recovery.ts';
 
 export function parseType(parser: Parser): TypeNode {
   const { cursor } = parser;
@@ -70,11 +70,10 @@ function parseNamedType(parser: Parser): TypeNode {
 
 /** `()`, `(A,)` and `(A, B)` are tuples; `(A)` groups. */
 function parseTupleType(parser: Parser): TypeNode {
-  const list = parseDelimited(parser, '(', () => parser.type());
-  const grouped = groupedItem(list);
-  return grouped === undefined
-    ? { kind: 'TupleType', span: list.span, elements: list.items }
-    : { kind: 'ParenthesizedType', span: list.span, inner: grouped };
+  return parseGroup<TypeNode, TypeNode>(parser, () => parser.type(), {
+    tuple: (span, elements) => ({ kind: 'TupleType', span, elements }),
+    grouped: (span, inner) => ({ kind: 'ParenthesizedType', span, inner }),
+  });
 }
 
 function parseFunctionType(parser: Parser): TypeNode {
@@ -97,14 +96,11 @@ function parseParameterTypes(parser: Parser): readonly TypeNode[] {
 
 /** `{ a: A; b: B }`, or the same after `struct`. */
 function parseStructType(parser: Parser): TypeNode {
-  const { cursor } = parser;
-  const { start } = cursor.token.span;
-  const missingBrace = cursor.at('struct') ? skipStructKeyword(parser) : undefined;
-  if (missingBrace !== undefined) {
-    return missingBrace;
-  }
-  const fields = parseFieldEntries(parser).value;
-  return { kind: 'StructType', span: parser.spanFrom(start), fields };
+  const { start } = parser.cursor.token.span;
+  return afterStructKeyword(parser, () => {
+    const fields = parseFieldEntries(parser).value;
+    return { kind: 'StructType', span: parser.spanFrom(start), fields };
+  });
 }
 
 function parseReferenceType(parser: Parser): ReferenceType {

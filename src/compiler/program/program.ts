@@ -25,6 +25,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { LanguageModule } from '../../language/well-known.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
@@ -76,15 +77,10 @@ export interface ProgramModule {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-/** The std modules the language itself refers to, which an app hands a program by role. */
-export type LanguageModule = 'prelude' | 'time';
-
 export interface Program {
   readonly roots: readonly ModuleId[];
-  /** The module every other one sees without importing it (§3.13), when the app supplies one. */
-  readonly prelude: ModuleId | undefined;
-  /** The module whose `Duration` types every duration literal (§2), when the app supplies one. */
-  readonly time: ModuleId | undefined;
+  /** The std modules the language refers to (language/well-known.ts), as the app supplied them. */
+  readonly roles: Readonly<Partial<Record<LanguageModule, ModuleId>>>;
   /** Every module reachable from the roots, in load order. */
   readonly modules: ReadonlyMap<ModuleId, ProgramModule>;
 }
@@ -98,17 +94,19 @@ export interface ProgramOptions {
    * that should win, such as an editor's open documents, goes first.
    */
   readonly loaders: readonly ModuleLoader[];
-  /** The prelude, loaded like a root; binding makes its exports visible everywhere. */
-  readonly prelude?: LocatedModule;
-  /** `time`, loaded like a root, so duration literals have their type; visible only where imported. */
-  readonly time?: LocatedModule;
+  /**
+   * The std modules the language refers to, loaded like roots: the prelude, whose exports binding
+   * makes visible everywhere, and `time`, which types duration literals but is visible only where
+   * imported.
+   */
+  readonly roles?: Readonly<Partial<Record<LanguageModule, LocatedModule>>>;
 }
 
 /** Loads the modules reachable from the roots, reusing unchanged trees from `previous`. */
 export function buildProgram(options: ProgramOptions, previous?: Program): Program {
   const modules = new Map<ModuleId, ProgramModule>();
-  const roles = [options.prelude, options.time].flatMap((module) => module ?? []);
-  const queue = [...options.roots, ...roles];
+  const roles = Object.entries(options.roles ?? {});
+  const queue = [...options.roots, ...roles.map(([, module]) => module)];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
     const { id, name, label, read, isStd = false } = next;
     if (!modules.has(id)) {
@@ -121,8 +119,7 @@ export function buildProgram(options: ProgramOptions, previous?: Program): Progr
   }
   return {
     roots: [...new Set(options.roots.map(({ id }) => id))],
-    prelude: options.prelude?.id,
-    time: options.time?.id,
+    roles: Object.fromEntries(roles.map(([role, { id }]) => [role, id])),
     modules,
   };
 }

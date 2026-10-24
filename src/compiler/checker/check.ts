@@ -8,12 +8,14 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { memo } from '../../structures/memo.ts';
 import type { Bindings } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression, Parameter } from '../syntax/expressions.ts';
-import type { NodeOf } from '../syntax/node.ts';
+import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
+import type { ConstantForm } from './constant-form.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type { NominalType, Type } from './types/type.ts';
 
@@ -61,9 +63,10 @@ export interface CheckedBody {
 /** Who disposes a value of an extern type when its last holder releases it (§7). */
 export type Disposal = 'none' | 'runtime';
 
-/** A top-level constant as checked: its initializer's types, its type as `result`, and its module. */
-export interface CheckedConstant extends CheckedBody {
-  readonly module: ModuleId;
+/** A top-level constant as checked: its type, and its value, unless a diagnostic said why not. */
+export interface CheckedConstant {
+  readonly type: Type;
+  readonly form: ConstantForm | undefined;
 }
 
 /** A program's types, as its later phases read them. */
@@ -78,11 +81,10 @@ export interface Checker {
   readonly resultOf: (declaration: FunctionDeclaration) => Type;
   /** The checked body of a function with one: its expressions' types and its calls' targets. */
   readonly bodyOf: (declaration: FunctionDeclaration) => CheckedBody | undefined;
-  /**
-   * A top-level constant's checked initializer, its `result` the constant's type (§3); undefined
-   * for any other variable.
-   */
+  /** The checked top-level constant `declaration` declares (§3); undefined for any other variable. */
   readonly constantOf: (declaration: VariableDeclaration) => CheckedConstant | undefined;
+  /** The checked top-level constant `name` denotes in `module`; undefined when it denotes anything else. */
+  readonly constantNamed: (module: ModuleId, name: Identifier) => CheckedConstant | undefined;
   /** The fields of a struct type, substituted for its type arguments; undefined for another type. */
   readonly fieldsOf: (type: NominalType) => readonly FieldMember[] | undefined;
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
@@ -94,10 +96,5 @@ export interface Checker {
 const checkers = new WeakMap<Program, Checker>();
 
 export function checkProgram(program: Program): Checker {
-  let checker = checkers.get(program);
-  if (checker === undefined) {
-    checker = new ProgramChecker(program);
-    checkers.set(program, checker);
-  }
-  return checker;
+  return memo(checkers, program, () => new ProgramChecker(program));
 }

@@ -28,11 +28,7 @@ export const noSpan: Span = { start: 0, end: 0 };
 
 /** A module entry; without `source`, the module is one empty line. */
 export function sourceModule(id: string, source = ''): Tables['modules'][number] {
-  const lines = new LineMap(source);
-  const lineStarts = Array.from({ length: lines.lineCount }, (_, line) =>
-    lines.offsetAt({ line, column: 0 }),
-  );
-  return { id, lineStarts };
+  return { id, lineStarts: [...new LineMap(source).lineStarts] };
 }
 
 export const int = { kind: 'primitive', name: 'int' } as const satisfies TypeReference;

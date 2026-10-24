@@ -18,6 +18,7 @@ import type { AssignmentOperator } from '../../syntax/operators.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { frontier } from '../frontier.ts';
 import { type OverloadableOperator, resolveOperator } from '../overloads/operators.ts';
 import { errorType, type Type } from '../types/type.ts';
 
@@ -60,22 +61,19 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
   if (node.heldByFunction || target === undefined || more.length > 0) {
     context.unsupported(
       node,
-      node.heldByFunction ? 'A variable held by the function' : 'Destructuring',
+      node.heldByFunction ? frontier.heldByFunction : frontier.destructuring,
     );
     return;
   }
   const declared = node.type === undefined ? undefined : context.resolveType(node.type);
-  const initial =
-    declared === undefined
-      ? context.expression(node.initializer)
-      : context.expect(node.initializer, declared);
+  const initial = context.expect(node.initializer, declared);
   context.variables.declare(target, declared ?? initial);
 }
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
   const [target, ...more] = node.targets;
   if (target === undefined || more.length > 0) {
-    context.unsupported(node, 'Destructuring');
+    context.unsupported(node, frontier.destructuring);
     return;
   }
   const variable = assignedVariable(context, target);
@@ -101,7 +99,7 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
  */
 function assignedVariable(context: BodyContext, target: Expression): Type | undefined {
   if (target.kind === 'MemberAccess' || target.kind === 'Index' || target.kind === 'Unwrap') {
-    context.unsupported(target, 'Assigning to a part of a value');
+    context.unsupported(target, frontier.partAssignment);
     return undefined;
   }
   if (target.kind !== 'Identifier') {

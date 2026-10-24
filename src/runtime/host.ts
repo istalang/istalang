@@ -19,8 +19,9 @@
  * - Values leave as JSON through `json` (§9), so a host never reads the runtime's value shapes.
  */
 
-import { definitionFormat } from '../definition/definition.ts';
+import { type Definition, definitionFormat } from '../definition/definition.ts';
 import type { Value } from '../definition/values.ts';
+import { memo } from '../structures/memo.ts';
 import { outboundJson } from './boundary/outbound.ts';
 import type { InstanceState } from './instance-state.ts';
 import { FunctionTable } from './interpreter/function-table.ts';
@@ -100,28 +101,32 @@ function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives'>) {
   return (text: string): Binding => {
     const definition = definitionFormat.read(text);
     const { hash } = definitionFormat.write(definition);
-    const known = bound.get(hash);
-    if (known !== undefined) {
-      return { program: known, isNew: false };
-    }
-    const loaded: LoadedDefinition = {
-      definition,
-      hash,
-      functions: new FunctionTable(definition, seams.natives),
-    };
-    const program: BoundProgram = {
-      ...loaded,
-      json: (value) => outboundJson(value, definition),
-      start: (instance, options = {}) => {
-        if (seams.store.readSnapshot(instance) !== undefined) {
-          throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
-        }
-        return advance(seams, loaded, { kind: 'new', name: instance, options });
-      },
-      resume: (snapshot) => advance(seams, loaded, { kind: 'committed', snapshot }),
-    };
-    bound.set(hash, program);
-    return { program, isNew: true };
+    const isNew = !bound.has(hash);
+    return { program: memo(bound, hash, () => boundProgram(seams, definition, hash)), isNew };
+  };
+}
+
+/** `definition`, bound to its natives and able to start and resume its instances. */
+function boundProgram(
+  seams: SchedulerSeams & Pick<RuntimeSeams, 'natives'>,
+  definition: Definition,
+  hash: string,
+): BoundProgram {
+  const loaded: LoadedDefinition = {
+    definition,
+    hash,
+    functions: new FunctionTable(definition, seams.natives),
+  };
+  return {
+    ...loaded,
+    json: (value) => outboundJson(value, definition),
+    start: (instance, options = {}) => {
+      if (seams.store.readSnapshot(instance) !== undefined) {
+        throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
+      }
+      return advance(seams, loaded, { kind: 'new', name: instance, options });
+    },
+    resume: (snapshot) => advance(seams, loaded, { kind: 'committed', snapshot }),
   };
 }
 

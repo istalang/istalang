@@ -11,20 +11,21 @@ import type { Entity } from '../../binder/entities.ts';
 import type { Call, Expression } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { frontier } from '../frontier.ts';
 import { resolveCall } from '../overloads/resolve.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 export function checkCall(context: BodyContext, node: Call): Type {
   const [explicit] = node.typeArguments;
   if (explicit !== undefined) {
-    return context.unsupported(explicit, 'Explicit type arguments');
+    return context.unsupported(explicit, frontier.explicitTypeArguments);
   }
   const argumentNodes: Expression[] = [];
   for (const argument of node.arguments) {
     if (argument.kind === 'Spread' || argument.kind === 'Reference') {
       return context.unsupported(
         argument,
-        argument.kind === 'Spread' ? 'A spread argument' : 'Passing a reference',
+        argument.kind === 'Spread' ? frontier.spreadArgument : frontier.reference,
       );
     }
     argumentNodes.push(argument);
@@ -37,11 +38,11 @@ export function checkCall(context: BodyContext, node: Call): Type {
     case 'MemberAccess': {
       const entity = context.entityOf(callee.member);
       return entity === undefined
-        ? context.unsupported(callee, 'Calling a method')
+        ? context.unsupported(callee, frontier.methodCall)
         : callEntity(context, call, callee.member.text, entity);
     }
     default:
-      return context.unsupported(callee, 'Calling a function value');
+      return context.unsupported(callee, frontier.functionValueCall);
   }
 }
 
@@ -69,13 +70,13 @@ function callEntity(
       }
       return errorType;
     case 'variable':
-      return context.unsupported(node.callee, 'Calling a function value');
+      return context.unsupported(node.callee, frontier.functionValueCall);
     case 'type':
     case 'primitive':
-      return context.unsupported(node.callee, 'A conversion');
+      return context.unsupported(node.callee, frontier.conversion);
     case 'variant':
     case 'variants':
-      return context.unsupported(node.callee, 'An enum variant');
+      return context.unsupported(node.callee, frontier.enumVariant);
     default:
       context.report(checkerDiagnostics.notCallable(node.callee.span, name));
       return errorType;

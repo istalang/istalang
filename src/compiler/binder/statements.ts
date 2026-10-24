@@ -11,8 +11,8 @@
  * target holds a value without a name (§3.4).
  */
 
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { type Handlers, handlerOf } from '../syntax/handlers.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
 import { underCondition, underLoop } from './flow.ts';

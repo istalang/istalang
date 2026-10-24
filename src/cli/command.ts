@@ -14,10 +14,22 @@ export interface CliEnvironment {
   readonly writeError: (text: string) => void;
 }
 
+/** What a command's exit code says. */
+export const exitCodes = {
+  /** It ran and found nothing wrong. */
+  clean: 0,
+  /** It ran and found problems: errors in the program, a panic, a refusal. */
+  problems: 1,
+  /** It couldn't run as asked: a usage error, or a file that can't be read. */
+  couldNotRun: 2,
+} as const;
+
+export type ExitCode = (typeof exitCodes)[keyof typeof exitCodes];
+
 export interface CommandContext {
   readonly environment: CliEnvironment;
-  /** Records the process exit code: 0 clean, 1 problems found, 2 the command couldn't run as asked. */
-  readonly exitWith: (code: number) => void;
+  /** Records the process exit code. */
+  readonly exitWith: (code: ExitCode) => void;
 }
 
 /** Adds one subcommand to the CLI. */

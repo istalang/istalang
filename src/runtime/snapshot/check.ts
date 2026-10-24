@@ -14,10 +14,10 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { sharedTypeName } from '../../definition/functions.ts';
 import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import { valueProblems } from '../../definition/references.ts';
+import { isSharedCellType, sharedTypeName } from '../../definition/types.ts';
 import { handleTarget } from '../../definition/values.ts';
 import { Refusal } from '../refusal.ts';
 import { type Frame, type HeapObject, isReference } from './objects.ts';
@@ -53,7 +53,7 @@ function kindProblems(definition: Definition, object: HeapObject): readonly stri
         ),
       );
     case 'cell':
-      return isTypeNamed(definition, object.type, sharedTypeName)
+      return isSharedCellType(definition.types, object.type)
         ? []
         : [`cell ${object.id} is not a ${sharedTypeName}`];
     case 'resource':
@@ -145,9 +145,4 @@ function frameProblems(
 function instructionAt(definition: Definition, frame: Frame) {
   const code = definition.functions[frame.function];
   return code?.kind === 'code' ? code.instructions[frame.pc] : undefined;
-}
-
-function isTypeNamed(definition: Definition, type: number, name: string): boolean {
-  const entry = definition.types[type];
-  return entry?.kind === 'extern' && entry.name === name;
 }

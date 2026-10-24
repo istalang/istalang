@@ -7,7 +7,7 @@
  */
 
 import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
-import { preludeModule, stdlibLoader, timeModule } from '../../stdlib/stdlib-loader.ts';
+import { preludeModule, stdlibLoader, stdRoles } from '../../stdlib/stdlib-loader.ts';
 import type { Files } from '../program/program.test-kit.ts';
 import { idOf, moduleAt, programOf } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
@@ -18,17 +18,12 @@ import type { Entity } from './entities.ts';
 
 /** The program rooted at the first of `files`, with the prelude. */
 export function preludeProgramOf(files: Files, previous?: Program): Program {
-  return programOf(files, { previous, prelude: preludeModule() });
+  return programOf(files, { previous, roles: { prelude: preludeModule() } });
 }
 
 /** The program rooted at the first of `files` as an app loads it: with every std module. */
 export function stdProgramOf(files: Files, previous?: Program): Program {
-  return programOf(files, {
-    previous,
-    prelude: preludeModule(),
-    time: timeModule(),
-    loaders: [stdlibLoader()],
-  });
+  return programOf(files, { previous, roles: stdRoles(), loaders: [stdlibLoader()] });
 }
 
 /** What the binder reported in module `key` (default: the first file). */

@@ -3,34 +3,30 @@
  * type `unit`; its body runs for its effects, so the body's value is discarded.
  */
 
+import { withPushed } from '../../../structures/stack.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { While } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { boolType, neverType, type Type, unitType } from '../types/type.ts';
 
-/** How deep inside loops checking is, so `break` and `continue` know whether they may stand. */
+/** The loops whose bodies are being checked, innermost last: where `break` and `continue` may stand. */
 export class LoopScope {
-  #depth = 0;
+  readonly #loops: While[] = [];
 
-  /** Runs `check` inside a loop's body. */
-  inside<Result>(check: () => Result): Result {
-    this.#depth += 1;
-    try {
-      return check();
-    } finally {
-      this.#depth -= 1;
-    }
+  /** Runs `check` inside the body of `loop`. */
+  inside<Result>(loop: While, check: () => Result): Result {
+    return withPushed(this.#loops, loop, check);
   }
 
   get active(): boolean {
-    return this.#depth > 0;
+    return this.#loops.length > 0;
   }
 }
 
 export function checkWhile(context: BodyContext, node: While): Type {
   context.expect(node.condition, boolType);
-  context.loops.inside(() => context.effectBlock(node.body));
+  context.loops.inside(node, () => context.effectBlock(node.body));
   return unitType;
 }
 

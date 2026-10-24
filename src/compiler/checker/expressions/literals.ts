@@ -4,15 +4,16 @@
  * any module while the name `Duration` is visible only where imported.
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
 import type { DurationLiteral } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 export function checkDurationLiteral(context: BodyContext, node: DurationLiteral): Type {
-  const duration = context.checker.languageType('time', 'Duration');
+  const duration = context.checker.wellKnownType(wellKnown.duration);
   if (duration === undefined) {
-    context.report(checkerDiagnostics.missingStdModule(node.span, 'time'));
+    context.report(checkerDiagnostics.missingStdModule(node.span, wellKnown.duration.module));
     return errorType;
   }
   return duration;

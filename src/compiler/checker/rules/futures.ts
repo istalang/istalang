@@ -14,14 +14,21 @@
  * The slices that make futures values and add disposal delete both.
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
+import { frontier } from '../frontier.ts';
 import { errorType, type Type } from '../types/type.ts';
+
+/** `Future<T>`, what an async call returns; the error type in a program without a prelude. */
+export function futureOf(checker: CheckerContext, value: Type): Type {
+  return checker.wellKnownType(wellKnown.future, [value]) ?? errorType;
+}
 
 /** `T` when `type` is `Future<T>`; undefined for any other type. */
 export function futureArgument(checker: CheckerContext, type: Type): Type | undefined {
-  const future = checker.preludeType('Future', [errorType]);
+  const future = futureOf(checker, errorType);
   if (type.kind !== 'nominal' || future.kind !== 'nominal' || type.entity !== future.entity) {
     return undefined;
   }
@@ -51,7 +58,7 @@ export function refuseHeldFuture(
   type: Type,
 ): void {
   if (holdsFuture(checker, type)) {
-    checker.unsupported(module, node, 'A future that is neither awaited nor returned');
+    checker.unsupported(module, node, frontier.heldFuture);
   }
 }
 

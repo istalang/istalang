@@ -27,19 +27,26 @@ export function manualClock(start = 0n): ManualClock {
   };
 }
 
-/** A memory store that also keeps every snapshot text written, in order. */
+/** A store that also keeps what was written to it, in order: snapshot texts, and Definition hashes. */
 export interface RecordingStore extends InstanceStore {
   readonly commits: readonly string[];
+  readonly definitions: readonly string[];
 }
 
 export function recordingStore(inner: InstanceStore = memoryStore()): RecordingStore {
   const commits: string[] = [];
+  const definitions: string[] = [];
   return {
     ...inner,
     commits,
+    definitions,
     writeSnapshot: (instance, text) => {
       commits.push(text);
       inner.writeSnapshot(instance, text);
+    },
+    writeDefinition: (hash, text) => {
+      definitions.push(hash);
+      inner.writeDefinition(hash, text);
     },
   };
 }

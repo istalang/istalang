@@ -18,6 +18,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { PrimitiveName } from '../../language/primitives.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
   EnumDeclaration,
@@ -76,10 +77,6 @@ export interface TypeEntity {
   readonly kind: 'type';
   readonly declaration: TypeDeclaration;
 }
-
-export const primitiveNames = ['int', 'float', 'bool', 'string', 'unit', 'never'] as const;
-
-export type PrimitiveName = (typeof primitiveNames)[number];
 
 /** A language built-in type (§2). */
 export interface PrimitiveEntity {

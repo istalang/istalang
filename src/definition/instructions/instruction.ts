@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod';
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { ConstantId, FunctionId, Label, Register, TypeId } from '../operands.ts';
 import { callInstructions } from './calls.ts';
 import { controlInstructions } from './control.ts';
@@ -37,22 +38,16 @@ export interface Operands {
   readonly constants: readonly ConstantId[];
 }
 
-type OperandTable = {
-  readonly [Kind in InstructionKind]: (
-    instruction: Extract<Instruction, { kind: Kind }>,
-  ) => Partial<Operands>;
-};
-
-const operandTable: OperandTable = {
-  constant: (i) => ({ registers: [i.dst], constants: [i.constant] }),
-  move: (i) => ({ registers: [i.dst, i.src] }),
-  tuple: (i) => ({ registers: [i.dst, ...i.elements] }),
-  struct: (i) => ({ registers: [i.dst, ...i.fields], types: [i.type] }),
-  variant: (i) => ({ registers: [i.dst, ...i.fields], types: [i.type] }),
-  field: (i) => ({ registers: [i.dst, i.src] }),
-  store: (i) => merge(placeOperands(i.place), { registers: [i.value] }),
-  array: (i) => ({ registers: [i.dst, ...i.elements.map((element) => element.value)] }),
-  map: (i) => ({
+const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
+  constant: (_, i) => ({ registers: [i.dst], constants: [i.constant] }),
+  move: (_, i) => ({ registers: [i.dst, i.src] }),
+  tuple: (_, i) => ({ registers: [i.dst, ...i.elements] }),
+  struct: (_, i) => ({ registers: [i.dst, ...i.fields], types: [i.type] }),
+  variant: (_, i) => ({ registers: [i.dst, ...i.fields], types: [i.type] }),
+  field: (_, i) => ({ registers: [i.dst, i.src] }),
+  store: (_, i) => merge(placeOperands(i.place), { registers: [i.value] }),
+  array: (_, i) => ({ registers: [i.dst, ...i.elements.map((element) => element.value)] }),
+  map: (_, i) => ({
     registers: [
       i.dst,
       ...i.entries.flatMap((entry) =>
@@ -60,16 +55,16 @@ const operandTable: OperandTable = {
       ),
     ],
   }),
-  closure: (i) => ({ registers: [i.dst, ...i.captures], functions: [i.function] }),
-  currentClosure: (i) => ({ registers: [i.dst] }),
-  equal: (i) => ({ registers: [i.dst, i.left, i.right] }),
-  not: (i) => ({ registers: [i.dst, i.src] }),
-  order: (i) => ({ registers: [i.dst, i.comparison] }),
-  jump: (i) => ({ labels: [i.target] }),
-  branch: (i) => ({ registers: [i.condition], labels: [i.whenTrue, i.whenFalse] }),
-  switch: (i) => ({ registers: [i.value], labels: i.targets }),
-  return: (i) => ({ registers: [i.value] }),
-  call: (i) =>
+  closure: (_, i) => ({ registers: [i.dst, ...i.captures], functions: [i.function] }),
+  currentClosure: (_, i) => ({ registers: [i.dst] }),
+  equal: (_, i) => ({ registers: [i.dst, i.left, i.right] }),
+  not: (_, i) => ({ registers: [i.dst, i.src] }),
+  order: (_, i) => ({ registers: [i.dst, i.comparison] }),
+  jump: (_, i) => ({ labels: [i.target] }),
+  branch: (_, i) => ({ registers: [i.condition], labels: [i.whenTrue, i.whenFalse] }),
+  switch: (_, i) => ({ registers: [i.value], labels: i.targets }),
+  return: (_, i) => ({ registers: [i.value] }),
+  call: (_, i) =>
     merge(
       {
         registers: [
@@ -80,10 +75,10 @@ const operandTable: OperandTable = {
       },
       ...i.arguments.map(argumentOperands),
     ),
-  spawn: (i) => ({ registers: i.arguments, functions: [i.function] }),
-  currentCall: (i) => ({ registers: [i.dst] }),
-  await: (i) => ({ registers: [i.dst, i.future] }),
-  select: (i) => ({
+  spawn: (_, i) => ({ registers: i.arguments, functions: [i.function] }),
+  currentCall: (_, i) => ({ registers: [i.dst] }),
+  await: (_, i) => ({ registers: [i.dst, i.future] }),
+  select: (_, i) => ({
     registers: i.cases.flatMap((c) => [
       c.future,
       ...c.holds,
@@ -91,15 +86,14 @@ const operandTable: OperandTable = {
     ]),
     labels: [...i.cases.map((c) => c.target), ...(i.otherwise === undefined ? [] : [i.otherwise])],
   }),
-  release: (i) => ({ registers: i.registers }),
-  keep: (i) => ({ registers: i.registers }),
-  defer: (i) => ({ registers: [i.dst, i.callback] }),
+  release: (_, i) => ({ registers: i.registers }),
+  keep: (_, i) => ({ registers: i.registers }),
+  defer: (_, i) => ({ registers: [i.dst, i.callback] }),
 };
 
 /** What an instruction refers to, by table. */
 export function operandsOf(subject: Instruction): Operands {
-  const listed = (operandTable[subject.kind] as (i: Instruction) => Partial<Operands>)(subject);
-  return merge(listed);
+  return merge(handlerOf(operandTable, subject)(undefined, subject));
 }
 
 function argumentOperands(argument: Argument): Partial<Operands> {

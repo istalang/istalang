@@ -8,7 +8,12 @@
  */
 
 import { diagnose } from '../../compiler/compile.ts';
-import type { CliEnvironment, CommandDefinition } from '../command.ts';
+import {
+  type CliEnvironment,
+  type CommandDefinition,
+  type ExitCode,
+  exitCodes,
+} from '../command.ts';
 import { findProjectSources, loadProject } from '../project.ts';
 import { reportDiagnostics } from '../report.ts';
 
@@ -22,7 +27,7 @@ export const defineCheckCommand: CommandDefinition = (cli, { environment, exitWi
     });
 };
 
-function check(files: readonly string[], environment: CliEnvironment): number {
+function check(files: readonly string[], environment: CliEnvironment): ExitCode {
   const { cwd } = environment;
   const { program, unreadable } = loadProject(
     cwd,
@@ -30,7 +35,9 @@ function check(files: readonly string[], environment: CliEnvironment): number {
   );
   if (unreadable.length > 0) {
     environment.writeError(unreadable.map((file) => `ista: no such file: ${file}\n`).join(''));
-    return 2;
+    return exitCodes.couldNotRun;
   }
-  return reportDiagnostics(diagnose(program).values(), environment.write) > 0 ? 1 : 0;
+  return reportDiagnostics(diagnose(program).values(), environment.write) > 0
+    ? exitCodes.problems
+    : exitCodes.clean;
 }

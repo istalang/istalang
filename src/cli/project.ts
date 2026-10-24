@@ -10,7 +10,7 @@
 import { globSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildProgram, type ModuleLoader, type Program } from '../compiler/program/program.ts';
-import { preludeModule, stdlibLoader, timeModule } from '../stdlib/stdlib-loader.ts';
+import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { fileLoader, locateFile, sourceExtension } from './file-loader.ts';
 
 /**
@@ -43,8 +43,7 @@ export function loadProject(
   const program = buildProgram({
     roots: roots.flatMap(({ module }) => module ?? []),
     loaders: [fileLoader(places), std],
-    prelude: preludeModule(),
-    time: timeModule(),
+    roles: stdRoles(),
   });
   return { program, unreadable: roots.filter(({ module }) => !module).map(({ file }) => file) };
 }

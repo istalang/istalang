@@ -10,9 +10,11 @@ import { runPrograms } from '../../../test/corpus/run-programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import { definitionFormat } from '../../definition/definition.ts';
+import { isError } from '../../diagnostics/diagnostic.ts';
 import { testRuntime } from '../../runtime/runtime.test-kit.ts';
 import { preludeProgramOf, stdProgramOf } from '../binder/bind.test-kit.ts';
 import { checkProgram } from '../checker/check.ts';
+import { compiledDefinition } from '../compile.test-kit.ts';
 import { compileProgram, diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
@@ -30,14 +32,6 @@ function externKeys(program: Program, key: string): readonly string[] {
   return items.flatMap((item) =>
     item.kind === 'FunctionDeclaration' && item.isExtern ? [externKeyOf(checker, item)] : [],
   );
-}
-
-function compiled(program: Program, entry: string) {
-  const compilation = compileProgram(program, idOf(entry));
-  if (compilation.kind !== 'compiled') {
-    throw new Error(`${entry} didn't compile: ${compilation.kind}`);
-  }
-  return compilation.definition;
 }
 
 describe('extern keys', () => {
@@ -68,7 +62,9 @@ describe('lowering', () => {
       'purchase/approve': "import twice from 'lib/math'\nasync fn main(): twice(2)",
       'lib/math': 'fn twice(n: int) -> int: n * 2',
     });
-    const names = compiled(program, 'purchase/approve').functions.map((entry) => entry.name);
+    const names = compiledDefinition(program, 'purchase/approve').functions.map(
+      (entry) => entry.name,
+    );
     expect(names).toEqual(['purchase/approve.main', 'lib/math.twice', 'prelude.multiply']);
   });
 
@@ -79,7 +75,7 @@ describe('lowering', () => {
         'async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });
-    const { types } = compiled(program, 'main');
+    const { types } = compiledDefinition(program, 'main');
     expect(types.map((type) => [type.kind, type.name])).toEqual([
       ['struct', 'main.Box'],
       ['enum', 'prelude.Optional'],
@@ -100,7 +96,7 @@ describe('lowering', () => {
       main: "import limits from 'lib'\nasync fn main(): limits.high + limits.high",
       lib: 'struct Limits { high: int }\nconst base = 7\nconst limits = Limits{high: base}',
     });
-    const definition = compiled(program, 'main');
+    const definition = compiledDefinition(program, 'main');
     const test = testRuntime();
     const deployed = test.runtime.deploy(definitionFormat.write(definition).text);
     expect(deployed.start('i')).toEqual({ kind: 'finished', outcome: 14n });
@@ -115,8 +111,8 @@ describe('lowering', () => {
     fc.assert(
       fc.property(brokenText([subsetSource, ...corpusTexts, ...specModules]), (text) => {
         const program = stdProgramOf({ main: text });
-        const clean = [...diagnose(program).values()].every(({ diagnostics }) =>
-          diagnostics.every((diagnostic) => diagnostic.severity !== 'error'),
+        const clean = [...diagnose(program).values()].every(
+          ({ diagnostics }) => !diagnostics.some(isError),
         );
         const compilation = compileProgram(program, idOf('main'));
         expect(compilation.kind === 'failed').toBe(!clean);

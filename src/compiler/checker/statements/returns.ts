@@ -33,8 +33,7 @@ export class ReturnScope {
       this.#returned.push({ type: unitType, span });
       return;
     }
-    const type =
-      expected === undefined ? context.expression(value) : context.expect(value, expected);
+    const type = context.expect(value, expected);
     this.#returned.push({ type, span: value.span });
   }
 

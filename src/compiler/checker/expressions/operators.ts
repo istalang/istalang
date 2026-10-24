@@ -10,6 +10,7 @@
 import type { Binary, Unary } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { frontier } from '../frontier.ts';
 import { resolveOperator } from '../overloads/operators.ts';
 import { boolType, comparable, errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -26,7 +27,7 @@ export function checkBinary(context: BodyContext, node: Binary): Type {
     case '!=':
       return checkEquality(context, node);
     case '??':
-      return context.unsupported(node, "The '??' operator");
+      return context.unsupported(node, frontier.nullishOperator);
     case '<':
     case '<=':
     case '>':

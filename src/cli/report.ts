@@ -6,6 +6,7 @@
  */
 
 import type { ModuleDiagnostics } from '../compiler/compile.ts';
+import { isError } from '../diagnostics/diagnostic.ts';
 import { renderDiagnostic } from '../diagnostics/render.ts';
 /** Writes every diagnostic of `results` through `write`; how many of them are errors. */
 export function reportDiagnostics(
@@ -17,7 +18,7 @@ export function reportDiagnostics(
     diagnostics.map((diagnostic) => renderDiagnostic(source, diagnostic)),
   );
   const all = modules.flatMap((result) => result.diagnostics);
-  const errors = all.filter((diagnostic) => diagnostic.severity === 'error').length;
+  const errors = all.filter(isError).length;
   if (reports.length > 0) {
     write(`${reports.join('\n\n')}\n\n${summary(errors, all.length - errors)}\n`);
   }

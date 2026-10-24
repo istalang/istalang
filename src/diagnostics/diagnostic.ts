@@ -19,3 +19,8 @@ export interface Diagnostic {
   readonly message: string;
   readonly span: Span;
 }
+
+/** Whether `diagnostic` is an error: what fails a check and stops a program from compiling. */
+export function isError(diagnostic: Diagnostic): boolean {
+  return diagnostic.severity === 'error';
+}

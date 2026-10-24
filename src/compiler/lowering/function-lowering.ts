@@ -9,13 +9,13 @@
 import type { CodeFunction } from '../../definition/functions.ts';
 import type { Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
+import { handlerOf } from '../../structures/kind-table.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CheckedBody, Checker } from '../checker/check.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions.ts';
-import { handlerOf } from '../syntax/handlers.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import { CodeWriter } from './code-writer.ts';

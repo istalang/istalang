@@ -9,7 +9,10 @@
  * its own stand-in value.
  */
 
-export class LazyChecks<Subject, Result extends object> {
+import { memo } from '../../structures/memo.ts';
+import { withPushed } from '../../structures/stack.ts';
+
+export class LazyChecks<Subject, Result> {
   readonly #results = new Map<Subject, Result>();
   /** The subjects being checked right now, innermost last. */
   readonly #running: Subject[] = [];
@@ -23,18 +26,7 @@ export class LazyChecks<Subject, Result extends object> {
 
   /** `subject`'s result: computed by `check` the first time, then remembered. */
   resultOf(subject: Subject, check: () => Result): Result {
-    const known = this.#results.get(subject);
-    if (known !== undefined) {
-      return known;
-    }
-    this.#running.push(subject);
-    try {
-      const result = check();
-      this.#results.set(subject, result);
-      return result;
-    } finally {
-      this.#running.pop();
-    }
+    return memo(this.#results, subject, () => withPushed(this.#running, subject, check));
   }
 
   /**

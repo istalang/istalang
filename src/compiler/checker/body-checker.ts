@@ -12,11 +12,12 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { handlerOf } from '../../structures/kind-table.ts';
+import { withPushed } from '../../structures/stack.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { Expression } from '../syntax/expressions.ts';
-import { handlerOf } from '../syntax/handlers.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -24,6 +25,7 @@ import type { CallSite, CheckedBody, ResolvedCall, SignatureParameter } from './
 import type { BodyContext, CheckerContext } from './context.ts';
 import { checkerDiagnostics } from './diagnostics.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
+import type { FrontierConstruct } from './frontier.ts';
 import { passesValueOn, refuseHeldFuture } from './rules/futures.ts';
 import { LoopScope } from './statements/loops.ts';
 import { ReturnScope } from './statements/returns.ts';
@@ -71,13 +73,13 @@ export class BodyChecker implements BodyContext {
   /** Checks a value of its own, such as a constant's initializer, against the declared result. */
   checkValue(node: Expression): CheckedBody {
     const { declared } = this.returns;
-    const type = declared === undefined ? this.expression(node) : this.expect(node, declared);
+    const type = this.expect(node, declared);
     return this.#checked(declared ?? type);
   }
 
   expression(node: Expression, expected?: Type): Type {
     const receiver = this.#within.at(-1);
-    const type = this.#inside(node, () =>
+    const type = withPushed(this.#within, node, () =>
       handlerOf(expressionHandlers, node)(this, node, expected),
     );
     this.#types.set(node, type);
@@ -87,9 +89,11 @@ export class BodyChecker implements BodyContext {
     return type;
   }
 
-  expect(node: Expression, expected: Type): Type {
+  expect(node: Expression, expected: Type | undefined): Type {
     const type = this.expression(node, expected);
-    this.fit(type, expected, node.span);
+    if (expected !== undefined) {
+      this.fit(type, expected, node.span);
+    }
     return type;
   }
 
@@ -108,14 +112,16 @@ export class BodyChecker implements BodyContext {
   }
 
   statement(node: Statement | Invalid, expected?: Type): Type {
-    return this.#inside(node, () => handlerOf(statementHandlers, node)(this, node, expected));
+    return withPushed(this.#within, node, () =>
+      handlerOf(statementHandlers, node)(this, node, expected),
+    );
   }
 
   report(diagnostic: Diagnostic): void {
     this.checker.report(this.module, diagnostic);
   }
 
-  unsupported(node: NodeOf<string>, construct?: string): Type {
+  unsupported(node: NodeOf<string>, construct?: FrontierConstruct): Type {
     return this.checker.unsupported(this.module, node, construct);
   }
 
@@ -129,16 +135,6 @@ export class BodyChecker implements BodyContext {
 
   recordCall(site: CallSite, call: ResolvedCall): void {
     this.#calls.set(site, call);
-  }
-
-  /** Checks `node`'s parts with `node` as what receives their values. */
-  #inside<Result>(node: NodeOf<string>, check: () => Result): Result {
-    this.#within.push(node);
-    try {
-      return check();
-    } finally {
-      this.#within.pop();
-    }
   }
 
   /** The CheckedBody of what was checked, producing `result`. */

@@ -26,6 +26,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { memo } from '../../structures/memo.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type { EnumDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
@@ -112,18 +113,14 @@ class Linker {
 
   /** A module's function set with the prelude's overloads of its name, once per Program. */
   overloadsOf(functions: FunctionsEntity): readonly FunctionDeclaration[] {
-    let overloads = this.#overloads.get(functions);
-    if (overloads === undefined) {
+    return memo(this.#overloads, functions, () => {
       const module = this.#owners.get(functions);
       const prelude = module === undefined ? undefined : this.#preludeFor(module);
       const joined = prelude?.exports.get(functions.name);
-      overloads =
-        joined?.kind === 'functions'
-          ? [...functions.overloads, ...joined.overloads]
-          : functions.overloads;
-      this.#overloads.set(functions, overloads);
-    }
-    return overloads;
+      return joined?.kind === 'functions'
+        ? [...functions.overloads, ...joined.overloads]
+        : functions.overloads;
+    });
   }
 
   /** Resolves a module's imports and checks its top-level names against the prelude. */
@@ -207,7 +204,7 @@ class Linker {
 
   /** The prelude's bindings as module `id` sees them: every module but the prelude itself. */
   #preludeFor(id: ModuleId): ModuleBindings | undefined {
-    const { prelude } = this.#program;
+    const { prelude } = this.#program.roles;
     return prelude === undefined || prelude === id ? undefined : this.#locals.get(prelude);
   }
 

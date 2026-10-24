@@ -16,6 +16,7 @@ import {
   reportedOnce,
 } from '../../diagnostics/diagnostic.test-kit.ts';
 import { preludeProgramOf, stdProgramOf } from '../binder/bind.test-kit.ts';
+import { diagnosedAt } from '../compile.test-kit.ts';
 import { diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import { checkProgram } from './check.ts';
@@ -25,12 +26,11 @@ const corpusTexts = runPrograms.map((program) => program.text);
 
 /** Everything reported for `text` as module `main.ista`, beside the std modules and `others`. */
 function reported(text: string, others: Readonly<Record<string, string>> = {}) {
-  const program = stdProgramOf({ 'main.ista': text, ...others });
-  const result = diagnose(program).get(idOf('main.ista'));
-  if (result === undefined) {
-    throw new Error('main.ista was not loaded');
-  }
-  return reportedIn(result.source, result.diagnostics);
+  const { source, diagnostics } = diagnosedAt(
+    stdProgramOf({ 'main.ista': text, ...others }),
+    'main.ista',
+  );
+  return reportedIn(source, diagnostics);
 }
 
 const importTime = "import * as time from 'time'";

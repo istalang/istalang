@@ -12,12 +12,12 @@
  */
 
 import type { z } from 'zod';
-import { type CodeFunction, type FunctionDefinition, sharedTypeName } from './functions.ts';
+import type { CodeFunction, FunctionDefinition } from './functions.ts';
 import { closureProblem, constructionProblem, instructionProblem } from './instruction-rules.ts';
 import { terminates } from './instructions/flow.ts';
 import { type Operands, operandsOf } from './instructions/instruction.ts';
 import type { Tables } from './tables.ts';
-import { type TypeDefinition, typesIn } from './types.ts';
+import { isSharedCellType, type TypeDefinition, typesIn } from './types.ts';
 import { type CompositeValue, childValues, handlesIn, isComposite, type Value } from './values.ts';
 
 type Path = readonly (string | number)[];
@@ -60,6 +60,7 @@ export function checkReferences(tables: Tables, refinement: z.RefinementCtx): vo
   });
 }
 
+/** The Definition's `main` field (the paths below name it), which must point at an async entry. */
 function checkMain(context: Context): void {
   const { main } = context.tables;
   if (main === undefined || !inRange(context, { functions: [main] }, ['main'])) {
@@ -123,8 +124,7 @@ function checkCode(context: Context, entry: CodeFunction, path: Path): void {
     if (!inRange(context, { registers: [cell.register], types: [cell.type] }, at, frame)) {
       return;
     }
-    const type = context.tables.types[cell.type];
-    if (type?.kind !== 'extern' || type.name !== sharedTypeName) {
+    if (!isSharedCellType(context.tables.types, cell.type)) {
       context.report(at, `Type ${cell.type} is not a Shared<T> entry.`);
     }
   });

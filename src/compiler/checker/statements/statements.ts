@@ -7,7 +7,7 @@
  * statement's expression sees the type the block is expected to have.
  */
 
-import type { Handlers } from '../../syntax/handlers.ts';
+import type { Handlers } from '../../../structures/kind-table.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';

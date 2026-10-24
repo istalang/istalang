@@ -15,10 +15,16 @@ import { nested } from '../nesting.ts';
 import type { Parser } from '../parser.ts';
 import type { Enclosed } from '../recovery.ts';
 
-/** Consumes `struct`. If no `{` follows, reports it and returns the Missing node to use. */
-export function skipStructKeyword(parser: Parser): Missing | undefined {
-  parser.cursor.advance();
-  return parser.cursor.at('{') ? undefined : parser.missing("'{' after 'struct'");
+/**
+ * What `parseBraced` parses after an optional `struct`, which must be followed by `{`: a missing
+ * brace is reported, and the Missing node stands for the whole.
+ */
+export function afterStructKeyword<Body>(parser: Parser, parseBraced: () => Body): Body | Missing {
+  const { cursor } = parser;
+  if (cursor.eat('struct') !== undefined && !cursor.at('{')) {
+    return parser.missing("'{' after 'struct'");
+  }
+  return parseBraced();
 }
 
 /** `name: Type`, or `name:` over an indented block of fields. */

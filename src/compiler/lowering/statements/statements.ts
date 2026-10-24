@@ -6,7 +6,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { Handlers } from '../../syntax/handlers.ts';
+import type { Handlers } from '../../../structures/kind-table.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { type Block, type Statement, tailExpressionOf } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';

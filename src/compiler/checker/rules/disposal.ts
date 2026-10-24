@@ -11,6 +11,7 @@
  *   arrive with the disposal slice, until which such a type counts as not disposable.
  */
 
+import { disposeFunction } from '../../../language/well-known.ts';
 import type { Disposal } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { NominalType } from '../types/type.ts';
@@ -25,7 +26,7 @@ export function disposalOf(checker: CheckerContext, type: NominalType): Disposal
   ) {
     return 'none';
   }
-  const declared = checker.bindings.exportsOf(module).get('dispose');
+  const declared = checker.bindings.exportsOf(module).get(disposeFunction);
   const disposes =
     declared?.kind === 'functions' &&
     declared.overloads.some((candidate) => {

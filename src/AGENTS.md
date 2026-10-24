@@ -2,7 +2,9 @@
 
 Top-level folders are toolchain features. Their layers and contracts are in `docs/arch/architecture.md`.
 
-- `text/`: SourceText, Span, LineMap. The foundation; it imports nothing.
+- `language/`: the language's fixed vocabulary (primitive names, the std modules and declarations the toolchain knows by name). Beneath every layer; it imports nothing.
+- `structures/`: kind tables, `memo` and scoped stacks, the generic structures every phase builds on. Beneath every layer; it imports nothing.
+- `text/`: SourceText, Span, LineMap. The foundation; it imports nothing beneath it.
 - `diagnostics/`: the Diagnostic value and `defineDiagnostics`. Each phase declares one catalog; `code-blocks.ts` assigns each phase its block of codes.
 - `compiler/`: the phases (`compiler/AGENTS.md`).
 - `stdlib/`: the std modules, one folder each (`<name>/<name>.ista` beside its `natives.ts`, keyed as lowering keys the externs), and `stdlib-loader.ts`, which loads them by simple name from sources compiled into the package.

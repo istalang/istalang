@@ -72,9 +72,6 @@ export type FunctionDefinition = z.output<typeof functionDefinition>;
 
 export type CodeFunction = Extract<FunctionDefinition, { kind: 'code' }>;
 
-/** The extern type every cell is an instantiation of (spec §3.14). */
-export const sharedTypeName = 'prelude.Shared';
-
 /** Whether parameter `index` of `entry` takes a reference. */
 export function takesReference(entry: FunctionDefinition, index: number): boolean {
   return entry.parameters[index]?.reference === true;

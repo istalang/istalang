@@ -17,16 +17,18 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { LanguageModule, WellKnownDeclaration } from '../../language/well-known.ts';
+import { memo } from '../../structures/memo.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings } from '../binder/entities.ts';
-import type { LanguageModule, ModuleId, Program } from '../program/program.ts';
+import type { ModuleId, Program } from '../program/program.ts';
 import type {
   Declaration,
   EnumDeclaration,
   FunctionDeclaration,
   StructDeclaration,
 } from '../syntax/declarations.ts';
-import type { NodeOf } from '../syntax/node.ts';
+import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { BodyChecker } from './body-checker.ts';
@@ -41,24 +43,14 @@ import type {
 import type { CheckerContext } from './context.ts';
 import { ConstantChecks } from './declarations/constants.ts';
 import { checkDeclaration } from './declarations/declarations.ts';
+import { Layouts } from './declarations/layout.ts';
 import { resolveTypeNode } from './declarations/resolve-type.ts';
-import {
-  callResult,
-  declaredBodyResult,
-  declaredFields,
-  declaredParameters,
-} from './declarations/signatures.ts';
+import { callResult, declaredBodyResult, declaredParameters } from './declarations/signatures.ts';
 import { checkerDiagnostics } from './diagnostics.ts';
+import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
 import { disposalOf } from './rules/disposal.ts';
-import {
-  errorType,
-  type NominalType,
-  type Substitution,
-  substitute,
-  type Type,
-  unitType,
-} from './types/type.ts';
+import { errorType, type NominalType, type Type, unitType } from './types/type.ts';
 import { notSupported } from './unsupported.ts';
 
 export class ProgramChecker implements CheckerContext {
@@ -82,9 +74,8 @@ export class ProgramChecker implements CheckerContext {
     checkValue: (module, initializer, declaredResult) =>
       new BodyChecker(this, module, { isAsync: false, declaredResult }).checkValue(initializer),
   });
-  readonly #fields = new Map<StructDeclaration, readonly FieldMember[]>();
   readonly #checkedModules = new Set<ModuleId>();
-  readonly #variants = new Map<EnumDeclaration, readonly VariantMember[]>();
+  readonly #layouts = new Layouts(this);
 
   constructor(program: Program) {
     this.program = program;
@@ -104,7 +95,7 @@ export class ProgramChecker implements CheckerContext {
     this.#diagnostics.set(module, diagnostics);
   }
 
-  unsupported(module: ModuleId, node: NodeOf<string>, construct?: string): Type {
+  unsupported(module: ModuleId, node: NodeOf<string>, construct?: FrontierConstruct): Type {
     this.report(module, notSupported(node, construct));
     return errorType;
   }
@@ -122,24 +113,23 @@ export class ProgramChecker implements CheckerContext {
   }
 
   parametersOf(declaration: FunctionDeclaration): readonly SignatureParameter[] {
-    return memoized(this.#parameters, declaration, () =>
+    return memo(this.#parameters, declaration, () =>
       declaredParameters(this, this.moduleOf(declaration), declaration),
     );
   }
 
   resultOf(declaration: FunctionDeclaration): Type {
-    const known = this.#results.get(declaration);
-    if (known !== undefined) {
-      return known;
-    }
     const declared = this.#declaredBodyResult(declaration);
-    if (declared === undefined && this.#bodies.inCycle(declaration)) {
+    if (
+      declared === undefined &&
+      !this.#results.has(declaration) &&
+      this.#bodies.inCycle(declaration)
+    ) {
       return errorType;
     }
-    const bodyResult = declared ?? this.bodyOf(declaration)?.result ?? unitType;
-    const result = callResult(this, declaration, bodyResult);
-    this.#results.set(declaration, result);
-    return result;
+    return memo(this.#results, declaration, () =>
+      callResult(this, declaration, declared ?? this.bodyOf(declaration)?.result ?? unitType),
+    );
   }
 
   /** The checked body of a function with one; undefined for an extern. */
@@ -164,24 +154,16 @@ export class ProgramChecker implements CheckerContext {
     return this.#constants.constantOf(declaration);
   }
 
+  constantNamed(module: ModuleId, name: Identifier): CheckedConstant | undefined {
+    return this.#constants.constantNamed(module, name);
+  }
+
   fieldsOf(type: NominalType): readonly FieldMember[] | undefined {
-    const { declaration } = type.entity;
-    if (declaration.kind !== 'StructDeclaration') {
-      return undefined;
-    }
-    return instantiateFields(this.declaredFieldsOf(declaration), substitutionOf(type));
+    return this.#layouts.fieldsOf(type);
   }
 
   variantsOf(type: NominalType): readonly VariantMember[] | undefined {
-    const { declaration } = type.entity;
-    if (declaration.kind !== 'EnumDeclaration') {
-      return undefined;
-    }
-    const substitution = substitutionOf(type);
-    return this.declaredVariantsOf(declaration).map((variant) => ({
-      name: variant.name,
-      fields: instantiateFields(variant.fields, substitution),
-    }));
+    return this.#layouts.variantsOf(type);
   }
 
   disposalOf(type: NominalType): Disposal {
@@ -189,23 +171,11 @@ export class ProgramChecker implements CheckerContext {
   }
 
   declaredFieldsOf(declaration: StructDeclaration): readonly FieldMember[] {
-    return memoized(this.#fields, declaration, () =>
-      declaredFields(this, declaration, declaration.fields),
-    );
+    return this.#layouts.declaredFieldsOf(declaration);
   }
 
   declaredVariantsOf(declaration: EnumDeclaration): readonly VariantMember[] {
-    return memoized(this.#variants, declaration, () =>
-      declaration.variants.flatMap((variant) =>
-        variant.kind === 'Variant'
-          ? [{ name: variant.name.text, fields: declaredFields(this, declaration, variant.fields) }]
-          : [],
-      ),
-    );
-  }
-
-  preludeType(name: string, typeArguments: readonly Type[]): Type {
-    return this.languageType('prelude', name, typeArguments) ?? errorType;
+    return this.#layouts.declaredVariantsOf(declaration);
   }
 
   preludeFunctions(name: string): readonly FunctionDeclaration[] {
@@ -227,18 +197,13 @@ export class ProgramChecker implements CheckerContext {
   }
 
   #declaredBodyResult(declaration: FunctionDeclaration): Type | undefined {
-    if (!this.#declaredResults.has(declaration)) {
-      this.#declaredResults.set(
-        declaration,
-        declaredBodyResult(this, this.moduleOf(declaration), declaration),
-      );
-    }
-    return this.#declaredResults.get(declaration);
+    return memo(this.#declaredResults, declaration, () =>
+      declaredBodyResult(this, this.moduleOf(declaration), declaration),
+    );
   }
 
-  languageType(
-    module: LanguageModule,
-    name: string,
+  wellKnownType(
+    { module, name }: WellKnownDeclaration,
     typeArguments: readonly Type[] = [],
   ): Type | undefined {
     const entity = this.#languageExport(module, name);
@@ -249,34 +214,7 @@ export class ProgramChecker implements CheckerContext {
 
   /** What language module `module` exports as `name`, when the program has that module. */
   #languageExport(module: LanguageModule, name: string) {
-    const id = this.program[module];
+    const id = this.program.roles[module];
     return id === undefined ? undefined : this.bindings.exportsOf(id).get(name);
   }
-}
-
-function memoized<Key, Value>(cache: Map<Key, Value>, key: Key, compute: () => Value): Value {
-  const known = cache.get(key);
-  if (known !== undefined) {
-    return known;
-  }
-  const value = compute();
-  cache.set(key, value);
-  return value;
-}
-
-/** The type arguments of `type`, by the type parameters of its declaration. */
-function substitutionOf(type: NominalType): Substitution {
-  const parameters = type.entity.declaration.typeParameters.filter(
-    (parameter) => parameter.kind === 'TypeParameter',
-  );
-  return new Map(
-    parameters.map((parameter, index) => [parameter, type.arguments[index] ?? errorType]),
-  );
-}
-
-function instantiateFields(
-  fields: readonly FieldMember[],
-  substitution: Substitution,
-): readonly FieldMember[] {
-  return fields.map((field) => ({ ...field, type: substitute(field.type, substitution) }));
 }

@@ -10,10 +10,12 @@
  */
 
 import type { MemberAccess, StructLiteral } from '../../syntax/expressions.ts';
+import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { FieldMember } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { frontier } from '../frontier.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { entityValueType } from './names.ts';
@@ -21,7 +23,7 @@ import { entityValueType } from './names.ts';
 export function checkStructLiteral(context: BodyContext, node: StructLiteral): Type {
   const typeNode = node.type;
   if (typeNode === undefined) {
-    return context.unsupported(node, "A 'struct{…}' literal");
+    return context.unsupported(node, frontier.anonymousStructLiteral);
   }
   const type = literalType(context, node, typeNode);
   if (type.kind === 'error') {
@@ -29,7 +31,7 @@ export function checkStructLiteral(context: BodyContext, node: StructLiteral): T
   }
   const fields = type.kind === 'nominal' ? context.checker.fieldsOf(type) : undefined;
   if (fields === undefined) {
-    const name = typeNode.path.at(-1) ?? typeNode.path[0];
+    const name = lastName(typeNode.path);
     context.report(checkerDiagnostics.notStruct(typeNode.span, name.text));
     return errorType;
   }
@@ -45,16 +47,16 @@ export function checkStructLiteral(context: BodyContext, node: StructLiteral): T
 
 /** The type a literal names: a nominal type, or the error type after a report. */
 function literalType(context: BodyContext, node: StructLiteral, typeNode: NamedType): Type {
-  const entity = context.entityOf(typeNode.path.at(-1) ?? typeNode.path[0]);
+  const entity = context.entityOf(lastName(typeNode.path));
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
-    return context.unsupported(node, 'An enum variant');
+    return context.unsupported(node, frontier.enumVariant);
   }
   const declaration = entity?.kind === 'type' ? entity.declaration : undefined;
   if (
     declaration?.kind === 'StructDeclaration' &&
     declaration.typeParameters.length > typeNode.typeArguments.length
   ) {
-    return context.unsupported(node, 'Inferring type arguments');
+    return context.unsupported(node, frontier.typeArgumentInference);
   }
   return context.resolveType(typeNode);
 }
@@ -76,7 +78,10 @@ function checkItem(
     return;
   }
   if (item.kind !== 'FieldInitializer' || item.value === undefined) {
-    context.unsupported(item, item.kind === 'FieldInitializer' ? 'A shorthand field' : undefined);
+    context.unsupported(
+      item,
+      item.kind === 'FieldInitializer' ? frontier.shorthandField : undefined,
+    );
     return;
   }
   const { type, fields, given } = literal;
@@ -96,7 +101,7 @@ function checkItem(
 
 export function checkMemberAccess(context: BodyContext, node: MemberAccess): Type {
   if (node.isOptional) {
-    return context.unsupported(node, "The '?.' operator");
+    return context.unsupported(node, frontier.optionalChaining);
   }
   const qualified = context.entityOf(node.member);
   if (qualified !== undefined) {
@@ -105,7 +110,7 @@ export function checkMemberAccess(context: BodyContext, node: MemberAccess): Typ
   if (node.target.kind === 'Identifier') {
     const target = context.entityOf(node.target);
     if (target?.kind === 'type' || target?.kind === 'primitive') {
-      return context.unsupported(node, 'A static member');
+      return context.unsupported(node, frontier.staticMember);
     }
   }
   const type = context.expression(node.target);

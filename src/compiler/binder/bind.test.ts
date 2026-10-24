@@ -159,7 +159,7 @@ describe('valid programs bind without diagnostics', () => {
   it('the prelude', () => {
     const program = preludeProgramOf({ main: '' });
     const { id } = preludeModule();
-    expect(program.prelude).toBe(id);
+    expect(program.roles.prelude).toBe(id);
     expect(bindProgram(program).diagnosticsOf(id)).toEqual([]);
   });
 

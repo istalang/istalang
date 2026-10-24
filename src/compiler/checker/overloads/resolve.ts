@@ -3,9 +3,11 @@
  * from the argument types alone, never from the result.
  *
  * For now a candidate applies when it is not generic, takes exactly as many parameters as there
- * are arguments, takes none of them by reference, and every argument fits its parameter. Generic
- * candidates, defaults, rest parameters, references and argument-dependent lookup extend this
- * module; until then a call that only a generic candidate could serve is reported as not supported.
+ * are arguments, takes none of them by reference, and every argument fits its parameter. That rule
+ * lives in `inapplicability` alone: choosing keeps the candidates it finds nothing against, and a
+ * report about a failed call explains the reason it found. Generic candidates, defaults, rest
+ * parameters, references and argument-dependent lookup extend it; until then a call that only a
+ * generic candidate could serve is reported as not supported.
  */
 
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
@@ -13,8 +15,44 @@ import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { frontier } from '../frontier.ts';
 import { errorType, isAssignable, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+
+/** Why a candidate can't take a call's arguments. */
+export type Inapplicability =
+  | { readonly kind: 'generic' }
+  | { readonly kind: 'arity'; readonly expected: number }
+  | { readonly kind: 'reference' }
+  /** The arguments that don't fit their parameters, by position, with the parameter's type. */
+  | {
+      readonly kind: 'arguments';
+      readonly misfits: readonly { readonly index: number; readonly expected: Type }[];
+    };
+
+/** Why `candidate` can't take arguments of `argumentTypes`; undefined when it can. */
+export function inapplicability(
+  context: BodyContext,
+  candidate: FunctionDeclaration,
+  argumentTypes: readonly Type[],
+): Inapplicability | undefined {
+  if (candidate.typeParameters.length > 0) {
+    return { kind: 'generic' };
+  }
+  const parameters = context.checker.parametersOf(candidate);
+  if (parameters.length !== argumentTypes.length) {
+    return { kind: 'arity', expected: parameters.length };
+  }
+  if (parameters.some((parameter) => parameter.reference)) {
+    return { kind: 'reference' };
+  }
+  const misfits = parameters.flatMap((parameter, index) =>
+    isAssignable(argumentTypes[index] ?? errorType, parameter.type)
+      ? []
+      : [{ index, expected: parameter.type }],
+  );
+  return misfits.length === 0 ? undefined : { kind: 'arguments', misfits };
+}
 
 /** The candidates a call with `argumentTypes` could mean. */
 export function applicableOverloads(
@@ -22,19 +60,9 @@ export function applicableOverloads(
   candidates: readonly FunctionDeclaration[],
   argumentTypes: readonly Type[],
 ): readonly FunctionDeclaration[] {
-  return candidates.filter((candidate) => {
-    if (candidate.typeParameters.length > 0) {
-      return false;
-    }
-    const parameters = context.checker.parametersOf(candidate);
-    return (
-      parameters.length === argumentTypes.length &&
-      parameters.every(
-        (parameter, index) =>
-          !parameter.reference && isAssignable(argumentTypes[index] ?? errorType, parameter.type),
-      )
-    );
-  });
+  return candidates.filter(
+    (candidate) => inapplicability(context, candidate, argumentTypes) === undefined,
+  );
 }
 
 /** A call to resolve: where it is, the functions it may mean, and its arguments' types. */
@@ -92,10 +120,12 @@ export function resolveCall(context: BodyContext, attempt: CallAttempt): Type {
 function explainNone(context: BodyContext, attempt: CallAttempt): void {
   const { site, name, candidates, argumentTypes } = attempt;
   const [only] = candidates;
-  if (candidates.length === 1 && only !== undefined) {
-    explainSingle(context, attempt, only);
-  } else if (candidates.some((candidate) => candidate.typeParameters.length > 0)) {
-    context.unsupported(site, 'Calling a generic function');
+  const reasons = candidates.map((candidate) => inapplicability(context, candidate, argumentTypes));
+  const [reason] = reasons;
+  if (candidates.length === 1 && only !== undefined && reason !== undefined) {
+    explain(context, attempt, only, reason);
+  } else if (reasons.some((each) => each?.kind === 'generic')) {
+    context.unsupported(site, frontier.genericCall);
   } else {
     context.report(
       checkerDiagnostics.noMatchingOverload(site.span, name, typesText(argumentTypes)),
@@ -122,7 +152,7 @@ export function callTo(context: BodyContext, site: CallSite, target: FunctionDec
 function checkCallable(context: BodyContext, site: CallSite, target: FunctionDeclaration): boolean {
   const { checker } = context;
   if (target.isExtern && checker.program.modules.get(checker.moduleOf(target))?.isStd !== true) {
-    context.unsupported(site, 'Calling an extern function the host implements');
+    context.unsupported(site, frontier.hostExtern);
     return false;
   }
   return true;
@@ -133,34 +163,41 @@ export function typesText(types: readonly Type[]): string {
   return types.map(typeText).join(', ');
 }
 
-/** With one candidate, the report says what exactly doesn't fit. */
-function explainSingle(
+/** With one candidate, the report says what exactly doesn't fit: the `reason` it was refused for. */
+function explain(
   context: BodyContext,
-  attempt: CallAttempt,
+  { site, argumentNodes, argumentTypes }: CallAttempt,
   candidate: FunctionDeclaration,
+  reason: Inapplicability,
 ): void {
-  const { site, argumentNodes, argumentTypes } = attempt;
-  const parameters = context.checker.parametersOf(candidate);
-  if (candidate.typeParameters.length > 0) {
-    context.unsupported(site, 'Calling a generic function');
-  } else if (parameters.length !== argumentTypes.length) {
-    context.report(
-      checkerDiagnostics.argumentCount(
-        site.span,
-        candidate.name.text,
-        parameters.length,
-        argumentTypes.length,
-      ),
-    );
-  } else if (parameters.some((parameter) => parameter.reference)) {
-    context.unsupported(site, 'Passing a reference');
-  } else {
-    parameters.forEach((parameter, index) => {
-      const found = argumentTypes[index] ?? errorType;
-      const node = argumentNodes[index];
-      if (node !== undefined) {
-        context.fit(found, parameter.type, node.span);
+  switch (reason.kind) {
+    case 'generic':
+      context.unsupported(site, frontier.genericCall);
+      return;
+    case 'arity':
+      context.report(
+        checkerDiagnostics.argumentCount(
+          site.span,
+          candidate.name.text,
+          reason.expected,
+          argumentTypes.length,
+        ),
+      );
+      return;
+    case 'reference':
+      context.unsupported(site, frontier.reference);
+      return;
+    case 'arguments':
+      for (const { index, expected } of reason.misfits) {
+        const node = argumentNodes[index];
+        if (node !== undefined) {
+          context.fit(argumentTypes[index] ?? errorType, expected, node.span);
+        }
       }
-    });
+      return;
+    default: {
+      const unexplained: never = reason;
+      throw new TypeError(`No explanation for ${JSON.stringify(unexplained)}.`);
+    }
   }
 }

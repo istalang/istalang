@@ -16,15 +16,16 @@
 
 import type { LocatedModule, ModuleLoader } from '../compiler/program/program.ts';
 import { moduleIdOf } from '../compiler/program/program.ts';
+import { type LanguageModule, languageModules } from '../language/well-known.ts';
 import preludeSource from './prelude/prelude.ista';
 import runtimeSource from './runtime/runtime.ista';
 import timeSource from './time/time.ista';
 
 /** The prelude's name, which its declarations and natives are qualified with. */
-export const preludeName = 'prelude';
+export const preludeName = languageModules.prelude;
 
 /** The `time` module's name. */
-export const timeName = 'time';
+export const timeName = languageModules.time;
 
 /** The `runtime` module's name. */
 export const runtimeName = 'runtime';
@@ -43,6 +44,11 @@ export function preludeModule(): LocatedModule {
 /** `time`, as a module for the program to load by role (§2). */
 export function timeModule(): LocatedModule {
   return stdModule(timeName, timeSource);
+}
+
+/** The std modules a program is handed by role, as every app hands them (§2, §3.13). */
+export function stdRoles(): Readonly<Record<LanguageModule, LocatedModule>> {
+  return { prelude: preludeModule(), time: timeModule() };
 }
 
 /** The loader of the std modules in `sources`. */

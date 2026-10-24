@@ -194,14 +194,16 @@ export class Instance {
     const execution = this.#execution(id);
     const frame = topFrame(execution);
     const instruction = frame.code.instructions[frame.pc];
+    const resolved = (instruction === undefined ? [] : awaitedRegisters(instruction))
+      .map((register) => this.#future(readRegister(frame, register)).state)
+      .find((state) => state.kind === 'resolved');
+    if (resolved === undefined) {
+      throw new Error(`Ready execution ${id} waits on no resolved future.`);
+    }
     if (instruction?.kind !== 'await') {
-      throw new Error(`Ready execution ${id} is not at an await.`);
+      throw new Error(`The runtime doesn't resume a '${instruction?.kind}' yet.`);
     }
-    const future = this.#future(readRegister(frame, instruction.future));
-    if (future.state.kind !== 'resolved') {
-      throw new Error(`Ready execution ${id} waits on an unresolved future.`);
-    }
-    resumeAt(frame, instruction.dst, future.state.value);
+    resumeAt(frame, instruction.dst, resolved.value);
     return execution;
   }
 

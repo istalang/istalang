@@ -12,13 +12,12 @@
  *   reads as the int `1`.
  */
 
+import { byValueKey, primitiveKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
+import type { PrimitiveName } from '../../language/primitives.ts';
 import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
-import { nativeKey, primitiveKeyType } from '../native-keys.ts';
 import { float, int, text } from '../native-values.ts';
 import { preludeName } from '../stdlib-loader.ts';
-
-type Primitive = 'int' | 'float' | 'string' | 'bool';
 
 /** A float printed as whole digits, which needs `.0` to read as a float. */
 const wholeDigits = /^-?\d+$/u;
@@ -54,24 +53,24 @@ export const preludeNatives: Natives = {
     (left, right) => sign(compareOrdered(left, right)),
     (left, right) => sign(left - right),
   ),
-  [key('floorDivide', 'int', 'int')]: ([left, right]) =>
+  [preludeKey('floorDivide', 'int', 'int')]: ([left, right]) =>
     floorDivide(int(left), nonZero(int(right))),
-  [key('remainder', 'int', 'int')]: ([left, right]) => {
+  [preludeKey('remainder', 'int', 'int')]: ([left, right]) => {
     const dividend = int(left);
     const by = nonZero(int(right));
     return dividend - floorDivide(dividend, by) * by;
   },
-  [key('negate', 'int')]: ([value]) => -int(value),
-  [key('negate', 'float')]: ([value]) => -float(value),
-  [key('compare', 'string', 'string')]: ([left, right]) =>
+  [preludeKey('negate', 'int')]: ([value]) => -int(value),
+  [preludeKey('negate', 'float')]: ([value]) => -float(value),
+  [preludeKey('compare', 'string', 'string')]: ([left, right]) =>
     sign(compareOrdered(text(left), text(right))),
   ...Object.fromEntries(
     (['string', 'int', 'float', 'bool'] as const).map((right) => [
-      key('add', 'string', right),
+      preludeKey('add', 'string', right),
       ([left, value]: readonly Value[]) => text(left) + appendedText(value),
     ]),
   ),
-  [key('panic', 'string')]: ([message]) => {
+  [preludeKey('panic', 'string')]: ([message]) => {
     throw new Panic(text(message));
   },
 };
@@ -87,7 +86,7 @@ function numeric(
 ): Natives {
   return Object.fromEntries(
     numericPairs.map(([left, right]): [string, Native] => [
-      key(name, left, right),
+      preludeKey(name, left, right),
       left === 'int' && right === 'int'
         ? ([a, b]) => onInts(int(a), int(b))
         : ([a, b]) => onFloats(asFloat(a), asFloat(b)),
@@ -95,9 +94,9 @@ function numeric(
   );
 }
 
-/** The key prelude.ista's declaration of `name` over `parameters` gets. */
-function key(name: string, ...parameters: readonly Primitive[]): string {
-  return nativeKey(preludeName, name, ...parameters.map(primitiveKeyType));
+/** The key prelude.ista's declaration of `name` over primitive `parameters` gets. */
+export function preludeKey(name: string, ...parameters: readonly PrimitiveName[]): string {
+  return byValueKey(preludeName, name, ...parameters.map(primitiveKey));
 }
 
 function floorDivide(dividend: bigint, by: bigint): bigint {

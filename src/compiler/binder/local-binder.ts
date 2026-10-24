@@ -17,6 +17,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { memo } from '../../structures/memo.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
@@ -218,12 +219,7 @@ export class LocalBinder {
 
   /** One entity per bare name per tree, so it survives every snapshot that keeps the tree. */
   #variantsNamed(name: string): VariantsEntity {
-    let entity = this.#variants.get(name);
-    if (entity === undefined) {
-      entity = { kind: 'variants', name };
-      this.#variants.set(name, entity);
-    }
-    return entity;
+    return memo(this.#variants, name, () => ({ kind: 'variants', name }));
   }
 }
 

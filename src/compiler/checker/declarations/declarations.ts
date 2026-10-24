@@ -8,9 +8,9 @@
  * prelude's declarations never report.
  */
 
+import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Declaration } from '../../syntax/declarations.ts';
-import { type Handlers, handlerOf } from '../../syntax/handlers.ts';
 import type { CheckerContext } from '../context.ts';
 
 const nothingToCheck = (): void => undefined;

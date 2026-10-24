@@ -16,9 +16,10 @@
  * the program is linked.
  */
 
+import { primitiveNames } from '../../language/primitives.ts';
 import type { NamedImport } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
-import { type Entity, type PrimitiveEntity, primitiveNames } from './entities.ts';
+import type { Entity, PrimitiveEntity } from './entities.ts';
 
 /** `a` in `import a from 'path'`, until linking finds what it names. */
 export interface ImportPlaceholder {

@@ -20,6 +20,7 @@ import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { Tables } from '../../definition/tables.ts';
 import type { TypeDefinition, TypeReference } from '../../definition/types.ts';
 import { type Value, value } from '../../definition/values.ts';
+import { memo } from '../../structures/memo.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker, FieldMember } from '../checker/check.ts';
 import type { NominalType, Type } from '../checker/types/type.ts';
@@ -46,29 +47,18 @@ export class DefinitionTables {
 
   /** The index of `module` in the module table, with its line starts for spans. */
   moduleIndex(module: ModuleId): number {
-    const known = this.#moduleIndexes.get(module);
-    if (known !== undefined) {
-      return known;
-    }
-    const lines = lineMapOf(loadedModule(this.#checker, module).tree.source);
-    const lineStarts = Array.from({ length: lines.lineCount }, (_, line) =>
-      lines.offsetAt({ line, column: 0 }),
-    );
-    const index = this.#modules.push({ id: module, lineStarts }) - 1;
-    this.#moduleIndexes.set(module, index);
-    return index;
+    return memo(this.#moduleIndexes, module, () => this.#addModule(module));
+  }
+
+  #addModule(module: ModuleId): number {
+    const { lineStarts } = lineMapOf(loadedModule(this.#checker, module).tree.source);
+    return this.#modules.push({ id: module, lineStarts: [...lineStarts] }) - 1;
   }
 
   /** The index of a constant holding `value`; equal values, as their persisted texts are, share one. */
   constant(contents: Value): number {
     const key = encodeJson(z.encode(value, contents));
-    const known = this.#constantIndexes.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const index = this.#constants.push(contents) - 1;
-    this.#constantIndexes.set(key, index);
-    return index;
+    return memo(this.#constantIndexes, key, () => this.#constants.push(contents) - 1);
   }
 
   /** What every function-table entry for `declaration` starts with: its name and where it is. */
@@ -84,14 +74,10 @@ export class DefinitionTables {
 
   /** The index `declaration` is called by; it is lowered later, from the worklist. */
   functionIndex(declaration: FunctionDeclaration): FunctionId {
-    const known = this.#functionIndexes.get(declaration);
-    if (known !== undefined) {
-      return known;
-    }
-    const index = this.#functions.push(undefined) - 1;
-    this.#functionIndexes.set(declaration, index);
-    this.#pending.push(declaration);
-    return index;
+    return memo(this.#functionIndexes, declaration, () => {
+      this.#pending.push(declaration);
+      return this.#functions.push(undefined) - 1;
+    });
   }
 
   /** The next referenced function still to be lowered, with its index. */
@@ -158,6 +144,10 @@ export class DefinitionTables {
     };
   }
 
+  /**
+   * Not `memo`: the index is recorded before the layout is computed, because a recursive type's
+   * layout refers to the type itself.
+   */
   #typeEntry(type: NominalType): TypeId {
     const key = this.#typeKey(type);
     const known = this.#typeIndexes.get(key);
@@ -221,11 +211,7 @@ export class DefinitionTables {
     if (type.kind !== 'nominal') {
       return JSON.stringify(this.typeReference(type));
     }
-    let entityKey = this.#entityKeys.get(type.entity);
-    if (entityKey === undefined) {
-      entityKey = this.#entityKeys.size;
-      this.#entityKeys.set(type.entity, entityKey);
-    }
+    const entityKey = memo(this.#entityKeys, type.entity, () => this.#entityKeys.size);
     return `${entityKey}<${type.arguments.map((argument) => this.#typeKey(argument)).join(',')}>`;
   }
 }

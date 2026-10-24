@@ -122,14 +122,7 @@ function commit(store: InstanceStore, snapshot: Snapshot): Snapshot {
 
 /** What a panicked instance that never committed is left as: its name and options, on its Definition. */
 function emptySnapshot(instance: Instance): Snapshot {
-  return {
-    definition: instance.loaded.hash,
-    instance: instance.name,
-    status: { kind: 'active' },
-    crashEveryAwait: instance.crashEveryAwait,
-    objects: [],
-    ready: [],
-  };
+  return { ...instance.snapshot({ kind: 'active' }), objects: [], ready: [] };
 }
 
 /** The status a segment that didn't panic leaves its instance in. */

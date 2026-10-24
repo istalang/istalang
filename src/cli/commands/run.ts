@@ -23,7 +23,12 @@ import { Refusal } from '../../runtime/refusal.ts';
 import { settle } from '../../runtime/settle.ts';
 import { memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
-import type { CliEnvironment, CommandDefinition } from '../command.ts';
+import {
+  type CliEnvironment,
+  type CommandDefinition,
+  type ExitCode,
+  exitCodes,
+} from '../command.ts';
 import { directoryStore } from '../directory-store.ts';
 import { loadProject } from '../project.ts';
 import { reportDiagnostics } from '../report.ts';
@@ -49,14 +54,14 @@ async function run(
   entry: string | undefined,
   options: RunOptions,
   environment: CliEnvironment,
-): Promise<number> {
+): Promise<ExitCode> {
   if ((entry === undefined) === (options.resume === undefined)) {
     environment.writeError('ista: run takes an entry, or --resume with --store, but not both.\n');
-    return 2;
+    return exitCodes.couldNotRun;
   }
   if (options.resume !== undefined && options.store === undefined) {
     environment.writeError('ista: --resume needs the --store that holds the instance.\n');
-    return 2;
+    return exitCodes.couldNotRun;
   }
   const runtime = createRuntime({
     natives: stdNatives,
@@ -68,9 +73,12 @@ async function run(
   });
   const instance = options.resume;
   if (instance !== undefined) {
-    return (await unlessRefused(environment, () => resume(runtime, instance, environment))) ?? 1;
+    return (
+      (await unlessRefused(environment, () => resume(runtime, instance, environment))) ??
+      exitCodes.problems
+    );
   }
-  return entry === undefined ? 2 : start(runtime, entry, options, environment);
+  return entry === undefined ? exitCodes.couldNotRun : start(runtime, entry, options, environment);
 }
 
 async function start(
@@ -78,21 +86,21 @@ async function start(
   entry: string,
   options: RunOptions,
   environment: CliEnvironment,
-): Promise<number> {
+): Promise<ExitCode> {
   const { program, unreadable } = loadProject(environment.cwd, [entry]);
   const [root] = program.roots;
   if (unreadable.length > 0 || root === undefined) {
     environment.writeError(`ista: no such file: ${entry}\n`);
-    return 2;
+    return exitCodes.couldNotRun;
   }
   reportDiagnostics(diagnose(program).values(), environment.writeError);
   const compilation = compileProgram(program, root);
   switch (compilation.kind) {
     case 'failed':
-      return 1;
+      return exitCodes.problems;
     case 'noMain':
       environment.writeError(`ista: ${entry} declares no 'async fn main()'.\n`);
-      return 1;
+      return exitCodes.problems;
     case 'compiled': {
       const { text } = definitionFormat.write(compilation.definition);
       const outcome = await unlessRefused(environment, () => {
@@ -103,7 +111,7 @@ async function start(
         }
         return finish({ runtime, program: deployed, name }, deployed.start(name), environment);
       });
-      return outcome ?? 1;
+      return outcome ?? exitCodes.problems;
     }
     default: {
       const unhandled: never = compilation;
@@ -112,7 +120,7 @@ async function start(
   }
 }
 
-function resume(runtime: Runtime, name: string, environment: CliEnvironment): Promise<number> {
+function resume(runtime: Runtime, name: string, environment: CliEnvironment): Promise<ExitCode> {
   const program = runtime.programOf(name);
   return finish({ runtime, program, name }, runtime.wake(name), environment);
 }
@@ -134,7 +142,7 @@ async function finish(
   { runtime, program, name }: RunningInstance,
   initial: InstanceState,
   environment: CliEnvironment,
-): Promise<number> {
+): Promise<ExitCode> {
   const steps = settle(() => runtime.wake(name), initial);
   let step = steps.next();
   while (!step.done) {
@@ -146,13 +154,13 @@ async function finish(
   switch (settled.kind) {
     case 'stuck':
       environment.writeError(`ista: instance ${name} waits on nothing that can wake it.\n`);
-      return 1;
+      return exitCodes.problems;
     case 'panicked':
       environment.writeError(`panic: ${settled.message}\n${settled.trace}\n`);
-      return 1;
+      return exitCodes.problems;
     case 'finished':
       environment.write(`${program.json(settled.outcome)}\n`);
-      return 0;
+      return exitCodes.clean;
     default: {
       const unhandled: never = settled;
       return unhandled;

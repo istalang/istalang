@@ -11,7 +11,9 @@
  */
 
 import type { Definition } from '../definition/definition.ts';
-import type { Diagnostic } from '../diagnostics/diagnostic.ts';
+import { type Diagnostic, isError } from '../diagnostics/diagnostic.ts';
+import { entryFunction } from '../language/well-known.ts';
+import { memo } from '../structures/memo.ts';
 import type { SourceText } from '../text/source-text.ts';
 import { bindProgram } from './binder/bind.ts';
 import { checkProgram } from './checker/check.ts';
@@ -29,11 +31,10 @@ const diagnosed = new WeakMap<Program, ReadonlyMap<ModuleId, ModuleDiagnostics>>
 
 /** Every module's diagnostics from every phase, in load order. */
 export function diagnose(program: Program): ReadonlyMap<ModuleId, ModuleDiagnostics> {
-  let result = diagnosed.get(program);
-  if (result === undefined) {
+  return memo(diagnosed, program, () => {
     const bindings = bindProgram(program);
     const checker = checkProgram(program);
-    result = new Map(
+    return new Map(
       [...program.modules].map(([id, { tree, diagnostics }]) => [
         id,
         {
@@ -47,9 +48,7 @@ export function diagnose(program: Program): ReadonlyMap<ModuleId, ModuleDiagnost
         },
       ]),
     );
-    diagnosed.set(program, result);
-  }
-  return result;
+  });
 }
 
 /** A program compiled for running, or why it couldn't be. */
@@ -64,19 +63,13 @@ const compiled = new WeakMap<Program, Map<ModuleId, Compilation>>();
 
 /** The Definition that runs `entry`'s `main`, when the program has no errors (§9). */
 export function compileProgram(program: Program, entry: ModuleId): Compilation {
-  const byEntry = compiled.get(program) ?? new Map<ModuleId, Compilation>();
-  compiled.set(program, byEntry);
-  let compilation = byEntry.get(entry);
-  if (compilation === undefined) {
-    compilation = compile(program, entry);
-    byEntry.set(entry, compilation);
-  }
-  return compilation;
+  const byEntry = memo(compiled, program, () => new Map<ModuleId, Compilation>());
+  return memo(byEntry, entry, () => compile(program, entry));
 }
 
 function compile(program: Program, entry: ModuleId): Compilation {
   const hasErrors = [...diagnose(program).values()].some(({ diagnostics }) =>
-    diagnostics.some((diagnostic) => diagnostic.severity === 'error'),
+    diagnostics.some(isError),
   );
   if (hasErrors) {
     return { kind: 'failed' };
@@ -91,7 +84,7 @@ function compile(program: Program, entry: ModuleId): Compilation {
 /** The `async fn main()` that `entry` declares (§9). */
 function mainOf(program: Program, entry: ModuleId): FunctionDeclaration | undefined {
   const bindings = bindProgram(program);
-  const entity = bindings.exportsOf(entry).get('main');
+  const entity = bindings.exportsOf(entry).get(entryFunction);
   if (entity?.kind !== 'functions') {
     return undefined;
   }

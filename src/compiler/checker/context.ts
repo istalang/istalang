@@ -13,9 +13,10 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { WellKnownDeclaration } from '../../language/well-known.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
-import type { LanguageModule, ModuleId } from '../program/program.ts';
+import type { ModuleId } from '../program/program.ts';
 import type {
   EnumDeclaration,
   FunctionDeclaration,
@@ -26,6 +27,7 @@ import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, Checker, FieldMember, ResolvedCall, VariantMember } from './check.ts';
+import type { FrontierConstruct } from './frontier.ts';
 import type { LoopScope } from './statements/loops.ts';
 import type { ReturnScope } from './statements/returns.ts';
 import type { VariableScope } from './statements/variables.ts';
@@ -35,7 +37,11 @@ import type { Type } from './types/type.ts';
 export interface CheckerContext extends Checker {
   readonly report: (module: ModuleId, diagnostic: Diagnostic) => void;
   /** Reports `node` of `module` as a construct not supported yet (named by `construct`); the error type. */
-  readonly unsupported: (module: ModuleId, node: NodeOf<string>, construct?: string) => Type;
+  readonly unsupported: (
+    module: ModuleId,
+    node: NodeOf<string>,
+    construct?: FrontierConstruct,
+  ) => Type;
   /** The type `node` denotes in `module`. */
   readonly resolveType: (module: ModuleId, node: TypeNode) => Type;
   /** A struct declaration's fields, types as declared (not substituted). */
@@ -43,16 +49,13 @@ export interface CheckerContext extends Checker {
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
   /**
-   * A type a language module exports, such as `time`'s `Duration`, with its type arguments;
-   * undefined when the program has no such module.
+   * A well-known type (language/well-known.ts), such as `Future`, with its type arguments;
+   * undefined when the program lacks its module.
    */
-  readonly languageType: (
-    module: LanguageModule,
-    name: string,
+  readonly wellKnownType: (
+    declaration: WellKnownDeclaration,
     typeArguments?: readonly Type[],
   ) => Type | undefined;
-  /** A prelude type by name, such as `Future`: its `languageType`, or the error type. */
-  readonly preludeType: (name: string, typeArguments: readonly Type[]) => Type;
   /** The prelude's functions of `name`, for the operators on primitives (§3.9). */
   readonly preludeFunctions: (name: string) => readonly FunctionDeclaration[];
 }
@@ -62,8 +65,8 @@ export interface BodyContext {
   readonly module: ModuleId;
   /** Checks `node`, recording its type; `expected` guides inference but isn't enforced. */
   readonly expression: (node: Expression, expected?: Type) => Type;
-  /** Checks `node` and reports when its type doesn't fit `expected`. */
-  readonly expect: (node: Expression, expected: Type) => Type;
+  /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
+  readonly expect: (node: Expression, expected: Type | undefined) => Type;
   /** Reports at `at` when `found`, a type already checked, doesn't fit `expected`. */
   readonly fit: (found: Type, expected: Type, at: Span) => void;
   /** Checks a block in its own scope; its type is that of its last expression (§4). */
@@ -74,7 +77,7 @@ export interface BodyContext {
   readonly statement: (node: Statement | Invalid, expected?: Type) => Type;
   readonly report: (diagnostic: Diagnostic) => void;
   /** Reports `node` as a construct not supported yet (named by `construct`); the error type. */
-  readonly unsupported: (node: NodeOf<string>, construct?: string) => Type;
+  readonly unsupported: (node: NodeOf<string>, construct?: FrontierConstruct) => Type;
   /** The type `node` denotes in this body's module. */
   readonly resolveType: (node: TypeNode) => Type;
   readonly entityOf: (name: Identifier) => Entity | undefined;

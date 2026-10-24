@@ -93,10 +93,26 @@ export function parseDelimited<Item>(
   return { ...value, span };
 }
 
-/** The item of `(x)`: one item and no comma, which groups rather than making a tuple (§3.15). */
-export function groupedItem<Item>(list: CommaSeparated<Item>): Item | Invalid | undefined {
+/** How `parseGroup` builds what it parsed: a tuple, or a group around one item. */
+export interface GroupShapes<Item, Node> {
+  readonly tuple: (span: Span, elements: readonly (Item | Invalid)[]) => Node;
+  readonly grouped: (span: Span, item: Item | Invalid) => Node;
+}
+
+/**
+ * `(…)` of `parseItem`s: one item and no comma groups it, anything else, `()` and `(x,)` included,
+ * is a tuple (§3.15). Expressions, patterns and types all read parentheses this way.
+ */
+export function parseGroup<Item, Node>(
+  parser: Parser,
+  parseItem: () => Item,
+  shapes: GroupShapes<Item, Node>,
+): Node {
+  const list = parseDelimited(parser, '(', parseItem);
   const [only] = list.items;
-  return list.items.length === 1 && !list.separated ? only : undefined;
+  return list.items.length === 1 && !list.separated && only !== undefined
+    ? shapes.grouped(list.span, only)
+    : shapes.tuple(list.span, list.items);
 }
 
 /** `item, item, …` up to the current region's closer, inside `parseEnclosed`. */

@@ -6,7 +6,7 @@
  * defined in a scope.
  */
 
-import { type Handlers, handlerOf } from '../syntax/handlers.ts';
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Invalid } from '../syntax/node.ts';
 import type { FieldDeclaration, TypeNode } from '../syntax/types.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';

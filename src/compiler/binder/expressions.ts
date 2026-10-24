@@ -6,8 +6,8 @@
  * otherwise every part after the head is a member, which the checker resolves by type.
  */
 
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Expression, MemberAccess, Spread } from '../syntax/expressions.ts';
-import { type Handlers, handlerOf } from '../syntax/handlers.ts';
 import type { Identifier, QualifiedName } from '../syntax/node.ts';
 import { underBindings, underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';

@@ -9,9 +9,11 @@
  * (§2), so for leading whitespace a column is also the visual indentation width.
  *
  * A LineMap is derived from its SourceText on first use and memoized by object identity, which is
- * safe because SourceText is immutable.
+ * safe because SourceText is immutable. Where only the line starts survive, as in a compiled
+ * Definition's modules, `positionIn` finds a position from them alone, by the same search.
  */
 
+import { memo } from '../structures/memo.ts';
 import type { SourceText } from './source-text.ts';
 
 export interface Position {
@@ -62,11 +64,14 @@ export class LineMap {
     return this.#lineStarts.length;
   }
 
+  /** The offset each line starts at, the first line's at 0. */
+  get lineStarts(): readonly number[] {
+    return this.#lineStarts;
+  }
+
   /** Position of an offset; offsets outside the text are clamped to it. */
   positionAt(offset: number): Position {
-    const clamped = Math.min(Math.max(offset, 0), this.#length);
-    const line = this.#lineContaining(clamped);
-    return { line, column: clamped - this.#startOf(line) };
+    return positionIn(this.#lineStarts, Math.min(Math.max(offset, 0), this.#length));
   }
 
   /**
@@ -87,30 +92,26 @@ export class LineMap {
   #startOf(line: number): number {
     return this.#lineStarts[line] ?? this.#length;
   }
-
-  #lineContaining(offset: number): number {
-    let low = 0;
-    let high = this.#lineStarts.length - 1;
-    while (low < high) {
-      const middle = Math.ceil((low + high) / 2);
-      if (this.#startOf(middle) <= offset) {
-        low = middle;
-      } else {
-        high = middle - 1;
-      }
-    }
-    return low;
-  }
 }
 
 const lineMaps = new WeakMap<SourceText, LineMap>();
 
 /** The line map of a source, computed once per SourceText object. */
 export function lineMapOf(source: SourceText): LineMap {
-  let map = lineMaps.get(source);
-  if (map === undefined) {
-    map = new LineMap(source.text);
-    lineMaps.set(source, map);
+  return memo(lineMaps, source, () => new LineMap(source.text));
+}
+
+/** The position of `offset` among lines starting at `lineStarts` (ascending, the first at 0). */
+export function positionIn(lineStarts: readonly number[], offset: number): Position {
+  let low = 0;
+  let high = lineStarts.length - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if ((lineStarts[middle] ?? offset) <= offset) {
+      low = middle;
+    } else {
+      high = middle - 1;
+    }
   }
-  return map;
+  return { line: low, column: offset - (lineStarts[low] ?? 0) };
 }

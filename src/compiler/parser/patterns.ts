@@ -17,8 +17,8 @@ import type { NamedType } from '../syntax/types.ts';
 import type { Parser } from './parser.ts';
 import { literalFrom } from './parts/literals.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
-import { skipStructKeyword } from './parts/structs.ts';
-import { groupedItem, parseDelimited } from './recovery.ts';
+import { afterStructKeyword } from './parts/structs.ts';
+import { parseDelimited, parseGroup } from './recovery.ts';
 
 export function parsePattern(parser: Parser): Pattern {
   const pattern = parsePrimaryPattern(parser);
@@ -60,7 +60,7 @@ function parseNamedPattern(parser: Parser): Pattern {
 /** `struct{…}`, matching an anonymous struct. */
 function parseAnonymousStructPattern(parser: Parser): Pattern {
   const { start } = parser.cursor.token.span;
-  return skipStructKeyword(parser) ?? parseStructPattern(parser, undefined, start);
+  return afterStructKeyword(parser, () => parseStructPattern(parser, undefined, start));
 }
 
 /** The braced field tests, starting at the `{`. */
@@ -98,11 +98,10 @@ function parseFieldPattern(parser: Parser): StructPattern['fields'][number] {
 
 /** `()`, `(a,)` and `(a, b)` are tuple patterns; `(p)` groups. */
 function parseTuplePattern(parser: Parser): Pattern {
-  const list = parseDelimited(parser, '(', () => parser.pattern());
-  const grouped = groupedItem(list);
-  return grouped === undefined
-    ? { kind: 'TuplePattern', span: list.span, elements: list.items }
-    : { kind: 'ParenthesizedPattern', span: list.span, pattern: grouped };
+  return parseGroup<Pattern, Pattern>(parser, () => parser.pattern(), {
+    tuple: (span, elements) => ({ kind: 'TuplePattern', span, elements }),
+    grouped: (span, pattern) => ({ kind: 'ParenthesizedPattern', span, pattern }),
+  });
 }
 
 function parseLiteralPattern(parser: Parser): Pattern {

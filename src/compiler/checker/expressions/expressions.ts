@@ -7,8 +7,8 @@
  * feature slice replaces its kinds' entries with real handlers.
  */
 
+import type { Handlers } from '../../../structures/kind-table.ts';
 import type { Expression } from '../../syntax/expressions.ts';
-import type { Handlers } from '../../syntax/handlers.ts';
 import type { BodyContext } from '../context.ts';
 import { boolType, errorType, floatType, intType, stringType, type Type } from '../types/type.ts';
 import { unsupportedHandler as unsupported } from '../unsupported.ts';

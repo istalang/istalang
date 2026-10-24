@@ -35,7 +35,7 @@ describe('loadProject', () => {
   it('loads the prelude and time with every program, by their roles', () => {
     const root = tempProject({ 'main.ista': '' });
     const { program } = loadProject(root, ['main.ista']);
-    expect([program.prelude, program.time]).toEqual(['std:prelude', 'std:time']);
+    expect(program.roles).toEqual({ prelude: 'std:prelude', time: 'std:time' });
     const shipped = [...program.modules.values()].map((module) => [module.name, module.isStd]);
     expect(shipped).toEqual([
       ['main', false],

@@ -7,8 +7,9 @@
  */
 
 import fc from 'fast-check';
+import { primitiveNames } from '../language/primitives.ts';
 import type { Definition } from './definition.ts';
-import { type FunctionDefinition, sharedTypeName } from './functions.ts';
+import type { FunctionDefinition } from './functions.ts';
 import {
   index,
   instruction,
@@ -16,14 +17,19 @@ import {
   type Sizes,
   span,
 } from './instructions/instruction.test-kit.ts';
-import type { TypeDefinition, TypeReference } from './types.ts';
+import {
+  isSharedCellType,
+  sharedTypeName,
+  type TypeDefinition,
+  type TypeReference,
+} from './types.ts';
 import { valueArbitrary } from './values.test-kit.ts';
 
 function typeReference(types: number): fc.Arbitrary<TypeReference> {
   return fc.letrec<{ reference: TypeReference }>((tie) => ({
     reference: fc.oneof(
       { depthSize: 'small', maxDepth: 2 },
-      fc.constantFrom('int', 'float', 'bool', 'string', 'unit', 'never' as const).map((name) => ({
+      fc.constantFrom(...primitiveNames).map((name) => ({
         kind: 'primitive' as const,
         name,
       })),
@@ -137,8 +143,8 @@ function body(
   if (entry.kind !== 'code') {
     return fc.constant(entry);
   }
-  const sharedTypes = scope.types.flatMap((type, id) =>
-    type.kind === 'extern' && type.name === sharedTypeName ? [id] : [],
+  const sharedTypes = scope.types.flatMap((_type, id) =>
+    isSharedCellType(scope.types, id) ? [id] : [],
   );
   const cellsOfFrame =
     sharedTypes.length === 0

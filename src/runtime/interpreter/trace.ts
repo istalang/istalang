@@ -6,6 +6,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
+import { positionIn } from '../../text/line-map.ts';
 import type { ActiveFrame } from './machine.ts';
 
 /** The trace of `frames`, innermost first. */
@@ -21,7 +22,6 @@ export function traceOf(definition: Definition, frames: readonly ActiveFrame[]):
 /** `module:line:column` of an offset in a module's source. */
 export function locationOf(definition: Definition, module: number, offset: number): string {
   const { id, lineStarts } = definition.modules[module] ?? { id: '?', lineStarts: [0] };
-  const line = lineStarts.findLastIndex((start) => start <= offset);
-  const column = offset - (lineStarts[line] ?? 0);
+  const { line, column } = positionIn(lineStarts, offset);
   return `${id}:${line + 1}:${column + 1}`;
 }

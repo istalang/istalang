@@ -5,7 +5,7 @@
 import type { Expression } from '../../syntax/expressions.ts';
 import type { Parser } from '../parser.ts';
 import { literalFrom } from '../parts/literals.ts';
-import { groupedItem, parseDelimited } from '../recovery.ts';
+import { parseGroup } from '../recovery.ts';
 
 export function parseName(parser: Parser): Expression {
   return parser.identifier();
@@ -17,9 +17,8 @@ export function parseLiteral(parser: Parser): Expression {
 
 /** `(x)` groups; `()`, `(x,)` and `(x, y)` are tuples (§3.15). */
 export function parseParenthesized(parser: Parser): Expression {
-  const list = parseDelimited(parser, '(', () => parser.expression());
-  const grouped = groupedItem(list);
-  return grouped === undefined
-    ? { kind: 'Tuple', span: list.span, elements: list.items }
-    : { kind: 'Parenthesized', span: list.span, expression: grouped };
+  return parseGroup<Expression, Expression>(parser, () => parser.expression(), {
+    tuple: (span, elements) => ({ kind: 'Tuple', span, elements }),
+    grouped: (span, expression) => ({ kind: 'Parenthesized', span, expression }),
+  });
 }

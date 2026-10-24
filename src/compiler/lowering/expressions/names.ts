@@ -7,13 +7,13 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import { constantNamed, constantValue } from '../constants.ts';
+import { constantValue } from '../constants.ts';
 import type { FunctionContext } from '../context.ts';
 
 export function lowerName(context: FunctionContext, node: Identifier): Register {
-  const constant = constantNamed(context.checker, context.module, node);
-  if (constant !== undefined) {
-    return context.constant(constantValue(context.checker, context.tables, constant), node.span);
+  const form = context.checker.constantNamed(context.module, node)?.form;
+  if (form !== undefined) {
+    return context.constant(constantValue(context.tables, form), node.span);
   }
   return context.variables.registerOf(declaringName(context, node));
 }

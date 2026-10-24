@@ -10,21 +10,24 @@
 
 import { readFileSync } from 'node:fs';
 import { Command, CommanderError } from 'commander';
-import type { CliEnvironment, CommandDefinition } from './command.ts';
+import {
+  type CliEnvironment,
+  type CommandDefinition,
+  type ExitCode,
+  exitCodes,
+} from './command.ts';
 import { defineCheckCommand } from './commands/check.ts';
 import { defineRunCommand } from './commands/run.ts';
 import { isSystemError } from './errno.ts';
 
 const commands: readonly CommandDefinition[] = [defineCheckCommand, defineRunCommand];
 
-const couldNotRun = 2;
-
 /** Runs `ista` with `args` (without the node and script paths); resolves to the exit code. */
 export async function runCli(
   args: readonly string[],
   environment: CliEnvironment,
-): Promise<number> {
-  let exitCode = 0;
+): Promise<ExitCode> {
+  let exitCode: ExitCode = exitCodes.clean;
   const cli = new Command('ista')
     .description('Toolchain for Istalang')
     .version(packageVersion())
@@ -35,7 +38,7 @@ export async function runCli(
     });
   const context = {
     environment,
-    exitWith: (code: number) => {
+    exitWith: (code: ExitCode) => {
       exitCode = code;
     },
   };
@@ -46,13 +49,13 @@ export async function runCli(
     await cli.parseAsync([...args], { from: 'user' });
   } catch (error) {
     if (error instanceof CommanderError) {
-      return error.exitCode === 0 ? 0 : couldNotRun;
+      return error.exitCode === exitCodes.clean ? exitCodes.clean : exitCodes.couldNotRun;
     }
     if (!isSystemError(error)) {
       throw error;
     }
     environment.writeError(`ista: ${error.message}\n`);
-    return couldNotRun;
+    return exitCodes.couldNotRun;
   }
   return exitCode;
 }

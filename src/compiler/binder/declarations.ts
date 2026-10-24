@@ -15,6 +15,7 @@
  *   around the function, which inside a trait includes `Self`.
  */
 
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type {
   Declaration,
   EnumDeclaration,
@@ -23,7 +24,6 @@ import type {
   TypeParameters,
 } from '../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../syntax/expressions.ts';
-import { type Handlers, handlerOf } from '../syntax/handlers.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';

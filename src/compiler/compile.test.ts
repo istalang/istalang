@@ -7,18 +7,11 @@ import { describe, expect, it } from 'vitest';
 import { reportedIn } from '../diagnostics/diagnostic.test-kit.ts';
 import { binderDiagnostics } from './binder/diagnostics.ts';
 import { checkerDiagnostics } from './checker/diagnostics.ts';
-import { diagnose, type ModuleDiagnostics } from './compile.ts';
+import { diagnosedAt } from './compile.test-kit.ts';
+import { diagnose } from './compile.ts';
 import { programDiagnostics } from './program/diagnostics.ts';
-import { type Files, idOf, programOf } from './program/program.test-kit.ts';
+import { idOf, programOf } from './program/program.test-kit.ts';
 import { scannerDiagnostics } from './scanner/diagnostics.ts';
-
-function diagnosedAt(files: Files, path: string): ModuleDiagnostics {
-  const result = diagnose(programOf(files)).get(idOf(path));
-  if (result === undefined) {
-    throw new Error(`${path} was not loaded`);
-  }
-  return result;
-}
 
 describe('diagnose', () => {
   it('reports every module by id, clean ones included, in load order', () => {
@@ -40,7 +33,7 @@ describe('diagnose', () => {
       '  n + true',
       "import b from 'gone/too'",
     ].join('\n');
-    const { source, diagnostics } = diagnosedAt({ 'main.ista': text }, 'main.ista');
+    const { source, diagnostics } = diagnosedAt(programOf({ 'main.ista': text }), 'main.ista');
     const { unresolvedImport } = programDiagnostics;
     expect(reportedIn(source, diagnostics)).toEqual({
       codes: [

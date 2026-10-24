@@ -22,7 +22,8 @@ import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { FieldMember, SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
-import { futureArgument, refuseHeldFuture } from '../rules/futures.ts';
+import { frontier } from '../frontier.ts';
+import { futureArgument, futureOf, refuseHeldFuture } from '../rules/futures.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -37,7 +38,11 @@ export function declaredParameters(
       return [];
     }
     if (node.isRest || node.defaultValue !== undefined) {
-      checker.unsupported(module, node, node.isRest ? 'Rest parameter' : 'Default value');
+      checker.unsupported(
+        module,
+        node,
+        node.isRest ? frontier.restParameter : frontier.defaultValue,
+      );
     }
     const type = node.type === undefined ? errorType : checker.resolveType(module, node.type);
     if (declaration.body !== undefined) {
@@ -80,7 +85,7 @@ export function callResult(
   declaration: FunctionDeclaration,
   bodyResult: Type,
 ): Type {
-  return declaration.isAsync ? checker.preludeType('Future', [bodyResult]) : bodyResult;
+  return declaration.isAsync ? futureOf(checker, bodyResult) : bodyResult;
 }
 
 /**

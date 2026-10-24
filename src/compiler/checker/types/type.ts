@@ -13,7 +13,8 @@
  *   is expected.
  */
 
-import type { PrimitiveName, TypeEntity } from '../../binder/entities.ts';
+import type { PrimitiveName } from '../../../language/primitives.ts';
+import type { TypeEntity } from '../../binder/entities.ts';
 import type {
   EnumDeclaration,
   ExternStructDeclaration,

@@ -8,6 +8,7 @@ import type { Entity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { frontier } from '../frontier.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 export function checkName(context: BodyContext, node: Identifier): Type {
@@ -27,21 +28,19 @@ export function entityValueType(
       switch (entity.owner.kind) {
         case 'FunctionDeclaration':
         case 'Lambda':
-          return context.unsupported(node, 'A function value');
+          return context.unsupported(node, frontier.functionValue);
         case 'ExternConstantDeclaration':
-          return context.unsupported(node, 'An extern constant');
+          return context.unsupported(node, frontier.externConstant);
         case 'VariableDeclaration':
-          return (
-            context.checker.constantOf(entity.owner)?.result ?? context.variables.typeOf(entity)
-          );
+          return context.checker.constantOf(entity.owner)?.type ?? context.variables.typeOf(entity);
         default:
           return context.variables.typeOf(entity);
       }
     case 'functions':
-      return context.unsupported(node, 'A function value');
+      return context.unsupported(node, frontier.functionValue);
     case 'variant':
     case 'variants':
-      return context.unsupported(node, 'An enum variant');
+      return context.unsupported(node, frontier.enumVariant);
     default:
       context.report(checkerDiagnostics.notValue(node.span, node.text));
       return errorType;

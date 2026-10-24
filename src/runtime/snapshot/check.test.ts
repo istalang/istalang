@@ -9,7 +9,7 @@ import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { FormatError } from '../../definition/format.ts';
 import type { Value } from '../../definition/values.ts';
 import { Refusal } from '../refusal.ts';
-import { runToEnd, testRuntime } from '../runtime.test-kit.ts';
+import { recordingStore, runToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { type Snapshot, snapshotFormat } from './snapshot.ts';
 
 /** A program committed while it waits two executions deep. */
@@ -201,20 +201,14 @@ describe('reading an instance back', () => {
 
   it('reads the store on a wake without writing the Definition back', () => {
     const test = waitingInstance();
-    const written: string[] = [];
-    const store = {
-      ...test.store,
-      writeDefinition: (hash: string) => {
-        written.push(hash);
-      },
-    };
+    const store = recordingStore(test.store);
     const fresh = testRuntime({ store, clock: test.clock });
     test.clock.set(10n);
     expect(runToEnd(fresh, 'i', fresh.runtime.wake('i'))).toEqual({
       kind: 'finished',
       outcome: 1n,
     });
-    expect(written).toEqual([]);
+    expect(store.definitions).toEqual([]);
   });
 
   it('refuses to wake an instance the store lacks, and to start one it already has', () => {

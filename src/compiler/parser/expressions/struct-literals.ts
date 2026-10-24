@@ -13,7 +13,7 @@ import type { Expression, StructLiteral } from '../../syntax/expressions.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
-import { skipStructKeyword } from '../parts/structs.ts';
+import { afterStructKeyword } from '../parts/structs.ts';
 import { parseDelimited } from '../recovery.ts';
 import { parseSpread } from './spread.ts';
 
@@ -34,7 +34,7 @@ export function parseStructLiteralBody(
 /** `struct{…}`, whose type comes from context. */
 export function parseAnonymousStructLiteral(parser: Parser): Expression {
   const { start } = parser.cursor.token.span;
-  return skipStructKeyword(parser) ?? parseStructLiteralBody(parser, undefined, start);
+  return afterStructKeyword(parser, () => parseStructLiteralBody(parser, undefined, start));
 }
 
 function parseItem(parser: Parser): StructLiteral['items'][number] {

@@ -14,6 +14,7 @@ import {
   moduleIdOf,
   type Program,
   type ProgramModule,
+  type ProgramOptions,
 } from './program.ts';
 
 export type Files = Readonly<Record<string, string>>;
@@ -39,8 +40,7 @@ export interface ProgramOfOptions {
   readonly roots?: readonly string[] | undefined;
   /** The snapshot whose unchanged trees the new one reuses. */
   readonly previous?: Program | undefined;
-  readonly prelude?: LocatedModule | undefined;
-  readonly time?: LocatedModule | undefined;
+  readonly roles?: ProgramOptions['roles'];
   /** Loaders asked after the in-memory one, such as the std modules'. */
   readonly loaders?: readonly ModuleLoader[] | undefined;
 }
@@ -48,22 +48,15 @@ export interface ProgramOfOptions {
 /** The program over `files`, loaded from `roots`. */
 export function programOf(
   files: Files,
-  {
-    roots = Object.keys(files).slice(0, 1),
-    previous,
-    prelude,
-    time,
-    loaders = [],
-  }: ProgramOfOptions = {},
+  { roots = Object.keys(files).slice(0, 1), previous, roles, loaders = [] }: ProgramOfOptions = {},
 ): Program {
   const load = memoryLoader(files);
   const anywhere = idOf('');
   const located = roots.flatMap((key) => load(key, anywhere) ?? []);
-  const roles = {
-    ...(prelude === undefined ? {} : { prelude }),
-    ...(time === undefined ? {} : { time }),
-  };
-  return buildProgram({ roots: located, loaders: [load, ...loaders], ...roles }, previous);
+  return buildProgram(
+    { roots: located, loaders: [load, ...loaders], ...(roles === undefined ? {} : { roles }) },
+    previous,
+  );
 }
 
 /** The loaded module `key`; throws when the program didn't load it. */

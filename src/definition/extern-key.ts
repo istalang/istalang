@@ -10,8 +10,11 @@
  * - Types are the declared ones, type parameters included (`prelude.push(&prelude.Array<T>, T)`),
  *   so every instantiation of a generic extern shares one native while overloads differ.
  * - Lowering builds keys from declarations, and natives from their own tables, both through
- *   `externKey`, so the two can't drift apart.
+ *   `externKey`, so the two can't drift apart. A natives table spells its types with the builders
+ *   below.
  */
+
+import type { PrimitiveName } from '../language/primitives.ts';
 
 /** A declared type, as a key spells it. */
 export type KeyType =
@@ -32,6 +35,29 @@ export interface ExternSignature {
   /** The declared name, with its owner type for a static function: `Slot.create`. */
   readonly name: string;
   readonly parameters: readonly { readonly type: KeyType; readonly reference: boolean }[];
+}
+
+/** A primitive type, as a key spells it. */
+export function primitiveKey(name: PrimitiveName): KeyType {
+  return { kind: 'primitive', name };
+}
+
+/** A named type without type arguments, module-qualified: `time.Time`. */
+export function namedKey(name: string): KeyType {
+  return { kind: 'named', name, arguments: [] };
+}
+
+/** The key of extern `name` of `module` taking `parameters` by value, as a natives table writes it. */
+export function byValueKey(
+  module: string,
+  name: string,
+  ...parameters: readonly KeyType[]
+): string {
+  return externKey({
+    module,
+    name,
+    parameters: parameters.map((type) => ({ type, reference: false })),
+  });
 }
 
 export function externKey(signature: ExternSignature): string {

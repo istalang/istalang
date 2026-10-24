@@ -22,10 +22,10 @@
  */
 
 import { z } from 'zod';
+import { primitiveNames } from '../language/primitives.ts';
+import { qualifiedName, wellKnown } from '../language/well-known.ts';
 import { functionId, typeId } from './operands.ts';
 import { value } from './values.ts';
-
-const primitiveNames = ['int', 'float', 'bool', 'string', 'unit', 'never'] as const;
 
 const primitive = z.strictObject({ kind: z.literal('primitive'), name: z.enum(primitiveNames) });
 
@@ -113,3 +113,12 @@ const external = z.strictObject({
 export const typeDefinition = z.discriminatedUnion('kind', [struct, enumeration, external]);
 
 export type TypeDefinition = z.output<typeof typeDefinition>;
+
+/** The extern type every cell is an instantiation of (spec §3.7, §3.14). */
+export const sharedTypeName = qualifiedName(wellKnown.shared);
+
+/** Whether type entry `type` of `types` is a `Shared<T>` instantiation: the type a cell must have. */
+export function isSharedCellType(types: readonly TypeDefinition[], type: number): boolean {
+  const entry = types[type];
+  return entry?.kind === 'extern' && entry.name === sharedTypeName;
+}

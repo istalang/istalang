@@ -7,8 +7,8 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
+import type { Handlers } from '../../../structures/kind-table.ts';
 import type { Expression } from '../../syntax/expressions.ts';
-import type { Handlers } from '../../syntax/handlers.ts';
 import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
 import { lowerAwait } from './await.ts';

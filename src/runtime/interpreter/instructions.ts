@@ -8,20 +8,13 @@
  * call's arity, so handlers trust what they read.
  */
 
-import type { Instruction, InstructionKind } from '../../definition/instructions/instruction.ts';
+import type { Instruction } from '../../definition/instructions/instruction.ts';
 import { childValues, isComposite, type Value } from '../../definition/values.ts';
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { valuesEqual } from '../values/equality.ts';
 import { type ActiveFrame, type Machine, readRegister, writeRegister } from './machine.ts';
 
-type InstructionHandlers = {
-  readonly [Kind in InstructionKind]: (
-    machine: Machine,
-    frame: ActiveFrame,
-    instruction: Extract<Instruction, { kind: Kind }>,
-  ) => void;
-};
-
-const notRunYet = (_machine: Machine, _frame: ActiveFrame, instruction: Instruction): void => {
+const notRunYet = (_machine: Machine, instruction: Instruction): void => {
   throw new Error(`The runtime doesn't run '${instruction.kind}' instructions yet.`);
 };
 
@@ -32,21 +25,21 @@ const relations = {
   greaterOrEqual: (comparison: bigint) => comparison >= 0n,
 };
 
-const handlers: InstructionHandlers = {
-  constant: (machine, frame, instruction) => {
+const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
+  constant: (machine, instruction, frame) => {
     next(frame, instruction.dst, constantAt(machine, instruction.constant));
   },
-  move: (_machine, frame, instruction) => {
+  move: (_machine, instruction, frame) => {
     next(frame, instruction.dst, readRegister(frame, instruction.src));
   },
-  struct: (_machine, frame, instruction) => {
+  struct: (_machine, instruction, frame) => {
     next(frame, instruction.dst, {
       kind: 'struct',
       type: instruction.type,
       fields: instruction.fields.map((register) => readRegister(frame, register)),
     });
   },
-  field: (_machine, frame, instruction) => {
+  field: (_machine, instruction, frame) => {
     const composite = readRegister(frame, instruction.src);
     const value = isComposite(composite) ? childValues(composite)[instruction.index] : undefined;
     if (value === undefined) {
@@ -54,37 +47,37 @@ const handlers: InstructionHandlers = {
     }
     next(frame, instruction.dst, value);
   },
-  equal: (_machine, frame, instruction) => {
+  equal: (_machine, instruction, frame) => {
     const left = readRegister(frame, instruction.left);
     const right = readRegister(frame, instruction.right);
     next(frame, instruction.dst, valuesEqual(left, right));
   },
-  not: (_machine, frame, instruction) => {
+  not: (_machine, instruction, frame) => {
     next(frame, instruction.dst, readRegister(frame, instruction.src) !== true);
   },
-  order: (_machine, frame, instruction) => {
+  order: (_machine, instruction, frame) => {
     const comparison = readRegister(frame, instruction.comparison);
     if (typeof comparison !== 'bigint') {
       throw new TypeError(`'compare' returned a non-int at pc ${frame.pc}.`);
     }
     next(frame, instruction.dst, relations[instruction.relation](comparison));
   },
-  jump: (_machine, frame, instruction) => {
+  jump: (_machine, instruction, frame) => {
     frame.pc = instruction.target;
   },
-  branch: (_machine, frame, instruction) => {
+  branch: (_machine, instruction, frame) => {
     const condition = readRegister(frame, instruction.condition);
     frame.pc = condition === true ? instruction.whenTrue : instruction.whenFalse;
   },
-  return: (machine, frame, instruction) => {
+  return: (machine, instruction, frame) => {
     machine.return(frame, readRegister(frame, instruction.value));
   },
-  await: (machine, frame, instruction) => {
+  await: (machine, instruction, frame) => {
     machine.await(frame, instruction.future);
   },
-  call: (machine, frame, instruction) => {
+  call: (machine, instruction, frame) => {
     if (instruction.callee.kind !== 'function') {
-      notRunYet(machine, frame, instruction);
+      notRunYet(machine, instruction);
       return;
     }
     machine.call(frame, instruction.callee.function, instruction.arguments);
@@ -111,11 +104,7 @@ export function runInstruction(
   frame: ActiveFrame,
   instruction: Instruction,
 ): void {
-  (handlers[instruction.kind] as (m: Machine, f: ActiveFrame, i: Instruction) => void)(
-    machine,
-    frame,
-    instruction,
-  );
+  handlerOf(handlers, instruction)(machine, instruction, frame);
 }
 
 /** Writes `value` to `dst` and moves on to the next instruction. */

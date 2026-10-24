@@ -10,7 +10,7 @@
  * is PascalCase (naming.ts). A qualified name always refers.
  */
 
-import { type Handlers, handlerOf } from '../syntax/handlers.ts';
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { bindsInPattern } from './naming.ts';

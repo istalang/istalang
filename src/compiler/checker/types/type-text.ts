@@ -6,6 +6,7 @@
  * already says where.
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
 import type { Type } from './type.ts';
 
 /**
@@ -40,7 +41,7 @@ export function typeText(type: Type): string {
 /** `Optional<T>` reads as `T?` (§2); anything else as `Name<Arguments>`. */
 function nominalText(name: string, typeArguments: readonly Type[]): string {
   const [only] = typeArguments;
-  if (name === 'Optional' && typeArguments.length === 1 && only !== undefined) {
+  if (name === wellKnown.optional.name && typeArguments.length === 1 && only !== undefined) {
     return `${typeText(only)}?`;
   }
   return typeArguments.length === 0 ? name : `${name}<${typeArguments.map(typeText).join(', ')}>`;

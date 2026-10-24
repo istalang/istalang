@@ -11,9 +11,11 @@
  * - Traits are constraints, never types (§3.10).
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
+import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
-import { type Handlers, handlerOf } from '../../syntax/handlers.ts';
+import { lastName } from '../../syntax/node.ts';
 import type { FunctionType as FunctionTypeNode, NamedType, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
@@ -37,7 +39,8 @@ interface Resolution {
 const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   NamedType: (resolution, node) => namedType(resolution, node),
   OptionalType: (resolution, node) =>
-    resolution.checker.preludeType('Optional', [resolve(resolution, node.inner)]),
+    resolution.checker.wellKnownType(wellKnown.optional, [resolve(resolution, node.inner)]) ??
+    errorType,
   ParenthesizedType: (resolution, node) => resolve(resolution, node.inner),
   ReferenceType: (resolution, node) => resolve(resolution, node.referent),
   TupleType: (resolution, node) => ({
@@ -74,7 +77,7 @@ function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
 
 function namedType(resolution: Resolution, node: NamedType): Type {
   const { checker, module } = resolution;
-  const name = node.path.at(-1) ?? node.path[0];
+  const name = lastName(node.path);
   const entity = checker.bindings.entityOf(module, name);
   switch (entity?.kind) {
     case undefined:

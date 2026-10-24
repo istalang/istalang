@@ -12,6 +12,7 @@
  * argument-dependent lookup, choosing among variant candidates) are the checker's.
  */
 
+import { memo } from '../../structures/memo.ts';
 import type { Program } from '../program/program.ts';
 import type { Bindings } from './entities.ts';
 import { link } from './link.ts';
@@ -19,10 +20,5 @@ import { link } from './link.ts';
 const linked = new WeakMap<Program, Bindings>();
 
 export function bindProgram(program: Program): Bindings {
-  let bindings = linked.get(program);
-  if (bindings === undefined) {
-    bindings = link(program);
-    linked.set(program, bindings);
-  }
-  return bindings;
+  return memo(linked, program, () => link(program));
 }

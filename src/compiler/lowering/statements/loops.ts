@@ -3,6 +3,7 @@
  * `break` past the loop.
  */
 
+import { withPushed } from '../../../structures/stack.ts';
 import type { Span } from '../../../text/span.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { While } from '../../syntax/statements.ts';
@@ -17,27 +18,22 @@ export interface LoopTargets {
 
 /** The loops being lowered, innermost last. */
 export class LoopStack {
-  #current: LoopTargets | undefined;
+  readonly #loops: LoopTargets[] = [];
 
   /** Lowers `body` as a loop's, with `break` and `continue` going to `targets`. */
   inside(targets: LoopTargets, body: () => void): void {
-    const outer = this.#current;
-    this.#current = targets;
-    try {
-      body();
-    } finally {
-      this.#current = outer;
-    }
+    withPushed(this.#loops, targets, body);
   }
 
   /** The innermost loop's targets; a loop exit outside a loop is the checker's to report. */
   current(span: Span): LoopTargets {
-    if (this.#current === undefined) {
+    const innermost = this.#loops.at(-1);
+    if (innermost === undefined) {
       throw new Error(
         `A loop exit outside a loop at ${span.start}; the checker should have said so.`,
       );
     }
-    return this.#current;
+    return innermost;
   }
 }
 
