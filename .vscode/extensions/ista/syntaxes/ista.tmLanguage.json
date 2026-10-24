@@ -1,0 +1,169 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Istalang",
+  "scopeName": "source.ista",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#annotation" },
+    { "include": "#declaration" },
+    { "include": "#contextual" },
+    { "include": "#keyword" },
+    { "include": "#variable" },
+    { "include": "#type" },
+    { "include": "#call" },
+    { "include": "#number" },
+    { "include": "#operator" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.ista",
+      "match": "#.*$"
+    },
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.ista",
+          "begin": "\"",
+          "end": "\"|$",
+          "patterns": [{ "include": "#escape" }]
+        },
+        {
+          "name": "string.quoted.single.ista",
+          "begin": "'",
+          "end": "'|$",
+          "patterns": [{ "include": "#escape" }]
+        }
+      ]
+    },
+    "escape": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.ista",
+          "match": "\\\\([nt\\\\\"']|u\\{[0-9A-Fa-f]{1,6}\\})"
+        },
+        { "name": "invalid.illegal.escape.ista", "match": "\\\\." }
+      ]
+    },
+    "annotation": {
+      "name": "storage.type.annotation.ista",
+      "match": "@[A-Za-z_][A-Za-z0-9_]*"
+    },
+    "declaration": {
+      "patterns": [
+        {
+          "match": "\\b(struct|enum|trait)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.ista" },
+            "2": { "name": "entity.name.type.ista" }
+          }
+        },
+        {
+          "comment": "Only `fn name(` and `fn name<` declare: `fn x: x > 0` is a lambda, `fn let` a hold.",
+          "match": "\\b(fn)\\s+(?:([A-Za-z_][A-Za-z0-9_]*)(\\.))?([A-Za-z_][A-Za-z0-9_]*)(?=\\s*[(<])",
+          "captures": {
+            "1": { "name": "storage.type.function.ista" },
+            "2": { "name": "entity.name.type.ista" },
+            "3": { "name": "punctuation.accessor.ista" },
+            "4": { "name": "entity.name.function.ista" }
+          }
+        }
+      ]
+    },
+    "contextual": {
+      "comment": "Keywords only in one position each (spec §2), ordinary names everywhere else.",
+      "patterns": [
+        {
+          "match": "^\\s*(type)\\s+([A-Za-z_][A-Za-z0-9_]*)(?=\\s*(<[^=]*>)?\\s*=)",
+          "captures": {
+            "1": { "name": "storage.type.alias.ista" },
+            "2": { "name": "entity.name.type.ista" }
+          }
+        },
+        {
+          "match": "\\b(from)(?=\\s*['\"])",
+          "captures": { "1": { "name": "keyword.control.import.ista" } }
+        },
+        {
+          "match": "\\b(extern)\\s+(sendable)\\b",
+          "captures": {
+            "1": { "name": "storage.modifier.ista" },
+            "2": { "name": "storage.modifier.ista" }
+          }
+        }
+      ]
+    },
+    "keyword": {
+      "comment": "Together these list exactly the scanner's reserved words; test/vscode-grammar.test.ts keeps them in sync.",
+      "patterns": [
+        {
+          "name": "keyword.control.ista",
+          "match": "\\b(if|elif|else|for|in|while|match|case|select|return|break|continue|await|spawn|defer|drop)\\b"
+        },
+        { "name": "keyword.control.import.ista", "match": "\\b(import)\\b" },
+        { "name": "storage.type.ista", "match": "\\b(fn|let|const|struct|enum|trait)\\b" },
+        { "name": "storage.modifier.ista", "match": "\\b(async|extern)\\b" },
+        { "name": "keyword.operator.word.ista", "match": "\\b(and|or|not|is|as)\\b" },
+        { "name": "constant.language.ista", "match": "\\b(true|false|none)\\b" }
+      ]
+    },
+    "variable": {
+      "name": "variable.language.self.ista",
+      "match": "\\bself\\b"
+    },
+    "type": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.ista",
+          "match": "\\b(int|float|bool|string|unit|never)\\b"
+        },
+        {
+          "comment": "Every non-primitive type name, and every variant, is PascalCase (spec §2).",
+          "name": "entity.name.type.ista",
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "call": {
+      "name": "entity.name.function.call.ista",
+      "match": "\\b[a-z_][A-Za-z0-9_]*\\b(?=\\s*\\()"
+    },
+    "number": {
+      "patterns": [
+        {
+          "name": "constant.numeric.duration.ista",
+          "match": "\\b[0-9](_?[0-9])*(ms|s|m|h|d)\\b"
+        },
+        { "name": "constant.numeric.hex.ista", "match": "\\b0x[0-9A-Fa-f](_?[0-9A-Fa-f])*\\b" },
+        { "name": "constant.numeric.binary.ista", "match": "\\b0b[01](_?[01])*\\b" },
+        {
+          "comment": "A float has digits on both sides of its `.`, so `0..10` and `2.pow` stay ints.",
+          "name": "constant.numeric.float.ista",
+          "match": "\\b[0-9](_?[0-9])*(\\.[0-9](_?[0-9])*([eE][+-]?[0-9](_?[0-9])*)?|[eE][+-]?[0-9](_?[0-9])*)\\b"
+        },
+        { "name": "constant.numeric.integer.ista", "match": "\\b[0-9](_?[0-9])*\\b" }
+      ]
+    },
+    "operator": {
+      "patterns": [
+        { "name": "keyword.operator.arrow.ista", "match": "->" },
+        { "name": "keyword.operator.spread.ista", "match": "\\.\\.\\." },
+        { "name": "keyword.operator.range.ista", "match": "\\.\\.=?" },
+        { "name": "keyword.operator.optional.ista", "match": "\\?\\.|\\?\\?|\\?" },
+        { "name": "keyword.operator.reference.ista", "match": "[&$]" },
+        {
+          "name": "keyword.operator.ista",
+          "match": "//=|//|\\+=|-=|\\*=|/=|%=|==|!=|<=|>=|[-+*/%<>=]"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.accessor.ista", "match": "\\." },
+        { "name": "punctuation.separator.ista", "match": "[,:;]" },
+        { "name": "punctuation.bracket.ista", "match": "[()\\[\\]{}]" }
+      ]
+    }
+  }
+}

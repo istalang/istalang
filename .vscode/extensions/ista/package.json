@@ -1,0 +1,39 @@
+{
+  "name": "ista",
+  "displayName": "Istalang",
+  "description": "Syntax highlighting for Istalang sources (.ista)",
+  "publisher": "local",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.89.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "ista",
+        "aliases": [
+          "Istalang",
+          "ista"
+        ],
+        "extensions": [
+          ".ista"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ista",
+        "scopeName": "source.ista",
+        "path": "./syntaxes/ista.tmLanguage.json"
+      }
+    ],
+    "configurationDefaults": {
+      "[ista]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.detectIndentation": false
+      }
+    }
+  }
+}
