@@ -1,0 +1,13 @@
+# outcome: 3
+# Commits without waiting, and a function returning a future its caller awaits.
+import * as runtime from 'runtime'
+import * as time from 'time'
+
+fn soon() -> Future<unit>:
+  time.delay(1ms)
+
+async fn main():
+  await runtime.commit()
+  await soon()
+  const pause = 5ms
+  pause.value - 2

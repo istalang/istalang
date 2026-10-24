@@ -32,6 +32,7 @@ import { typeText } from './types/type-text.ts';
 export class BodyChecker implements BodyContext {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
+  readonly inAsync: boolean;
   readonly #body: Block;
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
@@ -41,10 +42,11 @@ export class BodyChecker implements BodyContext {
   #declaredResult: Type | undefined;
   #loops = 0;
 
-  constructor(checker: CheckerContext, module: ModuleId, body: Block) {
+  constructor(checker: CheckerContext, module: ModuleId, body: Block, inAsync: boolean) {
     this.checker = checker;
     this.module = module;
     this.#body = body;
+    this.inAsync = inAsync;
   }
 
   /** Checks the body against its parameters and its declared result, if any. */

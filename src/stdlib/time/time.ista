@@ -1,0 +1,19 @@
+# The time module (spec §3.8): instants and durations as structs wrapping milliseconds.
+#
+# `at` is the runtime's only time primitive and `now` its only clock, both read in the instance's
+# segment (now() is the segment's start time, §5). Everything else is code over them, so mocking
+# `now` and `at` controls all time (§10). `delay` builds its instant field by field: operators on
+# Time and Duration arrive with operator overloading.
+
+struct Duration:
+  value: int
+
+struct Time:
+  value: int
+
+extern fn now() -> Time
+
+extern fn at(time: Time) -> Future<unit>
+
+fn delay(duration: Duration) -> Future<unit>:
+  at(Time{value: now().value + duration.value})

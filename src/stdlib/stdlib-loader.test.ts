@@ -12,11 +12,12 @@ const importer = moduleIdOf(new URL('file:///app/main.ista'));
 const load = stdlibLoader({ time: 'fn now(): 1\n', inbox: '' });
 
 describe('stdlibLoader', () => {
-  it('loads a std module by name, under the std scheme', () => {
+  it('loads a std module by name, under the std scheme, marked as shipped', () => {
     const time = load('time', importer);
     expect(time?.id).toBe('std:time');
     expect(time?.label).toBe('std:time');
     expect(time?.read()).toBe('fn now(): 1\n');
+    expect(time?.isStd).toBe(true);
   });
 
   it('names the same module from any importer', () => {

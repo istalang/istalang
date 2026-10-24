@@ -54,6 +54,8 @@ export interface LocatedModule {
   readonly name: string;
   /** How diagnostics name the module, such as its path from the working directory. */
   readonly label: string;
+  /** Whether the toolchain ships the module (§3.8): its externs are the runtime's, not a host's. */
+  readonly isStd?: boolean;
   /** The module's text. The core calls it once, when it loads the module; if it throws, so does the build. */
   readonly read: () => string;
 }
@@ -65,6 +67,8 @@ export interface ProgramModule {
   readonly id: ModuleId;
   /** The loader's canonical name for the module (`LocatedModule.name`). */
   readonly name: string;
+  /** Whether the toolchain ships the module (`LocatedModule.isStd`). */
+  readonly isStd: boolean;
   readonly tree: SyntaxTree;
   /** The module each import names, for every import that names exactly one. */
   readonly imports: ReadonlyMap<ImportDeclaration, ModuleId>;
@@ -72,10 +76,15 @@ export interface ProgramModule {
   readonly diagnostics: readonly Diagnostic[];
 }
 
+/** The std modules the language itself refers to, which an app hands a program by role. */
+export type LanguageModule = 'prelude' | 'time';
+
 export interface Program {
   readonly roots: readonly ModuleId[];
   /** The module every other one sees without importing it (§3.13), when the app supplies one. */
   readonly prelude: ModuleId | undefined;
+  /** The module whose `Duration` types every duration literal (§2), when the app supplies one. */
+  readonly time: ModuleId | undefined;
   /** Every module reachable from the roots, in load order. */
   readonly modules: ReadonlyMap<ModuleId, ProgramModule>;
 }
@@ -91,25 +100,29 @@ export interface ProgramOptions {
   readonly loaders: readonly ModuleLoader[];
   /** The prelude, loaded like a root; binding makes its exports visible everywhere. */
   readonly prelude?: LocatedModule;
+  /** `time`, loaded like a root, so duration literals have their type; visible only where imported. */
+  readonly time?: LocatedModule;
 }
 
 /** Loads the modules reachable from the roots, reusing unchanged trees from `previous`. */
 export function buildProgram(options: ProgramOptions, previous?: Program): Program {
   const modules = new Map<ModuleId, ProgramModule>();
-  const queue = [...options.roots, ...(options.prelude === undefined ? [] : [options.prelude])];
+  const roles = [options.prelude, options.time].flatMap((module) => module ?? []);
+  const queue = [...options.roots, ...roles];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-    const { id, name, label, read } = next;
+    const { id, name, label, read, isStd = false } = next;
     if (!modules.has(id)) {
       const source = createSourceText(label, read());
       const tree = reusableTree(previous?.modules.get(id)?.tree, source) ?? parseSource(source);
       const { imports, diagnostics, found } = resolveImports(tree, id, options.loaders);
-      modules.set(id, { id, name, tree, imports, diagnostics });
+      modules.set(id, { id, name, isStd, tree, imports, diagnostics });
       queue.push(...found);
     }
   }
   return {
     roots: [...new Set(options.roots.map(({ id }) => id))],
     prelude: options.prelude?.id,
+    time: options.time?.id,
     modules,
   };
 }

@@ -10,9 +10,8 @@ import { runPrograms } from '../../../test/corpus/run-programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import { definitionFormat } from '../../definition/definition.ts';
-import { createRuntime } from '../../runtime/host.ts';
-import { preludeNatives } from '../../stdlib/prelude/natives.ts';
-import { preludeProgramOf } from '../binder/bind.test-kit.ts';
+import { testRuntime } from '../../runtime/runtime.test-kit.ts';
+import { preludeProgramOf, stdProgramOf } from '../binder/bind.test-kit.ts';
 import { checkProgram } from '../checker/check.ts';
 import { compileProgram, diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
@@ -76,7 +75,7 @@ describe('lowering', () => {
   it('lays out every kind of type a struct holds', () => {
     const program = preludeProgramOf({
       main: [
-        'struct Box { size: int?; items: Array<int>; next: Future<int> }',
+        'struct Box { size: int?; items: Array<int>; next: Slot<int> }',
         'async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });
@@ -85,22 +84,22 @@ describe('lowering', () => {
       ['struct', 'main.Box'],
       ['enum', 'prelude.Optional'],
       ['extern', 'prelude.Array'],
-      ['extern', 'prelude.Future'],
+      ['extern', 'prelude.Slot'],
     ]);
   });
 
   it('compiles every program the checker accepts into a Definition the runtime loads', () => {
-    const runtime = createRuntime({ natives: preludeNatives });
+    const { runtime } = testRuntime();
     fc.assert(
       fc.property(brokenText([subsetSource, ...corpusTexts, ...specModules]), (text) => {
-        const program = preludeProgramOf({ main: text });
+        const program = stdProgramOf({ main: text });
         const clean = [...diagnose(program).values()].every(({ diagnostics }) =>
           diagnostics.every((diagnostic) => diagnostic.severity !== 'error'),
         );
         const compilation = compileProgram(program, idOf('main'));
         expect(compilation.kind === 'failed').toBe(!clean);
         const definition = compilation.kind === 'compiled' ? compilation.definition : undefined;
-        const load = () => definition && runtime.load(definitionFormat.write(definition).text);
+        const load = () => definition && runtime.deploy(definitionFormat.write(definition).text);
         expect(load).not.toThrow();
       }),
       { numRuns: 300 },

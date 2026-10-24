@@ -194,17 +194,35 @@ function inRange(context: Context, indexes: Indexes, path: Path, frame?: Frame):
 }
 
 function checkValue(context: Context, value: Value, path: Path): void {
+  for (const problem of valueProblems(context.tables, value)) {
+    context.report([...path, ...problem.path], problem.message);
+  }
+}
+
+/** A problem with part of a value: where in the value, by child index, and what. */
+export interface ValueProblem {
+  readonly path: readonly number[];
+  readonly message: string;
+}
+
+/**
+ * Every way `value`, at any depth, doesn't fit `tables`: an index out of range, or a construction
+ * that disagrees with the type it names. A snapshot's values are checked the same way.
+ */
+export function valueProblems(tables: Tables, value: Value): readonly ValueProblem[] {
   if (!isComposite(value)) {
-    return;
+    return [];
   }
-  const problems = outOfRange(context.tables, indexesOf(value));
-  const rule = problems.length === 0 ? valueProblem(context.tables, value) : undefined;
-  for (const problem of rule === undefined ? problems : [rule]) {
-    context.report(path, `${value.kind}: ${problem}`);
-  }
-  childValues(value).forEach((child, index) => {
-    checkValue(context, child, [...path, index]);
-  });
+  const problems = outOfRange(tables, indexesOf(value));
+  const rule = problems.length === 0 ? valueProblem(tables, value) : undefined;
+  const own = (rule === undefined ? problems : [rule]).map((problem) => ({
+    path: [],
+    message: `${value.kind}: ${problem}`,
+  }));
+  const children = childValues(value).flatMap((child, index) =>
+    valueProblems(tables, child).map((problem) => ({ ...problem, path: [index, ...problem.path] })),
+  );
+  return [...own, ...children];
 }
 
 /** The table indexes a value refers to itself, not through its children. */

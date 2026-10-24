@@ -79,6 +79,9 @@ const handlers: InstructionHandlers = {
   return: (machine, frame, instruction) => {
     machine.return(frame, readRegister(frame, instruction.value));
   },
+  await: (machine, frame, instruction) => {
+    machine.await(frame, instruction.future);
+  },
   call: (machine, frame, instruction) => {
     if (instruction.callee.kind !== 'function') {
       notRunYet(machine, frame, instruction);
@@ -96,7 +99,6 @@ const handlers: InstructionHandlers = {
   switch: notRunYet,
   spawn: notRunYet,
   currentCall: notRunYet,
-  await: notRunYet,
   select: notRunYet,
   release: notRunYet,
   keep: notRunYet,

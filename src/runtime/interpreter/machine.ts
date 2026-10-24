@@ -31,6 +31,32 @@ export interface Machine {
   ) => void;
   /** Returns `value` from `frame`, the top frame. */
   readonly return: (frame: ActiveFrame, value: Value) => void;
+  /**
+   * Waits at `frame`'s `await` on the future in register `future`. The frame stays at the `await`
+   * until the future resolves; resuming writes the value to its `dst` (scheduler/instance.ts).
+   */
+  readonly await: (frame: ActiveFrame, future: Register) => void;
+}
+
+/** A frame about to run entry `function` from its start, its parameters holding `values`. */
+export function newFrame(
+  function_: FunctionId,
+  code: CodeFunction,
+  values: readonly Value[],
+): ActiveFrame {
+  const registers: (Value | undefined)[] = Array.from({ length: code.registers });
+  values.forEach((value, index) => {
+    registers[index] = value;
+  });
+  return { function: function_, code, pc: 0, registers };
+}
+
+/** Moves `frame` past the instruction it stood at, which gave `value` to `dst`, if it has one. */
+export function resumeAt(frame: ActiveFrame, dst: Register | undefined, value: Value): void {
+  if (dst !== undefined) {
+    writeRegister(frame, dst, value);
+  }
+  frame.pc += 1;
 }
 
 /** The value in `register` of `frame`; loading checks indexes, so an empty one is a bug. */

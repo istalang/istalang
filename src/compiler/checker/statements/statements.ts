@@ -12,6 +12,7 @@ import type { Invalid, NodeOf } from '../../syntax/node.ts';
 import { type Block, type Statement, tailExpressionOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { refuseHeldFuture } from '../rules/futures.ts';
 import { boolType, neverType, type Type, unitType } from '../types/type.ts';
 import { checkAssignment, checkVariableDeclaration } from './variables.ts';
 
@@ -48,7 +49,8 @@ const statementHandlers: Handlers<BodyContext, Statement | Invalid, [Type | unde
   Continue: leavesLoop,
   While: (context, node) => {
     context.expect(node.condition, boolType);
-    context.insideLoop(() => context.block(node.body));
+    const body = context.insideLoop(() => context.block(node.body));
+    refuseHeldFuture(context.checker, context.module, tailOf(node.body), body);
     return unitType;
   },
   FunctionDeclaration: unsupported,
@@ -60,7 +62,10 @@ const statementHandlers: Handlers<BodyContext, Statement | Invalid, [Type | unde
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
-/** The type of `block`: that of its last statement, which alone sees `expected`. */
+/**
+ * The type of `block`: that of its last statement, which alone sees `expected`. Every other
+ * statement's value is discarded.
+ */
 export function checkBlock(context: BodyContext, block: Block, expected: Type | undefined): Type {
   let type: Type = unitType;
   block.statements.forEach((statement, index) => {
@@ -70,6 +75,9 @@ export function checkBlock(context: BodyContext, block: Block, expected: Type | 
       statement,
       isLast ? expected : undefined,
     );
+    if (!isLast) {
+      refuseHeldFuture(context.checker, context.module, statement, type);
+    }
   });
   return type;
 }

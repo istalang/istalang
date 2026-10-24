@@ -1,72 +1,146 @@
 /**
- * The runtime as a host uses it (§9): give it the seams, load a Definition, run its `main`.
+ * The runtime as a host uses it (§9): give it the seams, deploy a Definition, start instances of
+ * it and wake them when their timers are due.
  *
- * - A Definition arrives as its persisted text, the form a store keeps (definition.ts). Loading
- *   reads and validates all of it and binds every extern to its native, so a Definition that
- *   couldn't run is refused before anything runs.
- * - An outcome is what an instance's snapshot status records: finished with a value, or panicked
- *   with a message and a trace (§3.12).
- * - The loaded program's function table is exposed, so a test or the `testing` module can replace
- *   an entry (§10).
+ * - A Definition arrives as its persisted text, the form the store keeps. Deploying reads and
+ *   validates all of it, binds every extern to its native and stores it by hash, so a Definition
+ *   that couldn't run is refused before anything runs.
+ * - An instance lives in the store between calls. Starting or waking one advances it as far as it
+ *   goes without waiting, committing every segment (scheduler/wake.ts), and says where it stands:
+ *   waiting until its next timer, finished with a value, or panicked with a message and a trace
+ *   (§3.12). The host decides when to wake it again; the runtime holds no timers of its own.
+ * - Waking reads the instance's snapshot and the Definition it names from the store, so a fresh
+ *   runtime on the same store continues where an earlier one committed (§5).
+ * - A deployed program's function table is exposed, so a test or the `testing` module can replace
+ *   an entry (§10); it applies to every instance this runtime runs on that Definition.
  * - Values leave as JSON through `json` (§9), so a host never reads the runtime's value shapes.
  */
 
-import { type Definition, definitionFormat } from '../definition/definition.ts';
+import { definitionFormat } from '../definition/definition.ts';
 import type { Value } from '../definition/values.ts';
 import { outboundJson } from './boundary/outbound.ts';
-import { Execution } from './interpreter/execution.ts';
+import type { InstanceState } from './instance-state.ts';
 import { FunctionTable } from './interpreter/function-table.ts';
-import { type Natives, Panic } from './natives.ts';
+import type { Natives } from './natives.ts';
+import { Refusal } from './refusal.ts';
+import type { LoadedDefinition } from './scheduler/instance.ts';
+import { advance, type SchedulerSeams, stateOf } from './scheduler/wake.ts';
+import { checkSnapshot } from './snapshot/check.ts';
+import { type Snapshot, snapshotFormat } from './snapshot/snapshot.ts';
+import type { InstanceStore } from './store.ts';
 
 export interface RuntimeSeams {
   readonly natives: Natives;
+  readonly store: InstanceStore;
+  /** Milliseconds since the Unix epoch: when each segment starts (§5). */
+  readonly now: () => bigint;
+  /** Runs every segment twice, discarding the first run, before committing it (§10). */
+  readonly crashEveryAwait?: boolean;
 }
 
-export type Outcome =
-  | { readonly kind: 'finished'; readonly value: Value }
-  | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
-
-export interface LoadedProgram {
+export interface DeployedProgram {
+  readonly hash: string;
   readonly functions: FunctionTable;
   /** A value of this program as the JSON a host receives (§9); a Refusal for one without a form yet. */
   readonly json: (value: Value) => string;
-  /** Runs `main` to its end. */
-  readonly run: () => Outcome;
+  /** Starts `main` as a new instance named `instance`; a Refusal if the store already has one. */
+  readonly start: (instance: string) => InstanceState;
 }
 
 export interface Runtime {
   /**
-   * Reads a Definition's persisted text and binds its externs; throws a FormatError for an invalid
-   * text, and a Refusal naming the externs no native implements.
+   * Reads a Definition's persisted text, binds its externs and stores it; throws a FormatError for
+   * an invalid text, and a Refusal naming the externs no native implements.
    */
-  readonly load: (text: string) => LoadedProgram;
+  readonly deploy: (text: string) => DeployedProgram;
+  /**
+   * Advances a stored instance: resolves its due timers and runs what is ready. A Refusal when the
+   * store lacks the instance or its Definition, or when its snapshot doesn't fit the Definition; a
+   * FormatError when a stored text has an unknown format or version.
+   */
+  readonly wake: (instance: string) => InstanceState;
+  /** The program a stored instance runs; the same Refusals and FormatErrors as `wake`. */
+  readonly programOf: (instance: string) => DeployedProgram;
 }
 
 export function createRuntime(seams: RuntimeSeams): Runtime {
+  const bind = programBinder({ ...seams, crashEveryAwait: seams.crashEveryAwait ?? false });
+  const stored = (instance: string) => storedInstance(seams.store, bind, instance);
   return {
-    load: (text) => {
-      const loaded = definitionFormat.read(text);
-      const functions = new FunctionTable(loaded, seams.natives);
-      return {
-        functions,
-        json: (value) => outboundJson(value, loaded),
-        run: () => runMain(loaded, functions),
-      };
+    deploy: (text) => {
+      const program = bind(text);
+      seams.store.writeDefinition(program.hash, definitionFormat.write(program.definition).text);
+      return program;
     },
+    wake: (instance) => {
+      const { snapshot, program } = stored(instance);
+      return snapshot.status.kind === 'active' ? program.resume(snapshot) : stateOf(snapshot);
+    },
+    programOf: (instance) => stored(instance).program,
   };
 }
 
-function runMain(loaded: Definition, functions: FunctionTable): Outcome {
-  if (loaded.main === undefined) {
-    throw new Error('This Definition has no main.');
-  }
-  const execution = new Execution(loaded, functions);
-  try {
-    return { kind: 'finished', value: execution.run(loaded.main, []) };
-  } catch (error) {
-    if (error instanceof Panic) {
-      return { kind: 'panicked', message: error.message, trace: execution.trace() };
+/** A deployed program as the runtime holds it: bound, and able to resume its instances. */
+interface BoundProgram extends DeployedProgram, LoadedDefinition {
+  readonly resume: (snapshot: Snapshot) => InstanceState;
+}
+
+/** Reads and binds Definition texts, once per hash; it writes nothing. */
+function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives'>) {
+  const bound = new Map<string, BoundProgram>();
+  return (text: string): BoundProgram => {
+    const definition = definitionFormat.read(text);
+    const { hash } = definitionFormat.write(definition);
+    const known = bound.get(hash);
+    if (known !== undefined) {
+      return known;
     }
-    throw error;
+    const loaded: LoadedDefinition = {
+      definition,
+      hash,
+      functions: new FunctionTable(definition, seams.natives),
+    };
+    const program: BoundProgram = {
+      ...loaded,
+      json: (value) => outboundJson(value, definition),
+      start: (instance) => {
+        if (seams.store.readSnapshot(instance) !== undefined) {
+          throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
+        }
+        return advance(seams, loaded, { kind: 'new', name: instance });
+      },
+      resume: (snapshot) => advance(seams, loaded, { kind: 'committed', snapshot }),
+    };
+    bound.set(hash, program);
+    return program;
+  };
+}
+
+/** A stored instance's snapshot and the program it runs, checked against each other. */
+function storedInstance(
+  store: InstanceStore,
+  bind: (text: string) => BoundProgram,
+  instance: string,
+): { readonly snapshot: Snapshot; readonly program: BoundProgram } {
+  const text = store.readSnapshot(instance);
+  if (text === undefined) {
+    throw new Refusal('unknownInstance', `The store holds no instance '${instance}'.`);
   }
+  const snapshot = snapshotFormat.read(text);
+  const definition = store.readDefinition(snapshot.definition);
+  if (definition === undefined) {
+    throw new Refusal(
+      'unknownDefinition',
+      `The store holds no Definition ${snapshot.definition} for instance '${instance}'.`,
+    );
+  }
+  const program = bind(definition);
+  if (program.hash !== snapshot.definition) {
+    throw new Refusal(
+      'snapshotMismatch',
+      `The store's Definition ${snapshot.definition} for instance '${instance}' hashes to ${program.hash}.`,
+    );
+  }
+  checkSnapshot(program.definition, snapshot);
+  return { snapshot, program };
 }

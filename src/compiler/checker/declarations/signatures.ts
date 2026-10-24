@@ -20,6 +20,7 @@ import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { FieldMember, SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { futureArgument, refuseHeldFuture } from '../rules/futures.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -37,6 +38,7 @@ export function declaredParameters(
       checker.unsupported(module, node, node.isRest ? 'Rest parameter' : 'Default value');
     }
     const type = node.type === undefined ? errorType : checker.resolveType(module, node.type);
+    refuseHeldFuture(checker, module, node, type);
     return [{ node, type, reference: node.type?.kind === 'ReferenceType' }];
   });
 }
@@ -77,15 +79,6 @@ export function callResult(
   return declaration.isAsync ? checker.preludeType('Future', [bodyResult]) : bodyResult;
 }
 
-/** `T` when `type` is the prelude's `Future<T>`. */
-function futureArgument(checker: CheckerContext, type: Type): Type | undefined {
-  const future = checker.preludeType('Future', [errorType]);
-  if (type.kind !== 'nominal' || future.kind !== 'nominal' || type.entity !== future.entity) {
-    return undefined;
-  }
-  return type.arguments[0];
-}
-
 /**
  * The fields of a struct declaration or of an enum variant, their types resolved in the module of
  * `owner`, the declaration holding them, but not substituted.
@@ -98,7 +91,13 @@ export function declaredFields(
   const module = checker.moduleOf(owner);
   return fields.flatMap((field) =>
     field.kind === 'FieldDeclaration'
-      ? [{ name: field.name.text, type: checker.resolveType(module, field.type) }]
+      ? [{ name: field.name.text, type: fieldType(checker, module, field) }]
       : [],
   );
+}
+
+function fieldType(checker: CheckerContext, module: ModuleId, field: FieldDeclaration): Type {
+  const type = checker.resolveType(module, field.type);
+  refuseHeldFuture(checker, module, field, type);
+  return type;
 }

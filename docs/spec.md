@@ -171,7 +171,7 @@ Every expression has a static type, and there is no `any` type. There are no imp
 
 Primitive types are lowercase language built-ins and are always sendable. Every other type name, built-in or user-defined, is PascalCase. The other built-in types are ordinary declarations in the prelude and standard library (§3.8).
 
-Duration literals are sugar for the standard library's `Duration`: an integer plus a unit, with no space between (`500ms`, `30s`, `15m`, `2h`, `5d`). For example, `5d` means `Duration{value: 5 * 24 * 60 * 60 * 1000}`. A fractional duration such as `1.5h` is a compile error; write `90m`.
+Duration literals are sugar for the standard library's `Duration`: an integer plus a unit, with no space between (`500ms`, `30s`, `15m`, `2h`, `5d`). For example, `5d` means `Duration{value: 5 * 24 * 60 * 60 * 1000}`. A fractional duration such as `1.5h` is a compile error; write `90m`. Every program loads the `time` module, so a duration literal works in any module, while the name `Duration` is visible only where `time` is imported.
 
 **Literals:**
 
@@ -262,7 +262,7 @@ extern fn chargeCard(id: string, amount: int) -> Result<string>  # implemented b
 
 - A function's value is the value of its body's last expression, or the value given to `return`. Its return type may be omitted and is then inferred (§2).
 - An `async fn` declares its real return type, `Future<T>`. Inside it, `return` and the body's value have type `T`, and `await` on the call yields that `T`.
-- Calling an `async fn` starts the callee right away. The future must be awaited, passed to `select`, stored in a variable (`_` included), or released with `drop`. Leaving it unused as a bare expression is a compile error, which catches a forgotten `await`. A stored future keeps running until it finishes or is disposed (§7).
+- Calling an `async fn` starts the callee right away, inside the caller's segment (§5): the callee runs until its first `await`, which doesn't commit but hands the future back to the caller, and what the callee did so far commits or rolls back with the caller's segment. The future must be awaited, passed to `select`, stored in a variable (`_` included), or released with `drop`. Leaving it unused as a bare expression is a compile error, which catches a forgotten `await`. A stored future keeps running until it finishes or is disposed (§7).
 - When a block ends, including a function's body, it releases everything its variables hold, disposing whatever nothing else holds (§3.4, §7).
 - `extern fn` declares a host function with a typed signature and no body (§3.6).
 
@@ -863,7 +863,7 @@ const role: string? = verdict?.role
 
 ## 5. Persistence
 
-`await` is the only persistence point, and it is allowed only inside an `async fn`. The compiler checks only that rule; persistence itself is the runtime's job. The runtime is an interpreter that executes the compiled program over an instance's memory snapshot. **Every `await` commits**, whether or not its future has already resolved: the snapshot is persisted (locals, call frames, position in the code, reference counts and pending futures), and only then does the instance wait. The code alone therefore tells you what is durable: the code between two `await`s is one atomic segment, and every `await` ends one. The runtime may skip a physical write that would change nothing observable. To commit without waiting, write `await runtime.commit()`.
+`await` is the only persistence point, and it is allowed only inside an `async fn`. The compiler checks only that rule; persistence itself is the runtime's job. The runtime is an interpreter that executes the compiled program over an instance's memory snapshot. **Every `await` commits**, whether or not its future has already resolved: the snapshot is persisted (locals, call frames, position in the code, reference counts and pending futures), and only then does the instance wait. The code alone therefore tells you what is durable: the code between two `await`s is one atomic segment, and every `await` ends one. The one `await` that doesn't end a segment is an async callee's first, reached inside its caller's segment: it hands control back to the caller, whose next `await` commits both (§3.3). The runtime may skip a physical write that would change nothing observable. To commit without waiting, write `await runtime.commit()`.
 
 - **Frames are data.** The interpreter keeps call frames in the snapshot, not on the host language's stack. An `await` at any depth in a call chain can therefore be persisted and resumed.
 - **Atomic segments.** The code between two `await`s runs in memory. Its effects (state changes, slot operations and disposals) commit atomically at the next `await`. If the segment is interrupted before it commits, by a crash or a panic, it never happened.
@@ -1098,7 +1098,7 @@ async fn main():
 Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`.
 
 **Running a program locally.** `ista run <entry>` is a host for development. It compiles the program whose entry module is `entry`, which must declare `async fn main()`, and runs nothing if any module has errors. It then runs `main` in a new instance and prints the outcome as JSON, using the mapping below. A panic prints the panic's message and trace instead. Two options stand in for what a real host provides:
-- `--store <dir>` keeps instance snapshots in a directory, so a run can stop and resume.
+- `--store <dir>` keeps the compiled program and every commit of the instance in a directory, so a run can stop and resume: `ista run --store <dir> --resume <instance>` continues an instance from its last commit, on the program it started with. A run with a store prints its instance's name to the error stream.
 - `--host <module>` loads a JavaScript module that exports the program's extern implementations.
 
 **Values at the boundary.** Every value that crosses between the host and an instance has a declared type: extern constants, extern function parameters and results, and the arguments of an instance the host starts. The runtime converts JSON to and from these values itself, guided by the declared types, so workflow code needs no reflection. Inbound JSON is validated before it enters the instance; a mismatch fails the host's call, so malformed data never reaches workflow code. `json.parse<T>(s)` and `json.stringify(v)` apply the same mapping to JSON held in strings:

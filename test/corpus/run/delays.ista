@@ -1,0 +1,14 @@
+# outcome: 42
+# Awaits at two depths: main waits on an async call that waits on two timers. Time only moves
+# forward between commits, so the elapsed time covers both delays.
+import * as time from 'time'
+
+async fn doubleLater(n: int) -> Future<int>:
+  await time.delay(10ms)
+  await time.delay(10ms)
+  n * 2
+
+async fn main():
+  const start = time.now()
+  const doubled = await doubleLater(21)
+  if time.now().value - start.value >= 20: doubled else: 0

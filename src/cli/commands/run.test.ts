@@ -1,10 +1,16 @@
 /**
  * `ista run` end to end. Every program of test/corpus/run (run-programs.ts) runs through the CLI
  * in-process and must have the outcome it states, so the whole pipeline (checker, lowering,
- * runtime, boundary) is what's tested.
+ * runtime, boundary) is what's tested, on real time. With a store, a run killed while it waits is
+ * continued by a later `--resume`, in a process of its own.
  */
 
-import { describe, expect, it } from 'vitest';
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it, vi } from 'vitest';
 import { runCorpusDirectory as corpus, runPrograms } from '../../../test/corpus/run-programs.ts';
 import { subsetOutcome, subsetSource } from '../../../test/definitions/subset.ts';
 import { ista, tempProject as project } from '../cli.test-kit.ts';
@@ -88,5 +94,62 @@ describe('ista run', () => {
       out: '',
       err: 'ista: no such file: nope.ista\n',
     });
+  });
+});
+
+const waitingProgram = [
+  "import * as time from 'time'",
+  'async fn main():',
+  '  const start = time.now()',
+  '  await time.delay(300ms)',
+  '  time.now().value - start.value >= 300',
+  '',
+].join('\n');
+
+const instanceLine = /^ista: instance (?<name>\S+)$/mu;
+
+describe('ista run with a store', () => {
+  it('continues an instance killed while it waits, from its last commit', async () => {
+    const root = project({ 'main.ista': waitingProgram });
+    const main = fileURLToPath(new URL('../../../dist/cli/main.js', import.meta.url));
+    const child = spawn(process.execPath, [main, 'run', '--store', 'store', 'main.ista'], {
+      cwd: root,
+    });
+    let err = '';
+    child.stderr.on('data', (chunk: Buffer) => {
+      err += chunk.toString();
+    });
+    const exited = new Promise((done) => child.on('exit', done));
+    const name = await vi.waitFor(() => {
+      const found = instanceLine.exec(err)?.groups?.name;
+      expect(found).toBeDefined();
+      return found ?? '';
+    });
+    await vi.waitFor(() => {
+      expect(existsSync(join(root, 'store', 'instances', `${name}.json`))).toBe(true);
+    });
+    child.kill();
+    await exited;
+    const resumed = await ista(root, 'run', '--store', 'store', '--resume', name);
+    expect(resumed).toEqual({ code: 0, out: 'true\n', err: '' });
+  });
+
+  it('reports an instance the store lacks', async () => {
+    const resumed = await ista(project({}), 'run', '--store', 'store', '--resume', 'nobody');
+    expect(resumed).toEqual({
+      code: 1,
+      out: '',
+      err: "ista: The store holds no instance 'nobody'.\n",
+    });
+  });
+
+  it.each([
+    ['both an entry and --resume', ['main.ista', '--store', 's', '--resume', 'x']],
+    ['neither an entry nor --resume', []],
+    ['--resume without --store', ['--resume', 'x']],
+  ])('is a usage error to give %s', async (_case, args) => {
+    const run = await ista(project({ 'main.ista': waitingProgram }), 'run', ...args);
+    expect(run.code).toBe(2);
+    expect(run.out).toBe('');
   });
 });

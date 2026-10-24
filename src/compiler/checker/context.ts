@@ -14,7 +14,7 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity, VariableEntity, VariableOwner } from '../binder/entities.ts';
-import type { ModuleId } from '../program/program.ts';
+import type { LanguageModule, ModuleId } from '../program/program.ts';
 import type {
   EnumDeclaration,
   FunctionDeclaration,
@@ -38,7 +38,16 @@ export interface CheckerContext extends Checker {
   readonly declaredFieldsOf: (declaration: StructDeclaration) => readonly FieldMember[];
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
-  /** A prelude type by name, such as `Future`, with its type arguments. */
+  /**
+   * A type a language module exports, such as `time`'s `Duration`, with its type arguments;
+   * undefined when the program has no such module.
+   */
+  readonly languageType: (
+    module: LanguageModule,
+    name: string,
+    typeArguments?: readonly Type[],
+  ) => Type | undefined;
+  /** A prelude type by name, such as `Future`: its `languageType`, or the error type. */
   readonly preludeType: (name: string, typeArguments: readonly Type[]) => Type;
   /** The prelude's functions of `name`, for the operators on primitives (§3.9). */
   readonly preludeFunctions: (name: string) => readonly FunctionDeclaration[];
@@ -65,6 +74,8 @@ export interface BodyContext {
   readonly recordCall: (site: CallSite, call: ResolvedCall) => void;
   /** Checks a returned value against the body's result type, or adds it to the inferred one. */
   readonly checkReturn: (value: Expression | undefined, span: Span) => void;
+  /** Whether the body is an async function's, the only kind that may `await` (§5). */
+  readonly inAsync: boolean;
   /** Runs `check` inside a loop, so `break` and `continue` are allowed there. */
   readonly insideLoop: <Result>(check: () => Result) => Result;
   readonly inLoop: boolean;

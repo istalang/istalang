@@ -1,16 +1,15 @@
 /**
- * The prelude's natives: bound to exactly the externs prelude.ista declares, and right on any
- * input, checked as properties of integer and float arithmetic rather than a few chosen values.
+ * The prelude's natives, right on any input: checked as properties of integer and float arithmetic
+ * rather than a few chosen values. Their binding to the declared externs is checked with every std
+ * module's (stdlib/natives.test.ts).
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { preludeProgramOf } from '../../compiler/binder/bind.test-kit.ts';
-import { checkProgram } from '../../compiler/checker/check.ts';
-import { externKeyOf } from '../../compiler/lowering/names.ts';
 import { externKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import { Panic } from '../../runtime/natives.ts';
+import { unusedContext } from '../../runtime/runtime.test-kit.ts';
 import { preludeNatives } from './natives.ts';
 
 function call(key: string, ...argumentValues: Value[]): Value {
@@ -18,7 +17,7 @@ function call(key: string, ...argumentValues: Value[]): Value {
   if (native === undefined) {
     throw new Error(`No native ${key}.`);
   }
-  return native(argumentValues);
+  return native(argumentValues, unusedContext);
 }
 
 /** The key of the prelude extern `name` over primitive parameter `types`. */
@@ -35,20 +34,6 @@ const nonZero = fc.bigInt().filter((value) => value !== 0n);
 const finite = fc.double({ noNaN: true, noDefaultInfinity: true });
 
 describe('prelude natives', () => {
-  it('implement exactly the callable externs the prelude declares, by the keys lowering gives', () => {
-    const program = preludeProgramOf({ 'main.ista': '' });
-    const checker = checkProgram(program);
-    const prelude =
-      program.prelude === undefined ? undefined : program.modules.get(program.prelude);
-    // The checker can't call a generic function yet, so only the others need natives.
-    const callable = (prelude?.tree.root.items ?? []).flatMap((item) =>
-      item.kind === 'FunctionDeclaration' && item.isExtern && item.typeParameters.length === 0
-        ? [externKeyOf(checker, item)]
-        : [],
-    );
-    expect(new Set(Object.keys(preludeNatives))).toEqual(new Set(callable));
-  });
-
   it('keep integer arithmetic exact at any size', () => {
     fc.assert(
       fc.property(fc.bigInt(), fc.bigInt(), (left, right) => {

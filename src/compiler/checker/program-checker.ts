@@ -15,7 +15,7 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings } from '../binder/entities.ts';
-import type { ModuleId, Program } from '../program/program.ts';
+import type { LanguageModule, ModuleId, Program } from '../program/program.ts';
 import type {
   Declaration,
   EnumDeclaration,
@@ -129,7 +129,7 @@ export class ProgramChecker implements CheckerContext {
     return memoized(this.#bodies, declaration, () => {
       this.#checking.push(declaration);
       try {
-        return new BodyChecker(this, this.moduleOf(declaration), body).check(
+        return new BodyChecker(this, this.moduleOf(declaration), body, declaration.isAsync).check(
           this.parametersOf(declaration),
           this.#declaredBodyResult(declaration),
         );
@@ -176,15 +176,11 @@ export class ProgramChecker implements CheckerContext {
   }
 
   preludeType(name: string, typeArguments: readonly Type[]): Type {
-    const entity = this.#preludeExport(name);
-    if (entity?.kind !== 'type') {
-      return errorType;
-    }
-    return { kind: 'nominal', entity: entity as NominalType['entity'], arguments: typeArguments };
+    return this.languageType('prelude', name, typeArguments) ?? errorType;
   }
 
   preludeFunctions(name: string): readonly FunctionDeclaration[] {
-    const entity = this.#preludeExport(name);
+    const entity = this.#languageExport('prelude', name);
     return entity?.kind === 'functions' ? this.bindings.overloadsOf(entity) : [];
   }
 
@@ -225,9 +221,21 @@ export class ProgramChecker implements CheckerContext {
     return this.#declaredResults.get(declaration);
   }
 
-  #preludeExport(name: string) {
-    const { prelude } = this.program;
-    return prelude === undefined ? undefined : this.bindings.exportsOf(prelude).get(name);
+  languageType(
+    module: LanguageModule,
+    name: string,
+    typeArguments: readonly Type[] = [],
+  ): Type | undefined {
+    const entity = this.#languageExport(module, name);
+    return entity?.kind === 'type'
+      ? { kind: 'nominal', entity: entity as NominalType['entity'], arguments: typeArguments }
+      : undefined;
+  }
+
+  /** What language module `module` exports as `name`, when the program has that module. */
+  #languageExport(module: LanguageModule, name: string) {
+    const id = this.program[module];
+    return id === undefined ? undefined : this.bindings.exportsOf(id).get(name);
   }
 }
 

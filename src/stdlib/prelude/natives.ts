@@ -12,9 +12,9 @@
  *   reads as the int `1`.
  */
 
-import { externKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
+import { float, int, nativeKey, primitiveKeyType, text } from '../natives-kit.ts';
 import { preludeName } from '../stdlib-loader.ts';
 
 type Primitive = 'int' | 'float' | 'string' | 'bool';
@@ -28,28 +28,6 @@ const numericPairs = [
   ['int', 'float'],
   ['float', 'int'],
 ] as const;
-
-interface ArgumentTypes {
-  readonly bigint: bigint;
-  readonly number: number;
-  readonly string: string;
-}
-
-/** An argument read as the JavaScript type `name`; anything else is a bug in lowering or loading. */
-function argumentOf<Name extends keyof ArgumentTypes>(
-  name: Name,
-): (value: Value | undefined) => ArgumentTypes[Name] {
-  return (value) => {
-    if (typeof value !== name) {
-      throw new TypeError(`Expected a ${name}, got ${typeof value}.`);
-    }
-    return value as ArgumentTypes[Name];
-  };
-}
-
-const int = argumentOf('bigint');
-const float = argumentOf('number');
-const text = argumentOf('string');
 
 const floatDivide = (left: number, right: number): number => left / nonZero(right);
 
@@ -118,14 +96,7 @@ function numeric(
 
 /** The key prelude.ista's declaration of `name` over `parameters` gets. */
 function key(name: string, ...parameters: readonly Primitive[]): string {
-  return externKey({
-    module: preludeName,
-    name,
-    parameters: parameters.map((type) => ({
-      type: { kind: 'primitive', name: type },
-      reference: false,
-    })),
-  });
+  return nativeKey(preludeName, name, ...parameters.map(primitiveKeyType));
 }
 
 function floorDivide(dividend: bigint, by: bigint): bigint {

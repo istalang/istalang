@@ -1,0 +1,6 @@
+# The runtime module (spec §3.8): what an instance can ask of the runtime about itself.
+#
+# `commit` returns an already-resolved future, so `await runtime.commit()` commits without
+# waiting (§5).
+
+extern fn commit() -> Future<unit>

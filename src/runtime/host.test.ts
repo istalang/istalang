@@ -1,7 +1,7 @@
 /**
- * The runtime on hand-written Definitions, without the compiler: it loads a Definition's persisted
- * text, binds externs to natives, runs `main` to its outcome, and every call goes through the
- * function table, so replacing an entry changes the callee.
+ * The runtime on hand-written Definitions, without the compiler: it deploys a Definition's
+ * persisted text, binds externs to natives, runs `main` to its outcome, and every call goes
+ * through the function table, so replacing an entry changes the callee.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -9,17 +9,26 @@ import { subsetDefinition, subsetOutcome } from '../../test/definitions/subset.t
 import { definitionFormat } from '../definition/definition.ts';
 import { FormatError } from '../definition/format.ts';
 import { preludeNatives } from '../stdlib/prelude/natives.ts';
-import { createRuntime } from './host.ts';
 import { type Natives, Panic } from './natives.ts';
 import { Refusal } from './refusal.ts';
+import { testRuntime } from './runtime.test-kit.ts';
 
 const subsetText = definitionFormat.write(subsetDefinition).text;
 const innermostLocation = /\(main:6:\d+\)$/u;
 const missingKeys = /prelude\.compare\(int, int\).*prelude\.add\(int, int\)/u;
 const fib = subsetDefinition.functions.findIndex((entry) => entry.name === 'main.fib');
 
+/** The subset fixture deployed on a fresh runtime, with `run` starting a new instance of it. */
 function load(natives: Natives = preludeNatives) {
-  return createRuntime({ natives }).load(subsetText);
+  const program = testRuntime({ natives }).runtime.deploy(subsetText);
+  let instances = 0;
+  return {
+    ...program,
+    run: () => {
+      instances += 1;
+      return program.start(`instance-${instances}`);
+    },
+  };
 }
 
 describe('the runtime', () => {
@@ -61,7 +70,9 @@ describe('the runtime', () => {
   });
 
   it('refuses a text that is not a Definition', () => {
-    expect(() => createRuntime({ natives: preludeNatives }).load('{}')).toThrow(FormatError);
+    expect(() => testRuntime({ natives: preludeNatives }).runtime.deploy('{}')).toThrow(
+      FormatError,
+    );
   });
 
   it('lets an error a native throws for any other reason propagate', () => {

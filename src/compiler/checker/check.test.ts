@@ -11,7 +11,7 @@ import { runPrograms } from '../../../test/corpus/run-programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import { reportedIn, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
-import { preludeProgramOf } from '../binder/bind.test-kit.ts';
+import { preludeProgramOf, stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import { checkProgram } from './check.ts';
@@ -19,15 +19,17 @@ import { checkerDiagnostics as reports } from './diagnostics.ts';
 
 const corpusTexts = runPrograms.map((program) => program.text);
 
-/** Everything reported for `text` as module `main.ista`, beside the prelude and `others`. */
+/** Everything reported for `text` as module `main.ista`, beside the std modules and `others`. */
 function reported(text: string, others: Readonly<Record<string, string>> = {}) {
-  const program = preludeProgramOf({ 'main.ista': text, ...others });
+  const program = stdProgramOf({ 'main.ista': text, ...others });
   const result = diagnose(program).get(idOf('main.ista'));
   if (result === undefined) {
     throw new Error('main.ista was not loaded');
   }
   return reportedIn(result.source, result.diagnostics);
 }
+
+const importTime = "import * as time from 'time'";
 
 /** `body` as the body of a function taking `c: bool`, `n: int` and `s: string`. */
 function inFunction(body: string): string {
@@ -121,6 +123,54 @@ describe('checking reports', () => {
       reports.notCallable,
       'other',
     ],
+    [
+      'await outside an async function',
+      `${importTime}\nfn f(): await time.delay(1s)`,
+      reports.awaitOutsideAsync,
+      'await time.delay(1s)',
+    ],
+    [
+      'await on a value that is not a Future',
+      'async fn f(): await 1',
+      reports.awaitNeedsFuture,
+      '1',
+    ],
+    [
+      'a future held in a variable',
+      `${importTime}\nasync fn f():\n  const t = time.delay(1s)\n  await t`,
+      reports.notSupportedYet,
+      'time.delay(1s)',
+    ],
+    [
+      'a future discarded',
+      `${importTime}\nasync fn f():\n  time.delay(1s)\n  1`,
+      reports.notSupportedYet,
+      'time.delay(1s)',
+    ],
+    [
+      'a future discarded by a loop body',
+      `${importTime}\nfn f(c: bool):\n  while c:\n    time.delay(1s)`,
+      reports.notSupportedYet,
+      'time.delay(1s)',
+    ],
+    [
+      'a future as a parameter',
+      'fn f(x: Future<int>): 1',
+      reports.notSupportedYet,
+      'x: Future<int>',
+    ],
+    [
+      'a future as a field',
+      'struct S { f: Future<int> }',
+      reports.notSupportedYet,
+      'f: Future<int>',
+    ],
+    [
+      'a call to an extern the host implements',
+      'extern fn host() -> int\nfn f(): host()',
+      reports.notSupportedYet,
+      'host()',
+    ],
   ])('%s', (_case, text, report, spanText) => {
     expect(reported(text, { 'other.ista': '' })).toEqual(reportedOnce(report.code, spanText));
   });
@@ -145,8 +195,25 @@ describe('checking accepts', () => {
       'struct Box<T> { value: T }\nfn f(b: Box<int>) -> int: b.value',
     ],
     ['a prelude type with a default argument', 'fn f(r: Result<int>) -> Result<int, Error>: r'],
+    [
+      'awaiting an async call and a std extern',
+      `${importTime}\nasync fn g() -> Future<int>: 1\nasync fn f() -> Future<int>:\n  await time.at(time.now())\n  await g()`,
+    ],
+    ['a future returned to the caller', `${importTime}\nfn f() -> Future<unit>: time.delay(1s)`],
+    ['a duration literal without importing time', 'fn f() -> int:\n  const d = 5d\n  d.value'],
+    [
+      "a duration literal typed as time's Duration",
+      "import Duration from 'time'\nfn f() -> Duration: 90m",
+    ],
   ])('%s', (_case, text) => {
     expect(reported(text)).toEqual({ codes: [], spanTexts: [] });
+  });
+
+  it('reports a duration literal where the program lacks the time module', () => {
+    const program = preludeProgramOf({ 'main.ista': 'fn f(): 5d' });
+    const result = diagnose(program).get(idOf('main.ista'));
+    const found = result === undefined ? undefined : reportedIn(result.source, result.diagnostics);
+    expect(found).toEqual(reportedOnce(reports.missingStdModule.code, '5d'));
   });
 });
 

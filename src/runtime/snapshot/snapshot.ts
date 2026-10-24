@@ -10,7 +10,8 @@
  *   start time, so an operator's retry sees the same time (docs/arch/definition.md, "Time").
  *
  * Validation checks that ids ascend and that every object id refers to an object of this
- * snapshot. Checks that need the Definition, such as pc ranges, belong to the runtime's load.
+ * snapshot. Checks that need the Definition, such as pc ranges, are check.ts's, run when the
+ * runtime reads a snapshot back.
  */
 
 import { z } from 'zod';
@@ -82,24 +83,29 @@ function checkObjectReferences(contents: Contents, context: z.RefinementCtx): vo
   });
 }
 
-function referencedObjects(object: HeapObject): readonly number[] {
+/** The ids of the objects `object` refers to: directly, or through a handle in a value it holds. */
+export function referencedObjects(object: HeapObject): readonly number[] {
+  return [...directReferences(object), ...valuesIn(object).flatMap(handlesIn)];
+}
+
+/** Every value `object` holds, each counted once with whatever it contains. */
+export function valuesIn(object: HeapObject): readonly Value[] {
   switch (object.kind) {
     case 'cell':
-      return handlesIn(object.value);
+      return [object.value];
     case 'slot':
-      return [...optionalHandles(object.value), ...object.waiting];
+      return object.value === undefined ? [] : [object.value];
     case 'future':
-      return futureReferences(object.state);
-    case 'weakRef':
-      return object.target === undefined ? [] : [object.target];
+      return futureValues(object.state);
     case 'guard':
-      return handlesIn(object.callback);
+      return [object.callback];
+    case 'mock':
+      return [object.replacement, ...object.calls];
+    case 'execution':
+      return object.frames.flatMap(frameValues);
+    case 'weakRef':
     case 'resource':
       return [];
-    case 'mock':
-      return [object.replacement, ...object.calls].flatMap(handlesIn);
-    case 'execution':
-      return object.frames.flatMap(frameReferences);
     default: {
       const unhandled: never = object;
       return unhandled;
@@ -107,19 +113,62 @@ function referencedObjects(object: HeapObject): readonly number[] {
   }
 }
 
-function futureReferences(
-  state: Extract<HeapObject, { kind: 'future' }>['state'],
-): readonly number[] {
+/** The ids `object` names itself, rather than through a value. */
+function directReferences(object: HeapObject): readonly number[] {
+  switch (object.kind) {
+    case 'slot':
+      return object.waiting;
+    case 'future':
+      return futureTargets(object.state);
+    case 'weakRef':
+      return object.target === undefined ? [] : [object.target];
+    case 'execution':
+      return object.frames.flatMap(({ registers }) =>
+        registers.flatMap(([, contents]) => (isReference(contents) ? [contents.cell] : [])),
+      );
+    case 'cell':
+    case 'guard':
+    case 'resource':
+    case 'mock':
+      return [];
+    default: {
+      const unhandled: never = object;
+      return unhandled;
+    }
+  }
+}
+
+type FutureState = Extract<HeapObject, { kind: 'future' }>['state'];
+
+function futureValues(state: FutureState): readonly Value[] {
   switch (state.kind) {
     case 'resolved':
-      return handlesIn(state.value);
+      return [state.value];
+    case 'slot':
+      return state.value === undefined ? [] : [state.value];
+    case 'call':
+    case 'timer':
+    case 'host':
+    case 'disposed':
+    case 'disposing':
+      return [];
+    default: {
+      const unhandled: never = state;
+      return unhandled;
+    }
+  }
+}
+
+function futureTargets(state: FutureState): readonly number[] {
+  switch (state.kind) {
     case 'call':
     case 'disposing':
       return [state.execution];
     case 'slot':
-      return [state.slot, ...optionalHandles(state.value)];
+      return [state.slot];
     case 'disposed':
       return [state.target];
+    case 'resolved':
     case 'timer':
     case 'host':
       return [];
@@ -130,18 +179,12 @@ function futureReferences(
   }
 }
 
-function frameReferences(frame: Frame): readonly number[] {
+/** A frame's values: what its registers hold, the keys in its references' paths, and its kept list. */
+function frameValues(frame: Frame): readonly Value[] {
   const inRegisters = frame.registers.flatMap(([, contents]) =>
     isReference(contents)
-      ? [
-          contents.cell,
-          ...contents.path.flatMap((step) => (step.kind === 'element' ? handlesIn(step.key) : [])),
-        ]
-      : handlesIn(contents),
+      ? contents.path.flatMap((step) => (step.kind === 'element' ? [step.key] : []))
+      : [contents],
   );
-  return [...inRegisters, ...frame.kept.flatMap(handlesIn)];
-}
-
-function optionalHandles(slotValue: Value | undefined): readonly number[] {
-  return slotValue === undefined ? [] : handlesIn(slotValue);
+  return [...inRegisters, ...frame.kept];
 }

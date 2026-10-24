@@ -11,8 +11,10 @@ import type { Expression } from '../../syntax/expressions.ts';
 import type { Handlers } from '../../syntax/handlers.ts';
 import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
+import { lowerAwait } from './await.ts';
 import { lowerCall } from './calls.ts';
 import { lowerIf } from './control.ts';
+import { lowerDurationLiteral } from './literals.ts';
 import { lowerName } from './names.ts';
 import { lowerBinary, lowerUnary } from './operators.ts';
 import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
@@ -32,7 +34,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   StructLiteral: lowerStructLiteral,
   MemberAccess: lowerFieldRead,
   If: lowerIf,
-  DurationLiteral: notLowered,
+  DurationLiteral: lowerDurationLiteral,
   NoneLiteral: notLowered,
   ArrayLiteral: notLowered,
   MapLiteral: notLowered,
@@ -43,7 +45,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Index: notLowered,
   Propagate: notLowered,
   Unwrap: notLowered,
-  Await: notLowered,
+  Await: lowerAwait,
   Is: notLowered,
   Range: notLowered,
   Match: notLowered,

@@ -50,7 +50,8 @@ export function lowerFieldRead(context: FunctionContext, node: MemberAccess): Re
   return dst;
 }
 
-function nominalTypeOf(context: FunctionContext, node: Expression): NominalType {
+/** The struct type the checker gave `node`. */
+export function nominalTypeOf(context: FunctionContext, node: Expression): NominalType {
   const type = context.body.typeOf(node);
   if (type.kind !== 'nominal') {
     throw new Error(`Expected a struct at ${node.span.start}; the checker should have said so.`);

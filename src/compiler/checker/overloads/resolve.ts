@@ -104,9 +104,8 @@ function explainNone(context: BodyContext, attempt: CallAttempt): void {
 }
 
 /**
- * Records the call at `site` to `target`; what the call yields. Async calls need the scheduler,
- * and externs other than the prelude's need a host to implement them, so both are reported as not
- * supported yet.
+ * Records the call at `site` to `target`; what the call yields. Externs outside the std modules
+ * need a host to implement them, so they are reported as not supported yet.
  */
 export function callTo(context: BodyContext, site: CallSite, target: FunctionDeclaration): Type {
   if (!checkCallable(context, site, target)) {
@@ -122,11 +121,7 @@ export function callTo(context: BodyContext, site: CallSite, target: FunctionDec
  */
 function checkCallable(context: BodyContext, site: CallSite, target: FunctionDeclaration): boolean {
   const { checker } = context;
-  if (target.isAsync) {
-    context.unsupported(site, 'Calling an async function');
-    return false;
-  }
-  if (target.isExtern && checker.moduleOf(target) !== checker.program.prelude) {
+  if (target.isExtern && checker.program.modules.get(checker.moduleOf(target))?.isStd !== true) {
     context.unsupported(site, 'Calling an extern function the host implements');
     return false;
   }

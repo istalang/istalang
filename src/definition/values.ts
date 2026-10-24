@@ -210,6 +210,13 @@ export const value: z.ZodType<Value, ValueOnDisk> = z.union([
 /** A value that contains other values. */
 export type CompositeValue = Exclude<Value, null | boolean | string | bigint | number>;
 
+/** The heap object a handle names; undefined for any other value. */
+export function handleTarget(candidate: Value | undefined): number | undefined {
+  return candidate !== undefined && isComposite(candidate) && candidate.kind === 'handle'
+    ? candidate.object
+    : undefined;
+}
+
 /** Whether a value has parts, so it can be walked with `childValues`. */
 export function isComposite(candidate: Value): candidate is CompositeValue {
   return candidate !== null && typeof candidate === 'object';

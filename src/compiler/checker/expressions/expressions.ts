@@ -12,8 +12,10 @@ import type { Handlers } from '../../syntax/handlers.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { boolType, errorType, floatType, intType, stringType, type Type } from '../types/type.ts';
+import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';
 import { checkIf } from './control.ts';
+import { checkDurationLiteral } from './literals.ts';
 import { checkName } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
 import { checkMemberAccess, checkStructLiteral } from './structs.ts';
@@ -38,7 +40,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   MemberAccess: checkMemberAccess,
   BlockExpression: (context, node, expected) => context.block(node.block, expected),
   If: checkIf,
-  DurationLiteral: unsupported,
+  DurationLiteral: checkDurationLiteral,
   NoneLiteral: unsupported,
   ArrayLiteral: unsupported,
   MapLiteral: unsupported,
@@ -49,7 +51,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Index: unsupported,
   Propagate: unsupported,
   Unwrap: unsupported,
-  Await: unsupported,
+  Await: checkAwait,
   Is: unsupported,
   Range: unsupported,
   Match: unsupported,

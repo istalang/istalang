@@ -105,4 +105,17 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
     code: 5021,
     message: (found: string) => `An async function returns a Future, not ${found}.`,
   },
+  awaitOutsideAsync: {
+    code: 5022,
+    message: () => "'await' is allowed only inside an async function.",
+  },
+  awaitNeedsFuture: {
+    code: 5023,
+    message: (found: string) => `'await' waits on a Future, not ${found}.`,
+  },
+  missingStdModule: {
+    code: 5024,
+    message: (name: string) =>
+      `This needs the std module '${name}', which the program didn't load.`,
+  },
 });

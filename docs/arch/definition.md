@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-24
-last_updated: 2026-10-24
+last_updated: 2026-10-25
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -34,6 +34,7 @@ An execution is a stack of frames. A frame's registers are laid out as parameter
 - **`kept`** collects what `keep` moved there: `fn let`, `fn const` and `fn _` holdings, which last until the function returns even from a loop body.
 - **A stopped execution's pc** is always its `await` or `select`: the only instructions that wait, and the commit points (spec §5). A non-blocking `select` never waits.
 - **A caller frame's pc** points at the `call` it made. On return, the runtime writes the result to that `call`'s `dst` and continues at the next instruction.
+- **An async call** starts a new execution and its `call` future (spec §3.3). The callee runs on top of its caller, in the caller's segment, until it awaits or returns; only then does the caller's `call` receive the future. Only an `await` by the execution that began the segment ends it and commits, so when a commit happens every other execution stands at an `await` or `select`.
 - **Resuming** an `await` writes the value to its `dst` and continues at the next instruction. Resuming a `select` releases the losing cases' holdings, writes the winner's `bind`, and continues at the winner's `target`.
 
 Loading refuses code the interpreter couldn't run, so no instruction handler needs its own guard:

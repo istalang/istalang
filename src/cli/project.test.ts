@@ -32,11 +32,16 @@ describe('loadProject', () => {
     ]);
   });
 
-  it('loads the prelude with every program, as its prelude', () => {
+  it('loads the prelude and time with every program, by their roles', () => {
     const root = tempProject({ 'main.ista': '' });
     const { program } = loadProject(root, ['main.ista']);
-    expect(program.prelude).toBe('std:prelude');
-    expect([...program.modules.keys()]).toContain(program.prelude);
+    expect([program.prelude, program.time]).toEqual(['std:prelude', 'std:time']);
+    const shipped = [...program.modules.values()].map((module) => [module.name, module.isStd]);
+    expect(shipped).toEqual([
+      ['main', false],
+      ['prelude', true],
+      ['time', true],
+    ]);
   });
 
   it('lists the given files it could not read, as given, and loads the rest', () => {

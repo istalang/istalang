@@ -40,18 +40,30 @@ export interface ProgramOfOptions {
   /** The snapshot whose unchanged trees the new one reuses. */
   readonly previous?: Program | undefined;
   readonly prelude?: LocatedModule | undefined;
+  readonly time?: LocatedModule | undefined;
+  /** Loaders asked after the in-memory one, such as the std modules'. */
+  readonly loaders?: readonly ModuleLoader[] | undefined;
 }
 
 /** The program over `files`, loaded from `roots`. */
 export function programOf(
   files: Files,
-  { roots = Object.keys(files).slice(0, 1), previous, prelude }: ProgramOfOptions = {},
+  {
+    roots = Object.keys(files).slice(0, 1),
+    previous,
+    prelude,
+    time,
+    loaders = [],
+  }: ProgramOfOptions = {},
 ): Program {
   const load = memoryLoader(files);
   const anywhere = idOf('');
   const located = roots.flatMap((key) => load(key, anywhere) ?? []);
-  const withPrelude = prelude === undefined ? {} : { prelude };
-  return buildProgram({ roots: located, loaders: [load], ...withPrelude }, previous);
+  const roles = {
+    ...(prelude === undefined ? {} : { prelude }),
+    ...(time === undefined ? {} : { time }),
+  };
+  return buildProgram({ roots: located, loaders: [load, ...loaders], ...roles }, previous);
 }
 
 /** The loaded module `key`; throws when the program didn't load it. */
