@@ -128,10 +128,12 @@ tags: [plan, m2, binder, definition, runtime]
 - With `crashEveryAwait`, every committed snapshot equals the snapshot from a normal run.
 - A stored Definition or snapshot with an unknown version is refused with a clear error.
 
-## Spec gaps (proposed defaults; folded into the spec once approved)
+## Spec gaps
+
+Resolved and stated in `docs/spec.md` §3.13: import paths (G17) and project sources (G18). The spec is their only home.
+
+Proposed defaults, folded into the spec once approved:
 
 | # | Gap | Default |
 | --- | --- | --- |
-| G17 | Import paths (§3.13) | `./` and `../` resolve relative to the importing file. A bare path names a std module or a path from the project root: the current directory, or from M8 the nearest `ista.json` ancestor. A bare path that matches both is an error. The `.ista` extension is implicit. |
-| G18 | `ista check` inputs | The given files, each a root of the module graph. With none, all `*.ista` under the project root, skipping `vendor/` and `node_modules/`. |
 | G19 | `ista run` | `ista run <entry> [--store dir] [--host module]`. The entry must declare `async fn main()`. The outcome is printed through the boundary JSON mapping, which covers primitives only until M3.9. |

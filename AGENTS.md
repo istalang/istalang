@@ -4,7 +4,7 @@ Compiler, runtime and tooling for Istalang (spec: `docs/spec.md`). One npm packa
 
 ## Commands
 
-- `npm run verify`: typecheck, lint, test, build. Run it before every commit.
+- `npm run verify`: typecheck, lint, test, build. Tests build `dist` first, because the CLI's end-to-end test runs it. Run it before every commit.
 - `npm test`, `npm run lint`, `npm run fix` (format plus safe fixes).
 
 ## Where to look

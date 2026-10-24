@@ -3,13 +3,13 @@
  * only here (§2), and the path must be a string literal.
  */
 
-import type { NamedImport, NamespaceImport } from '../../syntax/declarations.ts';
+import type { ImportDeclaration } from '../../syntax/declarations.ts';
 import type { StringLiteral } from '../../syntax/expressions.ts';
 import type { Missing } from '../../syntax/node.ts';
 import type { Parser } from '../parser.ts';
 import { parseNames } from '../parts/names.ts';
 
-export function parseImport(parser: Parser): NamedImport | NamespaceImport {
+export function parseImport(parser: Parser): ImportDeclaration {
   const { cursor } = parser;
   const { start } = cursor.advance().span;
   if (cursor.eat('*') !== undefined) {

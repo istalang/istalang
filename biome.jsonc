@@ -71,8 +71,9 @@
       }
     },
     {
-      // Tool configuration files must default-export their config.
-      "includes": ["*.config.ts", ".dependency-cruiser.mjs"],
+      // Tool configuration files must default-export their config, and a text import (an `.ista`
+      // source compiled in by the build) has nothing but a default export to declare.
+      "includes": ["*.config.ts", ".dependency-cruiser.mjs", "src/**/*.d.ts"],
       "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
     }
   ]

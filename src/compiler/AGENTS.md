@@ -14,6 +14,9 @@ One folder per phase. Phases share only contracts.
     - `recovery.ts`: bracketed lists and recovery
     - `nesting.ts`: the nesting limit every recursive grammar entry goes through
 
+- `program/`: `program.ts` loads the module graph from roots through the `ModuleLoader` seam. It imposes no path syntax and does no I/O.
+- `compile.ts`: the coordinator from a loaded Program onward. Only it knows the order of the phases after loading; apps ask it for results.
+
 A phase has:
 - an entry module named for its job
 - a `diagnostics.ts` catalog

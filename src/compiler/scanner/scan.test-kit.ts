@@ -13,7 +13,7 @@
 import fc from 'fast-check';
 import { soupOf } from '../../../test/soup.ts';
 import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
-import { byteOrderMark, type SourceText } from '../../text/source-text.ts';
+import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import type { ScanResult, Token } from '../syntax/tokens.ts';
 import { scan } from './scan.ts';
@@ -23,7 +23,7 @@ export interface ScannedText extends ScanResult {
 }
 
 export function scanText(text: string): ScannedText {
-  const source = { path: 'test.ista', text };
+  const source = createSourceText('test.ista', text);
   return { source, ...scan(source) };
 }
 
@@ -47,11 +47,8 @@ export function soleToken(text: string): Token | undefined {
 
 const triviaCharacters = new Set([' ', '\t', '\r', '\n']);
 
-function isTrivia(gap: string, atStartOfText: boolean): boolean {
-  return [...gap].every(
-    (char, index) =>
-      triviaCharacters.has(char) || (atStartOfText && index === 0 && char === byteOrderMark),
-  );
+function isTrivia(gap: string): boolean {
+  return [...gap].every((char) => triviaCharacters.has(char));
 }
 
 /**
@@ -68,7 +65,7 @@ export function losslessnessViolations(scanned: ScannedText): readonly string[] 
   for (const span of pieces) {
     if (span.start < covered) {
       violations.push(`span ${span.start}–${span.end} overlaps the previous one`);
-    } else if (!isTrivia(text.slice(covered, span.start), covered === 0)) {
+    } else if (!isTrivia(text.slice(covered, span.start))) {
       violations.push(`text ${covered}–${span.start} belongs to no token or comment`);
     }
     covered = Math.max(covered, span.end);
@@ -151,7 +148,7 @@ const fragments = [
   '!',
   '€',
   '😀',
-  byteOrderMark,
+  '\uFEFF',
   '\\',
   '`',
 ];

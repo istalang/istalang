@@ -7,6 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { LineMap, lineBreakLength, lineMapOf } from './line-map.ts';
+import { createSourceText } from './source-text.ts';
 
 const lineBreaks = ['\n', '\r\n', '\r'];
 const lineText = fc.string({ unit: fc.constantFrom('a', ' ', '😀', '\t'), maxLength: 8 });
@@ -61,7 +62,7 @@ describe('line map (§2)', () => {
   });
 
   it('derives one line map per source object', () => {
-    const source = { path: 'a.ista', text: 'x\ny' };
+    const source = createSourceText('a.ista', 'x\ny');
     expect(lineMapOf(source)).toBe(lineMapOf(source));
     expect(lineMapOf({ ...source })).not.toBe(lineMapOf(source));
   });

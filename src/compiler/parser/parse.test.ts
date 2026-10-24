@@ -15,6 +15,7 @@ import {
   type SpecExample,
   specExamples,
 } from '../../../test/corpus/spec-examples.ts';
+import { createSourceText } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import { scan } from '../scanner/scan.ts';
 import { dump, errorNodes, spanViolations } from '../syntax/tree.test-kit.ts';
@@ -24,7 +25,7 @@ import { bodyOf, functionOf } from './parse.test-kit.ts';
 import { parse } from './parse.ts';
 
 function parseText(text: string): SyntaxTree {
-  const source = { path: 'example.ista', text };
+  const source = createSourceText('example.ista', text);
   return parse(source, scan(source));
 }
 
@@ -107,7 +108,7 @@ function mutate(pieces: readonly string[], change: Mutation): string[] {
 
 /** The text cut into tokens, each with the whitespace and comments before it. */
 function tokenPieces(text: string): string[] {
-  const { tokens } = scan({ path: 'example.ista', text });
+  const { tokens } = scan(createSourceText('example.ista', text));
   return tokens.map((token, index) => text.slice(tokens[index - 1]?.span.end ?? 0, token.span.end));
 }
 

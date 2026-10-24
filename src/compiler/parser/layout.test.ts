@@ -63,10 +63,6 @@ describe('bodies', () => {
     expect(dumpClean('statement', text)).toBe(tree);
   });
 
-  it('does not count a byte order mark as indentation', () => {
-    expect(dumpClean('module', '\uFEFFfn f(): 1')).toBe(moduleOf(functionOf('f', bodyOf('1'))));
-  });
-
   it('measures a tab-indented line like any other, leaving the tab to the scanner', () => {
     expect(reported('module', lines('fn f():', '\ta', '\tb')).codes).toEqual([]);
   });

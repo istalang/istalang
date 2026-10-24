@@ -10,7 +10,7 @@
 import { soupOf } from '../../../test/soup.ts';
 import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { SourceText } from '../../text/source-text.ts';
+import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { scan } from '../scanner/scan.ts';
 import { dump } from '../syntax/tree.test-kit.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
@@ -39,7 +39,7 @@ const categories: Record<Category, (parser: Parser) => SyntaxNode> = {
 };
 
 export function parseAs(category: Category, text: string): Parsed {
-  const source = { path: 'test.ista', text };
+  const source = createSourceText('test.ista', text);
   const scanned = scan(source);
   const parser = createParser(source, scanned);
   const node = categories[category](parser);

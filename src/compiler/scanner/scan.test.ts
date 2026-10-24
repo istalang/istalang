@@ -11,7 +11,6 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
-import { byteOrderMark } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import { keywords } from '../syntax/tokens.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
@@ -91,15 +90,9 @@ describe('comments and whitespace', () => {
     ]);
   });
 
-  it('treats a leading byte order mark as whitespace', () => {
-    const scanned = scanText(`${byteOrderMark}fn`);
-    expect(scanned.diagnostics).toEqual([]);
-    expect(kindsAndTexts(scanned)).toEqual([['fn', 'fn']]);
-  });
-
-  it('reports a byte order mark anywhere else', () => {
-    expect(scanMalformed(`x ${byteOrderMark}`)).toEqual(
-      scannedPast(reportedOnce(unexpectedCharacter.code, byteOrderMark)),
+  it('reports a byte order mark past the start of a file', () => {
+    expect(scanMalformed('x \uFEFF')).toEqual(
+      scannedPast(reportedOnce(unexpectedCharacter.code, '\uFEFF')),
     );
   });
 });

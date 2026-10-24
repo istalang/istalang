@@ -15,7 +15,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { lineBreakLength } from '../../text/line-map.ts';
-import { byteOrderMark, type SourceText } from '../../text/source-text.ts';
+import type { SourceText } from '../../text/source-text.ts';
 import { type Comment, isKeyword, type ScanResult, type Token } from '../syntax/tokens.ts';
 import {
   codePointWidth,
@@ -51,9 +51,6 @@ class Scanner {
   }
 
   run(): ScanResult {
-    if (this.#text.startsWith(byteOrderMark)) {
-      this.#offset = byteOrderMark.length;
-    }
     this.#skipTrivia();
     while (this.#offset < this.#text.length) {
       this.#scanToken();

@@ -103,6 +103,8 @@ export interface NamespaceImport extends NodeOf<'NamespaceImport'>, Annotatable 
   readonly path: StringLiteral | Missing;
 }
 
+export type ImportDeclaration = NamedImport | NamespaceImport;
+
 /** A top-level `const`: the one kind of variable a module may declare (§3). */
 export type ConstantDeclaration = VariableDeclaration & {
   readonly isMutable: false;
@@ -110,8 +112,7 @@ export type ConstantDeclaration = VariableDeclaration & {
 };
 
 export type Declaration =
-  | NamedImport
-  | NamespaceImport
+  | ImportDeclaration
   | StructDeclaration
   | ExternStructDeclaration
   | ExternConstantDeclaration

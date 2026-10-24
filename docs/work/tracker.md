@@ -26,8 +26,9 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D27.
+up, so the next one is D34.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |
-| D23 | BOM is handled inside the core (scanner skips it, `Parser.columnOf` subtracts it on line 0, scan test-kit tolerates it). Editors never send a BOM over LSP, so strip it once at the `SourceHost` edge in M2 and delete the in-core cases (Step back: reformulate, don't branch) | merge review M1 2026-10-24 | open |
+| D27 | Project root ignores `ista.json`: spec §3.13 makes the directory holding `ista.json` the root, with the working directory only as a fallback, but `cli/project.ts` always uses the working directory. Implement it with `ista.json` in M8. | phase review M2.1 2026-10-24 | open |
+| D33 | The build emits declarations for every `src` module (tsc) but JavaScript only for modules reachable from `cli/main.ts` (tsdown entry). `compiler/syntax/tree.ts`, for example, ships `isNode` and `childrenOf` in `.d.ts` with no `.js`. When the subpath exports (`istalang/compiler`, …) land, add each one as a tsdown entry, and test that every exported `.d.ts` has its `.js`. | phase review M2.1 2026-10-24 | open |

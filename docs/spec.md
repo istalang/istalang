@@ -680,7 +680,9 @@ fn _normalize(id: string) -> string:     # private to this module
 
 - **Exports.** Every top-level declaration is exported, except names starting with `_`. There are no default exports, and imported names are not re-exported.
 - **Imports.** `import a, b from 'path'` brings named exports into scope. `import * as m from 'path'` binds them under a namespace, used as `m.name`. A name imported twice, or clashing with a local declaration, is a compile error.
-- **Paths.** What a path string refers to is decided by the runtime's module resolver, much as a bundler resolves imports. The language only requires that each path names exactly one module.
+- **Paths.** Each path must name exactly one module: a path that names none, or several, is a compile error. Which module a path names is decided by the module loaders of whatever runs the compiler, much as a bundler resolves imports, so a host may use its own paths and its own module store.
+- **The toolchain's paths.** The `ista` toolchain resolves a path as names separated by `/`, with the `.ista` extension implied. A path starting with `./` or `../` is relative to the importing file. Any other path names a standard-library module, or a module under the project root: the directory holding `ista.json` (§11), or the directory the toolchain runs in when there is none. A path that matches both a standard-library module and a project file is therefore an error.
+- **Project sources.** Without explicit files, `ista check` checks every `.ista` file under the project root, skipping the project's `vendor/` folder (§11), every `node_modules/` folder and hidden directories.
 - **Cycles.** Modules contain only declarations, never top-level code, so import cycles are allowed.
 - **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import.
 - **Externs** are bound by module-qualified name, so two modules can declare externs with the same short name.

@@ -9,6 +9,7 @@
 
 import { test as it } from 'vitest';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
+import { createSourceText } from '../../text/source-text.ts';
 import { scan } from '../scanner/scan.ts';
 import { parse } from './parse.ts';
 
@@ -21,7 +22,7 @@ const text = Array.from(
   { length: Math.ceil(lineCount / unit.split('\n').length) },
   () => unit,
 ).join('\n');
-const source = { path: 'bench.ista', text };
+const source = createSourceText('bench.ista', text);
 
 it(`scan and parse ${lineCount} lines`, async ({ bench, expect }) => {
   expect(parse(source, scan(source)).diagnostics).toEqual([]);

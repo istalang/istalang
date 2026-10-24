@@ -18,7 +18,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { lineMapOf } from '../../text/line-map.ts';
-import { byteOrderMark, type SourceText } from '../../text/source-text.ts';
+import type { SourceText } from '../../text/source-text.ts';
 import { type Span, textOf } from '../../text/span.ts';
 import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions.ts';
@@ -163,13 +163,9 @@ export class Parser {
     return textOf(this.#source, token.span);
   }
 
-  /**
-   * The column layout sees a token at. For the first token on a line, that is the line's
-   * indentation. A leading byte order mark takes no column (§2).
-   */
+  /** The column layout sees a token at. For the first token on a line, that is the line's indentation. */
   columnOf(token: { readonly span: Span }): number {
-    const { line, column } = lineMapOf(this.#source).positionAt(token.span.start);
-    return line === 0 && this.#source.text.startsWith(byteOrderMark) ? column - 1 : column;
+    return lineMapOf(this.#source).positionAt(token.span.start).column;
   }
 
   /** The indentation of the line that `offset` is on: the column of its first token. */
