@@ -1,0 +1,120 @@
+/**
+ * What a snapshot's heap holds: the objects handles point at, and the executions with their
+ * frames as data (spec §5).
+ *
+ * Only what can't be derived is stored:
+ * - Object ids are allocated in increasing order and never reused, so id order is creation order,
+ *   which disposal follows in reverse (spec §7). No creation counter is stored.
+ * - Holder counts are not stored. A restore recounts them from every register, field, element,
+ *   capture and slot value, so a count can never disagree with the values it counts.
+ * - What an execution waits on is not stored either: its frame stops at an `await` or `select`
+ *   (instructions/suspension.ts), whose registers name the futures.
+ * - Timers are the futures whose state is a timer.
+ *
+ * Disposability follows from an object's kind or type, never from a flag of its own. Slots,
+ * futures, guards, mocks and executions are disposed by the runtime. A cell or resource is
+ * disposable as its type entry's `disposal` says (definition/types.ts), so a restore knows that a
+ * `Shared<Lease>` cell has a `dispose` to call and a `Shared<int>` cell doesn't.
+ *
+ * The slot, future and resource parts are what M3 is expected to need; changes go through the
+ * tech-lead as contract amendments (docs/work/toolchain-v0.1/m2-skeleton.md).
+ */
+
+import { z } from 'zod';
+import { pathStep } from '../../definition/instructions/places.ts';
+import { functionId, label, objectId, register, typeId } from '../../definition/operands.ts';
+import { integer, type Value, value } from '../../definition/values.ts';
+
+/**
+ * What a reference parameter's register holds: a cell and a path into its value, the live form
+ * of a place (definition/instructions/places.ts). It exists only in registers; references are
+ * never values (spec §3.7).
+ */
+const reference = z.strictObject({
+  kind: z.literal('reference'),
+  cell: objectId,
+  path: z.array(pathStep(value)),
+});
+
+export type Reference = z.output<typeof reference>;
+
+/** Whether a register holds a reference rather than a value. */
+export function isReference(contents: Value | Reference): contents is Reference {
+  return contents !== null && typeof contents === 'object' && contents.kind === 'reference';
+}
+
+export const frame = z.strictObject({
+  function: functionId,
+  /**
+   * The top frame points at the `await` or `select` it stopped at; a caller frame points at the
+   * `call` it made. Resuming writes the result to that instruction's `dst` (or a `select` case's
+   * `bind`) and continues after it, or at the winning case's target (docs/arch/definition.md,
+   * "Frames").
+   */
+  pc: label,
+  /** Registers that hold something, as [register, contents]; the others are empty. */
+  registers: z.array(z.tuple([register, z.union([value, reference])])),
+  /** What `keep` moved here, in order; released when the function returns. */
+  kept: z.array(value),
+});
+
+export type Frame = z.output<typeof frame>;
+
+const futureState = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('resolved'), value }),
+  /** The result of an async call, resolved when the execution returns. */
+  z.strictObject({ kind: z.literal('call'), execution: objectId }),
+  /** A pending `put`, `take` or `read`, queued on the slot in `waiting` order. */
+  z.strictObject({
+    kind: z.literal('slot'),
+    slot: objectId,
+    operation: z.enum(['put', 'take', 'read']),
+    value: value.optional(),
+  }),
+  /** `time.at(t)`: due at `at`, in milliseconds since the Unix epoch. */
+  z.strictObject({ kind: z.literal('timer'), at: integer }),
+  /** A future the host fills; `token` is how the host names it. */
+  z.strictObject({ kind: z.literal('host'), token: z.unknown() }),
+  /** `x.disposed()`: resolves when `target` is disposed (spec §6). */
+  z.strictObject({ kind: z.literal('disposed'), target: objectId }),
+  /** `worker.disposing()`: resolves when the call running `execution` is disposed (spec §7). */
+  z.strictObject({ kind: z.literal('disposing'), execution: objectId }),
+]);
+
+/** A heap object schema: `kind` and `id`, plus its own fields. */
+function defineObject<const Kind extends string, Shape extends z.ZodRawShape>(
+  kind: Kind,
+  shape: Shape,
+) {
+  return z.strictObject({ kind: z.literal(kind), id: objectId, ...shape });
+}
+
+export const heapObject = z.discriminatedUnion('kind', [
+  /**
+   * A shared cell: a `Shared` value, a variable passed by `&`, or a `let` a closure captured.
+   * Every cell is a `Shared<T>`, so `type` is that instantiation's extern entry (spec §3.14).
+   */
+  defineObject('cell', { type: typeId, value }),
+  /** Full when `value` is present; `waiting` lists pending operation futures, oldest first. */
+  defineObject('slot', { value: value.optional(), waiting: z.array(objectId) }),
+  defineObject('future', { state: futureState }),
+  /** `target` is absent once the referent is disposed. */
+  defineObject('weakRef', { target: objectId.optional() }),
+  /** A `defer` guard: disposing it calls `callback` (spec §7). */
+  defineObject('guard', { callback: value }),
+  /** A disposable value of an extern type the runtime or host implements, such as `Revertible<T>`. */
+  defineObject('resource', { type: typeId, payload: z.unknown() }),
+  /**
+   * A held `Mock<F>`: while it exists, calls to `target` go to `replacement`, and `calls` records
+   * each call's arguments as a tuple, for `m.calls()` (spec §10).
+   */
+  defineObject('mock', { target: functionId, replacement: value, calls: z.array(value) }),
+  /** An execution: a call stack, innermost frame last. */
+  defineObject('execution', {
+    frames: z.array(frame).min(1),
+    /** Set once the call is disposed; its next await stops it (spec §7). */
+    disposing: z.boolean(),
+  }),
+]);
+
+export type HeapObject = z.output<typeof heapObject>;

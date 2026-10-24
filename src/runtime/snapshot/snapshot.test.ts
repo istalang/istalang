@@ -1,0 +1,230 @@
+/**
+ * The snapshot format: a realistic snapshot (§12.3 stopped at its await) and random heaps
+ * survive a round trip with a key-order-independent hash, and a snapshot whose ids dangle or
+ * don't ascend is refused.
+ */
+
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
+import {
+  broadcastAwaitPc,
+  broadcastDefinition,
+  broadcastFunctions,
+  broadcastTypes,
+} from '../../../test/definitions/broadcast.ts';
+import { exactJson, looseText } from '../../definition/codec.test-kit.ts';
+import { decodeJson } from '../../definition/codec.ts';
+import { definitionFormat } from '../../definition/definition.ts';
+import { type EditableText, editedText, refusalOf } from '../../definition/format.test-kit.ts';
+import { valueArbitrary } from '../../definition/values.test-kit.ts';
+import type { HeapObject } from './objects.ts';
+import { type Snapshot, snapshotFormat } from './snapshot.ts';
+
+const { revertible, duration } = broadcastTypes;
+
+/** `announce("hello", ["ann", "bob"], 1m)` waiting on its delay, both copies still held. */
+const broadcastWaiting: Snapshot = {
+  definition: definitionFormat.write(broadcastDefinition).hash,
+  instance: 'broadcast-1',
+  status: { kind: 'active' },
+  externReads: [],
+  ready: [],
+  objects: [
+    {
+      id: 0,
+      kind: 'execution',
+      disposing: false,
+      frames: [
+        {
+          function: broadcastFunctions.announce,
+          pc: broadcastAwaitPc,
+          registers: [
+            [0, 'hello'],
+            [1, { kind: 'array', elements: ['ann', 'bob'] }],
+            [2, { kind: 'struct', type: duration, fields: [60_000n] }],
+            [13, { kind: 'handle', object: 3 }],
+          ],
+          kept: [
+            { kind: 'handle', object: 1 },
+            { kind: 'handle', object: 2 },
+          ],
+        },
+      ],
+    },
+    { id: 1, kind: 'resource', type: revertible, payload: { queue: 'ann', message: 'm-1' } },
+    { id: 2, kind: 'resource', type: revertible, payload: { queue: 'bob', message: 'm-2' } },
+    { id: 3, kind: 'future', state: { kind: 'timer', at: 1_700_000_060_000n } },
+  ],
+};
+
+/** Heap objects with ids `ids`, whose handles and references point only among those ids. */
+function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
+  const value = valueArbitrary({ typed: true, handles: ids });
+  const id = fc.constantFrom(...ids);
+  const reference = fc.record({
+    kind: fc.constant('reference' as const),
+    cell: id,
+    path: fc.array(
+      fc.oneof(
+        fc.record({ kind: fc.constant('field' as const), index: fc.nat({ max: 5 }) }),
+        fc.record({
+          kind: fc.constant('element' as const),
+          key: value,
+          read: fc.nat({ max: 9 }),
+          write: fc.nat({ max: 9 }),
+        }),
+      ),
+      { maxLength: 3 },
+    ),
+  });
+  const frame = fc.record({
+    function: fc.nat({ max: 9 }),
+    pc: fc.nat({ max: 30 }),
+    registers: fc.array(fc.tuple(fc.nat({ max: 20 }), fc.oneof(value, reference)), {
+      maxLength: 4,
+    }),
+    kept: fc.array(value, { maxLength: 2 }),
+  });
+  const futureState = fc.oneof(
+    fc.record({ kind: fc.constant('resolved' as const), value }),
+    fc.record({ kind: fc.constant('call' as const), execution: id }),
+    fc.record({
+      kind: fc.constant('slot' as const),
+      slot: id,
+      operation: fc.constantFrom('put' as const, 'take' as const, 'read' as const),
+      value,
+    }),
+    fc.record({ kind: fc.constant('timer' as const), at: fc.bigInt({ min: 0n, max: 2n ** 60n }) }),
+    fc.record({ kind: fc.constant('host' as const), token: exactJson }),
+    fc.record({ kind: fc.constant('disposed' as const), target: id }),
+    fc.record({ kind: fc.constant('disposing' as const), execution: id }),
+  );
+  const objectFor = (objectId: number): fc.Arbitrary<HeapObject> =>
+    fc.oneof(
+      fc
+        .record({ type: fc.nat({ max: 9 }), value })
+        .map((parts) => ({ id: objectId, kind: 'cell' as const, ...parts })),
+      fc
+        .record({ value, waiting: fc.array(id, { maxLength: 3 }) })
+        .map((parts) => ({ id: objectId, kind: 'slot' as const, ...parts })),
+      futureState.map((state) => ({ id: objectId, kind: 'future' as const, state })),
+      id.map((target) => ({ id: objectId, kind: 'weakRef' as const, target })),
+      value.map((callback) => ({ id: objectId, kind: 'guard' as const, callback })),
+      fc
+        .record({ type: fc.nat({ max: 9 }), payload: exactJson })
+        .map((parts) => ({ id: objectId, kind: 'resource' as const, ...parts })),
+      fc
+        .record({
+          target: fc.nat({ max: 9 }),
+          replacement: value,
+          calls: fc.array(value, { maxLength: 2 }),
+        })
+        .map((parts) => ({ id: objectId, kind: 'mock' as const, ...parts })),
+      fc
+        .record({
+          frames: fc.array(frame, { minLength: 1, maxLength: 3 }),
+          disposing: fc.boolean(),
+        })
+        .map((parts) => ({ id: objectId, kind: 'execution' as const, ...parts })),
+    );
+  return fc.tuple(...ids.map(objectFor));
+}
+
+const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
+  .uniqueArray(fc.nat({ max: 1000 }), { minLength: 1, maxLength: 6 })
+  .map((ids) => ids.toSorted((left, right) => left - right))
+  .chain((ids) => heapArbitrary(ids))
+  .chain((objects) => {
+    const executions = objects.filter((object) => object.kind === 'execution');
+    return fc.record({
+      definition: fc.constant('0'.repeat(64)),
+      instance: fc.string(),
+      status: fc.oneof(
+        fc.constant({ kind: 'active' as const }),
+        fc.record({
+          kind: fc.constant('panicked' as const),
+          message: fc.string(),
+          trace: fc.string(),
+          segmentStartedAt: fc.bigInt({ min: 0n, max: 2n ** 60n }),
+        }),
+        fc.record({ kind: fc.constant('finished' as const), outcome: valueArbitrary() }),
+      ),
+      externReads: fc.array(fc.record({ function: fc.nat({ max: 9 }), value: valueArbitrary() }), {
+        maxLength: 2,
+      }),
+      objects: fc.constant(objects),
+      ready: fc.subarray(executions.map((execution) => execution.id)),
+    });
+  });
+
+/** The broadcast snapshot's JSON, changed by `edit`, as text. */
+function editedSnapshot(edit: (json: EditableText) => void): string {
+  return editedText(snapshotFormat, broadcastWaiting, edit);
+}
+
+function objectsOf(json: EditableText): Record<string, unknown>[] {
+  return json.body.objects as Record<string, unknown>[];
+}
+
+describe('snapshot format', () => {
+  it('keeps an instance stopped at its await', () => {
+    const written = snapshotFormat.write(broadcastWaiting);
+    expect(snapshotFormat.read(written.text)).toEqual(broadcastWaiting);
+  });
+
+  it('round-trips any heap, with a hash independent of key order', () => {
+    fc.assert(
+      fc.property(snapshotArbitrary, (snapshot) => {
+        const written = snapshotFormat.write(snapshot);
+        expect(snapshotFormat.read(written.text)).toEqual(snapshot);
+        const loose = looseText(decodeJson(written.text));
+        expect(snapshotFormat.write(snapshotFormat.read(loose))).toEqual(written);
+      }),
+    );
+  });
+
+  it.each<[string, (json: EditableText) => void, string, string]>([
+    [
+      'a handle to a missing object',
+      (json) => {
+        objectsOf(json).push({
+          id: 9,
+          kind: 'cell',
+          type: 0,
+          value: { kind: 'handle', object: 42 },
+        });
+      },
+      'No object 42',
+      'objects[4]',
+    ],
+    [
+      'ids that do not ascend',
+      (json) => {
+        const [first, second] = objectsOf(json);
+        objectsOf(json).splice(0, 2, second ?? {}, first ?? {});
+      },
+      'Object ids must ascend',
+      'objects[1]',
+    ],
+    [
+      'a ready entry that is not an execution',
+      (json) => {
+        json.body.ready = [3];
+      },
+      '3 is not an execution',
+      'ready[0]',
+    ],
+    [
+      'an unknown version',
+      (json) => {
+        json.version = 2;
+      },
+      'istalang-snapshot version 2 is not supported',
+      'this reader knows version 1',
+    ],
+  ])('refuses %s', (_case, edit, problem, where) => {
+    const message = refusalOf(snapshotFormat, editedSnapshot(edit));
+    expect(message).toContain(problem);
+    expect(message).toContain(where);
+  });
+});

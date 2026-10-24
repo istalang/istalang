@@ -10,7 +10,8 @@
  *
  * npm packages may be imported anywhere: a library is a dependency like a lower layer. Node's
  * built-ins only where listed below; the compiler and runtime reach the file system, processes and
- * the clock through seams (architecture, Seams).
+ * the clock through seams (architecture, Seams). `definition/` may use `crypto` alone, for content
+ * hashes: hashing is computation, not I/O.
  *
  * Inside the parser, grammar categories reach one another only through the parsing context, and
  * the shared parts they all use import no category (src/compiler/parser/parser.ts).
@@ -32,6 +33,8 @@ const layers = {
   'compiler/compile': ['text', 'diagnostics', 'compiler/syntax', 'compiler/program'],
   stdlib: ['text', 'compiler/program'],
   cli: ['text', 'diagnostics', 'compiler/program', 'compiler/compile', 'stdlib'],
+  definition: [],
+  runtime: ['definition'],
 };
 
 /** Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams. */
@@ -65,6 +68,10 @@ export default {
     })),
     { from: { path: '^src/' }, to: { dependencyTypes: ['npm'] } },
     { from: { path: layerPath(nodeLayers) }, to: { dependencyTypes: ['core'] } },
+    {
+      from: { path: layerPath(['definition']) },
+      to: { dependencyTypes: ['core'], path: '^(node:)?crypto$' },
+    },
   ],
   allowedSeverity: 'error',
   options: {

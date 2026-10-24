@@ -1,0 +1,32 @@
+/**
+ * The tables a Definition is made of, as shapes only. definition.ts adds the checks that span
+ * tables (references.ts), which need this shape without depending back on definition.ts.
+ *
+ * A module carries its line starts because the runtime never sees source text or the compiler,
+ * yet it must turn spans into locations: for `Error.trace` (spec §3.12), a panic's trace,
+ * `waitingAt()` (spec §10) and the operator's view.
+ */
+
+import { z } from 'zod';
+import { functionDefinition } from './functions.ts';
+import { functionId, offset } from './operands.ts';
+import { typeDefinition } from './types.ts';
+import { value } from './values.ts';
+
+const sourceModule = z.strictObject({
+  /** The module id the resolver produced. */
+  id: z.string(),
+  /** The UTF-16 offset where each line starts; the first is 0. */
+  lineStarts: z.array(offset).min(1),
+});
+
+export const tables = z.strictObject({
+  modules: z.array(sourceModule),
+  types: z.array(typeDefinition),
+  functions: z.array(functionDefinition),
+  constants: z.array(value),
+  /** The program's `async fn main()`; absent in a Definition built only to run tests. */
+  main: functionId.optional(),
+});
+
+export type Tables = z.output<typeof tables>;

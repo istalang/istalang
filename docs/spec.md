@@ -319,6 +319,7 @@ fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
 - **Parsing.** In an expression, `name<...>` takes type arguments when the part inside the brackets parses as a list of types and is followed by `(` or `{`, the same rule C# uses: `swap<int, string>(p)`, `Pair<int, string>{first: 1, second: "x"}`. A comparison that happens to look like that needs parentheses: `(a < b) > c`.
 - **When inference has nothing to go on,** give the type arguments or annotate the variable: `let xs: Array<int> = []`.
 - **Constraints.** A type parameter can be constrained by traits (§3.10) with `is`: `T is Sendable`. Several traits are joined with `&`: `T is Sendable & Comparable`.
+- **Compiled per instantiation.** A generic function or type is compiled once for each set of concrete type arguments it is used with, so every call has a fixed target and the runtime never needs types to make one (§3.10). A generic function that would need endlessly many instantiations, such as `f<T>` calling `f<Array<T>>`, is therefore a compile error.
 
 ### 3.6 Extern declarations
 
@@ -373,6 +374,7 @@ The rules:
 
 - **Explicit at the call site.** An argument passed by reference is written `&x`. Only a method's `self` takes its reference implicitly. `&` may stand only before a whole call argument, and `&T` only as a parameter's type; anywhere else either is a compile error.
 - **One kind of reference, and it allows mutation.** A read-only reference would add nothing, because a by-value parameter already can't change the caller's data.
+- **What can be referenced.** A variable, a field path of one (`&self.items`), or an element of any indexable value (`&m["a"]`). An element is read through its container's `index` and written back with `setIndex`, whether the container is an `Array`, a `Map` or a user type (§3.9).
 - **References aren't values.** They can't be stored in variables or struct fields, returned or sent. Aliasing exists only for the duration of a call.
 - **No references to constants.** Neither a `const` variable nor an `extern` constant can be passed by `&`.
 - **No dangling references.** A referenced variable's storage stays alive until every call holding a reference to it has ended, even if its block ends first. It just can't be named after its block ends.
@@ -861,12 +863,12 @@ const role: string? = verdict?.role
 
 ## 5. Persistence
 
-`await` is the only persistence point, and it is allowed only inside an `async fn`. The compiler checks only that rule; persistence itself is the runtime's job. The runtime is an interpreter that executes the program's syntax tree over an instance's memory snapshot. **Every `await` commits**, whether or not its future has already resolved: the snapshot is persisted (locals, call frames, position in the code, reference counts and pending futures), and only then does the instance wait. The code alone therefore tells you what is durable: the code between two `await`s is one atomic segment, and every `await` ends one. The runtime may skip a physical write that would change nothing observable. To commit without waiting, write `await runtime.commit()`.
+`await` is the only persistence point, and it is allowed only inside an `async fn`. The compiler checks only that rule; persistence itself is the runtime's job. The runtime is an interpreter that executes the compiled program over an instance's memory snapshot. **Every `await` commits**, whether or not its future has already resolved: the snapshot is persisted (locals, call frames, position in the code, reference counts and pending futures), and only then does the instance wait. The code alone therefore tells you what is durable: the code between two `await`s is one atomic segment, and every `await` ends one. The runtime may skip a physical write that would change nothing observable. To commit without waiting, write `await runtime.commit()`.
 
 - **Frames are data.** The interpreter keeps call frames in the snapshot, not on the host language's stack. An `await` at any depth in a call chain can therefore be persisted and resumed.
 - **Atomic segments.** The code between two `await`s runs in memory. Its effects (state changes, slot operations and disposals) commit atomically at the next `await`. If the segment is interrupted before it commits, by a crash or a panic, it never happened.
 - **Disposal points.** Since segments are atomic, disposing a running execution can only stop it at an `await`.
-- **Determinism.** `now()` and the results of `extern fn` calls are recorded in the snapshot.
+- **Determinism.** `now()` returns the time its segment started, so every call within one segment sees the same time, and so does a re-run of that segment. The results of `extern fn` calls are recorded in the snapshot.
 - **Memory is reachability-based.** A snapshot persists only what is still reachable from the instance's live state, so unreachable `Shared` values and closure environments simply disappear. Disposable values are reference-counted instead, so that disposal happens at a predictable point (§7).
 - **Extern effects aren't transactional.** The runtime doesn't make `extern fn` calls atomic with the segment. If a segment is discarded, the effects of extern calls it made remain, and a re-run calls them again. Idempotency is the developer's responsibility; an extern can, for example, return its own commit and abort handles for the workflow to call once it decides. Slot operations are exactly-once; anything the host provides is the host's responsibility.
 

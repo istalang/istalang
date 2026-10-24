@@ -52,7 +52,8 @@ src/
       inference/ overloads/ traits/ patterns/ rules/             cross-cutting engines and semantic rules
     lowering/           typed tree → Definition (all desugaring lives here)
     compile.ts          pipeline coordinator and public compiler API
-  definition/           contract: versioned, JSON-serializable program definition (IR)
+  definition/           contract: the compiled program (docs/arch/definition.md): canonical JSON codec,
+                        versioned formats, values, types, instruction set
   runtime/
     values/ interpreter/ scheduler/ handles/ disposal/ snapshot/ boundary/
     host.ts             public host API: createRuntime(seams)
@@ -85,7 +86,7 @@ text · diagnostics                      foundation
   - Biome `noExcessiveLinesPerFile` enforces the 400-line limit.
   - Biome `noImportCycles` (project domain) forbids cycles.
   - dependency-cruiser enforces the layers as an allow-list over resolved paths (`.dependency-cruiser.mjs`). A layer not listed there can import nothing. Biome's import rules match specifiers, whose shape depends on directory depth, so they can't state an allow-list.
-  - npm packages may be imported by any layer. Node's built-ins only by apps: the layers beneath reach files, processes and clocks through seams.
+  - npm packages may be imported by any layer. Node's built-ins only by apps: the layers beneath reach files, processes and clocks through seams. The one exception is `definition/` using `crypto` for content hashes, which is computation, not I/O.
 
 ## Phase contracts
 
@@ -99,7 +100,7 @@ text · diagnostics                      foundation
 | compile | `diagnose(program) → Map<ModuleId, ModuleDiagnostics { source, diagnostics }>` | The coordinator's results, memoized per Program: every module's diagnostics from every phase so far, sorted by position, keyed by module id, clean modules included so an editor knows which documents to clear. |
 | bind | `bindModule(tree)` (local; cached per tree), `link(program)` (imports) | Top-level declarations come in any order. Names starting with `_` are private. The prelude is implicit. |
 | check | `createChecker(program)` → memoized queries: `typeOf`, `resolvedCall`, `symbolAt`, `diagnostics(module)` | Lazy, so the LSP pays only for what it asks. The CLI asks for everything. Binding happens inside: the checker calls the cached `bindModule` and `link`. |
-| lower | `lower(checked) → Definition` | Runs only on an error-free program. The Definition is complete: no unresolved names, no sugar, and every call targets a function-table entry. |
+| lower | `lower(checked) → Definition` | Runs only on an error-free program. The Definition is complete: linear register code with no unresolved names and no sugar, one entry per generic instantiation, and every call targeting a function-table entry (definition.md). Loading validates indexes, call arity, closure captures, termination and where waiting is allowed, so the interpreter can trust what it reads. |
 
 Sugar is split by whether it has typing consequences:
 - **Resolved in the checker** (it affects types or diagnostics): default parameters become overloads (and a clash is an error); `T?` is `Optional<T>`; operators, `$`, indexing, `for` and `T(x)` become resolved function calls; compound index assignment requires a `let`; closure captures become `Shared` values.
@@ -139,7 +140,8 @@ Every analysis result is a memoized function of immutable inputs: text → token
 - **No DI container.** Explicit composition roots plus registries keep wiring visible and type-checked.
 - **Positions are UTF-16 offsets**, the LSP default. They are converted only at the edges.
 - **Formatter layout algorithm comes from a library** (a Wadler-style doc printer such as Prettier's). Which one is decided at the formatter milestone.
-- **Runtime keeps frames as data.** It is an explicit-stack interpreter over the Definition, so any `await` can be persisted (spec §5). The Definition is the lowered, resolved syntax tree that spec §5 says the interpreter executes. Values use `bigint` for `int`, `decimal.js` for `Decimal`, `re2js` for `regex` and `lossless-json` at the boundary.
+- **Runtime keeps frames as data.** The Definition is linear register code, so a frame is a function, a pc and registers, and any `await` can be persisted (spec §5). Code is untyped, and generics are compiled per instantiation. The chosen and rejected options are in definition.md, Decisions.
+- **One description per persisted format.** A zod schema validates, decodes and encodes it; texts are canonical JSON (lossless-json with sorted keys) nested in a `{format, version, body}` envelope, keyed by content hash. The codec and envelope live in `definition/` (`codec.ts`, `format.ts`), the lowest layer every persisted format already depends on; `runtime/` (snapshots, and from M3 the boundary) imports them from there. Values use `bigint` for `int`, `decimal.js` for `Decimal` and `re2js` for `regex`.
 - **Test capabilities are built into the runtime** (spec §10):
   - Every call goes through a function table, so `mock` can replace any named function.
   - `testing.start`, `handle<T>()` and `crashEveryAwait` are runtime capabilities.
