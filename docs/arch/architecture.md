@@ -76,18 +76,18 @@ stdlib natives ─▶ runtime native seam
 text · diagnostics                      foundation
 ```
 
-- A folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals.
+- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module.
 - `syntax/` and `definition/` are contracts with high fan-in. Change them deliberately, and update every caller in the same change.
 - Mechanisms:
   - Biome `noExcessiveLinesPerFile` enforces the 400-line limit.
-  - Biome `noImportCycles` forbids cycles.
-  - Per-folder `noRestrictedImports` overrides enforce the layers. dependency-cruiser is added only if Biome can't express the layer graph.
+  - Biome `noImportCycles` (project domain) forbids cycles.
+  - dependency-cruiser enforces the layers as an allow-list over resolved paths (`.dependency-cruiser.mjs`). A layer not listed there can import nothing. Biome's import rules match specifiers, whose shape depends on directory depth, so they can't state an allow-list.
 
 ## Phase contracts
 
 | Phase | Signature | Invariants |
 | --- | --- | --- |
-| scan | `scan(source) → { tokens, comments, diagnostics }` | Context-free, total and lossless: never throws, and every character belongs to exactly one token, comment or whitespace run. It emits no INDENT/DEDENT. Tokens carry `newlineBefore`, and columns come from `LineMap`. |
+| scan | `scan(source) → { tokens, comments, diagnostics }` | Context-free, total and lossless: never throws, and every character belongs to exactly one token, comment or whitespace run (a leading byte order mark counts as whitespace). It emits no INDENT/DEDENT. Tokens carry `firstOnLine`, and columns come from `LineMap`. The result type `ScanResult` lives in `syntax/`, so the parser depends on the contract, not on the scanner. |
 | parse | `parse(source, scanned) → SyntaxTree` | Total: always returns a full tree, with errors as `Missing`/`Invalid` nodes plus diagnostics. It owns layout (indentation blocks, newline-insensitive brackets, `{` as block vs struct literal vs field list), because layout depends on syntactic context. |
 | tree | immutable plain objects, discriminated by `kind`, with a `span` | No parent pointers; parents are derived on demand. Child traversal is derived generically from node fields, never hand-listed per kind. A node field is therefore a node, a node array, an optional node, or a primitive. Nodes hold no tokens and no resolved references; the binder and checker keep those in side tables. |
 | program | `Program { modules: Map<ModuleId, SyntaxTree>, imports, diagnostics }` | Immutable. An edit makes a new snapshot that reuses unchanged trees. |

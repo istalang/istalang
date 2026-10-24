@@ -1,0 +1,79 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": { "includes": ["**", "!**/*.md"] },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "javascript": { "formatter": { "quoteStyle": "single" } },
+  "linter": {
+    // Domain rules: import cycles and unresolved imports need the module graph, type-aware rules
+    // need inference, and test rules catch focused, skipped and assertion-free tests.
+    "domains": {
+      "project": "all",
+      "test": "all",
+      "types": "all",
+      // Framework rules (the style groups would otherwise switch them on) don't apply here.
+      "astro": "none",
+      "drizzle": "none",
+      "next": "none",
+      "playwright": "none",
+      "qwik": "none",
+      "react": "none",
+      "reactNative": "none",
+      "solid": "none",
+      "svelte": "none",
+      "tailwind": "none",
+      "turborepo": "none",
+      "vue": "none"
+    },
+    // Every stable rule, at error severity. Exceptions live in the first override, each with its reason.
+    "rules": {
+      "complexity": "error",
+      "correctness": "error",
+      "performance": "error",
+      "security": "error",
+      "style": "error",
+      "suspicious": "error"
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**"],
+      "linter": {
+        "rules": {
+          "style": {
+            // Bans a construct rather than choosing between two; forcing if/else turns derived
+            // values into reassigned variables.
+            "noTernary": "off",
+            // Forces `export { … }` lists whenever a private value derives from an exported one,
+            // which makes two export styles instead of one.
+            "useExportsLast": "off",
+            "noExcessiveLinesPerFile": { "level": "error", "options": { "maxLines": 400 } },
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": { "filenameCases": ["kebab-case"] }
+            }
+          },
+          // The package targets Node; its CLI and LSP are Node programs.
+          "correctness": { "noNodejsModules": "off" }
+        }
+      }
+    },
+    {
+      // A test's literals are its expectations, its describe blocks are tables rather than logic,
+      // and its inputs are deliberately odd strings.
+      "includes": ["**/*.test.ts", "**/*.test-kit.ts", "test/**"],
+      "linter": {
+        "rules": {
+          "style": { "noMagicNumbers": "off" },
+          "complexity": { "noExcessiveLinesPerFunction": "off" },
+          "security": { "noSecrets": "off" }
+        }
+      }
+    },
+    {
+      // Tool configuration files must default-export their config.
+      "includes": ["*.config.ts", ".dependency-cruiser.mjs"],
+      "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+    }
+  ]
+}

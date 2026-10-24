@@ -28,8 +28,8 @@ Branch `m1-syntax`. Every phase runs with `qa` and `reviewer`: 1.1 sets the conv
   - `scan` never throws.
   - Tokens, comments and whitespace tile the input exactly, ordered and contiguous.
 - Every §2 lexical form gets the right kind and value. Each malformed form (G4–G8) gives one diagnostic at the right span, and scanning continues.
-- `newlineBefore` is correct.
-- Every fence in the spec scans with zero diagnostics.
+- `firstOnLine` is correct.
+- Every fence in the spec scans with zero diagnostics, except a fence that uses `…` as a placeholder for omitted code: there, `…` is the only thing reported.
 
 ## 1.2 Parser machinery, types, patterns, expressions
 
@@ -72,7 +72,7 @@ Branch `m1-syntax`. Every phase runs with `qa` and `reviewer`: 1.1 sets the conv
 | G2 | Line endings | `\n`, `\r\n` and `\r` all end a line. A leading BOM is skipped. |
 | G3 | Identifiers | ASCII letters, digits and `_`. No Unicode identifiers in v0.1. Strings and comments may contain any Unicode. |
 | G4 | Reserved words | `fn async await let const if elif else for in while match case select return break continue struct enum trait import extern spawn defer drop is and or not true false none as`. Three words are keywords only by position, and plain identifiers elsewhere: `type` (alias declaration; still usable as a field name, §9), `from` (import clause; `T.from`, §3.10) and `sendable` (after `extern`). |
-| G5 | Numbers | `_` only between digits. A float needs digits on both sides of `.`, so `2.pow(10)` and `0..10` scan as an int followed by `.` or `..`. Exponent `e` or `E`. Hex digits in any case. No octal. |
+| G5 | Numbers | `_` only between digits. A float needs digits on both sides of `.`, so `2.pow(10)` and `0..10` scan as an int followed by `.` or `..`. Exponent `e` or `E`. Radix prefixes are lowercase only (`0x`, `0b`). Hex digits in any case. No octal. |
 | G6 | Durations | An integer magnitude plus `ms`, `s`, `m`, `h` or `d`, with no space between. `1.5h` is an error. |
 | G7 | Strings | Single-line only. A raw newline means the string is unterminated. `\u{…}` takes 1–6 hex digits naming a Unicode scalar value (no surrogates). Any other escape is an error. |
 | G8 | Comments | `#` to the end of the line. No block or doc-comment syntax. Tooling may treat a `#` run directly above a declaration as its doc. |
