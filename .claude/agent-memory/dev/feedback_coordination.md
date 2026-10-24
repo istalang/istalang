@@ -1,0 +1,16 @@
+---
+name: feedback-coordination
+description: How the user wants tech-lead/fork coordination run in istalang — minimal fork briefs, forks self-rebase, forks escalate to the human, lean coordinator context
+metadata:
+  type: feedback
+---
+
+- Fork briefs state only which fork it is and its task (e.g. "IMPLEMENTER, M1 phase 1.1, branch m1-syntax; task: §1.1 of m1-syntax.md"). No explanations: the fork already has the context.
+- Serial forks work directly in the main checkout, without a worktree. Parallel forks use worktrees, at most 3 at a time; when one finishes and merges, the next starts.
+- The tech-lead doesn't merge branches or resolve conflicts. If main moved, the tech-lead asks the fork to rebase onto main itself and report again.
+- Forks raise issues directly with the human, not the tech-lead. A fork reports to the tech-lead only after its qa/review fixes are done and the human has approved.
+- The tech-lead says little to the human while work runs; the human reads the fork transcripts.
+
+**Why:** the user's instruction at M1 start (2026-10-24). Every fork inherits the coordinator's context, so it must stay small, and the user wants to approve each phase personally.
+
+**How to apply:** every time a fork is spawned or a report is consumed in this project. Related: [[feedback-commits]].

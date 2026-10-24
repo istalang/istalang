@@ -1,0 +1,2 @@
+- [Commit format](feedback_commits.md) — one-line Angular commits; no body, no clean-dev tags, no co-author/AI attribution
+- [Coordination](feedback_coordination.md) — minimal fork briefs, forks self-rebase, escalate to human, ≤3 parallel, lean coordinator
