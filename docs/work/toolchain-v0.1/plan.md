@@ -26,7 +26,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 - One implementer fork, then a cold `qa` and a cold `reviewer`. Forks raise issues directly with the human, and report to the tech-lead only after the human approves the phase.
 - A serial phase works in the main checkout. Phases marked ∥ use worktrees, at most 3 at a time; when one merges, the next starts.
 - If main has moved, a fork rebases onto it itself and reports again. The tech-lead runs e2e `qa` after each ∥ group.
-- Each milestone ends with a merge review, on branch `m<N>-<name>`.
+- Phase branches are rebased onto `main` and fast-forward it once the human approves. Each milestone ends with a merge review of `main` since the previous milestone.
 
 **Approval.** Before a milestone starts, each of its phases gets a detail file next to this plan (acceptance criteria, spec gaps with defaults), and a human approves it.
 
@@ -42,10 +42,11 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 3. Parser layout, statements, control flow, declarations and modules.
 
 **M2 — Skeleton.** *Done when:* `ista check` reports syntax and name errors, and `ista run` runs a program that awaits `time.delay`, resuming it from a snapshot restored in a fresh runtime.
-1. Program snapshot, seams, the relative and std resolvers, the binder, prelude declarations, and the CLI skeleton with `ista check`.
-2. Contract: the Definition schema (every construct, including anonymous-struct and capture layout) and the snapshot format, both versioned. Delivered as types plus a construct→IR mapping doc, and reviewed before 2.3.
-3. Sync path, with full-shape engines covering a small subset: the checker core (type model, inference, registries), lowering, and the interpreter core (frames as data, calls through the mockable function table). `ista run` runs primitives, functions, `let`/`const`, `if`/`while` and `return`.
-4. Persistence: `async`/`await`, atomic segments, snapshots through `InstanceStore`, `Timers`, the `Time`/`Duration` structs and `time.now`/`at`/`delay`, `runtime.commit`, and `crashEveryAwait`.
+1. Program snapshot, seams, resolvers, the pipeline coordinator, and the CLI skeleton with `ista check` (syntax errors across a module graph).
+2. Contract: the Definition schema (every construct, including anonymous-struct and capture layout) and the snapshot format, both versioned. Delivered as types plus a construct→IR mapping doc, and reviewed before 2.4.
+3. Binder and prelude declarations; `ista check` reports name errors.
+4. Sync path, with full-shape engines covering a small subset: the checker core (type model, inference, registries), lowering, and the interpreter core (frames as data, calls through the mockable function table). `ista run` runs primitives, functions, `let`/`const`, `if`/`while`, `return` and basic structs.
+5. Persistence: `async`/`await`, atomic segments, snapshots through `InstanceStore`, `Timers`, the `Time`/`Duration` structs and `time.now`/`at`/`delay`, `runtime.commit`, and `crashEveryAwait`.
 
 **M3 — Feature slices.** *Done when:* every §12 example compiles and runs under `ista run --host` with a scripted stub host, and each spec section's corpus cases produce the specified diagnostics and runtime behaviour.
 1. Generics, overloads (defaults, rest, ADL, concrete over generic), operators as functions, traits and conformance, conversions, type aliases. Also owns `Optional`, `none` and implicit wrapping in `T?`, which every later slice uses.
