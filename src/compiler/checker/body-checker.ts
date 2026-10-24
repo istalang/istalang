@@ -24,6 +24,7 @@ import type { CallSite, CheckedBody, ResolvedCall, SignatureParameter } from './
 import type { BodyContext, CheckerContext } from './context.ts';
 import { checkerDiagnostics } from './diagnostics.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
+import { passesValueOn, refuseHeldFuture } from './rules/futures.ts';
 import { LoopScope } from './statements/loops.ts';
 import { ReturnScope } from './statements/returns.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
@@ -46,6 +47,8 @@ export class BodyChecker implements BodyContext {
   readonly loops = new LoopScope();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
+  /** The expressions and statements being checked, innermost last: what receives each value. */
+  readonly #within: NodeOf<string>[] = [];
 
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
@@ -65,9 +68,22 @@ export class BodyChecker implements BodyContext {
     return this.#checked(result);
   }
 
+  /** Checks a value of its own, such as a constant's initializer, against the declared result. */
+  checkValue(node: Expression): CheckedBody {
+    const { declared } = this.returns;
+    const type = declared === undefined ? this.expression(node) : this.expect(node, declared);
+    return this.#checked(declared ?? type);
+  }
+
   expression(node: Expression, expected?: Type): Type {
-    const type = handlerOf(expressionHandlers, node)(this, node, expected);
+    const receiver = this.#within.at(-1);
+    const type = this.#inside(node, () =>
+      handlerOf(expressionHandlers, node)(this, node, expected),
+    );
     this.#types.set(node, type);
+    if (receiver !== undefined && !passesValueOn(receiver)) {
+      refuseHeldFuture(this.checker, this.module, node, type);
+    }
     return type;
   }
 
@@ -84,11 +100,15 @@ export class BodyChecker implements BodyContext {
   }
 
   block(node: Block, expected?: Type): Type {
-    return checkBlock(this, node, expected);
+    return checkBlock(this, node, { kind: 'value', expected });
+  }
+
+  effectBlock(node: Block): void {
+    checkBlock(this, node, { kind: 'effect' });
   }
 
   statement(node: Statement | Invalid, expected?: Type): Type {
-    return handlerOf(statementHandlers, node)(this, node, expected);
+    return this.#inside(node, () => handlerOf(statementHandlers, node)(this, node, expected));
   }
 
   report(diagnostic: Diagnostic): void {
@@ -109,6 +129,16 @@ export class BodyChecker implements BodyContext {
 
   recordCall(site: CallSite, call: ResolvedCall): void {
     this.#calls.set(site, call);
+  }
+
+  /** Checks `node`'s parts with `node` as what receives their values. */
+  #inside<Result>(node: NodeOf<string>, check: () => Result): Result {
+    this.#within.push(node);
+    try {
+      return check();
+    } finally {
+      this.#within.pop();
+    }
   }
 
   /** The CheckedBody of what was checked, producing `result`. */

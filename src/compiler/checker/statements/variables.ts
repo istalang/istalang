@@ -19,7 +19,6 @@ import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { type OverloadableOperator, resolveOperator } from '../overloads/operators.ts';
-import { refuseHeldFuture } from '../rules/futures.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 /** The variables of one body: each one's type by its declaring name, and which were reassigned. */
@@ -70,7 +69,6 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
     declared === undefined
       ? context.expression(node.initializer)
       : context.expect(node.initializer, declared);
-  refuseHeldFuture(context.checker, context.module, node.initializer, declared ?? initial);
   context.variables.declare(target, declared ?? initial);
 }
 

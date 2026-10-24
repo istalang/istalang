@@ -4,34 +4,28 @@
  * - Functions are numbered when first referenced and lowered afterwards from a worklist, so a call
  *   can name a function that isn't lowered yet, including itself. Only what `main` reaches is
  *   lowered: generics are compiled per instantiation (§3.5), which only reachability can enumerate.
- * - Types and constants are interned: one entry per distinct type or value. A nominal type's
- *   identity is its declaration's entity plus its arguments, as in the checker (types/type.ts).
+ * - Types and constants are interned: one entry per distinct type or value, a value's identity
+ *   being its persisted text. A nominal type's identity is its declaration's entity plus its
+ *   arguments, as in the checker (types/type.ts).
  * - A type entry is numbered before its fields are lowered, so a recursive type refers to itself
  *   through the table (§3.1). Every nominal type can be laid out: a struct by its fields, an enum
- *   by its variants, an extern type by how it is disposed.
+ *   by its variants, an extern type by who disposes it, which the checker derives from the
+ *   `dispose` declared for it (checker/rules/disposal.ts).
  */
 
+import { z } from 'zod';
+import { encodeJson } from '../../definition/codec.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { Tables } from '../../definition/tables.ts';
 import type { TypeDefinition, TypeReference } from '../../definition/types.ts';
-import type { Value } from '../../definition/values.ts';
+import { type Value, value } from '../../definition/values.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker, FieldMember } from '../checker/check.ts';
 import type { NominalType, Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { loadedModule, qualifiedNameOf } from './names.ts';
-
-/**
- * The extern types the runtime itself disposes (§7, docs/arch/definition.md "Types and
- * locations"): a future and a slot die with their last holder. The rest are disposed by no one,
- * until a type gets a declared `dispose`.
- */
-const runtimeDisposed: ReadonlySet<string> = new Set(['prelude.Future', 'prelude.Slot']);
-
-/** A constant the lowering emits: a primitive value (§2). */
-export type ConstantValue = null | boolean | string | bigint | number;
 
 export class DefinitionTables {
   readonly #checker: Checker;
@@ -65,14 +59,14 @@ export class DefinitionTables {
     return index;
   }
 
-  /** The index of a constant holding `value`. */
-  constant(value: ConstantValue): number {
-    const key = constantKey(value);
+  /** The index of a constant holding `value`; equal values, as their persisted texts are, share one. */
+  constant(contents: Value): number {
+    const key = encodeJson(z.encode(value, contents));
     const known = this.#constantIndexes.get(key);
     if (known !== undefined) {
       return known;
     }
-    const index = this.#constants.push(value) - 1;
+    const index = this.#constants.push(contents) - 1;
     this.#constantIndexes.set(key, index);
     return index;
   }
@@ -206,7 +200,7 @@ export class DefinitionTables {
           name,
           arguments: typeArguments,
           sendable: declaration.isSendable,
-          disposal: runtimeDisposed.has(name) ? { kind: 'runtime' } : { kind: 'none' },
+          disposal: { kind: this.#checker.disposalOf(type) },
         };
       default: {
         const unhandled: never = declaration;
@@ -234,12 +228,4 @@ export class DefinitionTables {
     }
     return `${entityKey}<${type.arguments.map((argument) => this.#typeKey(argument)).join(',')}>`;
   }
-}
-
-/** One key per distinct constant: kind and value, with `-0` apart from `0` (§2). */
-function constantKey(value: ConstantValue): string {
-  if (typeof value === 'number') {
-    return `float:${Object.is(value, -0) ? '-0' : String(value)}`;
-  }
-  return `${typeof value}:${String(value)}`;
 }

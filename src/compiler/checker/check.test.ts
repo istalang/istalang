@@ -96,6 +96,30 @@ describe('checking reports', () => {
     ],
     ['recursion without a declared result', 'fn f(n: int): f(n)', reports.recursiveReturnType, 'f'],
     [
+      'a top-level constant computed by a call',
+      'fn g(): 1\nconst x = g()',
+      reports.notConstant,
+      'g()',
+    ],
+    [
+      'a top-level constant computed by arithmetic',
+      'const x = 1 + 2',
+      reports.notConstant,
+      '1 + 2',
+    ],
+    [
+      'a top-level constant computed by a branch, inside a struct',
+      'struct P { x: int }\nconst p = P{x: if true: 1 else: 2}',
+      reports.notConstant,
+      'if true: 1 else: 2',
+    ],
+    [
+      'a top-level constant not fitting its annotation',
+      'const x: int = "one"',
+      reports.typeMismatch,
+      '"one"',
+    ],
+    [
       'a call to an extern the host implements',
       'extern fn tick(n: int) -> int\nfn f(): tick(1)',
       reports.notSupportedYet,
@@ -146,15 +170,27 @@ describe('checking reports', () => {
       'time.delay(1s)',
     ],
     [
+      'a future held after passing through parentheses',
+      `${importTime}\nasync fn f():\n  const t = (time.delay(1s))\n  1`,
+      reports.notSupportedYet,
+      '(time.delay(1s))',
+    ],
+    [
+      'a future held as the value of an if',
+      `${importTime}\nasync fn f(c: bool):\n  const t = if c: time.delay(1s) else: time.delay(2s)\n  1`,
+      reports.notSupportedYet,
+      'if c: time.delay(1s) else: time.delay(2s)',
+    ],
+    [
       'a future discarded',
       `${importTime}\nasync fn f():\n  time.delay(1s)\n  1`,
-      reports.notSupportedYet,
+      reports.unusedValue,
       'time.delay(1s)',
     ],
     [
       'a future discarded by a loop body',
       `${importTime}\nfn f(c: bool):\n  while c:\n    time.delay(1s)`,
-      reports.notSupportedYet,
+      reports.unusedValue,
       'time.delay(1s)',
     ],
     [
@@ -204,7 +240,15 @@ describe('checking accepts', () => {
       `${importTime}\nasync fn g() -> Future<int>: 1\nasync fn f() -> Future<int>:\n  await time.at(time.now())\n  await g()`,
     ],
     ['a future returned to the caller', `${importTime}\nfn f() -> Future<unit>: time.delay(1s)`],
+    [
+      'a future returned through parentheses, a block, an if and a return',
+      `${importTime}\nfn f(c: bool) -> Future<unit>:\n  if c:\n    return (time.delay(1s))\n  { const d = 2s; if c: time.delay(d) else: time.delay(3s) }`,
+    ],
     ['a duration literal without importing time', 'fn f() -> int:\n  const d = 5d\n  d.value'],
+    [
+      'top-level constants used by functions and by each other',
+      'struct P { x: int; y: int }\nconst origin = P{x: zero, y: -1}\nconst zero = 0\nfn f() -> int: origin.x + origin.y',
+    ],
     [
       "a duration literal typed as time's Duration",
       "import Duration from 'time'\nfn f() -> Duration: 90m",
@@ -240,6 +284,33 @@ describe('recursion without declared results', () => {
     const { code } = reports.recursiveReturnType;
     expect(reportsWhenFirst('a.ista')).toEqual([[code], [code]]);
     expect(reportsWhenFirst('b.ista')).toEqual([[code], [code]]);
+  });
+});
+
+describe('top-level constants hold only what compile time computes', () => {
+  it.each([
+    [
+      'a struct field given by shorthand',
+      'struct P { x: int }\nconst x = 1\nconst p = P{x}',
+      'x',
+      reports.notConstant,
+    ],
+    ['an array', 'const xs = [1]', '[1]', reports.notSupportedYet],
+    ['a map', 'const m = ["a": 1]', '["a": 1]', reports.notSupportedYet],
+  ])('refuse %s, whatever else reports it', (_case, text, spanText, report) => {
+    const { codes, spanTexts } = reported(text);
+    const pairs = codes.map((code, index) => [code, spanTexts[index]]);
+    expect(pairs).toContainEqual([report.code, spanText]);
+  });
+});
+
+describe('top-level constants defined through themselves', () => {
+  it('are reported at every constant of the cycle, whichever is checked first', () => {
+    const text = 'const a = b\nconst b = c\nconst c = a\nconst d = 1';
+    expect(reported(text)).toEqual({
+      codes: Array.from({ length: 3 }, () => reports.constantCycle.code),
+      spanTexts: ['a', 'b', 'c'],
+    });
   });
 });
 

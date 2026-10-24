@@ -72,20 +72,42 @@ describe('lowering', () => {
     expect(names).toEqual(['purchase/approve.main', 'lib/math.twice', 'prelude.multiply']);
   });
 
-  it('lays out every kind of type a struct holds', () => {
+  it('lays out every kind of type a struct holds, extern types disposed as their dispose says', () => {
     const program = preludeProgramOf({
       main: [
         'struct Box { size: int?; items: Array<int>; next: Slot<int> }',
         'async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });
-    const kinds = compiled(program, 'main').types.map((type) => [type.kind, type.name]);
-    expect(kinds).toEqual([
+    const { types } = compiled(program, 'main');
+    expect(types.map((type) => [type.kind, type.name])).toEqual([
       ['struct', 'main.Box'],
       ['enum', 'prelude.Optional'],
       ['extern', 'prelude.Array'],
       ['extern', 'prelude.Slot'],
     ]);
+    const disposals = types.flatMap((type) =>
+      type.kind === 'extern' ? [[type.name, type.disposal.kind]] : [],
+    );
+    expect(disposals).toEqual([
+      ['prelude.Array', 'none'],
+      ['prelude.Slot', 'runtime'],
+    ]);
+  });
+
+  it('stores a constant once, computed in its own module even when another imports it', () => {
+    const program = stdProgramOf({
+      main: "import limits from 'lib'\nasync fn main(): limits.high + limits.high",
+      lib: 'struct Limits { high: int }\nconst base = 7\nconst limits = Limits{high: base}',
+    });
+    const definition = compiled(program, 'main');
+    const test = testRuntime();
+    const deployed = test.runtime.deploy(definitionFormat.write(definition).text);
+    expect(deployed.start('i')).toEqual({ kind: 'finished', outcome: 14n });
+    const structs = definition.constants.filter(
+      (constant) => typeof constant === 'object' && constant?.kind === 'struct',
+    );
+    expect(structs).toEqual([{ kind: 'struct', type: 0, fields: [7n] }]);
   });
 
   it('compiles every program the checker accepts into a Definition the runtime loads', () => {

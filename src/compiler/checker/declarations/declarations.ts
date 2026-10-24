@@ -36,8 +36,8 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
     checker.resultOf(node);
     checker.bodyOf(node);
   },
-  VariableDeclaration: (checker, node, module) => {
-    checker.unsupported(module, node, 'Top-level constant');
+  VariableDeclaration: (checker, node) => {
+    checker.constantOf(node);
   },
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

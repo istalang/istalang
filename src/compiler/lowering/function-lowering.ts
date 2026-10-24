@@ -8,6 +8,7 @@
 
 import type { CodeFunction } from '../../definition/functions.ts';
 import type { Register } from '../../definition/operands.ts';
+import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CheckedBody, Checker } from '../checker/check.ts';
@@ -23,7 +24,7 @@ import { expressionHandlers } from './expressions/expressions.ts';
 import { LoopStack } from './statements/loops.ts';
 import { lowerBlock, statementHandlers } from './statements/statements.ts';
 import { VariableRegisters } from './statements/variables.ts';
-import type { ConstantValue, DefinitionTables } from './tables.ts';
+import type { DefinitionTables } from './tables.ts';
 
 export class FunctionLowering implements FunctionContext {
   readonly checker: Checker;
@@ -78,7 +79,7 @@ export class FunctionLowering implements FunctionContext {
     return this.checker.bindings.entityOf(this.module, name);
   }
 
-  constant(value: ConstantValue, span: Span): Register {
+  constant(value: Value, span: Span): Register {
     const dst = this.code.allocate();
     this.code.emit({ kind: 'constant', span, dst, constant: this.tables.constant(value) });
     return dst;

@@ -11,7 +11,7 @@ import type { Handlers } from '../../syntax/handlers.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
-import { refuseHeldFuture } from '../rules/futures.ts';
+import { checkDiscarded } from '../rules/must-use.ts';
 import { neverType, type Type, unitType } from '../types/type.ts';
 import { unsupportedHandler } from '../unsupported.ts';
 import { checkLoopExit, checkWhile } from './loops.ts';
@@ -49,17 +49,22 @@ export const statementHandlers: Handlers<
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
+/** How a block's value is used: as the block's own, or discarded, as a loop's body discards it. */
+export type BlockUse =
+  | { readonly kind: 'value'; readonly expected: Type | undefined }
+  | { readonly kind: 'effect' };
+
 /**
- * The type of `block`: that of its last statement, which alone sees `expected`. Every other
- * statement's value is discarded.
+ * The type of `block`: that of its last statement, which alone sees the expected type. Every other
+ * statement's value is discarded, and so is the last one's when the block runs for its effects.
  */
-export function checkBlock(context: BodyContext, block: Block, expected: Type | undefined): Type {
+export function checkBlock(context: BodyContext, block: Block, use: BlockUse): Type {
   let type: Type = unitType;
   block.statements.forEach((statement, index) => {
-    const isLast = index === block.statements.length - 1;
-    type = context.statement(statement, isLast ? expected : undefined);
-    if (!isLast) {
-      refuseHeldFuture(context.checker, context.module, statement, type);
+    const isValue = use.kind === 'value' && index === block.statements.length - 1;
+    type = context.statement(statement, isValue ? use.expected : undefined);
+    if (!isValue) {
+      checkDiscarded(context, statement, type);
     }
   });
   return type;

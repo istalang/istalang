@@ -30,6 +30,10 @@ export function entityValueType(
           return context.unsupported(node, 'A function value');
         case 'ExternConstantDeclaration':
           return context.unsupported(node, 'An extern constant');
+        case 'VariableDeclaration':
+          return (
+            context.checker.constantOf(entity.owner)?.result ?? context.variables.typeOf(entity)
+          );
         default:
           return context.variables.typeOf(entity);
       }

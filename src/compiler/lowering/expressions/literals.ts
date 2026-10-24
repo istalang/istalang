@@ -15,7 +15,7 @@ export function lowerDurationLiteral(context: FunctionContext, node: DurationLit
     kind: 'struct',
     span: node.span,
     dst,
-    type: context.tables.typeIndex(nominalTypeOf(context, node)),
+    type: context.tables.typeIndex(nominalTypeOf(context.body, node)),
     fields: [milliseconds],
   });
   return dst;

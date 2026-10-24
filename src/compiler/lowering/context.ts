@@ -10,6 +10,7 @@
  */
 
 import type { Register } from '../../definition/operands.ts';
+import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CheckedBody, Checker } from '../checker/check.ts';
@@ -20,7 +21,7 @@ import type { Block, Statement } from '../syntax/statements.ts';
 import type { CodeWriter } from './code-writer.ts';
 import type { LoopStack } from './statements/loops.ts';
 import type { VariableRegisters } from './statements/variables.ts';
-import type { ConstantValue, DefinitionTables } from './tables.ts';
+import type { DefinitionTables } from './tables.ts';
 
 export interface FunctionContext {
   readonly checker: Checker;
@@ -34,7 +35,7 @@ export interface FunctionContext {
   readonly statement: (node: Statement | Invalid) => void;
   readonly entityOf: (name: Identifier) => Entity | undefined;
   /** A fresh register holding the constant `value`. */
-  readonly constant: (value: ConstantValue, span: Span) => Register;
+  readonly constant: (value: Value, span: Span) => Register;
   /** The function's code: registers, instructions and labels. */
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;

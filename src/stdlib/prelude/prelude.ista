@@ -18,6 +18,11 @@ extern fn read<T>(self: Slot<T>) -> Future<T>
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
 extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
 
+# Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
+# `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.
+extern fn dispose<T>(self: Future<T>)
+extern fn dispose<T>(self: Slot<T>)
+
 enum Optional<T>:
   Some { value: T }
   None

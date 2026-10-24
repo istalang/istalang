@@ -68,6 +68,8 @@ export interface BodyContext {
   readonly fit: (found: Type, expected: Type, at: Span) => void;
   /** Checks a block in its own scope; its type is that of its last expression (§4). */
   readonly block: (node: Block, expected?: Type) => Type;
+  /** Checks a block run only for its effects, such as a loop's body, discarding every value. */
+  readonly effectBlock: (node: Block) => void;
   /** Checks a statement; its type, which only a block's last statement passes on (§4). */
   readonly statement: (node: Statement | Invalid, expected?: Type) => Type;
   readonly report: (diagnostic: Diagnostic) => void;

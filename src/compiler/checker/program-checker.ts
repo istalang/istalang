@@ -9,6 +9,10 @@
  * - A function with no declared result gets the one its body produces (§2). Inferring it checks
  *   the body; a call reached while that body is being checked is the function calling itself,
  *   directly or through others, which needs a declared result.
+ * - A top-level constant is checked the same lazy way, and one reached while it is being checked
+ *   is defined through itself (§3). Both use one lazy check with cycle reporting (lazy-checks.ts).
+ * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
+ *   (declarations/constants.ts), as BodyChecker composes the units of a body.
  * - Diagnostics are kept per module, in the order found; the coordinator sorts them.
  */
 
@@ -23,10 +27,19 @@ import type {
   StructDeclaration,
 } from '../syntax/declarations.ts';
 import type { NodeOf } from '../syntax/node.ts';
+import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { BodyChecker } from './body-checker.ts';
-import type { CheckedBody, FieldMember, SignatureParameter, VariantMember } from './check.ts';
+import type {
+  CheckedBody,
+  CheckedConstant,
+  Disposal,
+  FieldMember,
+  SignatureParameter,
+  VariantMember,
+} from './check.ts';
 import type { CheckerContext } from './context.ts';
+import { ConstantChecks } from './declarations/constants.ts';
 import { checkDeclaration } from './declarations/declarations.ts';
 import { resolveTypeNode } from './declarations/resolve-type.ts';
 import {
@@ -36,6 +49,8 @@ import {
   declaredParameters,
 } from './declarations/signatures.ts';
 import { checkerDiagnostics } from './diagnostics.ts';
+import { LazyChecks } from './lazy-checks.ts';
+import { disposalOf } from './rules/disposal.ts';
 import {
   errorType,
   type NominalType,
@@ -49,18 +64,27 @@ import { notSupported } from './unsupported.ts';
 export class ProgramChecker implements CheckerContext {
   readonly program: Program;
   readonly bindings: Bindings;
-  readonly #modules = new Map<Declaration, ModuleId>();
+  /** Every module's top-level items, with the module declaring each. */
+  readonly #modules = new Map<NodeOf<string>, ModuleId>();
   readonly #diagnostics = new Map<ModuleId, Diagnostic[]>();
   readonly #parameters = new Map<FunctionDeclaration, readonly SignatureParameter[]>();
   readonly #declaredResults = new Map<FunctionDeclaration, Type | undefined>();
   readonly #results = new Map<FunctionDeclaration, Type>();
-  readonly #bodies = new Map<FunctionDeclaration, CheckedBody>();
+  readonly #bodies = new LazyChecks<FunctionDeclaration, CheckedBody>((member) => {
+    this.report(
+      this.moduleOf(member),
+      checkerDiagnostics.recursiveReturnType(member.name.span, member.name.text),
+    );
+  });
+  readonly #constants = new ConstantChecks({
+    checker: this,
+    moduleOfItem: (declaration) => this.#modules.get(declaration),
+    checkValue: (module, initializer, declaredResult) =>
+      new BodyChecker(this, module, { isAsync: false, declaredResult }).checkValue(initializer),
+  });
   readonly #fields = new Map<StructDeclaration, readonly FieldMember[]>();
   readonly #checkedModules = new Set<ModuleId>();
   readonly #variants = new Map<EnumDeclaration, readonly VariantMember[]>();
-  /** The functions whose bodies are being checked right now, innermost last. */
-  readonly #checking: FunctionDeclaration[] = [];
-  readonly #reportedRecursive = new Set<FunctionDeclaration>();
 
   constructor(program: Program) {
     this.program = program;
@@ -109,9 +133,7 @@ export class ProgramChecker implements CheckerContext {
       return known;
     }
     const declared = this.#declaredBodyResult(declaration);
-    const cycleStart = this.#checking.indexOf(declaration);
-    if (declared === undefined && cycleStart >= 0) {
-      this.#reportRecursion(this.#checking.slice(cycleStart));
+    if (declared === undefined && this.#bodies.inCycle(declaration)) {
       return errorType;
     }
     const bodyResult = declared ?? this.bodyOf(declaration)?.result ?? unitType;
@@ -126,21 +148,20 @@ export class ProgramChecker implements CheckerContext {
     if (body === undefined) {
       return undefined;
     }
-    return memoized(this.#bodies, declaration, () => {
-      this.#checking.push(declaration);
-      try {
-        const kind = {
-          isAsync: declaration.isAsync,
-          declaredResult: this.#declaredBodyResult(declaration),
-        };
-        return new BodyChecker(this, this.moduleOf(declaration), kind).checkFunction(
-          body,
-          this.parametersOf(declaration),
-        );
-      } finally {
-        this.#checking.pop();
-      }
+    return this.#bodies.resultOf(declaration, () => {
+      const kind = {
+        isAsync: declaration.isAsync,
+        declaredResult: this.#declaredBodyResult(declaration),
+      };
+      return new BodyChecker(this, this.moduleOf(declaration), kind).checkFunction(
+        body,
+        this.parametersOf(declaration),
+      );
     });
+  }
+
+  constantOf(declaration: VariableDeclaration): CheckedConstant | undefined {
+    return this.#constants.constantOf(declaration);
   }
 
   fieldsOf(type: NominalType): readonly FieldMember[] | undefined {
@@ -161,6 +182,10 @@ export class ProgramChecker implements CheckerContext {
       name: variant.name,
       fields: instantiateFields(variant.fields, substitution),
     }));
+  }
+
+  disposalOf(type: NominalType): Disposal {
+    return disposalOf(this, type);
   }
 
   declaredFieldsOf(declaration: StructDeclaration): readonly FieldMember[] {
@@ -199,20 +224,6 @@ export class ProgramChecker implements CheckerContext {
       }
     }
     return this.#diagnostics.get(module) ?? [];
-  }
-
-  /**
-   * Every function of an inference cycle needs a declared result. Each is reported at its own name,
-   * so the report doesn't depend on which module's diagnostics were asked for first.
-   */
-  #reportRecursion(cycle: readonly FunctionDeclaration[]): void {
-    for (const member of cycle.filter((candidate) => !this.#reportedRecursive.has(candidate))) {
-      this.#reportedRecursive.add(member);
-      this.report(
-        this.moduleOf(member),
-        checkerDiagnostics.recursiveReturnType(member.name.span, member.name.text),
-      );
-    }
   }
 
   #declaredBodyResult(declaration: FunctionDeclaration): Type | undefined {

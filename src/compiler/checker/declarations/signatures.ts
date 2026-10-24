@@ -7,6 +7,8 @@
  * - An async function declares its real result, `Future<T>`; its body produces the `T` (§3.3).
  * - Defaults and rest parameters (§3.3) are sugar the checker doesn't expand yet.
  * - Fields, of a struct or of an enum's variant, resolve in the declaring module.
+ * - Code that would hold a future in a parameter or a field is refused (rules/futures.ts); an
+ *   extern's parameters are its native's to hold, so they aren't.
  */
 
 import type { ModuleId } from '../../program/program.ts';
@@ -38,7 +40,9 @@ export function declaredParameters(
       checker.unsupported(module, node, node.isRest ? 'Rest parameter' : 'Default value');
     }
     const type = node.type === undefined ? errorType : checker.resolveType(module, node.type);
-    refuseHeldFuture(checker, module, node, type);
+    if (declaration.body !== undefined) {
+      refuseHeldFuture(checker, module, node, type);
+    }
     return [{ node, type, reference: node.type?.kind === 'ReferenceType' }];
   });
 }

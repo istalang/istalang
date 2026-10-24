@@ -118,4 +118,18 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
     message: (name: string) =>
       `This needs the std module '${name}', which the program didn't load.`,
   },
+  unusedValue: {
+    code: 5025,
+    message: (type: string) =>
+      `A ${type} must be used: await it, keep it in a variable, or drop it.`,
+  },
+  notConstant: {
+    code: 5026,
+    message: () =>
+      'A top-level const needs a value compile time computes: literals, other constants, and structs, arrays and maps built from them.',
+  },
+  constantCycle: {
+    code: 5027,
+    message: (name: string) => `'${name}' is defined through itself.`,
+  },
 });

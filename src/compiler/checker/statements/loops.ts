@@ -4,10 +4,9 @@
  */
 
 import type { NodeOf } from '../../syntax/node.ts';
-import { tailNodeOf, type While } from '../../syntax/statements.ts';
+import type { While } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
-import { refuseHeldFuture } from '../rules/futures.ts';
 import { boolType, neverType, type Type, unitType } from '../types/type.ts';
 
 /** How deep inside loops checking is, so `break` and `continue` know whether they may stand. */
@@ -31,8 +30,7 @@ export class LoopScope {
 
 export function checkWhile(context: BodyContext, node: While): Type {
   context.expect(node.condition, boolType);
-  const body = context.loops.inside(() => context.block(node.body));
-  refuseHeldFuture(context.checker, context.module, tailNodeOf(node.body), body);
+  context.loops.inside(() => context.effectBlock(node.body));
   return unitType;
 }
 

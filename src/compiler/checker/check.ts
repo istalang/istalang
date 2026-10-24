@@ -13,6 +13,7 @@ import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression, Parameter } from '../syntax/expressions.ts';
 import type { NodeOf } from '../syntax/node.ts';
+import type { VariableDeclaration } from '../syntax/statements.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type { NominalType, Type } from './types/type.ts';
 
@@ -57,6 +58,14 @@ export interface CheckedBody {
   readonly result: Type;
 }
 
+/** Who disposes a value of an extern type when its last holder releases it (§7). */
+export type Disposal = 'none' | 'runtime';
+
+/** A top-level constant as checked: its initializer's types, its type as `result`, and its module. */
+export interface CheckedConstant extends CheckedBody {
+  readonly module: ModuleId;
+}
+
 /** A program's types, as its later phases read them. */
 export interface Checker {
   readonly program: Program;
@@ -69,10 +78,17 @@ export interface Checker {
   readonly resultOf: (declaration: FunctionDeclaration) => Type;
   /** The checked body of a function with one: its expressions' types and its calls' targets. */
   readonly bodyOf: (declaration: FunctionDeclaration) => CheckedBody | undefined;
+  /**
+   * A top-level constant's checked initializer, its `result` the constant's type (§3); undefined
+   * for any other variable.
+   */
+  readonly constantOf: (declaration: VariableDeclaration) => CheckedConstant | undefined;
   /** The fields of a struct type, substituted for its type arguments; undefined for another type. */
   readonly fieldsOf: (type: NominalType) => readonly FieldMember[] | undefined;
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
   readonly variantsOf: (type: NominalType) => readonly VariantMember[] | undefined;
+  /** Who disposes a value of `type` (rules/disposal.ts). */
+  readonly disposalOf: (type: NominalType) => Disposal;
 }
 
 const checkers = new WeakMap<Program, Checker>();

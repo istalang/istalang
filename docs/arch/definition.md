@@ -67,6 +67,8 @@ A place is a register plus a path of steps: a field, or an element. An element s
 
 Map entries keep the runtime's order, so a restore iterates the same way.
 
+Values are immutable. A `constant` instruction hands its register the pool's own value, and a bound program, its pool included, is shared by every instance a runtime runs, so nothing may write into a value in place: a write through a place (`store`, `setIndex`) builds the new value along its path, as value semantics (spec §3.1) has it anyway.
+
 ## Externs
 
 An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop` and `setIndex` take their container by `&`. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (used by the boundary conversion) and its type arguments (for natives such as `json.parse<T>`). An extern constant is an entry with `constant` set: it is read once per instance and then pinned for the instance's life (spec §3.6). Where the snapshot pins it arrives with the host externs that read one; nothing reads an extern constant yet.
@@ -75,7 +77,7 @@ An extern entry has its own shape: no frame, no captures and no `async` (it retu
 
 A type entry is identified by its module-qualified declared `name` and its `arguments`, `time.Time` or `prelude.Optional` with `[int]`, so the runtime recognizes the types the boundary treats specially (spec §9) whatever their instantiation. An anonymous struct has no name.
 
-Only extern types can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures, slots and revertible messages; or a `function`, the declared `dispose`, as for `Shared<Lease>`.
+Only extern types can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures, slots and revertible messages; or a `function`, the declared `dispose`, as for `Shared<Lease>`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a host's types are the host's (`function` disposal arrives with the disposal slice). No list of disposable types is kept anywhere.
 
 Each module carries its line starts. The runtime has neither source text nor the compiler, yet it turns spans into locations for `Error.trace`, a panic's trace, `waitingAt()` and the operator's view.
 
@@ -124,6 +126,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `return`, last expression (§3.3) | `return` |
 | `extern fn`, extern constant (§3.6) | `extern` function entries; reading a constant is a `call` |
 | `let`, `const`, assignment (§3.4) | registers; `move` or a write through a cell |
+| Top-level `const` (§3) | computed while compiling into a constant; reading one is a `constant` instruction, like a literal |
 | Block end, `break`, `continue` (§3.4, §4) | `release` of the block's registers, then `jump` where needed |
 | `fn let`, `fn const`, `fn _` (§3.4) | `keep`, then `release`, at the block's end |
 | `_ = e` (§7) | an unnamed register, released at the block's end |

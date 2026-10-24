@@ -4,13 +4,14 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
+import type { CheckedBody, Checker } from '../../checker/check.ts';
 import type { NominalType } from '../../checker/types/type.ts';
 import type { Expression, MemberAccess, StructLiteral } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
-  const type = nominalTypeOf(context, node);
+  const type = nominalTypeOf(context.body, node);
   const given = new Map<string, Register>();
   for (const item of node.items) {
     if (item.kind !== 'FieldInitializer' || item.value === undefined) {
@@ -18,13 +19,7 @@ export function lowerStructLiteral(context: FunctionContext, node: StructLiteral
     }
     given.set(item.name.text, context.expression(item.value));
   }
-  const fields = (context.checker.fieldsOf(type) ?? []).map((field) => {
-    const register = given.get(field.name);
-    if (register === undefined) {
-      throw new Error(`No value for '${field.name}'; the checker should have said so.`);
-    }
-    return register;
-  });
+  const fields = inDeclarationOrder(context.checker, type, given);
   const dst = context.code.allocate();
   context.code.emit({
     kind: 'struct',
@@ -38,7 +33,7 @@ export function lowerStructLiteral(context: FunctionContext, node: StructLiteral
 
 export function lowerFieldRead(context: FunctionContext, node: MemberAccess): Register {
   const src = context.expression(node.target);
-  const type = nominalTypeOf(context, node.target);
+  const type = nominalTypeOf(context.body, node.target);
   const index = (context.checker.fieldsOf(type) ?? []).findIndex(
     (field) => field.name === node.member.text,
   );
@@ -50,9 +45,24 @@ export function lowerFieldRead(context: FunctionContext, node: MemberAccess): Re
   return dst;
 }
 
+/** What a literal gave each field of `type`, by name, in the type's declaration order. */
+export function inDeclarationOrder<Field>(
+  checker: Checker,
+  type: NominalType,
+  given: ReadonlyMap<string, Field>,
+): Field[] {
+  return (checker.fieldsOf(type) ?? []).map((field) => {
+    const value = given.get(field.name);
+    if (value === undefined) {
+      throw new Error(`No value for '${field.name}'; the checker should have said so.`);
+    }
+    return value;
+  });
+}
+
 /** The struct type the checker gave `node`. */
-export function nominalTypeOf(context: FunctionContext, node: Expression): NominalType {
-  const type = context.body.typeOf(node);
+export function nominalTypeOf(body: CheckedBody, node: Expression): NominalType {
+  const type = body.typeOf(node);
   if (type.kind !== 'nominal') {
     throw new Error(`Expected a struct at ${node.span.start}; the checker should have said so.`);
   }

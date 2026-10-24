@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-24
-last_updated: 2026-10-24
+last_updated: 2026-10-25
 tags: [tracker]
 ---
 
@@ -15,7 +15,7 @@ tags: [tracker]
 | Milestone | Status |
 | --- | --- |
 | M1 Syntax | done |
-| M2 Skeleton | planned |
+| M2 Skeleton | done |
 | M3 Feature slices | planned |
 | M4 Standard library | planned |
 | M5 Test runner | planned |
@@ -26,14 +26,13 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D57.
+up, so the next one is D60.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |
 | D27 | Project root ignores `ista.json`: spec §3.13 makes the directory holding `ista.json` the root, with the working directory only as a fallback, but `cli/project.ts` always uses the working directory. Implement it with `ista.json` in M8. | phase review M2.1 2026-10-24 | open |
 | D33 | No type declarations ship: the package's only entry is the `ista` executable, and tsc emitted declarations for modules with no JavaScript. When the first subpath export (`istalang/compiler`, `istalang/runtime`, …) lands, make each one a tsdown entry with declarations for exactly what it exports, and test that every export has both its `.js` and its `.d.ts`. Owner: the host API (M3.9). | phase review M2.1 2026-10-24 | open |
-| D38 | Top-level constants (§3: `const` values computable at compile time) have no owner. The checker reports every one as not supported yet. Supporting them means checking that an initializer is computable at compile time (literals, and structs, arrays and maps built from them) and lowering each to a Definition constant. M3.2 (values) is the natural owner. | phase 2.4 2026-10-24 | open |
-| D41 | Which extern types the runtime disposes is a list of qualified names in `lowering/tables.ts` (`runtimeDisposed`: `prelude.Future`, `prelude.Slot`). The runtime's disposal code will be a second home for the same fact, and `Shared<Lease>`-style `function` disposal (definition.md) has no path. When the disposal slice (§7) lands, derive each extern type's disposal from its declaration (an annotation or trait in `prelude.ista`), so lowering and the runtime read one source. | phase review 2.4 2026-10-24 | open |
 | D44 | The scheduler favours obviousness over speed: `Instance.callFutureOf` and `resolve` scan the whole heap on every async return and await, `#add` takes the max id each allocation, and every segment restores from the committed snapshot's text. Fine for skeleton-sized instances; measure once M3.6 (concurrency) gives instances many executions, then index what profiling shows (derived maps rebuilt on restore, never persisted). | phase 2.5 2026-10-25 | open |
-| D45 | The "a future is only awaited or returned" frontier (`checker/rules/futures.ts`, `refuseHeldFuture`) is called from five sites: `declarations/signatures.ts` (parameters, fields), `statements/statements.ts` (`While` body tail, `checkBlock` non-last statements), `statements/variables.ts` (initializers). The slice that makes futures values and adds disposal (§7, M3) must remove all five; until then every new place a value is held or discarded (`for`, `match` arms, `if` as statement, closures) must add a sixth (Contain complexity). | phase review 2.5 2026-10-25 | open |
-| D49 | `rules/futures.ts` reports a discarded future (a non-last block statement) as not supported yet (5000), and its banner says the disposal slice removes those reports. Spec §3.3 makes a bare unused future a compile error, so when futures become values (D45) the statement-position check must become that error, not disappear with the other reports. | phase review 2.5 2026-10-25 | open |
+| D57 | Top-level constants have two homes for one rule: `checker/declarations/constants.ts` `firstUncomputable` decides what compile time computes, and `lowering/constants.ts` `constantValue` computes it, in two switches over expression kinds that must agree (the `time.Duration` layout of a duration literal is also spelled twice, there and in `lowering/expressions/literals.ts`). Every slice that makes a new form computable (3.2 struct forms, 3.3 arrays and maps) edits both, and a disagreement is a compiler crash, not a diagnostic. One evaluator that decides and computes: the checker produces each constant's computed form on `CheckedConstant` (literal, struct of a `NominalType` with fields, another constant), and lowering only maps types to indexes with an exhaustive switch. Owner: 3.2. | phase review M2-debt 2026-10-25 | open |
+| D58 | Composite constants live in the Definition's constant pool, shared by every instance of a runtime, so values must stay immutable (definition.md, "Values"). When `store` and `setIndex` run (3.2), they must build the new value along their path, and 3.2's value-semantics acceptance must include changing a copy of a top-level constant. Owner: 3.2. | phase review M2-debt 2026-10-25 | open |
+| D59 | The prelude's `dispose` overloads (`Future`, `Slot`) are ordinary callable functions: once 3.1 lifts the generic-call frontier, `dispose(slot)` checks clean and lowers to an extern no native implements, so deploy refuses it (a totality break), and §7 forbids making a disposed value observable. Refuse calling `dispose` directly. Whether a host type may be disposable at all, through its extern's native (`function` disposal) or not (§7: what the host provides is owned by the host), is decided with the host boundary; today only a std module's extern `dispose` counts. Owner: 3.7, with 3.9 for host types. | phase review M2-debt 2026-10-25 | open |
