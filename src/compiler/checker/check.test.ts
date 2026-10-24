@@ -15,33 +15,16 @@ import {
   reportedNothing,
   reportedOnce,
 } from '../../diagnostics/diagnostic.test-kit.ts';
-import { preludeProgramOf, stdProgramOf } from '../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../compile.test-kit.ts';
+import { preludeProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
+import { inFunction, reported } from './check.test-kit.ts';
 import { checkProgram } from './check.ts';
 import { checkerDiagnostics as reports } from './diagnostics.ts';
 
 const corpusTexts = runPrograms.map((program) => program.text);
 
-/** Everything reported for `text` as module `main.ista`, beside the std modules and `others`. */
-function reported(text: string, others: Readonly<Record<string, string>> = {}) {
-  const { source, diagnostics } = diagnosedAt(
-    stdProgramOf({ 'main.ista': text, ...others }),
-    'main.ista',
-  );
-  return reportedIn(source, diagnostics);
-}
-
 const importTime = "import * as time from 'time'";
-
-/** `body` as the body of a function taking `c: bool`, `n: int` and `s: string`. */
-function inFunction(body: string): string {
-  return `struct Point { x: int; y: int }\n\nfn subject(c: bool, n: int, s: string):\n${body
-    .split('\n')
-    .map((line) => `  ${line}`)
-    .join('\n')}\n`;
-}
 
 describe('checking reports', () => {
   it.each([
@@ -289,12 +272,8 @@ describe('recursion without declared results', () => {
 
 describe('top-level constants hold only what compile time computes', () => {
   it.each([
-    [
-      'a struct field given by shorthand',
-      'struct P { x: int }\nconst x = 1\nconst p = P{x}',
-      'x',
-      reports.notConstant,
-    ],
+    ['a call', 'fn one() -> int: 1\nconst x = one()', 'one()', reports.notConstant],
+    ['a tuple element', 'const t = (1, 2)\nconst x = t.0', 't.0', reports.notConstant],
     ['an array', 'const xs = [1]', '[1]', reports.notSupportedYet],
     ['a map', 'const m = ["a": 1]', '["a": 1]', reports.notSupportedYet],
   ])('refuse %s, whatever else reports it', (_case, text, spanText, report) => {

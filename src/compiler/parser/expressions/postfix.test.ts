@@ -87,6 +87,43 @@ describe('indexing, members and postfix operators', () => {
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
+});
+
+describe('tuple elements (§3.15)', () => {
+  it.each([
+    ['t.0', '(TupleElement t 0)'],
+    ['t.12', '(TupleElement t 12)'],
+    ['t.0.1', '(TupleElement (TupleElement t 0) 1)'],
+    ['t.1.0.2', '(TupleElement (TupleElement (TupleElement t 1) 0) 2)'],
+    ['f().1.name', '(MemberAccess (TupleElement (Call f [] []) 1) name)'],
+    ['p.pair.0', '(TupleElement (MemberAccess p pair) 0)'],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('expression', text)).toBe(tree);
+  });
+
+  it('spans each element from the target to its own position', () => {
+    const { node } = parseAs('expression', 't.10.2');
+    const inner = node.kind === 'TupleElement' ? node.target : undefined;
+    expect([node.span, inner?.span]).toEqual([
+      { start: 0, end: 6 },
+      { start: 0, end: 4 },
+    ]);
+  });
+
+  it.each(['t.01', 't.0x1', 't.0b1', 't.1_0', 't.1e3', 't.1.5e2', 't.0.01'])(
+    'reports %s once, naming the position',
+    (text) => {
+      expect(reported('expression', text)).toEqual(
+        reportedOnce(parserDiagnostics.invalidTupleElement.code, text.slice(2)),
+      );
+    },
+  );
+
+  it('takes no element after ?.', () => {
+    expect(reported('expression', 't?.0')).toEqual(
+      reportedOnce(parserDiagnostics.expected.code, '0'),
+    );
+  });
 
   it.each([
     ['a.', ''],

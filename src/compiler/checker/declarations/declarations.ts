@@ -14,6 +14,7 @@ import type { ModuleId } from '../../program/program.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { type GenericDeclaration, typeParametersOf } from './resolve-type.ts';
+import { checkFiniteFields } from './struct-rules.ts';
 
 const nothingToCheck = (): void => undefined;
 
@@ -60,6 +61,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   StructDeclaration: (checker, node) => {
     checkTypeParameters(checker, node);
     checker.declaredFieldsOf(node);
+    checkFiniteFields(checker, node);
   },
   EnumDeclaration: (checker, node) => {
     checkTypeParameters(checker, node);

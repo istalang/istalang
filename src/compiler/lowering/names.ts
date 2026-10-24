@@ -87,6 +87,14 @@ function keyType(checker: Checker, type: Type): KeyType {
     }
     case 'tuple':
       return { kind: 'tuple', elements: type.elements.map((element) => keyType(checker, element)) };
+    case 'anonymous':
+      return {
+        kind: 'anonymous',
+        fields: type.fields.map((field) => ({
+          name: field.name,
+          type: keyType(checker, field.type),
+        })),
+      };
     case 'function':
       return {
         kind: 'function',

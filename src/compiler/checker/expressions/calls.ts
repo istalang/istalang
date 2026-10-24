@@ -7,18 +7,27 @@
  * - a type and a static function (`Duration.zero()`, `T.zero()`, `time.Duration.zero()`);
  * - a type alone, a conversion (`float(3)`), which calls the type's static `from` (§3.10).
  *
- * Methods (`x.f()`), calls through function values, spread arguments and `&` arguments are other
- * ways to call; each is reported as not supported until the feature that adds it.
+ * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
+ *   its name where the call is written and through the receiver's type (argument-dependent
+ *   lookup), with the receiver as its first argument (§3.7). Which overload the receiver's type
+ *   picks decides whether `self` is a reference, and only then must the receiver be a place that
+ *   may change. A name that is a field of the receiver is a function value, not a method.
+ *
+ * An argument written `&x` passes the place `x` by reference, which must be a place that may
+ * change (rules/places.ts). Calls through function values and spread arguments are other ways to
+ * call; each is reported as not supported until the feature that adds it.
  */
 
 import { conversionFunction, wellKnown } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
-import type { Call, Expression } from '../../syntax/expressions.ts';
+import { isMethod } from '../../syntax/declarations.ts';
+import type { Call, Expression, MemberAccess } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
-import { callCandidates, staticCandidates } from '../overloads/candidates.ts';
+import { callCandidates, staticCandidates, topLevelCandidates } from '../overloads/candidates.ts';
 import { resolveCall, type WrittenArgument } from '../overloads/resolve.ts';
+import { checkChangedPlace } from '../rules/places.ts';
 import { staticTargetOf } from '../traits/conformance.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -27,11 +36,8 @@ import { decidedByCall, namedType } from './variants.ts';
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const argumentNodes: Expression[] = [];
   for (const argument of node.arguments) {
-    if (argument.kind === 'Spread' || argument.kind === 'Reference') {
-      return context.unsupported(
-        argument,
-        argument.kind === 'Spread' ? frontier.spreadArgument : frontier.reference,
-      );
+    if (argument.kind === 'Spread') {
+      return context.unsupported(argument, frontier.spreadArgument);
     }
     argumentNodes.push(argument);
   }
@@ -42,14 +48,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
       node.typeArguments.length === 0
         ? undefined
         : node.typeArguments.map((argument) => context.resolveType(argument)),
-    written: argumentNodes.map((argument) => {
-      const accepts = decidedByCall(context, argument);
-      return {
-        node: argument,
-        type: accepts === undefined ? context.expression(argument) : undefined,
-        accepts,
-      };
-    }),
+    written: argumentNodes.map((argument) => writtenArgument(context, argument)),
   };
   const { callee } = node;
   switch (callee.kind) {
@@ -62,12 +61,69 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
       }
       const owner = namedType(context, callee.target);
       return owner === undefined
-        ? context.unsupported(callee, frontier.methodCall)
+        ? callMethod(context, call, callee)
         : callStatic(context, call, owner, callee.member.text);
     }
     default:
       return context.unsupported(callee, frontier.functionValueCall);
   }
+}
+
+/**
+ * An argument as written: `&x` passes the place `x`, checked as a place that may change; any
+ * other is a value, checked now unless the chosen function decides its type.
+ */
+function writtenArgument(context: BodyContext, argument: Expression): WrittenArgument {
+  if (argument.kind === 'Reference') {
+    const type = checkChangedPlace(context, argument.expression, 'referenced');
+    return { node: argument, passing: 'reference', type };
+  }
+  const accepts = decidedByCall(context, argument);
+  return {
+    node: argument,
+    passing: 'value',
+    type: accepts === undefined ? context.expression(argument) : undefined,
+    accepts,
+  };
+}
+
+/** `x.f(…)`: `f` called with `x` as its `self` (§3.7). */
+function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAccess): Type {
+  if (callee.isOptional) {
+    return context.unsupported(callee, frontier.optionalChaining);
+  }
+  const { checker } = context;
+  const receiver = callee.target;
+  const receiverType = context.expression(receiver);
+  if (receiverType.kind === 'error') {
+    return errorType;
+  }
+  const name = callee.member.text;
+  if (checker.fieldsOf(receiverType)?.some((field) => field.name === name)) {
+    return context.unsupported(call.node, frontier.functionValueCall);
+  }
+  const written = [
+    { node: receiver, passing: 'receiver', type: receiverType } as const,
+    ...call.written,
+  ];
+  const types = written.map(({ type }) => type);
+  const candidates = topLevelCandidates(checker, context.module, name, types).filter(
+    ({ declaration }) => isMethod(declaration),
+  );
+  if (candidates.length === 0) {
+    context.report(checkerDiagnostics.noMember(callee.member.span, typeText(receiverType), name));
+    return errorType;
+  }
+  return resolveCall(context, {
+    site: call.node,
+    name,
+    candidates,
+    arguments: written,
+    typeArguments: call.typeArguments,
+    expected: call.expected,
+    form: 'call',
+    receiver,
+  });
 }
 
 /** A call with plain arguments, each checked unless the chosen function decides its type. */

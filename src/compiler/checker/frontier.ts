@@ -6,24 +6,21 @@
 
 /** The constructs, narrower than a node kind, reported as not supported yet. */
 export const frontier = {
-  destructuring: 'Destructuring',
   heldByFunction: 'A variable held by the function',
-  partAssignment: 'Assigning to a part of a value',
+  elementAssignment: 'Assigning to an element',
+  elementReference: 'Passing an element by reference',
+  unwrapPart: "Changing a part of a value through '$'",
   heldFuture: 'A future that is neither awaited nor returned',
-  reference: 'Passing a reference',
   hostExtern: 'Calling an extern function the host implements',
-  shorthandField: 'A shorthand field',
   staticMember: 'A static member',
   functionValue: 'A function value',
   externConstant: 'An extern constant',
   functionValueCall: 'Calling a function value',
-  methodCall: 'Calling a method',
   spreadArgument: 'A spread argument',
   restParameter: 'Rest parameter',
   arrayOrMapConstant: 'An array or map constant',
   nullishOperator: "The '??' operator",
   optionalChaining: "The '?.' operator",
-  anonymousStructLiteral: "A 'struct{…}' literal",
   sharedValue: "A 'Shared' value",
 } as const;
 

@@ -109,6 +109,12 @@ describe('binding reports, once and at the name', () => {
     ['a PascalCase field', 'struct Point { X: int }', d.valueNameConvention, 'X'],
     ['a snake_case variable', 'fn f():\n  const user_id = 1', d.valueNameConvention, 'user_id'],
     ['reading _', 'fn f():\n  _ = 1\n  drop _', d.unnamedRead, '_'],
+    [
+      'a PascalCase destructuring target',
+      'fn f(t: (int, int)):\n  const Lo, _ = t',
+      d.valueNameConvention,
+      'Lo',
+    ],
   ])('%s', (_, text, rule, name) => {
     expect(boundReport({ main: text })).toEqual(reportedOnce(rule.code, name));
   });

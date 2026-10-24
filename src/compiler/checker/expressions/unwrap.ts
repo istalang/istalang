@@ -5,24 +5,29 @@
  */
 
 import { rewrapFunction, unwrapFunction } from '../../../language/well-known.ts';
-import type { Unwrap } from '../../syntax/expressions.ts';
+import type { Expression, Unwrap } from '../../syntax/expressions.ts';
 import type { Assignment } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
-import { callCandidates, namedInModule } from '../overloads/candidates.ts';
+import { topLevelCandidates } from '../overloads/candidates.ts';
 import { resolveCall, type WrittenArgument } from '../overloads/resolve.ts';
 import type { Type } from '../types/type.ts';
 
 export function checkUnwrap(context: BodyContext, node: Unwrap, expected: Type | undefined): Type {
-  const operand = { node: node.operand, type: context.expression(node.operand) };
+  const operand = byValue(node.operand, context.expression(node.operand));
   return callNamed(context, { site: node, name: unwrapFunction, written: [operand], expected });
 }
 
 /** `target$ = value`, recorded on the assignment as the call to `rewrap`. */
 export function checkRewrap(context: BodyContext, node: Assignment, target: Unwrap): void {
-  const handle = { node: target.operand, type: context.expression(target.operand) };
-  const value = { node: node.value, type: context.expression(node.value) };
+  const handle = byValue(target.operand, context.expression(target.operand));
+  const value = byValue(node.value, context.expression(node.value));
   const written = [handle, value];
   callNamed(context, { site: node, name: rewrapFunction, written, expected: undefined });
+}
+
+/** `node`, of `type`, passed by value. */
+function byValue(node: Expression, type: Type): WrittenArgument {
+  return { node, passing: 'value', type };
 }
 
 /** A call written as `$`: to the function of `name`, at `site`. */
@@ -39,7 +44,7 @@ function callNamed(context: BodyContext, { site, name, written, expected }: Name
   return resolveCall(context, {
     site,
     name,
-    candidates: callCandidates(checker, namedInModule(checker, context.module, name), name, types),
+    candidates: topLevelCandidates(checker, context.module, name, types),
     arguments: written,
     typeArguments: undefined,
     expected,

@@ -84,7 +84,8 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   },
   invalidAssignmentTarget: {
     code: 2018,
-    message: () => "Only a variable, a field, an index or a '$' value can be assigned to.",
+    message: () =>
+      "Only a variable, a field, a tuple element, an index, a '$' value, or a tuple or struct of these can be assigned to.",
   },
   externWithBody: {
     code: 2019,
@@ -101,5 +102,10 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   nestingTooDeep: {
     code: 2022,
     message: (limit: number) => `This is nested more than ${limit} levels deep; split it up.`,
+  },
+  invalidTupleElement: {
+    code: 2200,
+    message: (text: string) =>
+      `A tuple element is named by its position, a decimal number such as 0 or 1, not '${text}'.`,
   },
 });

@@ -1,32 +1,37 @@
 /**
- * Declaring and assigning variables (§3.4).
+ * Declaring variables (§3.4, §3.15), and the facts a body keeps about its variables.
  *
  * - A declaration's type is its annotation, which the initializer must fit, or else the
- *   initializer's own type.
- * - Only a `let` is reassigned; a `const` (and a binding a pattern or loop introduces) never is.
- *   A parameter is the function's own copy (§3.1), so it may be.
- * - A compound assignment `x += y` is `x = x + y` (§3.9): the operator's function is resolved for
- *   the variable's type and recorded on the assignment, and its result must fit the variable.
- * - A `let` that nothing reassigns gets a warning once the whole body has been seen (§3.4), so the
- *   body's VariableScope keeps which ones were.
+ *   initializer's own type. Its targets take that value apart (patterns/destructuring.ts), each
+ *   name declared with its part's type.
+ * - A `let` that nothing reassigns or changes gets a warning once the whole body has been seen
+ *   (§3.4), so the body's VariableScope keeps which ones were, as assignments and places note
+ *   them (assignments.ts, rules/places.ts).
+ * - What lowering needs is recorded: each declaration's bindings, each assignment's parts, and
+ *   which variables are passed by `&`.
  */
 
-import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { VariableEntity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { AssignmentOperator } from '../../syntax/operators.ts';
+import { targetNames } from '../../syntax/patterns.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
+import type { AssignedPart, TargetBinding } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
-import { checkRewrap } from '../expressions/unwrap.ts';
 import { frontier } from '../frontier.ts';
-import { type OverloadableOperator, resolveOperator } from '../overloads/operators.ts';
+import { bodyScope, destructure } from '../patterns/destructuring.ts';
 import { errorType, type Type } from '../types/type.ts';
 
-/** The variables of one body: each one's type by its declaring name, and which were reassigned. */
+/**
+ * The variables of one body: each one's type by its declaring name, which were changed, and what
+ * lowering reads of the declarations and assignments.
+ */
 export class VariableScope {
   readonly #types = new Map<Identifier, Type>();
-  readonly #reassigned = new Set<VariableOwner>();
+  readonly #changed = new Set<Identifier>();
+  readonly #referenced = new Set<Identifier>();
+  readonly #targets = new Map<VariableDeclaration, readonly TargetBinding[]>();
+  readonly #assigned = new Map<Assignment, readonly AssignedPart[]>();
 
   declare(name: Identifier, type: Type): void {
     this.#types.set(name, type);
@@ -36,99 +41,64 @@ export class VariableScope {
     return this.#types.get(variable.name) ?? errorType;
   }
 
-  noteReassigned(owner: VariableOwner): void {
-    this.#reassigned.add(owner);
+  /** Notes that `variable` was reassigned, or changed in part. */
+  noteChanged(variable: VariableEntity): void {
+    this.#changed.add(variable.name);
   }
 
-  /** §3.4: a `let` never reassigned should be a `const`. */
-  warnUnreassigned(context: BodyContext): void {
+  /** Notes that `variable` is passed by `&`, so it needs storage a reference can reach. */
+  noteReferenced(variable: VariableEntity): void {
+    this.#referenced.add(variable.name);
+  }
+
+  isReferenced(name: Identifier): boolean {
+    return this.#referenced.has(name);
+  }
+
+  targetsOf(declaration: VariableDeclaration): readonly TargetBinding[] {
+    return this.#targets.get(declaration) ?? [];
+  }
+
+  assignedOf(assignment: Assignment): readonly AssignedPart[] {
+    return this.#assigned.get(assignment) ?? [];
+  }
+
+  recordTargets(declaration: VariableDeclaration, bindings: readonly TargetBinding[]): void {
+    this.#targets.set(declaration, bindings);
+  }
+
+  recordAssigned(assignment: Assignment, parts: readonly AssignedPart[]): void {
+    this.#assigned.set(assignment, parts);
+  }
+
+  /**
+   * §3.4: a `let` never reassigned or changed should be a `const`; a name of one whose other names
+   * change, a `const` of its own.
+   */
+  warnUnchanged(context: BodyContext): void {
     for (const name of this.#types.keys()) {
       const entity = context.entityOf(name);
       const owner = entity?.kind === 'variable' ? entity.owner : undefined;
-      if (
-        owner?.kind === 'VariableDeclaration' &&
-        owner.isMutable &&
-        !this.#reassigned.has(owner) &&
-        name.text !== '_'
-      ) {
-        context.report(checkerDiagnostics.letNeverReassigned(name.span, name.text));
+      if (owner?.kind === 'VariableDeclaration' && owner.isMutable && !this.#changed.has(name)) {
+        const othersChange = owner.targets
+          .flatMap(targetNames)
+          .some((other) => this.#changed.has(other));
+        context.report(checkerDiagnostics.letNeverReassigned(name.span, name.text, othersChange));
       }
     }
   }
 }
 
 export function checkVariableDeclaration(context: BodyContext, node: VariableDeclaration): void {
-  const [target, ...more] = node.targets;
-  if (node.heldByFunction || target === undefined || more.length > 0) {
-    context.unsupported(
-      node,
-      node.heldByFunction ? frontier.heldByFunction : frontier.destructuring,
-    );
+  if (node.heldByFunction) {
+    context.unsupported(node, frontier.heldByFunction);
     return;
   }
   const declared = node.type === undefined ? undefined : context.resolveType(node.type);
   const initial = context.expect(node.initializer, declared);
-  context.variables.declare(target, declared ?? initial);
-}
-
-export function checkAssignment(context: BodyContext, node: Assignment): void {
-  const [target, ...more] = node.targets;
-  if (target === undefined || more.length > 0) {
-    context.unsupported(node, frontier.destructuring);
-    return;
+  const bindings = destructure(bodyScope(context), node.targets, declared ?? initial);
+  for (const { name, type } of bindings) {
+    context.variables.declare(name, type);
   }
-  if (target.kind === 'Unwrap' && node.operator === '=') {
-    checkRewrap(context, node, target);
-    return;
-  }
-  const variable = assignedVariable(context, target);
-  if (variable === undefined) {
-    context.expression(node.value);
-    return;
-  }
-  if (node.operator === '=') {
-    context.expect(node.value, variable);
-    return;
-  }
-  const operand = context.expression(node.value);
-  const result = resolveOperator(context, node, compoundOperator(node.operator), [
-    { node: target, type: variable },
-    { node: node.value, type: operand },
-  ]);
-  context.fit(result, variable, node.value.span);
-}
-
-/**
- * The type of the variable `target` names, after checking that it may be reassigned. A target
- * that is no place at all was reported by the parser.
- */
-function assignedVariable(context: BodyContext, target: Expression): Type | undefined {
-  if (target.kind === 'MemberAccess' || target.kind === 'Index' || target.kind === 'Unwrap') {
-    context.unsupported(target, frontier.partAssignment);
-    return undefined;
-  }
-  if (target.kind !== 'Identifier') {
-    return undefined;
-  }
-  const entity = context.entityOf(target);
-  if (entity === undefined) {
-    return undefined;
-  }
-  if (entity.kind !== 'variable') {
-    context.report(checkerDiagnostics.notAssignable(target.span));
-    return undefined;
-  }
-  const { owner } = entity;
-  const reassignable =
-    owner.kind === 'Parameter' || (owner.kind === 'VariableDeclaration' && owner.isMutable);
-  if (!reassignable) {
-    context.report(checkerDiagnostics.constReassigned(target.span, target.text));
-    return errorType;
-  }
-  context.variables.noteReassigned(owner);
-  return context.variables.typeOf(entity);
-}
-
-function compoundOperator(operator: Exclude<AssignmentOperator, '='>): OverloadableOperator {
-  return operator.slice(0, -1) as OverloadableOperator;
+  context.variables.recordTargets(node, bindings);
 }

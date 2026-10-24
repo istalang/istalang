@@ -22,6 +22,11 @@ export type KeyType =
   | { readonly kind: 'named'; readonly name: string; readonly arguments: readonly KeyType[] }
   | { readonly kind: 'parameter'; readonly name: string }
   | { readonly kind: 'tuple'; readonly elements: readonly KeyType[] }
+  /** An anonymous struct (§3.1), spelled by its fields, which are all it has. */
+  | {
+      readonly kind: 'anonymous';
+      readonly fields: readonly { readonly name: string; readonly type: KeyType }[];
+    }
   | {
       readonly kind: 'function';
       readonly async: boolean;
@@ -83,6 +88,8 @@ export function keyTypeText(type: KeyType): string {
         : `${type.name}<${type.arguments.map(keyTypeText).join(', ')}>`;
     case 'tuple':
       return `(${type.elements.map(keyTypeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
+    case 'anonymous':
+      return `struct { ${type.fields.map((field) => `${field.name}: ${keyTypeText(field.type)}`).join('; ')} }`;
     case 'function':
       return `${type.async ? 'async ' : ''}fn(${type.parameters.map(keyTypeText).join(', ')}) -> ${keyTypeText(type.result)}`;
     default: {

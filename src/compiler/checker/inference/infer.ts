@@ -19,6 +19,7 @@ import {
   sameType,
   substitute,
   type Type,
+  typeChildren,
 } from '../types/type.ts';
 
 export class Inference {
@@ -93,6 +94,12 @@ export class Inference {
           given.kind === 'nominal' &&
           given.entity === declared.entity &&
           this.#matchAll(declared.arguments, given.arguments)
+        );
+      case 'anonymous':
+        return (
+          given.kind === 'anonymous' &&
+          given.origin === declared.origin &&
+          this.#matchAll(typeChildren(declared), typeChildren(given))
         );
       case 'tuple':
         return given.kind === 'tuple' && this.#matchAll(declared.elements, given.elements);

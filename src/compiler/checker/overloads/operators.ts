@@ -12,7 +12,7 @@ import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import type { Type } from '../types/type.ts';
-import { callCandidates, namedInModule } from './candidates.ts';
+import { topLevelCandidates } from './candidates.ts';
 import { resolveCall } from './resolve.ts';
 
 /** The function each overloadable operator calls (§3.9). */
@@ -53,13 +53,8 @@ export function resolveOperator(
   return resolveCall(context, {
     site,
     name: operator === 'negate' ? '-' : operator,
-    candidates: callCandidates(
-      context.checker,
-      namedInModule(context.checker, context.module, name),
-      name,
-      types,
-    ),
-    arguments: operands,
+    candidates: topLevelCandidates(context.checker, context.module, name, types),
+    arguments: operands.map((operand) => ({ ...operand, passing: 'value' })),
     typeArguments: undefined,
     expected: undefined,
     form: 'operator',

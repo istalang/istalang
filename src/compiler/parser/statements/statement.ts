@@ -10,13 +10,15 @@
  *
  * Anything else is an expression, which becomes an assignment if an assignment operator follows.
  * Several targets (`a, b = (b, a)`) are recognized speculatively: inside a one-line body within a
- * call, a comma belongs to the call, not to a list of targets.
+ * call, a comma belongs to the call, not to a list of targets. A target is parsed as the
+ * expression it looks like: a tuple or struct literal of targets destructures (§3.15), which only
+ * `=` can do.
  */
 
-import type { Expression } from '../../syntax/expressions.ts';
+import { type Expression, unparenthesized } from '../../syntax/expressions.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { isAssignmentOperator } from '../../syntax/operators.ts';
-import type { Statement } from '../../syntax/statements.ts';
+import { destructures, type Statement, targetParts } from '../../syntax/statements.ts';
 import type { CursorKind } from '../cursor.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
@@ -94,7 +96,7 @@ function parseExpressionStatement(parser: Parser): Statement {
   if (!isAssignmentOperator(operator)) {
     return { kind: 'ExpressionStatement', span: first.span, expression: first };
   }
-  if (targets.length > 1 && operator !== '=') {
+  if (operator !== '=' && (targets.length > 1 || targets.some(destructures))) {
     parser.report(parserDiagnostics.compoundDestructuring(cursor.token.span, operator));
   }
   cursor.advance();
@@ -115,16 +117,30 @@ function parseMoreTargets(parser: Parser, first: Expression): Expression[] | und
   return isAssignmentOperator(cursor.kind) ? targets : undefined;
 }
 
-/** What may stand left of `=`: a variable, a field, an index, or a `$` value (§3.9). */
+/**
+ * What may stand left of `=`: a variable, a field, a tuple element, an index, or a `$` value
+ * (§3.9), or a tuple or struct literal made of these (§3.15), parenthesized or not; a struct's
+ * positional value needs the parentheses (§3.1).
+ */
 function isAssignable(target: Expression): boolean {
-  switch (target.kind) {
+  const bare = unparenthesized(target);
+  if (destructures(bare)) {
+    const itemsOnly =
+      bare.kind !== 'StructLiteral' ||
+      bare.items.every(
+        (item) => item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer',
+      );
+    return itemsOnly && targetParts(bare).every(isAssignable);
+  }
+  switch (bare.kind) {
     case 'Identifier':
     case 'Index':
     case 'Unwrap':
+    case 'TupleElement':
     case 'Missing':
       return true;
     case 'MemberAccess':
-      return !target.isOptional;
+      return !bare.isOptional;
     default:
       return false;
   }

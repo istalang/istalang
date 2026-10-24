@@ -24,12 +24,11 @@ import { type Completion, completeInference } from '../inference/complete.ts';
 import { callMade } from '../overloads/calls-made.ts';
 import {
   type Candidate,
-  callCandidates,
-  namedInModule,
   type StaticTarget,
   staticCandidates,
+  topLevelCandidates,
 } from '../overloads/candidates.ts';
-import { type Application, choose, signatureOf } from '../overloads/choice.ts';
+import { type Application, type CallArgument, choose, signatureOf } from '../overloads/choice.ts';
 import { errorType, type Substitution, sameType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
@@ -120,7 +119,7 @@ function witnessCandidates(
 ): readonly Candidate[] {
   const name = required.name.text;
   if (required.owner === undefined) {
-    return callCandidates(checker, namedInModule(checker, module, name), name, parameterTypes);
+    return topLevelCandidates(checker, module, name, parameterTypes);
   }
   const target = staticTargetOf(checker, type);
   return target === undefined ? [] : staticCandidates(checker, module, target, name);
@@ -214,10 +213,12 @@ function witnessOf(
   const signature = signatureOf(checker, required.declaration, required.substitution);
   const parameterTypes = signature.parameters.map((parameter) => parameter.type);
   const candidates = witnessCandidates(site, type, required.declaration, parameterTypes);
-  const callArguments = signature.parameters.map(({ type: each, reference }) => ({
-    type: each,
-    reference,
-  }));
+  const callArguments = signature.parameters.map(
+    ({ type: each, reference }): CallArgument => ({
+      type: each,
+      passing: reference ? 'reference' : 'value',
+    }),
+  );
   const choice = choose(checker, candidates, callArguments, undefined);
   if (choice.kind !== 'chosen') {
     return 'none';

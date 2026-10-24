@@ -139,7 +139,8 @@ export interface Bindings {
   readonly candidatesOf: (variants: VariantsEntity) => readonly VariantEntity[];
   /**
    * What `name` denotes at the top level of `module`: a declaration or import of its own, or the
-   * prelude's. Operators look up their function's name this way (§3.9).
+   * prelude's. Operators and method calls look up their function's name this way (§3.7, §3.9),
+   * since nothing binds it in the tree.
    */
   readonly topLevelNamed: (module: ModuleId, name: string) => Entity | undefined;
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];

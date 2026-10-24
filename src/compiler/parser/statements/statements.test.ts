@@ -22,15 +22,24 @@ const { expected, invalidAssignmentTarget, compoundDestructuring, declarationInB
 
 describe('variables', () => {
   it.each([
-    ['let count = 0', '(VariableDeclaration isMutable [count] _ 0)'],
-    ['const limit: int = 50_000', `(VariableDeclaration [limit] ${int} 50000)`],
-    ['let a, b = (1, "x")', '(VariableDeclaration isMutable [a b] _ (Tuple [1 "x"]))'],
-    ['fn let pending = 0', '(VariableDeclaration heldByFunction isMutable [pending] _ 0)'],
-    ['fn const x = 1', '(VariableDeclaration heldByFunction [x] _ 1)'],
-    ['fn _ = startJob()', '(VariableDeclaration heldByFunction [_] _ (Call startJob [] []))'],
+    ['let count = 0', '(VariableDeclaration isMutable [(NamePattern [count])] _ 0)'],
+    ['const limit: int = 50_000', `(VariableDeclaration [(NamePattern [limit])] ${int} 50000)`],
+    [
+      'let a, b = (1, "x")',
+      '(VariableDeclaration isMutable [(NamePattern [a]) (NamePattern [b])] _ (Tuple [1 "x"]))',
+    ],
+    [
+      'fn let pending = 0',
+      '(VariableDeclaration heldByFunction isMutable [(NamePattern [pending])] _ 0)',
+    ],
+    ['fn const x = 1', '(VariableDeclaration heldByFunction [(NamePattern [x])] _ 1)'],
+    [
+      'fn _ = startJob()',
+      '(VariableDeclaration heldByFunction [(WildcardPattern)] _ (Call startJob [] []))',
+    ],
     [
       'let xs: Array<int>= []',
-      `(VariableDeclaration isMutable [xs] (NamedType [Array] [${int}]) (ArrayLiteral []))`,
+      `(VariableDeclaration isMutable [(NamePattern [xs])] (NamedType [Array] [${int}]) (ArrayLiteral []))`,
     ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);
@@ -38,6 +47,26 @@ describe('variables', () => {
 
   it('reports a missing initializer once', () => {
     expect(reported('statement', 'let x')).toEqual(reportedOnce(expected.code, ''));
+  });
+});
+
+describe('destructuring declarations (§3.15)', () => {
+  it.each([
+    [
+      'let (a, b), c = t',
+      '(VariableDeclaration isMutable [(TuplePattern [(NamePattern [a]) (NamePattern [b])]) (NamePattern [c])] _ t)',
+    ],
+    [
+      'const Pair{first, second as s} = p',
+      '(VariableDeclaration [(StructPattern (NamedType [Pair] []) [(BindFieldPattern first _) (BindFieldPattern second s)])] _ p)',
+    ],
+    [
+      'const struct{first is (x, _)} = p',
+      '(VariableDeclaration [(StructPattern _ [(NestedFieldPattern first (TuplePattern [(NamePattern [x]) (WildcardPattern)]))])] _ p)',
+    ],
+    ['const _, max = pair', '(VariableDeclaration [(WildcardPattern) (NamePattern [max])] _ pair)'],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('statement', text)).toBe(tree);
   });
 });
 
@@ -49,6 +78,20 @@ describe('assignments', () => {
     ['u$.name = "x"', '(Assignment [(MemberAccess (Unwrap u) name)] = "x")'],
     ['a, b = (b, a)', '(Assignment [a b] = (Tuple [b a]))'],
     ['type = 5', '(Assignment [type] = 5)'],
+    ['t.0 = 1', '(Assignment [(TupleElement t 0)] = 1)'],
+    ['(a, b), c = t', '(Assignment [(Tuple [a b]) c] = t)'],
+    [
+      'Pair{first: p.x, second} = q',
+      '(Assignment [(StructLiteral (NamedType [Pair] []) [(FieldInitializer first (MemberAccess p x)) (FieldInitializer second _)])] = q)',
+    ],
+    [
+      'struct{first: (a, b)} = q',
+      '(Assignment [(StructLiteral _ [(FieldInitializer first (Tuple [a b]))])] = q)',
+    ],
+    [
+      'Id{(v)} = id',
+      '(Assignment [(StructLiteral (NamedType [Id] []) [(PositionalInitializer (Parenthesized v))])] = id)',
+    ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);
   });
@@ -57,6 +100,12 @@ describe('assignments', () => {
     ['f() = 2', invalidAssignmentTarget, 'f()'],
     ['a?.b = 1', invalidAssignmentTarget, 'a?.b'],
     ['a, b += 1', compoundDestructuring, '+='],
+    ['(a, b) += t', compoundDestructuring, '+='],
+    ['((a, b)) += t', compoundDestructuring, '+='],
+    ['Pair{first} -= q', compoundDestructuring, '-='],
+    ['Pair{...p} = q', invalidAssignmentTarget, 'Pair{...p}'],
+    ['(a, f()) = t', invalidAssignmentTarget, '(a, f())'],
+    ['Pair{first: 1} = q', invalidAssignmentTarget, 'Pair{first: 1}'],
   ])('reports %s once', (text, diagnostic, spanText) => {
     expect(reported('statement', text)).toEqual(reportedOnce(diagnostic.code, spanText));
   });
@@ -77,7 +126,10 @@ describe('keyword statements', () => {
     ['defer fn(): log("exited")', '(Defer (Lambda _ [] _ (Call log [] ["exited"])))'],
     ['drop audit.record(event)', '(Drop (Call (MemberAccess audit record) [] [event]))'],
     ['spawn purchase(req)', '(Spawn (Call purchase [] [req]))'],
-    ['for key, value in m: use(key)', `(For [key value] m ${bodyOf('(Call use [] [key])')})`],
+    [
+      'for key, value in m: use(key)',
+      `(For [(NamePattern [key]) (NamePattern [value])] m ${bodyOf('(Call use [] [key])')})`,
+    ],
     ['while pending: wait()', `(While pending ${bodyOf('(Call wait [] [])')})`],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);

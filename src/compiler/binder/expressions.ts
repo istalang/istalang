@@ -54,6 +54,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
     }
     bindAll(binder, node.arguments, scope);
   },
+  TupleElement: (binder, node, scope) => bindExpression(binder, node.target, scope),
   MemberAccess: (binder, node, scope) => {
     const path = qualifiedPathOf(node);
     if (path === undefined) {
@@ -101,7 +102,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
       if (matchCase.kind === 'MatchCase') {
         underBindings(
           scope,
-          (bindings) => binder.walk.pattern(binder, matchCase.pattern, scope, bindings),
+          (bindings) => binder.walk.pattern(binder, matchCase.pattern, scope, { into: bindings }),
           (bindings) =>
             underCondition(binder, matchCase.guard, bindings, (flow) =>
               binder.walk.block(binder, matchCase.body, flow),

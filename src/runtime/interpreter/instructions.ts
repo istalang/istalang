@@ -12,7 +12,7 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import { childValues, isComposite, type Value } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { valuesEqual } from '../values/equality.ts';
-import { type ActiveFrame, type Machine, readRegister, writeRegister } from './machine.ts';
+import { type ActiveFrame, type Machine, readRegister, storeAt, writeRegister } from './machine.ts';
 
 const notRunYet = (_machine: Machine, instruction: Instruction): void => {
   throw new Error(`The runtime doesn't run '${instruction.kind}' instructions yet.`);
@@ -31,6 +31,16 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   },
   move: (_machine, instruction, frame) => {
     next(frame, instruction.dst, readRegister(frame, instruction.src));
+  },
+  tuple: (_machine, instruction, frame) => {
+    next(frame, instruction.dst, {
+      kind: 'tuple',
+      elements: instruction.elements.map((register) => readRegister(frame, register)),
+    });
+  },
+  store: (_machine, instruction, frame) => {
+    storeAt(frame, instruction.place, readRegister(frame, instruction.value));
+    frame.pc += 1;
   },
   struct: (_machine, instruction, frame) => {
     next(frame, instruction.dst, {
@@ -90,8 +100,6 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     }
     machine.call(frame, instruction.callee.function, instruction.arguments);
   },
-  tuple: notRunYet,
-  store: notRunYet,
   array: notRunYet,
   map: notRunYet,
   closure: notRunYet,

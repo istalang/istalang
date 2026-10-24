@@ -1,0 +1,49 @@
+# outcome: "1 9 | 100 1 | 5 | 3 | 11 | 1 2 | 2 1 | 2"
+# Value semantics and references (§3.1, §3.4, §3.7): a copy changes alone, a by-value parameter
+# is the callee's own copy, and only `&` (explicit, or implicit for a method's `&self`) changes
+# the caller's place: a variable, a field of one, or a tuple element. A copy of a top-level
+# constant changes without changing the constant.
+
+struct Point { x: int; y: int }
+
+struct Box { point: Point; label: string }
+
+const origin = Point{x: 1, y: 1}
+
+fn movedCopy(p: Point) -> int:
+  p.x = 100
+  p.x
+
+fn moveTo(p: &Point, x: int):
+  p.x = x
+
+fn bump(n: &int):
+  n += 1
+
+fn bumpTwice(n: &int):
+  bump(&n)
+  bump(&n)
+
+fn grow(self: &Point, by: int):
+  self.x += by
+
+fn total(self: Point) -> int:
+  self.x + self.y
+
+async fn main():
+  const a = Point{x: 1, y: 2}
+  let b = a
+  b.x = 9
+  const copied = movedCopy(a)
+  let c = Point{x: 0, y: 0}
+  moveTo(&c, 5)
+  let n = 1
+  bumpTwice(&n)
+  let box = Box{point: Point{x: 1, y: 1}, label: "box"}
+  moveTo(&box.point, 5)
+  box.point.grow(6)
+  let changed = origin
+  changed.x = 2
+  let t = (1, 1)
+  bump(&t.0)
+  "" + a.x + " " + b.x + " | " + copied + " " + a.x + " | " + c.x + " | " + n + " | " + box.point.x + " | " + origin.x + " " + changed.x + " | " + t.0 + " " + t.1 + " | " + origin.total()

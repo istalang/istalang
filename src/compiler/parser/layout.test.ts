@@ -93,7 +93,7 @@ describe('if chains (§4)', () => {
   it('continues a multi-line if used as a value at the column its line starts', () => {
     const text = lines('const x = if a:', '    1', 'else:', '    2');
     expect(dumpClean('statement', text)).toBe(
-      `(VariableDeclaration [x] _ ${ifThen('a', bodyOf('1'), bodyOf('2'))})`,
+      `(VariableDeclaration [(NamePattern [x])] _ ${ifThen('a', bodyOf('1'), bodyOf('2'))})`,
     );
   });
 

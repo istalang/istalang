@@ -46,7 +46,6 @@ import type {
   CheckedBody,
   CheckedConstant,
   Disposal,
-  FieldMember,
   SignatureParameter,
   VariantMember,
 } from './check.ts';
@@ -70,6 +69,7 @@ import { TypeParameters } from './traits/type-parameters.ts';
 import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
 import {
   errorType,
+  type FieldMember,
   type NominalType,
   type Substitution,
   type Type,
@@ -192,6 +192,14 @@ export class ProgramChecker implements CheckerContext {
     return optional;
   }
 
+  sharedOf(type: Type): NominalType {
+    const shared = this.wellKnownType(wellKnown.shared, [type]);
+    if (shared?.kind !== 'nominal') {
+      throw new Error("A variable was passed by '&' in a program without a prelude.");
+    }
+    return shared;
+  }
+
   /** An arrow, so the relation can be passed around on its own (rules/agreement.ts). */
   readonly wrapsToFit = (found: Type, expected: Type): number | undefined =>
     wrapsToFit(found, expected, this.optionalEntity);
@@ -257,7 +265,7 @@ export class ProgramChecker implements CheckerContext {
     return this.#constants.constantNamed(module, name);
   }
 
-  fieldsOf(type: NominalType): readonly FieldMember[] | undefined {
+  fieldsOf(type: Type): readonly FieldMember[] | undefined {
     return this.#layouts.fieldsOf(type);
   }
 

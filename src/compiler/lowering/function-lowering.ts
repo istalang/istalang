@@ -8,11 +8,15 @@
  *   no handler needs to know about wrapping.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
+ * - A parameter takes the first registers, in order; a by-value one passed on by `&` is a cell,
+ *   while a reference parameter's register holds the caller's reference.
  * - A defaults entry takes the arguments its callers give, computes the rest from the defaults
- *   (§3.3), each seeing the parameters before it, and calls the function with all of them.
+ *   (§3.3), each seeing the parameters before it, and calls the function with all of them, passing
+ *   a reference parameter on as the reference it was given.
  */
 
 import type { CodeFunction } from '../../definition/functions.ts';
+import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import { optionalVariants } from '../../language/well-known.ts';
@@ -20,6 +24,7 @@ import { handlerOf } from '../../structures/kind-table.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CallSite, CheckedBody, Checker } from '../checker/check.ts';
+import { substitute, type Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
@@ -28,10 +33,10 @@ import { CodeWriter } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
 import { variantIndexOf } from './expressions/variants.ts';
-import { calleeOf, type FunctionInstance, fullInstance } from './instances.ts';
+import { calleeOf, type FunctionInstance, fullInstance, substitutionOf } from './instances.ts';
 import { LoopStack } from './statements/loops.ts';
 import { lowerBlock, statementHandlers } from './statements/statements.ts';
-import { VariableRegisters } from './statements/variables.ts';
+import { declareVariable, VariableRegisters } from './statements/variables.ts';
 import type { DefinitionTables } from './tables.ts';
 
 export class FunctionLowering implements FunctionContext {
@@ -70,15 +75,17 @@ export class FunctionLowering implements FunctionContext {
     const given = this.#declareParameters();
     const all = [...given];
     const { declaration } = this.instance;
-    for (const parameter of this.checker.parametersOf(declaration).slice(given.length)) {
+    const parameters = this.checker.parametersOf(declaration);
+    for (const parameter of parameters.slice(given.length)) {
       const { defaultValue } = parameter.node;
       if (defaultValue === undefined) {
         throw new Error(
           `'${parameter.node.name.text}' has no default; the checker should have said so.`,
         );
       }
-      const register = this.expression(defaultValue);
-      this.variables.declare(parameter.node.name, register);
+      const value = this.expression(defaultValue);
+      const register = declareVariable(this, parameter.node.name, this.#concrete(parameter.type));
+      this.code.emit({ kind: 'move', span: defaultValue.span, dst: register, src: value });
       all.push(register);
     }
     const result = this.code.allocate();
@@ -90,7 +97,12 @@ export class FunctionLowering implements FunctionContext {
         kind: 'function',
         function: this.tables.functionIndex(fullInstance(this.checker, this.instance)),
       },
-      arguments: all.map((register) => ({ kind: 'value', register })),
+      arguments: all.map(
+        (register, index): Argument =>
+          parameters[index]?.reference === true
+            ? { kind: 'reference', place: { register, path: [] } }
+            : { kind: 'value', register },
+      ),
     });
     this.code.emit({ kind: 'return', span: declaration.name.span, value: result });
     return this.#entry();
@@ -142,10 +154,18 @@ export class FunctionLowering implements FunctionContext {
       .parametersOf(this.instance.declaration)
       .slice(0, this.instance.arity);
     return taken.map((parameter) => {
+      if (!parameter.reference) {
+        return declareVariable(this, parameter.node.name, this.#concrete(parameter.type));
+      }
       const register = this.code.allocate();
       this.variables.declare(parameter.node.name, register);
       return register;
     });
+  }
+
+  /** `type` as this instance sees it: its type parameters substituted. */
+  #concrete(type: Type): Type {
+    return substitute(type, substitutionOf(this.instance));
   }
 
   #entry(): CodeFunction {
@@ -161,7 +181,7 @@ export class FunctionLowering implements FunctionContext {
         .map((parameter) => ({ reference: parameter.reference })),
       captures: 0,
       registers,
-      cells: [],
+      cells: [...this.variables.cells],
       instructions,
     };
   }

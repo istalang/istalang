@@ -95,6 +95,36 @@ const cases: Readonly<Record<string, Case>> = {
     use: 2,
     declaredAt: 1,
   },
+  'a struct target binds its field name': {
+    source: 'struct P { first: int }\nfn f(p: P) -> int:\n  const P{first} = p\n  first',
+    name: 'first',
+    use: 2,
+    declaredAt: 1,
+  },
+  'a renamed field target binds the new name': {
+    source: 'struct P { first: int }\nfn f(p: P) -> int:\n  const struct{first as one} = p\n  one',
+    name: 'one',
+    use: 1,
+    declaredAt: 0,
+  },
+  'a nested tuple target binds every name': {
+    source: 'fn f(t: ((int, int), int)) -> int:\n  let (a, b), c = t\n  b',
+    name: 'b',
+    use: 1,
+    declaredAt: 0,
+  },
+  'a struct target in an assignment assigns the shorthand variable': {
+    source: 'struct P { first: int }\nfn f(p: P):\n  let first = 0\n  P{first} = p',
+    name: 'first',
+    use: 2,
+    declaredAt: 1,
+  },
+  'a top-level constant destructures': {
+    source: 'const lo, hi = (1, 2)\nfn f() -> int: hi',
+    name: 'hi',
+    use: 1,
+    declaredAt: 0,
+  },
   'a top-level function is found before its declaration': {
     source: 'fn f() -> int: g()\nfn g() -> int: 1',
     name: 'g',
@@ -177,6 +207,12 @@ describe('what a name denotes', () => {
       'fn f(o: int?) -> int:\n  match o:\n    case None: 0\n    case _: 1',
       'None',
       'variants',
+    ],
+    [
+      'a PascalCase declaration target, which binds',
+      'fn f(t: (int, int)):\n  const Lo, _ = t',
+      'Lo',
+      'variable',
     ],
     [
       'a camelCase name in a pattern',

@@ -4,7 +4,9 @@
  *
  * - A candidate applies when it takes as many arguments as given, counting parameters with
  *   defaults as optional (§3.3), each argument passed by value or by `&` as its parameter is
- *   declared, and every argument fits its parameter. A generic candidate's type parameters are
+ *   declared, and every argument fits its parameter. A method's receiver takes its `&` implicitly,
+ *   so it is passed either way, whichever its `self` asks for. A reference names the caller's own
+ *   variable, so its type must be the parameter's exactly, with no implicit wrap (§3.7). A generic candidate's type parameters are
  *   inferred from the arguments meanwhile (inference/infer.ts); written type arguments are taken
  *   as given (§3.5).
  * - When concrete candidates apply, only they are chosen among: a concrete function beats a
@@ -22,7 +24,13 @@ import type { FunctionDeclaration, TypeParameter } from '../../syntax/declaratio
 import type { CheckerContext } from '../context.ts';
 import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { Inference } from '../inference/infer.ts';
-import { type ParameterKey, type Substitution, substitute, type Type } from '../types/type.ts';
+import {
+  type ParameterKey,
+  type Substitution,
+  sameType,
+  substitute,
+  type Type,
+} from '../types/type.ts';
 import type { Candidate } from './candidates.ts';
 
 /**
@@ -44,12 +52,18 @@ export interface SignatureSlot {
 }
 
 /**
+ * How an argument is passed: as a value, by `&`, or as a method's receiver, which its `self`
+ * takes either way (§3.7).
+ */
+export type Passing = 'value' | 'reference' | 'receiver';
+
+/**
  * An argument as choosing sees it: its type, or, when the chosen function decides it, which
- * parameter types it can take.
+ * parameter types it can take; and how it is passed.
  */
 export interface CallArgument {
   readonly type: Type | undefined;
-  readonly reference: boolean;
+  readonly passing: Passing;
   readonly accepts?: ((expected: Type) => boolean) | undefined;
 }
 
@@ -64,7 +78,8 @@ export interface Application {
 export type Inapplicability =
   | { readonly kind: 'arity'; readonly minimum: number; readonly maximum: number }
   | { readonly kind: 'typeArgumentCount'; readonly minimum: number; readonly maximum: number }
-  | { readonly kind: 'reference'; readonly index: number }
+  /** The argument at `index` is passed by value where its parameter takes `&` (`reference`), or the reverse. */
+  | { readonly kind: 'reference'; readonly index: number; readonly reference: boolean }
   /** Two arguments gave one type parameter types that don't agree (§3.5). */
   | { readonly kind: 'conflict'; readonly parameter: TypeParameter }
   /** The arguments that don't fit their parameters, by position, with the parameter's type. */
@@ -195,14 +210,15 @@ function argumentsInapplicability(
   for (const [index, argument] of typedFirst) {
     // The arity was checked first, so every argument has its parameter.
     const slot = parameters[index] as SignatureSlot;
-    if (slot.reference !== argument.reference) {
-      return { kind: 'reference', index };
+    if (argument.passing !== 'receiver' && slot.reference !== (argument.passing === 'reference')) {
+      return { kind: 'reference', index, reference: slot.reference };
     }
     const conflicts = inference.conflicts.size;
     const fits =
       argument.type === undefined
         ? acceptsDecided(argument, slot.type, inference)
-        : inference.match(slot.type, argument.type);
+        : inference.match(slot.type, argument.type) &&
+          exactWhenReferenced(slot, argument, inference);
     const [conflict] = [...inference.conflicts].slice(conflicts);
     if (conflict?.kind === 'TypeParameter') {
       return { kind: 'conflict', parameter: conflict };
@@ -212,6 +228,23 @@ function argumentsInapplicability(
     }
   }
   return misfits.length === 0 ? undefined : { kind: 'arguments', misfits };
+}
+
+/** A reference's type is its parameter's exactly: no wrap into `T?` reaches the caller's place. */
+function exactWhenReferenced(
+  slot: SignatureSlot,
+  argument: CallArgument,
+  inference: Inference,
+): boolean {
+  if (!isByReference(slot, argument) || argument.type === undefined) {
+    return true;
+  }
+  return sameType(substitute(slot.type, inference.substitution()), argument.type);
+}
+
+/** Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7). */
+function isByReference(slot: SignatureSlot, argument: CallArgument): boolean {
+  return argument.passing === 'reference' || (argument.passing === 'receiver' && slot.reference);
 }
 
 /** Whether an argument the chosen function decides can take a parameter of type `declared`. */

@@ -131,6 +131,53 @@ describe('lowering', () => {
     expect(structs).toEqual([{ kind: 'struct', type: 0, fields: [7n] }]);
   });
 
+  it('gives a variable passed by & a cell, typed as the Shared<T> it is created as', () => {
+    const program = preludeProgramOf({
+      main: [
+        'fn bump(n: &int):',
+        '  n += 1',
+        'fn twice(start: int) -> int:',
+        '  let kept = 0',
+        '  let passed = start',
+        '  bump(&passed)',
+        '  kept = passed',
+        '  bump(&start)',
+        '  kept + start',
+        'async fn main(): twice(1)',
+      ].join('\n'),
+    });
+    const definition = compiledDefinition(program, 'main');
+    const twice = definition.functions.find((entry) => entry.name === 'main.twice');
+    const cells = twice?.kind === 'code' ? twice.cells : [];
+    const shared = cells.map((cell) => definition.types[cell.type]);
+    expect(cells).toHaveLength(2);
+    expect(cells[0]?.register).toBe(0);
+    expect(shared.map((type) => type?.kind === 'extern' && type.name)).toEqual([
+      'prelude.Shared',
+      'prelude.Shared',
+    ]);
+    const bump = definition.functions.find((entry) => entry.name === 'main.bump');
+    expect(bump?.kind === 'code' && bump.cells).toEqual([]);
+  });
+
+  it('gives each anonymous struct an unnamed entry of its own, shared by its uses', () => {
+    const program = preludeProgramOf({
+      main: [
+        'async fn main():',
+        '  const a = struct{x: 1}',
+        '  const b = struct{x: 2}',
+        '  const c = if a.x > 0: struct{y: 3} else: struct{y: 4}',
+        '  a.x + b.x + c.y',
+      ].join('\n'),
+    });
+    const { types } = compiledDefinition(program, 'main');
+    expect(types.map((type) => [type.kind, type.name])).toEqual([
+      ['struct', ''],
+      ['struct', ''],
+      ['struct', ''],
+    ]);
+  });
+
   it('compiles every program the checker accepts into a Definition the runtime loads', () => {
     const { runtime } = testRuntime();
     fc.assert(

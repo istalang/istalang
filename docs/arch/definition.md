@@ -3,8 +3,8 @@ description: the Definition (compiled program) and snapshot formats — instruct
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-24
-last_updated: 2026-10-24
+last_verified: 2026-10-25
+last_updated: 2026-10-25
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -50,9 +50,11 @@ Loading refuses code the interpreter couldn't run, so no instruction handler nee
 
 Release points are explicit. `release` runs at a block's end on every exit path, at a statement's end for temporaries, and for `drop`. `return` releases every register and the kept list. Whatever loses its last holder is disposed in reverse creation order (spec §7). Lowering emits no `release` or `keep` yet, and no frame has a `kept` list: nothing in the subset it compiles is disposable but a future, and a future is only awaited or returned. The disposal slice (§7) emits them.
 
+A cell register is made a cell by its first write into the empty register: a by-value parameter's when the frame starts, a local's at its declaration's first run. A block-end `release` (§7) empties the register, so the next run of the declaration makes a fresh cell, as §3.4 asks of a variable declared in a loop body; until lowering emits `release`, such a variable keeps one cell across iterations (tracker). A live frame reads and writes a cell register, and a reference parameter's register, through the instance's cells, so `move`, `store` and a `call`'s result write the same whatever the register holds; the snapshot stores the register's handle or reference as it is. Lowering lists a variable in `cells` exactly when the checker found it passed by `&` (explicitly, or as a method's `&self`); a reference parameter is never a cell, since it already holds a reference. Natives don't take references yet; the first native that does (a collection's `push`, `setIndex`) brings the write-back.
+
 ## Places
 
-A place is a register plus a path of steps: a field, or an element. An element step carries the key register and the `index`/`setIndex` functions the checker resolved for the container, so `&m["a"]` and `a[k].b = v` work for built-in and user containers alike (spec §3.7). `store` writes a place with a non-empty path; writing an element replaces it through `setIndex`, atomically within the segment.
+A place is a register plus a path of steps: a field, or an element. A tuple element is a field by position, as `field` reads it. An element step carries the key register and the `index`/`setIndex` functions the checker resolved for the container, so `&m["a"]` and `a[k].b = v` work for built-in and user containers alike (spec §3.7). `store` writes a place with a non-empty path; writing an element replaces it through `setIndex`, atomically within the segment.
 
 ## Values
 
@@ -71,7 +73,7 @@ Values are immutable. A `constant` instruction hands its register the pool's own
 
 ## Externs
 
-An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop` and `setIndex` take their container by `&`. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (used by the boundary conversion) and its type arguments (for natives such as `json.parse<T>`). An extern constant is an entry with `constant` set: it is read once per instance and then pinned for the instance's life (spec §3.6). Where the snapshot pins it arrives with the host externs that read one; nothing reads an extern constant yet.
+An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop` and `setIndex` take their container by `&`. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. An anonymous struct in a key is spelled by its fields, `struct { a: int; b: string }`, since it has nothing else. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (used by the boundary conversion) and its type arguments (for natives such as `json.parse<T>`). An extern constant is an entry with `constant` set: it is read once per instance and then pinned for the instance's life (spec §3.6). Where the snapshot pins it arrives with the host externs that read one; nothing reads an extern constant yet.
 
 ## Names
 
@@ -120,7 +122,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Tuple, `()` (§3.15) | `tuple`; `()` is the unit constant |
 | Range `a..b`, `a..=b`, open ends (§2, §3.8) | `struct` of prelude `Range`; `..=` calls `add` to store `end + 1` |
 | Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | `struct`, fields in declaration order |
-| Updated copy `T{...r, f: v}` (§3.1) | `field` for each field not given, then `struct` |
+| Updated copy `T{...r, f: v}` (§3.1) | the spread value once, `field` for each field not given, then `struct` |
+| Struct without fields, written bare (§3.1) | `struct` with no fields; a constant when it is one |
 | Enum variant (§3.11) | `variant`; a variant without fields may be a constant |
 | Implicit wrap of `T` into `T?` (§2) | `variant` `Some` |
 | `fn`, `async fn`, methods, static functions (§3.3, §3.7) | function-table entries; a method's `self` is its first parameter |
@@ -135,7 +138,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `fn let`, `fn const`, `fn _` (§3.4) | `keep`, then `release`, at the block's end |
 | `_ = e` (§7) | an unnamed register, released at the block's end |
 | `drop e` (§7) | `release` |
-| Destructuring `a, b = t` (§3.15) | `field` per element |
+| Destructuring `a, b = t`, `const Pair{first} = p`, at any depth (§3.15) | the value once, then `field` reads along each target's path, and a `move` or `store` per target |
+| Tuple element `t.0`, `t.0 = v` (§3.15) | `field` by position; `store` with a field step |
 | Generic functions and types (§3.5) | one entry or type per instantiation |
 | `&x` argument, reference parameter (§3.7) | a place argument; `parameters[i].reference`; `x` is in `cells` |
 | `Shared(v)`, `x$`, `x$ = v`, `x$.f = v` (§3.8, §3.9) | calls to `Shared.from`, `unwrap` and `rewrap`; a field write unwraps, `store`s into a temporary and rewraps |

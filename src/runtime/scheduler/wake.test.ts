@@ -29,6 +29,23 @@ const childAndMain = [
   '  x',
 ].join('\n');
 
+/**
+ * A callee changing its caller's variable through `&` on both sides of a timer: the variable is a
+ * cell, and the reference to it waits in the callee's frame across commits (§3.7).
+ */
+const referenceAcrossAwaits = [
+  "import * as time from 'time'",
+  'struct Tally { count: int }',
+  'async fn addLater(total: &Tally, n: int):',
+  '  total.count += n',
+  '  await time.delay(5ms)',
+  '  total.count += n',
+  'async fn main():',
+  '  let tally = Tally{count: 1}',
+  '  await addLater(&tally, 2)',
+  '  tally.count',
+].join('\n');
+
 /** Three awaits in sequence, at two depths, adding up arguments. */
 const severalAwaits = [
   "import * as time from 'time'",
@@ -113,6 +130,19 @@ describe('advancing an instance', () => {
     const second = testRuntime({ store, clock });
     expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
     expect(uninterrupted).toEqual({ kind: 'finished', outcome: 5n });
+  });
+
+  it("keeps a reference to its caller's variable across a restart and crashEveryAwait", () => {
+    const text = compiledText(referenceAcrossAwaits);
+    const uninterrupted = startToEnd(testRuntime(), text);
+    expect(uninterrupted).toEqual({ kind: 'finished', outcome: 5n });
+    expect(startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
+    const store = recordingStore();
+    const clock = manualClock();
+    const first = testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
+    expect(first).toEqual({ kind: 'waiting', until: 5n });
+    const second = testRuntime({ store, clock });
+    expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
   });
 
   it('with crashEveryAwait, runs every segment twice and commits what a normal run commits', () => {

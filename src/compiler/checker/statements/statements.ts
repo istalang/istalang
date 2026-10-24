@@ -14,8 +14,9 @@ import type { BodyContext } from '../context.ts';
 import { checkDiscarded } from '../rules/must-use.ts';
 import { neverType, type Type, unitType } from '../types/type.ts';
 import { unsupportedHandler } from '../unsupported.ts';
+import { checkAssignment } from './assignments.ts';
 import { checkLoopExit, checkWhile } from './loops.ts';
-import { checkAssignment, checkVariableDeclaration } from './variables.ts';
+import { checkVariableDeclaration } from './variables.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const statementHandlers: Handlers<

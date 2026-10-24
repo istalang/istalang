@@ -6,11 +6,11 @@
 import type { Register } from '../../../definition/operands.ts';
 import { optionalVariants } from '../../../language/well-known.ts';
 import type { Checker } from '../../checker/check.ts';
-import type { NominalType } from '../../checker/types/type.ts';
+import type { NominalType, Type } from '../../checker/types/type.ts';
 import type { Expression, StructLiteral } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FunctionContext } from '../context.ts';
-import { nominalTypeOf } from './structs.ts';
+import { literalFields } from './structs.ts';
 
 /** The index of the variant `name` of the enum `type`. */
 export function variantIndexOf(checker: Checker, type: NominalType, name: string): number {
@@ -34,25 +34,15 @@ export function lowerNone(context: FunctionContext, node: Expression): Register 
   return lowerFieldlessVariant(context, node, optionalVariants.none);
 }
 
-/** `Rejected{by: "legal"}`: fields evaluated in source order, stored in declaration order. */
+/** `Rejected{by: "legal"}`: built from the same fields as a struct literal (structs.ts). */
 export function lowerVariantLiteral(context: FunctionContext, node: StructLiteral): Register {
   const name = node.type === undefined ? '' : lastName(node.type.path).text;
-  const given = new Map<string, Register>();
-  for (const item of node.items) {
-    if (item.kind === 'FieldInitializer' && item.value !== undefined) {
-      given.set(item.name.text, context.expression(item.value));
-    }
-  }
-  const type = nominalTypeOf(context.body, node);
-  const variant = (context.checker.variantsOf(type) ?? []).find((each) => each.name === name);
-  const fields = (variant?.fields ?? []).map((field) => {
-    const register = given.get(field.name);
-    if (register === undefined) {
-      throw new Error(`No value for '${field.name}'; the checker should have said so.`);
-    }
-    return register;
-  });
-  return emitVariant(context, node, name, fields);
+  return emitVariant(context, node, name, literalFields(context, node));
+}
+
+/** Whether `type` is an enum's, whose literals are its variants'. */
+export function isEnum(type: Type): type is NominalType {
+  return type.kind === 'nominal' && type.entity.declaration.kind === 'EnumDeclaration';
 }
 
 function emitVariant(
@@ -61,7 +51,10 @@ function emitVariant(
   name: string,
   fields: readonly Register[],
 ): Register {
-  const type = nominalTypeOf(context.body, node);
+  const type = context.body.typeOf(node);
+  if (!isEnum(type)) {
+    throw new Error(`Expected an enum at ${node.span.start}; the checker should have said so.`);
+  }
   const dst = context.code.allocate();
   context.code.emit({
     kind: 'variant',

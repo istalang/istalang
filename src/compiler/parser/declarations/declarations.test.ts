@@ -112,7 +112,7 @@ describe('externs and functions', () => {
       'fn Duration.zero() -> Duration: Duration{value: 0}',
       `(FunctionDeclaration Duration zero [] [] ${named('Duration')} ${bodyOf(`(StructLiteral ${named('Duration')} [(FieldInitializer value 0)])`)})`,
     ],
-    ['const limit: int = 50_000', `(VariableDeclaration [limit] ${int} 50000)`],
+    ['const limit: int = 50_000', `(VariableDeclaration [(NamePattern [limit])] ${int} 50000)`],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));
   });

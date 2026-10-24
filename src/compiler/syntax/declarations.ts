@@ -45,6 +45,12 @@ export interface FunctionDeclaration extends NodeOf<'FunctionDeclaration'>, Anno
   readonly body: Block | undefined;
 }
 
+/** Whether `declaration` is a method: its first parameter is named `self` (§3.7). */
+export function isMethod(declaration: FunctionDeclaration): boolean {
+  const [first] = declaration.parameters;
+  return first?.kind === 'Parameter' && first.name.text === 'self';
+}
+
 export interface StructDeclaration extends NodeOf<'StructDeclaration'>, Annotatable {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;

@@ -7,6 +7,10 @@
  *   across Program snapshots that keep the declaring module.
  * - A nominal type carries its type arguments; field and variant types are derived on demand by
  *   substituting them (the checker's `fieldsOf` and `variantsOf`), never stored per instantiation.
+ * - An anonymous struct (§3.1) is a type of its own wherever one is written: two are never the
+ *   same type, even with identical fields, so its identity is the node that introduced it. It
+ *   carries its fields, since it has no declaration to derive them from; instantiating a generic
+ *   declaration substitutes them, so identity is the origin plus the fields' types.
  * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
  *   so one mistake is reported once instead of at every use that follows.
  * - `never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
@@ -27,6 +31,8 @@ import type {
   TraitDeclaration,
   TypeParameter,
 } from '../../syntax/declarations.ts';
+import type { StructLiteral } from '../../syntax/expressions.ts';
+import type { StructType } from '../../syntax/types.ts';
 
 export interface PrimitiveType {
   readonly kind: 'primitive';
@@ -46,6 +52,22 @@ export interface NominalType {
 export interface TupleType {
   readonly kind: 'tuple';
   readonly elements: readonly Type[];
+}
+
+/** A field of a struct type, nominal or anonymous: its name and its type. */
+export interface FieldMember {
+  readonly name: string;
+  readonly type: Type;
+}
+
+/**
+ * A struct without a name (§3.1): introduced by a `{…}` type, or by a `struct{…}` literal with
+ * nothing to take a type from.
+ */
+export interface AnonymousStructType {
+  readonly kind: 'anonymous';
+  readonly origin: StructType | StructLiteral;
+  readonly fields: readonly FieldMember[];
 }
 
 /** A parameter of a function type: its type, and whether it takes a reference (§3.7). */
@@ -74,9 +96,13 @@ export interface ErrorType {
   readonly kind: 'error';
 }
 
+/** A type a struct value can have: a declared struct or an anonymous one. */
+export type StructValueType = NominalType | AnonymousStructType;
+
 export type Type =
   | PrimitiveType
   | NominalType
+  | AnonymousStructType
   | TupleType
   | FunctionType
   | TypeParameterType
@@ -109,6 +135,15 @@ export function sameType(first: Type, second: Type): boolean {
         second.kind === 'nominal' &&
         first.entity === second.entity &&
         sameTypes(first.arguments, second.arguments)
+      );
+    case 'anonymous':
+      return (
+        second.kind === 'anonymous' &&
+        first.origin === second.origin &&
+        sameTypes(
+          first.fields.map((field) => field.type),
+          second.fields.map((field) => field.type),
+        )
       );
     case 'tuple':
       return second.kind === 'tuple' && sameTypes(first.elements, second.elements);
@@ -187,6 +222,14 @@ export function substitute(type: Type, substitution: Substitution): Type {
         ...type,
         arguments: type.arguments.map((argument) => substitute(argument, substitution)),
       };
+    case 'anonymous':
+      return {
+        ...type,
+        fields: type.fields.map((field) => ({
+          ...field,
+          type: substitute(field.type, substitution),
+        })),
+      };
     case 'tuple':
       return {
         ...type,
@@ -213,6 +256,8 @@ export function typeChildren(type: Type): readonly Type[] {
   switch (type.kind) {
     case 'nominal':
       return type.arguments;
+    case 'anonymous':
+      return type.fields.map((field) => field.type);
     case 'tuple':
       return type.elements;
     case 'function':
@@ -264,6 +309,8 @@ export function typeKey(type: Type): string {
       return `'${idOf(type.declaration)}'`;
     case 'nominal':
       return `#${idOf(type.entity)}<${type.arguments.map(typeKey).join(',')}>`;
+    case 'anonymous':
+      return `{${idOf(type.origin)}:${type.fields.map((field) => typeKey(field.type)).join(',')}}`;
     case 'tuple':
       return `(${type.elements.map(typeKey).join(',')})`;
     case 'function':

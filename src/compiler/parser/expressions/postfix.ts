@@ -10,6 +10,9 @@
  *
  * A struct literal's `{` and type arguments both attach only to a name or a qualified name
  * (§2). Nothing else can stand before them, so the parser never needs to know what a name means.
+ *
+ * After `.`, a number names a tuple element (§3.15). The scanner reads the `0.1` of `t.0.1` as
+ * one float, so that token is split back into its two elements here.
  */
 
 import type { Call, Expression, Spread } from '../../syntax/expressions.ts';
@@ -87,11 +90,41 @@ export function memberParselet(isOptional: boolean): InfixParselet {
     level: 'postfix',
     parse(parser, left) {
       parser.cursor.advance();
+      const { kind } = parser.cursor;
+      if (!isOptional && (kind === 'integer' || kind === 'float')) {
+        return parseTupleElements(parser, left);
+      }
       const member = parser.identifier('a member name');
       const span = parser.spanFrom(left.span.start);
       return { kind: 'MemberAccess', span, target: left, isOptional, member };
     },
   };
+}
+
+/** Decimal positions only: `t.0`, `t.12`, and `t.0.1` read as one token. */
+const tupleElementText = /^(?:0|[1-9]\d*)(?:\.(?:0|[1-9]\d*))?$/u;
+
+/** The tuple element (or two, from a float token) after a `.`, at the number. */
+function parseTupleElements(parser: Parser, left: Expression): Expression {
+  const token = parser.cursor.advance();
+  const text = parser.textOf(token);
+  if (!tupleElementText.test(text)) {
+    parser.report(parserDiagnostics.invalidTupleElement(token.span, text));
+    return { kind: 'Invalid', span: parser.spanFrom(left.span.start) };
+  }
+  const [first, second] = text.split('.');
+  const firstEnd = token.span.start + (first?.length ?? 0);
+  const outer: Expression = {
+    kind: 'TupleElement',
+    span: { start: left.span.start, end: firstEnd },
+    target: left,
+    element: Number(first),
+  };
+  if (second === undefined) {
+    return outer;
+  }
+  const span = parser.spanFrom(left.span.start);
+  return { kind: 'TupleElement', span, target: outer, element: Number(second) };
 }
 
 export const propagateParselet: InfixParselet = {

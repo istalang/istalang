@@ -1,0 +1,28 @@
+# error: 5203 at 18:9
+# error: 5203 at 19:14
+# error: 5001 at 20:9
+# error: 5212 at 21:9
+# error: 5013 at 22:14
+# error: 5203 at 23:9
+# error: 5217 at 25:6
+# error: 5217 at 27:6
+# error: 5217 at 28:37
+# A declaration's targets are irrefutable (§3.15): no literal, comparison or variant; a struct
+# target names a struct of the value's own type, and fields it has. An assignment writes each
+# place once: not twice, nor whole and in part.
+
+struct Point { x: int; y: int }
+struct Pair { first: int; second: int }
+
+fn subject(n: int, o: int?):
+  const 1 = n
+  const Pair{first == 1} = Pair{first: 1, second: 2}
+  const Pair{first} = Point{x: 1, y: 2}
+  const struct{second} = n
+  const Pair{third} = Pair{first: 1, second: 2}
+  const Some{value} = o
+  let u = 0
+  u, u = (1, 2)
+  let w = Pair{first: 1, second: 2}
+  w, w.first = (Pair{first: 3, second: 4}, 5)
+  (w.first, w.second), Pair{second: w.first} = ((1, 2), Pair{first: 3, second: 4})

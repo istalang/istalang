@@ -245,6 +245,41 @@ export function childValues(composite: CompositeValue): readonly Value[] {
   }
 }
 
+/**
+ * `composite` with the values directly inside it replaced by `children`, given in `childValues`'
+ * order: the one place that knows how to rebuild them.
+ */
+export function withChildValues(
+  composite: CompositeValue,
+  children: readonly Value[],
+): CompositeValue {
+  switch (composite.kind) {
+    case 'tuple':
+    case 'array':
+      return { ...composite, elements: [...children] };
+    case 'struct':
+    case 'variant':
+      return { ...composite, fields: [...children] };
+    case 'map':
+      return {
+        ...composite,
+        entries: composite.entries.map((_, index): [Value, Value] => [
+          children[2 * index] as Value,
+          children[2 * index + 1] as Value,
+        ]),
+      };
+    case 'closure':
+      return { ...composite, captures: [...children] };
+    case 'extern':
+    case 'handle':
+      return composite;
+    default: {
+      const unhandled: never = composite;
+      return unhandled;
+    }
+  }
+}
+
 /** The heap objects a value holds handles to, at any depth. */
 export function handlesIn(contents: Value): readonly number[] {
   if (!isComposite(contents)) {

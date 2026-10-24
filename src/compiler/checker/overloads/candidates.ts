@@ -29,6 +29,19 @@ export type StaticTarget =
   | { readonly kind: 'owner'; readonly owner: StaticOwner; readonly module: ModuleId }
   | { readonly kind: 'parameter'; readonly parameter: TypeParameter };
 
+/**
+ * The candidates of a call of `name` written in `module` without a namespace, as an operator, a
+ * method and a requirement's witness are: the functions its top level sees, then ADL's.
+ */
+export function topLevelCandidates(
+  checker: CheckerContext,
+  module: ModuleId,
+  name: string,
+  argumentTypes: readonly (Type | undefined)[],
+): readonly Candidate[] {
+  return callCandidates(checker, namedInModule(checker, module, name), name, argumentTypes);
+}
+
 /** The candidates of a call of `name`: `named` in scope, then those its arguments bring. */
 export function callCandidates(
   checker: CheckerContext,
@@ -45,7 +58,7 @@ export function callCandidates(
 }
 
 /** The functions an operator's name denotes in `module` (§3.9). */
-export function namedInModule(
+function namedInModule(
   checker: CheckerContext,
   module: ModuleId,
   name: string,

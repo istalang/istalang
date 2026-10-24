@@ -26,6 +26,7 @@ import type { CallSite, CheckedBody, ResolvedCall, SignatureParameter } from './
 import type { BodyContext, CheckerContext } from './context.ts';
 import { checkerDiagnostics } from './diagnostics.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
+import { StructLiterals } from './expressions/literal-fields.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { passesValueOn, refuseHeldFuture } from './rules/futures.ts';
 import { LoopScope } from './statements/loops.ts';
@@ -48,6 +49,7 @@ export class BodyChecker implements BodyContext {
   readonly variables = new VariableScope();
   readonly returns: ReturnScope;
   readonly loops = new LoopScope();
+  readonly literals = new StructLiterals();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
   readonly #wraps = new Map<Expression, number>();
@@ -68,7 +70,7 @@ export class BodyChecker implements BodyContext {
     }
     const tail = this.block(body, this.returns.declared);
     const result = this.returns.result(this, body, tail);
-    this.variables.warnUnreassigned(this);
+    this.variables.warnUnchanged(this);
     return this.#checked(result);
   }
 
@@ -154,10 +156,15 @@ export class BodyChecker implements BodyContext {
     const types = this.#types;
     const calls = this.#calls;
     const wraps = this.#wraps;
+    const { variables, literals } = this;
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
       calls,
       wrapsOf: (expression) => wraps.get(expression) ?? 0,
+      targetsOf: (declaration) => variables.targetsOf(declaration),
+      assignedOf: (assignment) => variables.assignedOf(assignment),
+      isReferenced: (name) => variables.isReferenced(name),
+      sourcesOf: (literal) => literals.sourcesOf(literal),
       result,
     };
   }

@@ -1,5 +1,5 @@
 /**
- * Variable declarations (§3.4, §3.15): `let`, `const`, their tuple-destructuring forms, and the
+ * Variable declarations (§3.4, §3.15): `let`, `const`, their destructuring forms, and the
  * forms whose holdings last until the function ends: `fn let`, `fn const`, and `fn _ = expr`,
  * which means `fn const _ = expr`.
  *
@@ -8,7 +8,7 @@
 
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { Parser } from '../parser.ts';
-import { parseNames } from '../parts/names.ts';
+import { parseTargets } from '../parts/names.ts';
 
 /** `let …` or `const …`, starting at the keyword. */
 export function parseVariable(parser: Parser): VariableDeclaration {
@@ -32,7 +32,7 @@ function parseVariableAfter(
   if (!isMutable) {
     cursor.eat('const');
   }
-  const targets = parseNames(parser, 'a variable name');
+  const targets = parseTargets(parser);
   const type = cursor.eat(':') === undefined ? undefined : parser.type();
   const initializer = parser.expect('=') === undefined ? parser.placeholder() : parser.expression();
   const span = parser.spanFrom(start);

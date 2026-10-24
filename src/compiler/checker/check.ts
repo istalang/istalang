@@ -12,24 +12,18 @@ import { memo } from '../../structures/memo.ts';
 import type { Bindings } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
-import type { Expression, Parameter } from '../syntax/expressions.ts';
+import type { Expression, Parameter, StructLiteral } from '../syntax/expressions.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
-import type { VariableDeclaration } from '../syntax/statements.ts';
+import type { Assignment, VariableDeclaration } from '../syntax/statements.ts';
 import type { ConstantForm } from './constant-form.ts';
 import { ProgramChecker } from './program-checker.ts';
-import type { NominalType, Type } from './types/type.ts';
+import type { FieldMember, NominalType, Type } from './types/type.ts';
 
 /** A parameter of a declared function, with its resolved type. */
 export interface SignatureParameter {
   readonly node: Parameter;
   readonly type: Type;
   readonly reference: boolean;
-}
-
-/** A struct field of a nominal type, its type substituted for the type's arguments. */
-export interface FieldMember {
-  readonly name: string;
-  readonly type: Type;
 }
 
 /** A variant of an enum type, its fields substituted for the type's arguments. */
@@ -52,7 +46,13 @@ export interface VariantMember {
  */
 export type ResolvedCall = FunctionCall | RequirementCall;
 
-export interface FunctionCall {
+/** What every resolved call may carry about how it was written. */
+interface WrittenAs {
+  /** A method call's receiver (`x` in `x.f()`), passed as the call's first argument (§3.7). */
+  readonly receiver?: Expression;
+}
+
+export interface FunctionCall extends WrittenAs {
   readonly kind: 'function';
   readonly function: FunctionDeclaration;
   readonly typeArguments: readonly Type[];
@@ -60,7 +60,7 @@ export interface FunctionCall {
   readonly arity: number;
 }
 
-export interface RequirementCall {
+export interface RequirementCall extends WrittenAs {
   readonly kind: 'requirement';
   /** The trait's function required. */
   readonly function: FunctionDeclaration;
@@ -74,6 +74,28 @@ export interface RequirementOrigin {
   readonly parameter: TypeParameter;
   readonly constraint: number;
   readonly member: number;
+}
+
+/** A name a declaration's target binds: its part's type, and the positions leading to it (§3.15). */
+export interface TargetBinding {
+  readonly name: Identifier;
+  readonly type: Type;
+  /** Field or tuple element positions from the whole value to the part, outermost first. */
+  readonly path: readonly number[];
+}
+
+/**
+ * Where a struct literal's field gets its value (§3.1): an expression of the literal, or the field
+ * of that position in its leading spread's value.
+ */
+export type FieldSource =
+  | { readonly kind: 'value'; readonly value: Expression }
+  | { readonly kind: 'spread'; readonly from: Expression; readonly index: number };
+
+/** A place an assignment writes, and the positions of its part in the assigned value (§3.15). */
+export interface AssignedPart {
+  readonly target: Expression;
+  readonly path: readonly number[];
 }
 
 /**
@@ -96,6 +118,17 @@ export interface CheckedBody {
   readonly calls: ReadonlyMap<CallSite, ResolvedCall>;
   /** How many times the value of `expression` is wrapped into `Some` where it is used (§2). */
   readonly wrapsOf: (expression: Expression) => number;
+  /** What a declaration's targets bind, each name's part of the initializer's value. */
+  readonly targetsOf: (declaration: VariableDeclaration) => readonly TargetBinding[];
+  /** Where an assignment's value goes: each place written, with its part of the value. */
+  readonly assignedOf: (assignment: Assignment) => readonly AssignedPart[];
+  /** Whether the variable `name` declares is passed by `&` anywhere in the body (§3.7). */
+  readonly isReferenced: (name: Identifier) => boolean;
+  /**
+   * Where each field of a struct literal gets its value, in declaration order; undefined for a
+   * literal the checker found a mistake in.
+   */
+  readonly sourcesOf: (literal: StructLiteral) => readonly FieldSource[] | undefined;
   /** What the body produces: `T` for an async function returning `Future<T>`. */
   readonly result: Type;
 }
@@ -130,14 +163,19 @@ export interface Checker {
   readonly constantOf: (declaration: VariableDeclaration) => CheckedConstant | undefined;
   /** The checked top-level constant `name` denotes in `module`; undefined when it denotes anything else. */
   readonly constantNamed: (module: ModuleId, name: Identifier) => CheckedConstant | undefined;
-  /** The fields of a struct type, substituted for its type arguments; undefined for another type. */
-  readonly fieldsOf: (type: NominalType) => readonly FieldMember[] | undefined;
+  /**
+   * The fields of a struct type, declared or anonymous, substituted for its type arguments;
+   * undefined for another type.
+   */
+  readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
   readonly variantsOf: (type: NominalType) => readonly VariantMember[] | undefined;
   /** Who disposes a value of `type` (rules/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;
   /** `T?` for `type`, the type a value of `type` is wrapped into (§2). */
   readonly optionalOf: (type: Type) => NominalType;
+  /** `Shared<T>` for `type`, what a variable passed by `&` lives in (§3.7, §3.14). */
+  readonly sharedOf: (type: Type) => NominalType;
 }
 
 const checkers = new WeakMap<Program, Checker>();

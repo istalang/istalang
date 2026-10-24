@@ -9,7 +9,7 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import type { CheckerContext } from '../context.ts';
-import { type NominalType, type Type, typeKey } from '../types/type.ts';
+import { type NominalType, type Type, typeChildren, typeKey } from '../types/type.ts';
 
 /** Whether values of `type` may leave an instance. */
 export function isSendable(checker: CheckerContext, type: Type): boolean {
@@ -24,7 +24,8 @@ function sendable(checker: CheckerContext, type: Type, deciding: Set<string>): b
     case 'function':
       return false;
     case 'tuple':
-      return type.elements.every((element) => sendable(checker, element, deciding));
+    case 'anonymous':
+      return typeChildren(type).every((child) => sendable(checker, child, deciding));
     case 'parameter':
       return (
         type.declaration.kind === 'TypeParameter' &&

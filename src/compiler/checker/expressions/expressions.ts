@@ -8,7 +8,7 @@
  */
 
 import type { Handlers } from '../../../structures/kind-table.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression, Reference } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { boolType, errorType, floatType, intType, stringType, type Type } from '../types/type.ts';
 import { unsupportedHandler as unsupported } from '../unsupported.ts';
@@ -19,11 +19,21 @@ import { checkDurationLiteral } from './literals.ts';
 import { checkName } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
 import { checkMemberAccess, checkStructLiteral } from './structs.ts';
+import { checkTuple, checkTupleElement } from './tuples.ts';
 import { checkUnwrap } from './unwrap.ts';
 import { checkNone } from './variants.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
 const alreadyReported = (): Type => errorType;
+
+/**
+ * `&x` anywhere but a whole call argument, which the call checks (calls.ts): the parser reported
+ * it, so only `x` is checked, for what else it may hold.
+ */
+const misplacedReference = (context: BodyContext, node: Reference): Type => {
+  context.expression(node.expression);
+  return errorType;
+};
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undefined], Type> = {
@@ -38,6 +48,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Call: checkCall,
   StructLiteral: checkStructLiteral,
   MemberAccess: checkMemberAccess,
+  TupleElement: checkTupleElement,
   BlockExpression: (context, node, expected) => context.block(node.block, expected),
   If: checkIf,
   DurationLiteral: checkDurationLiteral,
@@ -45,9 +56,9 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   ArrayLiteral: unsupported,
   MapLiteral: unsupported,
   Comprehension: unsupported,
-  Tuple: unsupported,
+  Tuple: checkTuple,
   Lambda: unsupported,
-  Reference: unsupported,
+  Reference: misplacedReference,
   Index: unsupported,
   Propagate: unsupported,
   Unwrap: checkUnwrap,

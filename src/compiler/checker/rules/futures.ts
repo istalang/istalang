@@ -45,6 +45,8 @@ export function holdsFuture(checker: CheckerContext, type: Type): boolean {
       );
     case 'tuple':
       return type.elements.some((element) => holdsFuture(checker, element));
+    case 'anonymous':
+      return type.fields.some((field) => holdsFuture(checker, field.type));
     default:
       return false;
   }

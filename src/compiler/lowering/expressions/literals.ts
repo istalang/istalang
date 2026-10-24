@@ -8,9 +8,14 @@ import { durationForm } from '../../checker/constant-form.ts';
 import type { DurationLiteral } from '../../syntax/expressions.ts';
 import { constantValue } from '../constants.ts';
 import type { FunctionContext } from '../context.ts';
-import { nominalTypeOf } from './structs.ts';
 
 export function lowerDurationLiteral(context: FunctionContext, node: DurationLiteral): Register {
-  const form = durationForm(nominalTypeOf(context.body, node), node.value);
+  const type = context.body.typeOf(node);
+  if (type.kind !== 'nominal') {
+    throw new Error(
+      `A duration at ${node.span.start} isn't a Duration; the checker should have said so.`,
+    );
+  }
+  const form = durationForm(type, node.value);
   return context.constant(constantValue(context.tables, form), node.span);
 }

@@ -1,0 +1,17 @@
+# error: 5105 at 12:4
+# error: 5211 at 14:15
+# error: 5211 at 15:15
+# error: 5211 at 16:12
+# error: 5211 at 17:12
+# A method taking `self` by value clashes with one taking it by reference, as `x.f()` couldn't
+# choose (§3.7). A struct never holds itself, directly, through a tuple, or through another
+# struct (§3.1).
+
+struct P { x: int }
+fn f(self: P): 1
+fn f(self: &P): 2
+
+struct Node { next: Node }
+struct Cell { pair: (int, Cell) }
+struct A { b: B }
+struct B { a: A }

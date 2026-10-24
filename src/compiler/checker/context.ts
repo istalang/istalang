@@ -29,14 +29,15 @@ import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { CallSite, Checker, FieldMember, ResolvedCall, VariantMember } from './check.ts';
+import type { CallSite, Checker, ResolvedCall, VariantMember } from './check.ts';
+import type { StructLiterals } from './expressions/literal-fields.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import type { LoopScope } from './statements/loops.ts';
 import type { ReturnScope } from './statements/returns.ts';
 import type { VariableScope } from './statements/variables.ts';
 import type { Constraint } from './traits/constraints.ts';
 import type { OptionalEntity } from './types/fit.ts';
-import type { NominalType, Substitution, Type } from './types/type.ts';
+import type { FieldMember, NominalType, Substitution, Type } from './types/type.ts';
 
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
@@ -120,6 +121,7 @@ export interface BodyContext {
   /** Whether the body is an async function's, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
   readonly variables: VariableScope;
+  readonly literals: StructLiterals;
   readonly returns: ReturnScope;
   readonly loops: LoopScope;
 }

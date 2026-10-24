@@ -72,14 +72,20 @@ describe('arrays and maps', () => {
 
 describe('comprehensions', () => {
   it.each([
-    ['[for i in 1..10: 5 * i]', '(Comprehension [i] (Range 1 10) _ (Binary 5 * i))'],
-    ['[for x in xs if x < 20: x * 2]', '(Comprehension [x] xs (Binary x < 20) (Binary x * 2))'],
-    ['[for k, v in m: k]', '(Comprehension [k v] m _ k)'],
+    [
+      '[for i in 1..10: 5 * i]',
+      '(Comprehension [(NamePattern [i])] (Range 1 10) _ (Binary 5 * i))',
+    ],
+    [
+      '[for x in xs if x < 20: x * 2]',
+      '(Comprehension [(NamePattern [x])] xs (Binary x < 20) (Binary x * 2))',
+    ],
+    ['[for k, v in m: k]', '(Comprehension [(NamePattern [k]) (NamePattern [v])] m _ k)'],
     [
       '[for r in results if r is Ok{value}: value]',
-      '(Comprehension [r] results (Is r (StructPattern (NamedType [Ok] []) [(BindFieldPattern value _)])) value)',
+      '(Comprehension [(NamePattern [r])] results (Is r (StructPattern (NamedType [Ok] []) [(BindFieldPattern value _)])) value)',
     ],
-    ['[\n  for x in xs:\n    x\n]', '(Comprehension [x] xs _ x)'],
+    ['[\n  for x in xs:\n    x\n]', '(Comprehension [(NamePattern [x])] xs _ x)'],
   ])('parses %j', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });

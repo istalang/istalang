@@ -80,9 +80,12 @@ export function fullInstance(checker: Checker, instance: FunctionInstance): Func
 export function instantiatedBody(body: CheckedBody, instance: FunctionInstance): CheckedBody {
   const substitution = substitutionOf(instance);
   return {
+    ...body,
     typeOf: (expression) => substitute(body.typeOf(expression), substitution),
-    calls: body.calls,
-    wrapsOf: (expression) => body.wrapsOf(expression),
+    targetsOf: (declaration) =>
+      body
+        .targetsOf(declaration)
+        .map((binding) => ({ ...binding, type: substitute(binding.type, substitution) })),
     result: substitute(body.result, substitution),
   };
 }

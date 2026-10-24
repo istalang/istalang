@@ -13,6 +13,8 @@
  * - A commit keeps only what an execution can reach (§5). A future no register holds any more is
  *   left out; disposal (§7) will decide what losing a last holder does, and until then nothing can
  *   observe it.
+ * - The instance is its frames' cell store (interpreter/machine.ts): a variable passed by `&` is a
+ *   cell object here, and a reference names one.
  */
 
 import type { Definition } from '../../definition/definition.ts';
@@ -20,8 +22,15 @@ import { awaitedRegisters } from '../../definition/instructions/flow.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
 import type { FunctionTable } from '../interpreter/function-table.ts';
-import { type ActiveFrame, newFrame, readRegister, resumeAt } from '../interpreter/machine.ts';
-import { type Frame, type HeapObject, isReference } from '../snapshot/objects.ts';
+import {
+  type ActiveFrame,
+  type CellStore,
+  newFrame,
+  type RegisterContents,
+  readRegister,
+  resumeAt,
+} from '../interpreter/machine.ts';
+import type { Frame, HeapObject } from '../snapshot/objects.ts';
 import { referencedObjects, type Snapshot } from '../snapshot/snapshot.ts';
 
 /** A Definition as the runtime runs it: loaded, bound to its natives, and named by its hash. */
@@ -40,6 +49,7 @@ export interface LiveExecution {
 }
 
 type FutureObject = Extract<HeapObject, { kind: 'future' }>;
+type CellObject = Extract<HeapObject, { kind: 'cell' }>;
 type FutureState = FutureObject['state'];
 
 /** A heap object as the running instance holds it. */
@@ -62,6 +72,14 @@ export class Instance {
   readonly loaded: LoadedDefinition;
   readonly name: string;
   readonly crashEveryAwait: boolean;
+  /** The heap's cells, as its frames read and write them (interpreter/machine.ts). */
+  readonly cells: CellStore = {
+    read: (cell) => this.#cell(cell).value,
+    write: (cell, value) => {
+      this.#objects.set(cell, { ...this.#cell(cell), value });
+    },
+    create: (type, value) => this.#add((id): CellObject => ({ kind: 'cell', id, type, value })).id,
+  };
   readonly #objects: Map<number, LiveObject>;
   readonly #ready: number[];
 
@@ -87,13 +105,20 @@ export class Instance {
 
   /** The instance a committed snapshot describes. */
   static restore(loaded: LoadedDefinition, snapshot: Snapshot): Instance {
-    const objects = snapshot.objects.map(
-      (object): LiveObject =>
+    const instance = new Instance(loaded, snapshot.instance, { ...snapshot, objects: [] });
+    for (const object of snapshot.objects) {
+      const live: LiveObject =
         object.kind === 'execution'
-          ? { ...object, frames: object.frames.map((frame) => liveFrame(loaded.definition, frame)) }
-          : object,
-    );
-    return new Instance(loaded, snapshot.instance, { ...snapshot, objects });
+          ? {
+              ...object,
+              frames: object.frames.map((frame) =>
+                liveFrame(loaded.definition, frame, instance.cells),
+              ),
+            }
+          : object;
+      instance.#objects.set(live.id, live);
+    }
+    return instance;
   }
 
   /** The instance as a snapshot with `status`, holding only what an execution can reach. */
@@ -109,18 +134,14 @@ export class Instance {
     };
   }
 
-  /** A new execution about to run function `entry` with `argumentValues`. */
-  startExecution(entry: FunctionId, argumentValues: readonly Value[]): LiveExecution {
+  /** A new execution about to run function `entry` with `contents` in its parameters. */
+  startExecution(entry: FunctionId, contents: readonly RegisterContents[]): LiveExecution {
     const code = this.loaded.definition.functions[entry];
     if (code?.kind !== 'code') {
       throw new Error(`Entry ${entry} is not code.`);
     }
-    return this.#add((id) => ({
-      kind: 'execution',
-      id,
-      frames: [newFrame(entry, code, argumentValues)],
-      disposing: false,
-    }));
+    const frame = newFrame(entry, code, contents, this.cells);
+    return this.#add((id) => ({ kind: 'execution', id, frames: [frame], disposing: false }));
   }
 
   /** A handle to a new future in `state`. */
@@ -244,6 +265,14 @@ export class Instance {
     return this.#futureById(id);
   }
 
+  #cell(id: number): CellObject {
+    const object = this.#objects.get(id);
+    if (object?.kind !== 'cell') {
+      throw new Error(`Object ${id} is not a cell.`);
+    }
+    return object;
+  }
+
   #futureById(id: number): FutureObject {
     const object = this.#objects.get(id);
     if (object?.kind !== 'future') {
@@ -288,11 +317,13 @@ function waitsOn(execution: LiveExecution, id: number): boolean {
   const instruction = frame.code.instructions[frame.pc];
   return (
     instruction !== undefined &&
-    awaitedRegisters(instruction).some((register) => handleTarget(frame.registers[register]) === id)
+    awaitedRegisters(instruction).some(
+      (register) => handleTarget(readRegister(frame, register)) === id,
+    )
   );
 }
 
-function liveFrame(definition: Definition, frame: Frame): ActiveFrame {
+function liveFrame(definition: Definition, frame: Frame, cells: CellStore): ActiveFrame {
   const code = definition.functions[frame.function];
   if (code?.kind !== 'code') {
     throw new Error(`Frame function ${frame.function} is not code; loading checks this.`);
@@ -300,11 +331,8 @@ function liveFrame(definition: Definition, frame: Frame): ActiveFrame {
   if (frame.kept.length > 0) {
     throw new Error("The runtime doesn't restore kept holdings yet.");
   }
-  const live = newFrame(frame.function, code, []);
+  const live = newFrame(frame.function, code, [], cells);
   for (const [register, contents] of frame.registers) {
-    if (isReference(contents)) {
-      throw new Error("The runtime doesn't restore references yet.");
-    }
     live.registers[register] = contents;
   }
   live.pc = frame.pc;
@@ -321,7 +349,7 @@ function storedObject(object: LiveObject): HeapObject {
       function: frame.function,
       pc: frame.pc,
       registers: frame.registers.flatMap((contents, register) =>
-        contents === undefined ? [] : [[register, contents] as [number, Value]],
+        contents === undefined ? [] : [[register, contents] as [number, RegisterContents]],
       ),
       kept: [],
     })),

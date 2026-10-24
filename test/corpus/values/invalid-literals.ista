@@ -1,0 +1,28 @@
+# error: 5204 at 18:18
+# error: 5205 at 20:28
+# error: 5001 at 21:21
+# error: 5206 at 22:13
+# error: 5206 at 24:13
+# error: 5213 at 25:20
+# error: 5015 at 26:26
+# error: 5001 at 28:20
+# Struct literal forms (§3.1): a positional value only for a struct of one field, a spread first
+# and of the literal's own type, a struct without fields written bare, and a fresh `struct{…}`
+# with named, distinct fields, a type of its own.
+
+struct Point { x: int; y: int }
+struct Pair { first: int; second: int }
+struct Empty
+
+fn subject(n: int):
+  const p = Pair{1}
+  const q = Pair{first: 1, second: 2}
+  const r = Pair{first: 3, ...q}
+  const s = Pair{...Point{x: 1, y: 2}}
+  const e = Empty{}
+  const f = Empty
+  const g = Empty{...f}
+  const u = struct{(n)}
+  const v = struct{a: 1, a: 2}
+  const w = struct{x: 1, y: 2}
+  const t: Point = w

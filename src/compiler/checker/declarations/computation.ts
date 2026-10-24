@@ -1,22 +1,23 @@
 /**
  * The one walk over a top-level constant's initializer (§3): it decides what compile time computes
  * and computes it, in the same switch, so the two can't disagree. Compile time computes literals, a
- * negated number among them, duration literals, structs given every field by name, and other
- * top-level constants; anything else is refused where it stands, and arrays and maps are named as
- * not supported yet as constants.
+ * negated number among them, duration literals, tuples, structs in every literal form (a spread
+ * copying a computed struct's fields), a struct without fields written bare, and other top-level
+ * constants; anything else is refused where it stands, and arrays and maps are named as not
+ * supported yet as constants.
  */
 
 import type { Expression, StructLiteral } from '../../syntax/expressions.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
-import type { CheckedBody, CheckedConstant, FieldMember } from '../check.ts';
+import type { CheckedBody, CheckedConstant } from '../check.ts';
 import { type ConstantForm, durationForm } from '../constant-form.ts';
 import { type FrontierConstruct, frontier } from '../frontier.ts';
-import type { NominalType } from '../types/type.ts';
+import type { FieldMember, Type } from '../types/type.ts';
 
 /** What the walk reads: the initializer's checking, struct layouts, and the other constants. */
 export interface ComputationScope {
   readonly checked: CheckedBody;
-  readonly fieldsOf: (type: NominalType) => readonly FieldMember[] | undefined;
+  readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
   readonly constantNamed: (name: Identifier) => CheckedConstant | undefined;
 }
 
@@ -49,8 +50,10 @@ class Computation {
       case 'StringLiteral':
       case 'BooleanLiteral':
         return computed({ kind: 'primitive', value: node.value });
-      case 'DurationLiteral':
-        return this.#nominal(node, (type) => computed(durationForm(type, node.value)));
+      case 'DurationLiteral': {
+        const type = this.#scope.checked.typeOf(node);
+        return type.kind === 'nominal' ? computed(durationForm(type, node.value)) : unknown;
+      }
       case 'Parenthesized':
         return this.of(node.expression);
       case 'Unary':
@@ -60,12 +63,14 @@ class Computation {
       case 'Identifier': {
         const constant = this.#scope.constantNamed(node);
         if (constant === undefined) {
-          return refused(node);
+          return this.#bareStruct(node);
         }
         return constant.form === undefined ? unknown : computed(constant.form);
       }
       case 'StructLiteral':
         return this.#struct(node);
+      case 'Tuple':
+        return this.#tuple(node.elements);
       case 'ArrayLiteral':
       case 'MapLiteral':
         return { kind: 'refused', part: node, notYet: frontier.arrayOrMapConstant };
@@ -77,34 +82,62 @@ class Computation {
     }
   }
 
-  /** A struct given every field by name, its fields in declaration order. */
+  /** A struct in any literal form, its fields in declaration order. */
   #struct(node: StructLiteral): Outcome {
-    const given = new Map<string, ConstantForm>();
-    for (const item of node.items) {
-      if (item.kind === 'Invalid') {
-        return unknown;
-      }
-      if (item.kind !== 'FieldInitializer' || item.value === undefined) {
-        return refused(item);
-      }
-      const field = this.of(item.value);
-      if (field.kind !== 'computed') {
-        return field;
-      }
-      given.set(item.name.text, field.form);
+    const type = this.#scope.checked.typeOf(node);
+    const fields = this.#scope.fieldsOf(type);
+    if (fields === undefined || (type.kind !== 'nominal' && type.kind !== 'anonymous')) {
+      return unknown;
     }
-    return this.#nominal(node, (type) => {
-      const fields = (this.#scope.fieldsOf(type) ?? []).map(({ name }) => given.get(name));
-      return fields.every((field) => field !== undefined)
-        ? computed({ kind: 'struct', type, fields })
-        : unknown;
-    });
+    if (node.items.some((item) => item.kind === 'Invalid')) {
+      return unknown;
+    }
+    const sources = this.#scope.checked.sourcesOf(node);
+    if (sources === undefined) {
+      return unknown;
+    }
+    const forms: ConstantForm[] = [];
+    for (const source of sources) {
+      const part = source.kind === 'value' ? this.of(source.value) : this.#spreadField(source);
+      if (part.kind !== 'computed') {
+        return part;
+      }
+      forms.push(part.form);
+    }
+    return computed({ kind: 'struct', type, fields: forms });
   }
 
-  /** `build` applied to the nominal type the checker gave `node`; unknown after a reported error. */
-  #nominal(node: Expression, build: (type: NominalType) => Outcome): Outcome {
+  /** The field at `index` of a spread value, which must itself compute to a struct. */
+  #spreadField(source: { readonly from: Expression; readonly index: number }): Outcome {
+    const whole = this.of(source.from);
+    if (whole.kind !== 'computed') {
+      return whole;
+    }
+    const field = whole.form.kind === 'struct' ? whole.form.fields[source.index] : undefined;
+    return field === undefined ? unknown : computed(field);
+  }
+
+  #tuple(elements: readonly Expression[]): Outcome {
+    if (elements.length === 0) {
+      return computed({ kind: 'primitive', value: null });
+    }
+    const forms: ConstantForm[] = [];
+    for (const element of elements) {
+      const part = this.of(element);
+      if (part.kind !== 'computed') {
+        return part;
+      }
+      forms.push(part.form);
+    }
+    return computed({ kind: 'tuple', elements: forms });
+  }
+
+  /** A struct without fields named bare (§3.1); any other name that isn't a constant is refused. */
+  #bareStruct(node: Identifier): Outcome {
     const type = this.#scope.checked.typeOf(node);
-    return type.kind === 'nominal' ? build(type) : unknown;
+    return type.kind === 'nominal' && this.#scope.fieldsOf(type)?.length === 0
+      ? computed({ kind: 'struct', type, fields: [] })
+      : refused(node);
   }
 }
 

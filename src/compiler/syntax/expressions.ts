@@ -75,9 +75,9 @@ export interface MapEntry extends NodeOf<'MapEntry'> {
   readonly value: Expression;
 }
 
-/** `[for k, v in xs if cond: body]`; several variables destructure a tuple. */
+/** `[for k, v in xs if cond: body]`; several targets destructure a tuple (statements.ts). */
 export interface Comprehension extends NodeOf<'Comprehension'> {
-  readonly variables: readonly Identifier[];
+  readonly targets: readonly Pattern[];
   readonly iterable: Expression;
   readonly condition: Expression | undefined;
   readonly body: Expression;
@@ -109,6 +109,14 @@ export interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
   readonly value: Expression;
 }
 
+/** A struct literal's item naming a field's value, by name or by position. */
+export type FieldItem = FieldInitializer | PositionalInitializer;
+
+/** The expression an item gives its field: its value, or for the shorthand, its own name. */
+export function itemValue(item: FieldItem): Expression {
+  return item.kind === 'FieldInitializer' ? (item.value ?? item.name) : item.value;
+}
+
 export interface Parameter extends NodeOf<'Parameter'> {
   /** `...name`, collecting the remaining arguments. */
   readonly isRest: boolean;
@@ -137,11 +145,50 @@ export interface Reference extends NodeOf<'Reference'> {
   readonly expression: Expression;
 }
 
+/**
+ * `t.0`: an element of a tuple, by its position (§3.15). `t.0.1` is two of them, though the
+ * scanner reads `0.1` as one float.
+ */
+export interface TupleElement extends NodeOf<'TupleElement'> {
+  readonly target: Expression;
+  readonly element: number;
+}
+
 /** `a.b`, or `a?.b` when `isOptional`. */
 export interface MemberAccess extends NodeOf<'MemberAccess'> {
   readonly target: Expression;
   readonly isOptional: boolean;
   readonly member: Identifier;
+}
+
+/** `node` without the parentheses written around it, which change nothing about it. */
+export function unparenthesized(node: Expression): Expression {
+  return node.kind === 'Parenthesized' ? unparenthesized(node.expression) : node;
+}
+
+/** A field or tuple element read off a place (§3.9). */
+export type PlaceStep = MemberAccess | TupleElement;
+
+/**
+ * A place as written: the expression its fields and elements are read from, a variable in any
+ * valid place, and those reads, innermost first. `a?.b` is no step, so it stands as the root.
+ */
+export interface PlacePath {
+  readonly root: Expression;
+  readonly steps: readonly PlaceStep[];
+}
+
+export function placePath(node: Expression): PlacePath {
+  const steps: PlaceStep[] = [];
+  let current = unparenthesized(node);
+  while (
+    current.kind === 'TupleElement' ||
+    (current.kind === 'MemberAccess' && !current.isOptional)
+  ) {
+    steps.unshift(current);
+    current = unparenthesized(current.target);
+  }
+  return { root: current, steps };
 }
 
 /** `a[i]`, and slicing when the index is a range. */
@@ -247,6 +294,7 @@ export type Expression =
   | Call
   | Reference
   | MemberAccess
+  | TupleElement
   | Index
   | Propagate
   | Unwrap

@@ -27,7 +27,7 @@ import type { Lambda, Parameter } from '../syntax/expressions.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
-import { bindVariableValue } from './statements.ts';
+import { bindTargets, bindVariableValue } from './statements.ts';
 import { bindFields } from './types.ts';
 
 export function bindFunction(
@@ -78,7 +78,10 @@ function bindParameters(
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
   FunctionDeclaration: bindFunction,
-  VariableDeclaration: bindVariableValue,
+  VariableDeclaration: (binder, node, scope) => {
+    bindVariableValue(binder, node, scope);
+    bindTargets(binder, node, scope, undefined);
+  },
   ExternConstantDeclaration: (binder, node, scope) => binder.walk.type(binder, node.type, scope),
   StructDeclaration: (binder, node, scope) =>
     bindFields(binder, node.fields, typeParameterScope(binder, node.typeParameters, scope)),

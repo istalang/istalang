@@ -1,0 +1,58 @@
+# error: 5207 at 40:3
+# error: 5207 at 42:3
+# error: 5207 at 44:9
+# error: 5207 at 45:3
+# error: 5210 at 46:3
+# error: 5208 at 47:9
+# error: 5208 at 48:3
+# error: 5215 at 49:8
+# error: 5215 at 51:19
+# error: 5001 at 53:8
+# error: 5214 at 54:15
+# error: 2004 at 55:13
+# error: 5001 at 57:3
+# error: 5001 at 58:9
+# Places (§3.7, §3.9): a const is never changed, through a field, an element, `&` or a method
+# taking `&self`; only a place is changed or passed by `&`; `&` is written exactly where the
+# callee takes a reference, of exactly its type (a receiver `&self` takes too), and only as an
+# argument.
+
+struct Point { x: int; y: int }
+
+fn grow(self: &Point, by: int):
+  self.x += by
+
+fn clear(self: &Point?):
+  self = none
+
+fn reset(o: &Point?):
+  o = none
+
+fn bump(n: &int):
+  n += 1
+
+fn plain(n: int) -> int: n
+
+fn makePoint() -> Point: Point{x: 0, y: 0}
+
+fn subject(n: int):
+  const p = Point{x: 1, y: 2}
+  p.x = 3
+  const t = (1, 2)
+  t.0 = 3
+  const k = 1
+  bump(&k)
+  p.grow(1)
+  makePoint().grow(1)
+  bump(&plain(n))
+  makePoint().x = 1
+  bump(k)
+  let m = 1
+  const j = plain(&m)
+  let h = "a"
+  bump(&h)
+  const v = n.nothing()
+  const r = &k
+  let q = Point{x: 1, y: 2}
+  q.clear()
+  reset(&q)

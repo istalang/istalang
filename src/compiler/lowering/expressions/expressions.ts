@@ -17,9 +17,10 @@ import { lowerIf } from './control.ts';
 import { lowerDurationLiteral } from './literals.ts';
 import { lowerName } from './names.ts';
 import { lowerBinary, lowerUnary } from './operators.ts';
-import { lowerFieldRead, lowerStructLiteral, nominalTypeOf } from './structs.ts';
+import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
+import { lowerTuple, lowerTupleElement } from './tuples.ts';
 import { lowerUnwrap } from './unwrap.ts';
-import { lowerFieldlessVariant, lowerNone, lowerVariantLiteral } from './variants.ts';
+import { isEnum, lowerFieldlessVariant, lowerNone, lowerVariantLiteral } from './variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {
@@ -34,22 +35,21 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Unary: lowerUnary,
   Call: lowerCall,
   StructLiteral: (context, node) =>
-    nominalTypeOf(context.body, node).entity.declaration.kind === 'EnumDeclaration'
+    isEnum(context.body.typeOf(node))
       ? lowerVariantLiteral(context, node)
       : lowerStructLiteral(context, node),
-  MemberAccess: (context, node) => {
-    const member = context.entityOf(node.member);
-    return member?.kind === 'variant'
+  MemberAccess: (context, node) =>
+    context.entityOf(node.member)?.kind === 'variant'
       ? lowerFieldlessVariant(context, node, node.member.text)
-      : lowerFieldRead(context, node);
-  },
+      : lowerFieldRead(context, node),
+  TupleElement: lowerTupleElement,
   If: lowerIf,
   DurationLiteral: lowerDurationLiteral,
   NoneLiteral: lowerNone,
   ArrayLiteral: notLowered,
   MapLiteral: notLowered,
   Comprehension: notLowered,
-  Tuple: notLowered,
+  Tuple: lowerTuple,
   Lambda: notLowered,
   Reference: notLowered,
   Index: notLowered,

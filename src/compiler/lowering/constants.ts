@@ -20,6 +20,11 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
         type: tables.typeIndex(form.type),
         fields: form.fields.map((field) => constantValue(tables, field)),
       };
+    case 'tuple':
+      return {
+        kind: 'tuple',
+        elements: form.elements.map((element) => constantValue(tables, element)),
+      };
     default: {
       const unhandled: never = form;
       return unhandled;

@@ -1,0 +1,50 @@
+# outcome: "0 -1 7 | 1 2 9 8 | 11 | 5 1 | 29 | 13 8"
+# Value semantics beyond a single level (§3.1, §3.7, §3.15): a whole value assigned through a
+# reference replaces the caller's; a field or tuple read into a variable is a copy; one variable
+# passed by `&` twice in a call aliases itself; a reference beside a by-value copy of the same
+# variable leaves the copy as it was at the call; nested tuples copy deeply; top-level constants
+# destructure into constants of their own.
+
+struct P { x: int; y: int }
+
+struct W { p: P; n: (int, int) }
+
+const base = (1, P{x: 2, y: 3})
+
+const first, P{y as last} = base
+
+fn reset(p: &P):
+  p = P{x: 0, y: 0}
+
+fn resetWhole(w: &W):
+  w.p = P{x: -1, y: -1}
+  w.n = (7, 7)
+
+fn both(a: &int, b: &int):
+  a += 1
+  b += 10
+
+fn setFrom(a: &P, b: P):
+  a.x = 5
+  b.x = 6
+
+fn get(self: W) -> P: self.p
+
+async fn main():
+  let p = P{x: 1, y: 2}
+  reset(&p)
+  let w = W{p: p, n: (1, 1)}
+  resetWhole(&w)
+  const kept = W{p: P{x: 1, y: 2}, n: (0, 0)}
+  let fromGetter = kept.get()
+  fromGetter.x = 9
+  let fromField = kept.p
+  fromField.y = 8
+  let n = 0
+  both(&n, &n)
+  let q = P{x: 1, y: 1}
+  setFrom(&q, q)
+  const orig = (1, (2, 3))
+  let moved = orig
+  moved.1.0 = 9
+  "" + p.x + " " + w.p.x + " " + w.n.0 + " | " + kept.p.x + " " + kept.p.y + " " + fromGetter.x + " " + fromField.y + " | " + n + " | " + q.x + " " + q.y + " | " + orig.1.0 + moved.1.0 + " | " + first + last + " " + (base.1.x + 6)

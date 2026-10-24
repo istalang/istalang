@@ -20,6 +20,7 @@ import type {
   Module,
 } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
+import { targetNames } from '../syntax/patterns.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import type { Entity, FunctionsEntity, VariantEntity } from './entities.ts';
 import type { LocalBinder } from './local-binder.ts';
@@ -97,7 +98,7 @@ class TopLevelDefiner {
         return;
       }
       case 'VariableDeclaration':
-        for (const name of item.targets) {
+        for (const name of item.targets.flatMap(targetNames)) {
           this.#define(name, { kind: 'variable', name, owner: item }, 'declaration', 'value');
         }
         return;

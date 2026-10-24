@@ -9,26 +9,23 @@
  *   default sees the parameters before it (`DefaultValues`). A parameter with a default may omit
  *   its type, which is then the default's. Every parameter after one with a default has one too.
  *   Rest parameters are sugar the checker doesn't expand yet.
- * - Fields, of a struct or of an enum's variant, resolve in the declaring module.
+ * - Fields, of a struct, an enum's variant or an anonymous struct type, resolve in the module
+ *   writing them.
  * - Code that would hold a future in a parameter or a field is refused (rules/futures.ts); an
  *   extern's parameters are its native's to hold, so they aren't.
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type {
-  EnumDeclaration,
-  FunctionDeclaration,
-  StructDeclaration,
-} from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
-import type { FieldMember, SignatureParameter } from '../check.ts';
+import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
 import { futureArgument, futureOf, refuseHeldFuture } from '../rules/futures.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** Where a function's defaults are checked: one body, seeing each parameter once declared. */
@@ -110,15 +107,14 @@ export function callResult(
 }
 
 /**
- * The fields of a struct declaration or of an enum variant, their types resolved in the module of
- * `owner`, the declaration holding them, but not substituted.
+ * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
+ * resolved in `module`, where they are written, but not substituted.
  */
 export function declaredFields(
   checker: CheckerContext,
-  owner: StructDeclaration | EnumDeclaration,
+  module: ModuleId,
   fields: readonly (FieldDeclaration | Invalid)[],
 ): readonly FieldMember[] {
-  const module = checker.moduleOf(owner);
   return fields.flatMap((field) =>
     field.kind === 'FieldDeclaration'
       ? [{ name: field.name.text, type: fieldType(checker, module, field) }]

@@ -22,6 +22,7 @@ import type { Value } from '../../definition/values.ts';
 import { runInstruction } from '../interpreter/instructions.ts';
 import {
   type ActiveFrame,
+  argumentContents,
   type Machine,
   newFrame,
   readRegister,
@@ -29,6 +30,7 @@ import {
 } from '../interpreter/machine.ts';
 import { traceOf } from '../interpreter/trace.ts';
 import { type NativeContext, Panic } from '../natives.ts';
+import { isReference } from '../snapshot/objects.ts';
 import { type Instance, type LiveExecution, topFrame } from './instance.ts';
 
 export type SegmentEnd =
@@ -94,24 +96,26 @@ class SegmentRunner implements Machine {
   }
 
   call(frame: ActiveFrame, callee: FunctionId, argumentList: readonly Argument[]): void {
-    const values = argumentList.map((argument) => {
-      if (argument.kind !== 'value') {
-        throw new Error("The runtime doesn't pass references yet.");
-      }
-      return readRegister(frame, argument.register);
-    });
+    const contents = argumentList.map((argument) => argumentContents(frame, argument));
     const callable = this.#instance.loaded.functions.callee(callee);
     if (callable.kind === 'native') {
+      const values = contents.map((each) => {
+        if (isReference(each)) {
+          throw new Error("The runtime doesn't pass references to natives yet.");
+        }
+        return each;
+      });
       resumeAfterCall(frame, callable.native(values, this.#nativeContext(callee)));
       return;
     }
     if (callable.code.async) {
-      const execution = this.#instance.startExecution(callable.function, values);
+      const execution = this.#instance.startExecution(callable.function, contents);
       this.#instance.newFuture({ kind: 'call', execution: execution.id });
       this.#runStack.push(execution);
       return;
     }
-    this.#current().frames.push(newFrame(callable.function, callable.code, values));
+    const calleeFrame = newFrame(callable.function, callable.code, contents, this.#instance.cells);
+    this.#current().frames.push(calleeFrame);
   }
 
   return(frame: ActiveFrame, value: Value): void {

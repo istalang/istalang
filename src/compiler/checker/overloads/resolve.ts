@@ -5,9 +5,11 @@
  *
  * - An argument whose type the chosen function decides (`none`, a bare variant) is checked only
  *   after choosing, against its parameter's type.
+ * - A method call records its receiver with the call, as lowering passes it first (§3.7). A
+ *   receiver the chosen function's `self` takes by reference must be a place that may change.
  * - An argument of the error type was already reported, so the call reports nothing more.
  * - A failure is explained as precisely as the candidates allow: with one candidate, what exactly
- *   doesn't fit it.
+ *   doesn't fit it, as choosing decided it, so an explanation never disagrees with the choice.
  * - Calling `dispose` directly is refused, since the runtime calls it once nothing holds a value
  *   (§7). The rules every call obeys, witnesses of constraints included, apply where the call is
  *   made (calls-made.ts).
@@ -18,21 +20,22 @@ import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
-import { frontier } from '../frontier.ts';
+import { changeReceiver } from '../rules/places.ts';
 import { instantiate } from '../traits/conformance.ts';
 import { errorType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import type { Candidate } from './candidates.ts';
-import { type Application, choose, type Inapplicability } from './choice.ts';
+import { type Application, choose, type Inapplicability, type Passing } from './choice.ts';
 
 /**
- * An argument as written: its node, and its type, undefined when the chosen function decides it,
- * with which parameter types it can take (choice.ts).
+ * An argument as written: its node, how it is passed, and its type, undefined when the chosen
+ * function decides it, with which parameter types it can take (choice.ts).
  */
 export interface WrittenArgument {
   readonly node: Expression;
+  readonly passing: Passing;
   readonly type: Type | undefined;
   readonly accepts?: ((expected: Type) => boolean) | undefined;
 }
@@ -48,6 +51,8 @@ export interface CallRequest {
   readonly expected: Type | undefined;
   /** How a call no candidate takes reads: as a call, or as an operator on its operands. */
   readonly form: 'call' | 'operator';
+  /** A method call's receiver, its first argument (§3.7). */
+  readonly receiver?: Expression;
 }
 
 /** Resolves `request`, recording the call; what it yields, or the error type after a report. */
@@ -56,7 +61,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
   if (written.some(({ type }) => type?.kind === 'error')) {
     return errorType;
   }
-  const callArguments = written.map(({ type, accepts }) => ({ type, reference: false, accepts }));
+  const callArguments = written.map(({ type, passing, accepts }) => ({ type, passing, accepts }));
   const choice = choose(context.checker, request.candidates, callArguments, request.typeArguments);
   switch (choice.kind) {
     case 'chosen':
@@ -76,9 +81,14 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
   }
 }
 
-/** The types of written arguments, as a call's argument list reads: `int, string`. */
+/** The types of written arguments, as a call's argument list reads: `&Stack, int`. */
 export function typesText(written: readonly WrittenArgument[]): string {
-  return written.map(({ type }) => (type === undefined ? '_' : typeText(type))).join(', ');
+  return written
+    .map(({ type, passing }) => {
+      const text = type === undefined ? '_' : typeText(type);
+      return passing === 'reference' ? `&${text}` : text;
+    })
+    .join(', ');
 }
 
 function complete(context: BodyContext, request: CallRequest, application: Application): Type {
@@ -113,7 +123,11 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
   if (call === undefined) {
     return errorType;
   }
-  context.recordCall(site, call);
+  const { receiver } = request;
+  context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
+  if (receiver !== undefined && signature.parameters[0]?.reference === true) {
+    changeReceiver(context, receiver, request.name);
+  }
   return substitute(signature.result(), instantiation.substitution);
 }
 
@@ -165,9 +179,11 @@ function explain(context: BodyContext, request: CallRequest, reason: Inapplicabi
       context.report(checkerDiagnostics.typeArgumentCount(site.span, name, expected, count));
       return;
     }
-    case 'reference':
-      context.unsupported(site, frontier.reference);
+    case 'reference': {
+      const at = request.arguments[reason.index]?.node.span ?? site.span;
+      context.report(checkerDiagnostics.passing(at, name, reason.index + 1, reason.reference));
       return;
+    }
     case 'conflict':
       context.report(checkerDiagnostics.cannotInfer(site.span, name, reason.parameter.name.text));
       return;
@@ -175,7 +191,10 @@ function explain(context: BodyContext, request: CallRequest, reason: Inapplicabi
       for (const { index, expected } of reason.misfits) {
         const argument = request.arguments[index];
         if (argument?.type !== undefined) {
-          context.fit(argument.type, expected, argument.node);
+          const { node, type } = argument;
+          context.report(
+            checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(type)),
+          );
         } else if (argument !== undefined) {
           context.expect(argument.node, expected);
         }

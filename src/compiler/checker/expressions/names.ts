@@ -1,15 +1,18 @@
 /**
  * A name used as a value (§3.4): what it means comes from the binder, and its type from where it
- * was declared. A variant's type comes from its enum (variants.ts). Types, primitives and namespaces are not values; a type in value position is how a
- * static function or a conversion is called, which the call checks before it gets here.
+ * was declared. A variant's type comes from its enum (variants.ts). Types, primitives and
+ * namespaces are not values; a type in value position is how a static function or a conversion is
+ * called, which the call checks before it gets here. The one type that is a value is a struct
+ * without fields, written bare (§3.1), which takes its type arguments from the expected type.
  */
 
 import type { Entity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
+import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType, type NominalType, type Type } from '../types/type.ts';
 import { checkVariantName } from './variants.ts';
 
 export function checkName(
@@ -38,7 +41,10 @@ export function entityValueType(
         case 'ExternConstantDeclaration':
           return context.unsupported(node, frontier.externConstant);
         case 'VariableDeclaration':
-          return context.checker.constantOf(entity.owner)?.type ?? context.variables.typeOf(entity);
+          return (
+            context.checker.constantNamed(context.module, node)?.type ??
+            context.variables.typeOf(entity)
+          );
         default:
           return context.variables.typeOf(entity);
       }
@@ -47,8 +53,42 @@ export function entityValueType(
     case 'variant':
     case 'variants':
       return checkVariantName(context, node, entity, expected);
-    default:
-      context.report(checkerDiagnostics.notValue(node.span, node.text));
-      return errorType;
+    default: {
+      const bare =
+        entity === undefined ? undefined : bareStructValue(context, node, entity, expected);
+      if (bare === undefined) {
+        context.report(checkerDiagnostics.notValue(node.span, node.text));
+      }
+      return bare ?? errorType;
+    }
   }
+}
+
+/**
+ * The value a bare name denotes when it names a struct without fields (§3.1); undefined for any
+ * other entity. A generic one takes its type arguments from the expected type, as nothing else
+ * could give them.
+ */
+function bareStructValue(
+  context: BodyContext,
+  node: Identifier,
+  entity: Entity,
+  expected: Type | undefined,
+): Type | undefined {
+  if (entity.kind !== 'type' || entity.declaration.kind !== 'StructDeclaration') {
+    return undefined;
+  }
+  const { declaration } = entity;
+  if (context.checker.declaredFieldsOf(declaration).length > 0) {
+    return undefined;
+  }
+  const [open] = typeParametersOf(declaration.typeParameters);
+  if (open === undefined) {
+    return { kind: 'nominal', entity: entity as NominalType['entity'], arguments: [] };
+  }
+  if (expected?.kind === 'nominal' && expected.entity.declaration === declaration) {
+    return expected;
+  }
+  context.report(checkerDiagnostics.cannotInfer(node.span, declaration.name.text, open.name.text));
+  return errorType;
 }

@@ -19,6 +19,8 @@ export function typeText(type: Type): string {
       return type.name;
     case 'nominal':
       return nominalText(type.entity.declaration.name.text, type.arguments);
+    case 'anonymous':
+      return `struct { ${type.fields.map((field) => `${field.name}: ${typeText(field.type)}`).join('; ')} }`;
     case 'tuple':
       return `(${type.elements.map(typeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
     case 'function': {

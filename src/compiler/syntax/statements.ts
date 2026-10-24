@@ -16,9 +16,10 @@
 
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
-import type { Expression } from './expressions.ts';
-import type { Identifier, Invalid, NodeOf } from './node.ts';
+import { type Expression, itemValue, unparenthesized } from './expressions.ts';
+import type { Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
+import type { Pattern } from './patterns.ts';
 import type { TypeNode } from './types.ts';
 
 export interface Block extends NodeOf<'Block'> {
@@ -33,21 +34,58 @@ export interface ExpressionStatement extends NodeOf<'ExpressionStatement'>, Anno
  * `let x = 1`, `const a, b = pair`, and with `heldByFunction` the `fn let`, `fn const` and
  * `fn _` forms, whose holdings last until the enclosing function ends (§3.4). `fn _` means
  * `fn const _`, so it is stored that way.
+ *
+ * Each target is a pattern (§3.15): a name, `_`, or a tuple or struct pattern destructuring the
+ * value, nested at will. Several targets destructure a tuple, as if parenthesized. A target must
+ * always match, which the checker enforces; the parser reads any pattern.
  */
 export interface VariableDeclaration extends NodeOf<'VariableDeclaration'>, Annotatable {
   readonly heldByFunction: boolean;
   readonly isMutable: boolean;
   /** Several targets destructure a tuple; `_` is an unnamed one. */
-  readonly targets: readonly Identifier[];
+  readonly targets: readonly Pattern[];
   readonly type: TypeNode | undefined;
   readonly initializer: Expression;
 }
 
-/** `x = v`, `x += v`, and `a, b = (b, a)` when there are several targets. */
+/**
+ * `x = v`, `x += v`, and `a, b = (b, a)` when there are several targets. A target is a place (a
+ * variable, field, tuple element, index or `$` value), or a tuple or struct literal of targets
+ * that destructures the value into them (§3.15).
+ */
 export interface Assignment extends NodeOf<'Assignment'>, Annotatable {
   readonly targets: readonly Expression[];
   readonly operator: AssignmentOperator;
   readonly value: Expression;
+}
+
+/**
+ * Whether an assignment's target takes its value apart, a tuple or struct literal of targets,
+ * parenthesized or not, rather than naming one place (§3.15).
+ */
+export function destructures(target: Expression): boolean {
+  const bare = unparenthesized(target);
+  return bare.kind === 'Tuple' || bare.kind === 'StructLiteral';
+}
+
+/**
+ * The targets a destructuring target is made of, each without its parentheses: a tuple's
+ * elements, or the values of a struct literal's items; none for a place.
+ */
+export function targetParts(target: Expression): readonly Expression[] {
+  const bare = unparenthesized(target);
+  switch (bare.kind) {
+    case 'Tuple':
+      return bare.elements.map(unparenthesized);
+    case 'StructLiteral':
+      return bare.items.flatMap((item) =>
+        item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer'
+          ? [unparenthesized(itemValue(item))]
+          : [],
+      );
+    default:
+      return [];
+  }
 }
 
 export interface Return extends NodeOf<'Return'>, Annotatable {
@@ -58,9 +96,9 @@ export type Break = NodeOf<'Break'> & Annotatable;
 
 export type Continue = NodeOf<'Continue'> & Annotatable;
 
-/** `for x in xs: …`; several variables destructure a tuple. */
+/** `for x in xs: …`; its targets are a declaration's (VariableDeclaration). */
 export interface For extends NodeOf<'For'>, Annotatable {
-  readonly variables: readonly Identifier[];
+  readonly targets: readonly Pattern[];
   readonly iterable: Expression;
   readonly body: Block;
 }

@@ -13,8 +13,16 @@
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import { type Expression, unparenthesized } from '../syntax/expressions.ts';
 import type { Identifier } from '../syntax/node.ts';
-import type { Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
+import { targetNames } from '../syntax/patterns.ts';
+import {
+  type Block,
+  destructures,
+  type Statement,
+  targetParts,
+  type VariableDeclaration,
+} from '../syntax/statements.ts';
 import { underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
@@ -25,7 +33,7 @@ const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
     binder.walk.expression(binder, node.expression, scope),
   VariableDeclaration: (binder, node, scope) => {
     bindVariableValue(binder, node, scope);
-    declareNames(binder, node, scope);
+    bindTargets(binder, node, scope, scope);
   },
   FunctionDeclaration: (binder, node, scope) => {
     declareNames(binder, node, scope);
@@ -33,11 +41,7 @@ const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
   },
   Assignment: (binder, node, scope) => {
     for (const target of node.targets) {
-      if (target.kind === 'Identifier') {
-        binder.use(target, scope, 'assignment');
-      } else {
-        binder.walk.expression(binder, target, scope);
-      }
+      bindAssignmentTarget(binder, target, scope);
     }
     binder.walk.expression(binder, node.value, scope);
   },
@@ -61,7 +65,7 @@ const declaresNothing = (): readonly Identifier[] => [];
 
 /** The names each statement declares in its block: the one list both the pre-pass and binding read. */
 const declaredNames: Handlers<undefined, Statement, [], readonly Identifier[]> = {
-  VariableDeclaration: (_, node) => node.targets,
+  VariableDeclaration: (_, node) => node.targets.flatMap(targetNames),
   FunctionDeclaration: (_, node) => [node.name],
   ExpressionStatement: declaresNothing,
   Assignment: declaresNothing,
@@ -107,12 +111,45 @@ function namesDeclaredBy(statement: Statement): readonly Identifier[] {
   return handlerOf(declaredNames, statement)(undefined, statement);
 }
 
-/** Declares the names a variable or local function declares, owned by it. */
-function declareNames(
+/**
+ * Binds a declaration's targets: their references in `scope`, their names into `into`, or
+ * nowhere when the module scope defined them already (a top-level constant's).
+ */
+export function bindTargets(
   binder: LocalBinder,
-  node: VariableDeclaration | FunctionDeclaration,
+  node: VariableDeclaration,
   scope: Scope,
+  into: Scope | undefined,
 ): void {
+  for (const target of node.targets) {
+    binder.walk.pattern(binder, target, scope, { into, declaration: node });
+  }
+}
+
+/**
+ * An assignment target: a variable it assigns, a place whose root it reads, or a tuple or struct
+ * literal of targets (§3.15). A struct target's shorthand `first` assigns the variable `first`.
+ */
+function bindAssignmentTarget(binder: LocalBinder, target: Expression, scope: Scope): void {
+  const bare = unparenthesized(target);
+  if (bare.kind === 'Identifier') {
+    binder.use(bare, scope, 'assignment');
+    return;
+  }
+  if (!destructures(bare)) {
+    binder.walk.expression(binder, bare, scope);
+    return;
+  }
+  if (bare.kind === 'StructLiteral' && bare.type !== undefined) {
+    binder.constructedType(bare.type, scope);
+  }
+  for (const part of targetParts(bare)) {
+    bindAssignmentTarget(binder, part, scope);
+  }
+}
+
+/** Declares the name a local function declares, owned by it. */
+function declareNames(binder: LocalBinder, node: FunctionDeclaration, scope: Scope): void {
   for (const name of namesDeclaredBy(node)) {
     binder.declareVariable(scope, name, node);
   }

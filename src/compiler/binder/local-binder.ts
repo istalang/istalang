@@ -21,10 +21,10 @@ import { memo } from '../../structures/memo.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Expression, Lambda } from '../syntax/expressions.ts';
+import type { Comprehension, Expression, Lambda } from '../syntax/expressions.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
-import type { Block } from '../syntax/statements.ts';
+import type { Block, For, VariableDeclaration } from '../syntax/statements.ts';
 import type { NamedType, TypeNode } from '../syntax/types.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import type { VariableOwner, VariantsEntity } from './entities.ts';
@@ -67,12 +67,31 @@ export interface LocalResult {
 /** The handler of a kind whose nodes hold no names. */
 export const holdsNoNames = (): void => undefined;
 
+/** A declaration whose targets are patterns, owning every name they bind (§3.15). */
+export type TargetOwner = VariableDeclaration | For | Comprehension;
+
+/** Where a pattern's bindings go (patterns.ts). */
+export interface PatternBindings {
+  /**
+   * The scope bindings are defined in; undefined when they were defined already, as a top-level
+   * constant's names are, with the module's own (module-scope.ts).
+   */
+  readonly into: Scope | undefined;
+  /** The declaration the pattern is a target of; undefined for a `match` case or `is`. */
+  readonly declaration?: TargetOwner;
+}
+
 /** The entry point of each syntax category, wired in by bind-module.ts. */
 export interface Walk {
   readonly expression: (binder: LocalBinder, node: Expression, scope: Scope) => void;
   readonly block: (binder: LocalBinder, node: Block, scope: Scope) => void;
-  /** Resolves the pattern's references in `scope` and defines its bindings in `into`. */
-  readonly pattern: (binder: LocalBinder, node: Pattern, scope: Scope, into: Scope) => void;
+  /** Resolves the pattern's references in `scope` and defines its bindings where `bindings` says. */
+  readonly pattern: (
+    binder: LocalBinder,
+    node: Pattern,
+    scope: Scope,
+    bindings: PatternBindings,
+  ) => void;
   readonly type: (binder: LocalBinder, node: TypeNode, scope: Scope) => void;
   readonly function: (
     binder: LocalBinder,

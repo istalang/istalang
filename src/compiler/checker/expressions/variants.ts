@@ -125,10 +125,11 @@ export function checkVariantLiteral(
       : sameEnum(expected, chosen.enum)?.arguments;
   const shape = {
     owner: chosen.enum,
+    known,
     fields: fields ?? [],
     typeOf: (typeArguments: readonly Type[]) => enumType(context, chosen.enum, typeArguments),
   };
-  return checkLiteralFields(context, node, shape, known);
+  return checkLiteralFields(context, node, shape);
 }
 
 /**

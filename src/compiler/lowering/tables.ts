@@ -12,6 +12,8 @@
  *   through the table (§3.1). Every nominal type can be laid out: a struct by its fields, an enum
  *   by its variants, an extern type by who disposes it, which the checker derives from the
  *   `dispose` declared for it (checker/rules/disposal.ts).
+ * - An anonymous struct is a struct entry without a name, one per type: its identity is the node
+ *   that introduced it plus its fields' types, as in the checker, so two never share an entry.
  */
 
 import { z } from 'zod';
@@ -23,11 +25,15 @@ import type { TypeDefinition, TypeReference } from '../../definition/types.ts';
 import { type Value, value } from '../../definition/values.ts';
 import { memo } from '../../structures/memo.ts';
 import { lineMapOf } from '../../text/line-map.ts';
-import type { Checker, FieldMember } from '../checker/check.ts';
-import type { NominalType, Type } from '../checker/types/type.ts';
+import type { Checker } from '../checker/check.ts';
+import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
+
 import type { ModuleId } from '../program/program.ts';
 import { type FunctionInstance, instanceKey, instanceName } from './instances.ts';
 import { loadedModule, qualifiedNameOf } from './names.ts';
+
+/** A type with an entry of its own: a declared struct, enum or extern type, or an anonymous struct. */
+type EntryType = NominalType | AnonymousStructType;
 
 export class DefinitionTables {
   readonly #checker: Checker;
@@ -35,7 +41,7 @@ export class DefinitionTables {
   readonly #moduleIndexes = new Map<ModuleId, number>();
   readonly #types: TypeDefinition[] = [];
   readonly #typeIndexes = new Map<string, TypeId>();
-  readonly #entityKeys = new Map<NominalType['entity'], number>();
+  readonly #identityKeys = new Map<object, number>();
   readonly #constants: Value[] = [];
   readonly #constantIndexes = new Map<string, number>();
   readonly #functions: (FunctionDefinition | undefined)[] = [];
@@ -98,6 +104,7 @@ export class DefinitionTables {
       case 'primitive':
         return { kind: 'primitive', name: type.name };
       case 'nominal':
+      case 'anonymous':
         return { kind: 'named', type: this.#typeEntry(type) };
       case 'tuple':
         return {
@@ -122,7 +129,7 @@ export class DefinitionTables {
   }
 
   /** The index of the type entry for `type`. */
-  typeIndex(type: NominalType): TypeId {
+  typeIndex(type: EntryType): TypeId {
     return this.#typeEntry(type);
   }
 
@@ -148,7 +155,7 @@ export class DefinitionTables {
    * Not `memo`: the index is recorded before the layout is computed, because a recursive type's
    * layout refers to the type itself.
    */
-  #typeEntry(type: NominalType): TypeId {
+  #typeEntry(type: EntryType): TypeId {
     const key = this.#typeKey(type);
     const known = this.#typeIndexes.get(key);
     if (known !== undefined) {
@@ -162,7 +169,10 @@ export class DefinitionTables {
   }
 
   /** The entry describing `type`: its fields, its variants, or how an extern type is disposed. */
-  #layout(type: NominalType): TypeDefinition {
+  #layout(type: EntryType): TypeDefinition {
+    if (type.kind === 'anonymous') {
+      return { kind: 'struct', name: '', arguments: [], fields: this.#fields(type.fields) };
+    }
     const { declaration } = type.entity;
     const name = qualifiedNameOf(this.#checker, declaration);
     const typeArguments = type.arguments.map((argument) => this.typeReference(argument));
@@ -208,10 +218,18 @@ export class DefinitionTables {
   }
 
   #typeKey(type: Type): string {
-    if (type.kind !== 'nominal') {
-      return JSON.stringify(this.typeReference(type));
+    switch (type.kind) {
+      case 'nominal':
+        return `${this.#identityKey(type.entity)}<${type.arguments.map((argument) => this.#typeKey(argument)).join(',')}>`;
+      case 'anonymous':
+        return `${this.#identityKey(type.origin)}{${type.fields.map((field) => this.#typeKey(field.type)).join(',')}}`;
+      default:
+        return JSON.stringify(this.typeReference(type));
     }
-    const entityKey = memo(this.#entityKeys, type.entity, () => this.#entityKeys.size);
-    return `${entityKey}<${type.arguments.map((argument) => this.#typeKey(argument)).join(',')}>`;
+  }
+
+  /** A number for what makes a type itself: a declaration's entity, or an anonymous struct's node. */
+  #identityKey(identity: object): number {
+    return memo(this.#identityKeys, identity, () => this.#identityKeys.size);
   }
 }

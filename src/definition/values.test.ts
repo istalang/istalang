@@ -1,6 +1,7 @@
 /**
  * Persisted values: every kind survives the trip to text and back exactly, ints and floats stay
- * apart on disk, and handles are found at any depth.
+ * apart on disk, and handles are found at any depth. A composite value's children are read and
+ * rebuilt in one order.
  */
 
 import fc from 'fast-check';
@@ -8,7 +9,14 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { decodeJson, encodeJson } from './codec.ts';
 import { valueArbitrary } from './values.test-kit.ts';
-import { handlesIn, type Value, value } from './values.ts';
+import {
+  childValues,
+  handlesIn,
+  isComposite,
+  type Value,
+  value,
+  withChildValues,
+} from './values.ts';
 
 function toText(contents: Value): string {
   return encodeJson(z.encode(value, contents));
@@ -73,6 +81,27 @@ describe('persisted values', () => {
     expect(handlesIn(nested)).toEqual([3, 5, 8]);
     expect(handlesIn({ kind: 'extern', type: 0, payload: { kind: 'handle', object: 1 } })).toEqual(
       [],
+    );
+  });
+});
+
+describe('a composite value rebuilt from children', () => {
+  const composite = valueArbitrary({ typed: true, handles: [0, 7] }).filter(isComposite);
+
+  it('is the value itself when they are its own', () => {
+    fc.assert(
+      fc.property(composite, (original) => {
+        expect(withChildValues(original, childValues(original))).toEqual(original);
+      }),
+    );
+  });
+
+  it('holds exactly the children given, in their order', () => {
+    fc.assert(
+      fc.property(composite, fc.integer(), (original, seed) => {
+        const replaced = childValues(original).map((_, index) => BigInt(seed + index));
+        expect(childValues(withChildValues(original, replaced))).toEqual(replaced);
+      }),
     );
   });
 });

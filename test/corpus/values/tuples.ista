@@ -1,0 +1,26 @@
+# outcome: "1 x 4 | 3 4 | 4 3 | 9 2 | 5 7 | 3 4 5 | 7 8 | 6"
+# Tuples and destructuring (§3.15): building, reading elements by position, declarations taking
+# a value apart by tuple and struct patterns at any depth, and assignments to tuples and structs
+# of places, element assignment among them.
+
+struct Pair { first: int; second: int }
+
+fn ordered(a: int, b: int) -> (int, int):
+  if a < b: (a, b) else: (b, a)
+
+async fn main():
+  const t = (1, "x")
+  const nested = ((3, 4), 5)
+  const lo, hi = ordered(4, 3)
+  let a, b = (lo, hi)
+  a, b = (b, a)
+  const Pair{first, second as s} = Pair{first: 9, second: 2}
+  let p = Pair{first: 1, second: 2}
+  let other = 0
+  Pair{first: p.second, second: other} = Pair{first: 5, second: 7}
+  const (x, y), z = nested
+  let u = (0, 0)
+  u.0 = 7
+  u.1 = u.0 + 1
+  const struct{second as deep} = Pair{first: 0, second: 6}
+  "" + t.0 + " " + t.1 + " " + nested.0.1 + " | " + lo + " " + hi + " | " + a + " " + b + " | " + first + " " + s + " | " + p.second + " " + other + " | " + x + " " + y + " " + z + " | " + u.0 + " " + u.1 + " | " + deep

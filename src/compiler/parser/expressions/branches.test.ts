@@ -81,7 +81,7 @@ describe('select', () => {
 describe('block expressions', () => {
   it('have statements and a value', () => {
     expect(dumpClean('expression', '{ const t = a * b; t + 1 }')).toBe(
-      `(BlockExpression ${block('(VariableDeclaration [t] _ (Binary a * b))', expressionStatement('(Binary t + 1)'))})`,
+      `(BlockExpression ${block('(VariableDeclaration [(NamePattern [t])] _ (Binary a * b))', expressionStatement('(Binary t + 1)'))})`,
     );
   });
 });

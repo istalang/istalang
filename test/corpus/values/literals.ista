@@ -1,0 +1,34 @@
+# outcome: "3 4 | 7 4 | u-1 u-2 | 1 9 | 10 20 | 2 fine | marked"
+# Struct literals in every form (§3.1): named, shorthand, positional, a spread update, struct{…}
+# taking the expected type or making a type of its own, and a struct without fields written bare.
+
+struct Point { x: int; y: int }
+
+struct UserId { value: string }
+
+struct Marker
+
+struct Response:
+  id: string
+  data:
+    value: int
+    result: string
+
+fn pointText(p: Point) -> string:
+  "" + p.x + " " + p.y
+
+fn markerText(m: Marker) -> string:
+  "marked"
+
+async fn main():
+  const x = 3
+  const y = 4
+  const p = Point{x, y}
+  const moved = Point{...p, x: 7}
+  const id = "u-2"
+  const first = UserId{"u-1"}
+  const second = UserId{(id)}
+  const pair = if x > 1: struct{a: 1, b: 9} else: struct{a: 2, b: 8}
+  const typed: Point = struct{x: 10, y: 20}
+  const response = Response{id: "r", data: struct{value: 2, result: "fine"}}
+  pointText(p) + " | " + pointText(moved) + " | " + first.value + " " + second.value + " | " + pair.a + " " + pair.b + " | " + pointText(typed) + " | " + response.data.value + " " + response.data.result + " | " + markerText(Marker)

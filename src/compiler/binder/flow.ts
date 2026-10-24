@@ -27,7 +27,7 @@ export function bindCondition(binder: LocalBinder, node: Expression, scope: Scop
   if (node.kind === 'Is') {
     binder.walk.expression(binder, node.subject, scope);
     const bindings = Scope.nested(scope);
-    binder.walk.pattern(binder, node.pattern, scope, bindings);
+    binder.walk.pattern(binder, node.pattern, scope, { into: bindings });
     return bindings;
   }
   if (node.kind === 'Binary' && node.operator === 'and') {
@@ -80,8 +80,8 @@ export function underLoop(
 ): void {
   binder.walk.expression(binder, node.iterable, scope);
   const define = (variables: Scope) => {
-    for (const name of node.variables) {
-      binder.declareVariable(variables, name, node);
+    for (const target of node.targets) {
+      binder.walk.pattern(binder, target, scope, { into: variables, declaration: node });
     }
   };
   underBindings(scope, define, body);

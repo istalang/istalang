@@ -6,19 +6,41 @@
  * A frame is data, as a snapshot stores it (docs/arch/definition.md, "Frames"): a function, a pc
  * and registers. The pc of a frame that has called another stays on its `call` until the callee
  * returns, so a frame's pc always says where it is.
+ *
+ * Registers mean what the function says they are, so reading and writing one is the same call
+ * whatever it holds:
+ * - a register the function lists in `cells` holds a handle to a cell in the instance's heap, a
+ *   variable that is passed by `&`; the cell is made by the first write, and holds the value;
+ * - a reference parameter's register holds a reference: a cell and a path into its value (§3.7);
+ * - any other register holds its value.
+ * A live frame carries the instance's cells for that; they aren't part of what a snapshot stores.
  */
 
 import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/functions.ts';
-import type { Argument } from '../../definition/instructions/places.ts';
-import type { FunctionId, Register } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values.ts';
+import type { Argument, Place } from '../../definition/instructions/places.ts';
+import type { FunctionId, Register, TypeId } from '../../definition/operands.ts';
+import { handleTarget, type Value } from '../../definition/values.ts';
+import { isReference, type Reference } from '../snapshot/objects.ts';
+import { partAt, type ValueStep, withPart } from '../values/parts.ts';
+
+/** The instance's cells as frames reach them. */
+export interface CellStore {
+  readonly read: (cell: number) => Value;
+  readonly write: (cell: number, value: Value) => void;
+  /** A new cell of type entry `type` (a `Shared<T>`) holding `value`; its id. */
+  readonly create: (type: TypeId, value: Value) => number;
+}
+
+/** What a register holds: a value, or for a reference parameter, a reference. */
+export type RegisterContents = Value | Reference;
 
 export interface ActiveFrame {
   readonly function: FunctionId;
   readonly code: CodeFunction;
   pc: number;
-  readonly registers: (Value | undefined)[];
+  readonly registers: (RegisterContents | undefined)[];
+  readonly cells: CellStore;
 }
 
 export interface Machine {
@@ -38,17 +60,26 @@ export interface Machine {
   readonly await: (frame: ActiveFrame, future: Register) => void;
 }
 
-/** A frame about to run entry `function` from its start, its parameters holding `values`. */
+/**
+ * A frame about to run entry `function` from its start, its parameters holding `contents`: values,
+ * and references for reference parameters. A by-value parameter that is a cell becomes one now.
+ */
 export function newFrame(
   function_: FunctionId,
   code: CodeFunction,
-  values: readonly Value[],
+  contents: readonly RegisterContents[],
+  cells: CellStore,
 ): ActiveFrame {
-  const registers: (Value | undefined)[] = Array.from({ length: code.registers });
-  values.forEach((value, index) => {
-    registers[index] = value;
+  const registers: (RegisterContents | undefined)[] = Array.from({ length: code.registers });
+  const frame: ActiveFrame = { function: function_, code, pc: 0, registers, cells };
+  contents.forEach((each, index) => {
+    if (isReference(each)) {
+      registers[index] = each;
+    } else {
+      writeRegister(frame, index, each);
+    }
   });
-  return { function: function_, code, pc: 0, registers };
+  return frame;
 }
 
 /** Moves `frame` past the instruction it stood at, which gave `value` to `dst`, if it has one. */
@@ -61,13 +92,87 @@ export function resumeAt(frame: ActiveFrame, dst: Register | undefined, value: V
 
 /** The value in `register` of `frame`; loading checks indexes, so an empty one is a bug. */
 export function readRegister(frame: ActiveFrame, register: Register): Value {
-  const value = frame.registers[register];
-  if (value === undefined) {
+  const contents = frame.registers[register];
+  if (contents === undefined) {
     throw new Error(`Register ${register} is empty at pc ${frame.pc} of ${frame.code.name}.`);
   }
-  return value;
+  if (isReference(contents)) {
+    return partAt(frame.cells.read(contents.cell), contents.path);
+  }
+  return isCell(frame, register) ? frame.cells.read(cellOf(contents)) : contents;
 }
 
 export function writeRegister(frame: ActiveFrame, register: Register, value: Value): void {
-  frame.registers[register] = value;
+  const contents = frame.registers[register];
+  if (contents !== undefined && isReference(contents)) {
+    writeThrough(frame, contents, [], value);
+    return;
+  }
+  const cell = frame.code.cells.find((each) => each.register === register);
+  if (cell === undefined) {
+    frame.registers[register] = value;
+  } else if (contents === undefined) {
+    frame.registers[register] = { kind: 'handle', object: frame.cells.create(cell.type, value) };
+  } else {
+    frame.cells.write(cellOf(contents), value);
+  }
+}
+
+/** Writes `value` to `place`, building the new value of its variable along the path. */
+export function storeAt(frame: ActiveFrame, place: Place, value: Value): void {
+  const contents = frame.registers[place.register];
+  const path = stepsOf(frame, place);
+  if (contents !== undefined && isReference(contents)) {
+    writeThrough(frame, contents, path, value);
+    return;
+  }
+  const whole = readRegister(frame, place.register);
+  writeRegister(frame, place.register, withPart(whole, path, value));
+}
+
+/** What a call passes for `argument`: the value, or for `&`, a reference to the caller's place. */
+export function argumentContents(frame: ActiveFrame, argument: Argument): RegisterContents {
+  if (argument.kind === 'value') {
+    return readRegister(frame, argument.register);
+  }
+  const { place } = argument;
+  const contents = frame.registers[place.register];
+  const path = stepsOf(frame, place);
+  if (contents !== undefined && isReference(contents)) {
+    return { kind: 'reference', cell: contents.cell, path: [...contents.path, ...path] };
+  }
+  if (contents === undefined || !isCell(frame, place.register)) {
+    throw new Error(`Register ${place.register} is passed by '&' but isn't a cell.`);
+  }
+  return { kind: 'reference', cell: cellOf(contents), path };
+}
+
+/** Writes `value` at `path` inside the place a reference names. */
+function writeThrough(
+  frame: ActiveFrame,
+  reference: Reference,
+  path: readonly ValueStep[],
+  value: Value,
+): void {
+  const whole = frame.cells.read(reference.cell);
+  frame.cells.write(reference.cell, withPart(whole, [...reference.path, ...path], value));
+}
+
+/** A place's steps as values: an element's key is read from its register. */
+function stepsOf(frame: ActiveFrame, place: Place): ValueStep[] {
+  return place.path.map((step) =>
+    step.kind === 'field' ? step : { ...step, key: readRegister(frame, step.key) },
+  );
+}
+
+function isCell(frame: ActiveFrame, register: Register): boolean {
+  return frame.code.cells.some((cell) => cell.register === register);
+}
+
+function cellOf(contents: RegisterContents): number {
+  const cell = isReference(contents) ? undefined : handleTarget(contents);
+  if (cell === undefined) {
+    throw new TypeError('A cell register holds no cell.');
+  }
+  return cell;
 }

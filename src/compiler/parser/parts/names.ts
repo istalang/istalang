@@ -1,11 +1,13 @@
 /**
- * Names: qualified names (`Pair`, `time.Duration`) and the named types built from them, and lists
- * of bound names. Types, patterns, struct literals and annotations all name a type this way, and
- * loops, comprehensions and variables all bind names this way, so each rule lives here once.
+ * Names: qualified names (`Pair`, `time.Duration`) and the named types built from them, lists of
+ * imported names, and the targets that bind names. Types, patterns, struct literals and
+ * annotations all name a type this way, and loops, comprehensions and variables all bind through
+ * targets, so each rule lives here once.
  */
 
 import type { Expression } from '../../syntax/expressions.ts';
 import type { Identifier, QualifiedName } from '../../syntax/node.ts';
+import type { Pattern } from '../../syntax/patterns.ts';
 import type { NamedType, TypeNode } from '../../syntax/types.ts';
 import type { Parser } from '../parser.ts';
 
@@ -37,7 +39,19 @@ export function qualifiedPath(expression: Expression): QualifiedName | undefined
   return target === undefined ? undefined : [...target, expression.member];
 }
 
-/** `a, b`: the names a loop, comprehension or variable declaration binds. */
+/**
+ * `a, (b, c), Pair{first}`: what a variable declaration, loop or comprehension binds, each target
+ * a pattern (§3.15).
+ */
+export function parseTargets(parser: Parser): Pattern[] {
+  const targets = [parser.pattern()];
+  while (parser.cursor.eat(',') !== undefined) {
+    targets.push(parser.pattern());
+  }
+  return targets;
+}
+
+/** `a, b`: the names an import lists. */
 export function parseNames(parser: Parser, what: string): Identifier[] {
   const names = [parser.identifier(what)];
   while (parser.cursor.eat(',') !== undefined) {
