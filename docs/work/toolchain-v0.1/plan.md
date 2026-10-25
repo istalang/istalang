@@ -56,7 +56,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 5. ∥ Closures: lambdas, local functions, captures, `Shared`/`$`.
 D. Two ∥ structural debt forks before 6: runtime and IR (D80, D78, D81), checker (D69–D73).
 6. ∥ with 9 — Concurrency: slots, futures, `select`, `spawn`, `inbox`, `futures`, scheduler introspection.
-7. Holders: reference counts, block release, `fn let`, `drop`, `defer`, cycle pass.
+7. Holders: holders by reachability, block release, `fn let`, `drop`, `defer`.
 8. ∥ with 7 — Weak side: `WeakRef`, `disposed()`, `disposing()`, revertible sends.
 9. ∥ with 6–8 — Host boundary: externs, boundary JSON, annotations, `json`, host API, `ista run --host`.
 

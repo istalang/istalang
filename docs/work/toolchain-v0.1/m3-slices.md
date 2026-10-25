@@ -39,7 +39,7 @@ tags: [plan, m3, checker, lowering, runtime]
 | Enum declarations and variant construction; `Optional`, `none`, implicit wrap into `T?` | 3.1 | 3.3 (`at`/`get`), 3.4, 3.5 |
 | Struct and tuple values, anonymous structs, method receivers (implicit `&self`) over the concrete resolver, `const` and `&` | 3.2 | 3.4 (patterns), 3.5 (capture struct) |
 | `Result`, `Error` and its runtime `trace` | 3.4 | 3.9 |
-| Holders, release points, disposal, the cycle pass | 3.7 | 3.6, 3.8, 3.9 (each stubs against definition.md until 3.7 lands) |
+| Holders (by reachability), release points, disposal | 3.7 | 3.6, 3.8, 3.9 (each stubs against definition.md until 3.7 lands) |
 | Futures, slots, scheduler wake-up | 3.6 | 3.7, 3.8, 3.9 |
 | `extern` declarations (including `extern sendable struct`) | 3.9 | 3.6 (host queues in tests) |
 
@@ -112,14 +112,14 @@ tags: [plan, m3, checker, lowering, runtime]
 
 Disposal effects (losers aborted, block-end release) are 3.7's to assert.
 
-**3.7 Holders** (5700–5799). Reference-counted holders; block-exit release in reverse creation order; `fn let`/`fn const`/`fn _`; `drop`; statement temporaries; `defer`; `select` losers released; the cycle pass at snapshot time. Spec §3.4, §7. Includes the rest of D59.
+**3.7 Holders** (5700–5799). Holders by reachability (spec §7); block-exit release in reverse creation order; `fn let`/`fn const`/`fn _`; `drop`; statement temporaries; `defer`; `select` losers released; a cycle disposed at the release that orphans it. Spec §3.4, §7. Includes the rest of D59.
 
 *Acceptance:* the following hold as outcomes:
 - §7's `processAll` example
 - `defer` ordering
 - release on every loop iteration
 - disposal at an `await`
-- a holder cycle disposed with a warning
+- a holder cycle disposed at the release that orphans it
 
 **3.8 ∥ with 3.7 — Weak side** (5800–5899). `WeakRef`, `deref`, `disposed()`, `worker.disposing()`, revertible sends and retraction. Spec §6, §7.
 
