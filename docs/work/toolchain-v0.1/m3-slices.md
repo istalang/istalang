@@ -46,7 +46,7 @@ tags: [plan, m3, checker, lowering, runtime]
 ## Order
 
 ```
-{ 3.1 ∥ 3.2 } ──▶ { 3.3 ∥ 3.4 ∥ 3.5 } ──▶ { 3.6 ∥ 3.9 } ──▶ { 3.7 ∥ 3.8 }, 3.9 continuing alongside
+{ 3.1 ∥ 3.2 } ──▶ { 3.3 ∥ 3.4 ∥ 3.5 } ──▶ { D-A ∥ D-B } ──▶ { 3.6 ∥ 3.9 } ──▶ { 3.7 ∥ 3.8 }, 3.9 continuing alongside
 ```
 
 3.2 runs alongside 3.1 because structs, tuples, `const`, `&` and concrete method receivers need no generics. 3.1 then extends the resolver to generic methods.
@@ -93,6 +93,14 @@ tags: [plan, m3, checker, lowering, runtime]
 **3.5 ∥ Closures** (5500–5599). Lambdas (typed and inferred), named lambdas, local functions, captures (a `const` is copied, a `let` is shared through `Shared`), and `Shared`/`$`. Spec §3.8, §3.14.
 
 *Acceptance:* the `makeCounter` example and §3.14's sharing rules hold as outcomes, and capturing a `&` is an error.
+
+**D-A ∥ Runtime and IR debt.** Structural only, no behavior change. D80 (element places lowered as ordinary `index`/`setIndex` calls, `&m[k]` copy-in/copy-out through a temporary cell; `callNow`, `Box`, `ElementCalls` and D77 go), D78 (one home for value semantics below checker, runtime and stdlib), D81 (walks over values iterative or depth-bounded). Amends `docs/arch/definition.md`.
+
+*Acceptance:* the whole corpus passes unchanged; no re-entrant call path is left; a 3000-deep `Tree` through user `index`/`setIndex`, and a 3000-deep struct held across an `await`, end as a defined panic or `Refusal`, never a host `RangeError`; a differential property ties compile-time constants to the runtime.
+
+**D-B ∥ Checker debt.** Structural only, no behavior change. 3.1's review debt D69–D73.
+
+*Acceptance:* the whole corpus passes unchanged; one structural type key with no module-global counters; `diagnosticsOf` stays lazy (checks only what it is asked for); D73's property tests exist.
 
 **3.6 Concurrency** (5600–5699). Slots; futures held in variables (D45/D49); `select` in both forms; `spawn`; sendable rules at `spawn`; the `inbox` and `futures` (`first`) modules; scheduler introspection for `testing.start`. Measure D44. Spec §3.2, §6, §8, and `spawn` from §9.
 

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-24
-last_updated: 2026-10-24
+last_updated: 2026-10-25
 tags: [plan, roadmap]
 ---
 
@@ -54,6 +54,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 3. ∥ Collections: arrays, maps, ranges, indexing, comprehensions, `for`.
 4. ∥ Patterns: `match` and exhaustiveness, `is`, `?.`/`??`/`?`, `Result` and `Error`, `drop`, `panic`.
 5. ∥ Closures: lambdas, local functions, captures, `Shared`/`$`.
+D. Two ∥ structural debt forks before 6: runtime and IR (D80, D78, D81), checker (D69–D73).
 6. ∥ with 9 — Concurrency: slots, futures, `select`, `spawn`, `inbox`, `futures`, scheduler introspection.
 7. Holders: reference counts, block release, `fn let`, `drop`, `defer`, cycle pass.
 8. ∥ with 7 — Weak side: `WeakRef`, `disposed()`, `disposing()`, revertible sends.
