@@ -209,15 +209,24 @@ export const definitionArbitrary: fc.Arbitrary<Definition> = fc
           const mains = functions.flatMap((entry, id) =>
             entry.kind === 'code' && entry.async && entry.parameters.length === 0 ? [id] : [],
           );
+          const startable = functions.flatMap((entry, id) =>
+            entry.kind === 'code' && entry.parameters.every((parameter) => !parameter.reference)
+              ? [id]
+              : [],
+          );
           return fc
-            .option(mains.length === 0 ? fc.constant(undefined) : fc.constantFrom(...mains), {
-              nil: undefined,
-            })
-            .map((main) => ({
+            .tuple(
+              fc.option(mains.length === 0 ? fc.constant(undefined) : fc.constantFrom(...mains), {
+                nil: undefined,
+              }),
+              fc.subarray(startable),
+            )
+            .map(([main, starts]) => ({
               modules,
               types,
               functions,
               constants,
+              starts: starts.map((id) => ({ key: `main.start${id}()`, function: id })),
               ...(main === undefined ? {} : { main }),
             }));
         });

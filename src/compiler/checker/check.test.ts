@@ -103,10 +103,10 @@ describe('checking reports', () => {
       '"one"',
     ],
     [
-      'a call to an extern the host implements',
-      'extern fn tick(n: int) -> int\nfn f(): tick(1)',
-      reports.notSupportedYet,
-      'tick(1)',
+      'an extern the host implements taking a function, which has no JSON form',
+      'extern fn run(f: fn() -> int)',
+      reports.noJsonForm,
+      'f: fn() -> int',
     ],
     [
       'a returned value of the wrong type',
@@ -159,10 +159,10 @@ describe('checking reports', () => {
       'time.delay(1s)',
     ],
     [
-      'a call to an extern the host implements',
-      'extern fn host() -> int\nfn f(): host()',
-      reports.notSupportedYet,
-      'host()',
+      'an extern the host implements taking a reference, which JSON cannot write back',
+      'extern fn bump(n: &int)',
+      reports.hostReference,
+      'n: &int',
     ],
   ])('%s', (_case, text, report, spanText) => {
     expect(reported(text, { 'other.ista': '' })).toEqual(reportedOnce(report.code, spanText));

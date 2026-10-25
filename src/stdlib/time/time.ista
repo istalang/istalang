@@ -23,3 +23,13 @@ fn add(left: Duration, right: Duration) -> Duration:
 
 fn delay(duration: Duration) -> Future<unit>:
   at(now() + duration)
+
+# ISO 8601 text (§3.8, §9): a time as JavaScript's Date.toJSON writes it, a duration as
+# Temporal.Duration does. Both are Stringable and Parsable, which is also their JSON form.
+extern fn toString(self: Time) -> string
+
+extern fn toString(self: Duration) -> string
+
+extern fn Time.parse(text: string) -> Result<Time>
+
+extern fn Duration.parse(text: string) -> Result<Duration>

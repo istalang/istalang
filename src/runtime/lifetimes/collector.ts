@@ -12,7 +12,7 @@
  * when one isn't does a round start.
  *
  * A disposal that runs code (a `defer` callback, a declared `dispose`, a disposed call's cleanup)
- * runs on the scheduler's run stack, as every call does (scheduler/segment.ts), and the round waits
+ * runs on the scheduler's run stack, as every call does (scheduler/segment/), and the round waits
  * for it to finish. Once a disposed object is gone, its weak reference lets go of it and its
  * `disposed()` watches resolve (scheduler/weak-side.ts).
  * Code a callback runs may let go of something in turn; that starts a round of its own, on top,

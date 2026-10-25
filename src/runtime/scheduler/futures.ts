@@ -97,6 +97,35 @@ export class Futures {
     this.#heap.replace({ ...future, state: { kind: 'resolved', value } });
   }
 
+  /**
+   * Resolves the future its host named `token` with `value` (§9); false when no future pending on
+   * the host has that name.
+   */
+  resolveHost(token: string, value: Value): boolean {
+    const future = this.#hostFuture(token);
+    if (future !== undefined) {
+      this.resolve(future.id, value);
+    }
+    return future !== undefined;
+  }
+
+  /**
+   * A future the host fills later as `token` (§9); a panic when one pending on the host already
+   * has that name, since a fill could then reach either.
+   */
+  createHost(token: string): Value {
+    if (this.#hostFuture(token) !== undefined) {
+      throw new Panic(`The host named a future '${token}', as one it has yet to fill.`);
+    }
+    return this.createHandle({ kind: 'host', token });
+  }
+
+  #hostFuture(token: string): LiveObjectOf<'future'> | undefined {
+    return this.#heap
+      .objectsOf('future')
+      .find(({ state }) => state.kind === 'host' && state.token === token);
+  }
+
   /** Resolves every timer due at `now`, earliest first. */
   resolveDueTimers(now: bigint): void {
     const due = this.#heap

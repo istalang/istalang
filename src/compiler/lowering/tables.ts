@@ -25,14 +25,21 @@ import { type Value, value } from '../../definition/values.ts';
 import { memo } from '../../structures/memo.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
+import type { CheckedAnnotation } from '../checker/rules/annotations.ts';
 import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
 
 import type { ModuleId } from '../program/program.ts';
+import type {
+  ConstantDeclaration,
+  ExternConstantDeclaration,
+  FunctionDeclaration,
+} from '../syntax/declarations.ts';
+import { constantValue } from './constants.ts';
 import {
-  calleeOf,
   type FunctionInstance,
   instanceKey,
   instanceName,
+  instanceOfCall,
   type NestedInstance,
   nestedKey,
   nestedName,
@@ -40,10 +47,46 @@ import {
 } from './instances.ts';
 import { loadedModule, qualifiedNameOf } from './names.ts';
 
-/** A function-table entry waiting to be lowered: a top-level function's instance, or a nested one. */
+/**
+ * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
+ * extern a host implements as its native sees it (boundary/host-externs.ts), or a host handle's
+ * function, the read of an extern constant, or the wrapper a host starts a function through
+ * (boundary/starts.ts).
+ */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }
-  | { readonly kind: 'nested'; readonly nested: NestedInstance };
+  | { readonly kind: 'nested'; readonly nested: NestedInstance }
+  | { readonly kind: 'hostNative'; readonly declaration: FunctionDeclaration }
+  | {
+      /** An extern constant's native, which its declared type is given with. */
+      readonly kind: 'constantNative';
+      readonly declaration: ExternConstantDeclaration;
+      readonly type: Type;
+    }
+  | {
+      /** The native of field `field` of the host handle `declaration` returns (§3.6). */
+      readonly kind: 'handleFieldNative';
+      readonly declaration: FunctionDeclaration;
+      readonly field: string;
+    }
+  | {
+      /** A function of the host handle `instance` returns, which calls its native (§3.6). */
+      readonly kind: 'handleField';
+      readonly instance: FunctionInstance;
+      readonly field: string;
+    }
+  | {
+      readonly kind: 'externConstant';
+      readonly declaration: ExternConstantDeclaration;
+      readonly type: Type;
+    }
+  | { readonly kind: 'start'; readonly target: StartTarget };
+
+/** An extern a host implements: a function, or a constant. */
+export type HostExternDeclaration = FunctionDeclaration | ExternConstantDeclaration;
+
+/** What a host may start (§9): a top-level function, or a constant holding a sendable lambda. */
+export type StartTarget = FunctionDeclaration | ConstantDeclaration;
 
 /** What every function-table entry starts with: its name, and where it is declared. */
 export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 'annotations'>;
@@ -61,7 +104,8 @@ export class DefinitionTables {
   readonly #constantIndexes = new Map<string, number>();
   readonly #functions: (FunctionDefinition | undefined)[] = [];
   readonly #functionIndexes = new Map<string, FunctionId>();
-  readonly #pending: PendingEntry[] = [];
+  readonly #pending: (PendingEntry & { readonly index: FunctionId })[] = [];
+  readonly #starts: { readonly key: string; readonly function: FunctionId }[] = [];
 
   constructor(checker: Checker) {
     this.#checker = checker;
@@ -83,7 +127,10 @@ export class DefinitionTables {
     return memo(this.#constantIndexes, key, () => this.#constants.push(contents) - 1);
   }
 
-  /** What every function-table entry for `instance` starts with: its name and where it is. */
+  /**
+   * What every function-table entry for `instance` starts with: its name, where it is, and the
+   * annotations its declaration carries (§3.16).
+   */
   entryHeader(instance: FunctionInstance): EntryHeader {
     const { declaration } = instance;
     const module = this.#checker.moduleOf(declaration);
@@ -91,7 +138,9 @@ export class DefinitionTables {
       name: instanceName(this.#checker, instance),
       module: this.moduleIndex(module),
       span: declaration.name.span,
-      annotations: [],
+      annotations: this.#annotationValues(
+        this.#checker.annotations.of(module, declaration, { kind: 'function' }),
+      ),
     };
   }
 
@@ -108,6 +157,15 @@ export class DefinitionTables {
     };
   }
 
+  /** The header of an entry standing for `declaration` as a whole: its qualified name, its place. */
+  declarationHeader(declaration: HostExternDeclaration | StartTarget): EntryHeader {
+    const module = this.#checker.moduleOf(declaration);
+    const name = qualifiedNameOf(this.#checker, declaration);
+    const span =
+      declaration.kind === 'VariableDeclaration' ? declaration.span : declaration.name.span;
+    return { name, module: this.moduleIndex(module), span, annotations: [] };
+  }
+
   /** The index `instance` is called by; it is lowered later, from the worklist. */
   functionIndex(instance: FunctionInstance): FunctionId {
     const key = instanceKey(this.#checker.typeKeys, instance);
@@ -119,23 +177,61 @@ export class DefinitionTables {
     return this.#entryIndex(nestedKey(this.#checker.typeKeys, nested), { kind: 'nested', nested });
   }
 
+  /**
+   * The index of the extern a host implements, as its native sees it: JSON in and out (§9); a
+   * constant's comes with its declared type.
+   */
+  hostNativeIndex(declaration: FunctionDeclaration): FunctionId {
+    const key = `native:${this.#checker.typeKeys.identityOf(declaration)}`;
+    return this.#entryIndex(key, { kind: 'hostNative', declaration });
+  }
+
+  /** The index of the native of the extern constant `declaration`, declared of type `type`. */
+  constantNativeIndex(declaration: ExternConstantDeclaration, type: Type): FunctionId {
+    const key = `native:${this.#checker.typeKeys.identityOf(declaration)}`;
+    return this.#entryIndex(key, { kind: 'constantNative', declaration, type });
+  }
+
+  /** The index of the native of field `field` of the host handle `declaration` returns (§3.6). */
+  handleFieldNativeIndex(declaration: FunctionDeclaration, field: string): FunctionId {
+    const key = `native:${this.#checker.typeKeys.identityOf(declaration)}.${field}`;
+    return this.#entryIndex(key, { kind: 'handleFieldNative', declaration, field });
+  }
+
+  /** The index of the function field `field` of the host handle `instance` returns holds. */
+  handleFieldIndex(instance: FunctionInstance, field: string): FunctionId {
+    const key = `handle:${instanceKey(this.#checker.typeKeys, instance)}.${field}`;
+    return this.#entryIndex(key, { kind: 'handleField', instance, field });
+  }
+
+  /** The index of the entry reading the extern constant `declaration`, of type `type` (§3.6). */
+  externConstantIndex(declaration: ExternConstantDeclaration, type: Type): FunctionId {
+    const key = `constant:${this.#checker.typeKeys.identityOf(declaration)}`;
+    return this.#entryIndex(key, { kind: 'externConstant', declaration, type });
+  }
+
+  /** The index of the wrapper a host starts `target` through, listed under `key` (§9). */
+  startIndex(target: StartTarget, key: string): FunctionId {
+    const index = this.#entryIndex(`start:${this.#checker.typeKeys.identityOf(target)}`, {
+      kind: 'start',
+      target,
+    });
+    if (!this.#starts.some((start) => start.function === index)) {
+      this.#starts.push({ key, function: index });
+    }
+    return index;
+  }
+
   /** The next referenced entry still to be lowered, with its index. */
   nextPending(): (PendingEntry & { readonly index: FunctionId }) | undefined {
-    const entry = this.#pending.shift();
-    if (entry === undefined) {
-      return undefined;
-    }
-    const index =
-      entry.kind === 'instance'
-        ? this.functionIndex(entry.instance)
-        : this.nestedIndex(entry.nested);
-    return { ...entry, index };
+    return this.#pending.shift();
   }
 
   #entryIndex(key: string, entry: PendingEntry): FunctionId {
     return memo(this.#functionIndexes, key, () => {
-      this.#pending.push(entry);
-      return this.#functions.push(undefined) - 1;
+      const index = this.#functions.push(undefined) - 1;
+      this.#pending.push({ ...entry, index });
+      return index;
     });
   }
 
@@ -192,6 +288,7 @@ export class DefinitionTables {
       types: this.#types,
       functions,
       constants: this.#constants,
+      starts: this.#starts,
       ...withMain,
     };
   }
@@ -257,7 +354,7 @@ export class DefinitionTables {
   /** A type entry's disposal: a declared `dispose` is the entry of its instance (§7). */
   #disposal(disposal: Disposal): Extract<TypeDefinition, { kind: 'extern' }>['disposal'] {
     return disposal.kind === 'function'
-      ? { kind: 'function', function: this.functionIndex(calleeOf(disposal.call)) }
+      ? { kind: 'function', function: this.functionIndex(instanceOfCall(disposal.call)) }
       : disposal;
   }
 
@@ -265,7 +362,12 @@ export class DefinitionTables {
     return fields.map((field) => ({
       name: field.name,
       type: this.typeReference(field.type),
-      annotations: [],
+      annotations: this.#annotationValues(this.#checker.annotations.ofField(field)),
     }));
+  }
+
+  /** The values of `annotations`, as an entry carries them for tools to read. */
+  #annotationValues(annotations: readonly CheckedAnnotation[]): Value[] {
+    return annotations.map(({ form }) => constantValue(this, form));
   }
 }

@@ -33,8 +33,8 @@ describe("an Error's trace", () => {
   it('names each frame, innermost first, at the line and column it stands at', () => {
     const state = startToEnd(testRuntime(), compiledText(program));
     expect(state.kind).toBe('finished');
-    const trace = state.kind === 'finished' ? String(state.outcome) : '';
-    const lines = trace.split('\n');
+    const trace: unknown = state.kind === 'finished' ? JSON.parse(String(state.outcome)) : '';
+    const lines = String(trace).split('\n');
     expect(lines).toHaveLength(frameLines.length);
     for (const [index, line] of lines.entries()) {
       expect(line).toMatch(frameLines[index] ?? noFrame);

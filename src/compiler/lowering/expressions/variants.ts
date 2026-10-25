@@ -11,7 +11,7 @@ import type { NominalType, Type } from '../../checker/types/type.ts';
 import type { Expression, StructLiteral } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { Label } from '../code-writer.ts';
-import type { FunctionContext } from '../context.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
 import { readPart } from '../places.ts';
 import { literalFields } from './structs.ts';
 
@@ -63,7 +63,7 @@ export function variantTestOf(
 
 /** Jumps to `matched` when the value holds the variant tested, else to `otherwise`: a `switch`. */
 export function branchOnVariant(
-  context: FunctionContext,
+  context: CodeContext,
   test: VariantTest,
   labels: { readonly matched: Label; readonly otherwise: Label },
   span: Span,
@@ -75,7 +75,7 @@ export function branchOnVariant(
 }
 
 /** The value a `Some`, `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */
-export function payloadOf(context: FunctionContext, register: Register, span: Span): Register {
+export function payloadOf(context: CodeContext, register: Register, span: Span): Register {
   return readPart(context, register, [0], span);
 }
 
@@ -99,7 +99,7 @@ function emitVariant(
 
 /** A value of the variant `name` of the enum `type`, holding `fields`; its register. */
 export function buildVariant(
-  context: FunctionContext,
+  context: CodeContext,
   { type, name }: { readonly type: NominalType; readonly name: string },
   fields: readonly Register[],
   span: Span,

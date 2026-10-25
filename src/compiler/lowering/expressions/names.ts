@@ -4,14 +4,16 @@
  * computed while compiling (constants.ts). A variant named bare is a value of its enum
  * (variants.ts), and a struct without fields is a value of its own, written bare (§3.1). A top-level
  * function named as a value is a closure (closures.ts), and a local function or named lambda lives
- * in a register like any variable. Only these reach lowering; the checker reports every other
- * value a name could denote as not supported yet.
+ * in a register like any variable. An extern constant is read by calling the entry that
+ * reads it (§3.6). Only these reach lowering; the checker reports every other value a name could
+ * denote as not supported yet.
  */
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { constantValue } from '../constants.ts';
 import type { FunctionContext } from '../context.ts';
+import { emitCall } from '../emit-call.ts';
 import { variableRegister } from '../places.ts';
 import { lowerFunctionValue } from './closures.ts';
 import { lowerBareStruct } from './structs.ts';
@@ -31,6 +33,10 @@ export function lowerName(context: FunctionContext, node: Identifier): Register 
   }
   if (entity?.kind === 'functions') {
     return lowerFunctionValue(context, node);
+  }
+  if (entity?.kind === 'variable' && entity.owner.kind === 'ExternConstantDeclaration') {
+    const reader = context.tables.externConstantIndex(entity.owner, context.body.typeOf(node));
+    return emitCall(context, { span: node.span, callee: reader, arguments: [] });
   }
   return variableRegister(context, node);
 }

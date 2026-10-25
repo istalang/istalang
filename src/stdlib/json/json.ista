@@ -1,0 +1,228 @@
+# The json module (spec §3.8, §9): JSON held in values, and the typed mapping between it and every
+# type with a JSON form.
+#
+# `_encode` and `_decodeAt` have no body here: the compiler writes one per type they are used with,
+# from the type's form (docs/arch/boundary.md), since a form can call a type's own `toString` and
+# `parse`. What loops, or calls a type's functions, is the helpers below, which the compiled code
+# calls with the codecs of the types inside; what reads or writes JSON text is natives.
+
+enum Json:
+  Null
+  Bool { value: bool }
+  Integer { value: int }
+  Number { value: float }
+  Text { value: string }
+  List { items: Array<Json> }
+  Object { fields: Map<string, Json> }
+
+# Annotations on fields (§3.16): the name a field has in JSON, a field left out of it, and an int
+# written as a string of its digits, for readers that would round a large number.
+struct JsonName:
+  name: string
+
+struct JsonSkip
+
+struct JsonBigInt
+
+# The two the compiler writes, for every type with a JSON form: a host type a `dispose` makes
+# disposable has one to cross to its host, though it isn't Encodable or Decodable, which imply
+# Sendable. Code reaches them through `encode` and `decode`, which require those.
+extern fn _encode<T>(value: T) -> Json
+
+extern fn _decodeAt<T>(json: Json, path: string) -> Result<T>
+
+fn encode<T is Encodable>(value: T) -> Json:
+  _encode(value)
+
+fn decode<T is Decodable>(json: Json) -> Result<T>:
+  _decodeAt<T>(json, "$")
+
+fn stringify<T is Encodable>(value: T) -> string:
+  _write(encode(value))
+
+fn parse<T is Decodable>(text: string) -> Result<T>:
+  decode<T>(_read(text)?)
+
+# What crosses from the host (§9). A result, or an extern constant's value, that doesn't fit is a
+# bug in the host, so it panics the instance; JSON a host starts an instance with, or fills a
+# future with, fails the host's call instead, and nothing that call ran commits.
+fn _hostResult<T>(read: Result<T>) -> T:
+  match read:
+    case Ok{value}: value
+    case Err{error}: panic("The host gave what doesn't fit: " + error.message)
+
+fn _hostInput<T>(read: Result<T>) -> T:
+  match read:
+    case Ok{value}: value
+    case Err{error}: _refuse(error.message)
+
+extern fn _refuse(message: string) -> never
+
+# A host handle (§3.6) around the functions the wrapper of the extern returning it made.
+fn _hostHandle<T>(state: T) -> Shared<T>:
+  Shared(state)
+
+# JSON text: written as JavaScript's JSON.stringify writes it, and read with integers kept exact.
+extern fn _write(json: Json) -> string
+
+extern fn _read(text: string) -> Result<Json>
+
+# Writing. A float JSON can't hold, NaN or an infinity, is written as null, as JavaScript does; an
+# object's keys are sorted when it is written, so equal values give the same JSON.
+fn _encodeInt(value: int) -> Json:
+  Integer{value}
+
+fn _encodeBigInt(value: int) -> Json:
+  Text{value: string(value)}
+
+extern fn _encodeFloat(value: float) -> Json
+
+fn _encodeBool(value: bool) -> Json:
+  Bool{value}
+
+fn _encodeString(value: string) -> Json:
+  Text{value}
+
+fn _encodeUnit(value: unit) -> Json:
+  Null
+
+fn _encodeText<T is Stringable>(value: T) -> Json:
+  Text{value: value.toString()}
+
+extern fn _encodeHandle<T>(value: T) -> Json
+
+fn _encodeArray<T>(items: Array<T>, item: fn(T) -> Json) -> Json:
+  List{items: [for each in items: item(each)]}
+
+fn _encodeOptional<T>(value: T?, some: fn(T) -> Json) -> Json:
+  match value:
+    case Some{value}: some(value)
+    case None: Null
+
+fn _encodeMap<K is Stringable, V>(entries: Map<K, V>, value: fn(V) -> Json) -> Json:
+  _object([for key, each in entries: (key.toString(), value(each))])
+
+extern fn _object(fields: Array<(string, Json)>) -> Json
+
+# Reading. Each takes the path of the JSON it reads, which a failure names: `$.items[2].amount`.
+fn _decodeInt(json: Json, path: string) -> Result<int>:
+  match json:
+    case Integer{value}: Ok{(value)}
+    case _: _mismatch(json, path, "an integer")
+
+fn _decodeBigInt(json: Json, path: string) -> Result<int>:
+  match json:
+    case Integer{value}: Ok{(value)}
+    case Text{value}: _parsed(int.parse(value), path)
+    case _: _mismatch(json, path, "an integer")
+
+fn _decodeFloat(json: Json, path: string) -> Result<float>:
+  match json:
+    case Integer{value}: Ok{(float(value))}
+    case Number{value}: Ok{(value)}
+    case _: _mismatch(json, path, "a number")
+
+fn _decodeBool(json: Json, path: string) -> Result<bool>:
+  match json:
+    case Bool{value}: Ok{(value)}
+    case _: _mismatch(json, path, "a boolean")
+
+fn _decodeString(json: Json, path: string) -> Result<string>:
+  match json:
+    case Text{value}: Ok{(value)}
+    case _: _mismatch(json, path, "a string")
+
+fn _decodeUnit(json: Json, path: string) -> Result<unit>:
+  match json:
+    case Null: Ok{(())}
+    case _: _mismatch(json, path, "null")
+
+fn _decodeParsed<T is Parsable>(json: Json, path: string) -> Result<T>:
+  match json:
+    case Text{value}: _parsed(T.parse(value), path)
+    case _: _mismatch(json, path, "a string")
+
+extern fn _decodeHandle<T>(json: Json, path: string) -> Result<T>
+
+fn _decodeArray<T>(json: Json, path: string, item: fn(Json, string) -> Result<T>) -> Result<Array<T>>:
+  match json:
+    case List{items}:
+      let decoded: Array<T> = []
+      for each in items:
+        decoded.push(item(each, _elementPath(path, decoded.length()))?)
+      Ok{(decoded)}
+    case _: _mismatch(json, path, "an array")
+
+fn _decodeOptional<T>(json: Json, path: string, some: fn(Json, string) -> Result<T>) -> Result<T?>:
+  match json:
+    case Null: Ok{(none)}
+    case _: Ok{(some(json, path)?)}
+
+fn _decodeMap<K is Parsable, V>(json: Json, path: string, value: fn(Json, string) -> Result<V>) -> Result<Map<K, V>>:
+  match json:
+    case Object{fields}:
+      let decoded: Map<K, V> = [:]
+      for key, each in fields:
+        const at = _fieldPath(path, key)
+        decoded[_parsed(K.parse(key), at)?] = value(each, at)?
+      Ok{(decoded)}
+    case _: _mismatch(json, path, "an object")
+
+# The parts compiled codecs of structs, enums and tuples are made of.
+fn _fields(json: Json, path: string) -> Result<Map<string, Json>>:
+  match json:
+    case Object{fields}: Ok{(fields)}
+    case _: _mismatch(json, path, "an object")
+
+fn _field(fields: Map<string, Json>, name: string, path: string) -> Result<Json>:
+  match fields.get(name):
+    case Some{value}: Ok{(value)}
+    case None: _failure(_fieldPath(path, name), "missing")
+
+fn _optionalField(fields: Map<string, Json>, name: string) -> Json:
+  fields.get(name) ?? Null
+
+fn _tag(fields: Map<string, Json>, path: string) -> Result<string>:
+  _decodeString(_field(fields, "type", path)?, _fieldPath(path, "type"))
+
+fn _unknownVariant<T>(tag: string, path: string) -> Result<T>:
+  _failure(_fieldPath(path, "type"), "names no variant '" + tag + "'")
+
+fn _elements(json: Json, path: string, count: int) -> Result<Array<Json>>:
+  match json:
+    case List{items}:
+      if items.length() == count:
+        Ok{(items)}
+      else:
+        _failure(path, "expected " + count + " elements, found " + items.length())
+    case _: _mismatch(json, path, "an array")
+
+fn _element(items: Array<Json>, index: int) -> Json:
+  items[index]
+
+fn _fieldPath(path: string, name: string) -> string:
+  path + "." + name
+
+fn _elementPath(path: string, index: int) -> string:
+  path + "[" + index + "]"
+
+fn _parsed<T>(read: Result<T>, path: string) -> Result<T>:
+  match read:
+    case Ok{value}: Ok{(value)}
+    case Err{error}: _failure(path, error.message)
+
+fn _mismatch<T>(json: Json, path: string, expected: string) -> Result<T>:
+  _failure(path, "expected " + expected + ", found " + _kind(json))
+
+fn _failure<T>(path: string, message: string) -> Result<T>:
+  Err{error: Error{message: path + ": " + message, code: "json"}}
+
+fn _kind(json: Json) -> string:
+  match json:
+    case Null: "null"
+    case Bool{}: "a boolean"
+    case Integer{}: "an integer"
+    case Number{}: "a number"
+    case Text{}: "a string"
+    case List{}: "an array"
+    case Object{}: "an object"

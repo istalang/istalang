@@ -38,6 +38,21 @@ const instanceCall = z.strictObject({
 
 export type InstanceCall = z.output<typeof instanceCall>;
 
+/**
+ * What a retry of a panicked instance runs again (§3.12): the call it was starting, when it
+ * panicked before its first commit, or what its host filled, when it panicked in the segment the
+ * fill ran. The two exclude each other, since only an instance that has started waits on its host.
+ */
+const replay = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('call'), call: instanceCall }),
+  z.strictObject({
+    kind: z.literal('arrival'),
+    arrival: z.strictObject({ token: z.string(), value }),
+  }),
+]);
+
+export type Replay = z.output<typeof replay>;
+
 const status = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('unstarted'), call: instanceCall }),
   z.strictObject({ kind: z.literal('active') }),
@@ -46,8 +61,11 @@ const status = z.discriminatedUnion('kind', [
     message: z.string(),
     trace: z.string(),
     segmentStartedAt: integer,
+    replay: replay.optional(),
   }),
   z.strictObject({ kind: z.literal('finished'), outcome: value }),
+  /** Ended by its operator after a panic (§3.12). */
+  z.strictObject({ kind: z.literal('terminated') }),
 ]);
 
 const snapshotContents = z.strictObject({
@@ -59,6 +77,8 @@ const snapshotContents = z.strictObject({
   crashEveryAwait: z.boolean(),
   /** How many instances this one has spawned (§9). */
   spawned: count,
+  /** What each extern constant read so far gave, by key: read once, kept for life (§3.6). */
+  pinned: z.array(z.strictObject({ key: z.string(), value })),
   /** In ascending id order. */
   objects: z.array(heapObject),
   /** Executions ready to run, in the order they became ready. */

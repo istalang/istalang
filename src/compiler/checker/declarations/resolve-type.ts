@@ -17,7 +17,8 @@
  *   parameter (types/type.ts).
  * - `&T` is only ever a parameter's type (the parser enforces it); here it denotes `T`, and the
  *   signature records the reference.
- * - A `{…}` type is an anonymous struct, a type of its own (§3.1), whose fields resolve here.
+ * - A `{…}` type is an anonymous struct, a type of its own (§3.1), whose fields resolve here, and
+ *   whose fields' annotations are checked here, since nothing declares it elsewhere (§3.16).
  * - Traits are constraints, never types (§3.10).
  */
 
@@ -73,11 +74,11 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
     elements: node.elements.map((element) => resolve(resolution, element)),
   }),
   FunctionType: (resolution, node) => functionType(resolution, node),
-  StructType: ({ checker, module }, node) => ({
-    kind: 'anonymous',
-    origin: node,
-    fields: declaredFields(checker, module, node.fields),
-  }),
+  StructType: ({ checker, module }, node) => {
+    const fields = declaredFields(checker, module, node.fields);
+    checker.annotations.checkFields(fields);
+    return { kind: 'anonymous', origin: node, fields };
+  },
   Missing: () => errorType,
   Invalid: () => errorType,
 };

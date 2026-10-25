@@ -9,27 +9,22 @@
  * - `/` divides as IEEE 754 does, so dividing by zero gives an infinity or NaN (§2); `//` and `%`
  *   by zero have no int to give, which is a bug in the program, so they panic (§3.12).
  * - `compare` on floats subtracts, so infinities compare as expected; see `sign` for NaN.
- * - Adding a primitive to a string appends its text; a whole float keeps its `.0`, so `1.0` never
- *   reads as the int `1`. `string(x)` spells a primitive the same way.
+ * - Adding a primitive to a string appends its text, as `toString` writes it (text-forms.ts).
  * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
  */
 
-import { nativeKey, primitiveKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
-import type { PrimitiveName } from '../../language/primitives.ts';
 import { errorTrace } from '../../language/well-known.ts';
 import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
 import { float, int, text } from '../native-values.ts';
-import { preludeName } from '../stdlib-loader.ts';
 import { arrayNatives } from './arrays.ts';
 import { mapNatives } from './maps.ts';
+import { preludeKey } from './prelude-key.ts';
 import { sharedNatives } from './shared-natives.ts';
 import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
+import { primitiveText, textFormNatives } from './text-forms.ts';
 import { weakNatives } from './weak-natives.ts';
-
-/** A float printed as whole digits, which needs `.0` to read as a float. */
-const wholeDigits = /^-?\d+$/u;
 
 const numericPairs = [
   ['int', 'int'],
@@ -45,6 +40,7 @@ export const preludeNatives: Natives = {
   ...sharedNatives,
   ...stringNatives,
   ...weakNatives,
+  ...textFormNatives,
   ...numeric(
     'add',
     (left, right) => left + right,
@@ -84,17 +80,11 @@ export const preludeNatives: Natives = {
   ...Object.fromEntries(
     (['string', 'int', 'float', 'bool'] as const).map((right) => [
       preludeKey('add', 'string', right),
-      ([left, value]: readonly Value[]) => text(left) + appendedText(value),
+      ([left, value]: readonly Value[]) => text(left) + primitiveText(value),
     ]),
   ),
   [preludeKey('float.from', 'int')]: ([value]) => Number(int(value)),
   [preludeKey('int.from', 'float')]: ([value]) => truncated(float(value)),
-  ...Object.fromEntries(
-    (['int', 'float', 'bool'] as const).map((from) => [
-      preludeKey('string.from', from),
-      ([value]: readonly Value[]) => appendedText(value),
-    ]),
-  ),
   [preludeKey('panic', 'string')]: ([message]) => {
     throw new Panic(text(message));
   },
@@ -118,11 +108,6 @@ function numeric(
         : ([a, b]) => onFloats(asFloat(a), asFloat(b)),
     ]),
   );
-}
-
-/** The key prelude.ista's declaration of `name` over primitive `parameters` gets. */
-export function preludeKey(name: string, ...parameters: readonly PrimitiveName[]): string {
-  return nativeKey(preludeName, name, ...parameters.map(primitiveKey));
 }
 
 function floorDivide(dividend: bigint, by: bigint): bigint {
@@ -159,14 +144,6 @@ function truncated(value: number): bigint {
     throw new Panic(`${value} has no int.`);
   }
   return BigInt(Math.trunc(value));
-}
-
-function appendedText(value: Value | undefined): string {
-  if (typeof value === 'number') {
-    const digits = String(value);
-    return wholeDigits.test(digits) ? `${digits}.0` : digits;
-  }
-  return String(value);
 }
 
 function asFloat(value: Value | undefined): number {

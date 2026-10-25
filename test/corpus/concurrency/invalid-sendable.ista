@@ -1,10 +1,10 @@
-# error: 5606 at 11:20
-# error: 5606 at 13:25
+# error: 5900 at 11:20
+# error: 5900 at 13:25
 # error: 5001 at 17:35
 # error: 5001 at 18:8
-# A sendable function type (§3.14) holds code, which only `spawn` sends, so an extern's types may
-# not contain one; and a function value capturing a `let`, which is a `Shared`, has a plain
-# function type, which doesn't fit where a sendable one is expected.
+# A sendable function type (§3.14) holds code, which only `spawn` sends: it has no JSON form, so
+# an extern's types may not contain one (§9); and a function value capturing a `let`, which is a
+# `Shared`, has a plain function type, which doesn't fit where a sendable one is expected.
 
 struct Handler { run: sendable fn(int) -> int }
 

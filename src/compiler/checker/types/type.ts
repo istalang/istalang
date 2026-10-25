@@ -24,6 +24,7 @@
 
 import type { PrimitiveName } from '../../../language/primitives.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type {
   EnumDeclaration,
   ExternStructDeclaration,
@@ -32,7 +33,7 @@ import type {
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import type { StructLiteral } from '../../syntax/expressions.ts';
-import type { StructType } from '../../syntax/types.ts';
+import type { FieldDeclaration, StructType } from '../../syntax/types.ts';
 
 export interface PrimitiveType {
   readonly kind: 'primitive';
@@ -76,10 +77,14 @@ export interface TupleType {
   readonly elements: readonly Type[];
 }
 
-/** A field of a struct type, nominal or anonymous: its name and its type. */
+/**
+ * A field of a struct type, nominal or anonymous: its name, its type, and where it is declared,
+ * whose annotations it carries (§3.16); a field a `struct{…}` literal made up has no declaration.
+ */
 export interface FieldMember {
   readonly name: string;
   readonly type: Type;
+  readonly declared?: { readonly node: FieldDeclaration; readonly module: ModuleId };
 }
 
 /**

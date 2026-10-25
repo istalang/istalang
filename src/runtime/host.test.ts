@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { subsetDefinition, subsetOutcome } from '../../test/definitions/subset.ts';
+import { compiledText } from '../compiler/compile.test-kit.ts';
 import { definitionFormat } from '../definition/definition.ts';
 import { FormatError } from '../definition/format.ts';
 import { preludeNatives } from '../stdlib/prelude/natives.ts';
@@ -62,11 +63,17 @@ describe('the runtime', () => {
     expect(() => load({})).toThrow(Refusal);
   });
 
-  it('turns a value into the JSON a host receives, refusing one that has no JSON form', () => {
-    const program = load();
-    expect(program.json(98n)).toBe('98');
-    expect(() => program.json(Number.NaN)).toThrow(Refusal);
-    expect(() => program.json({ kind: 'tuple', elements: [] })).toThrow(Refusal);
+  it("gives an outcome its start entry encoded as JSON or its text, refusing a value it didn't encode", () => {
+    const test = testRuntime();
+    const program = test.runtime.deploy(
+      compiledText('async fn main() -> Future<(float, int)>: (0.0 / 0.0, 12345678901234567890)'),
+    );
+    const { state } = program.start('i');
+    const outcome = state.kind === 'finished' ? state.outcome : null;
+    expect(program.outcome(outcome)).toEqual([null, 12345678901234567890n]);
+    expect(program.outcomeText(outcome)).toBe('[null,12345678901234567890]');
+    expect(() => program.outcome(98n)).toThrow(Refusal);
+    expect(() => load().outcomeText(98n)).toThrow(Refusal);
   });
 
   it('refuses a text that is not a Definition', () => {

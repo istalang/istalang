@@ -6,12 +6,20 @@
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../compiler/checker/check.ts';
-import { externKeyOf } from '../compiler/lowering/names.ts';
+import { keyOf } from '../compiler/lowering/names.ts';
+import { codecFunctions } from '../language/well-known.ts';
 import { stdNatives } from './natives.ts';
-import { stdSources } from './stdlib-loader.ts';
+import { jsonName, stdSources } from './stdlib-loader.ts';
 
-/** Externs without a native, by module and name: the runtime disposes futures and slots itself. */
-const withoutNative = new Set(['prelude.dispose']);
+/**
+ * Externs without a native, by module and name: the runtime disposes futures and slots itself, so
+ * their `dispose` never has one, and the compiler writes the json codecs per type
+ * (docs/arch/boundary.md).
+ */
+const withoutNative = new Set([
+  'prelude.dispose',
+  ...Object.values(codecFunctions).map((name) => `${jsonName}.${name}`),
+]);
 
 describe('std natives', () => {
   it('implement exactly the callable externs the std modules declare, by the keys lowering gives', () => {
@@ -25,7 +33,7 @@ describe('std natives', () => {
         item.kind === 'FunctionDeclaration' &&
         item.isExtern &&
         !withoutNative.has(`${module.name}.${item.name.text}`)
-          ? [externKeyOf(checker, item)]
+          ? [keyOf(checker, item, checker.parametersOf(item))]
           : [],
       ),
     );

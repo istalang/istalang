@@ -31,7 +31,7 @@ import {
   type Unwrap,
 } from '../syntax/expressions.ts';
 import type { Identifier } from '../syntax/node.ts';
-import type { FunctionContext } from './context.ts';
+import type { CodeContext, FunctionContext } from './context.ts';
 import { emitCall } from './emit-call.ts';
 
 /** What a changed place is once its elements are copied in: a Definition place, or an element. */
@@ -112,7 +112,7 @@ export function cellRegister(context: FunctionContext, type: Type): Register {
 
 /** Reads the part of the value in `register` at `path`, field and element positions; its register. */
 export function readPart(
-  context: FunctionContext,
+  context: CodeContext,
   register: Register,
   path: readonly number[],
   span: Span,
@@ -254,7 +254,7 @@ function writeElement(
 }
 
 /** Reads the value at `place`: its register's value, read along the place's field positions. */
-function readPlace(context: FunctionContext, place: Place, span: Span): Register {
+function readPlace(context: CodeContext, place: Place, span: Span): Register {
   let current = place.register;
   for (const index of place.path) {
     const dst = context.code.allocate();

@@ -9,7 +9,9 @@
  *   is found by resolving a call to it with the required parameter types, and must give the
  *   required result. The calls found are the witnesses the instantiation calls (check.ts).
  * - A required field is met by a struct field of the same name and type, or by a constraint on a
- *   type parameter requiring it too. `Sendable` is derived (sendable.ts).
+ *   type parameter requiring it too. `Sendable` is derived (sendable.ts), and so are `Encodable`
+ *   and `Decodable`: a JSON form (rules/json-forms/), and sendable, since each implies `Sendable`.
+ *   A disposable host type has a form, to cross to its own host, yet isn't sendable.
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument
@@ -21,7 +23,11 @@
  *   the bound is reported as such, at every level up to the use site.
  */
 
-import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type {
+  FunctionDeclaration,
+  TraitDeclaration,
+  TypeParameter,
+} from '../../syntax/declarations.ts';
 import type { ResolvedCall, Witnesses } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -34,6 +40,7 @@ import {
   topLevelCandidates,
 } from '../overloads/candidates.ts';
 import { type Application, type CallArgument, choose, signatureOf } from '../overloads/choice.ts';
+import { type JsonDirection, jsonMarkers } from '../rules/json-forms/form.ts';
 import { errorType, type Substitution, sameType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
@@ -44,7 +51,7 @@ import {
   requiredFieldType,
   requiredFunctions,
 } from './constraints.ts';
-import { isSendable, isSendableTrait } from './sendable.ts';
+import { isSendable, isSendableTrait, isWellKnownTrait } from './sendable.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
@@ -190,9 +197,15 @@ function conform(
   }
   const meeting = { site, type, constraint };
   if (isSendableTrait(checker, constraint.trait)) {
-    return isSendable(checker, type, 'instance')
-      ? []
-      : lacks(meeting, 'every value inside it to be sendable');
+    return isSendable(checker, type) ? [] : lacks(meeting, 'every value inside it to be sendable');
+  }
+  const direction = jsonMarkerDirection(checker, constraint.trait);
+  if (direction !== undefined) {
+    const problem = checker.json.problemOf(type, direction);
+    if (problem !== undefined) {
+      return lacks(meeting, `a JSON form to ${direction}, but ${problem}`);
+    }
+    return isSendable(checker, type) ? [] : lacks(meeting, 'every value inside it to be sendable');
   }
   for (const field of requiredFields(constraint.trait)) {
     const fieldType = requiredFieldType(checker, constraint, field, type);
@@ -285,7 +298,7 @@ function witnessOf(
     return 'none';
   }
   const arity = callArguments.length;
-  return callMade(site, application.candidate, instantiation, arity) ?? 'failed';
+  return callMade(application.candidate, instantiation, arity);
 }
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
@@ -313,4 +326,14 @@ function substituteConstraint(constraint: Constraint, substitution: Substitution
     trait: constraint.trait,
     arguments: constraint.arguments.map((argument) => substitute(argument, substitution)),
   };
+}
+
+/** Which way `trait` says a type crosses as JSON, for the derived `Encodable` and `Decodable`. */
+function jsonMarkerDirection(
+  checker: CheckerContext,
+  trait: TraitDeclaration,
+): JsonDirection | undefined {
+  return (Object.keys(jsonMarkers) as JsonDirection[]).find((direction) =>
+    isWellKnownTrait(checker, trait, jsonMarkers[direction]),
+  );
 }

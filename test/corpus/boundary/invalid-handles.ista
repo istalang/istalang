@@ -1,0 +1,28 @@
+# error: 5901 at 24:24
+# error: 5900 at 25:26
+# error: 5900 at 26:22
+# A host handle (§3.6), a `Shared` of a struct with only function fields, crosses as JSON naming
+# it, and its host implements each function as an extern of its own: so each function takes
+# nothing by `&` and only what crosses as JSON. A struct with a field that isn't a function is no
+# handle, so it must cross as JSON itself, which a `Shared` can't.
+
+struct Counter:
+  bump: fn(&int) -> unit
+
+struct Callbacks:
+  run: fn(fn() -> unit) -> unit
+
+struct Mixed:
+  id: string
+  stop: fn() -> unit
+
+struct Fine:
+  ping: fn(string) -> Future<int>
+  stop: fn() -> unit
+
+extern fn fine() -> Shared<Fine>
+extern fn counter() -> Shared<Counter>
+extern fn callbacks() -> Shared<Callbacks>
+extern fn mixed() -> Shared<Mixed>
+
+async fn main(): 0

@@ -13,8 +13,18 @@
   "bin": {
     "ista": "dist/cli/main.js"
   },
+  "exports": {
+    "./runtime": {
+      "types": "./dist/runtime/host.d.ts",
+      "default": "./dist/runtime/host.js"
+    },
+    "./stdlib": {
+      "types": "./dist/stdlib/natives.d.ts",
+      "default": "./dist/stdlib/natives.js"
+    }
+  },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown --log-level silent && tsc -p tsconfig.declarations.json",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "biome ci && depcruise src",
     "fix": "biome check --write",

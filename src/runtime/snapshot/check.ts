@@ -34,7 +34,7 @@ export function checkSnapshot(definition: Definition, snapshot: Snapshot): void 
     ...snapshot.objects.flatMap((object) => objectProblems(definition, object)),
     ...waitProblems(definition, snapshot),
     ...callFutureProblems(snapshot),
-    ...(snapshot.status.kind === 'unstarted' ? callProblems(definition, snapshot.status.call) : []),
+    ...startingCallProblems(definition, snapshot.status),
   ];
   if (problems.length > 0) {
     throw new Refusal(
@@ -145,6 +145,19 @@ function callFutureProblems(snapshot: Snapshot): readonly string[] {
     }
   }
   return problems;
+}
+
+/** What is wrong with the call an instance starts with, or a retry starts it with again. */
+function startingCallProblems(
+  definition: Definition,
+  status: Snapshot['status'],
+): readonly string[] {
+  if (status.kind === 'unstarted') {
+    return callProblems(definition, status.call);
+  }
+  return status.kind === 'panicked' && status.replay?.kind === 'call'
+    ? callProblems(definition, status.replay.call)
+    : [];
 }
 
 /** What is wrong with the call a new instance starts with, if anything. */

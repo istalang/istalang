@@ -1,40 +1,40 @@
 /**
- * Values leaving an instance as JSON (§9): what a host sees of an outcome. The canonical text comes
- * from the one codec every persisted format uses (definition/codec.ts).
- *
- * - A primitive maps to its JSON form: `int` exactly at any size, `unit` as `null`. A float JSON
- *   can't hold (NaN, ±Infinity) has no JSON form and is refused.
- * - A struct is an object keyed by field name, its type read from the Definition's type table.
- *   Keys come out sorted, as the canonical codec writes every object.
- * - The rest of §9's mapping (annotations, enums, collections, tuples, time) needs what arrives
- *   with the host boundary; until then such a value is refused.
+ * Values leaving an instance as JSON (§9): what a host sees of an outcome. An instance a host
+ * starts, `main`'s included, runs through its start wrapper, which encodes the function's outcome
+ * by its declared type (docs/arch/boundary.md), so the outcome is already a `Json` value, given to
+ * a host as JSON values, as everything a host exchanges is, or as its text. Any other value, such
+ * as the outcome of a spawned instance, has no JSON the program wrote, so it is refused.
  */
 
-import { encodeJson } from '../../definition/codec.ts';
 import type { Definition } from '../../definition/definition.ts';
+import {
+  isJsonValue,
+  type JsonType,
+  jsonText,
+  jsonTypeIn,
+  plainOfJson,
+} from '../../definition/json-values.ts';
 import type { Value } from '../../definition/values.ts';
 import { Refusal } from '../refusal.ts';
 
-/** `value` as the JSON text a host receives; a Refusal for a value without one yet. */
-export function outboundJson(value: Value, definition: Definition): string {
-  return encodeJson(jsonOf(value, definition));
+/** `value`, a `Json` the program built, as the JavaScript JSON a host works with (bigint integers). */
+export function outcomeJson(value: Value, definition: Definition): unknown {
+  return plainOfJson(value, encodedShape(value, definition));
 }
 
-function jsonOf(value: Value, definition: Definition): unknown {
-  if (typeof value === 'number' && !Number.isFinite(value)) {
-    throw new Refusal('noJsonForm', `The float ${value} has no JSON form.`);
+/** `value`, a `Json` the program built, as the JSON text §9 writes. */
+export function outcomeText(value: Value, definition: Definition): string {
+  return jsonText(value, encodedShape(value, definition));
+}
+
+/** The shape of the `Json` `value` is; a Refusal when it isn't one. */
+function encodedShape(value: Value, definition: Definition): JsonType {
+  const shape = jsonTypeIn(definition.types);
+  if (shape === undefined || !isJsonValue(value, shape)) {
+    throw new Refusal(
+      'noJsonForm',
+      'Only what a start wrapper encoded crosses to the host as JSON.',
+    );
   }
-  if (value === null || typeof value !== 'object') {
-    return value;
-  }
-  const type = value.kind === 'struct' ? definition.types[value.type] : undefined;
-  if (value.kind !== 'struct' || type?.kind !== 'struct') {
-    throw new Refusal('noJsonForm', `A ${value.kind} value can't cross the host boundary yet.`);
-  }
-  return Object.fromEntries(
-    type.fields.map((field, index) => [
-      field.name,
-      jsonOf(value.fields[index] ?? null, definition),
-    ]),
-  );
+  return shape;
 }

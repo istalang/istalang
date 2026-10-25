@@ -6,6 +6,7 @@
  */
 
 import type { WellKnownDeclaration } from '../../../language/well-known.ts';
+import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { errorType, type Type } from './type.ts';
 
@@ -14,7 +15,7 @@ import { errorType, type Type } from './type.ts';
  * `Array<T>`; undefined for any other type, and in a program without the declaring module.
  */
 export function wellKnownArguments(
-  checker: CheckerContext,
+  checker: Pick<Checker, 'wellKnownType'>,
   declaration: WellKnownDeclaration,
   type: Type,
 ): readonly Type[] | undefined {

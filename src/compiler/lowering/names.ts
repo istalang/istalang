@@ -21,7 +21,7 @@ import {
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
 import type { ModuleId, ProgramModule } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { ExternConstantDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 
@@ -45,20 +45,22 @@ function declaredName(declaration: FunctionDeclaration): string {
   return owner === undefined ? name.text : `${owner.text}.${name.text}`;
 }
 
+/** A declaration lowering names: a function, a type, a top-level constant or an extern one. */
+type NamedDeclaration =
+  | FunctionDeclaration
+  | NominalDeclaration
+  | VariableDeclaration
+  | ExternConstantDeclaration;
+
 /**
  * A declaration's name, qualified by its module's canonical name: `time.delay`, `prelude.Optional`;
  * a top-level constant's is its first name's.
  */
-export function qualifiedNameOf(
-  checker: Checker,
-  declaration: FunctionDeclaration | NominalDeclaration | VariableDeclaration,
-): string {
+export function qualifiedNameOf(checker: Checker, declaration: NamedDeclaration): string {
   return `${moduleName(checker, checker.moduleOf(declaration))}.${nameOf(declaration)}`;
 }
 
-function nameOf(
-  declaration: FunctionDeclaration | NominalDeclaration | VariableDeclaration,
-): string {
+function nameOf(declaration: NamedDeclaration): string {
   switch (declaration.kind) {
     case 'FunctionDeclaration':
       return declaredName(declaration);
@@ -69,14 +71,22 @@ function nameOf(
   }
 }
 
-/** The key that binds the extern `declaration` to its native. */
-export function externKeyOf(checker: Checker, declaration: FunctionDeclaration): string {
+/**
+ * The key binding `declaration`, taking `parameters`, across the host boundary (§9): an extern to
+ * its native, or a startable function to what a host starts it by. Both are spelled alike: module,
+ * name, and the declared parameter types.
+ */
+export function keyOf(
+  checker: Checker,
+  declaration: FunctionDeclaration | VariableDeclaration,
+  parameters: readonly { readonly type: Type; readonly reference: boolean }[],
+): string {
   const signature: ExternSignature = {
     module: moduleName(checker, checker.moduleOf(declaration)),
-    name: declaredName(declaration),
-    parameters: checker.parametersOf(declaration).map((parameter) => ({
-      type: keyType(checker, parameter.type),
-      reference: parameter.reference,
+    name: nameOf(declaration),
+    parameters: parameters.map(({ type, reference }) => ({
+      type: keyType(checker, type),
+      reference,
     })),
   };
   return externKey(signature);

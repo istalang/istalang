@@ -10,6 +10,7 @@ import { compiledText } from '../../compiler/compile.test-kit.ts';
 import {
   type RecordingStore,
   recordingStore,
+  runToEnd,
   settleAll,
   testRuntime,
 } from '../runtime.test-kit.ts';
@@ -36,11 +37,11 @@ describe('spawning an instance', () => {
     const test = testRuntime();
     const started = test.runtime.deploy(compiledText(spawningMain)).start('p');
     expect(started.spawned).toEqual(['p/1']);
-    expect([...settleAll(test, 'p', started)]).toEqual([
-      ['p', { kind: 'finished', outcome: 5n }],
-      ['p/1', { kind: 'finished', outcome: 2n }],
-      ['p/2', { kind: 'finished', outcome: 4n }],
-    ]);
+    const settled = settleAll(test, 'p', started);
+    expect([...settled.keys()]).toEqual(['p', 'p/1', 'p/2']);
+    expect(runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '5' });
+    expect(settled.get('p/1')).toEqual({ kind: 'finished', outcome: 2n });
+    expect(settled.get('p/2')).toEqual({ kind: 'finished', outcome: 4n });
   });
 
   it("writes a child before its parent's commit, as a call not yet started", () => {

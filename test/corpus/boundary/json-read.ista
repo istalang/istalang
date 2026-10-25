@@ -1,0 +1,65 @@
+# outcome: ["round trip","none, unknown fields ignored","$.items[0].qty: expected an integer, found a string","$.id: missing","$.shape.type: names no variant 'Square'","$.pair: expected 2 elements, found 1","$.due: 'P1Y' is not an ISO 8601 duration.","$.tags.x: 'x' is not an int.","$.items[0].qty: expected an integer, found a number","json","123456789012345678901234567890"]
+# Reading JSON back by the declared type (§9): what stringify writes parses to an equal value, a
+# missing optional field is none and an unknown one is ignored, and every mismatch is an Err whose
+# message names the path of the part that doesn't fit; text that isn't JSON is an Err with code
+# json. A @JsonBigInt field reads the string of digits it was written as.
+
+import * as json from 'json'
+import * as time from 'time'
+import JsonBigInt from 'json'
+
+struct Item:
+  sku: string
+  qty: int
+
+enum Shape:
+  Circle { radius: float }
+  Dot
+
+struct Order:
+  id: string
+  items: Array<Item>
+  note: string?
+  tags: Map<int, int>
+  shape: Shape
+  pair: (int, bool)
+  due: time.Duration
+
+struct Big:
+  value: int @JsonBigInt
+
+fn failure(text: string) -> string:
+  match json.parse<Order>(text):
+    case Ok{value}: "parsed " + value.id
+    case Err{error}: error.message
+
+fn order(tags: string, shape: string, pair: string, due: string, extra: string) -> string:
+  "{\"id\":\"o1\",\"items\":[],\"tags\":" + tags + ",\"shape\":{\"type\":\"" + shape + "\"},\"pair\":" + pair + ",\"due\":\"" + due + "\"" + extra + "}"
+
+async fn main() -> Future<Array<string>>:
+  const original = Order{id: "o1", items: [Item{sku: "a", qty: 2}], note: "n", tags: [10: 1], shape: Circle{radius: 1.5}, pair: (3, true), due: 90m}
+  const roundTrip = match json.parse<Order>(json.stringify(original)):
+    case Ok{value}: if value == original: "round trip" else: "changed"
+    case Err{error}: error.message
+  const lenient = match json.parse<Order>(order("{}", "Dot", "[1,true]", "PT1S", ",\"extra\":[1,2]")):
+    case Ok{value}: if value.note == none: "none, unknown fields ignored" else: "a note"
+    case Err{error}: error.message
+  const notJson = match json.parse<Order>("{\"id\":"):
+    case Ok{value}: value.id
+    case Err{error}: error.code
+  const big = match json.parse<Big>("{\"value\":\"123456789012345678901234567890\"}"):
+    case Ok{value}: string(value.value)
+    case Err{error}: error.message
+  [
+    roundTrip,
+    lenient,
+    failure("{\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":\"2\"}]}"),
+    failure("{\"items\":[]}"),
+    failure(order("{}", "Square", "[1,true]", "PT1S", "")),
+    failure(order("{}", "Dot", "[1]", "PT1S", "")),
+    failure(order("{}", "Dot", "[1,true]", "P1Y", "")),
+    failure(order("{\"x\":1}", "Dot", "[1,true]", "PT1S", "")),
+    failure("{\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":1.5}]}"),
+    notJson,
+    big,
+  ]

@@ -2,51 +2,54 @@
  * Which types are Sendable (§3.1): derived, never declared, except for extern types, which say so.
  *
  * Primitives are; a struct, an enum or a tuple is when everything in it is; an extern type is when
- * it is declared `sendable` and its type arguments are; a type parameter is only when constrained
- * `is Sendable`. A function type is when it is declared `sendable` (§3.14), but code goes only to
- * another instance of the same program, never to the host, so where a value is sent decides that
- * one case. A recursive type is sendable unless something in its cycle isn't, so a type being
- * decided counts as sendable while its own fields are.
+ * it is declared `sendable` and its type arguments are; a function type is when it is declared
+ * `sendable` (§3.14); a type parameter is when constrained `is Sendable`, or by a trait that implies
+ * it (`Encodable`, `Decodable`). A recursive type is sendable unless something in its cycle isn't,
+ * so a type being decided counts as sendable while its own fields are.
+ *
+ * Code is sendable only to another instance of the same program; whether a value can go to the
+ * host is whether it has a JSON form (rules/json-forms/), which no function type has. A host type
+ * a `dispose` makes disposable has one, yet isn't sendable: its values have an identity.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
+import { jsonMarkers } from '../rules/json-forms/form.ts';
 import { type NominalType, type Type, typeChildren } from '../types/type.ts';
 
-/** Where a value leaving its instance goes: a new instance of the program (§9), or the host (§3.6). */
-export type Destination = 'instance' | 'host';
+/** The traits a type parameter may be constrained by to be sendable. */
+const sendableTraits: readonly WellKnownDeclaration[] = [
+  wellKnown.sendable,
+  ...Object.values(jsonMarkers),
+];
 
-/** Whether values of `type` may leave an instance for `destination`. */
-export function isSendable(checker: CheckerContext, type: Type, destination: Destination): boolean {
-  return sendable(checker, type, { destination, deciding: new Set() });
+/** Whether values of `type` may leave an instance for another. */
+export function isSendable(checker: CheckerContext, type: Type): boolean {
+  return sendable(checker, type, new Set());
 }
 
-/** One sendability question: where values go, and the types being decided, which cycles reach. */
-interface Asking {
-  readonly destination: Destination;
-  readonly deciding: Set<string>;
-}
-
-function sendable(checker: CheckerContext, type: Type, asking: Asking): boolean {
+function sendable(checker: CheckerContext, type: Type, deciding: Set<string>): boolean {
   switch (type.kind) {
     case 'primitive':
     case 'error':
       return true;
     case 'function':
-      return type.isSendable && asking.destination === 'instance';
+      return type.isSendable;
     case 'tuple':
     case 'anonymous':
-      return typeChildren(type).every((child) => sendable(checker, child, asking));
+      return typeChildren(type).every((child) => sendable(checker, child, deciding));
     case 'parameter':
       return (
         type.declaration.kind === 'TypeParameter' &&
         checker
           .constraintsOf(type.declaration)
-          .some((constraint) => isSendableTrait(checker, constraint.trait))
+          .some(({ trait }) =>
+            sendableTraits.some((each) => isWellKnownTrait(checker, trait, each)),
+          )
       );
     case 'nominal':
-      return nominalSendable(checker, type, asking);
+      return nominalSendable(checker, type, deciding);
     default: {
       const unhandled: never = type;
       return unhandled;
@@ -54,15 +57,18 @@ function sendable(checker: CheckerContext, type: Type, asking: Asking): boolean 
   }
 }
 
-function nominalSendable(checker: CheckerContext, type: NominalType, asking: Asking): boolean {
+function nominalSendable(
+  checker: CheckerContext,
+  type: NominalType,
+  deciding: Set<string>,
+): boolean {
   const { declaration } = type.entity;
   if (declaration.kind === 'ExternStructDeclaration') {
     return (
       declaration.isSendable &&
-      type.arguments.every((argument) => sendable(checker, argument, asking))
+      type.arguments.every((argument) => sendable(checker, argument, deciding))
     );
   }
-  const { deciding } = asking;
   const key = checker.typeKeys.typeKey(type);
   if (deciding.has(key)) {
     return true;
@@ -72,13 +78,22 @@ function nominalSendable(checker: CheckerContext, type: NominalType, asking: Ask
     declaration.kind === 'StructDeclaration'
       ? (checker.fieldsOf(type) ?? [])
       : (checker.variantsOf(type) ?? []).flatMap((variant) => variant.fields);
-  const result = fields.every((field) => sendable(checker, field.type, asking));
+  const result = fields.every((field) => sendable(checker, field.type, deciding));
   deciding.delete(key);
   return result;
 }
 
 /** Whether `trait` is the prelude's Sendable. */
 export function isSendableTrait(checker: CheckerContext, trait: TraitDeclaration): boolean {
-  const entity = checker.wellKnownEntity(wellKnown.sendable);
+  return isWellKnownTrait(checker, trait, wellKnown.sendable);
+}
+
+/** Whether `trait` is the well-known trait `declaration` names. */
+export function isWellKnownTrait(
+  checker: CheckerContext,
+  trait: TraitDeclaration,
+  declaration: WellKnownDeclaration,
+): boolean {
+  const entity = checker.wellKnownEntity(declaration);
   return entity?.kind === 'type' && entity.declaration === trait;
 }

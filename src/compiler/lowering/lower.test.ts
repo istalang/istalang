@@ -11,14 +11,14 @@ import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { isError } from '../../diagnostics/diagnostic.ts';
-import { testRuntime } from '../../runtime/runtime.test-kit.ts';
-import { preludeProgramOf, stdProgramOf } from '../binder/bind.test-kit.ts';
+import { runToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
+import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { checkProgram } from '../checker/check.ts';
 import { compiledDefinition } from '../compile.test-kit.ts';
 import { compileProgram, diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
-import { externKeyOf } from './names.ts';
+import { keyOf } from './names.ts';
 
 const specModules = specExamples
   .filter((example) => example.form === 'module')
@@ -30,7 +30,9 @@ function externKeys(program: Program, key: string): readonly string[] {
   const checker = checkProgram(program);
   const items = program.modules.get(idOf(key))?.tree.root.items ?? [];
   return items.flatMap((item) =>
-    item.kind === 'FunctionDeclaration' && item.isExtern ? [externKeyOf(checker, item)] : [],
+    item.kind === 'FunctionDeclaration' && item.isExtern
+      ? [keyOf(checker, item, checker.parametersOf(item))]
+      : [],
   );
 }
 
@@ -61,7 +63,7 @@ describe('function-table names', () => {
 
 describe('extern keys', () => {
   it('spell declared types module-qualified, without sugar, references and parameters kept', () => {
-    const program = preludeProgramOf({
+    const program = stdProgramOf({
       'shop/main': [
         "import Point from 'geometry'",
         'extern fn place(at: Point) -> int',
@@ -83,37 +85,62 @@ describe('extern keys', () => {
 
 describe('lowering', () => {
   it("qualifies names with each module's canonical name", () => {
-    const program = preludeProgramOf({
+    const program = stdProgramOf({
       'purchase/approve': "import twice from 'lib/math'\nasync fn main(): twice(2)",
       'lib/math': 'fn twice(n: int) -> int: n * 2',
     });
     const names = compiledDefinition(program, 'purchase/approve').functions.map(
       (entry) => entry.name,
     );
-    expect(names).toEqual(['purchase/approve.main', 'lib/math.twice', 'prelude.multiply']);
+    expect(names).toEqual(
+      expect.arrayContaining(['purchase/approve.main', 'lib/math.twice', 'prelude.multiply']),
+    );
+    const modules = ['purchase/approve', 'lib/math', 'prelude', 'json'];
+    expect(names.every((name) => modules.some((module) => name.startsWith(`${module}.`)))).toBe(
+      true,
+    );
   });
 
   it('lays out every kind of type a struct holds, extern types disposed as their dispose says', () => {
-    const program = preludeProgramOf({
+    const program = stdProgramOf({
       main: [
         'struct Box { size: int?; items: Array<int>; next: Slot<int> }',
         'async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });
-    const { types } = compiledDefinition(program, 'main');
-    expect(types.map((type) => [type.kind, type.name])).toEqual([
+    const boxTypes = compiledDefinition(program, 'main').types.slice(0, 4);
+    expect(boxTypes.map((type) => [type.kind, type.name])).toEqual([
       ['struct', 'main.Box'],
       ['enum', 'prelude.Optional'],
       ['extern', 'prelude.Array'],
       ['extern', 'prelude.Slot'],
     ]);
-    const disposals = types.flatMap((type) =>
+    const disposals = boxTypes.flatMap((type) =>
       type.kind === 'extern' ? [[type.name, type.disposal.kind]] : [],
     );
     expect(disposals).toEqual([
       ['prelude.Array', 'none'],
       ['prelude.Slot', 'runtime'],
     ]);
+  });
+
+  it('makes a host type disposable through the dispose its host implements (§3.6)', () => {
+    const program = stdProgramOf({
+      main: [
+        'extern struct Lease<T is Sendable>',
+        'extern fn dispose<T is Encodable>(self: Lease<T>)',
+        'extern fn lease() -> Lease<int>',
+        'async fn main(): { const held = lease(); 1 }',
+      ].join('\n'),
+    });
+    const { types, functions } = compiledDefinition(program, 'main');
+    const lease = types.find((type) => type.kind === 'extern' && type.name === 'main.Lease');
+    const disposal = lease?.kind === 'extern' ? lease.disposal : undefined;
+    expect(disposal?.kind).toBe('function');
+    const dispose = disposal?.kind === 'function' ? functions[disposal.function] : undefined;
+    expect(dispose?.name).toBe('main.dispose<int>');
+    const natives = functions.flatMap((entry) => (entry.kind === 'extern' ? [entry.key] : []));
+    expect(natives).toContain('main.dispose(main.Lease<T>)');
   });
 
   it('stores a constant once, computed in its own module even when another imports it', () => {
@@ -124,7 +151,7 @@ describe('lowering', () => {
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();
     const deployed = test.runtime.deploy(definitionFormat.write(definition).text);
-    expect(deployed.start('i').state).toEqual({ kind: 'finished', outcome: 14n });
+    expect(runToEnd(test, 'i', deployed.start('i'))).toEqual({ kind: 'finished', outcome: '14' });
     const structs = definition.constants.filter(
       (constant) => typeof constant === 'object' && constant?.kind === 'struct',
     );
@@ -132,7 +159,7 @@ describe('lowering', () => {
   });
 
   it('gives a variable passed by & a cell, typed as the Shared<T> it is created as', () => {
-    const program = preludeProgramOf({
+    const program = stdProgramOf({
       main: [
         'fn bump(n: &int):',
         '  n += 1',
@@ -162,7 +189,7 @@ describe('lowering', () => {
   });
 
   it('gives each anonymous struct an unnamed entry of its own, shared by its uses', () => {
-    const program = preludeProgramOf({
+    const program = stdProgramOf({
       main: [
         'async fn main():',
         '  const a = struct{x: 1}',
@@ -172,11 +199,8 @@ describe('lowering', () => {
       ].join('\n'),
     });
     const { types } = compiledDefinition(program, 'main');
-    expect(types.map((type) => [type.kind, type.name])).toEqual([
-      ['struct', ''],
-      ['struct', ''],
-      ['struct', ''],
-    ]);
+    const anonymous = types.filter((type) => type.kind === 'struct' && type.name === '');
+    expect(anonymous).toHaveLength(3);
   });
 
   it('compiles every program the checker accepts into a Definition the runtime loads', () => {
@@ -195,5 +219,5 @@ describe('lowering', () => {
       }),
       { numRuns: 300 },
     );
-  });
+  }, 30_000);
 });

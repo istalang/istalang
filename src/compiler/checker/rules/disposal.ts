@@ -17,14 +17,13 @@
  */
 
 import { disposeFunction, wellKnown } from '../../../language/well-known.ts';
-import type { ModuleId } from '../../program/program.ts';
+import { isStdModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Parameter } from '../../syntax/expressions.ts';
 import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { Disposal, FunctionCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { callMade } from '../overloads/calls-made.ts';
 import { callCandidates } from '../overloads/candidates.ts';
 import { chooseSilently } from '../overloads/silent-choice.ts';
@@ -32,6 +31,7 @@ import { type NominalType, sameType, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 import { silent, useSite } from '../use-site.ts';
+import { isHostExtern } from './host-boundary.ts';
 
 const none: Disposal = { kind: 'none' };
 
@@ -60,7 +60,7 @@ export function isDisposeFunction(
 
 /** Whether `declaration` is a `dispose` the runtime performs: an extern one a std module declares. */
 function isRuntimeDispose(checker: CheckerContext, declaration: FunctionDeclaration): boolean {
-  return declaration.isExtern && isStd(checker, checker.moduleOf(declaration));
+  return declaration.isExtern && !isHostExtern(checker, declaration);
 }
 
 /**
@@ -78,11 +78,7 @@ export function isOwnedHandle(checker: CheckerContext, type: NominalType): boole
 }
 
 function isStdType(checker: CheckerContext, type: NominalType): boolean {
-  return isStd(checker, checker.bindings.moduleOf(type.entity));
-}
-
-function isStd(checker: CheckerContext, module: ModuleId | undefined): boolean {
-  return module !== undefined && checker.program.modules.get(module)?.isStd === true;
+  return isStdModule(checker.program, checker.bindings.moduleOf(type.entity));
 }
 
 /** Whether `type`'s std module declares an extern `dispose` for it: the runtime's to perform. */
@@ -115,14 +111,15 @@ function declaredDispose(checker: CheckerContext, type: NominalType): FunctionCa
   const call =
     chosen === undefined
       ? undefined
-      : callMade(site, chosen.application.candidate, chosen.instantiation, 1);
+      : callMade(chosen.application.candidate, chosen.instantiation, 1);
   return call?.kind === 'function' ? call : undefined;
 }
 
 /**
  * Checks a `dispose` a program declares (§7): its one parameter takes a handle a program may make
- * disposable, it is plain code returning unit, lookup finds it for that type, and its `self` never
- * escapes it.
+ * disposable, and a host type that isn't declared sendable, since a disposable value has an identity
+ * of its own (§3.1); it is plain code returning unit, lookup finds it for that type, and its `self`
+ * never escapes it.
  */
 export function checkDisposeDeclaration(
   checker: CheckerContext,
@@ -143,9 +140,9 @@ export function checkDisposeDeclaration(
     checker.report(module, checkerDiagnostics.disposeType(at, typeText(self.type)));
     return;
   }
-  if (declaration.isExtern) {
-    checker.unsupported(module, declaration, frontier.hostExtern);
-    return;
+  const { declaration: disposed } = self.type.entity;
+  if (disposed.kind === 'ExternStructDeclaration' && disposed.isSendable) {
+    checker.report(module, checkerDiagnostics.disposableSendable(at, typeText(self.type)));
   }
   const found = checker.disposalOf(self.type);
   if (found.kind !== 'function' || found.call.function !== declaration) {

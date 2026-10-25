@@ -1,0 +1,32 @@
+# error: 5910 at 17:4
+# error: 5911 at 25:15
+# error: 5101 at 32:3
+# A host type a `dispose` makes disposable has values with an identity of their own (§3.6, §7):
+# it can't also be declared sendable, it isn't Encodable or Decodable, which imply Sendable, and
+# an extern constant, which every read shares, can't hold one. It still crosses to its own host,
+# kept in a resource while the program holds it.
+
+import * as json from 'json'
+
+extern sendable struct Ticket
+
+extern struct Lease
+
+extern fn release(lease: Lease)
+
+fn dispose(self: Ticket):
+  ()
+
+fn dispose(self: Lease):
+  release(self)
+
+extern fn open() -> Lease
+
+extern lease: Lease
+
+extern fn keep(lease: Lease) -> Future<Lease>
+
+async fn main():
+  const kept = await keep(open())
+  release(kept)
+  json.encode(open())

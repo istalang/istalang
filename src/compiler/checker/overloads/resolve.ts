@@ -147,15 +147,7 @@ export function recordChosen(context: BodyContext, chosen: Chosen): boolean {
     context.report(checkerDiagnostics.disposeCall(site.span));
     return false;
   }
-  const call = callMade(
-    useSite(context.checker, context.module, site.span),
-    application.candidate,
-    instantiation,
-    arity,
-  );
-  if (call === undefined) {
-    return false;
-  }
+  const call = callMade(application.candidate, instantiation, arity);
   context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
   return true;
 }

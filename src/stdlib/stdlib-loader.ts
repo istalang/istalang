@@ -9,9 +9,10 @@
  * and the project's answer is ambiguous (§3.13). Every module it loads is marked as shipped with
  * the toolchain, so its externs need no host.
  *
- * Two std modules the language itself refers to are handed to a program by role: the prelude,
- * which every module sees without importing it and no import names, and `time`, whose `Duration`
- * types every duration literal (§2), loaded with every program but visible only where imported.
+ * Three std modules the language itself refers to are handed to a program by role: the prelude,
+ * which every module sees without importing it and no import names; `time`, whose `Duration`
+ * types every duration literal (§2); and `json`, whose codecs every value crossing to a host goes
+ * through (§9). The last two are loaded with every program but visible only where imported.
  */
 
 import type { LocatedModule, ModuleLoader } from '../compiler/program/program.ts';
@@ -19,6 +20,7 @@ import { moduleIdOf } from '../compiler/program/program.ts';
 import { type LanguageModule, languageModules } from '../language/well-known.ts';
 import futuresSource from './futures/futures.ista';
 import inboxSource from './inbox/inbox.ista';
+import jsonSource from './json/json.ista';
 import preludeSource from './prelude/prelude.ista';
 import runtimeSource from './runtime/runtime.ista';
 import timeSource from './time/time.ista';
@@ -28,6 +30,9 @@ export const preludeName = languageModules.prelude;
 
 /** The `time` module's name. */
 export const timeName = languageModules.time;
+
+/** The `json` module's name. */
+export const jsonName = languageModules.json;
 
 /** The `runtime` module's name. */
 export const runtimeName = 'runtime';
@@ -42,6 +47,7 @@ export const inboxName = 'inbox';
 export const stdSources: Readonly<Record<string, string>> = {
   [futuresName]: futuresSource,
   [inboxName]: inboxSource,
+  [jsonName]: jsonSource,
   [runtimeName]: runtimeSource,
   [timeName]: timeSource,
 };
@@ -58,7 +64,7 @@ export function timeModule(): LocatedModule {
 
 /** The std modules a program is handed by role, as every app hands them (§2, §3.13). */
 export function stdRoles(): Readonly<Record<LanguageModule, LocatedModule>> {
-  return { prelude: preludeModule(), time: timeModule() };
+  return { prelude: preludeModule(), time: timeModule(), json: stdModule(jsonName, jsonSource) };
 }
 
 /** The loader of the std modules in `sources`. */

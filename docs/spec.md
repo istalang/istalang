@@ -329,7 +329,7 @@ fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
 
 ### 3.6 Extern declarations
 
-`extern` marks a top-level declaration whose implementation lives in the host, outside any workflow instance. It applies to functions, which have no body, to constants, written `extern name: Type` with no initializer, and to struct types the host implements, such as `extern sendable struct Queue<T>`. Extern constants, and the parameters and results of extern functions, must have sendable types (§3.1). An extern function may also return a `Future<T>` or a `Revertible<T>`: the runtime creates the handle, and the host fills it, or is told when it is released.
+`extern` marks a top-level declaration whose implementation lives in the host, outside any workflow instance. It applies to functions, which have no body, to constants, written `extern name: Type` with no initializer, and to struct types the host implements, such as `extern sendable struct Queue<T>`. Their values cross as JSON (§9), so the parameters of extern functions must be `Encodable`, and their results and extern constants `Decodable` (§3.10), which makes all of them sendable (§3.1). The one exception is a disposable host type, below: it crosses to its own host though it isn't sendable. An extern function may also return a `Future<T>`, which the runtime creates and the host fills, or a host handle: a `Shared<S>` whose struct `S` has only function fields, such as the `inbox` module's `Revertible<T>` (§6). The host gives JSON naming the handle, and calling one of its functions calls the host's extern keyed after it (§9) with that JSON first, then the function's arguments, so a host queue learns that a revertible send was released when its `retract` is called.
 
 ```python
 extern fn chargeCard(purchaseId: string, amount: int) -> Result<string>
@@ -338,10 +338,11 @@ extern purchaseRequests: Queue<PurchaseRequest>     # a queue the host provides
 ```
 
 - **Provided by the host.** The host supplies each extern constant's value and keeps it outside instance snapshots, so it outlives every instance and every deploy.
-- **Sendable only.** An extern constant must have a sendable type (§3.1), since any instance may read it.
+- **Sendable only.** An extern constant is `Decodable`, so sendable (§3.1), since any instance may read it. A function type, even a sendable one (§3.14), has no JSON form, so it never crosses.
 - **Constant binding.** An extern can't be reassigned. Its internal state can still change through its methods, for example when a message is sent into a queue the host provides.
 - **Checked at deploy.** The runtime refuses a program whose extern declaration has a different type from the one it already holds under that name, so one name always means one type.
-- **Deterministic reads.** Reading an extern value is recorded in the snapshot, like an `extern fn` result, so a resumed segment sees the same value.
+- **Deterministic reads.** An instance reads an extern constant once, at its first read, and keeps that value in its snapshot for its whole life, so every segment, resumed or not, sees the same value.
+- **Disposable host types.** A host type is disposable when a `dispose` is declared beside it (§7): an extern one its host implements, or code that passes the value to the host's externs. Each value of it then has an identity of its own: it arrives as the JSON the host gave, which the instance keeps while it holds the value, and leaves to the host as that same JSON. So such a type can't be declared `sendable`, it isn't `Encodable` or `Decodable`, and no extern constant, which every read shares, can hold one.
 
 ### 3.7 Methods and references
 
@@ -440,17 +441,17 @@ extern fn unwrap<T>(self: Shared<T>) -> T                   # x$
 extern fn rewrap<T>(self: Shared<T>, value: T)              # x$ = v
 ```
 
-The prelude also contains `Optional`, `Result`, `Error`, the built-in traits (§3.10, including `Disposable`) and `panic`.
+The prelude also contains `Optional`, `Result`, `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `int`, `float`, `bool` and `string` satisfy), the `Waypoint` annotation (§10) and `panic`.
 
 The **standard library** is a set of modules, imported explicitly, for example `import * as time from 'time'`. Pure modules are plain code in the language; runtime-backed ones declare externs the runtime implements. Nothing in it reaches a file system, shell, environment, network or reflection: a workflow affects the outside world only through externs its operator provides.
 
 | Module | Contents |
 | --- | --- |
-| `time` | `Time`, `Duration`, `now()`, `at(t)` (the runtime's only time primitive) and `delay(d)`, which is `at(now() + d)`; ISO 8601 parsing and formatting with time zones |
+| `time` | `Time`, `Duration`, `now()`, `at(t)` (the runtime's only time primitive) and `delay(d)`, which is `at(now() + d)`; both types are `Stringable` and `Parsable` in ISO 8601, `Time` as JavaScript's `Date.toJSON` writes it (`2026-10-25T12:00:00.000Z`) and `Duration` as `Temporal.Duration` does (`PT1H30M`); ISO 8601 parsing and formatting with time zones |
 | `math` | `abs`, `min`, `max`, `pow`, `sqrt`, `floor`, `ceil`, `round`, `clamp` |
 | `decimal` | `Decimal`: arbitrary-precision decimal numbers, for exact arithmetic such as money |
 | `text` | String utilities: padding, case, splitting, formatting; `graphemes(s)` for user-perceived characters and `utf16Length(s)` for the length JavaScript counts |
-| `json` | `stringify(v)` and a typed `parse<T>(s) -> Result<T>`, using the boundary mapping (§9); the `JsonName` and `JsonSkip` annotations (§3.16) |
+| `json` | `stringify(v)` and a typed `parse<T>(s) -> Result<T>`, using the boundary mapping (§9); `Json`, an enum holding JSON of any shape, with `encode(v) -> Json` and `decode<T>(j) -> Result<T>` between it and typed values; the `JsonName`, `JsonSkip` and `JsonBigInt` annotations (§3.16) |
 | `regex` | Regular expressions with a linear-time engine |
 | `crypto` | Hashing, HMAC, constant-time comparison, base64 and hex encoding |
 | `random` | Random integers and UUIDs, recorded in the snapshot |
@@ -588,7 +589,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 
 | Trait | Required | Used by |
 | --- | --- | --- |
-| `Sendable` | nothing: a marker, derived for user structs (§3.1) | `spawn` arguments, extern constants, parameters and results |
+| `Sendable` | nothing: a marker, derived for user structs (§3.1) | `spawn` arguments; whatever crosses to the host, through `Encodable` and `Decodable` |
 | `Disposable` | `dispose`, synchronous; only runtime and extern types, including instantiations such as `Shared<Lease>` (§7) | values the runtime disposes when their last holder ends (§7) |
 | `Wrapper<T, W = Self>` | `unwrap(self: W) -> T` | `x$` |
 | `MutableWrapper<T, W = Self>` | `rewrap(self: W, value: T)` | `x$ = v`, `x$.field = v` |
@@ -597,11 +598,14 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 | `IndexAssignable<K, V, C = Self>` | `setIndex(self: &C, key, value)` | `x[k] = v` |
 | `Convertible<From, T = Self>` | `fn Self.from(value: From) -> Self` | `T(x)` |
 | `Default` | `fn Self.default() -> Self` | map literals for other types (§2) |
+| `Stringable` | `toString(self) -> string` | `string(x)`; a struct's or enum's JSON form, and map keys in JSON (§9) |
+| `Parsable` | `fn Self.parse(text: string) -> Result<Self>` | reading what `toString` wrote back from JSON (§9) |
+| `Encodable`, `Decodable` | nothing: markers, derived for every sendable type with a JSON form to write, or to read (§9); each implies `Sendable` | extern parameters, and extern results and constants, except a disposable host type (§3.6); `json` |
 | `Addable`, `Subtractable`, `Multipliable`, `Divisible`, `FloorDivisible`, `Negatable`, `Comparable` | the functions in §3.9 | operators in generic code |
 
 **Iterable.** `for x in c` calls `iterate(c)` and loops over the returned array, so any type can support `for` by declaring `iterate`. Because `iterate` returns a copy, changing `c` inside the loop doesn't affect the iteration. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), and a `Range` with both ends is `Iterable<int>` (so `for i in 0..10:` works). `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
 
-**Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction, which uses braces. Only conversions that can't fail are written this way: `float(3)`, `int(3.7)` (which truncates toward zero) and `string(42)`. A float that is no number, NaN or an infinity, has no int, so `int(x)` of one is a bug and panics (§3.12). Fallible ones are ordinary functions returning `Result`, such as `int.parse("42")`.
+**Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction, which uses braces. Only conversions that can't fail are written this way: `float(3)`, `int(3.7)` (which truncates toward zero) and `string(42)`. `string(x)` converts any `Stringable` value through its `toString`, the one place a type says how it is written. A float that is no number, NaN or an infinity, has no int, so `int(x)` of one is a bug and panics (§3.12). Fallible ones are ordinary functions returning `Result`, such as `int.parse("42")`, the `Parsable` requirement.
 
 ### 3.11 Enums
 
@@ -821,10 +825,10 @@ struct GithubUser:
     cache: Map<string, int> @JsonSkip
 ```
 
-- **Annotations are ordinary structs.** Any struct can be used as one, so libraries and tools declare their own. The `json` module declares `JsonName` (a single `string` field) and `JsonSkip` (no fields).
+- **Annotations are ordinary structs.** Any struct can be used as one, so libraries and tools declare their own. The `json` module declares `JsonName` (a single `string` field), `JsonSkip` and `JsonBigInt` (no fields), and the prelude declares `Waypoint` (a single `string` field).
 - **Short forms come from the struct rules (§3.1):** a single-field struct takes its value without a field name, as in `@JsonName{"user_id"}`, and a struct without fields is written bare, as in `@JsonSkip`.
 - **Checked at compile time.** An unknown annotation, a misspelled field or a wrong value type is a compile error. Annotation values must be computable at compile time, the same rule as top-level `const`.
-- **Where.** Annotations apply to struct fields, to functions (`@Suite`, §10) and to statements (`@Waypoint`, §10). Using one where it has no meaning is a compile error.
+- **Where.** `JsonName`, `JsonSkip` and `JsonBigInt` apply to fields of structs and enum variants (§9 says which fields), `@Suite` to functions (§10), and `@Waypoint` to a statement that awaits or selects (§10). Any other struct may annotate fields and functions, for tools to read, and statements take only `@Waypoint`. Using an annotation anywhere else, or the same one twice on one item, is a compile error.
 - **Read by the runtime.** The boundary conversion, the `json` module and the test runner read annotations. There is no user-facing reflection in v0.1.
 
 ### 3.17 Type aliases
@@ -1160,34 +1164,41 @@ async fn main():
 
 **Host interface.** The language has no I/O of its own. Its only contact with the outside world is the host (the runtime and the applications around it), which provides the `extern` declarations a program uses (§3.6). Beyond that, the host can:
 
-- **Start** an instance of any function, on the version it chooses. Everything the function holds is disposed when it returns.
-- **Operate** panicked instances: inspect one, retry it from its last snapshot, or terminate it (§3.12).
-- **Inspect** any instance: its state (waiting, panicked or finished) and where each of its executions waits, by waypoint (§10) or source location.
+- **Start** an instance of any function, on the version it chooses, with arguments as JSON. Everything the function holds is disposed when it returns. A host may start a top-level function, or a top-level constant holding a sendable lambda (§3.14), that isn't generic and takes all its parameters by value with types that can be read from JSON.
+- **Inspect** any instance: its state (waiting, panicked, finished or terminated) and where each of its executions waits, by waypoint (§10) or source location; a panicked one also gives its message and trace.
+- **Operate** panicked instances: retry one from its last snapshot, where the failed segment runs again with the time it first started at (§5), or terminate it, which ends it as terminated and disposes what it holds (§3.12, §7).
 - **Learn of spawned instances:** advancing an instance tells the host which instances it spawned, so the host runs them too.
 
-Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`.
+A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(string, int)` or `purchase.approvalDeadline`, and a host handle's function by the extern returning the handle and the field's name, as in `purchase.sendRevertible(purchase.Queue<T>, T).retract`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `int` keeps every digit and reads apart from a `float`; it may give back a `bigint` or a whole number for one.
+
+Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`: the host names the new future with a token of its own choosing and fills it later. An extern's result, or a value an extern constant gives, that doesn't fit its declared type panics the instance; a future filled, or an instance started, with JSON that doesn't fit fails the host's call instead. Filling a future nothing waits on any more, because it was disposed (§7) or its instance ended, changes nothing; filling one of a panicked instance fails until the instance is retried.
 
 **Running a program locally.** `ista run <entry>` is a host for development. It compiles the program whose entry module is `entry`, which must declare `async fn main()`, and runs nothing if any module has errors. It then runs `main` in a new instance, and every instance it spawns, theirs included, until all of them have settled, and prints `main`'s outcome as JSON, using the mapping below. A panic prints the panic's message and trace instead; a spawned instance that panics prints its name, message and trace to the error stream, and the run exits with a failure. Two options stand in for what a real host provides:
 - `--store <dir>` keeps the compiled program and every commit of the instance in a directory, so a run can stop and resume: `ista run --store <dir> --resume <instance>` continues an instance from its last commit, on the program it started with. A run with a store prints its instance's name to the error stream.
-- `--host <module>` loads a JavaScript module that exports the program's extern implementations.
+- `--host <module>` loads a JavaScript module whose default export implements the program's externs, keyed by their keys: each takes and returns JSON values, and one for an extern returning a `Future` may return a promise, which fills the future when it settles. A run that waits on nothing left to wake it, no timer and no promise, reports where it waits and fails.
 
 **Values at the boundary.** Every value that crosses between the host and an instance has a declared type: extern constants, extern function parameters and results, and the arguments of an instance the host starts. The runtime converts JSON to and from these values itself, guided by the declared types, so workflow code needs no reflection. Inbound JSON is validated before it enters the instance; a mismatch fails the host's call, so malformed data never reaches workflow code. `json.parse<T>(s)` and `json.stringify(v)` apply the same mapping to JSON held in strings:
 
+The mapping follows JavaScript's `JSON.stringify`:
+
 | Type | JSON |
 | --- | --- |
-| struct, named or anonymous | object, keyed by field name, or by the name given with `@JsonName`; fields marked `@JsonSkip` are left out |
-| `Array<T>`, tuple | array |
-| `Map<string, V>` | object, with its keys sorted; other key types become an array of `[key, value]` pairs, sorted by key |
-| `int` | number, parsed and printed exactly at any size |
-| `float` | number |
+| struct, named or anonymous | object keyed by field name, or by the name given with `@JsonName`; fields marked `@JsonSkip` are left out, and read back as `none`, `[]` or `[:]`, so only an optional, `Array` or `Map` field may be skipped |
+| struct or enum that is `Stringable` (§3.10) | the string its `toString` gives, read back through its `parse`, so a type that isn't also `Parsable` can be written but not read |
+| `Array<T>`, tuple | array; a tuple's has exactly its length |
+| `Map<K, V>` | object keyed by each key's `toString`, so `K` must be `Stringable` (and `Parsable` to be read) |
+| `int` | number, parsed and printed exactly at any size; a string of its digits with `@JsonBigInt` |
+| `float` | number; NaN and ±Infinity are written as `null`, as JavaScript does |
 | `Decimal` | string |
 | `bool`, `string` | boolean, string |
 | `T?` | `null`, or a missing field, for `none` |
 | enum | object with a `"type"` field naming the variant, plus the variant's fields |
-| `Time`, `Duration` | ISO 8601 string, milliseconds |
+| `Time`, `Duration` | ISO 8601, through their `toString` (§3.8): `"2026-10-25T12:00:00.000Z"`, `"PT1H30M"` |
+| `json.Json` | the JSON it holds |
 | `unit` | `null` |
+| extern type | whatever JSON its host gives it, handed back unchanged, by `json` too. A disposable one keeps that JSON while the instance holds it (§3.6) |
 
-Map keys are emitted sorted, so the same value always produces the same JSON, whatever order the map stores its entries in. Unknown fields in inbound objects are ignored, so producers can add fields without breaking consumers. A missing field that isn't optional fails validation. An enum with a variant field named `type` would collide with the tag, so converting one, at the boundary or through `json`, is a compile error.
+A struct's or enum's `toString` and `parse` are the ones declared in its own module, so its JSON form is the same wherever it is used. Every object's keys are emitted sorted, in UTF-16 order as JavaScript sorts strings, so equal values always produce the same JSON, whatever order a struct declares its fields in or a map stores its entries in. Unknown fields in inbound objects are ignored, so producers can add fields without breaking consumers. A missing field that isn't optional fails validation. A type with no JSON form can't cross, at the boundary or through `json`, which is a compile error where it would: a function type, a handle (§3.1), a nested optional `T??`, whose `none`s JSON can't tell apart, or a map whose keys aren't `Stringable`. So is an enum with a variant field named `type`, which would collide with the tag.
 
 ## 10. Testing
 
@@ -1303,9 +1314,9 @@ struct ChargeResult:
 
 # a queue type the host provides
 extern sendable struct Queue<T is Sendable>
-extern fn send<T is Sendable>(self: Queue<T>, msg: T)
-extern fn sendRevertible<T is Sendable>(self: Queue<T>, msg: T) -> Revertible<T>
-extern fn receive<T is Sendable>(self: Queue<T>) -> Future<T>
+extern fn send<T is Encodable>(self: Queue<T>, msg: T)
+extern fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>
+extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>
 
 extern purchaseRequests: Queue<PurchaseRequest>
 extern fn reviewQueue(role: string) -> Queue<ReviewRequest>
@@ -1413,7 +1424,7 @@ struct Announcement:
 
 extern fn announcements(user: string) -> Queue<Announcement>   # Queue as declared in §12.1
 
-async fn announce(text: string, users: Array<string>, visibleFor: Duration):
+async fn announce(text: string, users: Array<string>, visibleFor: time.Duration):
     for user in users:
         fn _ = announcements(user).sendRevertible(Announcement{text: text})
     await time.delay(visibleFor)

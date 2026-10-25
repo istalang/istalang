@@ -8,6 +8,11 @@
  * - a `for` loop lowered to `iterate`, `length` and `index`
  * - `fn _` holdings that survive their iteration (`keep`), released only when `announce` returns,
  *   which is what retracts the unread copies
+ *
+ * Its `Revertible` stands in for the real one: an extern type the runtime disposes, whose values
+ * are `resource` objects, which is all the snapshot tests need of it. The compiler makes the inbox
+ * module's `Revertible<T>` a host handle (spec §3.6) instead, which
+ * src/runtime/boundary/host-handles.test.ts runs.
  */
 
 import type { Definition } from '../../src/definition/definition.ts';
@@ -136,6 +141,7 @@ export const broadcastDefinition: Definition = {
     },
   ],
   constants: [0n, 1n],
+  starts: [],
   functions: [
     externFunction({
       module: main,

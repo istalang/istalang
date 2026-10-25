@@ -35,6 +35,8 @@ export interface WrittenCode {
 
 export class CodeWriter {
   readonly #instructions: Instruction[] = [];
+  /** The name `@Waypoint` gives the waits written now (§10); undefined outside such a statement. */
+  #waypoint: string | undefined;
   readonly #placed = new Map<number, number>();
   readonly #patches = new Map<number, ((position: number) => void)[]>();
   #registers = 0;
@@ -120,11 +122,28 @@ export class CodeWriter {
     }
   }
 
+  /** Writes what `write` writes, every wait in it named `waypoint` (§10). */
+  withWaypoint(waypoint: string | undefined, write: () => void): void {
+    const outer = this.#waypoint;
+    this.#waypoint = waypoint ?? outer;
+    try {
+      write();
+    } finally {
+      this.#waypoint = outer;
+    }
+  }
+
+  /** Waits on the future in `future`, its value then in `dst` (§5). */
+  await(dst: Register, future: Register, span: Span): void {
+    this.emit({ kind: 'await', span, dst, future, ...this.#waypointField() });
+  }
+
   /** Chooses among `cases` by their futures (§8): waits for one, or goes to `otherwise` at once. */
   select(cases: readonly SelectCaseCode[], otherwise: Label | undefined, span: Span): void {
     const instruction: Extract<Instruction, { kind: 'select' }> = {
       kind: 'select',
       span,
+      ...this.#waypointField(),
       cases: cases.map(({ future, holds, bind }) => ({
         future,
         holds: [...holds],
@@ -156,6 +175,10 @@ export class CodeWriter {
       throw new Error(`Labels ${labels} are jumped to but never placed.`);
     }
     return { registers: this.#registers, instructions: this.#instructions };
+  }
+
+  #waypointField(): { readonly waypoint?: string } {
+    return this.#waypoint === undefined ? {} : { waypoint: this.#waypoint };
   }
 
   /** Sets a label's position into an instruction now, or when the label is placed. */

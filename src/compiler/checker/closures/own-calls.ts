@@ -21,7 +21,6 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { callMade } from '../overloads/calls-made.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
-import { useSite } from '../use-site.ts';
 import { localFunctionOf, type NestedFunction } from './function-scope.ts';
 
 /** The hidden variables holding the calls a body watches, and the variable each watch reads. */
@@ -82,12 +81,11 @@ export function checkOwnCall(context: BodyContext, node: Call, name: Identifier)
     return errorType;
   }
   const { checker } = context;
-  const [watch] = checker.preludeFunctions(ownCall.watch);
+  const [watch] = checker.languageFunctions('prelude', ownCall.watch);
   const future = checker.wellKnownType(wellKnown.future, [unitType]);
   const handle = checker.wellKnownType(wellKnown.call);
-  const site = useSite(checker, context.module, node.span);
   const plain = { typeArguments: [], witnesses: new Map() };
-  const call = watch === undefined ? undefined : callMade(site, { declaration: watch }, plain, 0);
+  const call = watch === undefined ? undefined : callMade({ declaration: watch }, plain, 0);
   if (call === undefined || future === undefined || handle === undefined) {
     return errorType;
   }

@@ -1,0 +1,51 @@
+# error: 5903 at 27:1
+# error: 5902 at 32:11
+# error: 5905 at 33:10
+# error: 5906 at 34:13
+# error: 5904 at 35:25
+# error: 5907 at 36:3
+# error: 5026 at 37:20
+# error: 5903 at 39:1
+# error: 5908 at 44:3
+# error: 5903 at 46:3
+# An annotation is a struct value computed at compile time (§3.16), and what it means decides where
+# it may stand: the json module's on fields, @JsonSkip only on a field that reads back as none,
+# [] or [:], @JsonBigInt only on an int, @Waypoint only on a statement that waits, any other
+# struct on fields and functions. The same one twice says nothing new, and two fields can't share
+# a JSON name.
+
+import JsonName, JsonSkip, JsonBigInt from 'json'
+
+const limit = 3
+
+struct Note:
+  text: string
+
+fn named() -> string:
+  "x"
+
+@JsonName{"f"}
+fn misplaced() -> int:
+  1
+
+struct Bad:
+  a: int @limit
+  b: int @JsonSkip
+  c: string @JsonBigInt
+  d: int @JsonName{"x"} @JsonName{"y"}
+  e: int @JsonName{"x"}
+  f: int @JsonName{named()}
+
+@Note{"a struct"}
+struct Annotated:
+  g: int @Note{"kept for tools"}
+
+async fn main():
+  @Waypoint{"nowhere"}
+  const x = 1
+  @Note{"a statement"}
+  const y = await runtime()
+  x + y
+
+async fn runtime() -> Future<int>:
+  2

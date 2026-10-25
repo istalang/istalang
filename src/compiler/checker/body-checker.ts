@@ -38,6 +38,7 @@ import { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { ImplicitCalls } from './overloads/implicit.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
+import { statementPlace } from './rules/annotations.ts';
 import { checkDropped } from './rules/dropped.ts';
 import type { LoopScope } from './statements/loops.ts';
 import { blockTail, ReturnScope } from './statements/returns.ts';
@@ -173,6 +174,9 @@ export class BodyChecker implements BodyContext {
   }
 
   statement(node: Statement | Invalid, expected?: Type): Type {
+    if (node.kind !== 'Invalid') {
+      this.checker.annotations.of(this.module, node, statementPlace(node));
+    }
     return handlerOf(statementHandlers, node)(this, node, expected);
   }
 

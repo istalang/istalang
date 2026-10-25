@@ -5,8 +5,9 @@
  * A native receives values, never references: an argument passed by `&` is read through its
  * reference, and the native writes a changed value back through the context's `write`, which
  * writes the place the reference names. It reaches the instance's cells through `Shared<T>`
- * handles (§3.8), the futures it returns through the instance's futures and slots, and weak
- * references through handles to what they refer to (§7).
+ * handles (§3.8), the futures it returns through the instance's futures and slots, weak
+ * references through handles to what they refer to, and a host type's resources through the
+ * instance's heap (§7).
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
@@ -17,9 +18,15 @@ import {
   readThrough,
   writeReference,
 } from '../interpreter/machine.ts';
-import type { Native, NativeCells, NativeContext, NativeWeakSide } from '../natives.ts';
+import type {
+  Native,
+  NativeCells,
+  NativeContext,
+  NativeResources,
+  NativeWeakSide,
+} from '../natives.ts';
 import { isReference, type Reference } from '../snapshot/objects.ts';
-import { handleObject } from './heap.ts';
+import { type Heap, handleObject } from './heap.ts';
 import type { Instance } from './instance.ts';
 import type { WeakSide } from './weak-side.ts';
 
@@ -29,6 +36,7 @@ export class NativeCalls {
   readonly #trace: () => string;
   readonly #cells: NativeCells;
   readonly #weak: NativeWeakSide;
+  readonly #resources: NativeResources;
 
   /** Calls within a segment of `instance` started at `startedAt`; `trace` says where it runs. */
   constructor(instance: Instance, startedAt: bigint, trace: () => string) {
@@ -37,18 +45,28 @@ export class NativeCalls {
     this.#trace = trace;
     this.#cells = nativeCellsOf(instance.frameHeap);
     this.#weak = nativeWeakSideOf(instance.weak);
+    this.#resources = nativeResourcesOf(instance.heap);
   }
 
-  /** Calls `native`, entry `callee`, with what its arguments hold; what it returns. */
+  /**
+   * Calls `native`, entry `callee`, with what its arguments hold; what it returns. An extern
+   * constant's native runs once per instance, and every later read gives what it gave (§3.6).
+   */
   call(callee: FunctionId, native: Native, contents: readonly RegisterContents[]): Value {
     const heap = this.#instance.frameHeap;
     const values = contents.map((each) => (isReference(each) ? readThrough(heap, each) : each));
-    return native(values, {
-      ...this.#context(callee),
-      write: (position, value) => {
-        writeReference(heap, referenceAt(contents, position), value);
-      },
-    });
+    const context = this.#context(callee);
+    const run = (): Value =>
+      native(values, {
+        ...context,
+        write: (position, value) => {
+          writeReference(heap, referenceAt(contents, position), value);
+        },
+      });
+    const { entry } = context;
+    return entry.kind === 'extern' && entry.constant
+      ? this.#instance.pinned(entry.key, run)
+      : run();
   }
 
   #context(callee: FunctionId): Omit<NativeContext, 'write'> {
@@ -61,9 +79,11 @@ export class NativeCalls {
     return {
       entry,
       types: definition.types,
+      instance: this.#instance.name,
       segmentStartedAt: this.#startedAt,
       timer: (at) => futures.createHandle({ kind: 'timer', at }),
       resolved: (value) => futures.createHandle({ kind: 'resolved', value }),
+      pending: (token) => futures.createHost(token),
       first: (handles) => futures.first(handles),
       slots: {
         create: () => slots.create(),
@@ -72,6 +92,7 @@ export class NativeCalls {
       trace: this.#trace,
       cells: this.#cells,
       weak: this.#weak,
+      resources: this.#resources,
     };
   }
 }
@@ -105,6 +126,23 @@ function nativeCellsOf(cells: FrameHeap): NativeCells {
     read: (cell) => cells.read(cellIdOf(cell)),
     write: (cell, value) => {
       cells.write(cellIdOf(cell), value);
+    },
+  };
+}
+
+/** The instance's resources as natives reach them: through handles (§7). */
+function nativeResourcesOf(heap: Heap): NativeResources {
+  return {
+    create: (type, payload) => {
+      const resource = heap.add((id) => ({ kind: 'resource', id, type, payload }));
+      return { kind: 'handle', object: resource.id };
+    },
+    payloadOf: (handle) => {
+      const id = handleTarget(handle);
+      if (id === undefined) {
+        throw new TypeError('A value of a disposable host type holds no resource.');
+      }
+      return heap.of(id, 'resource').payload;
     },
   };
 }

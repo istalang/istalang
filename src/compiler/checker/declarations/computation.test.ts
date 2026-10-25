@@ -107,7 +107,7 @@ describe('computed constants', () => {
         ].join('\n');
         expect(startToEnd(testRuntime(), compiledText(main))).toEqual({
           kind: 'finished',
-          outcome: true,
+          outcome: 'true',
         });
       }),
       { numRuns: 40 },

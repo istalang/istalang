@@ -18,9 +18,13 @@
  * - A defaults entry takes the arguments its callers give, computes the rest from the defaults
  *   (§3.3), each seeing the parameters before it, and calls the function with all of them, passing
  *   a reference parameter on as the reference it was given.
+ * - A start entry (boundary/starts.ts) is a function's own body compiled once more with JSON at its
+ *   edges: its arguments arrive as `Json` and are decoded into its parameters, and every return
+ *   gives its value encoded, so a host-started instance runs as one execution of the function.
  */
 
 import type { CodeFunction } from '../../definition/functions.ts';
+import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
@@ -33,6 +37,7 @@ import type {
   CapturedVariable,
   CheckedBody,
   Checker,
+  FunctionCall,
   ImplicitRole,
   ResolvedCall,
   SignatureParameter,
@@ -44,8 +49,10 @@ import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression, Lambda } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
+import { emitInbound, type Inbound } from './boundary/inbound.ts';
 import { CodeWriter } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
+import { emitCall } from './emit-call.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
 import { buildVariant } from './expressions/variants.ts';
 import {
@@ -53,6 +60,7 @@ import {
   calleeOf,
   type FunctionInstance,
   fullInstance,
+  instanceOfCall,
   type NestedInstance,
   ownerDeclaration,
   ownerSubstitution,
@@ -62,6 +70,17 @@ import { LoopStack } from './statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from './statements/statements.ts';
 import { declareVariable, VariableRegisters } from './statements/variables.ts';
 import type { DefinitionTables, EntryHeader } from './tables.ts';
+
+/**
+ * The JSON at a start entry's edges: how each argument is read from `Json`, a mismatch failing the
+ * host's start; the call encoding what the entry gives; and the value a named lambda's own name
+ * stands for there.
+ */
+export interface StartEdges {
+  readonly parameters: readonly Inbound[];
+  readonly outcome: FunctionCall;
+  readonly self: Value | undefined;
+}
 
 /** What lowering an entry starts from: what owns its body, the body read through it, the tables. */
 export interface LoweredFunction {
@@ -147,6 +166,8 @@ export class FunctionLowering implements FunctionContext {
   readonly variables = new VariableRegisters();
   readonly loops = new LoopStack();
   readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
+  /** What a start entry encodes its returns with; undefined for any other entry. */
+  #outcome: FunctionCall | undefined;
 
   constructor(lowered: LoweredFunction, frame: Frame) {
     const { checker, tables, owner, body } = lowered;
@@ -161,8 +182,7 @@ export class FunctionLowering implements FunctionContext {
   /** The code entry for a function instance, whose body is `block`. */
   lower(block: Block): CodeFunction {
     this.#declareFrame();
-    const result = lowerBody(this, block);
-    this.code.emit({ kind: 'return', span: block.span, value: result });
+    this.returnValue(lowerBody(this, block), block.span);
     return this.#entry();
   }
 
@@ -173,8 +193,36 @@ export class FunctionLowering implements FunctionContext {
     if (body === undefined) {
       throw new Error(`The local function at ${node.span.start} has no body.`);
     }
-    const result = body.kind === 'Block' ? lowerBody(this, body) : this.expression(body);
-    this.code.emit({ kind: 'return', span: body.span, value: result });
+    this.returnValue(
+      body.kind === 'Block' ? lowerBody(this, body) : this.expression(body),
+      body.span,
+    );
+    return this.#entry();
+  }
+
+  /** The start entry of a function whose body is `body` (a block, or a lambda's), with `edges`. */
+  lowerStart(edges: StartEdges, body: Block | Expression): CodeFunction {
+    this.#outcome = edges.outcome;
+    const { span } = body;
+    const arguments_ = this.frame.parameters.map(() => this.code.allocate());
+    for (const [index, parameter] of this.frame.parameters.entries()) {
+      const edge = edges.parameters[index];
+      const json = arguments_[index];
+      if (edge === undefined || json === undefined) {
+        throw new Error(`No edge for argument ${index} of a start entry.`);
+      }
+      const path = this.constant(edge.path, span);
+      const value = emitInbound(this, { json, path }, edge, span);
+      const register = declareVariable(this, parameter.node.name, this.#concrete(parameter.type));
+      this.code.emit({ kind: 'move', span, dst: register, src: value });
+    }
+    const { self } = this.frame;
+    if (self !== undefined && edges.self !== undefined) {
+      const src = this.constant(edges.self, self.span);
+      this.#declareFilled(self, (dst) => ({ kind: 'move', span: self.span, dst, src }));
+    }
+    this.#declareOwnCall();
+    this.returnValue(body.kind === 'Block' ? lowerBody(this, body) : this.expression(body), span);
     return this.#entry();
   }
 
@@ -212,7 +260,7 @@ export class FunctionLowering implements FunctionContext {
             : { kind: 'value', register },
       ),
     });
-    this.code.emit({ kind: 'return', span: declaration.name.span, value: result });
+    this.returnValue(result, declaration.name.span);
     return this.#entry();
   }
 
@@ -259,7 +307,11 @@ export class FunctionLowering implements FunctionContext {
   }
 
   statement(node: Statement | Invalid): void {
-    lowerStatement(this, node);
+    const waypoint =
+      node.kind === 'Invalid' ? undefined : this.checker.annotations.waypointOf(this.module, node);
+    this.code.withWaypoint(waypoint, () => {
+      lowerStatement(this, node);
+    });
   }
 
   entityOf(name: Identifier): Entity | undefined {
@@ -282,19 +334,28 @@ export class FunctionLowering implements FunctionContext {
     for (const { entity, type } of this.frame.captures) {
       declareVariable(this, entity.name, this.#concrete(type));
     }
-    const { self, isAsync, function: owner } = this.frame;
+    const { self } = this.frame;
     if (self !== undefined) {
-      const register = this.code.allocate();
-      this.variables.declare(self, register);
-      this.code.emit({ kind: 'currentClosure', span: self.span, dst: register });
+      this.#declareFilled(self, (dst) => ({ kind: 'currentClosure', span: self.span, dst }));
     }
+    this.#declareOwnCall();
+    return parameters;
+  }
+
+  /** Declares the variable an async function reads its own call through (§7), when it reads it. */
+  #declareOwnCall(): void {
+    const { isAsync, function: owner } = this.frame;
     const call = isAsync ? this.body.ownCallOf(owner) : undefined;
     if (call !== undefined) {
-      const register = this.code.allocate();
-      this.variables.declare(call.name, register);
-      this.code.emit({ kind: 'currentCall', span: owner.span, dst: register });
+      this.#declareFilled(call.name, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
     }
-    return parameters;
+  }
+
+  /** Declares `name` in a register of its own, written by the instruction `fill` makes. */
+  #declareFilled(name: Identifier, fill: (dst: Register) => Instruction): void {
+    const register = this.code.allocate();
+    this.variables.declare(name, register);
+    this.code.emit(fill(register));
   }
 
   /** `type` as the owner sees it: its type parameters substituted. */
@@ -315,6 +376,19 @@ export class FunctionLowering implements FunctionContext {
       cells: [...this.variables.cells],
       instructions,
     };
+  }
+
+  returnValue(value: Register, span: Span): void {
+    const outcome = this.#outcome;
+    const given =
+      outcome === undefined
+        ? value
+        : emitCall(this, {
+            span,
+            callee: this.tables.functionIndex(instanceOfCall(outcome)),
+            arguments: [value],
+          });
+    this.code.emit({ kind: 'return', span, value: given });
   }
 
   constant(value: Value, span: Span): Register {

@@ -14,7 +14,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
-import type { WellKnownDeclaration } from '../../language/well-known.ts';
+import type { LanguageModule } from '../../language/well-known.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
@@ -38,18 +38,13 @@ import type { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import type { ImplicitCalls } from './overloads/implicit.ts';
 import type { CheckedPatterns } from './patterns/matching.ts';
+import type { Annotations } from './rules/annotations.ts';
 import type { LoopScope } from './statements/loops.ts';
 import type { ReturnScope } from './statements/returns.ts';
 import type { VariableScope } from './statements/variables.ts';
 import type { Constraint } from './traits/constraints.ts';
 import type { OptionalEntity } from './types/fit.ts';
-import type {
-  FieldMember,
-  NominalDeclaration,
-  NominalType,
-  Substitution,
-  Type,
-} from './types/type.ts';
+import type { FieldMember, NominalDeclaration, Substitution, Type } from './types/type.ts';
 
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
@@ -66,18 +61,11 @@ export interface CheckerContext extends Checker {
   readonly declaredFieldsOf: (declaration: StructDeclaration) => readonly FieldMember[];
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
-  /** What a well-known name (language/well-known.ts) denotes; undefined without its module. */
-  readonly wellKnownEntity: (declaration: WellKnownDeclaration) => Entity | undefined;
-  /**
-   * A well-known type, such as `Future`, with its type arguments; undefined when the program
-   * lacks its module.
-   */
-  readonly wellKnownType: (
-    declaration: WellKnownDeclaration,
-    typeArguments?: readonly Type[],
-  ) => NominalType | undefined;
-  /** The prelude's functions of `name`. */
-  readonly preludeFunctions: (name: string) => readonly FunctionDeclaration[];
+  /** The functions of `name` a language module declares, private ones included (§3.13). */
+  readonly languageFunctions: (
+    module: LanguageModule,
+    name: string,
+  ) => readonly FunctionDeclaration[];
   /** The prelude's `Optional`, which the implicit wrap fills (§2); undefined without a prelude. */
   readonly optionalEntity: OptionalEntity;
   /** How many wraps into `Some` make `found` fit `expected`; undefined when nothing does (§2). */
@@ -89,6 +77,8 @@ export interface CheckerContext extends Checker {
     module: ModuleId,
     owner: StaticOwner,
   ) => readonly FunctionDeclaration[];
+  /** Annotations, as later phases read them and as declarations check them (§3.16). */
+  readonly annotations: Annotations;
   /** The type an alias stands for, its own type parameters left open (§3.17). */
   readonly aliasedType: (alias: TypeAliasDeclaration) => Type;
   /**

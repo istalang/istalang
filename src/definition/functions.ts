@@ -60,6 +60,12 @@ const external = z.strictObject({
   kind: z.literal('extern'),
   ...common,
   key: z.string(),
+  /**
+   * For an extern a host implements, the type the host provides as declared, spelled as keys spell
+   * types: a function's result, a constant's type. The key spells the rest, so the runtime holds
+   * the host to both across deploys (§3.6).
+   */
+  declaredType: z.string().optional(),
   constant: z.boolean(),
   parameters: z.array(z.strictObject({ type: typeReference, reference: z.boolean() })),
   result: typeReference,

@@ -40,7 +40,7 @@ export const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [
   Return: (context, node) => {
     const value =
       node.value === undefined ? context.constant(null, node.span) : context.expression(node.value);
-    context.code.emit({ kind: 'return', span: node.span, value });
+    context.returnValue(value, node.span);
   },
   While: lowerWhile,
   Break: lowerLoopExit,

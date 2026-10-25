@@ -52,7 +52,6 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { useSite } from '../use-site.ts';
 
 /**
  * What a literal builds: its fields as declared, how to name its type from type arguments, and
@@ -343,19 +342,14 @@ function tracedField(
   const error = context.checker.wellKnownType(wellKnown.error);
   const index = shape.fields.findIndex((field) => field.name === errorTrace.field);
   const isError = error !== undefined && shape.owner === error.entity.declaration;
-  const [writer] = context.checker.preludeFunctions(errorTrace.function);
+  const [writer] = context.checker.languageFunctions('prelude', errorTrace.function);
   if (!isError || index < 0 || given.has(index) || writer === undefined) {
     return undefined;
   }
-  const call = callMade(
-    useSite(context.checker, context.module, node.span),
-    { declaration: writer },
-    { typeArguments: [], witnesses: new Map() },
-    0,
+  context.recordCall(
+    node,
+    callMade({ declaration: writer }, { typeArguments: [], witnesses: new Map() }, 0),
   );
-  if (call !== undefined) {
-    context.recordCall(node, call);
-  }
   return index;
 }
 

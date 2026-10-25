@@ -119,7 +119,13 @@ export function declaredFields(
 ): readonly FieldMember[] {
   return fields.flatMap((field) =>
     field.kind === 'FieldDeclaration'
-      ? [{ name: field.name.text, type: checker.resolveType(module, field.type) }]
+      ? [
+          {
+            name: field.name.text,
+            type: checker.resolveType(module, field.type),
+            declared: { node: field, module },
+          },
+        ]
       : [],
   );
 }

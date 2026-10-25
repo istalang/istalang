@@ -1,0 +1,33 @@
+# error: 5900 at 15:15
+# error: 5900 at 17:22
+# error: 5901 at 19:16
+# error: 5900 at 21:19
+# error: 5900 at 23:14
+# error: 5900 at 25:21
+# What an extern the host implements takes and gives crosses as JSON (§3.6, §9): its parameters
+# must be Encodable, and its result, what a future it returns gives, and an extern constant
+# Decodable. A function, a handle and a type parameter not constrained so have no JSON form, and
+# JSON can't be written back, so nothing is taken by '&'. A host type crosses only when it is
+# declared sendable or a 'dispose' makes it disposable (invalid-resources.ista).
+
+extern struct Connection
+
+extern fn run(task: fn() -> int)
+
+extern fn later() -> Future<fn() -> int>
+
+extern fn bump(count: &int)
+
+extern fn keep<T>(value: T)
+
+extern slot: Slot<int>
+
+extern fn open() -> Connection
+
+extern fn send<T is Encodable>(value: T)
+
+extern fn receive<T is Decodable>() -> Future<T>
+
+async fn main():
+  send(1)
+  await receive<string>()

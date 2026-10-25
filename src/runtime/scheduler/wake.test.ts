@@ -90,13 +90,16 @@ describe('advancing an instance', () => {
     const test = testRuntime();
     expect(startToEnd(test, compiledText(childAndMain))).toEqual({
       kind: 'finished',
-      outcome: 42n,
+      outcome: '42',
     });
     const [waiting, finished, ...more] = committed(test.store.commits);
     expect(more).toEqual([]);
     const kinds = waiting?.objects.map((object) => object.kind).sort();
     expect(kinds).toEqual(['execution', 'execution', 'future', 'future']);
-    expect(finished?.status).toEqual({ kind: 'finished', outcome: 42n });
+    const status = finished?.status;
+    expect(
+      status?.kind === 'finished' && test.runtime.programOf('test').outcomeText(status.outcome),
+    ).toBe('42');
   });
 
   it('rolls an eager callee back with its caller when the caller panics in the same segment', () => {
@@ -116,7 +119,10 @@ describe('advancing an instance', () => {
       "import * as runtime from 'runtime'\nasync fn main():\n  await runtime.commit()\n  7",
     );
     const test = testRuntime();
-    expect(test.runtime.deploy(text).start('i').state).toEqual({ kind: 'finished', outcome: 7n });
+    expect(runToEnd(test, 'i', test.runtime.deploy(text).start('i'))).toEqual({
+      kind: 'finished',
+      outcome: '7',
+    });
     expect(test.store.commits).toHaveLength(2);
   });
 
@@ -129,13 +135,13 @@ describe('advancing an instance', () => {
     expect(first.state).toEqual({ kind: 'waiting', until: 5n });
     const second = testRuntime({ store, clock });
     expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
-    expect(uninterrupted).toEqual({ kind: 'finished', outcome: 5n });
+    expect(uninterrupted).toEqual({ kind: 'finished', outcome: '5' });
   });
 
   it("keeps a reference to its caller's variable across a restart and crashEveryAwait", () => {
     const text = compiledText(referenceAcrossAwaits);
     const uninterrupted = startToEnd(testRuntime(), text);
-    expect(uninterrupted).toEqual({ kind: 'finished', outcome: 5n });
+    expect(uninterrupted).toEqual({ kind: 'finished', outcome: '5' });
     expect(startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
     const store = recordingStore();
     const clock = manualClock();
@@ -195,7 +201,7 @@ describe('advancing an instance', () => {
       ].join('\n'),
     );
     const test = testRuntime({ clock: manualClock(1000n) });
-    expect(startToEnd(test, text)).toEqual({ kind: 'finished', outcome: 500n });
+    expect(startToEnd(test, text)).toEqual({ kind: 'finished', outcome: '500' });
   });
 
   it('waits until the earliest timer, and wakes to nothing new before it is due', () => {
@@ -231,7 +237,7 @@ describe('advancing an instance', () => {
     const state = runToEnd(test, 'corpus', program.start('corpus'));
     const ended =
       state.kind === 'finished'
-        ? { expects: 'outcome', expected: program.json(state.outcome) }
+        ? { expects: 'outcome', expected: state.outcome }
         : { expects: 'panic', expected: state.kind === 'panicked' ? state.message : '' };
     expect(ended).toEqual({ expects, expected });
   });

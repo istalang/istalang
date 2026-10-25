@@ -8,8 +8,9 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { WellKnownDeclaration } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
-import type { Bindings, VariableEntity } from '../binder/entities.ts';
+import type { Bindings, Entity, VariableEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
 import type {
@@ -30,6 +31,8 @@ import type { Assignment, For, VariableDeclaration } from '../syntax/statements.
 import type { NestedFunction } from './closures/function-scope.ts';
 import type { ConstantForm } from './constant-form.ts';
 import { ProgramChecker } from './program-checker.ts';
+import type { AnnotationQueries } from './rules/annotations.ts';
+import type { JsonFormQueries } from './rules/json-forms/form.ts';
 import type { FieldMember, FunctionType, NominalType, Type } from './types/type.ts';
 import type { TypeKeys } from './types/type-keys.ts';
 
@@ -355,6 +358,20 @@ export interface Checker {
   readonly optionalOf: (type: Type) => NominalType;
   /** `Shared<T>` for `type`, what a variable passed by `&` lives in (§3.7, §3.14). */
   readonly sharedOf: (type: Type) => NominalType;
+  /** What a well-known name (language/well-known.ts) denotes; undefined without its module. */
+  readonly wellKnownEntity: (declaration: WellKnownDeclaration) => Entity | undefined;
+  /**
+   * A well-known type, such as `Future`, with its type arguments; undefined when the program
+   * lacks its module.
+   */
+  readonly wellKnownType: (
+    declaration: WellKnownDeclaration,
+    typeArguments?: readonly Type[],
+  ) => NominalType | undefined;
+  /** How types cross to the host as JSON (§9; rules/json-forms/). */
+  readonly json: JsonFormQueries;
+  /** Annotations, each checked once where its item stands (§3.16; rules/annotations.ts). */
+  readonly annotations: AnnotationQueries;
 }
 
 const checkers = new WeakMap<Program, Checker>();

@@ -3,10 +3,13 @@
  * commit it was asked to write, and running an instance to its end by moving time to each timer.
  */
 
+import type { Value } from '../definition/values.ts';
 import { stdNatives } from '../stdlib/natives.ts';
+import type { HostExterns } from './boundary/host-natives.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';
 import type { Advanced } from './instance-state.ts';
 import type { NativeContext, Natives } from './natives.ts';
+import { Refusal } from './refusal.ts';
 import type { StartOptions } from './scheduler/instance.ts';
 import { type Settled, settle } from './settle.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
@@ -48,6 +51,10 @@ export function recordingStore(inner: InstanceStore = memoryStore()): RecordingS
       definitions.push(hash);
       inner.writeDefinition(hash, text);
     },
+    readExterns: () => inner.readExterns(),
+    writeExterns: (text) => {
+      inner.writeExterns(text);
+    },
   };
 }
 
@@ -55,6 +62,7 @@ export interface TestRuntimeOptions {
   readonly natives?: Natives;
   readonly store?: RecordingStore;
   readonly clock?: ManualClock;
+  readonly host?: HostExterns;
 }
 
 export interface TestRuntime {
@@ -68,9 +76,10 @@ export function testRuntime({
   natives = stdNatives,
   store = recordingStore(),
   clock = manualClock(),
+  host = {},
 }: TestRuntimeOptions = {}): TestRuntime {
   return {
-    runtime: createRuntime({ natives, store, now: clock.now }),
+    runtime: createRuntime({ natives, store, now: clock.now, host }),
     store,
     clock,
   };
@@ -87,23 +96,43 @@ export function settleAll(
 ): ReadonlyMap<string, Settled> {
   const steps = settle((name) => runtime.wake(name), { instance, advanced: initial });
   let step = steps.next();
-  for (; !step.done; step = steps.next()) {
-    clock.set(step.value);
+  for (; !step.done; step = steps.next([])) {
+    if (step.value !== undefined) {
+      clock.set(step.value);
+    }
   }
   return step.value;
 }
 
-/** Runs the instance and what it spawns until none waits any more; how the instance ended. */
-export function runToEnd(
-  test: TestRuntime,
-  instance: string,
-  initial: Advanced,
-): Exclude<Settled, { kind: 'stuck' }> {
+/** How an instance ended, an outcome its start wrapper encoded (§9) read as its JSON text. */
+export type Ended =
+  | Exclude<Settled, { kind: 'stuck' | 'finished' }>
+  | { readonly kind: 'finished'; readonly outcome: Value | string };
+
+/**
+ * Runs the instance and what it spawns until none waits any more; how the instance ended. An
+ * outcome a host can read, `main`'s or another started instance's, is its JSON text; a spawned
+ * instance's is the value its function gave.
+ */
+export function runToEnd(test: TestRuntime, instance: string, initial: Advanced): Ended {
   const settled = settleAll(test, instance, initial).get(instance);
   if (settled === undefined || settled.kind === 'stuck') {
     throw new Error(`Instance ${instance} waits on nothing that can wake it.`);
   }
-  return settled;
+  if (settled.kind !== 'finished') {
+    return settled;
+  }
+  try {
+    return {
+      kind: 'finished',
+      outcome: test.runtime.programOf(instance).outcomeText(settled.outcome),
+    };
+  } catch (error) {
+    if (error instanceof Refusal) {
+      return settled;
+    }
+    throw error;
+  }
 }
 
 /** Deploys `text`, starts `main` as an instance and runs it to its end. */
@@ -111,7 +140,7 @@ export function startToEnd(
   test: TestRuntime,
   text: string,
   { instance = 'test', ...options }: StartOptions & { readonly instance?: string } = {},
-): Exclude<Settled, { kind: 'stuck' }> {
+): Ended {
   const program: DeployedProgram = test.runtime.deploy(text);
   return runToEnd(test, instance, program.start(instance, options));
 }

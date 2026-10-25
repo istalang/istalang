@@ -16,7 +16,8 @@ export type InstanceState =
   | { readonly kind: 'ready' }
   | { readonly kind: 'waiting'; readonly until: bigint | undefined }
   | { readonly kind: 'finished'; readonly outcome: Value }
-  | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
+  | { readonly kind: 'panicked'; readonly message: string; readonly trace: string }
+  | { readonly kind: 'terminated' };
 
 /** What advancing an instance did: where it stands now, and the instances it spawned (§9). */
 export interface Advanced {

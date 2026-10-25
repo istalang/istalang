@@ -25,8 +25,16 @@ export const tables = z.strictObject({
   types: z.array(typeDefinition),
   functions: z.array(functionDefinition),
   constants: z.array(value),
-  /** The program's `async fn main()`; absent in a Definition built only to run tests. */
+  /**
+   * The default start: `main`'s entry in `starts`, what a host starts without naming a function;
+   * absent in a Definition built only to run tests.
+   */
   main: functionId.optional(),
+  /**
+   * What a host may start (§9), by the key it names each by: the code entry that takes the
+   * arguments as JSON, runs the function and gives its outcome as JSON (docs/arch/boundary.md).
+   */
+  starts: z.array(z.strictObject({ key: z.string(), function: functionId })),
 });
 
 export type Tables = z.output<typeof tables>;

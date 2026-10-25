@@ -30,9 +30,4 @@ export const concurrencyTemplates = {
     message: (found: string) =>
       `A spawn argument is copied into the new instance, so it must be sendable, and ${found} isn't.`,
   },
-  codeAtBoundary: {
-    code: 5606,
-    message: (found: string) =>
-      `${found} refers to code, which never leaves for the host: only 'spawn' can send it.`,
-  },
 } as const;

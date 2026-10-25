@@ -12,6 +12,10 @@
  * - Lowering builds keys from declarations, and natives from their own tables, both through
  *   `externKey`, so the two can't drift apart. A natives table spells its types with the builders
  *   below.
+ * - An extern constant has no parameters to tell overloads apart, so its key is its qualified
+ *   name alone: `purchase.approvalDeadline` (§9).
+ * - A function of a host handle (§3.6) is keyed by the extern returning the handle, then the
+ *   field's name: `purchase.sendRevertible(purchase.Queue<T>, T).retract`.
  */
 
 import type { PrimitiveName } from '../language/primitives.ts';
@@ -84,6 +88,11 @@ export function nativeKey(
         : { type: parameter, reference: false },
     ),
   });
+}
+
+/** The key of the function a host handle's field `field` holds, the handle returned by `extern`. */
+export function handleFieldKey(extern: string, field: string): string {
+  return `${extern}.${field}`;
 }
 
 export function externKey(signature: ExternSignature): string {

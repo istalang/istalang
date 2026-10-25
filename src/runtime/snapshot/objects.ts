@@ -72,7 +72,7 @@ const futureState = z.discriminatedUnion('kind', [
   /** `time.at(t)`: due at `at`, in milliseconds since the Unix epoch. */
   z.strictObject({ kind: z.literal('timer'), at: integer }),
   /** A future the host fills; `token` is how the host names it. */
-  z.strictObject({ kind: z.literal('host'), token: z.unknown() }),
+  z.strictObject({ kind: z.literal('host'), token: z.string() }),
   /**
    * `futures.first(fs)`: resolves with the position and value of the first of `futures` to
    * resolve, the lowest position among futures that resolved together (spec §3.8).

@@ -117,6 +117,18 @@ export type TypeDefinition = z.output<typeof typeDefinition>;
 /** The extern type every cell is an instantiation of (spec §3.7, §3.14). */
 export const sharedTypeName = qualifiedName(wellKnown.shared);
 
+/**
+ * Whether a value of the host type entry `type` of `types` is a resource object behind a handle
+ * (§7): a `dispose` makes it disposable, so its values have an identity of their own. Any other
+ * host type's values are its host's JSON, as plain as an int.
+ */
+export function isResourceType(types: readonly TypeDefinition[], type: number): boolean {
+  const entry = types[type];
+  return (
+    entry?.kind === 'extern' && entry.disposal.kind === 'function' && entry.name !== sharedTypeName
+  );
+}
+
 /** Whether type entry `type` of `types` is a `Shared<T>` instantiation: the type a cell must have. */
 export function isSharedCellType(types: readonly TypeDefinition[], type: number): boolean {
   const entry = types[type];

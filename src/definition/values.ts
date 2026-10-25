@@ -15,7 +15,7 @@
  *
  * A value persists only up to `maximumDepth` levels deep (§5): the JSON and zod codecs recurse on
  * the host's stack. Walks over values in memory keep stacks of their own, so a deeper value lives
- * within a segment; the runtime refuses to commit one (scheduler/segment.ts).
+ * within a segment; the runtime refuses to commit one (scheduler/segment/).
  */
 
 import { z } from 'zod';

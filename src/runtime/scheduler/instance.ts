@@ -81,6 +81,9 @@ export class Instance {
   readonly #spawnedBefore: number;
   readonly #spawns: InstanceCall[] = [];
   readonly #ready: number[];
+  /** The extern constants read before this segment, and those it read itself (§3.6). */
+  readonly #pinnedBefore: Snapshot['pinned'];
+  readonly #pinned: Map<string, Value>;
 
   private constructor(loaded: LoadedDefinition, snapshot: Snapshot) {
     this.loaded = loaded;
@@ -88,6 +91,8 @@ export class Instance {
     this.crashEveryAwait = snapshot.crashEveryAwait;
     this.#spawnedBefore = snapshot.spawned;
     this.#ready = [...snapshot.ready];
+    this.#pinnedBefore = snapshot.pinned;
+    this.#pinned = new Map(snapshot.pinned.map(({ key, value }) => [key, value]));
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
@@ -151,6 +156,7 @@ export class Instance {
     return {
       ...this.unrun(status),
       spawned: this.#spawnedBefore + this.#spawns.length,
+      pinned: [...this.#pinned].map(([key, value]) => ({ key, value })),
       objects: active ? [...objects] : [],
       ready: active ? [...this.#ready] : [],
     };
@@ -167,9 +173,24 @@ export class Instance {
       status,
       crashEveryAwait: this.crashEveryAwait,
       spawned: this.#spawnedBefore,
+      pinned: this.#pinnedBefore,
       objects: [],
       ready: [],
     };
+  }
+
+  /**
+   * What the extern constant `key` gives this instance: what `read` gives the first time any of
+   * its segments reads it, and that same value ever after (§3.6).
+   */
+  pinned(key: string, read: () => Value): Value {
+    const known = this.#pinned.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const value = read();
+    this.#pinned.set(key, value);
+    return value;
   }
 
   /** The calls this segment spawned, each a new instance once the segment commits (§9). */

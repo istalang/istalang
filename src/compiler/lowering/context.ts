@@ -26,6 +26,13 @@ import type { LoopStack } from './statements/loops.ts';
 import type { VariableRegisters } from './statements/variables.ts';
 import type { DefinitionTables } from './tables.ts';
 
+/**
+ * What writing code takes, with or without a checked body behind it: the code written, the tables
+ * it names, and the checker it asks about types. Code lowering writes with no syntax behind it
+ * (boundary/) works through this alone, as do the helpers both kinds share.
+ */
+export type CodeContext = Pick<FunctionContext, 'checker' | 'tables' | 'code'>;
+
 export interface FunctionContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
@@ -50,6 +57,11 @@ export interface FunctionContext {
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
   /** A fresh register holding the constant `value`. */
   readonly constant: (value: Value, span: Span) => Register;
+  /**
+   * Returns `value` from the entry: the one place its code returns, so a start entry gives what it
+   * returns encoded as JSON (boundary/starts.ts).
+   */
+  readonly returnValue: (value: Register, span: Span) => void;
   /** The function's code: registers, instructions and labels. */
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;

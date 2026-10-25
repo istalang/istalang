@@ -1,0 +1,56 @@
+# outcome: {"at":"2026-10-25T12:00:00.000Z","big":"123456789012345678901234567890","due":"PT1H30M","items":[{"qty":2,"sku":"a"}],"note":null,"order_id":"o1","pair":[3,true],"price":"12.50 EUR","ratio":null,"raw":{"keep":[1,"two",null]},"shape":{"radius":1.5,"type":"Circle"},"tags":{"10":1,"9":2}}
+# The JSON form (§9) of every kind of field, written as main's outcome: a @JsonName, structs in an
+# array, none as null, a map with int keys written by toString, an enum with its "type" tag, a
+# tuple, a Duration and a Time in ISO 8601, a @JsonBigInt int as a string, NaN as null, a
+# Stringable struct as its toString, and a Json value as itself. The @JsonSkip field is left out,
+# and every object's keys are sorted as strings, a struct's fields and a map's keys alike.
+
+import * as time from 'time'
+import JsonName, JsonSkip, JsonBigInt, Json from 'json'
+
+struct Item:
+  sku: string
+  qty: int
+
+enum Shape:
+  Circle { radius: float }
+  Dot
+
+struct Money:
+  cents: int
+  currency: string
+
+fn toString(self: Money) -> string:
+  string(self.cents // 100) + "." + string(self.cents % 100) + " " + self.currency
+
+struct Order:
+  id: string @JsonName{"order_id"}
+  items: Array<Item>
+  note: string?
+  tags: Map<int, int>
+  shape: Shape
+  pair: (int, bool)
+  due: time.Duration
+  at: time.Time
+  big: int @JsonBigInt
+  ratio: float
+  price: Money
+  raw: Json
+  cache: Map<string, int> @JsonSkip
+
+async fn main() -> Future<Order>:
+  Order{
+    id: "o1",
+    items: [Item{sku: "a", qty: 2}],
+    note: none,
+    tags: [9: 2, 10: 1],
+    shape: Circle{radius: 1.5},
+    pair: (3, true),
+    due: 90m,
+    at: time.Time{value: 1792929600000},
+    big: 123456789012345678901234567890,
+    ratio: 0.0 / 0.0,
+    price: Money{cents: 1250, currency: "EUR"},
+    raw: Object{fields: ["keep": List{items: [Integer{value: 1}, Text{value: "two"}, Null]}]},
+    cache: ["unused": 1],
+  }

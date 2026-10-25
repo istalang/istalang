@@ -11,32 +11,84 @@
 import type { Definition } from '../../definition/definition.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import type { CheckedBody, Checker } from '../checker/check.ts';
+import { isHostExtern } from '../checker/rules/host-boundary.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import { codecEntry, isCodec } from './boundary/codecs.ts';
+import {
+  constantNativeEntry,
+  handleFieldEntry,
+  handleFieldNativeEntry,
+  hostConstantEntry,
+  hostFunctionEntry,
+  hostNativeEntry,
+} from './boundary/host-externs.ts';
+import { startableOf, startables, startEntry } from './boundary/starts.ts';
 import { FunctionLowering, instanceFrame, nestedFrame } from './function-lowering.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
   instantiatedBody,
   type NestedInstance,
-  rootInstance,
   substitutionOf,
 } from './instances.ts';
-import { externKeyOf } from './names.ts';
-import { DefinitionTables } from './tables.ts';
+import { keyOf } from './names.ts';
+import { DefinitionTables, type PendingEntry } from './tables.ts';
 
-/** The Definition of everything `main` reaches. */
+/**
+ * The Definition of everything `main` and the program's startable functions reach (§9): `main` is
+ * started through its start entry, as a host starts any of the others.
+ */
 export function lower(checker: Checker, main: FunctionDeclaration): Definition {
   const tables = new DefinitionTables(checker);
-  const mainIndex = tables.functionIndex(rootInstance(checker, main));
+  const started = startableOf(checker, main);
+  if (started === undefined) {
+    throw new Error("'main' can't be started; the checker should have said why.");
+  }
+  const mainIndex = tables.startIndex(main, started.key);
+  for (const startable of startables(checker)) {
+    tables.startIndex(startable.target, startable.key);
+  }
   for (let next = tables.nextPending(); next !== undefined; next = tables.nextPending()) {
-    const entry =
-      next.kind === 'instance'
-        ? entryOf(checker, tables, next.instance)
-        : nestedEntryOf(checker, tables, next.nested);
-    tables.define(next.index, entry);
+    tables.define(next.index, pendingEntry(checker, tables, next));
   }
   return tables.finish(mainIndex);
+}
+
+/** The entry `pending` stands for. */
+function pendingEntry(
+  checker: Checker,
+  tables: DefinitionTables,
+  pending: PendingEntry,
+): FunctionDefinition {
+  const lowering = { checker, tables };
+  switch (pending.kind) {
+    case 'instance':
+      return entryOf(checker, tables, pending.instance);
+    case 'nested':
+      return nestedEntryOf(checker, tables, pending.nested);
+    case 'hostNative':
+      return hostNativeEntry(lowering, pending.declaration);
+    case 'constantNative':
+      return constantNativeEntry(lowering, pending.declaration, pending.type);
+    case 'handleFieldNative':
+      return handleFieldNativeEntry(lowering, pending.declaration, pending.field);
+    case 'handleField':
+      return handleFieldEntry(lowering, pending.instance, pending.field);
+    case 'externConstant':
+      return hostConstantEntry(lowering, pending.declaration, pending.type);
+    case 'start': {
+      const startable = startableOf(checker, pending.target);
+      if (startable === undefined) {
+        throw new Error('A start entry was made for what no host can start.');
+      }
+      return startEntry(lowering, startable);
+    }
+    default: {
+      const unhandled: never = pending;
+      return unhandled;
+    }
+  }
 }
 
 /**
@@ -49,6 +101,12 @@ function entryOf(
   instance: FunctionInstance,
 ): FunctionDefinition {
   const { declaration } = instance;
+  if (isCodec(checker, instance)) {
+    return codecEntry({ checker, tables, instance });
+  }
+  if (isHostExtern(checker, declaration)) {
+    return hostFunctionEntry({ checker, tables }, instance);
+  }
   const parameters = checker.parametersOf(declaration);
   const body = checkedBodyOf(checker, instance);
   if (body !== undefined) {
@@ -66,7 +124,7 @@ function entryOf(
   return {
     kind: 'extern',
     ...tables.entryHeader(instance),
-    key: externKeyOf(checker, declaration),
+    key: keyOf(checker, declaration, parameters),
     constant: false,
     parameters: parameters.map((parameter) => ({
       type: tables.typeReference(substitute(parameter.type, substitution)),

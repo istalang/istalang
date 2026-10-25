@@ -12,6 +12,7 @@
  */
 
 import { defineDiagnostics } from '../../../diagnostics/catalog.ts';
+import { boundaryTemplates } from './boundary.ts';
 import { closureTemplates } from './closures.ts';
 import { collectionTemplates } from './collections.ts';
 import { concurrencyTemplates } from './concurrency.ts';
@@ -154,4 +155,5 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   ...concurrencyTemplates,
   ...lifetimeTemplates,
   ...weakSideTemplates,
+  ...boundaryTemplates,
 });

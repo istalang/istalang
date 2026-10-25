@@ -85,6 +85,11 @@ export interface Program {
   readonly modules: ReadonlyMap<ModuleId, ProgramModule>;
 }
 
+/** Whether the toolchain ships `module` (`LocatedModule.isStd`); false for one `program` lacks. */
+export function isStdModule(program: Program, module: ModuleId | undefined): boolean {
+  return module !== undefined && program.modules.get(module)?.isStd === true;
+}
+
 export interface ProgramOptions {
   /** The modules to start from, located by the app that names them. */
   readonly roots: readonly LocatedModule[];

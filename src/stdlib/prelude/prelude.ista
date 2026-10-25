@@ -132,11 +132,28 @@ extern fn compare(left: string, right: string) -> int
 
 # Conversions (§3.10): only the ones that can't fail are written T(x). `int(x)` truncates toward
 # zero; a float that is no number (NaN, an infinity) has no int, which is a bug, so it panics.
+# `string(x)` is `toString`, the one place a type says how it is written; a whole float keeps its
+# `.0`, so `1.0` never reads as the int `1`. `parse` reads back what `toString` writes, and fails
+# with a Result, since text from outside may be anything.
 extern fn float.from(value: int) -> float
 extern fn int.from(value: float) -> int
-extern fn string.from(value: int) -> string
-extern fn string.from(value: float) -> string
-extern fn string.from(value: bool) -> string
+
+fn string.from<T is Stringable>(value: T) -> string:
+  value.toString()
+
+extern fn toString(self: int) -> string
+extern fn toString(self: float) -> string
+extern fn toString(self: bool) -> string
+
+fn toString(self: string) -> string:
+  self
+
+extern fn int.parse(text: string) -> Result<int>
+extern fn float.parse(text: string) -> Result<float>
+extern fn bool.parse(text: string) -> Result<bool>
+
+fn string.parse(text: string) -> Result<string>:
+  Ok{(text)}
 
 trait Sendable
 
@@ -185,3 +202,18 @@ trait Negatable<T = Self>:
 
 trait Comparable<T = Self>:
   fn compare(left: T, right: T) -> int
+
+trait Stringable:
+  fn toString(self: Self) -> string
+
+trait Parsable:
+  fn Self.parse(text: string) -> Result<Self>
+
+# Derived, like Sendable: a sendable type with a JSON form to write, or to read (§9).
+trait Encodable
+
+trait Decodable
+
+# Names the suspension point of the statement it annotates, for tests and operators (§10).
+struct Waypoint:
+  label: string

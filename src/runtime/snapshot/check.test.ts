@@ -206,7 +206,7 @@ describe('reading an instance back', () => {
     test.clock.set(10n);
     expect(runToEnd(fresh, 'i', fresh.runtime.wake('i'))).toEqual({
       kind: 'finished',
-      outcome: 1n,
+      outcome: '1',
     });
     expect(store.definitions).toEqual([]);
   });

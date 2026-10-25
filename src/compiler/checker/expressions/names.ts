@@ -13,7 +13,6 @@ import { checkFunctionValue, namedFunctions } from '../closures/function-values.
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { errorType, nominalType, type Type } from '../types/type.ts';
 import { checkVariantName } from './variants.ts';
 
@@ -41,7 +40,10 @@ export function entityValueType(
         case 'Lambda':
           return context.functions.typeOfFunction(context, node, entity);
         case 'ExternConstantDeclaration':
-          return context.unsupported(node, frontier.externConstant);
+          return context.checker.resolveType(
+            context.checker.moduleOf(entity.owner),
+            entity.owner.type,
+          );
         case 'VariableDeclaration':
           return (
             context.checker.constantNamed(context.module, node)?.type ??

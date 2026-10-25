@@ -33,7 +33,7 @@ export function checkSpawn(context: BodyContext, node: Spawn): Type {
   }
   for (const argument of copiedArguments(context, call)) {
     const type = context.typeOf(argument);
-    if (type.kind !== 'error' && !isSendable(context.checker, type, 'instance')) {
+    if (type.kind !== 'error' && !isSendable(context.checker, type)) {
       context.report(checkerDiagnostics.unsendableArgument(argument.span, typeText(type)));
     }
   }

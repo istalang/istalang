@@ -7,9 +7,10 @@
 
 /**
  * The std modules a program is handed by role: the prelude every module sees without importing it
- * (§3.13), and `time`, whose `Duration` types every duration literal (§2).
+ * (§3.13), `time`, whose `Duration` types every duration literal (§2), and `json`, whose codecs
+ * every value crossing to a host goes through (§9).
  */
-export const languageModules = { prelude: 'prelude', time: 'time' } as const;
+export const languageModules = { prelude: 'prelude', time: 'time', json: 'json' } as const;
 
 /** A role, which is also the name of the std module that plays it. */
 export type LanguageModule = keyof typeof languageModules;
@@ -49,7 +50,76 @@ export const wellKnown = {
   weakRef: { module: 'prelude', name: 'WeakRef' },
   /** The handle of an async call that `worker.disposing()` watches, private to the prelude (§7). */
   call: { module: 'prelude', name: '_Call' },
+  /** How a type is written as text, and read back (§3.10): its JSON form when it has them (§9). */
+  stringable: { module: 'prelude', name: 'Stringable' },
+  parsable: { module: 'prelude', name: 'Parsable' },
+  /** The derived markers of types with a JSON form to write, and to read (§3.10, §9). */
+  encodable: { module: 'prelude', name: 'Encodable' },
+  decodable: { module: 'prelude', name: 'Decodable' },
+  /** Names an `await` or `select` statement's suspension point (§10). */
+  waypoint: { module: 'prelude', name: 'Waypoint' },
+  /** JSON as a value: what the codecs turn typed values into and back from (§9). */
+  json: { module: 'json', name: 'Json' },
+  /** Annotations the boundary mapping reads on fields (§3.16, §9). */
+  jsonName: { module: 'json', name: 'JsonName' },
+  jsonSkip: { module: 'json', name: 'JsonSkip' },
+  jsonBigInt: { module: 'json', name: 'JsonBigInt' },
 } as const satisfies Record<string, WellKnownDeclaration>;
+
+/**
+ * The json module's functions the compiled codecs are made of (docs/arch/boundary.md): the two
+ * whose bodies the compiler writes per type, and the helpers those bodies call.
+ */
+export const codecFunctions = {
+  encode: '_encode',
+  decodeAt: '_decodeAt',
+} as const;
+
+/**
+ * The json module's helpers compiled codecs and wrappers call (docs/arch/boundary.md): writing and
+ * reading each leaf and container, taking JSON apart, and accepting what a host gave.
+ */
+export const codecHelpers = {
+  encodeInt: '_encodeInt',
+  decodeInt: '_decodeInt',
+  encodeFloat: '_encodeFloat',
+  decodeFloat: '_decodeFloat',
+  encodeBool: '_encodeBool',
+  decodeBool: '_decodeBool',
+  encodeString: '_encodeString',
+  decodeString: '_decodeString',
+  encodeUnit: '_encodeUnit',
+  decodeUnit: '_decodeUnit',
+  encodeBigInt: '_encodeBigInt',
+  decodeBigInt: '_decodeBigInt',
+  encodeText: '_encodeText',
+  decodeParsed: '_decodeParsed',
+  encodeHandle: '_encodeHandle',
+  decodeHandle: '_decodeHandle',
+  encodeArray: '_encodeArray',
+  decodeArray: '_decodeArray',
+  encodeOptional: '_encodeOptional',
+  decodeOptional: '_decodeOptional',
+  encodeMap: '_encodeMap',
+  decodeMap: '_decodeMap',
+  fields: '_fields',
+  field: '_field',
+  optionalField: '_optionalField',
+  fieldPath: '_fieldPath',
+  tag: '_tag',
+  unknownVariant: '_unknownVariant',
+  elements: '_elements',
+  element: '_element',
+  elementPath: '_elementPath',
+  hostResult: '_hostResult',
+  hostInput: '_hostInput',
+  hostHandle: '_hostHandle',
+} as const;
+
+export type CodecHelper = (typeof codecHelpers)[keyof typeof codecHelpers];
+
+/** A json-module function the compiler calls: a codec or a helper. */
+export type CodecName = (typeof codecFunctions)[keyof typeof codecFunctions] | CodecHelper;
 
 /** A well-known declaration's module-qualified name, as a Definition spells it: `prelude.Shared`. */
 export function qualifiedName({ module, name }: WellKnownDeclaration): string {

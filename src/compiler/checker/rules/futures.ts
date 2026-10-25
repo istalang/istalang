@@ -6,6 +6,7 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
+import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
@@ -16,6 +17,9 @@ export function futureOf(checker: CheckerContext, value: Type): Type {
 }
 
 /** `T` when `type` is `Future<T>`; undefined for any other type. */
-export function futureArgument(checker: CheckerContext, type: Type): Type | undefined {
+export function futureArgument(
+  checker: Pick<Checker, 'wellKnownType'>,
+  type: Type,
+): Type | undefined {
   return wellKnownArguments(checker, wellKnown.future, type)?.[0];
 }

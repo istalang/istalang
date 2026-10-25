@@ -8,11 +8,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Definition } from '../../../definition/definition.ts';
 import type { CodeFunction } from '../../../definition/functions.ts';
-import { preludeProgramOf } from '../../binder/bind.test-kit.ts';
+import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { compiledDefinition } from '../../compile.test-kit.ts';
 
 function compiled(lines: readonly string[]): Definition {
-  return compiledDefinition(preludeProgramOf({ main: lines.join('\n') }), 'main');
+  return compiledDefinition(stdProgramOf({ main: lines.join('\n') }), 'main');
 }
 
 function entryNamed(definition: Definition, name: string): CodeFunction {

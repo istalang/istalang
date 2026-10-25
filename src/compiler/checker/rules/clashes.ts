@@ -72,7 +72,7 @@ function preludeOverloads(
   declaration: FunctionDeclaration,
 ): readonly FunctionDeclaration[] {
   return declaration.owner === undefined && module !== checker.program.roles.prelude
-    ? checker.preludeFunctions(declaration.name.text)
+    ? checker.languageFunctions('prelude', declaration.name.text)
     : [];
 }
 

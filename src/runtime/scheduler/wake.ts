@@ -23,12 +23,18 @@
  *   a host's view of an instance comes from.
  */
 
+import type { Value } from '../../definition/values.ts';
 import type { Advanced, InstanceState } from '../instance-state.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
-import { type InstanceCall, type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
+import {
+  type InstanceCall,
+  type Replay,
+  type Snapshot,
+  snapshotFormat,
+} from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
 import { Instance, type LoadedDefinition, type StartOptions } from './instance.ts';
-import { runSegment, type SegmentEnd } from './segment.ts';
+import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
 
 export interface SchedulerSeams {
   readonly store: InstanceStore;
@@ -49,31 +55,54 @@ export function unstarted(
     status: { kind: 'unstarted', call },
     crashEveryAwait,
     spawned: 0,
+    pinned: [],
     objects: [],
     ready: [],
   };
 }
 
-/** Advances an instance of `loaded` from `snapshot` as far as it goes without waiting. */
+/** A value the host fills a future it named `token` with (§9). */
+export interface Arrival {
+  readonly token: string;
+  readonly value: Value;
+}
+
+/** What an advance does before its first segment: fill a future, or start at a given time. */
+export interface AdvanceFirst {
+  readonly arrival?: Arrival;
+  /** When the first segment counts as started, for a retry of one that panicked (§3.12, §5). */
+  readonly startedAt?: bigint;
+}
+
+/**
+ * Advances an instance of `loaded` from `snapshot` as far as it goes without waiting. The future
+ * `first.arrival` names is filled in its first segment, which runs whoever waits on it and commits
+ * the filled future even when nobody does; a panic there keeps the arrival with the panic, so a
+ * retry fills it again.
+ */
 export function advance(
   seams: SchedulerSeams,
   loaded: LoadedDefinition,
   snapshot: Snapshot,
+  first: AdvanceFirst = {},
 ): Advanced {
   let committed = snapshot;
+  let pending: AdvanceFirst = first;
   const spawned: string[] = [];
   const advanced = (state: InstanceState): Advanced => ({ state, spawned });
   for (;;) {
-    const startedAt = seams.now();
-    const first = runFrom(loaded, committed, startedAt);
-    if (first === undefined) {
+    const { arrival, startedAt = seams.now() } = pending;
+    pending = {};
+    const run = runFrom(loaded, committed, startedAt, arrival);
+    if (run === undefined) {
       return advanced(stateOf(committed));
     }
-    const { instance, end } = first.instance.crashEveryAwait
-      ? rerun(first, runFrom(loaded, committed, startedAt))
-      : first;
+    const { instance, end } = run.instance.crashEveryAwait
+      ? rerun(run, runFrom(loaded, committed, startedAt, arrival))
+      : run;
     if (end.kind === 'panicked') {
-      const status = { ...end, segmentStartedAt: startedAt };
+      const replay = replayOf(committed.status, arrival);
+      const status = { ...end, segmentStartedAt: startedAt, ...(replay && { replay }) };
       const left =
         committed.status.kind === 'unstarted' ? instance.unrun(status) : { ...committed, status };
       return advanced(stateOf(commit(seams.store, left)));
@@ -86,25 +115,57 @@ export function advance(
   }
 }
 
+/**
+ * Ends a panicked instance of `loaded` as terminated (§3.12): from its last commit, every execution
+ * stops where it waits and everything it held is disposed, a disposal's code run as code (§7).
+ */
+export function terminate(
+  seams: SchedulerSeams,
+  loaded: LoadedDefinition,
+  snapshot: Snapshot,
+): Advanced {
+  const instance = Instance.restore(loaded, snapshot);
+  endInstance(instance, seams.now());
+  const spawned = commitChildren(seams.store, instance);
+  const ended = commit(seams.store, instance.snapshot({ kind: 'terminated' }, []));
+  return { state: stateOf(ended), spawned };
+}
+
+/** What a retry runs again after a segment from `status`, filling `arrival` first, panicked. */
+function replayOf(status: Snapshot['status'], arrival: Arrival | undefined): Replay | undefined {
+  if (status.kind === 'unstarted') {
+    return { kind: 'call', call: status.call };
+  }
+  return arrival === undefined ? undefined : { kind: 'arrival', arrival };
+}
+
 /** One segment's run: the instance as it left it, and how it ended. */
 interface SegmentRun {
   readonly instance: Instance;
   readonly end: SegmentEnd;
 }
 
-/** Runs one segment from `committed`; undefined when nothing can run. */
+/**
+ * Runs one segment from `committed`, the future `arrival` names filled first; undefined when
+ * nothing can run and nothing arrived, or when `arrival` names no future the instance waits on:
+ * one it disposed, whose later fill changes nothing (§7), or one it never had.
+ */
 function runFrom(
   loaded: LoadedDefinition,
   committed: Snapshot,
   startedAt: bigint,
+  arrival: Arrival | undefined,
 ): SegmentRun | undefined {
   if (committed.status.kind === 'unstarted') {
     const instance = Instance.start(loaded, committed);
     return { instance, end: runSegment(instance, startedAt, instance.root()) };
   }
   const instance = Instance.restore(loaded, committed);
+  if (arrival !== undefined && !instance.futures.resolveHost(arrival.token, arrival.value)) {
+    return undefined;
+  }
   instance.futures.resolveDueTimers(startedAt);
-  if (instance.idle) {
+  if (instance.idle && arrival === undefined) {
     return undefined;
   }
   return { instance, end: runSegment(instance, startedAt) };
@@ -131,24 +192,42 @@ function runText({ instance, end }: SegmentRun): string {
 }
 
 /**
- * Writes the instances `instance`'s segment spawned, each unless the store has it from a run that
- * crashed before its parent committed; their names.
+ * Writes the instances `instance`'s segment spawned; their names. A child the store has already,
+ * from a run that crashed before its parent committed, is kept once it has started; one still
+ * unstarted is written again only when this run spawned a different call, since it never ran and
+ * the run that commits decides what it calls.
  */
 function commitChildren(store: InstanceStore, instance: Instance): readonly string[] {
   return childrenOf(instance).map((child) => {
-    if (store.readSnapshot(child.instance) === undefined) {
+    const stored = store.readSnapshot(child.instance);
+    const stale =
+      stored !== undefined &&
+      stored !== snapshotFormat.write(child).text &&
+      snapshotFormat.read(stored).status.kind === 'unstarted';
+    if (stored === undefined || stale) {
       commit(store, child);
     }
     return child.instance;
   });
 }
 
+/**
+ * What a spawned instance's name puts between its parent's and its count, `<parent>/<n>` (§9): only
+ * the runtime names instances so, and a host's names never contain it.
+ */
+export const spawnedSeparator = '/';
+
 /** The instances `instance`'s segment spawned, as their `unstarted` snapshots, in spawn order. */
 function childrenOf(instance: Instance): readonly Snapshot[] {
   return instance.spawns().map((call, index) =>
-    unstarted(instance.loaded, `${instance.name}/${instance.spawnedBefore + index + 1}`, call, {
-      crashEveryAwait: instance.crashEveryAwait,
-    }),
+    unstarted(
+      instance.loaded,
+      `${instance.name}${spawnedSeparator}${instance.spawnedBefore + index + 1}`,
+      call,
+      {
+        crashEveryAwait: instance.crashEveryAwait,
+      },
+    ),
   );
 }
 
@@ -183,6 +262,8 @@ export function stateOf(snapshot: Snapshot): InstanceState {
       return status;
     case 'panicked':
       return { kind: 'panicked', message: status.message, trace: status.trace };
+    case 'terminated':
+      return status;
     default: {
       const unhandled: never = status;
       return unhandled;

@@ -1,7 +1,7 @@
 /**
  * The instance store behind `ista run --store <dir>`: a Definition at `definitions/<hash>.json`,
- * an instance's snapshot at `instances/<name>.json`, both as the canonical texts the runtime
- * writes (runtime/store.ts).
+ * an instance's snapshot at `instances/<name>.json`, and the types its host's externs declare at
+ * `externs.json`, all as the canonical texts the runtime writes (runtime/store.ts).
  *
  * Each write goes to a temporary file in the same directory, which is then renamed over the old
  * one. A rename within one file system is atomic, so a crash mid-write leaves the previous commit
@@ -27,8 +27,14 @@ export function directoryStore(directory: string): InstanceStore {
     writeSnapshot: (instance, text) => {
       writeAtomically(instances, fileIn(instances, instance), text);
     },
+    readExterns: () => readIfPresent(join(directory, externsFile)),
+    writeExterns: (text) => {
+      writeAtomically(directory, join(directory, externsFile), text);
+    },
   };
 }
+
+const externsFile = 'externs.json';
 
 function fileIn(directory: string, name: string): string {
   return join(directory, `${encodeURIComponent(name)}.json`);

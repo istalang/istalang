@@ -64,7 +64,8 @@ function sortKeys(_key: string, value: unknown): unknown {
   return Object.fromEntries(entries);
 }
 
-function compareCodeUnits(left: string, right: string): number {
+/** The order of two strings by UTF-16 code unit, as JavaScript sorts strings. */
+export function compareCodeUnits(left: string, right: string): number {
   if (left === right) {
     return 0;
   }

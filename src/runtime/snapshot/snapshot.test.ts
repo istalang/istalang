@@ -32,6 +32,7 @@ const broadcastWaiting: Snapshot = {
   status: { kind: 'active' },
   crashEveryAwait: false,
   spawned: 0,
+  pinned: [],
   ready: [],
   objects: [
     {
@@ -92,7 +93,7 @@ function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
       value,
     }),
     fc.record({ kind: fc.constant('timer' as const), at: fc.bigInt({ min: 0n, max: 2n ** 60n }) }),
-    fc.record({ kind: fc.constant('host' as const), token: exactJson }),
+    fc.record({ kind: fc.constant('host' as const), token: fc.string() }),
     fc.record({ kind: fc.constant('disposed' as const), weakRef: id }),
   );
   const objectFor = (objectId: number): fc.Arbitrary<HeapObject> =>
@@ -159,6 +160,7 @@ const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
       ),
       crashEveryAwait: fc.boolean(),
       spawned: fc.nat({ max: 50 }),
+      pinned: fc.constant([]),
       objects: fc.constant(objects),
       ready: fc.subarray(executions.map((execution) => execution.id)),
     });
@@ -244,6 +246,7 @@ function holding(contents: Value): Snapshot {
     status: { kind: 'active' },
     crashEveryAwait: false,
     spawned: 0,
+    pinned: [],
     objects: [{ kind: 'cell', id: 0, type: 0, value: contents }],
     ready: [],
   };

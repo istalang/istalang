@@ -113,8 +113,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     result,
     captures.every(
       (capture) =>
-        !isChangeable(context, capture.entity) &&
-        isSendable(context.checker, capture.type, 'instance'),
+        !isChangeable(context, capture.entity) && isSendable(context.checker, capture.type),
     ),
   );
   if (name !== undefined) {

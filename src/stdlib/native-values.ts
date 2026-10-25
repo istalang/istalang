@@ -10,7 +10,7 @@
 
 import type { MapValue } from '../definition/equality.ts';
 import { childValues, isComposite, type Value } from '../definition/values.ts';
-import { optionalVariants } from '../language/well-known.ts';
+import { optionalVariants, resultVariants } from '../language/well-known.ts';
 import type { NativeContext } from '../runtime/natives.ts';
 
 interface ArgumentTypes {
@@ -83,13 +83,54 @@ export function optionalValue(value: Value | undefined): Value | undefined {
 
 /** An optional of the extern's declared result type: `Some` of `value`, or `None` without one. */
 export function resultOptional(context: NativeContext, value: Value | undefined): Value {
+  return value === undefined
+    ? resultVariant(context, optionalVariants.none, [])
+    : resultVariant(context, optionalVariants.some, [value]);
+}
+
+/** `Ok` of `value`, of the extern's declared `Result` type (§3.12). */
+export function resultOk(context: NativeContext, value: Value): Value {
+  return resultVariant(context, resultVariants.ok, [value]);
+}
+
+/** `Ok` of a struct of the type the extern's declared `Result` holds, with `fields` in order. */
+export function resultOkStruct(context: NativeContext, fields: Value[]): Value {
+  const held = resultVariantShape(context, resultVariants.ok).fields[0]?.type;
+  if (held?.kind !== 'named') {
+    throw new TypeError(`${context.entry.name} doesn't return a Result of a struct.`);
+  }
+  return resultOk(context, { kind: 'struct', type: held.type, fields });
+}
+
+/**
+ * `Err` of an `Error` with `message` and `code`, of the extern's declared `Result` type; its trace
+ * is the frames running the native, as an `Error` literal without one gets (§3.12).
+ */
+export function resultError(context: NativeContext, message: string, code: string): Value {
+  const error = resultVariantShape(context, resultVariants.err).fields[0]?.type;
+  if (error?.kind !== 'named' || context.types[error.type]?.kind !== 'struct') {
+    throw new TypeError(`${context.entry.name} doesn't return a Result of an Error.`);
+  }
+  const fields = [message, code, context.trace()];
+  return resultVariant(context, resultVariants.err, [{ kind: 'struct', type: error.type, fields }]);
+}
+
+/** Variant `name` of the enum the extern declares as its result, holding `fields`. */
+function resultVariant(context: NativeContext, name: string, fields: Value[]): Value {
+  const { type, variant } = resultVariantShape(context, name);
+  return { kind: 'variant', type, variant, fields };
+}
+
+/** Where variant `name` of the extern's declared enum result is, with its declared fields. */
+function resultVariantShape(context: NativeContext, name: string) {
   const { entry, types } = context;
   const type = entry.kind === 'extern' && entry.result.kind === 'named' ? entry.result.type : -1;
-  const optional = types[type];
-  if (optional?.kind !== 'enum') {
-    throw new TypeError(`${entry.name} doesn't return an optional.`);
+  const declared = types[type];
+  const variants = declared?.kind === 'enum' ? declared.variants : [];
+  const variant = variants.findIndex((each) => each.name === name);
+  const shape = variants[variant];
+  if (shape === undefined) {
+    throw new TypeError(`${entry.name} doesn't return an enum with a variant ${name}.`);
   }
-  const name = value === undefined ? optionalVariants.none : optionalVariants.some;
-  const variant = optional.variants.findIndex((each) => each.name === name);
-  return { kind: 'variant', type, variant, fields: value === undefined ? [] : [value] };
+  return { type, variant, fields: shape.fields };
 }

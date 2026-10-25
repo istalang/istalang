@@ -29,13 +29,17 @@ export interface ModuleDiagnostics {
 
 const diagnosed = new WeakMap<Program, ReadonlyMap<ModuleId, ModuleDiagnostics>>();
 
-/** Every module's diagnostics from every phase, in load order. */
+/**
+ * Every module's diagnostics from every phase, in load order. A module the toolchain ships is
+ * checked once, by its own tests (stdlib/std-modules.test.ts), rather than by every compile: what
+ * a program uses of it is still checked, lazily, when lowering reads it.
+ */
 export function diagnose(program: Program): ReadonlyMap<ModuleId, ModuleDiagnostics> {
   return memo(diagnosed, program, () => {
     const bindings = bindProgram(program);
     const checker = checkProgram(program);
     return new Map(
-      [...program.modules].map(([id, { tree, diagnostics }]) => [
+      [...program.modules].map(([id, { tree, diagnostics, isStd }]) => [
         id,
         {
           source: tree.source,
@@ -43,7 +47,7 @@ export function diagnose(program: Program): ReadonlyMap<ModuleId, ModuleDiagnost
             ...tree.diagnostics,
             ...diagnostics,
             ...bindings.diagnosticsOf(id),
-            ...checker.diagnosticsOf(id),
+            ...(isStd ? [] : checker.diagnosticsOf(id)),
           ].sort((first, second) => first.span.start - second.span.start),
         },
       ]),

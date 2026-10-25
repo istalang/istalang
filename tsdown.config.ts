@@ -4,16 +4,17 @@
  * flattened into one bundle, so code that locates a file relative to itself (the CLI reading the
  * package manifest) finds it at the same relative place in `dist`.
  *
- * Nothing ships type declarations yet: the package's only entry is the `ista` executable. When
- * host projects get subpath exports (`istalang/compiler`, …), each becomes an entry here, with
- * declarations for exactly what it exports.
+ * Each subpath export (`istalang/runtime`, …) is an entry here, beside the `ista` executable. Its
+ * declarations come from TypeScript itself (tsconfig.declarations.json, run by `npm run build`):
+ * tsdown's declaration plugin needs either TypeScript's JS API, which TypeScript 7 doesn't have, or
+ * code whose exported types are all written out, which the definition layer's schemas aren't.
  */
 
 import { defineConfig } from 'tsdown';
 import { istaTextPlugin } from './scripts/ista-text-plugin.ts';
 
 export default defineConfig({
-  entry: ['src/cli/main.ts'],
+  entry: ['src/cli/main.ts', 'src/runtime/host.ts', 'src/stdlib/natives.ts'],
   root: 'src',
   outDir: 'dist',
   format: 'esm',

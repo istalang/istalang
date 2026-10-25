@@ -27,10 +27,11 @@ import type { FieldMember, Type } from '../types/type.ts';
 
 /**
  * What the walk reads: the constant computed, its initializer's checking, struct layouts, and the
- * other constants.
+ * other constants. An annotation's value (§3.16) is computed the same way, owned by no constant,
+ * so it can't hold a lambda.
  */
 export interface ComputationScope {
-  readonly constant: VariableDeclaration;
+  readonly constant: VariableDeclaration | undefined;
   readonly checked: CheckedBody;
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
   readonly constantNamed: (name: Identifier) => CheckedConstant | undefined;
@@ -103,11 +104,12 @@ class Computation {
   /** A lambda's function value, when it captures nothing: a closure of no captures. */
   #lambda(node: Lambda): Outcome {
     const checked = this.#scope.checked.functionOf(node);
+    const { constant } = this.#scope;
     if (checked === undefined) {
       return unknown;
     }
-    return checked.captures.length === 0
-      ? computed({ kind: 'function', lambda: node, constant: this.#scope.constant })
+    return checked.captures.length === 0 && constant !== undefined
+      ? computed({ kind: 'function', lambda: node, constant })
       : refused(node);
   }
 

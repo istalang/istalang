@@ -58,7 +58,7 @@ export interface ImplicitRequest {
 
 /** The prelude's functions of `name`, the only candidates of the language's own machinery. */
 export function preludeCandidates(context: BodyContext, name: string): readonly Candidate[] {
-  return context.checker.preludeFunctions(name).map((declaration) => ({ declaration }));
+  return context.checker.languageFunctions('prelude', name).map((declaration) => ({ declaration }));
 }
 
 /**
@@ -76,10 +76,7 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
     return undefined;
   }
   const { application, instantiation, result } = chosen;
-  const call = callMade(site, application.candidate, instantiation, request.arguments.length);
-  if (call === undefined) {
-    return undefined;
-  }
+  const call = callMade(application.candidate, instantiation, request.arguments.length);
   context.implicit.record(request.node, request.role, call);
   return result;
 }

@@ -10,6 +10,6 @@ import type { FunctionContext } from '../context.ts';
 export function lowerAwait(context: FunctionContext, node: Await): Register {
   const future = context.expression(node.operand);
   const dst = context.code.allocate();
-  context.code.emit({ kind: 'await', span: node.span, dst, future });
+  context.code.await(dst, future, node.span);
   return dst;
 }

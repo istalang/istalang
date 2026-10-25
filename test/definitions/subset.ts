@@ -56,6 +56,7 @@ export const subsetDefinition: Definition = {
     },
   ],
   constants: [0n, 1n, 2n, 10n],
+  starts: [],
   main,
   functions: [
     externFunction({

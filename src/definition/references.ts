@@ -37,6 +37,7 @@ export function checkReferences(tables: Tables, refinement: z.RefinementCtx): vo
     },
   };
   checkMain(context);
+  checkStarts(context);
   tables.modules.forEach((module, index) => {
     const ascending = module.lineStarts.every((start, line) =>
       line === 0 ? start === 0 : start > (module.lineStarts[line - 1] ?? 0),
@@ -70,6 +71,25 @@ function checkMain(context: Context): void {
   if (entry?.kind !== 'code' || !entry.async || entry.parameters.length > 0) {
     context.report(['main'], 'main must be an async function with code and no parameters.');
   }
+}
+
+/** The entries a host may start: code taking every argument by value, each key named once. */
+function checkStarts(context: Context): void {
+  const keys = new Set<string>();
+  context.tables.starts.forEach((start, index) => {
+    const path = ['starts', index];
+    if (keys.has(start.key)) {
+      context.report(path, `The key '${start.key}' names two entries a host may start.`);
+    }
+    keys.add(start.key);
+    if (!inRange(context, { functions: [start.function] }, [...path, 'function'])) {
+      return;
+    }
+    const entry = context.tables.functions[start.function];
+    if (entry?.kind !== 'code' || entry.parameters.some((parameter) => parameter.reference)) {
+      context.report(path, 'A host starts code that takes every argument by value.');
+    }
+  });
 }
 
 function checkType(context: Context, type: TypeDefinition, path: Path): void {

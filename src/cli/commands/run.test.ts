@@ -45,10 +45,10 @@ describe('ista run', () => {
     expect(run).toEqual({ code: 0, out: '{"x":1,"y":"b"}\n', err: '' });
   });
 
-  it('refuses an outcome JSON has no form for, without a stack trace', async () => {
+  it('prints a float JSON cannot hold as null, as JavaScript does', async () => {
     const text = 'async fn main(): 1e308 * 10.0\n';
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
-    expect(run).toEqual({ code: 1, out: '', err: 'ista: The float Infinity has no JSON form.\n' });
+    expect(run).toEqual({ code: 0, out: 'null\n', err: '' });
   });
 
   it('reports warnings on the error stream and still runs', async () => {

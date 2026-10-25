@@ -8,7 +8,7 @@
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Span } from '../../text/span.ts';
-import type { FunctionContext } from './context.ts';
+import type { CodeContext } from './context.ts';
 
 /** A call to write: where it is written, the entry it calls, and its arguments. */
 export interface CallToEmit {
@@ -20,7 +20,7 @@ export interface CallToEmit {
 
 /** Writes `call`; `dst` holds its result. */
 export function emitCall(
-  context: FunctionContext,
+  context: CodeContext,
   call: CallToEmit,
   dst: Register = context.code.allocate(),
 ): Register {

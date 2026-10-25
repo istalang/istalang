@@ -5,13 +5,15 @@
  *
  * A native takes its arguments as values and returns one; an argument the extern takes by `&` it
  * changes by writing it back through its context. It signals a bug in the program, such as
- * a division by zero, by throwing a `Panic` (§3.12); anything else it throws is a bug in the
- * native itself and propagates.
+ * a division by zero, by throwing a `Panic` (§3.12), and JSON from the host that doesn't fit (§9)
+ * by throwing a `Refusal` (runtime/refusal.ts), which fails the host's call so nothing it ran
+ * commits; anything else it throws is a bug in the native itself and propagates.
  *
  * Natives the runtime backs need the running instance, so each call also receives a context: the
  * function-table entry being called and the Definition's types (for building typed values), the time the segment
  * started, which is what `now()` means (§5), the futures the runtime creates for an extern that
- * returns one (§3.6), the instance's shared cells, its slots (§6) and its weak references (§7). A
+ * returns one (§3.6), the instance's shared cells, its slots (§6), its weak references and its
+ * resources (§7). A
  * native never holds the context beyond its call.
  */
 
@@ -28,6 +30,17 @@ export interface NativeCells {
   readonly create: (type: TypeId, value: Value) => Value;
   readonly read: (cell: Value) => Value;
   readonly write: (cell: Value, value: Value) => void;
+}
+
+/**
+ * The running instance's resources (§7): values of a host type a `dispose` makes disposable, each
+ * an object holding its host's JSON, `payload`, made as the value arrives from the host.
+ */
+export interface NativeResources {
+  /** A new resource of the host type entry `type`, holding `payload`; a handle to it. */
+  readonly create: (type: TypeId, payload: unknown) => Value;
+  /** What the resource `handle` points at holds. */
+  readonly payloadOf: (handle: Value) => unknown;
 }
 
 /** The running instance's slots (§6): every operation returns a handle to its future. */
@@ -57,12 +70,16 @@ export interface NativeContext {
   readonly entry: FunctionDefinition;
   /** The Definition's types, which the entry's types index, for building values of them. */
   readonly types: readonly TypeDefinition[];
+  /** The instance whose code called the native, as its host names it (§9). */
+  readonly instance: string;
   /** Milliseconds since the Unix epoch at which the current segment started. */
   readonly segmentStartedAt: bigint;
   /** A future that resolves at `at`, in milliseconds since the Unix epoch (`time.at`). */
   readonly timer: (at: bigint) => Value;
   /** A future already resolved with `value`. */
   readonly resolved: (value: Value) => Value;
+  /** A future the host fills later, naming it by `token` (§9). */
+  readonly pending: (token: string) => Value;
   /** A future of the first of `futures` to resolve, with its position (`futures.first`, §3.8). */
   readonly first: (futures: readonly Value[]) => Value;
   /**
@@ -75,6 +92,7 @@ export interface NativeContext {
   readonly cells: NativeCells;
   readonly slots: NativeSlots;
   readonly weak: NativeWeakSide;
+  readonly resources: NativeResources;
 }
 
 export type Native = (argumentValues: readonly Value[], context: NativeContext) => Value;

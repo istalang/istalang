@@ -7,6 +7,8 @@
  * - An instance's snapshot is kept by the instance's name, which the host chose when it started
  *   it. Writing replaces the previous snapshot: a commit is one write, so a store whose writes are
  *   atomic keeps every instance at a committed state.
+ * - The signatures of the externs its host implements are one text, which the runtime checks every
+ *   Definition it deploys against (boundary/extern-signatures.ts).
  */
 
 export interface InstanceStore {
@@ -14,12 +16,15 @@ export interface InstanceStore {
   readonly writeDefinition: (hash: string, text: string) => void;
   readonly readSnapshot: (instance: string) => string | undefined;
   readonly writeSnapshot: (instance: string, text: string) => void;
+  readonly readExterns: () => string | undefined;
+  readonly writeExterns: (text: string) => void;
 }
 
 /** A store in memory, for tests and for runs that don't outlive their process. */
 export function memoryStore(): InstanceStore {
   const definitions = new Map<string, string>();
   const snapshots = new Map<string, string>();
+  let externs: string | undefined;
   return {
     readDefinition: (hash) => definitions.get(hash),
     writeDefinition: (hash, text) => {
@@ -28,6 +33,10 @@ export function memoryStore(): InstanceStore {
     readSnapshot: (instance) => snapshots.get(instance),
     writeSnapshot: (instance, text) => {
       snapshots.set(instance, text);
+    },
+    readExterns: () => externs,
+    writeExterns: (text) => {
+      externs = text;
     },
   };
 }

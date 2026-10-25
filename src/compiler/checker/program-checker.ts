@@ -61,9 +61,11 @@ import { StaticFunctions } from './declarations/statics.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
+import { Annotations } from './rules/annotations.ts';
 import { checkClashes } from './rules/clashes.ts';
 import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
+import { JsonForms } from './rules/json-forms/index.ts';
 import type { Constraint } from './traits/constraints.ts';
 import { TypeParameters } from './traits/type-parameters.ts';
 import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
@@ -127,6 +129,12 @@ export class ProgramChecker implements CheckerContext {
   readonly #statics = new StaticFunctions(this);
   readonly #typeParameters = new TypeParameters(this);
   readonly #expansion = new Expansion(this);
+  readonly annotations = new Annotations({
+    checker: this,
+    checkValue: (module, value) =>
+      new BodyChecker(this, module, { kind: 'value', declaredResult: undefined }).checkValue(value),
+  });
+  readonly json = new JsonForms({ checker: this, annotations: this.annotations });
   #optional: { entity: OptionalEntity } | undefined;
 
   constructor(program: Program) {
@@ -306,8 +314,8 @@ export class ProgramChecker implements CheckerContext {
     return this.#layouts.declaredVariantsOf(declaration);
   }
 
-  preludeFunctions(name: string): readonly FunctionDeclaration[] {
-    const entity = this.#languageDeclaration('prelude', name);
+  languageFunctions(module: LanguageModule, name: string): readonly FunctionDeclaration[] {
+    const entity = this.#languageDeclaration(module, name);
     return entity?.kind === 'functions' ? this.bindings.overloadsOf(entity) : [];
   }
 

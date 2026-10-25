@@ -101,7 +101,9 @@ Values are immutable. A `constant` instruction hands its register the pool's own
 
 ## Externs
 
-An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop`, `delete` and `setIndex` take their container by `&`. A native receives such an argument's value, and writes the changed value back through its context, which writes it to the place the `&` names. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. An anonymous struct in a key is spelled by its fields, `struct { a: int; b: string }`, since it has nothing else. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (used by the boundary conversion) and its type arguments (for natives such as `json.parse<T>`). An extern constant is an entry with `constant` set: it is read once per instance and then pinned for the instance's life (spec §3.6). Where the snapshot pins it arrives with the host externs that read one; nothing reads an extern constant yet.
+An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop`, `delete` and `setIndex` take their container by `&`. A native receives such an argument's value, and writes the changed value back through its context, which writes it to the place the `&` names. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. An anonymous struct in a key is spelled by its fields, `struct { a: int; b: string }`, since it has nothing else. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (which natives build their results by) and its type arguments (for natives such as `json._decodeHandle<T>`). An extern constant is an entry with `constant` set: it is read once per instance and then pinned for the instance's life (spec §3.6), in the snapshot's `pinned`, by key.
+
+An extern a host implements is called through a code entry, its wrapper, which encodes each argument as `Json`, calls the extern entry, and decodes what comes back; the extern entry's parameters and result are all `json.Json` (a `Future<json.Json>` for one returning a future), and it carries its `declaredType` (a function's result, a constant's type), which the runtime holds the host to across deploys. Reading a host's extern constant is a call to an entry that decodes its value the same way (docs/arch/boundary.md).
 
 ## Names
 
@@ -121,7 +123,8 @@ Each module carries its line starts. The runtime has neither source text nor the
 
 ## Snapshot
 
-- Status: `unstarted` (the call a new instance runs: its function, a closure's captures and the arguments), `active`, `panicked` (message, trace, segment start) or `finished` (outcome). What a host is told about an instance is derived from this status alone. A spawned instance is written `unstarted`, named `<parent>/<n>`, before its parent's commit; `spawned` counts the instances an instance has spawned, which numbers the next.
+- Status: `unstarted` (the call a new instance runs: its function, a closure's captures and the arguments), `active`, `panicked` (message, trace, segment start, and what a retry runs again: the call, when it panicked before its first commit, or what its host filled, when it panicked in the segment the fill ran), `finished` (outcome) or `terminated` (by its operator). What a host is told about an instance is derived from this status alone. A name with `/` is the runtime's. A spawned instance is written `unstarted`, named `<parent>/<n>`, before its parent's commit; `spawned` counts the instances an instance has spawned, which numbers the next.
+- `pinned`: each extern constant the instance read, by key, with the value it gave (spec §3.6).
 - `crashEveryAwait`: the instance's option, set when it starts (spec §10), so every runtime that wakes it re-runs its segments.
 - Objects, in ascending id order: `cell` (typed: every cell is a `Shared<T>`), `slot` (value when full, waiting operations oldest first, one queue for every kind), `future` (resolved, or pending on a call, slot operation, timer, host, `futures.first` over other futures, or a weak reference's referent being disposed: `disposed()` and `disposing()`), `weakRef` (its target, until disposed or, for a call's, returned), `guard` (`defer`), `resource` (a host value of a disposable extern type), `mock`, `execution`.
 - `ready`: executions in the order they became ready.
@@ -143,7 +146,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable` and `disposal` (§7) |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
-| `@JsonName`, `@JsonSkip` (§3.16, §9) | `annotations` on the field's type entry, read by the boundary conversion and `json` |
+| `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; the codecs are compiled from the checker's JSON forms, which read them |
 | Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` an `Optional` variant |
 | Array literal and spread (§2) | `array` with item and spread elements; a spread spreads the array a call to its operand's `iterate` gives |
 | Map literal (§2) | `map` for a `Map`, a spread spreading the `(key, value)` tuples `iterate` gives; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
@@ -159,7 +162,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Default parameters (§3.3) | generated entries that evaluate the defaults and call the full function |
 | Rest parameter (§3.3) | the caller builds an `array` |
 | `return`, last expression (§3.3) | `return` |
-| `extern fn`, extern constant (§3.6) | `extern` function entries; reading a constant is a `call` |
+| `extern fn`, extern constant (§3.6) | `extern` function entries; reading a constant is a `call`; a host's is called through its wrapper, which converts to and from `Json` (Externs) |
 | `let`, `const`, assignment (§3.4) | registers; `move` or a write through a cell |
 | Top-level `const` (§3) | computed while compiling into a constant; reading one is a `constant` instruction, like a literal; a lambda in one is a closure constant of no captures, its function an entry of its own |
 | Block end, `break`, `continue` (§3.4, §4) | `release` of the block's registers, then `jump` where needed |
@@ -202,14 +205,14 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `defer f` (§7) | `defer`, into an unnamed register of the block |
 | `WeakRef`, `deref()`, `disposed()` (§7) | calls to prelude externs |
 | `worker.disposing()` (§7) | `currentCall` at the function's entry, into a hidden variable a nested function captures like any other, then a call to the prelude's private `_disposing` |
-| `sendRevertible`, `Revertible<T>` (§6) | library code: a `Revertible<T>` is a `Shared` of its retraction, a `fn() -> unit`, which its declared `dispose` calls; an inbox retracts through a weak reference to itself |
+| `sendRevertible`, `Revertible<T>` (§6) | library code: a `Revertible<T>` is a `Shared` of its retraction, a `fn() -> unit`, which its declared `dispose` calls; an inbox retracts through a weak reference to itself, a host queue through its host (a host handle, docs/arch/boundary.md) |
 | `select`, `await select` (§8) | the case futures in source order, then `select`; per case: the future, the registers its expression created (`holds`), `bind` for `as`, and the target, where the case's `as` is a target its body declares; `otherwise` for the non-blocking form, which is `else`'s body. The `holds` are unnamed registers of the enclosing block, so the winner's last until it ends |
 | Prelude and standard-library functions: `push`, `at`, `get`, `length`, … (§3.8) | calls to their entries; runtime-backed ones are externs |
 | Versioning (§5) | an instance references its Definition's content hash for its whole life |
 | Disposable cycles (§7) | nothing in the code; the release that leaves them held by nothing disposes them (Holders) |
-| `main` (§9) | `Definition.main` |
-| Host starts an instance, operates a panicked one (§3.12, §9) | the runtime's host API over Definitions and snapshots; the snapshot's `status` records panics and outcomes |
+| `main` (§9) | `Definition.main`, the default start: `main`'s entry in `starts` |
+| Host starts an instance, operates a panicked one (§3.12, §9) | a start entry per startable function, listed in `starts` by key: the function's body with its arguments decoded from `Json` and every return encoded; the runtime's host API over Definitions and snapshots, the snapshot's `status` recording panics, outcomes and termination |
 | `spawn f(args)` (§9) | `spawn` with the call's callee, a function or the value of a sendable function type, and its arguments, a method's receiver first, all by value |
-| Values crossing the host boundary (§9) | driven by the extern entries' types and the type table |
+| Values crossing the host boundary (§9), `json.encode`, `json.decode` | compiled codecs: the body of each `json.encode<T>` and `json._decodeAt<T>` instance, written from `T`'s JSON form (docs/arch/boundary.md) |
 | `@Suite`, `mock`, `testing.start`, `handle<T>()` (§10) | function annotations; natives over the function table and the host API |
 | `crashEveryAwait` (§10) | an option of each instance, kept in its snapshot: every segment runs twice before it commits |
