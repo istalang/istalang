@@ -72,19 +72,24 @@ export function lowerStatement(context: FunctionContext, node: Statement | Inval
 
 /**
  * Lowers `block`; the register holding its value. Its end releases what its variables hold, after
- * keeping what lasts until the function returns.
+ * keeping what lasts until the function returns, and the temporaries of its last expression, which
+ * is a statement too, except the value.
  */
 export function lowerBlock(context: FunctionContext, block: Block): Register {
-  const { result, scope } = context.variables.inBlock(() => lowerBody(context, block));
-  if (scope.declared.length === 0) {
-    return result;
-  }
+  const { result: lowered, scope } = context.variables.inBlock(() =>
+    context.code.allocating(() => lowerBody(context, block)),
+  );
+  const { result, registers } = lowered;
   let value = result;
   if (scope.declared.includes(result)) {
     value = context.code.allocate();
     context.code.emit({ kind: 'move', span: block.span, dst: value, src: result });
   }
+  const temporaries = context.variables.temporariesAmong(
+    registers.filter((register) => register !== result),
+  );
   endScope(context, scope, block.span);
+  release(context, temporaries, block.span);
   return value;
 }
 

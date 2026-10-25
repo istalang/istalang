@@ -1,0 +1,33 @@
+# outcome: "check, lease 1, disposed 1, check, lease 2, disposed 2, check, after"
+# A block's last expression is a statement like any other (§7): the temporaries it makes are
+# released when the block ends, here at the end of each loop pass, before the next check.
+
+struct LeaseState:
+  log: Shared<Array<string>>
+  id: int
+
+type Lease = Shared<LeaseState>
+
+fn note(log: Shared<Array<string>>, entry: string):
+  log$ = [...log$, entry]
+
+fn dispose(self: Lease):
+  note(self$.log, "disposed " + string(self$.id))
+
+fn checked(log: Shared<Array<string>>, n: int) -> bool:
+  note(log, "check")
+  n < 2
+
+fn opened(lease: Lease) -> int:
+  note(lease$.log, "lease " + string(lease$.id))
+  lease$.id
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = Shared(empty)
+  let n = 0
+  while checked(log, n):
+    n += 1
+    opened(Shared(LeaseState{log, id: n}))
+  note(log, "after")
+  log$.join(", ")
