@@ -1,0 +1,7 @@
+# The futures module (spec §3.8): waiting on several futures at once.
+#
+# `first` is the module's one runtime primitive: it races a list of futures, resolving with the
+# position and value of the first to resolve, so code that waits on a number of futures known only
+# when it runs is written over it.
+
+extern fn first<T>(futures: Array<Future<T>>) -> Future<(int, T)>

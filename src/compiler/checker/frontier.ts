@@ -11,7 +11,6 @@ export const frontier = {
   elementReference: 'Passing an element by reference',
   unwrapPart: "Passing a '$' value, or part of one, by reference",
   sharedValueField: "Reading a 'Shared' value as '.value' (write '$')",
-  heldFuture: 'A future that is neither awaited nor returned',
   hostExtern: 'Calling an extern function the host implements',
   externConstant: 'An extern constant',
   spreadArgument: 'A spread argument',

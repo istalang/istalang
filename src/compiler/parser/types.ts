@@ -41,7 +41,7 @@ export function parseParameterType(parser: Parser): TypeNode {
 function parsePrimaryType(parser: Parser): TypeNode {
   switch (parser.cursor.kind) {
     case 'identifier':
-      return parseNamedType(parser);
+      return atSendableFunction(parser) ? parseFunctionType(parser) : parseNamedType(parser);
     case '(':
       return parseTupleType(parser);
     case 'fn':
@@ -76,13 +76,31 @@ function parseTupleType(parser: Parser): TypeNode {
   });
 }
 
+/** Whether the cursor stands at `sendable` before a function type's `fn` or `async` (§3.14). */
+function atSendableFunction(parser: Parser): boolean {
+  const next = parser.cursor.kindAt(1);
+  return parser.atWord('sendable') && (next === 'fn' || next === 'async');
+}
+
+/** `fn(A) -> R`, `async fn(A) -> R`, each maybe after `sendable`. */
 function parseFunctionType(parser: Parser): TypeNode {
   const { cursor } = parser;
   const { start } = cursor.token.span;
+  const isSendable = parser.atWord('sendable');
+  if (isSendable) {
+    cursor.advance();
+  }
   const isAsync = parseFunctionKeyword(parser);
   const parameters = parseParameterTypes(parser);
   const returnType = cursor.eat('->') === undefined ? undefined : parser.type();
-  return { kind: 'FunctionType', span: parser.spanFrom(start), isAsync, parameters, returnType };
+  return {
+    kind: 'FunctionType',
+    span: parser.spanFrom(start),
+    isSendable,
+    isAsync,
+    parameters,
+    returnType,
+  };
 }
 
 /** `(A, &B)`: a function type's parameter types. */

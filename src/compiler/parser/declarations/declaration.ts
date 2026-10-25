@@ -49,7 +49,7 @@ function topLevelKeyword(parser: Parser): TopLevelKeyword | undefined {
     case 'struct':
       return named ? kind : undefined;
     case 'identifier':
-      return named && parser.textOf(cursor.token) === 'type' ? 'type' : undefined;
+      return named && parser.atWord('type') ? 'type' : undefined;
     default:
       return undefined;
   }

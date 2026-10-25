@@ -1,0 +1,40 @@
+# outcome: 3
+# spawn (§9) starts a call as a new instance and goes on at once, from any function: a top-level
+# function, async or not, a method, an instance of a generic function, or a value of a sendable
+# function type, such as a lambda or local function capturing only sendable values. Its sendable
+# arguments are copied into the new instance, which runs to its own outcome.
+
+import * as time from 'time'
+
+struct Order:
+  id: int
+  items: Array<string>
+
+fn total(self: Order) -> int:
+  self.items.length()
+
+async fn ship(order: Order) -> Future<string>:
+  await time.delay(1ms)
+  string(order.id) + ":" + order.items.join(",")
+
+fn echo<T>(value: T) -> T:
+  value
+
+fn startAll(order: Order):
+  spawn ship(order)
+  spawn order.total()
+
+async fn main() -> Future<int>:
+  const order = Order{id: 7, items: ["a", "b"]}
+  startAll(order)
+  spawn echo<string>("hi")
+  const bonus = 10
+  const priced = fn(n: int): n + bonus
+  spawn priced(order.id)
+  fn named(times: int) -> int:
+    times * bonus
+  spawn named(2)
+  const stored: sendable fn(int) -> int = priced
+  spawn stored(1)
+  await time.delay(2ms)
+  3

@@ -11,8 +11,8 @@
  * Natives the runtime backs need the running instance, so each call also receives a context: the
  * function-table entry being called and the Definition's types (for building typed values), the time the segment
  * started, which is what `now()` means (§5), the futures the runtime creates for an extern that
- * returns one (§3.6), and the instance's shared cells. A native never holds the context beyond its
- * call.
+ * returns one (§3.6), the instance's shared cells, and its slots (§6). A native never holds the
+ * context beyond its call.
  */
 
 import type { FunctionDefinition } from '../definition/functions.ts';
@@ -30,6 +30,13 @@ export interface NativeCells {
   readonly write: (cell: Value, value: Value) => void;
 }
 
+/** The running instance's slots (§6): every operation returns a handle to its future. */
+export interface NativeSlots {
+  /** A new, empty slot. */
+  readonly create: () => Value;
+  readonly operate: (slot: Value, operation: 'put' | 'take' | 'read', value?: Value) => Value;
+}
+
 export interface NativeContext {
   /** The entry called: its extern's declared types, or a code entry a mock replaced. */
   readonly entry: FunctionDefinition;
@@ -41,6 +48,8 @@ export interface NativeContext {
   readonly timer: (at: bigint) => Value;
   /** A future already resolved with `value`. */
   readonly resolved: (value: Value) => Value;
+  /** A future of the first of `futures` to resolve, with its position (`futures.first`, §3.8). */
+  readonly first: (futures: readonly Value[]) => Value;
   /**
    * Replaces the value of argument `position`, which the extern takes by `&` (§3.7): the native
    * receives such an argument's value, and writes the changed one back here.
@@ -49,6 +58,7 @@ export interface NativeContext {
   /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
   readonly trace: () => string;
   readonly cells: NativeCells;
+  readonly slots: NativeSlots;
 }
 
 export type Native = (argumentValues: readonly Value[], context: NativeContext) => Value;

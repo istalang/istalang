@@ -26,7 +26,7 @@ function load(natives: Natives = preludeNatives) {
     ...program,
     run: () => {
       instances += 1;
-      return program.start(`instance-${instances}`);
+      return program.start(`instance-${instances}`).state;
     },
   };
 }

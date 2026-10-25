@@ -30,8 +30,12 @@ export interface ParenthesizedType extends NodeOf<'ParenthesizedType'> {
   readonly inner: TypeNode;
 }
 
-/** `fn(A) -> R` or `async fn(A)`; an absent return type means unit. */
+/**
+ * `fn(A) -> R` or `async fn(A)`, either maybe `sendable` (§3.14); an absent return type means
+ * unit.
+ */
 export interface FunctionType extends NodeOf<'FunctionType'> {
+  readonly isSendable: boolean;
   readonly isAsync: boolean;
   readonly parameters: readonly TypeNode[];
   readonly returnType: TypeNode | undefined;

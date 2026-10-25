@@ -27,7 +27,8 @@ export function typeText(type: Type): string {
       const parameters = type.parameters.map(
         (parameter) => `${parameter.reference ? '&' : ''}${typeText(parameter.type)}`,
       );
-      return `${type.isAsync ? 'async ' : ''}fn(${parameters.join(', ')}) -> ${typeText(type.result)}`;
+      const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
+      return `${prefix}fn(${parameters.join(', ')}) -> ${typeText(type.result)}`;
     }
     case 'parameter':
       return type.declaration.kind === 'TraitDeclaration' ? 'Self' : type.declaration.name.text;

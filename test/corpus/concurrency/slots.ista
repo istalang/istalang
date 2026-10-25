@@ -1,0 +1,22 @@
+# outcome: "1 222 34"
+# A slot (§6): an operation that can complete when it is called does so at once, and the others
+# wait in one queue, served in the order they came. When a value arrives, every waiting read
+# before the first waiting take yields it, and that take empties the slot; a put waiting on a full
+# slot fills it once a take empties it.
+
+async fn main() -> Future<string>:
+  const s = Slot.create<int>()
+  await s.put(1)
+  const first = await s.take()
+  const early = s.read()
+  const later = s.read()
+  const taking = s.take()
+  await s.put(2)
+  const second = await taking
+  const readTwice = string(await early) + string(await later)
+  _ = s.put(3)
+  const waitingPut = s.put(4)
+  const third = await s.take()
+  await waitingPut
+  const fourth = await s.take()
+  string(first) + " " + readTwice + string(second) + " " + string(third) + string(fourth)

@@ -80,7 +80,10 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
     i.callee.kind === 'function'
       ? directCallProblem(tables.functions[i.callee.function], i.arguments)
       : undefined,
-  spawn: (tables, i) => spawnProblem(tables.functions[i.function], i.arguments.length),
+  spawn: (tables, i) =>
+    i.callee.kind === 'function'
+      ? spawnProblem(tables.functions[i.callee.function], i.arguments.length)
+      : undefined,
   currentCall: asyncOnly,
   await: waitsOnlyInAsync,
   select: waitsOnlyInAsync,

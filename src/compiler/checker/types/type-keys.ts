@@ -45,7 +45,8 @@ export class TypeKeys {
         const parameters = type.parameters.map(
           (parameter) => `${parameter.reference ? '&' : ''}${key(parameter.type)}`,
         );
-        return `${type.isAsync ? 'async ' : ''}fn(${parameters.join(',')})->${key(type.result)}`;
+        const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
+        return `${prefix}fn(${parameters.join(',')})->${key(type.result)}`;
       }
       default: {
         const unhandled: never = type;

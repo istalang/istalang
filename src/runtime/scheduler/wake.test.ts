@@ -116,7 +116,7 @@ describe('advancing an instance', () => {
       "import * as runtime from 'runtime'\nasync fn main():\n  await runtime.commit()\n  7",
     );
     const test = testRuntime();
-    expect(test.runtime.deploy(text).start('i')).toEqual({ kind: 'finished', outcome: 7n });
+    expect(test.runtime.deploy(text).start('i').state).toEqual({ kind: 'finished', outcome: 7n });
     expect(test.store.commits).toHaveLength(2);
   });
 
@@ -126,7 +126,7 @@ describe('advancing an instance', () => {
     const store = recordingStore();
     const clock = manualClock();
     const first = testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
-    expect(first).toEqual({ kind: 'waiting', until: 5n });
+    expect(first.state).toEqual({ kind: 'waiting', until: 5n });
     const second = testRuntime({ store, clock });
     expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
     expect(uninterrupted).toEqual({ kind: 'finished', outcome: 5n });
@@ -140,7 +140,7 @@ describe('advancing an instance', () => {
     const store = recordingStore();
     const clock = manualClock();
     const first = testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
-    expect(first).toEqual({ kind: 'waiting', until: 5n });
+    expect(first.state).toEqual({ kind: 'waiting', until: 5n });
     const second = testRuntime({ store, clock });
     expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
   });
@@ -201,9 +201,9 @@ describe('advancing an instance', () => {
   it('waits until the earliest timer, and wakes to nothing new before it is due', () => {
     const test = testRuntime();
     const program = test.runtime.deploy(compiledText(childAndMain));
-    expect(program.start('early')).toEqual({ kind: 'waiting', until: 10n });
+    expect(program.start('early').state).toEqual({ kind: 'waiting', until: 10n });
     test.clock.set(9n);
-    expect(test.runtime.wake('early')).toEqual({ kind: 'waiting', until: 10n });
+    expect(test.runtime.wake('early').state).toEqual({ kind: 'waiting', until: 10n });
     expect(test.store.commits).toHaveLength(1);
   });
 
@@ -219,7 +219,7 @@ describe('advancing an instance', () => {
     const test = testRuntime();
     const state = startToEnd(test, text);
     expect(state).toMatchObject({ kind: 'panicked', message: 'late' });
-    expect(test.runtime.wake('test')).toEqual(state);
+    expect(test.runtime.wake('test').state).toEqual(state);
     const [waiting, panicked] = committed(test.store.commits);
     expect(panicked?.objects).toEqual(waiting?.objects);
     expect(panicked?.status).toMatchObject({ kind: 'panicked', segmentStartedAt: 1n });

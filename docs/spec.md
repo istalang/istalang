@@ -24,7 +24,7 @@ u$.name = "x"                      # read or write the shared value with $
 
 int  float  bool  string  unit  never  T?  (A, B)
 Array<T>  Map<K, V>  Range  Future<T>  Slot<T>  Shared<T>  WeakRef<T>
-fn(A) -> R    async fn(A) -> R    { sku: string; qty: int }    # anonymous struct type
+fn(A) -> R    async fn(A) -> R    sendable fn(A) -> R    { sku: string; qty: int }    # anonymous struct type
 ```
 
 **Structs, enums and annotations**
@@ -147,7 +147,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 - **Continuation.** A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal, so a call or literal may span lines. Inside braces that list fields or variants, as in `{ sku: string; qty: int }`, a line break separates entries just as `;` does. There is no backslash continuation.
 - **Trailing commas** are allowed in every comma-separated list.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
-- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Three more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `from` before an import's path, and `sendable` right after `extern`. So `T.from` (§3.10) and a field named `type` (§9) are valid.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Three more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `from` before an import's path, and `sendable` right after `extern` or before a function type's `fn` or `async`. So `T.from` (§3.10) and a field named `type` (§9) are valid.
 
 Every expression has a static type, and there is no `any` type. There are no implicit conversions, with one exception: a `T` is wrapped into `T?` wherever an optional is expected (§3.11).
 
@@ -242,9 +242,10 @@ A `struct{…}` literal takes its type from context: the expected type where the
 - a primitive;
 - an extern struct declared `sendable` (§3.8) whose type arguments are all sendable;
 - a user struct or enum whose fields are all sendable, or a tuple whose elements are. This is derived automatically, and a recursive type is sendable unless something in its cycle isn't;
-- a type parameter constrained `is Sendable`.
+- a type parameter constrained `is Sendable`;
+- a sendable function type, `sendable fn(A) -> R` (§3.14). It refers to code, so it goes only to an instance of the same program, through `spawn`: an extern declaration, or `json`, whose types contain one is a compile error.
 
-Futures, slots, `Shared` values, weak references and function values are never sendable, and neither is any value that contains one, such as an inbox. They therefore never leave the instance that created them: `spawn` arguments and extern declarations can't contain them, which is a compile error.
+Futures, slots, `Shared` values, weak references and values of plain function types are never sendable, and neither is any value that contains one, such as an inbox. They therefore never leave the instance that created them: `spawn` arguments and extern declarations can't contain them, which is a compile error.
 
 ### 3.2 Slots and inboxes
 
@@ -456,7 +457,7 @@ The **standard library** is a set of modules, imported explicitly, for example `
 | `runtime` | The instance's id and version, and `commit()`, an already-resolved future: `await runtime.commit()` commits without waiting |
 | `inbox` | `Inbox<T>`, a FIFO message queue built on slots, with `send`, `sendRevertible` and `receive`, and `Revertible<T>`, the holder of a revertible message (§6) |
 | `collections` | `WeakMap<K, V>`, which keeps an entry only while its key is alive; built on `WeakRef` and `disposed()` |
-| `futures` | `all`, `any`, `race`, `allSettled`, `quorum(n, fs)`, `timeout(f, d)`, `retry`; built on one runtime primitive, `first(fs)`, that races a list of futures |
+| `futures` | `all`, `any`, `race`, `allSettled`, `quorum(n, fs)`, `timeout(f, d)`, `retry`; built on one runtime primitive, `first<T>(fs: Array<Future<T>>) -> Future<(int, T)>`, that races a list of futures: it resolves with the position and value of the first to resolve, the lowest position among futures that resolved together, panics on an empty list, and disposes none of them |
 | `rpc` | `create<P, R>()` makes a method. `onMessage(handler)` serves calls, the handler's return value being the reply, and `await method.call(msg)` calls it, returning `Result<R>`. Each reply travels in a one-shot slot. |
 | `fanout` | `create<M>()` makes a fan-out. `subscribe(handler)` returns a future that runs the handler for each message until it is disposed. `bus.send(msg)` delivers a message to every subscriber, and `bus.sendRevertible(msg)` lets it be retracted. Messages form one stream of slots that every subscriber reads. |
 | `testing` | Test modules only: `mock`, `start`, `handle<T>()`, and the test library (§10) |
@@ -707,7 +708,7 @@ fn _normalize(id: string) -> string:     # private to this module
 - **The toolchain's paths.** The `ista` toolchain resolves a path as names separated by `/`, with the `.ista` extension implied. A path starting with `./` or `../` is relative to the importing file. Any other path names a standard-library module, or a module under the project root: the directory holding `ista.json` (§11), or the directory the toolchain runs in when there is none. A path that matches both a standard-library module and a project file is therefore an error.
 - **Project sources.** Without explicit files, `ista check` checks every `.ista` file under the project root, skipping the project's `vendor/` folder (§11), every `node_modules/` folder and hidden directories.
 - **Cycles.** Modules contain only declarations, never top-level code, so import cycles are allowed.
-- **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import. Only the arguments' own types count, not their type arguments, only exported functions are found this way, and a call through a namespace (`m.f(x)`) looks only in `m`.
+- **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import. Only the arguments' own types count, not their type arguments, with one exception: a `Shared<T>` counts `T`'s module too, since `Shared<T>` is how a module makes a resource type of its own (§7), so `Inbox<T>`, a `Shared<InboxState<T>>`, finds the `inbox` module's functions. Only exported functions are found this way, and a call through a namespace (`m.f(x)`) looks only in `m`.
 - **Externs** are bound by module-qualified name, so two modules can declare externs with the same short name.
 - **The prelude** is imported implicitly into every module. A module's top-level declarations and imports can't reuse a prelude name, with one exception: a top-level function, declared or imported, joins the prelude's overloads of its name, as `fn add(left: Time, right: Duration)` does (§3.9).
 
@@ -773,7 +774,12 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 - **Fields of function types.** `x.f(…)` calls a field `f` of a function type when `x`'s type has no method `f`. When it has both, the call is ambiguous, which is a compile error; `(x.f)(…)` calls the field.
 - **Equality.** Two function values are equal when they run the same function with equal captures. A captured `let` is a `Shared` handle, so it compares by identity (§3.1).
 
-**Functions stay in their instance.** Function values aren't sendable (§3.1): they refer to code, and possibly to captured `Shared` values, so they can't be passed to `spawn` or to an extern function. Code never travels between instances, which also keeps it from crossing versions.
+**Sendable function types.** A plain function value isn't sendable (§3.1): it may capture a `Shared` value, such as a captured `let`. `sendable fn(A) -> R` and `sendable async fn(A) -> R` are the function types whose values capture only sendable values, so they can be spawned and sent to `spawn`:
+
+- A function value has a sendable function type when every capture's type is sendable. A captured `let` is a `Shared`, so a closure capturing one has a plain function type; a top-level or static function named as a value captures nothing, so its type is sendable.
+- A `sendable fn(A) -> R` fits wherever an `fn(A) -> R` is expected, never the reverse.
+- It satisfies `Sendable`, so it may be a `spawn` argument or part of sendable data. `spawn f(args)` accepts any expression of a sendable function type as `f`; its captures are copied into the new instance with the arguments (§9).
+- It refers to code, so it never leaves for the host: an extern declaration or `json` whose types contain one is a compile error. Code reaches only instances of the same program, which keeps it from crossing versions (§5).
 
 ### 3.15 Tuples
 
@@ -822,7 +828,7 @@ struct GithubUser:
 
 ### 3.17 Type aliases
 
-`type` gives an existing type another name: `type UserId = string`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(string, T)>`. An alias can't refer to itself, directly or through other aliases; a recursive type is a struct or an enum (§3.1). A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: string }`, which the type checker keeps apart from `string`.
+`type` gives an existing type another name: `type UserId = string`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(string, T)>`. A static function declared on an alias, `fn Inbox.create<T>()`, is the aliased type's, so `type Inbox<T> = Shared<InboxState<T>>` gives `Shared<InboxState<T>>` a `create`. An alias can't refer to itself, directly or through other aliases; a recursive type is a struct or an enum (§3.1). A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: string }`, which the type checker keeps apart from `string`.
 
 ## 4. Expressions and control flow
 
@@ -916,7 +922,7 @@ async fn remindLater(role: string):
     notifications(role).send(Notice{text: "Reminder"})
 ```
 
-**Versioning.** An instance's code is fixed for its whole lifetime: the definition is snapshotted when the instance is created and persisted with it. Nothing that refers to code or to an instance's memory is sendable (§3.1), so nothing crosses between versions. When a new version is deployed, the runtime starts its `main`. Everything else about the transition, such as keeping an old version's services running, is up to the program, and how what the host provides deals with versions is up to the host.
+**Versioning.** An instance's code is fixed for its whole lifetime: the definition is snapshotted when the instance is created and persisted with it. Nothing that refers to an instance's memory is sendable (§3.1), and what refers to code, a sendable function value, goes only to an instance of the same program, through `spawn`, so nothing crosses between versions. When a new version is deployed, the runtime starts its `main`. Everything else about the transition, such as keeping an old version's services running, is up to the program, and how what the host provides deals with versions is up to the host.
 
 ## 6. Slots and inboxes
 
@@ -928,7 +934,12 @@ async fn remindLater(role: string):
 | `slot.take()` | the slot is full | empties it and yields the value |
 | `slot.read()` | the slot is full | yields the value and leaves it there |
 
-Competing takes are atomic: when several executions wait to `take` from one slot, exactly one gets each value, the one that has waited longest. When the runtime or the host fills a slot, it wakes the waiters even if the whole instance is suspended and persisted, which only the runtime can do. Awaiting any of these operations commits, like every `await`.
+- **One queue.** A slot's waiting operations, of every kind, form one queue, longest waiter first. Competing takes are therefore atomic: exactly one gets each value, the one that has waited longest; waiting puts fill the slot in the same order.
+- **Serving the queue.** When a value arrives, the waiters are served in queue order: every `read` before the first `take` yields the value, and that `take` empties the slot. The next waiting `put` then fills it again, and the queue goes on.
+- **At once when it can.** An operation that can complete when it is called (a `put` on an empty slot, a `take` or `read` on a full one) completes then, inside the caller's segment, and its future is already resolved.
+- **Awaiting still commits.** Awaiting any of these futures commits, like every `await`, even one already resolved, and the execution then runs after every execution that became ready before it.
+
+When the runtime or the host fills a slot, it wakes the waiters even if the whole instance is suspended and persisted, which only the runtime can do.
 
 **Futures.** A `Future<T>` is the read-only view of a slot: it can only be waited on. Every wait in the language is a wait on a slot, filled by one of three producers:
 
@@ -938,7 +949,7 @@ Competing takes are atomic: when several executions wait to `take` from one slot
 
 `await` and `select` work only on futures. A future resolves once and stays resolved.
 
-**Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s. It is created with `Inbox.create<T>()`:
+**Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s, and written in the language. It is `type Inbox<T> = Shared<InboxState<T>>`, an instantiation the `inbox` module makes disposable by declaring its `dispose` (§7), so an inbox is a handle that a `WeakRef` can watch. It is created with `Inbox.create<T>()`:
 
 ```python statements
 const box = Inbox.create<Verdict>()
@@ -949,7 +960,8 @@ const next: Verdict = await box.receive()
 
 - **Order.** Messages come out in commit order: the order in which the senders' segments committed. Sends within one segment keep their program order.
 - **Receivers.** Each message goes to exactly one receiver. When several are waiting, the one that has waited longest gets the next message.
-- **Capacity.** An inbox is unbounded, so `send` never waits.
+- **Capacity.** An inbox is unbounded, so `send` never waits; it returns `unit`.
+- **A receive is a wait on a slot.** `receive()` returns the future of a `take`, not of an async call, so a receive that loses a `select` and is released consumes nothing.
 - **Durable messages** live until they are received, or until the inbox is disposed.
 - **Revertible messages** are held weakly by the inbox (§7). The only strong reference is the `Revertible<T>` holder that `sendRevertible` returns: kept in `_`, it lasts until the sending block ends, with `fn _` until the sending function ends, and stored elsewhere, as long as it is held there. When the holder is released while the message is still unread, the message is retracted.
 - **Receiving upgrades a revertible message** to a strong reference, so once received, it can't be retracted. Receivers skip retracted entries, and everything else keeps its order.
@@ -1071,7 +1083,7 @@ async fn processAll(jobs: Array<Job>) -> Future<Array<Outcome>>:
 
 `await select` waits until one of several futures resolves, then runs that case. It is an expression: its value is the value of the winning case's body.
 
-```python
+```python statements
 const got: Verdict? = await select:
     case verdicts.receive() as v:
         v
@@ -1091,7 +1103,8 @@ The rules:
 - **Each case holds what its expression creates.** Futures, slots and revertible holders created while evaluating a case expression are held by that case.
 - **Losers are released.** Once the winner is determined, every other case's holdings are released and, if nothing else holds them, disposed: async calls are aborted, pending takes are dropped without consuming, and revertible sends are retracted. A future taken from a variable declared outside the `select` is held by that variable, so it survives and can be used again.
 - **The winner's holdings move to the block enclosing the `select`,** so they live until it ends.
-- **Same type.** All case bodies must have the same type, and that type is the type of the `select`.
+- **Same type.** Case bodies agree on one type as the branches of `if` and `match` do (§4), and that type is the type of the `select`.
+- **A case without `as` discards its value,** so a future whose value must be used (§7), such as a `Result`, needs `as` to bind it.
 
 **Future reuse.** A future resolves once and stays resolved. Create a deadline once, outside a loop, and every iteration races against the same deadline:
 
@@ -1105,9 +1118,9 @@ while not done:
             break
 ```
 
-**Non-blocking form.** A `select` without `await` must have an `else:` case. If no future has resolved at evaluation time, `else` runs. It replaces a separate "try receive" operation:
+**Non-blocking form.** A `select` without `await` must have an `else:` case. If no future has resolved at evaluation time, `else` runs. It never waits, so it may stand in a plain `fn` too. It replaces a separate "try receive" operation:
 
-```python
+```python statements
 const cancelled: bool = select:
     case cancels(id).receive():
         true
@@ -1119,7 +1132,11 @@ const cancelled: bool = select:
 
 Every program has exactly one `async fn main()`. The runtime starts it when a version is deployed. When `main` returns, everything it holds is disposed (§7).
 
-**spawn.** `spawn f(args)` starts `f` as a new, independent workflow instance with its own snapshot, then continues immediately. It is a statement of type `unit`. The arguments are copied into the new instance, so they must be sendable (§3.1). The new instance runs until it finishes by itself, on the version it started with, and its return value is recorded as its outcome, which the host can see. Concurrency inside an instance needs no `spawn`: an async call that isn't awaited right away already runs alongside its caller.
+**spawn.** `spawn f(args)` starts `f` as a new, independent workflow instance with its own snapshot, then continues immediately. It is a statement of type `unit`, and it doesn't wait, so a plain `fn` may spawn too. The arguments are copied into the new instance, so they must be sendable (§3.1). The new instance runs until it finishes by itself, on the version it started with, and its return value is recorded as its outcome, which the host can see. Concurrency inside an instance needs no `spawn`: an async call that isn't awaited right away already runs alongside its caller.
+
+- **What can be spawned.** `f` is a top-level function, async or not, a method or static function, an instance of a generic one, or any value of a sendable function type (§3.14), whose captures are copied with the arguments. An extern can't be spawned, and neither can a function with a `&` parameter.
+- **Effects commit with the segment.** The new instance exists once the segment that spawned it commits; a segment that is discarded spawned nothing. Each spawned instance is named after its parent and a count of the parent's spawns, `<parent>/<n>`, and is written before the parent's commit, so a segment that re-runs finds it already there and doesn't spawn it twice.
+- **Options are inherited.** An instance spawned by one that runs with `crashEveryAwait` (§10) runs with it too.
 
 ```python
 async fn main():
@@ -1132,10 +1149,12 @@ async fn main():
 
 - **Start** an instance of any function, on the version it chooses. Everything the function holds is disposed when it returns.
 - **Operate** panicked instances: inspect one, retry it from its last snapshot, or terminate it (§3.12).
+- **Inspect** any instance: its state (waiting, panicked or finished) and where each of its executions waits, by waypoint (§10) or source location.
+- **Learn of spawned instances:** advancing an instance tells the host which instances it spawned, so the host runs them too.
 
 Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`.
 
-**Running a program locally.** `ista run <entry>` is a host for development. It compiles the program whose entry module is `entry`, which must declare `async fn main()`, and runs nothing if any module has errors. It then runs `main` in a new instance and prints the outcome as JSON, using the mapping below. A panic prints the panic's message and trace instead. Two options stand in for what a real host provides:
+**Running a program locally.** `ista run <entry>` is a host for development. It compiles the program whose entry module is `entry`, which must declare `async fn main()`, and runs nothing if any module has errors. It then runs `main` in a new instance, and every instance it spawns, theirs included, until all of them have settled, and prints `main`'s outcome as JSON, using the mapping below. A panic prints the panic's message and trace instead; a spawned instance that panics prints its name, message and trace to the error stream, and the run exits with a failure. Two options stand in for what a real host provides:
 - `--store <dir>` keeps the compiled program and every commit of the instance in a directory, so a run can stop and resume: `ista run --store <dir> --resume <instance>` continues an instance from its last commit, on the program it started with. A run with a store prints its instance's name to the error stream.
 - `--host <module>` loads a JavaScript module that exports the program's extern implementations.
 

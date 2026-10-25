@@ -163,6 +163,11 @@ export class Parser {
     return textOf(this.#source, token.span);
   }
 
+  /** Whether the cursor stands at `word`, a keyword only in one position, a name elsewhere (§2). */
+  atWord(word: 'from' | 'type' | 'sendable'): boolean {
+    return this.cursor.at('identifier') && this.textOf(this.cursor.token) === word;
+  }
+
   /** The column layout sees a token at. For the first token on a line, that is the line's indentation. */
   columnOf(token: { readonly span: Span }): number {
     return lineMapOf(this.#source).positionAt(token.span.start).column;

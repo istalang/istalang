@@ -1,0 +1,22 @@
+# error: 5606 at 11:20
+# error: 5606 at 13:25
+# error: 5001 at 17:35
+# error: 5001 at 18:8
+# A sendable function type (§3.14) holds code, which only `spawn` sends, so an extern's types may
+# not contain one; and a function value capturing a `let`, which is a `Shared`, has a plain
+# function type, which doesn't fit where a sendable one is expected.
+
+struct Handler { run: sendable fn(int) -> int }
+
+extern fn register(f: sendable fn(int) -> int)
+
+extern fn handlers() -> Array<Handler>
+
+fn uses():
+  let count = 0
+  const f: sendable fn() -> int = fn(): count
+  sent(fn(): count)
+  count += 1
+
+fn sent(f: sendable fn() -> int):
+  _ = f

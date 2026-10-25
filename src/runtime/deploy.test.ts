@@ -19,7 +19,7 @@ describe('deploying a Definition', () => {
     const second = runtime.deploy(text);
     expect(store.definitions).toEqual([first.hash]);
     expect(second.hash).toBe(first.hash);
-    expect(second.start('again')).toEqual({ kind: 'finished', outcome: subsetOutcome });
+    expect(second.start('again').state).toEqual({ kind: 'finished', outcome: subsetOutcome });
   });
 
   it('writes it again for a fresh runtime whose store lacks it', () => {

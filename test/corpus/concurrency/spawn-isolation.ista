@@ -1,0 +1,25 @@
+# outcome: "3 2 7"
+# A spawned instance runs on its own snapshot (§9): what it does to the copies of its arguments
+# and captures never reaches the parent, and what the parent does after the spawn never reaches it.
+
+import * as time from 'time'
+
+struct Cart:
+  items: Array<int>
+
+async fn grow(cart: Cart):
+  let mine = cart
+  mine.items.push(100)
+  mine.items.push(200)
+  await time.delay(1ms)
+
+async fn main() -> Future<string>:
+  let cart = Cart{items: [1, 2]}
+  spawn grow(cart)
+  cart.items.push(3)
+  await time.delay(5ms)
+  const counter = 7
+  const peek = fn(): counter
+  const sent: sendable fn() -> int = fn(): 1
+  spawn sent()
+  string(cart.items.length()) + " " + string(cart.items[1]) + " " + string(peek())

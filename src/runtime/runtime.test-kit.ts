@@ -5,7 +5,7 @@
 
 import { stdNatives } from '../stdlib/natives.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';
-import type { InstanceState } from './instance-state.ts';
+import type { Advanced } from './instance-state.ts';
 import type { NativeContext, Natives } from './natives.ts';
 import type { StartOptions } from './scheduler/instance.ts';
 import { type Settled, settle } from './settle.ts';
@@ -76,21 +76,34 @@ export function testRuntime({
   };
 }
 
-/** Moves time to each timer the instance waits for and wakes it, until it no longer waits. */
-export function runToEnd(
+/**
+ * Moves time to each timer the instance, or one it spawned, waits for and wakes them, until none
+ * waits any more; how each settled, the instance first.
+ */
+export function settleAll(
   { runtime, clock }: TestRuntime,
   instance: string,
-  initial: InstanceState,
-): Exclude<Settled, { kind: 'stuck' }> {
-  const steps = settle(() => runtime.wake(instance), initial);
+  initial: Advanced,
+): ReadonlyMap<string, Settled> {
+  const steps = settle((name) => runtime.wake(name), { instance, advanced: initial });
   let step = steps.next();
   for (; !step.done; step = steps.next()) {
     clock.set(step.value);
   }
-  if (step.value.kind === 'stuck') {
+  return step.value;
+}
+
+/** Runs the instance and what it spawns until none waits any more; how the instance ended. */
+export function runToEnd(
+  test: TestRuntime,
+  instance: string,
+  initial: Advanced,
+): Exclude<Settled, { kind: 'stuck' }> {
+  const settled = settleAll(test, instance, initial).get(instance);
+  if (settled === undefined || settled.kind === 'stuck') {
     throw new Error(`Instance ${instance} waits on nothing that can wake it.`);
   }
-  return step.value;
+  return settled;
 }
 
 /** Deploys `text`, starts `main` as an instance and runs it to its end. */
@@ -98,7 +111,7 @@ export function startToEnd(
   test: TestRuntime,
   text: string,
   { instance = 'test', ...options }: StartOptions & { readonly instance?: string } = {},
-): InstanceState {
+): Exclude<Settled, { kind: 'stuck' }> {
   const program: DeployedProgram = test.runtime.deploy(text);
   return runToEnd(test, instance, program.start(instance, options));
 }

@@ -17,7 +17,6 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { handlerOf } from '../../structures/kind-table.ts';
-import { withPushed } from '../../structures/stack.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
@@ -37,7 +36,6 @@ import { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { ImplicitCalls } from './overloads/implicit.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
-import { passesValueOn, refuseHeldFuture } from './rules/futures.ts';
 import type { LoopScope } from './statements/loops.ts';
 import { blockTail, ReturnScope } from './statements/returns.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
@@ -70,8 +68,6 @@ export class BodyChecker implements BodyContext {
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
   readonly #wraps = new Map<Expression, number>();
-  /** The expressions and statements being checked, innermost last: what receives each value. */
-  readonly #within: NodeOf<string>[] = [];
 
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
@@ -118,15 +114,9 @@ export class BodyChecker implements BodyContext {
   }
 
   expression(node: Expression, expected?: Type): Type {
-    const receiver = this.#within.at(-1);
-    const value = withPushed(this.#within, node, () =>
-      handlerOf(expressionHandlers, node)(this, node, expected),
-    );
+    const value = handlerOf(expressionHandlers, node)(this, node, expected);
     const type = this.chains.linked(this, node, value);
     this.#types.set(node, type);
-    if (receiver !== undefined && !passesValueOn(receiver)) {
-      refuseHeldFuture(this.checker, this.module, node, type);
-    }
     return type;
   }
 
@@ -174,9 +164,7 @@ export class BodyChecker implements BodyContext {
   }
 
   statement(node: Statement | Invalid, expected?: Type): Type {
-    return withPushed(this.#within, node, () =>
-      handlerOf(statementHandlers, node)(this, node, expected),
-    );
+    return handlerOf(statementHandlers, node)(this, node, expected);
   }
 
   report(diagnostic: Diagnostic): void {

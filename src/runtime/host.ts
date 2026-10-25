@@ -10,8 +10,11 @@
  *   §10) hold for its whole life. Starting or waking one advances it as far as it goes without
  *   waiting, committing every segment (scheduler/wake.ts), and says where it stands: waiting
  *   until its next timer, finished with its outcome, or panicked with a message and a trace
- *   (§3.12). The host decides when to wake it again (settle.ts drives that loop for a host that
- *   only waits); the runtime holds no timers of its own.
+ *   (§3.12), and which instances it spawned (§9), which the host wakes like any other. The host
+ *   decides when to wake each again (settle.ts drives that loop for a host that only waits); the
+ *   runtime holds no timers of its own.
+ * - Inspecting an instance reads its last commit only: where it stands, and where each of its
+ *   executions waits (§9, §10).
  * - Waking reads the instance's snapshot and the Definition it names from the store, so a fresh
  *   runtime on the same store continues where an earlier one committed (§5).
  * - A deployed program's function table is exposed, so a test or the `testing` module can replace
@@ -23,12 +26,13 @@ import { type Definition, definitionFormat } from '../definition/definition.ts';
 import type { Value } from '../definition/values.ts';
 import { memo } from '../structures/memo.ts';
 import { outboundJson } from './boundary/outbound.ts';
-import type { InstanceState } from './instance-state.ts';
+import type { Advanced } from './instance-state.ts';
 import { FunctionTable } from './interpreter/function-table.ts';
 import type { Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
+import { type Inspection, inspection } from './scheduler/inspect.ts';
 import type { LoadedDefinition, StartOptions } from './scheduler/instance.ts';
-import { advance, type SchedulerSeams, stateOf } from './scheduler/wake.ts';
+import { advance, type SchedulerSeams, stateOf, unstarted } from './scheduler/wake.ts';
 import { checkSnapshot } from './snapshot/check.ts';
 import { type Snapshot, snapshotFormat } from './snapshot/snapshot.ts';
 import type { InstanceStore } from './store.ts';
@@ -46,7 +50,7 @@ export interface DeployedProgram {
   /** A value of this program as the JSON a host receives (§9); a Refusal for one without a form yet. */
   readonly json: (value: Value) => string;
   /** Starts `main` as a new instance named `instance`; a Refusal if the store already has one. */
-  readonly start: (instance: string, options?: StartOptions) => InstanceState;
+  readonly start: (instance: string, options?: StartOptions) => Advanced;
 }
 
 export interface Runtime {
@@ -60,9 +64,11 @@ export interface Runtime {
    * store lacks the instance or its Definition, or when its snapshot doesn't fit the Definition; a
    * FormatError when a stored text has an unknown format or version.
    */
-  readonly wake: (instance: string) => InstanceState;
+  readonly wake: (instance: string) => Advanced;
   /** The program a stored instance runs; the same Refusals and FormatErrors as `wake`. */
   readonly programOf: (instance: string) => DeployedProgram;
+  /** Where a stored instance stands and waits, read from its last commit; as `wake` refuses. */
+  readonly inspect: (instance: string) => Inspection;
 }
 
 export function createRuntime(seams: RuntimeSeams): Runtime {
@@ -78,15 +84,22 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
     },
     wake: (instance) => {
       const { snapshot, program } = stored(instance);
-      return snapshot.status.kind === 'active' ? program.resume(snapshot) : stateOf(snapshot);
+      const { kind } = snapshot.status;
+      return kind === 'active' || kind === 'unstarted'
+        ? program.resume(snapshot)
+        : { state: stateOf(snapshot), spawned: [] };
     },
     programOf: (instance) => stored(instance).program,
+    inspect: (instance) => {
+      const { snapshot, program } = stored(instance);
+      return inspection(program.definition, snapshot);
+    },
   };
 }
 
 /** A deployed program as the runtime holds it: bound, and able to resume its instances. */
 interface BoundProgram extends DeployedProgram, LoadedDefinition {
-  readonly resume: (snapshot: Snapshot) => InstanceState;
+  readonly resume: (snapshot: Snapshot) => Advanced;
 }
 
 /** A Definition text bound to its program, and whether this was the first time. */
@@ -124,9 +137,14 @@ function boundProgram(
       if (seams.store.readSnapshot(instance) !== undefined) {
         throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
       }
-      return advance(seams, loaded, { kind: 'new', name: instance, options });
+      const { main } = definition;
+      if (main === undefined) {
+        throw new Error('Only a Definition with a main starts from main.');
+      }
+      const call = { function: main, captures: [], arguments: [] };
+      return advance(seams, loaded, unstarted(loaded, instance, call, options));
     },
-    resume: (snapshot) => advance(seams, loaded, { kind: 'committed', snapshot }),
+    resume: (snapshot) => advance(seams, loaded, snapshot),
   };
 }
 

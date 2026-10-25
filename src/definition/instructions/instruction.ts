@@ -10,7 +10,7 @@
 import { z } from 'zod';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { ConstantId, FunctionId, Label, Register, TypeId } from '../operands.ts';
-import { callInstructions } from './calls.ts';
+import { type Callee, callInstructions } from './calls.ts';
 import { controlInstructions } from './control.ts';
 import { dataInstructions } from './data.ts';
 import { lifetimeInstructions } from './lifetimes.ts';
@@ -66,16 +66,11 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   return: (_, i) => ({ registers: [i.value] }),
   call: (_, i) =>
     merge(
-      {
-        registers: [
-          ...(i.dst === undefined ? [] : [i.dst]),
-          ...(i.callee.kind === 'value' ? [i.callee.register] : []),
-        ],
-        functions: i.callee.kind === 'function' ? [i.callee.function] : [],
-      },
+      { registers: i.dst === undefined ? [] : [i.dst] },
+      calleeOperands(i.callee),
       ...i.arguments.map(argumentOperands),
     ),
-  spawn: (_, i) => ({ registers: i.arguments, functions: [i.function] }),
+  spawn: (_, i) => merge({ registers: i.arguments }, calleeOperands(i.callee)),
   currentCall: (_, i) => ({ registers: [i.dst] }),
   await: (_, i) => ({ registers: [i.dst, i.future] }),
   select: (_, i) => ({
@@ -94,6 +89,13 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
 /** What an instruction refers to, by table. */
 export function operandsOf(subject: Instruction): Operands {
   return merge(handlerOf(operandTable, subject)(undefined, subject));
+}
+
+/** What a `call` or `spawn` names as its callee: a function, or the register of a function value. */
+function calleeOperands(callee: Callee): Partial<Operands> {
+  return callee.kind === 'function'
+    ? { functions: [callee.function] }
+    : { registers: [callee.register] };
 }
 
 function argumentOperands(argument: Argument): Partial<Operands> {

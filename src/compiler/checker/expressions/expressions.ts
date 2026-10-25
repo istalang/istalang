@@ -2,9 +2,6 @@
  * The checker's table of expression handlers, one per kind (architecture: Registries). Each takes
  * the body's context, the node, and the type its position expects, and gives the node's type; the
  * context records it.
- *
- * Kinds the checker doesn't handle yet share one handler that reports them as not supported. A
- * feature slice replaces its kinds' entries with real handlers.
  */
 
 import type { Handlers } from '../../../structures/kind-table.ts';
@@ -12,7 +9,6 @@ import type { Expression, Reference } from '../../syntax/expressions.ts';
 import { checkLambda } from '../closures/lambdas.ts';
 import type { BodyContext } from '../context.ts';
 import { boolType, errorType, floatType, intType, stringType, type Type } from '../types/type.ts';
-import { unsupportedHandler as unsupported } from '../unsupported.ts';
 import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';
 import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections.ts';
@@ -24,6 +20,7 @@ import { checkIs, checkMatch } from './match.ts';
 import { checkName } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
 import { checkPropagate } from './propagate.ts';
+import { checkSelect } from './select.ts';
 import { checkMemberAccess, checkStructLiteral } from './structs.ts';
 import { checkTuple, checkTupleElement } from './tuples.ts';
 import { checkUnwrap } from './unwrap.ts';
@@ -72,7 +69,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Is: checkIs,
   Range: checkRange,
   Match: checkMatch,
-  Select: unsupported,
+  Select: checkSelect,
   Missing: alreadyReported,
   Invalid: alreadyReported,
 };

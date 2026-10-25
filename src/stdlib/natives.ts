@@ -5,8 +5,14 @@
  */
 
 import type { Natives } from '../runtime/natives.ts';
+import { futuresNatives } from './futures/natives.ts';
 import { preludeNatives } from './prelude/natives.ts';
 import { runtimeNatives } from './runtime/natives.ts';
 import { timeNatives } from './time/natives.ts';
 
-export const stdNatives: Natives = { ...preludeNatives, ...timeNatives, ...runtimeNatives };
+export const stdNatives: Natives = {
+  ...preludeNatives,
+  ...timeNatives,
+  ...runtimeNatives,
+  ...futuresNatives,
+};

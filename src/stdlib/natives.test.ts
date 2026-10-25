@@ -11,10 +11,10 @@ import { stdNatives } from './natives.ts';
 import { stdSources } from './stdlib-loader.ts';
 
 /**
- * Externs whose natives arrive with later slices: slots (3.6) and weak references (3.8). The
- * runtime disposes futures and slots itself, so their `dispose` never has a native.
+ * Externs without a native, by module and name: weak references arrive with 3.8, and the runtime
+ * disposes futures and slots itself, so their `dispose` never has one.
  */
-const arrivesLater = new Set(['create', 'put', 'take', 'read', 'deref', 'disposed', 'dispose']);
+const withoutNative = new Set(['prelude.deref', 'prelude.disposed', 'prelude.dispose']);
 
 describe('std natives', () => {
   it('implement exactly the callable externs the std modules declare, by the keys lowering gives', () => {
@@ -25,7 +25,9 @@ describe('std natives', () => {
     expect(std.length).toBe(Object.keys(stdSources).length + 1);
     const callable = std.flatMap((module) =>
       module.tree.root.items.flatMap((item) =>
-        item.kind === 'FunctionDeclaration' && item.isExtern && !arrivesLater.has(item.name.text)
+        item.kind === 'FunctionDeclaration' &&
+        item.isExtern &&
+        !withoutNative.has(`${module.name}.${item.name.text}`)
           ? [externKeyOf(checker, item)]
           : [],
       ),

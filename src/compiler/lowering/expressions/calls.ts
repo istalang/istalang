@@ -14,11 +14,18 @@
  * to the closure's parameters.
  */
 
+import type { Callee } from '../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/check.ts';
-import type { Call, Expression, Spread } from '../../syntax/expressions.ts';
+import {
+  type Call,
+  type Expression,
+  type Spread,
+  unparenthesized,
+} from '../../syntax/expressions.ts';
 import type { NodeOf } from '../../syntax/node.ts';
+import type { Spawn } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { notLowered } from '../not-lowered.ts';
@@ -71,10 +78,7 @@ function receiverOf(
  * value the call works on, since the call, not the access, is the link of an optional chain.
  */
 function lowerValueCall(context: FunctionContext, node: Call): Register {
-  const callee =
-    node.callee.kind === 'MemberAccess'
-      ? lowerFieldRead(context, node.callee, node)
-      : context.expression(node.callee);
+  const callee = valueCallee(context, node);
   const argumentList = node.arguments.map((argument) => argumentOf(context, argument, false));
   const dst = context.code.allocate();
   context.code.emit({
@@ -86,6 +90,39 @@ function lowerValueCall(context: FunctionContext, node: Call): Register {
   });
   leaveAll(argumentList);
   return dst;
+}
+
+/** The function value a call of no resolved function calls. */
+function valueCallee(context: FunctionContext, node: Call): Register {
+  return node.callee.kind === 'MemberAccess'
+    ? lowerFieldRead(context, node.callee, node)
+    : context.expression(node.callee);
+}
+
+/**
+ * `spawn f(args)` (§9): what the call would run, the function the checker resolved or the value of
+ * a sendable function type, and its arguments, a method's receiver first, all by value.
+ */
+export function lowerSpawn(context: FunctionContext, node: Spawn): void {
+  const spawned = unparenthesized(node.call);
+  if (spawned.kind !== 'Call') {
+    throw new Error('A spawn of no call checked clean.');
+  }
+  const resolved = context.body.calls.get(spawned);
+  const callee: Callee =
+    resolved === undefined
+      ? { kind: 'value', register: valueCallee(context, spawned) }
+      : { kind: 'function', function: context.calleeIndex(spawned) };
+  const receiver = resolved?.receiver;
+  const copied = receiver === undefined ? spawned.arguments : [receiver, ...spawned.arguments];
+  context.code.emit({
+    kind: 'spawn',
+    span: node.span,
+    callee,
+    arguments: copied.map((argument) =>
+      argument.kind === 'Spread' ? notLowered(context, argument) : context.expression(argument),
+    ),
+  });
 }
 
 /** Calls the function the checker resolved for `site` with values; the register of its result. */

@@ -58,8 +58,8 @@ export type Frame = z.output<typeof frame>;
 
 const futureState = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('resolved'), value }),
-  /** The result of an async call, resolved when the execution returns. */
-  z.strictObject({ kind: z.literal('call'), execution: objectId }),
+  /** The result of an async call, resolved when the execution that names it returns. */
+  z.strictObject({ kind: z.literal('call') }),
   /** A pending `put`, `take` or `read`, queued on the slot in `waiting` order. */
   z.strictObject({
     kind: z.literal('slot'),
@@ -71,6 +71,11 @@ const futureState = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('timer'), at: integer }),
   /** A future the host fills; `token` is how the host names it. */
   z.strictObject({ kind: z.literal('host'), token: z.unknown() }),
+  /**
+   * `futures.first(fs)`: resolves with the position and value of the first of `futures` to
+   * resolve, the lowest position among futures that resolved together (spec §3.8).
+   */
+  z.strictObject({ kind: z.literal('first'), futures: z.array(objectId).min(1) }),
   /** `x.disposed()`: resolves when `target` is disposed (spec §6). */
   z.strictObject({ kind: z.literal('disposed'), target: objectId }),
   /** `worker.disposing()`: resolves when the call running `execution` is disposed (spec §7). */
@@ -105,8 +110,12 @@ export const heapObject = z.discriminatedUnion('kind', [
    * each call's arguments as a tuple, for `m.calls()` (spec §10).
    */
   defineObject('mock', { target: functionId, replacement: value, calls: z.array(value) }),
-  /** An execution: a call stack, innermost frame last. */
+  /**
+   * An execution: a call stack, innermost frame last. An async call's execution names the future
+   * its return resolves (spec §3.3); the root, the instance's own, names none.
+   */
   defineObject('execution', {
+    resolves: objectId.optional(),
     frames: z.array(frame).min(1),
     /** Set once the call is disposed; its next await stops it (spec §7). */
     disposing: z.boolean(),

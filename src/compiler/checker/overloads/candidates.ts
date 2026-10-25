@@ -3,7 +3,8 @@
  *
  * - the functions its name denotes where it is written, the prelude's joined (the binder's set);
  * - argument-dependent lookup: the exported functions of that name in the modules declaring the
- *   arguments' own types, not their type arguments';
+ *   arguments' own types, not their type arguments', except that a `Shared<T>` counts `T`'s, as the
+ *   way a module makes a resource type of its own (§7);
  * - the functions the constraints on a type parameter require, for every type parameter the
  *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other.
  *
@@ -12,11 +13,13 @@
  * module the caller imports (§3.7); on a type parameter, among its constraints' static requirements.
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
 import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
-import { parametersIn, type Type } from '../types/type.ts';
+import { type NominalType, parametersIn, type Type } from '../types/type.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
 export interface Candidate {
@@ -101,14 +104,22 @@ function argumentDependent(
   argumentTypes: readonly Type[],
 ): readonly FunctionDeclaration[] {
   const { bindings } = checker;
-  return argumentTypes.flatMap((type) => {
-    if (type.kind !== 'nominal') {
-      return [];
-    }
-    const module = bindings.moduleOf(type.entity);
-    const entity = module === undefined ? undefined : bindings.exportsOf(module).get(name);
-    return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
-  });
+  return argumentTypes.flatMap((argument) =>
+    lookupTypes(checker, argument).flatMap((type) => {
+      const module = bindings.moduleOf(type.entity);
+      const entity = module === undefined ? undefined : bindings.exportsOf(module).get(name);
+      return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
+    }),
+  );
+}
+
+/** The types whose modules lookup searches for an argument of `type` (§3.13). */
+function lookupTypes(checker: CheckerContext, type: Type): readonly NominalType[] {
+  if (type.kind !== 'nominal') {
+    return [];
+  }
+  const [held] = wellKnownArguments(checker, wellKnown.shared, type) ?? [];
+  return held?.kind === 'nominal' ? [type, held] : [type];
 }
 
 function requirementCandidates(

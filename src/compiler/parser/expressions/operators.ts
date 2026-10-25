@@ -19,6 +19,7 @@ import {
 } from '../../syntax/operators.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
+import { parseSelectFrom } from './branches.ts';
 import type { InfixParselet, PrefixParselet } from './parselet.ts';
 
 /** Consumes a prefix operator, reporting it if it binds looser than its position allows. */
@@ -44,6 +45,9 @@ export const parseNot: PrefixParselet = (parser, minLevel) => {
 
 export const parseAwait: PrefixParselet = (parser, minLevel) => {
   const start = advancePrefix(parser, operatorLevels.await, minLevel);
+  if (parser.cursor.at('select')) {
+    return parseSelectFrom(parser, start, true);
+  }
   const operand = parser.expression(operatorLevels.await);
   return { kind: 'Await', span: parser.spanFrom(start), operand };
 };

@@ -124,7 +124,7 @@ describe('lowering', () => {
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();
     const deployed = test.runtime.deploy(definitionFormat.write(definition).text);
-    expect(deployed.start('i')).toEqual({ kind: 'finished', outcome: 14n });
+    expect(deployed.start('i').state).toEqual({ kind: 'finished', outcome: 14n });
     const structs = definition.constants.filter(
       (constant) => typeof constant === 'object' && constant?.kind === 'struct',
     );

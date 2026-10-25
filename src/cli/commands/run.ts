@@ -5,7 +5,10 @@
  * its last commit there, on the Definition it started with (§5).
  *
  * The instance runs on real time: when it waits, the command sleeps until its earliest timer is
- * due and wakes it. Nothing runs unless the whole program checks clean. Diagnostics, warnings
+ * due and wakes it. Every instance it spawns runs alongside it, theirs too, until all of them have
+ * settled; `main`'s outcome is printed, and a spawned instance that panics or can never wake is
+ * reported on the error stream and fails the run. Nothing runs unless the whole program checks
+ * clean. Diagnostics, warnings
  * included, go to the error stream as `check` renders them, so the output holds only the outcome.
  * Exit codes: 0 when `main` finishes; 1 when the program has errors, declares no `main`, panics,
  * or the runtime refuses it; 2 when the entry can't be read or the options don't fit together.
@@ -18,9 +21,9 @@ import { compileProgram, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/format.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host.ts';
-import type { InstanceState } from '../../runtime/instance-state.ts';
+import type { Advanced } from '../../runtime/instance-state.ts';
 import { Refusal } from '../../runtime/refusal.ts';
-import { settle } from '../../runtime/settle.ts';
+import { type Settled, settle } from '../../runtime/settle.ts';
 import { memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import {
@@ -137,35 +140,48 @@ interface RunningInstance {
   readonly name: string;
 }
 
-/** Sleeps until each timer the instance waits on is due and wakes it; prints how it ended. */
+/**
+ * Sleeps until each timer the instance and those it spawned wait on is due and wakes them; prints
+ * how the instance ended, and reports each spawned instance that didn't finish.
+ */
 async function finish(
   { runtime, program, name }: RunningInstance,
-  initial: InstanceState,
+  initial: Advanced,
   environment: CliEnvironment,
 ): Promise<ExitCode> {
-  const steps = settle(() => runtime.wake(name), initial);
+  const steps = settle((instance) => runtime.wake(instance), { instance: name, advanced: initial });
   let step = steps.next();
   while (!step.done) {
     // biome-ignore lint/performance/noAwaitInLoops: each wake depends on what the last one returned.
     await sleep(Math.max(0, Number(step.value - clock())));
     step = steps.next();
   }
-  const settled = step.value;
-  switch (settled.kind) {
-    case 'stuck':
-      environment.writeError(`ista: instance ${name} waits on nothing that can wake it.\n`);
-      return exitCodes.problems;
-    case 'panicked':
-      environment.writeError(`panic: ${settled.message}\n${settled.trace}\n`);
-      return exitCodes.problems;
-    case 'finished':
-      environment.write(`${program.json(settled.outcome)}\n`);
-      return exitCodes.clean;
-    default: {
-      const unhandled: never = settled;
-      return unhandled;
-    }
+  const unfinished = [...step.value].flatMap(([instance, ending]) =>
+    ending.kind === 'finished'
+      ? []
+      : [unfinishedText(instance, ending, instance === name ? 'main' : 'spawned')],
+  );
+  for (const text of unfinished) {
+    environment.writeError(text);
   }
+  const settled = step.value.get(name);
+  if (settled?.kind === 'finished') {
+    environment.write(`${program.json(settled.outcome)}\n`);
+  }
+  return unfinished.length === 0 ? exitCodes.clean : exitCodes.problems;
+}
+
+/** What the error stream says of an instance that didn't finish: `main`'s, or one it spawned. */
+function unfinishedText(
+  instance: string,
+  settled: Exclude<Settled, { kind: 'finished' }>,
+  role: 'main' | 'spawned',
+): string {
+  if (settled.kind === 'stuck') {
+    return `ista: instance ${instance} waits on nothing that can wake it.\n`;
+  }
+  const subject = role === 'main' ? 'panic' : `ista: instance ${instance} panicked`;
+  return `${subject}: ${settled.message}\n${settled.trace}\n`;
 }
 
 /**

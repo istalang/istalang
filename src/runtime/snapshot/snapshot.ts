@@ -4,6 +4,7 @@
  * It names its Definition by content hash; frames hold function indexes and pcs into that
  * Definition, so a snapshot is meaningless without it. Besides the heap it keeps:
  * - the order in which executions became ready
+ * - how many instances it has spawned, which names the next one (`<instance>/<n>`, §9)
  * - whether every segment runs twice before it commits (`crashEveryAwait`, §10), an option of the
  *   instance, so a runtime that wakes it after a restart honours it too
  * - for a panicked instance, when the failed segment started. `now()` returns its segment's
@@ -11,6 +12,10 @@
  *
  * Extern constant reads, which spec §3.6 pins for the instance's life, join the snapshot with the
  * host externs that need them.
+ *
+ * A spawned instance is written before its parent's commit, as `unstarted`: the call it will run,
+ * with sendable arguments, and nothing else yet. Waking it starts that call, so the host runs a
+ * spawned instance as it runs any other.
  *
  * Validation checks that ids ascend and that every object id refers to an object of this
  * snapshot. Checks that need the Definition, such as pc ranges, are check.ts's, run when the
@@ -20,11 +25,21 @@
 import { z } from 'zod';
 import { contentHashText } from '../../definition/codec.ts';
 import { defineFormat } from '../../definition/format.ts';
-import { objectId } from '../../definition/operands.ts';
+import { count, functionId, objectId } from '../../definition/operands.ts';
 import { handlesIn, integer, type Value, value } from '../../definition/values.ts';
 import { type Frame, type HeapObject, heapObject, isReference } from './objects.ts';
 
+/** The call a new instance runs: an entry, a closure's captures, and its arguments (§9). */
+const instanceCall = z.strictObject({
+  function: functionId,
+  captures: z.array(value),
+  arguments: z.array(value),
+});
+
+export type InstanceCall = z.output<typeof instanceCall>;
+
 const status = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('unstarted'), call: instanceCall }),
   z.strictObject({ kind: z.literal('active') }),
   z.strictObject({
     kind: z.literal('panicked'),
@@ -42,6 +57,8 @@ const snapshotContents = z.strictObject({
   status,
   /** Every segment runs twice, the first run discarded, before it commits (§10). */
   crashEveryAwait: z.boolean(),
+  /** How many instances this one has spawned (§9). */
+  spawned: count,
   /** In ascending id order. */
   objects: z.array(heapObject),
   /** Executions ready to run, in the order they became ready. */
@@ -126,9 +143,12 @@ function directReferences(object: HeapObject): readonly number[] {
     case 'weakRef':
       return object.target === undefined ? [] : [object.target];
     case 'execution':
-      return object.frames.flatMap(({ registers }) =>
-        registers.flatMap(([, contents]) => (isReference(contents) ? [contents.cell] : [])),
-      );
+      return [
+        ...(object.resolves === undefined ? [] : [object.resolves]),
+        ...object.frames.flatMap(({ registers }) =>
+          registers.flatMap(([, contents]) => (isReference(contents) ? [contents.cell] : [])),
+        ),
+      ];
     case 'cell':
     case 'guard':
     case 'resource':
@@ -152,6 +172,7 @@ function futureValues(state: FutureState): readonly Value[] {
     case 'call':
     case 'timer':
     case 'host':
+    case 'first':
     case 'disposed':
     case 'disposing':
       return [];
@@ -164,13 +185,15 @@ function futureValues(state: FutureState): readonly Value[] {
 
 function futureTargets(state: FutureState): readonly number[] {
   switch (state.kind) {
-    case 'call':
     case 'disposing':
       return [state.execution];
     case 'slot':
       return [state.slot];
+    case 'first':
+      return state.futures;
     case 'disposed':
       return [state.target];
+    case 'call':
     case 'resolved':
     case 'timer':
     case 'host':

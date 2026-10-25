@@ -19,6 +19,14 @@ export interface Label {
   readonly id: number;
 }
 
+/** One case of a `select` being written: its future, what it holds, its `as` register, its body. */
+export interface SelectCaseCode {
+  readonly future: Register;
+  readonly holds: readonly Register[];
+  readonly bind: Register | undefined;
+  readonly target: Label;
+}
+
 /** A function's code as written: how many registers its frame needs, and its instructions. */
 export interface WrittenCode {
   readonly registers: number;
@@ -37,6 +45,19 @@ export class CodeWriter {
     const register = this.#registers;
     this.#registers += 1;
     return register;
+  }
+
+  /** Runs `write`; what it gave, and the registers allocated meanwhile, in order. */
+  allocating<Result>(write: () => Result): {
+    readonly result: Result;
+    readonly registers: readonly Register[];
+  } {
+    const first = this.#registers;
+    const result = write();
+    return {
+      result,
+      registers: Array.from({ length: this.#registers - first }, (_, offset) => first + offset),
+    };
   }
 
   emit(instruction: Instruction): void {
@@ -95,6 +116,35 @@ export class CodeWriter {
     for (const [index, target] of targets.entries()) {
       this.#refer(target, (position) => {
         instruction.targets[index] = position;
+      });
+    }
+  }
+
+  /** Chooses among `cases` by their futures (§8): waits for one, or goes to `otherwise` at once. */
+  select(cases: readonly SelectCaseCode[], otherwise: Label | undefined, span: Span): void {
+    const instruction: Extract<Instruction, { kind: 'select' }> = {
+      kind: 'select',
+      span,
+      cases: cases.map(({ future, holds, bind }) => ({
+        future,
+        holds: [...holds],
+        ...(bind === undefined ? {} : { bind }),
+        target: 0,
+      })),
+    };
+    this.emit(instruction);
+    for (const [index, { target }] of cases.entries()) {
+      this.#refer(target, (position) => {
+        const written = instruction.cases[index];
+        if (written !== undefined) {
+          written.target = position;
+        }
+      });
+    }
+    if (otherwise !== undefined) {
+      instruction.otherwise = 0;
+      this.#refer(otherwise, (position) => {
+        instruction.otherwise = position;
       });
     }
   }

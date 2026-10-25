@@ -19,6 +19,7 @@ import type {
   Lambda,
   MapLiteral,
   Parameter,
+  SelectCase,
   Spread,
   StructLiteral,
 } from '../syntax/expressions.ts';
@@ -104,8 +105,11 @@ export interface RequirementOrigin {
   readonly member: number;
 }
 
-/** What binds targets (§3.15): a declaration, or a `for` or comprehension for each item. */
-export type TargetOwner = VariableDeclaration | For | Comprehension;
+/**
+ * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, or a select
+ * case's `as` for the value of its future (§8).
+ */
+export type TargetOwner = VariableDeclaration | For | Comprehension | SelectCase;
 
 /** A name a target binds: its part's type, and the positions leading to it (§3.15). */
 export interface TargetBinding {

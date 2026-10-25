@@ -36,6 +36,7 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
     fc.record({ parameter: tie('type'), result: tie('type'), reference: fc.boolean() }).map(
       ({ parameter, result, reference }): Type => ({
         kind: 'function',
+        isSendable: false,
         isAsync: false,
         parameters: [{ type: parameter, reference }],
         result,

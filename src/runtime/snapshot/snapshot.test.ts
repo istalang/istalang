@@ -31,6 +31,7 @@ const broadcastWaiting: Snapshot = {
   instance: 'broadcast-1',
   status: { kind: 'active' },
   crashEveryAwait: false,
+  spawned: 0,
   ready: [],
   objects: [
     {
@@ -79,7 +80,11 @@ function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
   });
   const futureState = fc.oneof(
     fc.record({ kind: fc.constant('resolved' as const), value }),
-    fc.record({ kind: fc.constant('call' as const), execution: id }),
+    fc.constant({ kind: 'call' as const }),
+    fc.record({
+      kind: fc.constant('first' as const),
+      futures: fc.array(id, { minLength: 1, maxLength: 3 }),
+    }),
     fc.record({
       kind: fc.constant('slot' as const),
       slot: id,
@@ -113,10 +118,14 @@ function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
         })
         .map((parts) => ({ id: objectId, kind: 'mock' as const, ...parts })),
       fc
-        .record({
-          frames: fc.array(frame, { minLength: 1, maxLength: 3 }),
-          disposing: fc.boolean(),
-        })
+        .record(
+          {
+            resolves: id,
+            frames: fc.array(frame, { minLength: 1, maxLength: 3 }),
+            disposing: fc.boolean(),
+          },
+          { requiredKeys: ['frames', 'disposing'] },
+        )
         .map((parts) => ({ id: objectId, kind: 'execution' as const, ...parts })),
     );
   return fc.tuple(...ids.map(objectFor));
@@ -140,8 +149,17 @@ const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
           segmentStartedAt: fc.bigInt({ min: 0n, max: 2n ** 60n }),
         }),
         fc.record({ kind: fc.constant('finished' as const), outcome: valueArbitrary() }),
+        fc.record({
+          kind: fc.constant('unstarted' as const),
+          call: fc.record({
+            function: fc.nat({ max: 9 }),
+            captures: fc.array(valueArbitrary({ typed: true }), { maxLength: 2 }),
+            arguments: fc.array(valueArbitrary({ typed: true }), { maxLength: 2 }),
+          }),
+        }),
       ),
       crashEveryAwait: fc.boolean(),
+      spawned: fc.nat({ max: 50 }),
       objects: fc.constant(objects),
       ready: fc.subarray(executions.map((execution) => execution.id)),
     });
@@ -226,6 +244,7 @@ function holding(contents: Value): Snapshot {
     instance: 'deep',
     status: { kind: 'active' },
     crashEveryAwait: false,
+    spawned: 0,
     objects: [{ kind: 'cell', id: 0, type: 0, value: contents }],
     ready: [],
   };

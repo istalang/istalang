@@ -247,7 +247,7 @@ describe('definition format', () => {
         at(json, 'functions', 4, 'instructions')[12] = {
           kind: 'spawn',
           span,
-          function: 3,
+          callee: { kind: 'function', function: 3 },
           arguments: [],
         };
       },
@@ -316,7 +316,7 @@ describe('definition format', () => {
         at(json, 'functions', 4, 'instructions')[12] = {
           kind: 'spawn',
           span,
-          function: 0,
+          callee: { kind: 'function', function: 0 },
           arguments: [0, 1],
         };
       },

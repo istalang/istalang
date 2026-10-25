@@ -147,24 +147,6 @@ describe('checking reports', () => {
       '1',
     ],
     [
-      'a future held in a variable',
-      `${importTime}\nasync fn f():\n  const t = time.delay(1s)\n  await t`,
-      reports.notSupportedYet,
-      'time.delay(1s)',
-    ],
-    [
-      'a future held after passing through parentheses',
-      `${importTime}\nasync fn f():\n  const t = (time.delay(1s))\n  1`,
-      reports.notSupportedYet,
-      '(time.delay(1s))',
-    ],
-    [
-      'a future held as the value of an if',
-      `${importTime}\nasync fn f(c: bool):\n  const t = if c: time.delay(1s) else: time.delay(2s)\n  1`,
-      reports.notSupportedYet,
-      'if c: time.delay(1s) else: time.delay(2s)',
-    ],
-    [
       'a future discarded',
       `${importTime}\nasync fn f():\n  time.delay(1s)\n  1`,
       reports.unusedValue,
@@ -175,18 +157,6 @@ describe('checking reports', () => {
       `${importTime}\nfn f(c: bool):\n  while c:\n    time.delay(1s)`,
       reports.unusedValue,
       'time.delay(1s)',
-    ],
-    [
-      'a future as a parameter',
-      'fn f(x: Future<int>): 1',
-      reports.notSupportedYet,
-      'x: Future<int>',
-    ],
-    [
-      'a future as a field',
-      'struct S { f: Future<int> }',
-      reports.notSupportedYet,
-      'f: Future<int>',
     ],
     [
       'a call to an extern the host implements',

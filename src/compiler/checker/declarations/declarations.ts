@@ -6,6 +6,7 @@
  * - A declaration's type parameters have their constraints resolved, and so does every member of
  *   a trait: its functions' signatures and its fields' types.
  * - An alias is resolved, which reports one that refers to itself (§3.17).
+ * - An extern a host implements may not send code to the host (rules/host-boundary.ts).
  * - Imports declare nothing to check.
  */
 
@@ -13,6 +14,7 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
+import { checkHostBoundary } from '../rules/host-boundary.ts';
 import { type GenericDeclaration, typeParametersOf } from './resolve-type.ts';
 import { checkFiniteFields } from './struct-rules.ts';
 
@@ -37,6 +39,9 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   checker.defaultsOf(node);
   checker.resultOf(node);
   checker.bodyOf(node);
+  if (node.isExtern) {
+    checkHostBoundary(checker, checker.moduleOf(node), node);
+  }
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -69,6 +74,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   },
   ExternConstantDeclaration: (checker, node, module) => {
     checker.resolveType(module, node.type);
+    checkHostBoundary(checker, module, node);
   },
   FunctionDeclaration: checkFunction,
   VariableDeclaration: (checker, node) => {

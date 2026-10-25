@@ -50,7 +50,7 @@ describe('match', () => {
 describe('select', () => {
   const receive = '(Call (MemberAccess box receive) [] [])';
 
-  it('is the operand of await when it waits', () => {
+  it('is one node with await when it waits', () => {
     const text = lines(
       'await select:',
       '    case box.receive() as msg: msg',
@@ -58,7 +58,7 @@ describe('select', () => {
     );
     expect(dumpClean('statement', text)).toBe(
       expressionStatement(
-        `(Await (Select [(SelectCase ${receive} msg ${body('msg')}) (SelectCase (Call (MemberAccess time delay) [] [432000000ms]) _ ${body('none')})] _))`,
+        `(Select awaits [(SelectCase ${receive} msg ${body('msg')}) (SelectCase (Call (MemberAccess time delay) [] [432000000ms]) _ ${body('none')})] _)`,
       ),
     );
   });

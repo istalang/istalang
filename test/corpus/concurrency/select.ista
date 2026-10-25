@@ -1,0 +1,63 @@
+# outcome: "b2 | none 1 | passes 3 | late | 0"
+# select (§8): of the cases whose futures have resolved, the first wins, and `as` binds its value.
+# Without `await` a select never waits: `else` runs when no case is ready. A future made once
+# races again on every pass of a loop, and a case body may leave its function. The case bodies
+# agree on one type, which an expected type decides.
+
+import * as time from 'time'
+
+async fn priority() -> Future<string>:
+  const a = Slot.create<int>()
+  const b = Slot.create<int>()
+  await a.put(1)
+  await b.put(2)
+  await select:
+    case b.read() as fromB:
+      "b" + string(fromB)
+    case a.read() as fromA:
+      "a" + string(fromA)
+
+fn tryTake(s: Slot<int>) -> string:
+  select:
+    case s.read() as value:
+      string(value)
+    else:
+      "none"
+
+async fn passesBefore(deadline: Future<unit>, stop: Slot<unit>) -> Future<int>:
+  let passes = 0
+  while true:
+    const done = await select:
+      case deadline:
+        true
+      case time.delay(1ms):
+        false
+    if done:
+      break
+    passes += 1
+    if passes == 3:
+      await stop.put(())
+  passes
+
+async fn leaving(s: Slot<string>) -> Future<string>:
+  const got: string? = await select:
+    case s.take() as message:
+      message
+    case time.delay(1ms):
+      return "late"
+  got ?? "none"
+
+async fn main() -> Future<string>:
+  const ready = Slot.create<int>()
+  const empty = Slot.create<int>()
+  await ready.put(1)
+  const quick = tryTake(empty) + " " + tryTake(ready)
+  const stop = Slot.create<unit>()
+  const passes = await passesBefore(stop.read(), stop)
+  const late = await leaving(Slot.create<string>())
+  const nothing: int? = select:
+    case empty.read() as value:
+      value
+    else:
+      none
+  await priority() + " | " + quick +  " | passes " + string(passes) + " | " + late + " | " + string(nothing ?? 0)

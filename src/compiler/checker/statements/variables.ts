@@ -2,8 +2,9 @@
  * Declaring variables (§3.4, §3.15), and the facts a body keeps about its variables.
  *
  * - A declaration's type is its annotation, which the initializer must fit, or else the
- *   initializer's own type. Its targets take that value apart (patterns/walk.ts), each
- *   name declared with its part's type.
+ *   initializer's own type, widened for a `let`, which later values may replace
+ *   (types/widening.ts). Its targets take that value apart (patterns/walk.ts), each name declared
+ *   with its part's type.
  * - A `let` that nothing reassigns or changes gets a warning once the whole body has been seen
  *   (§3.4), so the body's VariableScope keeps which ones were, as assignments and places note
  *   them (assignments.ts, rules/places.ts).
@@ -24,6 +25,7 @@ import { frontier } from '../frontier.ts';
 import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
 import { errorType, type Type } from '../types/type.ts';
+import { widened } from '../types/widening.ts';
 
 /**
  * The variables of one body: each one's type by its declaring name, which were changed, and what
@@ -117,7 +119,8 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
   }
   const declared = node.type === undefined ? undefined : context.resolveType(node.type);
   const initial = context.expect(node.initializer, declared);
-  const bindings = walkTargets(bodyScope(context), node.targets, declared ?? initial);
+  const held = declared ?? (node.isMutable ? widened(initial) : initial);
+  const bindings = walkTargets(bodyScope(context), node.targets, held);
   for (const { name, type } of bindings) {
     context.variables.declare(name, type);
   }

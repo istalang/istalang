@@ -1,0 +1,41 @@
+# outcome: "a:1 b:2 c:3 | x y z | first second"
+# An inbox (§6) delivers each message to exactly one receiver, the one that has waited longest,
+# and in commit order: sends within one segment keep their program order, and a segment that
+# commits first is received first. `send` never waits.
+
+import Inbox from 'inbox'
+import * as time from 'time'
+
+async fn worker(name: string, jobs: Inbox<int>, results: Inbox<string>):
+  const job = await jobs.receive()
+  results.send(name + ":" + string(job))
+
+async fn sendLater(box: Inbox<string>, wait: time.Duration, message: string):
+  await time.delay(wait)
+  box.send(message)
+
+async fn collect(box: Inbox<string>, count: int) -> Future<string>:
+  let received: Array<string> = []
+  while received.length() < count:
+    received.push(await box.receive())
+  received.join(" ")
+
+async fn main() -> Future<string>:
+  const jobs = Inbox.create<int>()
+  const results = Inbox.create<string>()
+  _ = worker("a", jobs, results)
+  _ = worker("b", jobs, results)
+  _ = worker("c", jobs, results)
+  jobs.send(1)
+  jobs.send(2)
+  jobs.send(3)
+  const workers = await collect(results, 3)
+  const ordered = Inbox.create<string>()
+  ordered.send("x")
+  ordered.send("y")
+  ordered.send("z")
+  const backlog = await collect(ordered, 3)
+  const timed = Inbox.create<string>()
+  _ = sendLater(timed, 4ms, "second")
+  _ = sendLater(timed, 1ms, "first")
+  workers + " | " + backlog + " | " + await collect(timed, 2)

@@ -14,10 +14,12 @@ import { functionId, register } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
 import { argument } from './places.ts';
 
-const callee = z.discriminatedUnion('kind', [
+export const callee = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('function'), function: functionId }),
   z.strictObject({ kind: z.literal('value'), register }),
 ]);
+
+export type Callee = z.output<typeof callee>;
 
 /** Without `dst`, the result is discarded; the checker only allows that for a non-must-use result. */
 const call = defineInstruction('call', {
@@ -26,8 +28,11 @@ const call = defineInstruction('call', {
   arguments: z.array(argument),
 });
 
-/** `spawn f(args)`: a new instance on this Definition; the arguments are sendable copies (spec §9). */
-const spawn = defineInstruction('spawn', { function: functionId, arguments: z.array(register) });
+/**
+ * `spawn f(args)`: a new instance on this Definition, running a named function or a closure of a
+ * sendable function type, whose captures go along; the arguments are sendable copies (spec §9).
+ */
+const spawn = defineInstruction('spawn', { callee, arguments: z.array(register) });
 
 /**
  * A handle to the async call this frame belongs to, taken once at a function's entry so that

@@ -1,0 +1,121 @@
+/**
+ * `spawn` through the runtime's host API, on programs the real compiler builds (spec §9): a
+ * spawned instance runs on its own snapshot, exists only once its parent's segment commits, is
+ * written before that commit and never twice, takes its parent's options, and carries a sendable
+ * closure's captures. Inspecting an instance shows where it waits.
+ */
+
+import { describe, expect, it } from 'vitest';
+import { compiledText } from '../../compiler/compile.test-kit.ts';
+import {
+  type RecordingStore,
+  recordingStore,
+  settleAll,
+  testRuntime,
+} from '../runtime.test-kit.ts';
+import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
+
+/** `main` spawning two children that each wait before giving their outcome. */
+const spawningMain = [
+  "import * as time from 'time'",
+  'async fn child(n: int) -> Future<int>:',
+  '  await time.delay(10ms)',
+  '  n * 2',
+  'async fn main() -> Future<int>:',
+  '  spawn child(1)',
+  '  await time.delay(1ms)',
+  '  spawn child(2)',
+  '  5',
+].join('\n');
+
+const readBack = (store: RecordingStore): readonly Snapshot[] =>
+  store.commits.map((text) => snapshotFormat.read(text));
+
+describe('spawning an instance', () => {
+  it('runs each child on its own snapshot, named after its parent, to its own outcome', () => {
+    const test = testRuntime();
+    const started = test.runtime.deploy(compiledText(spawningMain)).start('p');
+    expect(started.spawned).toEqual(['p/1']);
+    expect([...settleAll(test, 'p', started)]).toEqual([
+      ['p', { kind: 'finished', outcome: 5n }],
+      ['p/1', { kind: 'finished', outcome: 2n }],
+      ['p/2', { kind: 'finished', outcome: 4n }],
+    ]);
+  });
+
+  it("writes a child before its parent's commit, as a call not yet started", () => {
+    const test = testRuntime();
+    test.runtime.deploy(compiledText(spawningMain)).start('p');
+    const [child, parent] = readBack(test.store);
+    expect(child?.instance).toBe('p/1');
+    expect(child?.status).toMatchObject({ kind: 'unstarted' });
+    expect(parent).toMatchObject({ instance: 'p', spawned: 1 });
+  });
+
+  it('spawns nothing from a segment that panics', () => {
+    const text = compiledText(
+      spawningMain.replace('  spawn child(1)', '  spawn child(1)\n  panic("no")'),
+    );
+    const test = testRuntime();
+    const started = test.runtime.deploy(text).start('p');
+    expect(started).toMatchObject({ state: { kind: 'panicked' }, spawned: [] });
+    expect(readBack(test.store).map((snapshot) => snapshot.instance)).toEqual(['p']);
+  });
+
+  it("doesn't write a child twice when its parent's segment re-runs after a crash", () => {
+    const inner = recordingStore();
+    let crashed = false;
+    const crashingOnce: RecordingStore = {
+      ...inner,
+      writeSnapshot: (instance, snapshotText) => {
+        if (instance === 'p' && !crashed) {
+          crashed = true;
+          throw new Error('crash');
+        }
+        inner.writeSnapshot(instance, snapshotText);
+      },
+    };
+    const text = compiledText(spawningMain);
+    expect(() => testRuntime({ store: crashingOnce }).runtime.deploy(text).start('p')).toThrow(
+      'crash',
+    );
+    const started = testRuntime({ store: inner }).runtime.deploy(text).start('p');
+    expect(started.spawned).toEqual(['p/1']);
+    const children = readBack(inner).filter((snapshot) => snapshot.instance === 'p/1');
+    expect(children).toHaveLength(1);
+  });
+
+  it("gives a child its parent's crashEveryAwait", () => {
+    const test = testRuntime();
+    test.runtime.deploy(compiledText(spawningMain)).start('p', { crashEveryAwait: true });
+    expect(readBack(test.store).find((snapshot) => snapshot.instance === 'p/1')).toMatchObject({
+      crashEveryAwait: true,
+    });
+  });
+
+  it("carries a sendable closure's captures into the child", () => {
+    const text = compiledText(
+      [
+        'async fn main() -> Future<int>:',
+        '  const base = 40',
+        '  const add = fn(n: int): base + n',
+        '  spawn add(2)',
+        '  0',
+      ].join('\n'),
+    );
+    const test = testRuntime();
+    const started = test.runtime.deploy(text).start('p');
+    expect(settleAll(test, 'p', started).get('p/1')).toEqual({ kind: 'finished', outcome: 42n });
+  });
+});
+
+describe('inspecting an instance', () => {
+  it('shows where each execution waits, and how the instance stands', () => {
+    const test = testRuntime();
+    test.runtime.deploy(compiledText(spawningMain)).start('p');
+    const { state, waitingAt } = test.runtime.inspect('p');
+    expect(state).toEqual({ kind: 'waiting', until: 1n });
+    expect(waitingAt).toEqual([{ waypoint: undefined, location: 'memory:main:7:3' }]);
+    expect(test.runtime.inspect('p/1')).toEqual({ state: { kind: 'ready' }, waitingAt: [] });
+  });
+});

@@ -9,7 +9,9 @@
  */
 
 import { mapOf, valuesEqual } from '../../definition/equality.ts';
+import type { Callee } from '../../definition/instructions/calls.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import { childValues, elementsOf, isComposite, type Value } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import {
@@ -21,6 +23,7 @@ import {
   storeAt,
   writeRegister,
 } from './machine.ts';
+import { enterCase, resolvedCase } from './suspension.ts';
 
 const notRunYet = (_machine: Machine, instruction: Instruction): void => {
   throw new Error(`The runtime doesn't run '${instruction.kind}' instructions yet.`);
@@ -106,20 +109,12 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   return: (machine, instruction, frame) => {
     machine.return(frame, readRegister(frame, instruction.value));
   },
-  await: (machine, instruction, frame) => {
-    machine.await(frame, instruction.future);
+  await: (machine, _instruction, frame) => {
+    machine.wait(frame);
   },
   call: (machine, instruction, frame) => {
-    const { callee } = instruction;
-    if (callee.kind === 'function') {
-      machine.call(frame, callee.function, instruction.arguments);
-      return;
-    }
-    const closure = readRegister(frame, callee.register);
-    if (!isComposite(closure) || closure.kind !== 'closure') {
-      throw new TypeError(`A non-function was called at pc ${frame.pc}; the checker forbids it.`);
-    }
-    machine.call(frame, closure.function, instruction.arguments, closure.captures);
+    const { function: callee, captures } = calledFunction(frame, instruction.callee);
+    machine.call(frame, callee, instruction.arguments, captures);
   },
   array: (_machine, instruction, frame) => {
     next(frame, instruction.dst, {
@@ -149,9 +144,23 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   currentClosure: (_machine, instruction, frame) => {
     next(frame, instruction.dst, currentClosure(frame));
   },
-  spawn: notRunYet,
+  spawn: (machine, instruction, frame) => {
+    const { function: entry, captures } = calledFunction(frame, instruction.callee);
+    machine.spawn({
+      function: entry,
+      captures: [...captures],
+      arguments: instruction.arguments.map((register) => readRegister(frame, register)),
+    });
+    frame.pc += 1;
+  },
   currentCall: notRunYet,
-  select: notRunYet,
+  select: (machine, instruction, frame) => {
+    if (instruction.otherwise === undefined) {
+      machine.wait(frame);
+      return;
+    }
+    enterCase(frame, instruction, resolvedCase(frame, instruction, machine.settled));
+  },
   release: (_machine, instruction, frame) => {
     for (const register of instruction.registers) {
       frame.registers[register] = undefined;
@@ -161,6 +170,21 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   keep: notRunYet,
   defer: notRunYet,
 };
+
+/** The function a `call` or `spawn` runs, with the captures of a closure called as a value. */
+function calledFunction(
+  frame: ActiveFrame,
+  callee: Callee,
+): { readonly function: FunctionId; readonly captures: readonly Value[] } {
+  if (callee.kind === 'function') {
+    return { function: callee.function, captures: [] };
+  }
+  const closure = readRegister(frame, callee.register);
+  if (!isComposite(closure) || closure.kind !== 'closure') {
+    throw new TypeError(`A non-function was called at pc ${frame.pc}; the checker forbids it.`);
+  }
+  return { function: closure.function, captures: closure.captures };
+}
 
 function isVariant(value: Value): value is Extract<Value, { kind: 'variant' }> {
   return isComposite(value) && value.kind === 'variant';

@@ -1,0 +1,44 @@
+# The inbox module (spec §6): `Inbox<T>`, an unbounded FIFO message queue built on a slot.
+#
+# Receivers wait on the slot itself: `receive()` is the slot's `take`, so the slot's queue gives
+# the receiver rules (each message goes to exactly one receiver, the one that has waited longest),
+# and a receive that loses a `select` and is released consumes nothing. The slot holds the next
+# message; the ones behind it wait in the backlog, in the order they were sent, which is the order
+# their segments committed. Segments run one at a time, so nothing else runs between reading the
+# state and writing it back.
+#
+# A full slot never has a receiver waiting, so the backlog moves into the slot only when it is
+# empty: on a send, and before a receive takes. A `select` without `await` tells whether the slot
+# is full, by trying to read it.
+
+struct InboxState<T>:
+  slot: Slot<T>
+  backlog: Array<T>
+
+type Inbox<T> = Shared<InboxState<T>>
+
+fn Inbox.create<T>() -> Inbox<T>:
+  Shared(InboxState<T>{slot: Slot.create<T>(), backlog: []})
+
+fn send<T>(self: Inbox<T>, message: T):
+  const state = self$
+  self$ = InboxState{...state, backlog: [...state.backlog, message]}
+  _fill(self)
+
+fn receive<T>(self: Inbox<T>) -> Future<T>:
+  _fill(self)
+  self$.slot.take()
+
+# Moves the first message of the backlog into the slot, if the slot is empty.
+fn _fill<T>(self: Inbox<T>):
+  const state = self$
+  if state.backlog.length() > 0 and not _isFull(state.slot):
+    drop state.slot.put(state.backlog[0])
+    self$ = InboxState{...state, backlog: state.backlog[1..]}
+
+fn _isFull<T>(slot: Slot<T>) -> bool:
+  select:
+    case slot.read():
+      true
+    else:
+      false

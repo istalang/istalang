@@ -166,6 +166,7 @@ function resolve({ checker, module }: Resolution, node: TypeNode): Type {
 function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
   return {
     kind: 'function',
+    isSendable: node.isSendable,
     isAsync: node.isAsync,
     parameters: node.parameters.map((parameter) => ({
       type: resolve(resolution, parameter),

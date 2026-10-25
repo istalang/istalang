@@ -128,6 +128,7 @@ export function checkFunctionValue(
   const result = substitute(signature.result(), substitution);
   const type: FunctionType = {
     kind: 'function',
+    isSendable: true,
     isAsync: signature.declaration.isAsync,
     parameters: signature.parameters.slice(0, arity).map((slot) => ({
       type: substitute(slot.type, substitution),

@@ -24,6 +24,7 @@ import { preludeName } from '../stdlib-loader.ts';
 import { arrayNatives } from './arrays.ts';
 import { mapNatives } from './maps.ts';
 import { sharedNatives } from './shared-natives.ts';
+import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
 
 /** A float printed as whole digits, which needs `.0` to read as a float. */
@@ -38,6 +39,7 @@ const numericPairs = [
 
 export const preludeNatives: Natives = {
   ...arrayNatives,
+  ...slotNatives,
   ...mapNatives,
   ...sharedNatives,
   ...stringNatives,

@@ -22,7 +22,7 @@ export function parseExtern(
   if (kind === 'fn' || kind === 'async') {
     return parseFunction(parser, 'extern', start);
   }
-  const isSendable = kind === 'identifier' && parser.textOf(cursor.token) === 'sendable';
+  const isSendable = parser.atWord('sendable');
   if (isSendable || kind === 'struct') {
     return parseExternStruct(parser, start, isSendable);
   }

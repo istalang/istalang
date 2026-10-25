@@ -301,8 +301,12 @@ export interface ElseClause extends NodeOf<'ElseClause'> {
   readonly body: Block;
 }
 
-/** `select:`; written after `await`, it is the operand of an Await (§8). */
+/**
+ * `await select:`, which waits for a case's future, or `select:` with an `else`, which chooses at
+ * once (§8). The two are different constructs, so `await select` is one node, never an Await.
+ */
 export interface Select extends NodeOf<'Select'> {
+  readonly awaits: boolean;
   readonly cases: readonly (SelectCase | Invalid)[];
   readonly elseClause: ElseClause | undefined;
 }

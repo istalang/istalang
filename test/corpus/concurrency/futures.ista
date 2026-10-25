@@ -1,0 +1,27 @@
+# outcome: "1 2 | 1 1 | 0 9"
+# Futures are values (§3.3, §6): held in variables, fields and arrays, awaited as often as wanted,
+# since a future resolves once and stays resolved. `futures.first` races a list and gives the
+# position and value of the first to resolve; of several already resolved, the lowest position.
+
+import * as futures from 'futures'
+import * as time from 'time'
+
+struct Pending:
+  label: string
+  done: Future<int>
+
+async fn after(wait: time.Duration, value: int) -> Future<int>:
+  await time.delay(wait)
+  value
+
+async fn main() -> Future<string>:
+  const slow = after(6ms, 1)
+  const fast = after(2ms, 2)
+  const pending = Pending{label: "slow", done: slow}
+  const raced = await futures.first([slow, fast])
+  const once = await pending.done
+  const twice = await slow
+  const ready = Slot.create<int>()
+  await ready.put(9)
+  const both = await futures.first([ready.read(), ready.read()])
+  string(raced.0) + " " + string(raced.1) + " | " + string(once) + " " + string(twice) + " | " + string(both.0) + " " + string(both.1)

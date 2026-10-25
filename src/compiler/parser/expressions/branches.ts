@@ -74,8 +74,17 @@ function parseMatchCase(parser: Parser): MatchCase | Invalid {
 
 const matchCaseRules: ItemRules<MatchCase> = { parseItem: parseMatchCase, annotate: undefined };
 
+/** `select:`, which never waits (§8). */
 export function parseSelect(parser: Parser): Expression {
-  const { start } = parser.cursor.advance().span;
+  return parseSelectFrom(parser, parser.cursor.token.span.start, false);
+}
+
+/**
+ * The `select` the cursor stands at, starting at `start`; `awaits` when `await` came before it,
+ * making it the select that waits (§8).
+ */
+export function parseSelectFrom(parser: Parser, start: number, awaits: boolean): Expression {
+  parser.cursor.advance();
   parser.expect(':');
   const { items } = parseBody(parser, selectLineRules, start);
   const last = items.at(-1);
@@ -83,7 +92,7 @@ export function parseSelect(parser: Parser): Expression {
   const cases = (elseClause === undefined ? items : items.slice(0, -1)).map((item) =>
     item.kind === 'ElseClause' ? misplacedElse(parser, item) : item,
   );
-  return { kind: 'Select', span: parser.spanFrom(start), cases, elseClause };
+  return { kind: 'Select', span: parser.spanFrom(start), awaits, cases, elseClause };
 }
 
 function misplacedElse(parser: Parser, clause: ElseClause): Invalid {

@@ -17,6 +17,8 @@
 import type { LocatedModule, ModuleLoader } from '../compiler/program/program.ts';
 import { moduleIdOf } from '../compiler/program/program.ts';
 import { type LanguageModule, languageModules } from '../language/well-known.ts';
+import futuresSource from './futures/futures.ista';
+import inboxSource from './inbox/inbox.ista';
 import preludeSource from './prelude/prelude.ista';
 import runtimeSource from './runtime/runtime.ista';
 import timeSource from './time/time.ista';
@@ -30,8 +32,16 @@ export const timeName = languageModules.time;
 /** The `runtime` module's name. */
 export const runtimeName = 'runtime';
 
+/** The `futures` module's name. */
+export const futuresName = 'futures';
+
+/** The `inbox` module's name. */
+export const inboxName = 'inbox';
+
 /** Every std module's source, by name. */
 export const stdSources: Readonly<Record<string, string>> = {
+  [futuresName]: futuresSource,
+  [inboxName]: inboxSource,
   [runtimeName]: runtimeSource,
   [timeName]: timeSource,
 };

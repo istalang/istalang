@@ -36,13 +36,13 @@ An execution is a stack of frames. A frame's registers are laid out as parameter
 - **`kept`** collects what `keep` moved there: `fn let`, `fn const` and `fn _` holdings, which last until the function returns even from a loop body.
 - **A stopped execution's pc** is always its `await` or `select`: the only instructions that wait, and the commit points (spec §5). A non-blocking `select` never waits.
 - **A caller frame's pc** points at the `call` it made. On return, the runtime writes the result to that `call`'s `dst` and continues at the next instruction.
-- **An async call** starts a new execution and its `call` future (spec §3.3). The callee runs on top of its caller, in the caller's segment, until it awaits or returns; only then does the caller's `call` receive the future. Only an `await` by the execution that began the segment ends it and commits, so when a commit happens every other execution stands at an `await` or `select`.
+- **An async call** starts a new execution and its `call` future (spec §3.3); the execution names the future its return resolves (`resolves`), and the root, the one the instance started with, names none. The callee runs on top of its caller, in the caller's segment, until it awaits or returns; only then does the caller's `call` receive the future. Only an `await` or blocking `select` by the execution that began the segment ends it and commits, so when a commit happens every other execution stands at an `await` or `select`. Every wait commits, even on a future that has resolved, and the execution then runs after the executions that became ready before it (spec §6).
 - **Resuming** an `await` writes the value to its `dst` and continues at the next instruction. Resuming a `select` releases the losing cases' holdings, writes the winner's `bind`, and continues at the winner's `target`.
 
 Loading refuses code the interpreter couldn't run, so no instruction handler needs its own guard:
 - an index outside its table
 - a call or `spawn` whose arguments don't match the callee's parameters in number, or in value versus `&`
-- a direct call to a function with captures (it is called through its closure value), and a `spawn` of an extern or of a function with captures or `&` parameters
+- a direct call to a function with captures (it is called through its closure value), and a `spawn` naming an extern or a function with captures or `&` parameters (a closure a `spawn` calls through its value is of a sendable function type, which the checker decided)
 - a closure that doesn't carry its function's captures
 - code that doesn't end in `return`, `jump`, `branch`, `switch` or `select`
 - waiting (`await`, a `select` without `otherwise`, `currentCall`) outside an async function
@@ -98,9 +98,9 @@ Each module carries its line starts. The runtime has neither source text nor the
 
 ## Snapshot
 
-- Status: `active`, `panicked` (message, trace, segment start) or `finished` (outcome). What a host is told about an instance is derived from this status alone.
+- Status: `unstarted` (the call a new instance runs: its function, a closure's captures and the arguments), `active`, `panicked` (message, trace, segment start) or `finished` (outcome). What a host is told about an instance is derived from this status alone. A spawned instance is written `unstarted`, named `<parent>/<n>`, before its parent's commit; `spawned` counts the instances an instance has spawned, which numbers the next.
 - `crashEveryAwait`: the instance's option, set when it starts (spec §10), so every runtime that wakes it re-runs its segments.
-- Objects, in ascending id order: `cell` (typed: every cell is a `Shared<T>`), `slot` (value when full, waiting futures oldest first), `future` (resolved, or pending on a call, slot operation, timer, host, `disposed()` or `disposing()`), `weakRef`, `guard` (`defer`), `resource` (a disposable runtime or host value, such as `Revertible<T>`), `mock`, `execution`.
+- Objects, in ascending id order: `cell` (typed: every cell is a `Shared<T>`), `slot` (value when full, waiting operations oldest first, one queue for every kind), `future` (resolved, or pending on a call, slot operation, timer, host, `futures.first` over other futures, `disposed()` or `disposing()`), `weakRef`, `guard` (`defer`), `resource` (a disposable runtime or host value, such as `Revertible<T>`), `mock`, `execution`.
 - `ready`: executions in the order they became ready.
 
 Disposability comes from an object's kind or type. Slots, futures, guards, mocks and executions are disposed by the runtime. A cell or resource follows its type entry's `disposal`, so a restore knows which cells have a `dispose` to call. A `mock` records each call's arguments for `m.calls()`.
@@ -174,17 +174,17 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `await` (§5) | `await`, which commits first |
 | `runtime.commit()` (§3.8) | a call to an already-resolved future, then `await` |
 | Slots and their operations (§6) | calls to prelude externs that return futures |
-| Inbox, `futures`, `rpc`, `fanout` (§3.8, §6) | library code over slots |
+| Inbox, `futures`, `rpc`, `fanout` (§3.8, §6) | library code over slots: an `Inbox<T>` is a `Shared` of its state, one slot and a backlog, and `receive` is the slot's `take`; `futures.first` is the one extern, a `first` future |
 | `defer f` (§7) | `defer`, held in a register like any value |
 | `WeakRef`, `disposed()` (§7) | calls to prelude externs |
 | `worker.disposing()` (§7) | `currentCall` at the function's entry, then a call to `disposing` |
-| `select`, `await select` (§8) | `select`; per case: the future, the registers it holds, `bind` for `as`, and the target; `otherwise` for the non-blocking form |
+| `select`, `await select` (§8) | the case futures in source order, then `select`; per case: the future, the registers its expression created (`holds`), `bind` for `as`, and the target, where the case's `as` is a target its body declares; `otherwise` for the non-blocking form, which is `else`'s body |
 | Prelude and standard-library functions: `push`, `at`, `get`, `length`, … (§3.8) | calls to their entries; runtime-backed ones are externs |
 | Versioning (§5) | an instance references its Definition's content hash for its whole life |
 | Disposable cycles (§7) | nothing in the code; the runtime's snapshot pass finds and disposes them |
 | `main` (§9) | `Definition.main` |
 | Host starts an instance, operates a panicked one (§3.12, §9) | the runtime's host API over Definitions and snapshots; the snapshot's `status` records panics and outcomes |
-| `spawn f(args)` (§9) | `spawn` |
+| `spawn f(args)` (§9) | `spawn` with the call's callee, a function or the value of a sendable function type, and its arguments, a method's receiver first, all by value |
 | Values crossing the host boundary (§9) | driven by the extern entries' types and the type table |
 | `@Suite`, `mock`, `testing.start`, `handle<T>()` (§10) | function annotations; natives over the function table and the host API |
 | `crashEveryAwait` (§10) | an option of each instance, kept in its snapshot: every segment runs twice before it commits |

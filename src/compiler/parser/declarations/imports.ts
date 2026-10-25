@@ -26,7 +26,7 @@ export function parseImport(parser: Parser): ImportDeclaration {
 /** `from 'path'`. */
 function parseFrom(parser: Parser): StringLiteral | Missing {
   const { cursor } = parser;
-  if (!(cursor.at('identifier') && parser.textOf(cursor.token) === 'from')) {
+  if (!parser.atWord('from')) {
     return parser.missing("'from'");
   }
   cursor.advance();

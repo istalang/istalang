@@ -25,6 +25,7 @@ import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register, TypeId } from '../../definition/operands.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
 import { isReference, type Reference } from '../snapshot/objects.ts';
+import type { InstanceCall } from '../snapshot/snapshot.ts';
 import { partAt, withPart } from '../values/parts.ts';
 
 /** The instance's cells as frames reach them. */
@@ -67,10 +68,14 @@ export interface Machine {
   /** Returns `value` from `frame`, the top frame. */
   readonly return: (frame: ActiveFrame, value: Value) => void;
   /**
-   * Waits at `frame`'s `await` on the future in register `future`. The frame stays at the `await`
-   * until the future resolves; resuming writes the value to its `dst` (scheduler/instance.ts).
+   * Waits at `frame`'s `await` or blocking `select` on the futures its registers name. The frame
+   * stays there until one resolves; resuming moves it on (suspension.ts).
    */
-  readonly await: (frame: ActiveFrame, future: Register) => void;
+  readonly wait: (frame: ActiveFrame) => void;
+  /** The value of the future `handle` names, once it has resolved. */
+  readonly settled: (handle: Value) => { readonly value: Value } | undefined;
+  /** Starts `call` as a new instance once the running segment commits (§9). */
+  readonly spawn: (call: InstanceCall) => void;
 }
 
 /**

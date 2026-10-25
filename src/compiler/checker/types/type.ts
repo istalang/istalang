@@ -98,8 +98,10 @@ export interface ParameterSlot {
   readonly reference: boolean;
 }
 
+/** A function type; a sendable one's values capture only sendable values (§3.14). */
 export interface FunctionType {
   readonly kind: 'function';
+  readonly isSendable: boolean;
   readonly isAsync: boolean;
   readonly parameters: readonly ParameterSlot[];
   readonly result: Type;
@@ -172,6 +174,7 @@ export function sameType(first: Type, second: Type): boolean {
     case 'function':
       return (
         second.kind === 'function' &&
+        first.isSendable === second.isSendable &&
         first.isAsync === second.isAsync &&
         first.parameters.length === second.parameters.length &&
         first.parameters.every((parameter, index) => {
@@ -205,13 +208,20 @@ function sameTypes(first: readonly Type[], second: readonly Type[]): boolean {
   );
 }
 
-/** Whether a value of type `source` fits where `target` is expected. */
+/**
+ * Whether a value of type `source` fits where `target` is expected: the same type, or a sendable
+ * function where a plain one of the same signature is expected (§3.14).
+ */
 export function isAssignable(source: Type, target: Type): boolean {
   return (
     source.kind === 'error' ||
     target.kind === 'error' ||
     isPrimitive(source, 'never') ||
-    sameType(source, target)
+    sameType(source, target) ||
+    (source.kind === 'function' &&
+      target.kind === 'function' &&
+      source.isSendable &&
+      sameType({ ...source, isSendable: false }, target))
   );
 }
 
@@ -233,49 +243,45 @@ export function substitute(type: Type, substitution: Substitution): Type {
   if (substitution.size === 0) {
     return type;
   }
+  if (type.kind === 'parameter') {
+    return substitution.get(type.declaration) ?? type;
+  }
+  return mapChildren(type, (child) => substitute(child, substitution));
+}
+
+/** A function type with `substitution` applied, still a function type. */
+export function substituteFunction(type: FunctionType, substitution: Substitution): FunctionType {
+  return mapChildren(type, (child) => substitute(child, substitution));
+}
+
+/** `type` with each type it is built from, one level down, replaced by what `map` gives. */
+export function mapChildren<Mapped extends Type>(type: Mapped, map: (child: Type) => Type): Mapped;
+export function mapChildren(type: Type, map: (child: Type) => Type): Type {
   switch (type.kind) {
     case 'primitive':
+    case 'parameter':
     case 'error':
       return type;
-    case 'parameter':
-      return substitution.get(type.declaration) ?? type;
     case 'nominal':
-      return {
-        ...type,
-        arguments: type.arguments.map((argument) => substitute(argument, substitution)),
-      };
+      return { ...type, arguments: type.arguments.map(map) };
     case 'anonymous':
-      return {
-        ...type,
-        fields: type.fields.map((field) => ({
-          ...field,
-          type: substitute(field.type, substitution),
-        })),
-      };
+      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
     case 'tuple':
+      return { ...type, elements: type.elements.map(map) };
+    case 'function':
       return {
         ...type,
-        elements: type.elements.map((element) => substitute(element, substitution)),
+        parameters: type.parameters.map((parameter) => ({
+          ...parameter,
+          type: map(parameter.type),
+        })),
+        result: map(type.result),
       };
-    case 'function':
-      return substituteFunction(type, substitution);
     default: {
       const unhandled: never = type;
       return unhandled;
     }
   }
-}
-
-/** A function type with `substitution` applied, still a function type. */
-export function substituteFunction(type: FunctionType, substitution: Substitution): FunctionType {
-  return {
-    ...type,
-    parameters: type.parameters.map((parameter) => ({
-      ...parameter,
-      type: substitute(parameter.type, substitution),
-    })),
-    result: substitute(type.result, substitution),
-  };
 }
 
 /** The types `type` is built from, one level down. */

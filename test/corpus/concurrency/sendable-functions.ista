@@ -1,0 +1,28 @@
+# outcome: "3 | 11 | 2 22 | 5 | 0"
+# Sendable function types (§3.14): a function value capturing only sendable values has a sendable
+# function type, which fits where the plain one is expected. Where one value is decided but others
+# may follow, the type is widened to the plain function type: a `let` without a written type, and
+# producers of one value that disagree, such as the items of an array literal or an if's branches.
+
+fn applied(f: fn(int) -> int, n: int) -> int:
+  f(n)
+
+fn sent(f: sendable fn(int) -> int, n: int) -> int:
+  f(n)
+
+fn reassigned() -> int:
+  let counter = 0
+  let current = fn(n: int): n + 1
+  current = fn(n: int): n + counter
+  counter = 1
+  current(2)
+
+async fn main() -> Future<string>:
+  const base = 10
+  const add = fn(n: int): n + base
+  let seen = 20
+  const mixed = [fn(n: int): n + 1, fn(n: int): n + seen]
+  const picked = if base > 5: fn(n: int): n * 0 else: fn(n: int): n + seen
+  seen += 1
+  const items = string(mixed[0](1)) + " " + string(mixed[1](1))
+  string(reassigned()) + " | " + string(applied(add, 1)) + " | " + items + " | " + string(sent(fn(n: int): n, 5)) + " | " + string(picked(3))

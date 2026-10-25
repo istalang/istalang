@@ -1,0 +1,158 @@
+/**
+ * The futures of a running instance (spec §6): every wait is on one, and a future resolves once
+ * and stays resolved.
+ *
+ * - Who waits on a future is read from the waiters' frames, never stored: an execution waits on
+ *   the futures its top frame's `await` or `select` names (definition/instructions/flow.ts).
+ *   Resolving a future readies its waiters in creation order, once each.
+ * - `futures.first(fs)` is the one future that waits on others: it resolves with the position and
+ *   value of the first of them to resolve, the lowest position among those resolved together.
+ *   Which `first`s wait on a future is read from their lists, the same way.
+ */
+
+import { awaitedRegisters } from '../../definition/instructions/flow.ts';
+import { handleTarget, type Value } from '../../definition/values.ts';
+import { readRegister } from '../interpreter/machine.ts';
+import { Panic } from '../natives.ts';
+import type { HeapObject } from '../snapshot/objects.ts';
+import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
+
+export type FutureState = Extract<HeapObject, { kind: 'future' }>['state'];
+
+/** A pending `futures.first`. */
+type FirstFuture = LiveObjectOf<'future'> & {
+  readonly state: Extract<FutureState, { kind: 'first' }>;
+};
+
+/** A future that has resolved, with its value. */
+export interface Settled {
+  readonly value: Value;
+}
+
+export class Futures {
+  readonly #heap: Heap;
+  readonly #ready: (execution: LiveExecution) => void;
+
+  /** Futures on `heap`, readying a waiting execution through `ready` when its future resolves. */
+  constructor(heap: Heap, ready: (execution: LiveExecution) => void) {
+    this.#heap = heap;
+    this.#ready = ready;
+  }
+
+  /** A new future in `state`; its id. */
+  create(state: FutureState): number {
+    return this.#heap.add((id) => ({ kind: 'future', id, state })).id;
+  }
+
+  /** A handle to a new future in `state`. */
+  createHandle(state: FutureState): Value {
+    return { kind: 'handle', object: this.create(state) };
+  }
+
+  /** The value of the future `handle` names, once it has resolved. */
+  settled(handle: Value): Settled | undefined {
+    const { state } = this.#future(handle);
+    return state.kind === 'resolved' ? { value: state.value } : undefined;
+  }
+
+  /**
+   * Resolves the pending future `id` with `value`, and with it every `first` it makes resolve,
+   * then readies everything waiting on any of them. A `first` is created after the futures it
+   * races, so taking the pending ones in creation order finds them all in one pass, and each one's
+   * members are settled before it: it resolves at the lowest position that resolved together.
+   */
+  resolve(id: number, value: Value): void {
+    this.#settle(id, value);
+    const together = new Set([id]);
+    for (const first of this.#pendingFirsts()) {
+      const position = first.state.futures.findIndex((member) => together.has(member));
+      const winner = first.state.futures[position];
+      if (winner !== undefined) {
+        this.#settle(first.id, positioned(position, this.#valueOf(winner)));
+        together.add(first.id);
+      }
+    }
+    for (const execution of this.#heap.objectsOf('execution')) {
+      if ([...together].some((future) => waitsOn(execution, future))) {
+        this.#ready(execution);
+      }
+    }
+  }
+
+  /** The value of the resolved future `id`. */
+  #valueOf(id: number): Value {
+    const { state } = this.#heap.of(id, 'future');
+    if (state.kind !== 'resolved') {
+      throw new Error(`Future ${id} hasn't resolved.`);
+    }
+    return state.value;
+  }
+
+  /** Marks the pending future `id` resolved with `value`. */
+  #settle(id: number, value: Value): void {
+    const future = this.#heap.of(id, 'future');
+    if (future.state.kind === 'resolved') {
+      throw new Error(`Future ${id} has resolved already.`);
+    }
+    this.#heap.replace({ ...future, state: { kind: 'resolved', value } });
+  }
+
+  /** Resolves every timer due at `now`, earliest first. */
+  resolveDueTimers(now: bigint): void {
+    const due = this.#heap
+      .objectsOf('future')
+      .flatMap(({ id, state }) =>
+        state.kind === 'timer' && state.at <= now ? [{ id, ...state }] : [],
+      )
+      .sort((first, second) =>
+        first.at === second.at ? first.id - second.id : Number(first.at - second.at),
+      );
+    for (const { id } of due) {
+      this.resolve(id, null);
+    }
+  }
+
+  /** A handle to a future of the first of `handles` to resolve (spec §3.8, `futures.first`). */
+  first(handles: readonly Value[]): Value {
+    if (handles.length === 0) {
+      throw new Panic('futures.first was given no futures.');
+    }
+    for (const [position, handle] of handles.entries()) {
+      const settled = this.settled(handle);
+      if (settled !== undefined) {
+        return this.createHandle({ kind: 'resolved', value: positioned(position, settled.value) });
+      }
+    }
+    return this.createHandle({ kind: 'first', futures: handles.map(handleObject) });
+  }
+
+  #future(handle: Value): LiveObjectOf<'future'> {
+    return this.#heap.of(handleObject(handle), 'future');
+  }
+
+  #pendingFirsts(): readonly FirstFuture[] {
+    return this.#heap.objectsOf('future').filter(isFirst);
+  }
+}
+
+/** What a `first` resolves with: the winner's position and value, as an `(int, T)`. */
+function positioned(position: number, value: Value): Value {
+  return { kind: 'tuple', elements: [BigInt(position), value] };
+}
+
+function isFirst(future: LiveObjectOf<'future'>): future is FirstFuture {
+  return future.state.kind === 'first';
+}
+
+/** Whether `execution` waits on the future `id` at its top frame. */
+function waitsOn(execution: LiveExecution, id: number): boolean {
+  const frame = execution.frames.at(-1);
+  const instruction = frame?.code.instructions[frame.pc];
+  return (
+    frame !== undefined &&
+    instruction !== undefined &&
+    awaitedRegisters(instruction).some(
+      (register) => handleTarget(readRegister(frame, register)) === id,
+    )
+  );
+}

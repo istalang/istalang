@@ -15,6 +15,9 @@
  * - The function's own name, a local `fn`'s or a named lambda's, is declared before the body is
  *   checked when the result is known, so the body may call it; otherwise calling it is recursion
  *   needing a declared result (functions.ts).
+ * - Its type is sendable when every capture is a copy of a sendable value: a captured `let` is a
+ *   cell (§3.14), so a function capturing one isn't (§9). Inside its own body, its name has the
+ *   plain type, since what it captures is known only once the body is checked.
  * - The type is recorded with the parameters and captures for lowering (`functionOf`).
  */
 
@@ -26,8 +29,9 @@ import type { BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Produced } from '../rules/agreement.ts';
-import { refuseHeldFuture } from '../rules/futures.ts';
+import { isChangeable } from '../rules/places.ts';
 import { blockTail, ReturnScope } from '../statements/returns.ts';
+import { isSendable } from '../traits/sendable.ts';
 import { errorType, type FunctionType, type Type, unitType } from '../types/type.ts';
 import { FunctionScope, type NestedFunction } from './function-scope.ts';
 
@@ -84,8 +88,9 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     type: parameter.type,
     reference: parameter.reference,
   }));
-  const typeWith = (produces: Type): FunctionType => ({
+  const typeWith = (produces: Type, sendable = false): FunctionType => ({
     kind: 'function',
+    isSendable: sendable,
     isAsync,
     parameters: slots,
     result: produces,
@@ -100,14 +105,21 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     }
     return scope.returns.result(context, header.tail(declaredResult));
   });
-  const type = typeWith(result);
-  if (name !== undefined && declaredResult === undefined) {
-    context.variables.declare(name, type);
-  }
   const captures = [...scope.captures.values()].map((entity) => ({
     entity,
     type: context.variables.typeOf(entity),
   }));
+  const type = typeWith(
+    result,
+    captures.every(
+      (capture) =>
+        !isChangeable(context, capture.entity) &&
+        isSendable(context.checker, capture.type, 'instance'),
+    ),
+  );
+  if (name !== undefined) {
+    context.variables.declare(name, type);
+  }
   context.functions.record(node, {
     type,
     parameters: parameters.map((parameter) => parameter.node),
@@ -148,7 +160,6 @@ function nestedParameters(
       );
       return [{ node, type: errorType, reference: false }];
     }
-    refuseHeldFuture(context.checker, context.module, node, parameter.type);
     return [{ node, ...parameter }];
   });
 }

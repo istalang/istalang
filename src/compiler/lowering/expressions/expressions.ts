@@ -22,6 +22,7 @@ import { lowerIs, lowerMatch } from './matching.ts';
 import { lowerName } from './names.ts';
 import { lowerBinary, lowerUnary } from './operators.ts';
 import { lowerPropagate } from './propagate.ts';
+import { lowerSelect } from './select.ts';
 import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
 import { lowerUnwrap } from './unwrap.ts';
@@ -61,7 +62,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Is: lowerIs,
   Range: lowerRange,
   Match: lowerMatch,
-  Select: notLowered,
+  Select: lowerSelect,
   Missing: notLowered,
   Invalid: notLowered,
 };

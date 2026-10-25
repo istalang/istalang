@@ -1,37 +1,44 @@
 /**
- * A running instance in memory: its heap objects, with executions as live frames, the executions
- * ready to run, and its status (spec §5). It is made from a snapshot, or for a new instance from
- * `main`, and turned back into a snapshot at every commit; the scheduler runs it in between
- * (segment.ts, wake.ts).
+ * A running instance in memory: its heap, the executions ready to run, and what its segment
+ * spawned (spec §5, §9). It is made from a snapshot, a new instance's `unstarted` one included,
+ * and turned back into a snapshot at every commit; the scheduler runs it in between (segment.ts,
+ * wake.ts).
  *
- * - Ids grow with creation (snapshot/objects.ts). The next id is one past the highest live one,
- *   so it is never stored; an id freed by a commit may come back, but nothing refers to it.
- * - An execution waits at its top frame's `await`: what it waits on is read from that
- *   instruction's register, never stored. Resolving a future readies its waiters in id order,
- *   which is creation order. A ready execution is always at an `await` whose future has resolved.
- * - The root execution, `main`'s, is the one no call future names.
+ * - An execution waits at its top frame's `await` or `select`: what it waits on is read from that
+ *   instruction's registers, never stored (futures.ts). A ready execution always stands at a wait
+ *   whose future has resolved, and executions run in the order they became ready (§6).
+ * - The root execution, the one the instance started with, is the one that resolves no call
+ *   future.
  * - A commit keeps only what an execution can reach (§5). A future no register holds any more is
  *   left out; disposal (§7) will decide what losing a last holder does, and until then nothing can
- *   observe it.
+ *   observe it. An async call's execution names its future, so the future lasts as long as the call.
+ * - What a segment spawns becomes instances only when the segment commits (wake.ts), so a segment
+ *   that is discarded spawned nothing.
  * - The instance is its frames' cell store (interpreter/machine.ts): a variable passed by `&` is a
  *   cell object here, and a reference names one.
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { awaitedRegisters } from '../../definition/instructions/flow.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { depthOf, handleTarget, type Value } from '../../definition/values.ts';
+import { depthOf, type Value } from '../../definition/values.ts';
 import type { FunctionTable } from '../interpreter/function-table.ts';
 import {
   type ActiveFrame,
   type CellStore,
   newFrame,
   type RegisterContents,
-  readRegister,
-  resumeAt,
 } from '../interpreter/machine.ts';
+import { resume } from '../interpreter/suspension.ts';
 import type { Frame, HeapObject } from '../snapshot/objects.ts';
-import { referencedObjects, type Snapshot, valuesIn } from '../snapshot/snapshot.ts';
+import {
+  type InstanceCall,
+  referencedObjects,
+  type Snapshot,
+  valuesIn,
+} from '../snapshot/snapshot.ts';
+import { Futures } from './futures.ts';
+import { Heap, type LiveExecution, type LiveObject } from './heap.ts';
+import { Slots } from './slots.ts';
 
 /** A Definition as the runtime runs it: loaded, bound to its natives, and named by its hash. */
 export interface LoadedDefinition {
@@ -40,27 +47,7 @@ export interface LoadedDefinition {
   readonly functions: FunctionTable;
 }
 
-export interface LiveExecution {
-  readonly kind: 'execution';
-  readonly id: number;
-  /** The call stack, innermost frame last. */
-  readonly frames: ActiveFrame[];
-  readonly disposing: boolean;
-}
-
-type FutureObject = Extract<HeapObject, { kind: 'future' }>;
-type CellObject = Extract<HeapObject, { kind: 'cell' }>;
-type FutureState = FutureObject['state'];
-
-/** A heap object as the running instance holds it. */
-export type LiveObject = Exclude<HeapObject, { kind: 'execution' }> | LiveExecution;
-
 export type InstanceStatus = Snapshot['status'];
-
-/** What an instance is made of, as a snapshot records it. */
-type Contents = Pick<Snapshot, 'ready' | 'crashEveryAwait'> & {
-  readonly objects: readonly LiveObject[];
-};
 
 /** How a new instance runs: options it keeps for its whole life (§10). */
 export interface StartOptions {
@@ -72,53 +59,54 @@ export class Instance {
   readonly loaded: LoadedDefinition;
   readonly name: string;
   readonly crashEveryAwait: boolean;
+  readonly heap: Heap;
+  readonly futures: Futures;
+  readonly slots: Slots;
   /** The heap's cells, as its frames read and write them (interpreter/machine.ts). */
   readonly cells: CellStore = {
-    read: (cell) => this.#cell(cell).value,
+    read: (cell) => this.heap.of(cell, 'cell').value,
     write: (cell, value) => {
-      this.#objects.set(cell, { ...this.#cell(cell), value });
+      this.heap.replace({ ...this.heap.of(cell, 'cell'), value });
     },
-    create: (type, value) => this.#add((id): CellObject => ({ kind: 'cell', id, type, value })).id,
+    create: (type, value) => this.heap.add((id) => ({ kind: 'cell', id, type, value })).id,
   };
-  readonly #objects: Map<number, LiveObject>;
+  /** How many instances this one spawned before its current segment. */
+  readonly #spawnedBefore: number;
+  readonly #spawns: InstanceCall[] = [];
   readonly #ready: number[];
 
-  private constructor(loaded: LoadedDefinition, name: string, contents: Contents) {
+  private constructor(loaded: LoadedDefinition, snapshot: Snapshot) {
     this.loaded = loaded;
-    this.name = name;
-    this.crashEveryAwait = contents.crashEveryAwait;
-    this.#objects = new Map(contents.objects.map((object) => [object.id, object]));
-    this.#ready = [...contents.ready];
+    this.name = snapshot.instance;
+    this.crashEveryAwait = snapshot.crashEveryAwait;
+    this.#spawnedBefore = snapshot.spawned;
+    this.#ready = [...snapshot.ready];
+    this.heap = new Heap(
+      snapshot.objects.map((object) => liveObject(loaded.definition, object, this.cells)),
+    );
+    this.futures = new Futures(this.heap, (execution) => {
+      this.markReady(execution);
+    });
+    this.slots = new Slots(this.heap, this.futures);
   }
 
-  /** A new instance whose root execution is about to run `main` from its start. */
-  static start(
-    loaded: LoadedDefinition,
-    name: string,
-    main: FunctionId,
-    { crashEveryAwait = false }: StartOptions,
-  ): Instance {
-    const instance = new Instance(loaded, name, { objects: [], ready: [], crashEveryAwait });
-    instance.startExecution(main, []);
+  /**
+   * The instance an `unstarted` snapshot describes, its root execution about to run the snapshot's
+   * call from its start.
+   */
+  static start(loaded: LoadedDefinition, snapshot: Snapshot): Instance {
+    if (snapshot.status.kind !== 'unstarted') {
+      throw new Error(`Instance '${snapshot.instance}' has started already.`);
+    }
+    const { call } = snapshot.status;
+    const instance = new Instance(loaded, snapshot);
+    instance.startExecution(call.function, call.arguments, call.captures);
     return instance;
   }
 
   /** The instance a committed snapshot describes. */
   static restore(loaded: LoadedDefinition, snapshot: Snapshot): Instance {
-    const instance = new Instance(loaded, snapshot.instance, { ...snapshot, objects: [] });
-    for (const object of snapshot.objects) {
-      const live: LiveObject =
-        object.kind === 'execution'
-          ? {
-              ...object,
-              frames: object.frames.map((frame) =>
-                liveFrame(loaded.definition, frame, instance.cells),
-              ),
-            }
-          : object;
-      instance.#objects.set(live.id, live);
-    }
-    return instance;
+    return new Instance(loaded, snapshot);
   }
 
   /** How deep the deepest value an execution can reach nests: what a commit would persist. */
@@ -129,10 +117,11 @@ export class Instance {
   }
 
   /** The instance as a snapshot with `status`, holding only what an execution can reach. */
-  snapshot(status: Exclude<InstanceStatus, { kind: 'panicked' }>): Snapshot {
+  snapshot(status: Exclude<InstanceStatus, { kind: 'panicked' | 'unstarted' }>): Snapshot {
     const active = status.kind === 'active';
     return {
       ...this.unrun(status),
+      spawned: this.#spawnedBefore + this.#spawns.length,
       objects: active ? this.#reachableObjects() : [],
       ready: active ? [...this.#ready] : [],
     };
@@ -148,46 +137,49 @@ export class Instance {
       instance: this.name,
       status,
       crashEveryAwait: this.crashEveryAwait,
+      spawned: this.#spawnedBefore,
       objects: [],
       ready: [],
     };
   }
 
+  /** The calls this segment spawned, each a new instance once the segment commits (§9). */
+  spawns(): readonly InstanceCall[] {
+    return this.#spawns;
+  }
+
+  /** How many instances this one spawned before its current segment, which numbers the next. */
+  get spawnedBefore(): number {
+    return this.#spawnedBefore;
+  }
+
+  /** Records `call` as spawned by this segment. */
+  spawn(call: InstanceCall): void {
+    this.#spawns.push(call);
+  }
+
   /**
    * A new execution about to run function `entry` with `contents` in its parameters, and a
-   * closure's `captures` after them.
+   * closure's `captures` after them; an async call's execution `resolves` its future on return.
    */
   startExecution(
     entry: FunctionId,
     contents: readonly RegisterContents[],
     captures: readonly Value[] = [],
+    resolves?: number,
   ): LiveExecution {
     const code = this.loaded.definition.functions[entry];
     if (code?.kind !== 'code') {
       throw new Error(`Entry ${entry} is not code.`);
     }
     const frame = newFrame({ function: entry, code }, contents, this.cells, captures);
-    return this.#add((id) => ({ kind: 'execution', id, frames: [frame], disposing: false }));
-  }
-
-  /** A handle to a new future in `state`. */
-  newFuture(state: FutureState): Value {
-    const future = this.#add((id): FutureObject => ({ kind: 'future', id, state }));
-    return { kind: 'handle', object: future.id };
-  }
-
-  /** The future of the async call `execution` runs; undefined for the root. */
-  callFutureOf(execution: LiveExecution): number | undefined {
-    for (const object of this.#objects.values()) {
-      if (
-        object.kind === 'future' &&
-        object.state.kind === 'call' &&
-        object.state.execution === execution.id
-      ) {
-        return object.id;
-      }
-    }
-    return undefined;
+    return this.heap.add((id) => ({
+      kind: 'execution',
+      id,
+      resolves,
+      frames: [frame],
+      disposing: false,
+    }));
   }
 
   /** Whether no execution is ready to run. */
@@ -195,123 +187,40 @@ export class Instance {
     return this.#ready.length === 0;
   }
 
-  /** Queues `execution` to run after the executions already ready. */
+  /**
+   * Queues `execution` to run after the executions already ready, unless it is ready already: a
+   * `select` racing futures that resolve together becomes ready once.
+   */
   markReady(execution: LiveExecution): void {
-    this.#ready.push(execution.id);
-  }
-
-  /** Whether the future `handle` names has resolved. */
-  isResolved(handle: Value): boolean {
-    return this.#future(handle).state.kind === 'resolved';
-  }
-
-  /** Resolves the pending future `id` with `value`, readying every execution waiting on it. */
-  resolve(id: number, value: Value): void {
-    const future = this.#futureById(id);
-    this.#objects.set(id, { ...future, state: { kind: 'resolved', value } });
-    for (const object of this.#objects.values()) {
-      if (object.kind === 'execution' && waitsOn(object, id)) {
-        this.markReady(object);
-      }
+    if (!this.#ready.includes(execution.id)) {
+      this.#ready.push(execution.id);
     }
   }
 
-  /** Resolves every timer due at `now`, earliest first. */
-  resolveDueTimers(now: bigint): void {
-    const due = [...this.#objects.values()]
-      .flatMap((object) =>
-        object.kind === 'future' && object.state.kind === 'timer' && object.state.at <= now
-          ? [{ id: object.id, at: object.state.at }]
-          : [],
-      )
-      .sort((first, second) =>
-        first.at === second.at ? first.id - second.id : Number(first.at - second.at),
-      );
-    for (const { id } of due) {
-      this.resolve(id, null);
-    }
-  }
-
-  /** The next ready execution, moved past its `await` with the value it waited for. */
+  /** The next ready execution, moved past its wait with the value of what it waited for. */
   resumeNext(): LiveExecution | undefined {
     const id = this.#ready.shift();
     if (id === undefined) {
       return undefined;
     }
-    const execution = this.#execution(id);
-    const frame = topFrame(execution);
-    const instruction = frame.code.instructions[frame.pc];
-    const resolved = (instruction === undefined ? [] : awaitedRegisters(instruction))
-      .map((register) => this.#future(readRegister(frame, register)).state)
-      .find((state) => state.kind === 'resolved');
-    if (resolved === undefined) {
-      throw new Error(`Ready execution ${id} waits on no resolved future.`);
-    }
-    if (instruction?.kind !== 'await') {
-      throw new Error(`The runtime doesn't resume a '${instruction?.kind}' yet.`);
-    }
-    resumeAt(frame, instruction.dst, resolved.value);
+    const execution = this.heap.of(id, 'execution');
+    resume(topFrame(execution), (handle) => this.futures.settled(handle));
     return execution;
   }
 
-  /** The root execution, which no call future names; undefined once `main` has returned. */
+  /** The root execution, which resolves no call future; undefined once it has returned. */
   root(): LiveExecution | undefined {
-    for (const object of this.#objects.values()) {
-      if (object.kind === 'execution' && this.callFutureOf(object) === undefined) {
-        return object;
-      }
-    }
-    return undefined;
+    return this.heap.objectsOf('execution').find((execution) => execution.resolves === undefined);
   }
 
   /** Removes a finished execution. */
   remove(execution: LiveExecution): void {
-    this.#objects.delete(execution.id);
-  }
-
-  #add<Object extends LiveObject>(make: (id: number) => Object): Object {
-    const object = make(Math.max(-1, ...this.#objects.keys()) + 1);
-    this.#objects.set(object.id, object);
-    return object;
-  }
-
-  #execution(id: number): LiveExecution {
-    const object = this.#objects.get(id);
-    if (object?.kind !== 'execution') {
-      throw new Error(`Object ${id} is not an execution.`);
-    }
-    return object;
-  }
-
-  #future(handle: Value): FutureObject {
-    const id = handleTarget(handle);
-    if (id === undefined) {
-      throw new TypeError('Expected a future handle.');
-    }
-    return this.#futureById(id);
-  }
-
-  #cell(id: number): CellObject {
-    const object = this.#objects.get(id);
-    if (object?.kind !== 'cell') {
-      throw new Error(`Object ${id} is not a cell.`);
-    }
-    return object;
-  }
-
-  #futureById(id: number): FutureObject {
-    const object = this.#objects.get(id);
-    if (object?.kind !== 'future') {
-      throw new Error(`Object ${id} is not a future.`);
-    }
-    return object;
+    this.heap.remove(execution.id);
   }
 
   /** The heap as a snapshot stores it, without what no execution can reach. */
   #reachableObjects(): HeapObject[] {
-    const stored = new Map(
-      [...this.#objects.values()].map((object) => [object.id, storedObject(object)]),
-    );
+    const stored = new Map(this.heap.objects().map((object) => [object.id, storedObject(object)]));
     const reached = new Set<number>();
     const pending: HeapObject[] = [...stored.values()].filter(
       (object) => object.kind === 'execution',
@@ -337,16 +246,16 @@ export function topFrame(execution: LiveExecution): ActiveFrame {
   return frame;
 }
 
-/** Whether `execution` waits on the future `id` at its top frame. */
-function waitsOn(execution: LiveExecution, id: number): boolean {
-  const frame = topFrame(execution);
-  const instruction = frame.code.instructions[frame.pc];
-  return (
-    instruction !== undefined &&
-    awaitedRegisters(instruction).some(
-      (register) => handleTarget(readRegister(frame, register)) === id,
-    )
-  );
+/** A snapshot's object as the running instance holds it: an execution's frames made live. */
+function liveObject(definition: Definition, object: HeapObject, cells: CellStore): LiveObject {
+  if (object.kind !== 'execution') {
+    return object;
+  }
+  return {
+    ...object,
+    resolves: object.resolves,
+    frames: object.frames.map((frame) => liveFrame(definition, frame, cells)),
+  };
 }
 
 function liveFrame(definition: Definition, frame: Frame, cells: CellStore): ActiveFrame {
@@ -369,8 +278,10 @@ function storedObject(object: LiveObject): HeapObject {
   if (object.kind !== 'execution') {
     return object;
   }
+  const { resolves, ...rest } = object;
   return {
-    ...object,
+    ...rest,
+    ...(resolves === undefined ? {} : { resolves }),
     frames: object.frames.map((frame) => ({
       function: frame.function,
       pc: frame.pc,

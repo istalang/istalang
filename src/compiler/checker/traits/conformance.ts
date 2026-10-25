@@ -190,7 +190,9 @@ function conform(
   }
   const meeting = { site, type, constraint };
   if (isSendableTrait(checker, constraint.trait)) {
-    return isSendable(checker, type) ? [] : lacks(meeting, 'every value inside it to be sendable');
+    return isSendable(checker, type, 'instance')
+      ? []
+      : lacks(meeting, 'every value inside it to be sendable');
   }
   for (const field of requiredFields(constraint.trait)) {
     const fieldType = requiredFieldType(checker, constraint, field, type);

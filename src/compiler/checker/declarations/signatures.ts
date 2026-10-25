@@ -24,7 +24,7 @@ import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
-import { futureArgument, futureOf, refuseHeldFuture } from '../rules/futures.ts';
+import { futureArgument, futureOf } from '../rules/futures.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -63,9 +63,6 @@ export function declaredParameters(
         : defaults.check(defaultValue, declared);
     const type = declared ?? valueType ?? errorType;
     defaults?.declare(node, type);
-    if (declaration.body !== undefined) {
-      refuseHeldFuture(checker, module, node, type);
-    }
     return [{ node, type, reference: writtenByReference(node) }];
   });
 }
@@ -122,13 +119,7 @@ export function declaredFields(
 ): readonly FieldMember[] {
   return fields.flatMap((field) =>
     field.kind === 'FieldDeclaration'
-      ? [{ name: field.name.text, type: fieldType(checker, module, field) }]
+      ? [{ name: field.name.text, type: checker.resolveType(module, field.type) }]
       : [],
   );
-}
-
-function fieldType(checker: CheckerContext, module: ModuleId, field: FieldDeclaration): Type {
-  const type = checker.resolveType(module, field.type);
-  refuseHeldFuture(checker, module, field, type);
-  return type;
 }

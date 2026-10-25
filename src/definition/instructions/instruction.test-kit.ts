@@ -181,7 +181,7 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
     )?.chain((fn) => {
       const arity = s.signatures[fn]?.parameters.length ?? 0;
       return fc.record({
-        function: fc.constant(fn),
+        callee: fc.constant({ kind: 'function' as const, function: fn }),
         arguments: fc.array(index(s.registers), { minLength: arity, maxLength: arity }),
       });
     }),

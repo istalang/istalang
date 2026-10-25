@@ -21,8 +21,9 @@
  * execution can reach it or as its outcome, panics where it ended instead, so it commits nothing.
  */
 
+import { awaitedRegisters } from '../../definition/instructions/flow.ts';
 import type { Argument } from '../../definition/instructions/places.ts';
-import type { FunctionId, Register } from '../../definition/operands.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import { depthOf, handleTarget, maximumDepth, type Value } from '../../definition/values.ts';
 import { runInstruction } from '../interpreter/instructions.ts';
 import {
@@ -40,7 +41,9 @@ import {
 import { traceOf } from '../interpreter/trace.ts';
 import { type NativeCells, type NativeContext, Panic } from '../natives.ts';
 import { isReference, type Reference } from '../snapshot/objects.ts';
-import { type Instance, type LiveExecution, topFrame } from './instance.ts';
+import type { InstanceCall } from '../snapshot/snapshot.ts';
+import type { LiveExecution } from './heap.ts';
+import { type Instance, topFrame } from './instance.ts';
 
 export type SegmentEnd =
   /** A driver awaited: commit, then run the next segment. */
@@ -116,9 +119,10 @@ class SegmentRunner implements Machine {
       return;
     }
     if (callable.code.async) {
-      const execution = this.#instance.startExecution(callable.function, contents, captures);
-      this.#instance.newFuture({ kind: 'call', execution: execution.id });
-      this.#runStack.push(execution);
+      const future = this.#instance.futures.create({ kind: 'call' });
+      this.#runStack.push(
+        this.#instance.startExecution(callable.function, contents, captures, future),
+      );
       return;
     }
     const calleeFrame = newFrame(callable, contents, frame.cells, captures);
@@ -135,30 +139,38 @@ class SegmentRunner implements Machine {
       resumeAfterCall(caller, value);
       return;
     }
-    const future = this.#instance.callFutureOf(execution);
+    const future = execution.resolves;
     if (future === undefined) {
       this.#end = { finished: value };
       return;
     }
     this.#instance.remove(execution);
-    this.#instance.resolve(future, value);
+    this.#instance.futures.resolve(future, value);
     this.#leave(future, 'returned');
   }
 
-  await(frame: ActiveFrame, future: Register): void {
+  wait(frame: ActiveFrame): void {
     const execution = this.#current();
-    if (this.#instance.isResolved(readRegister(frame, future))) {
+    const instruction = frame.code.instructions[frame.pc];
+    const awaited = instruction === undefined ? [] : awaitedRegisters(instruction);
+    if (awaited.some((register) => this.settled(readRegister(frame, register)) !== undefined)) {
       this.#instance.markReady(execution);
     }
     if (this.#runStack.length === 1) {
       this.#end = 'awaited';
       return;
     }
-    const own = this.#instance.callFutureOf(execution);
-    if (own === undefined) {
+    if (execution.resolves === undefined) {
       throw new Error(`Execution ${execution.id} runs on top of another without a call future.`);
     }
-    this.#leave(own, 'awaited');
+    this.#leave(execution.resolves, 'awaited');
+  }
+
+  readonly settled = (handle: Value): { readonly value: Value } | undefined =>
+    this.#instance.futures.settled(handle);
+
+  spawn(call: InstanceCall): void {
+    this.#instance.spawn(call);
   }
 
   /** Runs drivers until one awaits, the root returns, or nothing is ready. */
@@ -240,8 +252,13 @@ class SegmentRunner implements Machine {
       entry,
       types: this.definition.types,
       segmentStartedAt: this.#startedAt,
-      timer: (at) => this.#instance.newFuture({ kind: 'timer', at }),
-      resolved: (value) => this.#instance.newFuture({ kind: 'resolved', value }),
+      timer: (at) => this.#instance.futures.createHandle({ kind: 'timer', at }),
+      resolved: (value) => this.#instance.futures.createHandle({ kind: 'resolved', value }),
+      first: (futures) => this.#instance.futures.first(futures),
+      slots: {
+        create: () => this.#instance.slots.create(),
+        operate: (slot, operation, value) => this.#instance.slots.operate(slot, operation, value),
+      },
       trace: () => this.#trace(),
       cells: this.#nativeCells,
     };

@@ -1,0 +1,47 @@
+# error: 5603 at 33:9
+# error: 5604 at 34:9
+# error: 5604 at 35:9
+# error: 5604 at 37:9
+# error: 5604 at 39:9
+# error: 5605 at 40:18
+# error: 5605 at 41:9
+# error: 5604 at 44:9
+# spawn (§9) starts a call as a new instance: an extern, a function taking a reference, a value of
+# a plain function type, a call through `?.` and a function a constraint requires can't be spawned,
+# and every argument, a method's receiver included, must be sendable.
+
+import Inbox from 'inbox'
+import * as time from 'time'
+
+struct Job:
+  box: Inbox<int>
+
+struct Id:
+  value: int
+
+fn bump(n: &int):
+  n += 1
+
+fn run(self: Job) -> int:
+  1
+
+fn show(self: Id) -> int:
+  self.value
+
+async fn main():
+  let n = 1
+  spawn 3
+  spawn time.now()
+  spawn bump(&n)
+  const counting = fn(): n
+  spawn counting()
+  const maybe: Id? = none
+  spawn maybe?.show()
+  spawn takesBox(Inbox.create<int>())
+  spawn Job{box: Inbox.create<int>()}.run()
+
+fn doubled<T is Addable & Sendable>(x: T):
+  spawn add(x, x)
+
+fn takesBox(box: Inbox<int>):
+  _ = box

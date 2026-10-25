@@ -1,8 +1,8 @@
 /**
  * The rule that several producers of one value agree on its type (§4): the branches of an `if`, a
  * body's tail and its `return`s, or the items of a collection literal. The expected type decides
- * when there is one; otherwise the first producer with a value does, and `never` (a branch that
- * leaves) fits anything.
+ * when there is one; otherwise the first producer with a value does, widened (types/widening.ts)
+ * when only its widening fits them all, and `never` (a branch that leaves) fits anything.
  *
  * Without an expected type, a producer that doesn't fit is reported by the caller's own
  * diagnostic, which names what disagrees; with one, or when it fits only by the implicit wrap into
@@ -14,6 +14,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
+import { widened } from '../types/widening.ts';
 
 /** A type some part of a construct produced, where, and the expression producing it, if one does. */
 export interface Produced {
@@ -38,12 +39,28 @@ export function agreedType(
   fits: (found: Type, decided: Type) => number | undefined,
   expected?: Type,
 ): Agreement {
-  const decided = expected ?? produced.find(({ type }) => !isPrimitive(type, 'never'))?.type;
+  const first = produced.find(({ type }) => !isPrimitive(type, 'never'))?.type;
+  const decided =
+    expected ?? (first === undefined ? undefined : firstOrWidened(first, produced, fits));
   return {
     decided,
     disagreeing:
       decided === undefined ? [] : produced.filter(({ type }) => fits(type, decided) !== 0),
   };
+}
+
+/** `first`, the first producer's type, or its widening when only that fits every producer. */
+function firstOrWidened(
+  first: Type,
+  produced: readonly Produced[],
+  fits: (found: Type, decided: Type) => number | undefined,
+): Type {
+  const fitsAll = (decided: Type) => produced.every(({ type }) => fits(type, decided) === 0);
+  if (fitsAll(first)) {
+    return first;
+  }
+  const wide = widened(first);
+  return fitsAll(wide) ? wide : first;
 }
 
 /**

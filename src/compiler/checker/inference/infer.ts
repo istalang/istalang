@@ -107,6 +107,7 @@ export class Inference {
         return (
           given.kind === 'function' &&
           given.isAsync === declared.isAsync &&
+          (given.isSendable || !declared.isSendable) &&
           given.parameters.length === declared.parameters.length &&
           declared.parameters.every((parameter, index) => {
             const other = given.parameters[index];
