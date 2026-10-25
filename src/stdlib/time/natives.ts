@@ -6,7 +6,7 @@
  * first segment that starts at or after it.
  */
 
-import { byValueKey, namedKey } from '../../definition/extern-key.ts';
+import { namedKey, nativeKey } from '../../definition/extern-key.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import type { Natives } from '../../runtime/natives.ts';
 import { fieldOf, int, resultStruct } from '../native-values.ts';
@@ -15,7 +15,7 @@ import { timeName } from '../stdlib-loader.ts';
 const timeType = namedKey(qualifiedName(wellKnown.time));
 
 export const timeNatives: Natives = {
-  [byValueKey(timeName, 'now')]: (_arguments, context) =>
+  [nativeKey(timeName, 'now')]: (_arguments, context) =>
     resultStruct(context, [context.segmentStartedAt]),
-  [byValueKey(timeName, 'at', timeType)]: ([time], context) => context.timer(int(fieldOf(time, 0))),
+  [nativeKey(timeName, 'at', timeType)]: ([time], context) => context.timer(int(fieldOf(time, 0))),
 };

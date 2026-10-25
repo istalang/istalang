@@ -203,16 +203,21 @@ function checkDistinctPlaces(context: BodyContext, parts: readonly AssignedPart[
   }
 }
 
-/** How a place on a variable reads, `p.first.0`; undefined for a place on anything else. */
+/**
+ * How a place on a variable reads, `p.first.0`; undefined for a place on anything else, and for
+ * an indexed element, whose key is known only when running, so its writes simply happen left to
+ * right (§3.15).
+ */
 function placeName(target: Expression): string | undefined {
   const { root, steps } = placePath(target);
-  if (root.kind !== 'Identifier') {
-    return undefined;
+  const names: string[] = [];
+  for (const step of steps) {
+    if (step.kind === 'Index') {
+      return undefined;
+    }
+    names.push(step.kind === 'MemberAccess' ? step.member.text : String(step.element));
   }
-  const names = steps.map((step) =>
-    step.kind === 'MemberAccess' ? step.member.text : String(step.element),
-  );
-  return [root.text, ...names].join('.');
+  return root.kind === 'Identifier' ? [root.text, ...names].join('.') : undefined;
 }
 
 function overlap(first: string, second: string): boolean {

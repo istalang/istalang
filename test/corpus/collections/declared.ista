@@ -1,0 +1,47 @@
+# outcome: "a=10;b=7; 17 3 100 0 1"
+# A program's own collection type (§2, §3.9, §3.10): a map literal of it starts from its
+# `default()` and assigns each entry with its `setIndex`, a spread's items included; `for` runs over
+# its `iterate`; and its elements are places, also inside an array of them.
+
+struct Bag { keys: Array<string>; values: Array<int> }
+
+fn Bag.default() -> Bag:
+  Bag{keys: [], values: []}
+
+fn index(self: Bag, key: string) -> int:
+  const position = self.keys.indexOf(key)
+  if position < 0: panic("No " + key + " in the bag.") else: self.values[position]
+
+fn setIndex(self: &Bag, key: string, value: int):
+  const position = self.keys.indexOf(key)
+  if position < 0:
+    self.keys.push(key)
+    self.values.push(value)
+  else:
+    self.values[position] = value
+
+fn iterate(self: Bag) -> Array<(string, int)>:
+  [for position in 0..self.keys.length(): (self.keys[position], self.values[position])]
+
+async fn main() -> Future<string>:
+  let bag: Bag = ["a": 1, "b": 2]
+  bag["a"] = 10
+  bag["b"] += 5
+  let text = ""
+  let total = 0
+  for key, value in bag:
+    text = text + key + "=" + value + ";"
+    total += value
+  const copy: Bag = [...bag, "z": 0]
+  let shelves = [bag]
+  shelves[0]["a"] = 100
+  const empty: Bag = []
+  const parts = [
+    text,
+    string(total),
+    string(copy.keys.length()),
+    string(shelves[0]["a"]),
+    string(empty.keys.length()),
+    string(["x": 1].size()),
+  ]
+  parts.join(" ")

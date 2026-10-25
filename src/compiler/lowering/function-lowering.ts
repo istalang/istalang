@@ -23,11 +23,17 @@ import { optionalVariants } from '../../language/well-known.ts';
 import { handlerOf } from '../../structures/kind-table.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
-import type { CallSite, CheckedBody, Checker } from '../checker/check.ts';
+import type {
+  CallSite,
+  CheckedBody,
+  Checker,
+  ImplicitRole,
+  ResolvedCall,
+} from '../checker/check.ts';
 import { substitute, type Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { Expression } from '../syntax/expressions.ts';
-import type { Identifier, Invalid } from '../syntax/node.ts';
+import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import { CodeWriter } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
@@ -129,9 +135,16 @@ export class FunctionLowering implements FunctionContext {
   }
 
   calleeIndex(site: CallSite): FunctionId {
-    const resolved = this.body.calls.get(site);
+    return this.#functionOf(this.body.calls.get(site), site);
+  }
+
+  implicitCallee(node: NodeOf<string>, role: ImplicitRole): FunctionId {
+    return this.#functionOf(this.body.implicitCallOf(node, role), node);
+  }
+
+  #functionOf(resolved: ResolvedCall | undefined, at: NodeOf<string>): FunctionId {
     if (resolved === undefined) {
-      throw new Error(`No call was resolved at ${site.span.start}.`);
+      throw new Error(`No call was made for the ${at.kind} at ${at.span.start}.`);
     }
     return this.tables.functionIndex(calleeOf(resolved, this.instance));
   }

@@ -15,6 +15,8 @@
  */
 
 import type { Register, TypeId } from '../../../definition/operands.ts';
+import type { Span } from '../../../text/span.ts';
+import type { TargetOwner } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
@@ -72,11 +74,20 @@ export function lowerVariableDeclaration(
   context: FunctionContext,
   node: VariableDeclaration,
 ): void {
-  const value = context.expression(node.initializer);
-  for (const binding of context.body.targetsOf(node)) {
-    const part = readPart(context, value, binding.path, node.span);
+  bindTargets(context, node, context.expression(node.initializer), node.span);
+}
+
+/** Declares each name `owner`'s targets bind, moving in its part of `value` (§3.15). */
+export function bindTargets(
+  context: FunctionContext,
+  owner: TargetOwner,
+  value: Register,
+  span: Span,
+): void {
+  for (const binding of context.body.targetsOf(owner)) {
+    const part = readPart(context, value, binding.path, span);
     const register = declareVariable(context, binding.name, binding.type);
-    context.code.emit({ kind: 'move', span: node.span, dst: register, src: part });
+    context.code.emit({ kind: 'move', span, dst: register, src: part });
   }
 }
 
@@ -112,6 +123,6 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
 }
 
 /** The `Shared<T>` entry a cell holding a `type` is created as. */
-function cellTypeIndex(context: FunctionContext, type: Type): TypeId {
+export function cellTypeIndex(context: FunctionContext, type: Type): TypeId {
   return context.tables.typeIndex(context.checker.sharedOf(type));
 }

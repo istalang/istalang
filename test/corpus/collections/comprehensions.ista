@@ -1,0 +1,25 @@
+# outcome: "10,15 b 0:1,1:2,2:3 3 1,0 true"
+# Comprehensions (§4): over any iterable, kept by a condition, taking items apart like `for`, and
+# nested; the expected array's element type, through optionals around the array, guides the body.
+
+async fn main() -> Future<string>:
+  const doubled = [for i in 1..5: 5 * i]
+  const small = [for x in doubled if x > 5 and x < 20: string(x)]
+  const big = [for key, value in ["a": 1, "b": 2] if value > 1: key]
+  const pairs = [for position in 0..3: (position, position + 1)]
+  const labels = [for (left, right) in pairs: string(left) + ":" + string(right)]
+  const grid = [for row in 0..2: [for column in 0..row: column]]
+  const optional: Array<int?> = [for x in [1, 0]: x]
+  const wrapped: Array<int?>? = [for x in [1]: x]
+  let flat = 0
+  for row in grid:
+    flat += row.length()
+  const parts = [
+    small.join(","),
+    big.join(","),
+    labels.join(","),
+    string(flat + 2),
+    [for x in optional: if x == 1: "1" else: "0"].join(","),
+    string(wrapped == [1]),
+  ]
+  parts.join(" ")

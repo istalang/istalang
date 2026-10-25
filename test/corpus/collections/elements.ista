@@ -1,0 +1,39 @@
+# outcome: "[10, 2] 5 [[0, 7], [0, 0]] 3 [1, 2, 3] [4] 11 [1, 2]"
+# Elements are places (§3.7, §3.9): assigned whole, in part through a field, nested, compounded,
+# passed by `&`, and changed by a method taking `&self`. A copy taken before is untouched (§3.1).
+
+struct Item { count: int }
+
+fn bump(value: &int):
+  value += 1
+
+fn show(xs: Array<int>) -> string:
+  "[" + [for x in xs: string(x)].join(", ") + "]"
+
+async fn main() -> Future<string>:
+  let xs = [1, 2]
+  const before = xs
+  xs[0] = 10
+  let items = [Item{count: 4}]
+  items[0].count += 1
+  let grid = [[0, 0], [0, 0]]
+  grid[0][1] = 7
+  let counts = ["a": 2]
+  counts["a"] += 1
+  let lists: Map<string, Array<int>> = ["x": [1, 2]]
+  lists["x"].push(3)
+  lists["y"] = []
+  lists["y"].push(4)
+  let n = [10]
+  bump(&n[0])
+  const parts = [
+    show(xs),
+    string(items[0].count),
+    "[" + [for row in grid: show(row)].join(", ") + "]",
+    string(counts["a"]),
+    show(lists["x"]),
+    show(lists["y"]),
+    string(n[0]),
+    show(before),
+  ]
+  parts.join(" ")

@@ -33,6 +33,12 @@ export const wellKnown = {
   time: { module: 'time', name: 'Time' },
   /** The marker trait of values that may leave an instance, derived rather than declared (§3.1). */
   sendable: { module: 'prelude', name: 'Sendable' },
+  /** What an array literal or a comprehension builds, and what `iterate` gives (§2, §3.10). */
+  array: { module: 'prelude', name: 'Array' },
+  /** What a map literal builds when no other type is expected (§2). */
+  map: { module: 'prelude', name: 'Map' },
+  /** What `a..b` builds (§3.8). */
+  range: { module: 'prelude', name: 'Range' },
 } as const satisfies Record<string, WellKnownDeclaration>;
 
 /** A well-known declaration's module-qualified name, as a Definition spells it: `prelude.Shared`. */
@@ -52,6 +58,19 @@ export const conversionFunction = 'from';
 /** The functions `x$` and `x$ = v` call (§3.9). */
 export const unwrapFunction = 'unwrap';
 export const rewrapFunction = 'rewrap';
+
+/**
+ * The functions collections go through (§3.9, §3.10): `x[k]`, `x[k] = v`, `for` and spreads, and
+ * the static function a map literal of a type other than `Map` starts from (§2). Looping over the
+ * array `iterate` gives reads its `length` and each element by `index`.
+ */
+export const collectionFunctions = {
+  index: 'index',
+  setIndex: 'setIndex',
+  iterate: 'iterate',
+  length: 'length',
+  default: 'default',
+} as const;
 
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';

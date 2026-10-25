@@ -42,6 +42,44 @@ struct Range:
 
 extern fn panic(message: string) -> never
 
+# Collections (§3.8, §3.9, §3.10). Indexing panics outside the bounds, while `at` and `get` return an
+# optional, and `at` and `slice` count a negative index from the end, as JavaScript does. A string
+# counts code points. Methods that take a function arrive with function values.
+extern fn length<T>(self: Array<T>) -> int
+extern fn at<T>(self: Array<T>, index: int) -> T?
+extern fn push<T>(self: &Array<T>, item: T)
+extern fn pop<T>(self: &Array<T>) -> T?
+extern fn slice<T>(self: Array<T>, start: int = 0, end: int? = none) -> Array<T>
+extern fn indexOf<T>(self: Array<T>, item: T) -> int
+extern fn includes<T>(self: Array<T>, item: T) -> bool
+extern fn join(self: Array<string>, separator: string) -> string
+extern fn index<T>(self: Array<T>, key: int) -> T
+extern fn index<T>(self: Array<T>, key: Range) -> Array<T>
+extern fn setIndex<T>(self: &Array<T>, key: int, value: T)
+extern fn setIndex<T>(self: &Array<T>, key: Range, value: Array<T>)
+extern fn iterate<T>(self: Array<T>) -> Array<T>
+extern fn Array.default<T>() -> Array<T>
+
+extern fn size<K, V>(self: Map<K, V>) -> int
+extern fn get<K, V>(self: Map<K, V>, key: K) -> V?
+extern fn has<K, V>(self: Map<K, V>, key: K) -> bool
+extern fn delete<K, V>(self: &Map<K, V>, key: K) -> bool
+extern fn keys<K, V>(self: Map<K, V>) -> Array<K>
+extern fn values<K, V>(self: Map<K, V>) -> Array<V>
+extern fn entries<K, V>(self: Map<K, V>) -> Array<(K, V)>
+extern fn index<K, V>(self: Map<K, V>, key: K) -> V
+extern fn setIndex<K, V>(self: &Map<K, V>, key: K, value: V)
+extern fn iterate<K, V>(self: Map<K, V>) -> Array<(K, V)>
+extern fn Map.default<K, V>() -> Map<K, V>
+
+extern fn length(self: string) -> int
+extern fn at(self: string, index: int) -> string?
+extern fn index(self: string, key: int) -> string
+extern fn index(self: string, key: Range) -> string
+extern fn iterate(self: string) -> Array<string>
+
+extern fn iterate(self: Range) -> Array<int>
+
 # Operators on primitives (§3.9). They are built in: the runtime implements each, and declaring
 # them here lets an operator resolve like any other call. Mixing int and float gives a float, `/`
 # always gives a float, and adding a primitive to a string appends its text.

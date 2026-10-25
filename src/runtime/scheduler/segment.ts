@@ -14,6 +14,14 @@
  * another form the run stack; it lives here, not on JavaScript's stack, so a deep chain of async
  * calls can't overflow it. When a segment ends, the run stack holds only its driver, and every
  * other execution stands at an `await`, as a snapshot requires.
+ *
+ * Reading or writing an element of a place calls its container's `index` or `setIndex` (values/
+ * parts.ts) in the middle of an instruction. Such a call runs to completion at once: a native
+ * directly, and a function of the program on top of the running frame, in a loop of its own until
+ * it returns. It can't wait, since only an async function awaits, and both the checker and
+ * loading refuse an async `index` or `setIndex` for a place. The container it
+ * takes by `&` is a box (parts.ts), which the callee's frames reach as a cell of their own. Such
+ * calls nest on the JavaScript stack, so their depth is bounded (`maximumNesting`).
  */
 
 import type { Argument } from '../../definition/instructions/places.ts';
@@ -23,14 +31,19 @@ import { runInstruction } from '../interpreter/instructions.ts';
 import {
   type ActiveFrame,
   argumentContents,
+  type CellStore,
   type Machine,
   newFrame,
+  type RegisterContents,
   readRegister,
+  readThrough,
   resumeAt,
+  writeReference,
 } from '../interpreter/machine.ts';
 import { traceOf } from '../interpreter/trace.ts';
 import { type NativeContext, Panic } from '../natives.ts';
-import { isReference } from '../snapshot/objects.ts';
+import { isReference, type Reference } from '../snapshot/objects.ts';
+import { type Box, type ElementCalls, isBox } from '../values/parts.ts';
 import { type Instance, type LiveExecution, topFrame } from './instance.ts';
 
 export type SegmentEnd =
@@ -56,10 +69,24 @@ export function runSegment(
 /** How driving one execution ended. */
 type DriveEnd = 'awaited' | 'returned' | { readonly finished: Value };
 
+/**
+ * How many calls may run inside one another from inside places. Each runs on the JavaScript stack,
+ * so a program's own `index` or `setIndex` recursing through a deep structure would otherwise
+ * overflow it; past the bound the instance panics, as any bug in the program does (§3.12).
+ */
+const maximumNesting = 200;
+
+/** A call running to completion inside an instruction: its frame, and its result once it returns. */
+interface NestedCall {
+  readonly frame: ActiveFrame;
+  result?: { readonly value: Value };
+}
+
 class SegmentRunner implements Machine {
   readonly #instance: Instance;
   readonly #startedAt: bigint;
   readonly #runStack: LiveExecution[] = [];
+  readonly #nested: NestedCall[] = [];
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, startedAt: bigint) {
@@ -74,9 +101,9 @@ class SegmentRunner implements Machine {
   run(first: LiveExecution | undefined): SegmentEnd {
     try {
       for (
-        let driver = first ?? this.#instance.resumeNext();
+        let driver = first ?? this.#instance.resumeNext(this);
         driver !== undefined;
-        driver = this.#instance.resumeNext()
+        driver = this.#instance.resumeNext(this)
       ) {
         const end = this.#drive(driver);
         if (end === 'awaited') {
@@ -96,26 +123,70 @@ class SegmentRunner implements Machine {
   }
 
   call(frame: ActiveFrame, callee: FunctionId, argumentList: readonly Argument[]): void {
-    const contents = argumentList.map((argument) => argumentContents(frame, argument));
+    const contents = argumentList.map((argument) => argumentContents(frame, argument, this));
     const callable = this.#instance.loaded.functions.callee(callee);
     if (callable.kind === 'native') {
-      const values = contents.map((each) => {
-        if (isReference(each)) {
-          throw new Error("The runtime doesn't pass references to natives yet.");
-        }
-        return each;
+      const values = contents.map((each) =>
+        isReference(each) ? readThrough(frame.cells, each, this) : each,
+      );
+      const result = callable.native(values, {
+        ...this.#nativeContext(callee),
+        write: (position, value) =>
+          writeReference(frame.cells, referenceAt(contents, position), value, this),
       });
-      resumeAfterCall(frame, callable.native(values, this.#nativeContext(callee)));
+      resumeAfterCall(frame, result, this);
       return;
     }
     if (callable.code.async) {
+      if (contents.some((each) => isReference(each) && each.cell < 0)) {
+        throw new Error("A container's 'setIndex' can't pass it by '&' to an async function.");
+      }
       const execution = this.#instance.startExecution(callable.function, contents);
       this.#instance.newFuture({ kind: 'call', execution: execution.id });
       this.#runStack.push(execution);
       return;
     }
-    const calleeFrame = newFrame(callable.function, callable.code, contents, this.#instance.cells);
+    const calleeFrame = newFrame(callable.function, callable.code, contents, frame.cells);
     this.#current().frames.push(calleeFrame);
+  }
+
+  callNow(callee: FunctionId, argumentList: readonly (Value | Box)[]): Value {
+    const callable = this.#instance.loaded.functions.callee(callee);
+    if (callable.kind === 'native') {
+      const values = argumentList.map((each) => (isBox(each) ? each.value : each));
+      return callable.native(values, {
+        ...this.#nativeContext(callee),
+        write: (position, value) => {
+          boxAt(argumentList, position).value = value;
+        },
+      });
+    }
+    if (callable.code.async) {
+      throw new Error(`'${callable.code.name}' is async, so it can't run inside a place.`);
+    }
+    if (this.#nested.length >= maximumNesting) {
+      throw new Panic(
+        `Elements nest too deeply: an 'index' or 'setIndex' ran inside ${maximumNesting} others.`,
+      );
+    }
+    const execution = this.#current();
+    const cells = boxedCells(topFrame(execution).cells, argumentList);
+    const contents = argumentList.map((each, position) =>
+      isBox(each) ? { kind: 'reference' as const, cell: boxCell(position), path: [] } : each,
+    );
+    const nested: NestedCall = {
+      frame: newFrame(callable.function, callable.code, contents, cells),
+    };
+    execution.frames.push(nested.frame);
+    this.#nested.push(nested);
+    try {
+      while (nested.result === undefined) {
+        this.#step();
+      }
+    } finally {
+      this.#nested.pop();
+    }
+    return nested.result.value;
   }
 
   return(frame: ActiveFrame, value: Value): void {
@@ -123,9 +194,14 @@ class SegmentRunner implements Machine {
     if (execution.frames.pop() !== frame) {
       throw new Error('Only the top frame returns.');
     }
+    const nested = this.#nested.at(-1);
+    if (nested?.frame === frame) {
+      nested.result = { value };
+      return;
+    }
     const caller = execution.frames.at(-1);
     if (caller !== undefined) {
-      resumeAfterCall(caller, value);
+      resumeAfterCall(caller, value, this);
       return;
     }
     const future = this.#instance.callFutureOf(execution);
@@ -140,7 +216,7 @@ class SegmentRunner implements Machine {
 
   await(frame: ActiveFrame, future: Register): void {
     const execution = this.#current();
-    if (this.#instance.isResolved(readRegister(frame, future))) {
+    if (this.#instance.isResolved(readRegister(frame, future, this))) {
       this.#instance.markReady(execution);
     }
     if (this.#runStack.length === 1) {
@@ -159,14 +235,19 @@ class SegmentRunner implements Machine {
     this.#runStack.splice(0, this.#runStack.length, driver);
     this.#end = undefined;
     while (this.#end === undefined) {
-      const frame = topFrame(this.#current());
-      const instruction = frame.code.instructions[frame.pc];
-      if (instruction === undefined) {
-        throw new RangeError(`pc ${frame.pc} is past the end; loading checks termination.`);
-      }
-      runInstruction(this, frame, instruction);
+      this.#step();
     }
     return this.#end;
+  }
+
+  /** Runs the instruction the top frame stands at. */
+  #step(): void {
+    const frame = topFrame(this.#current());
+    const instruction = frame.code.instructions[frame.pc];
+    if (instruction === undefined) {
+      throw new RangeError(`pc ${frame.pc} is past the end; loading checks termination.`);
+    }
+    runInstruction(this, frame, instruction);
   }
 
   /**
@@ -180,7 +261,7 @@ class SegmentRunner implements Machine {
       this.#end = end;
       return;
     }
-    resumeAfterCall(topFrame(caller), { kind: 'handle', object: future });
+    resumeAfterCall(topFrame(caller), { kind: 'handle', object: future }, this);
   }
 
   #current(): LiveExecution {
@@ -191,13 +272,14 @@ class SegmentRunner implements Machine {
     return execution;
   }
 
-  #nativeContext(callee: FunctionId): NativeContext {
+  #nativeContext(callee: FunctionId): Omit<NativeContext, 'write'> {
     const entry = this.definition.functions[callee];
     if (entry === undefined) {
       throw new RangeError(`No function ${callee}; loading checks every index.`);
     }
     return {
       entry,
+      types: this.definition.types,
       segmentStartedAt: this.#startedAt,
       timer: (at) => this.#instance.newFuture({ kind: 'timer', at }),
       resolved: (value) => this.#instance.newFuture({ kind: 'resolved', value }),
@@ -214,10 +296,49 @@ class SegmentRunner implements Machine {
 }
 
 /** Writes a call's result into the `call` that `frame` stopped at, and moves past it. */
-function resumeAfterCall(frame: ActiveFrame, value: Value): void {
+function resumeAfterCall(frame: ActiveFrame, value: Value, calls: ElementCalls): void {
   const instruction = frame.code.instructions[frame.pc];
   if (instruction?.kind !== 'call') {
     throw new Error(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a call.`);
   }
-  resumeAt(frame, instruction.dst, value);
+  resumeAt(frame, instruction.dst, value, calls);
+}
+
+/** The reference a native's argument `position` was passed by `&`. */
+function referenceAt(contents: readonly RegisterContents[], position: number): Reference {
+  const argument = contents[position];
+  if (argument === undefined || !isReference(argument)) {
+    throw new Error(`A native wrote argument ${position}, which isn't passed by '&'.`);
+  }
+  return argument;
+}
+
+/** The box a call made inside a place passes at `position`. */
+function boxAt(argumentList: readonly (Value | Box)[], position: number): Box {
+  const argument = argumentList[position];
+  if (argument === undefined || !isBox(argument)) {
+    throw new Error(`A native wrote argument ${position}, which isn't passed by '&'.`);
+  }
+  return argument;
+}
+
+/** The cell a box at `position` is to the callee's frames: below every cell of the instance. */
+function boxCell(position: number): number {
+  return -1 - position;
+}
+
+/** `cells`, plus the boxes of `argumentList` as cells of their own (`boxCell`). */
+function boxedCells(cells: CellStore, argumentList: readonly (Value | Box)[]): CellStore {
+  const boxOf = (cell: number) => boxAt(argumentList, -1 - cell);
+  return {
+    read: (cell) => (cell < 0 ? boxOf(cell).value : cells.read(cell)),
+    write: (cell, value) => {
+      if (cell < 0) {
+        boxOf(cell).value = value;
+      } else {
+        cells.write(cell, value);
+      }
+    },
+    create: (type, value) => cells.create(type, value),
+  };
 }

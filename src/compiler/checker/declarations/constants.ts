@@ -112,9 +112,7 @@ export class ConstantChecks {
       fieldsOf: (type) => checker.fieldsOf(type),
       constantNamed: (name) => this.constantNamed(module, name),
     });
-    if (outcome.kind === 'refused' && outcome.notYet !== undefined) {
-      checker.unsupported(module, outcome.part, outcome.notYet);
-    } else if (outcome.kind === 'refused') {
+    if (outcome.kind === 'refused') {
       checker.report(module, checkerDiagnostics.notConstant(outcome.part.span));
     }
     const bindings = destructure(

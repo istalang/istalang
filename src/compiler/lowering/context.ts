@@ -13,10 +13,10 @@ import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
-import type { CallSite, CheckedBody, Checker } from '../checker/check.ts';
+import type { CallSite, CheckedBody, Checker, ImplicitRole } from '../checker/check.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { Expression } from '../syntax/expressions.ts';
-import type { Identifier, Invalid } from '../syntax/node.ts';
+import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { CodeWriter } from './code-writer.ts';
 import type { LoopStack } from './statements/loops.ts';
@@ -36,6 +36,8 @@ export interface FunctionContext {
   readonly entityOf: (name: Identifier) => Entity | undefined;
   /** The function-table entry the call at `site` targets. */
   readonly calleeIndex: (site: CallSite) => FunctionId;
+  /** The function-table entry of the call the checker made for `node` in `role`. */
+  readonly implicitCallee: (node: NodeOf<string>, role: ImplicitRole) => FunctionId;
   /** A fresh register holding the constant `value`. */
   readonly constant: (value: Value, span: Span) => Register;
   /** The function's code: registers, instructions and labels. */

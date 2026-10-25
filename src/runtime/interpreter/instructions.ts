@@ -12,6 +12,7 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import { childValues, isComposite, type Value } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { valuesEqual } from '../values/equality.ts';
+import { mapOf } from '../values/maps.ts';
 import { type ActiveFrame, type Machine, readRegister, storeAt, writeRegister } from './machine.ts';
 
 const notRunYet = (_machine: Machine, instruction: Instruction): void => {
@@ -27,68 +28,68 @@ const relations = {
 
 const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   constant: (machine, instruction, frame) => {
-    next(frame, instruction.dst, constantAt(machine, instruction.constant));
+    next(machine, frame, instruction.dst, constantAt(machine, instruction.constant));
   },
-  move: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, readRegister(frame, instruction.src));
+  move: (machine, instruction, frame) => {
+    next(machine, frame, instruction.dst, readRegister(frame, instruction.src, machine));
   },
-  tuple: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, {
+  tuple: (machine, instruction, frame) => {
+    next(machine, frame, instruction.dst, {
       kind: 'tuple',
-      elements: instruction.elements.map((register) => readRegister(frame, register)),
+      elements: instruction.elements.map((register) => readRegister(frame, register, machine)),
     });
   },
-  store: (_machine, instruction, frame) => {
-    storeAt(frame, instruction.place, readRegister(frame, instruction.value));
+  store: (machine, instruction, frame) => {
+    storeAt(frame, instruction.place, readRegister(frame, instruction.value, machine), machine);
     frame.pc += 1;
   },
-  struct: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, {
+  struct: (machine, instruction, frame) => {
+    next(machine, frame, instruction.dst, {
       kind: 'struct',
       type: instruction.type,
-      fields: instruction.fields.map((register) => readRegister(frame, register)),
+      fields: instruction.fields.map((register) => readRegister(frame, register, machine)),
     });
   },
-  variant: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, {
+  variant: (machine, instruction, frame) => {
+    next(machine, frame, instruction.dst, {
       kind: 'variant',
       type: instruction.type,
       variant: instruction.variant,
-      fields: instruction.fields.map((register) => readRegister(frame, register)),
+      fields: instruction.fields.map((register) => readRegister(frame, register, machine)),
     });
   },
-  field: (_machine, instruction, frame) => {
-    const composite = readRegister(frame, instruction.src);
+  field: (machine, instruction, frame) => {
+    const composite = readRegister(frame, instruction.src, machine);
     const value = isComposite(composite) ? childValues(composite)[instruction.index] : undefined;
     if (value === undefined) {
       throw new Error(`No field ${instruction.index} at pc ${frame.pc}.`);
     }
-    next(frame, instruction.dst, value);
+    next(machine, frame, instruction.dst, value);
   },
-  equal: (_machine, instruction, frame) => {
-    const left = readRegister(frame, instruction.left);
-    const right = readRegister(frame, instruction.right);
-    next(frame, instruction.dst, valuesEqual(left, right));
+  equal: (machine, instruction, frame) => {
+    const left = readRegister(frame, instruction.left, machine);
+    const right = readRegister(frame, instruction.right, machine);
+    next(machine, frame, instruction.dst, valuesEqual(left, right));
   },
-  not: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, readRegister(frame, instruction.src) !== true);
+  not: (machine, instruction, frame) => {
+    next(machine, frame, instruction.dst, readRegister(frame, instruction.src, machine) !== true);
   },
-  order: (_machine, instruction, frame) => {
-    const comparison = readRegister(frame, instruction.comparison);
+  order: (machine, instruction, frame) => {
+    const comparison = readRegister(frame, instruction.comparison, machine);
     if (typeof comparison !== 'bigint') {
       throw new TypeError(`'compare' returned a non-int at pc ${frame.pc}.`);
     }
-    next(frame, instruction.dst, relations[instruction.relation](comparison));
+    next(machine, frame, instruction.dst, relations[instruction.relation](comparison));
   },
   jump: (_machine, instruction, frame) => {
     frame.pc = instruction.target;
   },
-  branch: (_machine, instruction, frame) => {
-    const condition = readRegister(frame, instruction.condition);
+  branch: (machine, instruction, frame) => {
+    const condition = readRegister(frame, instruction.condition, machine);
     frame.pc = condition === true ? instruction.whenTrue : instruction.whenFalse;
   },
   return: (machine, instruction, frame) => {
-    machine.return(frame, readRegister(frame, instruction.value));
+    machine.return(frame, readRegister(frame, instruction.value, machine));
   },
   await: (machine, instruction, frame) => {
     machine.await(frame, instruction.future);
@@ -100,8 +101,26 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     }
     machine.call(frame, instruction.callee.function, instruction.arguments);
   },
-  array: notRunYet,
-  map: notRunYet,
+  array: (machine, instruction, frame) => {
+    next(machine, frame, instruction.dst, {
+      kind: 'array',
+      elements: instruction.elements.flatMap((element) => {
+        const value = readRegister(frame, element.value, machine);
+        return element.kind === 'item' ? [value] : elementsOf(value);
+      }),
+    });
+  },
+  map: (machine, instruction, frame) => {
+    const entries = instruction.entries.flatMap((entry): (readonly [Value, Value])[] => {
+      if (entry.kind === 'entry') {
+        return [
+          [readRegister(frame, entry.key, machine), readRegister(frame, entry.value, machine)],
+        ];
+      }
+      return elementsOf(readRegister(frame, entry.value, machine)).map(pairOf);
+    });
+    next(machine, frame, instruction.dst, mapOf(entries));
+  },
   closure: notRunYet,
   currentClosure: notRunYet,
   switch: notRunYet,
@@ -122,9 +141,25 @@ export function runInstruction(
   handlerOf(handlers, instruction)(machine, instruction, frame);
 }
 
+/** The elements of an array, which a spread spreads: `iterate` gives one (docs/arch/definition.md). */
+function elementsOf(value: Value): readonly Value[] {
+  if (!isComposite(value) || value.kind !== 'array') {
+    throw new TypeError('A spread spreads an array; iterate gives one.');
+  }
+  return value.elements;
+}
+
+/** The key and value of a `(key, value)` tuple, a map spread's item. */
+function pairOf(item: Value): readonly [Value, Value] {
+  if (!isComposite(item) || item.kind !== 'tuple' || item.elements.length !== 2) {
+    throw new TypeError('A map spread spreads (key, value) tuples.');
+  }
+  return [item.elements[0] as Value, item.elements[1] as Value];
+}
+
 /** Writes `value` to `dst` and moves on to the next instruction. */
-function next(frame: ActiveFrame, dst: number, value: Value): void {
-  writeRegister(frame, dst, value);
+function next(machine: Machine, frame: ActiveFrame, dst: number, value: Value): void {
+  writeRegister(frame, dst, value, machine);
   frame.pc += 1;
 }
 

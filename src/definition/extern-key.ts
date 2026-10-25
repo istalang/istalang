@@ -47,21 +47,42 @@ export function primitiveKey(name: PrimitiveName): KeyType {
   return { kind: 'primitive', name };
 }
 
-/** A named type without type arguments, module-qualified: `time.Time`. */
-export function namedKey(name: string): KeyType {
-  return { kind: 'named', name, arguments: [] };
+/** A named type, module-qualified, with its type arguments: `time.Time`, `prelude.Array<T>`. */
+export function namedKey(name: string, ...typeArguments: readonly KeyType[]): KeyType {
+  return { kind: 'named', name, arguments: typeArguments };
 }
 
-/** The key of extern `name` of `module` taking `parameters` by value, as a natives table writes it. */
-export function byValueKey(
+/** A type parameter of the extern's own, as declared: the `T` of `prelude.Array<T>`. */
+export function parameterKey(name: string): KeyType {
+  return { kind: 'parameter', name };
+}
+
+/** A parameter the extern takes by `&`, as a natives table writes it (§3.7). */
+export interface ReferenceKey {
+  readonly reference: KeyType;
+}
+
+export function referenceKey(type: KeyType): ReferenceKey {
+  return { reference: type };
+}
+
+/**
+ * The key of extern `name` of `module` taking `parameters`, as a natives table writes it: each a
+ * type taken by value, or one `referenceKey` marks as taken by `&`.
+ */
+export function nativeKey(
   module: string,
   name: string,
-  ...parameters: readonly KeyType[]
+  ...parameters: readonly (KeyType | ReferenceKey)[]
 ): string {
   return externKey({
     module,
     name,
-    parameters: parameters.map((type) => ({ type, reference: false })),
+    parameters: parameters.map((parameter) =>
+      'reference' in parameter
+        ? { type: parameter.reference, reference: true }
+        : { type: parameter, reference: false },
+    ),
   });
 }
 

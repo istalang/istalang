@@ -36,8 +36,12 @@ export const span = fc.record({ start: fc.nat({ max: 500 }), end: fc.nat({ max: 
 
 function place(scope: Scope, minLength: number): fc.Arbitrary<Place> {
   const register = index(scope.registers);
-  const read = pick(scope.signatures, (fn) => fn.parameters.length === 2);
-  const write = pick(scope.signatures, (fn) => fn.parameters.length === 3 && takesReference(fn, 0));
+  const runsAtOnce = (fn: FunctionDefinition) => fn.kind !== 'code' || !fn.async;
+  const read = pick(scope.signatures, (fn) => fn.parameters.length === 2 && runsAtOnce(fn));
+  const write = pick(
+    scope.signatures,
+    (fn) => fn.parameters.length === 3 && takesReference(fn, 0) && runsAtOnce(fn),
+  );
   const field = fc.nat({ max: 4 }).map((at) => ({ kind: 'field' as const, index: at }));
   const step =
     read === undefined || write === undefined

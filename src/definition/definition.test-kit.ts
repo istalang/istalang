@@ -7,8 +7,10 @@
  */
 
 import fc from 'fast-check';
+import { subsetDefinition } from '../../test/definitions/subset.ts';
 import { primitiveNames } from '../language/primitives.ts';
-import type { Definition } from './definition.ts';
+import { type Definition, definitionFormat } from './definition.ts';
+import { type EditableText, editedText } from './format.test-kit.ts';
 import type { FunctionDefinition } from './functions.ts';
 import {
   index,
@@ -221,3 +223,21 @@ export const definitionArbitrary: fc.Arbitrary<Definition> = fc
         });
       }),
   );
+
+/** A JSON object of a Definition's text, as a test edits it. */
+export type Json = Record<string, unknown>;
+
+/** The subset fixture's JSON, changed by `edit`, as text. */
+export function editedSubset(edit: (json: EditableText) => void): string {
+  return editedText(definitionFormat, subsetDefinition, edit);
+}
+
+/** The JSON object at a path of keys and indexes inside the body. */
+export function at(json: EditableText, ...path: (string | number)[]): Json {
+  return path.reduce<Json>((node, key) => node[key] as Json, json.body);
+}
+
+/** The JSON of instruction `pc` of function `fn`. */
+export function instructionAt(json: EditableText, fn: number, pc: number): Json {
+  return at(json, 'functions', fn, 'instructions', pc);
+}

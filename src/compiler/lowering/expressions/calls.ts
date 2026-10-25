@@ -1,7 +1,8 @@
 /**
  * Calls (docs/arch/definition.md, "Calls"): every call targets the function-table entry of the
- * function the checker resolved for its site, operators and compound assignments included, so
- * this module is the one place lowering emits a `call`.
+ * function the checker resolved for its site, operators and compound assignments included, or the
+ * one it made for a construct with no call written (indexing writes, loops, map literals of other
+ * types). Every call is written by emit-call.ts.
  *
  * An argument written `&x` passes the place `x`; a method's receiver is its first argument,
  * passed as a place when its `self` takes a reference (§3.7), which the `&` left implicit.
@@ -9,9 +10,11 @@
 
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
-import type { CallSite, ResolvedCall } from '../../checker/check.ts';
+import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/check.ts';
 import type { Call, Expression, Spread } from '../../syntax/expressions.ts';
+import type { NodeOf } from '../../syntax/node.ts';
 import type { FunctionContext } from '../context.ts';
+import { emitCall } from '../emit-call.ts';
 import { notLowered } from '../not-lowered.ts';
 import { placeOf } from '../places.ts';
 
@@ -23,7 +26,11 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
   const argumentList = written.map((argument, index) =>
     argumentOf(context, argument, parameters[index]?.reference === true),
   );
-  return emitCall(context, node, argumentList, context.code.allocate());
+  return emitCall(context, {
+    span: node.span,
+    callee: context.calleeIndex(node),
+    arguments: argumentList,
+  });
 }
 
 /** Calls the function the checker resolved for `site` with values; the register of its result. */
@@ -33,24 +40,26 @@ export function call(
   argumentRegisters: readonly Register[],
   dst: Register = context.code.allocate(),
 ): Register {
-  const argumentList = argumentRegisters.map((register): Argument => ({ kind: 'value', register }));
-  return emitCall(context, site, argumentList, dst);
+  return emitCall(
+    context,
+    { span: site.span, callee: context.calleeIndex(site), arguments: argumentRegisters },
+    dst,
+  );
 }
 
-function emitCall(
+/**
+ * Calls the function the checker made for `node` in `role`, a call no source call stands for
+ * (checker overloads/implicit.ts); a register argument is passed by value. The register of its
+ * result.
+ */
+export function implicitCall(
   context: FunctionContext,
-  site: CallSite,
-  argumentList: readonly Argument[],
-  dst: Register,
+  node: NodeOf<string>,
+  role: ImplicitRole,
+  argumentList: readonly (Register | Argument)[],
 ): Register {
-  context.code.emit({
-    kind: 'call',
-    span: site.span,
-    dst,
-    callee: { kind: 'function', function: context.calleeIndex(site) },
-    arguments: [...argumentList],
-  });
-  return dst;
+  const callee = context.implicitCallee(node, role);
+  return emitCall(context, { span: node.span, callee, arguments: argumentList });
 }
 
 /** How `argument` is passed: the place `&x` names, the receiver's place for a `&self`, or a value. */

@@ -18,7 +18,6 @@ export const frontier = {
   functionValueCall: 'Calling a function value',
   spreadArgument: 'A spread argument',
   restParameter: 'Rest parameter',
-  arrayOrMapConstant: 'An array or map constant',
   nullishOperator: "The '??' operator",
   optionalChaining: "The '?.' operator",
   sharedValue: "A 'Shared' value",

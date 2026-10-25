@@ -1,14 +1,16 @@
 /**
  * Loops (§4): `while` tests its condition at the top; `continue` jumps back to the test and
- * `break` past the loop.
+ * `break` past the loop. A `for` runs the loop every iterating construct runs (iteration.ts),
+ * binding its targets to each item; `continue` goes on to the next item.
  */
 
 import { withPushed } from '../../../structures/stack.ts';
 import type { Span } from '../../../text/span.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { While } from '../../syntax/statements.ts';
+import type { For, While } from '../../syntax/statements.ts';
 import type { Label } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
+import { emitLoopOver } from '../iteration.ts';
 
 /** Where `break` and `continue` go inside a loop. */
 export interface LoopTargets {
@@ -50,6 +52,14 @@ export function lowerWhile(context: FunctionContext, node: While): void {
   });
   code.jump(test, node.span);
   code.place(exit);
+}
+
+export function lowerFor(context: FunctionContext, node: For): void {
+  emitLoopOver(context, node, (targets) => {
+    context.loops.inside(targets, () => {
+      context.block(node.body);
+    });
+  });
 }
 
 export function lowerLoopExit(context: FunctionContext, node: NodeOf<'Break' | 'Continue'>): void {

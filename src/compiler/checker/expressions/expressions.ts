@@ -14,7 +14,10 @@ import { boolType, errorType, floatType, intType, stringType, type Type } from '
 import { unsupportedHandler as unsupported } from '../unsupported.ts';
 import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';
+import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections.ts';
+import { checkComprehension } from './comprehensions.ts';
 import { checkIf } from './control.ts';
+import { checkIndex } from './indexing.ts';
 import { checkDurationLiteral } from './literals.ts';
 import { checkName } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
@@ -53,18 +56,18 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   If: checkIf,
   DurationLiteral: checkDurationLiteral,
   NoneLiteral: checkNone,
-  ArrayLiteral: unsupported,
-  MapLiteral: unsupported,
-  Comprehension: unsupported,
+  ArrayLiteral: checkArrayLiteral,
+  MapLiteral: checkMapLiteral,
+  Comprehension: checkComprehension,
   Tuple: checkTuple,
   Lambda: unsupported,
   Reference: misplacedReference,
-  Index: unsupported,
+  Index: checkIndex,
   Propagate: unsupported,
   Unwrap: checkUnwrap,
   Await: checkAwait,
   Is: unsupported,
-  Range: unsupported,
+  Range: checkRange,
   Match: unsupported,
   Select: unsupported,
   Missing: alreadyReported,

@@ -2,16 +2,25 @@
  * The one walk over a top-level constant's initializer (§3): it decides what compile time computes
  * and computes it, in the same switch, so the two can't disagree. Compile time computes literals, a
  * negated number among them, duration literals, tuples, structs in every literal form (a spread
- * copying a computed struct's fields), a struct without fields written bare, and other top-level
- * constants; anything else is refused where it stands, and arrays and maps are named as not
- * supported yet as constants.
+ * copying a computed struct's fields), a struct without fields written bare, arrays and maps of
+ * `Map`, and other top-level constants; anything else, a map literal of another type among them,
+ * is refused where it stands.
+ *
+ * A spread spreads only an array or a map compile time built itself: its elements, or its entries
+ * as tuples. Anything else iterable is iterated by `iterate` when the program runs, and computing
+ * it here would be a second home for what the runtime's `iterate` does.
  */
 
-import type { Expression, StructLiteral } from '../../syntax/expressions.ts';
+import type {
+  ArrayLiteral,
+  Expression,
+  MapLiteral,
+  Spread,
+  StructLiteral,
+} from '../../syntax/expressions.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { CheckedBody, CheckedConstant } from '../check.ts';
-import { type ConstantForm, durationForm } from '../constant-form.ts';
-import { type FrontierConstruct, frontier } from '../frontier.ts';
+import { type ConstantForm, durationForm, sameForm } from '../constant-form.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 
 /** What the walk reads: the initializer's checking, struct layouts, and the other constants. */
@@ -24,8 +33,8 @@ export interface ComputationScope {
 /** How computing a part of an initializer went. */
 export type Outcome =
   | { readonly kind: 'computed'; readonly form: ConstantForm }
-  /** Compile time doesn't compute `part`; `notYet` names it when it is one not supported yet. */
-  | { readonly kind: 'refused'; readonly part: NodeOf<string>; readonly notYet?: FrontierConstruct }
+  /** Compile time doesn't compute `part`. */
+  | { readonly kind: 'refused'; readonly part: NodeOf<string> }
   /** An error a diagnostic already explained leaves no value. */
   | { readonly kind: 'unknown' };
 
@@ -72,8 +81,9 @@ class Computation {
       case 'Tuple':
         return this.#tuple(node.elements);
       case 'ArrayLiteral':
+        return this.#array(node);
       case 'MapLiteral':
-        return { kind: 'refused', part: node, notYet: frontier.arrayOrMapConstant };
+        return this.#map(node);
       case 'Missing':
       case 'Invalid':
         return unknown;
@@ -132,6 +142,62 @@ class Computation {
     return computed({ kind: 'tuple', elements: forms });
   }
 
+  /** An array of its elements and spreads' items; `[]` where a `Map` is expected is an empty map. */
+  #array(node: ArrayLiteral): Outcome {
+    const form = this.#scope.checked.collectionFormOf(node);
+    if (form !== 'array') {
+      return form === 'map' ? computed({ kind: 'map', entries: [] }) : refused(node);
+    }
+    const elements: ConstantForm[] = [];
+    for (const element of node.elements) {
+      const part = element.kind === 'Spread' ? this.#items(element) : this.of(element);
+      if (part.kind !== 'computed') {
+        return part;
+      }
+      elements.push(...(element.kind === 'Spread' ? itemsOf(part.form) : [part.form]));
+    }
+    return computed({ kind: 'array', elements });
+  }
+
+  /** A map of its entries in order, a later equal key replacing the value (§2). */
+  #map(node: MapLiteral): Outcome {
+    if (this.#scope.checked.collectionFormOf(node) !== 'map') {
+      return refused(node);
+    }
+    const pairs: ConstantForm[] = [];
+    for (const entry of node.entries) {
+      const part = this.#entry(entry);
+      if (part.kind !== 'computed') {
+        return part;
+      }
+      pairs.push(...itemsOf(part.form));
+    }
+    return computed({ kind: 'map', entries: pairs.reduce(withPair, []) });
+  }
+
+  /** What one entry of a map literal adds: something whose items are `(key, value)` tuples. */
+  #entry(entry: MapLiteral['entries'][number]): Outcome {
+    if (entry.kind === 'Invalid') {
+      return unknown;
+    }
+    if (entry.kind === 'Spread') {
+      return this.#items(entry);
+    }
+    const pair = this.#tuple([entry.key, entry.value]);
+    return pair.kind === 'computed' ? computed({ kind: 'array', elements: [pair.form] }) : pair;
+  }
+
+  /** What a spread spreads: a computed array or map, its items read with `itemsOf`. */
+  #items(spread: Spread): Outcome {
+    const spreading = this.of(spread.expression);
+    if (spreading.kind !== 'computed') {
+      return spreading;
+    }
+    return spreading.form.kind === 'array' || spreading.form.kind === 'map'
+      ? spreading
+      : refused(spread);
+  }
+
   /** A struct without fields named bare (§3.1); any other name that isn't a constant is refused. */
   #bareStruct(node: Identifier): Outcome {
     const type = this.#scope.checked.typeOf(node);
@@ -139,6 +205,31 @@ class Computation {
       ? computed({ kind: 'struct', type, fields: [] })
       : refused(node);
   }
+}
+
+/** The items a spread of `form`, an array or a map, gives: its elements, or its entries as tuples. */
+function itemsOf(form: ConstantForm): readonly ConstantForm[] {
+  switch (form.kind) {
+    case 'array':
+      return form.elements;
+    case 'map':
+      return form.entries.map(([key, value]) => ({ kind: 'tuple', elements: [key, value] }));
+    default:
+      return [];
+  }
+}
+
+/** `entries` with the `(key, value)` tuple `pair` set: an equal key's value is replaced (§2). */
+function withPair(
+  entries: readonly (readonly [ConstantForm, ConstantForm])[],
+  pair: ConstantForm,
+): (readonly [ConstantForm, ConstantForm])[] {
+  const [key, value] = pair.kind === 'tuple' ? pair.elements : [];
+  if (key === undefined || value === undefined) {
+    return [...entries];
+  }
+  const position = entries.findIndex(([other]) => sameForm(other, key));
+  return position < 0 ? [...entries, [key, value]] : entries.with(position, [key, value]);
 }
 
 function computed(form: ConstantForm): Outcome {

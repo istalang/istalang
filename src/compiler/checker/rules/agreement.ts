@@ -1,12 +1,18 @@
 /**
- * The rule that several producers of one value agree on its type (§4): the branches of an `if`,
- * or a body's tail and its `return`s. The expected type decides when there is one; otherwise the
- * first producer with a value does, and `never` (a branch that leaves) fits anything. Callers
- * choose how to report the producers that don't fit.
+ * The rule that several producers of one value agree on its type (§4): the branches of an `if`, a
+ * body's tail and its `return`s, or the items of a collection literal. The expected type decides
+ * when there is one; otherwise the first producer with a value does, and `never` (a branch that
+ * leaves) fits anything.
+ *
+ * Without an expected type, a producer that doesn't fit is reported by the caller's own
+ * diagnostic, which names what disagrees; with one, or when it fits only by the implicit wrap into
+ * `T?` (§2), it is fitted, which reports the mismatch or records the wrap.
  */
 
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions.ts';
+import type { BodyContext } from '../context.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
 
 /** A type some part of a construct produced, where, and the expression producing it, if one does. */
@@ -38,4 +44,37 @@ export function agreedType(
     disagreeing:
       decided === undefined ? [] : produced.filter(({ type }) => fits(type, decided) !== 0),
   };
+}
+
+/**
+ * The type `produced` agree on, reporting each producer that doesn't fit it; `mismatch` makes the
+ * report for one that disagrees with no expected type. Undefined when no producer has a value.
+ */
+export function settleAgreement(
+  context: BodyContext,
+  produced: readonly Produced[],
+  expected: Type | undefined,
+  mismatch: (span: Span, decided: Type, found: Type) => Diagnostic,
+): Type | undefined {
+  const { wrapsToFit } = context.checker;
+  const { decided, disagreeing } = agreedType(produced, wrapsToFit, expected);
+  if (decided === undefined) {
+    return undefined;
+  }
+  for (const { type, span, node } of disagreeing) {
+    if (expected === undefined && wrapsToFit(type, decided) === undefined) {
+      context.report(mismatch(span, decided, type));
+    } else {
+      context.fit(type, decided, node ?? span);
+    }
+  }
+  return decided;
+}
+
+/** What `produced` agree on so far, which a later producer is expected to have (§3.1). */
+export function decidedSoFar(
+  context: BodyContext,
+  produced: readonly Produced[],
+): Type | undefined {
+  return agreedType(produced, context.checker.wrapsToFit).decided;
 }

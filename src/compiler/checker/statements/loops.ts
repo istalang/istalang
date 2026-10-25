@@ -1,21 +1,23 @@
 /**
- * Loops (§4): `while` and the `break` and `continue` that leave its body. A loop is a statement of
- * type `unit`; its body runs for its effects, so the body's value is discarded.
+ * Loops (§4): `while`, `for`, and the `break` and `continue` that leave their bodies. A loop is a
+ * statement of type `unit`; its body runs for its effects, so the body's value is discarded.
+ * What a `for` runs over, and how, is the rule of iteration (rules/iteration.ts).
  */
 
 import { withPushed } from '../../../structures/stack.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { While } from '../../syntax/statements.ts';
+import type { For, While } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, neverType, type Type, unitType } from '../types/type.ts';
 
 /** The loops whose bodies are being checked, innermost last: where `break` and `continue` may stand. */
 export class LoopScope {
-  readonly #loops: While[] = [];
+  readonly #loops: (While | For)[] = [];
 
   /** Runs `check` inside the body of `loop`. */
-  inside<Result>(loop: While, check: () => Result): Result {
+  inside<Result>(loop: While | For, check: () => Result): Result {
     return withPushed(this.#loops, loop, check);
   }
 
@@ -26,6 +28,12 @@ export class LoopScope {
 
 export function checkWhile(context: BodyContext, node: While): Type {
   context.expect(node.condition, boolType);
+  context.loops.inside(node, () => context.effectBlock(node.body));
+  return unitType;
+}
+
+export function checkFor(context: BodyContext, node: For): Type {
+  checkLoopOver(context, node);
   context.loops.inside(node, () => context.effectBlock(node.body));
   return unitType;
 }

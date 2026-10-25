@@ -1,0 +1,32 @@
+# error: 5300 at 19:17
+# error: 5300 at 20:17
+# error: 5301 at 21:21
+# error: 5301 at 22:25
+# error: 5302 at 24:12
+# error: 5303 at 27:3
+# error: 5304 at 28:24
+# error: 5305 at 29:30
+# error: 5207 at 31:3
+# error: 5016 at 32:17
+# Collections that don't type: an empty literal with nothing to say its type (§3.5), items that
+# disagree, something not iterable (§3.10), a write to an element no `setIndex` takes or of a
+# constant (§3.4), a map literal of a type with no `default()` (§2), a map spread of non-pairs, and
+# indexing with a key no `index` takes (§3.9).
+
+struct Point { x: int }
+
+async fn main():
+  const empty = []
+  const pairs = [:]
+  const mixed = [1, "a"]
+  const keys = ["a": 1, 2: 1]
+  let total = 0
+  for x in 5:
+    total += x
+  let s = "abc"
+  s[0] = "x"
+  const point: Point = ["x": 1]
+  const spread = ["a": 1, ...[1, 2]]
+  const fixed = [1]
+  fixed[0] = 2
+  const wrong = [1, 2]["a"]

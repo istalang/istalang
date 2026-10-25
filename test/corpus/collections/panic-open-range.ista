@@ -1,0 +1,8 @@
+# panic: A range without both ends can't be iterated.
+# Only a range with both ends is iterable (§3.8); whether it has them is known when it runs.
+
+async fn main() -> Future<int>:
+  let total = 0
+  for i in 3..:
+    total += i
+  total

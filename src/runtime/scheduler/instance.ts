@@ -26,12 +26,14 @@ import {
   type ActiveFrame,
   type CellStore,
   newFrame,
+  noElementCalls,
   type RegisterContents,
   readRegister,
   resumeAt,
 } from '../interpreter/machine.ts';
 import type { Frame, HeapObject } from '../snapshot/objects.ts';
 import { referencedObjects, type Snapshot } from '../snapshot/snapshot.ts';
+import type { ElementCalls } from '../values/parts.ts';
 
 /** A Definition as the runtime runs it: loaded, bound to its natives, and named by its hash. */
 export interface LoadedDefinition {
@@ -207,7 +209,7 @@ export class Instance {
   }
 
   /** The next ready execution, moved past its `await` with the value it waited for. */
-  resumeNext(): LiveExecution | undefined {
+  resumeNext(calls: ElementCalls): LiveExecution | undefined {
     const id = this.#ready.shift();
     if (id === undefined) {
       return undefined;
@@ -216,7 +218,7 @@ export class Instance {
     const frame = topFrame(execution);
     const instruction = frame.code.instructions[frame.pc];
     const resolved = (instruction === undefined ? [] : awaitedRegisters(instruction))
-      .map((register) => this.#future(readRegister(frame, register)).state)
+      .map((register) => this.#future(readRegister(frame, register, calls)).state)
       .find((state) => state.kind === 'resolved');
     if (resolved === undefined) {
       throw new Error(`Ready execution ${id} waits on no resolved future.`);
@@ -224,7 +226,7 @@ export class Instance {
     if (instruction?.kind !== 'await') {
       throw new Error(`The runtime doesn't resume a '${instruction?.kind}' yet.`);
     }
-    resumeAt(frame, instruction.dst, resolved.value);
+    resumeAt(frame, instruction.dst, resolved.value, calls);
     return execution;
   }
 
@@ -318,7 +320,7 @@ function waitsOn(execution: LiveExecution, id: number): boolean {
   return (
     instruction !== undefined &&
     awaitedRegisters(instruction).some(
-      (register) => handleTarget(readRegister(frame, register)) === id,
+      (register) => handleTarget(readRegister(frame, register, noElementCalls)) === id,
     )
   );
 }

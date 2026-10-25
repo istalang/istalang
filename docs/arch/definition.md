@@ -54,7 +54,9 @@ A cell register is made a cell by its first write into the empty register: a by-
 
 ## Places
 
-A place is a register plus a path of steps: a field, or an element. A tuple element is a field by position, as `field` reads it. An element step carries the key register and the `index`/`setIndex` functions the checker resolved for the container, so `&m["a"]` and `a[k].b = v` work for built-in and user containers alike (spec §3.7). `store` writes a place with a non-empty path; writing an element replaces it through `setIndex`, atomically within the segment.
+A place is a register plus a path of steps: a field, or an element. A tuple element is a field by position, as `field` reads it. An element step carries the key register and the `index`/`setIndex` functions the checker resolved for the container, so `&m["a"]` and `a[k].b = v` work for built-in and user containers alike (spec §3.7). `store` writes a place with a non-empty path; writing an element replaces it through `setIndex`, atomically within the segment. A write that ends at an element never reads it first, since a map may not hold the key yet.
+
+The runtime makes those calls at once, in the middle of the instruction that follows the path: a native directly, and a function of the program on top of the running frame, run until it returns. Neither can wait: the checker refuses an async `index` or `setIndex` for a place, and loading refuses an element step naming one. `setIndex` takes its container by `&`; from inside a place the container is a box, which the callee's frames reach as a cell of their own, and the box holds the changed container when the call returns. Such calls nest at most 200 deep; a program whose own `index` or `setIndex` recurses deeper through a place panics.
 
 ## Values
 
@@ -73,7 +75,7 @@ Values are immutable. A `constant` instruction hands its register the pool's own
 
 ## Externs
 
-An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop` and `setIndex` take their container by `&`. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. An anonymous struct in a key is spelled by its fields, `struct { a: int; b: string }`, since it has nothing else. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (used by the boundary conversion) and its type arguments (for natives such as `json.parse<T>`). An extern constant is an entry with `constant` set: it is read once per instance and then pinned for the instance's life (spec §3.6). Where the snapshot pins it arrives with the host externs that read one; nothing reads an extern constant yet.
+An extern entry has its own shape: no frame, no captures and no `async` (it returns a future instead), and parameters with their types, by value or by `&` as declared: the prelude's `push`, `pop`, `delete` and `setIndex` take their container by `&`. A native receives such an argument's value, and writes the changed value back through its context, which writes it to the place the `&` names. Its `key` binds it to a native: the declaring module's canonical name, the declared name, and the declared parameter types, `time.at(time.Time)` or `prelude.push(&prelude.Array<T>, T)`. Every named type in a key is module-qualified and written without sugar (`prelude.Optional<int>`, never `int?`), so two modules' types never share a key. An anonymous struct in a key is spelled by its fields, `struct { a: int; b: string }`, since it has nothing else. `externKey` (`definition/extern-key.ts`) is the only place a key is spelled: lowering and every natives table build keys through it. Overloads therefore get distinct keys, and every instantiation of a generic extern shares one native. The entry also carries the instantiation's parameter and result types (used by the boundary conversion) and its type arguments (for natives such as `json.parse<T>`). An extern constant is an entry with `constant` set: it is read once per instance and then pinned for the instance's life (spec §3.6). Where the snapshot pins it arrives with the host externs that read one; nothing reads an extern constant yet.
 
 ## Names
 
@@ -117,8 +119,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
 | `@JsonName`, `@JsonSkip` (§3.16, §9) | `annotations` on the field's type entry, read by the boundary conversion and `json` |
 | Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` an `Optional` variant |
-| Array literal and spread (§2) | `array` with item and spread elements |
-| Map literal (§2) | `map` for a `Map`; for another `IndexAssignable`+`Default` type, a call to `default`, then a `store` per entry |
+| Array literal and spread (§2) | `array` with item and spread elements; a spread spreads the array a call to its operand's `iterate` gives |
+| Map literal (§2) | `map` for a `Map`, a spread spreading the `(key, value)` tuples `iterate` gives; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
 | Tuple, `()` (§3.15) | `tuple`; `()` is the unit constant |
 | Range `a..b`, `a..=b`, open ends (§2, §3.8) | `struct` of prelude `Range`; `..=` calls `add` to store `end + 1` |
 | Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | `struct`, fields in declaration order |
@@ -151,10 +153,10 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `x[k] = v`, `a[k].b = v`, `x[k] += 1` (§3.9) | `store` to a place with element steps; compound forms call `index` and the operator first |
 | `T(x)` (§3.10) | a call to `T.from` |
 | Trait-constrained calls, `T.zero()` (§3.10) | resolved per instantiation; plain calls |
-| `for x in c` (§3.10, §4) | a call to `iterate`, then a loop over `length` and `index` |
+| `for x in c` (§3.10, §4) | a call to `iterate`, then a loop over the array it gives: its `length` once, each element by `index`, the position counted with the prelude's int `compare` (then `order`) and `add` |
 | `if`, `elif`, `else`, `while` (§4) | `branch` and `jump`; a branching expression writes a result register |
 | Block expression (§4) | its statements, then `release` |
-| Comprehension (§4) | a loop that calls `push` on an `array` |
+| Comprehension (§4) | the loop `for` runs, appending each kept value with `array`, the last array spread first |
 | `match`, patterns, guards (§3.11, §4) | `switch` on the variant, then `field` and `move` for bindings, `equal` or `compare` for comparisons, `branch` for guards |
 | `x is P` (§3.11) | the same tests, producing a boolean |
 | `?.`, `??` (§4) | `switch` on `Optional` |

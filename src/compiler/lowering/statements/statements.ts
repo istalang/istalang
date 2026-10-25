@@ -11,7 +11,7 @@ import type { Invalid } from '../../syntax/node.ts';
 import { type Block, type Statement, tailExpressionOf } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
-import { lowerLoopExit, lowerWhile } from './loops.ts';
+import { lowerFor, lowerLoopExit, lowerWhile } from './loops.ts';
 import { lowerAssignment, lowerVariableDeclaration } from './variables.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -30,7 +30,7 @@ export const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [
   Break: lowerLoopExit,
   Continue: lowerLoopExit,
   FunctionDeclaration: notLowered,
-  For: notLowered,
+  For: lowerFor,
   Defer: notLowered,
   Drop: notLowered,
   Spawn: notLowered,

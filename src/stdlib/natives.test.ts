@@ -10,6 +10,12 @@ import { externKeyOf } from '../compiler/lowering/names.ts';
 import { stdNatives } from './natives.ts';
 import { stdSources } from './stdlib-loader.ts';
 
+/**
+ * Externs whose natives arrive with later slices: slots (3.6) and weak references (3.8). The
+ * runtime disposes futures and slots itself, so their `dispose` never has a native.
+ */
+const arrivesLater = new Set(['create', 'put', 'take', 'read', 'deref', 'disposed', 'dispose']);
+
 describe('std natives', () => {
   it('implement exactly the callable externs the std modules declare, by the keys lowering gives', () => {
     const imports = Object.keys(stdSources).map((name) => `import * as ${name} from '${name}'`);
@@ -17,10 +23,9 @@ describe('std natives', () => {
     const checker = checkProgram(program);
     const std = [...program.modules.values()].filter((module) => module.isStd);
     expect(std.length).toBe(Object.keys(stdSources).length + 1);
-    // The checker can't call a generic function yet, so only the others need natives.
     const callable = std.flatMap((module) =>
       module.tree.root.items.flatMap((item) =>
-        item.kind === 'FunctionDeclaration' && item.isExtern && item.typeParameters.length === 0
+        item.kind === 'FunctionDeclaration' && item.isExtern && !arrivesLater.has(item.name.text)
           ? [externKeyOf(checker, item)]
           : [],
       ),

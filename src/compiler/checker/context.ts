@@ -30,8 +30,10 @@ import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, Checker, ResolvedCall, VariantMember } from './check.ts';
+import type { CollectionForms } from './expressions/collections.ts';
 import type { StructLiterals } from './expressions/literal-fields.ts';
 import type { FrontierConstruct } from './frontier.ts';
+import type { ImplicitCalls } from './overloads/implicit.ts';
 import type { LoopScope } from './statements/loops.ts';
 import type { ReturnScope } from './statements/returns.ts';
 import type { VariableScope } from './statements/variables.ts';
@@ -98,6 +100,10 @@ export interface BodyContext {
   readonly module: ModuleId;
   /** Checks `node`, recording its type; `expected` guides inference but isn't enforced. */
   readonly expression: (node: Expression, expected?: Type) => Type;
+  /** The type `node` was checked to have; the error type for a node not checked yet. */
+  readonly typeOf: (node: Expression) => Type;
+  /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */
+  readonly callAt: (site: CallSite) => ResolvedCall | undefined;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
   /**
@@ -124,4 +130,6 @@ export interface BodyContext {
   readonly literals: StructLiterals;
   readonly returns: ReturnScope;
   readonly loops: LoopScope;
+  readonly implicit: ImplicitCalls;
+  readonly collections: CollectionForms;
 }

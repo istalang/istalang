@@ -10,29 +10,19 @@ import { broadcastDefinition } from '../../test/definitions/broadcast.ts';
 import { subsetDefinition } from '../../test/definitions/subset.ts';
 import { looseText } from './codec.test-kit.ts';
 import { contentHash, decodeJson } from './codec.ts';
-import { definitionArbitrary } from './definition.test-kit.ts';
+import {
+  at,
+  definitionArbitrary,
+  editedSubset,
+  instructionAt,
+  type Json,
+} from './definition.test-kit.ts';
 import { type Definition, definitionFormat } from './definition.ts';
-import { type EditableText, editedText, refusalOf } from './format.test-kit.ts';
+import { type EditableText, refusalOf } from './format.test-kit.ts';
 import { instruction as instructionSchema } from './instructions/instruction.ts';
 import { valueArbitrary } from './values.test-kit.ts';
 
 const fixtures = { subset: subsetDefinition, broadcast: broadcastDefinition };
-
-type Json = Record<string, unknown>;
-
-/** The subset fixture's JSON, changed by `edit`, as text. */
-function editedSubset(edit: (json: EditableText) => void): string {
-  return editedText(definitionFormat, subsetDefinition, edit);
-}
-
-/** The JSON object at a path of keys and indexes inside the body. */
-function at(json: EditableText, ...path: (string | number)[]): Json {
-  return path.reduce<Json>((node, key) => node[key] as Json, json.body);
-}
-
-function instruction(json: EditableText, fn: number, pc: number): Json {
-  return at(json, 'functions', fn, 'instructions', pc);
-}
 
 describe('definition format', () => {
   describe.each(Object.entries(fixtures))('the %s fixture', (_name, fixture) => {
@@ -124,7 +114,7 @@ describe('definition format', () => {
     [
       'a jump outside the code',
       (json) => {
-        instruction(json, 4, 10).target = 99;
+        instructionAt(json, 4, 10).target = 99;
       },
       'jump: label 99 is out of range (16)',
       'functions[4].instructions[10]',
@@ -132,7 +122,7 @@ describe('definition format', () => {
     [
       'a register outside the frame',
       (json) => {
-        instruction(json, 3, 0).dst = 50;
+        instructionAt(json, 3, 0).dst = 50;
       },
       'constant: register 50 is out of range (10)',
       'functions[3].instructions[0]',
@@ -140,7 +130,7 @@ describe('definition format', () => {
     [
       'a call to a missing function',
       (json) => {
-        (instruction(json, 3, 7).callee as Json).function = 42;
+        (instructionAt(json, 3, 7).callee as Json).function = 42;
       },
       'call: function 42 is out of range (5)',
       'functions[3].instructions[7]',
@@ -148,7 +138,7 @@ describe('definition format', () => {
     [
       'a struct built with the wrong number of fields',
       (json) => {
-        instruction(json, 4, 11).fields = [0];
+        instructionAt(json, 4, 11).fields = [0];
       },
       'struct: type 0 takes 2 fields, not 1',
       'functions[4].instructions[11]',
@@ -156,7 +146,7 @@ describe('definition format', () => {
     [
       'a variant of a struct type',
       (json) => {
-        Object.assign(instruction(json, 4, 11), { kind: 'variant', variant: 0 });
+        Object.assign(instructionAt(json, 4, 11), { kind: 'variant', variant: 0 });
       },
       'variant: type 0 is not an enum',
       'functions[4].instructions[11]',
@@ -164,7 +154,7 @@ describe('definition format', () => {
     [
       'a store with an empty path',
       (json) => {
-        const { span } = instruction(json, 4, 12);
+        const { span } = instructionAt(json, 4, 12);
         at(json, 'functions', 4, 'instructions')[12] = {
           kind: 'store',
           span,
@@ -178,7 +168,7 @@ describe('definition format', () => {
     [
       'an unknown instruction',
       (json) => {
-        instruction(json, 4, 12).kind = 'teleport';
+        instructionAt(json, 4, 12).kind = 'teleport';
       },
       'Invalid discriminator value',
       'functions[4].instructions[12].kind',
@@ -226,7 +216,7 @@ describe('definition format', () => {
     [
       'a call with too few arguments',
       (json) => {
-        instruction(json, 3, 7).arguments = [];
+        instructionAt(json, 3, 7).arguments = [];
       },
       'call: main.fib takes 1 arguments, not 0',
       'functions[3].instructions[7]',
@@ -234,7 +224,7 @@ describe('definition format', () => {
     [
       'a reference where a value is expected',
       (json) => {
-        instruction(json, 3, 7).arguments = [
+        instructionAt(json, 3, 7).arguments = [
           { kind: 'reference', place: { register: 5, path: [] } },
         ];
       },
@@ -244,7 +234,7 @@ describe('definition format', () => {
     [
       'a closure with the wrong number of captures',
       (json) => {
-        const { span } = instruction(json, 4, 12);
+        const { span } = instructionAt(json, 4, 12);
         at(json, 'functions', 4, 'instructions')[12] = {
           kind: 'closure',
           span,
@@ -259,7 +249,7 @@ describe('definition format', () => {
     [
       'a spawn with the wrong number of arguments',
       (json) => {
-        const { span } = instruction(json, 4, 12);
+        const { span } = instructionAt(json, 4, 12);
         at(json, 'functions', 4, 'instructions')[12] = {
           kind: 'spawn',
           span,
@@ -281,7 +271,7 @@ describe('definition format', () => {
     [
       'an await outside an async function',
       (json) => {
-        const { span } = instruction(json, 3, 4);
+        const { span } = instructionAt(json, 3, 4);
         at(json, 'functions', 3, 'instructions')[4] = { kind: 'await', span, dst: 0, future: 0 };
       },
       'await: only an async function can wait',
@@ -290,7 +280,7 @@ describe('definition format', () => {
     [
       'a misspelled key',
       (json) => {
-        Object.assign(instruction(json, 4, 10), { targte: 3 });
+        Object.assign(instructionAt(json, 4, 10), { targte: 3 });
       },
       'Unrecognized key',
       'functions[4].instructions[10]',
@@ -328,7 +318,7 @@ describe('definition format', () => {
     [
       'a spawn of an extern',
       (json) => {
-        const { span } = instruction(json, 4, 12);
+        const { span } = instructionAt(json, 4, 12);
         at(json, 'functions', 4, 'instructions')[12] = {
           kind: 'spawn',
           span,
@@ -337,20 +327,6 @@ describe('definition format', () => {
         };
       },
       "prelude.compare can't be spawned",
-      'functions[4].instructions[12]',
-    ],
-    [
-      'an element written by a function that takes no &container',
-      (json) => {
-        const { span } = instruction(json, 4, 12);
-        at(json, 'functions', 4, 'instructions')[12] = {
-          kind: 'store',
-          span,
-          place: { register: 7, path: [{ kind: 'element', key: 0, read: 1, write: 1 }] },
-          value: 0,
-        };
-      },
-      'an element is written by prelude.add, which must take &container, key and value',
       'functions[4].instructions[12]',
     ],
     [
@@ -374,7 +350,7 @@ describe('definition format', () => {
         [3, 1, 0],
         [4, 3, 1],
       ] as const) {
-        instruction(json, fn, pc).arguments = [
+        instructionAt(json, fn, pc).arguments = [
           { kind: 'reference', place: { register: first, path: [] } },
           { kind: 'value', register: first + 1 },
         ];

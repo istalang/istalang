@@ -3,10 +3,10 @@
  * so awaiting it commits without waiting (§5).
  */
 
-import { byValueKey } from '../../definition/extern-key.ts';
+import { nativeKey } from '../../definition/extern-key.ts';
 import type { Natives } from '../../runtime/natives.ts';
 import { runtimeName } from '../stdlib-loader.ts';
 
 export const runtimeNatives: Natives = {
-  [byValueKey(runtimeName, 'commit')]: (_arguments, context) => context.resolved(null),
+  [nativeKey(runtimeName, 'commit')]: (_arguments, context) => context.resolved(null),
 };

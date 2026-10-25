@@ -20,6 +20,7 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { frontier } from '../frontier.ts';
 import { errorType, type Type } from '../types/type.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
 
 /** `Future<T>`, what an async call returns; the error type in a program without a prelude. */
 export function futureOf(checker: CheckerContext, value: Type): Type {
@@ -28,11 +29,7 @@ export function futureOf(checker: CheckerContext, value: Type): Type {
 
 /** `T` when `type` is `Future<T>`; undefined for any other type. */
 export function futureArgument(checker: CheckerContext, type: Type): Type | undefined {
-  const future = futureOf(checker, errorType);
-  if (type.kind !== 'nominal' || future.kind !== 'nominal' || type.entity !== future.entity) {
-    return undefined;
-  }
-  return type.arguments[0];
+  return wellKnownArguments(checker, wellKnown.future, type)?.[0];
 }
 
 /** Whether a value of `type` holds a future at any depth. */

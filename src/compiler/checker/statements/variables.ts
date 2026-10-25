@@ -15,7 +15,7 @@ import type { VariableEntity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
-import type { AssignedPart, TargetBinding } from '../check.ts';
+import type { AssignedPart, TargetBinding, TargetOwner } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
@@ -30,7 +30,7 @@ export class VariableScope {
   readonly #types = new Map<Identifier, Type>();
   readonly #changed = new Set<Identifier>();
   readonly #referenced = new Set<Identifier>();
-  readonly #targets = new Map<VariableDeclaration, readonly TargetBinding[]>();
+  readonly #targets = new Map<TargetOwner, readonly TargetBinding[]>();
   readonly #assigned = new Map<Assignment, readonly AssignedPart[]>();
 
   declare(name: Identifier, type: Type): void {
@@ -55,16 +55,16 @@ export class VariableScope {
     return this.#referenced.has(name);
   }
 
-  targetsOf(declaration: VariableDeclaration): readonly TargetBinding[] {
-    return this.#targets.get(declaration) ?? [];
+  targetsOf(owner: TargetOwner): readonly TargetBinding[] {
+    return this.#targets.get(owner) ?? [];
   }
 
   assignedOf(assignment: Assignment): readonly AssignedPart[] {
     return this.#assigned.get(assignment) ?? [];
   }
 
-  recordTargets(declaration: VariableDeclaration, bindings: readonly TargetBinding[]): void {
-    this.#targets.set(declaration, bindings);
+  recordTargets(owner: TargetOwner, bindings: readonly TargetBinding[]): void {
+    this.#targets.set(owner, bindings);
   }
 
   recordAssigned(assignment: Assignment, parts: readonly AssignedPart[]): void {

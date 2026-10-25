@@ -1,0 +1,11 @@
+# outcome: 0
+# `Array` and `Map` satisfy `Default` (§3.8), so generic code asking for one gets it empty; the
+# type argument of `Array.default<T>()` comes from the `Self` it must give (§3.10).
+
+fn empty<T is Default>() -> T:
+  T.default()
+
+async fn main() -> Future<int>:
+  const xs: Array<int> = empty()
+  const m = empty<Map<string, int>>()
+  xs.length() + m.size()

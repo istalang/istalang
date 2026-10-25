@@ -1,0 +1,9 @@
+# error: 5026 at 7:16
+# error: 5026 at 8:18
+# error: 5026 at 9:32
+# Compile time computes array and map constants from literals and from spreads of other array and
+# map constants (§3); a range, and a spread of a string or a range, wait until the program runs.
+
+const window = 1..4
+const letters = [..."ab"]
+const numbers = [...[1, 2], ...0..3]

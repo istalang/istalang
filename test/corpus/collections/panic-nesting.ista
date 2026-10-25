@@ -1,0 +1,21 @@
+# panic: Elements nest too deeply: an 'index' or 'setIndex' ran inside 200 others.
+# A program's own `setIndex` that writes an element of its own runs inside the write that called
+# it; nesting deeper than the runtime allows panics instead of exhausting the host (§3.9, §3.12).
+
+struct Tree { children: Array<Tree>; value: int }
+
+fn index(self: Tree, depth: int) -> int:
+  if depth == 0: self.value else: self.children[0][depth - 1]
+
+fn setIndex(self: &Tree, depth: int, value: int) -> unit:
+  if depth == 0:
+    self.value = value
+  else:
+    self.children[0][depth - 1] = value
+
+async fn main() -> Future<int>:
+  let tree = Tree{children: [], value: 0}
+  for _ in 0..300:
+    tree = Tree{children: [tree], value: 0}
+  tree[300] = 5
+  tree[300]

@@ -1,0 +1,22 @@
+# outcome: "5 b 🙂 true hé🙂 ab 5 h,é,l,🙂,o"
+# Strings count code points (§3.8): length, indexing, `at`, slicing and iteration never split the
+# emoji code point, and a string spreads its characters.
+
+async fn main() -> Future<string>:
+  const s = "hél🙂o"
+  const missing: string? = s.at(9)
+  const chars = [...s]
+  let joined = ""
+  for ch in s:
+    joined = if joined == "": ch else: joined + "," + ch
+  const parts = [
+    string(s.length()),
+    "abc"[1],
+    s[3],
+    string(missing == none),
+    s[..2] + s[3..4],
+    "abc"[0..2],
+    string(chars.length()),
+    joined,
+  ]
+  parts.join(" ")

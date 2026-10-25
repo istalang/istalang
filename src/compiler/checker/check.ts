@@ -12,9 +12,17 @@ import { memo } from '../../structures/memo.ts';
 import type { Bindings } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
-import type { Expression, Parameter, StructLiteral } from '../syntax/expressions.ts';
+import type {
+  ArrayLiteral,
+  Comprehension,
+  Expression,
+  MapLiteral,
+  Parameter,
+  Spread,
+  StructLiteral,
+} from '../syntax/expressions.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
-import type { Assignment, VariableDeclaration } from '../syntax/statements.ts';
+import type { Assignment, For, VariableDeclaration } from '../syntax/statements.ts';
 import type { ConstantForm } from './constant-form.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type { FieldMember, NominalType, Type } from './types/type.ts';
@@ -76,7 +84,10 @@ export interface RequirementOrigin {
   readonly member: number;
 }
 
-/** A name a declaration's target binds: its part's type, and the positions leading to it (§3.15). */
+/** What binds targets (§3.15): a declaration, or a `for` or comprehension for each item. */
+export type TargetOwner = VariableDeclaration | For | Comprehension;
+
+/** A name a target binds: its part's type, and the positions leading to it (§3.15). */
 export interface TargetBinding {
   readonly name: Identifier;
   readonly type: Type;
@@ -106,9 +117,38 @@ export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCa
 
 /**
  * Nodes a call can be written as: a call, an operator that calls a function (§3.9), `x$`, which
- * calls `unwrap`, or an assignment, whose compound operator or `x$ = v` calls a function.
+ * calls `unwrap`, indexing, which calls `index`, or an assignment, whose compound operator or
+ * `x$ = v` calls a function.
  */
-export type CallSite = NodeOf<'Call' | 'Binary' | 'Unary' | 'Unwrap' | 'Assignment'>;
+export type CallSite = NodeOf<'Call' | 'Binary' | 'Unary' | 'Unwrap' | 'Assignment' | 'Index'>;
+
+/** A construct that runs over an iterable (§3.10): a `for`, a comprehension, or a spread. */
+export type Iteration = For | Comprehension | Spread;
+
+/**
+ * What a call the language makes for a construct, with no call written, does there (overloads/
+ * implicit.ts).
+ */
+export type ImplicitRole =
+  /** `iterate`, which an iteration calls on what it runs over (§3.10). */
+  | 'iterate'
+  /** The `length` of the array a loop runs over. */
+  | 'length'
+  /** Reading the array a loop runs over at an index. */
+  | 'element'
+  /** Comparing a loop's index with the length. */
+  | 'compare'
+  /** Counting a loop's index up, or `..=` storing its end plus one. */
+  | 'add'
+  /** Writing an element of a place with `setIndex` (§3.9). */
+  | 'write'
+  /** The `default()` a map literal of a type other than `Map` starts from (§2). */
+  | 'default'
+  /** Assigning an entry of such a map literal with `setIndex`. */
+  | 'insert';
+
+/** What a collection literal builds: an `Array`, a `Map`, or a value of another declared type (§2). */
+export type CollectionForm = 'array' | 'map' | 'declared';
 
 /** What checking a function body found, for lowering (architecture: phase contracts). */
 export interface CheckedBody {
@@ -116,10 +156,17 @@ export interface CheckedBody {
   readonly typeOf: (expression: Expression) => Type;
   /** The function each call site of this body calls. */
   readonly calls: ReadonlyMap<CallSite, ResolvedCall>;
+  /**
+   * A call the language makes for the construct `node`, in `role`, with no call written for it
+   * (overloads/implicit.ts); undefined for a role the construct doesn't need.
+   */
+  readonly implicitCallOf: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
+  /** What a collection literal builds (§2). */
+  readonly collectionFormOf: (literal: ArrayLiteral | MapLiteral) => CollectionForm;
   /** How many times the value of `expression` is wrapped into `Some` where it is used (§2). */
   readonly wrapsOf: (expression: Expression) => number;
-  /** What a declaration's targets bind, each name's part of the initializer's value. */
-  readonly targetsOf: (declaration: VariableDeclaration) => readonly TargetBinding[];
+  /** What the targets of a declaration, or of a loop for each item, bind: each name's part of the value. */
+  readonly targetsOf: (owner: TargetOwner) => readonly TargetBinding[];
   /** Where an assignment's value goes: each place written, with its part of the value. */
   readonly assignedOf: (assignment: Assignment) => readonly AssignedPart[];
   /** Whether the variable `name` declares is passed by `&` anywhere in the body (§3.7). */

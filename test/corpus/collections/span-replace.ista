@@ -1,0 +1,17 @@
+# outcome: "[0, 1, 2, 9, 9, 9, 9, 5, 6] [0, 2, 9, 9, 9, 9, 5, 6] [0, 1, 2, 3, 4, 5, 6] [8]"
+# Replacing a span of an array with an array of another length, longer or empty (§3.9); a copy taken
+# before is untouched (§3.1), and an open end means the start or the length.
+
+fn show(xs: Array<int>) -> string:
+  "[" + [for x in xs: string(x)].join(", ") + "]"
+
+async fn main() -> Future<string>:
+  let a = [0, 1, 2, 3, 4, 5, 6]
+  const before = a
+  a[3..5] = [9, 9, 9, 9]
+  const longer = show(a)
+  a[1..2] = []
+  const emptied = show(a)
+  let whole = [1, 2, 3]
+  whole[..] = [8]
+  [longer, emptied, show(before), show(whole)].join(" ")

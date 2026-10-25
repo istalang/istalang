@@ -1,13 +1,17 @@
 /**
  * The values std natives receive and return, as the runtime holds them: an `int` is a bigint, a
- * `float` a number, a `string` a string, a struct its fields in declaration order.
+ * `float` a number, a `string` a string, a struct its fields in declaration order, an array its
+ * elements, and an optional the `Some` or `None` variant of its declared type, told apart by
+ * whether it has a field.
  *
  * An argument of another shape is a bug in lowering or loading, never in the program, so reading
  * one throws a TypeError rather than panicking.
  */
 
 import { childValues, isComposite, type Value } from '../definition/values.ts';
+import { optionalVariants } from '../language/well-known.ts';
 import type { NativeContext } from '../runtime/natives.ts';
+import type { MapValue } from '../runtime/values/equality.ts';
 
 interface ArgumentTypes {
   readonly bigint: bigint;
@@ -47,4 +51,45 @@ export function resultStruct(context: NativeContext, fields: Value[]): Value {
     throw new TypeError(`${entry.name} doesn't return a struct.`);
   }
   return { kind: 'struct', type: entry.result.type, fields };
+}
+
+/** The elements of an array argument. */
+export function elementsOf(value: Value | undefined): readonly Value[] {
+  if (value === undefined || !isComposite(value) || value.kind !== 'array') {
+    throw new TypeError('Expected an array.');
+  }
+  return value.elements;
+}
+
+export function arrayOf(elements: readonly Value[]): Value {
+  return { kind: 'array', elements: [...elements] };
+}
+
+/** A map argument. */
+export function mapOfArgument(value: Value | undefined): MapValue {
+  if (value === undefined || !isComposite(value) || value.kind !== 'map') {
+    throw new TypeError('Expected a map.');
+  }
+  return value;
+}
+
+/** The value inside an optional argument, or undefined for `none`. */
+export function optionalValue(value: Value | undefined): Value | undefined {
+  if (value === undefined || !isComposite(value) || value.kind !== 'variant') {
+    throw new TypeError('Expected an optional.');
+  }
+  return value.fields[0];
+}
+
+/** An optional of the extern's declared result type: `Some` of `value`, or `None` without one. */
+export function resultOptional(context: NativeContext, value: Value | undefined): Value {
+  const { entry, types } = context;
+  const type = entry.kind === 'extern' && entry.result.kind === 'named' ? entry.result.type : -1;
+  const optional = types[type];
+  if (optional?.kind !== 'enum') {
+    throw new TypeError(`${entry.name} doesn't return an optional.`);
+  }
+  const name = value === undefined ? optionalVariants.none : optionalVariants.some;
+  const variant = optional.variants.findIndex((each) => each.name === name);
+  return { kind: 'variant', type, variant, fields: value === undefined ? [] : [value] };
 }

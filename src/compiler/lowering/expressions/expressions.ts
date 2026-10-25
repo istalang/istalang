@@ -13,6 +13,8 @@ import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
 import { lowerAwait } from './await.ts';
 import { lowerCall } from './calls.ts';
+import { lowerArrayLiteral, lowerIndex, lowerMapLiteral, lowerRange } from './collections.ts';
+import { lowerComprehension } from './comprehensions.ts';
 import { lowerIf } from './control.ts';
 import { lowerDurationLiteral } from './literals.ts';
 import { lowerName } from './names.ts';
@@ -46,18 +48,18 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   If: lowerIf,
   DurationLiteral: lowerDurationLiteral,
   NoneLiteral: lowerNone,
-  ArrayLiteral: notLowered,
-  MapLiteral: notLowered,
-  Comprehension: notLowered,
+  ArrayLiteral: lowerArrayLiteral,
+  MapLiteral: lowerMapLiteral,
+  Comprehension: lowerComprehension,
   Tuple: lowerTuple,
   Lambda: notLowered,
   Reference: notLowered,
-  Index: notLowered,
+  Index: lowerIndex,
   Propagate: notLowered,
   Unwrap: lowerUnwrap,
   Await: lowerAwait,
   Is: notLowered,
-  Range: notLowered,
+  Range: lowerRange,
   Match: notLowered,
   Select: notLowered,
   Missing: notLowered,

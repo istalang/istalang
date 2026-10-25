@@ -166,8 +166,8 @@ export function unparenthesized(node: Expression): Expression {
   return node.kind === 'Parenthesized' ? unparenthesized(node.expression) : node;
 }
 
-/** A field or tuple element read off a place (§3.9). */
-export type PlaceStep = MemberAccess | TupleElement;
+/** A field, a tuple element or an indexed element read off a place (§3.7, §3.9). */
+export type PlaceStep = MemberAccess | TupleElement | Index;
 
 /**
  * A place as written: the expression its fields and elements are read from, a variable in any
@@ -183,6 +183,7 @@ export function placePath(node: Expression): PlacePath {
   let current = unparenthesized(node);
   while (
     current.kind === 'TupleElement' ||
+    current.kind === 'Index' ||
     (current.kind === 'MemberAccess' && !current.isOptional)
   ) {
     steps.unshift(current);

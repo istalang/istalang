@@ -1,0 +1,6 @@
+# panic: Index 5 is out of range for an array of length 2.
+# Indexing outside an array's bounds is a bug in the program, so it panics (§3.8, §3.12).
+
+async fn main() -> Future<int>:
+  const xs = [1, 2]
+  xs[5]

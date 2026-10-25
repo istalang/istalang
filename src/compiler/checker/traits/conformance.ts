@@ -12,6 +12,9 @@
  *   type parameter requiring it too. `Sendable` is derived (sendable.ts).
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
+ * - The required result is what the call is expected to give, so a type parameter no argument
+ *   decides comes from it: `Array.default<T>()` meets `Self.default()` for `Array<int>` with `T`
+ *   as `int`.
  * - A witness search that fails is reported once, as the constraint not met, so searching itself
  *   reports nothing (`UseSite.report`).
  */
@@ -224,7 +227,7 @@ function witnessOf(
     return 'none';
   }
   const { application } = choice;
-  const instantiation = instantiate(silent(site), application, undefined, depth + 1);
+  const instantiation = instantiate(silent(site), application, signature.result(), depth + 1);
   if (instantiation === undefined) {
     return 'none';
   }

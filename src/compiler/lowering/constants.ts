@@ -21,9 +21,18 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
         fields: form.fields.map((field) => constantValue(tables, field)),
       };
     case 'tuple':
+    case 'array':
       return {
-        kind: 'tuple',
+        kind: form.kind,
         elements: form.elements.map((element) => constantValue(tables, element)),
+      };
+    case 'map':
+      return {
+        kind: 'map',
+        entries: form.entries.map(([key, value]) => [
+          constantValue(tables, key),
+          constantValue(tables, value),
+        ]),
       };
     default: {
       const unhandled: never = form;

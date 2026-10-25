@@ -62,7 +62,8 @@ export function lowerFieldRead(context: FunctionContext, node: MemberAccess): Re
   return dst;
 }
 
-function construct(
+/** Builds a struct of `type` from `fields`, in declaration order. */
+export function construct(
   context: FunctionContext,
   type: NominalType | AnonymousStructType,
   fields: readonly Register[],

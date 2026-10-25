@@ -1,0 +1,90 @@
+/**
+ * Maps as values: whatever keys are set, in whatever order, a lookup finds exactly what `==` says
+ * is the same key, a later set of an equal key replaces its value in place, and two maps are
+ * equal when they hold equal values for equal keys, in any order. Building a map key by key
+ * carries its hash table over, which must find what a table built from scratch finds.
+ */
+
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
+import { valueArbitrary } from '../../definition/values.test-kit.ts';
+import type { Value } from '../../definition/values.ts';
+import { entryPosition, entryValue, type MapValue, valuesEqual } from './equality.ts';
+import { mapOf, withEntry, withoutEntry } from './maps.ts';
+
+const keys = valueArbitrary({ typed: true });
+const entries = fc.array(fc.tuple(keys, valueArbitrary({ typed: true })), { maxLength: 12 });
+
+/** The position of `key` found by scanning with `==`, as a lookup must find it. */
+function scanned(map: MapValue, key: Value): number | undefined {
+  const position = map.entries.findIndex(([other]) => valuesEqual(other, key));
+  return position < 0 ? undefined : position;
+}
+
+/** A copy of `map` that shares no derived table with it. */
+function fresh(map: MapValue): MapValue {
+  return { kind: 'map', entries: [...map.entries] };
+}
+
+describe('maps as values', () => {
+  it('find exactly the key == finds, whether built key by key or from scratch', () => {
+    fc.assert(
+      fc.property(entries, keys, (pairs, probe) => {
+        const built = mapOf(pairs);
+        for (const key of [probe, ...pairs.map(([first]) => first)]) {
+          expect(entryPosition(built, key)).toBe(scanned(built, key));
+          expect(entryPosition(fresh(built), key)).toBe(scanned(built, key));
+        }
+      }),
+    );
+  });
+
+  it('replace an equal key in place, and drop one that is deleted', () => {
+    fc.assert(
+      fc.property(entries, keys, valueArbitrary({ typed: true }), (pairs, key, value) => {
+        const map = mapOf(pairs);
+        const set = withEntry(map, key, value);
+        const added = scanned(map, key) === undefined ? 1 : 0;
+        const found = scanned(set, key);
+        expect(found === undefined ? undefined : set.entries[found]?.[1]).toBe(
+          found === undefined ? undefined : value,
+        );
+        expect(set.entries.length).toBe(map.entries.length + added);
+        expect(scanned(withoutEntry(set, key), key)).toBeUndefined();
+      }),
+    );
+  });
+
+  it('are equal by their entries, in any order', () => {
+    const reorderings = entries.chain((pairs) =>
+      fc.tuple(fc.constant(pairs), fc.shuffledSubarray(pairs, { minLength: pairs.length })),
+    );
+    fc.assert(
+      fc.property(reorderings, ([pairs, shuffled]) => {
+        const map = mapOf(pairs);
+        const reordered = mapOf(shuffled);
+        const holdsTheSame = (one: MapValue, other: MapValue) =>
+          one.entries.every(([key, value]) => {
+            const found = entryValue(other, key);
+            return found !== undefined && valuesEqual(found, value);
+          });
+        expect(valuesEqual(map, reordered)).toBe(
+          map.entries.length === reordered.entries.length &&
+            holdsTheSame(map, reordered) &&
+            holdsTheSame(reordered, map),
+        );
+      }),
+    );
+  });
+
+  it('never find a NaN key, and treat -0 and 0 as one key', () => {
+    const map = mapOf([
+      [Number.NaN, 1n],
+      [0, 2n],
+      [-0, 3n],
+    ]);
+    expect(entryValue(map, Number.NaN)).toBeUndefined();
+    expect(map.entries.length).toBe(3 - 1);
+    expect(entryValue(map, -0)).toBe(3n);
+  });
+});

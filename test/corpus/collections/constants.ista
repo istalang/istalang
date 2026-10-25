@@ -1,0 +1,30 @@
+# outcome: "3 2 b 4 7 2 3 [1, 2]"
+# Top-level constants may be arrays and maps built from literals and from spreads of other array
+# and map constants (§3), and every instance shares their values, which a change to a copy must
+# leave alone (§3.1).
+
+const primes = [2, 3, 5]
+const names = ["a": "first", "b": "second"]
+const nested = [[1, 2], [3, 4]]
+const more = [...primes, 7]
+const lookup = [...names, "c": "third", "a": "again"]
+const empty: Map<string, int> = []
+
+async fn main() -> Future<string>:
+  let copy = primes
+  copy[0] = 9
+  copy.push(7)
+  let total = 0
+  for i in 1..4:
+    total += i
+  const parts = [
+    string(primes.length()),
+    string(primes[0]),
+    if names["b"] == "second": "b" else: "?",
+    string(nested[1][1]),
+    string(total + copy.length() - 2 - 1),
+    string(more.length() + empty.size() - 2),
+    string(lookup.size()),
+    "[" + [for x in nested[0]: string(x)].join(", ") + "]",
+  ]
+  parts.join(" ")

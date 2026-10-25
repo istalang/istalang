@@ -13,12 +13,15 @@
  * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
  */
 
-import { byValueKey, primitiveKey } from '../../definition/extern-key.ts';
+import { nativeKey, primitiveKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
 import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
 import { float, int, text } from '../native-values.ts';
 import { preludeName } from '../stdlib-loader.ts';
+import { arrayNatives } from './arrays.ts';
+import { mapNatives } from './maps.ts';
+import { stringNatives } from './strings.ts';
 
 /** A float printed as whole digits, which needs `.0` to read as a float. */
 const wholeDigits = /^-?\d+$/u;
@@ -33,6 +36,9 @@ const numericPairs = [
 const floatDivide = (left: number, right: number): number => left / nonZero(right);
 
 export const preludeNatives: Natives = {
+  ...arrayNatives,
+  ...mapNatives,
+  ...stringNatives,
   ...numeric(
     'add',
     (left, right) => left + right,
@@ -105,7 +111,7 @@ function numeric(
 
 /** The key prelude.ista's declaration of `name` over primitive `parameters` gets. */
 export function preludeKey(name: string, ...parameters: readonly PrimitiveName[]): string {
-  return byValueKey(preludeName, name, ...parameters.map(primitiveKey));
+  return nativeKey(preludeName, name, ...parameters.map(primitiveKey));
 }
 
 function floorDivide(dividend: bigint, by: bigint): bigint {

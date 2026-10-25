@@ -2,7 +2,8 @@
  * Places that change (§3.4, §3.7): what an assignment to a part, a `&` argument, or a method
  * taking `&self` may change, and the variables each change counts against.
  *
- * - A place is a variable, or a field or tuple element of one, at any depth. Its root decides:
+ * - A place is a variable, or a field, tuple element or indexed element of one, at any depth. Its
+ *   root decides:
  *   a `let` and a parameter may change (a by-value parameter is the function's own copy, and a
  *   reference parameter changes the caller's place); a `const`, top-level or local, is deeply
  *   immutable, so no part of it may change, and neither may a pattern's or loop's binding or an
@@ -10,8 +11,12 @@
  * - A change counts as the root `let` being changed, so it isn't warned about as never reassigned.
  *   A reference also marks its root as referenced, which lowering gives storage a reference can
  *   reach.
- * - An element of an indexable value (`xs[i]`) and a `$` value are places too; the features that
- *   add indexing and `Shared` lift them from the frontier.
+ * - Writing an indexed element (`xs[i] = v`, `&m[k]`, `a[i].b = v`) reads it with the `index`
+ *   its indexing resolved and writes it back with `setIndex(&container, key, element)`, found like
+ *   an operator's function, so any type with a `setIndex` takes element writes (§3.7, §3.9). Each
+ *   indexed step of a changing place records its `setIndex`, and both functions must run at once
+ *   (rules/collection-functions.ts).
+ * - A `$` value is a place too; the feature that adds `Shared` lifts it from the frontier.
  */
 
 import type { VariableOwner } from '../../binder/entities.ts';
@@ -21,6 +26,8 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
 import { errorType, type Type } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
+import { runsAtOnce, writeElement } from './collection-functions.ts';
 
 /** Why a place is to change: assigned to, or passed by `&` (explicitly, or as `&self`). */
 export type PlaceUse = 'assigned' | 'referenced';
@@ -48,11 +55,6 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
  */
 export function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
   const root = rootOf(node);
-  if (root.kind === 'Index') {
-    const element = use === 'assigned' ? frontier.elementAssignment : frontier.elementReference;
-    context.unsupported(root, element);
-    return false;
-  }
   if (root.kind === 'Unwrap') {
     context.unsupported(root, frontier.unwrapPart);
     return false;
@@ -61,7 +63,28 @@ export function changePlace(context: BodyContext, node: Expression, use: PlaceUs
     context.report(checkerDiagnostics.notPlace(node.span, use));
     return false;
   }
-  return requireChangeable(context, root, use);
+  return requireChangeable(context, root, use) && writesElements(context, node);
+}
+
+/** Makes the `setIndex` call of every indexed step of the place `node`; false after a report. */
+function writesElements(context: BodyContext, node: Expression): boolean {
+  return placePath(node)
+    .steps.filter((step) => step.kind === 'Index')
+    .every((step) => {
+      const container = context.typeOf(step.target);
+      const key = context.typeOf(step.index);
+      return (
+        writeElement(context, {
+          node: step,
+          role: 'write',
+          container,
+          key,
+          element: context.typeOf(step),
+          failure: () =>
+            checkerDiagnostics.notIndexAssignable(step.span, typeText(container), typeText(key)),
+        }) && runsAtOnce(context, context.callAt(step), step.span)
+      );
+    });
 }
 
 /**
@@ -78,7 +101,7 @@ export function changeReceiver(context: BodyContext, receiver: Expression, metho
 }
 
 function isOnFrontier(root: Expression): boolean {
-  return root.kind === 'Index' || root.kind === 'Unwrap';
+  return root.kind === 'Unwrap';
 }
 
 /**
@@ -108,7 +131,7 @@ function requireChangeable(context: BodyContext, root: Identifier, use: PlaceUse
 
 /**
  * The innermost expression a place's fields and elements are read from: its variable, or
- * whatever else stands there (a call's result, an index, a `$` value), which isn't one.
+ * whatever else stands there (a call's result, a `$` value), which isn't one.
  */
 function rootOf(node: Expression): Expression {
   return placePath(node).root;

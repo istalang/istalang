@@ -15,7 +15,7 @@ import { checkDiscarded } from '../rules/must-use.ts';
 import { neverType, type Type, unitType } from '../types/type.ts';
 import { unsupportedHandler } from '../unsupported.ts';
 import { checkAssignment } from './assignments.ts';
-import { checkLoopExit, checkWhile } from './loops.ts';
+import { checkFor, checkLoopExit, checkWhile } from './loops.ts';
 import { checkVariableDeclaration } from './variables.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -42,7 +42,7 @@ export const statementHandlers: Handlers<
   Continue: checkLoopExit,
   While: checkWhile,
   FunctionDeclaration: unsupportedHandler,
-  For: unsupportedHandler,
+  For: checkFor,
   Defer: unsupportedHandler,
   Drop: unsupportedHandler,
   Spawn: unsupportedHandler,

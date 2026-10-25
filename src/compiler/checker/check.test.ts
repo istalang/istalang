@@ -45,7 +45,7 @@ describe('checking reports', () => {
     ['a missing field', 'Point{x: 1}', reports.missingField, 'Point'],
     ['reading a field the struct lacks', 'Point{x: 1, y: 2}.z', reports.unknownField, 'z'],
     ['a trait used as a type', 'const x: Comparable = 1', reports.notType, 'Comparable'],
-    ['a construct not supported yet', '[1, 2]', reports.notSupportedYet, '[1, 2]'],
+    ['a construct not supported yet', 'fn(x: int): x', reports.notSupportedYet, 'fn(x: int): x'],
   ])('%s', (_case, body, report, spanText) => {
     expect(reported(`${inFunction(body)}\nfn f() -> int: 1\n`)).toEqual(
       reportedOnce(report.code, spanText),
@@ -274,8 +274,12 @@ describe('top-level constants hold only what compile time computes', () => {
   it.each([
     ['a call', 'fn one() -> int: 1\nconst x = one()', 'one()', reports.notConstant],
     ['a tuple element', 'const t = (1, 2)\nconst x = t.0', 't.0', reports.notConstant],
-    ['an array', 'const xs = [1]', '[1]', reports.notSupportedYet],
-    ['a map', 'const m = ["a": 1]', '["a": 1]', reports.notSupportedYet],
+    [
+      'a map literal of a type other than Map, which calls its functions',
+      'struct Bag {}\nfn Bag.default() -> Bag: Bag\nfn setIndex(self: &Bag, key: int, value: int):\n  return\nconst b: Bag = [1: 1]',
+      '[1: 1]',
+      reports.notConstant,
+    ],
   ])('refuse %s, whatever else reports it', (_case, text, spanText, report) => {
     const { codes, spanTexts } = reported(text);
     const pairs = codes.map((code, index) => [code, spanTexts[index]]);

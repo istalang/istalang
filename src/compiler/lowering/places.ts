@@ -2,9 +2,12 @@
  * Places and parts of values (docs/arch/definition.md, "Places"): what an assignment writes, what
  * `&` passes, and how a destructured part is read.
  *
- * - A place is a variable's register plus field steps into its value. Tuple elements are fields
- *   by position, as `field` reads them. Writing a place with steps is a `store`, which builds the
- *   new value along its path (values are immutable); writing a bare register is a `move`.
+ * - A place is a variable's register plus steps into its value: fields, where tuple elements are
+ *   fields by position as `field` reads them, and indexed elements, each with its key's register
+ *   and the `index` and `setIndex` the checker resolved for it. Writing a place with steps is a
+ *   `store`, which builds the new value along its path (values are immutable), calling `setIndex`
+ *   for an element; writing a bare register is a `move`. Each key is computed once, when the
+ *   place is, so reading and writing it back see the same element.
  * - A register holding a cell or a reference is read and written through it by the runtime, so
  *   lowering emits the same instructions whatever the variable's storage is.
  */
@@ -15,6 +18,10 @@ import type { Span } from '../../text/span.ts';
 import { type Expression, type MemberAccess, placePath } from '../syntax/expressions.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { FunctionContext } from './context.ts';
+import { emitCall } from './emit-call.ts';
+
+/** One step of a place in code. */
+type PathStep = Place['path'][number];
 
 /** The place `node` names: its variable's register, and the steps into the variable's value. */
 export function placeOf(context: FunctionContext, node: Expression): Place {
@@ -24,10 +31,25 @@ export function placeOf(context: FunctionContext, node: Expression): Place {
   }
   return {
     register: variableRegister(context, root),
-    path: steps.map((step) => ({
-      kind: 'field',
-      index: step.kind === 'MemberAccess' ? fieldIndexOf(context, step) : step.element,
-    })),
+    path: steps.map((step): PathStep => {
+      switch (step.kind) {
+        case 'MemberAccess':
+          return { kind: 'field', index: fieldIndexOf(context, step) };
+        case 'TupleElement':
+          return { kind: 'field', index: step.element };
+        case 'Index':
+          return {
+            kind: 'element',
+            key: context.expression(step.index),
+            read: context.calleeIndex(step),
+            write: context.implicitCallee(step, 'write'),
+          };
+        default: {
+          const unhandled: never = step;
+          return unhandled;
+        }
+      }
+    }),
   };
 }
 
@@ -54,15 +76,19 @@ export function writePlace(
   }
 }
 
-/** Reads the value at `place`: its variable's value, read along the place's field steps. */
+/** Reads the value at `place`: its variable's value, read along the place's steps. */
 export function readPlace(context: FunctionContext, place: Place, span: Span): Register {
-  const positions = place.path.map((step) => {
-    if (step.kind !== 'field') {
-      throw new Error('Reading an element place arrives with indexing; the checker said so.');
+  let current = place.register;
+  for (const step of place.path) {
+    const dst = context.code.allocate();
+    if (step.kind === 'field') {
+      context.code.emit({ kind: 'field', span, dst, src: current, index: step.index });
+    } else {
+      emitCall(context, { span, callee: step.read, arguments: [current, step.key] }, dst);
     }
-    return step.index;
-  });
-  return readPart(context, place.register, positions, span);
+    current = dst;
+  }
+  return current;
 }
 
 /** Reads the part of the value in `register` at `path`, field and element positions; its register. */

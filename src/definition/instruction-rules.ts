@@ -6,7 +6,8 @@
  *   a function with captures is called only through its closure value, never directly
  * - a closure carries its function's captures
  * - a place's element steps name an `index` (container, key) and a `setIndex` (`&`container,
- *   key, value), which the runtime calls to read and write the element (spec §3.7, §3.9)
+ *   key, value), neither async, which the runtime calls at once to read and write the element
+ *   (spec §3.7, §3.9)
  * - only async code waits
  *
  * The rules are a typed table with one entry per instruction kind, like `operandsOf`
@@ -198,6 +199,10 @@ function placeProblem(tables: Tables, place: Place): string | undefined {
   for (const step of elements) {
     const read = tables.functions[step.read];
     const write = tables.functions[step.write];
+    const waiting = [read, write].find((each) => each?.kind === 'code' && each.async);
+    if (waiting !== undefined) {
+      return `an element is read or written by ${waiting.name}, which is async but must run at once.`;
+    }
     if (read !== undefined && read.parameters.length !== elementReadArity) {
       return `an element is read by ${read.name}, which must take a container and a key.`;
     }

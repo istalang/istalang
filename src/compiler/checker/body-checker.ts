@@ -25,9 +25,11 @@ import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, CheckedBody, ResolvedCall, SignatureParameter } from './check.ts';
 import type { BodyContext, CheckerContext } from './context.ts';
 import { checkerDiagnostics } from './diagnostics.ts';
+import { CollectionForms } from './expressions/collections.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
 import type { FrontierConstruct } from './frontier.ts';
+import { ImplicitCalls } from './overloads/implicit.ts';
 import { passesValueOn, refuseHeldFuture } from './rules/futures.ts';
 import { LoopScope } from './statements/loops.ts';
 import { ReturnScope } from './statements/returns.ts';
@@ -50,6 +52,8 @@ export class BodyChecker implements BodyContext {
   readonly returns: ReturnScope;
   readonly loops = new LoopScope();
   readonly literals = new StructLiterals();
+  readonly implicit = new ImplicitCalls();
+  readonly collections = new CollectionForms();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
   readonly #wraps = new Map<Expression, number>();
@@ -96,6 +100,14 @@ export class BodyChecker implements BodyContext {
       refuseHeldFuture(this.checker, this.module, node, type);
     }
     return type;
+  }
+
+  typeOf(node: Expression): Type {
+    return this.#types.get(node) ?? errorType;
+  }
+
+  callAt(site: CallSite): ResolvedCall | undefined {
+    return this.#calls.get(site);
   }
 
   expect(node: Expression, expected: Type | undefined): Type {
@@ -156,12 +168,14 @@ export class BodyChecker implements BodyContext {
     const types = this.#types;
     const calls = this.#calls;
     const wraps = this.#wraps;
-    const { variables, literals } = this;
+    const { variables, literals, implicit, collections } = this;
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
       calls,
+      implicitCallOf: (node, role) => implicit.of(node, role),
+      collectionFormOf: (literal) => collections.of(literal),
       wrapsOf: (expression) => wraps.get(expression) ?? 0,
-      targetsOf: (declaration) => variables.targetsOf(declaration),
+      targetsOf: (owner) => variables.targetsOf(owner),
       assignedOf: (assignment) => variables.assignedOf(assignment),
       isReferenced: (name) => variables.isReferenced(name),
       sourcesOf: (literal) => literals.sourcesOf(literal),
