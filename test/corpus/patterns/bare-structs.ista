@@ -1,0 +1,35 @@
+# outcome: "marker|full|empty|box|pair"
+# A struct without fields is written bare in a pattern, as in an expression (§3.1, §3.11). Its
+# value is the only one of its type, so it matches with no test and covers the type, a generic
+# one taking its type arguments from the part it matches.
+
+struct Marker
+
+struct Box<T>
+
+enum Holder:
+  Empty
+  Full { marker: Marker }
+
+fn plain(m: Marker) -> string:
+  match m:
+    case Marker: "marker"
+
+fn nested(slot: Holder) -> string:
+  match slot:
+    case Full{marker is Marker}: "full"
+    case Empty: "empty"
+
+fn generic(b: Box<int>) -> string:
+  match b:
+    case Box: "box"
+
+fn inTuple(pair: (Marker, bool)) -> string:
+  match pair:
+    case (Marker, true): "pair"
+    case (Marker, false): "other"
+
+async fn main() -> Future<string>:
+  const box: Box<int> = Box
+  const parts = [plain(Marker), nested(Full{marker: Marker}), nested(Empty), generic(box), inTuple((Marker, true))]
+  parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4]

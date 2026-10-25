@@ -4,8 +4,8 @@
  * is the unnamed variable.
  *
  * Case also decides what a bare name in a pattern does (§3.11): a camelCase name binds a new
- * variable, a PascalCase one refers to a variant or constant. Both questions read the same first
- * letter, so they share this module.
+ * variable, a PascalCase one refers to a variant or a struct without fields. Both questions read
+ * the same first letter, so they share this module.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';

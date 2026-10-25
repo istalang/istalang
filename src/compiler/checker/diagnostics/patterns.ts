@@ -17,7 +17,7 @@ export const patternTemplates = {
   notPatternName: {
     code: 5402,
     message: (name: string) =>
-      `'${name}' is neither a variant nor a constant, so a pattern can't compare with it.`,
+      `'${name}' names no variant, struct without fields or constant, so a pattern can't compare with it.`,
   },
   propagateNeedsResult: {
     code: 5403,

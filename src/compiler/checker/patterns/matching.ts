@@ -8,14 +8,17 @@
  *   is `Optional`'s `None`.
  * - A field compared with `==` or `!=` follows `==`'s rule (rules/equality.ts); any other
  *   comparison calls `compare`.
- * - A name that refers is a variant without fields, tested like one, or a top-level constant,
- *   compared with `==` and acting as a guard for exhaustiveness.
+ * - A name that refers is a variant without fields, tested like one; a struct without fields,
+ *   whose value is the only one of its type, so it matches with no test; or a top-level constant
+ *   (named qualified, since a bare camelCase name binds), compared with `==` and acting as a guard
+ *   for exhaustiveness.
  * - A struct pattern naming a variant tests that variant, then takes its fields apart. The part's
  *   enum is the expected type, so a bare variant name is enough (§3.11).
  */
 
 import { optionalVariants } from '../../../language/well-known.ts';
 import type { VariantNaming } from '../../binder/entities.ts';
+import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import type {
@@ -28,13 +31,14 @@ import type {
 import type { CheckedPattern, PatternTest } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { fieldlessStructOf } from '../expressions/names.ts';
 import { chooseVariant, nameNodeOf } from '../expressions/variants.ts';
 import { resolveOperator } from '../overloads/operators.ts';
 import { checkEqualSides } from '../rules/equality.ts';
 import { comparable, errorType, type NominalDeclaration, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { bodyScope, type ValuePart } from './parts.ts';
-import { literalShape, nullaryShape } from './shapes.ts';
+import { literalShape, nullaryShape, structKey } from './shapes.ts';
 import {
   type Leaf,
   type PatternTests,
@@ -145,6 +149,10 @@ function reference(context: BodyContext, node: NamePattern, part: ValuePart): Le
     }
     return chosen === undefined ? failed : variantLeaf(chosen);
   }
+  const struct = entity === undefined ? undefined : fieldlessStructOf(context.checker, entity);
+  if (struct !== undefined) {
+    return structValueLeaf(context, node, struct, part);
+  }
   const constant = context.checker.constantNamed(context.module, name);
   if (constant === undefined) {
     if (entity !== undefined) {
@@ -164,6 +172,27 @@ function reference(context: BodyContext, node: NamePattern, part: ValuePart): Le
     negated: false,
   };
   return { tests: [test], shape: undefined };
+}
+
+/**
+ * The struct without fields `declaration`, named at `node`: it matches a part of its type, which
+ * gives its type arguments, so nothing is inferred.
+ */
+function structValueLeaf(
+  context: BodyContext,
+  node: NamePattern,
+  declaration: StructDeclaration,
+  part: ValuePart,
+): Leaf {
+  if (part.type.kind === 'error') {
+    return failed;
+  }
+  if (part.type.kind !== 'nominal' || part.type.entity.declaration !== declaration) {
+    const found = declaration.name.text;
+    context.report(checkerDiagnostics.typeMismatch(node.span, typeText(part.type), found));
+    return failed;
+  }
+  return { tests: [], shape: nullaryShape(structKey) };
 }
 
 /**

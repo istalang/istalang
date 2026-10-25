@@ -7,9 +7,10 @@
  */
 
 import type { Entity } from '../../binder/entities.ts';
+import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { checkFunctionValue, namedFunctions } from '../closures/function-values.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, CheckerContext } from '../context.ts';
 import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
@@ -67,6 +68,17 @@ export function entityValueType(
   }
 }
 
+/** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */
+export function fieldlessStructOf(
+  checker: Pick<CheckerContext, 'declaredFieldsOf'>,
+  entity: Entity,
+): StructDeclaration | undefined {
+  if (entity.kind !== 'type' || entity.declaration.kind !== 'StructDeclaration') {
+    return undefined;
+  }
+  return checker.declaredFieldsOf(entity.declaration).length > 0 ? undefined : entity.declaration;
+}
+
 /**
  * The value a bare name denotes when it names a struct without fields (§3.1); undefined for any
  * other entity. A generic one takes its type arguments from the expected type, as nothing else
@@ -78,11 +90,8 @@ function bareStructValue(
   entity: Entity,
   expected: Type | undefined,
 ): Type | undefined {
-  if (entity.kind !== 'type' || entity.declaration.kind !== 'StructDeclaration') {
-    return undefined;
-  }
-  const { declaration } = entity;
-  if (context.checker.declaredFieldsOf(declaration).length > 0) {
+  const declaration = fieldlessStructOf(context.checker, entity);
+  if (entity.kind !== 'type' || declaration === undefined) {
     return undefined;
   }
   const [open] = typeParametersOf(declaration.typeParameters);

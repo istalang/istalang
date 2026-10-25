@@ -1,13 +1,16 @@
-# error: 5400 at 18:9
-# error: 5109 at 24:10
-# error: 5402 at 29:10
-# error: 5001 at 34:10
-# error: 5001 at 39:10
-# error: 5001 at 44:10
+# error: 5400 at 21:9
+# error: 5109 at 27:10
+# error: 5402 at 32:10
+# error: 5001 at 37:10
+# error: 5001 at 42:10
+# error: 5001 at 47:10
+# error: 5402 at 56:10
+# error: 5001 at 61:10
+# error: 5001 at 68:10
 # A `match` must cover every value of its subject's type (§3.11, §4): a missing variant is
 # reported at the subject. A pattern mirrors construction, so a variant with fields takes braces;
-# a referring name is a variant or a constant; a literal has the part's own type, never wrapped
-# into an optional; and a struct pattern names the value's own type.
+# a referring name is a variant, a struct without fields or a constant; a literal has the part's
+# own type, never wrapped into an optional; and a struct pattern names the value's own type.
 
 enum Decision:
   Approved { by: string }
@@ -42,4 +45,25 @@ fn unwrapped(n: int?) -> string:
 fn otherStruct(decision: Decision) -> string:
   match decision:
     case Error{message}: message
+    case _: "other"
+
+struct Point { x: int; y: int }
+
+struct Marker
+
+fn structWithFields(p: Point) -> string:
+  match p:
+    case Point: "point"
+    case _: "other"
+
+fn otherMarker(decision: Decision) -> string:
+  match decision:
+    case Marker: "marker"
+    case _: "other"
+
+struct Box<T>
+
+fn otherBox(decision: Decision) -> string:
+  match decision:
+    case Box: "box"
     case _: "other"
