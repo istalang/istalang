@@ -32,8 +32,10 @@ import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, Checker, ResolvedCall, VariantMember } from './check.ts';
 import type { CollectionForms } from './expressions/collections.ts';
 import type { StructLiterals } from './expressions/literal-fields.ts';
+import type { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import type { ImplicitCalls } from './overloads/implicit.ts';
+import type { CheckedPatterns } from './patterns/matching.ts';
 import type { LoopScope } from './statements/loops.ts';
 import type { ReturnScope } from './statements/returns.ts';
 import type { VariableScope } from './statements/variables.ts';
@@ -132,4 +134,6 @@ export interface BodyContext {
   readonly loops: LoopScope;
   readonly implicit: ImplicitCalls;
   readonly collections: CollectionForms;
+  readonly patterns: CheckedPatterns;
+  readonly chains: OptionalChains;
 }

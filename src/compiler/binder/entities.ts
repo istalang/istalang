@@ -105,6 +105,9 @@ export interface VariantsEntity {
   readonly name: string;
 }
 
+/** What a name denotes when it names variants: one, qualified, or the candidates of a bare name. */
+export type VariantNaming = VariantEntity | VariantsEntity;
+
 /** `m` after `import * as m from 'path'`; the module is the one its import loaded. */
 export interface NamespaceEntity {
   readonly kind: 'namespace';

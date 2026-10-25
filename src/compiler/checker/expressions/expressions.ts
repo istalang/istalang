@@ -19,8 +19,10 @@ import { checkComprehension } from './comprehensions.ts';
 import { checkIf } from './control.ts';
 import { checkIndex } from './indexing.ts';
 import { checkDurationLiteral } from './literals.ts';
+import { checkIs, checkMatch } from './match.ts';
 import { checkName } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
+import { checkPropagate } from './propagate.ts';
 import { checkMemberAccess, checkStructLiteral } from './structs.ts';
 import { checkTuple, checkTupleElement } from './tuples.ts';
 import { checkUnwrap } from './unwrap.ts';
@@ -63,12 +65,12 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Lambda: unsupported,
   Reference: misplacedReference,
   Index: checkIndex,
-  Propagate: unsupported,
+  Propagate: checkPropagate,
   Unwrap: checkUnwrap,
   Await: checkAwait,
-  Is: unsupported,
+  Is: checkIs,
   Range: checkRange,
-  Match: unsupported,
+  Match: checkMatch,
   Select: unsupported,
   Missing: alreadyReported,
   Invalid: alreadyReported,

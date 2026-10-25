@@ -80,6 +80,9 @@ extern fn iterate(self: string) -> Array<string>
 
 extern fn iterate(self: Range) -> Array<int>
 
+# Where the running frames are, innermost first: the `trace` of an `Error` built without one.
+extern fn _trace() -> string
+
 # Operators on primitives (§3.9). They are built in: the runtime implements each, and declaring
 # them here lets an operator resolve like any other call. Mixing int and float gives a float, `/`
 # always gives a float, and adding a primitive to a string appends its text.

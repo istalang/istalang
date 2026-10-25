@@ -41,7 +41,7 @@ import type {
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import { BodyChecker } from './body-checker.ts';
+import { BodyChecker, type BodyKind } from './body-checker.ts';
 import type {
   CheckedBody,
   CheckedConstant,
@@ -96,14 +96,14 @@ export class ProgramChecker implements CheckerContext {
     checker: this,
     moduleOfItem: (declaration) => this.#modules.get(declaration),
     checkValue: (module, initializer, declaredResult) =>
-      new BodyChecker(this, module, { isAsync: false, declaredResult }).checkValue(initializer),
+      new BodyChecker(this, module, { kind: 'value', declaredResult }).checkValue(initializer),
   });
   readonly #checkedModules = new Set<ModuleId>();
   readonly #layouts = new Layouts(this);
   readonly #parameters = new Parameters({
     checker: this,
     defaultsBody: (module) => {
-      const body = new BodyChecker(this, module, { isAsync: false, declaredResult: undefined });
+      const body = new BodyChecker(this, module, { kind: 'value', declaredResult: undefined });
       return {
         check: (value, declared) => body.expect(value, declared),
         declare: (parameter, type) => body.variables.declare(parameter.name, type),
@@ -246,7 +246,8 @@ export class ProgramChecker implements CheckerContext {
       return undefined;
     }
     return this.#bodies.resultOf(declaration, () => {
-      const kind = {
+      const kind: BodyKind = {
+        kind: 'function',
         isAsync: declaration.isAsync,
         declaredResult: this.#declaredBodyResult(declaration),
       };
@@ -286,7 +287,7 @@ export class ProgramChecker implements CheckerContext {
   }
 
   preludeFunctions(name: string): readonly FunctionDeclaration[] {
-    const entity = this.#languageExport('prelude', name);
+    const entity = this.#languageDeclaration('prelude', name);
     return entity?.kind === 'functions' ? this.bindings.overloadsOf(entity) : [];
   }
 
@@ -317,15 +318,18 @@ export class ProgramChecker implements CheckerContext {
     { module, name }: WellKnownDeclaration,
     typeArguments: readonly Type[] = [],
   ): Type | undefined {
-    const entity = this.#languageExport(module, name);
+    const entity = this.#languageDeclaration(module, name);
     return entity?.kind === 'type'
       ? { kind: 'nominal', entity: entity as NominalType['entity'], arguments: typeArguments }
       : undefined;
   }
 
-  /** What language module `module` exports as `name`, when the program has that module. */
-  #languageExport(module: LanguageModule, name: string) {
+  /**
+   * What language module `module` declares as `name`, when the program has that module: what it
+   * exports, or a private name the toolchain itself uses, such as the extern writing a trace.
+   */
+  #languageDeclaration(module: LanguageModule, name: string) {
     const id = this.program.roles[module];
-    return id === undefined ? undefined : this.bindings.exportsOf(id).get(name);
+    return id === undefined ? undefined : this.bindings.topLevelNamed(id, name);
   }
 }

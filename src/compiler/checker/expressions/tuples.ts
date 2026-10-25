@@ -1,5 +1,6 @@
 /**
- * Tuples (§3.15): `(a, b)` builds one, `()` is `unit`, and `t.0` reads an element by position.
+ * Tuples (§3.15): `(a, b)` builds one, `()` is `unit`, and `t.0` reads an element by position,
+ * also as a link of an optional chain (optionals.ts).
  *
  * An expected tuple of the same size guides each element, so an element is inferred as its
  * position expects; whether the whole fits is the receiver's to judge, as for any value.
@@ -26,7 +27,7 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
 }
 
 export function checkTupleElement(context: BodyContext, node: TupleElement): Type {
-  const type = context.expression(node.target);
+  const type = context.chains.target(context, node);
   if (type.kind === 'error') {
     return errorType;
   }

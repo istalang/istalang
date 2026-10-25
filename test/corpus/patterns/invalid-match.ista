@@ -1,0 +1,45 @@
+# error: 5400 at 18:9
+# error: 5109 at 24:10
+# error: 5402 at 29:10
+# error: 5001 at 34:10
+# error: 5001 at 39:10
+# error: 5001 at 44:10
+# A `match` must cover every value of its subject's type (§3.11, §4): a missing variant is
+# reported at the subject. A pattern mirrors construction, so a variant with fields takes braces;
+# a referring name is a variant or a constant; a literal has the part's own type, never wrapped
+# into an optional; and a struct pattern names the value's own type.
+
+enum Decision:
+  Approved { by: string }
+  Rejected { by: string; reason: string }
+  Expired
+
+fn missing(decision: Decision) -> string:
+  match decision:
+    case Approved{by}: by
+    case Expired: "expired"
+
+fn bare(decision: Decision) -> string:
+  match decision:
+    case Approved: "approved"
+    case _: "other"
+
+fn typeName(decision: Decision) -> string:
+  match decision:
+    case Decision: "a type"
+    case _: "other"
+
+fn wrongLiteral(n: int) -> string:
+  match n:
+    case "one": "string"
+    case _: "other"
+
+fn unwrapped(n: int?) -> string:
+  match n:
+    case 1: "one"
+    case _: "other"
+
+fn otherStruct(decision: Decision) -> string:
+  match decision:
+    case Error{message}: message
+    case _: "other"

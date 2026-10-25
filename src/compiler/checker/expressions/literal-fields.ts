@@ -15,8 +15,11 @@
  * - What each field's value comes from is recorded per literal, in declaration order, so lowering
  *   and compile time read it rather than reading the items again. A literal with a mistake in its
  *   items has no record: nothing compiles it.
+ * - An `Error` may leave out `trace` (§3.12): the runtime writes it from the frames where the
+ *   `Error` is built, through the prelude extern the literal is recorded as calling.
  */
 
+import { errorTrace, wellKnown } from '../../../language/well-known.ts';
 import type { EnumDeclaration, StructDeclaration } from '../../syntax/declarations.ts';
 import {
   type Expression,
@@ -32,6 +35,7 @@ import { constrainArguments, typeParametersOf } from '../declarations/resolve-ty
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
+import { callMade } from '../overloads/calls-made.ts';
 import { itemField } from '../rules/struct-items.ts';
 import {
   errorType,
@@ -43,6 +47,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { useSite } from '../use-site.ts';
 
 /**
  * What a literal builds: its fields as declared, how to name its type from type arguments, and
@@ -112,8 +117,9 @@ export function checkLiteralFields(
   if (spread !== undefined && spreadType !== undefined) {
     context.fit(spreadType, type, spread.node.expression);
   }
-  reportMissing(context, items, type);
-  const sources = sourcesOf(shape, items.given, spread);
+  const traced = tracedField(context, node, shape, items.given);
+  reportMissing(context, items, type, traced);
+  const sources = sourcesOf(shape, items.given, spread, traced);
   if (items.fits && sources !== undefined) {
     context.literals.record(node, sources);
   }
@@ -238,11 +244,12 @@ function reportMisfit(
   }
 }
 
-/** With names alone, a field no item names is missing. */
+/** With names alone, a field no item names is missing, unless the runtime writes it (`traced`). */
 function reportMissing(
   context: BodyContext,
   { node, shape, given }: LiteralItems,
   type: Type,
+  traced: number | undefined,
 ): void {
   const named = node.items.every(
     (item) => item.kind === 'FieldInitializer' || item.kind === 'Invalid',
@@ -252,31 +259,76 @@ function reportMissing(
   }
   const at = node.type?.span ?? node.span;
   for (const [index, field] of shape.fields.entries()) {
-    if (!given.has(index)) {
+    if (!given.has(index) && index !== traced) {
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
     }
   }
 }
 
-/** Each field's source in declaration order, the spread giving the rest; undefined if one has none. */
+/**
+ * Each field's source in declaration order, the spread giving the rest and the runtime the
+ * `traced` field; undefined if one has none.
+ */
 function sourcesOf(
   { fields }: LiteralShape,
   given: ReadonlyMap<number, GivenField>,
   spread: LiteralSpread | undefined,
+  traced: number | undefined,
 ): readonly FieldSource[] | undefined {
   const sources: FieldSource[] = [];
   for (const index of fields.keys()) {
-    const value = given.get(index)?.node;
-    const source: FieldSource | undefined =
-      value === undefined
-        ? spread && { kind: 'spread', from: spread.node.expression, index }
-        : { kind: 'value', value };
+    const source = sourceOf(index, given.get(index)?.node, spread, traced);
     if (source === undefined) {
       return undefined;
     }
     sources.push(source);
   }
   return sources;
+}
+
+/** Where field `index` gets its value: the literal's `value`, the spread, or the runtime. */
+function sourceOf(
+  index: number,
+  value: Expression | undefined,
+  spread: LiteralSpread | undefined,
+  traced: number | undefined,
+): FieldSource | undefined {
+  if (value !== undefined) {
+    return { kind: 'value', value };
+  }
+  if (spread !== undefined) {
+    return { kind: 'spread', from: spread.node.expression, index };
+  }
+  return index === traced ? { kind: 'trace' } : undefined;
+}
+
+/**
+ * The index of an `Error`'s `trace` when the literal leaves it to the runtime, which it then
+ * records as calling the prelude extern that writes it (§3.12); undefined for any other literal.
+ */
+function tracedField(
+  context: BodyContext,
+  node: StructLiteral,
+  shape: LiteralShape,
+  given: ReadonlyMap<number, GivenField>,
+): number | undefined {
+  const error = context.checker.wellKnownType(wellKnown.error);
+  const index = shape.fields.findIndex((field) => field.name === errorTrace.field);
+  const isError = error?.kind === 'nominal' && shape.owner === error.entity.declaration;
+  const [writer] = context.checker.preludeFunctions(errorTrace.function);
+  if (!isError || index < 0 || given.has(index) || writer === undefined) {
+    return undefined;
+  }
+  const call = callMade(
+    useSite(context.checker, context.module, node.span),
+    { declaration: writer },
+    { typeArguments: [], witnesses: new Map() },
+    0,
+  );
+  if (call !== undefined) {
+    context.recordCall(node, call);
+  }
+  return index;
 }
 
 function literalName(node: StructLiteral): string {

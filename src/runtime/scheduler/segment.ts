@@ -283,6 +283,7 @@ class SegmentRunner implements Machine {
       segmentStartedAt: this.#startedAt,
       timer: (at) => this.#instance.newFuture({ kind: 'timer', at }),
       resolved: (value) => this.#instance.newFuture({ kind: 'resolved', value }),
+      trace: () => this.#trace(),
     };
   }
 

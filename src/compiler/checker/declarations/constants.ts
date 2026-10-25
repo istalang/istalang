@@ -5,7 +5,7 @@
  *
  * - A constant's initializer is checked like any expression, as a value of its own: its type is the
  *   annotation, which the initializer must fit, or else the initializer's own.
- * - Its targets take the value apart as a local declaration's do (patterns/destructuring.ts), so
+ * - Its targets take the value apart as a local declaration's do (patterns/walk.ts), so
  *   each name is a constant of its own: its part's type, and its part of the computed value.
  * - One walk both decides what compile time computes and computes it (computation.ts), into a
  *   `ConstantForm` lowering only maps to a value. What it refuses is reported here.
@@ -23,7 +23,7 @@ import { formAt } from '../constant-form.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { LazyChecks } from '../lazy-checks.ts';
-import { destructure } from '../patterns/destructuring.ts';
+import { walkTargets } from '../patterns/walk.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { computeConstant } from './computation.ts';
 
@@ -115,7 +115,7 @@ export class ConstantChecks {
     if (outcome.kind === 'refused') {
       checker.report(module, checkerDiagnostics.notConstant(outcome.part.span));
     }
-    const bindings = destructure(
+    const bindings = walkTargets(
       {
         fieldsOf: (type) => checker.fieldsOf(type),
         entityOf: (name) => checker.bindings.entityOf(module, name),

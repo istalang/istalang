@@ -1,0 +1,220 @@
+/**
+ * Patterns that may fail to match (§3.11): a `match` case's and an `is`'s. The walk is shared with
+ * targets (walk.ts); this module checks what only these patterns have, and keeps what lowering
+ * reads of them.
+ *
+ * - A literal is compared with `==`, so it has the part's own type: no `T` stands in for a `T?`,
+ *   since a pattern never wraps (`case Some{value == 1}` matches an optional holding 1). `none`
+ *   is `Optional`'s `None`.
+ * - A field compared with `==` or `!=` follows `==`'s rule (rules/equality.ts); any other
+ *   comparison calls `compare`.
+ * - A name that refers is a variant without fields, tested like one, or a top-level constant,
+ *   compared with `==` and acting as a guard for exhaustiveness.
+ * - A struct pattern naming a variant tests that variant, then takes its fields apart. The part's
+ *   enum is the expected type, so a bare variant name is enough (§3.11).
+ */
+
+import { optionalVariants } from '../../../language/well-known.ts';
+import type { VariantNaming } from '../../binder/entities.ts';
+import type { Expression } from '../../syntax/expressions.ts';
+import { lastName } from '../../syntax/node.ts';
+import type {
+  CompareFieldPattern,
+  LiteralPattern,
+  NamePattern,
+  Pattern,
+  StructPattern,
+} from '../../syntax/patterns.ts';
+import type { CheckedPattern, PatternTest } from '../check.ts';
+import type { BodyContext } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics.ts';
+import { chooseVariant, nameNodeOf } from '../expressions/variants.ts';
+import { resolveOperator } from '../overloads/operators.ts';
+import { checkEqualSides } from '../rules/equality.ts';
+import { comparable, errorType, type NominalType, type Type } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
+import { bodyScope, type ValuePart } from './parts.ts';
+import { literalShape, nullaryShape } from './shapes.ts';
+import {
+  type Leaf,
+  type PatternTests,
+  type VariantPart,
+  type WalkedPattern,
+  walkPattern,
+} from './walk.ts';
+
+/** The patterns of one body as checked, for lowering. */
+export class CheckedPatterns {
+  readonly #patterns = new Map<Pattern, CheckedPattern>();
+
+  record(pattern: Pattern, checked: CheckedPattern): void {
+    this.#patterns.set(pattern, checked);
+  }
+
+  patternOf(pattern: Pattern): CheckedPattern {
+    const checked = this.#patterns.get(pattern);
+    if (checked === undefined) {
+      throw new Error(`No pattern was checked at ${pattern.span.start}.`);
+    }
+    return checked;
+  }
+}
+
+/**
+ * Checks `pattern` against a value of `subject`, declaring the names it binds; its shape is
+ * undefined when it acts as a guard for exhaustiveness.
+ */
+export function checkPattern(context: BodyContext, pattern: Pattern, subject: Type): WalkedPattern {
+  const whole = { type: subject, path: [] };
+  const walked = walkPattern(bodyScope(context), testsIn(context), pattern, whole);
+  for (const { name, type } of walked.bindings) {
+    context.variables.declare(name, type);
+  }
+  context.patterns.record(pattern, walked);
+  return walked;
+}
+
+function testsIn(context: BodyContext): PatternTests {
+  return {
+    literal: (node, part) => literal(context, node, part),
+    comparison: (item, part) => comparison(context, item, part),
+    reference: (node, part) => reference(context, node, part),
+    variant: (node, naming, part) =>
+      node.type === undefined ? undefined : namedVariant(context, node.type, naming, part),
+  };
+}
+
+/** Nothing to test, after a report; a guard for exhaustiveness. */
+const failed: Leaf = { tests: [], shape: undefined };
+
+function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): Leaf {
+  const { value } = node;
+  if (value.kind === 'NoneLiteral') {
+    context.expect(value, part.type);
+    const none = variantOf(context, part, optionalVariants.none);
+    return none === undefined ? failed : { tests: [none.test], shape: valueShape(context, value) };
+  }
+  const type = context.expression(value, part.type);
+  if (!comparable(type, part.type)) {
+    context.report(checkerDiagnostics.typeMismatch(node.span, typeText(part.type), typeText(type)));
+  }
+  return { tests: [equalTest(part, value, false)], shape: valueShape(context, value) };
+}
+
+function comparison(context: BodyContext, item: CompareFieldPattern, part: ValuePart): Leaf {
+  const { operator, value } = item;
+  if (operator !== '==' && operator !== '!=') {
+    const field = { node: item.field, type: part.type };
+    resolveOperator(context, item, operator, [
+      field,
+      { node: value, type: context.expression(value) },
+    ]);
+    return { tests: [{ kind: 'compare', path: part.path, site: item }], shape: undefined };
+  }
+  const type = context.expression(value, part.type);
+  checkEqualSides(context, { type: part.type, node: undefined }, { type, node: value }, item);
+  const counts = operator === '==' && comparable(type, part.type);
+  return {
+    tests: [equalTest(part, value, operator === '!=')],
+    shape: counts ? valueShape(context, value) : undefined,
+  };
+}
+
+/**
+ * The shape of a value a part is compared with, by `==` or as a literal pattern: `none` is
+ * `None`, a variant without fields is that variant, and a literal is itself (§3.11). Any other
+ * value acts as a guard.
+ */
+function valueShape(context: BodyContext, value: Expression) {
+  if (value.kind === 'NoneLiteral') {
+    return nullaryShape(optionalVariants.none);
+  }
+  const named = nameNodeOf(value);
+  const entity = named === undefined ? undefined : context.entityOf(named);
+  const isVariant = entity?.kind === 'variant' || entity?.kind === 'variants';
+  return named !== undefined && isVariant ? nullaryShape(named.text) : literalShape(value);
+}
+
+function reference(context: BodyContext, node: NamePattern, part: ValuePart): Leaf {
+  const name = lastName(node.path);
+  const entity = context.entityOf(name);
+  if (entity?.kind === 'variant' || entity?.kind === 'variants') {
+    const chosen = namedVariant(context, node, entity, part);
+    if (chosen !== undefined && chosen.fields.length > 0) {
+      context.report(checkerDiagnostics.variantFields(node.span, name.text));
+    }
+    return chosen === undefined ? failed : variantLeaf(chosen);
+  }
+  const constant = context.checker.constantNamed(context.module, name);
+  if (constant === undefined) {
+    if (entity !== undefined) {
+      context.report(checkerDiagnostics.notPatternName(node.span, name.text));
+    }
+    return failed;
+  }
+  if (!comparable(constant.type, part.type)) {
+    context.report(
+      checkerDiagnostics.typeMismatch(node.span, typeText(part.type), typeText(constant.type)),
+    );
+  }
+  const test: PatternTest = {
+    kind: 'equal',
+    path: part.path,
+    value: { kind: 'constant', name },
+    negated: false,
+  };
+  return { tests: [test], shape: undefined };
+}
+
+/**
+ * The variant `naming` names, written at `at`, among the variants of the part's enum; undefined
+ * after a report, or for a part already in error.
+ */
+function namedVariant(
+  context: BodyContext,
+  at: NamePattern | (StructPattern['type'] & {}),
+  naming: VariantNaming,
+  part: ValuePart,
+): VariantPart | undefined {
+  if (part.type.kind === 'error') {
+    return undefined;
+  }
+  const name = lastName(at.path).text;
+  const chosen = chooseVariant(context, { span: at.span, name }, naming, part.type);
+  if (chosen === undefined) {
+    return undefined;
+  }
+  const found = variantOf(context, { ...part, type: enumOf(part.type, chosen.enum) }, name);
+  if (found === undefined) {
+    context.report(checkerDiagnostics.typeMismatch(at.span, name, typeText(part.type)));
+  }
+  return found;
+}
+
+/** The test that a part of an enum type holds its variant `name`, with that variant's fields. */
+function variantOf(context: BodyContext, part: ValuePart, name: string): VariantPart | undefined {
+  const variants = part.type.kind === 'nominal' ? context.checker.variantsOf(part.type) : undefined;
+  const index = variants?.findIndex((candidate) => candidate.name === name) ?? -1;
+  const found = variants?.[index];
+  if (variants === undefined || found === undefined) {
+    return undefined;
+  }
+  return {
+    test: { kind: 'variant', path: part.path, variant: index, count: variants.length },
+    key: name,
+    fields: found.fields,
+  };
+}
+
+/** `type` when it is a type of the enum `declaration`, else the error type. */
+function enumOf(type: Type, declaration: NominalType['entity']['declaration']): Type {
+  return type.kind === 'nominal' && type.entity.declaration === declaration ? type : errorType;
+}
+
+function variantLeaf({ test, key }: VariantPart): Leaf {
+  return { tests: [test], shape: nullaryShape(key) };
+}
+
+function equalTest(part: ValuePart, value: Expression, negated: boolean): PatternTest {
+  return { kind: 'equal', path: part.path, value: { kind: 'expression', node: value }, negated };
+}

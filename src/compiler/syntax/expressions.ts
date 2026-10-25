@@ -257,11 +257,43 @@ export interface Match extends NodeOf<'Match'> {
   readonly cases: readonly (MatchCase | Invalid)[];
 }
 
+/** The step a link of an optional chain takes (§4): what it works on, and whether through `?.`. */
+export interface ChainStep {
+  readonly target: Expression;
+  readonly optional: boolean;
+}
+
+/**
+ * The step `node` takes when it may be a link of an optional chain: a field read, a tuple
+ * element, an index, or a method call; undefined for any other expression. Whether it is a link is the
+ * checker's to say: a call through a namespace has the same shape and never is.
+ */
+export function chainStepOf(node: Expression): ChainStep | undefined {
+  switch (node.kind) {
+    case 'MemberAccess':
+      return { target: node.target, optional: node.isOptional };
+    case 'TupleElement':
+    case 'Index':
+      return { target: node.target, optional: false };
+    case 'Call':
+      return node.callee.kind === 'MemberAccess'
+        ? { target: node.callee.target, optional: node.callee.isOptional }
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
 /** `case pattern if guard: body`. */
 export interface MatchCase extends NodeOf<'MatchCase'> {
   readonly pattern: Pattern;
   readonly guard: Expression | undefined;
   readonly body: Block;
+}
+
+/** A `match`'s cases, without the invalid ones the parser reported. */
+export function casesOf(node: Match): readonly MatchCase[] {
+  return node.cases.filter((each) => each.kind === 'MatchCase');
 }
 
 /** `else: body`, ending an `if` or a `select`. */

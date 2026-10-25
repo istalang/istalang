@@ -108,6 +108,9 @@ class Computation {
     }
     const forms: ConstantForm[] = [];
     for (const source of sources) {
+      if (source.kind === 'trace') {
+        return refused(node);
+      }
       const part = source.kind === 'value' ? this.of(source.value) : this.#spreadField(source);
       if (part.kind !== 'computed') {
         return part;

@@ -2,7 +2,7 @@
  * Assignments (§3.4, §3.9, §3.15).
  *
  * - A target is a place, or a tuple or struct literal of targets that takes the value apart, with
- *   the same parts a declaration's targets give (patterns/destructuring.ts); several targets are a
+ *   the same parts a declaration's targets give (patterns/parts.ts); several targets are a
  *   tuple of them. Taking a value apart checks the value on its own first, then fits each part to
  *   the place it goes to.
  * - In a struct target, the shorthand `first` assigns the variable `first`, and a struct with one
@@ -35,7 +35,7 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { checkRewrap } from '../expressions/unwrap.ts';
 import { type OverloadableOperator, resolveOperator } from '../overloads/operators.ts';
-import { bodyScope, elementParts, structParts, type ValuePart } from '../patterns/destructuring.ts';
+import { bodyScope, elementParts, structParts, type ValuePart } from '../patterns/parts.ts';
 import { checkChangedPlace, isChangeable } from '../rules/places.ts';
 import { itemField } from '../rules/struct-items.ts';
 import { errorType, type Type } from '../types/type.ts';

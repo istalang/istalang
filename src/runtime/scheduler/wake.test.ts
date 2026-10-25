@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
-import type { Natives } from '../natives.ts';
+import type { Native, Natives } from '../natives.ts';
 import {
   manualClock,
   recordingStore,
@@ -68,7 +68,7 @@ const addKey = 'prelude.add(int, int)';
  * sum is also off by how many calls came before, so no two runs of a segment agree.
  */
 function countingAdd(calls: { count: number }, drifting = false): Natives {
-  const add = stdNatives[addKey];
+  const add: Native | undefined = stdNatives[addKey];
   if (add === undefined) {
     throw new Error(`No native ${addKey}.`);
   }

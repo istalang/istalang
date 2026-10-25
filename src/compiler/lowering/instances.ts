@@ -86,6 +86,22 @@ export function instantiatedBody(body: CheckedBody, instance: FunctionInstance):
       body
         .targetsOf(declaration)
         .map((binding) => ({ ...binding, type: substitute(binding.type, substitution) })),
+    chainOf: (link) => {
+      const chained = body.chainOf(link);
+      return chained === undefined
+        ? undefined
+        : { ...chained, base: substitute(chained.base, substitution) };
+    },
+    patternOf: (pattern) => {
+      const checked = body.patternOf(pattern);
+      return {
+        ...checked,
+        bindings: checked.bindings.map((binding) => ({
+          ...binding,
+          type: substitute(binding.type, substitution),
+        })),
+      };
+    },
     result: substitute(body.result, substitution),
   };
 }

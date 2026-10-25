@@ -4,7 +4,8 @@
  * - An overloadable operator calls the function the checker resolved; the four comparisons call
  *   `compare` and turn its int into the relation with `order`.
  * - `==` and `!=` are the built-in `equal`, `not` its own instruction.
- * - `and` and `or` short-circuit through `branch`, so their right side runs only when needed.
+ * - `and` and `or` short-circuit through `branch`, so their right side runs only when needed;
+ *   `??` through a `switch` (nullish.ts).
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -12,8 +13,10 @@ import type { Span } from '../../../text/span.ts';
 import type { Binary, Unary } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 import { call } from './calls.ts';
+import { lowerNullish } from './nullish.ts';
 
-const relations = {
+/** The relation `order` turns `compare`'s int into, by comparison operator (§3.9). */
+export const comparisonRelations = {
   '<': 'less',
   '<=': 'lessOrEqual',
   '>': 'greater',
@@ -24,6 +27,9 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
   const { operator } = node;
   if (operator === 'and' || operator === 'or') {
     return shortCircuit(context, node, operator);
+  }
+  if (operator === '??') {
+    return lowerNullish(context, node);
   }
   const left = context.expression(node.left);
   const right = context.expression(node.right);
@@ -45,7 +51,7 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
         span: node.span,
         dst,
         comparison,
-        relation: relations[operator],
+        relation: comparisonRelations[operator],
       });
       return dst;
     }

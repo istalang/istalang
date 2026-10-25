@@ -1,0 +1,42 @@
+# outcome: "legal|none|5|-|42|7|9|none|0|bo|-"
+# The operators on optionals (§4): `?.` reads a field or calls a method on the value inside, later
+# links such as `[i]` work on that value too, and the chain short-circuits to `none`; a value
+# already optional isn't wrapped again.
+# `a ?? b` is the value inside `a`, else `b`, which runs only then; with a `T?` on the right it
+# gives a `T?`, so `a ?? b ?? c` reads left to right.
+
+struct Address { city: string; zip: int? }
+
+struct Person { name: string; address: Address? }
+
+struct Verdict { role: string }
+
+struct Team { members: Array<string> }
+
+fn length(self: Address) -> int:
+  5
+
+fn roleOf(verdict: Verdict?) -> string:
+  verdict?.role ?? "none"
+
+fn neverCalled() -> int:
+  panic("'??' evaluated its right side")
+
+async fn main() -> Future<string>:
+  const someone = Person{name: "a", address: Address{city: "x", zip: 42}}
+  const nobody = Person{name: "b", address: none}
+  const counted: int? = someone.address?.length()
+  const zip: int? = someone.address?.zip
+  const missingZip: int? = nobody.address?.zip
+  const seven: int? = 7
+  const first: int? = none
+  const second: int? = 9
+  const chained: int? = first ?? second ?? 3
+  const both: int? = first ?? none
+  const team: Team? = Team{members: ["ada", "bo"]}
+  const noTeam: Team? = none
+  (roleOf(Verdict{role: "legal"}) + "|" + roleOf(none) + "|" + string(counted ?? 0)
+    + "|" + (nobody.address?.city ?? "-") + "|" + string(zip ?? 0)
+    + "|" + string(seven ?? neverCalled()) + "|" + string(chained ?? 0)
+    + "|" + (if both == none: "none" else: "some") + "|" + string(missingZip ?? 0)
+    + "|" + (team?.members[1] ?? "-") + "|" + (noTeam?.members[1] ?? "-"))

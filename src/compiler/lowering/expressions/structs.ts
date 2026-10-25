@@ -2,7 +2,8 @@
  * Building structs and reading their fields (§3.1). A literal's values are evaluated in source
  * order and stored in its type's declaration order, each field from where the checker recorded it
  * comes from (`sourcesOf`); a field the literal doesn't give is read from its leading spread,
- * evaluated once. A field read names the field by its index.
+ * evaluated once, or, for an `Error`'s `trace`, written by the call the checker recorded at the
+ * literal (§3.12). A field read names the field by its index.
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -15,6 +16,7 @@ import {
 } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 import { fieldIndexOf } from '../places.ts';
+import { call } from './calls.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   return construct(context, structTypeOf(context, node), literalFields(context, node), node.span);
@@ -42,6 +44,9 @@ export function literalFields(context: FunctionContext, node: StructLiteral): Re
     if (source.kind === 'value') {
       return registerOf(values, source.value);
     }
+    if (source.kind === 'trace') {
+      return call(context, node, []);
+    }
     const dst = context.code.allocate();
     const src = registerOf(values, source.from);
     context.code.emit({ kind: 'field', span: node.span, dst, src, index: source.index });
@@ -55,7 +60,7 @@ export function lowerBareStruct(context: FunctionContext, node: Expression): Reg
 }
 
 export function lowerFieldRead(context: FunctionContext, node: MemberAccess): Register {
-  const src = context.expression(node.target);
+  const src = context.chains.target(context, node);
   const dst = context.code.allocate();
   const index = fieldIndexOf(context, node);
   context.code.emit({ kind: 'field', span: node.span, dst, src, index });

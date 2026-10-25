@@ -22,6 +22,7 @@ import type {
   StructLiteral,
 } from '../syntax/expressions.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
+import type { CompareFieldPattern, Pattern } from '../syntax/patterns.ts';
 import type { Assignment, For, VariableDeclaration } from '../syntax/statements.ts';
 import type { ConstantForm } from './constant-form.ts';
 import { ProgramChecker } from './program-checker.ts';
@@ -101,7 +102,66 @@ export interface TargetBinding {
  */
 export type FieldSource =
   | { readonly kind: 'value'; readonly value: Expression }
-  | { readonly kind: 'spread'; readonly from: Expression; readonly index: number };
+  | { readonly kind: 'spread'; readonly from: Expression; readonly index: number }
+  | TraceSource;
+
+/**
+ * `Error`'s `trace` left out of its literal (§3.12): the call the checker resolved at the literal
+ * gives it, writing the frames where the `Error` is built.
+ */
+export interface TraceSource {
+  readonly kind: 'trace';
+}
+
+/**
+ * One test a value must pass to match a pattern (§3.11), on its part at `path` (field or tuple
+ * element positions from the whole value, as for a binding). A pattern's tests run in order, so a
+ * variant's fields are read only after its variant was tested.
+ *
+ * - `variant`: the part is the `variant`-th of its enum's `count` variants.
+ * - `equal`: the part `==` a value: a literal or comparison's expression, or a top-level
+ *   constant's name; `negated` for `!=`.
+ * - `compare`: `compare(part, value)` called at `site`, in the relation its operator names.
+ */
+export type PatternTest =
+  | {
+      readonly kind: 'variant';
+      readonly path: readonly number[];
+      readonly variant: number;
+      readonly count: number;
+    }
+  | {
+      readonly kind: 'equal';
+      readonly path: readonly number[];
+      readonly value: PatternValue;
+      readonly negated: boolean;
+    }
+  | {
+      readonly kind: 'compare';
+      readonly path: readonly number[];
+      readonly site: CompareFieldPattern;
+    };
+
+/** What an `equal` test compares with: an expression, or the constant a pattern names. */
+export type PatternValue =
+  | { readonly kind: 'expression'; readonly node: Expression }
+  | { readonly kind: 'constant'; readonly name: Identifier };
+
+/** A `match` case's or `is`'s pattern as checked: its tests, then the names it binds. */
+export interface CheckedPattern {
+  readonly tests: readonly PatternTest[];
+  readonly bindings: readonly TargetBinding[];
+}
+
+/**
+ * A link of an optional chain (§4): the type its own step works on (the value inside, after
+ * `?.`), and whether the chain, if it ends at this link, wraps its value into `T?`, which it
+ * doesn't when the value already is optional.
+ */
+export interface ChainLink {
+  readonly base: Type;
+  readonly wraps: boolean;
+}
 
 /** A place an assignment writes, and the positions of its part in the assigned value (§3.15). */
 export interface AssignedPart {
@@ -117,10 +177,20 @@ export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCa
 
 /**
  * Nodes a call can be written as: a call, an operator that calls a function (§3.9), `x$`, which
- * calls `unwrap`, indexing, which calls `index`, or an assignment, whose compound operator or
- * `x$ = v` calls a function.
+ * calls `unwrap`, indexing, which calls `index`, an assignment, whose compound operator or
+ * `x$ = v` calls a function, a pattern's comparison such as `amount > 1000`, which calls `compare`
+ * (§3.11), and an `Error` literal that leaves out `trace`, which calls the extern writing it (§3.12).
  */
-export type CallSite = NodeOf<'Call' | 'Binary' | 'Unary' | 'Unwrap' | 'Assignment' | 'Index'>;
+export type CallSite = NodeOf<
+  | 'Call'
+  | 'Binary'
+  | 'Unary'
+  | 'Unwrap'
+  | 'Assignment'
+  | 'Index'
+  | 'CompareFieldPattern'
+  | 'StructLiteral'
+>;
 
 /** A construct that runs over an iterable (§3.10): a `for`, a comprehension, or a spread. */
 export type Iteration = For | Comprehension | Spread;
@@ -176,6 +246,10 @@ export interface CheckedBody {
    * literal the checker found a mistake in.
    */
   readonly sourcesOf: (literal: StructLiteral) => readonly FieldSource[] | undefined;
+  /** A `match` case's or `is`'s pattern as checked (§3.11). */
+  readonly patternOf: (pattern: Pattern) => CheckedPattern;
+  /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
+  readonly chainOf: (link: Expression) => ChainLink | undefined;
   /** What the body produces: `T` for an async function returning `Future<T>`. */
   readonly result: Type;
 }

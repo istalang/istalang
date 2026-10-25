@@ -20,17 +20,37 @@ import { placeOf } from '../places.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
   const resolved = resolvedAt(context, node);
-  const written: readonly (Expression | Spread)[] =
-    resolved.receiver === undefined ? node.arguments : [resolved.receiver, ...node.arguments];
   const parameters = context.checker.parametersOf(resolved.function);
-  const argumentList = written.map((argument, index) =>
-    argumentOf(context, argument, parameters[index]?.reference === true),
-  );
+  const receiver = receiverOf(context, node, resolved, parameters[0]?.reference === true);
+  const passed = node.arguments.map((argument, index) => {
+    const at = receiver === undefined ? index : index + 1;
+    return argumentOf(context, argument, parameters[at]?.reference === true);
+  });
   return emitCall(context, {
     span: node.span,
     callee: context.calleeIndex(node),
-    arguments: argumentList,
+    arguments: receiver === undefined ? passed : [receiver, ...passed],
   });
+}
+
+/**
+ * A method's receiver as its first argument (§3.7); through an optional chain, the value the
+ * chain carries, which the checker passes only by value (§4).
+ */
+function receiverOf(
+  context: FunctionContext,
+  node: Call,
+  resolved: ResolvedCall,
+  byReference: boolean,
+): Argument | undefined {
+  const { receiver } = resolved;
+  if (receiver === undefined) {
+    return undefined;
+  }
+  if (context.body.chainOf(node) === undefined) {
+    return argumentOf(context, receiver, byReference);
+  }
+  return { kind: 'value', register: context.chains.target(context, node) };
 }
 
 /** Calls the function the checker resolved for `site` with values; the register of its result. */

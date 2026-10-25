@@ -1,0 +1,87 @@
+# outcome: "approved by legal|legal rejected: no contract|expired|cfo|small|large|zero|(origin)|(on axis 3)|(1, 2)|yes|no|first|shipped|other"
+# `match` is an expression over every pattern form (§3.11, §4): variants bare and with fields,
+# renamed and compared fields, nested patterns, literals, tuples, `as`, guards, and `case _`. Its
+# cases agree on its type, and the first case that matches decides.
+
+enum Decision:
+  Approved { by: string }
+  Rejected { by: string; reason: string }
+  Expired
+
+struct Verdict { role: string; ok: bool }
+
+struct Point { x: int; y: int }
+
+enum Status { Pending; Shipped; Lost }
+
+struct Order { id: int; status: Status }
+
+fn describe(decision: Decision) -> string:
+  match decision:
+    case Approved{by}:
+      "approved by " + by
+    case Rejected{by, reason as why}:
+      by + " rejected: " + why
+    case Expired:
+      "expired"
+
+fn approver(verdict: Decision?) -> string:
+  match verdict:
+    case Some{value is Approved{by as who}} if who == "cfo":
+      who
+    case Some{value is Approved{by}}:
+      "someone"
+    case _:
+      "nobody"
+
+fn size(n: int) -> string:
+  match n:
+    case 0:
+      "zero"
+    case -1:
+      "minus one"
+    case k if k < 10:
+      "small"
+    case _:
+      "large"
+
+fn where(p: Point) -> string:
+  const text = match p:
+    case Point{x == 0, y == 0}:
+      "origin"
+    case Point{x == 0, y as d}:
+      "on axis " + string(d)
+    case Point{y == 0} as q:
+      "on axis " + string(q.x)
+    case _:
+      "elsewhere"
+  "(" + text + ")"
+
+fn pair(t: (int, int)) -> string:
+  match t:
+    case (a, b):
+      "(" + string(a) + ", " + string(b) + ")"
+
+fn answer(flag: bool) -> string:
+  match flag:
+    case true: "yes"
+    case false: "no"
+
+fn first(words: (string, string)) -> string:
+  match words:
+    case ("a", _): "first"
+    case (_, "b"): "second"
+    case _: "neither"
+
+fn tracking(order: Order) -> string:
+  match order:
+    case Order{status == Shipped}: "shipped"
+    case _: "other"
+
+async fn main() -> Future<string>:
+  (describe(Approved{by: "legal"}) + "|" + describe(Rejected{by: "legal", reason: "no contract"})
+    + "|" + describe(Expired) + "|" + approver(Decision.Approved{by: "cfo"}) + "|" + size(3)
+    + "|" + size(40) + "|" + size(0) + "|" + where(Point{x: 0, y: 0})
+    + "|" + where(Point{x: 0, y: 3}) + "|" + pair((1, 2)) + "|" + answer(true)
+    + "|" + answer(false) + "|" + first(("a", "b"))
+    + "|" + tracking(Order{id: 1, status: Shipped}) + "|" + tracking(Order{id: 2, status: Lost}))

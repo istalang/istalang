@@ -88,6 +88,14 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     const condition = readRegister(frame, instruction.condition, machine);
     frame.pc = condition === true ? instruction.whenTrue : instruction.whenFalse;
   },
+  switch: (machine, instruction, frame) => {
+    const value = readRegister(frame, instruction.value, machine);
+    const target = isVariant(value) ? instruction.targets[value.variant] : undefined;
+    if (target === undefined) {
+      throw new TypeError(`'switch' at pc ${frame.pc} found no variant it has a target for.`);
+    }
+    frame.pc = target;
+  },
   return: (machine, instruction, frame) => {
     machine.return(frame, readRegister(frame, instruction.value, machine));
   },
@@ -123,7 +131,6 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   },
   closure: notRunYet,
   currentClosure: notRunYet,
-  switch: notRunYet,
   spawn: notRunYet,
   currentCall: notRunYet,
   select: notRunYet,
@@ -131,6 +138,10 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   keep: notRunYet,
   defer: notRunYet,
 };
+
+function isVariant(value: Value): value is Extract<Value, { kind: 'variant' }> {
+  return isComposite(value) && value.kind === 'variant';
+}
 
 /** Runs `instruction`, the instruction at `frame`'s pc. */
 export function runInstruction(

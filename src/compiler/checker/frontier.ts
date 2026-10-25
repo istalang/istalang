@@ -18,8 +18,7 @@ export const frontier = {
   functionValueCall: 'Calling a function value',
   spreadArgument: 'A spread argument',
   restParameter: 'Rest parameter',
-  nullishOperator: "The '??' operator",
-  optionalChaining: "The '?.' operator",
+  dropVariable: 'Dropping a variable',
   sharedValue: "A 'Shared' value",
 } as const;
 

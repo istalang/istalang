@@ -600,7 +600,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 
 An enum is a type whose value is exactly one of several named variants, each with its own fields. Enums are values like structs: they are copied, they are sendable when all their fields are, and `match` handles them exhaustively.
 
-```python
+```python fragment
 enum Decision:
     Approved { by: string }
     Rejected { by: string; reason: string }
@@ -628,7 +628,13 @@ const text: string = match decision:
 - **`field == expr`**, or any other comparison, tests it: `case Verdict{ok == false}`, `case Order{amount > 1000}`.
 - **`field is Pattern`** matches the field against a nested pattern: `case Some{value is Verdict{ok == false} as v}`. Only a pattern may follow `is`.
 
-A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns (`case (a, _):`), `_`, or a bare name. A camelCase bare name binds a new variable, as `a` does in `case (a, _):`, while a PascalCase one refers to a variant or constant, as in `case Expired:`; a qualified name (`case Decision.Expired:`) always refers. There is no positional binding in struct patterns, not even for a type with a single field: a bare name always binds the field of that name, and `as` renames it, as in `case Ok{value as receipt}`. An anonymous struct is matched with `case struct{…}`. For exhaustiveness, `==` against a literal or an enum variant counts as a pattern, while other comparisons act like guards (§4) and don't count. Nested patterns count by the same rules.
+A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns (`case (a, _):`), `_`, or a bare name. A camelCase bare name binds a new variable, as `a` does in `case (a, _):`, while a PascalCase one refers to a variant or constant, as in `case Expired:`; a qualified name (`case Decision.Expired:`) always refers. There is no positional binding in struct patterns, not even for a type with a single field: a bare name always binds the field of that name, and `as` renames it, as in `case Ok{value as receipt}`. An anonymous struct is matched with `case struct{…}`.
+
+- **Literals** are compared with `==`, so a literal pattern has the matched value's own type: a pattern is never wrapped into an optional, and against an `int?` you write `case Some{value == 1}`, not `case 1`. `none` is `None`, and a negative number is written `-1`.
+- **Referring names** name a variant without fields or a top-level constant. A variant with fields is written with braces, as when it is built; a constant is compared with `==`.
+- **`as`** binds the whole matched part with its own type. Variants aren't types, so in `case Approved{by} as d`, `d` is a `Decision`.
+
+**Exhaustiveness.** A `match` covers its subject's type when every value of it matches a case without a guard. A type is made of its constructors: an enum of its variants, `bool` of `true` and `false`, and a tuple or a struct of its one shape, field by field. `int`, `float`, `string` and the other types have no such list, so their literals never cover them; only a pattern taking anything does. `==` against a literal or an enum variant counts as a pattern, while other comparisons, and `==` against a constant, act like guards (§4) and don't count. Nested patterns count by the same rules. A missing case is reported with examples of what isn't handled, and a case no value can reach, given the cases before it, is warned about.
 
 **`is` outside `match`.** `x is Pattern` is a boolean expression. Its bindings exist only where the match is known to have succeeded: in the body of an `if` or `while`, and on the right-hand side of an `and`. `or` can't introduce bindings, because afterwards it isn't known which side matched.
 
@@ -641,7 +647,7 @@ if r is Ok{value as y} and y > 0:
 
 There is no `try`/`catch`. A function that can fail returns a `Result`, from the prelude:
 
-```python
+```python fragment
 enum Result<T, E = Error>:
     Ok { value: T }
     Err { error: E }
@@ -649,7 +655,7 @@ enum Result<T, E = Error>:
 struct Error:
     message: string
     code: string
-    trace: string          # filled in by the runtime when the Err is created
+    trace: string          # filled in by the runtime when the Error is built
 ```
 
 ```python statements
@@ -664,7 +670,8 @@ match await pay(req):
         ...
 ```
 
-- **`?` propagates.** `expr?` on a `Result` yields the `Ok` value, or returns the `Err` from the enclosing function. That function must itself return a `Result` with the same error type.
+- **`?` propagates.** `expr?` on a `Result` yields the `Ok` value, or returns the `Err` from the enclosing function. That function must itself return a `Result` with the same error type. With an inferred return type, each `?` acts as a `return` of an `Err`: what the function's other returns and its last expression agree on must be a `Result` with that error type. A `?` outside any function, such as in a parameter's default, is an error. `?` doesn't take an optional apart; `??` and `match` do (§4).
+- **Traces.** An `Error` literal may leave out `trace`, which is then filled with the frames where the `Error` is built, innermost first, one line each: `at function (module:line:column)`. A `trace` written in the literal, or carried over by a spread as in `Error{...error, message: "retry failed"}`, is kept.
 - **Results must be used.** Leaving a `Result` unused as a bare expression is a compile error. Handle it with `match` or `?`, keep it in a variable (`_` included), or `drop` it.
 - **Results are data.** A `Result` of sendable types is sendable, so a service can reply with one into a `replyTo` inbox.
 - **Bugs panic; expected failures return `Result`.** Network, parsing and business failures return `Result`. Programming errors such as an out-of-range index, division by zero or a missing map key panic. The safe variants return optionals: `xs.at(i)` returns `T?`, and `m.get(k)` returns `V?`.
@@ -673,6 +680,7 @@ match await pay(req):
 
 - **Nothing is committed.** The current segment is discarded, so the instance stays at its last snapshot. Effects of `extern fn` calls already made in that segment remain (§5).
 - **The instance is frozen,** marked as panicked. Nothing it holds is disposed and no deferred function runs: its revertible messages stay in their inboxes, and the instances it spawned keep running.
+- **The panic is recorded** with its message and the trace of the frames it happened in, in the format of `Error`'s `trace`. `ista run` prints both and exits with a non-zero code.
 - **An operator decides what happens next.** Through the host, an operator can inspect the instance, retry it from its last snapshot, or terminate it. Terminating disposes everything it holds (§7).
 - **A result from the host that doesn't match its declared type** panics the instance at the `extern fn` call, since it's a bug in the host (§9).
 
@@ -828,7 +836,7 @@ A `;` directly after a one-line body is a compile error, because readers coming 
 
 **Array comprehensions.** `[for x in xs: expr]` builds an array by evaluating `expr` for each element, and an `if` clause between the iterable and `:` keeps only the elements that pass:
 
-```python
+```python fragment
 const doubled = [for i in 1..10: 5 * i]
 const small = [for x in doubled if x < 20: x]
 const values = [for r in results if r is Ok{value}: value]   # filter and destructure
@@ -838,7 +846,7 @@ const values = [for r in results if r is Ok{value}: value]   # filter and destru
 - **`is` bindings in the condition flow into the body,** just as they flow from an `if` condition into its body.
 - **It works on any `Iterable` (§3.10)** and builds the whole array at once. A plain `for` without brackets stays a statement and builds nothing.
 
-```python
+```python fragment
 const label: string = if amount > 50_000:
     "large"
 else:
@@ -863,11 +871,13 @@ The rules:
 **Optionals.** Two operators work on `T?` values without a `match`:
 
 - `a?.b` reads the field `b`, or calls a method as in `a?.m()`, when `a` isn't `none`, and yields `none` otherwise. The result is optional.
-- `a ?? b` yields the value inside `a`, or `b` when `a` is `none`. `b` must have type `T`, and so does the result.
+- `a ?? b` yields the value inside `a`, or `b` when `a` is `none`; `b` is evaluated only then. `b` may have type `T`, and so does the result, or `T?`, giving a `T?`, so `a ?? b ?? c` reads left to right.
+
+Both work only on optionals; using either on any other value is an error. A `?.` starts an **optional chain**: the links after it, such as `.c`, `.0`, `[i]` and `.m()` in `a?.b.c`, `a?.b.0`, `a?.b[i]` and `a?.b.m()`, work on the value inside, and when a `?.` meets `none` the whole chain is `none`. Parentheses end a chain. The chain's value is wrapped into `T?` once, at its end, unless it already is optional, so results never nest. A value read through `?.` is a copy (§3.1), so a chain can't be assigned to, and a method taking `&self` isn't called through it.
 
 `??` can't be mixed with `and` or `or` without parentheses, as in JavaScript. Neither operator is related to the postfix `?` on `Result`, which propagates errors (§3.12).
 
-```python
+```python fragment
 const limit: int = m.get("limit") ?? 50_000
 const role: string? = verdict?.role
 ```

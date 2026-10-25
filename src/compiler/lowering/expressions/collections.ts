@@ -98,7 +98,8 @@ export function lowerRange(context: FunctionContext, node: Range): Register {
 }
 
 export function lowerIndex(context: FunctionContext, node: Index): Register {
-  return call(context, node, [context.expression(node.target), context.expression(node.index)]);
+  const container = context.chains.target(context, node);
+  return call(context, node, [container, context.expression(node.index)]);
 }
 
 /** The array a spread spreads: what `iterate` gives for its operand. */

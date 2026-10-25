@@ -7,7 +7,7 @@
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type { Expression, MemberAccess, Spread } from '../syntax/expressions.ts';
+import { casesOf, type Expression, type MemberAccess, type Spread } from '../syntax/expressions.ts';
 import type { Identifier, QualifiedName } from '../syntax/node.ts';
 import { underBindings, underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
@@ -98,17 +98,15 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   },
   Match: (binder, node, scope) => {
     bindExpression(binder, node.subject, scope);
-    for (const matchCase of node.cases) {
-      if (matchCase.kind === 'MatchCase') {
-        underBindings(
-          scope,
-          (bindings) => binder.walk.pattern(binder, matchCase.pattern, scope, { into: bindings }),
-          (bindings) =>
-            underCondition(binder, matchCase.guard, bindings, (flow) =>
-              binder.walk.block(binder, matchCase.body, flow),
-            ),
-        );
-      }
+    for (const matchCase of casesOf(node)) {
+      underBindings(
+        scope,
+        (bindings) => binder.walk.pattern(binder, matchCase.pattern, scope, { into: bindings }),
+        (bindings) =>
+          underCondition(binder, matchCase.guard, bindings, (flow) =>
+            binder.walk.block(binder, matchCase.body, flow),
+          ),
+      );
     }
   },
   Select: (binder, node, scope) => {

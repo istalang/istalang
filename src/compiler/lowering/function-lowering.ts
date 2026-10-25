@@ -5,7 +5,8 @@
  * - The body is read through the instance (instances.ts): its types are concrete, and its calls
  *   target the instances they close to.
  * - A value the checker fitted by the implicit wrap (§2) is wrapped here, once it is computed, so
- *   no handler needs to know about wrapping.
+ *   no handler needs to know about wrapping. An optional chain is lowered from its last link
+ *   (optional-chains.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
  * - A parameter takes the first registers, in order; a by-value one passed on by `&` is a cell,
@@ -38,8 +39,9 @@ import type { Block, Statement } from '../syntax/statements.ts';
 import { CodeWriter } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
-import { variantIndexOf } from './expressions/variants.ts';
+import { buildVariant } from './expressions/variants.ts';
 import { calleeOf, type FunctionInstance, fullInstance, substitutionOf } from './instances.ts';
+import { OptionalChains } from './optional-chains.ts';
 import { LoopStack } from './statements/loops.ts';
 import { lowerBlock, statementHandlers } from './statements/statements.ts';
 import { declareVariable, VariableRegisters } from './statements/variables.ts';
@@ -54,6 +56,7 @@ export class FunctionLowering implements FunctionContext {
   readonly code = new CodeWriter();
   readonly variables = new VariableRegisters();
   readonly loops = new LoopStack();
+  readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
 
   constructor(
     checker: Checker,
@@ -115,20 +118,15 @@ export class FunctionLowering implements FunctionContext {
   }
 
   expression(node: Expression): Register {
-    let register = handlerOf(expressionHandlers, node)(this, node);
+    let register =
+      this.body.chainOf(node) === undefined
+        ? handlerOf(expressionHandlers, node)(this, node)
+        : this.chains.lower(this, node);
     let type = this.body.typeOf(node);
     for (let wraps = this.body.wrapsOf(node); wraps > 0; wraps -= 1) {
       const optional = this.checker.optionalOf(type);
-      const dst = this.code.allocate();
-      this.code.emit({
-        kind: 'variant',
-        span: node.span,
-        dst,
-        type: this.tables.typeIndex(optional),
-        variant: variantIndexOf(this.checker, optional, optionalVariants.some),
-        fields: [register],
-      });
-      register = dst;
+      const some = { type: optional, name: optionalVariants.some };
+      register = buildVariant(this, some, [register], node.span);
       type = optional;
     }
     return register;

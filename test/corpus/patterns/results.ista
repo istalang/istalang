@@ -1,0 +1,35 @@
+# outcome: "ok 6|failed: not a number|true|true|given kept"
+# A function that can fail returns a Result (§3.12): `?` passes on its `Ok` value, or returns its
+# `Err` from the enclosing function, whose Result holds the same error type. An `Error` built
+# without `trace` gets the frames where it was built; one that is given or spread keeps its own. A
+# Result must be used: matched, kept, passed on with `?`, or dropped.
+
+fn parse(text: string) -> Result<int>:
+  if text == "three":
+    return Ok{3}
+  Err{Error{message: "not a number", code: "parse"}}
+
+fn doubled(text: string) -> Result<int>:
+  const value = parse(text)?
+  Ok{value * 2}
+
+fn shown(result: Result<int>) -> string:
+  match result:
+    case Ok{value}: "ok " + string(value)
+    case Err{error}: "failed: " + error.message
+
+fn traced(result: Result<int>) -> bool:
+  match result:
+    case Ok{value}: false
+    case Err{error}: error.trace != ""
+
+fn copied() -> Error:
+  const original = Error{message: "a", code: "b", trace: "given"}
+  Error{...original, message: "kept"}
+
+async fn main() -> Future<string>:
+  drop parse("four")
+  _ = parse("five")
+  const error = copied()
+  (shown(doubled("three")) + "|" + shown(doubled("four")) + "|" + string(doubled("x") is Err{})
+    + "|" + string(traced(parse("x"))) + "|" + error.trace + " " + error.message)

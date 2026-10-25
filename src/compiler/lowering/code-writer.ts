@@ -83,6 +83,22 @@ export class CodeWriter {
     });
   }
 
+  /** Jumps by the variant of the enum value in `value`: to `targets[i]` for variant i. */
+  switch(value: Register, targets: readonly Label[], span: Span): void {
+    const instruction: Extract<Instruction, { kind: 'switch' }> = {
+      kind: 'switch',
+      span,
+      value,
+      targets: targets.map(() => 0),
+    };
+    this.emit(instruction);
+    for (const [index, target] of targets.entries()) {
+      this.#refer(target, (position) => {
+        instruction.targets[index] = position;
+      });
+    }
+  }
+
   /** The code written; throws when a jump names a label nothing placed, a bug in lowering. */
   finish(): WrittenCode {
     if (this.#patches.size > 0) {

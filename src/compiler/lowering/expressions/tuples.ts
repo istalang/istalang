@@ -19,5 +19,6 @@ export function lowerTuple(context: FunctionContext, node: Tuple): Register {
 }
 
 export function lowerTupleElement(context: FunctionContext, node: TupleElement): Register {
-  return readPart(context, context.expression(node.target), [node.element], node.span);
+  const target = context.chains.target(context, node);
+  return readPart(context, target, [node.element], node.span);
 }

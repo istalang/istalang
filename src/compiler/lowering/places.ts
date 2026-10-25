@@ -109,7 +109,7 @@ export function readPart(
 
 /** The position, in its struct's declaration order, of the field `node` reads. */
 export function fieldIndexOf(context: FunctionContext, node: MemberAccess): number {
-  const type = context.body.typeOf(node.target);
+  const type = context.body.chainOf(node)?.base ?? context.body.typeOf(node.target);
   const index = (context.checker.fieldsOf(type) ?? []).findIndex(
     (field) => field.name === node.member.text,
   );

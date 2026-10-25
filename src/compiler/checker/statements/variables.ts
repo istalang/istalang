@@ -2,7 +2,7 @@
  * Declaring variables (§3.4, §3.15), and the facts a body keeps about its variables.
  *
  * - A declaration's type is its annotation, which the initializer must fit, or else the
- *   initializer's own type. Its targets take that value apart (patterns/destructuring.ts), each
+ *   initializer's own type. Its targets take that value apart (patterns/walk.ts), each
  *   name declared with its part's type.
  * - A `let` that nothing reassigns or changes gets a warning once the whole body has been seen
  *   (§3.4), so the body's VariableScope keeps which ones were, as assignments and places note
@@ -19,7 +19,8 @@ import type { AssignedPart, TargetBinding, TargetOwner } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics.ts';
 import { frontier } from '../frontier.ts';
-import { bodyScope, destructure } from '../patterns/destructuring.ts';
+import { bodyScope } from '../patterns/parts.ts';
+import { walkTargets } from '../patterns/walk.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 /**
@@ -96,7 +97,7 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
   }
   const declared = node.type === undefined ? undefined : context.resolveType(node.type);
   const initial = context.expect(node.initializer, declared);
-  const bindings = destructure(bodyScope(context), node.targets, declared ?? initial);
+  const bindings = walkTargets(bodyScope(context), node.targets, declared ?? initial);
   for (const { name, type } of bindings) {
     context.variables.declare(name, type);
   }

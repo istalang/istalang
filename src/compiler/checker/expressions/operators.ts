@@ -3,21 +3,20 @@
  *
  * - Arithmetic, negation and the comparisons call functions (overloads/operators.ts); a comparison
  *   is `bool` whatever `compare` returns, since lowering turns its int into the relation.
- * - `==` and `!=` are built in for every type and can't be overloaded: both sides must be one type,
- *   once the implicit wrap (§2) has made a `T` an optional where the other side is one. The left
- *   side's type is what the right one is expected to have, so `x == none` reads naturally.
+ * - `==` and `!=` are built in for every type and can't be overloaded (rules/equality.ts). The
+ *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
  * - `and`, `or` and `not` take and give `bool`; they short-circuit, so they are never calls.
+ * - `??` works on optionals (optionals.ts).
  */
 
 import type { Binary, Unary } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
-import { frontier } from '../frontier.ts';
 import { type Operand, resolveOperator } from '../overloads/operators.ts';
-import { boolType, comparable, errorType, type Type } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
+import { checkEqualSides } from '../rules/equality.ts';
+import { boolType, errorType, type Type } from '../types/type.ts';
+import { checkNullish } from './optionals.ts';
 
-export function checkBinary(context: BodyContext, node: Binary): Type {
+export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
   const { operator } = node;
   switch (operator) {
     case 'and':
@@ -29,7 +28,7 @@ export function checkBinary(context: BodyContext, node: Binary): Type {
     case '!=':
       return checkEquality(context, node);
     case '??':
-      return context.unsupported(node, frontier.nullishOperator);
+      return checkNullish(context, node, expected);
     case '<':
     case '<=':
     case '>':
@@ -62,19 +61,11 @@ function operandsOf(context: BodyContext, node: Binary): readonly Operand[] {
 function checkEquality(context: BodyContext, node: Binary): Type {
   const left = context.expression(node.left);
   const right = context.expression(node.right, left);
-  const { wrapsToFit } = context.checker;
-  if (!comparable(left, right) && wrapsToFit(right, left) !== undefined) {
-    context.fit(right, left, node.right);
-  } else if (!comparable(left, right) && wrapsToFit(left, right) !== undefined) {
-    context.fit(left, right, node.left);
-  } else if (!comparable(left, right)) {
-    context.report(
-      checkerDiagnostics.operatorTypes(
-        node.span,
-        node.operator,
-        `${typeText(left)} and ${typeText(right)}`,
-      ),
-    );
-  }
+  checkEqualSides(
+    context,
+    { type: left, node: node.left },
+    { type: right, node: node.right },
+    node,
+  );
   return boolType;
 }

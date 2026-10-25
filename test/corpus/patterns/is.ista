@@ -1,0 +1,31 @@
+# outcome: "7|none|big 12|small|3"
+# `x is Pattern` is a boolean whose bindings exist where the match is known to have succeeded:
+# the body of an `if` or `while`, and the right side of an `and` (§3.11).
+
+enum Shape:
+  Circle { radius: int }
+  Square { side: int }
+
+fn radius(shape: Shape) -> string:
+  if shape is Circle{radius}:
+    string(radius)
+  else:
+    "none"
+
+fn classify(r: Result<int>) -> string:
+  if r is Ok{value as y} and y > 10:
+    "big " + string(y)
+  else:
+    "small"
+
+fn countdown(start: int) -> int:
+  let current: int? = start
+  let steps = 0
+  while current is Some{value} and value > 0:
+    steps += 1
+    current = if value > 1: value - 1 else: none
+  steps
+
+async fn main() -> Future<string>:
+  (radius(Circle{radius: 7}) + "|" + radius(Square{side: 2}) + "|" + classify(Ok{12})
+    + "|" + classify(Err{Error{message: "x", code: "y"}}) + "|" + string(countdown(3)))

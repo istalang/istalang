@@ -1,0 +1,34 @@
+# error: 5403 at 15:6
+# error: 5404 at 18:3
+# error: 5405 at 21:17
+# error: 5404 at 29:17
+# error: 5025 at 33:3
+# `?` takes a Result apart (§3.12): never an optional, and only inside a function whose own Result
+# holds the same error type, declared or inferred. A Result must be used.
+
+struct Failure { reason: string }
+
+fn parse(text: string) -> Result<int>:
+  Ok{1}
+
+fn fromOptional(n: int?) -> Result<int>:
+  Ok{n?}
+
+fn notResult() -> int:
+  parse("a")?
+
+fn otherError() -> Result<int, Failure>:
+  const value = parse("a")?
+  Ok{value}
+
+fn inferred(text: string):
+  const value = parse(text)?
+  Result.Ok{value * 2}
+
+fn inferredNotResult(text: string):
+  const value = parse(text)?
+  value
+
+async fn main():
+  parse("ignored")
+  _ = inferred("x")

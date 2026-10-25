@@ -21,7 +21,8 @@ import { checkerDiagnostics } from '../diagnostics.ts';
 import { topLevelCandidates } from '../overloads/candidates.ts';
 import { implicitCall, preludeCandidates } from '../overloads/implicit.ts';
 import { operatorFunctions } from '../overloads/operators.ts';
-import { bodyScope, destructure } from '../patterns/destructuring.ts';
+import { bodyScope } from '../patterns/parts.ts';
+import { walkTargets } from '../patterns/walk.ts';
 import { errorType, intType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
@@ -103,7 +104,7 @@ function bindLoopTargets(
   node: For | Comprehension,
   item: Type | undefined,
 ): void {
-  const bindings = destructure(bodyScope(context), node.targets, item ?? errorType);
+  const bindings = walkTargets(bodyScope(context), node.targets, item ?? errorType);
   for (const { name, type } of bindings) {
     context.variables.declare(name, type);
   }

@@ -19,6 +19,7 @@ import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { CodeWriter } from './code-writer.ts';
+import type { OptionalChains } from './optional-chains.ts';
 import type { LoopStack } from './statements/loops.ts';
 import type { VariableRegisters } from './statements/variables.ts';
 import type { DefinitionTables } from './tables.ts';
@@ -44,4 +45,5 @@ export interface FunctionContext {
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;
   readonly loops: LoopStack;
+  readonly chains: OptionalChains;
 }

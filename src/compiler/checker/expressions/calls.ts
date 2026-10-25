@@ -31,6 +31,7 @@ import { checkChangedPlace } from '../rules/places.ts';
 import { staticTargetOf } from '../traits/conformance.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
 import { decidedByCall, namedType } from './variants.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
@@ -87,14 +88,15 @@ function writtenArgument(context: BodyContext, argument: Expression): WrittenArg
   };
 }
 
-/** `x.f(…)`: `f` called with `x` as its `self` (§3.7). */
+/**
+ * `x.f(…)`: `f` called with `x` as its `self` (§3.7); also as a link of an optional chain, which
+ * calls it on the value inside and never through `&self` (optionals.ts).
+ */
 function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAccess): Type {
-  if (callee.isOptional) {
-    return context.unsupported(callee, frontier.optionalChaining);
-  }
-  const { checker } = context;
+  const { checker, chains } = context;
   const receiver = callee.target;
-  const receiverType = context.expression(receiver);
+  const receiverType = chains.target(context, call.node);
+  const chained = chains.continues(call.node);
   if (receiverType.kind === 'error') {
     return errorType;
   }
@@ -107,11 +109,18 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     ...call.written,
   ];
   const types = written.map(({ type }) => type);
-  const candidates = topLevelCandidates(checker, context.module, name, types).filter(
+  const methods = topLevelCandidates(checker, context.module, name, types).filter(
     ({ declaration }) => isMethod(declaration),
   );
+  const candidates = chained
+    ? methods.filter(({ declaration }) => checker.parametersOf(declaration)[0]?.reference !== true)
+    : methods;
   if (candidates.length === 0) {
-    context.report(checkerDiagnostics.noMember(callee.member.span, typeText(receiverType), name));
+    context.report(
+      methods.length > 0
+        ? checkerDiagnostics.chainNotPlace(callee.member.span)
+        : checkerDiagnostics.noMember(callee.member.span, typeText(receiverType), name),
+    );
     return errorType;
   }
   return resolveCall(context, {
@@ -185,12 +194,7 @@ function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: 
 
 /** Whether `type` is the prelude's `Shared`, whose values closures add (§3.8, §3.14). */
 function isShared(context: BodyContext, type: Type): boolean {
-  const shared = context.checker.wellKnownType(wellKnown.shared);
-  return (
-    shared?.kind === 'nominal' &&
-    type.kind === 'nominal' &&
-    type.entity.declaration === shared.entity.declaration
-  );
+  return wellKnownArguments(context.checker, wellKnown.shared, type) !== undefined;
 }
 
 function resolve(

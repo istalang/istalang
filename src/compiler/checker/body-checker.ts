@@ -28,8 +28,10 @@ import { checkerDiagnostics } from './diagnostics.ts';
 import { CollectionForms } from './expressions/collections.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
+import { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { ImplicitCalls } from './overloads/implicit.ts';
+import { CheckedPatterns } from './patterns/matching.ts';
 import { passesValueOn, refuseHeldFuture } from './rules/futures.ts';
 import { LoopScope } from './statements/loops.ts';
 import { ReturnScope } from './statements/returns.ts';
@@ -38,11 +40,17 @@ import { VariableScope } from './statements/variables.ts';
 import { errorType, type Type, unitType } from './types/type.ts';
 import { typeText } from './types/type-text.ts';
 
-/** What a body is checked as: a function's, async or not, and what it must produce, if declared. */
-export interface BodyKind {
-  readonly isAsync: boolean;
-  readonly declaredResult: Type | undefined;
-}
+/**
+ * What a body is checked as, and what it must produce, if declared: a function's, async or not,
+ * or a value of its own, such as a constant's or a parameter's default, which can't return.
+ */
+export type BodyKind =
+  | {
+      readonly kind: 'function';
+      readonly isAsync: boolean;
+      readonly declaredResult: Type | undefined;
+    }
+  | { readonly kind: 'value'; readonly declaredResult: Type | undefined };
 
 export class BodyChecker implements BodyContext {
   readonly checker: CheckerContext;
@@ -54,6 +62,8 @@ export class BodyChecker implements BodyContext {
   readonly literals = new StructLiterals();
   readonly implicit = new ImplicitCalls();
   readonly collections = new CollectionForms();
+  readonly patterns = new CheckedPatterns();
+  readonly chains = new OptionalChains();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
   readonly #wraps = new Map<Expression, number>();
@@ -63,8 +73,8 @@ export class BodyChecker implements BodyContext {
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
     this.module = module;
-    this.inAsync = kind.isAsync;
-    this.returns = new ReturnScope(kind.declaredResult);
+    this.inAsync = kind.kind === 'function' && kind.isAsync;
+    this.returns = new ReturnScope(kind.declaredResult, kind.kind === 'function');
   }
 
   /** Checks a function's body against its parameters and its declared result, if any. */
@@ -92,9 +102,10 @@ export class BodyChecker implements BodyContext {
 
   expression(node: Expression, expected?: Type): Type {
     const receiver = this.#within.at(-1);
-    const type = withPushed(this.#within, node, () =>
+    const value = withPushed(this.#within, node, () =>
       handlerOf(expressionHandlers, node)(this, node, expected),
     );
+    const type = this.chains.linked(this, node, value);
     this.#types.set(node, type);
     if (receiver !== undefined && !passesValueOn(receiver)) {
       refuseHeldFuture(this.checker, this.module, node, type);
@@ -168,7 +179,7 @@ export class BodyChecker implements BodyContext {
     const types = this.#types;
     const calls = this.#calls;
     const wraps = this.#wraps;
-    const { variables, literals, implicit, collections } = this;
+    const { variables, literals, implicit, collections, patterns, chains } = this;
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
       calls,
@@ -179,6 +190,8 @@ export class BodyChecker implements BodyContext {
       assignedOf: (assignment) => variables.assignedOf(assignment),
       isReferenced: (name) => variables.isReferenced(name),
       sourcesOf: (literal) => literals.sourcesOf(literal),
+      patternOf: (pattern) => patterns.patternOf(pattern),
+      chainOf: (link) => chains.chainOf(link),
       result,
     };
   }

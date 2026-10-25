@@ -188,21 +188,18 @@ export function checkMemberAccess(
   node: MemberAccess,
   expected: Type | undefined,
 ): Type {
-  if (node.isOptional) {
-    return context.unsupported(node, frontier.optionalChaining);
-  }
-  const qualified = context.entityOf(node.member);
+  const qualified = node.isOptional ? undefined : context.entityOf(node.member);
   if (qualified?.kind === 'variant') {
     return checkVariantName(context, node, qualified, expected);
   }
   if (qualified !== undefined) {
     return entityValueType(context, node.member, qualified, expected);
   }
-  const owner = namedType(context, node.target);
+  const owner = node.isOptional ? undefined : namedType(context, node.target);
   if (owner !== undefined) {
     return staticMember(context, node, owner);
   }
-  const type = context.expression(node.target);
+  const type = context.chains.target(context, node);
   if (type.kind === 'error') {
     return errorType;
   }

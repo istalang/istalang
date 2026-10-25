@@ -11,7 +11,7 @@ import type { Handlers } from '../../../structures/kind-table.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
-import { checkDiscarded } from '../rules/must-use.ts';
+import { checkDiscarded, checkDrop } from '../rules/must-use.ts';
 import { neverType, type Type, unitType } from '../types/type.ts';
 import { unsupportedHandler } from '../unsupported.ts';
 import { checkAssignment } from './assignments.ts';
@@ -44,7 +44,7 @@ export const statementHandlers: Handlers<
   FunctionDeclaration: unsupportedHandler,
   For: checkFor,
   Defer: unsupportedHandler,
-  Drop: unsupportedHandler,
+  Drop: checkDrop,
   Spawn: unsupportedHandler,
   Invalid: () => unitType,
 };

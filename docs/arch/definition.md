@@ -160,7 +160,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `match`, patterns, guards (§3.11, §4) | `switch` on the variant, then `field` and `move` for bindings, `equal` or `compare` for comparisons, `branch` for guards |
 | `x is P` (§3.11) | the same tests, producing a boolean |
 | `?.`, `??` (§4) | `switch` on `Optional` |
-| `e?` on `Result` (§3.12) | `switch` on `Result`; the `Err` path returns it |
+| `e?` on `Result` (§3.12) | `switch` on `Result`; the `Err` path returns a new `Err` of the function's own `Result` type, holding the same error |
 | `panic(m)` (§3.12) | a call to prelude `panic` |
 | Building an `Error` (§3.12) | `struct`, with `trace` from a call to a prelude extern that formats the current frames' spans through the modules' line starts |
 | Imports, type aliases (§3.13, §3.17) | nothing at runtime; `modules` lists module ids for spans |

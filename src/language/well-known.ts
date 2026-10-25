@@ -27,6 +27,10 @@ export const wellKnown = {
   optional: { module: 'prelude', name: 'Optional' },
   /** The cell a captured or referenced variable lives in (§3.7, §3.8). */
   shared: { module: 'prelude', name: 'Shared' },
+  /** What a function that can fail returns, and what `?` takes apart (§3.12). */
+  result: { module: 'prelude', name: 'Result' },
+  /** What `Err` carries by default, whose `trace` the runtime fills in (§3.12). */
+  error: { module: 'prelude', name: 'Error' },
   /** What a duration literal is (§2). */
   duration: { module: 'time', name: 'Duration' },
   /** A point in time, which the host boundary writes as ISO 8601 (§9). */
@@ -51,6 +55,15 @@ export const disposeFunction = 'dispose';
 
 /** The variants of `Optional` (§3.11): what a value is wrapped in, and what `none` is. */
 export const optionalVariants = { some: 'Some', none: 'None' } as const;
+
+/** The variants of `Result` (§3.12): `?` passes on an `Err` and takes the `Ok` value. */
+export const resultVariants = { ok: 'Ok', err: 'Err' } as const;
+
+/**
+ * `Error`'s field the runtime fills in when an `Error` is built without it (§3.12), and the
+ * prelude's private extern that writes it: the current frames, innermost first.
+ */
+export const errorTrace = { field: 'trace', function: '_trace' } as const;
 
 /** The static function a conversion `T(x)` calls (§3.10). */
 export const conversionFunction = 'from';

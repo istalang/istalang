@@ -34,6 +34,8 @@ export interface NativeContext {
    * receives such an argument's value, and writes the changed one back here.
    */
   readonly write: (position: number, value: Value) => void;
+  /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
+  readonly trace: () => string;
 }
 
 export type Native = (argumentValues: readonly Value[], context: NativeContext) => Value;

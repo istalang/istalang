@@ -19,6 +19,7 @@ import type { ModuleId } from '../../program/program.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { frontier } from '../frontier.ts';
+import { heldType } from '../types/held.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 
@@ -32,21 +33,9 @@ export function futureArgument(checker: CheckerContext, type: Type): Type | unde
   return wellKnownArguments(checker, wellKnown.future, type)?.[0];
 }
 
-/** Whether a value of `type` holds a future at any depth. */
+/** Whether a value of `type` holds a future at any depth (types/held.ts). */
 export function holdsFuture(checker: CheckerContext, type: Type): boolean {
-  switch (type.kind) {
-    case 'nominal':
-      return (
-        futureArgument(checker, type) !== undefined ||
-        type.arguments.some((argument) => holdsFuture(checker, argument))
-      );
-    case 'tuple':
-      return type.elements.some((element) => holdsFuture(checker, element));
-    case 'anonymous':
-      return type.fields.some((field) => holdsFuture(checker, field.type));
-    default:
-      return false;
-  }
+  return heldType(type, (part) => futureArgument(checker, part) !== undefined) !== undefined;
 }
 
 /** Reports `node`, whose value or declared type `type` would be held, when it holds a future. */

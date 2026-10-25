@@ -16,6 +16,7 @@
 import { nativeKey, primitiveKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
+import { errorTrace } from '../../language/well-known.ts';
 import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
 import { float, int, text } from '../native-values.ts';
 import { preludeName } from '../stdlib-loader.ts';
@@ -88,6 +89,7 @@ export const preludeNatives: Natives = {
   [preludeKey('panic', 'string')]: ([message]) => {
     throw new Panic(text(message));
   },
+  [preludeKey(errorTrace.function)]: (_, context) => context.trace(),
 };
 
 /**

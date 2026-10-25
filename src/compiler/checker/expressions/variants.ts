@@ -10,7 +10,8 @@
  *   for it (`decidedByCall`), so `f(none)` reads like `const x: T? = none`.
  */
 
-import type { Entity, VariantEntity } from '../../binder/entities.ts';
+import type { Span } from '../../../text/span.ts';
+import type { Entity, VariantEntity, VariantNaming } from '../../binder/entities.ts';
 import type { EnumDeclaration, Variant } from '../../syntax/declarations.ts';
 import type {
   Expression,
@@ -25,9 +26,6 @@ import { checkerDiagnostics } from '../diagnostics.ts';
 import { optionalInner } from '../types/fit.ts';
 import { errorType, type NominalType, primitiveType, type Type } from '../types/type.ts';
 import { checkLiteralFields } from './literal-fields.ts';
-
-/** What a name denotes when it names variants: one, qualified, or the candidates of a bare name. */
-type VariantNaming = Extract<Entity, { kind: 'variant' | 'variants' }>;
 
 /** A node naming a variant: bare, qualified, or as a literal's type. */
 type VariantNode = Identifier | MemberAccess | StructLiteral;
@@ -90,7 +88,7 @@ export function checkVariantName(
   naming: VariantNaming,
   expected: Type | undefined,
 ): Type {
-  const chosen = chooseVariant(context, node, naming, expected);
+  const chosen = chooseVariant(context, writtenAs(node), naming, expected);
   if (chosen === undefined) {
     return errorType;
   }
@@ -109,7 +107,7 @@ export function checkVariantLiteral(
   expected: Type | undefined,
 ): Type {
   const typeNode = node.type;
-  const chosen = chooseVariant(context, node, naming, expected);
+  const chosen = chooseVariant(context, writtenAs(node), naming, expected);
   if (chosen === undefined || typeNode === undefined) {
     return errorType;
   }
@@ -159,11 +157,15 @@ export function namedType(context: BodyContext, node: Expression): Type | undefi
 }
 
 /** The identifier naming what `node` names: itself, or the member of a qualified name. */
-function nameNodeOf(node: Expression): Identifier | undefined {
+export function nameNodeOf(node: Expression): Identifier | undefined {
   if (node.kind === 'Identifier') {
     return node;
   }
   return node.kind === 'MemberAccess' ? node.member : undefined;
+}
+
+function writtenAs(node: VariantNode): { readonly span: Span; readonly name: string } {
+  return { span: node.span, name: nameOf(node) };
 }
 
 /** The variant name `node` is written with. */
@@ -178,10 +180,13 @@ function nameOf(node: VariantNode): string {
   }
 }
 
-/** The variant a name means: the one its qualification names, or the one the expected enum has. */
-function chooseVariant(
+/**
+ * The variant a name written at `at` means: the one its qualification names, or the one the
+ * expected enum has (§3.11). A pattern names a variant the same way, its value's type expected.
+ */
+export function chooseVariant(
   context: BodyContext,
-  node: VariantNode,
+  at: { readonly span: Span; readonly name: string },
   naming: VariantNaming,
   expected: Type | undefined,
 ): { enum: EnumDeclaration; variant: Variant } | undefined {
@@ -191,7 +196,7 @@ function chooseVariant(
   const candidates: readonly VariantEntity[] = context.checker.bindings.candidatesOf(naming);
   const chosen = candidates.find((candidate) => sameEnum(expected, candidate.enum) !== undefined);
   if (chosen === undefined) {
-    context.report(checkerDiagnostics.bareVariant(node.span, nameOf(node)));
+    context.report(checkerDiagnostics.bareVariant(at.span, at.name));
     return undefined;
   }
   return { enum: chosen.enum, variant: chosen.variant };

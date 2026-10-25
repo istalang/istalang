@@ -1,0 +1,47 @@
+# outcome: "true|4|-1|-1|z|-|7|3|6"
+# What a pattern operator skips must not run (§3.12, §4): `?` returns the `Err` before the rest of
+# the function, `??` evaluates its right side only for `none`, and a `?.` chain that meets `none`
+# is `none` as a whole. Each skipped part panics, so running it fails the program. `is` bindings
+# flow through a `while` condition and its `and` into the body.
+
+struct Inner { v: int; name: string? }
+struct Outer { inner: Inner?; n: int }
+
+fn boom() -> int:
+  panic("right side evaluated")
+
+fn step(n: int) -> Result<int>:
+  if n > 2: Err{Error{message: "big", code: "x"}} else: Ok{(n)}
+
+fn failsEarly(n: int) -> Result<int>:
+  const a = step(n)?
+  panic("ran after an early return")
+
+fn chain(o: Outer?) -> int?:
+  o?.inner?.v
+
+fn chainName(o: Outer?) -> string?:
+  o?.inner?.name
+
+fn nested(o: Outer?) -> int:
+  o?.inner?.v ?? 7
+
+fn three() -> int?:
+  3
+
+fn countdown() -> int:
+  let i: int? = 3
+  let total = 0
+  while i is Some{value as k} and k > 0:
+    total += k
+    i = if k > 1: k - 1 else: none
+  total
+
+async fn main() -> Future<string>:
+  const full = Outer{inner: Inner{v: 4, name: "z"}, n: 1}
+  const part = Outer{inner: Inner{v: 4, name: none}, n: 1}
+  const empty = Outer{inner: none, n: 1}
+  (string(failsEarly(5) is Err{}) + "|" + string(chain(full) ?? -1) + "|"
+    + string(chain(empty) ?? -1) + "|" + string(chain(none) ?? -1) + "|" + (chainName(full) ?? "-")
+    + "|" + (chainName(part) ?? "-") + "|" + string(nested(empty)) + "|"
+    + string(three() ?? boom()) + "|" + string(countdown()))

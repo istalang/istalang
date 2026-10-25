@@ -32,7 +32,9 @@ export const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [
   FunctionDeclaration: notLowered,
   For: lowerFor,
   Defer: notLowered,
-  Drop: notLowered,
+  Drop: (context, node) => {
+    context.expression(node.value);
+  },
   Spawn: notLowered,
   Invalid: notLowered,
 };

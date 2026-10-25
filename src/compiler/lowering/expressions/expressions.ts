@@ -17,8 +17,10 @@ import { lowerArrayLiteral, lowerIndex, lowerMapLiteral, lowerRange } from './co
 import { lowerComprehension } from './comprehensions.ts';
 import { lowerIf } from './control.ts';
 import { lowerDurationLiteral } from './literals.ts';
+import { lowerIs, lowerMatch } from './matching.ts';
 import { lowerName } from './names.ts';
 import { lowerBinary, lowerUnary } from './operators.ts';
+import { lowerPropagate } from './propagate.ts';
 import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
 import { lowerUnwrap } from './unwrap.ts';
@@ -55,12 +57,12 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Lambda: notLowered,
   Reference: notLowered,
   Index: lowerIndex,
-  Propagate: notLowered,
+  Propagate: lowerPropagate,
   Unwrap: lowerUnwrap,
   Await: lowerAwait,
-  Is: notLowered,
+  Is: lowerIs,
   Range: lowerRange,
-  Match: notLowered,
+  Match: lowerMatch,
   Select: notLowered,
   Missing: notLowered,
   Invalid: notLowered,
