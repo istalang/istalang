@@ -42,7 +42,13 @@ import type { ReturnScope } from './statements/returns.ts';
 import type { VariableScope } from './statements/variables.ts';
 import type { Constraint } from './traits/constraints.ts';
 import type { OptionalEntity } from './types/fit.ts';
-import type { FieldMember, NominalType, Substitution, Type } from './types/type.ts';
+import type {
+  FieldMember,
+  NominalDeclaration,
+  NominalType,
+  Substitution,
+  Type,
+} from './types/type.ts';
 
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
@@ -59,14 +65,16 @@ export interface CheckerContext extends Checker {
   readonly declaredFieldsOf: (declaration: StructDeclaration) => readonly FieldMember[];
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
+  /** What a well-known name (language/well-known.ts) denotes; undefined without its module. */
+  readonly wellKnownEntity: (declaration: WellKnownDeclaration) => Entity | undefined;
   /**
-   * A well-known type (language/well-known.ts), such as `Future`, with its type arguments;
-   * undefined when the program lacks its module.
+   * A well-known type, such as `Future`, with its type arguments; undefined when the program
+   * lacks its module.
    */
   readonly wellKnownType: (
     declaration: WellKnownDeclaration,
     typeArguments?: readonly Type[],
-  ) => Type | undefined;
+  ) => NominalType | undefined;
   /** The prelude's functions of `name`. */
   readonly preludeFunctions: (name: string) => readonly FunctionDeclaration[];
   /** The prelude's `Optional`, which the implicit wrap fills (§2); undefined without a prelude. */
@@ -96,7 +104,7 @@ export interface CheckerContext extends Checker {
 }
 
 /** What a static function is declared on: a declared type, or a primitive by name (§3.7). */
-export type StaticOwner = NominalType['entity']['declaration'] | PrimitiveName;
+export type StaticOwner = NominalDeclaration | PrimitiveName;
 
 export interface BodyContext {
   readonly checker: CheckerContext;
@@ -110,10 +118,16 @@ export interface BodyContext {
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
   /**
-   * Reports at `at` when `found`, a type already checked, doesn't fit `expected`. When the value is
-   * an expression that fits by the implicit wrap into `T?` (§2), records the wrap for lowering.
+   * Reports at `node` when its type `found`, already checked, doesn't fit `expected`. When it fits
+   * by the implicit wrap into `T?` (§2), records the wrap for lowering.
    */
-  readonly fit: (found: Type, expected: Type, at: Expression | Span) => void;
+  readonly fit: (found: Type, expected: Type, node: Expression) => void;
+  /**
+   * Reports at `at` when `found` doesn't fit `expected` as it is: the value has no expression of
+   * its own (a destructured part, a compound assignment's result, a bare `return`), and lowering
+   * wraps only expressions, so a fit by the implicit wrap is reported too (D97).
+   */
+  readonly fitUnwrapped: (found: Type, expected: Type, at: Span) => void;
   /** Checks a block in its own scope; its type is that of its last expression (§4). */
   readonly block: (node: Block, expected?: Type) => Type;
   /** Checks a block run only for its effects, such as a loop's body, discarding every value. */

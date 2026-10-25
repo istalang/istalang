@@ -8,8 +8,9 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
+import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { type NominalType, type Type, typeChildren, typeKey } from '../types/type.ts';
+import { type NominalType, type Type, typeChildren } from '../types/type.ts';
 
 /** Whether values of `type` may leave an instance. */
 export function isSendable(checker: CheckerContext, type: Type): boolean {
@@ -54,7 +55,7 @@ function nominalSendable(
       type.arguments.every((argument) => sendable(checker, argument, deciding))
     );
   }
-  const key = typeKey(type);
+  const key = checker.typeKeys.typeKey(type);
   if (deciding.has(key)) {
     return true;
   }
@@ -69,12 +70,7 @@ function nominalSendable(
 }
 
 /** Whether `trait` is the prelude's Sendable. */
-export function isSendableTrait(
-  checker: CheckerContext,
-  trait: { readonly name: { readonly text: string } },
-): boolean {
-  const sendableType = checker.wellKnownType(wellKnown.sendable);
-  return sendableType?.kind === 'nominal'
-    ? sendableType.entity.declaration === trait
-    : trait.name.text === wellKnown.sendable.name;
+export function isSendableTrait(checker: CheckerContext, trait: TraitDeclaration): boolean {
+  const entity = checker.wellKnownEntity(wellKnown.sendable);
+  return entity?.kind === 'type' && entity.declaration === trait;
 }

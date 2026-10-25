@@ -5,15 +5,14 @@
  *   from a worklist, so a call can name one that isn't lowered yet, including itself. Only what
  *   `main` reaches is lowered: generics are compiled per instantiation (§3.5), which only
  *   reachability can enumerate.
- * - Types and constants are interned: one entry per distinct type or value, a value's identity
- *   being its persisted text. A nominal type's identity is its declaration's entity plus its
- *   arguments, as in the checker (types/type.ts).
+ * - Types and constants are interned: one entry per distinct type or value, a type keyed as the
+ *   checker keys it (types/type-keys.ts), a value by its persisted text.
  * - A type entry is numbered before its fields are lowered, so a recursive type refers to itself
  *   through the table (§3.1). Every nominal type can be laid out: a struct by its fields, an enum
  *   by its variants, an extern type by who disposes it, which the checker derives from the
  *   `dispose` declared for it (checker/rules/disposal.ts).
- * - An anonymous struct is a struct entry without a name, one per type: its identity is the node
- *   that introduced it plus its fields' types, as in the checker, so two never share an entry.
+ * - An anonymous struct is a struct entry without a name, one per type, so two never share an
+ *   entry (§3.1).
  */
 
 import { z } from 'zod';
@@ -57,7 +56,6 @@ export class DefinitionTables {
   readonly #moduleIndexes = new Map<ModuleId, number>();
   readonly #types: TypeDefinition[] = [];
   readonly #typeIndexes = new Map<string, TypeId>();
-  readonly #identityKeys = new Map<object, number>();
   readonly #constants: Value[] = [];
   readonly #constantIndexes = new Map<string, number>();
   readonly #functions: (FunctionDefinition | undefined)[] = [];
@@ -111,12 +109,13 @@ export class DefinitionTables {
 
   /** The index `instance` is called by; it is lowered later, from the worklist. */
   functionIndex(instance: FunctionInstance): FunctionId {
-    return this.#entryIndex(instanceKey(instance), { kind: 'instance', instance });
+    const key = instanceKey(this.#checker.typeKeys, instance);
+    return this.#entryIndex(key, { kind: 'instance', instance });
   }
 
   /** The index of a lambda's or local function's entry (§3.14), lowered later too. */
   nestedIndex(nested: NestedInstance): FunctionId {
-    return this.#entryIndex(nestedKey(nested), { kind: 'nested', nested });
+    return this.#entryIndex(nestedKey(this.#checker.typeKeys, nested), { kind: 'nested', nested });
   }
 
   /** The next referenced entry still to be lowered, with its index. */
@@ -201,7 +200,7 @@ export class DefinitionTables {
    * layout refers to the type itself.
    */
   #typeEntry(type: EntryType): TypeId {
-    const key = this.#typeKey(type);
+    const key = this.#checker.typeKeys.typeKey(type);
     const known = this.#typeIndexes.get(key);
     if (known !== undefined) {
       return known;
@@ -260,21 +259,5 @@ export class DefinitionTables {
       type: this.typeReference(field.type),
       annotations: [],
     }));
-  }
-
-  #typeKey(type: Type): string {
-    switch (type.kind) {
-      case 'nominal':
-        return `${this.#identityKey(type.entity)}<${type.arguments.map((argument) => this.#typeKey(argument)).join(',')}>`;
-      case 'anonymous':
-        return `${this.#identityKey(type.origin)}{${type.fields.map((field) => this.#typeKey(field.type)).join(',')}}`;
-      default:
-        return JSON.stringify(this.typeReference(type));
-    }
-  }
-
-  /** A number for what makes a type itself: a declaration's entity, or an anonymous struct's node. */
-  #identityKey(identity: object): number {
-    return memo(this.#identityKeys, identity, () => this.#identityKeys.size);
   }
 }

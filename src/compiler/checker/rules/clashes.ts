@@ -19,10 +19,10 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
-import { parameterType, typeParametersOf } from '../declarations/resolve-type.ts';
+import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from '../types/fit.ts';
-import { mentionsError, type Type, typeKey } from '../types/type.ts';
+import { mentionsError, type ParameterKey, type Type } from '../types/type.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
@@ -62,7 +62,7 @@ function ownerKeyOf(checker: CheckerContext, module: ModuleId, owner: Identifier
     return entity.name;
   }
   return entity?.kind === 'type'
-    ? `${entity.declaration.name.text}@${entity.declaration.span.start}`
+    ? `#${checker.typeKeys.identityOf(entity.declaration)}`
     : owner.text;
 }
 
@@ -85,20 +85,20 @@ function shapesOf(checker: CheckerContext, declaration: FunctionDeclaration): re
   if (parameters.some((parameter) => mentionsError(parameter.type))) {
     return [];
   }
-  const renamed = new Map(
-    typeParametersOf(declaration.typeParameters).map(
-      (parameter, index) => [typeKey(parameterType(parameter)), `'${index}`] as const,
-    ),
+  const positions = new Map<ParameterKey, number>(
+    typeParametersOf(declaration.typeParameters).map((parameter, index) => [parameter, index]),
   );
   const slots = parameters.map((parameter, index) => {
     const isSelf = index === 0 && parameter.node.name.text === 'self';
     const reference = parameter.reference && !isSelf ? '&' : '';
-    return reference + rename(typeKey(withoutOptional(checker, parameter.type)), renamed);
+    return (
+      reference + checker.typeKeys.typeKey(withoutOptional(checker, parameter.type), positions)
+    );
   });
   const required = parameters.filter(
     (parameter) => parameter.node.defaultValue === undefined,
   ).length;
-  const generic = `<${renamed.size}>`;
+  const generic = `<${positions.size}>`;
   return slots
     .slice(required)
     .map((_, index) => generic + slots.slice(0, required + index).join(','))
@@ -109,12 +109,4 @@ function shapesOf(checker: CheckerContext, declaration: FunctionDeclaration): re
 function withoutOptional(checker: CheckerContext, type: Type): Type {
   const inner = optionalInner(type, checker.optionalEntity);
   return inner === undefined ? type : withoutOptional(checker, inner);
-}
-
-function rename(key: string, renamed: ReadonlyMap<string, string>): string {
-  let result = key;
-  for (const [from, to] of renamed) {
-    result = result.replaceAll(from, to);
-  }
-  return result;
 }

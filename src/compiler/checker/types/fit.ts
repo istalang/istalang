@@ -8,10 +8,10 @@
  * Which nominal type is `Optional` is the prelude's to say, so the caller passes its entity.
  */
 
-import { isAssignable, isPrimitive, type NominalType, type Type } from './type.ts';
+import { isAssignable, isPrimitive, type NominalEntity, type Type } from './type.ts';
 
 /** The entity of the prelude's `Optional`, or undefined in a program without the prelude. */
-export type OptionalEntity = NominalType['entity'] | undefined;
+export type OptionalEntity = NominalEntity | undefined;
 
 /** How many wraps make `found` fit `expected`: 0 for an exact fit, undefined when nothing does. */
 export function wrapsToFit(

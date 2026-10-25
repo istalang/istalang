@@ -65,10 +65,20 @@ export function settleAgreement(
     if (expected === undefined && wrapsToFit(type, decided) === undefined) {
       context.report(mismatch(span, decided, type));
     } else {
-      context.fit(type, decided, node ?? span);
+      fitProduced(context, { type, span, node }, decided);
     }
   }
   return decided;
+}
+
+/** Fits what `produced` has to `expected`, at its expression when it has one. */
+export function fitProduced(context: BodyContext, produced: Produced, expected: Type): void {
+  const { type, span, node } = produced;
+  if (node === undefined) {
+    context.fitUnwrapped(type, expected, span);
+  } else {
+    context.fit(type, expected, node);
+  }
 }
 
 /** What `produced` agree on so far, which a later producer is expected to have (§3.1). */

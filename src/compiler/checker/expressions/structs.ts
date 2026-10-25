@@ -18,19 +18,28 @@ import { wellKnown } from '../../../language/well-known.ts';
 import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
-import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
 import { checkFunctionValue, namedFunctions } from '../closures/function-values.ts';
 import type { BodyContext } from '../context.ts';
-import { typeArgumentsFor } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { topLevelCandidates } from '../overloads/candidates.ts';
 import { requiredFields, requiredFieldType } from '../traits/constraints.ts';
-import { errorType, type FieldMember, type NominalType, type Type } from '../types/type.ts';
+import {
+  errorType,
+  type FieldMember,
+  isNominalEntity,
+  type NominalEntity,
+  type Type,
+} from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
-import { checkLiteralFields, type LiteralShape, type LiteralSpread } from './literal-fields.ts';
+import {
+  checkLiteralFields,
+  knownArguments,
+  type LiteralShape,
+  type LiteralSpread,
+} from './literal-fields.ts';
 import { entityValueType } from './names.ts';
 import { checkVariantLiteral, checkVariantName, namedType } from './variants.ts';
 
@@ -53,16 +62,16 @@ export function checkStructLiteral(
   if (entity === undefined) {
     return errorType;
   }
-  const declaration =
-    entity.kind === 'type' && entity.declaration.kind === 'StructDeclaration'
-      ? entity.declaration
-      : undefined;
-  if (declaration === undefined) {
+  if (
+    entity.kind !== 'type' ||
+    !isNominalEntity(entity) ||
+    entity.declaration.kind !== 'StructDeclaration'
+  ) {
     context.report(checkerDiagnostics.notStruct(typeNode.span, name.text));
     return errorType;
   }
-  const known = knownArguments(context, typeNode, declaration, expected);
-  const shape = declaredShape(context, entity as NominalType['entity'], known);
+  const known = knownArguments(context, typeNode, entity.declaration, expected);
+  const shape = declaredShape(context, entity, known);
   if (shape.fields.length === 0) {
     context.report(checkerDiagnostics.bareStruct(node.span, name.text));
     checkValuesAlone(context, node);
@@ -111,7 +120,7 @@ function shapeOf(context: BodyContext, type: Type): LiteralShape | undefined {
 /** How a literal builds the declared struct `entity` names, from its declared fields. */
 function declaredShape(
   context: BodyContext,
-  entity: NominalType['entity'],
+  entity: NominalEntity,
   known: readonly Type[] | undefined,
 ): LiteralShape {
   const { declaration } = entity;
@@ -164,26 +173,6 @@ function checkValuesAlone(context: BodyContext, node: StructLiteral): void {
       context.expression(itemValue(item));
     }
   }
-}
-
-/** The type arguments a struct literal is given: written, or those of the expected type. */
-function knownArguments(
-  context: BodyContext,
-  typeNode: NamedType,
-  declaration: NominalType['entity']['declaration'],
-  expected: Type | undefined,
-): readonly Type[] | undefined {
-  if (typeNode.typeArguments.length > 0) {
-    const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
-    return typeArgumentsFor(context.checker, context.module, {
-      at: typeNode.span,
-      declaration,
-      types: written,
-    });
-  }
-  return expected?.kind === 'nominal' && expected.entity.declaration === declaration
-    ? expected.arguments
-    : undefined;
 }
 
 export function checkMemberAccess(

@@ -39,7 +39,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   errorType,
   type NominalDeclaration,
-  type NominalType,
+  nominalType,
   type ParameterKey,
   primitiveType,
   substitute,
@@ -195,13 +195,7 @@ function namedType(resolution: Resolution, node: NamedType): Type {
         case 'EnumDeclaration':
         case 'ExternStructDeclaration': {
           const typeArguments = argumentsOf(resolution, node, declaration);
-          return typeArguments === undefined
-            ? errorType
-            : {
-                kind: 'nominal',
-                entity: entity as NominalType['entity'],
-                arguments: typeArguments,
-              };
+          return typeArguments === undefined ? errorType : nominalType(entity, typeArguments);
         }
         case 'TypeAliasDeclaration': {
           const typeArguments = argumentsOf(resolution, node, declaration);

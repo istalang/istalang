@@ -28,6 +28,7 @@ import type { Assignment, For, VariableDeclaration } from '../syntax/statements.
 import type { ConstantForm } from './constant-form.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type { FieldMember, FunctionType, NominalType, Type } from './types/type.ts';
+import type { TypeKeys } from './types/type-keys.ts';
 
 /** A parameter of a declared function, with its resolved type. */
 export interface SignatureParameter {
@@ -297,6 +298,8 @@ export interface CheckedConstant {
 export interface Checker {
   readonly program: Program;
   readonly bindings: Bindings;
+  /** Keys for types, and numbers for the identities they are made of, for this program. */
+  readonly typeKeys: TypeKeys;
   /** Every diagnostic of checking `module`, which checks all of its declarations. */
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];
   /** The module whose item `declaration` is, a top-level constant's among them. */

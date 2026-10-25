@@ -13,7 +13,7 @@ import type { BodyContext } from '../context.ts';
 import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
-import { errorType, type NominalType, type Type } from '../types/type.ts';
+import { errorType, nominalType, type Type } from '../types/type.ts';
 import { checkVariantName } from './variants.ts';
 
 export function checkName(
@@ -87,7 +87,7 @@ function bareStructValue(
   }
   const [open] = typeParametersOf(declaration.typeParameters);
   if (open === undefined) {
-    return { kind: 'nominal', entity: entity as NominalType['entity'], arguments: [] };
+    return nominalType(entity, []);
   }
   if (expected?.kind === 'nominal' && expected.entity.declaration === declaration) {
     return expected;

@@ -13,7 +13,7 @@
  *   is defined through itself (§3). Both use one lazy check with cycle reporting (lazy-checks.ts).
  * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
  *   (declarations/: constants, layouts, parameters, aliases, static functions; traits/: type
- *   parameters), as BodyChecker composes the units of a body.
+ *   parameters; rules/: expansion), as BodyChecker composes the units of a body.
  * - Items checked by their module are its top-level items and a trait's members; type parameters
  *   are noted with the module declaring them, where their constraints resolve.
  * - Diagnostics are kept per module, in the order found; the coordinator sorts them.
@@ -28,7 +28,7 @@ import {
 import { memo } from '../../structures/memo.ts';
 import type { Span } from '../../text/span.ts';
 import { bindProgram } from '../binder/bind.ts';
-import type { Bindings } from '../binder/entities.ts';
+import type { Bindings, Entity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type {
   Declaration,
@@ -63,23 +63,26 @@ import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
 import { checkClashes } from './rules/clashes.ts';
 import { disposalOf } from './rules/disposal.ts';
-import { checkExpansion } from './rules/expansion.ts';
+import { Expansion } from './rules/expansion.ts';
 import type { Constraint } from './traits/constraints.ts';
 import { TypeParameters } from './traits/type-parameters.ts';
 import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
 import {
   errorType,
   type FieldMember,
+  isNominalEntity,
   type NominalType,
   type Substitution,
   type Type,
   unitType,
 } from './types/type.ts';
+import { TypeKeys } from './types/type-keys.ts';
 import { notSupported } from './unsupported.ts';
 
 export class ProgramChecker implements CheckerContext {
   readonly program: Program;
   readonly bindings: Bindings;
+  readonly typeKeys = new TypeKeys();
   /** Every module's top-level items, with the module declaring each. */
   readonly #modules = new Map<NodeOf<string>, ModuleId>();
   readonly #diagnostics = new Map<ModuleId, Diagnostic[]>();
@@ -121,6 +124,7 @@ export class ProgramChecker implements CheckerContext {
   readonly #aliases = new Aliases(this);
   readonly #statics = new StaticFunctions(this);
   readonly #typeParameters = new TypeParameters(this);
+  readonly #expansion = new Expansion(this);
   #optional: { entity: OptionalEntity } | undefined;
 
   constructor(program: Program) {
@@ -186,14 +190,14 @@ export class ProgramChecker implements CheckerContext {
 
   get optionalEntity(): OptionalEntity {
     this.#optional ??= {
-      entity: (this.wellKnownType(wellKnown.optional) as NominalType | undefined)?.entity,
+      entity: this.wellKnownType(wellKnown.optional)?.entity,
     };
     return this.#optional.entity;
   }
 
   optionalOf(type: Type): NominalType {
     const optional = this.wellKnownType(wellKnown.optional, [type]);
-    if (optional?.kind !== 'nominal') {
+    if (optional === undefined) {
       throw new Error('A value was wrapped into an optional in a program without a prelude.');
     }
     return optional;
@@ -201,7 +205,7 @@ export class ProgramChecker implements CheckerContext {
 
   sharedOf(type: Type): NominalType {
     const shared = this.wellKnownType(wellKnown.shared, [type]);
-    if (shared?.kind !== 'nominal') {
+    if (shared === undefined) {
       throw new Error(
         "A variable needs a cell (passed by '&' or shared with a closure) in a program without a prelude.",
       );
@@ -316,7 +320,7 @@ export class ProgramChecker implements CheckerContext {
       }
       checkClashes(this, module);
       this.#typeParameters.checkPending(module);
-      checkExpansion(this);
+      this.#expansion.check(module);
     }
     return this.#diagnostics.get(module) ?? [];
   }
@@ -327,13 +331,17 @@ export class ProgramChecker implements CheckerContext {
     );
   }
 
+  wellKnownEntity({ module, name }: WellKnownDeclaration): Entity | undefined {
+    return this.#languageDeclaration(module, name);
+  }
+
   wellKnownType(
-    { module, name }: WellKnownDeclaration,
+    declaration: WellKnownDeclaration,
     typeArguments: readonly Type[] = [],
-  ): Type | undefined {
-    const entity = this.#languageDeclaration(module, name);
-    return entity?.kind === 'type'
-      ? { kind: 'nominal', entity: entity as NominalType['entity'], arguments: typeArguments }
+  ): NominalType | undefined {
+    const entity = this.wellKnownEntity(declaration);
+    return entity?.kind === 'type' && isNominalEntity(entity)
+      ? { kind: 'nominal', entity, arguments: typeArguments }
       : undefined;
   }
 

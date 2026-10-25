@@ -24,8 +24,14 @@ import type { BodyContext } from '../context.ts';
 import { parameterType, typeArgumentsFor, typeParametersOf } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from '../types/fit.ts';
-import { errorType, type NominalType, primitiveType, type Type } from '../types/type.ts';
-import { checkLiteralFields } from './literal-fields.ts';
+import {
+  errorType,
+  type NominalType,
+  nominalType,
+  primitiveType,
+  type Type,
+} from '../types/type.ts';
+import { checkLiteralFields, knownArguments } from './literal-fields.ts';
 
 /** A node naming a variant: bare, qualified, or as a literal's type. */
 type VariantNode = Identifier | MemberAccess | StructLiteral;
@@ -95,15 +101,9 @@ export function checkVariantLiteral(
   const fields = checker
     .declaredVariantsOf(chosen.enum)
     .find((candidate) => candidate.name === chosen.variant.name.text)?.fields;
-  const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
-  const list = { at: typeNode.span, declaration: chosen.enum, types: written };
-  const known =
-    written.length > 0
-      ? typeArgumentsFor(checker, context.module, list)
-      : sameEnum(expected, chosen.enum)?.arguments;
   const shape = {
     owner: chosen.enum,
-    known,
+    known: knownArguments(context, typeNode, chosen.enum, expected),
     fields: fields ?? [],
     typeOf: (typeArguments: readonly Type[]) => enumType(context, chosen.enum, typeArguments),
   };
@@ -132,7 +132,7 @@ export function namedType(context: BodyContext, node: Expression): Type | undefi
     case 'TraitDeclaration':
       return undefined;
     default:
-      return { kind: 'nominal', entity: entity as NominalType['entity'], arguments: [] };
+      return nominalType(entity, []);
   }
 }
 
@@ -224,5 +224,8 @@ function enumType(
 ): NominalType {
   const { checker } = context;
   const entity = checker.bindings.entityOf(checker.moduleOf(declaration), declaration.name);
-  return { kind: 'nominal', entity: entity as NominalType['entity'], arguments: typeArguments };
+  if (entity?.kind !== 'type') {
+    throw new Error(`Enum '${declaration.name.text}' has no type entity.`);
+  }
+  return nominalType(entity, typeArguments);
 }

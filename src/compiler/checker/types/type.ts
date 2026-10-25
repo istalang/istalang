@@ -42,11 +42,33 @@ export interface PrimitiveType {
 /** The declarations a nominal type can come from. */
 export type NominalDeclaration = StructDeclaration | EnumDeclaration | ExternStructDeclaration;
 
+/** The binder's entity for a declaration a nominal type comes from. */
+export type NominalEntity = TypeEntity & { readonly declaration: NominalDeclaration };
+
 /** A declared struct, enum or extern type, with its type arguments. */
 export interface NominalType {
   readonly kind: 'nominal';
-  readonly entity: TypeEntity & { readonly declaration: NominalDeclaration };
+  readonly entity: NominalEntity;
   readonly arguments: readonly Type[];
+}
+
+/** Whether `entity` declares a nominal type: a struct, an enum or an extern type. */
+export function isNominalEntity(entity: TypeEntity): entity is NominalEntity {
+  const { kind } = entity.declaration;
+  return (
+    kind === 'StructDeclaration' || kind === 'EnumDeclaration' || kind === 'ExternStructDeclaration'
+  );
+}
+
+/**
+ * The nominal type `entity` declares, given `typeArguments`. The binder types an entity by any
+ * type declaration, so this checks once what a caller narrowed by the declaration's kind.
+ */
+export function nominalType(entity: TypeEntity, typeArguments: readonly Type[]): NominalType {
+  if (!isNominalEntity(entity)) {
+    throw new Error(`A ${entity.declaration.kind} declares no nominal type.`);
+  }
+  return { kind: 'nominal', entity, arguments: typeArguments };
 }
 
 export interface TupleType {
@@ -289,42 +311,4 @@ export function parametersIn(type: Type): readonly ParameterKey[] {
 /** Whether `type` is, or is built from, the error type. */
 export function mentionsError(type: Type): boolean {
   return type.kind === 'error' || typeChildren(type).some(mentionsError);
-}
-
-const identities = new WeakMap<object, number>();
-let nextIdentity = 0;
-
-/** A string equal for two types exactly when `sameType` holds, for keying maps and sets. */
-export function typeKey(type: Type): string {
-  const idOf = (object: object): number => {
-    let id = identities.get(object);
-    if (id === undefined) {
-      id = nextIdentity;
-      nextIdentity += 1;
-      identities.set(object, id);
-    }
-    return id;
-  };
-  switch (type.kind) {
-    case 'primitive':
-      return type.name;
-    case 'error':
-      return '?';
-    case 'parameter':
-      return `'${idOf(type.declaration)}'`;
-    case 'nominal':
-      return `#${idOf(type.entity)}<${type.arguments.map(typeKey).join(',')}>`;
-    case 'anonymous':
-      return `{${idOf(type.origin)}:${type.fields.map((field) => typeKey(field.type)).join(',')}}`;
-    case 'tuple':
-      return `(${type.elements.map(typeKey).join(',')})`;
-    case 'function':
-      return `${type.isAsync ? 'async ' : ''}fn(${type.parameters
-        .map((parameter) => `${parameter.reference ? '&' : ''}${typeKey(parameter.type)}`)
-        .join(',')})->${typeKey(type.result)}`;
-    default: {
-      const unhandled: never = type;
-      return unhandled;
-    }
-  }
 }

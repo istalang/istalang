@@ -29,9 +29,14 @@ import {
   type StructLiteral,
 } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
+import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { constrainArguments, typeParametersOf } from '../declarations/resolve-type.ts';
+import {
+  constrainArguments,
+  typeArgumentsFor,
+  typeParametersOf,
+} from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
@@ -126,16 +131,39 @@ export function checkLiteralFields(
   return type;
 }
 
+/**
+ * The type arguments a literal of `owner` is given before its items: those written after the
+ * type's name, else the expected type's when it is a type of `owner`.
+ */
+export function knownArguments(
+  context: BodyContext,
+  typeNode: NamedType,
+  owner: StructDeclaration | EnumDeclaration,
+  expected: Type | undefined,
+): readonly Type[] | undefined {
+  if (typeNode.typeArguments.length === 0) {
+    return argumentsFor(owner, expected);
+  }
+  const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
+  const list = { at: typeNode.span, declaration: owner, types: written };
+  return typeArgumentsFor(context.checker, context.module, list);
+}
+
+/** The type arguments of `type` when it is a type of `owner`; else undefined. */
+function argumentsFor(
+  owner: LiteralShape['owner'],
+  type: Type | undefined,
+): readonly Type[] | undefined {
+  return type?.kind === 'nominal' && type.entity.declaration === owner ? type.arguments : undefined;
+}
+
 /** The type arguments known before the items: written or expected, else the spread's. */
 function decidedArguments(
   { owner, known }: LiteralShape,
   parameters: readonly ParameterKey[],
   spreadType: Type | undefined,
 ): Map<ParameterKey, Type> {
-  const fromSpread =
-    spreadType?.kind === 'nominal' && spreadType.entity.declaration === owner
-      ? spreadType.arguments
-      : undefined;
+  const fromSpread = argumentsFor(owner, spreadType);
   const decided = new Map<ParameterKey, Type>();
   for (const [index, parameter] of parameters.entries()) {
     const type = known?.[index] ?? fromSpread?.[index];
@@ -314,7 +342,7 @@ function tracedField(
 ): number | undefined {
   const error = context.checker.wellKnownType(wellKnown.error);
   const index = shape.fields.findIndex((field) => field.name === errorTrace.field);
-  const isError = error?.kind === 'nominal' && shape.owner === error.entity.declaration;
+  const isError = error !== undefined && shape.owner === error.entity.declaration;
   const [writer] = context.checker.preludeFunctions(errorTrace.function);
   if (!isError || index < 0 || given.has(index) || writer === undefined) {
     return undefined;

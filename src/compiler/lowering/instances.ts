@@ -29,8 +29,8 @@ import {
   substitute,
   substituteFunction,
   type Type,
-  typeKey,
 } from '../checker/types/type.ts';
+import type { TypeKeys } from '../checker/types/type-keys.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Lambda } from '../syntax/expressions.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
@@ -148,11 +148,13 @@ export function instantiatedBody(body: CheckedBody, instance: FunctionInstance):
 }
 
 /** The key of a nested function's entry: its owner's, then its node's identity. */
-export function nestedKey(nested: NestedInstance): string {
+export function nestedKey(keys: TypeKeys, nested: NestedInstance): string {
   const { owner, node } = nested;
   const ownerKey =
-    owner.kind === 'function' ? instanceKey(owner.instance) : `const ${nodeKey(owner.declaration)}`;
-  return `${ownerKey}#${nodeKey(node)}`;
+    owner.kind === 'function'
+      ? instanceKey(keys, owner.instance)
+      : `const ${keys.identityOf(owner.declaration)}`;
+  return `${ownerKey}#${keys.identityOf(node)}`;
 }
 
 /** A nested function's name: its owner's, then its own name, or where a lambda stands. */
@@ -167,10 +169,10 @@ export function nestedName(checker: Checker, nested: NestedInstance, where: stri
 }
 
 /** The key two instances share exactly when they are one entry. */
-export function instanceKey(instance: FunctionInstance): string {
-  return `${nodeKey(instance.declaration)}<${instance.typeArguments
-    .map(typeKey)
-    .join(',')}>[${witnessesKey(instance.witnesses)}]/${instance.arity}`;
+export function instanceKey(keys: TypeKeys, instance: FunctionInstance): string {
+  const typeArguments = instance.typeArguments.map((type) => keys.typeKey(type));
+  const witnesses = witnessesKey(keys, instance.witnesses);
+  return `${keys.identityOf(instance.declaration)}<${typeArguments.join(',')}>[${witnesses}]/${instance.arity}`;
 }
 
 /**
@@ -231,7 +233,7 @@ function closeWitnesses(witnesses: Witnesses, within: FunctionInstance | undefin
   );
 }
 
-function witnessesKey(witnesses: Witnesses): string {
+function witnessesKey(keys: TypeKeys, witnesses: Witnesses): string {
   return [...witnesses.values()]
     .map((constraints) =>
       constraints
@@ -239,7 +241,7 @@ function witnessesKey(witnesses: Witnesses): string {
           calls
             .map((call) =>
               call.kind === 'function'
-                ? instanceKey({
+                ? instanceKey(keys, {
                     declaration: call.function,
                     typeArguments: call.typeArguments,
                     witnesses: call.witnesses,
@@ -252,17 +254,4 @@ function witnessesKey(witnesses: Witnesses): string {
         .join('|'),
     )
     .join('&');
-}
-
-const nodes = new WeakMap<FunctionDeclaration | Lambda | VariableDeclaration, number>();
-let nextNode = 0;
-
-function nodeKey(node: FunctionDeclaration | Lambda | VariableDeclaration): number {
-  let key = nodes.get(node);
-  if (key === undefined) {
-    key = nextNode;
-    nextNode += 1;
-    nodes.set(node, key);
-  }
-  return key;
 }

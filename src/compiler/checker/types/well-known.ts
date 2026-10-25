@@ -19,7 +19,7 @@ export function wellKnownArguments(
   type: Type,
 ): readonly Type[] | undefined {
   const known = checker.wellKnownType(declaration);
-  if (type.kind !== 'nominal' || known?.kind !== 'nominal' || type.entity !== known.entity) {
+  if (type.kind !== 'nominal' || type.entity !== known?.entity) {
     return undefined;
   }
   return type.arguments;

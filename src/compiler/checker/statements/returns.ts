@@ -17,7 +17,7 @@ import type { Expression } from '../../syntax/expressions.ts';
 import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { agreedType, type Produced } from '../rules/agreement.ts';
+import { agreedType, fitProduced, type Produced } from '../rules/agreement.ts';
 import { sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
@@ -46,7 +46,7 @@ export class ReturnScope {
     const expected = this.declared;
     if (value === undefined) {
       if (expected !== undefined) {
-        context.fit(unitType, expected, span);
+        context.fitUnwrapped(unitType, expected, span);
       }
       this.#returned.push({ type: unitType, span, node: undefined });
       return;
@@ -69,7 +69,7 @@ export class ReturnScope {
   /** What the body produces, given its `tail`, once every `return` in it has been checked. */
   result(context: BodyContext, tail: Produced): Type {
     if (this.declared !== undefined) {
-      context.fit(tail.type, this.declared, tail.node ?? tail.span);
+      fitProduced(context, tail, this.declared);
       return this.declared;
     }
     const produced = [...this.#returned, tail];
@@ -77,8 +77,8 @@ export class ReturnScope {
     if (decided === undefined) {
       return tail.type;
     }
-    for (const { type, span, node: value } of disagreeing) {
-      context.fit(type, decided, value ?? span);
+    for (const each of disagreeing) {
+      fitProduced(context, each, decided);
     }
     for (const propagation of this.#propagated) {
       checkPropagation(context, decided, propagation);

@@ -31,7 +31,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant, nameNodeOf } from '../expressions/variants.ts';
 import { resolveOperator } from '../overloads/operators.ts';
 import { checkEqualSides } from '../rules/equality.ts';
-import { comparable, errorType, type NominalType, type Type } from '../types/type.ts';
+import { comparable, errorType, type NominalDeclaration, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { bodyScope, type ValuePart } from './parts.ts';
 import { literalShape, nullaryShape } from './shapes.ts';
@@ -207,7 +207,7 @@ function variantOf(context: BodyContext, part: ValuePart, name: string): Variant
 }
 
 /** `type` when it is a type of the enum `declaration`, else the error type. */
-function enumOf(type: Type, declaration: NominalType['entity']['declaration']): Type {
+function enumOf(type: Type, declaration: NominalDeclaration): Type {
   return type.kind === 'nominal' && type.entity.declaration === declaration ? type : errorType;
 }
 

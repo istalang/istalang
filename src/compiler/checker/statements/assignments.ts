@@ -84,7 +84,7 @@ function checkCompound(
     { node: target, type: place },
     { node: node.value, type: operand },
   ]);
-  context.fit(result, place, node.value.span);
+  context.fitUnwrapped(result, place, node.value.span);
   context.variables.recordAssigned(node, [{ target, path: [] }]);
 }
 
@@ -106,7 +106,7 @@ function assignTo(assigning: Assigning, target: Expression, part: ValuePart): vo
       return;
     default: {
       const place = assignedPlace(context, bare);
-      context.fit(part.type, place, bare.span);
+      context.fitUnwrapped(part.type, place, bare.span);
       if (!isUnnamed(bare)) {
         assigning.parts.push({ target: bare, path: part.path });
       }

@@ -146,15 +146,23 @@ export class BodyChecker implements BodyContext {
     return type;
   }
 
-  fit(found: Type, expected: Type, at: Expression | Span): void {
+  fit(found: Type, expected: Type, node: Expression): void {
     const wraps = this.checker.wrapsToFit(found, expected);
-    const isNode = 'kind' in at;
-    if (wraps === undefined || (wraps > 0 && !isNode)) {
-      const span = isNode ? at.span : at;
-      this.report(checkerDiagnostics.typeMismatch(span, typeText(expected), typeText(found)));
-    } else if (wraps > 0 && isNode) {
-      this.#wraps.set(at, wraps);
+    if (wraps === undefined) {
+      this.#mismatch(found, expected, node.span);
+    } else if (wraps > 0) {
+      this.#wraps.set(node, wraps);
     }
+  }
+
+  fitUnwrapped(found: Type, expected: Type, at: Span): void {
+    if (this.checker.wrapsToFit(found, expected) !== 0) {
+      this.#mismatch(found, expected, at);
+    }
+  }
+
+  #mismatch(found: Type, expected: Type, at: Span): void {
+    this.report(checkerDiagnostics.typeMismatch(at, typeText(expected), typeText(found)));
   }
 
   block(node: Block, expected?: Type): Type {

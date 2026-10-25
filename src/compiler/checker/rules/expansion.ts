@@ -8,9 +8,18 @@
  * is given for, an expanding edge when the parameter is nested inside the argument rather than
  * being the whole of it. Instantiation is endless exactly when a cycle holds an expanding edge,
  * which is reported at the call that makes it. Calls a witness makes count as calls too.
+ *
+ * Checking stays lazy. A module's diagnostics follow edges only from its own generic functions,
+ * so only the bodies those edges reach are checked. Every cycle through one of the module's calls
+ * is among them, since a cycle comes back to where it starts. Each function's edges are found
+ * once per checker, by whichever module reaches it first.
  */
 
-import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import { memo } from '../../../structures/memo.ts';
+import { stronglyConnected } from '../../../structures/strongly-connected.ts';
+import type { ModuleId } from '../../program/program.ts';
+import type { Declaration, FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type { Invalid } from '../../syntax/node.ts';
 import type { CallSite, FunctionCall, ResolvedCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { typeParametersOf } from '../declarations/resolve-type.ts';
@@ -22,45 +31,73 @@ interface Edge {
   readonly to: TypeParameter;
   readonly expanding: boolean;
   readonly caller: FunctionDeclaration;
+  readonly callee: FunctionDeclaration;
   readonly site: CallSite;
 }
 
-const checked = new WeakSet<CheckerContext>();
+/** The expansion rule over one checker's program. */
+export class Expansion {
+  readonly #checker: CheckerContext;
+  readonly #edges = new Map<FunctionDeclaration, readonly Edge[]>();
+  #generic: ReadonlySet<FunctionDeclaration> | undefined;
 
-/**
- * Reports every call that makes an expanding cycle, in the module of its caller. It is a property
- * of the whole program, so it is checked once per checker, whichever module asks first.
- */
-export function checkExpansion(checker: CheckerContext): void {
-  if (checked.has(checker)) {
-    return;
+  constructor(checker: CheckerContext) {
+    this.#checker = checker;
   }
-  checked.add(checker);
-  const edges = programEdges(checker);
-  const components = new Components(edges);
-  const reported = new Set<CallSite>();
-  for (const edge of edges) {
-    const inCycle = components.of(edge.from) === components.of(edge.to);
-    if (edge.expanding && inCycle && !reported.has(edge.site)) {
-      reported.add(edge.site);
-      checker.report(
-        checker.moduleOf(edge.caller),
-        checkerDiagnostics.expandingInstantiation(edge.site.span, edge.caller.name.text),
-      );
-    }
-  }
-}
 
-function programEdges(checker: CheckerContext): readonly Edge[] {
-  const edges: Edge[] = [];
-  for (const module of checker.program.modules.values()) {
-    for (const item of module.tree.root.items) {
-      if (item.kind === 'FunctionDeclaration' && item.typeParameters.length > 0) {
-        edges.push(...callerEdges(checker, item));
+  /** Reports every call in a generic function of `module` that makes an expanding cycle. */
+  check(module: ModuleId): void {
+    const items = this.#checker.program.modules.get(module)?.tree.root.items ?? [];
+    const own = new Set(items.filter(isGenericFunction));
+    const edges = this.#reachedFrom(own);
+    const componentOf = stronglyConnected(edges);
+    const reported = new Set<CallSite>();
+    for (const edge of edges) {
+      const inCycle = componentOf(edge.from) === componentOf(edge.to);
+      if (own.has(edge.caller) && edge.expanding && inCycle && !reported.has(edge.site)) {
+        reported.add(edge.site);
+        this.#checker.report(
+          module,
+          checkerDiagnostics.expandingInstantiation(edge.site.span, edge.caller.name.text),
+        );
       }
     }
   }
-  return edges;
+
+  /** The edges of `roots`, and of every generic function those edges lead to. */
+  #reachedFrom(roots: ReadonlySet<FunctionDeclaration>): readonly Edge[] {
+    const generic = this.#programGeneric();
+    const visited = new Set<FunctionDeclaration>();
+    const pending = [...roots];
+    const edges: Edge[] = [];
+    for (let caller = pending.pop(); caller !== undefined; caller = pending.pop()) {
+      if (!visited.has(caller)) {
+        visited.add(caller);
+        const own = this.#edgesOf(caller);
+        edges.push(...own);
+        pending.push(...own.map((edge) => edge.callee).filter((callee) => generic.has(callee)));
+      }
+    }
+    return edges;
+  }
+
+  #edgesOf(caller: FunctionDeclaration): readonly Edge[] {
+    return memo(this.#edges, caller, () => callerEdges(this.#checker, caller));
+  }
+
+  /** The program's top-level generic functions, whose type parameters are the graph's nodes. */
+  #programGeneric(): ReadonlySet<FunctionDeclaration> {
+    this.#generic ??= new Set(
+      [...this.#checker.program.modules.values()].flatMap((module) =>
+        module.tree.root.items.filter(isGenericFunction),
+      ),
+    );
+    return this.#generic;
+  }
+}
+
+function isGenericFunction(item: Declaration | Invalid): item is FunctionDeclaration {
+  return item.kind === 'FunctionDeclaration' && item.typeParameters.length > 0;
 }
 
 function callerEdges(checker: CheckerContext, caller: FunctionDeclaration): readonly Edge[] {
@@ -70,9 +107,10 @@ function callerEdges(checker: CheckerContext, caller: FunctionDeclaration): read
     callsWithin(call).flatMap((each) =>
       typeParametersOf(each.function.typeParameters).flatMap((to, index) => {
         const argument = each.typeArguments[index] ?? errorType;
+        const callee = each.function;
         return parametersIn(argument)
           .filter((from): from is TypeParameter => own.has(from))
-          .map((from) => ({ from, to, caller, site, expanding: !isWhole(argument, from) }));
+          .map((from) => ({ from, to, caller, callee, site, expanding: !isWhole(argument, from) }));
       }),
     ),
   );
@@ -90,60 +128,4 @@ function callsWithin(call: ResolvedCall): readonly FunctionCall[] {
   }
   const witnessCalls = [...call.witnesses.values()].flat(2).flatMap(callsWithin);
   return [call, ...witnessCalls];
-}
-
-/** The strongly connected components of the edges' graph, each named by its root (Tarjan). */
-class Components {
-  readonly #successors = new Map<TypeParameter, TypeParameter[]>();
-  readonly #order = new Map<TypeParameter, number>();
-  readonly #lowest = new Map<TypeParameter, number>();
-  readonly #component = new Map<TypeParameter, TypeParameter>();
-  readonly #stack: TypeParameter[] = [];
-
-  constructor(edges: readonly Edge[]) {
-    for (const { from, to } of edges) {
-      this.#successors.set(from, [...(this.#successors.get(from) ?? []), to]);
-      this.#successors.set(to, this.#successors.get(to) ?? []);
-    }
-    for (const node of this.#successors.keys()) {
-      if (!this.#order.has(node)) {
-        this.#visit(node);
-      }
-    }
-  }
-
-  of(node: TypeParameter): TypeParameter | undefined {
-    return this.#component.get(node);
-  }
-
-  #visit(node: TypeParameter): void {
-    const position = this.#order.size;
-    this.#order.set(node, position);
-    this.#lowest.set(node, position);
-    this.#stack.push(node);
-    for (const next of this.#successors.get(node) ?? []) {
-      if (!this.#order.has(next)) {
-        this.#visit(next);
-      }
-      if (!this.#component.has(next)) {
-        this.#lower(node, this.#lowest.get(next) ?? position);
-      }
-    }
-    if (this.#lowest.get(node) === position) {
-      this.#close(node);
-    }
-  }
-
-  #lower(node: TypeParameter, to: number): void {
-    this.#lowest.set(node, Math.min(this.#lowest.get(node) ?? to, to));
-  }
-
-  /** Pops the component rooted at `root` off the stack. */
-  #close(root: TypeParameter): void {
-    let member = this.#stack.pop();
-    while (member !== undefined) {
-      this.#component.set(member, root);
-      member = member === root ? undefined : this.#stack.pop();
-    }
-  }
 }
