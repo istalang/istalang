@@ -11,10 +11,23 @@
  * The body is a zod schema whose codecs turn JSON into the in-memory form (bigints, tagged
  * floats), so writing runs the same schema in reverse. That keeps one description per format,
  * and writing validates too: invalid content fails as the same FormatError reading gives.
+ *
+ * The codecs recurse on the host's stack, so a body nesting deeper than any valid one can is
+ * refused before either runs (`maximumTextDepth`), whether it is read or written.
  */
 
 import { z } from 'zod';
-import { contentHash, decodeJson, encodeJson } from './codec.ts';
+import { contentHash, decodeJson, encodeJson, jsonDepth } from './codec.ts';
+import { maximumDepth } from './values.ts';
+
+/** How many levels a value's own level takes at most: a map's entry pair, its entry list, the map. */
+const levelsPerValueLevel = 3;
+
+/** How many levels a format's own structure around its values takes, with room to spare. */
+const formatLevels = 32;
+
+/** How deep a body may nest, so that every valid one fits and the codecs can walk it. */
+const maximumTextDepth = levelsPerValueLevel * maximumDepth + formatLevels;
 
 /** Raised when a persisted text can't be read as the expected format and version. */
 export class FormatError extends Error {
@@ -56,6 +69,7 @@ export function defineFormat<Body extends z.ZodType>(
           `${name} version ${String(found)} is not supported; this reader knows version ${version}.`,
         );
       }
+      requireShallow(name, contents);
       const result = body.safeParse(contents);
       if (!result.success) {
         throw invalid(name, result.error);
@@ -63,6 +77,7 @@ export function defineFormat<Body extends z.ZodType>(
       return result.data;
     },
     write(value) {
+      requireShallow(name, value);
       const result = z.safeEncode(body, value);
       if (!result.success) {
         throw invalid(name, result.error);
@@ -71,6 +86,13 @@ export function defineFormat<Body extends z.ZodType>(
       return { text, hash: contentHash(text) };
     },
   };
+}
+
+/** Refuses a body nesting deeper than `maximumTextDepth`, which the codecs can't walk. */
+function requireShallow(name: string, contents: unknown): void {
+  if (jsonDepth(contents) > maximumTextDepth) {
+    throw new FormatError(`Invalid ${name} body: it nests deeper than ${maximumTextDepth} levels.`);
+  }
 }
 
 /** One readable error for invalid content, whether it was being read or written. */

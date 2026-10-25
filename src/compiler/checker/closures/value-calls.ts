@@ -15,6 +15,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { takenBy } from '../overloads/choice.ts';
 import { explain, fitArguments, type WrittenArgument } from '../overloads/resolve.ts';
 import { futureOf } from '../rules/futures.ts';
+import { checkReferencedPlaces } from '../rules/places.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -59,6 +60,11 @@ export function checkValueCall(
     written,
     parameters.map(({ type }) => type),
   );
+  checkReferencedPlaces(context, written, {
+    name: callee.kind === 'Identifier' ? callee.text : typeText(calleeType),
+    isAsync: calleeType.isAsync,
+    slots: parameters,
+  });
   const { result } = calleeType;
   return calleeType.isAsync ? futureOf(context.checker, result) : result;
 }

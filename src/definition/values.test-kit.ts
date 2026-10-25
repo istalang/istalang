@@ -64,3 +64,12 @@ export function valueArbitrary(options: ValueOptions = {}): fc.Arbitrary<Value> 
   });
   return value;
 }
+
+/** A value `depth` levels deep: arrays of one, holding `bottom`. */
+export function nested(depth: number, bottom: Value): Value {
+  let current = bottom;
+  for (let level = 0; level < depth; level += 1) {
+    current = { kind: 'array', elements: [current] };
+  }
+  return current;
+}

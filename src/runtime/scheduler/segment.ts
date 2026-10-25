@@ -13,20 +13,17 @@
  * callee's effects so far commit or roll back with the caller's segment. Executions on top of one
  * another form the run stack; it lives here, not on JavaScript's stack, so a deep chain of async
  * calls can't overflow it. When a segment ends, the run stack holds only its driver, and every
- * other execution stands at an `await`, as a snapshot requires.
+ * other execution stands at an `await`, as a snapshot requires. Every call is a `call`
+ * instruction, so a program's calls never nest on JavaScript's stack.
  *
- * Reading or writing an element of a place calls its container's `index` or `setIndex` (values/
- * parts.ts) in the middle of an instruction. Such a call runs to completion at once: a native
- * directly, and a function of the program on top of the running frame, in a loop of its own until
- * it returns. It can't wait, since only an async function awaits, and both the checker and
- * loading refuse an async `index` or `setIndex` for a place. The container it
- * takes by `&` is a box (parts.ts), which the callee's frames reach as a cell of their own. Such
- * calls nest on the JavaScript stack, so their depth is bounded (`maximumNesting`).
+ * What a segment leaves is persisted when it commits, and a persisted value nests at most
+ * `maximumDepth` levels (definition/values.ts). A segment leaving a deeper value, where an
+ * execution can reach it or as its outcome, panics where it ended instead, so it commits nothing.
  */
 
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
-import { handleTarget, type Value } from '../../definition/values.ts';
+import { depthOf, handleTarget, maximumDepth, type Value } from '../../definition/values.ts';
 import { runInstruction } from '../interpreter/instructions.ts';
 import {
   type ActiveFrame,
@@ -43,7 +40,6 @@ import {
 import { traceOf } from '../interpreter/trace.ts';
 import { type NativeCells, type NativeContext, Panic } from '../natives.ts';
 import { isReference, type Reference } from '../snapshot/objects.ts';
-import { type Box, type ElementCalls, isBox } from '../values/parts.ts';
 import { type Instance, type LiveExecution, topFrame } from './instance.ts';
 
 export type SegmentEnd =
@@ -69,25 +65,11 @@ export function runSegment(
 /** How driving one execution ended. */
 type DriveEnd = 'awaited' | 'returned' | { readonly finished: Value };
 
-/**
- * How many calls may run inside one another from inside places. Each runs on the JavaScript stack,
- * so a program's own `index` or `setIndex` recursing through a deep structure would otherwise
- * overflow it; past the bound the instance panics, as any bug in the program does (§3.12).
- */
-const maximumNesting = 200;
-
-/** A call running to completion inside an instruction: its frame, and its result once it returns. */
-interface NestedCall {
-  readonly frame: ActiveFrame;
-  result?: { readonly value: Value };
-}
-
 class SegmentRunner implements Machine {
   readonly #instance: Instance;
   readonly #startedAt: bigint;
   readonly #nativeCells: NativeCells;
   readonly #runStack: LiveExecution[] = [];
-  readonly #nested: NestedCall[] = [];
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, startedAt: bigint) {
@@ -102,20 +84,9 @@ class SegmentRunner implements Machine {
 
   run(first: LiveExecution | undefined): SegmentEnd {
     try {
-      for (
-        let driver = first ?? this.#instance.resumeNext(this);
-        driver !== undefined;
-        driver = this.#instance.resumeNext(this)
-      ) {
-        const end = this.#drive(driver);
-        if (end === 'awaited') {
-          return { kind: 'awaited' };
-        }
-        if (end !== 'returned') {
-          return { kind: 'finished', outcome: end.finished };
-        }
-      }
-      return { kind: 'idle' };
+      const end = this.#runDrivers(first);
+      this.#requirePersistable(end);
+      return end;
     } catch (error) {
       if (error instanceof Panic) {
         return { kind: 'panicked', message: error.message, trace: this.#trace() };
@@ -130,24 +101,21 @@ class SegmentRunner implements Machine {
     argumentList: readonly Argument[],
     captures: readonly Value[] = [],
   ): void {
-    const contents = argumentList.map((argument) => argumentContents(frame, argument, this));
+    const contents = argumentList.map((argument) => argumentContents(frame, argument));
     const callable = this.#instance.loaded.functions.callee(callee);
     if (callable.kind === 'native') {
       const values = contents.map((each) =>
-        isReference(each) ? readThrough(frame.cells, each, this) : each,
+        isReference(each) ? readThrough(frame.cells, each) : each,
       );
       const result = callable.native(values, {
         ...this.#nativeContext(callee),
         write: (position, value) =>
-          writeReference(frame.cells, referenceAt(contents, position), value, this),
+          writeReference(frame.cells, referenceAt(contents, position), value),
       });
-      resumeAfterCall(frame, result, this);
+      resumeAfterCall(frame, result);
       return;
     }
     if (callable.code.async) {
-      if (contents.some((each) => isReference(each) && each.cell < 0)) {
-        throw new Error("A container's 'setIndex' can't pass it by '&' to an async function.");
-      }
       const execution = this.#instance.startExecution(callable.function, contents, captures);
       this.#instance.newFuture({ kind: 'call', execution: execution.id });
       this.#runStack.push(execution);
@@ -157,58 +125,14 @@ class SegmentRunner implements Machine {
     this.#current().frames.push(calleeFrame);
   }
 
-  callNow(callee: FunctionId, argumentList: readonly (Value | Box)[]): Value {
-    const callable = this.#instance.loaded.functions.callee(callee);
-    if (callable.kind === 'native') {
-      const values = argumentList.map((each) => (isBox(each) ? each.value : each));
-      return callable.native(values, {
-        ...this.#nativeContext(callee),
-        write: (position, value) => {
-          boxAt(argumentList, position).value = value;
-        },
-      });
-    }
-    if (callable.code.async) {
-      throw new Error(`'${callable.code.name}' is async, so it can't run inside a place.`);
-    }
-    if (this.#nested.length >= maximumNesting) {
-      throw new Panic(
-        `Elements nest too deeply: an 'index' or 'setIndex' ran inside ${maximumNesting} others.`,
-      );
-    }
-    const execution = this.#current();
-    const cells = boxedCells(topFrame(execution).cells, argumentList);
-    const contents = argumentList.map((each, position) =>
-      isBox(each) ? { kind: 'reference' as const, cell: boxCell(position), path: [] } : each,
-    );
-    const nested: NestedCall = {
-      frame: newFrame(callable, contents, cells),
-    };
-    execution.frames.push(nested.frame);
-    this.#nested.push(nested);
-    try {
-      while (nested.result === undefined) {
-        this.#step();
-      }
-    } finally {
-      this.#nested.pop();
-    }
-    return nested.result.value;
-  }
-
   return(frame: ActiveFrame, value: Value): void {
     const execution = this.#current();
     if (execution.frames.pop() !== frame) {
       throw new Error('Only the top frame returns.');
     }
-    const nested = this.#nested.at(-1);
-    if (nested?.frame === frame) {
-      nested.result = { value };
-      return;
-    }
     const caller = execution.frames.at(-1);
     if (caller !== undefined) {
-      resumeAfterCall(caller, value, this);
+      resumeAfterCall(caller, value);
       return;
     }
     const future = this.#instance.callFutureOf(execution);
@@ -223,7 +147,7 @@ class SegmentRunner implements Machine {
 
   await(frame: ActiveFrame, future: Register): void {
     const execution = this.#current();
-    if (this.#instance.isResolved(readRegister(frame, future, this))) {
+    if (this.#instance.isResolved(readRegister(frame, future))) {
       this.#instance.markReady(execution);
     }
     if (this.#runStack.length === 1) {
@@ -235,6 +159,34 @@ class SegmentRunner implements Machine {
       throw new Error(`Execution ${execution.id} runs on top of another without a call future.`);
     }
     this.#leave(own, 'awaited');
+  }
+
+  /** Runs drivers until one awaits, the root returns, or nothing is ready. */
+  #runDrivers(first: LiveExecution | undefined): Exclude<SegmentEnd, { kind: 'panicked' }> {
+    for (
+      let driver = first ?? this.#instance.resumeNext();
+      driver !== undefined;
+      driver = this.#instance.resumeNext()
+    ) {
+      const end = this.#drive(driver);
+      if (end === 'awaited') {
+        return { kind: 'awaited' };
+      }
+      if (end !== 'returned') {
+        return { kind: 'finished', outcome: end.finished };
+      }
+    }
+    return { kind: 'idle' };
+  }
+
+  /** Panics when what `end` leaves holds a value too deep to persist (§5). */
+  #requirePersistable(end: Exclude<SegmentEnd, { kind: 'panicked' }>): void {
+    const depth = end.kind === 'finished' ? depthOf(end.outcome) : this.#instance.deepestValue();
+    if (depth > maximumDepth) {
+      throw new Panic(
+        `A value nests ${depth} levels deep, deeper than the ${maximumDepth} an instance can persist.`,
+      );
+    }
   }
 
   /** Runs `driver` until it awaits or returns. */
@@ -268,7 +220,7 @@ class SegmentRunner implements Machine {
       this.#end = end;
       return;
     }
-    resumeAfterCall(topFrame(caller), { kind: 'handle', object: future }, this);
+    resumeAfterCall(topFrame(caller), { kind: 'handle', object: future });
   }
 
   #current(): LiveExecution {
@@ -305,12 +257,12 @@ class SegmentRunner implements Machine {
 }
 
 /** Writes a call's result into the `call` that `frame` stopped at, and moves past it. */
-function resumeAfterCall(frame: ActiveFrame, value: Value, calls: ElementCalls): void {
+function resumeAfterCall(frame: ActiveFrame, value: Value): void {
   const instruction = frame.code.instructions[frame.pc];
   if (instruction?.kind !== 'call') {
     throw new Error(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a call.`);
   }
-  resumeAt(frame, instruction.dst, value, calls);
+  resumeAt(frame, instruction.dst, value);
 }
 
 /** The reference a native's argument `position` was passed by `&`. */
@@ -320,36 +272,6 @@ function referenceAt(contents: readonly RegisterContents[], position: number): R
     throw new Error(`A native wrote argument ${position}, which isn't passed by '&'.`);
   }
   return argument;
-}
-
-/** The box a call made inside a place passes at `position`. */
-function boxAt(argumentList: readonly (Value | Box)[], position: number): Box {
-  const argument = argumentList[position];
-  if (argument === undefined || !isBox(argument)) {
-    throw new Error(`A native wrote argument ${position}, which isn't passed by '&'.`);
-  }
-  return argument;
-}
-
-/** The cell a box at `position` is to the callee's frames: below every cell of the instance. */
-function boxCell(position: number): number {
-  return -1 - position;
-}
-
-/** `cells`, plus the boxes of `argumentList` as cells of their own (`boxCell`). */
-function boxedCells(cells: CellStore, argumentList: readonly (Value | Box)[]): CellStore {
-  const boxOf = (cell: number) => boxAt(argumentList, -1 - cell);
-  return {
-    read: (cell) => (cell < 0 ? boxOf(cell).value : cells.read(cell)),
-    write: (cell, value) => {
-      if (cell < 0) {
-        boxOf(cell).value = value;
-      } else {
-        cells.write(cell, value);
-      }
-    },
-    create: (type, value) => cells.create(type, value),
-  };
 }
 
 /** The instance's cells as natives reach them: through `Shared<T>` handles (§3.8). */

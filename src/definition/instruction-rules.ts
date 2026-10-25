@@ -5,9 +5,6 @@
  * - a direct call or `spawn` passes the callee's parameters in number and kind (value or `&`), and
  *   a function with captures is called only through its closure value, never directly
  * - a closure carries its function's captures
- * - a place's element steps name an `index` (container, key) and a `setIndex` (`&`container,
- *   key, value), neither async, which the runtime calls at once to read and write the element
- *   (spec §3.7, §3.9)
  * - only async code waits
  *
  * The rules are a typed table with one entry per instruction kind, like `operandsOf`
@@ -27,7 +24,7 @@ import {
 } from './functions.ts';
 import { waits } from './instructions/flow.ts';
 import type { Instruction } from './instructions/instruction.ts';
-import type { Argument, Place } from './instructions/places.ts';
+import type { Argument } from './instructions/places.ts';
 import type { Tables } from './tables.ts';
 
 /** A struct or enum value being built: by an instruction or as a constant. */
@@ -67,7 +64,7 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
       arity: i.fields.length,
     }),
   field: none,
-  store: (tables, i) => placeProblem(tables, i.place),
+  store: none,
   array: none,
   map: none,
   closure: (tables, i) => closureProblem(tables, i.function, i.captures.length),
@@ -81,8 +78,8 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
   return: none,
   call: (tables, i) =>
     i.callee.kind === 'function'
-      ? directCallProblem(tables, tables.functions[i.callee.function], i.arguments)
-      : argumentPlacesProblem(tables, i.arguments),
+      ? directCallProblem(tables.functions[i.callee.function], i.arguments)
+      : undefined,
   spawn: (tables, i) => spawnProblem(tables.functions[i.function], i.arguments.length),
   currentCall: asyncOnly,
   await: waitsOnlyInAsync,
@@ -134,14 +131,13 @@ export function closureProblem(
 }
 
 function directCallProblem(
-  tables: Tables,
   callee: FunctionDefinition | undefined,
   args: readonly Argument[],
 ): string | undefined {
   if (callee !== undefined && capturesOf(callee) > 0) {
     return `${callee.name} has captures, so it is called through its closure value.`;
   }
-  return argumentsProblem(callee, args) ?? argumentPlacesProblem(tables, args);
+  return argumentsProblem(callee, args);
 }
 
 function spawnProblem(target: FunctionDefinition | undefined, arity: number): string | undefined {
@@ -177,41 +173,4 @@ function argumentsProblem(
   }
   const expected = takesReference(callee, mismatch) ? 'by &' : 'by value';
   return `argument ${mismatch} of ${callee.name} must be passed ${expected}.`;
-}
-
-function argumentPlacesProblem(tables: Tables, args: readonly Argument[]): string | undefined {
-  for (const argument of args) {
-    const problem =
-      argument.kind === 'reference' ? placeProblem(tables, argument.place) : undefined;
-    if (problem !== undefined) {
-      return problem;
-    }
-  }
-  return undefined;
-}
-
-/** `index(container, key)` and `setIndex(&container, key, value)`, spec §3.9. */
-const elementReadArity = 2;
-const elementWriteArity = 3;
-
-function placeProblem(tables: Tables, place: Place): string | undefined {
-  const elements = place.path.flatMap((step) => (step.kind === 'element' ? [step] : []));
-  for (const step of elements) {
-    const read = tables.functions[step.read];
-    const write = tables.functions[step.write];
-    const waiting = [read, write].find((each) => each?.kind === 'code' && each.async);
-    if (waiting !== undefined) {
-      return `an element is read or written by ${waiting.name}, which is async but must run at once.`;
-    }
-    if (read !== undefined && read.parameters.length !== elementReadArity) {
-      return `an element is read by ${read.name}, which must take a container and a key.`;
-    }
-    const writesThroughReference =
-      write === undefined ||
-      (write.parameters.length === elementWriteArity && takesReference(write, 0));
-    if (write !== undefined && !writesThroughReference) {
-      return `an element is written by ${write.name}, which must take &container, key and value.`;
-    }
-  }
-  return undefined;
 }

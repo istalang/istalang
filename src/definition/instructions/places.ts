@@ -1,30 +1,21 @@
 /**
- * Places: a register, optionally followed by a path into its value. A place is what `&` refers to
- * and what an assignment writes (spec §3.7, §3.9).
+ * Places: a register, optionally followed by a path of field positions into its value. A place is
+ * what `&` refers to and what `store` writes (spec §3.7); a tuple element is a field by position,
+ * as `field` reads it.
  *
- * A path step is a field, or an element of an indexable value. An element step names the `index`
- * and `setIndex` functions the checker resolved for its container, so the runtime reads and
- * writes any indexable place the same way, whether the container is a built-in Array or Map or a
- * user type. Writing an element replaces it through `setIndex`, so the write is atomic within the
- * segment (docs/arch/definition.md, "Places").
+ * An indexed element is no step of a place: lowering reads it with its container's `index` into a
+ * register of its own, and writes it back with `setIndex` once changed (docs/arch/definition.md,
+ * "Places"). Following a path therefore never runs code, and every call the program makes is a
+ * `call` instruction.
  */
 
 import { z } from 'zod';
-import { fieldIndex, functionId, register } from '../operands.ts';
+import { fieldIndex, register } from '../operands.ts';
 
-/**
- * One step into a value: a field, or an element through its container's `index` and `setIndex`.
- * The key is a register in code and a value in a snapshot's live reference
- * (runtime/snapshot/objects.ts); the step is otherwise the same, so both build it here.
- */
-export function pathStep<Key extends z.ZodType>(key: Key) {
-  return z.discriminatedUnion('kind', [
-    z.strictObject({ kind: z.literal('field'), index: fieldIndex }),
-    z.strictObject({ kind: z.literal('element'), key, read: functionId, write: functionId }),
-  ]);
-}
+/** Field positions into a value, outermost first; also a live reference's path (snapshot/objects.ts). */
+export const fieldPath = z.array(fieldIndex);
 
-export const place = z.strictObject({ register, path: z.array(pathStep(register)) });
+export const place = z.strictObject({ register, path: fieldPath });
 
 export type Place = z.output<typeof place>;
 

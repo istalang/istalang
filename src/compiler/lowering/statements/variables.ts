@@ -11,22 +11,26 @@
  * - An assignment evaluates its value, then writes each part to its place (`assignedOf`);
  *   `x$ = v` calls the function the checker resolved for it on the handle and the value. A
  *   compound assignment reads its place once, calls its operator's function on that value and the
- *   operand, and writes the result back to the same place.
- * - A place reached through `x$` is changed in the value `unwrap` reads, which `rewrap` then
- *   writes back (§3.9), around the write the place takes.
+ *   operand, and writes the result back to the same place. A place reached through an element or
+ *   a `x$` is copied in and written back around the write (places.ts).
  */
 
-import type { Place } from '../../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../../definition/operands.ts';
 import type { Span } from '../../../text/span.ts';
 import type { TargetOwner } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
-import { type Expression, placePath } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
-import { call, implicitCall } from '../expressions/calls.ts';
-import { pathOf, placeOf, readPart, readPlace, writePlace } from '../places.ts';
+import { call } from '../expressions/calls.ts';
+import {
+  cellRegister,
+  enterAssigned,
+  type PlaceTarget,
+  readPart,
+  readTarget,
+  writeTarget,
+} from '../places.ts';
 
 /** A register holding a cell, and the `Shared<T>` type entry it is created as. */
 export interface CellRegister {
@@ -96,10 +100,9 @@ export function declareVariable(
   declaring: Identifier,
   type: Type,
 ): Register {
-  const register = context.code.allocate();
-  if (context.body.inCell(declaring)) {
-    context.variables.addCell({ register, type: cellTypeIndex(context, type) });
-  }
+  const register = context.body.inCell(declaring)
+    ? cellRegister(context, type)
+    : context.code.allocate();
   context.variables.declare(declaring, register);
   return register;
 }
@@ -135,50 +138,22 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
   const parts = context.body.assignedOf(node);
   const [only] = parts;
   if (node.operator !== '=' && only !== undefined) {
-    changingPlace(context, only.target, (place) => lowerCompound(context, node, place));
+    const { target, leave } = enterAssigned(context, only.target);
+    lowerCompound(context, node, target);
+    leave();
     return;
   }
   const value = context.expression(node.value);
-  for (const { target, path } of parts) {
-    changingPlace(context, target, (place) => {
-      writePlace(context, place, readPart(context, value, path, node.span), node.span);
-    });
+  for (const { target: written, path } of parts) {
+    const { target, leave } = enterAssigned(context, written);
+    writeTarget(context, target, readPart(context, value, path, node.span), node.span);
+    leave();
   }
 }
 
-/** `x op= v` at `place`: its value read once, the operator's function called, the result written. */
-function lowerCompound(context: FunctionContext, node: Assignment, place: Place): void {
-  if (place.path.length === 0) {
-    call(context, node, [place.register, context.expression(node.value)], place.register);
-    return;
-  }
-  const current = readPlace(context, place, node.span);
+/** `x op= v` at `target`: its value read once, the operator's function called, the result written. */
+function lowerCompound(context: FunctionContext, node: Assignment, target: PlaceTarget): void {
+  const current = readTarget(context, target, node.span);
   const result = call(context, node, [current, context.expression(node.value)]);
-  writePlace(context, place, result, node.span);
-}
-
-/**
- * Lets `change` write the place `node` names. A place reached through `x$` (§3.9) is the value
- * `unwrap` read, in a register of its own; once changed, the `rewrap` the checker made for the
- * `x$` writes it back through the same handle.
- */
-function changingPlace(
-  context: FunctionContext,
-  node: Expression,
-  change: (place: Place) => void,
-): void {
-  const { root, steps } = placePath(node);
-  if (root.kind !== 'Unwrap') {
-    change(placeOf(context, node));
-    return;
-  }
-  const handle = context.expression(root.operand);
-  const value = call(context, root, [handle]);
-  change({ register: value, path: pathOf(context, steps) });
-  implicitCall(context, root, 'write', [handle, value]);
-}
-
-/** The `Shared<T>` entry a cell holding a `type` is created as. */
-export function cellTypeIndex(context: FunctionContext, type: Type): TypeId {
-  return context.tables.typeIndex(context.checker.sharedOf(type));
+  writeTarget(context, target, result, node.span);
 }

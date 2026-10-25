@@ -29,8 +29,7 @@ import type {
 import type { Invalid } from '../../syntax/node.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitLoop, iteratedArray } from '../iteration.ts';
-import { readPart } from '../places.ts';
-import { cellTypeIndex } from '../statements/variables.ts';
+import { cellRegister, readPart } from '../places.ts';
 import { call, implicitCall } from './calls.ts';
 import { construct } from './structs.ts';
 import { variantIndexOf } from './variants.ts';
@@ -114,11 +113,7 @@ function lowerDeclaredLiteral(
   entries: readonly (MapEntry | Spread | Invalid)[],
 ): Register {
   const { code } = context;
-  const value = code.allocate();
-  context.variables.addCell({
-    register: value,
-    type: cellTypeIndex(context, context.body.typeOf(node)),
-  });
+  const value = cellRegister(context, context.body.typeOf(node));
   code.emit({
     kind: 'move',
     span: node.span,

@@ -39,4 +39,14 @@ export const collectionTemplates = {
     message: (name: string) =>
       `'${name}' is async, but a collection runs its '${name}' at once, so it must be a plain function (§3.9).`,
   },
+  elementToAsync: {
+    code: 5307,
+    message: (callee: string) =>
+      `An element can't be passed by '&' to '${callee}', which is async: an element is copied in and written back when its call returns (§3.7). Copy it into a 'let', pass that, and assign it back.`,
+  },
+  elementOverlap: {
+    code: 5308,
+    message: (variable: string, callee: string) =>
+      `'${callee}' is passed two places of '${variable}' by '&', and one reaches through an element: an element is a copy for the call (§3.7), so the two couldn't change together. Pass them in separate calls.`,
+  },
 } as const;

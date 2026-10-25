@@ -6,6 +6,7 @@
  * by value semantics, and values never change in place. Elements compare with the built-in `==`.
  */
 
+import { valuesEqual } from '../../definition/equality.ts';
 import {
   namedKey,
   nativeKey,
@@ -13,10 +14,10 @@ import {
   primitiveKey,
   referenceKey,
 } from '../../definition/extern-key.ts';
+import { elementsOf } from '../../definition/values.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import type { Natives } from '../../runtime/natives.ts';
-import { valuesEqual } from '../../runtime/values/equality.ts';
-import { arrayOf, elementsOf, int, optionalValue, resultOptional, text } from '../native-values.ts';
+import { arrayOf, int, optionalValue, resultOptional, text } from '../native-values.ts';
 import { preludeName } from '../stdlib-loader.ts';
 import { atPosition, checkedIndex, spanOf } from './positions.ts';
 

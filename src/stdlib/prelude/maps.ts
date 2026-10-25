@@ -1,15 +1,14 @@
 /**
  * The prelude's natives for maps (§3.8, §3.9, §3.10): reading, `&self` methods and indexing. Keys
- * are found by the built-in `==` (runtime/values/equality.ts), and a map is an immutable value, so
+ * are found by the built-in `==` (definition/equality.ts), and a map is an immutable value, so
  * a method taking `&self` builds the changed map and writes it back through its context.
  */
 
+import { entryPosition, entryValue, withEntry, withoutEntry } from '../../definition/equality.ts';
 import { namedKey, nativeKey, parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import { type Natives, Panic } from '../../runtime/natives.ts';
-import { entryPosition, entryValue } from '../../runtime/values/equality.ts';
-import { withEntry, withoutEntry } from '../../runtime/values/maps.ts';
 import { arrayOf, mapOfArgument, resultOptional } from '../native-values.ts';
 import { preludeName } from '../stdlib-loader.ts';
 

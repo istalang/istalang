@@ -1,22 +1,28 @@
 /**
  * Persisted values: every kind survives the trip to text and back exactly, ints and floats stay
  * apart on disk, and handles are found at any depth. A composite value's children are read and
- * rebuilt in one order.
+ * rebuilt in one order. Walks over a value of any depth keep their own stack.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { decodeJson, encodeJson } from './codec.ts';
-import { valueArbitrary } from './values.test-kit.ts';
+import { nested, valueArbitrary } from './values.test-kit.ts';
 import {
   childValues,
+  depthOf,
   handlesIn,
   isComposite,
   type Value,
   value,
   withChildValues,
 } from './values.ts';
+
+/** How deep a value nests, by the definition's recursion. */
+function recursiveDepth(contents: Value): number {
+  return isComposite(contents) ? 1 + Math.max(0, ...childValues(contents).map(recursiveDepth)) : 0;
+}
 
 function toText(contents: Value): string {
   return encodeJson(z.encode(value, contents));
@@ -57,7 +63,7 @@ describe('persisted values', () => {
   });
 
   it('expose every handle, however deep', () => {
-    const nested: Value = {
+    const holder: Value = {
       kind: 'struct',
       type: 0,
       fields: [
@@ -78,10 +84,26 @@ describe('persisted values', () => {
         },
       ],
     };
-    expect(handlesIn(nested)).toEqual([3, 5, 8]);
+    expect(handlesIn(holder)).toEqual([3, 5, 8]);
     expect(handlesIn({ kind: 'extern', type: 0, payload: { kind: 'handle', object: 1 } })).toEqual(
       [],
     );
+  });
+});
+
+describe('deep values', () => {
+  it('nest as deep as their deepest part', () => {
+    fc.assert(
+      fc.property(valueArbitrary({ typed: true, handles: [0, 7] }), (contents) => {
+        expect(depthOf(contents)).toBe(recursiveDepth(contents));
+      }),
+    );
+  });
+
+  it('are walked without exhausting the host stack', () => {
+    const deep = nested(100_000, { kind: 'handle', object: 4 });
+    expect(depthOf(deep)).toBe(100_001);
+    expect(handlesIn(deep)).toEqual([4]);
   });
 });
 

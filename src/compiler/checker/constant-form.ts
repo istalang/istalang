@@ -5,6 +5,7 @@
  * which the checker's own modules import.
  */
 
+import { type MapOf, ValueSemantics } from '../../language/values.ts';
 import type { Lambda } from '../syntax/expressions.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import { type NominalType, type StructValueType, sameType } from './types/type.ts';
@@ -23,7 +24,7 @@ export type ConstantForm =
     }
   | { readonly kind: 'tuple'; readonly elements: readonly ConstantForm[] }
   | { readonly kind: 'array'; readonly elements: readonly ConstantForm[] }
-  | { readonly kind: 'map'; readonly entries: readonly (readonly [ConstantForm, ConstantForm])[] }
+  | MapOf<ConstantForm>
   | { readonly kind: 'function'; readonly lambda: Lambda; readonly constant: VariableDeclaration };
 
 /** What a duration literal is (§2): a `time.Duration`, whose one field is its milliseconds. */
@@ -37,58 +38,48 @@ export function formAt(form: ConstantForm, path: readonly number[]): ConstantFor
   if (position === undefined) {
     return form;
   }
-  const part = partsOf(form)?.[position];
+  const part = (form.kind === 'map' ? form.entries.flat() : partsOf(form))[position];
   return part === undefined ? undefined : formAt(part, rest);
 }
 
-/** Whether two forms are equal values by the built-in `==` (§3.9), map keys included. */
-export function sameForm(first: ConstantForm, second: ConstantForm): boolean {
-  if (first.kind === 'primitive' || second.kind === 'primitive') {
-    return (
-      first.kind === 'primitive' && second.kind === 'primitive' && first.value === second.value
-    );
-  }
-  if (first.kind === 'map' && second.kind === 'map') {
-    return (
-      first.entries.length === second.entries.length &&
-      first.entries.every(([key, value]) => {
-        const other = second.entries.find(([candidate]) => sameForm(candidate, key));
-        return other !== undefined && sameForm(other[1], value);
-      })
-    );
-  }
-  const [left, right] = [partsOf(first) ?? [], partsOf(second) ?? []];
-  return (
-    first.kind === second.kind &&
-    sameHead(first, second) &&
-    left.length === right.length &&
-    left.every((part, index) => {
-      const other = right[index];
-      return other !== undefined && sameForm(part, other);
-    })
-  );
-}
+/**
+ * `==` and map keys over forms (§3.8, §3.9), by the rules the runtime's values follow too
+ * (language/values.ts): a map constant's later entry for an equal key replaces the earlier's.
+ * A head's text tells only kinds apart, since a struct's type has none of its own; equal texts
+ * are confirmed by `==`.
+ */
+export const formSemantics = new ValueSemantics<ConstantForm>({
+  shapeOf: (form) => {
+    switch (form.kind) {
+      case 'primitive':
+        return form;
+      case 'map':
+        return { kind: 'map', map: form };
+      default:
+        return { kind: 'composite', parts: partsOf(form) };
+    }
+  },
+  sameHead: (first, second) => {
+    if (first.kind === 'struct' && second.kind === 'struct') {
+      return sameType(first.type, second.type);
+    }
+    if (first.kind === 'function' && second.kind === 'function') {
+      return first.lambda === second.lambda;
+    }
+    return first.kind === second.kind;
+  },
+  headKey: (form) => form.kind,
+});
 
-/** Whether two forms of one kind agree on what isn't a part: a struct's type, a function's lambda. */
-function sameHead(first: ConstantForm, second: ConstantForm): boolean {
-  if (first.kind === 'struct' && second.kind === 'struct') {
-    return sameType(first.type, second.type);
-  }
-  return first.kind === 'function' && second.kind === 'function'
-    ? first.lambda === second.lambda
-    : true;
-}
-
-function partsOf(form: ConstantForm): readonly ConstantForm[] | undefined {
+/** The parts of a form that isn't a primitive or a map, in order. */
+function partsOf(form: ConstantForm): readonly ConstantForm[] {
   switch (form.kind) {
     case 'struct':
       return form.fields;
     case 'tuple':
     case 'array':
       return form.elements;
-    case 'map':
-      return form.entries.flat();
     default:
-      return undefined;
+      return [];
   }
 }

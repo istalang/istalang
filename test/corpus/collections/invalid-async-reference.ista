@@ -1,0 +1,25 @@
+# error: 5307 at 20:15
+# error: 5307 at 21:9
+# error: 5307 at 22:16
+# An element passed by `&` is written back when its call returns, and an async call returns its
+# future before its callee ends, so no element may be passed by `&` to an async function (§3.7),
+# whether written `&`, taken as `&self`, or passed to an async function value.
+
+struct Job { runs: int }
+
+async fn run(self: &Job):
+  self.runs += 1
+
+async fn bump(value: &int):
+  value += 1
+
+async fn main():
+  let counts = [1]
+  let jobs = [Job{runs: 0}]
+  const later: async fn(&int) -> unit = bump
+  await bump(&counts[0])
+  await jobs[0].run()
+  await later(&counts[0])
+  let job = jobs[0]
+  await job.run()
+  jobs[0] = job

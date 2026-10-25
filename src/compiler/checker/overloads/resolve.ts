@@ -22,7 +22,7 @@ import type { CallSite } from '../check.ts';
 import { checkDecidedLambdas } from '../closures/lambda-arguments.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { changeReceiver } from '../rules/places.ts';
+import { changeReceiver, checkReferencedPlaces } from '../rules/places.ts';
 import { type Instantiation, instantiate } from '../traits/conformance.ts';
 import { errorType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -119,6 +119,11 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
     changeReceiver(context, receiver, request.name);
   }
+  checkReferencedPlaces(context, request.arguments, {
+    name: request.name,
+    isAsync: signature.declaration.isAsync,
+    slots: signature.parameters,
+  });
   return substitute(signature.result(), instantiation.substitution);
 }
 

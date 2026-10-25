@@ -20,20 +20,18 @@
 import type { Definition } from '../../definition/definition.ts';
 import { awaitedRegisters } from '../../definition/instructions/flow.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { handleTarget, type Value } from '../../definition/values.ts';
+import { depthOf, handleTarget, type Value } from '../../definition/values.ts';
 import type { FunctionTable } from '../interpreter/function-table.ts';
 import {
   type ActiveFrame,
   type CellStore,
   newFrame,
-  noElementCalls,
   type RegisterContents,
   readRegister,
   resumeAt,
 } from '../interpreter/machine.ts';
 import type { Frame, HeapObject } from '../snapshot/objects.ts';
-import { referencedObjects, type Snapshot } from '../snapshot/snapshot.ts';
-import type { ElementCalls } from '../values/parts.ts';
+import { referencedObjects, type Snapshot, valuesIn } from '../snapshot/snapshot.ts';
 
 /** A Definition as the runtime runs it: loaded, bound to its natives, and named by its hash. */
 export interface LoadedDefinition {
@@ -123,16 +121,35 @@ export class Instance {
     return instance;
   }
 
+  /** How deep the deepest value an execution can reach nests: what a commit would persist. */
+  deepestValue(): number {
+    return this.#reachableObjects()
+      .flatMap(valuesIn)
+      .reduce<number>((deepest, value) => Math.max(deepest, depthOf(value)), 0);
+  }
+
   /** The instance as a snapshot with `status`, holding only what an execution can reach. */
   snapshot(status: Exclude<InstanceStatus, { kind: 'panicked' }>): Snapshot {
     const active = status.kind === 'active';
+    return {
+      ...this.unrun(status),
+      objects: active ? this.#reachableObjects() : [],
+      ready: active ? [...this.#ready] : [],
+    };
+  }
+
+  /**
+   * The instance with `status` and nothing it ran: its name and options, on its Definition. A
+   * panic before the first commit leaves it so.
+   */
+  unrun(status: InstanceStatus): Snapshot {
     return {
       definition: this.loaded.hash,
       instance: this.name,
       status,
       crashEveryAwait: this.crashEveryAwait,
-      objects: active ? this.#reachableObjects() : [],
-      ready: active ? [...this.#ready] : [],
+      objects: [],
+      ready: [],
     };
   }
 
@@ -216,7 +233,7 @@ export class Instance {
   }
 
   /** The next ready execution, moved past its `await` with the value it waited for. */
-  resumeNext(calls: ElementCalls): LiveExecution | undefined {
+  resumeNext(): LiveExecution | undefined {
     const id = this.#ready.shift();
     if (id === undefined) {
       return undefined;
@@ -225,7 +242,7 @@ export class Instance {
     const frame = topFrame(execution);
     const instruction = frame.code.instructions[frame.pc];
     const resolved = (instruction === undefined ? [] : awaitedRegisters(instruction))
-      .map((register) => this.#future(readRegister(frame, register, calls)).state)
+      .map((register) => this.#future(readRegister(frame, register)).state)
       .find((state) => state.kind === 'resolved');
     if (resolved === undefined) {
       throw new Error(`Ready execution ${id} waits on no resolved future.`);
@@ -233,7 +250,7 @@ export class Instance {
     if (instruction?.kind !== 'await') {
       throw new Error(`The runtime doesn't resume a '${instruction?.kind}' yet.`);
     }
-    resumeAt(frame, instruction.dst, resolved.value, calls);
+    resumeAt(frame, instruction.dst, resolved.value);
     return execution;
   }
 
@@ -327,7 +344,7 @@ function waitsOn(execution: LiveExecution, id: number): boolean {
   return (
     instruction !== undefined &&
     awaitedRegisters(instruction).some(
-      (register) => handleTarget(readRegister(frame, register, noElementCalls)) === id,
+      (register) => handleTarget(readRegister(frame, register)) === id,
     )
   );
 }

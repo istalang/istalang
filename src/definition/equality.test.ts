@@ -7,10 +7,17 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { valueArbitrary } from '../../definition/values.test-kit.ts';
-import type { Value } from '../../definition/values.ts';
-import { entryPosition, entryValue, type MapValue, valuesEqual } from './equality.ts';
-import { mapOf, withEntry, withoutEntry } from './maps.ts';
+import {
+  entryPosition,
+  entryValue,
+  type MapValue,
+  mapOf,
+  valuesEqual,
+  withEntry,
+  withoutEntry,
+} from './equality.ts';
+import { nested, valueArbitrary } from './values.test-kit.ts';
+import type { Value } from './values.ts';
 
 const keys = valueArbitrary({ typed: true });
 const entries = fc.array(fc.tuple(keys, valueArbitrary({ typed: true })), { maxLength: 12 });
@@ -75,6 +82,15 @@ describe('maps as values', () => {
         );
       }),
     );
+  });
+
+  it('compare and find keys of any depth', () => {
+    const deep = nested(100_000, 1n);
+    const map = mapOf([[deep, 'found']]);
+    expect(valuesEqual(deep, nested(100_000, 1n))).toBe(true);
+    expect(valuesEqual(deep, nested(100_000, 2n))).toBe(false);
+    expect(entryValue(map, nested(100_000, 1n))).toBe('found');
+    expect(entryValue(map, nested(99_999, 1n))).toBeUndefined();
   });
 
   it('never find a NaN key, and treat -0 and 0 as one key', () => {

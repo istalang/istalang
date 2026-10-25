@@ -5,7 +5,9 @@
  * types). Every call is written by emit-call.ts.
  *
  * An argument written `&x` passes the place `x`; a method's receiver is its first argument,
- * passed as a place when its `self` takes a reference (§3.7), which the `&` left implicit.
+ * passed as a place when its `self` takes a reference (§3.7), which the `&` left implicit. A place
+ * reached through an element or a `x$` is copied in before the call and written back after it
+ * (places.ts).
  *
  * A call the checker resolved no function for is a call of a function value (§3.14): the callee's
  * value is the closure called, and each argument is passed as written, which the checker matched
@@ -20,7 +22,7 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { notLowered } from '../not-lowered.ts';
-import { placeOf } from '../places.ts';
+import { enterReferenced } from '../places.ts';
 import { lowerFieldRead } from './structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
@@ -34,11 +36,14 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
     const at = receiver === undefined ? index : index + 1;
     return argumentOf(context, argument, parameters[at]?.reference === true);
   });
-  return emitCall(context, {
+  const argumentList = receiver === undefined ? passed : [receiver, ...passed];
+  const dst = emitCall(context, {
     span: node.span,
     callee: context.calleeIndex(node),
-    arguments: receiver === undefined ? passed : [receiver, ...passed],
+    arguments: argumentList.map(({ argument }) => argument),
   });
+  leaveAll(argumentList);
+  return dst;
 }
 
 /**
@@ -50,7 +55,7 @@ function receiverOf(
   node: Call,
   resolved: ResolvedCall,
   byReference: boolean,
-): Argument | undefined {
+): PassedArgument | undefined {
   const { receiver } = resolved;
   if (receiver === undefined) {
     return undefined;
@@ -58,7 +63,7 @@ function receiverOf(
   if (context.body.chainOf(node) === undefined) {
     return argumentOf(context, receiver, byReference);
   }
-  return { kind: 'value', register: context.chains.target(context, node) };
+  return { argument: { kind: 'value', register: context.chains.target(context, node) } };
 }
 
 /**
@@ -77,8 +82,9 @@ function lowerValueCall(context: FunctionContext, node: Call): Register {
     span: node.span,
     dst,
     callee: { kind: 'value', register: callee },
-    arguments: argumentList,
+    arguments: argumentList.map(({ argument }) => argument),
   });
+  leaveAll(argumentList);
   return dst;
 }
 
@@ -111,20 +117,40 @@ export function implicitCall(
   return emitCall(context, { span: node.span, callee, arguments: argumentList });
 }
 
+/** An argument as the call passes it, and for a place copied in, how it is written back. */
+interface PassedArgument {
+  readonly argument: Argument;
+  readonly leave?: () => void;
+}
+
 /** How `argument` is passed: the place `&x` names, the receiver's place for a `&self`, or a value. */
 function argumentOf(
   context: FunctionContext,
   argument: Expression | Spread,
   byReference: boolean,
-): Argument {
+): PassedArgument {
   if (argument.kind === 'Spread') {
-    return notLowered(context, argument);
+    return { argument: notLowered(context, argument) };
   }
+  const place = referencedPlace(argument, byReference);
+  if (place === undefined) {
+    return { argument: { kind: 'value', register: context.expression(argument) } };
+  }
+  const { target, leave } = enterReferenced(context, place);
+  return { argument: { kind: 'reference', place: target.place }, leave };
+}
+
+/** The place an argument passes by `&`: written `&x`, or a receiver taken as `&self`. */
+function referencedPlace(argument: Expression, byReference: boolean): Expression | undefined {
   if (argument.kind === 'Reference') {
-    return { kind: 'reference', place: placeOf(context, argument.expression) };
+    return argument.expression;
   }
-  if (byReference) {
-    return { kind: 'reference', place: placeOf(context, argument) };
+  return byReference ? argument : undefined;
+}
+
+/** Writes back what the call's arguments copied in, the last first. */
+function leaveAll(argumentList: readonly PassedArgument[]): void {
+  for (const { leave } of argumentList.toReversed()) {
+    leave?.();
   }
-  return { kind: 'value', register: context.expression(argument) };
 }

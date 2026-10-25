@@ -1,0 +1,45 @@
+# outcome: "[3, 2] 3 1 5 [5, 2] [[0, 9]]"
+# An element passed by `&` is copied in: read with `index` before the call, and written back with
+# `setIndex` when it returns (§3.7). Elements of two containers swap; changes made during the
+# call reach the container only at its end, so a closure sharing the container still sees the old
+# element then. A `x$` place and its elements are copied in the same way (§3.9).
+
+fn swap(first: &int, second: &int):
+  const kept = first
+  first = second
+  second = kept
+
+fn bumpTwice(value: &int):
+  value += 1
+  value += 1
+
+fn setThenPeek(value: &int, peek: fn() -> int) -> int:
+  value = 5
+  peek()
+
+fn show(xs: Array<int>) -> string:
+  "[" + [for x in xs: string(x)].join(", ") + "]"
+
+async fn main() -> Future<string>:
+  let xs = [1, 2]
+  let ys = [3]
+  swap(&xs[0], &ys[0])
+  let counts = ["a": 1]
+  bumpTwice(&counts["a"])
+  let m = ["a": 1]
+  const peek = fn() -> int: m["a"]
+  const seen = setThenPeek(&m["a"], peek)
+  const shared = Shared([1, 2])
+  shared$[0] = 5
+  let grid = [[0, 0]]
+  bumpTwice(&grid[0][1])
+  grid[0][1] += 7
+  const parts = [
+    show(xs),
+    string(counts["a"]),
+    string(seen),
+    string(m["a"]),
+    show(shared$),
+    "[" + [for row in grid: show(row)].join(", ") + "]",
+  ]
+  parts.join(" ")

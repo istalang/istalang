@@ -71,12 +71,6 @@ describe('definition format', () => {
       definition.functions.flatMap((entry) => (entry.kind === 'code' ? [entry] : [])),
     );
     expect(codeEntries.some((entry) => entry.cells.length > 0)).toBe(true);
-    const elementSteps = codeEntries.flatMap((entry) =>
-      entry.instructions.flatMap((each) =>
-        each.kind === 'store' ? each.place.path.filter((step) => step.kind === 'element') : [],
-      ),
-    );
-    expect(elementSteps.length).toBeGreaterThan(0);
   });
 
   it('round-trips any constant pool', () => {

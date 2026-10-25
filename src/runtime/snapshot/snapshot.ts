@@ -182,12 +182,10 @@ function futureTargets(state: FutureState): readonly number[] {
   }
 }
 
-/** A frame's values: what its registers hold, the keys in its references' paths, and its kept list. */
+/** A frame's values: what its registers hold, besides references, and its kept list. */
 function frameValues(frame: Frame): readonly Value[] {
   const inRegisters = frame.registers.flatMap(([, contents]) =>
-    isReference(contents)
-      ? contents.path.flatMap((step) => (step.kind === 'element' ? [step.key] : []))
-      : [contents],
+    isReference(contents) ? [] : [contents],
   );
   return [...inRegisters, ...frame.kept];
 }

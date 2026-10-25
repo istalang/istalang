@@ -12,9 +12,14 @@
  *
  * A handle (a slot, future, shared cell or other heap object) exists only inside a running
  * instance. Constants never contain one; references.ts rejects any that do.
+ *
+ * A value persists only up to `maximumDepth` levels deep (§5): the JSON and zod codecs recurse on
+ * the host's stack. Walks over values in memory keep stacks of their own, so a deeper value lives
+ * within a segment; the runtime refuses to commit one (scheduler/segment.ts).
  */
 
 import { z } from 'zod';
+import type { MapOf } from '../language/values.ts';
 import { functionId, objectId, typeId, variantIndex } from './operands.ts';
 
 const specialFloats = ['NaN', 'Infinity', '-Infinity', '-0'] as const;
@@ -115,7 +120,8 @@ const handle = z.strictObject({
 
 /*
  * The composite shapes, over a child type: `Value` in memory, `ValueOnDisk` on disk. They are
- * interfaces because a recursive type can refer to itself only through one.
+ * interfaces because a recursive type can refer to itself only through one. A map's is the
+ * language's (language/values.ts), whose `==` and map keys every representation shares.
  */
 interface TupleOf<Child> {
   kind: 'tuple';
@@ -135,10 +141,6 @@ interface VariantOf<Child> {
 interface ArrayOf<Child> {
   kind: 'array';
   elements: Child[];
-}
-interface MapOf<Child> {
-  kind: 'map';
-  entries: [Child, Child][];
 }
 interface ClosureOf<Child> {
   kind: 'closure';
@@ -206,6 +208,14 @@ export const value: z.ZodType<Value, ValueOnDisk> = z.union([
   external,
   handle,
 ]);
+
+/** The elements of an array value; anything else is a bug in lowering or loading. */
+export function elementsOf(candidate: Value | undefined): readonly Value[] {
+  if (candidate === undefined || !isComposite(candidate) || candidate.kind !== 'array') {
+    throw new TypeError('Expected an array.');
+  }
+  return candidate.elements;
+}
 
 /** A value that contains other values. */
 export type CompositeValue = Exclude<Value, null | boolean | string | bigint | number>;
@@ -280,15 +290,56 @@ export function withChildValues(
   }
 }
 
-/** The heap objects a value holds handles to, at any depth. */
+/** The heap objects a value holds handles to, at any depth, in the order of its parts. */
 export function handlesIn(contents: Value): readonly number[] {
-  if (!isComposite(contents)) {
-    return [];
+  const handles: number[] = [];
+  const pending: Value[] = [contents];
+  for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+    if (isComposite(next) && next.kind === 'handle') {
+      handles.push(next.object);
+    } else if (isComposite(next)) {
+      pushAll(pending, childValues(next).toReversed());
+    }
   }
-  if (contents.kind === 'handle') {
-    return [contents.object];
+  return handles;
+}
+
+/**
+ * How deep a persisted value may nest: well within what the codecs read and write on the host's
+ * stack (measured: past 600 levels), and deeper than workflow data needs.
+ */
+export const maximumDepth = 256;
+
+/** Each composite's depth, derived once: a value never changes. */
+const depths = new WeakMap<CompositeValue, number>();
+
+/** How deep `candidate` nests: 0 for a primitive, one more than its deepest part for a composite. */
+export function depthOf(candidate: Value): number {
+  if (!isComposite(candidate)) {
+    return 0;
   }
-  return childValues(contents).flatMap(handlesIn);
+  const pending: CompositeValue[] = [candidate];
+  for (let top = pending.at(-1); top !== undefined; top = pending.at(-1)) {
+    const parts = childValues(top).filter(isComposite);
+    const unknown = parts.filter((part) => !depths.has(part));
+    if (unknown.length > 0) {
+      pushAll(pending, unknown);
+    } else {
+      pending.pop();
+      depths.set(
+        top,
+        1 + parts.reduce((deepest, part) => Math.max(deepest, depths.get(part) ?? 0), 0),
+      );
+    }
+  }
+  return depths.get(candidate) ?? 0;
+}
+
+/** Pushes `items` onto `stack` one by one: spreading a long array would overflow the host's stack. */
+function pushAll<Item>(stack: Item[], items: readonly Item[]): void {
+  for (const item of items) {
+    stack.push(item);
+  }
 }
 
 function floatOnDisk(number: number): number | SpecialFloat {

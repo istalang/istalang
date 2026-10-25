@@ -1,0 +1,33 @@
+# error: 5308 at 27:17
+# error: 5308 at 28:23
+# error: 5308 at 29:18
+# error: 5308 at 30:23
+# An element passed by `&` is a copy for its call (§3.7), so no call may take two places of one
+# variable by `&` when either reaches through an element: two elements, two parts of one element,
+# a container and its element, or an element and its own container as `&self`. Places of different
+# variables, and one variable twice without elements, are fine.
+
+struct Point { x: int; y: int }
+
+fn swap(first: &int, second: &int):
+  const kept = first
+  first = second
+  second = kept
+
+fn keep(points: &Array<Point>, x: &int):
+  x = points.length()
+
+fn copyFrom(self: &Point, other: &int):
+  self.x = other
+
+async fn main():
+  let xs = [1, 2]
+  let ys = [3]
+  let points = [Point{x: 1, y: 2}]
+  swap(&xs[0], &xs[1])
+  swap(&points[0].x, &points[0].y)
+  keep(&points, &points[0].x)
+  points[0].copyFrom(&points[0].y)
+  swap(&xs[0], &ys[0])
+  let a = 1
+  swap(&a, &a)

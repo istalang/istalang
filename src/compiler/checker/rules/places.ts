@@ -8,13 +8,18 @@
  *   local, is deeply immutable, so no part of either may change; neither may a pattern's or loop's
  *   binding or an extern constant (§3.6).
  * - A change counts as the root `let` being changed, so it isn't warned about as never reassigned.
- *   A reference also marks its root as referenced, which lowering gives storage a reference can
- *   reach.
+ *   A reference marks its root as referenced, which lowering gives storage a reference can reach,
+ *   and so does an element written, since its `setIndex` takes the container by `&`.
  * - Writing an indexed element (`xs[i] = v`, `&m[k]`, `a[i].b = v`) reads it with the `index`
  *   its indexing resolved and writes it back with `setIndex(&container, key, element)`, found like
  *   an operator's function, so any type with a `setIndex` takes element writes (§3.7, §3.9). Each
  *   indexed step of a changing place records its `setIndex`, and both functions must run at once
  *   (rules/collection-functions.ts).
+ * - An element passed by `&` is copied in before its call and written back when the call returns
+ *   (§3.7). An async call returns its future before its callee ends, so an element can't be passed
+ *   by `&` to an async function. And a copy can't change together with another place of its
+ *   variable, so two places of one variable passed by `&` to one call may not reach through an
+ *   element: keys are known only when the program runs, so any two such places count.
  * - A `$` value is a place too (§3.9): assigning to part of it (`x$.f = v`, `x$ += v`) reads it
  *   with the `unwrap` its `x$` calls and writes it back changed with `rewrap(x, value)`, found as
  *   `x$ = v` finds it and recorded as the `x$`'s write, as an element's `setIndex` is. Passing it,
@@ -29,6 +34,7 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { topLevelCandidates } from '../overloads/candidates.ts';
+import type { Passing } from '../overloads/choice.ts';
 import { implicitCall } from '../overloads/implicit.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -71,7 +77,63 @@ export function changePlace(context: BodyContext, node: Expression, use: PlaceUs
     context.report(checkerDiagnostics.notPlace(node.span, use));
     return false;
   }
-  return requireChangeable(context, root, use) && writesElements(context, node);
+  const passedByReference = use === 'referenced' || reachesElement(node);
+  return requireChangeable(context, root, passedByReference) && writesElements(context, node);
+}
+
+/** What the places a call passes by `&` are checked against: the callee's parameters and kind. */
+export interface ReferencingCallee {
+  readonly name: string;
+  readonly isAsync: boolean;
+  readonly slots: readonly { readonly reference: boolean }[];
+}
+
+/**
+ * Checks the places `written` passes by `&` against copying elements in and out (§3.7): none
+ * reaches through an element when the callee is async, and no two of one variable when either
+ * does.
+ */
+export function checkReferencedPlaces(
+  context: BodyContext,
+  written: readonly { readonly node: Expression; readonly passing: Passing }[],
+  callee: ReferencingCallee,
+): void {
+  const places = written.flatMap((argument, position) => {
+    if (argument.passing === 'value' || callee.slots[position]?.reference !== true) {
+      return [];
+    }
+    return [argument.node.kind === 'Reference' ? argument.node.expression : argument.node];
+  });
+  places.forEach((place, position) => {
+    if (callee.isAsync && reachesElement(place)) {
+      context.report(checkerDiagnostics.elementToAsync(place.span, callee.name));
+    }
+    const variable = rootVariable(context, place);
+    const overlapping = places
+      .slice(0, position)
+      .some(
+        (earlier) =>
+          rootVariable(context, earlier) === variable &&
+          (reachesElement(earlier) || reachesElement(place)),
+      );
+    if (variable !== undefined && overlapping) {
+      context.report(
+        checkerDiagnostics.elementOverlap(place.span, variable.name.text, callee.name),
+      );
+    }
+  });
+}
+
+/** Whether the place `node` names steps through an indexed element. */
+function reachesElement(node: Expression): boolean {
+  return placePath(node).steps.some((step) => step.kind === 'Index');
+}
+
+/** The variable at the root of the place `node`, if a variable stands there. */
+function rootVariable(context: BodyContext, node: Expression): VariableEntity | undefined {
+  const { root } = placePath(node);
+  const entity = root.kind === 'Identifier' ? context.entityOf(root) : undefined;
+  return entity?.kind === 'variable' ? entity : undefined;
 }
 
 /** Makes the `setIndex` call of every indexed step of the place `node`; false after a report. */
@@ -153,8 +215,15 @@ export function immutableKind(owner: VariableOwner): string {
   return owner.kind === 'Parameter' ? 'a parameter' : 'a const';
 }
 
-/** Reports when the variable at the root of a place may not change, else notes the change. */
-function requireChangeable(context: BodyContext, root: Identifier, use: PlaceUse): boolean {
+/**
+ * Reports when the variable at the root of a place may not change, else notes the change, and
+ * that the variable is passed by `&` when it is.
+ */
+function requireChangeable(
+  context: BodyContext,
+  root: Identifier,
+  passedByReference: boolean,
+): boolean {
   const entity = context.entityOf(root);
   if (entity?.kind !== 'variable') {
     return false;
@@ -166,7 +235,7 @@ function requireChangeable(context: BodyContext, root: Identifier, use: PlaceUse
     return false;
   }
   context.variables.noteChanged(entity);
-  if (use === 'referenced') {
+  if (passedByReference) {
     context.variables.noteReferenced(entity);
   }
   return true;

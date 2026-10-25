@@ -44,19 +44,18 @@ Loading refuses code the interpreter couldn't run, so no instruction handler nee
 - a call or `spawn` whose arguments don't match the callee's parameters in number, or in value versus `&`
 - a direct call to a function with captures (it is called through its closure value), and a `spawn` of an extern or of a function with captures or `&` parameters
 - a closure that doesn't carry its function's captures
-- a place whose element steps don't name an `index` taking a container and a key, and a `setIndex` taking `&`container, key and value
 - code that doesn't end in `return`, `jump`, `branch`, `switch` or `select`
 - waiting (`await`, a `select` without `otherwise`, `currentCall`) outside an async function
 
 Release points are explicit. `release` runs at a block's end on every exit path, at a statement's end for temporaries, and for `drop`. `return` releases every register and the kept list. Whatever loses its last holder is disposed in reverse creation order (spec §7). Lowering emits `release` at every block's end and before a `break` or `continue` leaves blocks, for the variables they declared; a function's own body releases nothing, its `return` doing it. Releasing empties registers; counting holders, disposing, `keep`, statement temporaries and `drop` arrive with the disposal slice (§7), and until then no frame has a `kept` list.
 
-A cell register is made a cell by its first write into the empty register, a local's at its declaration's run. A block-end `release` (§7) empties the register, so the next run of the declaration makes a fresh cell, as §3.4 asks of a variable declared in a loop body. A closure's capture of a cell holds the closure's cell as it was captured: making a closure (`closure`, `currentClosure`) captures a cell register's cell and any other register's value, and a call of the closure puts its captures after its parameters as they are, so both sides share the cell (spec §3.14). A live frame reads and writes a cell register, and a reference parameter's register, through the instance's cells, so `move`, `store` and a `call`'s result write the same whatever the register holds; the snapshot stores the register's handle or reference as it is. Lowering lists a variable in `cells` exactly when the checker found it passed by `&` (explicitly, or as a method's `&self`) or found it a `let` a closure captures; a capture of one is listed in the capturing function's `cells` too. A parameter is never a cell: a by-value one is immutable (spec §3.3), and a reference parameter already holds a reference. Natives don't take references yet; the first native that does (a collection's `push`, `setIndex`) brings the write-back.
+A cell register is made a cell by its first write into the empty register, a local's at its declaration's run. A block-end `release` (§7) empties the register, so the next run of the declaration makes a fresh cell, as §3.4 asks of a variable declared in a loop body. A closure's capture of a cell holds the closure's cell as it was captured: making a closure (`closure`, `currentClosure`) captures a cell register's cell and any other register's value, and a call of the closure puts its captures after its parameters as they are, so both sides share the cell (spec §3.14). A live frame reads and writes a cell register, and a reference parameter's register, through the instance's cells, so `move`, `store` and a `call`'s result write the same whatever the register holds; the snapshot stores the register's handle or reference as it is. Lowering lists a variable in `cells` exactly when the checker found it passed by `&` (explicitly, as a method's `&self`, or to the `setIndex` writing one of its elements) or found it a `let` a closure captures; a capture of one is listed in the capturing function's `cells` too, and so is a register an element is copied into when it is passed on by `&` (Places). A parameter is never a cell: a by-value one is immutable (spec §3.3), and a reference parameter already holds a reference. A native taking `&` receives the value, and writes the changed one back through its context (see Externs).
 
 ## Places
 
-A place is a register plus a path of steps: a field, or an element. A tuple element is a field by position, as `field` reads it. An element step carries the key register and the `index`/`setIndex` functions the checker resolved for the container, so `&m["a"]` and `a[k].b = v` work for built-in and user containers alike (spec §3.7). `store` writes a place with a non-empty path; writing an element replaces it through `setIndex`, atomically within the segment. A write that ends at an element never reads it first, since a map may not hold the key yet.
+A place is a register plus a path of field positions. A tuple element is a field by position, as `field` reads it. `store` writes a place with a non-empty path, and a `&` argument passes one; following a path never runs code.
 
-The runtime makes those calls at once, in the middle of the instruction that follows the path: a native directly, and a function of the program on top of the running frame, run until it returns. Neither can wait: the checker refuses an async `index` or `setIndex` for a place, and loading refuses an element step naming one. `setIndex` takes its container by `&`; from inside a place the container is a box, which the callee's frames reach as a cell of their own, and the box holds the changed container when the call returns. Such calls nest at most 200 deep; a program whose own `index` or `setIndex` recurses deeper through a place panics.
+An indexed element is no step of a place, so every call a program makes is a `call` instruction, run on the scheduler's run stack. Lowering copies an element in, reading it with the `index` the checker resolved for its container into a register of its own, changes it there, and writes it back with `setIndex(&container, key, element)` (spec §3.7, §3.9). `a[i].b = v` is therefore `index`, a `store` to the copy, then `setIndex`; `a[i][j] = v` passes the copy of `a[i]` to the inner `setIndex` by `&`, so that copy is a cell; and `f(&m[k])` copies `m[k]` into a cell, calls `f`, then writes the cell's value back. A write that ends at an element is a `setIndex` alone, never reading the element first, since a map may not hold the key yet. Each key is computed once, before any element is read. A `x$` value is copied in the same way, with `unwrap` and `rewrap`. The container a `setIndex` takes by `&` is a cell: the checker records a variable whose element is written as passed by `&`, as `x.push(v)` passing `&x` is.
 
 ## Values
 
@@ -70,6 +69,10 @@ The runtime makes those calls at once, in the middle of the instruction that fol
 | handle | `{kind: 'handle', object}`; never in a constant |
 
 Map entries keep the runtime's order, so a restore iterates the same way.
+
+A persisted value nests at most `maximumDepth` (256) levels (spec §5), since the JSON and zod codecs recurse on the host's stack; a format refuses a body deeper than any valid one before either codec runs. Walks over values in memory (`==`, map keys, handles, depth) keep stacks of their own, so a deeper value lives within a segment, and the runtime panics a segment that would commit one.
+
+The built-in `==` and map keys are `language/values.ts`'s rules, shown the runtime's values by `definition/equality.ts` and compile time's constant forms by the checker, so the two can't disagree.
 
 Values are immutable. A `constant` instruction hands its register the pool's own value, and a bound program, its pool included, is shared by every instance a runtime runs, so nothing may write into a value in place: a write through a place (`store`, `setIndex`) builds the new value along its path, as value semantics (spec §3.1) has it anyway.
 
@@ -143,14 +146,14 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Destructuring `a, b = t`, `const Pair{first} = p`, at any depth (§3.15) | the value once, then `field` reads along each target's path, and a `move` or `store` per target |
 | Tuple element `t.0`, `t.0 = v` (§3.15) | `field` by position; `store` with a field step |
 | Generic functions and types (§3.5) | one entry or type per instantiation |
-| `&x` argument, reference parameter (§3.7) | a place argument; `parameters[i].reference`; `x` is in `cells` |
-| `Shared(v)`, `x$`, `x$ = v`, `x$.f = v` (§3.8, §3.9) | calls to `Shared.from`, `unwrap` and `rewrap`; a field write unwraps, `store`s into a temporary and rewraps |
+| `&x` argument, reference parameter (§3.7) | a place argument; `parameters[i].reference`; `x` is in `cells`; `&m[k]` copies the element into a cell around the call (Places) |
+| `Shared(v)`, `x$`, `x$ = v`, `x$.f = v` (§3.8, §3.9) | calls to `Shared.from`, `unwrap` and `rewrap`; a part write unwraps into a temporary, writes it there and rewraps (Places) |
 | Operators (§3.9) | a `call` to the resolved function |
 | `<`, `<=`, `>`, `>=` (§3.9) | a `compare` call, then `order` |
 | `==`, `!=` (§3.9) | `equal`, plus `not` for `!=` |
 | `not`, `and`, `or` (§3.9) | `not`; `branch` (short-circuit) |
 | `x[k]`, slicing (§3.9) | a call to the resolved `index` |
-| `x[k] = v`, `a[k].b = v`, `x[k] += 1` (§3.9) | `store` to a place with element steps; compound forms call `index` and the operator first |
+| `x[k] = v`, `a[k].b = v`, `x[k] += 1` (§3.9) | a `setIndex` call taking the container by `&`; a deeper write copies each element in with `index` and writes it back with `setIndex` (Places); compound forms call `index` and the operator first |
 | `T(x)` (§3.10) | a call to `T.from` |
 | Trait-constrained calls, `T.zero()` (§3.10) | resolved per instantiation; plain calls |
 | `for x in c` (§3.10, §4) | a call to `iterate`, then a loop over the array it gives: its `length` once, each element by `index`, the position counted with the prelude's int `compare` (then `order`) and `add` |

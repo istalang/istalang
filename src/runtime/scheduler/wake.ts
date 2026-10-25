@@ -53,7 +53,8 @@ export function advance(
       : first;
     if (end.kind === 'panicked') {
       const status = { ...end, segmentStartedAt: startedAt };
-      return stateOf(commit(seams.store, { ...(committed ?? emptySnapshot(instance)), status }));
+      const left = committed === undefined ? instance.unrun(status) : { ...committed, status };
+      return stateOf(commit(seams.store, left));
     }
     committed = commit(seams.store, instance.snapshot(statusOf(end)));
     if (end.kind === 'finished') {
@@ -118,11 +119,6 @@ function commit(store: InstanceStore, snapshot: Snapshot): Snapshot {
   const { text } = snapshotFormat.write(snapshot);
   store.writeSnapshot(snapshot.instance, text);
   return snapshotFormat.read(text);
-}
-
-/** What a panicked instance that never committed is left as: its name and options, on its Definition. */
-function emptySnapshot(instance: Instance): Snapshot {
-  return { ...instance.snapshot({ kind: 'active' }), objects: [], ready: [] };
 }
 
 /** The status a segment that didn't panic leaves its instance in. */

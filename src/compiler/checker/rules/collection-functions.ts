@@ -5,10 +5,11 @@
  *   found like an operator's function, so any type with a `setIndex` takes element writes. A
  *   place's element written (`xs[i] = v`, `&m[k]`) and a map literal's entry of a declared type
  *   (§2: an entry is `c[k] = v`) both make it here.
- * - They run at once: reading and writing a place's element calls `index` and `setIndex` in the
- *   middle of the instruction that follows the place, and a map literal of a declared type is
- *   built by its `default` and `setIndex` before the literal has a value. So none of them may be
- *   async; the runtime's loading refuses such a Definition too.
+ * - They run at once: an element is read with `index` and written back with `setIndex` around the
+ *   change that the statement or call making it needs done there and then, and a map literal of a
+ *   declared type is built by its `default` and `setIndex` before the literal has a value. An
+ *   async one would give a future where a value or a finished write is needed, so none may be
+ *   async.
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';

@@ -2,7 +2,7 @@
 
 Top-level folders are toolchain features. Their layers and contracts are in `docs/arch/architecture.md`.
 
-- `language/`: the language's fixed vocabulary (primitive names, the std modules and declarations the toolchain knows by name). Beneath every layer; it imports nothing.
+- `language/`: the language's fixed vocabulary (primitive names, the std modules and declarations the toolchain knows by name) and its built-in `==` and map keys over any representation of values. Beneath every layer; it imports nothing.
 - `structures/`: kind tables, `memo` and scoped stacks, the generic structures every phase builds on. Beneath every layer; it imports nothing.
 - `text/`: SourceText, Span, LineMap. The foundation; it imports nothing beneath it.
 - `diagnostics/`: the Diagnostic value and `defineDiagnostics`. Each phase declares one catalog; `code-blocks.ts` assigns each phase its block of codes.

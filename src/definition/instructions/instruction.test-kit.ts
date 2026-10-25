@@ -35,24 +35,8 @@ export const index = (count: number) => fc.nat({ max: count - 1 });
 export const span = fc.record({ start: fc.nat({ max: 500 }), end: fc.nat({ max: 500 }) });
 
 function place(scope: Scope, minLength: number): fc.Arbitrary<Place> {
-  const register = index(scope.registers);
-  const runsAtOnce = (fn: FunctionDefinition) => fn.kind !== 'code' || !fn.async;
-  const read = pick(scope.signatures, (fn) => fn.parameters.length === 2 && runsAtOnce(fn));
-  const write = pick(
-    scope.signatures,
-    (fn) => fn.parameters.length === 3 && takesReference(fn, 0) && runsAtOnce(fn),
-  );
-  const field = fc.nat({ max: 4 }).map((at) => ({ kind: 'field' as const, index: at }));
-  const step =
-    read === undefined || write === undefined
-      ? field
-      : fc.oneof(
-          field,
-          fc
-            .record({ key: register, read, write })
-            .map((parts) => ({ kind: 'element' as const, ...parts })),
-        );
-  return fc.record({ register, path: fc.array(step, { minLength, maxLength: 2 }) });
+  const path = fc.array(fc.nat({ max: 4 }), { minLength, maxLength: 2 });
+  return fc.record({ register: index(scope.registers), path });
 }
 
 /** Arguments that fit `callee`'s parameters. */

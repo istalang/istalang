@@ -35,6 +35,22 @@ export function decodeJson(text: string): unknown {
   return parse(text, null, decodeNumber);
 }
 
+/** How deep a JSON-shaped value nests, each array and object a level; walked with a stack of its own. */
+export function jsonDepth(value: unknown): number {
+  let deepest = 0;
+  const pending: (readonly [unknown, number])[] = [[value, 0]];
+  for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+    const [item, depth] = next;
+    if (item !== null && typeof item === 'object') {
+      deepest = Math.max(deepest, depth + 1);
+      for (const child of Object.values(item)) {
+        pending.push([child, depth + 1]);
+      }
+    }
+  }
+  return deepest;
+}
+
 /** The SHA-256 of a canonical text, as lowercase hex: the identity a store keys content by. */
 export function contentHash(text: string): string {
   return createHash('sha256').update(text).digest('hex');

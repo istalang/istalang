@@ -8,10 +8,10 @@
  * one throws a TypeError rather than panicking.
  */
 
+import type { MapValue } from '../definition/equality.ts';
 import { childValues, isComposite, type Value } from '../definition/values.ts';
 import { optionalVariants } from '../language/well-known.ts';
 import type { NativeContext } from '../runtime/natives.ts';
-import type { MapValue } from '../runtime/values/equality.ts';
 
 interface ArgumentTypes {
   readonly bigint: bigint;
@@ -59,14 +59,6 @@ export function resultStruct(context: NativeContext, fields: Value[]): Value {
     throw new TypeError(`${entry.name} doesn't return a struct.`);
   }
   return { kind: 'struct', type: entry.result.type, fields };
-}
-
-/** The elements of an array argument. */
-export function elementsOf(value: Value | undefined): readonly Value[] {
-  if (value === undefined || !isComposite(value) || value.kind !== 'array') {
-    throw new TypeError('Expected an array.');
-  }
-  return value.elements;
 }
 
 export function arrayOf(elements: readonly Value[]): Value {

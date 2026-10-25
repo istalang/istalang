@@ -19,9 +19,9 @@
  */
 
 /**
- * Beneath every other layer: the language's fixed vocabulary (`language/`), and the generic
- * structures every phase builds on (`structures/`: kind tables, memo, scoped stacks). Both import
- * nothing.
+ * Beneath every other layer: the language's fixed vocabulary and its `==` (`language/`), and the
+ * generic structures every phase builds on (`structures/`: kind tables, memo, scoped stacks). Both
+ * import nothing.
  */
 const foundation = ['structures', 'language'];
 

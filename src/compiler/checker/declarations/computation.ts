@@ -22,7 +22,7 @@ import type {
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant } from '../check.ts';
-import { type ConstantForm, durationForm, sameForm } from '../constant-form.ts';
+import { type ConstantForm, durationForm, formSemantics } from '../constant-form.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 
 /**
@@ -186,15 +186,15 @@ class Computation {
     if (this.#scope.checked.collectionFormOf(node) !== 'map') {
       return refused(node);
     }
-    const pairs: ConstantForm[] = [];
+    const pairs: (readonly [ConstantForm, ConstantForm])[] = [];
     for (const entry of node.entries) {
       const part = this.#entry(entry);
       if (part.kind !== 'computed') {
         return part;
       }
-      pairs.push(...itemsOf(part.form));
+      pairs.push(...itemsOf(part.form).flatMap(pairOf));
     }
-    return computed({ kind: 'map', entries: pairs.reduce(withPair, []) });
+    return computed(formSemantics.mapOf(pairs));
   }
 
   /** What one entry of a map literal adds: something whose items are `(key, value)` tuples. */
@@ -241,17 +241,10 @@ function itemsOf(form: ConstantForm): readonly ConstantForm[] {
   }
 }
 
-/** `entries` with the `(key, value)` tuple `pair` set: an equal key's value is replaced (§2). */
-function withPair(
-  entries: readonly (readonly [ConstantForm, ConstantForm])[],
-  pair: ConstantForm,
-): (readonly [ConstantForm, ConstantForm])[] {
-  const [key, value] = pair.kind === 'tuple' ? pair.elements : [];
-  if (key === undefined || value === undefined) {
-    return [...entries];
-  }
-  const position = entries.findIndex(([other]) => sameForm(other, key));
-  return position < 0 ? [...entries, [key, value]] : entries.with(position, [key, value]);
+/** The key and value of a `(key, value)` tuple, a map literal's item. */
+function pairOf(item: ConstantForm): (readonly [ConstantForm, ConstantForm])[] {
+  const [key, value] = item.kind === 'tuple' ? item.elements : [];
+  return key === undefined || value === undefined ? [] : [[key, value]];
 }
 
 function computed(form: ConstantForm): Outcome {

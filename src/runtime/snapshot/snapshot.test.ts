@@ -1,7 +1,8 @@
 /**
  * The snapshot format: a realistic snapshot (§12.3 stopped at its await) and random heaps
  * survive a round trip with a key-order-independent hash, and a snapshot whose ids dangle or
- * don't ascend is refused.
+ * don't ascend is refused. A value as deep as an instance may persist round-trips; a body deeper
+ * than any valid one is refused both ways, before the codecs recurse.
  */
 
 import fc from 'fast-check';
@@ -16,7 +17,9 @@ import { exactJson, looseText } from '../../definition/codec.test-kit.ts';
 import { decodeJson } from '../../definition/codec.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { type EditableText, editedText, refusalOf } from '../../definition/format.test-kit.ts';
-import { valueArbitrary } from '../../definition/values.test-kit.ts';
+import { FormatError } from '../../definition/format.ts';
+import { nested, valueArbitrary } from '../../definition/values.test-kit.ts';
+import { maximumDepth, type Value } from '../../definition/values.ts';
 import type { HeapObject } from './objects.ts';
 import { type Snapshot, snapshotFormat } from './snapshot.ts';
 
@@ -64,18 +67,7 @@ function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
   const reference = fc.record({
     kind: fc.constant('reference' as const),
     cell: id,
-    path: fc.array(
-      fc.oneof(
-        fc.record({ kind: fc.constant('field' as const), index: fc.nat({ max: 5 }) }),
-        fc.record({
-          kind: fc.constant('element' as const),
-          key: value,
-          read: fc.nat({ max: 9 }),
-          write: fc.nat({ max: 9 }),
-        }),
-      ),
-      { maxLength: 3 },
-    ),
+    path: fc.array(fc.nat({ max: 5 }), { maxLength: 3 }),
   });
   const frame = fc.record({
     function: fc.nat({ max: 9 }),
@@ -224,5 +216,42 @@ describe('snapshot format', () => {
     const message = refusalOf(snapshotFormat, editedSnapshot(edit));
     expect(message).toContain(problem);
     expect(message).toContain(where);
+  });
+});
+
+/** A snapshot whose one object is a cell holding `contents`. */
+function holding(contents: Value): Snapshot {
+  return {
+    definition: broadcastWaiting.definition,
+    instance: 'deep',
+    status: { kind: 'active' },
+    crashEveryAwait: false,
+    objects: [{ kind: 'cell', id: 0, type: 0, value: contents }],
+    ready: [],
+  };
+}
+
+/** Maps of one entry, `depth` deep: the kind taking the most levels on disk per level of its own. */
+function nestedMaps(depth: number): Value {
+  let current: Value = 1n;
+  for (let level = 0; level < depth; level += 1) {
+    current = { kind: 'map', entries: [[1n, current]] };
+  }
+  return current;
+}
+
+describe('snapshot depth', () => {
+  it('round-trips a value as deep as an instance may persist', () => {
+    const snapshot = holding(nestedMaps(maximumDepth));
+    expect(snapshotFormat.read(snapshotFormat.write(snapshot).text)).toEqual(snapshot);
+  });
+
+  it('refuses a body deeper than any valid one, written or read', () => {
+    const tooDeep = nested(2 * maximumDepth, 1n);
+    expect(() => snapshotFormat.write(holding(tooDeep))).toThrow(FormatError);
+    const text = editedText(snapshotFormat, holding(1n), (json) => {
+      objectsOf(json).splice(0, 1, { kind: 'cell', id: 0, type: 0, value: tooDeep });
+    });
+    expect(refusalOf(snapshotFormat, text)).toContain('nests deeper than');
   });
 });

@@ -103,11 +103,7 @@ function argumentOperands(argument: Argument): Partial<Operands> {
 }
 
 function placeOperands(place: Place): Partial<Operands> {
-  const elements = place.path.flatMap((step) => (step.kind === 'element' ? [step] : []));
-  return {
-    registers: [place.register, ...elements.map((step) => step.key)],
-    functions: elements.flatMap((step) => [step.read, step.write]),
-  };
+  return { registers: [place.register] };
 }
 
 function merge(...parts: readonly Partial<Operands>[]): Operands {

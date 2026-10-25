@@ -1,0 +1,14 @@
+# panic: A value nests 6002 levels deep, deeper than the 256 an instance can persist.
+# A value lives at any depth within a segment, but every await commits what the instance holds,
+# and a persisted value nests at most 256 levels: committing a deeper one panics instead (§5).
+import * as runtime from 'runtime'
+
+struct Tree { children: Array<Tree> }
+
+async fn main() -> Future<int>:
+  let tree = Tree{children: []}
+  for _ in 0..3000:
+    tree = Tree{children: [tree]}
+  const same = tree == tree
+  await runtime.commit()
+  tree.children.length()
