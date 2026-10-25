@@ -14,7 +14,7 @@ import type { FunctionDeclaration, TypeParameter } from '../../syntax/declaratio
 import type { CallSite, FunctionCall, ResolvedCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { typeParametersOf } from '../declarations/resolve-type.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type ParameterKey, parametersIn, type Type } from '../types/type.ts';
 
 interface Edge {

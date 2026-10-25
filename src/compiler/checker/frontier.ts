@@ -9,17 +9,14 @@ export const frontier = {
   heldByFunction: 'A variable held by the function',
   elementAssignment: 'Assigning to an element',
   elementReference: 'Passing an element by reference',
-  unwrapPart: "Changing a part of a value through '$'",
+  unwrapPart: "Passing a '$' value, or part of one, by reference",
+  sharedValueField: "Reading a 'Shared' value as '.value' (write '$')",
   heldFuture: 'A future that is neither awaited nor returned',
   hostExtern: 'Calling an extern function the host implements',
-  staticMember: 'A static member',
-  functionValue: 'A function value',
   externConstant: 'An extern constant',
-  functionValueCall: 'Calling a function value',
   spreadArgument: 'A spread argument',
   restParameter: 'Rest parameter',
   dropVariable: 'Dropping a variable',
-  sharedValue: "A 'Shared' value",
 } as const;
 
 /** A construct `frontier` names. */

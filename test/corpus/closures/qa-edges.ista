@@ -1,0 +1,62 @@
+# outcome: "2 10 66 33 10 6-1 6 1 02"
+# QA edges of §3.14: captured parameters, `return` in a lambda, destructured and loop `let`s, named
+# lambdas, `?.` on a function field, async lambdas, and shadowing a captured name.
+struct Op { run: fn(int) -> int; tag: string }
+
+fn param(n: int) -> fn() -> int:
+  fn(): n + 1
+
+fn early() -> int:
+  const f = fn(x: int) -> int: {
+    if x > 1: return 10
+    x
+  }
+  f(5) + f(0)
+
+fn destructured() -> int:
+  let a, b = (1, 2)
+  const f = fn(): { a += 10; b += 20; a + b }
+  f() + a + b
+
+fn rangeLoop() -> string:
+  let made: Array<fn() -> int> = []
+  for i in 0..3:
+    let k = i
+    made.push(fn(): { k += 1; k })
+  const ignored = made[0]() + made[0]() + made[1]()
+  string(made[0]()) + string(made[2]())
+
+fn named() -> int:
+  const f = fn g(n: int) -> int: if n == 0: 0 else: n + g(n - 1)
+  f(4)
+
+fn opt(o: Op?) -> int?: o?.run(3)
+
+async fn asyncLam() -> Future<int>:
+  let c = 1
+  const f = async fn(x: int): { c += x; c }
+  const r = await f(2)
+  r + c
+
+fn shadow() -> int:
+  let x = 1
+  x += 0
+  const f = fn(): x
+  if true:
+    let x = 50
+    x += 1
+  f()
+
+fn whileFresh() -> string:
+  let fs: Array<fn() -> int> = []
+  let i = 0
+  while i < 3:
+    const j = i
+    fs.push(fn(): j)
+    i += 1
+  string(fs[0]()) + string(fs[2]())
+
+async fn main():
+  const o = Op{run: fn(n): n * 2, tag: "t"}
+  const none1: Op? = none
+  string(param(1)()) + " " + string(early()) + " " + string(destructured()) + " " + rangeLoop() + " " + string(named()) + " " + string(opt(o) ?? -1) + string(opt(none1) ?? -1) + " " + string(await asyncLam()) + " " + string(shadow()) + " " + whileFresh()

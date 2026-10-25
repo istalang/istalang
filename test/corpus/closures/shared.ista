@@ -1,0 +1,28 @@
+# outcome: "Ares K a@x | 12 | true false | 3"
+# A Shared value is a handle (§3.8): every copy reads and writes one value through `$`. Writing
+# a part, `u$.name = v`, reads the value, changes it, and writes it back (§3.9); a compound
+# assignment does the same. Handles compare by identity. A closure's captured `let` lives in a
+# Shared cell of its own, but a Shared value captured by a `const` is still one handle (§3.14).
+
+struct User { name: string; email: string }
+
+struct Pair { first: int; second: int }
+
+fn rename(user: Shared<User>, name: string):
+  user$.name = name
+
+async fn main():
+  const u = Shared(User{name: "Ares", email: "a@x"})
+  const alias = u
+  rename(alias, "Ares K")
+  const shown = u$.name + " " + u$.email
+  const counts = Shared(Pair{first: 1, second: 2})
+  counts$.first += 9
+  counts$ = Pair{...counts$, second: counts$.second}
+  const total = counts$.first + counts$.second
+  const other = Shared(User{name: "Ares K", email: "a@x"})
+  const same = string(alias == u) + " " + string(other == u)
+  const tally = Shared(0)
+  const bump = fn(): { tally$ += 1; tally$ }
+  const ignored = bump() + bump()
+  shown + " | " + string(total) + " | " + same + " | " + string(bump())

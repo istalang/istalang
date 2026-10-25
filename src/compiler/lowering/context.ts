@@ -15,7 +15,8 @@ import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CallSite, CheckedBody, Checker, ImplicitRole } from '../checker/check.ts';
 import type { ModuleId } from '../program/program.ts';
-import type { Expression } from '../syntax/expressions.ts';
+import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { Expression, Lambda } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { CodeWriter } from './code-writer.ts';
@@ -39,6 +40,8 @@ export interface FunctionContext {
   readonly calleeIndex: (site: CallSite) => FunctionId;
   /** The function-table entry of the call the checker made for `node` in `role`. */
   readonly implicitCallee: (node: NodeOf<string>, role: ImplicitRole) => FunctionId;
+  /** The function-table entry of a lambda or local function in this body (§3.14). */
+  readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
   /** A fresh register holding the constant `value`. */
   readonly constant: (value: Value, span: Span) => Register;
   /** The function's code: registers, instructions and labels. */

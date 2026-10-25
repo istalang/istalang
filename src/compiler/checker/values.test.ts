@@ -10,7 +10,7 @@ import { reportedNothing, reportedOnce } from '../../diagnostics/diagnostic.test
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../compile.test-kit.ts';
 import { inFunction, reported } from './check.test-kit.ts';
-import { checkerDiagnostics as reports } from './diagnostics.ts';
+import { checkerDiagnostics as reports } from './diagnostics/index.ts';
 
 const pair = 'struct Pair { first: int; second: int }';
 const apartFromChanging = /apart from the names that change/u;
@@ -92,7 +92,6 @@ describe('values accept', () => {
       'methods by value and by reference',
       'let p = Point{x: 1, y: 2}\np.grow(1)\nconst total = p.sum()',
     ],
-    ['a by-value parameter changed as the callee’s own copy', 'n += 1\nconst k = n'],
     ['parenthesized targets', 'let x = 0\n(x) = 1\nlet y = 0\n((y, _)) = (3, 4)'],
   ])('%s', (_case, body) => {
     expect(reported(inProgram(body))).toEqual(reportedNothing);

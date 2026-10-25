@@ -13,7 +13,15 @@ import { childValues, isComposite, type Value } from '../../definition/values.ts
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { valuesEqual } from '../values/equality.ts';
 import { mapOf } from '../values/maps.ts';
-import { type ActiveFrame, type Machine, readRegister, storeAt, writeRegister } from './machine.ts';
+import {
+  type ActiveFrame,
+  capturedContents,
+  currentClosure,
+  type Machine,
+  readRegister,
+  storeAt,
+  writeRegister,
+} from './machine.ts';
 
 const notRunYet = (_machine: Machine, instruction: Instruction): void => {
   throw new Error(`The runtime doesn't run '${instruction.kind}' instructions yet.`);
@@ -103,11 +111,16 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     machine.await(frame, instruction.future);
   },
   call: (machine, instruction, frame) => {
-    if (instruction.callee.kind !== 'function') {
-      notRunYet(machine, instruction);
+    const { callee } = instruction;
+    if (callee.kind === 'function') {
+      machine.call(frame, callee.function, instruction.arguments);
       return;
     }
-    machine.call(frame, instruction.callee.function, instruction.arguments);
+    const closure = readRegister(frame, callee.register, machine);
+    if (!isComposite(closure) || closure.kind !== 'closure') {
+      throw new TypeError(`A non-function was called at pc ${frame.pc}; the checker forbids it.`);
+    }
+    machine.call(frame, closure.function, instruction.arguments, closure.captures);
   },
   array: (machine, instruction, frame) => {
     next(machine, frame, instruction.dst, {
@@ -129,12 +142,25 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     });
     next(machine, frame, instruction.dst, mapOf(entries));
   },
-  closure: notRunYet,
-  currentClosure: notRunYet,
+  closure: (machine, instruction, frame) => {
+    next(machine, frame, instruction.dst, {
+      kind: 'closure',
+      function: instruction.function,
+      captures: instruction.captures.map((register) => capturedContents(frame, register)),
+    });
+  },
+  currentClosure: (machine, instruction, frame) => {
+    next(machine, frame, instruction.dst, currentClosure(frame));
+  },
   spawn: notRunYet,
   currentCall: notRunYet,
   select: notRunYet,
-  release: notRunYet,
+  release: (_machine, instruction, frame) => {
+    for (const register of instruction.registers) {
+      frame.registers[register] = undefined;
+    }
+    frame.pc += 1;
+  },
   keep: notRunYet,
   defer: notRunYet,
 };

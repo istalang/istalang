@@ -141,8 +141,9 @@ describe('lowering', () => {
         '  let passed = start',
         '  bump(&passed)',
         '  kept = passed',
-        '  bump(&start)',
-        '  kept + start',
+        '  let again = start',
+        '  bump(&again)',
+        '  kept + again',
         'async fn main(): twice(1)',
       ].join('\n'),
     });
@@ -151,7 +152,7 @@ describe('lowering', () => {
     const cells = twice?.kind === 'code' ? twice.cells : [];
     const shared = cells.map((cell) => definition.types[cell.type]);
     expect(cells).toHaveLength(2);
-    expect(cells[0]?.register).toBe(0);
+    expect(cells.map((cell) => cell.register)).not.toContain(0);
     expect(shared.map((type) => type?.kind === 'extern' && type.name)).toEqual([
       'prelude.Shared',
       'prelude.Shared',

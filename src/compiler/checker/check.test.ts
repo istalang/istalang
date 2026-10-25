@@ -20,7 +20,7 @@ import { diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import { inFunction, reported } from './check.test-kit.ts';
 import { checkProgram } from './check.ts';
-import { checkerDiagnostics as reports } from './diagnostics.ts';
+import { checkerDiagnostics as reports } from './diagnostics/index.ts';
 
 const corpusTexts = runPrograms.map((program) => program.text);
 
@@ -45,7 +45,7 @@ describe('checking reports', () => {
     ['a missing field', 'Point{x: 1}', reports.missingField, 'Point'],
     ['reading a field the struct lacks', 'Point{x: 1, y: 2}.z', reports.unknownField, 'z'],
     ['a trait used as a type', 'const x: Comparable = 1', reports.notType, 'Comparable'],
-    ['a construct not supported yet', 'fn(x: int): x', reports.notSupportedYet, 'fn(x: int): x'],
+    ['a construct not supported yet', 'defer fn(): 1', reports.notSupportedYet, 'defer fn(): 1'],
   ])('%s', (_case, body, report, spanText) => {
     expect(reported(`${inFunction(body)}\nfn f() -> int: 1\n`)).toEqual(
       reportedOnce(report.code, spanText),
@@ -203,7 +203,6 @@ describe('checking accepts', () => {
   it.each([
     ['the subset program', subsetSource],
     ...corpusTexts.map((text, index) => [`run corpus program ${index}`, text]),
-    ['a parameter reassigned', 'fn f(n: int) -> int:\n  n = n + 1\n  n'],
     [
       'never wherever a value is expected',
       'fn f(c: bool) -> int:\n  const x: int = if c: 1 else: panic("x")\n  x',

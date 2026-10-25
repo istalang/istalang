@@ -32,7 +32,7 @@ import type {
 import type { Invalid } from '../../syntax/node.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { staticCandidates } from '../overloads/candidates.ts';
 import { implicitCall, preludeCandidates } from '../overloads/implicit.ts';
 import { operatorFunctions } from '../overloads/operators.ts';

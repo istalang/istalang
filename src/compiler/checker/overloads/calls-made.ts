@@ -9,7 +9,7 @@
  */
 
 import type { FunctionCall, ResolvedCall } from '../check.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import type { UseSite } from '../use-site.ts';
 import type { Candidate } from './candidates.ts';

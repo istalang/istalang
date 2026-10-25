@@ -8,7 +8,7 @@
 
 import type { Tuple, TupleElement } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 

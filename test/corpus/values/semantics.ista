@@ -1,6 +1,6 @@
 # outcome: "1 9 | 100 1 | 5 | 3 | 11 | 1 2 | 2 1 | 2"
 # Value semantics and references (§3.1, §3.4, §3.7): a copy changes alone, a by-value parameter
-# is the callee's own copy, and only `&` (explicit, or implicit for a method's `&self`) changes
+# copied into a `let` changes only the callee's copy, and only `&` (explicit, or implicit for a method's `&self`) changes
 # the caller's place: a variable, a field of one, or a tuple element. A copy of a top-level
 # constant changes without changing the constant.
 
@@ -11,8 +11,9 @@ struct Box { point: Point; label: string }
 const origin = Point{x: 1, y: 1}
 
 fn movedCopy(p: Point) -> int:
-  p.x = 100
-  p.x
+  let own = p
+  own.x = 100
+  own.x
 
 fn moveTo(p: &Point, x: int):
   p.x = x

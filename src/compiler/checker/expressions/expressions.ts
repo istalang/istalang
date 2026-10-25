@@ -9,6 +9,7 @@
 
 import type { Handlers } from '../../../structures/kind-table.ts';
 import type { Expression, Reference } from '../../syntax/expressions.ts';
+import { checkLambda } from '../closures/lambdas.ts';
 import type { BodyContext } from '../context.ts';
 import { boolType, errorType, floatType, intType, stringType, type Type } from '../types/type.ts';
 import { unsupportedHandler as unsupported } from '../unsupported.ts';
@@ -62,7 +63,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   MapLiteral: checkMapLiteral,
   Comprehension: checkComprehension,
   Tuple: checkTuple,
-  Lambda: unsupported,
+  Lambda: checkLambda,
   Reference: misplacedReference,
   Index: checkIndex,
   Propagate: checkPropagate,

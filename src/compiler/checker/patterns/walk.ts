@@ -27,7 +27,7 @@ import type {
   StructPattern,
 } from '../../syntax/patterns.ts';
 import type { PatternTest, TargetBinding } from '../check.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import {

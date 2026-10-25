@@ -9,13 +9,14 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { memo } from '../../structures/memo.ts';
-import type { Bindings } from '../binder/entities.ts';
+import type { Bindings, VariableEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
   Comprehension,
   Expression,
+  Lambda,
   MapLiteral,
   Parameter,
   Spread,
@@ -26,13 +27,30 @@ import type { CompareFieldPattern, Pattern } from '../syntax/patterns.ts';
 import type { Assignment, For, VariableDeclaration } from '../syntax/statements.ts';
 import type { ConstantForm } from './constant-form.ts';
 import { ProgramChecker } from './program-checker.ts';
-import type { FieldMember, NominalType, Type } from './types/type.ts';
+import type { FieldMember, FunctionType, NominalType, Type } from './types/type.ts';
 
 /** A parameter of a declared function, with its resolved type. */
 export interface SignatureParameter {
   readonly node: Parameter;
   readonly type: Type;
   readonly reference: boolean;
+}
+
+/**
+ * A lambda or local function as checked (§3.14): its type, the parameters its slots are declared
+ * as, in order, and what it captures in the order first used. Lowering makes it a function-table
+ * entry of its own.
+ */
+export interface CheckedFunction {
+  readonly type: FunctionType;
+  readonly parameters: readonly Parameter[];
+  readonly captures: readonly CapturedVariable[];
+}
+
+/** A variable a closure captures, with its type. */
+export interface CapturedVariable {
+  readonly entity: VariableEntity;
+  readonly type: Type;
 }
 
 /** A variant of an enum type, its fields substituted for the type's arguments. */
@@ -180,6 +198,8 @@ export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCa
  * calls `unwrap`, indexing, which calls `index`, an assignment, whose compound operator or
  * `x$ = v` calls a function, a pattern's comparison such as `amount > 1000`, which calls `compare`
  * (§3.11), and an `Error` literal that leaves out `trace`, which calls the extern writing it (§3.12).
+ * A function named as a value (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the expression
+ * naming it, for the function its closure runs.
  */
 export type CallSite = NodeOf<
   | 'Call'
@@ -190,6 +210,8 @@ export type CallSite = NodeOf<
   | 'Index'
   | 'CompareFieldPattern'
   | 'StructLiteral'
+  | 'Identifier'
+  | 'MemberAccess'
 >;
 
 /** A construct that runs over an iterable (§3.10): a `for`, a comprehension, or a spread. */
@@ -210,7 +232,10 @@ export type ImplicitRole =
   | 'compare'
   /** Counting a loop's index up, or `..=` storing its end plus one. */
   | 'add'
-  /** Writing an element of a place with `setIndex` (§3.9). */
+  /**
+   * Writing a part of a place back: an element with `setIndex` (§3.9), or the value `x$` read,
+   * changed, with `rewrap` (§3.8).
+   */
   | 'write'
   /** The `default()` a map literal of a type other than `Map` starts from (§2). */
   | 'default'
@@ -224,7 +249,7 @@ export type CollectionForm = 'array' | 'map' | 'declared';
 export interface CheckedBody {
   /** The type of an expression of this body; the error type for one never checked. */
   readonly typeOf: (expression: Expression) => Type;
-  /** The function each call site of this body calls. */
+  /** The function each call site of this body calls, or each function value names. */
   readonly calls: ReadonlyMap<CallSite, ResolvedCall>;
   /**
    * A call the language makes for the construct `node`, in `role`, with no call written for it
@@ -239,8 +264,13 @@ export interface CheckedBody {
   readonly targetsOf: (owner: TargetOwner) => readonly TargetBinding[];
   /** Where an assignment's value goes: each place written, with its part of the value. */
   readonly assignedOf: (assignment: Assignment) => readonly AssignedPart[];
-  /** Whether the variable `name` declares is passed by `&` anywhere in the body (§3.7). */
-  readonly isReferenced: (name: Identifier) => boolean;
+  /**
+   * Whether the variable `name` declares lives in a cell: passed by `&` anywhere in the body
+   * (§3.7), or a `let` a closure captures (§3.14).
+   */
+  readonly inCell: (name: Identifier) => boolean;
+  /** A lambda or local function of this body, as checked. */
+  readonly functionOf: (node: Lambda | FunctionDeclaration) => CheckedFunction | undefined;
   /**
    * Where each field of a struct literal gets its value, in declaration order; undefined for a
    * literal the checker found a mistake in.
@@ -269,7 +299,8 @@ export interface Checker {
   readonly bindings: Bindings;
   /** Every diagnostic of checking `module`, which checks all of its declarations. */
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];
-  readonly moduleOf: (declaration: Declaration) => ModuleId;
+  /** The module whose item `declaration` is, a top-level constant's among them. */
+  readonly moduleOf: (declaration: Declaration | VariableDeclaration) => ModuleId;
   readonly parametersOf: (declaration: FunctionDeclaration) => readonly SignatureParameter[];
   /** What calling the function yields: `Future<T>` for an async one. */
   readonly resultOf: (declaration: FunctionDeclaration) => Type;
@@ -282,6 +313,8 @@ export interface Checker {
   readonly defaultsOf: (declaration: FunctionDeclaration) => CheckedBody | undefined;
   /** The checked top-level constant `declaration` declares (§3); undefined for any other variable. */
   readonly constantOf: (declaration: VariableDeclaration) => CheckedConstant | undefined;
+  /** The checking of a top-level constant's initializer, which lowers its lambdas (§3.14). */
+  readonly constantBodyOf: (declaration: VariableDeclaration) => CheckedBody | undefined;
   /** The checked top-level constant `name` denotes in `module`; undefined when it denotes anything else. */
   readonly constantNamed: (module: ModuleId, name: Identifier) => CheckedConstant | undefined;
   /**

@@ -5,11 +5,14 @@
  * which the checker's own modules import.
  */
 
+import type { Lambda } from '../syntax/expressions.ts';
+import type { VariableDeclaration } from '../syntax/statements.ts';
 import { type NominalType, type StructValueType, sameType } from './types/type.ts';
 
 /**
  * A primitive (`unit` is `null`), a struct of a struct type with its fields in declaration order,
- * a tuple, an array, or a map with its entries in order and no two keys equal.
+ * a tuple, an array, a map with its entries in order and no two keys equal, or a lambda that
+ * captures nothing (§3.14), with the constant whose value checked it (`Checker.constantBodyOf`).
  */
 export type ConstantForm =
   | { readonly kind: 'primitive'; readonly value: null | boolean | string | bigint | number }
@@ -20,7 +23,8 @@ export type ConstantForm =
     }
   | { readonly kind: 'tuple'; readonly elements: readonly ConstantForm[] }
   | { readonly kind: 'array'; readonly elements: readonly ConstantForm[] }
-  | { readonly kind: 'map'; readonly entries: readonly (readonly [ConstantForm, ConstantForm])[] };
+  | { readonly kind: 'map'; readonly entries: readonly (readonly [ConstantForm, ConstantForm])[] }
+  | { readonly kind: 'function'; readonly lambda: Lambda; readonly constant: VariableDeclaration };
 
 /** What a duration literal is (§2): a `time.Duration`, whose one field is its milliseconds. */
 export function durationForm(type: NominalType, milliseconds: bigint): ConstantForm {
@@ -65,10 +69,13 @@ export function sameForm(first: ConstantForm, second: ConstantForm): boolean {
   );
 }
 
-/** Whether two forms of one kind agree on what isn't a part: a struct's type. */
+/** Whether two forms of one kind agree on what isn't a part: a struct's type, a function's lambda. */
 function sameHead(first: ConstantForm, second: ConstantForm): boolean {
-  return first.kind === 'struct' && second.kind === 'struct'
-    ? sameType(first.type, second.type)
+  if (first.kind === 'struct' && second.kind === 'struct') {
+    return sameType(first.type, second.type);
+  }
+  return first.kind === 'function' && second.kind === 'function'
+    ? first.lambda === second.lambda
     : true;
 }
 

@@ -16,3 +16,8 @@ export interface Span {
 export function textOf(source: SourceText, span: Span): string {
   return source.text.slice(span.start, span.end);
 }
+
+/** Whether `inner` lies wholly within `outer`. */
+export function encloses(outer: Span, inner: Span): boolean {
+  return outer.start <= inner.start && inner.end <= outer.end;
+}

@@ -3,8 +3,8 @@
  * and computes it, in the same switch, so the two can't disagree. Compile time computes literals, a
  * negated number among them, duration literals, tuples, structs in every literal form (a spread
  * copying a computed struct's fields), a struct without fields written bare, arrays and maps of
- * `Map`, and other top-level constants; anything else, a map literal of another type among them,
- * is refused where it stands.
+ * `Map`, lambdas, which capture nothing at the top level (§3.14), and other top-level constants;
+ * anything else, a map literal of another type among them, is refused where it stands.
  *
  * A spread spreads only an array or a map compile time built itself: its elements, or its entries
  * as tuples. Anything else iterable is iterated by `iterate` when the program runs, and computing
@@ -14,17 +14,23 @@
 import type {
   ArrayLiteral,
   Expression,
+  Lambda,
   MapLiteral,
   Spread,
   StructLiteral,
 } from '../../syntax/expressions.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
+import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant } from '../check.ts';
 import { type ConstantForm, durationForm, sameForm } from '../constant-form.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 
-/** What the walk reads: the initializer's checking, struct layouts, and the other constants. */
+/**
+ * What the walk reads: the constant computed, its initializer's checking, struct layouts, and the
+ * other constants.
+ */
 export interface ComputationScope {
+  readonly constant: VariableDeclaration;
   readonly checked: CheckedBody;
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
   readonly constantNamed: (name: Identifier) => CheckedConstant | undefined;
@@ -84,12 +90,25 @@ class Computation {
         return this.#array(node);
       case 'MapLiteral':
         return this.#map(node);
+      case 'Lambda':
+        return this.#lambda(node);
       case 'Missing':
       case 'Invalid':
         return unknown;
       default:
         return refused(node);
     }
+  }
+
+  /** A lambda's function value, when it captures nothing: a closure of no captures. */
+  #lambda(node: Lambda): Outcome {
+    const checked = this.#scope.checked.functionOf(node);
+    if (checked === undefined) {
+      return unknown;
+    }
+    return checked.captures.length === 0
+      ? computed({ kind: 'function', lambda: node, constant: this.#scope.constant })
+      : refused(node);
   }
 
   /** A struct in any literal form, its fields in declaration order. */

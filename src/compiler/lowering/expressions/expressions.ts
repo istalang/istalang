@@ -8,11 +8,12 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Handlers } from '../../../structures/kind-table.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression, MemberAccess } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
 import { lowerAwait } from './await.ts';
 import { lowerCall } from './calls.ts';
+import { lowerFunctionValue, lowerLambda } from './closures.ts';
 import { lowerArrayLiteral, lowerIndex, lowerMapLiteral, lowerRange } from './collections.ts';
 import { lowerComprehension } from './comprehensions.ts';
 import { lowerIf } from './control.ts';
@@ -42,10 +43,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
     isEnum(context.body.typeOf(node))
       ? lowerVariantLiteral(context, node)
       : lowerStructLiteral(context, node),
-  MemberAccess: (context, node) =>
-    context.entityOf(node.member)?.kind === 'variant'
-      ? lowerFieldlessVariant(context, node, node.member.text)
-      : lowerFieldRead(context, node),
+  MemberAccess: lowerMemberAccess,
   TupleElement: lowerTupleElement,
   If: lowerIf,
   DurationLiteral: lowerDurationLiteral,
@@ -54,7 +52,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   MapLiteral: lowerMapLiteral,
   Comprehension: lowerComprehension,
   Tuple: lowerTuple,
-  Lambda: notLowered,
+  Lambda: lowerLambda,
   Reference: notLowered,
   Index: lowerIndex,
   Propagate: lowerPropagate,
@@ -68,3 +66,16 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Invalid: notLowered,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/**
+ * `a.b`: a variant qualified by its enum, a function named as a value through a namespace or its
+ * type (closures.ts), or a field read.
+ */
+function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Register {
+  if (context.entityOf(node.member)?.kind === 'variant') {
+    return lowerFieldlessVariant(context, node, node.member.text);
+  }
+  return context.body.calls.has(node)
+    ? lowerFunctionValue(context, node)
+    : lowerFieldRead(context, node);
+}

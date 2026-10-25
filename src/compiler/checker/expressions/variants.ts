@@ -6,8 +6,8 @@
  *   type when it is the same enum, else from the fields and defaults (literal-fields.ts).
  * - `none` needs an optional type to be expected (§3.11).
  * - A variant with fields is built with braces; naming it bare is an error.
- * - Where a call's chosen function decides an argument's type, these are the arguments that wait
- *   for it (`decidedByCall`), so `f(none)` reads like `const x: T? = none`.
+ * - Where a call's chosen function decides an argument's type, `none` and a bare variant wait for
+ *   it (overloads/decided.ts), so `f(none)` reads like `const x: T? = none`.
  */
 
 import type { Span } from '../../../text/span.ts';
@@ -22,7 +22,7 @@ import type {
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { parameterType, typeArgumentsFor, typeParametersOf } from '../declarations/resolve-type.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from '../types/fit.ts';
 import { errorType, type NominalType, primitiveType, type Type } from '../types/type.ts';
 import { checkLiteralFields } from './literal-fields.ts';
@@ -30,33 +30,13 @@ import { checkLiteralFields } from './literal-fields.ts';
 /** A node naming a variant: bare, qualified, or as a literal's type. */
 type VariantNode = Identifier | MemberAccess | StructLiteral;
 
-/**
- * When a call's chosen function decides the type of `node` (`none`, a bare variant), which
- * parameter types it can take, so choosing can rule out the rest; undefined for any other node,
- * whose own type takes part in choosing.
- */
-export function decidedByCall(
-  context: BodyContext,
-  node: Expression,
-): ((expected: Type) => boolean) | undefined {
-  switch (node.kind) {
-    case 'NoneLiteral':
-      return (expected) => optionalInner(expected, context.checker.optionalEntity) !== undefined;
-    case 'Parenthesized':
-      return decidedByCall(context, node.expression);
-    case 'Identifier':
-      return variantsAccepted(context, context.entityOf(node));
-    case 'StructLiteral':
-      return node.type === undefined
-        ? undefined
-        : variantsAccepted(context, context.entityOf(lastName(node.type.path)));
-    default:
-      return undefined;
-  }
+/** The types `none` can take, as an argument a call's chosen function decides: any optional. */
+export function noneAccepted(context: BodyContext): (expected: Type) => boolean {
+  return (expected) => optionalInner(expected, context.checker.optionalEntity) !== undefined;
 }
 
 /** For a bare variant's name, the enum types that have a variant of that name. */
-function variantsAccepted(
+export function variantsAccepted(
   context: BodyContext,
   naming: Entity | undefined,
 ): ((expected: Type) => boolean) | undefined {

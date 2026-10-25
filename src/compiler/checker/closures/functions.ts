@@ -1,0 +1,105 @@
+/**
+ * The functions a body is checked in (§3.14): the body's own, and the lambdas and local `fn`s
+ * nested in it, innermost last. One body checker checks them all, so their types and calls land
+ * in one CheckedBody; what differs per function lives in its FunctionScope.
+ *
+ * - Each function has its own result, loops and asyncness: `return` leaves the innermost one,
+ *   `break` can't reach a loop outside it, and `await` needs it to be async.
+ * - Captures are found where names are used, from where they are declared: a nested function
+ *   encloses every name it declares, so a variable declared outside a nested function is
+ *   captured by it, and by every function between the two. A top-level name, of this module or
+ *   another, is never captured; which names are top-level is the binder's to say (it gives them
+ *   a module), so a local one is always in this body's own tree, where spans compare.
+ * - A captured `let` is shared with the closure, so it lives in a cell (§3.14); anything else
+ *   captured is copied, since it never changes. A reference can't be captured, as references are
+ *   never stored (§3.7).
+ * - A nested function without a declared result, checked while its own name is used inside it,
+ *   can't know its type: that is recursion needing a declared result (§2), as for top-level ones.
+ */
+
+import { encloses } from '../../../text/span.ts';
+import type { VariableEntity } from '../../binder/entities.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import type { CheckedFunction } from '../check.ts';
+import type { BodyContext } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { isChangeable } from '../rules/places.ts';
+import { errorType, type Type } from '../types/type.ts';
+import type { FunctionScope, NestedFunction } from './function-scope.ts';
+
+export class FunctionScopes {
+  readonly #stack: FunctionScope[];
+  /** Nested functions being checked with no declared result, whose type isn't known yet. */
+  readonly #untyped = new Set<NestedFunction>();
+  readonly #checked = new Map<NestedFunction, CheckedFunction>();
+
+  constructor(root: FunctionScope) {
+    this.#stack = [root];
+  }
+
+  get current(): FunctionScope {
+    return this.#stack.at(-1) as FunctionScope;
+  }
+
+  /** Runs `check` inside `scope`; while its type isn't known, using its own name is reported. */
+  inside<Result>(scope: FunctionScope, check: () => Result): Result {
+    const untyped = scope.node !== undefined && scope.returns.declared === undefined;
+    if (untyped && scope.node !== undefined) {
+      this.#untyped.add(scope.node);
+    }
+    this.#stack.push(scope);
+    try {
+      return check();
+    } finally {
+      this.#stack.pop();
+      if (scope.node !== undefined) {
+        this.#untyped.delete(scope.node);
+      }
+    }
+  }
+
+  /** Notes that `entity` is used where `name` is written, capturing it where it must be. */
+  noteUse(context: BodyContext, name: Identifier, entity: VariableEntity): void {
+    if (context.checker.bindings.moduleOf(entity) !== undefined) {
+      return;
+    }
+    const declared = entity.name.span;
+    const capturing = this.#stack.filter(
+      ({ node, captures }) =>
+        node !== undefined && !encloses(node.span, declared) && !captures.has(entity.name),
+    );
+    for (const { captures } of capturing) {
+      captures.set(entity.name, entity);
+    }
+    if (capturing.length > 0) {
+      capture(context, name, entity);
+    }
+  }
+
+  /** The type of a local function or named lambda used by `name`, or the error after a report. */
+  typeOfFunction(context: BodyContext, name: Identifier, entity: VariableEntity): Type {
+    const owner = entity.owner as NestedFunction;
+    if (this.#untyped.has(owner)) {
+      context.report(checkerDiagnostics.recursiveReturnType(name.span, name.text));
+      return errorType;
+    }
+    return context.variables.typeOf(entity);
+  }
+
+  record(node: NestedFunction, checked: CheckedFunction): void {
+    this.#checked.set(node, checked);
+  }
+
+  checkedOf(node: NestedFunction): CheckedFunction | undefined {
+    return this.#checked.get(node);
+  }
+}
+
+/** Notes what capturing `entity`, used where `name` is written, asks of it. */
+function capture(context: BodyContext, name: Identifier, entity: VariableEntity): void {
+  if (context.variables.isReference(entity)) {
+    context.report(checkerDiagnostics.capturedReference(name.span, name.text));
+  } else if (isChangeable(context, entity)) {
+    context.variables.noteShared(entity);
+  }
+}

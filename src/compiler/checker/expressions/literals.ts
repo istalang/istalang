@@ -7,7 +7,7 @@
 import { wellKnown } from '../../../language/well-known.ts';
 import type { DurationLiteral } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 export function checkDurationLiteral(context: BodyContext, node: DurationLiteral): Type {

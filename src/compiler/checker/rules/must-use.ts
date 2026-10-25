@@ -18,7 +18,7 @@ import { type Expression, unparenthesized } from '../../syntax/expressions.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Drop } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { heldType } from '../types/held.ts';
 import { type Type, unitType } from '../types/type.ts';

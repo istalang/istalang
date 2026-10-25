@@ -22,6 +22,7 @@ import { float, int, text } from '../native-values.ts';
 import { preludeName } from '../stdlib-loader.ts';
 import { arrayNatives } from './arrays.ts';
 import { mapNatives } from './maps.ts';
+import { sharedNatives } from './shared-natives.ts';
 import { stringNatives } from './strings.ts';
 
 /** A float printed as whole digits, which needs `.0` to read as a float. */
@@ -39,6 +40,7 @@ const floatDivide = (left: number, right: number): number => left / nonZero(righ
 export const preludeNatives: Natives = {
   ...arrayNatives,
   ...mapNatives,
+  ...sharedNatives,
   ...stringNatives,
   ...numeric(
     'add',

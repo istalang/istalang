@@ -3,11 +3,10 @@
  * taking `&self` may change, and the variables each change counts against.
  *
  * - A place is a variable, or a field, tuple element or indexed element of one, at any depth. Its
- *   root decides:
- *   a `let` and a parameter may change (a by-value parameter is the function's own copy, and a
- *   reference parameter changes the caller's place); a `const`, top-level or local, is deeply
- *   immutable, so no part of it may change, and neither may a pattern's or loop's binding or an
- *   extern constant (§3.6).
+ *   root decides: a `let` may change, and so may a reference parameter, which changes the caller's
+ *   place. A by-value parameter is as if declared `const` (§3.3), and a `const`, top-level or
+ *   local, is deeply immutable, so no part of either may change; neither may a pattern's or loop's
+ *   binding or an extern constant (§3.6).
  * - A change counts as the root `let` being changed, so it isn't warned about as never reassigned.
  *   A reference also marks its root as referenced, which lowering gives storage a reference can
  *   reach.
@@ -16,15 +15,21 @@
  *   an operator's function, so any type with a `setIndex` takes element writes (§3.7, §3.9). Each
  *   indexed step of a changing place records its `setIndex`, and both functions must run at once
  *   (rules/collection-functions.ts).
- * - A `$` value is a place too; the feature that adds `Shared` lifts it from the frontier.
+ * - A `$` value is a place too (§3.9): assigning to part of it (`x$.f = v`, `x$ += v`) reads it
+ *   with the `unwrap` its `x$` calls and writes it back changed with `rewrap(x, value)`, found as
+ *   `x$ = v` finds it and recorded as the `x$`'s write, as an element's `setIndex` is. Passing it,
+ *   or part of it, by `&` stays on the frontier.
  */
 
-import type { VariableOwner } from '../../binder/entities.ts';
-import { type Expression, placePath } from '../../syntax/expressions.ts';
+import { rewrapFunction } from '../../../language/well-known.ts';
+import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
+import { type Expression, placePath, type Unwrap } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
+import { topLevelCandidates } from '../overloads/candidates.ts';
+import { implicitCall } from '../overloads/implicit.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';
@@ -38,7 +43,7 @@ export type PlaceUse = 'assigned' | 'referenced';
  * (statements/assignments.ts).
  */
 export function checkChangedPlace(context: BodyContext, node: Expression, use: PlaceUse): Type {
-  if (isOnFrontier(rootOf(node))) {
+  if (isOnFrontier(rootOf(node), use)) {
     changePlace(context, node, use);
     return errorType;
   }
@@ -56,8 +61,11 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
 export function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
   const root = rootOf(node);
   if (root.kind === 'Unwrap') {
-    context.unsupported(root, frontier.unwrapPart);
-    return false;
+    if (use === 'referenced') {
+      context.unsupported(root, frontier.unwrapPart);
+      return false;
+    }
+    return writesBack(context, root) && writesElements(context, node);
   }
   if (root.kind !== 'Identifier') {
     context.report(checkerDiagnostics.notPlace(node.span, use));
@@ -87,29 +95,62 @@ function writesElements(context: BodyContext, node: Expression): boolean {
     });
 }
 
+/** Makes the `rewrap` writing back the value the place's `x$` reads, changed; false after a report. */
+function writesBack(context: BodyContext, node: Unwrap): boolean {
+  const handle = context.typeOf(node.operand);
+  const value = context.typeOf(node);
+  const made = implicitCall(context, {
+    node,
+    role: 'write',
+    candidates: topLevelCandidates(context.checker, context.module, rewrapFunction, [
+      handle,
+      value,
+    ]),
+    arguments: [
+      { type: handle, passing: 'value' },
+      { type: value, passing: 'value' },
+    ],
+    failure: () => checkerDiagnostics.notRewrappable(node.span, typeText(handle)),
+  });
+  return made !== undefined;
+}
+
 /**
  * Checks a method's receiver passed as `&self` (§3.7), already checked as a value: it must be a
  * place that may change, so a call's result, say, is reported as needing one.
  */
 export function changeReceiver(context: BodyContext, receiver: Expression, method: string): void {
   const root = rootOf(receiver);
-  if (root.kind === 'Identifier' || isOnFrontier(root)) {
+  if (root.kind === 'Identifier' || isOnFrontier(root, 'referenced')) {
     changePlace(context, receiver, 'referenced');
   } else {
     context.report(checkerDiagnostics.receiverNotPlace(receiver.span, method));
   }
 }
 
-function isOnFrontier(root: Expression): boolean {
-  return root.kind === 'Unwrap';
+function isOnFrontier(root: Expression, use: PlaceUse): boolean {
+  return root.kind === 'Unwrap' && use === 'referenced';
 }
 
 /**
- * Whether a variable its `owner` declares may change: a `let` or a parameter. Top-level constants
+ * Whether `variable` may change: a `let`, or a parameter taking a reference. Top-level constants
  * are `const`, so the declaration's own keyword decides for them too.
  */
-export function isChangeable(owner: VariableOwner): boolean {
-  return owner.kind === 'Parameter' || (owner.kind === 'VariableDeclaration' && owner.isMutable);
+export function isChangeable(context: BodyContext, variable: VariableEntity): boolean {
+  const { owner } = variable;
+  switch (owner.kind) {
+    case 'Parameter':
+      return context.variables.isReference(variable);
+    case 'VariableDeclaration':
+      return owner.isMutable;
+    default:
+      return false;
+  }
+}
+
+/** How a message names a variable that may not change: a parameter, or a `const` (§3.3, §3.4). */
+export function immutableKind(owner: VariableOwner): string {
+  return owner.kind === 'Parameter' ? 'a parameter' : 'a const';
 }
 
 /** Reports when the variable at the root of a place may not change, else notes the change. */
@@ -118,8 +159,10 @@ function requireChangeable(context: BodyContext, root: Identifier, use: PlaceUse
   if (entity?.kind !== 'variable') {
     return false;
   }
-  if (!isChangeable(entity.owner)) {
-    context.report(checkerDiagnostics.constantChanged(root.span, root.text));
+  if (!isChangeable(context, entity)) {
+    context.report(
+      checkerDiagnostics.constantChanged(root.span, root.text, immutableKind(entity.owner)),
+    );
     return false;
   }
   context.variables.noteChanged(entity);

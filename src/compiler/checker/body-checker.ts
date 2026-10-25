@@ -8,8 +8,11 @@
  * - What lowering needs is recorded as checking goes: every expression's type, every call's
  *   target, and every value's implicit wraps into `T?` (§2), which `fit` finds. Nothing is
  *   recomputed later, so lowering sees exactly what was checked.
- * - The facts the body's rules gather (variables, the result, loops) are units of their own,
- *   beside those rules; this class only composes them.
+ * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
+ *   units of their own, beside those rules; this class only composes them. A lambda or local
+ *   function is checked in this same body, in a function scope of its own (closures/), so its
+ *   result, loops and asyncness are the innermost scope's, and a name used in it is captured
+ *   where it is looked up (`entityOf`).
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -23,8 +26,10 @@ import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, CheckedBody, ResolvedCall, SignatureParameter } from './check.ts';
+import { FunctionScope } from './closures/function-scope.ts';
+import { FunctionScopes } from './closures/functions.ts';
 import type { BodyContext, CheckerContext } from './context.ts';
-import { checkerDiagnostics } from './diagnostics.ts';
+import { checkerDiagnostics } from './diagnostics/index.ts';
 import { CollectionForms } from './expressions/collections.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
@@ -33,8 +38,8 @@ import type { FrontierConstruct } from './frontier.ts';
 import { ImplicitCalls } from './overloads/implicit.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import { passesValueOn, refuseHeldFuture } from './rules/futures.ts';
-import { LoopScope } from './statements/loops.ts';
-import { ReturnScope } from './statements/returns.ts';
+import type { LoopScope } from './statements/loops.ts';
+import { blockTail, ReturnScope } from './statements/returns.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
 import { errorType, type Type, unitType } from './types/type.ts';
@@ -55,10 +60,8 @@ export type BodyKind =
 export class BodyChecker implements BodyContext {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
-  readonly inAsync: boolean;
   readonly variables = new VariableScope();
-  readonly returns: ReturnScope;
-  readonly loops = new LoopScope();
+  readonly functions: FunctionScopes;
   readonly literals = new StructLiterals();
   readonly implicit = new ImplicitCalls();
   readonly collections = new CollectionForms();
@@ -73,17 +76,31 @@ export class BodyChecker implements BodyContext {
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
     this.module = module;
-    this.inAsync = kind.kind === 'function' && kind.isAsync;
-    this.returns = new ReturnScope(kind.declaredResult, kind.kind === 'function');
+    const isFunction = kind.kind === 'function';
+    const returns = new ReturnScope(kind.declaredResult, isFunction);
+    const root = new FunctionScope(undefined, isFunction && kind.isAsync, returns);
+    this.functions = new FunctionScopes(root);
+  }
+
+  get inAsync(): boolean {
+    return this.functions.current.isAsync;
+  }
+
+  get returns(): ReturnScope {
+    return this.functions.current.returns;
+  }
+
+  get loops(): LoopScope {
+    return this.functions.current.loops;
   }
 
   /** Checks a function's body against its parameters and its declared result, if any. */
   checkFunction(body: Block, parameters: readonly SignatureParameter[]): CheckedBody {
     for (const parameter of parameters) {
-      this.variables.declare(parameter.node.name, parameter.type);
+      this.variables.declareParameter(parameter);
     }
     const tail = this.block(body, this.returns.declared);
-    const result = this.returns.result(this, body, tail);
+    const result = this.returns.result(this, blockTail(body, tail));
     this.variables.warnUnchanged(this);
     return this.#checked(result);
   }
@@ -166,8 +183,13 @@ export class BodyChecker implements BodyContext {
     return this.checker.resolveType(this.module, node);
   }
 
+  /** What `name` denotes; a variable used inside a closure is captured there (§3.14). */
   entityOf(name: Identifier): Entity | undefined {
-    return this.checker.bindings.entityOf(this.module, name);
+    const entity = this.checker.bindings.entityOf(this.module, name);
+    if (entity?.kind === 'variable') {
+      this.functions.noteUse(this, name, entity);
+    }
+    return entity;
   }
 
   recordCall(site: CallSite, call: ResolvedCall): void {
@@ -179,7 +201,7 @@ export class BodyChecker implements BodyContext {
     const types = this.#types;
     const calls = this.#calls;
     const wraps = this.#wraps;
-    const { variables, literals, implicit, collections, patterns, chains } = this;
+    const { variables, literals, implicit, collections, patterns, chains, functions } = this;
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
       calls,
@@ -188,7 +210,8 @@ export class BodyChecker implements BodyContext {
       wrapsOf: (expression) => wraps.get(expression) ?? 0,
       targetsOf: (owner) => variables.targetsOf(owner),
       assignedOf: (assignment) => variables.assignedOf(assignment),
-      isReferenced: (name) => variables.isReferenced(name),
+      inCell: (name) => variables.inCell(name),
+      functionOf: (node) => functions.checkedOf(node),
       sourcesOf: (literal) => literals.sourcesOf(literal),
       patternOf: (pattern) => patterns.patternOf(pattern),
       chainOf: (link) => chains.chainOf(link),

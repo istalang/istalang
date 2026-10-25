@@ -32,11 +32,11 @@ import type { AssignmentOperator } from '../../syntax/operators.ts';
 import { type Assignment, destructures } from '../../syntax/statements.ts';
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkRewrap } from '../expressions/unwrap.ts';
 import { type OverloadableOperator, resolveOperator } from '../overloads/operators.ts';
 import { bodyScope, elementParts, structParts, type ValuePart } from '../patterns/parts.ts';
-import { checkChangedPlace, isChangeable } from '../rules/places.ts';
+import { checkChangedPlace, immutableKind, isChangeable } from '../rules/places.ts';
 import { itemField } from '../rules/struct-items.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -174,8 +174,10 @@ function assignedPlace(context: BodyContext, written: Expression): Type {
     context.report(checkerDiagnostics.notAssignable(target.span));
     return errorType;
   }
-  if (!isChangeable(entity.owner)) {
-    context.report(checkerDiagnostics.constReassigned(target.span, target.text));
+  if (!isChangeable(context, entity)) {
+    context.report(
+      checkerDiagnostics.constReassigned(target.span, target.text, immutableKind(entity.owner)),
+    );
     return errorType;
   }
   context.variables.noteChanged(entity);

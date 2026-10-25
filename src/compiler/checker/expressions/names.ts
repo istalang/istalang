@@ -8,9 +8,10 @@
 
 import type { Entity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import { checkFunctionValue, namedFunctions } from '../closures/function-values.ts';
 import type { BodyContext } from '../context.ts';
 import { typeParametersOf } from '../declarations/resolve-type.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { errorType, type NominalType, type Type } from '../types/type.ts';
 import { checkVariantName } from './variants.ts';
@@ -37,7 +38,7 @@ export function entityValueType(
       switch (entity.owner.kind) {
         case 'FunctionDeclaration':
         case 'Lambda':
-          return context.unsupported(node, frontier.functionValue);
+          return context.functions.typeOfFunction(context, node, entity);
         case 'ExternConstantDeclaration':
           return context.unsupported(node, frontier.externConstant);
         case 'VariableDeclaration':
@@ -48,8 +49,10 @@ export function entityValueType(
         default:
           return context.variables.typeOf(entity);
       }
-    case 'functions':
-      return context.unsupported(node, frontier.functionValue);
+    case 'functions': {
+      const functions = namedFunctions(context, node);
+      return functions === undefined ? errorType : checkFunctionValue(context, functions, expected);
+    }
     case 'variant':
     case 'variants':
       return checkVariantName(context, node, entity, expected);

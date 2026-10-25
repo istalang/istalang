@@ -17,7 +17,7 @@ import type { Span } from '../../../text/span.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { ImplicitRole, ResolvedCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../overloads/candidates.ts';
 import { implicitCall } from '../overloads/implicit.ts';
 import type { Type } from '../types/type.ts';

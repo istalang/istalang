@@ -22,7 +22,7 @@
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { ResolvedCall, Witnesses } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
 import { callMade } from '../overloads/calls-made.ts';
 import {

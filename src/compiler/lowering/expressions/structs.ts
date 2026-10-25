@@ -15,8 +15,8 @@ import {
   type StructLiteral,
 } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
+import { emitCall } from '../emit-call.ts';
 import { fieldIndexOf } from '../places.ts';
-import { call } from './calls.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   return construct(context, structTypeOf(context, node), literalFields(context, node), node.span);
@@ -45,7 +45,11 @@ export function literalFields(context: FunctionContext, node: StructLiteral): Re
       return registerOf(values, source.value);
     }
     if (source.kind === 'trace') {
-      return call(context, node, []);
+      return emitCall(context, {
+        span: node.span,
+        callee: context.calleeIndex(node),
+        arguments: [],
+      });
     }
     const dst = context.code.allocate();
     const src = registerOf(values, source.from);
@@ -59,10 +63,18 @@ export function lowerBareStruct(context: FunctionContext, node: Expression): Reg
   return construct(context, structTypeOf(context, node), [], node.span);
 }
 
-export function lowerFieldRead(context: FunctionContext, node: MemberAccess): Register {
-  const src = context.chains.target(context, node);
+/**
+ * `x.f`, read from the value its chain link works on: the access itself, or the call `x.f(…)` of
+ * a function-typed field, which is the link instead (calls.ts).
+ */
+export function lowerFieldRead(
+  context: FunctionContext,
+  node: MemberAccess,
+  link: Expression = node,
+): Register {
+  const src = context.chains.target(context, link);
   const dst = context.code.allocate();
-  const index = fieldIndexOf(context, node);
+  const index = fieldIndexOf(context, node, link);
   context.code.emit({ kind: 'field', span: node.span, dst, src, index });
   return dst;
 }

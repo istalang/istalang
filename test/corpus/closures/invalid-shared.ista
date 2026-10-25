@@ -1,0 +1,19 @@
+# error: 5100 at 16:3
+# error: 5001 at 17:10
+# error: 5000 at 18:9
+# error: 5000 at 19:13
+# A Shared value is written with values of its own type (§3.8, §3.9), whole or in part. Passing
+# part of a `$` value by `&`, and reading it as `.value`, aren't supported yet.
+
+struct Counter { n: int }
+
+fn bump(n: &int):
+  n += 1
+
+fn subject():
+  const c = Shared(Counter{n: 1})
+  c$ = Counter{n: 2}
+  c$ = "two"
+  c$.n = "three"
+  bump(&c$.n)
+  const n = c.value

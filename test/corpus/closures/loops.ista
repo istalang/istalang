@@ -1,0 +1,61 @@
+# outcome: "1 11 | 2 2 | 30 | 0 1 2 | 11 21"
+# A `let` declared in a loop's body is fresh on every iteration, so closures made in different
+# iterations never share it, while a `let` declared outside the loop is shared by every closure
+# made in it (§3.4, §3.14). Leaving the body by `continue` or `break` releases it as its end does.
+# A `for`'s loop variable is fresh on every iteration too, as is a `let` in its body.
+
+fn fresh() -> string:
+  let first = fn(): 0
+  let second = fn(): 0
+  let i = 0
+  while i < 2:
+    let seen = i * 10
+    const read = fn(): seen
+    if i == 0: first = read else: second = read
+    seen += 1
+    i += 1
+  string(first()) + " " + string(second())
+
+fn sharedOutside() -> string:
+  let first = fn(): 0
+  let second = fn(): 0
+  let count = 0
+  let i = 0
+  while i < 2:
+    const read = fn(): count
+    if i == 0: first = read else: second = read
+    count += 1
+    i += 1
+  string(first()) + " " + string(second())
+
+fn leaving() -> int:
+  let last = fn(): 0
+  let i = 0
+  while true:
+    i += 1
+    let value = i
+    last = fn(): value
+    value *= 10
+    if i < 3:
+      continue
+    break
+  last()
+
+fn forEach() -> string:
+  let made: Array<fn() -> int> = []
+  for x in [0, 1, 2]:
+    made.push(fn(): x)
+  string(made[0]()) + " " + string(made[1]()) + " " + string(made[2]())
+
+fn forBody() -> string:
+  let first = fn(): 0
+  let second = fn(): 0
+  for x in [1, 2]:
+    let total = x * 10
+    const read = fn(): total
+    if x == 1: first = read else: second = read
+    total += 1
+  string(first()) + " " + string(second())
+
+async fn main():
+  fresh() + " | " + sharedOutside() + " | " + string(leaving()) + " | " + forEach() + " | " + forBody()

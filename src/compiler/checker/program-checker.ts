@@ -56,9 +56,9 @@ import { checkDeclaration } from './declarations/declarations.ts';
 import { Layouts } from './declarations/layout.ts';
 import { Parameters } from './declarations/parameters.ts';
 import { resolveTypeNode, typeParametersOf } from './declarations/resolve-type.ts';
-import { callResult, declaredBodyResult } from './declarations/signatures.ts';
+import { callResult, declaredBodyResult, writtenByReference } from './declarations/signatures.ts';
 import { StaticFunctions } from './declarations/statics.ts';
-import { checkerDiagnostics } from './diagnostics.ts';
+import { checkerDiagnostics } from './diagnostics/index.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
 import { checkClashes } from './rules/clashes.ts';
@@ -96,17 +96,24 @@ export class ProgramChecker implements CheckerContext {
     checker: this,
     moduleOfItem: (declaration) => this.#modules.get(declaration),
     checkValue: (module, initializer, declaredResult) =>
-      new BodyChecker(this, module, { kind: 'value', declaredResult }).checkValue(initializer),
+      new BodyChecker(this, module, {
+        kind: 'value',
+        declaredResult,
+      }).checkValue(initializer),
   });
   readonly #checkedModules = new Set<ModuleId>();
   readonly #layouts = new Layouts(this);
   readonly #parameters = new Parameters({
     checker: this,
-    defaultsBody: (module) => {
-      const body = new BodyChecker(this, module, { kind: 'value', declaredResult: undefined });
+    defaultsBody: (declaration) => {
+      const body = new BodyChecker(this, this.moduleOf(declaration), {
+        kind: 'value',
+        declaredResult: undefined,
+      });
       return {
         check: (value, declared) => body.expect(value, declared),
-        declare: (parameter, type) => body.variables.declare(parameter.name, type),
+        declare: (node, type) =>
+          body.variables.declareParameter({ node, type, reference: writtenByReference(node) }),
         checked: () => body.defaults(),
       };
     },
@@ -156,7 +163,7 @@ export class ProgramChecker implements CheckerContext {
     return errorType;
   }
 
-  moduleOf(declaration: Declaration): ModuleId {
+  moduleOf(declaration: Declaration | VariableDeclaration): ModuleId {
     const module = this.#modules.get(declaration);
     if (module === undefined) {
       throw new Error(`No module declares ${declaration.kind} at ${declaration.span.start}.`);
@@ -195,7 +202,9 @@ export class ProgramChecker implements CheckerContext {
   sharedOf(type: Type): NominalType {
     const shared = this.wellKnownType(wellKnown.shared, [type]);
     if (shared?.kind !== 'nominal') {
-      throw new Error("A variable was passed by '&' in a program without a prelude.");
+      throw new Error(
+        "A variable needs a cell (passed by '&' or shared with a closure) in a program without a prelude.",
+      );
     }
     return shared;
   }
@@ -260,6 +269,10 @@ export class ProgramChecker implements CheckerContext {
 
   constantOf(declaration: VariableDeclaration): CheckedConstant | undefined {
     return this.#constants.constantOf(declaration);
+  }
+
+  constantBodyOf(declaration: VariableDeclaration): CheckedBody | undefined {
+    return this.#constants.bodyOf(declaration);
   }
 
   constantNamed(module: ModuleId, name: Identifier): CheckedConstant | undefined {

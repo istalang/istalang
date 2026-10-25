@@ -9,7 +9,7 @@ import { reportedNothing, reportedOnce } from '../../diagnostics/diagnostic.test
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../compile.test-kit.ts';
 import { reported } from './check.test-kit.ts';
-import { checkerDiagnostics as reports } from './diagnostics.ts';
+import { checkerDiagnostics as reports } from './diagnostics/index.ts';
 
 const shapes = [
   'enum Color { Red; Green; Blue }',

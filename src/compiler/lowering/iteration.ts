@@ -50,7 +50,8 @@ export function emitLoop(
   code.emit({ kind: 'order', span, dst: isLess, comparison, relation: 'less' });
   code.branch(isLess, element, exit, span);
   code.place(element);
-  body(implicitCall(context, node, 'element', [array, index]), { exit, next });
+  const { depth } = context.variables;
+  body(implicitCall(context, node, 'element', [array, index]), { exit, next, depth });
   code.place(next);
   const counted = implicitCall(context, node, 'add', [index, one]);
   code.emit({ kind: 'move', span, dst: index, src: counted });

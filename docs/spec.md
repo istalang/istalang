@@ -190,11 +190,11 @@ Duration literals are sugar for the standard library's `Duration`: an integer pl
 
 **Numbers.** `int` has arbitrary precision, as in Python, so it never overflows. `float` is an IEEE 754 double. `/` always yields a `float`, and `//` is floor division on `int`s. For exact decimal arithmetic, such as money, the standard library has `Decimal`.
 
-Type annotations are required on the parameters of declared functions and on struct fields. A lambda may omit parameter types when the expected function type gives them (§3.14), and a parameter with a default value may omit its type, which is then inferred from the default. Return types may always be omitted, on any function, exported or not, and are then inferred from the body; a recursive function writes its own, since its body refers to it. A local `let` or `const` may omit its annotation when the initializer's type is unambiguous. Type parameters are written in angle brackets (§3.5).
+Type annotations are required on the parameters of declared functions and on struct fields. A lambda may omit parameter types when the expected function type gives them (§3.14), and a parameter with a default value may omit its type, which is then inferred from the default. Return types may always be omitted, on any function, exported or not, and are then inferred from the body; a recursive function writes its own, since its body refers to it, unless it is a lambda taking its result from the function type it is expected as (§3.14). A local `let` or `const` may omit its annotation when the initializer's type is unambiguous. Type parameters are written in angle brackets (§3.5).
 
 ## 3. Declarations
 
-A program consists only of top-level declarations: imports, structs, enums, traits, type aliases, functions, `extern` declarations, and `const` values computable at compile time (literals, and tuples, structs, arrays and maps built from them, in any literal form; a spread there spreads another array or map so built). A top-level `const` may destructure its value as a local one does (§3.15), each name a constant of its own. There are no top-level variables or statements.
+A program consists only of top-level declarations: imports, structs, enums, traits, type aliases, functions, `extern` declarations, and `const` values computable at compile time (literals, lambdas, and tuples, structs, arrays and maps built from them, in any literal form; a spread there spreads another array or map so built). A lambda there reads other constants but captures nothing, so it is a function value made once (§3.14). A top-level `const` may destructure its value as a local one does (§3.15), each name a constant of its own. There are no top-level variables or statements.
 
 ### 3.1 Structs
 
@@ -235,7 +235,7 @@ A `struct{…}` literal takes its type from context: the expected type where the
 
 **No getters or setters.** Reading or assigning a field never runs code; a value computed from fields is a method, such as `order.total()`. This keeps structs plain data under value semantics.
 
-**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A function that modifies a by-value parameter changes only its own copy. The only ways a function can change data its caller holds are an explicit reference (§3.7) and a `Shared` value (§3.8). `Slot<T>`, `Future<T>`, `Inbox<T>`, `Shared<T>`, `WeakRef<T>` and `Revertible<T>` are **handles**: copying one copies the handle, not the state behind it, and `==` compares handles by identity.
+**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a `Shared` value (§3.8). `Slot<T>`, `Future<T>`, `Inbox<T>`, `Shared<T>`, `WeakRef<T>` and `Revertible<T>` are **handles**: copying one copies the handle, not the state behind it, and `==` compares handles by identity.
 
 **Sendable types.** Only sendable values can leave an instance: as `spawn` arguments, or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when it is:
 
@@ -267,6 +267,7 @@ extern fn chargeCard(id: string, amount: int) -> Result<string>  # implemented b
 - Calling an `async fn` starts the callee right away, inside the caller's segment (§5): the callee runs until its first `await`, which doesn't commit but hands the future back to the caller, and what the callee did so far commits or rolls back with the caller's segment. The future must be awaited, passed to `select`, stored in a variable (`_` included), or released with `drop`. Leaving it unused as a bare expression is a compile error, which catches a forgotten `await`. A stored future keeps running until it finishes or is disposed (§7).
 - When a block ends, including a function's body, it releases everything its variables hold, disposing whatever nothing else holds (§3.4, §7).
 - `extern fn` declares a host function with a typed signature and no body (§3.6).
+- **Parameters are immutable,** as if declared `const` (§3.4): a by-value parameter can't be reassigned, changed in part or passed by `&`. Only a reference parameter (`&T`, §3.7) changes, and what it changes is the caller's place.
 
 ```python statements
 fn retry(times: int = 3, backoff: Duration = 1s): ...
@@ -378,7 +379,7 @@ The rules:
 
 - **Explicit at the call site.** An argument passed by reference is written `&x`. Only a method's `self` takes its reference implicitly, so `x.f()` passes `x` by reference when the chosen `f` takes `&self`; `x` must then be a variable that may change, or a field of one, never a call's result or a `const`. `&` may stand only before a whole call argument, and `&T` only as a parameter's type; anywhere else either is a compile error.
 - **Exact types.** A reference names the caller's own variable, so its type must be the parameter's exactly: no `T` is wrapped into `T?` through a reference.
-- **One kind of reference, and it allows mutation.** A read-only reference would add nothing, because a by-value parameter already can't change the caller's data.
+- **One kind of reference, and it allows mutation.** A read-only reference would add nothing, because a by-value parameter can't change at all (§3.3).
 - **What can be referenced.** A `let` variable or a parameter, a field or tuple element path of one (`&self.items`, `&t.0`), or an element of any indexable value (`&m["a"]`). A reference parameter passed on with `&` passes the same reference. One variable may be passed by `&` twice in one call. An element is read through its container's `index` and written back with `setIndex`, whether the container is an `Array`, a `Map` or a user type (§3.9).
 - **References aren't values.** They can't be stored in variables or struct fields, returned or sent. Aliasing exists only for the duration of a call.
 - **No references to constants.** Neither a `const` variable nor an `extern` constant can be passed by `&`.
@@ -431,6 +432,9 @@ extern fn take<T>(self: Slot<T>) -> Future<T>               # waits until full, 
 extern fn read<T>(self: Slot<T>) -> Future<T>               # waits until full, keeps the value
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
 extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
+extern fn Shared.from<T>(value: T) -> Shared<T>             # Shared(v): a new cell holding v
+extern fn unwrap<T>(self: Shared<T>) -> T                   # x$
+extern fn rewrap<T>(self: Shared<T>, value: T)              # x$ = v
 ```
 
 The prelude also contains `Optional`, `Result`, `Error`, the built-in traits (§3.10, including `Disposable`) and `panic`.
@@ -757,6 +761,17 @@ fn main():
 
 The only difference is that a lambda can also be bound with `let` and reassigned, while a named `fn` is always constant. Both can call themselves: a named `fn` through its name, and a lambda through its own name if it has one. Top-level functions are module declarations, so they may appear in any order (§2).
 
+**What a lambda or local function may be.**
+
+- **One value.** A lambda or a local `fn` can't be generic, or have default values or a rest parameter: those stand for several functions (§3.3), and a function value is one.
+- **Parameter types.** A lambda's untyped parameter takes its type from the function type the lambda is expected as; with none, it is a compile error. Passed to a generic function, a lambda is checked after the other arguments, so they give its parameter types, and its result then infers the type parameters that remain (§3.5).
+- **Its own function.** `return` in a lambda returns from the lambda, `break` and `continue` can't leave it, and `await` needs an `async fn` lambda.
+- **Captures.** A by-value parameter is immutable (§3.3), so it is captured as a copy, like a `const`.
+- **Async function types.** Calling an `async fn(A) -> R` yields a `Future<R>`, and `await` gives the `R`. A declared `async fn f(x: A) -> Future<R>` is therefore the value `async fn(A) -> R`.
+- **Functions named as values.** A top-level or static function named as a value, as in `xs.map(inc)` or `Duration.zero`, is a closure that captures nothing. A method is called, never named as a value: `s.push` without a call is a compile error; wrap the call in a lambda.
+- **Fields of function types.** `x.f(…)` calls a field `f` of a function type when `x`'s type has no method `f`. When it has both, the call is ambiguous, which is a compile error; `(x.f)(…)` calls the field.
+- **Equality.** Two function values are equal when they run the same function with equal captures. A captured `let` is a `Shared` handle, so it compares by identity (§3.1).
+
 **Functions stay in their instance.** Function values aren't sendable (§3.1): they refer to code, and possibly to captured `Shared` values, so they can't be passed to `spawn` or to an extern function. Code never travels between instances, which also keeps it from crossing versions.
 
 ### 3.15 Tuples
@@ -870,7 +885,7 @@ The rules:
 
 **Optionals.** Two operators work on `T?` values without a `match`:
 
-- `a?.b` reads the field `b`, or calls a method as in `a?.m()`, when `a` isn't `none`, and yields `none` otherwise. The result is optional.
+- `a?.b` reads the field `b`, or calls a method as in `a?.m()`, or a field of a function type as in `a?.f(x)` (§3.14), when `a` isn't `none`, and yields `none` otherwise. The result is optional.
 - `a ?? b` yields the value inside `a`, or `b` when `a` is `none`; `b` is evaluated only then. `b` may have type `T`, and so does the result, or `T?`, giving a `T?`, so `a ?? b ?? c` reads left to right.
 
 Both work only on optionals; using either on any other value is an error. A `?.` starts an **optional chain**: the links after it, such as `.c`, `.0`, `[i]` and `.m()` in `a?.b.c`, `a?.b.0`, `a?.b[i]` and `a?.b.m()`, work on the value inside, and when a `?.` meets `none` the whole chain is `none`. Parentheses end a chain. The chain's value is wrapped into `T?` once, at its end, unless it already is optional, so results never nest. A value read through `?.` is a copy (§3.1), so a chain can't be assigned to, and a method taking `&self` isn't called through it.

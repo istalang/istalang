@@ -1,0 +1,70 @@
+# error: 5500 at 36:16
+# error: 5500 at 37:6
+# error: 5500 at 38:11
+# error: 5501 at 39:22
+# error: 5007 at 41:15
+# error: 5502 at 42:23
+# error: 5017 at 45:17
+# error: 5022 at 46:7
+# error: 5503 at 47:18
+# error: 5504 at 48:20
+# error: 5505 at 49:19
+# error: 5506 at 50:17
+# error: 5004 at 51:17
+# error: 5001 at 52:26
+# error: 5502 at 61:35
+# error: 5001 at 69:5
+# A lambda or local function is one value (§3.14): no default values, rest parameters or type
+# parameters. A parameter's type must be written or come from the expected function type; a
+# local function calling itself declares its result. A closure can't capture a reference, written
+# or taken from the expected function type, and `break`, `continue` and `await` belong to the
+# innermost function. A name of several functions needs an expected function type; a method is
+# called, not taken as a value; `x.f()` naming both a field and a method is ambiguous. Only a
+# function is called, with its parameters' number and types, a reference's exactly.
+
+struct Op { run: fn(int) -> int }
+
+fn run(self: Op, n: int) -> int: n
+
+fn double(self: int) -> int: self * 2
+
+fn pick(n: int) -> int: n
+
+fn pick(s: string) -> string: s
+
+async fn subject(r: &int, op: Op, n: int):
+  const d = fn(x: int = 1): x
+  fn g<T>(x: T) -> T: x
+  fn h(...xs: int): 0
+  const untyped = fn(x): x
+  fn again(k: int):
+    if k > 0: again(k - 1)
+  const reads = fn(): r + 1
+  while n > 0:
+    const leave = fn(): {
+      if n > 1: break
+      await later(n) }
+  const chosen = pick
+  const method = n.double
+  const both = op.run(1)
+  const value = n(1)
+  const arity = (op.run)(1, 2)
+  const typed = (op.run)("a")
+
+async fn later(n: int) -> Future<int>: n
+
+fn bumped(f: fn(&int) -> int) -> int:
+  let n = 1
+  f(&n)
+
+fn inferred() -> int:
+  bumped(fn(x): { const g = fn(): x; g() })
+
+fn clear(r: &int?):
+  r = none
+
+fn throughValue() -> int:
+  let x = 1
+  const f: fn(&int?) -> unit = clear
+  f(&x)
+  x

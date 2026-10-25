@@ -26,7 +26,7 @@
 
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values.ts';
+import { handleTarget, type Value } from '../../definition/values.ts';
 import { runInstruction } from '../interpreter/instructions.ts';
 import {
   type ActiveFrame,
@@ -41,7 +41,7 @@ import {
   writeReference,
 } from '../interpreter/machine.ts';
 import { traceOf } from '../interpreter/trace.ts';
-import { type NativeContext, Panic } from '../natives.ts';
+import { type NativeCells, type NativeContext, Panic } from '../natives.ts';
 import { isReference, type Reference } from '../snapshot/objects.ts';
 import { type Box, type ElementCalls, isBox } from '../values/parts.ts';
 import { type Instance, type LiveExecution, topFrame } from './instance.ts';
@@ -85,6 +85,7 @@ interface NestedCall {
 class SegmentRunner implements Machine {
   readonly #instance: Instance;
   readonly #startedAt: bigint;
+  readonly #nativeCells: NativeCells;
   readonly #runStack: LiveExecution[] = [];
   readonly #nested: NestedCall[] = [];
   #end: DriveEnd | undefined;
@@ -92,6 +93,7 @@ class SegmentRunner implements Machine {
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
     this.#startedAt = startedAt;
+    this.#nativeCells = nativeCellsOf(instance.cells);
   }
 
   get definition() {
@@ -122,7 +124,12 @@ class SegmentRunner implements Machine {
     }
   }
 
-  call(frame: ActiveFrame, callee: FunctionId, argumentList: readonly Argument[]): void {
+  call(
+    frame: ActiveFrame,
+    callee: FunctionId,
+    argumentList: readonly Argument[],
+    captures: readonly Value[] = [],
+  ): void {
     const contents = argumentList.map((argument) => argumentContents(frame, argument, this));
     const callable = this.#instance.loaded.functions.callee(callee);
     if (callable.kind === 'native') {
@@ -141,12 +148,12 @@ class SegmentRunner implements Machine {
       if (contents.some((each) => isReference(each) && each.cell < 0)) {
         throw new Error("A container's 'setIndex' can't pass it by '&' to an async function.");
       }
-      const execution = this.#instance.startExecution(callable.function, contents);
+      const execution = this.#instance.startExecution(callable.function, contents, captures);
       this.#instance.newFuture({ kind: 'call', execution: execution.id });
       this.#runStack.push(execution);
       return;
     }
-    const calleeFrame = newFrame(callable.function, callable.code, contents, frame.cells);
+    const calleeFrame = newFrame(callable, contents, frame.cells, captures);
     this.#current().frames.push(calleeFrame);
   }
 
@@ -175,7 +182,7 @@ class SegmentRunner implements Machine {
       isBox(each) ? { kind: 'reference' as const, cell: boxCell(position), path: [] } : each,
     );
     const nested: NestedCall = {
-      frame: newFrame(callable.function, callable.code, contents, cells),
+      frame: newFrame(callable, contents, cells),
     };
     execution.frames.push(nested.frame);
     this.#nested.push(nested);
@@ -284,6 +291,7 @@ class SegmentRunner implements Machine {
       timer: (at) => this.#instance.newFuture({ kind: 'timer', at }),
       resolved: (value) => this.#instance.newFuture({ kind: 'resolved', value }),
       trace: () => this.#trace(),
+      cells: this.#nativeCells,
     };
   }
 
@@ -342,4 +350,23 @@ function boxedCells(cells: CellStore, argumentList: readonly (Value | Box)[]): C
     },
     create: (type, value) => cells.create(type, value),
   };
+}
+
+/** The instance's cells as natives reach them: through `Shared<T>` handles (§3.8). */
+function nativeCellsOf(cells: CellStore): NativeCells {
+  return {
+    create: (type, value) => ({ kind: 'handle', object: cells.create(type, value) }),
+    read: (cell) => cells.read(cellIdOf(cell)),
+    write: (cell, value) => {
+      cells.write(cellIdOf(cell), value);
+    },
+  };
+}
+
+function cellIdOf(cell: Value): number {
+  const id = handleTarget(cell);
+  if (id === undefined) {
+    throw new TypeError('A Shared value holds no cell.');
+  }
+  return id;
 }

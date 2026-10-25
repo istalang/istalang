@@ -27,7 +27,7 @@ import type {
 } from '../../syntax/patterns.ts';
 import type { CheckedPattern, PatternTest } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant, nameNodeOf } from '../expressions/variants.ts';
 import { resolveOperator } from '../overloads/operators.ts';
 import { checkEqualSides } from '../rules/equality.ts';

@@ -3,8 +3,9 @@
  * (choice.ts), the choice is instantiated with its constraints met (traits/conformance.ts), and
  * the call is recorded for lowering with its arguments fitted, so their implicit wraps are too.
  *
- * - An argument whose type the chosen function decides (`none`, a bare variant) is checked only
- *   after choosing, against its parameter's type.
+ * - An argument whose type the chosen function decides (`none`, a bare variant, a lambda with an
+ *   untyped parameter) is checked only after choosing, against its parameter's type; a lambda,
+ *   before instantiating, so its result can bind type parameters (closures/lambda-arguments.ts).
  * - A method call records its receiver with the call, as lowering passes it first (§3.7). A
  *   receiver the chosen function's `self` takes by reference must be a place that may change.
  * - An argument of the error type was already reported, so the call reports nothing more.
@@ -18,10 +19,11 @@
 import { disposeFunction } from '../../../language/well-known.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
+import { checkDecidedLambdas } from '../closures/lambda-arguments.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { changeReceiver } from '../rules/places.ts';
-import { instantiate } from '../traits/conformance.ts';
+import { type Instantiation, instantiate } from '../traits/conformance.ts';
 import { errorType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
@@ -93,6 +95,7 @@ export function typesText(written: readonly WrittenArgument[]): string {
 
 function complete(context: BodyContext, request: CallRequest, application: Application): Type {
   const { site } = request;
+  const lambdas = checkDecidedLambdas(context, request.arguments, application);
   const instantiation = instantiate(
     useSite(context.checker, context.module, site.span),
     application,
@@ -101,34 +104,74 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
   if (instantiation === undefined) {
     return errorType;
   }
-  const { signature, candidate } = application;
-  request.arguments.forEach(({ node, type }, index) => {
-    const slot = signature.parameters[index];
-    if (slot === undefined) {
-      return;
-    }
-    const expected = substitute(slot.type, instantiation.substitution);
-    context.fit(type ?? context.expression(node, expected), expected, node);
-  });
-  if (signature.declaration.name.text === disposeFunction) {
-    context.report(checkerDiagnostics.disposeCall(site.span));
-    return errorType;
-  }
-  const call = callMade(
-    useSite(context.checker, context.module, site.span),
-    candidate,
-    instantiation,
-    request.arguments.length,
+  const { signature } = application;
+  fitArguments(
+    context,
+    request.arguments,
+    signature.parameters.map((slot) => substitute(slot.type, instantiation.substitution)),
+    lambdas,
   );
-  if (call === undefined) {
+  const { receiver } = request;
+  const arity = request.arguments.length;
+  if (!recordChosen(context, { site, application, instantiation, arity, receiver })) {
     return errorType;
   }
-  const { receiver } = request;
-  context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
     changeReceiver(context, receiver, request.name);
   }
   return substitute(signature.result(), instantiation.substitution);
+}
+
+/** A chosen function, instantiated, at the site calling it or naming it as a value. */
+export interface Chosen {
+  readonly site: CallSite;
+  readonly application: Application;
+  readonly instantiation: Instantiation;
+  /** How many arguments the call gives, or the function value takes. */
+  readonly arity: number;
+  readonly receiver?: Expression | undefined;
+}
+
+/**
+ * Records the call `chosen` makes, under the rules every written call obeys: `dispose` is the
+ * runtime's to call (§7). False after a report.
+ */
+export function recordChosen(context: BodyContext, chosen: Chosen): boolean {
+  const { site, application, instantiation, arity, receiver } = chosen;
+  if (application.signature.declaration.name.text === disposeFunction) {
+    context.report(checkerDiagnostics.disposeCall(site.span));
+    return false;
+  }
+  const call = callMade(
+    useSite(context.checker, context.module, site.span),
+    application.candidate,
+    instantiation,
+    arity,
+  );
+  if (call === undefined) {
+    return false;
+  }
+  context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
+  return true;
+}
+
+/**
+ * Fits each argument of a call that takes them to its parameter's type, `expected` by position,
+ * checking first one the function decides; `decided` holds the types of those already checked.
+ */
+export function fitArguments(
+  context: BodyContext,
+  written: readonly WrittenArgument[],
+  expected: readonly Type[],
+  decided: ReadonlyMap<number, Type> = new Map(),
+): void {
+  written.forEach(({ node, type }, index) => {
+    const parameter = expected[index];
+    if (parameter !== undefined) {
+      const checked = type ?? decided.get(index) ?? context.expression(node, parameter);
+      context.fit(checked, parameter, node);
+    }
+  });
 }
 
 function explainNone(
@@ -159,12 +202,19 @@ function explainNone(
   }
 }
 
+/** A call as a report about it reads it: where, of what name, with what written. */
+export type ExplainedCall = Pick<CallRequest, 'site' | 'name' | 'arguments' | 'typeArguments'>;
+
 /**
- * With one candidate, the report says what exactly doesn't fit: the `reason` it was refused for.
+ * With one function, the report says what exactly doesn't fit: the `reason` it was refused for.
  * An argument the chosen function would have decided is checked against the type it didn't take,
  * which says why.
  */
-function explain(context: BodyContext, request: CallRequest, reason: Inapplicability): void {
+export function explain(
+  context: BodyContext,
+  request: ExplainedCall,
+  reason: Inapplicability,
+): void {
   const { site, name } = request;
   switch (reason.kind) {
     case 'arity': {

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { reportedIn } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../compile.test-kit.ts';
-import { checkerDiagnostics as reports } from '../diagnostics.ts';
+import { checkerDiagnostics as reports } from '../diagnostics/index.ts';
 
 /** The codes reported for module `main` of a program of `files`. */
 function codesOf(files: Readonly<Record<string, string>>): readonly number[] {

@@ -10,13 +10,25 @@
  *
  * Natives the runtime backs need the running instance, so each call also receives a context: the
  * function-table entry being called and the Definition's types (for building typed values), the time the segment
- * started, which is what `now()` means (§5), and the futures the runtime creates for an extern that
- * returns one (§3.6). A native never holds the context beyond its call.
+ * started, which is what `now()` means (§5), the futures the runtime creates for an extern that
+ * returns one (§3.6), and the instance's shared cells. A native never holds the context beyond its
+ * call.
  */
 
 import type { FunctionDefinition } from '../definition/functions.ts';
+import type { TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/types.ts';
 import type { Value } from '../definition/values.ts';
+
+/**
+ * The running instance's shared cells, which `Shared<T>` values are handles to (§3.8): a cell of
+ * the `Shared<T>` type entry `type` made holding `value`, and a cell's value read and written.
+ */
+export interface NativeCells {
+  readonly create: (type: TypeId, value: Value) => Value;
+  readonly read: (cell: Value) => Value;
+  readonly write: (cell: Value, value: Value) => void;
+}
 
 export interface NativeContext {
   /** The entry called: its extern's declared types, or a code entry a mock replaced. */
@@ -36,6 +48,7 @@ export interface NativeContext {
   readonly write: (position: number, value: Value) => void;
   /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
   readonly trace: () => string;
+  readonly cells: NativeCells;
 }
 
 export type Native = (argumentValues: readonly Value[], context: NativeContext) => Value;

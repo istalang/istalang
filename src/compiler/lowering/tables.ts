@@ -29,8 +29,24 @@ import type { Checker } from '../checker/check.ts';
 import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
 
 import type { ModuleId } from '../program/program.ts';
-import { type FunctionInstance, instanceKey, instanceName } from './instances.ts';
+import {
+  type FunctionInstance,
+  instanceKey,
+  instanceName,
+  type NestedInstance,
+  nestedKey,
+  nestedName,
+  ownerDeclaration,
+} from './instances.ts';
 import { loadedModule, qualifiedNameOf } from './names.ts';
+
+/** A function-table entry waiting to be lowered: a top-level function's instance, or a nested one. */
+export type PendingEntry =
+  | { readonly kind: 'instance'; readonly instance: FunctionInstance }
+  | { readonly kind: 'nested'; readonly nested: NestedInstance };
+
+/** What every function-table entry starts with: its name, and where it is declared. */
+export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 'annotations'>;
 
 /** A type with an entry of its own: a declared struct, enum or extern type, or an anonymous struct. */
 type EntryType = NominalType | AnonymousStructType;
@@ -46,7 +62,7 @@ export class DefinitionTables {
   readonly #constantIndexes = new Map<string, number>();
   readonly #functions: (FunctionDefinition | undefined)[] = [];
   readonly #functionIndexes = new Map<string, FunctionId>();
-  readonly #pending: FunctionInstance[] = [];
+  readonly #pending: PendingEntry[] = [];
 
   constructor(checker: Checker) {
     this.#checker = checker;
@@ -69,7 +85,7 @@ export class DefinitionTables {
   }
 
   /** What every function-table entry for `instance` starts with: its name and where it is. */
-  entryHeader(instance: FunctionInstance) {
+  entryHeader(instance: FunctionInstance): EntryHeader {
     const { declaration } = instance;
     const module = this.#checker.moduleOf(declaration);
     return {
@@ -80,18 +96,47 @@ export class DefinitionTables {
     };
   }
 
-  /** The index `instance` is called by; it is lowered later, from the worklist. */
-  functionIndex(instance: FunctionInstance): FunctionId {
-    return memo(this.#functionIndexes, instanceKey(instance), () => {
-      this.#pending.push(instance);
-      return this.#functions.push(undefined) - 1;
-    });
+  /** The header of a nested function's entry: named after its owner, where its node is. */
+  nestedHeader(nested: NestedInstance): EntryHeader {
+    const module = this.#checker.moduleOf(ownerDeclaration(nested.owner));
+    const { source } = loadedModule(this.#checker, module).tree;
+    const { line, column } = lineMapOf(source).positionAt(nested.node.span.start);
+    return {
+      name: nestedName(this.#checker, nested, `${line + 1}:${column + 1}`),
+      module: this.moduleIndex(module),
+      span: nested.node.span,
+      annotations: [],
+    };
   }
 
-  /** The next referenced instance still to be lowered, with its index. */
-  nextPending(): { instance: FunctionInstance; index: FunctionId } | undefined {
-    const instance = this.#pending.shift();
-    return instance === undefined ? undefined : { instance, index: this.functionIndex(instance) };
+  /** The index `instance` is called by; it is lowered later, from the worklist. */
+  functionIndex(instance: FunctionInstance): FunctionId {
+    return this.#entryIndex(instanceKey(instance), { kind: 'instance', instance });
+  }
+
+  /** The index of a lambda's or local function's entry (§3.14), lowered later too. */
+  nestedIndex(nested: NestedInstance): FunctionId {
+    return this.#entryIndex(nestedKey(nested), { kind: 'nested', nested });
+  }
+
+  /** The next referenced entry still to be lowered, with its index. */
+  nextPending(): (PendingEntry & { readonly index: FunctionId }) | undefined {
+    const entry = this.#pending.shift();
+    if (entry === undefined) {
+      return undefined;
+    }
+    const index =
+      entry.kind === 'instance'
+        ? this.functionIndex(entry.instance)
+        : this.nestedIndex(entry.nested);
+    return { ...entry, index };
+  }
+
+  #entryIndex(key: string, entry: PendingEntry): FunctionId {
+    return memo(this.#functionIndexes, key, () => {
+      this.#pending.push(entry);
+      return this.#functions.push(undefined) - 1;
+    });
   }
 
   define(index: FunctionId, entry: FunctionDefinition): void {

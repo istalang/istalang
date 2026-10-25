@@ -5,7 +5,7 @@
 
 import type { If } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches } from '../rules/branches.ts';
 import { boolType, isAssignable, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

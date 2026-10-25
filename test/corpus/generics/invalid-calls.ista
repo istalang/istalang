@@ -2,10 +2,10 @@
 # error: 5002 at 24:13
 # error: 5100 at 25:13
 # error: 5002 at 26:13
-# error: 5103 at 27:13
+# error: 5001 at 27:13
 # Written type arguments must fit the function's type parameters, and choose only among generic
 # functions (§3.5, §3.7); two arguments can't give one type parameter types that disagree (§3.5);
-# a call through a namespace looks only in that module (§3.13); `x$` needs an `unwrap` (§3.9).
+# a call through a namespace looks only in that module (§3.13); `x$` needs an `unwrap` of x (§3.9).
 import * as time from 'time'
 
 struct Money { cents: int }

@@ -1,0 +1,8 @@
+# error: 5502 at 6:25
+# A reference captured through two levels of closure is reported once, at its use (§3.14).
+
+fn subject(r: &int):
+  const outer = fn(): {
+    const inner = fn(): r
+    inner() }
+  outer()

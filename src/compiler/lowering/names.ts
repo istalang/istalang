@@ -22,6 +22,8 @@ import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
 import type { ModuleId, ProgramModule } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import { targetNames } from '../syntax/patterns.ts';
+import type { VariableDeclaration } from '../syntax/statements.ts';
 
 /** The program's module `module`; lowering only ever names modules of its program. */
 export function loadedModule(checker: Checker, module: ModuleId): ProgramModule {
@@ -43,14 +45,28 @@ function declaredName(declaration: FunctionDeclaration): string {
   return owner === undefined ? name.text : `${owner.text}.${name.text}`;
 }
 
-/** A declaration's name, qualified by its module's canonical name: `time.delay`, `prelude.Optional`. */
+/**
+ * A declaration's name, qualified by its module's canonical name: `time.delay`, `prelude.Optional`;
+ * a top-level constant's is its first name's.
+ */
 export function qualifiedNameOf(
   checker: Checker,
-  declaration: FunctionDeclaration | NominalDeclaration,
+  declaration: FunctionDeclaration | NominalDeclaration | VariableDeclaration,
 ): string {
-  const name =
-    declaration.kind === 'FunctionDeclaration' ? declaredName(declaration) : declaration.name.text;
-  return `${moduleName(checker, checker.moduleOf(declaration))}.${name}`;
+  return `${moduleName(checker, checker.moduleOf(declaration))}.${nameOf(declaration)}`;
+}
+
+function nameOf(
+  declaration: FunctionDeclaration | NominalDeclaration | VariableDeclaration,
+): string {
+  switch (declaration.kind) {
+    case 'FunctionDeclaration':
+      return declaredName(declaration);
+    case 'VariableDeclaration':
+      return declaration.targets.flatMap(targetNames)[0]?.text ?? '_';
+    default:
+      return declaration.name.text;
+  }
 }
 
 /** The key that binds the extern `declaration` to its native. */

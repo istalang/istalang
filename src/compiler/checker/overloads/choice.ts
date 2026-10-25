@@ -149,30 +149,42 @@ export function applicationOf(
     candidate.declaration,
     candidate.requirement?.substitution,
   );
-  const counted = countInapplicability(signature, callArguments, written);
+  const taken = takenBy(checker, signature, callArguments, written);
+  return 'inference' in taken ? { candidate, signature, inference: taken.inference } : taken;
+}
+
+/** What `takenBy` matches: a signature's type parameters and parameters. */
+export type Takes = Pick<Signature, 'typeParameters' | 'parameters'>;
+
+/**
+ * How a function taking `takes` takes `callArguments` and any written type arguments: what
+ * inference found matching them, or why it can't. A function value's call (closures/
+ * value-calls.ts) is judged here too, as a signature with no type parameters.
+ */
+export function takenBy(
+  checker: CheckerContext,
+  takes: Takes,
+  callArguments: readonly CallArgument[],
+  written: readonly Type[] | undefined,
+): { readonly inference: Inference } | Inapplicability {
+  const counted = countInapplicability(takes, callArguments, written);
   if (counted !== undefined) {
     return counted;
   }
   const known = new Map<ParameterKey, Type>();
   for (const [index, type] of (written ?? []).entries()) {
-    const parameter = signature.typeParameters[index];
+    const parameter = takes.typeParameters[index];
     if (parameter !== undefined) {
       known.set(parameter, type);
     }
   }
-  const inference = new Inference(signature.typeParameters, checker.optionalEntity, known);
-  return (
-    argumentsInapplicability(signature, callArguments, inference) ?? {
-      candidate,
-      signature,
-      inference,
-    }
-  );
+  const inference = new Inference(takes.typeParameters, checker.optionalEntity, known);
+  return argumentsInapplicability(takes, callArguments, inference) ?? { inference };
 }
 
 /** Why the counts of written type arguments or of arguments don't suit `signature`, if they don't. */
 function countInapplicability(
-  { typeParameters, parameters }: Signature,
+  { typeParameters, parameters }: Takes,
   callArguments: readonly CallArgument[],
   written: readonly Type[] | undefined,
 ): Inapplicability | undefined {
@@ -197,7 +209,7 @@ function countInapplicability(
  * where an argument the chosen function decides stands; those are judged against what was found.
  */
 function argumentsInapplicability(
-  { parameters }: Signature,
+  { parameters }: Takes,
   callArguments: readonly CallArgument[],
   inference: Inference,
 ): Inapplicability | undefined {

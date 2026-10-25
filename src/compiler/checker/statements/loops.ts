@@ -8,7 +8,7 @@ import { withPushed } from '../../../structures/stack.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { For, While } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, neverType, type Type, unitType } from '../types/type.ts';
 

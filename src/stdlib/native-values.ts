@@ -31,6 +31,14 @@ function argumentOf<Name extends keyof ArgumentTypes>(
   };
 }
 
+/** An argument of any type, as a generic native takes it; loading made sure it was passed. */
+export function given(value: Value | undefined): Value {
+  if (value === undefined) {
+    throw new TypeError('An argument is missing.');
+  }
+  return value;
+}
+
 export const int = argumentOf('bigint');
 export const float = argumentOf('number');
 export const text = argumentOf('string');

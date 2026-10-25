@@ -1,0 +1,45 @@
+# outcome: "8 6 7 120 15 0 1 9 3 100 5 0"
+# Functions are values (§3.14): a lambda takes its parameter types from the function type it is
+# passed as, and a generic function infers its type arguments from the lambda's result (§3.5); a
+# named lambda calls itself, its result given by the expected type; a local `fn` calls itself
+# with a declared result; a top-level, static or overloaded function names a function value, the
+# expected type choosing among overloads, also a call's parameter type; a field of a function
+# type is called as `x.f(…)` when no method shares its name, or as `(x.f)(…)`, and through `?.`
+# as a link of the chain; an async function value's call is awaited.
+
+struct Op { run: fn(int) -> int }
+
+fn twice(f: fn(int) -> int, x: int) -> int: f(f(x))
+
+fn apply<T, U>(value: T, f: fn(T) -> U) -> U: f(value)
+
+fn inc(n: int) -> int: n + 1
+
+fn pick(n: int) -> int: n * 3
+
+fn pick(s: string) -> string: s
+
+fn Op.identity() -> Op: Op{run: fn(n): n}
+
+fn Op.scale(n: int) -> int: n * 10
+
+fn Op.scale(s: string) -> string: s
+
+async fn later(n: int) -> Future<int>: n + 1
+
+fn viaChain(op: Op?) -> int: op?.run(5) ?? 0
+
+async fn main():
+  const a = twice(fn x: x * 2, 2)
+  const b = twice(inc, 4)
+  const c = apply(6, fn n: n + 1)
+  const fact: fn(int) -> int = fn f(n): if n < 2: 1 else: n * f(n - 1)
+  fn sumTo(n: int) -> int:
+    if n == 0: 0 else: n + sumTo(n - 1)
+  const make = Op.identity
+  const op = make()
+  const thrice: fn(int) -> int = pick
+  const step = later
+  const d = await step(2)
+  const e = twice(Op.scale, 1)
+  string(a) + " " + string(b) + " " + string(c) + " " + string(fact(5)) + " " + string(sumTo(5)) + " " + string((op.run)(0)) + " " + string(op.run(1)) + " " + string(thrice(3)) + " " + string(d) + " " + string(e) + " " + string(viaChain(op)) + " " + string(viaChain(none))

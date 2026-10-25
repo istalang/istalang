@@ -12,6 +12,7 @@
  * - a register the function lists in `cells` holds a handle to a cell in the instance's heap, a
  *   variable that is passed by `&`; the cell is made by the first write, and holds the value;
  * - a reference parameter's register holds a reference: a cell and a path into its value (§3.7);
+ * - a closure's capture of a `let` holds the cell the closure carries, a cell register too (§3.14);
  * - any other register holds its value.
  * A live frame carries the instance's cells for that; they aren't part of what a snapshot stores.
  *
@@ -39,6 +40,12 @@ export interface CellStore {
 /** What a register holds: a value, or for a reference parameter, a reference. */
 export type RegisterContents = Value | Reference;
 
+/** A code entry a frame runs: its index, and its code. */
+export interface FrameEntry {
+  readonly function: FunctionId;
+  readonly code: CodeFunction;
+}
+
 export interface ActiveFrame {
   readonly function: FunctionId;
   readonly code: CodeFunction;
@@ -49,11 +56,15 @@ export interface ActiveFrame {
 
 export interface Machine extends ElementCalls {
   readonly definition: Definition;
-  /** Calls entry `callee` from `frame`'s current `call`, whose `dst` receives the result. */
+  /**
+   * Calls entry `callee` from `frame`'s current `call`, whose `dst` receives the result; a
+   * closure's call passes the values it captured.
+   */
   readonly call: (
     frame: ActiveFrame,
     callee: FunctionId,
     argumentList: readonly Argument[],
+    captures?: readonly Value[],
   ) => void;
   /** Returns `value` from `frame`, the top frame. */
   readonly return: (frame: ActiveFrame, value: Value) => void;
@@ -66,16 +77,18 @@ export interface Machine extends ElementCalls {
 
 /**
  * A frame about to run entry `function` from its start, its parameters holding `contents`: values,
- * and references for reference parameters. A by-value parameter that is a cell becomes one now.
+ * and references for reference parameters. A closure's captures follow the parameters as the
+ * closure carries them: a captured cell stays the closure's cell, shared with where it came from.
  */
 export function newFrame(
-  function_: FunctionId,
-  code: CodeFunction,
+  entry: FrameEntry,
   contents: readonly RegisterContents[],
   cells: CellStore,
+  captures: readonly Value[] = [],
 ): ActiveFrame {
+  const { code } = entry;
   const registers: (RegisterContents | undefined)[] = Array.from({ length: code.registers });
-  const frame: ActiveFrame = { function: function_, code, pc: 0, registers, cells };
+  const frame: ActiveFrame = { function: entry.function, code, pc: 0, registers, cells };
   contents.forEach((each, index) => {
     if (isReference(each)) {
       registers[index] = each;
@@ -83,18 +96,43 @@ export function newFrame(
       writeRegister(frame, index, each, noElementCalls);
     }
   });
+  captures.forEach((each, index) => {
+    registers[contents.length + index] = each;
+  });
   return frame;
 }
 
 /**
- * For reads and writes that never follow a path into an element: a fresh frame's parameters, and
- * the futures a scheduler finds a frame waiting on, which no element holds.
+ * For reads and writes that never follow a path into an element: a fresh frame's parameters, a
+ * closure's captures, which are never references (§3.14), and the futures a scheduler finds a
+ * frame waiting on, which no element holds.
  */
 export const noElementCalls: ElementCalls = {
   callNow: () => {
     throw new Error('A path was followed where none can be.');
   },
 };
+
+/**
+ * What a closure made from `register` carries: the cell itself for a cell register, so the
+ * closure shares it (§3.14), and the value for any other.
+ */
+export function capturedContents(frame: ActiveFrame, register: Register): Value {
+  const contents = frame.registers[register];
+  if (contents !== undefined && !isReference(contents) && isCell(frame, register)) {
+    return contents;
+  }
+  return readRegister(frame, register, noElementCalls);
+}
+
+/** The closure `frame` runs: its function, with its captures as the closure carried them. */
+export function currentClosure(frame: ActiveFrame): Value {
+  const first = frame.code.parameters.length;
+  const captures = Array.from({ length: frame.code.captures }, (_, index) =>
+    capturedContents(frame, first + index),
+  );
+  return { kind: 'closure', function: frame.function, captures };
+}
 
 /** Moves `frame` past the instruction it stood at, which gave `value` to `dst`, if it has one. */
 export function resumeAt(

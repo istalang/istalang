@@ -236,19 +236,24 @@ export function substitute(type: Type, substitution: Substitution): Type {
         elements: type.elements.map((element) => substitute(element, substitution)),
       };
     case 'function':
-      return {
-        ...type,
-        parameters: type.parameters.map((parameter) => ({
-          ...parameter,
-          type: substitute(parameter.type, substitution),
-        })),
-        result: substitute(type.result, substitution),
-      };
+      return substituteFunction(type, substitution);
     default: {
       const unhandled: never = type;
       return unhandled;
     }
   }
+}
+
+/** A function type with `substitution` applied, still a function type. */
+export function substituteFunction(type: FunctionType, substitution: Substitution): FunctionType {
+  return {
+    ...type,
+    parameters: type.parameters.map((parameter) => ({
+      ...parameter,
+      type: substitute(parameter.type, substitution),
+    })),
+    result: substitute(type.result, substitution),
+  };
 }
 
 /** The types `type` is built from, one level down. */

@@ -10,6 +10,10 @@
  *   witness the instance was given for it.
  * - Two instances are one entry when their key is: the declaration, its arguments' types, its
  *   witnesses' keys, and its arity.
+ * - A lambda or local function (§3.14) is an entry of its own per instance of the top-level
+ *   function holding it: it is checked within that body, so it reads the body through the same
+ *   substitution, and its key is the instance's plus its node. A lambda in a top-level constant's
+ *   value is one entry, owned by the constant, which has no type parameters to substitute.
  */
 
 import type {
@@ -23,10 +27,13 @@ import {
   type ParameterKey,
   type Substitution,
   substitute,
+  substituteFunction,
   type Type,
   typeKey,
 } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { Lambda } from '../syntax/expressions.ts';
+import type { VariableDeclaration } from '../syntax/statements.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
 
 /** One function-table entry's function: a closed call, with every type concrete. */
@@ -35,6 +42,27 @@ export interface FunctionInstance {
   readonly typeArguments: readonly Type[];
   readonly witnesses: Witnesses;
   readonly arity: number;
+}
+
+/** A lambda or local function inside one instance of the top-level function holding it. */
+export interface NestedInstance {
+  readonly owner: BodyOwner;
+  readonly node: Lambda | FunctionDeclaration;
+}
+
+/** What a lowered body belongs to: an instance of a function, or a top-level constant's value. */
+export type BodyOwner =
+  | { readonly kind: 'function'; readonly instance: FunctionInstance }
+  | { readonly kind: 'constant'; readonly declaration: VariableDeclaration };
+
+/** The declaration `owner` is: its function's, or the constant's. */
+export function ownerDeclaration(owner: BodyOwner): FunctionDeclaration | VariableDeclaration {
+  return owner.kind === 'function' ? owner.instance.declaration : owner.declaration;
+}
+
+/** How `owner` maps type parameters: its instance's arguments; a constant has none. */
+export function ownerSubstitution(owner: BodyOwner): Substitution {
+  return owner.kind === 'function' ? substitutionOf(owner.instance) : new Map();
 }
 
 /** The instance `main` is: no type arguments, every argument given. */
@@ -60,9 +88,9 @@ export function substitutionOf(instance: FunctionInstance): Substitution {
   );
 }
 
-/** The instance a call resolved inside `within` targets. */
-export function calleeOf(resolved: ResolvedCall, within: FunctionInstance): FunctionInstance {
-  const closed = close(resolved, within);
+/** The instance a call resolved inside the body of `within` targets. */
+export function calleeOf(resolved: ResolvedCall, within: BodyOwner): FunctionInstance {
+  const closed = close(resolved, within.kind === 'function' ? within.instance : undefined);
   return {
     declaration: closed.function,
     typeArguments: closed.typeArguments,
@@ -82,6 +110,19 @@ export function instantiatedBody(body: CheckedBody, instance: FunctionInstance):
   return {
     ...body,
     typeOf: (expression) => substitute(body.typeOf(expression), substitution),
+    functionOf: (node) => {
+      const checked = body.functionOf(node);
+      return checked === undefined
+        ? undefined
+        : {
+            ...checked,
+            type: substituteFunction(checked.type, substitution),
+            captures: checked.captures.map((captured) => ({
+              ...captured,
+              type: substitute(captured.type, substitution),
+            })),
+          };
+    },
     targetsOf: (declaration) =>
       body
         .targetsOf(declaration)
@@ -106,9 +147,28 @@ export function instantiatedBody(body: CheckedBody, instance: FunctionInstance):
   };
 }
 
+/** The key of a nested function's entry: its owner's, then its node's identity. */
+export function nestedKey(nested: NestedInstance): string {
+  const { owner, node } = nested;
+  const ownerKey =
+    owner.kind === 'function' ? instanceKey(owner.instance) : `const ${nodeKey(owner.declaration)}`;
+  return `${ownerKey}#${nodeKey(node)}`;
+}
+
+/** A nested function's name: its owner's, then its own name, or where a lambda stands. */
+export function nestedName(checker: Checker, nested: NestedInstance, where: string): string {
+  const { owner, node } = nested;
+  const own = node.name === undefined ? `lambda@${where}` : node.name.text;
+  const outer =
+    owner.kind === 'function'
+      ? instanceName(checker, owner.instance)
+      : qualifiedNameOf(checker, owner.declaration);
+  return `${outer}.${own}`;
+}
+
 /** The key two instances share exactly when they are one entry. */
 export function instanceKey(instance: FunctionInstance): string {
-  return `${declarationKey(instance.declaration)}<${instance.typeArguments
+  return `${nodeKey(instance.declaration)}<${instance.typeArguments
     .map(typeKey)
     .join(',')}>[${witnessesKey(instance.witnesses)}]/${instance.arity}`;
 }
@@ -128,9 +188,13 @@ export function instanceName(checker: Checker, instance: FunctionInstance): stri
   return `${name}${generic}${defaults}`;
 }
 
-/** `resolved`, closed inside `within`: type arguments substituted, requirements their witnesses. */
-function close(resolved: ResolvedCall, within: FunctionInstance): FunctionCall {
-  const substitution = substitutionOf(within);
+/**
+ * `resolved`, closed inside `within`: type arguments substituted, requirements their witnesses.
+ * A constant's value is within no instance, so nothing in it names a type parameter.
+ */
+function close(resolved: ResolvedCall, within: FunctionInstance | undefined): FunctionCall {
+  const substitution =
+    within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
   if (resolved.kind === 'function') {
     return {
       ...resolved,
@@ -139,7 +203,7 @@ function close(resolved: ResolvedCall, within: FunctionInstance): FunctionCall {
     };
   }
   const { parameter, constraint, member } = resolved.requirement;
-  const witness = within.witnesses.get(parameter)?.[constraint]?.[member];
+  const witness = within?.witnesses.get(parameter)?.[constraint]?.[member];
   if (witness?.kind !== 'function') {
     throw new Error(`No witness for '${parameter.name.text}'; checking should have found one.`);
   }
@@ -158,7 +222,7 @@ function close(resolved: ResolvedCall, within: FunctionInstance): FunctionCall {
   };
 }
 
-function closeWitnesses(witnesses: Witnesses, within: FunctionInstance): Witnesses {
+function closeWitnesses(witnesses: Witnesses, within: FunctionInstance | undefined): Witnesses {
   return new Map(
     [...witnesses].map(([parameter, constraints]) => [
       parameter,
@@ -190,15 +254,15 @@ function witnessesKey(witnesses: Witnesses): string {
     .join('&');
 }
 
-const declarations = new WeakMap<FunctionDeclaration, number>();
-let nextDeclaration = 0;
+const nodes = new WeakMap<FunctionDeclaration | Lambda | VariableDeclaration, number>();
+let nextNode = 0;
 
-function declarationKey(declaration: FunctionDeclaration): number {
-  let key = declarations.get(declaration);
+function nodeKey(node: FunctionDeclaration | Lambda | VariableDeclaration): number {
+  let key = nodes.get(node);
   if (key === undefined) {
-    key = nextDeclaration;
-    nextDeclaration += 1;
-    declarations.set(declaration, key);
+    key = nextNode;
+    nextNode += 1;
+    nodes.set(node, key);
   }
   return key;
 }

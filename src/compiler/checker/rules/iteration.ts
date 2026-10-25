@@ -17,7 +17,7 @@ import type { Comprehension, Expression } from '../../syntax/expressions.ts';
 import type { For } from '../../syntax/statements.ts';
 import type { Iteration } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../overloads/candidates.ts';
 import { implicitCall, preludeCandidates } from '../overloads/implicit.ts';
 import { operatorFunctions } from '../overloads/operators.ts';

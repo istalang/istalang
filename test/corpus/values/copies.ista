@@ -26,7 +26,8 @@ fn both(a: &int, b: &int):
 
 fn setFrom(a: &P, b: P):
   a.x = 5
-  b.x = 6
+  let own = b
+  own.x = 6
 
 fn get(self: W) -> P: self.p
 

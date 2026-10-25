@@ -6,7 +6,7 @@
 
 import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { LazyChecks } from '../lazy-checks.ts';
 import { errorType, type Type } from '../types/type.ts';
 

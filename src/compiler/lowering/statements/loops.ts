@@ -1,7 +1,8 @@
 /**
  * Loops (§4): `while` tests its condition at the top; `continue` jumps back to the test and
- * `break` past the loop. A `for` runs the loop every iterating construct runs (iteration.ts),
- * binding its targets to each item; `continue` goes on to the next item.
+ * `break` past the loop, both releasing the blocks they leave. A `for` runs the loop every
+ * iterating construct runs (iteration.ts), binding its targets to each item; `continue` goes on to
+ * the next item.
  */
 
 import { withPushed } from '../../../structures/stack.ts';
@@ -12,10 +13,11 @@ import type { Label } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitLoopOver } from '../iteration.ts';
 
-/** Where `break` and `continue` go inside a loop. */
+/** Where `break` and `continue` go inside a loop, and how many blocks were open around it. */
 export interface LoopTargets {
   readonly exit: Label;
   readonly next: Label;
+  readonly depth: number;
 }
 
 /** The loops being lowered, innermost last. */
@@ -47,7 +49,7 @@ export function lowerWhile(context: FunctionContext, node: While): void {
   code.place(test);
   code.branch(context.expression(node.condition), body, exit, node.condition.span);
   code.place(body);
-  context.loops.inside({ exit, next: test }, () => {
+  context.loops.inside({ exit, next: test, depth: context.variables.depth }, () => {
     context.block(node.body);
   });
   code.jump(test, node.span);
@@ -62,7 +64,12 @@ export function lowerFor(context: FunctionContext, node: For): void {
   });
 }
 
+/** `break` or `continue`: leaving the blocks inside the loop releases them, as their ends would. */
 export function lowerLoopExit(context: FunctionContext, node: NodeOf<'Break' | 'Continue'>): void {
   const targets = context.loops.current(node.span);
+  const registers = context.variables.declaredSince(targets.depth);
+  if (registers.length > 0) {
+    context.code.emit({ kind: 'release', span: node.span, registers: [...registers] });
+  }
   context.code.jump(node.kind === 'Break' ? targets.exit : targets.next, node.span);
 }

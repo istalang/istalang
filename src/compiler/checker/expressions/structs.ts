@@ -14,19 +14,22 @@
  *   reported as unknown here; a call of one is a method call (calls.ts).
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
+import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
+import { checkFunctionValue, namedFunctions } from '../closures/function-values.ts';
 import type { BodyContext } from '../context.ts';
 import { typeArgumentsFor } from '../declarations/resolve-type.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
-import { staticCandidates } from '../overloads/candidates.ts';
-import { staticTargetOf } from '../traits/conformance.ts';
+import { topLevelCandidates } from '../overloads/candidates.ts';
 import { requiredFields, requiredFieldType } from '../traits/constraints.ts';
 import { errorType, type FieldMember, type NominalType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
 import { checkLiteralFields, type LiteralShape, type LiteralSpread } from './literal-fields.ts';
 import { entityValueType } from './names.ts';
 import { checkVariantLiteral, checkVariantName, namedType } from './variants.ts';
@@ -192,43 +195,44 @@ export function checkMemberAccess(
   if (qualified?.kind === 'variant') {
     return checkVariantName(context, node, qualified, expected);
   }
+  const functions = namedFunctions(context, node);
+  if (functions !== undefined) {
+    return checkFunctionValue(context, functions, expected);
+  }
   if (qualified !== undefined) {
     return entityValueType(context, node.member, qualified, expected);
   }
   const owner = node.isOptional ? undefined : namedType(context, node.target);
   if (owner !== undefined) {
-    return staticMember(context, node, owner);
-  }
-  const type = context.chains.target(context, node);
-  if (type.kind === 'error') {
-    return errorType;
-  }
-  const field = fieldOf(context, type, node.member.text);
-  if (field === undefined) {
-    context.report(
-      checkerDiagnostics.unknownField(node.member.span, typeText(type), node.member.text),
-    );
-    return errorType;
-  }
-  return field;
-}
-
-/**
- * A static function named as a value through its type, which function values add; a name its
- * type has no static function of is reported here.
- */
-function staticMember(context: BodyContext, node: MemberAccess, owner: Type): Type {
-  const { checker, module } = context;
-  const target = staticTargetOf(checker, owner);
-  const found =
-    target !== undefined && staticCandidates(checker, module, target, node.member.text).length > 0;
-  if (!found) {
     context.report(
       checkerDiagnostics.noStaticFunction(node.member.span, typeText(owner), node.member.text),
     );
     return errorType;
   }
-  return context.unsupported(node, frontier.staticMember);
+  const type = context.chains.target(context, node);
+  if (type.kind === 'error') {
+    return errorType;
+  }
+  const name = node.member.text;
+  const field = fieldOf(context, type, name);
+  if (field !== undefined) {
+    return field;
+  }
+  if (
+    name === 'value' &&
+    wellKnownArguments(context.checker, wellKnown.shared, type) !== undefined
+  ) {
+    return context.unsupported(node, frontier.sharedValueField);
+  }
+  const isMethod = topLevelCandidates(context.checker, context.module, name, [type]).some(
+    ({ declaration }) => isMethodDeclaration(declaration),
+  );
+  context.report(
+    isMethod
+      ? checkerDiagnostics.methodValue(node.member.span, name)
+      : checkerDiagnostics.unknownField(node.member.span, typeText(type), name),
+  );
+  return errorType;
 }
 
 /** The type of the field `name` of `type`, through a constraint for a type parameter. */

@@ -20,7 +20,7 @@ import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
 import type { RequirementOrigin } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { parameterType, typeArgumentsFor, typeParametersOf } from '../declarations/resolve-type.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ParameterKey, type Substitution, substitute, type Type } from '../types/type.ts';
 
 /** A trait a type must satisfy, with its type arguments; `Self` already the constrained type. */

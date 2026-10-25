@@ -16,7 +16,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { agreedType, type Produced } from '../rules/agreement.ts';
 import { sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -66,18 +66,16 @@ export class ReturnScope {
     }
   }
 
-  /** What `body` produces, given its tail's type, once every `return` in it has been checked. */
-  result(context: BodyContext, body: Block, tail: Type): Type {
-    const at = tailNodeOf(body).span;
-    const node = tailExpressionOf(body);
+  /** What the body produces, given its `tail`, once every `return` in it has been checked. */
+  result(context: BodyContext, tail: Produced): Type {
     if (this.declared !== undefined) {
-      context.fit(tail, this.declared, node ?? at);
+      context.fit(tail.type, this.declared, tail.node ?? tail.span);
       return this.declared;
     }
-    const produced = [...this.#returned, { type: tail, span: at, node }];
+    const produced = [...this.#returned, tail];
     const { decided, disagreeing } = agreedType(produced, context.checker.wrapsToFit);
     if (decided === undefined) {
-      return tail;
+      return tail.type;
     }
     for (const { type, span, node: value } of disagreeing) {
       context.fit(type, decided, value ?? span);
@@ -87,6 +85,11 @@ export class ReturnScope {
     }
     return decided;
   }
+}
+
+/** A block body's tail: its last expression's value, or unit at its last statement. */
+export function blockTail(body: Block, type: Type): Produced {
+  return { type, span: tailNodeOf(body).span, node: tailExpressionOf(body) };
 }
 
 /** Reports a `?` whose `Err` doesn't fit a function producing `result`. */

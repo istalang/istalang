@@ -32,7 +32,7 @@ import { lastName } from '../../syntax/node.ts';
 import type { FieldSource } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { constrainArguments, typeParametersOf } from '../declarations/resolve-type.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
 import { callMade } from '../overloads/calls-made.ts';

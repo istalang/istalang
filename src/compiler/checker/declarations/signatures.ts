@@ -22,7 +22,7 @@ import type { Invalid } from '../../syntax/node.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { futureArgument, futureOf, refuseHeldFuture } from '../rules/futures.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
@@ -66,8 +66,13 @@ export function declaredParameters(
     if (declaration.body !== undefined) {
       refuseHeldFuture(checker, module, node, type);
     }
-    return [{ node, type, reference: node.type?.kind === 'ReferenceType' }];
+    return [{ node, type, reference: writtenByReference(node) }];
   });
+}
+
+/** Whether `node` is written as taking a reference, `&T` (§3.7). */
+export function writtenByReference(node: Parameter): boolean {
+  return node.type?.kind === 'ReferenceType';
 }
 
 /**
@@ -77,7 +82,7 @@ export function declaredParameters(
 export function declaredBodyResult(
   checker: CheckerContext,
   module: ModuleId,
-  declaration: FunctionDeclaration,
+  declaration: Pick<FunctionDeclaration, 'isAsync' | 'returnType'>,
 ): Type | undefined {
   if (declaration.returnType === undefined) {
     return undefined;

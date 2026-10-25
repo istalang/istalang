@@ -1,0 +1,35 @@
+# outcome: "8 | true false | 5 | 7"
+# A closure inside a closure shares the outermost `let` (§3.14); copies of one closure compare
+# equal and separate closures don't; a later write is seen by the closure, and a captured
+# function-typed `let` is read at call time.
+
+fn nested() -> int:
+  let x = 1
+  const outer = fn(): {
+    const inner = fn(): { x += 2; x }
+    inner() + inner()
+  }
+  outer()
+
+fn eq() -> string:
+  let c = 0
+  c += 0
+  const a = fn(): c
+  const b = a
+  const d = fn(): c
+  string(a == b) + " " + string(a == d)
+
+fn mut() -> int:
+  let x = 1
+  const f = fn(): x
+  x = 5
+  f()
+
+fn reassigned() -> int:
+  let f = fn(): 1
+  const g = fn(): f()
+  f = fn(): 7
+  g()
+
+async fn main():
+  string(nested()) + " | " + eq() + " | " + string(mut()) + " | " + string(reassigned())

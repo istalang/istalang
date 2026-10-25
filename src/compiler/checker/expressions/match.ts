@@ -14,7 +14,7 @@
 import type { Span } from '../../../text/span.ts';
 import { casesOf, type Is, type Match } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';
 import { checkPattern } from '../patterns/matching.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';

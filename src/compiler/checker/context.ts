@@ -30,6 +30,7 @@ import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, Checker, ResolvedCall, VariantMember } from './check.ts';
+import type { FunctionScopes } from './closures/functions.ts';
 import type { CollectionForms } from './expressions/collections.ts';
 import type { StructLiterals } from './expressions/literal-fields.ts';
 import type { OptionalChains } from './expressions/optionals.ts';
@@ -126,11 +127,15 @@ export interface BodyContext {
   readonly resolveType: (node: TypeNode) => Type;
   readonly entityOf: (name: Identifier) => Entity | undefined;
   readonly recordCall: (site: CallSite, call: ResolvedCall) => void;
-  /** Whether the body is an async function's, the only kind that may `await` (§5). */
+  /** Whether the innermost function is async, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
   readonly variables: VariableScope;
   readonly literals: StructLiterals;
+  /** The functions being checked, the body's own and nested ones (§3.14), innermost current. */
+  readonly functions: FunctionScopes;
+  /** The innermost function's result. */
   readonly returns: ReturnScope;
+  /** The innermost function's loops. */
   readonly loops: LoopScope;
   readonly implicit: ImplicitCalls;
   readonly collections: CollectionForms;

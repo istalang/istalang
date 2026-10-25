@@ -20,7 +20,7 @@ import {
 } from '../../syntax/expressions.ts';
 import type { ChainLink } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from '../types/fit.ts';
 import { errorType, isAssignable, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

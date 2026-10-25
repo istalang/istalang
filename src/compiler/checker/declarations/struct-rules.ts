@@ -7,7 +7,7 @@
 
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Type } from '../types/type.ts';
 
 /** Reports each field of `declaration` that makes its values hold themselves. */

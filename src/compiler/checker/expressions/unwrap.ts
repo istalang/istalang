@@ -1,7 +1,7 @@
 /**
  * `x$` and `x$ = v` (§3.9): calls to `unwrap(x)` and `rewrap(x, v)`, found like any call by their
  * names and the operand's type. `x$.field = v` and `x$ += v` write part of the unwrapped value,
- * which assigning to a part of a value does.
+ * which assigning to a part of a value does, and write it back with `rewrap` (rules/places.ts).
  */
 
 import { rewrapFunction, unwrapFunction } from '../../../language/well-known.ts';

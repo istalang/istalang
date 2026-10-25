@@ -11,11 +11,10 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckedBody, SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { LazyChecks } from '../lazy-checks.ts';
 import { type DefaultValues, declaredParameters } from './signatures.ts';
 
@@ -26,8 +25,8 @@ export interface DefaultsBody extends DefaultValues {
 
 interface ParameterUnit {
   readonly checker: CheckerContext;
-  /** A fresh body to check `module`'s defaults in. */
-  readonly defaultsBody: (module: ModuleId) => DefaultsBody;
+  /** A fresh body to check `declaration`'s defaults in. */
+  readonly defaultsBody: (declaration: FunctionDeclaration) => DefaultsBody;
 }
 
 interface Checked {
@@ -76,7 +75,7 @@ export class Parameters {
     return this.#together.resultOf(declaration, () => {
       const { checker } = this.#unit;
       const module = checker.moduleOf(declaration);
-      const body = this.#unit.defaultsBody(module);
+      const body = this.#unit.defaultsBody(declaration);
       const parameters = declaredParameters(checker, module, declaration, body);
       return { parameters, defaults: body.checked() };
     });
@@ -87,8 +86,7 @@ export class Parameters {
     if (!hasDefaults(declaration)) {
       return undefined;
     }
-    const { checker } = this.#unit;
-    const body = this.#unit.defaultsBody(checker.moduleOf(declaration));
+    const body = this.#unit.defaultsBody(declaration);
     for (const parameter of this.parametersOf(declaration)) {
       const { defaultValue } = parameter.node;
       if (defaultValue !== undefined) {

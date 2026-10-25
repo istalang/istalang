@@ -1,0 +1,27 @@
+# outcome: "1 2 3 | 3 | 1 13"
+# A closure shares the `let`s it captures with the code around it (§3.14): `next` counts on the
+# `count` of the call that made it, a copy of the closure shares that count, and a change made
+# outside after the closure was made is seen inside it. Each call of `makeCounter` has its own.
+
+fn makeCounter(start: int) -> fn() -> int:
+  let count = start
+  fn next() -> int:
+    count += 1
+    count
+  next
+
+fn shared() -> string:
+  let total = 0
+  const add = fn(n: int): { total += n; total }
+  const first = add(1)
+  total += 10
+  string(first) + " " + string(add(2))
+
+async fn main():
+  const next = makeCounter(0)
+  const alias = next
+  const a = next()
+  const b = alias()
+  const other = makeCounter(2)
+  const c = next()
+  string(a) + " " + string(b) + " " + string(c) + " | " + string(other()) + " | " + shared()

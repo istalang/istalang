@@ -12,7 +12,7 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { BodyContext } from './context.ts';
-import { checkerDiagnostics } from './diagnostics.ts';
+import { checkerDiagnostics } from './diagnostics/index.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import type { Type } from './types/type.ts';
 

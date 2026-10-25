@@ -10,7 +10,7 @@ import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { lineMapOf } from '../text/line-map.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
 import { binderDiagnostics } from './binder/diagnostics.ts';
-import { checkerDiagnostics } from './checker/diagnostics.ts';
+import { checkerDiagnostics } from './checker/diagnostics/index.ts';
 import { diagnosedAt } from './compile.test-kit.ts';
 import { diagnose } from './compile.ts';
 import { programDiagnostics } from './program/diagnostics.ts';

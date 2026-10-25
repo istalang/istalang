@@ -11,28 +11,32 @@
  *   its name where the call is written and through the receiver's type (argument-dependent
  *   lookup), with the receiver as its first argument (§3.7). Which overload the receiver's type
  *   picks decides whether `self` is a reference, and only then must the receiver be a place that
- *   may change. A name that is a field of the receiver is a function value, not a method.
+ *   may change.
+ * - a function value: a variable, a field of the receiver, or any other expression of a function
+ *   type (closures/value-calls.ts). `x.f()` naming both a field and a method of `x`'s type is
+ *   ambiguous, so it is reported; `(x.f)()` calls the field.
  *
  * An argument written `&x` passes the place `x` by reference, which must be a place that may
- * change (rules/places.ts). Calls through function values and spread arguments are other ways to
- * call; each is reported as not supported until the feature that adds it.
+ * change (rules/places.ts). Spread arguments are reported as not supported until the feature that
+ * adds them.
  */
 
-import { conversionFunction, wellKnown } from '../../../language/well-known.ts';
+import { conversionFunction } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
 import type { Call, Expression, MemberAccess } from '../../syntax/expressions.ts';
+import { checkValueCall } from '../closures/value-calls.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { callCandidates, staticCandidates, topLevelCandidates } from '../overloads/candidates.ts';
+import { decidedByCall } from '../overloads/decided.ts';
 import { resolveCall, type WrittenArgument } from '../overloads/resolve.ts';
 import { checkChangedPlace } from '../rules/places.ts';
 import { staticTargetOf } from '../traits/conformance.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
-import { decidedByCall, namedType } from './variants.ts';
+import { namedType } from './variants.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const argumentNodes: Expression[] = [];
@@ -66,7 +70,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
         : callStatic(context, call, owner, callee.member.text);
     }
     default:
-      return context.unsupported(callee, frontier.functionValueCall);
+      return checkValueCall(context, call, callee);
   }
 }
 
@@ -101,9 +105,7 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     return errorType;
   }
   const name = callee.member.text;
-  if (checker.fieldsOf(receiverType)?.some((field) => field.name === name)) {
-    return context.unsupported(call.node, frontier.functionValueCall);
-  }
+  const field = checker.fieldsOf(receiverType)?.find((each) => each.name === name);
   const written = [
     { node: receiver, passing: 'receiver', type: receiverType } as const,
     ...call.written,
@@ -112,6 +114,15 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
   const methods = topLevelCandidates(checker, context.module, name, types).filter(
     ({ declaration }) => isMethod(declaration),
   );
+  if (field !== undefined && methods.length > 0) {
+    context.report(
+      checkerDiagnostics.fieldOrMethod(callee.member.span, typeText(receiverType), name),
+    );
+    return errorType;
+  }
+  if (field !== undefined) {
+    return checkValueCall(context, call, callee, field.type);
+  }
   const candidates = chained
     ? methods.filter(({ declaration }) => checker.parametersOf(declaration)[0]?.reference !== true)
     : methods;
@@ -163,7 +174,7 @@ function callEntity(
     case undefined:
       return errorType;
     case 'variable':
-      return context.unsupported(call.node.callee, frontier.functionValueCall);
+      return checkValueCall(context, call, call.node.callee);
     case 'type':
     case 'primitive': {
       const owner = namedType(context, call.node.callee);
@@ -180,9 +191,6 @@ function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: 
   const { checker, module } = context;
   const target = staticTargetOf(checker, owner);
   const candidates = target === undefined ? [] : staticCandidates(checker, module, target, name);
-  if (candidates.length === 0 && isShared(context, owner)) {
-    return context.unsupported(call.node, frontier.sharedValue);
-  }
   if (candidates.length === 0) {
     if (owner.kind !== 'error') {
       context.report(checkerDiagnostics.noStaticFunction(call.node.span, typeText(owner), name));
@@ -190,11 +198,6 @@ function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: 
     return errorType;
   }
   return resolve(context, call, `${typeText(owner)}.${name}`, candidates);
-}
-
-/** Whether `type` is the prelude's `Shared`, whose values closures add (§3.8, §3.14). */
-function isShared(context: BodyContext, type: Type): boolean {
-  return wellKnownArguments(context.checker, wellKnown.shared, type) !== undefined;
 }
 
 function resolve(

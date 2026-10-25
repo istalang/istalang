@@ -1,7 +1,8 @@
 /**
  * Top-level constants (§3) and duration literals as Definition constants: the checker computed
  * their values (`ConstantForm`, checker/declarations/constants.ts), and lowering only turns each
- * form into a persisted value, a struct's type into its table index. Reading one is a `constant`
+ * form into a persisted value, a struct's type into its table index, and a lambda into a closure
+ * of no captures of its own entry, which the constant owns. Reading one is a `constant`
  * instruction like any literal's, interned by its value (tables.ts).
  */
 
@@ -33,6 +34,15 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
           constantValue(tables, key),
           constantValue(tables, value),
         ]),
+      };
+    case 'function':
+      return {
+        kind: 'closure',
+        function: tables.nestedIndex({
+          owner: { kind: 'constant', declaration: form.constant },
+          node: form.lambda,
+        }),
+        captures: [],
       };
     default: {
       const unhandled: never = form;

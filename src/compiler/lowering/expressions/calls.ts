@@ -6,6 +6,10 @@
  *
  * An argument written `&x` passes the place `x`; a method's receiver is its first argument,
  * passed as a place when its `self` takes a reference (§3.7), which the `&` left implicit.
+ *
+ * A call the checker resolved no function for is a call of a function value (§3.14): the callee's
+ * value is the closure called, and each argument is passed as written, which the checker matched
+ * to the closure's parameters.
  */
 
 import type { Argument } from '../../../definition/instructions/places.ts';
@@ -17,9 +21,13 @@ import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { notLowered } from '../not-lowered.ts';
 import { placeOf } from '../places.ts';
+import { lowerFieldRead } from './structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
-  const resolved = resolvedAt(context, node);
+  const resolved = context.body.calls.get(node);
+  if (resolved === undefined) {
+    return lowerValueCall(context, node);
+  }
   const parameters = context.checker.parametersOf(resolved.function);
   const receiver = receiverOf(context, node, resolved, parameters[0]?.reference === true);
   const passed = node.arguments.map((argument, index) => {
@@ -51,6 +59,27 @@ function receiverOf(
     return argumentOf(context, receiver, byReference);
   }
   return { kind: 'value', register: context.chains.target(context, node) };
+}
+
+/**
+ * A call of the function value `node.callee` evaluates to. A field's, `x.f(…)`, is read from the
+ * value the call works on, since the call, not the access, is the link of an optional chain.
+ */
+function lowerValueCall(context: FunctionContext, node: Call): Register {
+  const callee =
+    node.callee.kind === 'MemberAccess'
+      ? lowerFieldRead(context, node.callee, node)
+      : context.expression(node.callee);
+  const argumentList = node.arguments.map((argument) => argumentOf(context, argument, false));
+  const dst = context.code.allocate();
+  context.code.emit({
+    kind: 'call',
+    span: node.span,
+    dst,
+    callee: { kind: 'value', register: callee },
+    arguments: argumentList,
+  });
+  return dst;
 }
 
 /** Calls the function the checker resolved for `site` with values; the register of its result. */
@@ -98,12 +127,4 @@ function argumentOf(
     return { kind: 'reference', place: placeOf(context, argument) };
   }
   return { kind: 'value', register: context.expression(argument) };
-}
-
-function resolvedAt(context: FunctionContext, site: CallSite): ResolvedCall {
-  const resolved = context.body.calls.get(site);
-  if (resolved === undefined) {
-    throw new Error(`No call was resolved at ${site.span.start}.`);
-  }
-  return resolved;
 }

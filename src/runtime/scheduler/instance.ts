@@ -136,13 +136,20 @@ export class Instance {
     };
   }
 
-  /** A new execution about to run function `entry` with `contents` in its parameters. */
-  startExecution(entry: FunctionId, contents: readonly RegisterContents[]): LiveExecution {
+  /**
+   * A new execution about to run function `entry` with `contents` in its parameters, and a
+   * closure's `captures` after them.
+   */
+  startExecution(
+    entry: FunctionId,
+    contents: readonly RegisterContents[],
+    captures: readonly Value[] = [],
+  ): LiveExecution {
     const code = this.loaded.definition.functions[entry];
     if (code?.kind !== 'code') {
       throw new Error(`Entry ${entry} is not code.`);
     }
-    const frame = newFrame(entry, code, contents, this.cells);
+    const frame = newFrame({ function: entry, code }, contents, this.cells, captures);
     return this.#add((id) => ({ kind: 'execution', id, frames: [frame], disposing: false }));
   }
 
@@ -333,7 +340,7 @@ function liveFrame(definition: Definition, frame: Frame, cells: CellStore): Acti
   if (frame.kept.length > 0) {
     throw new Error("The runtime doesn't restore kept holdings yet.");
   }
-  const live = newFrame(frame.function, code, [], cells);
+  const live = newFrame({ function: frame.function, code }, [], cells);
   for (const [register, contents] of frame.registers) {
     live.registers[register] = contents;
   }

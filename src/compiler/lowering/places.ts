@@ -29,28 +29,36 @@ export function placeOf(context: FunctionContext, node: Expression): Place {
   if (root.kind !== 'Identifier') {
     throw new Error(`A ${root.kind} is no place; the checker should have said so.`);
   }
-  return {
-    register: variableRegister(context, root),
-    path: steps.map((step): PathStep => {
-      switch (step.kind) {
-        case 'MemberAccess':
-          return { kind: 'field', index: fieldIndexOf(context, step) };
-        case 'TupleElement':
-          return { kind: 'field', index: step.element };
-        case 'Index':
-          return {
-            kind: 'element',
-            key: context.expression(step.index),
-            read: context.calleeIndex(step),
-            write: context.implicitCallee(step, 'write'),
-          };
-        default: {
-          const unhandled: never = step;
-          return unhandled;
-        }
+  return { register: variableRegister(context, root), path: pathOf(context, steps) };
+}
+
+/**
+ * A place's steps: a struct field by its position, a tuple element, or an element by its key and
+ * the functions reading and writing it.
+ */
+export function pathOf(
+  context: FunctionContext,
+  steps: ReturnType<typeof placePath>['steps'],
+): Place['path'] {
+  return steps.map((step): PathStep => {
+    switch (step.kind) {
+      case 'MemberAccess':
+        return { kind: 'field', index: fieldIndexOf(context, step) };
+      case 'TupleElement':
+        return { kind: 'field', index: step.element };
+      case 'Index':
+        return {
+          kind: 'element',
+          key: context.expression(step.index),
+          read: context.calleeIndex(step),
+          write: context.implicitCallee(step, 'write'),
+        };
+      default: {
+        const unhandled: never = step;
+        return unhandled;
       }
-    }),
-  };
+    }
+  });
 }
 
 /** The register the variable `node` names lives in. */
@@ -108,8 +116,12 @@ export function readPart(
 }
 
 /** The position, in its struct's declaration order, of the field `node` reads. */
-export function fieldIndexOf(context: FunctionContext, node: MemberAccess): number {
-  const type = context.body.chainOf(node)?.base ?? context.body.typeOf(node.target);
+export function fieldIndexOf(
+  context: FunctionContext,
+  node: MemberAccess,
+  link: Expression = node,
+): number {
+  const type = context.body.chainOf(link)?.base ?? context.body.typeOf(node.target);
   const index = (context.checker.fieldsOf(type) ?? []).findIndex(
     (field) => field.name === node.member.text,
   );

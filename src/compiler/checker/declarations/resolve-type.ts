@@ -35,7 +35,7 @@ import type {
 import { lastName } from '../../syntax/node.ts';
 import type { FunctionType as FunctionTypeNode, NamedType, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   errorType,
   type NominalDeclaration,

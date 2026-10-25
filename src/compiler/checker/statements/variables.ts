@@ -7,17 +7,19 @@
  * - A `let` that nothing reassigns or changes gets a warning once the whole body has been seen
  *   (§3.4), so the body's VariableScope keeps which ones were, as assignments and places note
  *   them (assignments.ts, rules/places.ts).
+ * - A parameter is declared with its checked signature, so whether it is a reference is known
+ *   from one source, its written `&` or the expected function type's (closures/lambdas.ts).
  * - What lowering needs is recorded: each declaration's bindings, each assignment's parts, and
- *   which variables are passed by `&`.
+ *   which variables live in a cell, being passed by `&` or shared with a closure.
  */
 
 import type { VariableEntity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
-import type { AssignedPart, TargetBinding, TargetOwner } from '../check.ts';
+import type { AssignedPart, SignatureParameter, TargetBinding, TargetOwner } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
@@ -30,12 +32,25 @@ import { errorType, type Type } from '../types/type.ts';
 export class VariableScope {
   readonly #types = new Map<Identifier, Type>();
   readonly #changed = new Set<Identifier>();
-  readonly #referenced = new Set<Identifier>();
+  readonly #inCell = new Set<Identifier>();
+  readonly #references = new Set<Identifier>();
   readonly #targets = new Map<TargetOwner, readonly TargetBinding[]>();
   readonly #assigned = new Map<Assignment, readonly AssignedPart[]>();
 
   declare(name: Identifier, type: Type): void {
     this.#types.set(name, type);
+  }
+
+  declareParameter(parameter: SignatureParameter): void {
+    this.declare(parameter.node.name, parameter.type);
+    if (parameter.reference) {
+      this.#references.add(parameter.node.name);
+    }
+  }
+
+  /** Whether `variable` is a parameter taking a reference (§3.7). */
+  isReference(variable: VariableEntity): boolean {
+    return this.#references.has(variable.name);
   }
 
   typeOf(variable: VariableEntity): Type {
@@ -49,11 +64,16 @@ export class VariableScope {
 
   /** Notes that `variable` is passed by `&`, so it needs storage a reference can reach. */
   noteReferenced(variable: VariableEntity): void {
-    this.#referenced.add(variable.name);
+    this.#inCell.add(variable.name);
   }
 
-  isReferenced(name: Identifier): boolean {
-    return this.#referenced.has(name);
+  /** Notes that a closure captures `variable`, a `let`, so both share its storage (§3.14). */
+  noteShared(variable: VariableEntity): void {
+    this.#inCell.add(variable.name);
+  }
+
+  inCell(name: Identifier): boolean {
+    return this.#inCell.has(name);
   }
 
   targetsOf(owner: TargetOwner): readonly TargetBinding[] {
