@@ -45,17 +45,30 @@ describe('prelude natives', () => {
     );
   });
 
-  it('panic on division by zero, for ints and floats alike', () => {
-    for (const [key, zero] of [
-      [preludeKey('floorDivide', 'int', 'int'), 0n],
-      [preludeKey('remainder', 'int', 'int'), 0n],
-      [preludeKey('divide', 'int', 'int'), 0n],
-      [preludeKey('divide', 'float', 'float'), 0],
-      [preludeKey('divide', 'float', 'int'), 0n],
-    ] as const) {
-      const dividend = key.includes('float, ') ? 1.5 : 1n;
-      expect(() => call(key, dividend, zero)).toThrow(Panic);
-    }
+  it('panic on integer division by zero', () => {
+    fc.assert(
+      fc.property(fc.bigInt(), (dividend) => {
+        for (const name of ['floorDivide', 'remainder']) {
+          expect(() => call(preludeKey(name, 'int', 'int'), dividend, 0n)).toThrow(Panic);
+        }
+      }),
+    );
+  });
+
+  it('divide by zero as IEEE 754 does, whatever the operand types', () => {
+    fc.assert(
+      fc.property(fc.bigInt({ min: -(2n ** 50n), max: 2n ** 50n }), finite, (whole, fraction) => {
+        const cases = [
+          [preludeKey('divide', 'int', 'int'), whole, 0n, Number(whole) / 0],
+          [preludeKey('divide', 'int', 'float'), whole, -0, Number(whole) / -0],
+          [preludeKey('divide', 'float', 'int'), fraction, 0n, fraction / 0],
+          [preludeKey('divide', 'float', 'float'), fraction, 0, fraction / 0],
+        ] as const;
+        for (const [key, dividend, zero, quotient] of cases) {
+          expect(call(key, dividend, zero)).toBe(quotient);
+        }
+      }),
+    );
   });
 
   it('mix ints into floats, and always divide as floats', () => {

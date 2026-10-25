@@ -6,7 +6,8 @@
  * - `int` is a bigint, so integer arithmetic is exact at any size (§2); mixing an int with a float
  *   converts the int, and `/` always divides as floats.
  * - `//` floors and `%` takes the divisor's sign, so `a == (a // b) * b + a % b` holds (§3.9).
- * - Dividing by zero is a bug in the program, so it panics (§3.12), for floats too.
+ * - `/` divides as IEEE 754 does, so dividing by zero gives an infinity or NaN (§2); `//` and `%`
+ *   by zero have no int to give, which is a bug in the program, so they panic (§3.12).
  * - `compare` on floats subtracts, so infinities compare as expected; see `sign` for NaN.
  * - Adding a primitive to a string appends its text; a whole float keeps its `.0`, so `1.0` never
  *   reads as the int `1`. `string(x)` spells a primitive the same way.
@@ -35,8 +36,6 @@ const numericPairs = [
   ['float', 'int'],
 ] as const;
 
-const floatDivide = (left: number, right: number): number => left / nonZero(right);
-
 export const preludeNatives: Natives = {
   ...arrayNatives,
   ...mapNatives,
@@ -57,7 +56,11 @@ export const preludeNatives: Natives = {
     (left, right) => left * right,
     (left, right) => left * right,
   ),
-  ...numeric('divide', (left, right) => floatDivide(Number(left), Number(right)), floatDivide),
+  ...numeric(
+    'divide',
+    (left, right) => Number(left) / Number(right),
+    (left, right) => left / right,
+  ),
   ...numeric(
     'compare',
     (left, right) => sign(compareOrdered(left, right)),
@@ -124,9 +127,9 @@ function floorDivide(dividend: bigint, by: bigint): bigint {
   return inexact && dividend < 0n !== by < 0n ? quotient - 1n : quotient;
 }
 
-/** `by`, when something can be divided by it; dividing by zero panics (§3.12). */
-function nonZero<Divisor extends bigint | number>(by: Divisor): Divisor {
-  if (Number(by) === 0) {
+/** `by`, when an int can be divided by it; dividing by zero panics (§3.12). */
+function nonZero(by: bigint): bigint {
+  if (by === 0n) {
     throw new Panic('Division by zero.');
   }
   return by;

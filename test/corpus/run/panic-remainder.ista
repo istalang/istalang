@@ -1,0 +1,8 @@
+# panic: Division by zero.
+# `%` by zero is a bug like `//` by zero (§2, §3.12), unlike `/`, which gives an infinity or NaN.
+
+fn rest(a: int, b: int) -> int:
+  a % b
+
+async fn main():
+  rest(1, 0)
