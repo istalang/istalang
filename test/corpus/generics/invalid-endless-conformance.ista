@@ -1,0 +1,16 @@
+# error: 5114 at 16:16
+# A witness can need the constraint it meets again (§3.10): the generic `show` meets Show for any
+# type that already meets Show, so whether Badge meets it is never decided, and is reported as a
+# search without end rather than as a function Badge lacks.
+
+trait Show:
+  fn show(value: Self) -> string
+
+struct Badge:
+  label: string
+
+fn show<T is Show>(value: T) -> string:
+  "?"
+
+async fn main():
+  const text = show(Badge{label: "a"})

@@ -68,4 +68,9 @@ export const genericTemplates = {
     message: (name: string) =>
       `'${name}' comes after a parameter with a default, so it needs a default too.`,
   },
+  endlessConformance: {
+    code: 5114,
+    message: (type: string, trait: string) =>
+      `Finding how ${type} satisfies ${trait} doesn't end: what meets it needs ${trait} again, of a type as large or larger.`,
+  },
 } as const;

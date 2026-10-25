@@ -16,7 +16,9 @@
  *   decides comes from it: `Array.default<T>()` meets `Self.default()` for `Array<int>` with `T`
  *   as `int`.
  * - A witness search that fails is reported once, as the constraint not met, so searching itself
- *   reports nothing (`UseSite.report`).
+ *   reports nothing (`UseSite.report`). A search can recurse without end, when a witness needs
+ *   the same constraint again for a type as large or larger; it is bounded, and one that reaches
+ *   the bound is reported as such, at every level up to the use site.
  */
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
@@ -51,8 +53,18 @@ export interface Instantiation {
   readonly witnesses: Witnesses;
 }
 
-/** Witness searches may nest; this bounds one that would recurse without end. */
+/** How deeply witness searches nest before one counts as endless. */
 const maximumDepth = 16;
+
+/**
+ * Why a search failed, after reporting it at its use site: `endless` when a witness search reached
+ * the depth bound, which every level up reports as such, and `failed` for any other cause.
+ */
+type Failure = 'failed' | 'endless';
+
+function isFailure<Found>(outcome: Found | Failure): outcome is Failure {
+  return outcome === 'failed' || outcome === 'endless';
+}
 
 /**
  * Completes `application`: open type parameters from `expected`, then their defaults, then every
@@ -62,8 +74,18 @@ export function instantiate(
   site: UseSite,
   application: Application,
   expected: Type | undefined,
-  depth = 0,
 ): Instantiation | undefined {
+  const instantiation = instantiateAt(site, application, expected, 0);
+  return isFailure(instantiation) ? undefined : instantiation;
+}
+
+/** `instantiate`, within witness searches nested `depth` deep. */
+function instantiateAt(
+  site: UseSite,
+  application: Application,
+  expected: Type | undefined,
+  depth: number,
+): Instantiation | Failure {
   const { checker, at } = site;
   const { signature, inference, candidate } = application;
   const { declaration, typeParameters } = signature;
@@ -74,23 +96,23 @@ export function instantiate(
   if (completion.kind === 'open') {
     const parameter = completion.parameter.name.text;
     site.report(checkerDiagnostics.cannotInfer(at, declaration.name.text, parameter));
-    return undefined;
+    return 'failed';
   }
   const { typeArguments, substitution } = completion;
   const witnesses =
     candidate.requirement === undefined
       ? witnessesOf(site, typeParameters, completion, depth)
       : new Map();
-  return witnesses === undefined ? undefined : { typeArguments, substitution, witnesses };
+  return isFailure(witnesses) ? witnesses : { typeArguments, substitution, witnesses };
 }
 
-/** The witnesses of every constraint on `parameters`, given their arguments; undefined after a report. */
+/** The witnesses of every constraint on `parameters`, given their arguments. */
 function witnessesOf(
   site: UseSite,
   parameters: readonly TypeParameter[],
   { typeArguments, substitution }: Extract<Completion, { kind: 'complete' }>,
   depth: number,
-): Witnesses | undefined {
+): Witnesses | Failure {
   const witnesses = new Map<TypeParameter, readonly (readonly ResolvedCall[])[]>();
   for (const [index, parameter] of parameters.entries()) {
     const argument = typeArguments[index] ?? errorType;
@@ -98,8 +120,8 @@ function witnessesOf(
     for (const constraint of site.checker.constraintsOf(parameter)) {
       const mapped = substituteConstraint(constraint, substitution);
       const witnessesOfConstraint = conform(site, argument, mapped, depth);
-      if (witnessesOfConstraint === undefined) {
-        return undefined;
+      if (isFailure(witnessesOfConstraint)) {
+        return witnessesOfConstraint;
       }
       met.push(witnessesOfConstraint);
     }
@@ -110,7 +132,7 @@ function witnessesOf(
 
 /** Whether `type` meets `constraint` at the use site, reporting there when it doesn't. */
 export function meets(site: UseSite, type: Type, constraint: Constraint): boolean {
-  return conform(site, type, constraint, 0) !== undefined;
+  return !isFailure(conform(site, type, constraint, 0));
 }
 
 /** Where a witness for `required` may come from: calls of its name, or statics of `type`. */
@@ -153,45 +175,70 @@ export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarge
 }
 
 /**
- * The witness of every function `constraint` requires of `type`; undefined after a report. A
- * type already in error was reported, so it fails silently.
+ * The witness of every function `constraint` requires of `type`. A type already in error was
+ * reported, so it fails silently.
  */
 function conform(
   site: UseSite,
   type: Type,
   constraint: Constraint,
   depth: number,
-): readonly ResolvedCall[] | undefined {
-  const { checker, at } = site;
+): readonly ResolvedCall[] | Failure {
+  const { checker } = site;
   if (type.kind === 'error') {
-    return undefined;
+    return 'failed';
   }
-  const fail = (missing: string): undefined => {
-    site.report(
-      checkerDiagnostics.notConforming(at, typeText(type), constraint.trait.name.text, missing),
-    );
-  };
+  const meeting = { site, type, constraint };
   if (isSendableTrait(checker, constraint.trait)) {
-    return isSendable(checker, type) ? [] : fail('every value inside it to be sendable');
+    return isSendable(checker, type) ? [] : lacks(meeting, 'every value inside it to be sendable');
   }
-  const substitution = constraintSubstitution(constraint, type);
   for (const field of requiredFields(constraint.trait)) {
     const fieldType = requiredFieldType(checker, constraint, field, type);
     if (!hasField(checker, type, field.name.text, fieldType)) {
-      return fail(`a field '${field.name.text}: ${typeText(fieldType)}'`);
+      return lacks(meeting, `a field '${field.name.text}: ${typeText(fieldType)}'`);
     }
   }
+  return functionWitnesses(meeting, depth);
+}
+
+/** A constraint being met by a type at a use site, for reporting why it isn't. */
+interface Meeting {
+  readonly site: UseSite;
+  readonly type: Type;
+  readonly constraint: Constraint;
+}
+
+/** Reports that the type lacks `missing` to meet the constraint. */
+function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
+  const trait = constraint.trait.name.text;
+  site.report(checkerDiagnostics.notConforming(site.at, typeText(type), trait, missing));
+  return 'failed';
+}
+
+/** The witness of every function the constraint requires. */
+function functionWitnesses(meeting: Meeting, depth: number): readonly ResolvedCall[] | Failure {
+  const { site, type, constraint } = meeting;
+  const substitution = constraintSubstitution(constraint, type);
   const witnesses: ResolvedCall[] = [];
   for (const declaration of requiredFunctions(constraint.trait)) {
     const required = { declaration, substitution };
-    const witness = depth < maximumDepth ? witnessOf(site, type, required, depth) : 'none';
-    if (witness === 'none') {
-      return fail(`'${declaration.name.text}' as ${constraint.trait.name.text} declares it`);
+    const witness = depth < maximumDepth ? witnessOf(site, type, required, depth) : 'endless';
+    switch (witness) {
+      case 'none':
+        return lacks(
+          meeting,
+          `'${declaration.name.text}' as ${constraint.trait.name.text} declares it`,
+        );
+      case 'endless': {
+        const trait = constraint.trait.name.text;
+        site.report(checkerDiagnostics.endlessConformance(site.at, typeText(type), trait));
+        return 'endless';
+      }
+      case 'failed':
+        return 'failed';
+      default:
+        witnesses.push(witness);
     }
-    if (witness === 'refused') {
-      return undefined;
-    }
-    witnesses.push(witness);
   }
   return witnesses;
 }
@@ -203,15 +250,15 @@ interface RequiredFunction {
 }
 
 /**
- * The call meeting `required` for `type`: `none` when no single function does, `refused` when
- * the one that does can't be called (calls-made.ts), which was reported at the use site.
+ * The call meeting `required` for `type`: `none` when no single function does; otherwise, when
+ * the one that does can't be instantiated or called (calls-made.ts), the failure reported.
  */
 function witnessOf(
   site: UseSite,
   type: Type,
   required: RequiredFunction,
   depth: number,
-): ResolvedCall | 'none' | 'refused' {
+): ResolvedCall | 'none' | Failure {
   const { checker } = site;
   const signature = signatureOf(checker, required.declaration, required.substitution);
   const parameterTypes = signature.parameters.map((parameter) => parameter.type);
@@ -227,16 +274,16 @@ function witnessOf(
     return 'none';
   }
   const { application } = choice;
-  const instantiation = instantiate(silent(site), application, signature.result(), depth + 1);
-  if (instantiation === undefined) {
-    return 'none';
+  const instantiation = instantiateAt(silent(site), application, signature.result(), depth + 1);
+  if (isFailure(instantiation)) {
+    return instantiation === 'endless' ? 'endless' : 'none';
   }
   const result = substitute(application.signature.result(), instantiation.substitution);
   if (!sameType(result, signature.result())) {
     return 'none';
   }
   const arity = callArguments.length;
-  return callMade(site, application.candidate, instantiation, arity) ?? 'refused';
+  return callMade(site, application.candidate, instantiation, arity) ?? 'failed';
 }
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
