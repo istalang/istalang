@@ -78,10 +78,11 @@ const futureState = z.discriminatedUnion('kind', [
    * resolve, the lowest position among futures that resolved together (spec §3.8).
    */
   z.strictObject({ kind: z.literal('first'), futures: z.array(objectId).min(1) }),
-  /** `x.disposed()`: resolves when `target` is disposed (spec §6). */
-  z.strictObject({ kind: z.literal('disposed'), target: objectId }),
-  /** `worker.disposing()`: resolves when the call running `execution` is disposed (spec §7). */
-  z.strictObject({ kind: z.literal('disposing'), execution: objectId }),
+  /**
+   * `w.disposed()` and `worker.disposing()` (spec §6, §7): resolves when the referent of the weak
+   * reference `weakRef` is disposed; with no referent left, never.
+   */
+  z.strictObject({ kind: z.literal('disposed'), weakRef: objectId }),
 ]);
 
 /** A heap object schema: `kind` and `id`, plus its own fields. */
@@ -101,11 +102,14 @@ export const heapObject = z.discriminatedUnion('kind', [
   /** Full when `value` is present; `waiting` lists pending operation futures, oldest first. */
   defineObject('slot', { value: value.optional(), waiting: z.array(objectId) }),
   defineObject('future', { state: futureState }),
-  /** `target` is absent once the referent is disposed. */
+  /**
+   * A weak reference, the one to its referent (spec §7): `target` is absent once the referent is
+   * disposed or, for a call's own (`currentCall`), once the call has returned.
+   */
   defineObject('weakRef', { target: objectId.optional() }),
   /** A `defer` guard: disposing it calls `callback` (spec §7). */
   defineObject('guard', { callback: value }),
-  /** A disposable value of an extern type the runtime or host implements, such as `Revertible<T>`. */
+  /** A host value of an extern type that declares a `dispose` (docs/arch/definition.md). */
   defineObject('resource', { type: typeId, payload: z.unknown() }),
   /**
    * A held `Mock<F>`: while it exists, calls to `target` go to `replacement`, and `calls` records

@@ -31,6 +31,7 @@ import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, Checker, ResolvedCall, VariantMember } from './check.ts';
 import type { FunctionScopes } from './closures/functions.ts';
+import type { OwnCalls } from './closures/own-calls.ts';
 import type { CollectionForms } from './expressions/collections.ts';
 import type { StructLiterals } from './expressions/literal-fields.ts';
 import type { OptionalChains } from './expressions/optionals.ts';
@@ -155,4 +156,5 @@ export interface BodyContext {
   readonly collections: CollectionForms;
   readonly patterns: CheckedPatterns;
   readonly chains: OptionalChains;
+  readonly ownCalls: OwnCalls;
 }

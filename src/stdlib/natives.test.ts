@@ -10,11 +10,8 @@ import { externKeyOf } from '../compiler/lowering/names.ts';
 import { stdNatives } from './natives.ts';
 import { stdSources } from './stdlib-loader.ts';
 
-/**
- * Externs without a native, by module and name: weak references arrive with 3.8, and the runtime
- * disposes futures and slots itself, so their `dispose` never has one.
- */
-const withoutNative = new Set(['prelude.deref', 'prelude.disposed', 'prelude.dispose']);
+/** Externs without a native, by module and name: the runtime disposes futures and slots itself. */
+const withoutNative = new Set(['prelude.dispose']);
 
 describe('std natives', () => {
   it('implement exactly the callable externs the std modules declare, by the keys lowering gives', () => {

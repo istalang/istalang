@@ -3,9 +3,8 @@
  * handler runs one instruction of the top frame and moves its pc: to the next instruction, to a
  * jump's target, or, for a call, nowhere until the callee returns (machine.ts).
  *
- * Instructions of features the runtime doesn't run yet share one handler that refuses them; each
- * feature slice replaces its kinds' entries. Loading has already checked every index and every
- * call's arity, so handlers trust what they read.
+ * Loading has already checked every index and every call's arity, so handlers trust what they
+ * read.
  */
 
 import { mapOf, valuesEqual } from '../../definition/equality.ts';
@@ -26,10 +25,6 @@ import {
   writeRegister,
 } from './machine.ts';
 import { enterCase, resolvedCase } from './suspension.ts';
-
-const notRunYet = (_machine: Machine, instruction: Instruction): void => {
-  throw new Error(`The runtime doesn't run '${instruction.kind}' instructions yet.`);
-};
 
 const relations = {
   less: (comparison: bigint) => comparison < 0n,
@@ -155,7 +150,9 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     });
     frame.pc += 1;
   },
-  currentCall: notRunYet,
+  currentCall: (machine, instruction, frame) => {
+    next(frame, instruction.dst, machine.currentCall());
+  },
   select: (machine, instruction, frame) => {
     if (instruction.otherwise === undefined) {
       machine.wait(frame);

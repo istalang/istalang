@@ -14,6 +14,7 @@ import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
+  Call,
   Comprehension,
   Expression,
   Lambda,
@@ -26,6 +27,7 @@ import type {
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { CompareFieldPattern, Pattern } from '../syntax/patterns.ts';
 import type { Assignment, For, VariableDeclaration } from '../syntax/statements.ts';
+import type { NestedFunction } from './closures/function-scope.ts';
 import type { ConstantForm } from './constant-form.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type { FieldMember, FunctionType, NominalType, Type } from './types/type.ts';
@@ -285,6 +287,16 @@ export interface CheckedBody {
   readonly patternOf: (pattern: Pattern) => CheckedPattern;
   /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
   readonly chainOf: (link: Expression) => ChainLink | undefined;
+  /**
+   * The hidden variable holding the handle of the call whose disposal the `worker.disposing()` at
+   * `site` watches (§7).
+   */
+  readonly watchedCallOf: (site: Call) => VariableEntity | undefined;
+  /**
+   * The hidden variable `owner`, a function of this body, takes its own call's handle into at its
+   * entry, when `worker.disposing()` watches that call (§7).
+   */
+  readonly ownCallOf: (owner: NestedFunction) => VariableEntity | undefined;
   /** What the body produces: `T` for an async function returning `Future<T>`. */
   readonly result: Type;
 }

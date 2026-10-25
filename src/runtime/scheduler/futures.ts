@@ -73,7 +73,7 @@ export class Futures {
       }
     }
     for (const execution of this.#heap.objectsOf('execution')) {
-      if ([...together].some((future) => waitsOn(execution, future))) {
+      if (waitedOn(execution).some((future) => together.has(future))) {
         this.#ready(execution);
       }
     }
@@ -144,15 +144,15 @@ function isFirst(future: LiveObjectOf<'future'>): future is FirstFuture {
   return future.state.kind === 'first';
 }
 
-/** Whether `execution` waits on the future `id` at its top frame. */
-function waitsOn(execution: LiveExecution, id: number): boolean {
+/** The futures `execution`'s top frame waits on, in the order its `await` or `select` names them. */
+export function waitedOn(execution: LiveExecution): readonly number[] {
   const frame = execution.frames.at(-1);
   const instruction = frame?.code.instructions[frame.pc];
-  return (
-    frame !== undefined &&
-    instruction !== undefined &&
-    awaitedRegisters(instruction).some(
-      (register) => handleTarget(readRegister(frame, register)) === id,
-    )
-  );
+  if (frame === undefined || instruction === undefined) {
+    return [];
+  }
+  return awaitedRegisters(instruction).flatMap((register) => {
+    const target = handleTarget(readRegister(frame, register));
+    return target === undefined ? [] : [target];
+  });
 }

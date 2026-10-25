@@ -19,6 +19,7 @@ import { genericTemplates } from './generics.ts';
 import { lifetimeTemplates } from './lifetimes.ts';
 import { patternTemplates } from './patterns.ts';
 import { valueTemplates } from './values.ts';
+import { weakSideTemplates } from './weak-side.ts';
 
 export const checkerDiagnostics = defineDiagnostics('checker', {
   notSupportedYet: {
@@ -152,4 +153,5 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   ...closureTemplates,
   ...concurrencyTemplates,
   ...lifetimeTemplates,
+  ...weakSideTemplates,
 });

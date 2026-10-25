@@ -90,6 +90,8 @@ export interface Machine {
   readonly spawn: (call: InstanceCall) => void;
   /** A handle to a new guard that calls the function value `callback` when disposed (§7). */
   readonly guard: (callback: Value) => Value;
+  /** A handle to the weak reference to the running async call, for `worker.disposing()` (§7). */
+  readonly currentCall: () => Value;
 }
 
 /**

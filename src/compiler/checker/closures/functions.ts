@@ -25,7 +25,7 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isChangeable } from '../rules/places.ts';
 import { errorType, type Type } from '../types/type.ts';
-import type { FunctionScope, NestedFunction } from './function-scope.ts';
+import { type FunctionScope, localFunctionOf, type NestedFunction } from './function-scope.ts';
 
 export class FunctionScopes {
   readonly #stack: FunctionScope[];
@@ -43,17 +43,17 @@ export class FunctionScopes {
 
   /** Runs `check` inside `scope`; while its type isn't known, using its own name is reported. */
   inside<Result>(scope: FunctionScope, check: () => Result): Result {
-    const untyped = scope.node !== undefined && scope.returns.declared === undefined;
-    if (untyped && scope.node !== undefined) {
-      this.#untyped.add(scope.node);
+    const untyped = scope.returns.declared === undefined ? scope.function : undefined;
+    if (untyped !== undefined) {
+      this.#untyped.add(untyped);
     }
     this.#stack.push(scope);
     try {
       return check();
     } finally {
       this.#stack.pop();
-      if (scope.node !== undefined) {
-        this.#untyped.delete(scope.node);
+      if (untyped !== undefined) {
+        this.#untyped.delete(untyped);
       }
     }
   }
@@ -65,8 +65,8 @@ export class FunctionScopes {
     }
     const declared = entity.name.span;
     const capturing = this.#stack.filter(
-      ({ node, captures }) =>
-        node !== undefined && !encloses(node.span, declared) && !captures.has(entity.name),
+      ({ function: checked, captures }) =>
+        checked !== undefined && !encloses(checked.span, declared) && !captures.has(entity.name),
     );
     for (const { captures } of capturing) {
       captures.set(entity.name, entity);
@@ -76,10 +76,17 @@ export class FunctionScopes {
     }
   }
 
+  /** The innermost scope of an enclosing function among `functions`. */
+  enclosing(functions: readonly NestedFunction[]): FunctionScope | undefined {
+    return this.#stack.findLast(
+      (scope) => scope.function !== undefined && functions.includes(scope.function),
+    );
+  }
+
   /** The type of a local function or named lambda used by `name`, or the error after a report. */
   typeOfFunction(context: BodyContext, name: Identifier, entity: VariableEntity): Type {
-    const owner = entity.owner as NestedFunction;
-    if (this.#untyped.has(owner)) {
+    const owner = localFunctionOf(entity);
+    if (owner !== undefined && this.#untyped.has(owner)) {
       context.report(checkerDiagnostics.recursiveReturnType(name.span, name.text));
       return errorType;
     }

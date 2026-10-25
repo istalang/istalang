@@ -26,6 +26,7 @@ import { mapNatives } from './maps.ts';
 import { sharedNatives } from './shared-natives.ts';
 import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
+import { weakNatives } from './weak-natives.ts';
 
 /** A float printed as whole digits, which needs `.0` to read as a float. */
 const wholeDigits = /^-?\d+$/u;
@@ -43,6 +44,7 @@ export const preludeNatives: Natives = {
   ...mapNatives,
   ...sharedNatives,
   ...stringNatives,
+  ...weakNatives,
   ...numeric(
     'add',
     (left, right) => left + right,

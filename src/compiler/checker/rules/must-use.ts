@@ -19,6 +19,7 @@ import { wellKnown } from '../../../language/well-known.ts';
 import type { VariableEntity } from '../../binder/entities.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { type Drop, droppedName } from '../../syntax/statements.ts';
+import { localFunctionOf } from '../closures/function-scope.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { heldType } from '../types/held.ts';
@@ -62,8 +63,7 @@ export function checkDrop(context: BodyContext, node: Drop): Type {
 
 /** Why `drop` can't release the variable `entity`; undefined when it can. */
 function undroppable(context: BodyContext, entity: VariableEntity): string | undefined {
-  const { owner } = entity;
-  if (owner.kind === 'FunctionDeclaration' || owner.kind === 'Lambda') {
+  if (localFunctionOf(entity) !== undefined) {
     return 'it names a function';
   }
   if (context.checker.bindings.moduleOf(entity) !== undefined) {

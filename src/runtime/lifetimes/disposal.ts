@@ -2,8 +2,10 @@
  * What disposing each kind of object does (spec §7's table): one entry per kind, saying whether
  * such an object is disposed when nothing holds it, rather than simply left out of the next commit, and how.
  *
- * - A future of an async call stops the call: it can only be suspended, since a running execution
- *   holds its own future (holders.ts), and it is stopped where it waits, its frames let go.
+ * - A future of an async call disposes the call: it can only be suspended, since a running
+ *   execution holds its own future (holders.ts). Its `disposing()` watches resolve, and a call
+ *   waiting on one of them runs its cleanup, resuming on that watcher and stopped at its next
+ *   await; any other is stopped where it waits, its frames let go.
  * - A pending slot operation leaves its slot's queue without consuming anything; a timer is simply
  *   gone, and so is a future the host fills, whose later fill then changes nothing.
  * - A slot dies with the value in it; nothing waits on it, since a waiting operation holds it.
@@ -18,28 +20,41 @@ import type { FunctionId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/types.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Heap, LiveExecution, LiveKind, LiveObject, LiveObjectOf } from '../scheduler/heap.ts';
+import type { WeakSide } from '../scheduler/weak-side.ts';
 
 /** A call a disposal makes: a function value, or a function with its arguments. */
 export interface DisposalCall {
+  readonly kind: 'call';
   readonly function: FunctionId;
   readonly captures: readonly Value[];
   readonly arguments: readonly Value[];
 }
 
-/** What disposing reaches besides the object: the heap, and the executions it stops. */
+/** A disposed call's cleanup: `execution` resumes on its `disposing()` watcher `watcher` (§7). */
+export interface Cleanup {
+  readonly kind: 'cleanup';
+  readonly execution: LiveExecution;
+  readonly watcher: number;
+}
+
+/** Code a disposal runs, which its round waits on. */
+export type DisposalRun = DisposalCall | Cleanup;
+
+/** What disposing reaches besides the object: the heap, the executions it stops, weak references. */
 export interface DisposalContext {
   readonly heap: Heap;
   readonly types: readonly TypeDefinition[];
   /** Stops a suspended execution where it waits, letting go of everything its frames hold. */
   readonly stop: (execution: LiveExecution) => void;
+  readonly weak: WeakSide;
 }
 
 /** How one kind of object is disposed. */
 interface KindDisposal<Object extends LiveObject> {
   /** Whether such an object is disposed when nothing holds it, rather than simply left out of the next commit. */
   readonly disposable: (types: readonly TypeDefinition[], object: Object) => boolean;
-  /** Disposes it its own way: the call to make, for a disposal that runs code. */
-  readonly dispose: (context: DisposalContext, object: Object) => DisposalCall | undefined;
+  /** Disposes it its own way: the code to run, for a disposal that runs code. */
+  readonly dispose: (context: DisposalContext, object: Object) => DisposalRun | undefined;
 }
 
 const always = (): boolean => true;
@@ -53,6 +68,7 @@ const declared: KindDisposal<LiveObjectOf<'cell' | 'resource'>> = {
     const disposal = disposalOf(context.types, object.type);
     return disposal.kind === 'function'
       ? {
+          kind: 'call',
           function: disposal.function,
           captures: [],
           arguments: [{ kind: 'handle', object: object.id }],
@@ -78,10 +94,10 @@ export function isDisposable(types: readonly TypeDefinition[], object: LiveObjec
 }
 
 /**
- * Disposes `object` its own way: the call to make, for a disposal that runs code. The object itself
- * is removed by the caller, once that call has returned.
+ * Disposes `object` its own way: the code to run, for a disposal that runs code. The object itself
+ * is removed by the caller, once that code has finished.
  */
-export function dispose(context: DisposalContext, object: LiveObject): DisposalCall | undefined {
+export function dispose(context: DisposalContext, object: LiveObject): DisposalRun | undefined {
   return entryOf(object).dispose(context, object);
 }
 
@@ -90,20 +106,33 @@ function entryOf(object: LiveObject): KindDisposal<LiveObject> {
   return kinds[object.kind] as KindDisposal<LiveObject>;
 }
 
-/** A call's future stops its call; a pending slot operation leaves its slot's queue. */
-function disposeFuture(context: DisposalContext, future: LiveObjectOf<'future'>): undefined {
+/** A call's future disposes its call; a pending slot operation leaves its slot's queue. */
+function disposeFuture(
+  context: DisposalContext,
+  future: LiveObjectOf<'future'>,
+): Cleanup | undefined {
   const { state } = future;
   if (state.kind === 'call') {
     const execution = context.heap
       .objectsOf('execution')
       .find((candidate) => candidate.resolves === future.id);
-    if (execution !== undefined) {
-      context.stop(execution);
-    }
-  } else if (state.kind === 'slot' && context.heap.has(state.slot)) {
+    return execution === undefined ? undefined : disposeCall(context, execution);
+  }
+  if (state.kind === 'slot' && context.heap.has(state.slot)) {
     const slot = context.heap.of(state.slot, 'slot');
     context.heap.replace({ ...slot, waiting: slot.waiting.filter((id) => id !== future.id) });
   }
+  return undefined;
+}
+
+/** The disposed call `execution` runs: its cleanup, if it waits for one, or else it stops. */
+function disposeCall(context: DisposalContext, execution: LiveExecution): Cleanup | undefined {
+  const watcher = context.weak.disposing(execution);
+  if (watcher !== undefined) {
+    return { kind: 'cleanup', execution, watcher };
+  }
+  context.stop(execution);
+  return undefined;
 }
 
 /** The call a function value makes when called with no arguments. */
@@ -111,7 +140,7 @@ function callOf(callback: Value): DisposalCall {
   if (callback === null || typeof callback !== 'object' || callback.kind !== 'closure') {
     throw new TypeError('A defer guard holds no function; the checker forbids it.');
   }
-  return { function: callback.function, captures: callback.captures, arguments: [] };
+  return { kind: 'call', function: callback.function, captures: callback.captures, arguments: [] };
 }
 
 function disposalOf(types: readonly TypeDefinition[], type: number) {

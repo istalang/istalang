@@ -11,28 +11,25 @@
  * whether they are all still held, a walk that stops once it has found them (holders.ts); only
  * when one isn't does a round start.
  *
- * A disposal that runs code (a `defer` callback, a declared `dispose`) is a call the scheduler runs
- * on its run stack, as every call is (scheduler/segment.ts), and the round waits for it to return.
+ * A disposal that runs code (a `defer` callback, a declared `dispose`, a disposed call's cleanup)
+ * runs on the scheduler's run stack, as every call does (scheduler/segment.ts), and the round waits
+ * for it to finish. Once a disposed object is gone, its weak reference lets go of it and its
+ * `disposed()` watches resolve (scheduler/weak-side.ts).
  * Code a callback runs may let go of something in turn; that starts a round of its own, on top,
  * finished before the callback goes on. Whatever a waiting round has yet to dispose counts as held,
  * so no later round takes it out of order.
  */
 
-import type { TypeDefinition } from '../../definition/types.ts';
-import type { Heap, LiveExecution, LiveObject } from '../scheduler/heap.ts';
-import { type DisposalCall, dispose, isDisposable } from './disposal.ts';
+import type { LiveObject } from '../scheduler/heap.ts';
+import { type DisposalContext, type DisposalRun, dispose, isDisposable } from './disposal.ts';
 import { heldUnlessAll, type Roots, walkHolds } from './holders.ts';
 import { readyOrphans } from './orphans.ts';
 
-export interface CollectorSeams {
-  readonly heap: Heap;
-  readonly types: readonly TypeDefinition[];
+export interface CollectorSeams extends DisposalContext {
   /** What holds things besides waiting rounds: frames, and objects the scheduler names. */
   readonly roots: () => Roots;
-  /** Stops a suspended execution where it waits, letting go of everything its frames hold. */
-  readonly stop: (execution: LiveExecution) => void;
-  /** Starts `call`: true when it has returned already (a native), false while it runs as code. */
-  readonly run: (call: DisposalCall) => boolean;
+  /** Starts `run`: true when it has finished already (a native), false while it runs as code. */
+  readonly run: (run: DisposalRun) => boolean;
 }
 
 /** One round: what it has yet to dispose, newest first, and the object whose call it waits on. */
@@ -63,13 +60,13 @@ export class Collector {
     this.#proceed();
   }
 
-  /** The call the newest round waited on returned: its object is gone, and the round goes on. */
+  /** The code the newest round waited on finished: its object is gone, and the round goes on. */
   returned(): void {
     const round = this.#rounds.at(-1);
     if (round?.disposing === undefined) {
       throw new Error('A disposal call returned with no round waiting on it.');
     }
-    this.#seams.heap.remove(round.disposing);
+    this.#gone(round.disposing);
     round.disposing = undefined;
     this.#proceed();
   }
@@ -94,16 +91,22 @@ export class Collector {
     if (!heap.has(id)) {
       return;
     }
-    const call = dispose(this.#seams, heap.objectOf(id));
-    if (call === undefined) {
-      heap.remove(id);
+    const run = dispose(this.#seams, heap.objectOf(id));
+    if (run === undefined) {
+      this.#gone(id);
       return;
     }
     round.disposing = id;
-    if (this.#seams.run(call)) {
-      heap.remove(id);
+    if (this.#seams.run(run)) {
+      this.#gone(id);
       round.disposing = undefined;
     }
+  }
+
+  /** The disposed object `id` is gone. */
+  #gone(id: number): void {
+    this.#seams.heap.remove(id);
+    this.#seams.weak.disposed(id);
   }
 
   /** Starts a round of what is ready, if anything is, after the objects `released` lost a holder. */

@@ -75,10 +75,10 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
         }),
       ),
       id.map(
-        (target): LiveObject => ({
+        (weakRef): LiveObject => ({
           kind: 'future',
           id: object,
-          state: { kind: 'disposed', target },
+          state: { kind: 'disposed', weakRef },
         }),
       ),
       contents.map((callback): LiveObject => ({ kind: 'guard', id: object, callback })),

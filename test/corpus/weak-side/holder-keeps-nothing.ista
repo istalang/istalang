@@ -1,0 +1,24 @@
+# outcome: "signal"
+# A revertible message's holder doesn't keep its inbox alive (§6): the holder outlives the block
+# that held the inbox, yet the inbox is disposed there (unread messages with it) and the weak
+# watcher's `disposed()` resolves.
+
+import Inbox from 'inbox'
+
+async fn watch(w: WeakRef<Inbox<int>>, seen: Inbox<string>) -> Future<unit>:
+  await w.disposed()
+  seen.send("signal")
+
+async fn main() -> Future<string>:
+  const seen = Inbox.create<string>()
+  const holder = {
+    const box = Inbox.create<int>()
+    box.send(1)
+    box.send(2)
+    const rev = box.sendRevertible(3)
+    const wt = watch(WeakRef(box), seen)
+    (rev, wt)
+  }
+  # box released; holder (revertible) outlives it and does not keep the inbox alive
+  const a = await seen.receive()
+  a

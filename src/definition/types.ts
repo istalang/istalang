@@ -17,8 +17,8 @@
  * since two of them are always different types (spec §3.1).
  *
  * Only extern types can be disposable (spec §7), and each says how: not at all, by the runtime
- * itself (futures, slots, revertible messages), or by calling a declared `dispose`, as
- * `fn dispose(self: Shared<Lease>)` makes every `Shared<Lease>` disposable.
+ * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Shared<Lease>)`
+ * makes every `Shared<Lease>` disposable, and the inbox module's every `Revertible<T>`.
  */
 
 import { z } from 'zod';

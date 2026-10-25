@@ -11,8 +11,8 @@
  * Natives the runtime backs need the running instance, so each call also receives a context: the
  * function-table entry being called and the Definition's types (for building typed values), the time the segment
  * started, which is what `now()` means (§5), the futures the runtime creates for an extern that
- * returns one (§3.6), the instance's shared cells, and its slots (§6). A native never holds the
- * context beyond its call.
+ * returns one (§3.6), the instance's shared cells, its slots (§6) and its weak references (§7). A
+ * native never holds the context beyond its call.
  */
 
 import type { FunctionDefinition } from '../definition/functions.ts';
@@ -37,6 +37,21 @@ export interface NativeSlots {
   readonly operate: (slot: Value, operation: 'put' | 'take' | 'read', value?: Value) => Value;
 }
 
+/**
+ * The running instance's weak references (§7). A referent is a handle to a disposable, and each
+ * has one weak reference, which holds nothing.
+ */
+export interface NativeWeakSide {
+  /** The weak reference to `referent`. */
+  readonly reference: (referent: Value) => Value;
+  /** A handle to what `weak` refers to, until it is disposed. */
+  readonly target: (weak: Value) => Value | undefined;
+  /** A future that resolves when the referent of `weak` is disposed, never if it has none left. */
+  readonly watch: (weak: Value) => Value;
+  /** A watch on `weak`, already resolved once its referent is disposed. */
+  readonly whenDisposed: (weak: Value) => Value;
+}
+
 export interface NativeContext {
   /** The entry called: its extern's declared types, or a code entry a mock replaced. */
   readonly entry: FunctionDefinition;
@@ -59,6 +74,7 @@ export interface NativeContext {
   readonly trace: () => string;
   readonly cells: NativeCells;
   readonly slots: NativeSlots;
+  readonly weak: NativeWeakSide;
 }
 
 export type Native = (argumentValues: readonly Value[], context: NativeContext) => Value;

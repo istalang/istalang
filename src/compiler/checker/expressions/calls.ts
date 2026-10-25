@@ -15,16 +15,19 @@
  * - a function value: a variable, a field of the receiver, or any other expression of a function
  *   type (closures/value-calls.ts). `x.f()` naming both a field and a method of `x`'s type is
  *   ambiguous, so it is reported; `(x.f)()` calls the field.
+ * - `worker.disposing()` on an async function's own name, which watches its call
+ *   (closures/own-calls.ts).
  *
  * An argument written `&x` passes the place `x` by reference, which must be a place that may
  * change (rules/places.ts). Spread arguments are reported as not supported until the feature that
  * adds them.
  */
 
-import { conversionFunction } from '../../../language/well-known.ts';
+import { conversionFunction, ownCall } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
 import type { Call, Expression, MemberAccess } from '../../syntax/expressions.ts';
+import { checkOwnCall } from '../closures/own-calls.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -60,6 +63,13 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
     case 'Identifier':
       return callEntity(context, call, callee.text, context.entityOf(callee));
     case 'MemberAccess': {
+      const own =
+        callee.member.text === ownCall.method && callee.target.kind === 'Identifier'
+          ? checkOwnCall(context, node, callee.target)
+          : undefined;
+      if (own !== undefined) {
+        return own;
+      }
       const entity = context.entityOf(callee.member);
       if (entity !== undefined) {
         return callEntity(context, call, callee.member.text, entity);

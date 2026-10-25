@@ -9,9 +9,11 @@
  *   as a `Result`, is reported as a bare expression's would be.
  * - The case bodies and `else` agree on the select's type as an `if`'s branches do
  *   (rules/branches.ts).
+ * - A case on the function's own `disposing()` runs while its call is being disposed, so an
+ *   `await` in its body stops the call instead of waiting (§7), which is warned about.
  */
 
-import type { Select, SelectCase } from '../../syntax/expressions.ts';
+import { type Select, type SelectCase, unparenthesized } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches } from '../rules/branches.ts';
@@ -19,6 +21,7 @@ import { futureArgument } from '../rules/futures.ts';
 import { checkDiscarded } from '../rules/must-use.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { reportWait } from './await.ts';
 
 export function checkSelect(context: BodyContext, node: Select, expected: Type | undefined): Type {
   reportForm(context, node);
@@ -26,7 +29,15 @@ export function checkSelect(context: BodyContext, node: Select, expected: Type |
   for (const selectCase of node.cases) {
     if (selectCase.kind === 'SelectCase') {
       checkCaseFuture(context, selectCase);
-      branches.add(selectCase.body);
+      const scope = context.functions.current;
+      const future = unparenthesized(selectCase.future);
+      const cleansUp =
+        future.kind === 'Call' && context.ownCalls.watchedAt(future)?.owner === scope.function;
+      if (cleansUp) {
+        scope.cleanup(() => branches.add(selectCase.body));
+      } else {
+        branches.add(selectCase.body);
+      }
     }
   }
   if (node.elseClause !== undefined) {
@@ -37,8 +48,8 @@ export function checkSelect(context: BodyContext, node: Select, expected: Type |
 
 /** Reports a select that waits outside an async function, or has `else` exactly when it waits. */
 function reportForm(context: BodyContext, node: Select): void {
-  if (node.awaits && !context.inAsync) {
-    context.report(checkerDiagnostics.awaitOutsideAsync(node.span));
+  if (node.awaits) {
+    reportWait(context, node.span);
   }
   if (node.awaits && node.elseClause !== undefined) {
     context.report(checkerDiagnostics.awaitedSelectElse(node.elseClause.span));

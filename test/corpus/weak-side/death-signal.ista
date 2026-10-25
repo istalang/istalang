@@ -1,0 +1,36 @@
+# outcome: "pong:1 pong:2 | child saw the inbox go"
+# The death signal (§6): the child holds only the weak side of its parent's inbox, so it keeps
+# nothing alive; it answers through `deref()` while the inbox lives, and its `disposed()` resolves
+# once the owner releases the inbox, at the end of the block that holds it.
+
+import Inbox from 'inbox'
+
+struct Status:
+  text: string
+
+struct Command:
+  n: int
+
+async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> Future<string>:
+  while true:
+    await select:
+      case mine.receive() as command:
+        parent.deref()?.send(Status{text: "pong:" + string(command.n)})
+      case parent.disposed():
+        return "child saw the inbox go"
+  "never"
+
+async fn main() -> Future<string>:
+  const commands = Inbox.create<Command>()
+  let replies = ""
+  const running = {
+    const status = Inbox.create<Status>()
+    const started = child(WeakRef(status), commands)
+    commands.send(Command{n: 1})
+    const first = await status.receive()
+    commands.send(Command{n: 2})
+    const second = await status.receive()
+    replies = first.text + " " + second.text
+    started
+  }
+  replies + " | " + await running

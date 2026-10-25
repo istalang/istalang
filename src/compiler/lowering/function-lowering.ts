@@ -37,6 +37,7 @@ import type {
   ResolvedCall,
   SignatureParameter,
 } from '../checker/check.ts';
+import type { NestedFunction } from '../checker/closures/function-scope.ts';
 import { substitute, type Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
@@ -79,6 +80,8 @@ export interface Frame {
   readonly isAsync: boolean;
   readonly parameters: readonly SignatureParameter[];
   readonly captures: readonly CapturedVariable[];
+  /** The function the entry runs: a top-level declaration, or a nested function. */
+  readonly function: NestedFunction;
   /** `T` for an async entry returning `Future<T>`. */
   readonly result: Type;
   /** The name a nested function calls itself by. */
@@ -98,6 +101,7 @@ export function instanceFrame(lowered: LoweredFunction, instance: FunctionInstan
     isAsync: declaration.isAsync && arity === parameters.length,
     parameters: parameters.slice(0, arity),
     captures: [],
+    function: declaration,
     result: body.result,
     self: undefined,
   };
@@ -126,6 +130,7 @@ export function nestedFrame(
       return { node: parameter, ...slot };
     }),
     captures,
+    function: node,
     result: type.result,
     self: node.name,
   };
@@ -277,11 +282,17 @@ export class FunctionLowering implements FunctionContext {
     for (const { entity, type } of this.frame.captures) {
       declareVariable(this, entity.name, this.#concrete(type));
     }
-    const { self } = this.frame;
+    const { self, isAsync, function: owner } = this.frame;
     if (self !== undefined) {
       const register = this.code.allocate();
       this.variables.declare(self, register);
       this.code.emit({ kind: 'currentClosure', span: self.span, dst: register });
+    }
+    const call = isAsync ? this.body.ownCallOf(owner) : undefined;
+    if (call !== undefined) {
+      const register = this.code.allocate();
+      this.variables.declare(call.name, register);
+      this.code.emit({ kind: 'currentCall', span: owner.span, dst: register });
     }
     return parameters;
   }

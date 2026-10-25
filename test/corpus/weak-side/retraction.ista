@@ -1,0 +1,32 @@
+# outcome: "sale | after: durable, then nothing | alone: nothing | b: later"
+# Revertible sends (§6, as §12.3 uses them): `announce` keeps each holder with `fn _`, so when it
+# returns every unread copy is retracted, whether it waited in the backlog (`a`, behind a durable
+# message) or already in the inbox's slot (`alone`). A copy received in time (`b`) is final, and
+# retracting it leaves `b` taking later messages as before.
+
+import Inbox from 'inbox'
+import * as time from 'time'
+
+async fn announce(boxes: Array<Inbox<string>>, text: string, visibleFor: time.Duration):
+  for box in boxes:
+    fn _ = box.sendRevertible(text)
+  await time.delay(visibleFor)
+
+fn next(box: Inbox<string>) -> string:
+  select:
+    case box.receive() as message:
+      message
+    else:
+      "nothing"
+
+async fn main() -> Future<string>:
+  const a = Inbox.create<string>()
+  const b = Inbox.create<string>()
+  const alone = Inbox.create<string>()
+  a.send("durable")
+  const announcing = announce([a, b, alone], "sale", 5ms)
+  const got = await b.receive()
+  await announcing
+  const after = next(a) + ", then " + next(a)
+  b.send("later")
+  got + " | after: " + after + " | alone: " + next(alone) + " | b: " + next(b)

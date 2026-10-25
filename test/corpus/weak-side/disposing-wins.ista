@@ -1,0 +1,27 @@
+# outcome: "cleaned up | job unhandled"
+# The `disposing()` case wins (§7): the job arrives first, readying the worker on its receive, but
+# the worker's last holder lets go of it before it runs, so it resumes on its `disposing()` case,
+# though that case comes later in the `select`.
+
+import Inbox from 'inbox'
+
+fn note(log: Shared<Array<string>>, entry: string):
+  log$ = [...log$, entry]
+
+async fn worker(jobs: Inbox<int>, log: Shared<Array<string>>) -> Future<unit>:
+  await select:
+    case jobs.receive() as job:
+      note(log, "job " + string(job))
+    case worker.disposing():
+      note(log, "cleaned up")
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = Shared(empty)
+  const jobs = Inbox.create<int>()
+  {
+    const running = worker(jobs, log)
+    jobs.send(3)
+  }
+  note(log, "job unhandled")
+  log$.join(" | ")

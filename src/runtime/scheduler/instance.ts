@@ -39,6 +39,7 @@ import type { InstanceCall, Snapshot } from '../snapshot/snapshot.ts';
 import { Futures } from './futures.ts';
 import { Heap, type LiveExecution, type LiveObject } from './heap.ts';
 import { Slots } from './slots.ts';
+import { WeakSide } from './weak-side.ts';
 
 /** A Definition as the runtime runs it: loaded, bound to its natives, and named by its hash. */
 export interface LoadedDefinition {
@@ -62,6 +63,7 @@ export class Instance {
   readonly heap: Heap;
   readonly futures: Futures;
   readonly slots: Slots;
+  readonly weak: WeakSide;
   /** The heap as its frames reach it (interpreter/machine.ts). */
   readonly frameHeap: FrameHeap = {
     read: (cell) => this.heap.of(cell, 'cell').value,
@@ -93,6 +95,7 @@ export class Instance {
       this.markReady(execution);
     });
     this.slots = new Slots(this.heap, this.futures);
+    this.weak = new WeakSide(this.heap, this.futures);
   }
 
   /**
@@ -239,9 +242,10 @@ export class Instance {
     return this.heap.objectsOf('execution').find((execution) => execution.resolves === undefined);
   }
 
-  /** Removes a finished execution. */
+  /** Removes an execution whose call returned. */
   remove(execution: LiveExecution): void {
     this.heap.remove(execution.id);
+    this.weak.onReturned(execution.id);
   }
 
   /**
@@ -253,6 +257,11 @@ export class Instance {
       releaseFrame(frame);
     }
     this.heap.remove(execution.id);
+    this.unready(execution);
+  }
+
+  /** Takes `execution` off the executions ready to run, if it is on it. */
+  unready(execution: LiveExecution): void {
     const position = this.#ready.indexOf(execution.id);
     if (position >= 0) {
       this.#ready.splice(position, 1);

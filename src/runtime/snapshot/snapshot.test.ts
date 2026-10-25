@@ -93,8 +93,7 @@ function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
     }),
     fc.record({ kind: fc.constant('timer' as const), at: fc.bigInt({ min: 0n, max: 2n ** 60n }) }),
     fc.record({ kind: fc.constant('host' as const), token: exactJson }),
-    fc.record({ kind: fc.constant('disposed' as const), target: id }),
-    fc.record({ kind: fc.constant('disposing' as const), execution: id }),
+    fc.record({ kind: fc.constant('disposed' as const), weakRef: id }),
   );
   const objectFor = (objectId: number): fc.Arbitrary<HeapObject> =>
     fc.oneof(

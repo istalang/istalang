@@ -1,8 +1,10 @@
 /**
  * `await` (§5): waits on a future and gives its value. Only an async function waits, because every
- * await is a point where the instance commits and may suspend.
+ * await is a point where the instance commits and may suspend. In a case cleaning up after the
+ * function's call is disposed, an await stops the call instead (§7), which is warned about.
  */
 
+import type { Span } from '../../../text/span.ts';
 import type { Await } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -11,9 +13,7 @@ import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 export function checkAwait(context: BodyContext, node: Await, expected: Type | undefined): Type {
-  if (!context.inAsync) {
-    context.report(checkerDiagnostics.awaitOutsideAsync(node.span));
-  }
+  reportWait(context, node.span);
   const expectedFuture = expected === undefined ? undefined : futureOf(context.checker, expected);
   const operand = context.expression(node.operand, expectedFuture);
   if (operand.kind === 'error') {
@@ -25,4 +25,13 @@ export function checkAwait(context: BodyContext, node: Await, expected: Type | u
     return errorType;
   }
   return value;
+}
+
+/** Reports a wait at `at` outside an async function, or where it stops a call being disposed. */
+export function reportWait(context: BodyContext, at: Span): void {
+  if (!context.inAsync) {
+    context.report(checkerDiagnostics.awaitOutsideAsync(at));
+  } else if (context.functions.current.inCleanup) {
+    context.report(checkerDiagnostics.awaitInCleanup(at));
+  }
 }

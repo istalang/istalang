@@ -1,0 +1,43 @@
+# outcome: "job 1, pass, job 2, pass, flushed 2, pass, cleaned up | done"
+# Graceful disposal (§7): when the last holder of a call lets go of it, a call waiting on its own
+# `disposing()` resumes there at once, within the disposal, and cleans up; its next `await`, here
+# the loop's next `select`, stops it. A call waiting on anything else is stopped where it waits.
+
+import Inbox from 'inbox'
+import * as time from 'time'
+
+fn note(log: Shared<Array<string>>, entry: string):
+  log$ = [...log$, entry]
+
+async fn worker(jobs: Inbox<int>, acks: Inbox<int>, log: Shared<Array<string>>) -> Future<unit>:
+  let handled = 0
+  while true:
+    await select:
+      case jobs.receive() as job:
+        handled += 1
+        note(log, "job " + string(job))
+        acks.send(job)
+      case worker.disposing():
+        note(log, "flushed " + string(handled))
+    note(log, "pass")
+  ()
+
+async fn idle(log: Shared<Array<string>>) -> Future<unit>:
+  await time.delay(1d)
+  note(log, "never: idle was stopped")
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = Shared(empty)
+  const jobs = Inbox.create<int>()
+  const acks = Inbox.create<int>()
+  {
+    const running = worker(jobs, acks, log)
+    const waiting = idle(log)
+    jobs.send(1)
+    jobs.send(2)
+    const first = await acks.receive()
+    const second = await acks.receive()
+  }
+  note(log, "cleaned up")
+  log$.join(", ") + " | done"

@@ -1,4 +1,5 @@
-# The inbox module (spec §6): `Inbox<T>`, an unbounded FIFO message queue built on a slot.
+# The inbox module (spec §6): `Inbox<T>`, an unbounded FIFO message queue built on a slot, and
+# `Revertible<T>`, the holder of a message sent revertibly.
 #
 # Receivers wait on the slot itself: `receive()` is the slot's `take`, so the slot's queue gives
 # the receiver rules (each message goes to exactly one receiver, the one that has waited longest),
@@ -8,43 +9,94 @@
 # state and writing it back.
 #
 # A full slot never has a receiver waiting, so the backlog moves into the slot only when it is
-# empty: on a send, and before a receive takes. A `select` without `await` tells whether the slot
-# is full, by trying to read it.
+# empty: on a send, and before a receive takes. Whether the slot is full, and taking from it only
+# if it is, are both a slot operation that either settles at once or is let go (`_settles`).
+#
+# Retracting a message removes it wherever it waits. Every message is numbered as it is queued, and
+# the inbox remembers the number of the one it moved into the slot: a receiver empties the slot
+# without telling the inbox, but only a later move fills it again, so while the slot is full and
+# that number is the retracted one's, the slot holds it. Once received, a message is no longer
+# anywhere, so retracting it changes nothing.
+
+struct Queued<T>:
+  number: int
+  message: T
 
 struct InboxState<T>:
   slot: Slot<T>
-  backlog: Array<T>
+  # the number of the message the inbox last moved into the slot
+  slotted: int?
+  backlog: Array<Queued<T>>
+  # how many messages were ever queued, which numbers the next
+  queued: int
 
 type Inbox<T> = Shared<InboxState<T>>
 
+# A revertible message's holder: disposing it calls `retract`, which the queue that made it
+# supplies, so every queue, the host's included (§3.6), hands out this one type.
+struct RevertibleState<T>:
+  retract: fn() -> unit
+
+type Revertible<T> = Shared<RevertibleState<T>>
+
 fn Inbox.create<T>() -> Inbox<T>:
-  Shared(InboxState<T>{slot: Slot.create<T>(), backlog: []})
+  Shared(InboxState<T>{slot: Slot.create<T>(), slotted: none, backlog: [], queued: 0})
 
 fn send<T>(self: Inbox<T>, message: T):
-  const state = self$
-  self$ = InboxState{...state, backlog: [...state.backlog, message]}
-  _fill(self)
+  drop _queue(self, message)
+
+# The holder retracts the message when its last holder lets go of it, unless it was received. It
+# reaches the inbox weakly, so holding it keeps no inbox alive.
+fn sendRevertible<T>(self: Inbox<T>, message: T) -> Revertible<T>:
+  const number = _queue(self, message)
+  const inbox = WeakRef(self)
+  Shared(RevertibleState<T>{retract: fn(): _retract(inbox, number)})
 
 fn receive<T>(self: Inbox<T>) -> Future<T>:
   _fill(self)
   self$.slot.take()
-
-# Moves the first message of the backlog into the slot, if the slot is empty.
-fn _fill<T>(self: Inbox<T>):
-  const state = self$
-  if state.backlog.length() > 0 and not _isFull(state.slot):
-    drop state.slot.put(state.backlog[0])
-    self$ = InboxState{...state, backlog: state.backlog[1..]}
-
-fn _isFull<T>(slot: Slot<T>) -> bool:
-  select:
-    case slot.read():
-      true
-    else:
-      false
 
 # Disposing an inbox (§6, §7) lets go of its state, so the slot dies with the message in it, and
 # the backlog with it. Declaring `dispose` is what makes an inbox disposable, and so something a
 # `WeakRef` can watch.
 fn dispose<T>(self: Inbox<T>):
   ()
+
+fn dispose<T>(self: Revertible<T>):
+  self$.retract()
+
+# Queues `message` behind the others; its number.
+fn _queue<T>(self: Inbox<T>, message: T) -> int:
+  const state = self$
+  const queued = Queued{number: state.queued, message}
+  self$ = InboxState{...state, backlog: [...state.backlog, queued], queued: state.queued + 1}
+  _fill(self)
+  queued.number
+
+# Moves the first message of the backlog into the slot, if the slot is empty.
+fn _fill<T>(self: Inbox<T>):
+  const state = self$
+  if state.backlog.length() > 0 and not _settles(state.slot.read()):
+    const next = state.backlog[0]
+    drop state.slot.put(next.message)
+    self$ = InboxState{...state, slotted: next.number, backlog: state.backlog[1..]}
+
+# Removes message `number` from the inbox, if the inbox is still there and the message unread.
+fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: int):
+  if inbox.deref() is Some{value as box}:
+    const state = box$
+    const waiting = [for queued in state.backlog if queued.number != number: queued]
+    const taken = state.slotted == number and _settles(state.slot.take())
+    const slotted: int? = if taken: none else: state.slotted
+    box$ = InboxState{...state, slotted, backlog: waiting}
+    if taken:
+      _fill(box)
+
+# Whether `operation` settles at once. One that doesn't is let go with the parameter, and a slot
+# operation let go does nothing (§6), so a `take` that doesn't settle consumes nothing.
+fn _settles<T>(operation: Future<T>) -> bool:
+  select:
+    case operation:
+      true
+    else:
+      false

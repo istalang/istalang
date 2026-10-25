@@ -45,6 +45,10 @@ export const wellKnown = {
   map: { module: 'prelude', name: 'Map' },
   /** What `a..b` builds (§3.8). */
   range: { module: 'prelude', name: 'Range' },
+  /** A weak reference to a disposable (§7). */
+  weakRef: { module: 'prelude', name: 'WeakRef' },
+  /** The handle of an async call that `worker.disposing()` watches, private to the prelude (§7). */
+  call: { module: 'prelude', name: '_Call' },
 } as const satisfies Record<string, WellKnownDeclaration>;
 
 /** A well-known declaration's module-qualified name, as a Definition spells it: `prelude.Shared`. */
@@ -86,6 +90,12 @@ export const collectionFunctions = {
   length: 'length',
   default: 'default',
 } as const;
+
+/**
+ * `worker.disposing()` (§7): the method an async function's own name takes, and the prelude's
+ * private extern that watches the call's handle.
+ */
+export const ownCall = { method: 'disposing', watch: '_disposing' } as const;
 
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';

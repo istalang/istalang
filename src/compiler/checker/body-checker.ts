@@ -20,6 +20,7 @@ import { handlerOf } from '../../structures/kind-table.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
+import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
@@ -27,6 +28,7 @@ import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, CheckedBody, ResolvedCall, SignatureParameter } from './check.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
+import { OwnCalls } from './closures/own-calls.ts';
 import type { BodyContext, CheckerContext } from './context.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import { CollectionForms } from './expressions/collections.ts';
@@ -51,6 +53,7 @@ import { typeText } from './types/type-text.ts';
 export type BodyKind =
   | {
       readonly kind: 'function';
+      readonly declaration: FunctionDeclaration;
       readonly isAsync: boolean;
       readonly declaredResult: Type | undefined;
     }
@@ -66,6 +69,7 @@ export class BodyChecker implements BodyContext {
   readonly collections = new CollectionForms();
   readonly patterns = new CheckedPatterns();
   readonly chains = new OptionalChains();
+  readonly ownCalls = new OwnCalls();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
   readonly #wraps = new Map<Expression, number>();
@@ -75,7 +79,9 @@ export class BodyChecker implements BodyContext {
     this.module = module;
     const isFunction = kind.kind === 'function';
     const returns = new ReturnScope(kind.declaredResult, isFunction);
-    const root = new FunctionScope(undefined, isFunction && kind.isAsync, returns);
+    const root = isFunction
+      ? new FunctionScope(kind.declaration, kind.isAsync, returns)
+      : new FunctionScope(undefined, false, returns);
     this.functions = new FunctionScopes(root);
   }
 
@@ -200,7 +206,8 @@ export class BodyChecker implements BodyContext {
     const types = this.#types;
     const calls = this.#calls;
     const wraps = this.#wraps;
-    const { variables, literals, implicit, collections, patterns, chains, functions } = this;
+    const { variables, literals, implicit, collections, patterns, chains, functions, ownCalls } =
+      this;
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
       calls,
@@ -214,6 +221,8 @@ export class BodyChecker implements BodyContext {
       sourcesOf: (literal) => literals.sourcesOf(literal),
       patternOf: (pattern) => patterns.patternOf(pattern),
       chainOf: (link) => chains.chainOf(link),
+      watchedCallOf: (site) => ownCalls.watchedAt(site),
+      ownCallOf: (owner) => ownCalls.variableOf(owner),
       result,
     };
   }

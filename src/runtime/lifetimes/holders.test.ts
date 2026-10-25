@@ -50,10 +50,18 @@ describe('holding', () => {
   it.each<[string, LiveObject]>([
     ['a weak reference', { kind: 'weakRef', id: 0, target: 1 }],
     ['a slot waited on', { kind: 'slot', id: 0, waiting: [1] }],
-    ['disposed()', { kind: 'future', id: 0, state: { kind: 'disposed', target: 1 } }],
   ])('holds nothing through %s', (_case, watcher) => {
     const heap = new Heap([watcher, { kind: 'cell', id: 1, type: 0, value: null }]);
     expect([...heldFrom(heap, { frames: [], objects: [0] }).objects]).toEqual([0]);
+  });
+
+  it('holds the weak reference a disposed() watch is on, and never its referent', () => {
+    const heap = new Heap([
+      { kind: 'future', id: 0, state: { kind: 'disposed', weakRef: 2 } },
+      { kind: 'cell', id: 1, type: 0, value: null },
+      { kind: 'weakRef', id: 2, target: 1 },
+    ]);
+    expect(new Set(heldFrom(heap, { frames: [], objects: [0] }).objects)).toEqual(new Set([0, 2]));
   });
 
   it('walks a chain far longer than the host stack is deep', () => {

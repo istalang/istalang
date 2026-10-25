@@ -143,7 +143,8 @@ export function valuesIn(object: HeapObject): readonly Value[] {
 
 /**
  * The ids `object` holds itself, rather than through a value: a pending slot operation its slot,
- * a `first` its futures, and a frame's reference the cell it names.
+ * a `first` its futures, a `disposed()` watch its weak reference, and a frame's reference the cell
+ * it names.
  */
 function directHolds(object: HeapObject): readonly number[] {
   switch (object.kind) {
@@ -169,19 +170,18 @@ function directHolds(object: HeapObject): readonly number[] {
 
 /**
  * The ids `object` names without holding them (spec §6, §7): a slot's queue of waiting
- * operations, what a weak reference, `disposed()` or `disposing()` watches, and an execution's own
- * call future, which its caller holds.
+ * operations, what a weak reference refers to, and an execution's own call future, which its
+ * caller holds.
  */
 function watchedObjects(object: HeapObject): readonly number[] {
   switch (object.kind) {
     case 'slot':
       return object.waiting;
-    case 'future':
-      return watchedTargets(object.state);
     case 'weakRef':
       return object.target === undefined ? [] : [object.target];
     case 'execution':
       return object.resolves === undefined ? [] : [object.resolves];
+    case 'future':
     case 'cell':
     case 'guard':
     case 'resource':
@@ -207,7 +207,6 @@ function futureValues(state: FutureState): readonly Value[] {
     case 'host':
     case 'first':
     case 'disposed':
-    case 'disposing':
       return [];
     default: {
       const unhandled: never = state;
@@ -222,28 +221,8 @@ function heldTargets(state: FutureState): readonly number[] {
       return [state.slot];
     case 'first':
       return state.futures;
-    case 'disposing':
     case 'disposed':
-    case 'call':
-    case 'resolved':
-    case 'timer':
-    case 'host':
-      return [];
-    default: {
-      const unhandled: never = state;
-      return unhandled;
-    }
-  }
-}
-
-function watchedTargets(state: FutureState): readonly number[] {
-  switch (state.kind) {
-    case 'disposing':
-      return [state.execution];
-    case 'disposed':
-      return [state.target];
-    case 'slot':
-    case 'first':
+      return [state.weakRef];
     case 'call':
     case 'resolved':
     case 'timer':

@@ -1,0 +1,42 @@
+# outcome: "same true, other false, held true, signalled false | worked 2, watcher pending true"
+# Weak references and an async call's own `disposing()` (§7), short of disposing anything:
+# `WeakRef(x)` is the one weak reference to `x`, so two are `==` exactly when they refer to the
+# same value; while `x` is held, `deref()` gives it and `disposed()` hasn't resolved. A call that
+# returns is never disposed: a watch on it, even taken by a closure that outlives the call, never
+# resolves.
+
+import * as time from 'time'
+
+fn resolved(signal: Future<unit>) -> bool:
+  select:
+    case signal:
+      true
+    else:
+      false
+
+async fn worker(n: int) -> Future<int>:
+  fn watch() -> Future<unit>:
+    worker.disposing()
+  await select:
+    case watch():
+      0
+    case time.delay(1ms):
+      n + 1
+
+async fn watcher() -> Future<fn() -> Future<unit>>:
+  fn() -> Future<unit>: watcher.disposing()
+
+async fn main() -> Future<string>:
+  const slot = Slot.create<int>()
+  const other = Slot.create<int>()
+  const weak = WeakRef(slot)
+  const same = weak == WeakRef(slot)
+  const differs = weak == WeakRef(other)
+  const held = weak.deref() != none
+  const signalled = resolved(weak.disposed())
+  const worked = await worker(1)
+  const late = await watcher()
+  const pending = not resolved(late())
+  const refs = "same " + string(same) + ", other " + string(differs)
+  const states = "held " + string(held) + ", signalled " + string(signalled)
+  refs + ", " + states + " | worked " + string(worked) + ", watcher pending " + string(pending)

@@ -31,7 +31,7 @@
 import { awaitedRegisters } from '../../definition/instructions/flow.ts';
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { depthOf, maximumDepth, type Value } from '../../definition/values.ts';
+import { depthOf, handleTarget, maximumDepth, type Value } from '../../definition/values.ts';
 import { runInstruction } from '../interpreter/instructions.ts';
 import {
   type ActiveFrame,
@@ -42,9 +42,10 @@ import {
   releaseFrame,
   resumeAt,
 } from '../interpreter/machine.ts';
+import { resume } from '../interpreter/suspension.ts';
 import { traceOf } from '../interpreter/trace.ts';
 import { Collector } from '../lifetimes/collector.ts';
-import type { DisposalCall } from '../lifetimes/disposal.ts';
+import type { Cleanup, DisposalCall } from '../lifetimes/disposal.ts';
 import type { Roots } from '../lifetimes/holders.ts';
 import { Panic } from '../natives.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
@@ -86,6 +87,8 @@ class SegmentRunner implements Machine {
   readonly #collector: Collector;
   /** Frames running a disposal's call: their return resumes collecting, not a caller. */
   readonly #disposalFrames = new WeakSet<ActiveFrame>();
+  /** Disposed calls running their cleanup: their next await or return resumes collecting. */
+  readonly #cleanups = new WeakSet<LiveExecution>();
   /** Runs disposal calls when no execution is running; never in the heap, never persisted. */
   readonly #carrier: LiveExecution = {
     kind: 'execution',
@@ -107,7 +110,8 @@ class SegmentRunner implements Machine {
       stop: (execution) => {
         instance.stop(execution);
       },
-      run: (call) => this.#runDisposal(call),
+      weak: instance.weak,
+      run: (run) => (run.kind === 'call' ? this.#runDisposal(run) : this.#runCleanup(run)),
     });
   }
 
@@ -167,6 +171,10 @@ class SegmentRunner implements Machine {
       resumeAfterCall(caller, value);
       return;
     }
+    if (this.#cleanups.has(execution)) {
+      this.#endCleanup(execution);
+      return;
+    }
     const future = execution.resolves;
     if (future === undefined) {
       this.#end = { finished: value };
@@ -179,6 +187,10 @@ class SegmentRunner implements Machine {
 
   wait(frame: ActiveFrame): void {
     const execution = this.#current();
+    if (this.#cleanups.has(execution)) {
+      this.#endCleanup(execution);
+      return;
+    }
     const instruction = frame.code.instructions[frame.pc];
     const awaited = instruction === undefined ? [] : awaitedRegisters(instruction);
     if (awaited.some((register) => this.settled(readRegister(frame, register)) !== undefined)) {
@@ -208,6 +220,10 @@ class SegmentRunner implements Machine {
   guard(callback: Value): Value {
     const guard = this.#instance.heap.add((id) => ({ kind: 'guard', id, callback }));
     return { kind: 'handle', object: guard.id };
+  }
+
+  currentCall(): Value {
+    return this.#instance.weak.reference(this.#current().id);
   }
 
   /** Runs drivers until one awaits, the root returns, or nothing is ready. */
@@ -292,6 +308,27 @@ class SegmentRunner implements Machine {
     }
     this.#current().frames.push(frame);
     return false;
+  }
+
+  /**
+   * Starts a disposed call's cleanup (§7): it resumes on its `disposing()` watcher, that case
+   * winning whatever else has resolved, and runs on top of what runs until it awaits or returns.
+   */
+  #runCleanup({ execution, watcher }: Cleanup): false {
+    this.#instance.unready(execution);
+    resume(topFrame(execution), (handle) =>
+      handleTarget(handle) === watcher ? { value: null } : undefined,
+    );
+    this.#cleanups.add(execution);
+    this.#runStack.push(execution);
+    return false;
+  }
+
+  /** A disposed call's cleanup awaited or returned: the call stops there, and collecting goes on. */
+  #endCleanup(execution: LiveExecution): void {
+    this.#runStack.pop();
+    this.#instance.stop(execution);
+    this.#collector.returned();
   }
 
   /** Runs the instruction the top frame stands at. */

@@ -5,7 +5,8 @@
  * A native receives values, never references: an argument passed by `&` is read through its
  * reference, and the native writes a changed value back through the context's `write`, which
  * writes the place the reference names. It reaches the instance's cells through `Shared<T>`
- * handles (§3.8), and the futures it returns through the instance's futures and slots.
+ * handles (§3.8), the futures it returns through the instance's futures and slots, and weak
+ * references through handles to what they refer to (§7).
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
@@ -16,15 +17,18 @@ import {
   readThrough,
   writeReference,
 } from '../interpreter/machine.ts';
-import type { Native, NativeCells, NativeContext } from '../natives.ts';
+import type { Native, NativeCells, NativeContext, NativeWeakSide } from '../natives.ts';
 import { isReference, type Reference } from '../snapshot/objects.ts';
+import { handleObject } from './heap.ts';
 import type { Instance } from './instance.ts';
+import type { WeakSide } from './weak-side.ts';
 
 export class NativeCalls {
   readonly #instance: Instance;
   readonly #startedAt: bigint;
   readonly #trace: () => string;
   readonly #cells: NativeCells;
+  readonly #weak: NativeWeakSide;
 
   /** Calls within a segment of `instance` started at `startedAt`; `trace` says where it runs. */
   constructor(instance: Instance, startedAt: bigint, trace: () => string) {
@@ -32,6 +36,7 @@ export class NativeCalls {
     this.#startedAt = startedAt;
     this.#trace = trace;
     this.#cells = nativeCellsOf(instance.frameHeap);
+    this.#weak = nativeWeakSideOf(instance.weak);
   }
 
   /** Calls `native`, entry `callee`, with what its arguments hold; what it returns. */
@@ -66,6 +71,7 @@ export class NativeCalls {
       },
       trace: this.#trace,
       cells: this.#cells,
+      weak: this.#weak,
     };
   }
 }
@@ -77,6 +83,19 @@ function referenceAt(contents: readonly RegisterContents[], position: number): R
     throw new Error(`A native wrote argument ${position}, which isn't passed by '&'.`);
   }
   return argument;
+}
+
+/** The instance's weak references as natives reach them: through handles (§7). */
+function nativeWeakSideOf(weak: WeakSide): NativeWeakSide {
+  return {
+    reference: (referent) => weak.reference(handleObject(referent)),
+    target: (reference) => {
+      const target = weak.target(reference);
+      return target === undefined ? undefined : { kind: 'handle', object: target };
+    },
+    watch: (reference) => weak.watch(reference),
+    whenDisposed: (reference) => weak.whenDisposed(reference),
+  };
 }
 
 /** The instance's cells as natives reach them: through `Shared<T>` handles (§3.8). */

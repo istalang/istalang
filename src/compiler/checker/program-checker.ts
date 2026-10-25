@@ -263,6 +263,7 @@ export class ProgramChecker implements CheckerContext {
     return this.#bodies.resultOf(declaration, () => {
       const kind: BodyKind = {
         kind: 'function',
+        declaration,
         isAsync: declaration.isAsync,
         declaredResult: this.#declaredBodyResult(declaration),
       };

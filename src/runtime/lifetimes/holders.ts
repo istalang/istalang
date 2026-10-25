@@ -9,8 +9,8 @@
  *   lists), plus the objects the scheduler names: the call futures of executions running on its
  *   run stack, which keep themselves alive until they suspend, and objects waiting in a collection
  *   round (collector.ts).
- * - An object holds what snapshot.ts's `heldObjects` says; a slot's queue, a weak reference and
- *   what `disposed()` watches hold nothing.
+ * - An object holds what snapshot.ts's `heldObjects` says; a slot's queue and a weak reference hold
+ *   nothing, so neither does a `disposed()` watch, which holds only its weak reference.
  * - The one walk also finds how deep the deepest held value nests, which is what a commit checks
  *   against `maximumDepth` (spec §5), so a commit walks the live state once.
  * - Asking about some objects (`heldUnlessAll`) walks breadth first, from the roots in the order

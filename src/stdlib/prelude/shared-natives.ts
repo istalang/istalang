@@ -11,6 +11,7 @@ import { namedKey, nativeKey, parameterKey } from '../../definition/extern-key.t
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import type { TypeId } from '../../definition/operands.ts';
 import {
+  conversionFunction,
   qualifiedName,
   rewrapFunction,
   unwrapFunction,
@@ -24,7 +25,7 @@ const value = parameterKey('T');
 const shared = namedKey(qualifiedName(wellKnown.shared), value);
 
 export const sharedNatives: Natives = {
-  [nativeKey(module, `${name}.from`, value)]: ([initial], context) =>
+  [nativeKey(module, `${name}.${conversionFunction}`, value)]: ([initial], context) =>
     context.cells.create(sharedTypeOf(context.entry), given(initial)),
   [nativeKey(module, unwrapFunction, shared)]: ([cell], context) => context.cells.read(given(cell)),
   [nativeKey(module, rewrapFunction, shared, value)]: ([cell, next], context) => {

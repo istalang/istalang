@@ -72,6 +72,7 @@ src/
   runtime/
     values/ interpreter/ scheduler/ snapshot/ boundary/          parts of values along paths, the instruction table, segments and commits, the persisted instance, values crossing to the host
                         scheduler/: heap.ts (objects by id), futures.ts (resolving, who waits, `first`), slots.ts (§6's queue),
+                        weak-side.ts (weak references, `disposed()` and `disposing()`, told by disposal what it disposes),
                         instance.ts (an instance in memory), segment.ts, native-calls.ts, wake.ts (advancing, commits, spawned children), inspect.ts
     lifetimes/          holders and disposal (§7): holders.ts (what the live frames reach: held), orphans.ts (what to dispose now,
                         holders before what they hold), disposal.ts (each kind's disposal), collector.ts (rounds, a disposal's call on the run stack)

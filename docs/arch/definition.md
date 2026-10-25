@@ -65,12 +65,14 @@ Whether a value is held is decided by reachability, never counted (spec §7). Th
 | --- | --- | --- |
 | cell | its value | |
 | slot | its value | its queue of waiting operations |
-| future | a resolved one its value; a pending `put` its value and slot; a pending `take` or `read` its slot; a `first` the futures it races | `disposed()` its target; `disposing()` its execution |
+| future | a resolved one its value; a pending `put` its value and slot; a pending `take` or `read` its slot; a `first` the futures it races; a `disposed()` or `disposing()` watch its weak reference | |
 | guard, mock | the function value they call | |
-| weakRef | | its target |
+| weakRef | | its target: a disposable, or a call's execution |
 | execution | (a root while it lives) | its own call future, which its caller holds |
 
-An execution running on the run stack holds its own call future too, until it suspends. After an instruction that let go of something (a register overwritten or emptied, a frame ended, an object changed or removed), the runtime finds the disposables what was let go of reaches and walks from the roots until it has found them all held; only when one isn't does it collect. What nothing holds is disposed newest first, except that an object another unheld disposable holds, even through a plain cell, waits until that one's disposal is done; disposables holding each other in a cycle are disposed together. A disposal that runs code (a `defer` guard's function, a declared `dispose`) is a call on the run stack, made before the instruction's execution goes on. A commit persists the executions and what they hold, found in one walk that also finds the deepest value's depth (Values).
+An execution running on the run stack holds its own call future too, until it suspends. After an instruction that let go of something (a register overwritten or emptied, a frame ended, an object changed or removed), the runtime finds the disposables what was let go of reaches and walks from the roots until it has found them all held; only when one isn't does it collect. What nothing holds is disposed newest first, except that an object another unheld disposable holds, even through a plain cell, waits until that one's disposal is done; disposables holding each other in a cycle are disposed together. A disposal that runs code (a `defer` guard's function, a declared `dispose`) is a call on the run stack, made before the instruction's execution goes on. Disposing a call's future disposes the call: its `disposing()` watches resolve, and if it waits on one of them it resumes there on the run stack, that case winning whatever else resolved, and stops at its next `await` or return; otherwise it stops where it waits (spec §7).
+
+A referent has one `weakRef`, so `WeakRef(a) == WeakRef(a)`. Once a disposed object is gone, after any code its disposal ran, its weak reference loses its target and the watches on it resolve, so a woken watcher's `deref()` gives `none` (spec §6). `currentCall` gives the weak reference to the running call's execution; when the call returns, it loses its target without resolving anything, so its `disposing()` never resolves, and a closure that watches a call it was made in captures that handle. A commit persists the executions and what they hold, found in one walk that also finds the deepest value's depth (Values).
 
 ## Places
 
@@ -109,7 +111,7 @@ A function entry's `name` is for traces to read; entries are identified by index
 
 A type entry is identified by its module-qualified declared `name` and its `arguments`, `time.Time` or `prelude.Optional` with `[int]`, so the runtime recognizes the types the boundary treats specially (spec §9) whatever their instantiation. An anonymous struct has no name.
 
-Only extern types can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures, slots and revertible messages; or a `function`, the entry of the declared `dispose`'s instance, called with a handle to the value, as for `Shared<Lease>`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a `dispose` a program declares, for a `Shared` instantiation or a host's extern type, is a `function`. A host value of an extern type with `function` disposal is a `resource` object behind a handle, which the boundary makes as the value arrives from the host and unwraps to its payload as it leaves. No list of disposable types is kept anywhere.
+Only extern types can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures and slots; or a `function`, the entry of the declared `dispose`'s instance, called with a handle to the value, as for `Shared<Lease>`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a `dispose` a program declares, for a `Shared` instantiation or a host's extern type, is a `function`. A host value of an extern type with `function` disposal is a `resource` object behind a handle, which the boundary makes as the value arrives from the host and unwraps to its payload as it leaves. No list of disposable types is kept anywhere.
 
 Each module carries its line starts. The runtime has neither source text nor the compiler, yet it turns spans into locations for `Error.trace`, a panic's trace, `waitingAt()` and the operator's view.
 
@@ -121,7 +123,7 @@ Each module carries its line starts. The runtime has neither source text nor the
 
 - Status: `unstarted` (the call a new instance runs: its function, a closure's captures and the arguments), `active`, `panicked` (message, trace, segment start) or `finished` (outcome). What a host is told about an instance is derived from this status alone. A spawned instance is written `unstarted`, named `<parent>/<n>`, before its parent's commit; `spawned` counts the instances an instance has spawned, which numbers the next.
 - `crashEveryAwait`: the instance's option, set when it starts (spec §10), so every runtime that wakes it re-runs its segments.
-- Objects, in ascending id order: `cell` (typed: every cell is a `Shared<T>`), `slot` (value when full, waiting operations oldest first, one queue for every kind), `future` (resolved, or pending on a call, slot operation, timer, host, `futures.first` over other futures, `disposed()` or `disposing()`), `weakRef`, `guard` (`defer`), `resource` (a disposable runtime or host value, such as `Revertible<T>`), `mock`, `execution`.
+- Objects, in ascending id order: `cell` (typed: every cell is a `Shared<T>`), `slot` (value when full, waiting operations oldest first, one queue for every kind), `future` (resolved, or pending on a call, slot operation, timer, host, `futures.first` over other futures, or a weak reference's referent being disposed: `disposed()` and `disposing()`), `weakRef` (its target, until disposed or, for a call's, returned), `guard` (`defer`), `resource` (a host value of a disposable extern type), `mock`, `execution`.
 - `ready`: executions in the order they became ready.
 
 Disposability comes from an object's kind or type. Slots, futures, guards and mocks are disposed by the runtime, and an execution is stopped when its call future is. A cell or resource follows its type entry's `disposal`, so a restore knows which cells have a `dispose` to call. A `mock` records each call's arguments for `m.calls()`.
@@ -198,8 +200,9 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Slots and their operations (§6) | calls to prelude externs that return futures |
 | Inbox, `futures`, `rpc`, `fanout` (§3.8, §6) | library code over slots: an `Inbox<T>` is a `Shared` of its state, one slot and a backlog, and `receive` is the slot's `take`; `futures.first` is the one extern, a `first` future |
 | `defer f` (§7) | `defer`, into an unnamed register of the block |
-| `WeakRef`, `disposed()` (§7) | calls to prelude externs |
-| `worker.disposing()` (§7) | `currentCall` at the function's entry, then a call to `disposing` |
+| `WeakRef`, `deref()`, `disposed()` (§7) | calls to prelude externs |
+| `worker.disposing()` (§7) | `currentCall` at the function's entry, into a hidden variable a nested function captures like any other, then a call to the prelude's private `_disposing` |
+| `sendRevertible`, `Revertible<T>` (§6) | library code: a `Revertible<T>` is a `Shared` of its retraction, a `fn() -> unit`, which its declared `dispose` calls; an inbox retracts through a weak reference to itself |
 | `select`, `await select` (§8) | the case futures in source order, then `select`; per case: the future, the registers its expression created (`holds`), `bind` for `as`, and the target, where the case's `as` is a target its body declares; `otherwise` for the non-blocking form, which is `else`'s body. The `holds` are unnamed registers of the enclosing block, so the winner's last until it ends |
 | Prelude and standard-library functions: `push`, `at`, `get`, `length`, … (§3.8) | calls to their entries; runtime-backed ones are externs |
 | Versioning (§5) | an instance references its Definition's content hash for its whole life |

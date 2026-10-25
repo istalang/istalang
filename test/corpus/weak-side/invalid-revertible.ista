@@ -1,0 +1,15 @@
+# error: 5025 at 10:3
+# error: 5605 at 12:14
+# A revertible send's holder must be kept (§6, §7): left bare, it would retract the message at
+# once. Only a disposable has a weak reference, and a weak reference isn't sendable.
+
+import Inbox from 'inbox'
+
+async fn main() -> Future<unit>:
+  const box = Inbox.create<int>()
+  box.sendRevertible(1)
+  const weak = WeakRef(box)
+  spawn keep(weak)
+
+async fn keep(weak: WeakRef<Inbox<int>>) -> Future<unit>:
+  drop weak.deref()

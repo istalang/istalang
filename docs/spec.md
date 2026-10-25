@@ -432,6 +432,7 @@ extern fn Slot.create<T>() -> Slot<T>                       # starts empty
 extern fn put<T>(self: Slot<T>, value: T) -> Future<unit>   # waits until empty, then fills
 extern fn take<T>(self: Slot<T>) -> Future<T>               # waits until full, then empties
 extern fn read<T>(self: Slot<T>) -> Future<T>               # waits until full, keeps the value
+extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>   # WeakRef(x): the one weak handle to x
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
 extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
 extern fn Shared.from<T>(value: T) -> Shared<T>             # Shared(v): a new cell holding v
@@ -963,8 +964,9 @@ const next: Verdict = await box.receive()
 - **Capacity.** An inbox is unbounded, so `send` never waits; it returns `unit`.
 - **A receive is a wait on a slot.** `receive()` returns the future of a `take`, not of an async call, so a receive that loses a `select` and is released consumes nothing.
 - **Durable messages** live until they are received, or until the inbox is disposed.
-- **Revertible messages** are held weakly by the inbox (§7). The only strong reference is the `Revertible<T>` holder that `sendRevertible` returns: kept in `_`, it lasts until the sending block ends, with `fn _` until the sending function ends, and stored elsewhere, as long as it is held there. When the holder is released while the message is still unread, the message is retracted.
-- **Receiving upgrades a revertible message** to a strong reference, so once received, it can't be retracted. Receivers skip retracted entries, and everything else keeps its order.
+- **Revertible messages** last as long as the `Revertible<T>` holder that `sendRevertible` returns: kept in `_`, it lasts until the sending block ends, with `fn _` until the sending function ends, and stored elsewhere, as long as it is held there. When the holder is released while the message is still unread, the message is retracted. The holder doesn't keep the inbox alive.
+- **Receiving a revertible message** makes it final, so once received, it can't be retracted. A retracted message is removed, and everything else keeps its order.
+- **`Revertible<T>`** is written in the language too: `type Revertible<T> = Shared<RevertibleState<T>>`, made disposable by the `inbox` module's `dispose`, which calls the state's `retract: fn() -> unit`. Whatever queue makes a holder supplies its own retraction, so an inbox, a fan-out and a queue the host provides (§3.6) all hand out the same type.
 
 **Lifetimes.** A slot or inbox is disposed when its last holder releases it, together with the values in it. Every handle holds it; code that shouldn't keep it alive holds a `WeakRef` instead (§7). Queues the host provides live as long as the host keeps them.
 
@@ -984,7 +986,7 @@ The owner keeps its inbox and gives the child only the weak side, starting it wi
 
 - **Order.** The inbox is disposed, its unread messages are deleted, and then every `disposed()` future watching it resolves. A receiver racing `box.receive()` against `disposed()` never gets a message after the signal.
 - **Every watcher is notified.** Each call returns its own future, so any number of executions can watch the same inbox.
-- **Not only inboxes.** `disposed()` works for any disposable: a future, a slot, a revertible message's holder.
+- **Not only inboxes.** A `WeakRef` to any disposable has `disposed()`: to a future, a slot, a revertible message's holder.
 - **Queues the host provides** are kept by the host, so watching one resolves only if the host disposes it.
 
 ## 7. Lifetimes and disposal
@@ -1030,7 +1032,7 @@ In the common case nothing is stored anywhere else, so a disposable lives exactl
 
 In every case, each `disposed()` future watching the value resolves afterwards.
 
-**Weak references.** `WeakRef<T is Disposable>` refers to a value without holding it. Its `deref()` returns `T?`, which is `none` once the last holder has released the value. Its `disposed()` returns a `Future<unit>` that resolves at that moment, and waiting on it holds nothing. Weak references aren't sendable. Revertible messages are built on them: an inbox holds such a message weakly (§6).
+**Weak references.** `WeakRef<T is Disposable>` refers to a value without holding it. Its `deref()` returns `T?`, which is `none` once the last holder has released the value. Its `disposed()` returns a `Future<unit>` that resolves at that moment, already resolved if it has passed, and waiting on it holds nothing. `WeakRef(x)` gives the one weak reference to `x`, so two weak references are `==` exactly when they refer to the same value, also after it is disposed. Weak references aren't sendable.
 
 **Disposing early.** To dispose something you hold before its block ends, `drop` it. A value is disposed only when its last holder releases it, so a disposed value is never observable. To stop something that other code may also need to reach, keep the only holder in a `Shared` and share that. Setting its value to `none` releases the holder, and everyone else then sees `none` rather than a disposed value:
 
@@ -1058,7 +1060,8 @@ async fn worker(jobs: Inbox<Job>):
 - **Cleanup runs inside the disposal.** When the call's last holder releases it, the runtime resolves its `disposing()` future. If the call is suspended where it can resume on that future (awaiting it, or in a `select` with a case for it), it resumes at once, in the same segment as the disposal, and that case wins over any other.
 - **The next `await` aborts.** After disposal, the first `await` the call reaches stops it, and its variables are released. A call that never watches `disposing()`, or isn't waiting on it at that moment, is stopped right where it is suspended.
 - **Cleanup can't wait.** Because the next `await` aborts the call, cleanup is synchronous by construction, and the compiler warns about an `await` inside a `disposing()` case.
-- **Lexical.** `worker.disposing()` always refers to the enclosing call of `worker`, also from a nested local function, so nested functions are never ambiguous.
+- **Lexical.** `worker.disposing()` always refers to the enclosing call of `worker`, also from a nested local function, so nested functions are never ambiguous. It is a compile error outside an `async fn` of that name, and for `main`, which nothing holds.
+- **Calls nothing can dispose.** An instance's root call, such as a spawned function, and a call that has already returned are never disposed, so their `disposing()` never resolves.
 
 **Defer.** `defer f` runs the function `f` when the current block ends, whether it finishes, is left through `return`, `break` or `continue`, or is disposed at an `await`. `f` is a lambda or a function reference of type `fn() -> unit`, as in `defer fn(): log("exited")` or `defer cleanup`, so it can't await. Several deferred functions run in reverse order, last first, and a `defer` in a loop body runs at the end of each iteration, as in Swift. `defer` is sugar for holding a disposable guard in a hidden local, so it needs no new machinery. Unlike `disposing()`, it also runs on a normal exit; to act only on disposal, check a flag:
 
