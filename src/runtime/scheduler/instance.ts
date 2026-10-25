@@ -9,33 +9,33 @@
  *   whose future has resolved, and executions run in the order they became ready (§6).
  * - The root execution, the one the instance started with, is the one that resolves no call
  *   future.
- * - A commit keeps only what an execution can reach (§5). A future no register holds any more is
- *   left out; disposal (§7) will decide what losing a last holder does, and until then nothing can
- *   observe it. An async call's execution names its future, so the future lasts as long as the call.
+ * - A commit keeps the executions and what they hold (§5, runtime/lifetimes/holders.ts). Whatever
+ *   was disposable and lost its last holder was disposed where it lost it, so what is left out is
+ *   only what no one can observe any more.
+ * - Stopping an execution (§7: its call future disposed) lets go of everything its frames hold.
  * - What a segment spawns becomes instances only when the segment commits (wake.ts), so a segment
  *   that is discarded spawned nothing.
- * - The instance is its frames' cell store (interpreter/machine.ts): a variable passed by `&` is a
- *   cell object here, and a reference names one.
+ * - The instance is its frames' heap (interpreter/machine.ts): a variable passed by `&` is a cell
+ *   object here, a reference names one, and what a frame lets go of is noted on the heap.
  */
 
 import type { Definition } from '../../definition/definition.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { depthOf, type Value } from '../../definition/values.ts';
+import { handlesIn, type Value } from '../../definition/values.ts';
+import { pushAll } from '../../structures/stack.ts';
 import type { FunctionTable } from '../interpreter/function-table.ts';
 import {
   type ActiveFrame,
-  type CellStore,
+  type FrameHeap,
   newFrame,
   type RegisterContents,
+  releaseFrame,
 } from '../interpreter/machine.ts';
 import { resume } from '../interpreter/suspension.ts';
-import type { Frame, HeapObject } from '../snapshot/objects.ts';
-import {
-  type InstanceCall,
-  referencedObjects,
-  type Snapshot,
-  valuesIn,
-} from '../snapshot/snapshot.ts';
+import { isDisposable } from '../lifetimes/disposal.ts';
+import { heldFrom } from '../lifetimes/holders.ts';
+import { type Frame, type HeapObject, isReference } from '../snapshot/objects.ts';
+import type { InstanceCall, Snapshot } from '../snapshot/snapshot.ts';
 import { Futures } from './futures.ts';
 import { Heap, type LiveExecution, type LiveObject } from './heap.ts';
 import { Slots } from './slots.ts';
@@ -62,13 +62,18 @@ export class Instance {
   readonly heap: Heap;
   readonly futures: Futures;
   readonly slots: Slots;
-  /** The heap's cells, as its frames read and write them (interpreter/machine.ts). */
-  readonly cells: CellStore = {
+  /** The heap as its frames reach it (interpreter/machine.ts). */
+  readonly frameHeap: FrameHeap = {
     read: (cell) => this.heap.of(cell, 'cell').value,
     write: (cell, value) => {
       this.heap.replace({ ...this.heap.of(cell, 'cell'), value });
     },
     create: (type, value) => this.heap.add((id) => ({ kind: 'cell', id, type, value })).id,
+    released: (contents) => {
+      if (!isReference(contents)) {
+        this.heap.noteReleased(handlesIn(contents));
+      }
+    },
   };
   /** How many instances this one spawned before its current segment. */
   readonly #spawnedBefore: number;
@@ -82,7 +87,7 @@ export class Instance {
     this.#spawnedBefore = snapshot.spawned;
     this.#ready = [...snapshot.ready];
     this.heap = new Heap(
-      snapshot.objects.map((object) => liveObject(loaded.definition, object, this.cells)),
+      snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
     this.futures = new Futures(this.heap, (execution) => {
       this.markReady(execution);
@@ -109,20 +114,41 @@ export class Instance {
     return new Instance(loaded, snapshot);
   }
 
-  /** How deep the deepest value an execution can reach nests: what a commit would persist. */
-  deepestValue(): number {
-    return this.#reachableObjects()
-      .flatMap(valuesIn)
-      .reduce<number>((deepest, value) => Math.max(deepest, depthOf(value)), 0);
+  /**
+   * What a commit would persist, in one walk: the executions and what they hold, in id order, and
+   * how deep the deepest value among them nests (§5).
+   */
+  persisted(): Persisted {
+    const executions = this.heap.objectsOf('execution');
+    const held = heldFrom(this.heap, {
+      frames: executions.flatMap((execution) => execution.frames),
+      objects: [],
+    });
+    const persisted = this.heap
+      .objects()
+      .filter((object) => object.kind === 'execution' || held.objects.has(object.id));
+    const lost = this.heap
+      .objects()
+      .find(
+        (object) =>
+          !held.objects.has(object.id) && isDisposable(this.loaded.definition.types, object),
+      );
+    if (lost !== undefined) {
+      throw new Error(`Object ${lost.id} lost its last holder without being disposed.`);
+    }
+    return { objects: persisted.map(storedObject), depth: held.depth };
   }
 
-  /** The instance as a snapshot with `status`, holding only what an execution can reach. */
-  snapshot(status: Exclude<InstanceStatus, { kind: 'panicked' | 'unstarted' }>): Snapshot {
+  /** The instance as a snapshot with `status`, holding `objects`, what `persisted` found. */
+  snapshot(
+    status: Exclude<InstanceStatus, { kind: 'panicked' | 'unstarted' }>,
+    objects: readonly HeapObject[],
+  ): Snapshot {
     const active = status.kind === 'active';
     return {
       ...this.unrun(status),
       spawned: this.#spawnedBefore + this.#spawns.length,
-      objects: active ? this.#reachableObjects() : [],
+      objects: active ? [...objects] : [],
       ready: active ? [...this.#ready] : [],
     };
   }
@@ -172,7 +198,7 @@ export class Instance {
     if (code?.kind !== 'code') {
       throw new Error(`Entry ${entry} is not code.`);
     }
-    const frame = newFrame({ function: entry, code }, contents, this.cells, captures);
+    const frame = newFrame({ function: entry, code }, contents, this.frameHeap, captures);
     return this.heap.add((id) => ({
       kind: 'execution',
       id,
@@ -218,23 +244,26 @@ export class Instance {
     this.heap.remove(execution.id);
   }
 
-  /** The heap as a snapshot stores it, without what no execution can reach. */
-  #reachableObjects(): HeapObject[] {
-    const stored = new Map(this.heap.objects().map((object) => [object.id, storedObject(object)]));
-    const reached = new Set<number>();
-    const pending: HeapObject[] = [...stored.values()].filter(
-      (object) => object.kind === 'execution',
-    );
-    for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
-      if (!reached.has(next.id)) {
-        reached.add(next.id);
-        pending.push(...referencedObjects(next).flatMap((id) => stored.get(id) ?? []));
-      }
+  /**
+   * Stops `execution` where it waits (§7: its call was disposed), letting go of everything its
+   * frames hold, innermost first.
+   */
+  stop(execution: LiveExecution): void {
+    for (const frame of execution.frames.toReversed()) {
+      releaseFrame(frame);
     }
-    return [...reached]
-      .sort((first, second) => first - second)
-      .flatMap((id) => stored.get(id) ?? []);
+    this.heap.remove(execution.id);
+    const position = this.#ready.indexOf(execution.id);
+    if (position >= 0) {
+      this.#ready.splice(position, 1);
+    }
   }
+}
+
+/** What a commit persists of a running instance (`Instance.persisted`). */
+export interface Persisted {
+  readonly objects: readonly HeapObject[];
+  readonly depth: number;
 }
 
 /** The innermost frame of `execution`, which always has one. */
@@ -247,29 +276,27 @@ export function topFrame(execution: LiveExecution): ActiveFrame {
 }
 
 /** A snapshot's object as the running instance holds it: an execution's frames made live. */
-function liveObject(definition: Definition, object: HeapObject, cells: CellStore): LiveObject {
+function liveObject(definition: Definition, object: HeapObject, heap: FrameHeap): LiveObject {
   if (object.kind !== 'execution') {
     return object;
   }
   return {
     ...object,
     resolves: object.resolves,
-    frames: object.frames.map((frame) => liveFrame(definition, frame, cells)),
+    frames: object.frames.map((frame) => liveFrame(definition, frame, heap)),
   };
 }
 
-function liveFrame(definition: Definition, frame: Frame, cells: CellStore): ActiveFrame {
+function liveFrame(definition: Definition, frame: Frame, heap: FrameHeap): ActiveFrame {
   const code = definition.functions[frame.function];
   if (code?.kind !== 'code') {
     throw new Error(`Frame function ${frame.function} is not code; loading checks this.`);
   }
-  if (frame.kept.length > 0) {
-    throw new Error("The runtime doesn't restore kept holdings yet.");
-  }
-  const live = newFrame({ function: frame.function, code }, [], cells);
+  const live = newFrame({ function: frame.function, code }, [], heap);
   for (const [register, contents] of frame.registers) {
     live.registers[register] = contents;
   }
+  pushAll(live.kept, frame.kept);
   live.pc = frame.pc;
   return live;
 }
@@ -288,7 +315,7 @@ function storedObject(object: LiveObject): HeapObject {
       registers: frame.registers.flatMap((contents, register) =>
         contents === undefined ? [] : [[register, contents] as [number, RegisterContents]],
       ),
-      kept: [],
+      kept: [...frame.kept],
     })),
   };
 }

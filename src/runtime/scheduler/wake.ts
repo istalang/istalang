@@ -24,6 +24,7 @@
  */
 
 import type { Advanced, InstanceState } from '../instance-state.ts';
+import type { HeapObject } from '../snapshot/objects.ts';
 import { type InstanceCall, type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
 import { Instance, type LoadedDefinition, type StartOptions } from './instance.ts';
@@ -78,7 +79,7 @@ export function advance(
       return advanced(stateOf(commit(seams.store, left)));
     }
     spawned.push(...commitChildren(seams.store, instance));
-    committed = commit(seams.store, instance.snapshot(statusOf(end)));
+    committed = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
     if (end.kind === 'finished') {
       return advanced(stateOf(committed));
     }
@@ -124,7 +125,7 @@ function runText({ instance, end }: SegmentRun): string {
   if (end.kind === 'panicked') {
     return `panic: ${end.message}`;
   }
-  return [instance.snapshot(statusOf(end)), ...childrenOf(instance)]
+  return [instance.snapshot(statusOf(end), objectsOf(end)), ...childrenOf(instance)]
     .map((snapshot) => snapshotFormat.write(snapshot).text)
     .join('\n');
 }
@@ -156,6 +157,11 @@ function commit(store: InstanceStore, snapshot: Snapshot): Snapshot {
   const { text } = snapshotFormat.write(snapshot);
   store.writeSnapshot(snapshot.instance, text);
   return snapshotFormat.read(text);
+}
+
+/** What a segment that didn't panic leaves for its commit to persist. */
+function objectsOf(end: Exclude<SegmentEnd, { kind: 'panicked' }>): readonly HeapObject[] {
+  return end.kind === 'finished' ? [] : end.objects;
 }
 
 /** The status a segment that didn't panic leaves its instance in. */

@@ -89,6 +89,8 @@ export class ProgramChecker implements CheckerContext {
   readonly #declaredResults = new Map<FunctionDeclaration, Type | undefined>();
   readonly #resolvedTypes = new Map<TypeNode, Type>();
   readonly #results = new Map<FunctionDeclaration, Type>();
+  /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
+  readonly #disposals = new Map<string, Disposal>();
   readonly #bodies = new LazyChecks<FunctionDeclaration, CheckedBody>((member) => {
     this.report(
       this.moduleOf(member),
@@ -292,7 +294,7 @@ export class ProgramChecker implements CheckerContext {
   }
 
   disposalOf(type: NominalType): Disposal {
-    return disposalOf(this, type);
+    return memo(this.#disposals, this.typeKeys.typeKey(type), () => disposalOf(this, type));
   }
 
   declaredFieldsOf(declaration: StructDeclaration): readonly FieldMember[] {

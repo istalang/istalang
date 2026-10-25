@@ -12,7 +12,13 @@
 
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Value } from '../../definition/values.ts';
-import { type ActiveFrame, readRegister, resumeAt, writeRegister } from './machine.ts';
+import {
+  type ActiveFrame,
+  clearRegister,
+  readRegister,
+  resumeAt,
+  writeRegister,
+} from './machine.ts';
 
 /** How a frame learns whether the future a handle names has resolved, and with what. */
 export type SettledOf = (handle: Value) => { readonly value: Value } | undefined;
@@ -46,7 +52,7 @@ export function enterCase(
   for (const [position, selectCase] of select.cases.entries()) {
     if (position !== winner?.position) {
       for (const register of selectCase.holds) {
-        frame.registers[register] = undefined;
+        clearRegister(frame, register);
       }
     }
   }

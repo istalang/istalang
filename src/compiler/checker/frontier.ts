@@ -6,7 +6,6 @@
 
 /** The constructs, narrower than a node kind, reported as not supported yet. */
 export const frontier = {
-  heldByFunction: 'A variable held by the function',
   elementAssignment: 'Assigning to an element',
   elementReference: 'Passing an element by reference',
   unwrapPart: "Passing a '$' value, or part of one, by reference",
@@ -15,7 +14,6 @@ export const frontier = {
   externConstant: 'An extern constant',
   spreadArgument: 'A spread argument',
   restParameter: 'Rest parameter',
-  dropVariable: 'Dropping a variable',
 } as const;
 
 /** A construct `frontier` names. */

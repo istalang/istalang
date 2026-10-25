@@ -299,7 +299,7 @@ roles.push("cfo")                  # compile error: roles is const
 
 Variables are block scoped: a variable is visible only inside the block that declares it and in blocks nested within it. A variable declared inside an `if` body does not exist after the `if`. A loop variable (`for x in xs`) and every variable declared in a loop body are fresh on each iteration, so closures created in different iterations never share them. Unlike Python, assigning to an undeclared name is a compile error. Declaring a name twice in one block is a compile error too, also for two local functions, which therefore can't be overloaded; a nested block may shadow a name from an enclosing one. Types and values share one namespace per scope.
 
-**Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§7). A loop body is a block, so each iteration releases its own holdings. `fn let` and `fn const` declare a variable whose *name* is still block scoped but whose holdings last until the enclosing function ends, which is how a loop keeps what it starts. The common unnamed case has a short form: `fn _ = expr` means `fn const _ = expr`.
+**Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§7). A loop body is a block, so each iteration releases its own holdings. `fn let` and `fn const` declare a variable whose *name* is still block scoped but whose holdings last until the enclosing function ends, which is how a loop keeps what it starts: what the variable holds when its block ends is kept, while a value it held before and lost to an assignment was released then, as any overwritten value is. The common unnamed case has a short form: `fn _ = expr` means `fn const _ = expr`.
 
 ```python statements
 for role in roles:
@@ -906,13 +906,13 @@ const role: string? = verdict?.role
 
 ## 5. Persistence
 
-`await` is the only persistence point, and it is allowed only inside an `async fn`. The compiler checks only that rule; persistence itself is the runtime's job. The runtime is an interpreter that executes the compiled program over an instance's memory snapshot. **Every `await` commits**, whether or not its future has already resolved: the snapshot is persisted (locals, call frames, position in the code, reference counts and pending futures), and only then does the instance wait. The code alone therefore tells you what is durable: the code between two `await`s is one atomic segment, and every `await` ends one. The one `await` that doesn't end a segment is an async callee's first, reached inside its caller's segment: it hands control back to the caller, whose next `await` commits both (§3.3). The runtime may skip a physical write that would change nothing observable. To commit without waiting, write `await runtime.commit()`.
+`await` is the only persistence point, and it is allowed only inside an `async fn`. The compiler checks only that rule; persistence itself is the runtime's job. The runtime is an interpreter that executes the compiled program over an instance's memory snapshot. **Every `await` commits**, whether or not its future has already resolved: the snapshot is persisted (locals, call frames, position in the code and pending futures), and only then does the instance wait. The code alone therefore tells you what is durable: the code between two `await`s is one atomic segment, and every `await` ends one. The one `await` that doesn't end a segment is an async callee's first, reached inside its caller's segment: it hands control back to the caller, whose next `await` commits both (§3.3). The runtime may skip a physical write that would change nothing observable. To commit without waiting, write `await runtime.commit()`.
 
 - **Frames are data.** The interpreter keeps call frames in the snapshot, not on the host language's stack. An `await` at any depth in a call chain can therefore be persisted and resumed.
 - **Atomic segments.** The code between two `await`s runs in memory. Its effects (state changes, slot operations and disposals) commit atomically at the next `await`. If the segment is interrupted before it commits, by a crash or a panic, it never happened.
 - **Disposal points.** Since segments are atomic, disposing a running execution can only stop it at an `await`.
 - **Determinism.** `now()` returns the time its segment started, so every call within one segment sees the same time, and so does a re-run of that segment. The results of `extern fn` calls are recorded in the snapshot.
-- **Memory is reachability-based.** A snapshot persists only what is still reachable from the instance's live state, so unreachable `Shared` values and closure environments simply disappear. Disposable values are reference-counted instead, so that disposal happens at a predictable point (§7).
+- **Memory is reachability-based.** A snapshot persists only what is still reachable from the instance's live state, so unreachable `Shared` values and closure environments simply disappear. A disposable value is disposed at the point its last holder releases it instead, so that disposal is predictable (§7).
 - **Persisted values nest at most 256 levels deep.** A deeper value works within a segment, but a segment that would commit one, reachable or as the outcome, panics instead (§3.12), so the instance stays at its last commit.
 - **Extern effects aren't transactional.** The runtime doesn't make `extern fn` calls atomic with the segment. If a segment is discarded, the effects of extern calls it made remain, and a re-run calls them again. Idempotency is the developer's responsibility; an extern can, for example, return its own commit and abort handles for the workflow to call once it decides. Slot operations are exactly-once; anything the host provides is the host's responsibility.
 
@@ -989,25 +989,34 @@ The owner keeps its inbox and gives the child only the weak side, starting it wi
 
 ## 7. Lifetimes and disposal
 
-Pending futures, slots and inboxes, and revertible messages are **disposable**: they satisfy the built-in `Disposable` trait, and the runtime calls `dispose` when nothing holds them anymore. Only runtime and extern types may be disposable, but that includes a specific instantiation of one, which is how user code gets a disposable resource: `fn dispose(self: Shared<Lease>)` makes every `Shared<Lease>` disposable, while `Shared<int>` stays an ordinary handle. A plain struct that declares `dispose` is a compile error, because copies of a value have no single identity to count.
+Pending futures, slots and inboxes, and revertible messages are **disposable**: they satisfy the built-in `Disposable` trait, and the runtime calls `dispose` when nothing holds them anymore. Only a value with an identity of its own can be disposable, so only runtime and extern types may be, but that includes a specific instantiation of one, which is how user code gets a disposable resource: `fn dispose(self: Shared<Lease>)` makes every `Shared<Lease>` disposable, while `Shared<int>` stays an ordinary handle, and a `dispose` declared for an extern type a host provides makes it disposable too. A plain struct that declares `dispose` is a compile error, because copies of a value have no single identity to dispose.
+
+A program's `dispose` is found the way an operator's function is (§3.9), beside the type it disposes: in the module declaring that type, and for a `Shared<T>`, `T`'s. It is plain code: it takes the value as its one parameter, returns unit, and can't be `async`. The value can't outlive its disposal, so inside `dispose` it is used only as `self$` or passed to an extern function; storing it, copying it into a variable, capturing it or passing it to any other function is a compile error.
 
 ```python
 trait Disposable:
     fn dispose(self: Self)
 ```
 
-**Holders.** A disposable value is reference-counted. Its holders are variables (`_` included), struct fields, array and map elements, closure captures and values waiting in a slot. Copying a value that contains a disposable handle adds a holder, overwriting a variable or field releases the old value, and returning a value hands it to the caller. When a block ends, it releases everything its variables hold, except `fn let` and `fn const` variables, which the enclosing function releases when it ends (§3.4); every disposable that has just lost its last holder is disposed. **Temporaries**, such as the result of `parent.deref()` used inside one expression, are released at the end of their statement.
+**Holders.** A disposable value is held by whatever the running instance can still reach it through: variables (`_` included), struct fields, array and map elements, closure captures and values waiting in a slot, of the executions that are live, and through other values held so. Copying a value that contains a disposable handle adds a holder, overwriting a variable or field releases the old value, and returning a value hands it to the caller. When a block ends, it releases everything its variables hold, except `fn let` and `fn const` variables, which the enclosing function releases when it ends (§3.4); every disposable that has just lost its last holder is disposed. **Temporaries**, such as the result of `parent.deref()` used inside one expression, are released at the end of their statement. The temporaries of a header, such as an `if` or `while` condition or a `match` subject, are released when it has been evaluated, before the body runs.
 
-**Unnamed and dropped values.** A value that must be used (a future, a `Result` or a disposable) is a compile error when left as a bare expression. `_ = expr` keeps it in an unnamed variable, so it lasts until the block ends, and `fn _ = expr` until the function ends. `drop expr` says "I don't need this": a disposable is disposed right away if nothing else holds it, and anything else is simply discarded. A typical use is a best-effort call whose failure doesn't matter, such as `drop audit.record(event)`, which ignores its `Result` on purpose. `drop x` releases the variable `x`, which can't be used afterwards. Neither ever makes a disposed value observable.
+Some holds are implicit:
+
+- A pending `take`, `read` or `put` holds its slot, so a waiting receiver keeps the slot alive. A slot's queue of waiting operations holds nothing.
+- An async call's execution is held through its future. A running call holds its own future until it suspends, so a call that releases the last holder of its own future runs on, and is stopped at its next `await`.
+- A `futures.first` holds the futures it races, and a resolved future holds its value.
+- A `WeakRef` and a `disposed()` future watch what they refer to without holding it.
+
+**Unnamed and dropped values.** A value that must be used (a future, a `Result` or a disposable) is a compile error when left as a bare expression. `_ = expr` keeps it in an unnamed variable, so it lasts until the block ends, and `fn _ = expr` until the function ends. `drop expr` says "I don't need this": a disposable is disposed right away if nothing else holds it, and anything else is simply discarded. A typical use is a best-effort call whose failure doesn't matter, such as `drop audit.record(event)`, which ignores its `Result` on purpose. `drop x` releases the variable `x`, which can't be used afterwards: a use that some path reaches from the `drop` is a compile error, unless a `let` is assigned again first, and a variable declared again, as in a loop's next iteration, is a fresh one. Only a variable the function holds itself can be dropped: not one a closure captured from outside it, not a reference parameter, and not a top-level constant. Neither ever makes a disposed value observable.
 
 In the common case nothing is stored anywhere else, so a disposable lives exactly as long as the function that created it. That isn't forced, though: storing, returning or sending a disposable keeps it alive, and doing so is the developer's choice.
 
 - **Deterministic.** Disposal happens when the last holder's block ends, never at snapshot time, because `dispose` has visible effects.
 - **Synchronous.** `dispose` can't `await`. It can send signals, retract messages and mark work as aborted. Anything that must clean up gracefully does so in its own execution, after receiving the signal.
-- **Ordered.** Values that lose their last holder at the same block exit are disposed in reverse creation order.
+- **Ordered.** Values that lose their last holder at the same block exit are disposed in reverse creation order. A value held by another one being disposed loses its last holder only once that disposal is done, so a holder is disposed before what it holds, and its `dispose` or `defer` never sees a disposed value.
 - **Atomic.** The effects of disposal commit with the segment in which the block ends.
-- **Within one instance.** Counts never cross instances: disposable handles aren't sendable (§3.1), and what the host provides is owned by the host.
-- **Cycles.** Disposables that hold each other in a cycle never reach zero. The snapshot-time reachability pass (§5) finds such cycles, disposes them and logs a warning.
+- **Within one instance.** Holding never crosses instances: disposable handles aren't sendable (§3.1), and what the host provides is owned by the host.
+- **Cycles.** Disposables that hold each other in a cycle lose their last holder together, when the last one from outside the cycle releases them, and are disposed then, like any other values that lose their last holder at once.
 
 **What disposing does,** as implemented by the standard library:
 
@@ -1015,6 +1024,7 @@ In the common case nothing is stored anywhere else, so a disposable lives exactl
 | --- | --- |
 | `Future` of an async call | resolves the call's `disposing()`, then stops the call at its next `await` |
 | a pending `take`, `read` or timer | drops the wait without consuming / cancels the timer |
+| a future the host fills | drops the wait; a later fill by the host changes nothing |
 | `Slot` or `Inbox` | it dies, along with the values in it |
 | `Revertible<T>` holder | retracts the message if it hasn't been received |
 

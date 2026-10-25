@@ -103,9 +103,17 @@ function checkObjectReferences(contents: Contents, context: z.RefinementCtx): vo
   });
 }
 
-/** The ids of the objects `object` refers to: directly, or through a handle in a value it holds. */
+/** The ids of the objects `object` refers to: the ones it holds, and the ones it only watches. */
 export function referencedObjects(object: HeapObject): readonly number[] {
-  return [...directReferences(object), ...valuesIn(object).flatMap(handlesIn)];
+  return [...heldObjects(object), ...watchedObjects(object)];
+}
+
+/**
+ * The ids of the objects `object` holds (spec §7): directly, or through a handle in a value it
+ * holds. What nothing holds any more is disposed (runtime/lifetimes/).
+ */
+export function heldObjects(object: HeapObject): readonly number[] {
+  return [...directHolds(object), ...valuesIn(object).flatMap(handlesIn)];
 }
 
 /** Every value `object` holds, each counted once with whatever it contains. */
@@ -133,22 +141,47 @@ export function valuesIn(object: HeapObject): readonly Value[] {
   }
 }
 
-/** The ids `object` names itself, rather than through a value. */
-function directReferences(object: HeapObject): readonly number[] {
+/**
+ * The ids `object` holds itself, rather than through a value: a pending slot operation its slot,
+ * a `first` its futures, and a frame's reference the cell it names.
+ */
+function directHolds(object: HeapObject): readonly number[] {
+  switch (object.kind) {
+    case 'future':
+      return heldTargets(object.state);
+    case 'execution':
+      return object.frames.flatMap(({ registers }) =>
+        registers.flatMap(([, contents]) => (isReference(contents) ? [contents.cell] : [])),
+      );
+    case 'slot':
+    case 'weakRef':
+    case 'cell':
+    case 'guard':
+    case 'resource':
+    case 'mock':
+      return [];
+    default: {
+      const unhandled: never = object;
+      return unhandled;
+    }
+  }
+}
+
+/**
+ * The ids `object` names without holding them (spec §6, §7): a slot's queue of waiting
+ * operations, what a weak reference, `disposed()` or `disposing()` watches, and an execution's own
+ * call future, which its caller holds.
+ */
+function watchedObjects(object: HeapObject): readonly number[] {
   switch (object.kind) {
     case 'slot':
       return object.waiting;
     case 'future':
-      return futureTargets(object.state);
+      return watchedTargets(object.state);
     case 'weakRef':
       return object.target === undefined ? [] : [object.target];
     case 'execution':
-      return [
-        ...(object.resolves === undefined ? [] : [object.resolves]),
-        ...object.frames.flatMap(({ registers }) =>
-          registers.flatMap(([, contents]) => (isReference(contents) ? [contents.cell] : [])),
-        ),
-      ];
+      return object.resolves === undefined ? [] : [object.resolves];
     case 'cell':
     case 'guard':
     case 'resource':
@@ -183,16 +216,34 @@ function futureValues(state: FutureState): readonly Value[] {
   }
 }
 
-function futureTargets(state: FutureState): readonly number[] {
+function heldTargets(state: FutureState): readonly number[] {
   switch (state.kind) {
-    case 'disposing':
-      return [state.execution];
     case 'slot':
       return [state.slot];
     case 'first':
       return state.futures;
+    case 'disposing':
+    case 'disposed':
+    case 'call':
+    case 'resolved':
+    case 'timer':
+    case 'host':
+      return [];
+    default: {
+      const unhandled: never = state;
+      return unhandled;
+    }
+  }
+}
+
+function watchedTargets(state: FutureState): readonly number[] {
+  switch (state.kind) {
+    case 'disposing':
+      return [state.execution];
     case 'disposed':
       return [state.target];
+    case 'slot':
+    case 'first':
     case 'call':
     case 'resolved':
     case 'timer':

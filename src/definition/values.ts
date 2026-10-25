@@ -20,6 +20,7 @@
 
 import { z } from 'zod';
 import type { MapOf } from '../language/values.ts';
+import { pushAll } from '../structures/stack.ts';
 import { functionId, objectId, typeId, variantIndex } from './operands.ts';
 
 const specialFloats = ['NaN', 'Infinity', '-Infinity', '-0'] as const;
@@ -290,56 +291,66 @@ export function withChildValues(
   }
 }
 
-/** The heap objects a value holds handles to, at any depth, in the order of its parts. */
-export function handlesIn(contents: Value): readonly number[] {
-  const handles: number[] = [];
-  const pending: Value[] = [contents];
-  for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
-    if (isComposite(next) && next.kind === 'handle') {
-      handles.push(next.object);
-    } else if (isComposite(next)) {
-      pushAll(pending, childValues(next).toReversed());
-    }
-  }
-  return handles;
-}
-
 /**
  * How deep a persisted value may nest: well within what the codecs read and write on the host's
  * stack (measured: past 600 levels), and deeper than workflow data needs.
  */
 export const maximumDepth = 256;
 
-/** Each composite's depth, derived once: a value never changes. */
-const depths = new WeakMap<CompositeValue, number>();
+/** The heap objects a value holds handles to, at any depth, each once, in the order of its parts. */
+export function handlesIn(contents: Value): readonly number[] {
+  return isComposite(contents) ? summaryOf(contents).handles : noHandles;
+}
 
 /** How deep `candidate` nests: 0 for a primitive, one more than its deepest part for a composite. */
 export function depthOf(candidate: Value): number {
-  if (!isComposite(candidate)) {
-    return 0;
-  }
+  return isComposite(candidate) ? summaryOf(candidate).depth : 0;
+}
+
+/** What one walk learns of a composite: how deep it nests, and the objects its handles name. */
+interface Summary {
+  readonly depth: number;
+  readonly handles: readonly number[];
+}
+
+const noHandles: readonly number[] = [];
+
+/**
+ * Each composite's summary, derived once, since a value never changes. Holders are decided by
+ * walking values at every release point (runtime/lifetimes/), so a value walked before is free.
+ */
+const summaries = new WeakMap<CompositeValue, Summary>();
+
+function summaryOf(candidate: CompositeValue): Summary {
   const pending: CompositeValue[] = [candidate];
   for (let top = pending.at(-1); top !== undefined; top = pending.at(-1)) {
     const parts = childValues(top).filter(isComposite);
-    const unknown = parts.filter((part) => !depths.has(part));
-    if (unknown.length > 0) {
+    const unknown = parts.filter((part) => !summaries.has(part));
+    if (unknown.length > 0 && !summaries.has(top)) {
       pushAll(pending, unknown);
     } else {
       pending.pop();
-      depths.set(
-        top,
-        1 + parts.reduce((deepest, part) => Math.max(deepest, depths.get(part) ?? 0), 0),
-      );
+      summaries.set(top, summaries.get(top) ?? summaryOver(top, parts));
     }
   }
-  return depths.get(candidate) ?? 0;
+  return summaries.get(candidate) ?? { depth: 0, handles: noHandles };
 }
 
-/** Pushes `items` onto `stack` one by one: spreading a long array would overflow the host's stack. */
-function pushAll<Item>(stack: Item[], items: readonly Item[]): void {
-  for (const item of items) {
-    stack.push(item);
+/** The summary of `composite`, whose composite `parts` are summarized already. */
+function summaryOver(composite: CompositeValue, parts: readonly CompositeValue[]): Summary {
+  if (composite.kind === 'handle') {
+    return { depth: 1, handles: [composite.object] };
   }
+  let deepest = 0;
+  const handles = new Set<number>();
+  for (const part of parts) {
+    const known = summaries.get(part);
+    deepest = Math.max(deepest, known?.depth ?? 0);
+    for (const object of known?.handles ?? noHandles) {
+      handles.add(object);
+    }
+  }
+  return { depth: 1 + deepest, handles: handles.size === 0 ? noHandles : [...handles] };
 }
 
 function floatOnDisk(number: number): number | SpecialFloat {

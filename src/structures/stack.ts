@@ -13,3 +13,10 @@ export function withPushed<Item, Result>(stack: Item[], item: Item, work: () => 
     stack.pop();
   }
 }
+
+/** Pushes `items` onto `stack` one by one: spreading a long list would overflow the host's stack. */
+export function pushAll<Item>(stack: Item[], items: Iterable<Item>): void {
+  for (const item of items) {
+    stack.push(item);
+  }
+}

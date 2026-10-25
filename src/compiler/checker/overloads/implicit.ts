@@ -22,12 +22,12 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { ImplicitRole, ResolvedCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import { instantiate } from '../traits/conformance.ts';
-import { substitute, type Type } from '../types/type.ts';
-import { silent, useSite } from '../use-site.ts';
+import type { Type } from '../types/type.ts';
+import { useSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import type { Candidate } from './candidates.ts';
-import { type CallArgument, choose } from './choice.ts';
+import type { CallArgument } from './choice.ts';
+import { chooseSilently } from './silent-choice.ts';
 
 /** The implicit calls of one body, by construct and role. */
 export class ImplicitCalls {
@@ -69,25 +69,17 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
   if (request.arguments.some(({ type }) => type?.kind === 'error')) {
     return undefined;
   }
-  const choice = choose(context.checker, request.candidates, request.arguments, undefined);
   const site = useSite(context.checker, context.module, request.node.span);
-  const instantiation =
-    choice.kind === 'chosen'
-      ? instantiate(silent(site), choice.application, request.expected)
-      : undefined;
-  if (choice.kind !== 'chosen' || instantiation === undefined) {
+  const chosen = chooseSilently(site, request.candidates, request.arguments, request.expected);
+  if (chosen === undefined) {
     context.report(request.failure());
     return undefined;
   }
-  const call = callMade(
-    site,
-    choice.application.candidate,
-    instantiation,
-    request.arguments.length,
-  );
+  const { application, instantiation, result } = chosen;
+  const call = callMade(site, application.candidate, instantiation, request.arguments.length);
   if (call === undefined) {
     return undefined;
   }
   context.implicit.record(request.node, request.role, call);
-  return substitute(choice.application.signature.result(), instantiation.substitution);
+  return result;
 }

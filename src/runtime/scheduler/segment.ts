@@ -19,37 +19,45 @@
  * What a segment leaves is persisted when it commits, and a persisted value nests at most
  * `maximumDepth` levels (definition/values.ts). A segment leaving a deeper value, where an
  * execution can reach it or as its outcome, panics where it ended instead, so it commits nothing.
+ *
+ * After every instruction that let go of something, the segment collects (runtime/lifetimes/):
+ * what lost its last holder is disposed right there (§7). A disposal that runs code is a call on
+ * the run stack like any other, pushed on whatever runs, or on a carrier execution of its own when
+ * nothing does, as when a driver's await or return let go of things. A drive ends only once
+ * collecting has. An execution running on the run stack holds its own call future, so code that
+ * lets go of the last holder of its own call runs on until it suspends, and is stopped there.
  */
 
 import { awaitedRegisters } from '../../definition/instructions/flow.ts';
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { depthOf, handleTarget, maximumDepth, type Value } from '../../definition/values.ts';
+import { depthOf, maximumDepth, type Value } from '../../definition/values.ts';
 import { runInstruction } from '../interpreter/instructions.ts';
 import {
   type ActiveFrame,
   argumentContents,
-  type CellStore,
   type Machine,
   newFrame,
-  type RegisterContents,
   readRegister,
-  readThrough,
+  releaseFrame,
   resumeAt,
-  writeReference,
 } from '../interpreter/machine.ts';
 import { traceOf } from '../interpreter/trace.ts';
-import { type NativeCells, type NativeContext, Panic } from '../natives.ts';
-import { isReference, type Reference } from '../snapshot/objects.ts';
+import { Collector } from '../lifetimes/collector.ts';
+import type { DisposalCall } from '../lifetimes/disposal.ts';
+import type { Roots } from '../lifetimes/holders.ts';
+import { Panic } from '../natives.ts';
+import type { HeapObject } from '../snapshot/objects.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import type { LiveExecution } from './heap.ts';
 import { type Instance, topFrame } from './instance.ts';
+import { NativeCalls } from './native-calls.ts';
 
 export type SegmentEnd =
-  /** A driver awaited: commit, then run the next segment. */
-  | { readonly kind: 'awaited' }
-  /** Nothing is ready: commit, then wait. */
-  | { readonly kind: 'idle' }
+  /** A driver awaited: commit `objects`, then run the next segment. */
+  | { readonly kind: 'awaited'; readonly objects: readonly HeapObject[] }
+  /** Nothing is ready: commit `objects`, then wait. */
+  | { readonly kind: 'idle'; readonly objects: readonly HeapObject[] }
   | { readonly kind: 'finished'; readonly outcome: Value }
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
 
@@ -68,17 +76,39 @@ export function runSegment(
 /** How driving one execution ended. */
 type DriveEnd = 'awaited' | 'returned' | { readonly finished: Value };
 
+/** How a segment ended before what it leaves is checked for persisting. */
+type RunEnd = { readonly kind: 'awaited' | 'idle' } | Extract<SegmentEnd, { kind: 'finished' }>;
+
 class SegmentRunner implements Machine {
   readonly #instance: Instance;
-  readonly #startedAt: bigint;
-  readonly #nativeCells: NativeCells;
+  readonly #natives: NativeCalls;
   readonly #runStack: LiveExecution[] = [];
+  readonly #collector: Collector;
+  /** Frames running a disposal's call: their return resumes collecting, not a caller. */
+  readonly #disposalFrames = new WeakSet<ActiveFrame>();
+  /** Runs disposal calls when no execution is running; never in the heap, never persisted. */
+  readonly #carrier: LiveExecution = {
+    kind: 'execution',
+    id: -1,
+    resolves: undefined,
+    frames: [],
+    disposing: false,
+  };
+  #driver: LiveExecution | undefined;
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
-    this.#startedAt = startedAt;
-    this.#nativeCells = nativeCellsOf(instance.cells);
+    this.#natives = new NativeCalls(instance, startedAt, () => this.#trace());
+    this.#collector = new Collector({
+      heap: instance.heap,
+      types: instance.loaded.definition.types,
+      roots: () => this.#roots(),
+      stop: (execution) => {
+        instance.stop(execution);
+      },
+      run: (call) => this.#runDisposal(call),
+    });
   }
 
   get definition() {
@@ -87,9 +117,7 @@ class SegmentRunner implements Machine {
 
   run(first: LiveExecution | undefined): SegmentEnd {
     try {
-      const end = this.#runDrivers(first);
-      this.#requirePersistable(end);
-      return end;
+      return this.#persistable(this.#runDrivers(first));
     } catch (error) {
       if (error instanceof Panic) {
         return { kind: 'panicked', message: error.message, trace: this.#trace() };
@@ -107,15 +135,7 @@ class SegmentRunner implements Machine {
     const contents = argumentList.map((argument) => argumentContents(frame, argument));
     const callable = this.#instance.loaded.functions.callee(callee);
     if (callable.kind === 'native') {
-      const values = contents.map((each) =>
-        isReference(each) ? readThrough(frame.cells, each) : each,
-      );
-      const result = callable.native(values, {
-        ...this.#nativeContext(callee),
-        write: (position, value) =>
-          writeReference(frame.cells, referenceAt(contents, position), value),
-      });
-      resumeAfterCall(frame, result);
+      resumeAfterCall(frame, this.#natives.call(callee, callable.native, contents));
       return;
     }
     if (callable.code.async) {
@@ -125,7 +145,7 @@ class SegmentRunner implements Machine {
       );
       return;
     }
-    const calleeFrame = newFrame(callable, contents, frame.cells, captures);
+    const calleeFrame = newFrame(callable, contents, frame.heap, captures);
     this.#current().frames.push(calleeFrame);
   }
 
@@ -133,6 +153,14 @@ class SegmentRunner implements Machine {
     const execution = this.#current();
     if (execution.frames.pop() !== frame) {
       throw new Error('Only the top frame returns.');
+    }
+    releaseFrame(frame);
+    if (this.#disposalFrames.has(frame)) {
+      if (execution === this.#carrier && execution.frames.length === 0) {
+        this.#runStack.pop();
+      }
+      this.#collector.returned();
+      return;
     }
     const caller = execution.frames.at(-1);
     if (caller !== undefined) {
@@ -157,6 +185,10 @@ class SegmentRunner implements Machine {
       this.#instance.markReady(execution);
     }
     if (this.#runStack.length === 1) {
+      this.#runStack.pop();
+      this.#instance.heap.noteReleased(
+        execution.resolves === undefined ? [] : [execution.resolves],
+      );
       this.#end = 'awaited';
       return;
     }
@@ -173,8 +205,13 @@ class SegmentRunner implements Machine {
     this.#instance.spawn(call);
   }
 
+  guard(callback: Value): Value {
+    const guard = this.#instance.heap.add((id) => ({ kind: 'guard', id, callback }));
+    return { kind: 'handle', object: guard.id };
+  }
+
   /** Runs drivers until one awaits, the root returns, or nothing is ready. */
-  #runDrivers(first: LiveExecution | undefined): Exclude<SegmentEnd, { kind: 'panicked' }> {
+  #runDrivers(first: LiveExecution | undefined): RunEnd {
     for (
       let driver = first ?? this.#instance.resumeNext();
       driver !== undefined;
@@ -191,24 +228,70 @@ class SegmentRunner implements Machine {
     return { kind: 'idle' };
   }
 
-  /** Panics when what `end` leaves holds a value too deep to persist (§5). */
-  #requirePersistable(end: Exclude<SegmentEnd, { kind: 'panicked' }>): void {
-    const depth = end.kind === 'finished' ? depthOf(end.outcome) : this.#instance.deepestValue();
-    if (depth > maximumDepth) {
-      throw new Panic(
-        `A value nests ${depth} levels deep, deeper than the ${maximumDepth} an instance can persist.`,
-      );
+  /**
+   * `end` with what a commit persists, found in one walk; a panic when it holds a value too deep
+   * to persist (§5).
+   */
+  #persistable(end: RunEnd): Exclude<SegmentEnd, { kind: 'panicked' }> {
+    if (end.kind === 'finished') {
+      requireDepth(depthOf(end.outcome));
+      return end;
+    }
+    const { objects, depth } = this.#instance.persisted();
+    requireDepth(depth);
+    return { kind: end.kind, objects };
+  }
+
+  /** Runs `driver` until it awaits or returns, and collecting what that let go of is done. */
+  #drive(driver: LiveExecution): DriveEnd {
+    this.#driver = driver;
+    this.#runStack.splice(0, this.#runStack.length, driver);
+    this.#end = undefined;
+    for (;;) {
+      const released = this.#instance.heap.takeReleased();
+      if (released.length > 0) {
+        this.#collector.collect(released);
+      }
+      if (this.#end !== undefined && !this.#collector.busy) {
+        return this.#end;
+      }
+      this.#step();
     }
   }
 
-  /** Runs `driver` until it awaits or returns. */
-  #drive(driver: LiveExecution): DriveEnd {
-    this.#runStack.splice(0, this.#runStack.length, driver);
-    this.#end = undefined;
-    while (this.#end === undefined) {
-      this.#step();
+  /**
+   * What holds things besides the collector's own rounds: every execution's frames, the carrier's,
+   * and the call futures of the executions running on the run stack (lifetimes/holders.ts). The
+   * frames running now come first, innermost first, as what code lets go of is mostly held there.
+   */
+  #roots(): Roots {
+    const running = this.#runStack.toReversed();
+    const waiting = this.#instance.heap
+      .objectsOf('execution')
+      .filter((execution) => !running.includes(execution));
+    return {
+      frames: [...running, ...waiting].flatMap((execution) => execution.frames.toReversed()),
+      objects: this.#runStack.flatMap(({ resolves }) => (resolves === undefined ? [] : [resolves])),
+    };
+  }
+
+  /**
+   * Starts a disposal's call: a native at once, true once done; code as a frame on top of what
+   * runs, or on the carrier when nothing does, false until it returns (`return`).
+   */
+  #runDisposal(call: DisposalCall): boolean {
+    const callable = this.#instance.loaded.functions.callee(call.function);
+    if (callable.kind === 'native') {
+      this.#natives.call(call.function, callable.native, call.arguments);
+      return true;
     }
-    return this.#end;
+    const frame = newFrame(callable, call.arguments, this.#instance.frameHeap, call.captures);
+    this.#disposalFrames.add(frame);
+    if (this.#runStack.length === 0) {
+      this.#runStack.push(this.#carrier);
+    }
+    this.#current().frames.push(frame);
+    return false;
   }
 
   /** Runs the instruction the top frame stands at. */
@@ -243,33 +326,23 @@ class SegmentRunner implements Machine {
     return execution;
   }
 
-  #nativeContext(callee: FunctionId): Omit<NativeContext, 'write'> {
-    const entry = this.definition.functions[callee];
-    if (entry === undefined) {
-      throw new RangeError(`No function ${callee}; loading checks every index.`);
-    }
-    return {
-      entry,
-      types: this.definition.types,
-      segmentStartedAt: this.#startedAt,
-      timer: (at) => this.#instance.futures.createHandle({ kind: 'timer', at }),
-      resolved: (value) => this.#instance.futures.createHandle({ kind: 'resolved', value }),
-      first: (futures) => this.#instance.futures.first(futures),
-      slots: {
-        create: () => this.#instance.slots.create(),
-        operate: (slot, operation, value) => this.#instance.slots.operate(slot, operation, value),
-      },
-      trace: () => this.#trace(),
-      cells: this.#nativeCells,
-    };
-  }
-
-  /** Where every running frame is, innermost first (§3.12). */
+  /**
+   * Where every running frame is, innermost first (§3.12); once the driver has stopped at its
+   * await, where it stopped.
+   */
   #trace(): string {
-    const frames = this.#runStack
-      .toReversed()
-      .flatMap((execution) => execution.frames.toReversed());
+    const stack = this.#runStack.length === 0 && this.#driver ? [this.#driver] : this.#runStack;
+    const frames = stack.toReversed().flatMap((execution) => execution.frames.toReversed());
     return traceOf(this.definition, frames);
+  }
+}
+
+/** Panics when a value nesting `depth` levels is too deep to persist (§5). */
+function requireDepth(depth: number): void {
+  if (depth > maximumDepth) {
+    throw new Panic(
+      `A value nests ${depth} levels deep, deeper than the ${maximumDepth} an instance can persist.`,
+    );
   }
 }
 
@@ -280,32 +353,4 @@ function resumeAfterCall(frame: ActiveFrame, value: Value): void {
     throw new Error(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a call.`);
   }
   resumeAt(frame, instruction.dst, value);
-}
-
-/** The reference a native's argument `position` was passed by `&`. */
-function referenceAt(contents: readonly RegisterContents[], position: number): Reference {
-  const argument = contents[position];
-  if (argument === undefined || !isReference(argument)) {
-    throw new Error(`A native wrote argument ${position}, which isn't passed by '&'.`);
-  }
-  return argument;
-}
-
-/** The instance's cells as natives reach them: through `Shared<T>` handles (§3.8). */
-function nativeCellsOf(cells: CellStore): NativeCells {
-  return {
-    create: (type, value) => ({ kind: 'handle', object: cells.create(type, value) }),
-    read: (cell) => cells.read(cellIdOf(cell)),
-    write: (cell, value) => {
-      cells.write(cellIdOf(cell), value);
-    },
-  };
-}
-
-function cellIdOf(cell: Value): number {
-  const id = handleTarget(cell);
-  if (id === undefined) {
-    throw new TypeError('A Shared value holds no cell.');
-  }
-  return id;
 }

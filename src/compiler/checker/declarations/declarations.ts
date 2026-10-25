@@ -7,6 +7,7 @@
  *   a trait: its functions' signatures and its fields' types.
  * - An alias is resolved, which reports one that refers to itself (§3.17).
  * - An extern a host implements may not send code to the host (rules/host-boundary.ts).
+ * - A `dispose` a program declares makes its type disposable, on its rules (rules/disposal.ts).
  * - Imports declare nothing to check.
  */
 
@@ -14,6 +15,7 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
+import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
 import { checkHostBoundary } from '../rules/host-boundary.ts';
 import { type GenericDeclaration, typeParametersOf } from './resolve-type.ts';
 import { checkFiniteFields } from './struct-rules.ts';
@@ -76,7 +78,12 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
     checker.resolveType(module, node.type);
     checkHostBoundary(checker, module, node);
   },
-  FunctionDeclaration: checkFunction,
+  FunctionDeclaration: (checker, node) => {
+    checkFunction(checker, node);
+    if (isDisposeFunction(checker, node)) {
+      checkDisposeDeclaration(checker, node);
+    }
+  },
   VariableDeclaration: (checker, node) => {
     checker.constantOf(node);
   },

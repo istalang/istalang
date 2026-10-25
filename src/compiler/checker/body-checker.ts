@@ -36,6 +36,7 @@ import { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { ImplicitCalls } from './overloads/implicit.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
+import { checkDropped } from './rules/dropped.ts';
 import type { LoopScope } from './statements/loops.ts';
 import { blockTail, ReturnScope } from './statements/returns.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
@@ -98,6 +99,7 @@ export class BodyChecker implements BodyContext {
     const tail = this.block(body, this.returns.declared);
     const result = this.returns.result(this, blockTail(body, tail));
     this.variables.warnUnchanged(this);
+    checkDropped(this, body);
     return this.#checked(result);
   }
 
@@ -110,6 +112,7 @@ export class BodyChecker implements BodyContext {
   checkValue(node: Expression): CheckedBody {
     const { declared } = this.returns;
     const type = this.expect(node, declared);
+    checkDropped(this, node);
     return this.#checked(declared ?? type);
   }
 

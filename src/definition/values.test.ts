@@ -24,6 +24,17 @@ function recursiveDepth(contents: Value): number {
   return isComposite(contents) ? 1 + Math.max(0, ...childValues(contents).map(recursiveDepth)) : 0;
 }
 
+/** The objects a value's handles name, by the definition's recursion: each once, first seen first. */
+function recursiveHandles(contents: Value): readonly number[] {
+  if (!isComposite(contents)) {
+    return [];
+  }
+  if (contents.kind === 'handle') {
+    return [contents.object];
+  }
+  return [...new Set(childValues(contents).flatMap(recursiveHandles))];
+}
+
 function toText(contents: Value): string {
   return encodeJson(z.encode(value, contents));
 }
@@ -96,6 +107,16 @@ describe('deep values', () => {
     fc.assert(
       fc.property(valueArbitrary({ typed: true, handles: [0, 7] }), (contents) => {
         expect(depthOf(contents)).toBe(recursiveDepth(contents));
+      }),
+    );
+  });
+
+  it('hold handles to each object once, wherever they stand and however often walked', () => {
+    fc.assert(
+      fc.property(valueArbitrary({ typed: true, handles: [0, 7, 9] }), (contents) => {
+        const parts = isComposite(contents) ? childValues(contents) : [];
+        parts.forEach(handlesIn);
+        expect(handlesIn(contents)).toEqual(recursiveHandles(contents));
       }),
     );
   });

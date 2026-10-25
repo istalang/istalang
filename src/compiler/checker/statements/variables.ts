@@ -21,7 +21,6 @@ import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts
 import type { AssignedPart, SignatureParameter, TargetBinding, TargetOwner } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
 import { errorType, type Type } from '../types/type.ts';
@@ -113,10 +112,6 @@ export class VariableScope {
 }
 
 export function checkVariableDeclaration(context: BodyContext, node: VariableDeclaration): void {
-  if (node.heldByFunction) {
-    context.unsupported(node, frontier.heldByFunction);
-    return;
-  }
   const declared = node.type === undefined ? undefined : context.resolveType(node.type);
   const initial = context.expect(node.initializer, declared);
   const held = declared ?? (node.isMutable ? widened(initial) : initial);

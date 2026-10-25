@@ -13,6 +13,9 @@
  *   compound assignment reads its place once, calls its operator's function on that value and the
  *   operand, and writes the result back to the same place. A place reached through an element or
  *   a `x$` is copied in and written back around the write (places.ts).
+ * - A value given to `_` is held until the block ends (§7), so an unnamed target keeps the whole
+ *   value in a variable of its own, with no name. A `fn let`, `fn const` or `fn _` variable lasts
+ *   until the function returns (§3.4): its block keeps it (`keep`) before releasing its register.
  */
 
 import type { Register, TypeId } from '../../../definition/operands.ts';
@@ -20,7 +23,12 @@ import type { Span } from '../../../text/span.ts';
 import type { TargetOwner } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
+import { hasUnnamedPart } from '../../syntax/patterns.ts';
+import {
+  type Assignment,
+  hasUnnamedTarget,
+  type VariableDeclaration,
+} from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
 import { call } from '../expressions/calls.ts';
 import {
@@ -38,30 +46,55 @@ export interface CellRegister {
   readonly type: TypeId;
 }
 
+/** How long what a variable holds lasts: until its block ends, or until its function returns. */
+export type Lifetime = 'block' | 'function';
+
+/**
+ * What one block declared (§3.4): every register a variable of it lives in, which its end
+ * releases, and those of them whose holdings last until the function returns, which it keeps first.
+ */
+export interface BlockScope {
+  readonly declared: readonly Register[];
+  readonly kept: readonly Register[];
+}
+
 /**
  * The register each variable of one body lives in, by its declaring name, which are cells, and
- * which the open blocks declared: what each releases when it ends (statements.ts).
+ * which the open blocks declared: what each releases when it ends (statements.ts). Registers no
+ * variable lives in are temporaries, released at the end of their statement, each once.
  */
 export class VariableRegisters {
   readonly #registers = new Map<Identifier, Register>();
+  readonly #variables = new Set<Register>();
+  readonly #released = new Set<Register>();
   readonly #cells: CellRegister[] = [];
-  /** The registers each open block declared, outermost first. */
-  readonly #blocks: Register[][] = [];
+  /** What each open block declared, outermost first. */
+  readonly #blocks: { readonly declared: Register[]; readonly kept: Register[] }[] = [];
 
-  declare(declaring: Identifier, register: Register): void {
+  declare(declaring: Identifier, register: Register, lifetime: Lifetime = 'block'): void {
     this.#registers.set(declaring, register);
-    this.#blocks.at(-1)?.push(register);
+    this.hold(register, lifetime);
   }
 
-  /** Runs `lower` as a block of its own; what it gave, and the registers it declared. */
-  inBlock<Result>(lower: () => Result): {
-    readonly result: Result;
-    readonly declared: readonly Register[];
-  } {
-    const declared: Register[] = [];
-    this.#blocks.push(declared);
+  /**
+   * Makes `register` a variable of the innermost block with no name: what `_` keeps, a `defer`
+   * guard, the holdings of a `select`'s winning case (§7, §8).
+   */
+  hold(register: Register, lifetime: Lifetime = 'block'): void {
+    this.#variables.add(register);
+    const block = this.#blocks.at(-1);
+    block?.declared.push(register);
+    if (lifetime === 'function') {
+      block?.kept.push(register);
+    }
+  }
+
+  /** Runs `lower` as a block of its own; what it gave, and what it declared. */
+  inBlock<Result>(lower: () => Result): { readonly result: Result; readonly scope: BlockScope } {
+    const scope = { declared: [], kept: [] };
+    this.#blocks.push(scope);
     try {
-      return { result: lower(), declared };
+      return { result: lower(), scope };
     } finally {
       this.#blocks.pop();
     }
@@ -72,9 +105,24 @@ export class VariableRegisters {
     return this.#blocks.length;
   }
 
-  /** The registers the blocks opened since `depth` declared, innermost block first. */
-  declaredSince(depth: number): readonly Register[] {
-    return this.#blocks.slice(depth).reverse().flat();
+  /** What the blocks opened since `depth` declared, innermost block first. */
+  scopeSince(depth: number): BlockScope {
+    const left = this.#blocks.slice(depth).reverse();
+    return {
+      declared: left.flatMap((block) => block.declared),
+      kept: left.flatMap((block) => block.kept),
+    };
+  }
+
+  /** Those of `registers` no variable lives in and nothing released yet, now counted released. */
+  temporariesAmong(registers: readonly Register[]): readonly Register[] {
+    const temporaries = registers.filter(
+      (register) => !(this.#variables.has(register) || this.#released.has(register)),
+    );
+    for (const register of temporaries) {
+      this.#released.add(register);
+    }
+    return temporaries;
   }
 
   registerOf(declaring: Identifier): Register {
@@ -99,11 +147,12 @@ export function declareVariable(
   context: FunctionContext,
   declaring: Identifier,
   type: Type,
+  lifetime: Lifetime = 'block',
 ): Register {
   const register = context.body.inCell(declaring)
     ? cellRegister(context, type)
     : context.code.allocate();
-  context.variables.declare(declaring, register);
+  context.variables.declare(declaring, register, lifetime);
   return register;
 }
 
@@ -111,7 +160,16 @@ export function lowerVariableDeclaration(
   context: FunctionContext,
   node: VariableDeclaration,
 ): void {
-  bindTargets(context, node, context.expression(node.initializer), node.span);
+  const value = context.expression(node.initializer);
+  if (node.targets.some(hasUnnamedPart)) {
+    context.variables.hold(copied(context, value, node.span), lifetimeOf(node));
+  }
+  bindTargets(context, node, value, node.span);
+}
+
+/** How long what `owner`'s targets hold lasts: a `fn let`'s, `fn const`'s or `fn _`'s, its function's. */
+function lifetimeOf(owner: TargetOwner): Lifetime {
+  return owner.kind === 'VariableDeclaration' && owner.heldByFunction ? 'function' : 'block';
 }
 
 /** Declares each name `owner`'s targets bind, moving in its part of `value` (§3.15). */
@@ -121,11 +179,19 @@ export function bindTargets(
   value: Register,
   span: Span,
 ): void {
+  const lifetime = lifetimeOf(owner);
   for (const binding of context.body.targetsOf(owner)) {
     const part = readPart(context, value, binding.path, span);
-    const register = declareVariable(context, binding.name, binding.type);
+    const register = declareVariable(context, binding.name, binding.type, lifetime);
     context.code.emit({ kind: 'move', span, dst: register, src: part });
   }
+}
+
+/** A fresh register holding a copy of `value`, as a variable with no name keeps it (§7). */
+function copied(context: FunctionContext, value: Register, span: Span): Register {
+  const copy = context.code.allocate();
+  context.code.emit({ kind: 'move', span, dst: copy, src: value });
+  return copy;
 }
 
 export function lowerAssignment(context: FunctionContext, node: Assignment): void {
@@ -144,6 +210,9 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
     return;
   }
   const value = context.expression(node.value);
+  if (node.targets.some(hasUnnamedTarget)) {
+    context.variables.hold(copied(context, value, node.span));
+  }
   for (const { target: written, path } of parts) {
     const { target, leave } = enterAssigned(context, written);
     writeTarget(context, target, readPart(context, value, path, node.span), node.span);

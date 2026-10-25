@@ -1,6 +1,7 @@
 /**
  * Strongly connected components against their definition: two nodes share a component exactly
- * when each reaches the other, checked over random graphs by brute-force reachability.
+ * when each reaches the other, checked over random graphs by brute-force reachability. A chain of
+ * runtime size is walked without the host's stack.
  */
 
 import fc from 'fast-check';
@@ -49,5 +50,12 @@ describe('strongly connected components', () => {
         expect(stronglyConnected(edges)(node) !== undefined).toBe(onEdge);
       }),
     );
+  });
+
+  it('walk a chain far longer than the host stack is deep', () => {
+    const length = 100_000;
+    const chain = Array.from({ length }, (_, node) => ({ from: node, to: node + 1 }));
+    const componentOf = stronglyConnected([...chain, { from: length, to: 0 }]);
+    expect(componentOf(length)).toBe(componentOf(0));
   });
 });

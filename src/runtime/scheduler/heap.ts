@@ -9,11 +9,16 @@
  *   order too.
  * - Objects are immutable records, except an execution's frames, which the interpreter runs in
  *   place. Changing any other object replaces it.
+ * - Replacing or removing an object notes the objects it held, as frames note what their
+ *   registers let go (interpreter/machine.ts): each may have lost its last holder. The scheduler
+ *   takes the notes after each instruction and collects (runtime/lifetimes/).
  */
 
 import { handleTarget, type Value } from '../../definition/values.ts';
+import { pushAll } from '../../structures/stack.ts';
 import type { ActiveFrame } from '../interpreter/machine.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
+import { heldObjects } from '../snapshot/snapshot.ts';
 
 export interface LiveExecution {
   readonly kind: 'execution';
@@ -35,6 +40,7 @@ export type LiveObjectOf<Kind extends LiveKind> = Extract<LiveObject, { readonly
 export class Heap {
   readonly #objects: Map<number, LiveObject>;
   #next: number;
+  readonly #released: number[] = [];
 
   constructor(objects: readonly LiveObject[]) {
     this.#objects = new Map(objects.map((object) => [object.id, object]));
@@ -60,11 +66,37 @@ export class Heap {
 
   /** Replaces the object with `object`'s id. */
   replace(object: LiveObject): void {
+    this.#noteHoldings(this.#objects.get(object.id), object);
     this.#objects.set(object.id, object);
   }
 
   remove(id: number): void {
+    this.#noteHoldings(this.#objects.get(id));
     this.#objects.delete(id);
+  }
+
+  /** Notes that the objects `ids` may have lost their last holder. */
+  noteReleased(ids: Iterable<number>): void {
+    pushAll(this.#released, ids);
+  }
+
+  /** The objects that may have lost their last holder since the last call. */
+  takeReleased(): readonly number[] {
+    return this.#released.splice(0);
+  }
+
+  /** Whether the object with `id` exists. */
+  has(id: number): boolean {
+    return this.#objects.has(id);
+  }
+
+  /** Object `id`, of whatever kind; a missing one is a bug. */
+  objectOf(id: number): LiveObject {
+    const object = this.#objects.get(id);
+    if (object === undefined) {
+      throw new Error(`No object ${id}.`);
+    }
+    return object;
   }
 
   /** Every object, in creation order. */
@@ -75,6 +107,17 @@ export class Heap {
   /** Every object of `kind`, in creation order. */
   objectsOf<Kind extends LiveKind>(kind: Kind): readonly LiveObjectOf<Kind>[] {
     return this.objects().filter((object): object is LiveObjectOf<Kind> => object.kind === kind);
+  }
+
+  /** Notes what `old`, an object being replaced or removed, held and its replacement doesn't. */
+  #noteHoldings(old: LiveObject | undefined, replacement?: LiveObject): void {
+    if (old === undefined || old.kind === 'execution') {
+      return;
+    }
+    const kept = new Set(
+      replacement === undefined || replacement.kind === 'execution' ? [] : heldObjects(replacement),
+    );
+    this.noteReleased(heldObjects(old).filter((id) => !kept.has(id)));
   }
 }
 

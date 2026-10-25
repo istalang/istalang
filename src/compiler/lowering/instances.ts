@@ -88,9 +88,12 @@ export function substitutionOf(instance: FunctionInstance): Substitution {
   );
 }
 
-/** The instance a call resolved inside the body of `within` targets. */
-export function calleeOf(resolved: ResolvedCall, within: BodyOwner): FunctionInstance {
-  const closed = close(resolved, within.kind === 'function' ? within.instance : undefined);
+/**
+ * The instance a call resolved inside the body of `within` targets; with no `within`, a call whose
+ * types are concrete already, such as a type's declared `dispose`.
+ */
+export function calleeOf(resolved: ResolvedCall, within?: BodyOwner): FunctionInstance {
+  const closed = close(resolved, within?.kind === 'function' ? within.instance : undefined);
   return {
     declaration: closed.function,
     typeArguments: closed.typeArguments,

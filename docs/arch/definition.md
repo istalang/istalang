@@ -3,8 +3,8 @@ description: the Definition (compiled program) and snapshot formats — instruct
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-25
-last_updated: 2026-10-25
+last_verified: 2026-10-26
+last_updated: 2026-10-26
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -25,7 +25,7 @@ Both formats were written for the whole language before any of it compiled, so t
 | Generics | **Compiled per instantiation** (spec §3.5). Every call has one target, and a type table entry is fully concrete. | Passing type descriptors at runtime. That needs runtime dispatch for trait calls, which spec §3.10 rules out. |
 | Calls | **One function table.** An extern is a table entry whose body names a native, so there is one call path, one place `mock` replaces a function, and one place extern results are seen. | Separate extern tables, which would mean two call paths and two mock points. |
 | JSON | **lossless-json** (exact integers at any size) **with sorted keys**, read and written through **zod** codecs. In memory an `int` is a `bigint` and a float a `number`; on disk a float is tagged. | Native `JSON` with `rawJSON` and the reviver's source access: TypeScript 7 has no types for them. A hand-rolled canonicalizer. |
-| What a snapshot stores | Only what can't be derived. Holder counts are recounted on restore, creation order is id order, and what an execution waits on is read from its pc. | Persisted counts, which could disagree with the values they count. |
+| What a snapshot stores | Only what can't be derived. Nothing about holders is stored or counted: whether a value is still held is decided by reachability where something lets go of it (Holders). Creation order is id order, and what an execution waits on is read from its pc. | Reference counts, persisted or kept in memory: every copy and overwrite would have to update them, they could disagree with the values they count, and disposables holding each other in a cycle would never reach zero. |
 
 ## Frames
 
@@ -47,9 +47,30 @@ Loading refuses code the interpreter couldn't run, so no instruction handler nee
 - code that doesn't end in `return`, `jump`, `branch`, `switch` or `select`
 - waiting (`await`, a `select` without `otherwise`, `currentCall`) outside an async function
 
-Release points are explicit. `release` runs at a block's end on every exit path, at a statement's end for temporaries, and for `drop`. `return` releases every register and the kept list. Whatever loses its last holder is disposed in reverse creation order (spec §7). Lowering emits `release` at every block's end and before a `break` or `continue` leaves blocks, for the variables they declared; a function's own body releases nothing, its `return` doing it. Releasing empties registers; counting holders, disposing, `keep`, statement temporaries and `drop` arrive with the disposal slice (§7), and until then no frame has a `kept` list.
+Release points are explicit (spec §3.4, §7):
+- `release` runs at a block's end on every exit path, for the variables it declared, with `keep` first for its `fn let`, `fn const` and `fn _` variables. `break` and `continue` end every block they leave the same way. A function's own body releases nothing, its `return` releasing every register and the kept list.
+- A statement's end releases its temporaries: the registers it allocated that no variable lives in. A header's temporaries (an `if` or `while` condition, a `match` subject or guard) are released on every path out of the header, before the body.
+- `drop x` is a `release` of `x`; a value given to `_` lives in a register of its block with no name, as does a `defer` guard, and the holdings of a `select`'s winning case.
+- Each pass of a loop, each branch of an `if` and each `match` or `select` case is a scope of its own, so the bindings a pattern or a loop's targets make end with it.
+
+Releasing empties registers, and whatever lost its last holder is disposed there (Holders).
 
 A cell register is made a cell by its first write into the empty register, a local's at its declaration's run. A block-end `release` (§7) empties the register, so the next run of the declaration makes a fresh cell, as §3.4 asks of a variable declared in a loop body. A closure's capture of a cell holds the closure's cell as it was captured: making a closure (`closure`, `currentClosure`) captures a cell register's cell and any other register's value, and a call of the closure puts its captures after its parameters as they are, so both sides share the cell (spec §3.14). A live frame reads and writes a cell register, and a reference parameter's register, through the instance's cells, so `move`, `store` and a `call`'s result write the same whatever the register holds; the snapshot stores the register's handle or reference as it is. Lowering lists a variable in `cells` exactly when the checker found it passed by `&` (explicitly, as a method's `&self`, or to the `setIndex` writing one of its elements) or found it a `let` a closure captures; a capture of one is listed in the capturing function's `cells` too, and so is a register an element is copied into when it is passed on by `&` (Places). A parameter is never a cell: a by-value one is immutable (spec §3.3), and a reference parameter already holds a reference. A native taking `&` receives the value, and writes the changed one back through its context (see Externs).
+
+## Holders
+
+Whether a value is held is decided by reachability, never counted (spec §7). The roots are every live execution's frames: their registers, the cells their references name, and their kept lists. The objects held through them are found by what each object holds:
+
+| Object | Holds | Watches without holding |
+| --- | --- | --- |
+| cell | its value | |
+| slot | its value | its queue of waiting operations |
+| future | a resolved one its value; a pending `put` its value and slot; a pending `take` or `read` its slot; a `first` the futures it races | `disposed()` its target; `disposing()` its execution |
+| guard, mock | the function value they call | |
+| weakRef | | its target |
+| execution | (a root while it lives) | its own call future, which its caller holds |
+
+An execution running on the run stack holds its own call future too, until it suspends. After an instruction that let go of something (a register overwritten or emptied, a frame ended, an object changed or removed), the runtime finds the disposables what was let go of reaches and walks from the roots until it has found them all held; only when one isn't does it collect. What nothing holds is disposed newest first, except that an object another unheld disposable holds, even through a plain cell, waits until that one's disposal is done; disposables holding each other in a cycle are disposed together. A disposal that runs code (a `defer` guard's function, a declared `dispose`) is a call on the run stack, made before the instruction's execution goes on. A commit persists the executions and what they hold, found in one walk that also finds the deepest value's depth (Values).
 
 ## Places
 
@@ -88,7 +109,7 @@ A function entry's `name` is for traces to read; entries are identified by index
 
 A type entry is identified by its module-qualified declared `name` and its `arguments`, `time.Time` or `prelude.Optional` with `[int]`, so the runtime recognizes the types the boundary treats specially (spec §9) whatever their instantiation. An anonymous struct has no name.
 
-Only extern types can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures, slots and revertible messages; or a `function`, the declared `dispose`, as for `Shared<Lease>`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a host's types are the host's (`function` disposal arrives with the disposal slice). No list of disposable types is kept anywhere.
+Only extern types can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures, slots and revertible messages; or a `function`, the entry of the declared `dispose`'s instance, called with a handle to the value, as for `Shared<Lease>`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a `dispose` a program declares, for a `Shared` instantiation or a host's extern type, is a `function`. A host value of an extern type with `function` disposal is a `resource` object behind a handle, which the boundary makes as the value arrives from the host and unwraps to its payload as it leaves. No list of disposable types is kept anywhere.
 
 Each module carries its line starts. The runtime has neither source text nor the compiler, yet it turns spans into locations for `Error.trace`, a panic's trace, `waitingAt()` and the operator's view.
 
@@ -103,7 +124,7 @@ Each module carries its line starts. The runtime has neither source text nor the
 - Objects, in ascending id order: `cell` (typed: every cell is a `Shared<T>`), `slot` (value when full, waiting operations oldest first, one queue for every kind), `future` (resolved, or pending on a call, slot operation, timer, host, `futures.first` over other futures, `disposed()` or `disposing()`), `weakRef`, `guard` (`defer`), `resource` (a disposable runtime or host value, such as `Revertible<T>`), `mock`, `execution`.
 - `ready`: executions in the order they became ready.
 
-Disposability comes from an object's kind or type. Slots, futures, guards, mocks and executions are disposed by the runtime. A cell or resource follows its type entry's `disposal`, so a restore knows which cells have a `dispose` to call. A `mock` records each call's arguments for `m.calls()`.
+Disposability comes from an object's kind or type. Slots, futures, guards and mocks are disposed by the runtime, and an execution is stopped when its call future is. A cell or resource follows its type entry's `disposal`, so a restore knows which cells have a `dispose` to call. A `mock` records each call's arguments for `m.calls()`.
 
 The slot, future and resource parts were designed against spec §6–§8 before any of them runs. Changes go through the tech-lead.
 
@@ -140,9 +161,10 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `let`, `const`, assignment (§3.4) | registers; `move` or a write through a cell |
 | Top-level `const` (§3) | computed while compiling into a constant; reading one is a `constant` instruction, like a literal; a lambda in one is a closure constant of no captures, its function an entry of its own |
 | Block end, `break`, `continue` (§3.4, §4) | `release` of the block's registers, then `jump` where needed |
+| Statement end, a header's end (§7) | `release` of the temporaries it left; a header's on every path out of it, before the body |
 | `fn let`, `fn const`, `fn _` (§3.4) | `keep`, then `release`, at the block's end |
 | `_ = e` (§7) | an unnamed register, released at the block's end |
-| `drop e` (§7) | `release` |
+| `drop x`, `drop e` (§7) | `release` of `x`; for an expression, its temporaries at the statement's end |
 | Destructuring `a, b = t`, `const Pair{first} = p`, at any depth (§3.15) | the value once, then `field` reads along each target's path, and a `move` or `store` per target |
 | Tuple element `t.0`, `t.0 = v` (§3.15) | `field` by position; `store` with a field step |
 | Generic functions and types (§3.5) | one entry or type per instantiation |
@@ -175,13 +197,13 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `runtime.commit()` (§3.8) | a call to an already-resolved future, then `await` |
 | Slots and their operations (§6) | calls to prelude externs that return futures |
 | Inbox, `futures`, `rpc`, `fanout` (§3.8, §6) | library code over slots: an `Inbox<T>` is a `Shared` of its state, one slot and a backlog, and `receive` is the slot's `take`; `futures.first` is the one extern, a `first` future |
-| `defer f` (§7) | `defer`, held in a register like any value |
+| `defer f` (§7) | `defer`, into an unnamed register of the block |
 | `WeakRef`, `disposed()` (§7) | calls to prelude externs |
 | `worker.disposing()` (§7) | `currentCall` at the function's entry, then a call to `disposing` |
-| `select`, `await select` (§8) | the case futures in source order, then `select`; per case: the future, the registers its expression created (`holds`), `bind` for `as`, and the target, where the case's `as` is a target its body declares; `otherwise` for the non-blocking form, which is `else`'s body |
+| `select`, `await select` (§8) | the case futures in source order, then `select`; per case: the future, the registers its expression created (`holds`), `bind` for `as`, and the target, where the case's `as` is a target its body declares; `otherwise` for the non-blocking form, which is `else`'s body. The `holds` are unnamed registers of the enclosing block, so the winner's last until it ends |
 | Prelude and standard-library functions: `push`, `at`, `get`, `length`, … (§3.8) | calls to their entries; runtime-backed ones are externs |
 | Versioning (§5) | an instance references its Definition's content hash for its whole life |
-| Disposable cycles (§7) | nothing in the code; the runtime's snapshot pass finds and disposes them |
+| Disposable cycles (§7) | nothing in the code; the release that leaves them held by nothing disposes them (Holders) |
 | `main` (§9) | `Definition.main` |
 | Host starts an instance, operates a panicked one (§3.12, §9) | the runtime's host API over Definitions and snapshots; the snapshot's `status` records panics and outcomes |
 | `spawn f(args)` (§9) | `spawn` with the call's callee, a function or the value of a sendable function type, and its arguments, a method's receiver first, all by value |

@@ -3,8 +3,8 @@
  * two nodes share a component exactly when each reaches the other, which is how a rule asks
  * whether an edge lies on a cycle (its ends share a component).
  *
- * The walk recurses once per node along a path, which suits the small graphs the checker builds
- * (one node per type parameter); a graph of runtime size would need it iterative.
+ * The walk keeps its path on a stack of its own, so a long chain can't overflow the host's stack:
+ * the runtime walks graphs of heap objects with it (runtime/lifetimes/).
  */
 
 /** An edge of the graph, from one node to another. */
@@ -44,21 +44,38 @@ class Components<Node> {
     return this.#component.get(node);
   }
 
-  #visit(node: Node): void {
+  /** Tarjan's depth-first walk from `start`, its path kept on a stack of its own. */
+  #visit(start: Node): void {
+    const path: { readonly node: Node; next: number }[] = [this.#enter(start)];
+    for (let top = path.at(-1); top !== undefined; top = path.at(-1)) {
+      const successor = this.#successors.get(top.node)?.[top.next];
+      top.next += 1;
+      if (successor === undefined) {
+        path.pop();
+        this.#leave(top.node, path.at(-1)?.node);
+      } else if (!this.#order.has(successor)) {
+        path.push(this.#enter(successor));
+      } else if (!this.#component.has(successor)) {
+        this.#lower(top.node, this.#order.get(successor) ?? 0);
+      }
+    }
+  }
+
+  #enter(node: Node): { readonly node: Node; next: number } {
     const position = this.#order.size;
     this.#order.set(node, position);
     this.#lowest.set(node, position);
     this.#stack.push(node);
-    for (const next of this.#successors.get(node) ?? []) {
-      if (!this.#order.has(next)) {
-        this.#visit(next);
-      }
-      if (!this.#component.has(next)) {
-        this.#lower(node, this.#lowest.get(next) ?? position);
-      }
-    }
-    if (this.#lowest.get(node) === position) {
+    return { node, next: 0 };
+  }
+
+  /** Finishes `node`, closing its component if it roots one, and lowers its `parent` by it. */
+  #leave(node: Node, parent: Node | undefined): void {
+    if (this.#lowest.get(node) === this.#order.get(node)) {
       this.#close(node);
+    }
+    if (parent !== undefined && !this.#component.has(node)) {
+      this.#lower(parent, this.#lowest.get(node) ?? 0);
     }
   }
 

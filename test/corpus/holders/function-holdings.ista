@@ -1,0 +1,48 @@
+# outcome: "stopped 1, reassigned, block done, end a, stopped 5, stopped 4, stopped 3, stopped 2, stopped 8, body, arr, stopped 11, stopped 10, arr dropped, copy, m set, stopped 12, copy dropped, stopped 13"
+# `fn let` and `fn const` keep what they hold when their block ends, until the function ends, where
+# everything left is released newest first (§3.4, §7); a value a `fn let` lost to an assignment is
+# released at that assignment. A header's temporaries end before the body, dropping an array
+# releases its elements newest first, and a value another holder still reaches (a copy out of a
+# `Shared`) survives being overwritten there until the copy goes.
+
+import * as time from 'time'
+
+fn note(log: Shared<Array<string>>, text: string):
+  log$ = [...log$, text]
+
+async fn sleeper(id: int, log: Shared<Array<string>>):
+  defer fn(): note(log, "stopped " + string(id))
+  await time.delay(1h)
+
+async fn a(log: Shared<Array<string>>):
+  fn let h = sleeper(1, log)
+  h = sleeper(2, log)
+  note(log, "reassigned")
+  if true:
+    fn const k = sleeper(3, log)
+  note(log, "block done")
+  fn _ = sleeper(4, log)
+  _ = sleeper(5, log)
+  note(log, "end a")
+
+async fn withHeader(log: Shared<Array<string>>):
+  if sleeper(8, log) is _:
+    note(log, "body")
+  const arr = [sleeper(10, log), sleeper(11, log)]
+  note(log, "arr")
+  drop arr
+  note(log, "arr dropped")
+  const m = Shared(sleeper(12, log))
+  const copy = m$
+  note(log, "copy")
+  m$ = sleeper(13, log)
+  note(log, "m set")
+  drop copy
+  note(log, "copy dropped")
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = Shared(empty)
+  await a(log)
+  await withHeader(log)
+  log$.join(", ")

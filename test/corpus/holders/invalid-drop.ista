@@ -1,0 +1,49 @@
+# error: 5704 at 22:8
+# error: 5704 at 28:22
+# error: 5704 at 35:10
+# error: 5705 at 39:26
+# error: 5705 at 42:8
+# error: 5705 at 45:8
+# error: 5025 at 48:3
+# error: 5001 at 49:15
+# `drop x` releases `x`, which no path may use afterwards (§7), unless a `let` is assigned again
+# first: in a later statement, after a branch that dropped it, or in a loop's next pass. Only what
+# the function holds itself can be dropped: not a capture, a reference parameter or a top-level
+# constant. A disposable must be used, and `defer` takes a function of nothing returning unit.
+
+const limit = 3
+
+fn size(text: string) -> int:
+  text.length()
+
+fn later() -> int:
+  const text = "a"
+  drop text
+  size(text)
+
+fn branch(flag: bool) -> int:
+  let text = "a"
+  if flag:
+    drop text
+  const first = size(text)
+  text = "b"
+  first + size(text)
+
+fn loop():
+  const text = "a"
+  for _ in 0..2:
+    drop text
+
+fn captured():
+  const text = "a"
+  const f = fn(): { drop text; () }
+
+fn reference(text: &string):
+  drop text
+
+fn top():
+  drop limit
+
+fn unused():
+  Slot.create<int>()
+  defer fn(): 1

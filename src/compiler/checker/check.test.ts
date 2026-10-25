@@ -45,7 +45,7 @@ describe('checking reports', () => {
     ['a missing field', 'Point{x: 1}', reports.missingField, 'Point'],
     ['reading a field the struct lacks', 'Point{x: 1, y: 2}.z', reports.unknownField, 'z'],
     ['a trait used as a type', 'const x: Comparable = 1', reports.notType, 'Comparable'],
-    ['a construct not supported yet', 'defer fn(): 1', reports.notSupportedYet, 'defer fn(): 1'],
+    ['a construct not supported yet', 'f(...[1])', reports.notSupportedYet, '...[1]'],
   ])('%s', (_case, body, report, spanText) => {
     expect(reported(`${inFunction(body)}\nfn f() -> int: 1\n`)).toEqual(
       reportedOnce(report.code, spanText),

@@ -77,13 +77,15 @@ describe('lowering closures', () => {
       '  total',
       'async fn main(): loop()',
     ]);
-    const releases = entryNamed(definition, 'main.loop').instructions.filter(
-      (instruction) => instruction.kind === 'release',
-    );
-    const released = releases.map((each) => (each.kind === 'release' ? each.registers : []));
+    const { instructions } = entryNamed(definition, 'main.loop');
+    const [total, step] = instructions.flatMap((each) => (each.kind === 'move' ? [each.dst] : []));
+    const releasing = (register: number | undefined) =>
+      instructions.filter(
+        (each) =>
+          each.kind === 'release' && register !== undefined && each.registers.includes(register),
+      );
     // `break` and the body's end each release `step`; `total`, the function's own, never is.
-    expect(released).toHaveLength(2);
-    expect(released[0]).toEqual(released[1]);
-    expect(released[0]).toHaveLength(1);
+    expect(releasing(step)).toHaveLength(2);
+    expect(releasing(total)).toHaveLength(0);
   });
 });

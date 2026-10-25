@@ -1,0 +1,46 @@
+# outcome: "0 1 2 3 4 | true | true"
+# A select's losing cases are released (§8), and with nothing else holding them disposed: a
+# receive that loses to a timer leaves its slot's queue without consuming, so a loop racing an
+# inbox against a timer loses no message. Here every message is sent only after a receive has
+# lost, so each one would be lost if that receive still waited. A future made outside the select,
+# held by its variable, survives losing and races again.
+
+import Inbox from 'inbox'
+import * as time from 'time'
+
+async fn produce(box: Inbox<int>, ticks: Inbox<unit>):
+  for i in 0..5:
+    await ticks.receive()
+    box.send(i)
+
+async fn consume(box: Inbox<int>, ticks: Inbox<unit>, count: int) -> Future<string>:
+  let received: Array<string> = []
+  let timeouts = 0
+  while received.length() < count:
+    await select:
+      case box.receive() as message:
+        received.push(string(message))
+      case time.delay(1ms):
+        timeouts += 1
+        ticks.send(())
+  received.join(" ") + " | " + string(timeouts >= count)
+
+async fn survives() -> Future<bool>:
+  const later = time.delay(5ms)
+  await select:
+    case later:
+      false
+    case time.delay(1ms):
+      true
+  await select:
+    case later:
+      true
+    case time.delay(1h):
+      false
+
+async fn main() -> Future<string>:
+  const box = Inbox.create<int>()
+  const ticks = Inbox.create<unit>()
+  _ = produce(box, ticks)
+  const consumed = await consume(box, ticks, 5)
+  consumed + " | " + string(await survives())

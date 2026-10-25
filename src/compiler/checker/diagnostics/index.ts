@@ -16,6 +16,7 @@ import { closureTemplates } from './closures.ts';
 import { collectionTemplates } from './collections.ts';
 import { concurrencyTemplates } from './concurrency.ts';
 import { genericTemplates } from './generics.ts';
+import { lifetimeTemplates } from './lifetimes.ts';
 import { patternTemplates } from './patterns.ts';
 import { valueTemplates } from './values.ts';
 
@@ -132,8 +133,8 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   },
   unusedValue: {
     code: 5025,
-    message: (type: string, use: string) =>
-      `A ${type} must be used: ${use}, keep it in a variable, or drop it.`,
+    message: (type: string, use: string | undefined) =>
+      `A ${type} must be used: ${use === undefined ? '' : `${use}, `}keep it in a variable, or drop it.`,
   },
   notConstant: {
     code: 5026,
@@ -150,4 +151,5 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   ...patternTemplates,
   ...closureTemplates,
   ...concurrencyTemplates,
+  ...lifetimeTemplates,
 });

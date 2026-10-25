@@ -17,7 +17,7 @@
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
 import { type Expression, itemValue, unparenthesized } from './expressions.ts';
-import type { Invalid, NodeOf } from './node.ts';
+import type { Identifier, Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
 import type { Pattern } from './patterns.ts';
 import type { TypeNode } from './types.ts';
@@ -66,6 +66,23 @@ export interface Assignment extends NodeOf<'Assignment'>, Annotatable {
 export function destructures(target: Expression): boolean {
   const bare = unparenthesized(target);
   return bare.kind === 'Tuple' || bare.kind === 'StructLiteral';
+}
+
+/** The name `drop` releases, parentheses seen through; undefined when it drops a value (§7). */
+export function droppedName(node: Drop): Identifier | undefined {
+  const value = unparenthesized(node.value);
+  return value.kind === 'Identifier' ? value : undefined;
+}
+
+/** Whether an assignment's target is `_`, which names no place but holds the value (§7). */
+export function isUnnamedTarget(target: Expression): boolean {
+  const bare = unparenthesized(target);
+  return bare.kind === 'Identifier' && bare.text === '_';
+}
+
+/** Whether an assignment's target is `_` or takes a value apart into one. */
+export function hasUnnamedTarget(target: Expression): boolean {
+  return isUnnamedTarget(target) || targetParts(target).some(hasUnnamedTarget);
 }
 
 /**

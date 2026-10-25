@@ -13,6 +13,7 @@ import type { For } from '../syntax/statements.ts';
 import type { FunctionContext } from './context.ts';
 import { implicitCall } from './expressions/calls.ts';
 import type { LoopTargets } from './statements/loops.ts';
+import { endScope } from './statements/scopes.ts';
 import { bindTargets } from './statements/variables.ts';
 
 /** The array `node` runs over: `iterate` called on `iterable`'s value. */
@@ -60,8 +61,8 @@ export function emitLoop(
 }
 
 /**
- * Runs `body` for each item a `for` or a comprehension runs over, its targets bound to the item;
- * `body` receives where `continue` and `break` go.
+ * Runs `body` for each item a `for` or a comprehension runs over, its targets bound to the item
+ * in a scope of each pass's own (§3.4); `body` receives where `continue` and `break` go.
  */
 export function emitLoopOver(
   context: FunctionContext,
@@ -69,7 +70,10 @@ export function emitLoopOver(
   body: (targets: LoopTargets) => void,
 ): void {
   emitLoop(context, node, iteratedArray(context, node, node.iterable), (item, targets) => {
-    bindTargets(context, node, item, node.span);
-    body(targets);
+    const { scope } = context.variables.inBlock(() => {
+      bindTargets(context, node, item, node.span);
+      body(targets);
+    });
+    endScope(context, scope, node.span);
   });
 }

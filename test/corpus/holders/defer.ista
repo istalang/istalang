@@ -1,0 +1,27 @@
+# outcome: "7: body, inner, ran 0, iteration 0, iteration 1, ran 2, iteration 2, returning, last, outer"
+# `defer f` runs `f` when its block ends, however it ends (§7): its function's when the function
+# returns, a loop body's at the end of each iteration, `continue` included. Several run in
+# reverse, last first. What the function returns is computed before its defers run.
+
+fn note(log: Shared<Array<string>>, text: string):
+  log$ = [...log$, text]
+
+fn blocks(log: Shared<Array<string>>) -> int:
+  defer fn(): note(log, "outer")
+  if true:
+    defer fn(): note(log, "inner")
+    note(log, "body")
+  for i in 0..3:
+    defer fn(): note(log, "iteration " + string(i))
+    if i == 1:
+      continue
+    note(log, "ran " + string(i))
+  defer fn(): note(log, "last")
+  note(log, "returning")
+  7
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = Shared(empty)
+  const result = blocks(log)
+  string(result) + ": " + log$.join(", ")

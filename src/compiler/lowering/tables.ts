@@ -24,11 +24,12 @@ import type { TypeDefinition, TypeReference } from '../../definition/types.ts';
 import { type Value, value } from '../../definition/values.ts';
 import { memo } from '../../structures/memo.ts';
 import { lineMapOf } from '../../text/line-map.ts';
-import type { Checker } from '../checker/check.ts';
+import type { Checker, Disposal } from '../checker/check.ts';
 import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
 
 import type { ModuleId } from '../program/program.ts';
 import {
+  calleeOf,
   type FunctionInstance,
   instanceKey,
   instanceName,
@@ -244,13 +245,20 @@ export class DefinitionTables {
           name,
           arguments: typeArguments,
           sendable: declaration.isSendable,
-          disposal: { kind: this.#checker.disposalOf(type) },
+          disposal: this.#disposal(this.#checker.disposalOf(type)),
         };
       default: {
         const unhandled: never = declaration;
         return unhandled;
       }
     }
+  }
+
+  /** A type entry's disposal: a declared `dispose` is the entry of its instance (§7). */
+  #disposal(disposal: Disposal): Extract<TypeDefinition, { kind: 'extern' }>['disposal'] {
+    return disposal.kind === 'function'
+      ? { kind: 'function', function: this.functionIndex(calleeOf(disposal.call)) }
+      : disposal;
   }
 
   #fields(fields: readonly FieldMember[]) {

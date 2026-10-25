@@ -1,8 +1,11 @@
 /**
  * Loops (§4): `while` tests its condition at the top; `continue` jumps back to the test and
- * `break` past the loop, both releasing the blocks they leave. A `for` runs the loop every
- * iterating construct runs (iteration.ts), binding its targets to each item; `continue` goes on to
- * the next item.
+ * `break` past the loop, both ending the blocks they leave as their ends would. A `for` runs the
+ * loop every iterating construct runs (iteration.ts), binding its targets to each item; `continue`
+ * goes on to the next item.
+ *
+ * Each pass of a `while` is a scope of its own: the `is` bindings of its condition live through
+ * its body and end with the pass, and the condition's temporaries end before the body (§3.4, §7).
  */
 
 import { withPushed } from '../../../structures/stack.ts';
@@ -12,6 +15,7 @@ import type { For, While } from '../../syntax/statements.ts';
 import type { Label } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitLoopOver } from '../iteration.ts';
+import { endScope, lowerGuarded } from './scopes.ts';
 
 /** Where `break` and `continue` go inside a loop, and how many blocks were open around it. */
 export interface LoopTargets {
@@ -44,15 +48,21 @@ export class LoopStack {
 export function lowerWhile(context: FunctionContext, node: While): void {
   const { code } = context;
   const test = code.newLabel();
-  const body = code.newLabel();
   const exit = code.newLabel();
+  const { depth } = context.variables;
   code.place(test);
-  code.branch(context.expression(node.condition), body, exit, node.condition.span);
-  code.place(body);
-  context.loops.inside({ exit, next: test, depth: context.variables.depth }, () => {
-    context.block(node.body);
+  lowerGuarded(context, {
+    header: () => context.expression(node.condition),
+    body: () => {
+      context.loops.inside({ exit, next: test, depth }, () => {
+        context.block(node.body);
+      });
+    },
+    leave: () => {
+      code.jump(test, node.span);
+    },
+    span: node.condition.span,
   });
-  code.jump(test, node.span);
   code.place(exit);
 }
 
@@ -64,12 +74,9 @@ export function lowerFor(context: FunctionContext, node: For): void {
   });
 }
 
-/** `break` or `continue`: leaving the blocks inside the loop releases them, as their ends would. */
+/** `break` or `continue`: leaving the blocks inside the loop ends them, as their ends would. */
 export function lowerLoopExit(context: FunctionContext, node: NodeOf<'Break' | 'Continue'>): void {
   const targets = context.loops.current(node.span);
-  const registers = context.variables.declaredSince(targets.depth);
-  if (registers.length > 0) {
-    context.code.emit({ kind: 'release', span: node.span, registers: [...registers] });
-  }
+  endScope(context, context.variables.scopeSince(targets.depth), node.span);
   context.code.jump(node.kind === 'Break' ? targets.exit : targets.next, node.span);
 }

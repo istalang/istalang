@@ -29,7 +29,7 @@ import {
   unparenthesized,
 } from '../../syntax/expressions.ts';
 import type { AssignmentOperator } from '../../syntax/operators.ts';
-import { type Assignment, destructures } from '../../syntax/statements.ts';
+import { type Assignment, destructures, isUnnamedTarget } from '../../syntax/statements.ts';
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -57,7 +57,10 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
   if (more.length === 0 && !destructures(only)) {
     const place = assignedPlace(context, only);
     context.expect(node.value, place);
-    context.variables.recordAssigned(node, isUnnamed(only) ? [] : [{ target: only, path: [] }]);
+    context.variables.recordAssigned(
+      node,
+      isUnnamedTarget(only) ? [] : [{ target: only, path: [] }],
+    );
     return;
   }
   const whole = { type: context.expression(node.value), path: [] };
@@ -107,7 +110,7 @@ function assignTo(assigning: Assigning, target: Expression, part: ValuePart): vo
     default: {
       const place = assignedPlace(context, bare);
       context.fitUnwrapped(part.type, place, bare.span);
-      if (!isUnnamed(bare)) {
+      if (!isUnnamedTarget(bare)) {
         assigning.parts.push({ target: bare, path: part.path });
       }
     }
@@ -182,11 +185,6 @@ function assignedPlace(context: BodyContext, written: Expression): Type {
   }
   context.variables.noteChanged(entity);
   return context.variables.typeOf(entity);
-}
-
-function isUnnamed(target: Expression): boolean {
-  const bare = unparenthesized(target);
-  return bare.kind === 'Identifier' && bare.text === '_';
 }
 
 /** Reports a place written twice, or written whole and in part, by one assignment. */

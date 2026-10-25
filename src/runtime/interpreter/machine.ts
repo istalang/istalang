@@ -14,9 +14,14 @@
  * - a reference parameter's register holds a reference: a cell and a path into its value (§3.7);
  * - a closure's capture of a `let` holds the cell the closure carries, a cell register too (§3.14);
  * - any other register holds its value.
- * A live frame carries the instance's cells for that; they aren't part of what a snapshot stores.
+ * A live frame carries the instance's heap for that; it isn't part of what a snapshot stores.
  * A path holds field positions only (values/parts.ts), so reading or writing a register never runs
  * code.
+ *
+ * Whatever a register lets go of, overwritten or emptied, and whatever a frame held when it ends,
+ * is reported to the heap (`released`): it may have been the last holder of something disposable,
+ * which the scheduler then collects (runtime/lifetimes/). Registers change only through the
+ * functions here, so no write can skip the report.
  */
 
 import type { Definition } from '../../definition/definition.ts';
@@ -28,12 +33,17 @@ import { isReference, type Reference } from '../snapshot/objects.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import { partAt, withPart } from '../values/parts.ts';
 
-/** The instance's cells as frames reach them. */
-export interface CellStore {
+/** The instance's heap as frames reach it: the cells their registers name, and what they let go. */
+export interface FrameHeap {
   readonly read: (cell: number) => Value;
   readonly write: (cell: number, value: Value) => void;
   /** A new cell of type entry `type` (a `Shared<T>`) holding `value`; its id. */
   readonly create: (type: TypeId, value: Value) => number;
+  /**
+   * Notes that a frame no longer holds `contents`, which may have held something's last handle. A
+   * reference never does: it borrows a cell its caller holds for the whole call.
+   */
+  readonly released: (contents: RegisterContents) => void;
 }
 
 /** What a register holds: a value, or for a reference parameter, a reference. */
@@ -50,7 +60,9 @@ export interface ActiveFrame {
   readonly code: CodeFunction;
   pc: number;
   readonly registers: (RegisterContents | undefined)[];
-  readonly cells: CellStore;
+  /** What `keep` moved here: holdings that last until the function returns (spec §3.4). */
+  readonly kept: Value[];
+  readonly heap: FrameHeap;
 }
 
 export interface Machine {
@@ -76,6 +88,8 @@ export interface Machine {
   readonly settled: (handle: Value) => { readonly value: Value } | undefined;
   /** Starts `call` as a new instance once the running segment commits (§9). */
   readonly spawn: (call: InstanceCall) => void;
+  /** A handle to a new guard that calls the function value `callback` when disposed (§7). */
+  readonly guard: (callback: Value) => Value;
 }
 
 /**
@@ -86,12 +100,12 @@ export interface Machine {
 export function newFrame(
   entry: FrameEntry,
   contents: readonly RegisterContents[],
-  cells: CellStore,
+  heap: FrameHeap,
   captures: readonly Value[] = [],
 ): ActiveFrame {
   const { code } = entry;
   const registers: (RegisterContents | undefined)[] = Array.from({ length: code.registers });
-  const frame: ActiveFrame = { function: entry.function, code, pc: 0, registers, cells };
+  const frame: ActiveFrame = { function: entry.function, code, pc: 0, registers, kept: [], heap };
   contents.forEach((each, index) => {
     if (isReference(each)) {
       registers[index] = each;
@@ -141,24 +155,46 @@ export function readRegister(frame: ActiveFrame, register: Register): Value {
     throw new Error(`Register ${register} is empty at pc ${frame.pc} of ${frame.code.name}.`);
   }
   if (isReference(contents)) {
-    return readThrough(frame.cells, contents);
+    return readThrough(frame.heap, contents);
   }
-  return isCell(frame, register) ? frame.cells.read(cellOf(contents)) : contents;
+  return isCell(frame, register) ? frame.heap.read(cellOf(contents)) : contents;
 }
 
 export function writeRegister(frame: ActiveFrame, register: Register, value: Value): void {
   const contents = frame.registers[register];
   if (contents !== undefined && isReference(contents)) {
-    writeReference(frame.cells, contents, value);
+    writeReference(frame.heap, contents, value);
     return;
   }
   const cell = frame.code.cells.find((each) => each.register === register);
   if (cell === undefined) {
     frame.registers[register] = value;
+    if (contents !== undefined) {
+      frame.heap.released(contents);
+    }
   } else if (contents === undefined) {
-    frame.registers[register] = { kind: 'handle', object: frame.cells.create(cell.type, value) };
+    frame.registers[register] = { kind: 'handle', object: frame.heap.create(cell.type, value) };
   } else {
-    frame.cells.write(cellOf(contents), value);
+    frame.heap.write(cellOf(contents), value);
+  }
+}
+
+/** Empties `register`, letting go of what it held: a cell register, its cell. */
+export function clearRegister(frame: ActiveFrame, register: Register): void {
+  const contents = frame.registers[register];
+  frame.registers[register] = undefined;
+  if (contents !== undefined) {
+    frame.heap.released(contents);
+  }
+}
+
+/** Lets go of everything `frame` holds, in its registers and kept list, as it ends. */
+export function releaseFrame(frame: ActiveFrame): void {
+  for (const register of frame.registers.keys()) {
+    clearRegister(frame, register);
+  }
+  for (const contents of frame.kept.splice(0)) {
+    frame.heap.released(contents);
   }
 }
 
@@ -166,7 +202,7 @@ export function writeRegister(frame: ActiveFrame, register: Register, value: Val
 export function storeAt(frame: ActiveFrame, place: Place, value: Value): void {
   const contents = frame.registers[place.register];
   if (contents !== undefined && isReference(contents)) {
-    writeReference(frame.cells, { ...contents, path: [...contents.path, ...place.path] }, value);
+    writeReference(frame.heap, { ...contents, path: [...contents.path, ...place.path] }, value);
     return;
   }
   const whole = readRegister(frame, place.register);
@@ -190,13 +226,13 @@ export function argumentContents(frame: ActiveFrame, argument: Argument): Regist
 }
 
 /** The value at the place a reference names. */
-export function readThrough(cells: CellStore, reference: Reference): Value {
-  return partAt(cells.read(reference.cell), reference.path);
+export function readThrough(heap: FrameHeap, reference: Reference): Value {
+  return partAt(heap.read(reference.cell), reference.path);
 }
 
 /** Writes `value` to the place a reference names. */
-export function writeReference(cells: CellStore, reference: Reference, value: Value): void {
-  cells.write(reference.cell, withPart(cells.read(reference.cell), reference.path, value));
+export function writeReference(heap: FrameHeap, reference: Reference, value: Value): void {
+  heap.write(reference.cell, withPart(heap.read(reference.cell), reference.path, value));
 }
 
 function isCell(frame: ActiveFrame, register: Register): boolean {

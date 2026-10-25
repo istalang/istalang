@@ -42,3 +42,9 @@ fn _isFull<T>(slot: Slot<T>) -> bool:
       true
     else:
       false
+
+# Disposing an inbox (§6, §7) lets go of its state, so the slot dies with the message in it, and
+# the backlog with it. Declaring `dispose` is what makes an inbox disposable, and so something a
+# `WeakRef` can watch.
+fn dispose<T>(self: Inbox<T>):
+  ()

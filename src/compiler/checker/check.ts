@@ -289,8 +289,14 @@ export interface CheckedBody {
   readonly result: Type;
 }
 
-/** Who disposes a value of an extern type when its last holder releases it (§7). */
-export type Disposal = 'none' | 'runtime';
+/**
+ * Who disposes a value of an extern type when its last holder releases it (§7): nobody, the
+ * runtime, or the `dispose` declared for it, a call with a handle to the value.
+ */
+export type Disposal =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'runtime' }
+  | { readonly kind: 'function'; readonly call: FunctionCall };
 
 /** A top-level constant as checked: its type, and its value, unless a diagnostic said why not. */
 export interface CheckedConstant {

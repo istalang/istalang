@@ -1,0 +1,50 @@
+# outcome: "iter 0, iter 1, iter 2, while, d-early, r=5, stopped 1, v=3, stopped 7, timer, after select"
+# Every way out of a block releases what it holds (§3.4, §7): `break` and `return` run the defers
+# of each block they leave, innermost first, and a variable an async call held when `return` left
+# its block is released there, before the caller sees the result. A select's loser is disposed
+# before the winner's body runs.
+
+import * as time from 'time'
+
+fn note(log: Shared<Array<string>>, text: string):
+  log$ = [...log$, text]
+
+async fn sleeper(id: int, log: Shared<Array<string>>):
+  defer fn(): note(log, "stopped " + string(id))
+  await time.delay(1h)
+
+fn early(log: Shared<Array<string>>, n: int) -> int:
+  defer fn(): note(log, "d-early")
+  for i in 0..5:
+    defer fn(): note(log, "iter " + string(i))
+    if i == n:
+      break
+  while true:
+    defer fn(): note(log, "while")
+    if n > 0:
+      return 5
+  0
+
+async fn viaReturn(log: Shared<Array<string>>) -> Future<int>:
+  const s = sleeper(1, log)
+  if true:
+    return 3
+  4
+
+async fn selecting(log: Shared<Array<string>>):
+  await select:
+    case time.delay(1ms):
+      note(log, "timer")
+    case sleeper(7, log):
+      note(log, "never")
+  note(log, "after select")
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = Shared(empty)
+  const r = early(log, 2)
+  note(log, "r=" + string(r))
+  const v = await viaReturn(log)
+  note(log, "v=" + string(v))
+  await selecting(log)
+  log$.join(", ")

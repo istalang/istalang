@@ -1,0 +1,44 @@
+# outcome: "made, disposed b, disposed a, after cycle, inner kept, disposed outer, disposed inner, after nesting"
+# A `dispose` declared beside its type makes every `Shared` of it disposable (§7): it runs as code,
+# with a handle to the value, when nothing holds it any more. Two leases holding each other are
+# disposed together, newest first, at the release that leaves them held by nothing else. A value
+# held by another one being disposed loses its last holder only once that disposal is done, so a
+# lease is disposed after the lease holding it, however old it is.
+
+struct Lease:
+  name: string
+  log: Shared<Array<string>>
+  partner: Shared<Lease>?
+
+fn dispose(self: Shared<Lease>):
+  note(self$.log, "disposed " + self$.name)
+
+fn note(log: Shared<Array<string>>, text: string):
+  log$ = [...log$, text]
+
+fn lease(name: string, log: Shared<Array<string>>) -> Shared<Lease>:
+  Shared(Lease{name, log, partner: none})
+
+fn cycle(log: Shared<Array<string>>):
+  const a = lease("a", log)
+  const b = lease("b", log)
+  b$.partner = a
+  a$.partner = b
+  note(log, "made")
+
+fn nesting(log: Shared<Array<string>>):
+  const outer = lease("outer", log)
+  const inner = lease("inner", log)
+  outer$.partner = inner
+  drop inner
+  note(log, "inner kept")
+  drop outer
+  note(log, "after nesting")
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = Shared(empty)
+  cycle(log)
+  note(log, "after cycle")
+  nesting(log)
+  log$.join(", ")

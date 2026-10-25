@@ -5,14 +5,16 @@
  * Only what can't be derived is stored:
  * - Object ids are allocated in increasing order and never reused, so id order is creation order,
  *   which disposal follows in reverse (spec §7). No creation counter is stored.
- * - Holder counts are not stored. A restore recounts them from every register, field, element,
- *   capture and slot value, so a count can never disagree with the values it counts.
+ * - Nothing about holders is stored. Whether an object is held is decided by reachability from
+ *   the executions' frames (runtime/lifetimes/), so nothing can disagree with the values that hold
+ *   it.
  * - What an execution waits on is not stored either: its frame stops at an `await` or `select`
  *   (instructions/suspension.ts), whose registers name the futures.
  * - Timers are the futures whose state is a timer.
  *
  * Disposability follows from an object's kind or type, never from a flag of its own. Slots,
- * futures, guards, mocks and executions are disposed by the runtime. A cell or resource is
+ * futures, guards and mocks are disposed by the runtime, and an execution is stopped when its call
+ * future is. A cell or resource is
  * disposable as its type entry's `disposal` says (definition/types.ts), so a restore knows that a
  * `Shared<Lease>` cell has a `dispose` to call and a `Shared<int>` cell doesn't.
  *

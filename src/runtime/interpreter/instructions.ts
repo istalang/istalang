@@ -14,9 +14,11 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { childValues, elementsOf, isComposite, type Value } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { isReference } from '../snapshot/objects.ts';
 import {
   type ActiveFrame,
   capturedContents,
+  clearRegister,
   currentClosure,
   type Machine,
   readRegister,
@@ -163,12 +165,22 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   },
   release: (_machine, instruction, frame) => {
     for (const register of instruction.registers) {
-      frame.registers[register] = undefined;
+      clearRegister(frame, register);
     }
     frame.pc += 1;
   },
-  keep: notRunYet,
-  defer: notRunYet,
+  keep: (_machine, instruction, frame) => {
+    for (const register of instruction.registers) {
+      const contents = frame.registers[register];
+      if (contents !== undefined && !isReference(contents)) {
+        frame.kept.push(contents);
+      }
+    }
+    frame.pc += 1;
+  },
+  defer: (machine, instruction, frame) => {
+    next(frame, instruction.dst, machine.guard(readRegister(frame, instruction.callback)));
+  },
 };
 
 /** The function a `call` or `spawn` runs, with the captures of a closure called as a value. */

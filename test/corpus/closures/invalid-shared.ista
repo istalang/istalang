@@ -1,9 +1,9 @@
-# error: 5100 at 16:3
+# error: 5001 at 16:8
 # error: 5001 at 17:10
 # error: 5000 at 18:9
 # error: 5000 at 19:13
-# A Shared value is written with values of its own type (§3.8, §3.9), whole or in part. Passing
-# part of a `$` value by `&`, and reading it as `.value`, aren't supported yet.
+# A Shared value is written with values of the type its `$` reads (§3.8, §3.9), whole or in part.
+# Passing part of a `$` value by `&`, and reading it as `.value`, aren't supported yet.
 
 struct Counter { n: int }
 

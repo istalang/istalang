@@ -13,12 +13,20 @@ import type { Block, Statement } from '../../syntax/statements.ts';
 import { checkLocalFunction } from '../closures/lambdas.ts';
 import type { BodyContext } from '../context.ts';
 import { checkDiscarded, checkDrop } from '../rules/must-use.ts';
-import { neverType, type Type, unitType } from '../types/type.ts';
-import { unsupportedHandler } from '../unsupported.ts';
+import { type FunctionType, neverType, type Type, unitType } from '../types/type.ts';
 import { checkAssignment } from './assignments.ts';
 import { checkFor, checkLoopExit, checkWhile } from './loops.ts';
 import { checkSpawn } from './spawn.ts';
 import { checkVariableDeclaration } from './variables.ts';
+
+/** What `defer` runs when its block ends (§7): a plain function of nothing, so it can't wait. */
+const deferredFunction: FunctionType = {
+  kind: 'function',
+  isSendable: false,
+  isAsync: false,
+  parameters: [],
+  result: unitType,
+};
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const statementHandlers: Handlers<
@@ -45,7 +53,10 @@ export const statementHandlers: Handlers<
   While: checkWhile,
   FunctionDeclaration: checkLocalFunction,
   For: checkFor,
-  Defer: unsupportedHandler,
+  Defer: (context, node) => {
+    context.expect(node.action, deferredFunction);
+    return unitType;
+  },
   Drop: checkDrop,
   Spawn: checkSpawn,
   Invalid: () => unitType,

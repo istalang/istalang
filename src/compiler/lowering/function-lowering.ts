@@ -58,7 +58,7 @@ import {
 } from './instances.ts';
 import { OptionalChains } from './optional-chains.ts';
 import { LoopStack } from './statements/loops.ts';
-import { lowerBlock, lowerBody, statementHandlers } from './statements/statements.ts';
+import { lowerBlock, lowerBody, lowerStatement } from './statements/statements.ts';
 import { declareVariable, VariableRegisters } from './statements/variables.ts';
 import type { DefinitionTables, EntryHeader } from './tables.ts';
 
@@ -254,7 +254,7 @@ export class FunctionLowering implements FunctionContext {
   }
 
   statement(node: Statement | Invalid): void {
-    handlerOf(statementHandlers, node)(this, node);
+    lowerStatement(this, node);
   }
 
   entityOf(name: Identifier): Entity | undefined {

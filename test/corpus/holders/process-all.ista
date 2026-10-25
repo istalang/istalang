@@ -1,0 +1,38 @@
+# outcome: "done 1, done 3 | end 1, end 3, end 2, returned"
+# §7's processAll, taking only the first results: each job it starts with `fn _` runs concurrently
+# until it returns. Returning releases what it kept, so the job still waiting is disposed, stopped
+# at its await with its defers run, and so is the inbox it gave the jobs, before the caller goes on.
+
+import Inbox from 'inbox'
+import * as time from 'time'
+
+struct Job { id: int; wait: time.Duration }
+
+fn note(log: Shared<Array<string>>, text: string):
+  log$ = [...log$, text]
+
+async fn runJob(job: Job, results: Inbox<string>, log: Shared<Array<string>>):
+  defer fn(): note(log, "end " + string(job.id))
+  await time.delay(job.wait)
+  results.send("done " + string(job.id))
+
+async fn processFirst(
+  jobs: Array<Job>,
+  needed: int,
+  log: Shared<Array<string>>,
+) -> Future<Array<string>>:
+  const results = Inbox.create<string>()
+  for job in jobs:
+    fn _ = runJob(job, results, log)
+  let outcomes: Array<string> = []
+  while outcomes.length() < needed:
+    outcomes.push(await results.receive())
+  outcomes
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = Shared(empty)
+  const jobs = [Job{id: 1, wait: 1ms}, Job{id: 2, wait: 1h}, Job{id: 3, wait: 2ms}]
+  const outcomes = await processFirst(jobs, 2, log)
+  note(log, "returned")
+  outcomes.join(", ") + " | " + log$.join(", ")

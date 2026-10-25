@@ -83,16 +83,19 @@ export type Pattern =
 /** Nodes that occur only as parts of a pattern. */
 export type PatternPart = BindFieldPattern | CompareFieldPattern | NestedFieldPattern;
 
+/** A part of a declaration's or loop's target that takes a value: a name, or `_`. */
+type TargetLeaf = Identifier | WildcardPattern;
+
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-const targetNameHandlers: Handlers<undefined, Pattern | PatternPart, [], readonly Identifier[]> = {
+const targetLeafHandlers: Handlers<undefined, Pattern | PatternPart, [], readonly TargetLeaf[]> = {
   NamePattern: (_, node) => (node.path.length === 1 ? node.path : []),
   BindFieldPattern: (_, node) => [node.alias ?? node.field],
-  AsPattern: (_, node) => [...targetNames(node.pattern), node.name],
-  NestedFieldPattern: (_, node) => targetNames(node.pattern),
-  ParenthesizedPattern: (_, node) => targetNames(node.pattern),
-  TuplePattern: (_, node) => node.elements.flatMap(targetNames),
-  StructPattern: (_, node) => node.fields.flatMap(targetNames),
-  WildcardPattern: () => [],
+  AsPattern: (_, node) => [...targetLeaves(node.pattern), node.name],
+  NestedFieldPattern: (_, node) => targetLeaves(node.pattern),
+  ParenthesizedPattern: (_, node) => targetLeaves(node.pattern),
+  TuplePattern: (_, node) => node.elements.flatMap(targetLeaves),
+  StructPattern: (_, node) => node.fields.flatMap(targetLeaves),
+  WildcardPattern: (_, node) => [node],
   LiteralPattern: () => [],
   CompareFieldPattern: () => [],
   Missing: () => [],
@@ -100,10 +103,19 @@ const targetNameHandlers: Handlers<undefined, Pattern | PatternPart, [], readonl
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
+function targetLeaves(node: Pattern | PatternPart | Invalid): readonly TargetLeaf[] {
+  return handlerOf(targetLeafHandlers, node)(undefined, node);
+}
+
 /**
  * The names a declaration's or loop's target binds, in source order. There, unlike in a `match`
  * case, a bare name always binds whatever its case; a qualified one refers, so it binds nothing.
  */
 export function targetNames(node: Pattern | PatternPart | Invalid): readonly Identifier[] {
-  return handlerOf(targetNameHandlers, node)(undefined, node);
+  return targetLeaves(node).filter((leaf): leaf is Identifier => leaf.kind === 'Identifier');
+}
+
+/** Whether a declaration's or loop's target has a `_` part, which binds nothing yet holds (§7). */
+export function hasUnnamedPart(node: Pattern | PatternPart | Invalid): boolean {
+  return targetLeaves(node).some((leaf) => leaf.kind === 'WildcardPattern');
 }
