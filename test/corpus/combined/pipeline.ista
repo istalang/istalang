@@ -1,0 +1,49 @@
+# outcome: "bb,ccc|6,80,100|100,6,6,0|1,2,333-2cccx2"
+# M3 group e2e (§2, §3.8, §3.11, §3.12, §3.14, §4): comprehensions that filter, destructure and build closures over map entries; a closure counting through a comprehension; `?` in a loop; guarded and plain `match` cases; `?.`/`??` on `at`.
+struct P { name: string; age: int }
+enum Shape:
+  Circle { r: int }
+  Rect { w: int; h: int }
+  Empty
+
+fn parse(s: string) -> Result<int>:
+  if s == "": return Err{Error{message: "empty", code: "e"}}
+  Ok{(s.length())}
+
+fn total(xs: Array<string>) -> Result<int>:
+  let t = 0
+  for x in xs:
+    t += parse(x)?
+  Ok{(t)}
+
+fn area(s: Shape) -> int:
+  match s:
+    case Circle{r} if r > 5: 100
+    case Circle{r}: r * 3
+    case Rect{w, h}: w * h
+    case Empty: 0
+
+fn j(xs: Array<int>) -> string: [for x in xs: string(x)].join(",")
+
+async fn main() -> Future<string>:
+  const people = [P{name: "a", age: 3}, P{name: "bb", age: 40}, P{name: "ccc", age: 50}]
+  const olds = [for p in people if p.age > 10: p.name]
+  let m: Map<string, int> = [:]
+  for p in people: m[p.name] = p.age
+  const fs = [for p in people: fn(): p.age + m[p.name]]
+  const sums = [for f in fs: f()]
+  const shapes = [Shape.Circle{r: 6}, Shape.Circle{r: 2}, Shape.Rect{w: 2, h: 3}, Shape.Empty]
+  const areas = [for s in shapes: area(s)]
+  let n = 0
+  const inc = fn(): { n += 1; n }
+  const vals = [for i in 0..3: inc()]
+  const t1 = match total(["a", "bb"]):
+    case Ok{value}: value
+    case Err{error}: -1
+  const t2 = match total(["a", ""]):
+    case Ok{value}: value
+    case Err{error}: -2
+  const o = people.at(-1)?.name ?? "x"
+  const o2 = people.at(10)?.name ?? "x"
+  const pairs = [for k, v in m.entries() if v > 10: k + string(v)]
+  olds.join(",") + "|" + j(sums) + "|" + j(areas) + "|" + j(vals) + string(n) + string(t1) + string(t2) + o + o2 + string(pairs.length())

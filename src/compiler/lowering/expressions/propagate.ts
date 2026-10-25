@@ -14,7 +14,7 @@ export function lowerPropagate(context: FunctionContext, node: Propagate): Regis
   const { code } = context;
   const operand = context.expression(node.operand);
   const operandType = context.body.typeOf(node.operand);
-  const returned = context.body.result;
+  const returned = context.result;
   if (!(isEnum(operandType) && isEnum(returned))) {
     throw new Error(
       `'?' needs two Results at ${node.span.start}; the checker should have said so.`,

@@ -1,0 +1,35 @@
+# outcome: "3|1|14|6|3"
+# A closure's shared `let` and a collection changed through a closure keep their values across
+# awaits and `runtime.commit` (§3.14, §5), with `?` and `match` over a Result in between.
+import * as time from 'time'
+import * as runtime from 'runtime'
+
+struct Acc { items: Array<int>; seen: Map<string, int> }
+
+fn makeCounter(start: int) -> fn() -> int:
+  let count = start
+  fn next() -> int:
+    count += 1
+    count
+
+  next
+
+fn check(r: Result<int>) -> Result<int>:
+  const v = r?
+  Ok{(v * 2)}
+
+async fn main() -> Future<string>:
+  const next = makeCounter(10)
+  let acc = Acc{items: [], seen: [:]}
+  const adder = fn(n: int): { acc.items.push(n); acc.seen[string(n)] = next(); acc.items.length() }
+  adder(1)
+  await time.delay(10ms)
+  adder(2)
+  await runtime.commit()
+  const tail = acc.items[1..]
+  await time.delay(10ms)
+  const r = match check(Ok{(adder(3))}):
+    case Ok{value}: value
+    case Err{error}: -1
+  const keys = [for k, v in acc.seen.entries() if v > 10: k + "=" + string(v)]
+  string(acc.items.length()) + "|" + string(tail.length()) + "|" + string(next()) + "|" + string(r) + "|" + string(keys.length())

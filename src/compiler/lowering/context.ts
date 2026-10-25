@@ -14,6 +14,7 @@ import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CallSite, CheckedBody, Checker, ImplicitRole } from '../checker/check.ts';
+import type { Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression, Lambda } from '../syntax/expressions.ts';
@@ -30,6 +31,11 @@ export interface FunctionContext {
   readonly tables: DefinitionTables;
   readonly module: ModuleId;
   readonly body: CheckedBody;
+  /**
+   * What the entry being lowered produces, which a `?` returns an `Err` of (§3.12): a lambda's or
+   * local function's own, not its owner's.
+   */
+  readonly result: Type;
   /** Lowers `node`; the register holding its value. */
   readonly expression: (node: Expression) => Register;
   /** Lowers a block; the register holding its value (unit when it ends in a statement). */

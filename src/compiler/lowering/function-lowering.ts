@@ -70,22 +70,27 @@ export interface LoweredFunction {
   readonly body: CheckedBody;
 }
 
-/** The frame an entry's code runs in: what it is called, what it takes and what it captures. */
+/**
+ * The frame an entry's code runs in: what it is called, what it takes, what it captures and what
+ * it produces.
+ */
 export interface Frame {
   readonly header: EntryHeader;
   readonly isAsync: boolean;
   readonly parameters: readonly SignatureParameter[];
   readonly captures: readonly CapturedVariable[];
+  /** `T` for an async entry returning `Future<T>`. */
+  readonly result: Type;
   /** The name a nested function calls itself by. */
   readonly self: Identifier | undefined;
 }
 
-/** The frame of a top-level function's instance: the parameters its callers give. */
-export function instanceFrame(
-  checker: Checker,
-  tables: DefinitionTables,
-  instance: FunctionInstance,
-): Frame {
+/**
+ * The frame of a top-level function's instance, whose body `lowered` reads: the parameters its
+ * callers give.
+ */
+export function instanceFrame(lowered: LoweredFunction, instance: FunctionInstance): Frame {
+  const { checker, tables, body } = lowered;
   const { declaration, arity } = instance;
   const parameters = checker.parametersOf(declaration);
   return {
@@ -93,6 +98,7 @@ export function instanceFrame(
     isAsync: declaration.isAsync && arity === parameters.length,
     parameters: parameters.slice(0, arity),
     captures: [],
+    result: body.result,
     self: undefined,
   };
 }
@@ -120,6 +126,7 @@ export function nestedFrame(
       return { node: parameter, ...slot };
     }),
     captures,
+    result: type.result,
     self: node.name,
   };
 }
@@ -217,6 +224,10 @@ export class FunctionLowering implements FunctionContext {
       type = optional;
     }
     return register;
+  }
+
+  get result(): Type {
+    return this.frame.result;
   }
 
   nestedIndex(node: Lambda | FunctionDeclaration): FunctionId {

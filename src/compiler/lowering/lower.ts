@@ -54,7 +54,7 @@ function entryOf(
   if (body !== undefined) {
     const owner = { kind: 'function', instance } as const;
     const lowered = { checker, tables, owner, body: instantiatedBody(body, instance) };
-    const lowering = new FunctionLowering(lowered, instanceFrame(checker, tables, instance));
+    const lowering = new FunctionLowering(lowered, instanceFrame(lowered, instance));
     if (instance.arity < parameters.length) {
       return lowering.lowerDefaults(instance);
     }
