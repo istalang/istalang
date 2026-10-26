@@ -93,8 +93,25 @@ describe('type declarations', () => {
       `(HandleDeclaration Inbox [${typeParameter('T')}] (NamedType [InboxState] [${named('T')}]))`,
     ],
     ['handle Counter of int', `(HandleDeclaration Counter [] ${int})`],
+    [
+      lines('struct Retry:', '    times: int = 3', '    backoff = times * 2'),
+      `(StructDeclaration Retry [] [${field('times', int, '3')} ${field('backoff', '_', '(Binary times * 2)')}])`,
+    ],
+    [
+      'enum Shape { Circle { r: float = 1.0 } }',
+      `(EnumDeclaration Shape [] [(Variant Circle [${field('r', named('float'), '1')}])])`,
+    ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));
+  });
+
+  it.each([
+    ['struct S { data: { n: int = 1 } }', '1'],
+    ['trait T { n: int = 1 }', '1'],
+  ])('reports a default outside a declaration once: %s', (text, spanText) => {
+    expect(reported('module', text)).toEqual(
+      reportedOnce(parserDiagnostics.misplacedFieldDefault.code, spanText),
+    );
   });
 
   it("reports a handle without 'of' once", () => {

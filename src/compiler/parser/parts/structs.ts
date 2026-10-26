@@ -5,11 +5,15 @@
  *
  * A field whose type is left for the next lines is the indented sugar for an anonymous struct
  * (§3.1): `data:` over indented fields means `data: { … }`, so it becomes a StructType too.
+ *
+ * Only a struct's or a variant's declaration gives its fields defaults (§3.1); a default anywhere
+ * else is read, so recovery goes on past it, then reported and left out of the tree.
  */
 
 import type { Invalid, Missing } from '../../syntax/node.ts';
 import type { FieldDeclaration, StructType } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
+import { parserDiagnostics } from '../diagnostics.ts';
 import { type ItemRules, parseBody, parseItemEntries } from '../layout.ts';
 import { nested } from '../nesting.ts';
 import type { Parser } from '../parser.ts';
@@ -27,28 +31,51 @@ export function afterStructKeyword<Body>(parser: Parser, parseBraced: () => Body
   return parseBraced();
 }
 
-/** `name: Type`, or `name:` over an indented block of fields. */
+/** `name: Type`, or `name:` over an indented block of fields: a field with no default. */
 export function parseField(parser: Parser): FieldDeclaration {
+  const field = parseDeclaredField(parser);
+  if (field.defaultValue === undefined) {
+    return field;
+  }
+  parser.report(parserDiagnostics.misplacedFieldDefault(field.defaultValue.span));
+  return { ...field, type: field.type ?? parser.placeholder(), defaultValue: undefined };
+}
+
+/** A struct's or a variant's field: `name: Type`, `name: Type = default` or `name = default`. */
+function parseDeclaredField(parser: Parser): FieldDeclaration {
   const name = parser.identifier('a field name');
   const { start } = name.span;
+  const field = { kind: 'FieldDeclaration', name } as const;
+  if (parser.cursor.eat('=') !== undefined) {
+    const defaultValue = parser.expression();
+    return { ...field, span: parser.spanFrom(start), type: undefined, defaultValue };
+  }
   if (parser.expect(':') === undefined) {
-    return { kind: 'FieldDeclaration', span: name.span, name, type: parser.placeholder() };
+    return { ...field, span: name.span, type: parser.placeholder(), defaultValue: undefined };
   }
   const type = parser.cursor.at('lineBreak') ? parseFieldBlock(parser, start) : parser.type();
-  return { kind: 'FieldDeclaration', span: parser.spanFrom(start), name, type };
+  const defaultValue = parser.cursor.eat('=') === undefined ? undefined : parser.expression();
+  return { ...field, span: parser.spanFrom(start), type, defaultValue };
 }
 
 /** Fields nest through their indented blocks, so each descends a level (nesting.ts). */
-export const fieldRules: ItemRules<FieldDeclaration> = {
+const fieldRules: ItemRules<FieldDeclaration> = {
   parseItem: (parser) => nested(parser, () => parseField(parser)),
+  annotate: attachAnnotations,
+};
+
+/** The fields of a struct's or a variant's declaration, which may have defaults. */
+export const declaredFieldRules: ItemRules<FieldDeclaration> = {
+  parseItem: (parser) => nested(parser, () => parseDeclaredField(parser)),
   annotate: attachAnnotations,
 };
 
 /** `{ a: A; b: B }`, the fields separated by `;` or line breaks; the cursor must be at the `{`. */
 export function parseFieldEntries(
   parser: Parser,
+  rules: ItemRules<FieldDeclaration> = fieldRules,
 ): Enclosed<readonly (FieldDeclaration | Invalid)[]> {
-  return parseItemEntries(parser, fieldRules);
+  return parseItemEntries(parser, rules);
 }
 
 function parseFieldBlock(parser: Parser, headerStart: number): StructType {

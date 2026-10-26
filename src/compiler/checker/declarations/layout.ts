@@ -12,6 +12,7 @@
 
 import { memo } from '../../../structures/memo.ts';
 import type { EnumDeclaration, StructDeclaration } from '../../syntax/declarations.ts';
+import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { declaredFields } from '../types/resolve-type.ts';
@@ -76,7 +77,12 @@ export class Layouts {
 
   declaredFieldsOf(declaration: StructDeclaration): readonly FieldMember[] {
     return memo(this.#fields, declaration, () =>
-      declaredFields(this.#checker, this.#checker.moduleOf(declaration), declaration.fields),
+      declaredFields(
+        this.#checker,
+        this.#checker.moduleOf(declaration),
+        declaration.fields,
+        fieldsFunctionOf(declaration),
+      ),
     );
   }
 
@@ -91,6 +97,7 @@ export class Layouts {
                   this.#checker,
                   this.#checker.moduleOf(declaration),
                   variant.fields,
+                  fieldsFunctionOf(declaration, variant),
                 ),
               },
             ]

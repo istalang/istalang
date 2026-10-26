@@ -36,6 +36,7 @@ struct Pair<A, B>:
     meta:                          # inline anonymous struct
         tag: string
 struct Req { id: int; value: string }
+struct Retry { times: int = 3; backoff = times * 2 }   # defaults, each seeing the fields before it
 
 enum Result<T, E = Error>:
     Ok { value: T }
@@ -195,7 +196,7 @@ Type annotations are required on the parameters of declared functions and on str
 
 ## 3. Declarations
 
-A program consists only of top-level declarations: imports, structs, enums, traits, type aliases, functions, `extern` declarations, and `const` values computable at compile time (literals, lambdas, and tuples, structs, arrays and maps built from them, in any literal form; a spread there spreads another array or map so built). A lambda there reads other constants but captures nothing, so it is a function value made once (§3.14). A top-level `const` may destructure its value as a local one does (§3.15), each name a constant of its own. There are no top-level variables or statements.
+A program consists only of top-level declarations: imports, structs, enums, traits, type aliases, functions, `extern` declarations, and `const` values computable at compile time (literals, lambdas, and tuples, structs, arrays and maps built from them, in any literal form, a field left to its default (§3.1) computed as its default is; a spread there spreads another array or map so built). A lambda there reads other constants but captures nothing, so it is a function value made once (§3.14). A top-level `const` may destructure its value as a local one does (§3.15), each name a constant of its own. There are no top-level variables or statements.
 
 ### 3.1 Structs
 
@@ -209,6 +210,8 @@ struct ReviewRequest:
 ```
 
 Construction lists the fields in braces after the type's name: `ReviewRequest{purchaseId: "P-1", amount: 900, replyTo: replies}`. As in JavaScript, a bare name is always short for a field of the same name: `Pair{first, second}` means `Pair{first: first, second: second}`. A struct with exactly one field may take its value without the field's name, as long as that value isn't a bare name: `UserId{"u-1"}` and `UserId{prefix + id}` are positional, while `UserId{id}` always means the field `id`. To pass a variable positionally, wrap it in parentheses: `UserId{(id)}`. Both a reader and the parser can therefore tell the forms apart without knowing the struct's fields. A struct with no fields is written bare, its name alone being its value (`struct Marker` makes the value `Marker`); braces after it are a compile error. An updated copy spreads an existing value and overrides some fields: `Req{...req, amount: 0}` is `req` with `amount` changed, and `req` itself is untouched; `struct{...req, amount: 0}` does the same, taking the type from `req`. The spread comes first and only once, its value has the literal's type, and the fields named after it override it; `Req{...req}` is a plain copy. Structs can be destructured in `match` patterns, and by the targets of declarations and assignments (§3.15). Fields have no visibility modifiers: any code can read them, since any module could declare a method on the struct anyway. Names of functions, methods, variables and fields are camelCase, preferring JavaScript's names where one exists (`push`, `indexOf`). A name that breaks these conventions, or the PascalCase rule for types (§2), is a compile error.
+
+**Field defaults.** A field of a struct or a variant may have a default after its type: `times: int = 3`. As a parameter's default does (§3.3), it runs at every literal that leaves the field out, in the declaring module's scope, and it may use the fields before it, as in `backoff: int = times * 2`. A field with a default may omit its type, which is then the default's: `backoff = times * 2`. A literal written with names alone may leave out any field with a default, wherever the field stands; a spread gives every field, so it runs no default. A default runs as code of its own called from the literal, so it can't `await`, and a panic in it names it. A top-level `const` computes a default when compile time computes its expression (§3). JSON reads none: a field missing from an object fails as any missing field does (§9). Only a declaration's fields have defaults, not an anonymous struct type's or a trait's.
 
 **Anonymous structs.** `struct { … }` is a struct type without a name, usable anywhere a type is. In a type position the keyword may be left out, since a `{` there can only be a field list: `Array<struct { sku: string; qty: int }>` and `Array<{ sku: string; qty: int }>` are the same type, and a formatter can pick one style. An indented block under a field is sugar for one, and any struct declaration may use braces on a single line, as in `struct Req { id: int; value: string }`.
 
@@ -281,7 +284,7 @@ log("info", "a", "b")        # log("info", ["a", "b"])
 log("info", "a", ...more)    # parts is "a" followed by the elements of more
 ```
 
-**Default parameters** are sugar for overloads. Parameters with defaults come after the others, and for each shorter call the compiler declares an overload that calls the full function with the missing values. A default is an expression evaluated at every call, and it may use earlier parameters, as in `fn window(start: int, end: int = start + 10)`. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A generated overload that clashes with a declared one is a compile error.
+**Default parameters** are sugar for overloads. Parameters with defaults come after the others, and for each shorter call the compiler declares an overload that calls the full function with the missing values. A default is an expression evaluated at every call, and it may use earlier parameters, as in `fn window(start: int, end: int = start + 10)`. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A generated overload that clashes with a declared one is a compile error. A struct's fields have defaults the same way (§3.1).
 
 **Rest parameters** are sugar for an array. The last parameter, written `...name: Array<T>`, comes after any parameters with defaults and collects the remaining arguments; `...xs` at a call site spreads an existing array into them. When a call matches both a fixed-arity overload and one with a rest parameter, the fixed one wins.
 
@@ -666,7 +669,7 @@ enum Result<T, E = Error>:
 struct Error:
     message: string
     code: string
-    trace: string          # filled in by the runtime when the Error is built
+    trace: string = _trace()   # the frames where the Error is built
 ```
 
 ```python statements
@@ -682,7 +685,7 @@ match await pay(req):
 ```
 
 - **`?` propagates.** `expr?` on a `Result` yields the `Ok` value, or returns the `Err` from the enclosing function. That function must itself return a `Result` with the same error type. With an inferred return type, each `?` acts as a `return` of an `Err`: what the function's other returns and its last expression agree on must be a `Result` with that error type. A `?` outside any function, such as in a parameter's default, is an error. `?` doesn't take an optional apart; `??` and `match` do (§4).
-- **Traces.** An `Error` literal may leave out `trace`, which is then filled with the frames where the `Error` is built, innermost first, one line each: `at function (module:line:column)`. A `trace` written in the literal, or carried over by a spread as in `Error{...error, message: "retry failed"}`, is kept.
+- **Traces.** An `Error` literal may leave out `trace`, whose default (§3.1) is the frames where the `Error` is built, innermost first, one line each: `at function (module:line:column)`. A `trace` written in the literal, or carried over by a spread as in `Error{...error, message: "retry failed"}`, is kept.
 - **Results must be used.** Leaving a `Result` unused as a bare expression is a compile error. Handle it with `match` or `?`, keep it in a variable (`_` included), or `drop` it.
 - **Results are data.** A `Result` of sendable types is sendable, so a service can reply with one into a `replyTo` inbox.
 - **Bugs panic; expected failures return `Result`.** Network, parsing and business failures return `Result`. Programming errors such as an out-of-range index, integer division by zero (`//` or `%`) or a missing map key panic. The safe variants return optionals: `xs.at(i)` returns `T?`, and `m.get(k)` returns `V?`.
@@ -1225,7 +1228,7 @@ The mapping follows JavaScript's `JSON.stringify`:
 | `unit` | `null` |
 | extern type | whatever JSON its host gives it, handed back unchanged, by `json` too. A disposable one keeps that JSON while the instance holds it (§3.6) |
 
-Every object's keys are emitted sorted, in UTF-16 order as JavaScript sorts strings, so equal values always produce the same JSON, whatever order a struct declares its fields in or a map stores its entries in. Unknown fields in inbound objects are ignored, so producers can add fields without breaking consumers. A missing field that isn't optional fails validation. A type that isn't `Encodable`, or `Decodable`, can't cross that way, at the boundary or through `json`, which is a compile error where it would: a function type, a handle (§3.1), a nested optional `T??`, whose `none`s JSON can't tell apart, a map whose keys aren't `Stringable`, or a type with a part that can't cross. So is an enum deriving its codecs with a variant field named `type`, which would collide with the tag.
+Every object's keys are emitted sorted, in UTF-16 order as JavaScript sorts strings, so equal values always produce the same JSON, whatever order a struct declares its fields in or a map stores its entries in. Unknown fields in inbound objects are ignored, so producers can add fields without breaking consumers. A missing field that isn't optional fails validation, even one with a default (§3.1). A type that isn't `Encodable`, or `Decodable`, can't cross that way, at the boundary or through `json`, which is a compile error where it would: a function type, a handle (§3.1), a nested optional `T??`, whose `none`s JSON can't tell apart, a map whose keys aren't `Stringable`, or a type with a part that can't cross. So is an enum deriving its codecs with a variant field named `type`, which would collide with the tag.
 
 ## 10. Testing
 

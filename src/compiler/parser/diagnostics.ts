@@ -108,6 +108,10 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "Only a variable or a '$' value, or a field, tuple element or index of one, can be passed by '&'.",
   },
+  misplacedFieldDefault: {
+    code: 2024,
+    message: () => "Only a field of a struct's or a variant's declaration has a default (§3.1).",
+  },
   invalidTupleElement: {
     code: 2200,
     message: (text: string) =>

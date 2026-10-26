@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
-import { dumpClean, int, named, reported } from './parse.test-kit.ts';
+import { dumpClean, field, int, named, reported } from './parse.test-kit.ts';
 
 const { expected, misplacedReference, unclosedBracket } = parserDiagnostics;
 
@@ -40,7 +40,7 @@ describe('type forms', () => {
 });
 
 describe('anonymous struct types', () => {
-  const skuQty = `(StructType [(FieldDeclaration sku ${named('string')}) (FieldDeclaration qty ${int})])`;
+  const skuQty = `(StructType [${field('sku', named('string'))} ${field('qty', int)}])`;
 
   it.each([
     '{ sku: string; qty: int }',

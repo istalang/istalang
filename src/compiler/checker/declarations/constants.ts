@@ -118,9 +118,9 @@ export class ConstantChecks {
       declaration.type === undefined ? undefined : checker.resolveType(module, declaration.type);
     const checked = this.#seams.checkValue(module, declaration.initializer, declared);
     const outcome = computeConstant(declaration.initializer, {
+      checker,
       constant: declaration,
       checked,
-      fieldsOf: (type) => checker.fieldsOf(type),
       constantNamed: (name) => this.constantNamed(module, name),
     });
     if (outcome.kind === 'refused') {

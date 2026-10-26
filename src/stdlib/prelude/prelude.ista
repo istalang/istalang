@@ -50,7 +50,7 @@ enum Result<T, E = Error>:
 struct Error:
   message: string
   code: string
-  trace: string
+  trace: string = _trace()
 
 struct Range:
   start: int?
@@ -96,7 +96,8 @@ extern fn iterate(self: string) -> Array<string>
 
 extern fn iterate(self: Range) -> Array<int>
 
-# Where the running frames are, innermost first: the `trace` of an `Error` built without one.
+# Where the running frames are, innermost first, from the code that called for the value: the
+# default of an `Error`'s `trace`, which runs in an entry of its own (§3.1, §3.12).
 extern fn _trace() -> string
 
 # Operators on primitives (§3.9). They are built in: the runtime implements each, and declaring

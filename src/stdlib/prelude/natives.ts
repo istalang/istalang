@@ -11,11 +11,12 @@
  * - `compare` on floats subtracts, so infinities compare as expected; see `sign` for NaN.
  * - Adding a primitive to a string appends its text, as `toString` writes it (text-forms.ts).
  * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
+ * - `_trace()` runs as `Error`'s `trace` default, in the entry a literal leaving the field out
+ *   calls (§3.1), so it leaves that entry's frame out: an `Error`'s trace starts where it is built.
  */
 
 import { preludeKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
-import { errorTrace } from '../../language/well-known.ts';
 import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
 import { float, int, text } from '../native-values.ts';
 import { arrayNatives } from './arrays.ts';
@@ -88,7 +89,7 @@ export const preludeNatives: Natives = {
   [preludeKey('panic', 'string')]: ([message]) => {
     throw new Panic(text(message));
   },
-  [preludeKey(errorTrace.function)]: (_, context) => context.trace(),
+  [preludeKey('_trace')]: (_, context) => context.trace().split('\n').slice(1).join('\n'),
 };
 
 /**

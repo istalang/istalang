@@ -1,0 +1,25 @@
+# error: 5001 at 10:12
+# error: 4000 at 13:12
+# error: 5112 at 16:8
+# error: 5026 at 23:17
+# A field's default must fit its field (§3.1), sees only the fields before it, and can't reach its
+# own field when that field takes its type from it. A constant runs a default only when compile
+# time computes it, which arithmetic it doesn't.
+
+struct Typed:
+  n: int = "x"
+
+struct Ordered:
+  a: int = b
+  b: int = 1
+
+struct Looping:
+  x = Looping{}.x
+
+struct Doubled:
+  base: int = 2
+  twice: int = base * 2
+
+const doubled = Doubled{}
+
+async fn main(): 0

@@ -16,6 +16,7 @@
 
 import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
+import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldSource } from '../check.ts';
 import {
@@ -131,6 +132,7 @@ function declaredShape(
   const struct = declaration.kind === 'StructDeclaration' ? declaration : undefined;
   return {
     owner: struct,
+    defaults: struct === undefined ? undefined : fieldsFunctionOf(struct),
     known,
     fields: struct === undefined ? [] : context.checker.declaredFieldsOf(struct),
     typeOf: (typeArguments) => ({ kind: 'nominal', entity, arguments: typeArguments }),

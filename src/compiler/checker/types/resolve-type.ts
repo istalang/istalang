@@ -268,22 +268,33 @@ export function constrainArguments(
 
 /**
  * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
- * resolved in `module`, where they are written, but not substituted.
+ * resolved in `module`, where they are written, but not substituted. A field whose default gives
+ * its type has its parameter's in `defaults`, the function its declaration's fields read as
+ * (syntax/field-defaults.ts), whose defaults are checked to infer it (§3.1, §3.3).
  */
 export function declaredFields(
   checker: CheckerContext,
   module: ModuleId,
   fields: readonly (FieldDeclaration | Invalid)[],
+  defaults?: FunctionDeclaration,
 ): readonly FieldMember[] {
+  const typeOf = (field: FieldDeclaration): Type =>
+    field.type === undefined
+      ? defaultedType(checker, field, defaults)
+      : checker.resolveType(module, field.type);
   return fields.flatMap((field) =>
     field.kind === 'FieldDeclaration'
-      ? [
-          {
-            name: field.name.text,
-            type: checker.resolveType(module, field.type),
-            declared: { node: field, module },
-          },
-        ]
+      ? [{ name: field.name.text, type: typeOf(field), declared: { node: field, module } }]
       : [],
   );
+}
+
+/** The type `field`'s default gives it, as the parameter of `defaults` it reads as. */
+function defaultedType(
+  checker: CheckerContext,
+  field: FieldDeclaration,
+  defaults: FunctionDeclaration | undefined,
+): Type {
+  const parameters = defaults === undefined ? [] : checker.parametersOf(defaults);
+  return parameters.find(({ node }) => node.name === field.name)?.type ?? errorType;
 }

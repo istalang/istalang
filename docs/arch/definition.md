@@ -155,7 +155,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Map literal (§2) | `map` for a `Map`, a spread spreading the `(key, value)` tuples `iterate` gives; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
 | Tuple, `()` (§3.15) | `tuple`; `()` is the unit constant |
 | Range `a..b`, `a..=b`, open ends (§2, §3.8) | `struct` of prelude `Range`; `..=` calls `add` to store `end + 1` |
-| Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | `struct`, fields in declaration order |
+| Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | `struct`, fields in declaration order; a field left to its default from a `call` to its default's entry, given the fields before it |
 | Updated copy `T{...r, f: v}` (§3.1) | the spread value once, `field` for each field not given, then `struct` |
 | Struct without fields, written bare (§3.1) | `struct` with no fields; a constant when it is one |
 | Enum variant (§3.11) | `variant`; a variant without fields may be a constant |
@@ -163,6 +163,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `fn`, `async fn`, methods, static functions (§3.3, §3.7) | function-table entries; a method's `self` is its first parameter |
 | Overloads (§3.7) | distinct entries; calls name one |
 | Default parameters (§3.3) | generated entries that evaluate the defaults and call the full function |
+| Field defaults (§3.1) | a generated entry per field left to its default and instantiation, taking the fields before it and giving the default |
 | Rest parameter (§3.3) | the caller builds an `array` |
 | `return`, last expression (§3.3) | `return` |
 | `extern fn`, extern constant (§3.6) | `extern` function entries; reading a constant is a `call`; a host's is called through its wrapper, which converts to and from `Json` (Externs) |
@@ -195,7 +196,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `?.`, `??` (§4) | `switch` on `Optional` |
 | `e?` on `Result` (§3.12) | `switch` on `Result`; the `Err` path returns a new `Err` of the function's own `Result` type, holding the same error |
 | `panic(m)` (§3.12) | a call to prelude `panic` |
-| Building an `Error` (§3.12) | `struct`, with `trace` from a call to a prelude extern that formats the current frames' spans through the modules' line starts |
+| Building an `Error` (§3.12) | `struct`, with `trace` from its default's entry, which calls a prelude extern that formats the frames' spans through the modules' line starts, leaving out the entry's own |
 | Imports, type aliases (§3.13, §3.17) | nothing at runtime; `modules` lists module ids for spans |
 | Lambdas, local `fn`, closures (§3.14) | `closure` with captures; a captured `let` is a cell, a `const` a copy |
 | Named lambda calling itself (§3.14) | `currentClosure` |

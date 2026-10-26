@@ -5,9 +5,10 @@
  * - Every field is given exactly once, each value fitting the field's type, by the one rule of
  *   which field an item gives (patterns/struct-items.ts): by name, by the shorthand `first` for
  *   `first: first`, or positionally when there is one field. With names alone, every field must
- *   be given; a struct literal's leading spread gives the rest, and a positional value is the only
- *   item (the parser enforces that), so neither leaves fields to report as missing. A variant
- *   can't be spread into: which variant a value holds isn't known when compiling.
+ *   be given, but for those with a default; a struct literal's leading spread gives the rest, and a
+ *   positional value is the only item (the parser enforces that), so neither leaves fields to
+ *   report as missing. A variant can't be spread into: which variant a value holds isn't known
+ *   when compiling.
  * - A generic type's arguments are written, taken from the expected type or the spread value when
  *   it is the same type, or inferred from the values (§3.5): a value whose field type is already
  *   known is checked against it, any other is checked on its own and matched. Defaults fill what
@@ -15,12 +16,17 @@
  * - What each field's value comes from is recorded per literal, in declaration order, so lowering
  *   and compile time read it rather than reading the items again. A literal with a mistake in its
  *   items has no record: nothing compiles it.
- * - An `Error` may leave out `trace` (§3.12): the runtime writes it from the frames where the
- *   `Error` is built, through the prelude extern the literal is recorded as calling.
+ * - A field left out with names alone takes its default (§3.1), from the entry of arity `index` of
+ *   the function the declaration's fields read as (syntax/field-defaults.ts), instantiated with
+ *   the literal's type arguments, its constraints met where the literal is. A spread gives every
+ *   field, so a literal with one runs no default.
  */
 
-import { errorTrace, wellKnown } from '../../../language/well-known.ts';
-import type { EnumDeclaration, StructDeclaration } from '../../syntax/declarations.ts';
+import type {
+  EnumDeclaration,
+  FunctionDeclaration,
+  StructDeclaration,
+} from '../../syntax/declarations.ts';
 import {
   type Expression,
   type FieldItem,
@@ -31,13 +37,13 @@ import {
 } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { FieldSource } from '../check.ts';
+import type { FieldSource, FunctionCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
 import { itemField } from '../patterns/struct-items.ts';
-import { callMade } from '../resolution/calls-made.ts';
+import { callWithTypes } from '../resolution/typed-call.ts';
 import { constrainArguments, typeArgumentsFor, typeParametersOf } from '../types/resolve-type.ts';
 import {
   errorType,
@@ -56,6 +62,8 @@ import { typeText } from '../types/type-text.ts';
  */
 export interface LiteralShape {
   readonly owner: StructDeclaration | EnumDeclaration | undefined;
+  /** The function the declaration's fields read as when one has a default (§3.1). */
+  readonly defaults?: FunctionDeclaration | undefined;
   /** The type arguments already decided, written or expected. */
   readonly known: readonly Type[] | undefined;
   readonly fields: readonly FieldMember[];
@@ -118,9 +126,10 @@ export function checkLiteralFields(
   if (spread !== undefined && spreadType !== undefined) {
     context.fit(spreadType, type, spread.node.expression);
   }
-  const traced = tracedField(context, node, shape, items.given);
-  reportMissing(context, items, type, traced);
-  const sources = sourcesOf(shape, items.given, spread, traced);
+  const defaulted =
+    spread === undefined ? defaultCalls(context, shape, items.given, completed.typeArguments) : [];
+  reportMissing(context, items, type, defaulted);
+  const sources = sourcesOf(shape, items.given, spread, defaulted);
   if (items.fits && sources !== undefined) {
     context.literals.record(node, sources);
   }
@@ -268,12 +277,12 @@ function reportMisfit(
   }
 }
 
-/** With names alone, a field no item names is missing, unless the runtime writes it (`traced`). */
+/** With names alone, a field no item names is missing, unless it is `defaulted`. */
 function reportMissing(
   context: BodyContext,
   { node, shape, given }: LiteralItems,
   type: Type,
-  traced: number | undefined,
+  defaulted: readonly (FunctionCall | undefined)[],
 ): void {
   const named = node.items.every(
     (item) => item.kind === 'FieldInitializer' || item.kind === 'Invalid',
@@ -283,25 +292,25 @@ function reportMissing(
   }
   const at = node.type?.span ?? node.span;
   for (const [index, field] of shape.fields.entries()) {
-    if (!given.has(index) && index !== traced) {
+    if (!given.has(index) && defaulted[index] === undefined) {
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
     }
   }
 }
 
 /**
- * Each field's source in declaration order, the spread giving the rest and the runtime the
- * `traced` field; undefined if one has none.
+ * Each field's source in declaration order, the spread giving the rest, or else its default's
+ * call; undefined if one has none.
  */
 function sourcesOf(
   { fields }: LiteralShape,
   given: ReadonlyMap<number, GivenField>,
   spread: LiteralSpread | undefined,
-  traced: number | undefined,
+  defaulted: readonly (FunctionCall | undefined)[],
 ): readonly FieldSource[] | undefined {
   const sources: FieldSource[] = [];
   for (const index of fields.keys()) {
-    const source = sourceOf(index, given.get(index)?.node, spread, traced);
+    const source = sourceOf(index, given.get(index)?.node, spread, defaulted[index]);
     if (source === undefined) {
       return undefined;
     }
@@ -310,12 +319,12 @@ function sourcesOf(
   return sources;
 }
 
-/** Where field `index` gets its value: the literal's `value`, the spread, or the runtime. */
+/** Where field `index` gets its value: the literal's `value`, the spread, or its default. */
 function sourceOf(
   index: number,
   value: Expression | undefined,
   spread: LiteralSpread | undefined,
-  traced: number | undefined,
+  defaulted: FunctionCall | undefined,
 ): FieldSource | undefined {
   if (value !== undefined) {
     return { kind: 'value', value };
@@ -323,31 +332,33 @@ function sourceOf(
   if (spread !== undefined) {
     return { kind: 'spread', from: spread.node.expression, index };
   }
-  return index === traced ? { kind: 'trace' } : undefined;
+  return defaulted === undefined ? undefined : { kind: 'default', call: defaulted };
 }
 
 /**
- * The index of an `Error`'s `trace` when the literal leaves it to the runtime, which it then
- * records as calling the prelude extern that writes it (§3.12); undefined for any other literal.
+ * By field position, the call giving each field the literal leaves out its default: the entry of
+ * arity `index` of `shape`'s defaults, with the literal's `typeArguments`.
  */
-function tracedField(
+function defaultCalls(
   context: BodyContext,
-  node: StructLiteral,
-  shape: LiteralShape,
+  { defaults }: LiteralShape,
   given: ReadonlyMap<number, GivenField>,
-): number | undefined {
-  const error = context.checker.wellKnownType(wellKnown.error);
-  const index = shape.fields.findIndex((field) => field.name === errorTrace.field);
-  const isError = error !== undefined && shape.owner === error.entity.declaration;
-  const [writer] = context.checker.languageFunctions('prelude', errorTrace.function);
-  if (!isError || index < 0 || given.has(index) || writer === undefined) {
-    return undefined;
+  typeArguments: readonly Type[],
+): readonly (FunctionCall | undefined)[] {
+  if (defaults === undefined) {
+    return [];
   }
-  context.recordCall(
-    node,
-    callMade({ declaration: writer }, { typeArguments: [], witnesses: new Map() }, 0),
+  const fields = defaults.parameters.filter((field) => field.kind === 'Parameter');
+  const isLeftOut = (index: number) =>
+    !given.has(index) && fields[index]?.defaultValue !== undefined;
+  if (!fields.some((_, index) => isLeftOut(index))) {
+    return [];
+  }
+  const candidates = [{ declaration: defaults }];
+  const call = callWithTypes(context.checker, candidates, typeArguments, context.module);
+  return fields.map((_, index) =>
+    isLeftOut(index) && call !== undefined ? { ...call, arity: index } : undefined,
   );
-  return index;
 }
 
 function literalName(node: StructLiteral): string {

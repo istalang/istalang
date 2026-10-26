@@ -29,7 +29,7 @@ tags: [review, architecture, refactoring, plan]
 | 15 | Spec: Mixed arithmetic (overload matrix vs promotion) | spec, prelude | D142 | by-opus | |
 | 16 | Spec: Witness incoherence (chosen per call site) | spec, checker | D143 | by-opus | |
 | 17 | Spec: `Shared<T>` roles, Host Handles vs Resource handles, nominal handle declaration | spec, compiler | D105, D139 | by-argon, by-opus | done |
-| 18 | `Error{...}` trace field (remove hardcoded check, support default field expressions) | checker, syntax | | by-argon | |
+| 18 | `Error{...}` trace field (remove hardcoded check, support default field expressions) | checker, syntax | | by-argon | done |
 | 19 | `worker.disposing()` via Enclosing Function (general way instead of intercepting) | checker, runtime | | by-argon | done (2fba855) |
 | 20 | Std types by name in Definition (give extern type entries a role instead) | definition, lowering | D138 | by-opus | done (51f5f6d) |
 | 21 | CheckedBody side tables (keep records or elaborated tree) | checker | D136 | by-opus | |

@@ -40,6 +40,7 @@ import type {
   TypeParameter,
 } from '../syntax/declarations.ts';
 import { handleFunctionList } from '../syntax/declared-functions.ts';
+import { fieldsFunctionsIn } from '../syntax/field-defaults.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -152,8 +153,8 @@ export class ProgramChecker implements CheckerContext {
   }
 
   /**
-   * Notes `item` and what it declares inside (a trait's members, a handle's functions, type
-   * parameters) as `module`'s.
+   * Notes `item` and what it declares inside (a trait's members, a handle's functions, the
+   * functions fields with defaults read as, type parameters) as `module`'s.
    */
   #declare(item: Declaration, module: ModuleId): void {
     this.#modules.set(item, module);
@@ -169,10 +170,9 @@ export class ProgramChecker implements CheckerContext {
         }
       }
     }
-    if (item.kind === 'HandleDeclaration') {
-      for (const declared of handleFunctionList(item)) {
-        this.#modules.set(declared, module);
-      }
+    const declaresFunctions = item.kind === 'HandleDeclaration' ? handleFunctionList(item) : [];
+    for (const declared of [...declaresFunctions, ...fieldsFunctionsIn(item)]) {
+      this.#modules.set(declared, module);
     }
   }
 
@@ -372,7 +372,7 @@ export class ProgramChecker implements CheckerContext {
 
   /**
    * What language module `module` declares as `name`, when the program has that module: what it
-   * exports, or a private name the toolchain itself uses, such as the extern writing a trace.
+   * exports, or a private name the toolchain itself uses, such as a json helper a codec calls.
    */
   #languageDeclaration(module: LanguageModule, name: string) {
     const id = this.program.roles[module];

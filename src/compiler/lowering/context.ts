@@ -13,7 +13,13 @@ import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
-import type { CallSite, CheckedBody, Checker, ImplicitRole } from '../checker/check.ts';
+import type {
+  CallSite,
+  CheckedBody,
+  Checker,
+  ImplicitRole,
+  ResolvedCall,
+} from '../checker/check.ts';
 import type { Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
@@ -56,6 +62,8 @@ export interface FunctionContext {
   readonly entityOf: (name: Identifier) => Entity | undefined;
   /** The function-table entry the call at `site` targets. */
   readonly calleeIndex: (site: CallSite) => FunctionId;
+  /** The function-table entry `call`, one the checker recorded with no site, targets from here. */
+  readonly callIndex: (call: ResolvedCall) => FunctionId;
   /** The function-table entry of the call the checker made for `node` in `role`. */
   readonly implicitCallee: (node: NodeOf<string>, role: ImplicitRole) => FunctionId;
   /** The function-table entry of a lambda or local function in this body (§3.14). */

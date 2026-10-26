@@ -130,12 +130,6 @@ export const jsonVariants = {
 /** The variants of `Result` (§3.12): `?` passes on an `Err` and takes the `Ok` value. */
 export const resultVariants = { ok: 'Ok', err: 'Err' } as const;
 
-/**
- * `Error`'s field the runtime fills in when an `Error` is built without it (§3.12), and the
- * prelude's private extern that writes it: the current frames, innermost first.
- */
-export const errorTrace = { field: 'trace', function: '_trace' } as const;
-
 /** The static function a conversion `T(x)` calls (§3.10). */
 export const conversionFunction = 'from';
 

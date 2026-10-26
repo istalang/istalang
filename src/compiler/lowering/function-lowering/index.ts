@@ -17,7 +17,8 @@
  *   taken once at its entry (`currentClosure`).
  * - A defaults entry takes the arguments its callers give, computes the rest from the defaults
  *   (§3.3), each seeing the parameters before it, and calls the function with all of them, passing
- *   a reference parameter on as the reference it was given.
+ *   a reference parameter on as the reference it was given. A field default's entry takes the
+ *   fields before its field, and gives that field's default (§3.1, syntax/field-defaults.ts).
  * - A start entry (boundary/starts.ts) is a function's own body compiled once more with JSON at its
  *   edges: its arguments arrive as `Json` and are decoded into its parameters, and every return
  *   gives its value encoded, so a host-started instance runs as one execution of the function.
@@ -39,6 +40,7 @@ import type {
   FunctionCall,
   ImplicitRole,
   ResolvedCall,
+  SignatureParameter,
 } from '../../checker/check.ts';
 import { substitute, type Type } from '../../checker/types/type.ts';
 import type { ModuleId } from '../../program/program.ts';
@@ -146,12 +148,7 @@ export class FunctionLowering implements FunctionContext {
     const { declaration } = instance;
     const parameters = this.checker.parametersOf(declaration);
     for (const parameter of parameters.slice(given.length)) {
-      const { defaultValue } = parameter.node;
-      if (defaultValue === undefined) {
-        unreachable(
-          `'${parameter.node.name.text}' has no default; the checker should have said so.`,
-        );
-      }
+      const defaultValue = defaultValueOf(parameter);
       const value = this.expression(defaultValue);
       const register = declareVariable(this, parameter.node.name, this.#concrete(parameter.type));
       this.code.emit({ kind: 'move', span: defaultValue.span, dst: register, src: value });
@@ -165,6 +162,18 @@ export class FunctionLowering implements FunctionContext {
       ),
     });
     this.returnValue(result, declaration.name.span);
+    return this.#entry();
+  }
+
+  /** A field default's entry: the fields before field `arity`, then that field's default. */
+  lowerFieldDefault(instance: FunctionInstance): CodeFunction {
+    const given = this.#declareFrame();
+    const field = this.checker.parametersOf(instance.declaration)[given.length];
+    if (field === undefined) {
+      unreachable(`No field ${given.length} of ${instance.declaration.name.text} has a default.`);
+    }
+    const defaultValue = defaultValueOf(field);
+    this.returnValue(this.expression(defaultValue), defaultValue.span);
     return this.#entry();
   }
 
@@ -204,11 +213,15 @@ export class FunctionLowering implements FunctionContext {
     return this.#functionOf(this.body.implicitCallOf(node, role), node);
   }
 
+  callIndex(call: ResolvedCall): FunctionId {
+    return this.tables.functionIndex(calleeOf(call, this.owner));
+  }
+
   #functionOf(resolved: ResolvedCall | undefined, at: NodeOf<string>): FunctionId {
     if (resolved === undefined) {
       unreachable(`No call was made for the ${at.kind} at ${at.span.start}.`);
     }
-    return this.tables.functionIndex(calleeOf(resolved, this.owner));
+    return this.callIndex(resolved);
   }
 
   block(node: Block): Register {
@@ -306,4 +319,13 @@ export class FunctionLowering implements FunctionContext {
     this.code.emit({ kind: 'constant', span, dst, constant: this.tables.constant(value) });
     return dst;
   }
+}
+
+/** The default of `parameter`, which every parameter a defaults entry computes has. */
+function defaultValueOf(parameter: SignatureParameter): Expression {
+  const { defaultValue } = parameter.node;
+  if (defaultValue === undefined) {
+    unreachable(`'${parameter.node.name.text}' has no default; the checker should have said so.`);
+  }
+  return defaultValue;
 }

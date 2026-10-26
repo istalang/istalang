@@ -6,7 +6,8 @@
  * - A declaration's type parameters have their constraints resolved, and so does every member of
  *   a trait: its functions' signatures and its fields' types.
  * - An alias is resolved, which reports one that refers to itself (§3.17).
- * - A handle's functions are checked as written ones are (§3.18).
+ * - A handle's functions are checked as written ones are (§3.18), and so are the defaults of a
+ *   struct's or a variant's fields, as the parameters they read as (§3.1).
  * - An extern a host implements takes and gives only what crosses as JSON (rules/host-boundary.ts),
  *   and so does `main`, whose outcome its host reads (§9).
  * - A `dispose` a program declares makes its type disposable, on its rules (rules/disposal.ts).
@@ -21,6 +22,7 @@ import { isStdModule, type ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import { handleFunctionList } from '../../syntax/declared-functions.ts';
+import { fieldsFunctionOf, writtenType } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
@@ -52,6 +54,17 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   checker.bodyOf(node);
   if (node.isExtern) {
     checkHostBoundary(checker, module, node);
+  }
+}
+
+/** The defaults of a declaration's fields, which read as `fieldsFunction`'s parameters (§3.1). */
+function checkFieldDefaults(
+  checker: CheckerContext,
+  fieldsFunction: FunctionDeclaration | undefined,
+): void {
+  if (fieldsFunction !== undefined) {
+    checker.parametersOf(fieldsFunction);
+    checker.defaultsOf(fieldsFunction);
   }
 }
 
@@ -87,7 +100,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
       if (member.kind === 'FunctionDeclaration') {
         checkFunction(checker, member);
       } else if (member.kind === 'FieldDeclaration') {
-        const type = checker.resolveType(module, member.type);
+        const type = checker.resolveType(module, writtenType(member));
         checker.annotations.of(module, member, { kind: 'field', type });
       }
     }
@@ -109,6 +122,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
     checkTypeParameters(checker, node);
     checker.annotations.checkFields(checker.declaredFieldsOf(node));
     checkFiniteFields(checker, node);
+    checkFieldDefaults(checker, fieldsFunctionOf(node));
   },
   EnumDeclaration: (checker, node, module) => {
     annotatedNowhere('an enum declaration')(checker, node, module);
@@ -116,6 +130,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
     for (const variant of node.variants) {
       if (variant.kind === 'Variant') {
         annotatedNowhere('an enum variant')(checker, variant, module);
+        checkFieldDefaults(checker, fieldsFunctionOf(node, variant));
       }
     }
     for (const variant of checker.declaredVariantsOf(node)) {

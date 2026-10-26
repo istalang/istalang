@@ -9,6 +9,7 @@
  */
 
 import type { Annotatable } from './annotations.ts';
+import type { Expression } from './expressions.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
 
 export interface NamedType extends NodeOf<'NamedType'> {
@@ -46,9 +47,15 @@ export interface StructType extends NodeOf<'StructType'> {
   readonly fields: readonly (FieldDeclaration | Invalid)[];
 }
 
+/**
+ * `name: Type`, and in a struct's or a variant's declaration `name: Type = default` or
+ * `name = default`, whose type its default gives (§3.1).
+ */
 export interface FieldDeclaration extends NodeOf<'FieldDeclaration'>, Annotatable {
   readonly name: Identifier;
-  readonly type: TypeNode;
+  /** Undefined only beside a default, which gives the type. */
+  readonly type: TypeNode | undefined;
+  readonly defaultValue: Expression | undefined;
 }
 
 /** `&T`, valid only as a parameter's type (§3.7). */

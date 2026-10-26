@@ -100,9 +100,9 @@ export function moduleOf(...items: readonly string[]): string {
   return `(Module [${items.join(' ')}])`;
 }
 
-/** The dump of a field declaration. */
-export function field(name: string, type: string): string {
-  return `(FieldDeclaration ${name} ${type})`;
+/** The dump of a field declaration, with its default's dump when it has one. */
+export function field(name: string, type: string, defaultValue = '_'): string {
+  return `(FieldDeclaration ${name} ${type} ${defaultValue})`;
 }
 
 /** The dump of a named type without type arguments. */

@@ -1,9 +1,9 @@
 # error: 5026 at 12:17
 # error: 5014 at 15:3
 # error: 5014 at 18:3
-# Only an `Error` may leave out `trace`, which the runtime writes where it is built (§3.12), so
-# compile time can't compute one: a top-level constant can't be an Error built that way. Its other
-# fields are required. `drop` discards a value; dropping a variable releases it (§7).
+# An `Error`'s `trace` defaults to the frames where it is built (§3.1, §3.12), which compile time
+# can't compute: a top-level constant can't be an Error built that way. Its other fields are
+# required. `drop` discards a value; dropping a variable releases it (§7).
 
 struct Note:
   message: string

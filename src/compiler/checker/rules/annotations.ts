@@ -193,9 +193,9 @@ export class Annotations implements AnnotationQueries {
       return undefined;
     }
     const outcome = computeConstant(node.value, {
+      checker,
       constant: undefined,
       checked,
-      fieldsOf: (each) => checker.fieldsOf(each),
       constantNamed: (name) => checker.constantNamed(module, name),
     });
     if (outcome.kind === 'refused') {

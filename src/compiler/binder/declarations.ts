@@ -8,7 +8,8 @@
  * - Type parameters are all defined before any constraint or default is bound, so they may refer
  *   to one another (`<A, B is Convertible<A>>`).
  * - A parameter's default may use the parameters before it (§3.3), so each parameter is defined
- *   after its own type and default are bound.
+ *   after its own type and default are bound. A field's default may use the fields before it the
+ *   same way (§3.1), as a parameter of the function the fields read as (syntax/field-defaults.ts).
  * - A named lambda's name is visible only inside the lambda (§3.14).
  * - `Self` is defined in a trait's scope, and only there (§3.10).
  * - A static function's owner (`Duration` in `fn Duration.zero()`) is a type use in the scope
@@ -27,6 +28,7 @@ import type {
 } from '../syntax/declarations.ts';
 import { handleFunctionsOf } from '../syntax/declared-functions.ts';
 import type { Lambda, Parameter } from '../syntax/expressions.ts';
+import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
@@ -58,22 +60,54 @@ export function bindFunction(
   }
 }
 
-/** Each parameter is defined after its type and default, which see only the ones before it. */
 function bindParameters(
   binder: LocalBinder,
   parameters: readonly (Parameter | Invalid)[],
   scope: Scope,
 ): void {
   for (const parameter of parameters) {
+    if (parameter.kind === 'Parameter' && parameter.type !== undefined) {
+      binder.walk.type(binder, parameter.type, scope);
+    }
+  }
+  bindDefaults(binder, parameters, scope, (parameter) =>
+    binder.declareVariable(scope, parameter.name, parameter),
+  );
+}
+
+/**
+ * The defaults of a struct's or a variant's fields, each seeing the fields before it (§3.1). The
+ * fields' names were checked, and their types bound, with the fields.
+ */
+function bindFieldDefaults(
+  binder: LocalBinder,
+  fieldsFunction: FunctionDeclaration | undefined,
+  scope: Scope,
+): void {
+  if (fieldsFunction === undefined) {
+    return;
+  }
+  const inner = Scope.nested(scope);
+  bindDefaults(binder, fieldsFunction.parameters, inner, (field) => {
+    const entity = { kind: 'variable', name: field.name, owner: field } as const;
+    binder.record(field.name, entity);
+    inner.define(field.name.text, entity);
+  });
+}
+
+/** Each parameter is defined after its default, which sees only the ones before it. */
+function bindDefaults(
+  binder: LocalBinder,
+  parameters: readonly (Parameter | Invalid)[],
+  scope: Scope,
+  define: (parameter: Parameter) => void,
+): void {
+  for (const parameter of parameters) {
     if (parameter.kind === 'Parameter') {
-      if (parameter.type !== undefined) {
-        binder.walk.type(binder, parameter.type, scope);
-      }
       if (parameter.defaultValue !== undefined) {
         binder.walk.expression(binder, parameter.defaultValue, scope);
       }
-      const { name } = parameter;
-      binder.declareVariable(scope, name, parameter);
+      define(parameter);
     }
   }
 }
@@ -86,8 +120,11 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
     bindTargets(binder, node, scope, undefined);
   },
   ExternConstantDeclaration: (binder, node, scope) => binder.walk.type(binder, node.type, scope),
-  StructDeclaration: (binder, node, scope) =>
-    bindFields(binder, node.fields, typeParameterScope(binder, node.typeParameters, scope)),
+  StructDeclaration: (binder, node, scope) => {
+    const inner = typeParameterScope(binder, node.typeParameters, scope);
+    bindFields(binder, node.fields, inner);
+    bindFieldDefaults(binder, fieldsFunctionOf(node), inner);
+  },
   ExternStructDeclaration: (binder, node, scope) => {
     typeParameterScope(binder, node.typeParameters, scope);
   },
@@ -117,6 +154,7 @@ function bindEnum(binder: LocalBinder, node: EnumDeclaration, scope: Scope): voi
     if (variant.kind === 'Variant') {
       binder.annotations(variant, inner);
       bindFields(binder, variant.fields, inner);
+      bindFieldDefaults(binder, fieldsFunctionOf(node, variant), inner);
     }
   }
 }

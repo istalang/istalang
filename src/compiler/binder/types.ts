@@ -54,7 +54,9 @@ export function bindFields(
     'value',
   );
   for (const field of declared) {
-    bindType(binder, field.type, scope);
+    if (field.type !== undefined) {
+      bindType(binder, field.type, scope);
+    }
     binder.annotations(field, scope);
   }
 }

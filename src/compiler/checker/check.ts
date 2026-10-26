@@ -126,21 +126,14 @@ export interface TargetBinding {
 }
 
 /**
- * Where a struct literal's field gets its value (§3.1): an expression of the literal, or the field
- * of that position in its leading spread's value.
+ * Where a struct literal's field gets its value (§3.1): an expression of the literal, the field of
+ * that position in its leading spread's value, or its default, which `call` computes from the
+ * fields before it (syntax/field-defaults.ts).
  */
 export type FieldSource =
   | { readonly kind: 'value'; readonly value: Expression }
   | { readonly kind: 'spread'; readonly from: Expression; readonly index: number }
-  | TraceSource;
-
-/**
- * `Error`'s `trace` left out of its literal (§3.12): the call the checker resolved at the literal
- * gives it, writing the frames where the `Error` is built.
- */
-interface TraceSource {
-  readonly kind: 'trace';
-}
+  | { readonly kind: 'default'; readonly call: FunctionCall };
 
 /**
  * One test a value must pass to match a pattern (§3.11), on its part at `path` (field or tuple
@@ -219,8 +212,7 @@ export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCa
  * Nodes a call can be written as: a call, an operator that calls a function (§3.9), `x$`, which
  * calls `unwrap`, indexing, which calls `index`, an assignment, whose compound operator or
  * `x$ = v` calls a function, a pattern's comparison such as `amount > 1000`, which calls `compare`
- * (§3.11), and an `Error` literal that leaves out `trace`, which calls the extern writing it (§3.12).
- * A function named as a value (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the expression
+ * (§3.11). A function named as a value (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the expression
  * naming it, for the function its closure runs.
  */
 export type CallSite = NodeOf<
@@ -231,7 +223,6 @@ export type CallSite = NodeOf<
   | 'Assignment'
   | 'Index'
   | 'CompareFieldPattern'
-  | 'StructLiteral'
   | 'Identifier'
   | 'MemberAccess'
 >;

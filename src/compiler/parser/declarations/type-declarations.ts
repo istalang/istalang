@@ -22,13 +22,13 @@ import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { type ItemRules, type Items, parseBody, parseItemEntries } from '../layout.ts';
 import type { Parser } from '../parser.ts';
-import { fieldRules, parseField, parseFieldEntries } from '../parts/structs.ts';
+import { declaredFieldRules, parseField, parseFieldEntries } from '../parts/structs.ts';
 import { parseFunction } from './functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
 export function parseStruct(parser: Parser): StructDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
-  const fields = parseMembers(parser, fieldRules, start);
+  const fields = parseMembers(parser, declaredFieldRules, start);
   const span = parser.spanFrom(start);
   return { kind: 'StructDeclaration', span, name, typeParameters, fields };
 }
@@ -95,7 +95,7 @@ function parseMembers<Item extends FieldDeclaration | Variant | FunctionDeclarat
 /** `Expired`, or `Rejected { by: string; reason: string }`. */
 function parseVariant(parser: Parser): Variant {
   const name = parser.identifier('a variant name');
-  const fields = parser.cursor.at('{') ? parseFieldEntries(parser).value : [];
+  const fields = parser.cursor.at('{') ? parseFieldEntries(parser, declaredFieldRules).value : [];
   return { kind: 'Variant', span: parser.spanFrom(name.span.start), name, fields };
 }
 

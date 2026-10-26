@@ -15,6 +15,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import type { EnumDeclaration } from '../../syntax/declarations.ts';
 import type { MemberAccess, NoneLiteral, StructLiteral } from '../../syntax/expressions.ts';
+import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -95,6 +96,7 @@ export function checkVariantLiteral(
     .find((candidate) => candidate.name === chosen.variant.name.text)?.fields;
   const shape = {
     owner: chosen.enum,
+    defaults: fieldsFunctionOf(chosen.enum, chosen.variant),
     known: knownArguments(context, typeNode, chosen.enum, expected),
     fields: fields ?? [],
     typeOf: (typeArguments: readonly Type[]) => enumType(context, chosen.enum, typeArguments),

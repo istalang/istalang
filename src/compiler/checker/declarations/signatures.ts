@@ -7,13 +7,16 @@
  * - An async function declares its real result, `Future<T>`; its body produces the `T` (§3.3).
  * - A parameter's default (§3.3) is checked as part of one body per function, in which each
  *   default sees the parameters before it (`DefaultValues`). A parameter with a default may omit
- *   its type, which is then the default's. Every parameter after one with a default has one too.
+ *   its type, which is then the default's. Every parameter after one with a default has one too,
+ *   since a call gives its arguments in order; a struct's or a variant's fields, read as
+ *   parameters (syntax/field-defaults.ts), are named in a literal, so any of them may have one.
  *   Rest parameters are sugar the checker doesn't expand yet.
  */
 
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions.ts';
+import { isFieldsFunction } from '../../syntax/field-defaults.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -38,6 +41,7 @@ export function declaredParameters(
   defaults: DefaultValues | undefined,
 ): readonly SignatureParameter[] {
   let afterDefault = false;
+  const inOrder = !isFieldsFunction(declaration);
   return declaration.parameters.flatMap((node) => {
     if (node.kind === 'Invalid') {
       return [];
@@ -47,7 +51,7 @@ export function declaredParameters(
     }
     const declared = node.type === undefined ? undefined : checker.resolveType(module, node.type);
     const { defaultValue } = node;
-    if (defaultValue === undefined && afterDefault && !node.isRest) {
+    if (defaultValue === undefined && afterDefault && inOrder && !node.isRest) {
       checker.report(module, checkerDiagnostics.defaultMissing(node.name.span, node.name.text));
     }
     afterDefault ||= defaultValue !== undefined;

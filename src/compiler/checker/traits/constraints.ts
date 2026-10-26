@@ -17,6 +17,7 @@ import type {
   TraitDeclaration,
   TypeParameter,
 } from '../../syntax/declarations.ts';
+import { writtenType } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
 import type { RequirementOrigin } from '../check.ts';
@@ -144,7 +145,7 @@ export function requiredFieldType(
   constrained: Type,
 ): Type {
   return substitute(
-    checker.resolveType(checker.moduleOf(constraint.trait), field.type),
+    checker.resolveType(checker.moduleOf(constraint.trait), writtenType(field)),
     constraintSubstitution(constraint, constrained),
   );
 }

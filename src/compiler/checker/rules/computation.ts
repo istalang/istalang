@@ -9,8 +9,14 @@
  * A spread spreads only an array or a map compile time built itself: its elements, or its entries
  * as tuples. Anything else iterable is iterated by `iterate` when the program runs, and computing
  * it here would be a second home for what the runtime's `iterate` does.
+ *
+ * A field a struct literal leaves to its default (§3.1) is computed by the same walk over the
+ * default, in its declaration's module, read through the literal's type arguments, with the fields
+ * before it as computed: it is computed when the default is, and refused where it isn't, as a
+ * default calling a function is.
  */
 
+import type { VariableOwner } from '../../binder/entities.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -21,19 +27,24 @@ import type {
 } from '../../syntax/expressions.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
-import type { CheckedBody, CheckedConstant } from '../check.ts';
+import type { CheckedBody, CheckedConstant, FieldSource, FunctionCall } from '../check.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../constant-form.ts';
-import type { FieldMember, Type } from '../types/type.ts';
+import type { CheckerContext } from '../context.ts';
+import { typeParametersOf } from '../types/resolve-type.ts';
+import { errorType, type Substitution, substitute } from '../types/type.ts';
 
 /**
- * What the walk reads: the constant computed, its initializer's checking, struct layouts, and the
- * other constants. An annotation's value (§3.16) is computed the same way, owned by no constant,
- * so it can't hold a lambda.
+ * What the walk reads: the checker's layouts and field defaults, the constant computed, its
+ * initializer's checking, and the other constants. An annotation's value (§3.16) is computed the
+ * same way, owned by no constant, so it can't hold a lambda, and so is a field's default.
  */
 export interface ComputationScope {
+  readonly checker: Pick<
+    CheckerContext,
+    'fieldsOf' | 'parametersOf' | 'defaultsOf' | 'moduleOf' | 'bindings' | 'constantNamed'
+  >;
   readonly constant: VariableDeclaration | undefined;
   readonly checked: CheckedBody;
-  readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
   readonly constantNamed: (name: Identifier) => CheckedConstant | undefined;
 }
 
@@ -116,7 +127,7 @@ class Computation {
   /** A struct in any literal form, its fields in declaration order. */
   #struct(node: StructLiteral): Outcome {
     const type = this.#scope.checked.typeOf(node);
-    const fields = this.#scope.fieldsOf(type);
+    const fields = this.#scope.checker.fieldsOf(type);
     if (fields === undefined || (type.kind !== 'nominal' && type.kind !== 'anonymous')) {
       return unknown;
     }
@@ -129,16 +140,71 @@ class Computation {
     }
     const forms: ConstantForm[] = [];
     for (const source of sources) {
-      if (source.kind === 'trace') {
-        return refused(node);
-      }
-      const part = source.kind === 'value' ? this.of(source.value) : this.#spreadField(source);
+      const part = this.#field(node, source, forms);
       if (part.kind !== 'computed') {
         return part;
       }
       forms.push(part.form);
     }
     return computed({ kind: 'struct', type, fields: forms });
+  }
+
+  /**
+   * A field of the struct `literal`, from its `source`, after the fields `earlier`. A default it
+   * refuses is refused at the literal, which runs it, where its declaration may be elsewhere.
+   */
+  #field(literal: StructLiteral, source: FieldSource, earlier: readonly ConstantForm[]): Outcome {
+    switch (source.kind) {
+      case 'value':
+        return this.of(source.value);
+      case 'spread':
+        return this.#spreadField(source);
+      case 'default': {
+        const part = this.#default(source.call, earlier);
+        return part.kind === 'refused' ? refused(literal) : part;
+      }
+      default: {
+        const unhandled: never = source;
+        return unhandled;
+      }
+    }
+  }
+
+  /** The default `call` gives a field, from the fields before it, `earlier`. */
+  #default(call: FunctionCall, earlier: readonly ConstantForm[]): Outcome {
+    const { checker } = this.#scope;
+    const declaration = call.function;
+    const parameters = checker.parametersOf(declaration);
+    const value = parameters[call.arity]?.node.defaultValue;
+    const checked = checker.defaultsOf(declaration);
+    if (value === undefined || checked === undefined) {
+      return unknown;
+    }
+    const module = checker.moduleOf(declaration);
+    const substitution: Substitution = new Map(
+      typeParametersOf(declaration.typeParameters).map((parameter, index) => [
+        parameter,
+        call.typeArguments[index] ?? errorType,
+      ]),
+    );
+    const fields = new Map<VariableOwner, CheckedConstant>(
+      parameters
+        .slice(0, call.arity)
+        .map((parameter, index) => [
+          parameter.node,
+          { type: substitute(parameter.type, substitution), form: earlier[index] },
+        ]),
+    );
+    return new Computation({
+      checker,
+      constant: undefined,
+      checked: instantiated(checked, substitution),
+      constantNamed: (name) => {
+        const entity = checker.bindings.entityOf(module, name);
+        const field = entity?.kind === 'variable' ? fields.get(entity.owner) : undefined;
+        return field ?? checker.constantNamed(module, name);
+      },
+    }).of(value);
   }
 
   /** The field at `index` of a spread value, which must itself compute to a struct. */
@@ -225,10 +291,32 @@ class Computation {
   /** A struct without fields named bare (§3.1); any other name that isn't a constant is refused. */
   #bareStruct(node: Identifier): Outcome {
     const type = this.#scope.checked.typeOf(node);
-    return type.kind === 'nominal' && this.#scope.fieldsOf(type)?.length === 0
+    return type.kind === 'nominal' && this.#scope.checker.fieldsOf(type)?.length === 0
       ? computed({ kind: 'struct', type, fields: [] })
       : refused(node);
   }
+}
+
+/** `body` read through `substitution`: its types, and the type arguments of the defaults it runs. */
+function instantiated(body: CheckedBody, substitution: Substitution): CheckedBody {
+  return {
+    ...body,
+    typeOf: (node) => substitute(body.typeOf(node), substitution),
+    sourcesOf: (literal) =>
+      body.sourcesOf(literal)?.map((source) =>
+        source.kind === 'default'
+          ? {
+              ...source,
+              call: {
+                ...source.call,
+                typeArguments: source.call.typeArguments.map((type) =>
+                  substitute(type, substitution),
+                ),
+              },
+            }
+          : source,
+      ),
+  };
 }
 
 /** The items a spread of `form`, an array or a map, gives: its elements, or its entries as tuples. */
