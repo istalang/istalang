@@ -20,8 +20,9 @@ import { encodeJson } from '../../definition/codec.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { Tables } from '../../definition/tables.ts';
-import type { TypeDefinition, TypeReference } from '../../definition/types.ts';
+import type { ExternRole, TypeDefinition, TypeReference } from '../../definition/types.ts';
 import { type Value, value } from '../../definition/values.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
@@ -94,6 +95,14 @@ export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 
 
 /** A type with an entry of its own: a declared struct, enum or extern type, or an anonymous struct. */
 type EntryType = NominalType | AnonymousStructType;
+
+/** The std type each role of an extern type entry is (definition/types.ts). */
+const roleDeclarations = {
+  cell: wellKnown.shared,
+  future: wellKnown.future,
+} satisfies Record<ExternRole, WellKnownDeclaration>;
+
+const externRoles = Object.keys(roleDeclarations) as ExternRole[];
 
 export class DefinitionTables {
   readonly #checker: Checker;
@@ -337,19 +346,29 @@ export class DefinitionTables {
             fields: this.#fields(variant.fields),
           })),
         };
-      case 'ExternStructDeclaration':
+      case 'ExternStructDeclaration': {
+        const role = this.#roleOf(type.entity);
         return {
           kind: 'extern',
           name,
           arguments: typeArguments,
           sendable: declaration.isSendable,
           disposal: this.#disposal(this.#checker.disposalOf(type)),
+          ...(role === undefined ? {} : { role }),
         };
+      }
       default: {
         const unhandled: never = declaration;
         return unhandled;
       }
     }
+  }
+
+  /** The role of the extern type `entity` declares: what the runtime makes of its values. */
+  #roleOf(entity: NominalType['entity']): ExternRole | undefined {
+    return externRoles.find(
+      (role) => this.#checker.wellKnownEntity(roleDeclarations[role]) === entity,
+    );
   }
 
   /** A type entry's disposal: a declared `dispose` is the entry of its instance (§7). */

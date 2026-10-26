@@ -180,9 +180,9 @@ describe('lowering', () => {
     const shared = cells.map((cell) => definition.types[cell.type]);
     expect(cells).toHaveLength(2);
     expect(cells.map((cell) => cell.register)).not.toContain(0);
-    expect(shared.map((type) => type?.kind === 'extern' && type.name)).toEqual([
-      'prelude.Shared',
-      'prelude.Shared',
+    expect(shared.map((type) => type?.kind === 'extern' && [type.name, type.role])).toEqual([
+      ['prelude.Shared', 'cell'],
+      ['prelude.Shared', 'cell'],
     ]);
     const bump = definition.functions.find((entry) => entry.name === 'main.bump');
     expect(bump?.kind === 'code' && bump.cells).toEqual([]);

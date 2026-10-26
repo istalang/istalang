@@ -19,8 +19,8 @@
  */
 
 import { JsonError, jsonOfPlain, jsonTypeOf, plainOfJson } from '../../definition/json-values.ts';
+import { hasRole } from '../../definition/types.ts';
 import type { Value } from '../../definition/values.ts';
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, NativeHostFutures, WithResources } from '../natives.ts';
 import { type Native, type Natives, Panic } from '../natives.ts';
 
@@ -74,10 +74,8 @@ function hostNative(extern: HostExtern): Native<NativeContext & NativeHostFuture
 }
 
 /** Whether the extern called returns a future the host fills. */
-function returnsFuture(context: NativeContext): boolean {
-  const { resultType, types } = context;
-  const result = resultType === undefined ? undefined : types[resultType];
-  return result?.kind === 'extern' && result.name === qualifiedName(wellKnown.future);
+function returnsFuture({ resultType, types }: NativeContext): boolean {
+  return resultType !== undefined && hasRole(types, resultType, 'future');
 }
 
 function futureOf(

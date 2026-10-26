@@ -22,7 +22,7 @@ import { takesReference } from '../../definition/functions.ts';
 import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import { valueProblems } from '../../definition/references.ts';
-import { isSharedCellType, sharedTypeName } from '../../definition/types.ts';
+import { hasRole } from '../../definition/types.ts';
 import { handleTarget } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { Refusal } from '../refusal.ts';
@@ -62,9 +62,7 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
       ),
     ),
   cell: (definition, cell) =>
-    isSharedCellType(definition.types, cell.type)
-      ? []
-      : [`cell ${cell.id} is not a ${sharedTypeName}`],
+    hasRole(definition.types, cell.type, 'cell') ? [] : [`cell ${cell.id} is not of a cell type`],
   resource: (definition, resource) =>
     definition.types[resource.type]?.kind === 'extern'
       ? []

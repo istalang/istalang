@@ -17,7 +17,7 @@ import { closureProblem, constructionProblem, instructionProblem } from './instr
 import { terminates } from './instructions/flow.ts';
 import { type Operands, operandsOf } from './instructions/instruction.ts';
 import type { Tables } from './tables.ts';
-import { isSharedCellType, type TypeDefinition, typesIn } from './types.ts';
+import { hasRole, type TypeDefinition, typesIn } from './types.ts';
 import { type CompositeValue, childValues, handlesIn, isComposite, type Value } from './values.ts';
 
 type Path = readonly (string | number)[];
@@ -144,8 +144,8 @@ function checkCode(context: Context, entry: CodeFunction, path: Path): void {
     if (!inRange(context, { registers: [cell.register], types: [cell.type] }, at, frame)) {
       return;
     }
-    if (!isSharedCellType(context.tables.types, cell.type)) {
-      context.report(at, `Type ${cell.type} is not a Shared<T> entry.`);
+    if (!hasRole(context.tables.types, cell.type, 'cell')) {
+      context.report(at, `Type ${cell.type} is not a cell type.`);
     }
   });
   const last = entry.instructions.at(-1);

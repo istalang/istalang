@@ -296,6 +296,7 @@ describe('definition format', () => {
           arguments: [{ kind: 'primitive', name: 'int' }],
           sendable: false,
           disposal: { kind: 'function', function: 99 },
+          role: 'cell',
         });
       },
       'function 99 is out of range (5)',
@@ -324,11 +325,11 @@ describe('definition format', () => {
       'functions[4].instructions[12]',
     ],
     [
-      'a cell whose type is not a Shared<T> entry',
+      'a cell whose type is not a cell type',
       (json) => {
         at(json, 'functions', 4).cells = [{ register: 0, type: 0 }];
       },
-      'Type 0 is not a Shared<T> entry',
+      'Type 0 is not a cell type',
       'functions[4].cells[0]',
     ],
   ])('refuses %s', (_case, edit, problem, where) => {

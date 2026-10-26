@@ -19,11 +19,14 @@
  * Only extern types can be disposable (spec §7), and each says how: not at all, by the runtime
  * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Shared<Lease>)`
  * makes every `Shared<Lease>` disposable, and the inbox module's every `Revertible<T>`.
+ *
+ * Where the runtime must know what an extern type's values are beyond what its natives do with
+ * them, the entry says so by its `role`, which lowering sets from the checker's entities: no rule
+ * of the runtime depends on how a std module spells a name.
  */
 
 import { z } from 'zod';
 import { primitiveNames } from '../language/primitives.ts';
-import { qualifiedName, wellKnown } from '../language/well-known.ts';
 import { functionId, typeId } from './operands.ts';
 import { value } from './values.ts';
 
@@ -102,35 +105,40 @@ const disposal = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('function'), function: functionId }),
 ]);
 
+/**
+ * What the runtime makes of an extern type's values: a `cell` type is every `Shared<T>`, the type
+ * of the cells variables live in (spec §3.7, §3.14); a `future` type is every `Future<T>`, which a
+ * host's extern returning one gives back pending (§9). Any other extern type has none.
+ */
+const externRole = z.enum(['cell', 'future']);
+
 /** A type the runtime or host implements, such as `prelude.Array<int>` or a host `Queue<T>`. */
 const external = z.strictObject({
   kind: z.literal('extern'),
   ...identity,
   sendable: z.boolean(),
   disposal,
+  role: externRole.optional(),
 });
+
+export type ExternRole = z.output<typeof externRole>;
 
 export const typeDefinition = z.discriminatedUnion('kind', [struct, enumeration, external]);
 
 export type TypeDefinition = z.output<typeof typeDefinition>;
 
-/** The extern type every cell is an instantiation of (spec §3.7, §3.14). */
-export const sharedTypeName = qualifiedName(wellKnown.shared);
-
 /**
  * Whether a value of the host type entry `type` of `types` is a resource object behind a handle
- * (§7): a `dispose` makes it disposable, so its values have an identity of their own. Any other
- * host type's values are its host's JSON, as plain as an int.
+ * (§7): a `dispose` makes it disposable, so its values have an identity of their own, unless it is
+ * a cell's. Any other host type's values are its host's JSON, as plain as an int.
  */
 export function isResourceType(types: readonly TypeDefinition[], type: number): boolean {
   const entry = types[type];
-  return (
-    entry?.kind === 'extern' && entry.disposal.kind === 'function' && entry.name !== sharedTypeName
-  );
+  return entry?.kind === 'extern' && entry.disposal.kind === 'function' && entry.role !== 'cell';
 }
 
-/** Whether type entry `type` of `types` is a `Shared<T>` instantiation: the type a cell must have. */
-export function isSharedCellType(types: readonly TypeDefinition[], type: number): boolean {
+/** Whether type entry `type` of `types` has `role`. */
+export function hasRole(types: readonly TypeDefinition[], type: number, role: ExternRole): boolean {
   const entry = types[type];
-  return entry?.kind === 'extern' && entry.name === sharedTypeName;
+  return entry?.kind === 'extern' && entry.role === role;
 }

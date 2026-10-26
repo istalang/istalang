@@ -138,6 +138,7 @@ export const broadcastDefinition: Definition = {
       arguments: [unit],
       sendable: false,
       disposal: { kind: 'runtime' },
+      role: 'future',
     },
   ],
   constants: [0n, 1n],

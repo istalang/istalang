@@ -19,12 +19,7 @@ import {
   type Sizes,
   span,
 } from './instructions/instruction.test-kit.ts';
-import {
-  isSharedCellType,
-  sharedTypeName,
-  type TypeDefinition,
-  type TypeReference,
-} from './types.ts';
+import { hasRole, type TypeDefinition, type TypeReference } from './types.ts';
 import { valueArbitrary } from './values.test-kit.ts';
 
 function typeReference(types: number): fc.Arbitrary<TypeReference> {
@@ -80,7 +75,7 @@ function typeDefinition(sizes: Sizes): fc.Arbitrary<TypeDefinition> {
       .map((parts) => ({ kind: 'enum' as const, ...parts })),
     fc
       .record({
-        name: fc.oneof(fc.constant(sharedTypeName), fc.string()),
+        name: fc.string(),
         arguments: typeArguments,
         sendable: fc.boolean(),
         disposal: fc.oneof(
@@ -88,8 +83,13 @@ function typeDefinition(sizes: Sizes): fc.Arbitrary<TypeDefinition> {
           fc.constant({ kind: 'runtime' as const }),
           index(sizes.functions).map((fn) => ({ kind: 'function' as const, function: fn })),
         ),
+        role: fc.option(fc.constantFrom('cell' as const, 'future' as const), { nil: undefined }),
       })
-      .map((parts) => ({ kind: 'extern' as const, ...parts })),
+      .map(({ role, ...parts }) => ({
+        kind: 'extern' as const,
+        ...parts,
+        ...(role === undefined ? {} : { role }),
+      })),
   );
 }
 
@@ -146,7 +146,7 @@ function body(
     return fc.constant(entry);
   }
   const sharedTypes = scope.types.flatMap((_type, id) =>
-    isSharedCellType(scope.types, id) ? [id] : [],
+    hasRole(scope.types, id, 'cell') ? [id] : [],
   );
   const cellsOfFrame =
     sharedTypes.length === 0
