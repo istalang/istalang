@@ -71,6 +71,6 @@ D. Two ∥ structural debt forks before 6: runtime and IR (D80, D78, D81), check
 **M7 — Language service and LSP.** *Done when:* every provider answers correctly on corpus fixtures, and the VSCode extension starts the server.
 1. Workspace snapshots, diagnostics, symbols, folding, syntactic semantic tokens, and formatting.
 2. Hover, go-to-definition, references, rename, completion, signature help, and inlay hints for inferred types.
-3. `editors/vscode`: the client and the TextMate grammar.
+3. `.vscode/extensions/ista/`: the client, beside the TextMate grammar already there.
 
 **M8 — Packages.** `ista.json`, minimal version selection, the lockfile, `ista vendor`/`verify` and the vendor resolver. *Done when:* builds are reproducible from the vendor folder, and `verify` catches hand edits.
