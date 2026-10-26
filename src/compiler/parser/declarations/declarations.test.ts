@@ -1,7 +1,7 @@
 /**
  * Declaration grammar (§3): imports, structs (indented, braced, bare, with the indented field
- * sugar), enums, traits, type aliases, every extern form, static functions, type parameters with
- * constraints and defaults, and the top-level-only rule for statements.
+ * sugar), enums, traits, type aliases, handles, every extern form, static functions, type
+ * parameters with constraints and defaults, and the top-level-only rule for statements.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -88,8 +88,23 @@ describe('type declarations', () => {
       'type Entries<T>= Array<T>',
       `(TypeAliasDeclaration Entries [${typeParameter('T')}] (NamedType [Array] [${named('T')}]))`,
     ],
+    [
+      'handle Inbox<T> of InboxState<T>',
+      `(HandleDeclaration Inbox [${typeParameter('T')}] (NamedType [InboxState] [${named('T')}]))`,
+    ],
+    ['handle Counter of int', `(HandleDeclaration Counter [] ${int})`],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));
+  });
+
+  it("reports a handle without 'of' once", () => {
+    expect(reported('module', 'handle Counter int')).toEqual(reportedOnce(expected.code, 'int'));
+  });
+
+  it('reads `handle` as a name where no declared name follows it', () => {
+    expect(dumpClean('module', 'const handle = 1')).toBe(
+      moduleOf('(VariableDeclaration [(NamePattern [handle])] _ 1)'),
+    );
   });
 });
 

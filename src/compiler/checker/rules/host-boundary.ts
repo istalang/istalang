@@ -8,9 +8,6 @@
  * `&`. An extern constant is read once and the same value given to every read (§3.6), so it holds
  * no resource, whose identity each read would share. A std module's externs are the runtime's own
  * and take values as they are.
- *
- * A result may instead be a host handle (host-externs.ts), whose fields' functions each take and
- * give what any extern does.
  */
 
 import type { ModuleId } from '../../program/program.ts';
@@ -18,7 +15,7 @@ import type { ExternConstantDeclaration, FunctionDeclaration } from '../../synta
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { hostFilledOf, hostHandleOf, isHostExtern } from '../host-externs.ts';
+import { isHostExtern } from '../host-externs.ts';
 import { type JsonDirection, jsonTraits } from '../json-form.ts';
 import { meets } from '../resolution/conformance.ts';
 import { wellKnownConstraint } from '../traits/constraints.ts';
@@ -46,32 +43,16 @@ export function checkHostBoundary(
     }
     return;
   }
-  /** Checks that what a call takes crosses to the host, each reported where `nodeOf` says. */
-  const takes = (
-    taken: readonly { readonly type: Type; readonly reference: boolean }[],
-    nodeOf: (index: number) => NodeOf<string>,
-  ): void => {
-    for (const [index, { type, reference }] of taken.entries()) {
-      if (reference) {
-        checker.report(module, checkerDiagnostics.hostReference(nodeOf(index).span));
-      } else {
-        crossing(nodeOf(index), type, 'write');
-      }
+  for (const { type, reference, node: parameter } of checker.parametersOf(node)) {
+    const at = parameter ?? node.name;
+    if (reference) {
+      checker.report(module, checkerDiagnostics.hostReference(at.span));
+    } else {
+      crossing(at, type, 'write');
     }
-  };
-  const parameters = checker.parametersOf(node);
-  takes(parameters, (index) => parameters[index]?.node ?? node.name);
+  }
   const result = checker.resultOf(node);
-  const resultAt = node.returnType ?? node.name;
-  const handle = hostHandleOf(checker, result);
-  if (handle === undefined) {
-    crossing(resultAt, futureArgument(checker, result) ?? result, 'read');
-    return;
-  }
-  for (const { type: field } of handle.fields) {
-    takes(field.parameters, () => resultAt);
-    crossing(resultAt, hostFilledOf(checker, field) ?? field.result, 'read');
-  }
+  crossing(node.returnType ?? node.name, futureArgument(checker, result) ?? result, 'read');
 }
 
 /**

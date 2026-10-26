@@ -69,14 +69,6 @@ its instance is numbered by, so its native sees only JSON:
   `inspect` shows waiting at the extern's declaration. The host fills the future later
   (`Runtime.fill`), which runs the waiting wrapper in the same call, so JSON that doesn't decode
   (`_hostInput`, `_refuse`) fails the host's call and nothing commits.
-- An extern returning a host handle, a `Shared<S>` whose struct has only function fields
-  (`checker/host-externs.ts`, `hostHandleOf`), as the inbox module's `Revertible<T>` is,
-  takes JSON naming the handle from its native. The wrapper captures it in a closure for each
-  field, whose entry calls that field's own native, keyed `<extern key>.<field>`
-  (`handleFieldKey`), with the JSON first and then its arguments, read back as any wrapper reads;
-  the wrapper shares the struct through the json module's `_hostHandle`. The host thus learns that
-  a revertible send was released when its `retract` is called, by the JSON it named the send with,
-  which the closure keeps across commits.
 - An extern constant is read through an entry that decodes the native's value; the runtime calls
   the native once per instance and pins the value in the snapshot (`pinned`).
 - A host type a `dispose` makes disposable (an extern its host implements, or code passing the

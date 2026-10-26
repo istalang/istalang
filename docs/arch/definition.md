@@ -31,7 +31,7 @@ Both formats were written for the whole language before any of it compiled, so t
 
 An execution is a stack of frames. A frame's registers are laid out as parameters, then a closure's captures, then locals and temporaries.
 
-- **`cells`** lists registers that hold a shared cell, a variable passed by `&` or a `let` a closure captured (spec §3.14), each with the `Shared<T>` type entry the cell is created as, so its disposability is known. Reads and writes go through the cell, and a cell outlives its block while a call or closure still holds it (spec §3.7).
+- **`cells`** lists registers that hold a shared cell, a variable passed by `&` or a `let` a closure captured (spec §3.14), each with the `Shared<T>` type entry the cell is created as, so its disposability is known (a `Shared` never is: only the prelude could declare its `dispose`). Reads and writes go through the cell, and a cell outlives its block while a call or closure still holds it (spec §3.7).
 - **A reference parameter's register** holds a reference: a cell plus a path. References exist only in registers.
 - **`kept`** collects what `keep` moved there: `fn let`, `fn const` and `fn _` holdings, which last until the function returns even from a loop body.
 - **A stopped execution's pc** is always its `await` or `select`: the only instructions that wait, and the commit points (spec §5). A non-blocking `select` never waits.
@@ -113,9 +113,9 @@ A function entry's `name` is for traces to read; entries are identified by index
 
 A type entry is identified by its module-qualified declared `name` and its `arguments`, `time.Time` or `prelude.Optional` with `[int]`, so the runtime recognizes the types the boundary treats specially (spec §9) whatever their instantiation. An anonymous struct has no name.
 
-Only extern types can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures and slots; or a `function`, the entry of the declared `dispose`'s instance, called with a handle to the value, as for `Shared<Lease>`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a `dispose` a program declares, for a `Shared` instantiation or a host's extern type, is a `function`. A host value of an extern type with `function` disposal, a cell's aside, is a `resource` object behind a handle, which the boundary makes as the value arrives from the host and unwraps to its payload as it leaves. No list of disposable types is kept anywhere.
+Only extern entries can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures and slots; or a `function`, the entry of the declared `dispose`'s instance, called with a handle to the value, as for a handle `Lease`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a `dispose` a program declares, for a handle (spec §3.18) or a host's extern type, is a `function`. A host value of an extern type with `function` disposal, a cell's aside, is a `resource` object behind a handle, which the boundary makes as the value arrives from the host and unwraps to its payload as it leaves. No list of disposable types is kept anywhere.
 
-An extern or enum entry's `role` says what the runtime makes of its values where its natives alone don't: `cell` for every `Shared<T>`, the type a cell must have, `future` for every `Future<T>`, which a host's extern returning one gives back pending, and `json` for the json module's `Json`, which the json natives and the host boundary read and write (`definition/json-values.ts`). Lowering sets it from the checker's entities, and any other type has none, so no runtime rule depends on how a std module spells a type's name.
+An extern or enum entry's `role` says what the runtime makes of its values where its natives alone don't: `cell` for every handle (spec §3.18), `Shared<T>` included, the type a cell must have, `future` for every `Future<T>`, which a host's extern returning one gives back pending, and `json` for the json module's `Json`, which the json natives and the host boundary read and write (`definition/json-values.ts`). Lowering sets it from the checker's entities, and any other type has none, so no runtime rule depends on how a std module spells a type's name.
 
 Each module carries its line starts. The runtime has neither source text nor the compiler, yet it turns spans into locations for `Error.trace`, a panic's trace, `waitingAt()` and the operator's view.
 
@@ -128,7 +128,7 @@ Each module carries its line starts. The runtime has neither source text nor the
 - Status: `unstarted` (the call a new instance runs: its function, a closure's captures and the arguments), `active`, `panicked` (message, trace, segment start, and what a retry runs again: the call, when it panicked before its first commit, or what its host filled, when it panicked in the segment the fill ran), `finished` (outcome) or `terminated` (by its operator). What a host is told about an instance is derived from this status alone. A name with `/` is the runtime's. A spawned instance is written `unstarted`, named `<parent>/<n>`, before its parent's commit; `spawned` counts the instances an instance has spawned, which numbers the next.
 - `pinned`: each extern constant the instance read, by key, with the value it gave (spec §3.6).
 - `crashEveryAwait`: the instance's option, set when it starts (spec §10), so every runtime that wakes it re-runs its segments.
-- Objects, in ascending id order: `cell` (typed: every cell is a `Shared<T>`, an entry of the `cell` role), `slot` (value when full, waiting operations oldest first, one queue for every kind), `future` (resolved, or pending on a call, slot operation, timer, host, `futures.first` over other futures, or a weak reference's referent being disposed: `disposed()` and `disposing()`), `weakRef` (its target, until disposed or, for a call's, returned), `guard` (`defer`), `resource` (a host value of a disposable extern type), `mock`, `execution`.
+- Objects, in ascending id order: `cell` (typed: every cell is a handle's, an entry of the `cell` role), `slot` (value when full, waiting operations oldest first, one queue for every kind), `future` (resolved, or pending on a call, slot operation, timer, host, `futures.first` over other futures, or a weak reference's referent being disposed: `disposed()` and `disposing()`), `weakRef` (its target, until disposed or, for a call's, returned), `guard` (`defer`), `resource` (a host value of a disposable extern type), `mock`, `execution`.
 - `ready`: executions in the order they became ready.
 
 Disposability comes from an object's kind or type. Slots, futures, guards and mocks are disposed by the runtime, and an execution is stopped when its call future is. A cell or resource follows its type entry's `disposal`, so a restore knows which cells have a `dispose` to call. A `mock` records each call's arguments for `m.calls()`.
@@ -145,7 +145,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Anonymous struct type, `struct { … }`, an indented field block (§3.1) | a `struct` type entry of its own; two anonymous structs are never the same entry |
 | Recursive types (§3.1) | type references by index, so a type can name itself through the table |
 | `enum` declaration, `T?`, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation, with, for `json.Json`, its `role`; `Error` is a `struct` entry |
-| `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable`, `disposal` (§7) and, for `Shared` and `Future`, its `role` |
+| `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable`, `disposal` (§7) and, for `Future`, its `role` |
+| `handle H of S` (§3.18) | an `extern` type entry per instantiation, never sendable, with its `disposal` and the `cell` role; its `H.from`, `unwrap` and `rewrap` are extern entries bound to the natives `Shared`'s are bound to (`lowering/names.ts`, `nativeKeyOf`) |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
 | `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; derived codecs are compiled from the checker's derived forms, which read them |
@@ -176,7 +177,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Tuple element `t.0`, `t.0 = v` (§3.15) | `field` by position; `store` with a field step |
 | Generic functions and types (§3.5) | one entry or type per instantiation |
 | `&x` argument, reference parameter (§3.7) | a place argument; `parameters[i].reference`; `x` is in `cells`; `&m[k]` copies the element into a cell around the call (Places) |
-| `Shared(v)`, `x$`, `x.value`, `x$ = v`, `x$.f = v`, `&x$` (§3.7, §3.8, §3.9) | calls to `Shared.from`, `unwrap` and `rewrap`; a part write or a `&` unwraps into a temporary, changes it there and rewraps (Places) |
+| `H(v)`, `x$`, `x.value`, `x$ = v`, `x$.f = v`, `&x$` (§3.7, §3.9, §3.18) | calls to the handle's `H.from`, `unwrap` and `rewrap`; a part write or a `&` unwraps into a temporary, changes it there and rewraps (Places) |
 | Operators (§3.9) | a `call` to the resolved function |
 | `<`, `<=`, `>`, `>=` (§3.9) | a `compare` call, then `order` |
 | `==`, `!=` (§3.9) | `equal`, plus `not` for `!=` |
@@ -203,11 +204,11 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `await` (§5) | `await`, which commits first |
 | `runtime.commit()` (§3.8) | a call to an already-resolved future, then `await` |
 | Slots and their operations (§6) | calls to prelude externs that return futures |
-| Inbox, `futures`, `rpc`, `fanout` (§3.8, §6) | library code over slots: an `Inbox<T>` is a `Shared` of its state, one slot and a backlog, and `receive` is the slot's `take`; `futures.first` is the one extern, a `first` future |
+| Inbox, `futures`, `rpc`, `fanout` (§3.8, §6) | library code over slots: an `Inbox<T>` is a handle of its state, one slot and a backlog, and `receive` is the slot's `take`; `futures.first` is the one extern, a `first` future |
 | `defer f` (§7) | `defer`, into an unnamed register of the block |
 | `WeakRef`, `deref()`, `disposed()` (§7) | calls to prelude externs |
 | `worker.disposing()` (§7) | `currentCall` at the function's entry, into a hidden variable a nested function captures like any other, which the function's own name reads before a `.`; `disposing` is then an ordinary prelude method on that `_Call` handle |
-| `sendRevertible`, `Revertible<T>` (§6) | library code: a `Revertible<T>` is a `Shared` of its retraction, a `fn() -> unit`, which its declared `dispose` calls; an inbox retracts through a weak reference to itself, a host queue through its host (a host handle, docs/arch/boundary.md) |
+| `sendRevertible`, `Revertible<T>` (§6) | library code: a `Revertible<T>` is a handle of its retraction, a `fn() -> unit`, which its declared `dispose` calls; an inbox retracts through a weak reference to itself, a host queue by disposing the host's revertible send it holds (`Revertible.holding`), which tells its host |
 | `select`, `await select` (§8) | the case futures in source order, then `select`; per case: the future, the registers its expression created (`holds`), `bind` for `as`, and the target, where the case's `as` is a target its body declares; `otherwise` for the non-blocking form, which is `else`'s body. The `holds` are unnamed registers of the enclosing block, so the winner's last until it ends |
 | Prelude and standard-library functions: `push`, `at`, `get`, `length`, … (§3.8) | calls to their entries; runtime-backed ones are externs |
 | Versioning (§5) | an instance references its Definition's content hash for its whole life |

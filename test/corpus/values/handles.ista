@@ -1,0 +1,33 @@
+# outcome: "3 3 true false 8 counted"
+# A handle declaration (§3.18) is a type of its own whose values are handles to a cell: `Counter(v)`
+# makes one, `x$` and `x.value` read it, and `x$ = v` writes it, for every copy, while `==` tells
+# handles apart by identity. The functions it declares are found as written ones are: by name, and
+# as the witnesses generic code calls.
+
+struct Tally:
+  count: int
+  label: string
+
+handle Counter of Tally
+
+fn bump(self: Counter):
+  self$.count = self$.count + 1
+
+fn countOf<W is Wrapper<Tally>>(wrapper: W) -> int:
+  wrapper$.count
+
+async fn main() -> Future<string>:
+  const a = Counter(Tally{count: 1, label: "counted"})
+  const b = a
+  a.bump()
+  b$.count = b.value.count + 1
+  const other = Counter(a$)
+  rewrap(other, Tally{...unwrap(other), count: 8})
+  [
+    string(a$.count),
+    string(countOf(b)),
+    string(a == b),
+    string(a == other),
+    string(other.value.count),
+    b$.label,
+  ].join(" ")

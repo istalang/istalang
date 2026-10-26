@@ -9,26 +9,20 @@
  *   the wrapper of an extern returning `Future<T>` is async and gives `T`.
  * - The native entry is the extern as declared, bound by its declared key, with JSON for every
  *   parameter and result, so every instantiation of a generic extern shares one native.
- * - An extern returning a host handle (checker/rules/host-boundary.ts) gives the JSON naming it,
- *   which the wrapper captures in a function for each of the handle's fields. Calling one calls
- *   that field's own native, keyed after the extern's (`handleFieldKey`), with the JSON first and
- *   then its arguments, the way a wrapper calls its extern's native.
  * - Reading an extern constant is a call to its own wrapper, which decodes the native's value the
  *   same way; the runtime reads the native once per instance (§3.6).
  * - A failure names its path from the extern's qualified name: `purchase.chargeCard.receipt`.
  */
 
-import { handleFieldKey } from '../../../definition/extern-key.ts';
 import type { CodeFunction, FunctionDefinition } from '../../../definition/functions.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import { codecHelpers, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
-import { hostFilledOf, hostHandleOf } from '../../checker/host-externs.ts';
-import { type FunctionType, substitute, type Type } from '../../checker/types/type.ts';
+import type { Type } from '../../checker/types/type.ts';
 import { futureArgument } from '../../checker/types/well-known.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
-import { type FunctionInstance, substitutionOf } from '../instances.ts';
+import type { FunctionInstance } from '../instances.ts';
 import { keyOf, qualifiedNameOf, spelledType } from '../names.ts';
 import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../tables.ts';
 import { type CodecSite, codecCall } from './codec-calls.ts';
@@ -48,8 +42,6 @@ interface Lowering {
 interface HostCall {
   readonly site: CodecSite;
   readonly native: FunctionId;
-  /** JSON passed before the arguments: the handle's, for one of its functions. */
-  readonly leading: readonly Register[];
   readonly parameters: readonly Type[];
   readonly result: Type;
   /** What the host fills, when the native gives a future to fill. */
@@ -65,54 +57,14 @@ export function hostFunctionEntry(lowering: Lowering, instance: FunctionInstance
   const parameters = checker.parametersOf(declaration).map(({ type }) => type);
   const result = checker.resultOf(declaration);
   const code = new SynthesizedCode(lowering, declaration.name.span, parameters.length);
-  const native = tables.hostNativeIndex(declaration);
-  const header = tables.entryHeader(instance);
-  const handle = hostHandleOf(checker, substitute(result, substitutionOf(instance)));
-  if (handle === undefined) {
-    return wrapped(code, header, {
-      site,
-      native,
-      leading: [],
-      parameters,
-      result,
-      filled: futureArgument(checker, result),
-      path: qualifiedNameOf(checker, declaration),
-    });
-  }
-  const json = code.call(native, encoded(code, site, parameters));
-  const functions = handle.fields.map(({ name }) =>
-    code.closure(tables.handleFieldIndex(instance, name), [json]),
-  );
-  const state = code.struct(handle.state, functions);
-  code.return(code.call(checker.json.callOf(codecHelpers.hostHandle, [handle.state]), [state]));
-  return code.entry(header, false);
-}
-
-/** The function field `field` of the host handle `instance` returns holds: a call to its native. */
-export function handleFieldEntry(
-  lowering: Lowering,
-  instance: FunctionInstance,
-  field: string,
-): CodeFunction {
-  const { checker, tables } = lowering;
-  const { declaration } = instance;
-  const type = handleFieldOf(checker, checker.resultOf(declaration), field);
-  const parameters = type.parameters.map((parameter) => parameter.type);
-  const code = new SynthesizedCode(lowering, declaration.name.span, parameters.length, 1);
-  const header = tables.entryHeader(instance);
-  return wrapped(
-    code,
-    { ...header, name: `${header.name}.${field}` },
-    {
-      site: { module: checker.moduleOf(declaration), within: instance },
-      native: tables.handleFieldNativeIndex(declaration, field),
-      leading: code.captures,
-      parameters,
-      result: type.result,
-      filled: hostFilledOf(checker, type),
-      path: `${qualifiedNameOf(checker, declaration)}.${field}`,
-    },
-  );
+  return wrapped(code, tables.entryHeader(instance), {
+    site,
+    native: tables.hostNativeIndex(declaration),
+    parameters,
+    result,
+    filled: futureArgument(checker, result),
+    path: qualifiedNameOf(checker, declaration),
+  });
 }
 
 /** The entry reading a host's extern constant of type `type`. */
@@ -173,26 +125,6 @@ export function constantNativeEntry(
   };
 }
 
-/** The function field `field` of the host handle `declaration` returns, as its native sees it. */
-export function handleFieldNativeEntry(
-  lowering: Lowering,
-  declaration: FunctionDeclaration,
-  field: string,
-): FunctionDefinition {
-  const { checker } = lowering;
-  const native = nativeParts(lowering, declaration);
-  const function_ = handleFieldOf(checker, checker.resultOf(declaration), field);
-  return {
-    ...native.header,
-    name: `${native.header.name}.${field}`,
-    key: handleFieldKey(keyOf(checker, declaration, checker.parametersOf(declaration)), field),
-    declaredType: spelledType(checker, function_),
-    constant: false,
-    parameters: native.jsons(1 + function_.parameters.length),
-    result: native.given(hostFilledOf(checker, function_)),
-  };
-}
-
 /** What every native of `declaration` is made of: its header, and JSON for what crosses. */
 function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
   const { checker, tables } = lowering;
@@ -221,7 +153,7 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
 function wrapped(code: SynthesizedCode, header: EntryHeader, call: HostCall): CodeFunction {
   const { checker } = code;
   const { site, filled, path } = call;
-  const native = code.call(call.native, [...call.leading, ...encoded(code, site, call.parameters)]);
+  const native = code.call(call.native, encoded(code, site, call.parameters));
   code.return(
     filled === undefined
       ? received(
@@ -247,15 +179,6 @@ function encoded(
   return types.map((type, index) =>
     code.call(codecCall(code.checker, site, type, 'write'), [registerAt(code.parameters, index)]),
   );
-}
-
-/** The type of field `field` of the host handle `type`, which the checker let through as one. */
-function handleFieldOf(checker: Checker, type: Type, field: string): FunctionType {
-  const found = hostHandleOf(checker, type)?.fields.find(({ name }) => name === field);
-  if (found === undefined) {
-    unreachable(`No host handle with a function '${field}' was returned.`);
-  }
-  return found.type;
 }
 
 /** What the JSON in `json` holds, read as `inbound` says. */

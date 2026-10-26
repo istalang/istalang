@@ -11,8 +11,8 @@
  *
  * Its `Revertible` stands in for the real one: an extern type the runtime disposes, whose values
  * are `resource` objects, which is all the snapshot tests need of it. The compiler makes the inbox
- * module's `Revertible<T>` a host handle (spec §3.6) instead, which
- * src/runtime/boundary/host-handles.test.ts runs.
+ * module's `Revertible<T>` a handle (spec §3.18) holding the host's revertible send instead, which
+ * src/runtime/boundary/host-resources.test.ts runs.
  */
 
 import type { Definition } from '../../src/definition/definition.ts';

@@ -39,6 +39,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
+import { handleFunctionList } from '../syntax/declared-functions.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -150,7 +151,10 @@ export class ProgramChecker implements CheckerContext {
     }
   }
 
-  /** Notes `item` and what it declares inside (a trait's members, type parameters) as `module`'s. */
+  /**
+   * Notes `item` and what it declares inside (a trait's members, a handle's functions, type
+   * parameters) as `module`'s.
+   */
   #declare(item: Declaration, module: ModuleId): void {
     this.#modules.set(item, module);
     if ('typeParameters' in item) {
@@ -163,6 +167,11 @@ export class ProgramChecker implements CheckerContext {
         if (member.kind === 'FunctionDeclaration') {
           this.#declare(member, module);
         }
+      }
+    }
+    if (item.kind === 'HandleDeclaration') {
+      for (const declared of handleFunctionList(item)) {
+        this.#modules.set(declared, module);
       }
     }
   }
@@ -301,6 +310,10 @@ export class ProgramChecker implements CheckerContext {
 
   variantsOf(type: NominalType): readonly VariantMember[] | undefined {
     return this.#layouts.variantsOf(type);
+  }
+
+  stateOf(type: NominalType): Type | undefined {
+    return this.#layouts.stateOf(type);
   }
 
   disposalOf(type: NominalType): Disposal {

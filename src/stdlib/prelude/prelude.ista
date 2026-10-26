@@ -9,7 +9,6 @@ extern sendable struct Map<K, V>
 extern struct Slot<T>
 extern struct WeakRef<T is Disposable>
 extern struct Future<T>
-extern struct Shared<T>
 
 extern fn Slot.create<T>() -> Slot<T>
 extern fn put<T>(self: Slot<T>, value: T) -> Future<unit>
@@ -27,10 +26,9 @@ extern struct _Call
 extern fn disposing(self: _Call) -> Future<unit>
 
 # A Shared value (§3.8) is a handle to a cell: `Shared(v)` makes one, `x$` reads its value and
-# `x$ = v` writes it, for every copy of the handle.
-extern fn Shared.from<T>(value: T) -> Shared<T>
-extern fn unwrap<T>(self: Shared<T>) -> T
-extern fn rewrap<T>(self: Shared<T>, value: T)
+# `x$ = v` writes it, for every copy of the handle. Its functions are the ones every handle
+# declares (§3.18), whose natives are the runtime's cells.
+handle Shared<T> of T
 
 # Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
 # `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.

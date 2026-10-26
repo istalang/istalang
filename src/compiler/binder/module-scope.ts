@@ -3,7 +3,8 @@
  * anything inside a declaration is bound, so declarations may come in any order.
  *
  * - Top-level functions sharing a name form one overload set (§3.7). A static function
- *   (`fn Duration.zero()`) belongs to its type, so it defines no name here.
+ *   (`fn Duration.zero()`) belongs to its type, so it defines no name here. A handle's functions
+ *   join the sets as written ones do, where the handle is declared (§3.18).
  * - Any other name defined twice is an error. The message says which rule was broken: a name
  *   imported twice, an import clashing with a declaration (§3.13), or a plain duplicate.
  * - A named import is a placeholder until the program is linked; a namespace import is already
@@ -13,13 +14,13 @@
  *   a bare one chosen by expected type resolve to the same entity.
  */
 
-import {
-  type Declaration,
-  declaredFunctions,
-  type EnumDeclaration,
-  type FunctionDeclaration,
-  type Module,
+import type {
+  Declaration,
+  EnumDeclaration,
+  FunctionDeclaration,
+  Module,
 } from '../syntax/declarations.ts';
+import { declaredFunctions, handleFunctionList } from '../syntax/declared-functions.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import { binderDiagnostics } from './diagnostics.ts';
@@ -101,6 +102,12 @@ class TopLevelDefiner {
       case 'VariableDeclaration':
         for (const name of item.targets.flatMap(targetNames)) {
           this.#define(name, { kind: 'variable', name, owner: item }, 'declaration', 'value');
+        }
+        return;
+      case 'HandleDeclaration':
+        this.#define(item.name, { kind: 'type', declaration: item }, 'declaration', 'type');
+        for (const declared of handleFunctionList(item)) {
+          this.#defineFunction(declared);
         }
         return;
       default:

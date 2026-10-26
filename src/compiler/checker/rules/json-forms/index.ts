@@ -49,6 +49,9 @@ import { wellKnownArguments } from '../../types/well-known.ts';
 import { hostSite, silent, type UseSite, useSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
+/** Why a handle, a cell or a std module's other extern type, has no codec (§3.1). */
+const handleHasNoForm = 'a JSON form, which no handle has: it stays in its instance';
+
 /** What the unit needs beside the checker: field annotations. */
 export interface JsonFormSeams {
   readonly checker: CheckerContext;
@@ -169,6 +172,9 @@ export class JsonForms implements JsonCodecs {
     if (declaration.kind === 'ExternStructDeclaration') {
       return this.#host(type, declaration.isSendable, module);
     }
+    if (declaration.kind === 'HandleDeclaration') {
+      return { kind: 'none', reason: handleHasNoForm };
+    }
     if (declaration.kind === 'StructDeclaration') {
       return this.#record(checker.fieldsOf(type) ?? [], module);
     }
@@ -192,7 +198,7 @@ export class JsonForms implements JsonCodecs {
       kind: 'none',
       reason: isHost
         ? 'a JSON form, which a host type has when declared sendable or disposable'
-        : 'a JSON form, which no handle has: it stays in its instance',
+        : handleHasNoForm,
     };
   }
 

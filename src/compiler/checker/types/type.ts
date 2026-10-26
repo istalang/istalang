@@ -29,6 +29,7 @@ import type { ModuleId } from '../../program/program.ts';
 import type {
   EnumDeclaration,
   ExternStructDeclaration,
+  HandleDeclaration,
   StructDeclaration,
   TraitDeclaration,
   TypeParameter,
@@ -42,23 +43,30 @@ export interface PrimitiveType {
 }
 
 /** The declarations a nominal type can come from. */
-export type NominalDeclaration = StructDeclaration | EnumDeclaration | ExternStructDeclaration;
+export type NominalDeclaration =
+  | StructDeclaration
+  | EnumDeclaration
+  | ExternStructDeclaration
+  | HandleDeclaration;
 
 /** The binder's entity for a declaration a nominal type comes from. */
 export type NominalEntity = TypeEntity & { readonly declaration: NominalDeclaration };
 
-/** A declared struct, enum or extern type, with its type arguments. */
+/** A declared struct, enum, extern type or handle, with its type arguments. */
 export interface NominalType {
   readonly kind: 'nominal';
   readonly entity: NominalEntity;
   readonly arguments: readonly Type[];
 }
 
-/** Whether `entity` declares a nominal type: a struct, an enum or an extern type. */
+/** Whether `entity` declares a nominal type: a struct, an enum, an extern type or a handle. */
 export function isNominalEntity(entity: TypeEntity): entity is NominalEntity {
   const { kind } = entity.declaration;
   return (
-    kind === 'StructDeclaration' || kind === 'EnumDeclaration' || kind === 'ExternStructDeclaration'
+    kind === 'StructDeclaration' ||
+    kind === 'EnumDeclaration' ||
+    kind === 'ExternStructDeclaration' ||
+    kind === 'HandleDeclaration'
   );
 }
 

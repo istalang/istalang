@@ -98,7 +98,6 @@ export const codecHelpers = {
   elementPath: '_elementPath',
   hostResult: '_hostResult',
   hostInput: '_hostInput',
-  hostHandle: '_hostHandle',
 } as const;
 
 export type CodecHelper = (typeof codecHelpers)[keyof typeof codecHelpers];

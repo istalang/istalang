@@ -1,10 +1,10 @@
 /**
- * The natives of the prelude's `Shared<T>` (spec §3.8): a handle to a cell of the instance's own
- * memory, the same cells a variable passed by `&` or captured by a closure lives in (§3.14), so
- * every copy of a handle reads and writes one value.
+ * The natives of the prelude's `Shared<T>` (spec §3.8), which every handle's functions are bound to
+ * (§3.18): a handle to a cell of the instance's own memory, the same cells a variable passed by `&`
+ * or captured by a closure lives in (§3.14), so every copy of a handle reads and writes one value.
  *
- * `Shared(v)` makes the cell as the `Shared<T>` its call returns, which the extern entry's result
- * names (its declared result), so the cell's type entry knows whether disposing it calls a `dispose` (§7).
+ * `H(v)` makes the cell as the handle its call returns, which the extern entry's result names (its
+ * declared result), so the cell's type entry knows whether disposing it calls a `dispose` (§7).
  */
 
 import { namedKey, nativeKey, parameterKey } from '../../definition/extern-key.ts';

@@ -6,6 +6,7 @@
  * - A declaration's type parameters have their constraints resolved, and so does every member of
  *   a trait: its functions' signatures and its fields' types.
  * - An alias is resolved, which reports one that refers to itself (§3.17).
+ * - A handle's functions are checked as written ones are (§3.18).
  * - An extern a host implements takes and gives only what crosses as JSON (rules/host-boundary.ts),
  *   and so does `main`, whose outcome its host reads (§9).
  * - A `dispose` a program declares makes its type disposable, on its rules (rules/disposal.ts).
@@ -19,6 +20,7 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { isStdModule, type ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
+import { handleFunctionList } from '../../syntax/declared-functions.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
@@ -94,6 +96,13 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
     annotatedNowhere('a type alias')(checker, node, module);
     checkTypeParameters(checker, node);
     checker.aliasedType(node);
+  },
+  HandleDeclaration: (checker, node, module) => {
+    annotatedNowhere('a handle')(checker, node, module);
+    checkTypeParameters(checker, node);
+    for (const declared of handleFunctionList(node)) {
+      checkFunction(checker, declared);
+    }
   },
   StructDeclaration: (checker, node, module) => {
     annotatedNowhere('a struct declaration')(checker, node, module);

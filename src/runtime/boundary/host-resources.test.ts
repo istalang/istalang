@@ -2,7 +2,8 @@
  * A host type a `dispose` makes disposable (§3.6, §7), on programs the real compiler builds: each
  * value arrives from the host as a resource holding the host's JSON, lives in the instance across
  * commits like any other object, leaves to the host as that JSON, and is disposed by its `dispose`
- * once nothing holds it, which tells the host.
+ * once nothing holds it, which tells the host. A queue the host provides hands out a revertible
+ * send as one, held by the inbox module's `Revertible<T>` (§6).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -117,5 +118,48 @@ describe('a disposable host type', () => {
     const started = test.runtime.deploy(program).start('h');
     expect(runToEnd(test, 'h', started)).toEqual({ kind: 'finished', outcome: '1' });
     expect(disposed).toEqual([{ id: 'b' }]);
+  });
+
+  it('is retracted by its host once the Revertible holding it is released', () => {
+    const calls: unknown[][] = [];
+    const host: HostExterns = {
+      'main.announcements(string)': ([user]) => ({ queue: user }),
+      'main._sendRevertible(main.Queue<T>, T)': (given) => {
+        calls.push(['send', ...given]);
+        return { message: 7n };
+      },
+      'main.dispose(main.Sent)': (given) => {
+        calls.push(['retract', ...given]);
+        return null;
+      },
+      'main.gate()': (_, call: HostCall) => call.pending('gate'),
+    };
+    const program = compiledText(
+      [
+        "import Revertible from 'inbox'",
+        "import Encodable from 'json'",
+        '',
+        'extern sendable struct Queue<T is Sendable>',
+        'extern struct Sent',
+        'extern fn dispose(self: Sent)',
+        'extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent',
+        'extern fn announcements(user: string) -> Queue<string>',
+        'extern fn gate() -> Future<unit>',
+        '',
+        'fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:',
+        '  Revertible.holding(_sendRevertible(self, msg))',
+        '',
+        'async fn main() -> Future<int>:',
+        '  fn _ = announcements("ann").sendRevertible("hello")',
+        '  await gate()',
+        '  1',
+      ].join('\n'),
+    );
+    const test = testRuntime({ host });
+    test.runtime.deploy(program).start('r');
+    expect(calls).toEqual([['send', { queue: 'ann' }, 'hello']]);
+    const filled = test.runtime.fill('r', 'gate', null);
+    expect(runToEnd(test, 'r', filled)).toEqual({ kind: 'finished', outcome: '1' });
+    expect(calls.at(-1)).toEqual(['retract', { message: 7n }]);
   });
 });

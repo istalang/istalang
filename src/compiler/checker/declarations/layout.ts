@@ -1,6 +1,7 @@
 /**
- * The layout of declared types (§3.1, §3.11): a struct's fields and an enum's variants. An
- * anonymous struct carries its own fields (types/type.ts), so its layout is read off the type.
+ * The layout of declared types (§3.1, §3.11, §3.18): a struct's fields, an enum's variants and
+ * what a handle's cell holds. An anonymous struct carries its own fields (types/type.ts), so its
+ * layout is read off the type.
  *
  * - As declared: field types resolved in the declaring module, once per declaration.
  * - As instantiated: substituted for a nominal type's arguments, derived on demand from the
@@ -47,6 +48,17 @@ export class Layouts {
     return declaration.kind === 'StructDeclaration'
       ? instantiated(this.declaredFieldsOf(declaration), substitutionOf(type))
       : undefined;
+  }
+
+  /** What a handle's cell holds, substituted for its type arguments; undefined for another type. */
+  stateOf(type: NominalType): Type | undefined {
+    const { declaration } = type.entity;
+    if (declaration.kind !== 'HandleDeclaration') {
+      return undefined;
+    }
+    const checker = this.#checker;
+    const state = checker.resolveType(checker.moduleOf(declaration), declaration.state);
+    return substitute(state, substitutionOf(type));
   }
 
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */

@@ -6,8 +6,8 @@
  * `const` are statements as well (a local `fn`, a local `const`). Which item may stand where is
  * decided once, for modules and blocks alike (syntax/placement.ts, parts/items.ts).
  *
- * `struct` and `type` start a declaration only when a name follows: `struct{…}` is an anonymous
- * struct literal, and `type` is a keyword only before a declared name (§2).
+ * `struct`, `type` and `handle` start a declaration only when a name follows: `struct{…}` is an
+ * anonymous struct literal, and `type` and `handle` are keywords only before a declared name (§2).
  */
 
 import type { Declaration, Module } from '../../syntax/declarations.ts';
@@ -17,9 +17,15 @@ import type { Parser } from '../parser.ts';
 import { parseModuleItem } from '../parts/items.ts';
 import { parseExtern } from './externs.ts';
 import { parseImport } from './imports.ts';
-import { parseEnum, parseStruct, parseTrait, parseTypeAlias } from './type-declarations.ts';
+import {
+  parseEnum,
+  parseHandle,
+  parseStruct,
+  parseTrait,
+  parseTypeAlias,
+} from './type-declarations.ts';
 
-type TopLevelKeyword = 'import' | 'struct' | 'enum' | 'trait' | 'extern' | 'type';
+type TopLevelKeyword = 'import' | 'struct' | 'enum' | 'trait' | 'extern' | 'type' | 'handle';
 
 const topLevelParselets: Record<TopLevelKeyword, (parser: Parser) => Declaration> = {
   import: parseImport,
@@ -28,6 +34,7 @@ const topLevelParselets: Record<TopLevelKeyword, (parser: Parser) => Declaration
   trait: parseTrait,
   extern: parseExtern,
   type: parseTypeAlias,
+  handle: parseHandle,
 };
 
 /** A declaration only the top level allows, or undefined if none starts here. */
@@ -49,7 +56,13 @@ function topLevelKeyword(parser: Parser): TopLevelKeyword | undefined {
     case 'struct':
       return named ? kind : undefined;
     case 'identifier':
-      return named && parser.atWord('type') ? 'type' : undefined;
+      if (!named) {
+        return undefined;
+      }
+      if (parser.atWord('type')) {
+        return 'type';
+      }
+      return parser.atWord('handle') ? 'handle' : undefined;
     default:
       return undefined;
   }

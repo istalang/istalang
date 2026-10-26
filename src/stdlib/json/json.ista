@@ -76,10 +76,6 @@ fn _hostInput<T>(read: Result<T>) -> T:
 
 extern fn _refuse(message: string) -> never
 
-# A host handle (§3.6) around the functions the wrapper of the extern returning it made.
-fn _hostHandle<T>(state: T) -> Shared<T>:
-  Shared(state)
-
 # JSON text: written as JavaScript's JSON.stringify writes it, and read with integers kept exact.
 extern fn _write(json: Json) -> string
 

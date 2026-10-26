@@ -4,7 +4,7 @@
  * unwrapped value, which assigning to a part of a value does, and write it back with `rewrap`
  * (calls/places.ts).
  *
- * - `x.value` on a `Shared` is the same as `x$`; written as a field read, it calls `unwrap` with no
+ * - `x.value` on a handle (§3.18), `Shared` included, is the same as `x$`; written as a field read, it calls `unwrap` with no
  *   call written, so its call is recorded as the read's implicit one, apart from a static function
  *   named as a value at the same kind of node.
  * - `v` must fit the type `x$` reads, the result of the `unwrap` a read would call, so it is checked
@@ -42,14 +42,14 @@ export function checkUnwrap(context: BodyContext, node: Unwrap, expected: Type |
   });
 }
 
-/** `x.value` on a `Shared` of `handle`: its `unwrap`, recorded as the field read's (§3.8). */
+/** `x.value` on `handle`, a handle (§3.18): its `unwrap`, recorded as the field read's (§3.8). */
 export function checkHandleValue(context: BodyContext, node: MemberAccess, handle: Type): Type {
   const read = implicitCall(context, {
     node,
     role: 'read',
     candidates: topLevelCandidates(context.checker, context.module, unwrapFunction, [handle]),
     arguments: [{ type: handle, passing: 'value' }],
-    failure: () => unreachable(`The prelude's 'unwrap' takes ${typeText(handle)}.`),
+    failure: () => unreachable(`The handle ${typeText(handle)} declares an 'unwrap' taking it.`),
   });
   return read ?? errorType;
 }

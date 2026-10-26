@@ -16,9 +16,9 @@
  * whatever they are instantiated with. An anonymous struct has no name and an entry of its own,
  * since two of them are always different types (spec §3.1).
  *
- * Only extern types can be disposable (spec §7), and each says how: not at all, by the runtime
- * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Shared<Lease>)`
- * makes every `Shared<Lease>` disposable, and the inbox module's every `Revertible<T>`.
+ * Only extern entries can be disposable (spec §7), and each says how: not at all, by the runtime
+ * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Lease)` makes a
+ * handle `Lease` disposable (§3.18), and the inbox module's every `Revertible<T>`.
  *
  * Where the runtime must know what an extern type's or an enum's values are beyond what its
  * natives do with them, the entry says so by its `role`, which lowering sets from the checker's
@@ -116,8 +116,8 @@ const disposal = z.discriminatedUnion('kind', [
 ]);
 
 /**
- * What the runtime makes of an extern type's values: a `cell` type is every `Shared<T>`, the type
- * of the cells variables live in (spec §3.7, §3.14); a `future` type is every `Future<T>`, which a
+ * What the runtime makes of an extern type's values: a `cell` type is every handle's (spec §3.18),
+ * `Shared<T>` the one variables live in (§3.7, §3.14); a `future` type is every `Future<T>`, which a
  * host's extern returning one gives back pending (§9). Any other extern type has none.
  */
 const externRole = z.enum(['cell', 'future']);

@@ -5,7 +5,9 @@
  * the toolchain runs (docs/arch/definition.md, "Types and locations").
  *
  * An extern's key is built by `externKey` (definition/extern-key.ts) from the declared parameter
- * types; this module only turns the checker's types into the key's.
+ * types; this module only turns the checker's types into the key's. A handle's functions (§3.18)
+ * are bound by the keys of the prelude's `Shared`'s: every handle is a cell, which those natives
+ * make, read and write, as the type entry its function's declared types name.
  *
  * Names are of declarations: a generic type's entries are told apart by the type arguments the
  * Definition records beside the name. A function instance's name also spells its type arguments
@@ -19,11 +21,17 @@ import {
   keyTypeText,
   staticName,
 } from '../../definition/extern-key.ts';
+import { wellKnown } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
 import type { ModuleId, ProgramModule } from '../program/program.ts';
-import type { ExternConstantDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
+import type {
+  ExternConstantDeclaration,
+  FunctionDeclaration,
+  HandleDeclaration,
+} from '../syntax/declarations.ts';
+import { handleFunctionOf, handleFunctionsOf } from '../syntax/declared-functions.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 
@@ -92,6 +100,23 @@ export function keyOf(
     })),
   };
   return externKey(signature);
+}
+
+/** The key binding the extern function `declaration` to its native (definition/extern-key.ts). */
+export function nativeKeyOf(checker: Checker, declaration: FunctionDeclaration): string {
+  const origin = handleFunctionOf(declaration);
+  const bound =
+    origin === undefined ? declaration : handleFunctionsOf(preludeShared(checker))[origin.role];
+  return keyOf(checker, bound, checker.parametersOf(bound));
+}
+
+/** The prelude's `Shared`, the handle whose natives every handle's functions are. */
+function preludeShared(checker: Checker): HandleDeclaration {
+  const entity = checker.wellKnownEntity(wellKnown.shared);
+  if (entity?.kind !== 'type' || entity.declaration.kind !== 'HandleDeclaration') {
+    unreachable("A handle was lowered in a program without the prelude's Shared.");
+  }
+  return entity.declaration;
 }
 
 /** `type` spelled as keys spell it: module-qualified, without sugar (`prelude.Optional<int>`). */

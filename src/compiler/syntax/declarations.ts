@@ -97,6 +97,16 @@ export interface TypeAliasDeclaration extends NodeOf<'TypeAliasDeclaration'>, An
   readonly type: TypeNode;
 }
 
+/**
+ * `handle Inbox<T> of InboxState<T>`: a type of its own whose values are handles to a cell
+ * holding a `state` (§3.18). The functions it declares are read from it (declared-functions.ts).
+ */
+export interface HandleDeclaration extends NodeOf<'HandleDeclaration'>, Annotatable {
+  readonly name: Identifier;
+  readonly typeParameters: TypeParameters;
+  readonly state: TypeNode;
+}
+
 /** `import a, b from 'path'`. */
 export interface NamedImport extends NodeOf<'NamedImport'>, Annotatable {
   readonly names: readonly Identifier[];
@@ -125,17 +135,13 @@ export type Declaration =
   | EnumDeclaration
   | TraitDeclaration
   | TypeAliasDeclaration
+  | HandleDeclaration
   | FunctionDeclaration
   | ConstantDeclaration;
 
 /** One source file. Its span is the whole text. */
 export interface Module extends NodeOf<'Module'> {
   readonly items: readonly (Declaration | Invalid)[];
-}
-
-/** The top-level functions `module` declares, static ones included, in source order. */
-export function declaredFunctions(module: Module): readonly FunctionDeclaration[] {
-  return module.items.filter((item) => item.kind === 'FunctionDeclaration');
 }
 
 /** Nodes that occur only as parts of a declaration. */

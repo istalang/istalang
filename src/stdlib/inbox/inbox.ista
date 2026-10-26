@@ -30,17 +30,22 @@ struct InboxState<T>:
   # how many messages were ever queued, which numbers the next
   queued: int
 
-type Inbox<T> = Shared<InboxState<T>>
+handle Inbox<T> of InboxState<T>
 
 # A revertible message's holder: disposing it calls `retract`, which the queue that made it
 # supplies, so every queue, the host's included (§3.6), hands out this one type.
 struct RevertibleState<T>:
   retract: fn() -> unit
 
-type Revertible<T> = Shared<RevertibleState<T>>
+handle Revertible<T> of RevertibleState<T>
+
+# A holder that keeps `resource` until it is released, and so disposes it then: how a queue the
+# host provides hands out a revertible send, a disposable host type its host retracts (§3.6).
+fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
+  Revertible(RevertibleState<T>{retract: fn(): _hold(resource)})
 
 fn Inbox.create<T>() -> Inbox<T>:
-  Shared(InboxState<T>{slot: Slot.create<T>(), slotted: none, backlog: [], queued: 0})
+  Inbox(InboxState<T>{slot: Slot.create<T>(), slotted: none, backlog: [], queued: 0})
 
 fn send<T>(self: Inbox<T>, message: T):
   drop _queue(self, message)
@@ -50,7 +55,7 @@ fn send<T>(self: Inbox<T>, message: T):
 fn sendRevertible<T>(self: Inbox<T>, message: T) -> Revertible<T>:
   const number = _queue(self, message)
   const inbox = WeakRef(self)
-  Shared(RevertibleState<T>{retract: fn(): _retract(inbox, number)})
+  Revertible(RevertibleState<T>{retract: fn(): _retract(inbox, number)})
 
 fn receive<T>(self: Inbox<T>) -> Future<T>:
   _fill(self)
@@ -91,6 +96,10 @@ fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: int):
     box$ = InboxState{...state, slotted, backlog: waiting}
     if taken:
       _fill(box)
+
+# Holds `resource` where a closure captures it, so that releasing the closure releases it.
+fn _hold<R>(resource: R):
+  ()
 
 # Whether `operation` settles at once. One that doesn't is let go with the parameter, and a slot
 # operation let go does nothing (§6), so a `take` that doesn't settle consumes nothing.

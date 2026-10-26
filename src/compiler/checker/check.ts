@@ -367,6 +367,8 @@ export interface Checker {
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
   readonly variantsOf: (type: NominalType) => readonly VariantMember[] | undefined;
+  /** What a handle's cell holds (§3.18), substituted for its type arguments; undefined for another type. */
+  readonly stateOf: (type: NominalType) => Type | undefined;
   /** Who disposes a value of `type` (rules/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;
   /** `T?` for `type`, the type a value of `type` is wrapped into (§2). */

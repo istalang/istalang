@@ -4,9 +4,8 @@
  * the helpers both share build its variants and calls, and every instruction carries the span of
  * the declaration it stands for, which is where a trace through it points.
  *
- * Its registers are its parameters, in order, then what it captures, then temporaries; it holds no
- * cells, since it never takes a value by `&`. Only a host handle's function captures anything: the
- * JSON naming the handle (boundary/host-externs.ts).
+ * Its registers are its parameters, in order, then temporaries; it captures nothing, and holds no
+ * cells, since it never takes a value by `&`.
  */
 
 import type { CodeFunction } from '../../../definition/functions.ts';
@@ -36,21 +35,14 @@ export class SynthesizedCode implements CodeContext {
   readonly tables: DefinitionTables;
   readonly code = new CodeWriter();
   readonly parameters: readonly Register[];
-  readonly captures: readonly Register[];
   /** Where every instruction points: the declaration the code stands for. */
   readonly span: Span;
 
-  constructor(
-    context: Pick<CodeContext, 'checker' | 'tables'>,
-    span: Span,
-    parameters: number,
-    captures = 0,
-  ) {
+  constructor(context: Pick<CodeContext, 'checker' | 'tables'>, span: Span, parameters: number) {
     this.checker = context.checker;
     this.tables = context.tables;
     this.span = span;
     this.parameters = Array.from({ length: parameters }, () => this.code.allocate());
-    this.captures = Array.from({ length: captures }, () => this.code.allocate());
   }
 
   constant(value: Value): Register {
@@ -66,19 +58,6 @@ export class SynthesizedCode implements CodeContext {
 
   call(callee: Callee, values: readonly Register[]): Register {
     return emitCall(this, { span: this.span, callee: this.#indexOf(callee), arguments: values });
-  }
-
-  /** A function value of `callee`, carrying `captures`: a codec a helper takes, a handle's function. */
-  closure(callee: Callee, captures: readonly Register[] = []): Register {
-    const dst = this.code.allocate();
-    this.code.emit({
-      kind: 'closure',
-      span: this.span,
-      dst,
-      function: this.#indexOf(callee),
-      captures: [...captures],
-    });
-    return dst;
   }
 
   variant(type: NominalType, name: string, fields: readonly Register[]): Register {
@@ -167,7 +146,7 @@ export class SynthesizedCode implements CodeContext {
       ...header,
       async: isAsync,
       parameters: this.parameters.map(() => ({ reference: false })),
-      captures: this.captures.length,
+      captures: 0,
       registers,
       cells: [],
       instructions,

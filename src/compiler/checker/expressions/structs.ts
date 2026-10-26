@@ -14,7 +14,6 @@
  *   reported as unknown here; a call of one is a method call (calls.ts).
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
 import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
@@ -38,7 +37,6 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
 import {
   checkLiteralFields,
   knownArguments,
@@ -130,11 +128,11 @@ function declaredShape(
   known: readonly Type[] | undefined,
 ): LiteralShape {
   const { declaration } = entity;
+  const struct = declaration.kind === 'StructDeclaration' ? declaration : undefined;
   return {
-    owner: declaration.kind === 'ExternStructDeclaration' ? undefined : declaration,
+    owner: struct,
     known,
-    fields:
-      declaration.kind === 'StructDeclaration' ? context.checker.declaredFieldsOf(declaration) : [],
+    fields: struct === undefined ? [] : context.checker.declaredFieldsOf(struct),
     typeOf: (typeArguments) => ({ kind: 'nominal', entity, arguments: typeArguments }),
   };
 }
@@ -213,10 +211,7 @@ export function checkMemberAccess(
   if (field !== undefined) {
     return field;
   }
-  if (
-    name === 'value' &&
-    wellKnownArguments(context.checker, wellKnown.shared, type) !== undefined
-  ) {
+  if (name === 'value' && type.kind === 'nominal' && context.checker.stateOf(type) !== undefined) {
     return checkHandleValue(context, node, type);
   }
   const isMethod = topLevelCandidates(context.checker, context.module, name, [type]).some(

@@ -1,8 +1,8 @@
 /**
  * What a value of a type holds at any depth, for rules about values held inside others: a future
  * that must be awaited (§3.3), a `Result` that must be used (§3.12). A type holds itself and what
- * its parts hold: a tuple's elements, a struct's fields, an enum's variants' fields, and an extern
- * type's type arguments (`heldParts`). A recursive type is walked once.
+ * its parts hold: a tuple's elements, a struct's fields, an enum's variants' fields, a handle's
+ * state, and an extern type's type arguments (`heldParts`). A recursive type is walked once.
  */
 
 import type { CheckerContext } from '../context.ts';
@@ -10,7 +10,7 @@ import { type Type, typeChildren } from './type.ts';
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
 export function heldType(
-  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'typeKeys'>,
+  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'stateOf' | 'typeKeys'>,
   type: Type,
   picks: (type: Type) => boolean,
 ): Type | undefined {
@@ -39,11 +39,11 @@ export function heldType(
 
 /**
  * What a value of `type` holds one level down: a tuple's elements, a struct's fields, the fields of
- * each of an enum's variants, and an extern type's type arguments, which stand for the values the
- * runtime or the host keeps in it.
+ * each of an enum's variants, what a handle's cell holds, and an extern type's type arguments,
+ * which stand for the values the runtime or the host keeps in it.
  */
 export function heldParts(
-  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf'>,
+  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'stateOf'>,
   type: Type,
 ): readonly Type[] {
   switch (type.kind) {
@@ -56,6 +56,10 @@ export function heldParts(
           return type.arguments;
         case 'StructDeclaration':
           return (checker.fieldsOf(type) ?? []).map((field) => field.type);
+        case 'HandleDeclaration': {
+          const state = checker.stateOf(type);
+          return state === undefined ? [] : [state];
+        }
         default:
           return (checker.variantsOf(type) ?? []).flatMap(({ fields }) =>
             fields.map((field) => field.type),

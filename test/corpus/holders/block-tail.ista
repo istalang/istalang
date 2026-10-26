@@ -6,7 +6,7 @@ struct LeaseState:
   log: Shared<Array<string>>
   id: int
 
-type Lease = Shared<LeaseState>
+handle Lease of LeaseState
 
 fn note(log: Shared<Array<string>>, entry: string):
   log$ = [...log$, entry]
@@ -28,6 +28,6 @@ async fn main() -> Future<string>:
   let n = 0
   while checked(log, n):
     n += 1
-    opened(Shared(LeaseState{log, id: n}))
+    opened(Lease(LeaseState{log, id: n}))
   note(log, "after")
   log$.join(", ")

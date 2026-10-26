@@ -18,8 +18,6 @@ import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';
 import {
   constantNativeEntry,
-  handleFieldEntry,
-  handleFieldNativeEntry,
   hostConstantEntry,
   hostFunctionEntry,
   hostNativeEntry,
@@ -33,7 +31,7 @@ import {
   type NestedInstance,
   substitutionOf,
 } from './instances.ts';
-import { keyOf } from './names.ts';
+import { nativeKeyOf } from './names.ts';
 import { DefinitionTables, type PendingEntry } from './tables.ts';
 
 /**
@@ -72,10 +70,6 @@ function pendingEntry(
       return hostNativeEntry(lowering, pending.declaration);
     case 'constantNative':
       return constantNativeEntry(lowering, pending.declaration, pending.type);
-    case 'handleFieldNative':
-      return handleFieldNativeEntry(lowering, pending.declaration, pending.field);
-    case 'handleField':
-      return handleFieldEntry(lowering, pending.instance, pending.field);
     case 'externConstant':
       return hostConstantEntry(lowering, pending.declaration, pending.type);
     case 'start': {
@@ -125,7 +119,7 @@ function entryOf(
   return {
     kind: 'extern',
     ...tables.entryHeader(instance),
-    key: keyOf(checker, declaration, parameters),
+    key: nativeKeyOf(checker, declaration),
     constant: false,
     parameters: parameters.map((parameter) => ({
       type: tables.typeReference(substitute(parameter.type, substitution)),

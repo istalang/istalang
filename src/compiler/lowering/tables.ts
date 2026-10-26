@@ -56,9 +56,8 @@ import { loadedModule, qualifiedNameOf } from './names.ts';
 
 /**
  * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
- * extern a host implements as its native sees it (boundary/host-externs.ts), or a host handle's
- * function, the read of an extern constant, or the wrapper a host starts a function through
- * (boundary/starts.ts).
+ * extern a host implements as its native sees it (boundary/host-externs.ts), the read of an extern
+ * constant, or the wrapper a host starts a function through (boundary/starts.ts).
  */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }
@@ -69,18 +68,6 @@ export type PendingEntry =
       readonly kind: 'constantNative';
       readonly declaration: ExternConstantDeclaration;
       readonly type: Type;
-    }
-  | {
-      /** The native of field `field` of the host handle `declaration` returns (§3.6). */
-      readonly kind: 'handleFieldNative';
-      readonly declaration: FunctionDeclaration;
-      readonly field: string;
-    }
-  | {
-      /** A function of the host handle `instance` returns, which calls its native (§3.6). */
-      readonly kind: 'handleField';
-      readonly instance: FunctionInstance;
-      readonly field: string;
     }
   | {
       readonly kind: 'externConstant';
@@ -101,11 +88,13 @@ export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 
 /** A type with an entry of its own: a declared struct, enum or extern type, or an anonymous struct. */
 type EntryType = NominalType | AnonymousStructType;
 
-/** The std type each role of an extern type entry is (definition/types.ts). */
+/**
+ * The std type each role of an extern type entry is (definition/types.ts), but a cell's, which
+ * every handle is (§3.18).
+ */
 const externRoles = {
-  cell: wellKnown.shared,
   future: wellKnown.future,
-} as const satisfies Record<ExternRole, WellKnownDeclaration>;
+} as const satisfies Record<Exclude<ExternRole, 'cell'>, WellKnownDeclaration>;
 
 /** The std type each role of an enum entry is (definition/types.ts). */
 const enumRoles = {
@@ -208,18 +197,6 @@ export class DefinitionTables {
   constantNativeIndex(declaration: ExternConstantDeclaration, type: Type): FunctionId {
     const key = `native:${this.#checker.typeKeys.identityOf(declaration)}`;
     return this.#entryIndex(key, { kind: 'constantNative', declaration, type });
-  }
-
-  /** The index of the native of field `field` of the host handle `declaration` returns (§3.6). */
-  handleFieldNativeIndex(declaration: FunctionDeclaration, field: string): FunctionId {
-    const key = `native:${this.#checker.typeKeys.identityOf(declaration)}.${field}`;
-    return this.#entryIndex(key, { kind: 'handleFieldNative', declaration, field });
-  }
-
-  /** The index of the function field `field` of the host handle `instance` returns holds. */
-  handleFieldIndex(instance: FunctionInstance, field: string): FunctionId {
-    const key = `handle:${instanceKey(this.#checker.typeKeys, instance)}.${field}`;
-    return this.#entryIndex(key, { kind: 'handleField', instance, field });
   }
 
   /** The index of the entry reading the extern constant `declaration`, of type `type` (§3.6). */
@@ -368,6 +345,15 @@ export class DefinitionTables {
           ...(role === undefined ? {} : { role }),
         };
       }
+      case 'HandleDeclaration':
+        return {
+          kind: 'extern',
+          name,
+          arguments: typeArguments,
+          sendable: false,
+          disposal: this.#disposal(this.#checker.disposalOf(type)),
+          role: 'cell',
+        };
       default: {
         const unhandled: never = declaration;
         return unhandled;

@@ -94,6 +94,7 @@ user?.name    name ?? "anonymous"    chargeCard(id)?    # optional chaining, fal
 { const t = a * b; t + 1 }                        # block expression
 x = 1; y = 2                                      # two statements on one line
 type UserId = string                              # type alias
+handle Counter of Tally                           # a type whose values are handles to a cell
 ```
 
 **Concurrency, persistence and the host**
@@ -147,7 +148,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 - **Continuation.** A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal, so a call or literal may span lines. Inside braces that list fields or variants, as in `{ sku: string; qty: int }`, a line break separates entries just as `;` does. There is no backslash continuation.
 - **Trailing commas** are allowed in every comma-separated list.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
-- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Three more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `from` before an import's path, and `sendable` right after `extern` or before a function type's `fn` or `async`. So `T.from` (§3.10) and a field named `type` (§9) are valid.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Five more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `handle` before a handle's name and `of` after it (§3.18), `from` before an import's path, and `sendable` right after `extern` or before a function type's `fn` or `async`. So `T.from` (§3.10), a field named `type` (§9) and the `testing` module's `handle` (§10) are valid.
 
 Every expression has a static type, and there is no `any` type. There are no implicit conversions, with one exception: a `T` is wrapped into `T?` wherever an optional is expected (§3.11).
 
@@ -235,7 +236,7 @@ A `struct{…}` literal takes its type from context: the expected type where the
 
 **No getters or setters.** Reading or assigning a field never runs code; a value computed from fields is a method, such as `order.total()`. This keeps structs plain data under value semantics.
 
-**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a `Shared` value (§3.8). `Slot<T>`, `Future<T>`, `Inbox<T>`, `Shared<T>`, `WeakRef<T>` and `Revertible<T>` are **handles**: copying one copies the handle, not the state behind it, and `==` compares handles by identity.
+**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a `Shared` value (§3.8). `Slot<T>`, `Future<T>`, `Inbox<T>`, `Shared<T>`, `WeakRef<T>` and `Revertible<T>` are **handles**, and so is every type a handle declaration makes (§3.18): copying one copies the handle, not the state behind it, and `==` compares handles by identity.
 
 **Sendable types.** Only sendable values can leave an instance: as `spawn` arguments, or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when it is:
 
@@ -329,7 +330,7 @@ fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
 
 ### 3.6 Extern declarations
 
-`extern` marks a top-level declaration whose implementation lives in the host, outside any workflow instance. It applies to functions, which have no body, to constants, written `extern name: Type` with no initializer, and to struct types the host implements, such as `extern sendable struct Queue<T>`. Their values cross as JSON (§9), so the parameters of extern functions must be `Encodable`, and their results and extern constants `Decodable` (§3.10), which makes all of them sendable (§3.1). The one exception is sendability: what crosses to the host crosses as JSON, so a disposable host type, below, which isn't sendable, still crosses to its own host, alone or inside other values. An extern function may also return a `Future<T>`, which the runtime creates and the host fills, or a host handle: a `Shared<S>` whose struct `S` has only function fields, such as the `inbox` module's `Revertible<T>` (§6). The host gives JSON naming the handle, and calling one of its functions calls the host's extern keyed after it (§9) with that JSON first, then the function's arguments, so a host queue learns that a revertible send was released when its `retract` is called.
+`extern` marks a top-level declaration whose implementation lives in the host, outside any workflow instance. It applies to functions, which have no body, to constants, written `extern name: Type` with no initializer, and to struct types the host implements, such as `extern sendable struct Queue<T>`. Their values cross as JSON (§9), so the parameters of extern functions must be `Encodable`, and their results and extern constants `Decodable` (§3.10), which makes all of them sendable (§3.1). The one exception is sendability: what crosses to the host crosses as JSON, so a disposable host type, below, which isn't sendable, still crosses to its own host, alone or inside other values. An extern function may also return a `Future<T>`, which the runtime creates and the host fills. A host object with operations of its own is an extern type with extern functions taking it, and one whose release the host must learn of is a disposable host type, below: a queue the host provides gives a revertible send as one, which the `inbox` module's `Revertible.holding` keeps until its holder is released (§6, §12.1).
 
 ```python
 extern fn chargeCard(purchaseId: string, amount: int) -> Result<string>
@@ -427,7 +428,7 @@ extern sendable struct Map<K, V>
 extern struct Slot<T>                       # not sendable
 extern struct WeakRef<T is Disposable>      # not sendable
 extern struct Future<T>                     # not sendable
-extern struct Shared<T>                     # not sendable
+handle Shared<T> of T                       # not sendable (§3.18)
 
 extern fn Slot.create<T>() -> Slot<T>                       # starts empty
 extern fn put<T>(self: Slot<T>, value: T) -> Future<unit>   # waits until empty, then fills
@@ -436,9 +437,8 @@ extern fn read<T>(self: Slot<T>) -> Future<T>               # waits until full, 
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>   # WeakRef(x): the one weak handle to x
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
 extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
-extern fn Shared.from<T>(value: T) -> Shared<T>             # Shared(v): a new cell holding v
-extern fn unwrap<T>(self: Shared<T>) -> T                   # x$
-extern fn rewrap<T>(self: Shared<T>, value: T)              # x$ = v
+# Shared.from(value: T), unwrap(self) and rewrap(self, value), as every handle declares them:
+# Shared(v) makes a new cell holding v, x$ reads it, x$ = v writes it
 ```
 
 The prelude also contains `Optional`, `Result`, `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `int`, `float`, `bool` and `string` satisfy), the `Waypoint` annotation (§10) and `panic`.
@@ -590,7 +590,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 | Trait | Required | Used by |
 | --- | --- | --- |
 | `Sendable` | nothing: a marker, derived for user structs (§3.1) | `spawn` arguments; whatever crosses to the host, through `Encodable` and `Decodable` |
-| `Disposable` | `dispose`, synchronous; only runtime and extern types, including instantiations such as `Shared<Lease>` (§7) | values the runtime disposes when their last holder ends (§7) |
+| `Disposable` | `dispose`, synchronous; only handles (§3.18) and extern types (§7) | values the runtime disposes when their last holder ends (§7) |
 | `Wrapper<T, W = Self>` | `unwrap(self: W) -> T` | `x$` |
 | `MutableWrapper<T, W = Self>` | `rewrap(self: W, value: T)` | `x$ = v`, `x$.field = v` |
 | `Iterable<T, C = Self>` | `iterate`, returning an `Array<T>` | `for x in c` |
@@ -713,7 +713,7 @@ fn _normalize(id: string) -> string:     # private to this module
 - **The toolchain's paths.** The `ista` toolchain resolves a path as names separated by `/`, with the `.ista` extension implied. A path starting with `./` or `../` is relative to the importing file. Any other path names a standard-library module, or a module under the project root: the directory holding `ista.json` (§11), or the directory the toolchain runs in when there is none. A path that matches both a standard-library module and a project file is therefore an error.
 - **Project sources.** Without explicit files, `ista check` checks every `.ista` file under the project root, skipping the project's `vendor/` folder (§11), every `node_modules/` folder and hidden directories.
 - **Cycles.** Modules contain only declarations, never top-level code, so import cycles are allowed.
-- **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import. Only the arguments' own types count, not their type arguments, with one exception: a `Shared<T>` counts `T`'s module too, since `Shared<T>` is how a module makes a resource type of its own (§7), so `Inbox<T>`, a `Shared<InboxState<T>>`, finds the `inbox` module's functions. Only exported functions are found this way, and a call through a namespace (`m.f(x)`) looks only in `m`.
+- **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import. Only the arguments' own types count, not their type arguments, so `Inbox<T>`, a handle the `inbox` module declares (§3.18), finds that module's functions, while an `Array<Duration>` doesn't find `Duration`'s. Only exported functions are found this way, and a call through a namespace (`m.f(x)`) looks only in `m`.
 - **Externs** are bound by module-qualified name, so two modules can declare externs with the same short name.
 - **The prelude** is imported implicitly into every module. A module's top-level declarations and imports can't reuse a prelude name, with one exception: a top-level function, declared or imported, joins the prelude's overloads of its name, as `fn add(left: Time, right: Duration)` does (§3.9).
 
@@ -838,7 +838,27 @@ struct GithubUser:
 
 ### 3.17 Type aliases
 
-`type` gives an existing type another name: `type UserId = string`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(string, T)>`. A static function declared on an alias, `fn Inbox.create<T>()`, is the aliased type's, so `type Inbox<T> = Shared<InboxState<T>>` gives `Shared<InboxState<T>>` a `create`. An alias can't refer to itself, directly or through other aliases; a recursive type is a struct or an enum (§3.1). A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: string }`, which the type checker keeps apart from `string`.
+`type` gives an existing type another name: `type UserId = string`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(string, T)>`. A static function declared on an alias is the aliased type's, so `fn Entries.empty<T>() -> Entries<T>` gives `Array<(string, T)>` an `empty`. An alias can't refer to itself, directly or through other aliases; a recursive type is a struct or an enum (§3.1). A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: string }`, which the type checker keeps apart from `string`, and a type with an identity of its own is a handle (§3.18).
+
+### 3.18 Handles
+
+A handle declaration makes a type whose values are handles to a cell of the instance's own memory, holding a value of the type after `of`. It is a type of its own: a module declares one when it needs values with an identity, such as a queue or a resource, where a struct, copied whenever it is passed, has none.
+
+```python
+struct LeaseState:
+    name: string
+    renewals: int
+
+handle Lease of LeaseState
+
+handle Counter of int
+```
+
+- **Its functions.** `handle H<T> of S` declares `fn H.from<T>(value: S) -> H<T>`, `fn unwrap<T>(self: H<T>) -> S` and `fn rewrap<T>(self: H<T>, value: S)`, beside it in its module. So `H(v)` makes a new cell holding `v`, `x$` and `x.value` read it, and `x$ = v` and `x$.field = v` write it (§3.9), for every copy of the handle. They are found, overloaded and exported as declared functions are, and they meet `Convertible`, `Wrapper` and `MutableWrapper` in generic code (§3.10). A handle has no fields of its own and isn't built with braces.
+- **Identity.** Copying a handle copies the handle, not the cell, and `==` compares handles by identity (§3.1). A handle is never sendable, so it stays in its instance, and has no JSON form (§9).
+- **Its own module.** A handle is a nominal type of the module declaring it, so argument-dependent lookup finds that module's functions for it (§3.13), and a diagnostic names it as declared.
+- **Disposal.** A handle has an identity, so a `dispose` declared beside it makes it disposable (§7), which is how a module makes a resource of its own.
+- **`Shared`.** The prelude's `Shared<T>` is `handle Shared<T> of T`: the cell of any type, which a variable lives in when it is passed by `&` or a closure captures it (§3.7, §3.14). It is the prelude's, so only the prelude could make it disposable.
 
 ## 4. Expressions and control flow
 
@@ -959,7 +979,7 @@ When the runtime or the host fills a slot, it wakes the waiters even if the whol
 
 `await` and `select` work only on futures. A future resolves once and stays resolved.
 
-**Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s, and written in the language. It is `type Inbox<T> = Shared<InboxState<T>>`, an instantiation the `inbox` module makes disposable by declaring its `dispose` (§7), so an inbox is a handle that a `WeakRef` can watch. It is created with `Inbox.create<T>()`:
+**Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s, and written in the language. It is `handle Inbox<T> of InboxState<T>` (§3.18), which the `inbox` module makes disposable by declaring its `dispose` (§7), so an inbox is a handle that a `WeakRef` can watch. It is created with `Inbox.create<T>()`:
 
 ```python statements
 const box = Inbox.create<Verdict>()
@@ -975,7 +995,7 @@ const next: Verdict = await box.receive()
 - **Durable messages** live until they are received, or until the inbox is disposed.
 - **Revertible messages** last as long as the `Revertible<T>` holder that `sendRevertible` returns: kept in `_`, it lasts until the sending block ends, with `fn _` until the sending function ends, and stored elsewhere, as long as it is held there. When the holder is released while the message is still unread, the message is retracted. The holder doesn't keep the inbox alive.
 - **Receiving a revertible message** makes it final, so once received, it can't be retracted. A retracted message is removed, and everything else keeps its order.
-- **`Revertible<T>`** is written in the language too: `type Revertible<T> = Shared<RevertibleState<T>>`, made disposable by the `inbox` module's `dispose`, which calls the state's `retract: fn() -> unit`. Whatever queue makes a holder supplies its own retraction, so an inbox, a fan-out and a queue the host provides (§3.6) all hand out the same type.
+- **`Revertible<T>`** is written in the language too: `handle Revertible<T> of RevertibleState<T>`, made disposable by the `inbox` module's `dispose`, which calls the state's `retract: fn() -> unit`. Whatever queue makes a holder supplies its own retraction, so an inbox, a fan-out and a queue the host provides all hand out the same type. A host's revertible send is a disposable host type (§3.6), and `Revertible.holding(sent)` makes a holder that keeps it until the holder is released, which disposes it and so tells the host (§12.1).
 
 **Lifetimes.** A slot or inbox is disposed when its last holder releases it, together with the values in it. Every handle holds it; code that shouldn't keep it alive holds a `WeakRef` instead (§7). Queues the host provides live as long as the host keeps them.
 
@@ -1000,9 +1020,9 @@ The owner keeps its inbox and gives the child only the weak side, starting it wi
 
 ## 7. Lifetimes and disposal
 
-Pending futures, slots and inboxes, and revertible messages are **disposable**: they satisfy the built-in `Disposable` trait, and the runtime calls `dispose` when nothing holds them anymore. Only a value with an identity of its own can be disposable, so only runtime and extern types may be, but that includes a specific instantiation of one, which is how user code gets a disposable resource: `fn dispose(self: Shared<Lease>)` makes every `Shared<Lease>` disposable, while `Shared<int>` stays an ordinary handle, and a `dispose` declared for an extern type a host provides makes it disposable too. A plain struct that declares `dispose` is a compile error, because copies of a value have no single identity to dispose.
+Pending futures, slots and inboxes, and revertible messages are **disposable**: they satisfy the built-in `Disposable` trait, and the runtime calls `dispose` when nothing holds them anymore. Only a value with an identity of its own can be disposable, so only a handle (§3.18) or an extern type may be. That is how user code gets a disposable resource: `fn dispose(self: Lease)` makes the handle `Lease` disposable, and a `dispose` declared for an extern type a host provides makes it disposable too. A plain struct that declares `dispose` is a compile error, because copies of a value have no single identity to dispose.
 
-A program's `dispose` is found the way an operator's function is (§3.9), beside the type it disposes: in the module declaring that type, and for a `Shared<T>`, `T`'s. It is plain code: it takes the value as its one parameter, returns unit, and can't be `async`. The value can't outlive its disposal, so inside `dispose` it is used only as `self$` or passed to an extern function; storing it, copying it into a variable, capturing it or passing it to any other function is a compile error.
+A program's `dispose` is found the way an operator's function is (§3.9), beside the type it disposes: in the module declaring that type. It is plain code: it takes the value as its one parameter, returns unit, and can't be `async`. The value can't outlive its disposal, so inside `dispose` it is used only as `self$` or passed to an extern function; storing it, copying it into a variable, capturing it or passing it to any other function is a compile error.
 
 ```python
 trait Disposable:
@@ -1174,7 +1194,7 @@ async fn main():
 - **Operate** panicked instances: retry one from its last snapshot, where the failed segment runs again with the time it first started at (§5), or terminate it, which ends it as terminated and disposes what it holds (§3.12, §7).
 - **Learn of spawned instances:** advancing an instance tells the host which instances it spawned, so the host runs them too.
 
-A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(string, int)` or `purchase.approvalDeadline`, and a host handle's function by the extern returning the handle and the field's name, as in `purchase.sendRevertible(purchase.Queue<T>, T).retract`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `int` keeps every digit and reads apart from a `float`; it may give back a `bigint` or a whole number for one. What it gives back is read as `JSON.stringify` would write it, so `undefined` is `null`, or a missing field inside an object: a function returning nothing gives `unit` or `none`.
+A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(string, int)`, `purchase.dispose(purchase.Sent)` or `purchase.approvalDeadline`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `int` keeps every digit and reads apart from a `float`; it may give back a `bigint` or a whole number for one. What it gives back is read as `JSON.stringify` would write it, so `undefined` is `null`, or a missing field inside an object: a function returning nothing gives `unit` or `none`.
 
 Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`: the host names the new future with a token of its own choosing and fills it later. An extern's result, or a value an extern constant gives, that doesn't fit its declared type panics the instance; a future filled, or an instance started, with JSON that doesn't fit fails the host's call instead. Filling a future nothing waits on any more, because it was disposed (§7) or its instance ended, changes nothing; filling one of a panicked instance fails until the instance is retried.
 
@@ -1320,11 +1340,17 @@ struct ChargeResult:
     ok: bool
     receipt: string
 
-# a queue type the host provides
+# a queue type the host provides, and a message sent into one revertibly, which the host
+# retracts when it is disposed, unless it was received
 extern sendable struct Queue<T is Sendable>
+extern struct Sent
+extern fn dispose(self: Sent)
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
-extern fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>
+extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent
 extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>
+
+fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:
+    Revertible.holding(_sendRevertible(self, msg))
 
 extern purchaseRequests: Queue<PurchaseRequest>
 extern fn reviewQueue(role: string) -> Queue<ReviewRequest>

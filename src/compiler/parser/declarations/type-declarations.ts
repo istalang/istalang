@@ -1,5 +1,6 @@
 /**
- * Declarations of types (§3.1, §3.10, §3.11, §3.17): structs, enums, traits and type aliases.
+ * Declarations of types (§3.1, §3.10, §3.11, §3.17, §3.18): structs, enums, traits, type aliases
+ * and handles.
  *
  * Structs, enums and traits list their members the same way: an indented block after `:`, or
  * braces on one line (`struct Req { id: int; value: string }`, `enum Color { Red; Green }`). A
@@ -10,13 +11,14 @@
 import type {
   EnumDeclaration,
   FunctionDeclaration,
+  HandleDeclaration,
   StructDeclaration,
   TraitDeclaration,
   TypeAliasDeclaration,
   Variant,
 } from '../../syntax/declarations.ts';
 import type { Invalid } from '../../syntax/node.ts';
-import type { FieldDeclaration } from '../../syntax/types.ts';
+import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { type ItemRules, type Items, parseBody, parseItemEntries } from '../layout.ts';
 import type { Parser } from '../parser.ts';
@@ -51,6 +53,23 @@ export function parseTypeAlias(parser: Parser): TypeAliasDeclaration {
   const type = parser.expect('=') === undefined ? parser.placeholder() : parser.type();
   const span = parser.spanFrom(start);
   return { kind: 'TypeAliasDeclaration', span, name, typeParameters, type };
+}
+
+/** `handle Name<T> of Type`, starting at `handle`; `handle` and `of` are keywords only here (§2). */
+export function parseHandle(parser: Parser): HandleDeclaration {
+  const { start, name, typeParameters } = parseTypeHead(parser);
+  const state = parseHandleState(parser);
+  const span = parser.spanFrom(start);
+  return { kind: 'HandleDeclaration', span, name, typeParameters, state };
+}
+
+/** `of Type`. */
+function parseHandleState(parser: Parser): TypeNode {
+  if (!parser.atWord('of')) {
+    return parser.missing("'of'");
+  }
+  parser.cursor.advance();
+  return parser.type();
 }
 
 /** The keyword, the declared name and its type parameters. */

@@ -1,29 +1,32 @@
-# error: 5700 at 17:4
-# error: 5701 at 20:10
-# error: 5702 at 24:16
-# error: 5702 at 26:23
-# error: 5703 at 28:4
-# Only a value with an identity of its own can be disposable (§7): a `Shared` instantiation, or an
-# extern type a host provides, never a plain struct, whose copies have none. A `dispose` is plain
-# code that takes its value and returns unit, it is found beside the type it disposes, and its
-# value can't escape it: `self` is used only as `self$` or passed to an extern.
+# error: 5700 at 20:4
+# error: 5701 at 23:10
+# error: 5702 at 27:16
+# error: 5702 at 29:23
+# error: 5703 at 31:4
+# Only a value with an identity of its own can be disposable (§7): a handle (§3.18), or an extern
+# type a host provides, never a plain struct, whose copies have none. A `dispose` is plain code
+# that takes its value and returns unit, it is found beside the type it disposes, and its value
+# can't escape it: `self` is used only as `self$` or passed to an extern. A `Shared` is the
+# prelude's handle, so only the prelude could declare its `dispose`.
 
 struct Plain { n: int }
 
-struct Lease { name: string }
+struct LeaseState { name: string }
 
-struct Holder { lease: Shared<Lease> }
+handle Lease of LeaseState
+
+handle Holder of Lease
 
 fn dispose(self: Plain):
   ()
 
-async fn dispose(self: Shared<Holder>):
+async fn dispose(self: Holder):
   ()
 
-fn dispose(self: Shared<Lease>):
+fn dispose(self: Lease):
   const copy = self
   const name = self$.name
   const later = fn(): self$.name
 
-fn dispose(self: Shared<int>):
+fn dispose(self: Shared<LeaseState>):
   ()

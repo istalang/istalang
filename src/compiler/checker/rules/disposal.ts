@@ -1,22 +1,21 @@
 /**
  * Which values are disposable (§7), and who disposes them. A type is disposable when a `dispose`
  * takes it as `self`: structural conformance to `Disposable` (§3.10), with no list kept anywhere
- * else. Only a value with an identity of its own can be, so only a handle: a `Shared`
- * instantiation, or an extern type, whose values are objects the runtime keeps.
+ * else. Only a value with an identity of its own can be, so only a handle (§3.18) or an extern
+ * type, whose values are objects the runtime keeps.
  *
  * - An extern `dispose` that a std module declares beside its type, as the prelude does for
  *   `Future` and `Slot`, is the runtime's to perform.
- * - Any other `dispose` runs as code, called with a handle to the value: `fn dispose(self:
- *   Shared<Lease>)` makes every `Shared<Lease>` disposable, and a host's extern type becomes
- *   disposable by a `dispose` declared beside it (§7). It is found the way an operator's
- *   function is, by argument-dependent lookup, so it lives beside the type it disposes: a
- *   `Shared<T>`'s beside `T` (resolution/candidates.ts).
+ * - Any other `dispose` runs as code, called with the value: `fn dispose(self: Lease)` makes a
+ *   handle `Lease` disposable, and a host's extern type becomes disposable by a `dispose` declared
+ *   beside it (§7). It is found the way an operator's function is, by argument-dependent lookup,
+ *   so it lives beside the type it disposes (resolution/candidates.ts).
  * - A `dispose` that runs as code is plain code that can't wait, and `self` can't escape it: it is
  *   used only as `self$` or passed to an extern, so a disposed value never becomes observable
  *   again (§7).
  */
 
-import { disposeFunction, wellKnown } from '../../../language/well-known.ts';
+import { disposeFunction } from '../../../language/well-known.ts';
 import { isStdModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Parameter } from '../../syntax/expressions.ts';
@@ -31,7 +30,6 @@ import { chooseSilently } from '../resolution/silent-choice.ts';
 import { requiredFunctions } from '../traits/constraints.ts';
 import { type NominalType, sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
 import { silent, useSite } from '../use-site.ts';
 
 const none: Disposal = { kind: 'none' };
@@ -59,9 +57,6 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
 }
 
 export function disposalOf(checker: CheckerContext, type: NominalType): Disposal {
-  if (type.entity.declaration.kind !== 'ExternStructDeclaration') {
-    return none;
-  }
   if (isStdType(checker, type) && runtimeDisposes(checker, type)) {
     return { kind: 'runtime' };
   }
@@ -87,16 +82,15 @@ function isRuntimeDispose(checker: CheckerContext, declaration: FunctionDeclarat
 }
 
 /**
- * Whether a program's `dispose` may make `type` disposable: a handle no std module disposes, a
- * `Shared` instantiation or an extern type a host provides. A std module's other extern types are
- * either values, such as an `Array`, or disposed by the runtime already.
+ * Whether a program's `dispose` may make `type` disposable: a handle (§3.18), or an extern type a
+ * host provides. A std module's extern types are either values, such as an `Array`, or disposed by
+ * the runtime already.
  */
 function isOwnedHandle(checker: CheckerContext, type: NominalType): boolean {
-  if (type.entity.declaration.kind !== 'ExternStructDeclaration') {
-    return false;
-  }
+  const { kind } = type.entity.declaration;
   return (
-    wellKnownArguments(checker, wellKnown.shared, type) !== undefined || !isStdType(checker, type)
+    kind === 'HandleDeclaration' ||
+    (kind === 'ExternStructDeclaration' && !isStdType(checker, type))
   );
 }
 

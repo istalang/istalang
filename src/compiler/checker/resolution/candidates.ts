@@ -3,8 +3,7 @@
  *
  * - the functions its name denotes where it is written, the prelude's joined (the binder's set);
  * - argument-dependent lookup: the exported functions of that name in the modules declaring the
- *   arguments' own types, not their type arguments', except that a `Shared<T>` counts `T`'s, as the
- *   way a module makes a resource type of its own (§7);
+ *   arguments' own types, not their type arguments';
  * - the functions the constraints on a type parameter require, for every type parameter the
  *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other.
  *
@@ -17,13 +16,11 @@
  * whose modules can't, such as primitives, and no caller has to import them.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
 import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
 import { type NominalType, parametersIn, type Type } from '../types/type.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
 export interface Candidate {
@@ -146,10 +143,7 @@ function argumentDependent(
   argumentTypes: readonly Type[],
 ): readonly FunctionDeclaration[] {
   return argumentTypes.flatMap((argument) =>
-    lookupTypes(checker, argument).flatMap((type) => {
-      const module = checker.bindings.moduleOf(type.entity);
-      return module === undefined ? [] : exportedFunctions(checker, module, name);
-    }),
+    argument.kind === 'nominal' ? ownExports(checker, argument, name) : [],
   );
 }
 
@@ -164,13 +158,14 @@ function exportedFunctions(
   return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
 }
 
-/** The types whose modules lookup searches for an argument of `type` (§3.13). */
-function lookupTypes(checker: CheckerContext, type: Type): readonly NominalType[] {
-  if (type.kind !== 'nominal') {
-    return [];
-  }
-  const [held] = wellKnownArguments(checker, wellKnown.shared, type) ?? [];
-  return held?.kind === 'nominal' ? [type, held] : [type];
+/** The functions named `name` the module declaring `type` exports: what lookup finds (§3.13). */
+function ownExports(
+  checker: CheckerContext,
+  type: NominalType,
+  name: string,
+): readonly FunctionDeclaration[] {
+  const module = checker.bindings.moduleOf(type.entity);
+  return module === undefined ? [] : exportedFunctions(checker, module, name);
 }
 
 function requirementCandidates(

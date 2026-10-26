@@ -1,28 +1,15 @@
-# error: 5901 at 24:24
-# error: 5101 at 25:26
-# error: 5101 at 26:22
-# A host handle (§3.6), a `Shared` of a struct with only function fields, crosses as JSON naming
-# it, and its host implements each function as an extern of its own: so each function takes
-# nothing by `&` and only what crosses as JSON. A struct with a field that isn't a function is no
-# handle, so it must cross as JSON itself, which a `Shared` can't.
+# error: 5101 at 11:24
+# error: 5101 at 12:23
+# error: 5101 at 13:16
+# A handle (§3.18) has an identity of its own, which stays in its instance: it has no JSON form,
+# so no extern a host implements takes or gives one, a `Shared` or a module's own alike (§3.6).
 
-struct Counter:
-  bump: fn(&int) -> unit
+struct CounterState { count: int }
 
-struct Callbacks:
-  run: fn(fn() -> unit) -> unit
+handle Counter of CounterState
 
-struct Mixed:
-  id: string
-  stop: fn() -> unit
-
-struct Fine:
-  ping: fn(string) -> Future<int>
-  stop: fn() -> unit
-
-extern fn fine() -> Shared<Fine>
-extern fn counter() -> Shared<Counter>
-extern fn callbacks() -> Shared<Callbacks>
-extern fn mixed() -> Shared<Mixed>
+extern fn counter() -> Counter
+extern fn shared() -> Shared<int>
+extern fn bump(c: Counter)
 
 async fn main(): 0

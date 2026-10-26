@@ -1,0 +1,15 @@
+# error: 5012 at 14:18
+# error: 5605 at 15:14
+# A handle (§3.18) is made by `Counter(state)`, not by braces, which build a struct, and its values
+# have an identity, so they never leave their instance.
+
+struct Tally { count: int }
+
+handle Counter of Tally
+
+fn keep(counter: Counter):
+  ()
+
+async fn main():
+  const braced = Counter{count: 1}
+  spawn keep(Counter(Tally{count: 1}))
