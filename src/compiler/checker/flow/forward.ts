@@ -21,6 +21,7 @@
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import {
+  chainStepOf,
   type Expression,
   isOptionallyChained,
   type MatchCase,
@@ -225,11 +226,16 @@ class FlowWalk {
   }
 
   /**
-   * A link of a chain, `target` then its own `parts`: run only when no `?.` before it in the
-   * chain met `none` (§4).
+   * `node`, a link of a chain when syntax gives it a step (`chainStepOf`): its step's target, then
+   * the rest of its parts, run only when no `?.` or `?->` before it in the chain met `none` (§4).
    */
-  link(node: Expression, target: SyntaxNode, parts: readonly SyntaxNode[], state: Opaque) {
-    const reached = this.node(target, state);
+  link(node: Expression, state: Opaque) {
+    const step = chainStepOf(node);
+    if (step === undefined) {
+      return this.sequence(childrenOf(node), state);
+    }
+    const reached = this.node(step.target, state);
+    const parts = partsBeside(node, step.target);
     return isOptionallyChained(node)
       ? this.sometimes(parts, reached)
       : this.sequence(parts, reached);
@@ -239,6 +245,29 @@ class FlowWalk {
 /** A construct whose parts run in source order. */
 function children(walk: FlowWalk, node: SyntaxNode, state: Opaque): Flow {
   return walk.sequence(childrenOf(node), state);
+}
+
+/** A construct that may be a link of an optional chain. */
+function link(walk: FlowWalk, node: Expression, state: Opaque): Flow {
+  return walk.link(node, state);
+}
+
+/**
+ * The parts of `node` other than `target`, a descendant: its children, a child holding `target`
+ * opened up into its own parts, as a method call's callee is around its receiver.
+ */
+function partsBeside(node: SyntaxNode, target: SyntaxNode): readonly SyntaxNode[] {
+  return childrenOf(node).flatMap((child) => {
+    if (child === target) {
+      return [];
+    }
+    return holds(child, target) ? partsBeside(child, target) : [child];
+  });
+}
+
+/** Whether `node` is `descendant` or holds it. */
+function holds(node: SyntaxNode, descendant: SyntaxNode): boolean {
+  return node === descendant || childrenOf(node).some((child) => holds(child, descendant));
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -267,25 +296,13 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
     walk.function(node.body, state);
     return state;
   },
-  Call: (walk, node, state) => {
-    if (node.isOptional) {
-      return walk.link(node, node.callee, [...node.typeArguments, ...node.arguments], state);
-    }
-    return node.callee.kind === 'MemberAccess'
-      ? walk.link(
-          node,
-          node.callee.target,
-          [node.callee.member, ...node.typeArguments, ...node.arguments],
-          state,
-        )
-      : children(walk, node, state);
-  },
+  Call: link,
   Reference: children,
-  MemberAccess: (walk, node, state) => walk.link(node, node.target, [node.member], state),
-  TupleElement: (walk, node, state) => walk.link(node, node.target, [], state),
-  Index: (walk, node, state) => walk.link(node, node.target, [node.index], state),
+  MemberAccess: link,
+  TupleElement: link,
+  Index: link,
   Propagate: children,
-  Dereference: children,
+  Dereference: link,
   Unary: children,
   Await: children,
   Binary: (walk, node, state) => {

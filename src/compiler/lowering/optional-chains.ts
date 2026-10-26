@@ -15,7 +15,7 @@ import type { Register } from '../../definition/operands.ts';
 import { optionalVariants } from '../../language/well-known.ts';
 import { withPushed } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { chainStepOf, type Expression } from '../syntax/expressions.ts';
+import { chainStepOf, type Expression, isOptionalStep } from '../syntax/expressions.ts';
 import type { Label } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
 import {
@@ -73,7 +73,7 @@ export class OptionalChains {
         : this.#link(step.target);
     const base = body.chainOf(link)?.base;
     const none = this.#ends.at(-1);
-    if (!step.optional) {
+    if (!isOptionalStep(step)) {
       return value;
     }
     if (base === undefined || none === undefined) {

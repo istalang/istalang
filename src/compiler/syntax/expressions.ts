@@ -287,12 +287,21 @@ export interface Match extends NodeOf<'Match'> {
 }
 
 /**
- * The step a link of an optional chain takes (§4): what it works on, and whether through `?.` or
- * `?->`.
+ * The operator a link of an optional chain takes its step with (§4): `.` (a field, a tuple
+ * element or a method), `->` or `[` on its target's value, or `?.`, `?->`, `?.[` and `?.(` (a call
+ * of the function) on the value inside an optional.
  */
+type ChainOperator = '.' | '->' | '[' | '?.' | '?->' | '?.[' | '?.(';
+
+/** The step a link of an optional chain takes (§4): what it works on, and with which operator. */
 export interface ChainStep {
   readonly target: Expression;
-  readonly optional: boolean;
+  readonly operator: ChainOperator;
+}
+
+/** Whether `step` reads through an optional, so meeting `none` ends its whole chain (§4). */
+export function isOptionalStep(step: ChainStep): boolean {
+  return step.operator.startsWith('?');
 }
 
 /**
@@ -305,22 +314,20 @@ export interface ChainStep {
 export function chainStepOf(node: Expression): ChainStep | undefined {
   switch (node.kind) {
     case 'MemberAccess':
-      return { target: node.target, optional: node.isOptional };
+      return { target: node.target, operator: node.isOptional ? '?.' : '.' };
     case 'TupleElement':
-      return { target: node.target, optional: false };
+      return { target: node.target, operator: '.' };
     case 'Index':
-      return { target: node.target, optional: node.isOptional };
+      return { target: node.target, operator: node.isOptional ? '?.[' : '[' };
     case 'Call':
       if (node.isOptional) {
-        return { target: node.callee, optional: true };
+        return { target: node.callee, operator: '?.(' };
       }
       return node.callee.kind === 'MemberAccess'
-        ? { target: node.callee.target, optional: node.callee.isOptional }
+        ? { target: node.callee.target, operator: node.callee.isOptional ? '?.' : '.' }
         : undefined;
     case 'Dereference':
-      return node.operator === '*'
-        ? undefined
-        : { target: node.operand, optional: node.operator === '?->' };
+      return node.operator === '*' ? undefined : { target: node.operand, operator: node.operator };
     default:
       return undefined;
   }
@@ -329,7 +336,7 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
 /** Whether `node` is a link of an optional chain at a `?.` or `?->`, or after one (§4). */
 export function isOptionallyChained(node: Expression): boolean {
   for (let step = chainStepOf(node); step !== undefined; step = chainStepOf(step.target)) {
-    if (step.optional) {
+    if (isOptionalStep(step)) {
       return true;
     }
   }

@@ -18,6 +18,7 @@ import {
   type ChainStep,
   chainStepOf,
   type Expression,
+  isOptionalStep,
 } from '../../syntax/expressions.ts';
 import type { ChainLink } from '../check.ts';
 import { checkOwnCall } from '../closures/own-calls.ts';
@@ -44,7 +45,7 @@ export class OptionalChains {
   /** Whether `node`, a link or not, continues an optional chain: it uses `?.`, or its target is a link. */
   continues(node: Expression): boolean {
     const step = chainStepOf(node);
-    return step !== undefined && (step.optional || this.#carried.has(step.target));
+    return step !== undefined && (isOptionalStep(step) || this.#carried.has(step.target));
   }
 
   /**
@@ -89,7 +90,7 @@ export class OptionalChains {
 
   #baseOf(context: BodyContext, link: Expression, step: ChainStep, targetType: Type): Type {
     const carried = this.#carried.get(step.target) ?? targetType;
-    if (!step.optional || carried.kind === 'error') {
+    if (!isOptionalStep(step) || carried.kind === 'error') {
       return carried;
     }
     const inner = optionalInner(carried, context.checker.optionalEntity);
