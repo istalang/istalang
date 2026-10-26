@@ -7,9 +7,8 @@
  *   (§2: an entry is `c[k] = v`) both make it here.
  * - They run at once: an element is read with `index` and written back with `setIndex` around the
  *   change that the statement or call making it needs done there and then, and a map literal of a
- *   declared type is built by its `default` and `setIndex` before the literal has a value. An
- *   async one would give a future where a value or a finished write is needed, so none may be
- *   async.
+ *   declared type assigns its entries with `setIndex` before the literal has a value. An async one
+ *   would give a future where a value or a finished write is needed, so none may be async.
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';

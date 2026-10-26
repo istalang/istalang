@@ -13,9 +13,9 @@
  * - A literal is a map literal only with an entry or as `[:]` (the parser decides), so `[...m]`
  *   is an array of `m`'s entries. Where a `Map` is expected, `[]` is an empty map.
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
- *   `C.default()` and assigns each entry with `setIndex`, as `c[k] = v` would (§2). Those are calls
- *   the language makes (resolution/implicit.ts), which must run at once
- *   (calls/collection-functions.ts). Keys and values are checked on their own there, since
+ *   `C`'s default, Default's witness, and assigns each entry with `setIndex`, as `c[k] = v` would
+ *   (§2). Those are calls the language makes (resolution/implicit.ts), which must run at once
+ *   (calls/collection-functions.ts): Default's `default` gives its type, never a future. Keys and values are checked on their own there, since
  *   `setIndex` is chosen by their types.
  * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
  * - Passed to a call, a literal whose first item has no type of its own, or an empty one, has the
@@ -23,7 +23,7 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { collectionFunctions, wellKnown } from '../../../language/well-known.ts';
+import { wellKnown } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
 import type {
   ArrayLiteral,
@@ -34,13 +34,13 @@ import type {
   Spread,
 } from '../../syntax/expressions.ts';
 import type { Invalid } from '../../syntax/node.ts';
-import { runsAtOnce, writeElement } from '../calls/collection-functions.ts';
+import { writeElement } from '../calls/collection-functions.ts';
 import { operatorFunctions } from '../calls/operators.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { staticCandidates } from '../resolution/candidates.ts';
 import type { Accepts } from '../resolution/choice.ts';
+import { defaultWitness } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
@@ -252,23 +252,14 @@ function checkDeclaredLiteral(
   node: ArrayLiteral | MapLiteral,
   type: NominalType,
 ): Type {
-  const { checker, module } = context;
   context.collections.record(node, 'declared');
   const failure = () => checkerDiagnostics.mapLiteralType(node.span, typeText(type));
-  const owner = {
-    kind: 'owner',
-    owner: type.entity.declaration,
-    module: checker.moduleOf(type.entity.declaration),
-  } as const;
-  const made = implicitCall(context, {
-    node,
-    role: 'default',
-    candidates: staticCandidates(checker, module, owner, collectionFunctions.default),
-    arguments: [],
-    expected: type,
-    failure,
-  });
-  runsAtOnce(context, context.implicit.of(node, 'default'), node.span);
+  const made = defaultWitness(context.checker, type);
+  if (made === undefined) {
+    context.report(failure());
+  } else {
+    context.implicit.record(node, 'default', made);
+  }
   for (const entry of node.kind === 'MapLiteral' ? node.entries : []) {
     insertEntry(context, entry, type, made === undefined ? undefined : failure);
   }

@@ -1,17 +1,11 @@
-# error: 5306 at 24:3
-# error: 5306 at 25:22
-# A collection runs its `index`, `setIndex` and `default` at once, inside the place or literal
-# that needs them, so none may be async (§3.9).
+# error: 5306 at 18:3
+# A collection runs its `index` and `setIndex` at once, inside the place or literal that needs
+# them, so neither may be async (§3.9).
 
 struct Bag { values: Map<string, int> }
 
-struct Slow { values: Map<string, int> }
-
 fn Bag.default() -> Bag:
   Bag{values: [:]}
-
-async fn Slow.default() -> Future<Slow>:
-  Slow{values: [:]}
 
 fn index(self: Bag, key: string) -> int:
   self.values[key]
@@ -22,4 +16,3 @@ async fn setIndex(self: &Bag, key: string, value: int):
 async fn main():
   let bag = Bag{values: [:]}
   bag["a"] = 1
-  const slow: Slow = []

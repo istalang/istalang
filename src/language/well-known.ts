@@ -133,15 +133,11 @@ export const resultVariants = { ok: 'Ok', err: 'Err' } as const;
 /** The static function a conversion `T(x)` calls (§3.10). */
 export const conversionFunction = 'from';
 
-/**
- * The functions collections go through (§3.9, §3.10): `x[k]`, `x[k] = v`, `for` and spreads, and
- * the static function a map literal of a type other than `Map` starts from (§2).
- */
+/** The functions collections go through (§3.9, §3.10): `x[k]`, `x[k] = v`, `for` and spreads. */
 export const collectionFunctions = {
   index: 'index',
   setIndex: 'setIndex',
   iterate: 'iterate',
-  default: 'default',
 } as const;
 
 /** The function every program starts from (§9). */
