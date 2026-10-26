@@ -26,7 +26,7 @@ import runtimeSource from './runtime/runtime.ista';
 import timeSource from './time/time.ista';
 
 /** The prelude's name, which its declarations and natives are qualified with. */
-export const preludeName = languageModules.prelude;
+const preludeName = languageModules.prelude;
 
 /** The `time` module's name. */
 export const timeName = languageModules.time;

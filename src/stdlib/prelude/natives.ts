@@ -13,13 +13,13 @@
  * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
  */
 
+import { preludeKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import { errorTrace } from '../../language/well-known.ts';
 import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
 import { float, int, text } from '../native-values.ts';
 import { arrayNatives } from './arrays.ts';
 import { mapNatives } from './maps.ts';
-import { preludeKey } from './prelude-key.ts';
 import { sharedNatives } from './shared-natives.ts';
 import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';

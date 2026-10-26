@@ -230,16 +230,17 @@ function entryTexts(texts: readonly string[]): string {
   for (let at = 0; at < texts.length; at += 2) {
     entries.push(`${texts[at]}=${texts[at + 1]}`);
   }
-  return entries.toSorted(byCodeUnits).join(',');
+  return entries.toSorted(compareCodeUnits).join(',');
 }
 
 /**
  * Orders texts by their code units, so the order is the same for any two equal texts and differs
  * for any two different ones; a locale's order may call different texts equal.
  */
-function byCodeUnits(first: string, second: string): number {
-  if (first < second) {
-    return -1;
+/** The order of two strings by UTF-16 code unit, as JavaScript sorts strings. */
+export function compareCodeUnits(left: string, right: string): number {
+  if (left === right) {
+    return 0;
   }
-  return first > second ? 1 : 0;
+  return left < right ? -1 : 1;
 }

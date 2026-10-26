@@ -17,6 +17,7 @@ import {
   externKey,
   type KeyType,
   keyTypeText,
+  staticName,
 } from '../../definition/extern-key.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
@@ -43,7 +44,7 @@ function moduleName(checker: Checker, module: ModuleId): string {
 /** A function's name as declared, with its owner type for a static function: `Slot.create`. */
 function declaredName(declaration: FunctionDeclaration): string {
   const { owner, name } = declaration;
-  return owner === undefined ? name.text : `${owner.text}.${name.text}`;
+  return owner === undefined ? name.text : staticName(owner.text, name.text);
 }
 
 /** A declaration lowering names: a function, a type, a top-level constant or an extern one. */

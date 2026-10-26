@@ -1,3 +1,4 @@
+import { compareCodeUnits } from '../language/values.ts';
 /**
  * The one JSON text form for everything the toolchain persists or hashes: Definitions, snapshots
  * and, from M3, values crossing the host boundary.
@@ -63,14 +64,6 @@ function sortKeys(_key: string, value: unknown): unknown {
   }
   const entries = Object.entries(value).sort(([left], [right]) => compareCodeUnits(left, right));
   return Object.fromEntries(entries);
-}
-
-/** The order of two strings by UTF-16 code unit, as JavaScript sorts strings. */
-export function compareCodeUnits(left: string, right: string): number {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
 }
 
 function decodeNumber(text: string): number | bigint {

@@ -128,3 +128,20 @@ export function keyTypeText(type: KeyType): string {
     }
   }
 }
+
+/** A static function's name, as keys and expressions spell it: `Owner.name`. */
+export function staticName(owner: string, name: string): string {
+  return `${owner}.${name}`;
+}
+
+/** The key of an extern in the prelude. */
+export function preludeKey(
+  name: string,
+  ...parameters: readonly (KeyType | ReferenceKey | PrimitiveName)[]
+): string {
+  return nativeKey(
+    'prelude',
+    name,
+    ...parameters.map((p) => (typeof p === 'string' ? primitiveKey(p) : p)),
+  );
+}

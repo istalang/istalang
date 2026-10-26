@@ -6,11 +6,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { preludeKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import { Panic } from '../../runtime/natives.ts';
 import { unusedContext } from '../../runtime/runtime.test-kit.ts';
 import { preludeNatives } from './natives.ts';
-import { preludeKey } from './prelude-key.ts';
 
 function call(key: string, ...argumentValues: Value[]): Value {
   const native = preludeNatives[key];

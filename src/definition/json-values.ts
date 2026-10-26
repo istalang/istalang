@@ -19,10 +19,11 @@
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
 
+import { compareCodeUnits } from '../language/values.ts';
 import { qualifiedName, wellKnown } from '../language/well-known.ts';
 import { memo } from '../structures/memo.ts';
 import { unreachable } from '../structures/unreachable.ts';
-import { compareCodeUnits, decodeJson } from './codec.ts';
+import { decodeJson } from './codec.ts';
 import { mapOf } from './equality.ts';
 import type { TypeId } from './operands.ts';
 import type { TypeDefinition } from './types.ts';

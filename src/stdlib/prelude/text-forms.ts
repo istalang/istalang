@@ -9,11 +9,11 @@
  *   `Result` of an `Error` with code `parse`, never a panic (§3.12).
  */
 
+import { preludeKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
 import type { Natives } from '../../runtime/natives.ts';
 import { resultError, resultOk, text } from '../native-values.ts';
-import { preludeKey } from './prelude-key.ts';
 
 /** The code of every `Error` a `parse` returns. */
 export const parseErrorCode = 'parse';
