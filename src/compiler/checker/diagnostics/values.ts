@@ -74,6 +74,16 @@ export const valueTemplates = {
         ? `'${place}' is assigned twice in one assignment.`
         : `'${place}' overlaps '${earlier}', which the same assignment assigns.`,
   },
+  sharedNeedsNew: {
+    code: 5218,
+    message: (type: string) =>
+      `${type} is a shared struct, so a new one is built with 'new': new ${type}{…} (§3.18).`,
+  },
+  newNotShared: {
+    code: 5219,
+    message: (type: string) =>
+      `Only a shared struct is built with 'new', and ${type} isn't one: drop the 'new' (§3.18).`,
+  },
   passing: {
     code: 5215,
     message: (name: string, position: number, reference: boolean) =>

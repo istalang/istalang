@@ -1,7 +1,11 @@
 /**
  * The layout of declared types (§3.1, §3.11, §3.18): a struct's fields, an enum's variants and
- * what a handle's cell holds. An anonymous struct carries its own fields (types/type.ts), so its
- * layout is read off the type.
+ * the value behind a shared struct. An anonymous struct carries its own fields (types/type.ts), so
+ * its layout is read off the type.
+ *
+ * A shared struct's fields are its value's, behind the handle that is the struct's value: they are
+ * no fields of the struct type itself, so `x.f` and patterns never see them, and `*x` reads them as
+ * an anonymous struct of its own, the one value type of that declaration.
  *
  * - As declared: field types resolved in the declaring module, once per declaration.
  * - As instantiated: substituted for a nominal type's arguments, derived on demand from the
@@ -17,6 +21,7 @@ import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { declaredFields } from '../types/resolve-type.ts';
 import {
+  type AnonymousStructType,
   type FieldMember,
   type NominalType,
   type Substitution,
@@ -36,7 +41,7 @@ export class Layouts {
 
   /**
    * The fields of a struct type, nominal or anonymous, substituted for its type arguments;
-   * undefined for another type.
+   * undefined for another type, a shared struct included.
    */
   fieldsOf(type: Type): readonly FieldMember[] | undefined {
     if (type.kind === 'anonymous') {
@@ -46,20 +51,22 @@ export class Layouts {
       return undefined;
     }
     const { declaration } = type.entity;
-    return declaration.kind === 'StructDeclaration'
+    return declaration.kind === 'StructDeclaration' && !declaration.isShared
       ? instantiated(this.declaredFieldsOf(declaration), substitutionOf(type))
       : undefined;
   }
 
-  /** What a handle's cell holds, substituted for its type arguments; undefined for another type. */
-  stateOf(type: NominalType): Type | undefined {
+  /**
+   * The value behind a shared struct, `*x`, substituted for its type arguments; undefined for
+   * another type.
+   */
+  stateOf(type: NominalType): AnonymousStructType | undefined {
     const { declaration } = type.entity;
-    if (declaration.kind !== 'HandleDeclaration') {
+    if (declaration.kind !== 'StructDeclaration' || !declaration.isShared) {
       return undefined;
     }
-    const checker = this.#checker;
-    const state = checker.resolveType(checker.moduleOf(declaration), declaration.state);
-    return substitute(state, substitutionOf(type));
+    const fields = instantiated(this.declaredFieldsOf(declaration), substitutionOf(type));
+    return { kind: 'anonymous', origin: declaration, fields };
   }
 
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */

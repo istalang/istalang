@@ -1,14 +1,12 @@
 /**
- * The std natives table against the std modules' sources: every extern a program can call, a
- * handle's functions included (§3.18), has a native under the key lowering gives its declaration,
- * and no native is left over.
+ * The std natives table against the std modules' sources: every extern a program can call has a
+ * native under the key lowering gives its declaration, and no native is left over.
  */
 
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../compiler/checker/check.ts';
-import { nativeKeyOf } from '../compiler/lowering/names.ts';
-import { declaredFunctions } from '../compiler/syntax/derived-functions.ts';
+import { keyOf } from '../compiler/lowering/names.ts';
 import { derivedCodecs } from '../language/well-known.ts';
 import { stdNatives } from './natives.ts';
 import { jsonName, stdSources } from './stdlib-loader.ts';
@@ -31,9 +29,11 @@ describe('std natives', () => {
     const std = [...program.modules.values()].filter((module) => module.isStd);
     expect(std.length).toBe(Object.keys(stdSources).length + 1);
     const callable = std.flatMap((module) =>
-      declaredFunctions(module.tree.root).flatMap((declared) =>
-        declared.isExtern && !withoutNative.has(`${module.name}.${declared.name.text}`)
-          ? [nativeKeyOf(checker, declared)]
+      module.tree.root.items.flatMap((item) =>
+        item.kind === 'FunctionDeclaration' &&
+        item.isExtern &&
+        !withoutNative.has(`${module.name}.${item.name.text}`)
+          ? [keyOf(checker, item, checker.parametersOf(item))]
           : [],
       ),
     );

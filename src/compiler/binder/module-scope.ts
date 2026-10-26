@@ -3,8 +3,7 @@
  * anything inside a declaration is bound, so declarations may come in any order.
  *
  * - Top-level functions sharing a name form one overload set (§3.7). A static function
- *   (`fn Duration.zero()`) belongs to its type, so it defines no name here. A handle's functions
- *   join the sets as written ones do, where the handle is declared (§3.18).
+ *   (`fn Duration.zero()`) belongs to its type, so it defines no name here.
  * - Any other name defined twice is an error. The message says which rule was broken: a name
  *   imported twice, an import clashing with a declaration (§3.13), or a plain duplicate.
  * - A named import is a placeholder until the program is linked; a namespace import is already
@@ -20,7 +19,6 @@ import type {
   FunctionDeclaration,
   Module,
 } from '../syntax/declarations.ts';
-import { declaredFunctions, derivedFunctionsOf } from '../syntax/derived-functions.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import { binderDiagnostics } from './diagnostics.ts';
@@ -104,12 +102,6 @@ class TopLevelDefiner {
           this.#define(name, { kind: 'variable', name, owner: item }, 'declaration', 'value');
         }
         return;
-      case 'HandleDeclaration':
-        this.#define(item.name, { kind: 'type', declaration: item }, 'declaration', 'type');
-        for (const declared of derivedFunctionsOf(item)) {
-          this.#defineFunction(declared);
-        }
-        return;
       default:
         this.#define(item.name, { kind: 'type', declaration: item }, 'declaration', 'type');
     }
@@ -177,9 +169,9 @@ function ownNames(
 /** A set per name of the top-level functions; static functions belong to their type instead. */
 function functionSets(module: Module): ReadonlyMap<string, FunctionsEntity> {
   const sets = new Map<string, FunctionDeclaration[]>();
-  for (const declared of declaredFunctions(module)) {
-    if (declared.owner === undefined) {
-      sets.set(declared.name.text, [...(sets.get(declared.name.text) ?? []), declared]);
+  for (const item of module.items) {
+    if (item.kind === 'FunctionDeclaration' && item.owner === undefined) {
+      sets.set(item.name.text, [...(sets.get(item.name.text) ?? []), item]);
     }
   }
   return new Map(

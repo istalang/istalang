@@ -82,12 +82,12 @@
           }
         },
         {
-          "match": "^\\s*(handle)\\s+([A-Za-z_][A-Za-z0-9_]*)(?:\\s*<.*>)?\\s+(of)\\b",
-          "captures": {
-            "1": { "name": "storage.type.handle.ista" },
-            "2": { "name": "entity.name.type.ista" },
-            "3": { "name": "storage.modifier.ista" }
-          }
+          "match": "^\\s*(shared)\\s+(?=struct\\b)",
+          "captures": { "1": { "name": "storage.modifier.ista" } }
+        },
+        {
+          "match": "\\b(new)\\s+(?=[A-Za-z_])",
+          "captures": { "1": { "name": "keyword.operator.new.ista" } }
         },
         {
           "match": "\\b(from)(?=\\s*['\"])",

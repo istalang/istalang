@@ -7,7 +7,7 @@
  *   its path.
  * - A variable passed by `&` somewhere in the body, or a `let` a closure captures, lives in a cell,
  *   which a reference or a closure can reach (docs/arch/definition.md, "Frames"): its register is
- *   listed in the function's `cells`, typed as the `Shared<T>` the cell is created as.
+ *   listed in the function's `cells`, typed as the `_Cell<T>` the cell is created as.
  * - An assignment evaluates its value, then writes each part to its place (`assignedOf`),
  *   wrapped as the checker found it fits the place (§2); a whole `*x`, like a last element, is
  *   written with its write alone (places.ts). A compound assignment reads its place once, calls its operator's function on that value and the
@@ -41,7 +41,7 @@ import {
   writeTarget,
 } from '../places.ts';
 
-/** A register holding a cell, and the `Shared<T>` type entry it is created as. */
+/** A register holding a cell, and the `_Cell<T>` type entry it is created as. */
 export interface CellRegister {
   readonly register: Register;
   readonly type: TypeId;

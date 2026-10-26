@@ -4,7 +4,7 @@
 # reverse, last first. What the function returns is computed before its defers run.
 
 fn note(log: Shared<Array<string>>, text: string):
-  *log = [...*log, text]
+  log->value = [...log->value, text]
 
 fn blocks(log: Shared<Array<string>>) -> int:
   defer fn(): note(log, "outer")
@@ -22,6 +22,6 @@ fn blocks(log: Shared<Array<string>>) -> int:
 
 async fn main() -> Future<string>:
   const empty: Array<string> = []
-  const log = Shared(empty)
+  const log = new Shared{value: empty}
   const result = blocks(log)
-  string(result) + ": " + log->join(", ")
+  string(result) + ": " + log->value.join(", ")

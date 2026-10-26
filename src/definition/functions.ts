@@ -30,7 +30,7 @@ const common = {
 };
 
 /**
- * A register that holds a cell, and the `Shared<T>` entry the cell is created as, so its
+ * A register that holds a cell, and the `_Cell<T>` entry the cell is created as, so its
  * disposability is known wherever the runtime creates it (definition/types.ts).
  */
 const cell = z.strictObject({ register, type: typeId });

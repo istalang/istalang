@@ -6,7 +6,7 @@
 import Inbox from 'inbox'
 
 fn note(log: Shared<Array<string>>, entry: string):
-  *log = [...*log, entry]
+  log->value = [...log->value, entry]
 
 async fn worker(jobs: Inbox<int>, log: Shared<Array<string>>) -> Future<unit>:
   await select:
@@ -17,11 +17,11 @@ async fn worker(jobs: Inbox<int>, log: Shared<Array<string>>) -> Future<unit>:
 
 async fn main() -> Future<string>:
   const empty: Array<string> = []
-  const log = Shared(empty)
+  const log = new Shared{value: empty}
   const jobs = Inbox.create<int>()
   {
     const running = worker(jobs, log)
     jobs.send(3)
   }
   note(log, "job unhandled")
-  log->join(" | ")
+  log->value.join(" | ")

@@ -159,7 +159,7 @@ describe('lowering', () => {
     expect(structs).toEqual([{ kind: 'struct', type: 0, fields: [7n] }]);
   });
 
-  it('gives a variable passed by & a cell, typed as the Shared<T> it is created as', () => {
+  it('gives a variable passed by & a cell, typed as the _Cell<T> it is created as', () => {
     const program = stdProgramOf({
       main: [
         'fn bump(n: &int):',
@@ -178,12 +178,12 @@ describe('lowering', () => {
     const definition = compiledDefinition(program, 'main');
     const twice = definition.functions.find((entry) => entry.name === 'main.twice');
     const cells = twice?.kind === 'code' ? twice.cells : [];
-    const shared = cells.map((cell) => definition.types[cell.type]);
+    const cellTypes = cells.map((cell) => definition.types[cell.type]);
     expect(cells).toHaveLength(2);
     expect(cells.map((cell) => cell.register)).not.toContain(0);
-    expect(shared.map((type) => type?.kind === 'extern' && [type.name, type.role])).toEqual([
-      ['prelude.Shared', 'cell'],
-      ['prelude.Shared', 'cell'],
+    expect(cellTypes.map((type) => type?.kind === 'extern' && [type.name, type.role])).toEqual([
+      ['prelude._Cell', 'cell'],
+      ['prelude._Cell', 'cell'],
     ]);
     const bump = definition.functions.find((entry) => entry.name === 'main.bump');
     expect(bump?.kind === 'code' && bump.cells).toEqual([]);

@@ -7,7 +7,7 @@
 import * as time from 'time'
 
 fn note(log: Shared<Array<string>>, text: string):
-  *log = [...*log, text]
+  log->value = [...log->value, text]
 
 async fn sleeper(id: int, log: Shared<Array<string>>):
   defer fn(): note(log, "stopped " + string(id))
@@ -34,6 +34,6 @@ async fn bindings(log: Shared<Array<string>>):
 
 async fn main() -> Future<string>:
   const empty: Array<string> = []
-  const log = Shared(empty)
+  const log = new Shared{value: empty}
   await bindings(log)
-  log->join(", ")
+  log->value.join(", ")

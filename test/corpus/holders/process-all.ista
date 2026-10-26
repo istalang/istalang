@@ -9,7 +9,7 @@ import * as time from 'time'
 struct Job { id: int; wait: time.Duration }
 
 fn note(log: Shared<Array<string>>, text: string):
-  *log = [...*log, text]
+  log->value = [...log->value, text]
 
 async fn runJob(job: Job, results: Inbox<string>, log: Shared<Array<string>>):
   defer fn(): note(log, "end " + string(job.id))
@@ -31,8 +31,8 @@ async fn processFirst(
 
 async fn main() -> Future<string>:
   const empty: Array<string> = []
-  const log = Shared(empty)
+  const log = new Shared{value: empty}
   const jobs = [Job{id: 1, wait: 1ms}, Job{id: 2, wait: 1h}, Job{id: 3, wait: 2ms}]
   const outcomes = await processFirst(jobs, 2, log)
   note(log, "returned")
-  outcomes.join(", ") + " | " + log->join(", ")
+  outcomes.join(", ") + " | " + log->value.join(", ")

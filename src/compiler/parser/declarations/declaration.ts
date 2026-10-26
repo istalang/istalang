@@ -19,13 +19,13 @@ import { parseExtern } from './externs.ts';
 import { parseImport } from './imports.ts';
 import {
   parseEnum,
-  parseHandle,
+  parseSharedStruct,
   parseStruct,
   parseTrait,
   parseTypeAlias,
 } from './type-declarations.ts';
 
-type TopLevelKeyword = 'import' | 'struct' | 'enum' | 'trait' | 'extern' | 'type' | 'handle';
+type TopLevelKeyword = 'import' | 'struct' | 'enum' | 'trait' | 'extern' | 'type' | 'shared';
 
 const topLevelParselets: Record<TopLevelKeyword, (parser: Parser) => Declaration> = {
   import: parseImport,
@@ -34,7 +34,7 @@ const topLevelParselets: Record<TopLevelKeyword, (parser: Parser) => Declaration
   trait: parseTrait,
   extern: parseExtern,
   type: parseTypeAlias,
-  handle: parseHandle,
+  shared: parseSharedStruct,
 };
 
 /** A declaration only the top level allows, or undefined if none starts here. */
@@ -56,13 +56,10 @@ function topLevelKeyword(parser: Parser): TopLevelKeyword | undefined {
     case 'struct':
       return named ? kind : undefined;
     case 'identifier':
-      if (!named) {
-        return undefined;
+      if (parser.atWord('shared') && cursor.kindAt(1) === 'struct') {
+        return 'shared';
       }
-      if (parser.atWord('type')) {
-        return 'type';
-      }
-      return parser.atWord('handle') ? 'handle' : undefined;
+      return named && parser.atWord('type') ? 'type' : undefined;
     default:
       return undefined;
   }

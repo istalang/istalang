@@ -1,24 +1,22 @@
 # outcome: "3 true false 8 counted"
-# A handle declaration (§3.18) is a type of its own whose values are handles to a cell: `Counter(v)`
-# makes one, `*x` reads it and `*x = v` writes it, for every copy, while `==` tells handles apart by
-# identity. `Counter(v)` is found as a written function is, by name.
+# A shared struct (§3.18) is a type of its own whose values are handles to a cell holding its
+# fields: `new Counter{…}` makes one, `x->f` reads and writes a field and `*x` the whole value, for
+# every copy, while `==` tells handles apart by identity.
 
-struct Tally:
+shared struct Counter:
   count: int
-  label: string
-
-handle Counter of Tally
+  label: string = "counted"
 
 fn bump(self: Counter):
   self->count = self->count + 1
 
 async fn main() -> Future<string>:
-  const a = Counter(Tally{count: 1, label: "counted"})
+  const a = new Counter{count: 1}
   const b = a
   a.bump()
   b->count += 1
-  const other = Counter(*a)
-  *other = Tally{...*other, count: 8}
+  const other = new Counter{...*a}
+  *other = struct{...*other, count: 8}
   [
     string(a->count),
     string(a == b),

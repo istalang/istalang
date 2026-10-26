@@ -1,6 +1,7 @@
 /**
  * Struct literals (§3.1): every item form, `struct{…}`, qualified and generic types (§3.5), the
- * brace rule after any name (§2), and the positional-value rule.
+ * brace rule after any name (§2), the positional-value rule, and `new` before a shared struct's
+ * (§3.18).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -94,6 +95,30 @@ describe('the type before the braces', () => {
   it("reports 'struct' without braces", () => {
     expect(reported('expression', 'struct')).toEqual(
       reportedOnce(parserDiagnostics.expected.code, ''),
+    );
+  });
+});
+
+describe('new (§3.18)', () => {
+  const created = (type: string, items: string) => `(StructLiteral isNew ${type} [${items}])`;
+
+  it.each([
+    ['new Inbox{queued: 0}', created(named('Inbox'), '(FieldInitializer queued 0)')],
+    [
+      'new Shared<int>{value: 1}',
+      created(`(NamedType [Shared] [${named('int')}])`, '(FieldInitializer value 1)'),
+    ],
+    ['new m.Box{...*other}', created('(NamedType [m Box] [])', '(Spread (Dereference other))')],
+    ['new Inbox{}.send(1)', `(Call (MemberAccess ${created(named('Inbox'), '')} send) [] [1])`],
+    ['new', 'new'],
+    ['new.x', '(MemberAccess new x)'],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('expression', text)).toBe(tree);
+  });
+
+  it.each(['new Inbox(1)', 'new Inbox'])('reports %s, which has no literal, once', (text) => {
+    expect(reported('expression', text)).toEqual(
+      reportedOnce(parserDiagnostics.newWithoutLiteral.code, 'new Inbox'),
     );
   });
 });

@@ -89,12 +89,13 @@ export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 
 type EntryType = NominalType | AnonymousStructType;
 
 /**
- * The std type each role of an extern type entry is (definition/types.ts), but a cell's, which
- * every handle is (§3.18).
+ * The std type each role of an extern type entry is (definition/types.ts). A shared struct's entry
+ * is a cell's too (§3.18).
  */
 const externRoles = {
+  cell: wellKnown.cell,
   future: wellKnown.future,
-} as const satisfies Record<Exclude<ExternRole, 'cell'>, WellKnownDeclaration>;
+} as const satisfies Record<ExternRole, WellKnownDeclaration>;
 
 /** The std type each role of an enum entry is (definition/types.ts). */
 const enumRoles = {
@@ -315,6 +316,16 @@ export class DefinitionTables {
     const typeArguments = type.arguments.map((argument) => this.typeReference(argument));
     switch (declaration.kind) {
       case 'StructDeclaration':
+        if (declaration.isShared) {
+          return {
+            kind: 'extern',
+            name,
+            arguments: typeArguments,
+            sendable: false,
+            disposal: this.#disposal(this.#checker.disposalOf(type)),
+            role: 'cell',
+          };
+        }
         return {
           kind: 'struct',
           name,
@@ -345,15 +356,6 @@ export class DefinitionTables {
           ...(role === undefined ? {} : { role }),
         };
       }
-      case 'HandleDeclaration':
-        return {
-          kind: 'extern',
-          name,
-          arguments: typeArguments,
-          sendable: false,
-          disposal: this.#disposal(this.#checker.disposalOf(type)),
-          role: 'cell',
-        };
       default: {
         const unhandled: never = declaration;
         return unhandled;

@@ -164,7 +164,7 @@ export class Parser {
   }
 
   /** Whether the cursor stands at `word`, a keyword only in one position, a name elsewhere (§2). */
-  atWord(word: 'from' | 'type' | 'sendable' | 'handle' | 'of'): boolean {
+  atWord(word: 'from' | 'type' | 'sendable' | 'shared' | 'new'): boolean {
     return this.cursor.at('identifier') && this.textOf(this.cursor.token) === word;
   }
 

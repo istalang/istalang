@@ -115,7 +115,7 @@ export function variableRegister(context: FunctionContext, node: Identifier): Re
   return context.variables.registerOf(entity.name);
 }
 
-/** A fresh register listed as a cell holding a `type`, created as its `Shared<T>` entry. */
+/** A fresh register listed as a cell holding a `type`, created as its `_Cell<T>` entry. */
 export function cellRegister(context: FunctionContext, type: Type): Register {
   const register = context.code.allocate();
   context.variables.addCell({ register, type: cellTypeIndex(context, type) });
@@ -266,7 +266,7 @@ function fieldPosition(context: FunctionContext, step: Exclude<PlaceStep, Index>
   return step.kind === 'MemberAccess' ? fieldIndexOf(context, step) : step.element;
 }
 
-/** The `Shared<T>` entry a cell holding a `type` is created as. */
+/** The `_Cell<T>` entry a cell holding a `type` is created as. */
 function cellTypeIndex(context: FunctionContext, type: Type): TypeId {
-  return context.tables.typeIndex(context.checker.sharedOf(type));
+  return context.tables.typeIndex(context.checker.cellOf(type));
 }

@@ -1,25 +1,23 @@
 # outcome: "made, disposed b, disposed a, after cycle, inner kept, disposed outer, disposed inner, after nesting"
-# A `dispose` declared beside a handle makes it disposable (§7, §3.18): it runs as code, with the
-# handle, when nothing holds it any more. Two leases holding each other are disposed together,
+# A `dispose` declared beside a shared struct makes it disposable (§7, §3.18): it runs as code,
+# with the handle, when nothing holds it any more. Two leases holding each other are disposed together,
 # newest first, at the release that leaves them held by nothing else. A value held by another one
 # being disposed loses its last holder only once that disposal is done, so a lease is disposed
 # after the lease holding it, however old it is.
 
-struct LeaseState:
+shared struct Lease:
   name: string
   log: Shared<Array<string>>
-  partner: Lease?
-
-handle Lease of LeaseState
+  partner: Lease? = none
 
 fn dispose(self: Lease):
   note(self->log, "disposed " + self->name)
 
 fn note(log: Shared<Array<string>>, text: string):
-  *log = [...*log, text]
+  log->value.push(text)
 
 fn lease(name: string, log: Shared<Array<string>>) -> Lease:
-  Lease(LeaseState{name, log, partner: none})
+  new Lease{name, log}
 
 fn cycle(log: Shared<Array<string>>):
   const a = lease("a", log)
@@ -39,8 +37,8 @@ fn nesting(log: Shared<Array<string>>):
 
 async fn main() -> Future<string>:
   const empty: Array<string> = []
-  const log = Shared(empty)
+  const log = new Shared{value: empty}
   cycle(log)
   note(log, "after cycle")
   nesting(log)
-  log->join(", ")
+  log->value.join(", ")

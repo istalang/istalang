@@ -9,13 +9,17 @@
  *   builds that variant (variants.ts).
  * - A struct without fields is written bare (names.ts), so braces after one are an error, whatever
  *   they hold.
+ * - A shared struct is built with `new` and only one is (§3.18): its literal checks as any other,
+ *   braces and all, and its type is the shared struct, while a spread gives it the value behind
+ *   another (`new Inbox{...*box}`).
  * - Reading `s.f` gives the field's type, substituted for the struct's type arguments; through a
  *   type parameter, a field a constraint requires (§3.10). A member that isn't a field is
  *   reported as unknown here, or, when it is a field of the value behind a handle, as to be read
  *   with `->` (§3.9); a call of one is a method call (calls.ts).
  */
 
-import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
+import type { Entity } from '../../binder/entities.ts';
+import { isMethod as isMethodDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
 import { fieldsFunctionOf } from '../../syntax/derived-functions.ts';
 import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
@@ -36,6 +40,7 @@ import {
   type FieldMember,
   isNominalEntity,
   type NominalEntity,
+  type NominalType,
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -61,6 +66,7 @@ export function checkStructLiteral(
   }
   const name = lastName(typeNode.path);
   const entity = context.entityOf(name);
+  checkNew(context, node, entity);
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
     return checkVariantLiteral(context, node, entity, expected);
   }
@@ -77,12 +83,29 @@ export function checkStructLiteral(
   }
   const known = knownArguments(context, typeNode, entity.declaration, expected);
   const shape = declaredShape(context, entity, known);
-  if (shape.fields.length === 0) {
+  if (shape.fields.length === 0 && !entity.declaration.isShared) {
     context.report(checkerDiagnostics.bareStruct(node.span, name.text));
     checkValuesAlone(context, node);
     return shape.typeOf([]);
   }
   return checkLiteralFields(context, node, shape, spread);
+}
+
+/**
+ * Reports a literal of a shared struct without `new`, or `new` before another (§3.18); the
+ * literal is checked as written all the same.
+ */
+function checkNew(context: BodyContext, node: StructLiteral, entity: Entity | undefined): void {
+  if (entity === undefined || node.type === undefined) {
+    return;
+  }
+  const isShared = entity.kind === 'type' && isSharedStruct(entity.declaration);
+  const name = lastName(node.type.path).text;
+  if (isShared && !node.isNew) {
+    context.report(checkerDiagnostics.sharedNeedsNew(node.type.span, name));
+  } else if (!isShared && node.isNew) {
+    context.report(checkerDiagnostics.newNotShared(node.type.span, name));
+  }
 }
 
 /** `struct{…}`: the expected struct, a leading spread's struct, or else a fresh anonymous struct. */
@@ -111,12 +134,15 @@ function checkAnonymousLiteral(
   return checkLiteralFields(context, node, fromSpread, { ...spread, type });
 }
 
-/** How a literal builds a value of `type`, a struct type, with its type arguments; else undefined. */
+/**
+ * How a literal builds a value of `type`, a struct type, with its type arguments; else undefined.
+ * A shared struct is built only with `new` and its name.
+ */
 function shapeOf(context: BodyContext, type: Type): LiteralShape | undefined {
   if (type.kind === 'anonymous') {
     return { owner: undefined, known: undefined, fields: type.fields, typeOf: () => type };
   }
-  if (type.kind === 'nominal' && type.entity.declaration.kind === 'StructDeclaration') {
+  if (type.kind === 'nominal' && context.checker.fieldsOf(type) !== undefined) {
     return declaredShape(context, type.entity, type.arguments);
   }
   return undefined;
@@ -130,12 +156,21 @@ function declaredShape(
 ): LiteralShape {
   const { declaration } = entity;
   const struct = declaration.kind === 'StructDeclaration' ? declaration : undefined;
+  const typeOf = (typeArguments: readonly Type[]): NominalType => ({
+    kind: 'nominal',
+    entity,
+    arguments: typeArguments,
+  });
   return {
     owner: struct,
     defaults: struct === undefined ? undefined : fieldsFunctionOf(struct),
     known,
     fields: struct === undefined ? [] : context.checker.declaredFieldsOf(struct),
-    typeOf: (typeArguments) => ({ kind: 'nominal', entity, arguments: typeArguments }),
+    typeOf,
+    spreadOf: (typeArguments) => {
+      const type = typeOf(typeArguments);
+      return context.checker.stateOf(type) ?? type;
+    },
   };
 }
 

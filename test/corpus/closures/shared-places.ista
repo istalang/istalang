@@ -9,15 +9,15 @@ fn bump(n: &int):
   n += 1
 
 async fn main():
-  const c = Shared(Counter{n: 1, items: []})
-  bump(&c->n)
-  c->items.push("a")
-  (*c).items.push("b")
-  c->n += 10
-  const read = c->n
-  *c = Counter{...*c, n: c->n * 2}
-  const meter = Shared(5)
-  *meter = 7
+  const c = new Shared{value: Counter{n: 1, items: []}}
+  bump(&c->value.n)
+  c->value.items.push("a")
+  (*c).value.items.push("b")
+  c->value.n += 10
+  const read = c->value.n
+  c->value = Counter{...c->value, n: c->value.n * 2}
+  const meter = new Shared{value: 5}
+  meter->value = 7
   let a = 0
-  a, *meter = (1, 8)
-  string(c->n) + " " + c->items.join(",") + " | " + string(read) + " | " + string(*meter) + " " + string(a)
+  a, meter->value = (1, 8)
+  string(c->value.n) + " " + c->value.items.join(",") + " | " + string(read) + " | " + string(meter->value) + " " + string(a)

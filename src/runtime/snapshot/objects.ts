@@ -98,8 +98,8 @@ function defineObject<const Kind extends string, Shape extends z.ZodRawShape>(
 
 export const heapObject = z.discriminatedUnion('kind', [
   /**
-   * A shared cell: a `Shared` value, a variable passed by `&`, or a `let` a closure captured.
-   * Every cell is a `Shared<T>`, so `type` is that instantiation's extern entry (spec §3.14).
+   * A cell: a shared struct's value (spec §3.18), a variable passed by `&`, or a `let` a closure
+   * captured. `type` is the shared struct's entry, or the `_Cell<T>` a variable lives in (§3.14).
    */
   defineObject('cell', { type: typeId, value }),
   /** Full when `value` is present; `waiting` lists pending operation futures, oldest first. */

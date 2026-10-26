@@ -30,7 +30,7 @@ import {
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import { isStdModule, type ModuleId } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import { type FunctionDeclaration, isSharedStruct } from '../../../syntax/declarations.ts';
 import type { FunctionCall, ResolvedCall } from '../../check.ts';
 import type { CheckerContext, StaticOwner } from '../../context.ts';
 import {
@@ -49,8 +49,8 @@ import { wellKnownArguments } from '../../types/well-known.ts';
 import { hostSite, silent, type UseSite, useSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
-/** Why a handle has no codec: its values have an identity of their own (§3.1). */
-const handleHasNoForm = 'a JSON form, which no handle has: it stays in its instance';
+/** Why a shared struct has no codec: its values have an identity of their own (§3.18). */
+const handleHasNoForm = 'a JSON form, which no shared struct has: it stays in its instance';
 
 /** What the unit needs beside the checker: field annotations. */
 export interface JsonFormSeams {
@@ -172,7 +172,7 @@ export class JsonForms implements JsonCodecs {
     if (declaration.kind === 'ExternStructDeclaration') {
       return this.#host(type, declaration.isSendable, module);
     }
-    if (declaration.kind === 'HandleDeclaration') {
+    if (isSharedStruct(declaration)) {
       return { kind: 'none', reason: handleHasNoForm };
     }
     if (declaration.kind === 'StructDeclaration') {

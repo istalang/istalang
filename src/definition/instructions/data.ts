@@ -5,7 +5,7 @@
  * - construction of the built-in shapes (tuple, struct, variant, array, map, closure)
  * - field access and writes through places
  * - the operators the spec makes non-overloadable (§3.9): structural `==`, `not`, and `*` and
- *   `*x = v`, which read and write the cell behind a handle
+ *   `*x = v`, which read and write the cell behind a shared struct's handle, which `new` makes
  * - turning `compare`'s result into a boolean, since all four comparisons go through one
  *   `compare` (spec §3.9)
  * Arithmetic, indexing, conversions and iteration are calls to resolved functions, which
@@ -57,6 +57,12 @@ const item = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('spread'), value: register }),
 ]);
 
+/**
+ * dst = a handle to a new cell of the shared struct entry `type`, holding `value`: `new X{…}`
+ * (spec §3.18).
+ */
+const newCell = defineInstruction('newCell', { dst: register, type: typeId, value: register });
+
 /** dst = the value in the cell the handle in `cell` names: `*x` (spec §3.9). */
 const readCell = defineInstruction('readCell', { dst: register, cell: register });
 
@@ -104,6 +110,7 @@ export const dataInstructions = [
   variant,
   field,
   store,
+  newCell,
   readCell,
   writeCell,
   array,

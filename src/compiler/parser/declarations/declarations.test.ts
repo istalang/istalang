@@ -1,6 +1,6 @@
 /**
  * Declaration grammar (§3): imports, structs (indented, braced, bare, with the indented field
- * sugar), enums, traits, type aliases, handles, every extern form, static functions, type
+ * sugar, shared or not), enums, traits, type aliases, every extern form, static functions, type
  * parameters with constraints and defaults, and the top-level-only rule for statements.
  */
 
@@ -90,10 +90,10 @@ describe('type declarations', () => {
       `(TypeAliasDeclaration Entries [${typeParameter('T')}] (NamedType [Array] [${named('T')}]))`,
     ],
     [
-      'handle Inbox<T> of InboxState<T>',
-      `(HandleDeclaration Inbox [${typeParameter('T')}] (NamedType [InboxState] [${named('T')}]))`,
+      lines('shared struct Inbox<T>:', '    backlog: Array<T>', '    queued: int = 0'),
+      `(StructDeclaration isShared Inbox [${typeParameter('T')}] [${declaredField('backlog', `(NamedType [Array] [${named('T')}])`)} ${declaredField('queued', int, '0')}])`,
     ],
-    ['handle Counter of int', `(HandleDeclaration Counter [] ${int})`],
+    ['shared struct Token', '(StructDeclaration isShared Token [] [])'],
     [
       lines('struct Retry:', '    times: int = 3', '    backoff = times * 2'),
       `(StructDeclaration Retry [] [${declaredField('times', int, '3')} ${declaredField('backoff', '_', '(Binary times * 2)')}])`,
@@ -115,13 +115,9 @@ describe('type declarations', () => {
     );
   });
 
-  it("reports a handle without 'of' once", () => {
-    expect(reported('module', 'handle Counter int')).toEqual(reportedOnce(expected.code, 'int'));
-  });
-
-  it('reads `handle` as a name where no declared name follows it', () => {
-    expect(dumpClean('module', 'const handle = 1')).toBe(
-      moduleOf('(VariableDeclaration [(NamePattern [handle])] _ 1)'),
+  it('reads `shared` as a name where no `struct` follows it', () => {
+    expect(dumpClean('module', 'const shared = 1')).toBe(
+      moduleOf('(VariableDeclaration [(NamePattern [shared])] _ 1)'),
     );
   });
 });

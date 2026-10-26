@@ -36,7 +36,7 @@ async fn main() -> Future<string>:
   const flag = true
   const n = 3
   const maybe: int? = n
-  const names = Shared<Array<string>>([])
+  const names = new Shared<Array<string>>{value: []}
   const kept: (int, int?) = same((1, none))
   const parts = [
     string(count([])),
@@ -50,7 +50,7 @@ async fn main() -> Future<string>:
     kind([]),
     shape([:]),
     shape((1, none)),
-    string(names->length()),
+    string(names->value.length()),
     string(kept.0),
   ]
   parts.join(" ")

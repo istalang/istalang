@@ -15,7 +15,7 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import { originOf } from '../../syntax/derived-functions.ts';
+import { isFieldsFunction } from '../../syntax/derived-functions.ts';
 import type { Expression, Parameter } from '../../syntax/expressions.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
@@ -41,7 +41,7 @@ export function declaredParameters(
   defaults: DefaultValues | undefined,
 ): readonly SignatureParameter[] {
   let afterDefault = false;
-  const inOrder = originOf(declaration)?.kind !== 'fields';
+  const inOrder = !isFieldsFunction(declaration);
   return declaration.parameters.flatMap((node) => {
     if (node.kind === 'Invalid') {
       return [];

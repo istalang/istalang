@@ -2,7 +2,8 @@
  * Rules a struct declaration must keep (§3.1): every value of it must be finite, so no field may
  * hold another value of the same struct by value, directly or through other structs, tuples and
  * anonymous structs. Inside an optional or a collection, a value may be absent, so the chain ends
- * there: enums and extern types aren't followed.
+ * there: enums and extern types aren't followed, and neither are shared structs, whose values are
+ * handles (§3.18).
  */
 
 import type { StructDeclaration } from '../../syntax/declarations.ts';
@@ -12,6 +13,9 @@ import type { Type } from '../types/type.ts';
 
 /** Reports each field of `declaration` that makes its values hold themselves. */
 export function checkFiniteFields(checker: CheckerContext, declaration: StructDeclaration): void {
+  if (declaration.isShared) {
+    return;
+  }
   const module = checker.moduleOf(declaration);
   const written = declaration.fields.filter((field) => field.kind === 'FieldDeclaration');
   checker.declaredFieldsOf(declaration).forEach((field, index) => {
@@ -40,7 +44,11 @@ function holds(
       if (declaration === target) {
         return true;
       }
-      if (declaration.kind !== 'StructDeclaration' || seen.has(declaration)) {
+      if (
+        declaration.kind !== 'StructDeclaration' ||
+        declaration.isShared ||
+        seen.has(declaration)
+      ) {
         return false;
       }
       seen.add(declaration);

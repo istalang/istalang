@@ -10,7 +10,8 @@
  * - An anonymous struct (§3.1) is a type of its own wherever one is written: two are never the
  *   same type, even with identical fields, so its identity is the node that introduced it. It
  *   carries its fields, since it has no declaration to derive them from; instantiating a generic
- *   declaration substitutes them, so identity is the origin plus the fields' types.
+ *   declaration substitutes them, so identity is the origin plus the fields' types. The value
+ *   behind a shared struct (§3.18) is one too, whose origin is the shared struct's declaration.
  * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
  *   so one mistake is reported once instead of at every use that follows.
  * - `never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
@@ -30,7 +31,6 @@ import type {
   EnumDeclaration,
   ExternStructDeclaration,
   Field,
-  HandleDeclaration,
   StructDeclaration,
   TraitDeclaration,
   TypeParameter,
@@ -45,30 +45,23 @@ export interface PrimitiveType {
 }
 
 /** The declarations a nominal type can come from. */
-export type NominalDeclaration =
-  | StructDeclaration
-  | EnumDeclaration
-  | ExternStructDeclaration
-  | HandleDeclaration;
+export type NominalDeclaration = StructDeclaration | EnumDeclaration | ExternStructDeclaration;
 
 /** The binder's entity for a declaration a nominal type comes from. */
 export type NominalEntity = TypeEntity & { readonly declaration: NominalDeclaration };
 
-/** A declared struct, enum, extern type or handle, with its type arguments. */
+/** A declared struct, shared or not, enum or extern type, with its type arguments. */
 export interface NominalType {
   readonly kind: 'nominal';
   readonly entity: NominalEntity;
   readonly arguments: readonly Type[];
 }
 
-/** Whether `entity` declares a nominal type: a struct, an enum, an extern type or a handle. */
+/** Whether `entity` declares a nominal type: a struct, an enum or an extern type. */
 export function isNominalEntity(entity: TypeEntity): entity is NominalEntity {
   const { kind } = entity.declaration;
   return (
-    kind === 'StructDeclaration' ||
-    kind === 'EnumDeclaration' ||
-    kind === 'ExternStructDeclaration' ||
-    kind === 'HandleDeclaration'
+    kind === 'StructDeclaration' || kind === 'EnumDeclaration' || kind === 'ExternStructDeclaration'
   );
 }
 
@@ -99,12 +92,12 @@ export interface FieldMember {
 }
 
 /**
- * A struct without a name (§3.1): introduced by a `{…}` type, or by a `struct{…}` literal with
- * nothing to take a type from.
+ * A struct without a name (§3.1): introduced by a `{…}` type, by a `struct{…}` literal with
+ * nothing to take a type from, or by a shared struct as the value behind it (§3.18).
  */
 export interface AnonymousStructType {
   readonly kind: 'anonymous';
-  readonly origin: StructType | StructLiteral;
+  readonly origin: StructType | StructLiteral | StructDeclaration;
   readonly fields: readonly FieldMember[];
 }
 

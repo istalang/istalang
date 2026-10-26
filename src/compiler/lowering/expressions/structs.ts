@@ -4,6 +4,9 @@
  * comes from (`sourcesOf`); a field the literal doesn't give is read from its leading spread,
  * evaluated once, or else computed by the call to its default the checker recorded, given the
  * fields before it, in declaration order. A field read names the field by its index.
+ *
+ * `new X{…}` builds the value behind a shared struct the same way, as the anonymous struct its
+ * fields make, and puts it in a new cell, whose handle is the shared struct's value (§3.18).
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -21,7 +24,17 @@ import { emitCall } from '../emit-call.ts';
 import { fieldIndexOf } from '../places.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
-  return construct(context, structTypeOf(context, node), literalFields(context, node), node.span);
+  const type = structTypeOf(context, node);
+  const fields = literalFields(context, node);
+  const state = type.kind === 'nominal' ? context.checker.stateOf(type) : undefined;
+  if (state === undefined) {
+    return construct(context, type, fields, node.span);
+  }
+  const value = construct(context, state, fields, node.span);
+  const dst = context.code.allocate();
+  const cellType = context.tables.typeIndex(type);
+  context.code.emit({ kind: 'newCell', span: node.span, dst, type: cellType, value });
+  return dst;
 }
 
 /**

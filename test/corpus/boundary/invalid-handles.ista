@@ -1,12 +1,10 @@
-# error: 5101 at 11:24
-# error: 5101 at 12:23
-# error: 5101 at 13:16
-# A handle (§3.18) has an identity of its own, which stays in its instance: it has no JSON form,
-# so no extern a host implements takes or gives one, a `Shared` or a module's own alike (§3.6).
+# error: 5101 at 9:24
+# error: 5101 at 10:23
+# error: 5101 at 11:16
+# A shared struct (§3.18) has an identity of its own, which stays in its instance: it has no JSON
+# form, so no extern a host implements takes or gives one, a `Shared` or a module's own alike (§3.6).
 
-struct CounterState { count: int }
-
-handle Counter of CounterState
+shared struct Counter { count: int }
 
 extern fn counter() -> Counter
 extern fn shared() -> Shared<int>

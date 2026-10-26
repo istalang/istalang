@@ -69,6 +69,8 @@ export interface LiteralShape {
   readonly known: readonly Type[] | undefined;
   readonly fields: readonly FieldMember[];
   readonly typeOf: (typeArguments: readonly Type[]) => Type;
+  /** The type a spread gives when not the literal's own: a shared struct's value (§3.18). */
+  readonly spreadOf?: (typeArguments: readonly Type[]) => Type;
 }
 
 /** A struct literal's leading spread, and its type when the caller checked it already. */
@@ -125,7 +127,8 @@ export function checkLiteralFields(
     context.fit(value.type, substitute(value.declared, completed.substitution), value.node);
   }
   if (spread !== undefined && spreadType !== undefined) {
-    context.fit(spreadType, type, spread.node.expression);
+    const spreadOf = shape.spreadOf?.(completed.typeArguments) ?? type;
+    context.fit(spreadType, spreadOf, spread.node.expression);
   }
   const defaulted =
     spread === undefined ? defaultCalls(context, shape, items.given, completed.typeArguments) : [];

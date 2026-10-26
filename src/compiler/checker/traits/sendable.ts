@@ -14,7 +14,7 @@
  */
 
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
-import type { TraitDeclaration } from '../../syntax/declarations.ts';
+import { isSharedStruct, type TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { jsonTraits } from '../json-form.ts';
 import { heldParts } from '../types/held.ts';
@@ -69,7 +69,7 @@ function nominalSendable(
   if (declaration.kind === 'ExternStructDeclaration') {
     return declaration.isSendable && parts();
   }
-  if (declaration.kind === 'HandleDeclaration') {
+  if (isSharedStruct(declaration)) {
     return false;
   }
   const key = checker.typeKeys.typeKey(type);

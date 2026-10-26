@@ -51,7 +51,12 @@ export function isMethod(declaration: FunctionDeclaration): boolean {
   return first?.kind === 'Parameter' && first.name.text === 'self';
 }
 
+/**
+ * `struct Pair: …`, or `shared struct Inbox<T>: …`, whose values are handles to a cell holding its
+ * fields, built with `new` and read through with `*` and `->` (§3.18).
+ */
 export interface StructDeclaration extends NodeOf<'StructDeclaration'>, Annotatable {
+  readonly isShared: boolean;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
   readonly fields: readonly (DeclaredField | Invalid)[];
@@ -117,16 +122,6 @@ export interface TypeAliasDeclaration extends NodeOf<'TypeAliasDeclaration'>, An
   readonly type: TypeNode;
 }
 
-/**
- * `handle Inbox<T> of InboxState<T>`: a type of its own whose values are handles to a cell
- * holding a `state` (§3.18). The functions it declares are read from it (derived-functions.ts).
- */
-export interface HandleDeclaration extends NodeOf<'HandleDeclaration'>, Annotatable {
-  readonly name: Identifier;
-  readonly typeParameters: TypeParameters;
-  readonly state: TypeNode;
-}
-
 /** `import a, b from 'path'`. */
 export interface NamedImport extends NodeOf<'NamedImport'>, Annotatable {
   readonly names: readonly Identifier[];
@@ -155,7 +150,6 @@ export type Declaration =
   | EnumDeclaration
   | TraitDeclaration
   | TypeAliasDeclaration
-  | HandleDeclaration
   | FunctionDeclaration
   | ConstantDeclaration;
 
@@ -166,3 +160,8 @@ export interface Module extends NodeOf<'Module'> {
 
 /** Nodes that occur only as parts of a declaration. */
 export type DeclarationPart = TypeParameter | Variant | DeclaredField;
+
+/** Whether `declaration` declares a shared struct (§3.18). */
+export function isSharedStruct(declaration: Declaration | DeclarationPart): boolean {
+  return declaration.kind === 'StructDeclaration' && declaration.isShared;
+}

@@ -54,8 +54,8 @@ export function fieldOf(value: Value | undefined, index: number): Value {
   return field;
 }
 
-/** The type entry the extern's declared result names: a struct, an enum or a `Shared`. */
-export function declaredResult(context: NativeContext): TypeId {
+/** The type entry the extern's declared result names: a struct or an enum. */
+function declaredResult(context: NativeContext): TypeId {
   return context.resultType ?? unreachable(`${context.name} returns no named type.`);
 }
 

@@ -25,10 +25,14 @@ extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
 extern struct _Call
 extern fn disposing(self: _Call) -> Future<unit>
 
-# A Shared value (§3.8) is a handle to a cell: `Shared(v)` makes one, `*x` reads its value and
-# `*x = v` writes it, for every copy of the handle. `Shared(v)` is the function every handle
-# declares (§3.18), whose native makes a cell.
-handle Shared<T> of T
+# A Shared value (§3.8) is a shared struct of any one value (§3.18): `new Shared{value: v}` makes
+# one, and `x->value` reads and writes it, for every copy.
+shared struct Shared<T>:
+  value: T
+
+# The cell a variable lives in when it is passed by `&` or a closure captures it (§3.7, §3.14),
+# which the runtime makes, reads and writes as it does a shared struct's.
+extern struct _Cell<T>
 
 # Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
 # `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.

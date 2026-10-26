@@ -94,6 +94,8 @@ interface Parenthesized extends NodeOf<'Parenthesized'> {
 
 /** `Pair{…}`, `m.Pair<int>{…}`, or `struct{…}` when `type` is undefined. */
 export interface StructLiteral extends NodeOf<'StructLiteral'> {
+  /** Written after `new`, which builds a shared struct and only one (§3.18). */
+  readonly isNew: boolean;
   readonly type: NamedType | undefined;
   readonly items: readonly (FieldInitializer | PositionalInitializer | Spread | Invalid)[];
 }

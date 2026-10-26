@@ -2,14 +2,12 @@
 # A block's last expression is a statement like any other (§7): the temporaries it makes are
 # released when the block ends, here at the end of each loop pass, before the next check.
 
-struct LeaseState:
+shared struct Lease:
   log: Shared<Array<string>>
   id: int
 
-handle Lease of LeaseState
-
 fn note(log: Shared<Array<string>>, entry: string):
-  *log = [...*log, entry]
+  log->value = [...log->value, entry]
 
 fn dispose(self: Lease):
   note(self->log, "disposed " + string(self->id))
@@ -24,10 +22,10 @@ fn opened(lease: Lease) -> int:
 
 async fn main() -> Future<string>:
   const empty: Array<string> = []
-  const log = Shared(empty)
+  const log = new Shared{value: empty}
   let n = 0
   while checked(log, n):
     n += 1
-    opened(Lease(LeaseState{log, id: n}))
+    opened(new Lease{log, id: n})
   note(log, "after")
-  log->join(", ")
+  log->value.join(", ")

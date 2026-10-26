@@ -21,6 +21,7 @@ import {
   clearRegister,
   currentClosure,
   type Machine,
+  newCell,
   readCell,
   readRegister,
   storeAt,
@@ -52,6 +53,13 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   store: (_machine, instruction, frame) => {
     storeAt(frame, instruction.place, readRegister(frame, instruction.value));
     frame.pc += 1;
+  },
+  newCell: (_machine, instruction, frame) => {
+    next(
+      frame,
+      instruction.dst,
+      newCell(frame, instruction.type, readRegister(frame, instruction.value)),
+    );
   },
   readCell: (_machine, instruction, frame) => {
     next(frame, instruction.dst, readCell(frame, instruction.cell));

@@ -46,6 +46,7 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   variant: (_, i) => ({ registers: [i.dst, ...i.fields], types: [i.type] }),
   field: (_, i) => ({ registers: [i.dst, i.src] }),
   store: (_, i) => merge(placeOperands(i.place), { registers: [i.value] }),
+  newCell: (_, i) => ({ registers: [i.dst, i.value], types: [i.type] }),
   readCell: (_, i) => ({ registers: [i.dst, i.cell] }),
   writeCell: (_, i) => ({ registers: [i.cell, i.value] }),
   array: (_, i) => ({ registers: [i.dst, ...i.elements.map((element) => element.value)] }),

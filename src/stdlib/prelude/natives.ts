@@ -21,7 +21,6 @@ import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
 import { float, int, text } from '../native-values.ts';
 import { arrayNatives } from './arrays.ts';
 import { mapNatives } from './maps.ts';
-import { sharedNatives } from './shared-natives.ts';
 import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
 import { primitiveText, textFormNatives } from './text-forms.ts';
@@ -38,7 +37,6 @@ export const preludeNatives: Natives = {
   ...arrayNatives,
   ...slotNatives,
   ...mapNatives,
-  ...sharedNatives,
   ...stringNatives,
   ...weakNatives,
   ...textFormNatives,

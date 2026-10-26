@@ -31,7 +31,13 @@ import type { AnnotationQueries } from './checked-annotation.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { JsonFormQueries } from './json-form.ts';
 import { ProgramChecker } from './program-checker.ts';
-import type { FieldMember, FunctionType, NominalType, Type } from './types/type.ts';
+import type {
+  AnonymousStructType,
+  FieldMember,
+  FunctionType,
+  NominalType,
+  Type,
+} from './types/type.ts';
 import type { TypeKeys } from './types/type-keys.ts';
 
 /** A parameter of a declared function, with its resolved type. */
@@ -352,16 +358,16 @@ export interface Checker {
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
   readonly variantsOf: (type: NominalType) => readonly VariantMember[] | undefined;
   /**
-   * What a handle's cell holds (§3.18), substituted for its type arguments; undefined for another
-   * type.
+   * The value behind a shared struct, `*x` (§3.18), substituted for its type arguments; undefined
+   * for another type.
    */
-  readonly stateOf: (type: NominalType) => Type | undefined;
+  readonly stateOf: (type: NominalType) => AnonymousStructType | undefined;
   /** Who disposes a value of `type` (rules/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;
   /** `T?` for `type`, the type a value of `type` is wrapped into (§2). */
   readonly optionalOf: (type: Type) => NominalType;
-  /** `Shared<T>` for `type`, what a variable passed by `&` lives in (§3.7, §3.14). */
-  readonly sharedOf: (type: Type) => NominalType;
+  /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§3.7, §3.14). */
+  readonly cellOf: (type: Type) => NominalType;
   /** What a well-known name (language/well-known.ts) denotes; undefined without its module. */
   readonly wellKnownEntity: (declaration: WellKnownDeclaration) => Entity | undefined;
   /**

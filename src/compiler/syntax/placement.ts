@@ -33,7 +33,6 @@ function placeOf(item: Item): 'module' | 'block' | 'both' {
     case 'EnumDeclaration':
     case 'TraitDeclaration':
     case 'TypeAliasDeclaration':
-    case 'HandleDeclaration':
       return 'module';
     case 'FunctionDeclaration':
       return item.isExtern || item.owner !== undefined ? 'module' : 'both';

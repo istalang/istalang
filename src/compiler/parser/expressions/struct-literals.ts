@@ -17,18 +17,36 @@ import { afterStructKeyword } from '../parts/structs.ts';
 import { parseDelimited } from '../recovery.ts';
 import { parseSpread } from './spread.ts';
 
-/** A struct literal's braced items, starting at the `{`; `type` is undefined for `struct{…}`. */
+/**
+ * A struct literal's braced items, starting at the `{`; `type` is undefined for `struct{…}`, and
+ * `isNew` says the literal follows `new`.
+ */
 export function parseStructLiteralBody(
   parser: Parser,
   type: NamedType | undefined,
   start: number,
+  isNew = false,
 ): StructLiteral {
   const { items } = parseDelimited(parser, '{', () => parseItem(parser));
   const positional = items.find((item) => item.kind === 'PositionalInitializer');
   if (positional !== undefined && items.length > 1) {
     parser.report(parserDiagnostics.positionalNotAlone(positional.span));
   }
-  return { kind: 'StructLiteral', span: parser.spanFrom(start), type, items };
+  return { kind: 'StructLiteral', span: parser.spanFrom(start), isNew, type, items };
+}
+
+/**
+ * `new Name<T>{…}`, from `new`, a keyword only before a name (§2): a shared struct's literal
+ * (§3.18). Only the literal is its operand, so `new Inbox<T>{…}.send(m)` sends to the new inbox.
+ */
+export function parseNew(parser: Parser): Expression {
+  const { start } = parser.cursor.advance().span;
+  const type = parser.type();
+  if (type.kind !== 'NamedType' || !parser.cursor.at('{')) {
+    parser.report(parserDiagnostics.newWithoutLiteral(parser.spanFrom(start)));
+    return { kind: 'Invalid', span: parser.spanFrom(start) };
+  }
+  return parseStructLiteralBody(parser, type, start, true);
 }
 
 /** `struct{…}`, whose type comes from context. */

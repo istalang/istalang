@@ -7,7 +7,7 @@ export const lifetimeTemplates = {
   disposeType: {
     code: 5700,
     message: (type: string) =>
-      `'dispose' can't be declared for ${type}: only a handle (§3.18) or an extern type a host provides has a single identity to dispose (§7).`,
+      `'dispose' can't be declared for ${type}: only a shared struct (§3.18) or an extern type a host provides has a single identity to dispose (§7).`,
   },
   disposeSignature: {
     code: 5701,

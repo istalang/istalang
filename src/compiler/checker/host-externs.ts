@@ -6,24 +6,15 @@
 
 import { isStdModule } from '../program/program.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
-import { originOf } from '../syntax/derived-functions.ts';
 import type { Checker } from './check.ts';
 
-/**
- * Whether `declaration` is an extern its host implements, rather than the runtime: a std module's
- * are the runtime's, and so are a handle's functions, which are its cell's (§3.18), as every
- * function derived from another declaration is.
- */
+/** Whether `declaration` is an extern its host implements, rather than the runtime. */
 export function isHostExtern(
   checker: Pick<Checker, 'program' | 'moduleOf'>,
   declaration: FunctionDeclaration | ExternConstantDeclaration,
 ): boolean {
-  if (declaration.kind === 'FunctionDeclaration') {
-    return (
-      declaration.isExtern &&
-      originOf(declaration) === undefined &&
-      !isStdModule(checker.program, checker.moduleOf(declaration))
-    );
-  }
-  return !isStdModule(checker.program, checker.moduleOf(declaration));
+  return (
+    (declaration.kind === 'ExternConstantDeclaration' || declaration.isExtern) &&
+    !isStdModule(checker.program, checker.moduleOf(declaration))
+  );
 }

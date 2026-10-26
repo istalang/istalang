@@ -25,7 +25,6 @@ import type {
   ExternConstantDeclaration,
   ExternStructDeclaration,
   FunctionDeclaration,
-  HandleDeclaration,
   NamespaceImport,
   StructDeclaration,
   TraitDeclaration,
@@ -86,7 +85,6 @@ type TypeDeclaration =
   | EnumDeclaration
   | TraitDeclaration
   | TypeAliasDeclaration
-  | HandleDeclaration
   | TypeParameter;
 
 export interface TypeEntity {

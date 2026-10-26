@@ -6,8 +6,13 @@ import type { Expression } from '../../syntax/expressions.ts';
 import type { Parser } from '../parser.ts';
 import { literalFrom } from '../parts/literals.ts';
 import { parseGroup } from '../recovery.ts';
+import { parseNew } from './struct-literals.ts';
 
+/** A name, or `new` before one, which starts a shared struct's literal (§3.18). */
 export function parseName(parser: Parser): Expression {
+  if (parser.atWord('new') && parser.cursor.kindAt(1) === 'identifier') {
+    return parseNew(parser);
+  }
   return parser.identifier();
 }
 

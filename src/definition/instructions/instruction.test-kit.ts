@@ -95,6 +95,10 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
   field: (s) =>
     fc.record({ dst: index(s.registers), src: index(s.registers), index: fc.nat({ max: 4 }) }),
   store: (s) => fc.record({ place: place(s, 1), value: index(s.registers) }),
+  newCell: (s) =>
+    pick(s.types, (type) => type.kind === 'extern' && type.role === 'cell')?.chain((type) =>
+      fc.record({ dst: index(s.registers), type: fc.constant(type), value: index(s.registers) }),
+    ),
   readCell: (s) => fc.record({ dst: index(s.registers), cell: index(s.registers) }),
   writeCell: (s) => fc.record({ cell: index(s.registers), value: index(s.registers) }),
   array: (s) =>

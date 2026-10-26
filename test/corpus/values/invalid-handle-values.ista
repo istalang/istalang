@@ -1,15 +1,19 @@
-# error: 5012 at 14:18
-# error: 5605 at 15:14
-# A handle (§3.18) is made by `Counter(state)`, not by braces, which build a struct, and its values
-# have an identity, so they never leave their instance.
+# error: 5218 at 16:16
+# error: 5219 at 17:21
+# error: 5605 at 18:14
+# error: 5508 at 19:35
+# A shared struct (§3.18) is built with `new`, and only one is; its fields are read through it
+# with `->`, never `.`; and its values have an identity, so they never leave their instance.
 
 struct Tally { count: int }
 
-handle Counter of Tally
+shared struct Counter { count: int }
 
 fn keep(counter: Counter):
   ()
 
 async fn main():
-  const braced = Counter{count: 1}
-  spawn keep(Counter(Tally{count: 1}))
+  const bare = Counter{count: 1}
+  const plain = new Tally{count: 1}
+  spawn keep(new Counter{count: 1})
+  const read = plain.count + bare.count

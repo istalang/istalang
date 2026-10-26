@@ -15,8 +15,6 @@
  * - `Self` is defined in a trait's scope, and only there (§3.10).
  * - A static function's owner (`Duration` in `fn Duration.zero()`) is a type use in the scope
  *   around the function, which inside a trait includes `Self`.
- * - A handle's state and the type node naming it in its functions (`selfType`) are bound where its
- *   type parameters are visible; nothing else in those functions holds a name (§3.18).
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
@@ -27,7 +25,7 @@ import type {
   TraitDeclaration,
   TypeParameters,
 } from '../syntax/declarations.ts';
-import { fieldsFunctionOf, handleFunctionsOf } from '../syntax/derived-functions.ts';
+import { fieldsFunctionOf } from '../syntax/derived-functions.ts';
 import type { Lambda, Parameter } from '../syntax/expressions.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
@@ -129,11 +127,6 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
   },
   TypeAliasDeclaration: (binder, node, scope) =>
     binder.walk.type(binder, node.type, typeParameterScope(binder, node.typeParameters, scope)),
-  HandleDeclaration: (binder, node, scope) => {
-    const inner = typeParameterScope(binder, node.typeParameters, scope);
-    binder.walk.type(binder, node.state, inner);
-    binder.walk.type(binder, handleFunctionsOf(node).selfType, inner);
-  },
   EnumDeclaration: bindEnum,
   TraitDeclaration: bindTrait,
   NamedImport: holdsNoNames,

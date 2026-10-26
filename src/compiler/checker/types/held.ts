@@ -54,11 +54,9 @@ export function heldParts(
       switch (type.entity.declaration.kind) {
         case 'ExternStructDeclaration':
           return type.arguments;
-        case 'StructDeclaration':
-          return (checker.fieldsOf(type) ?? []).map((field) => field.type);
-        case 'HandleDeclaration': {
-          const state = checker.stateOf(type);
-          return state === undefined ? [] : [state];
+        case 'StructDeclaration': {
+          const fields = checker.fieldsOf(type) ?? checker.stateOf(type)?.fields ?? [];
+          return fields.map((field) => field.type);
         }
         default:
           return (checker.variantsOf(type) ?? []).flatMap(({ fields }) =>

@@ -1,7 +1,7 @@
 /**
  * What load validation requires of single instructions beyond their indexes, so the interpreter
  * runs any accepted instruction without a guard of its own:
- * - a construction matches the type it names
+ * - a construction matches the type it names, and a new cell names a cell's type
  * - a direct call or `spawn` passes the callee's parameters in number and kind (value or `&`), and
  *   a function with captures is called only through its closure value, never directly
  * - a closure carries its function's captures
@@ -26,6 +26,7 @@ import { waits } from './instructions/flow.ts';
 import type { Instruction } from './instructions/instruction.ts';
 import type { Argument } from './instructions/places.ts';
 import type { Tables } from './tables.ts';
+import { hasRole } from './types.ts';
 
 /** A struct or enum value being built: by an instruction or as a constant. */
 export interface Construction {
@@ -65,6 +66,8 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
     }),
   field: none,
   store: none,
+  newCell: (tables, i) =>
+    hasRole(tables.types, i.type, 'cell') ? undefined : `type ${i.type} is not a cell's.`,
   readCell: none,
   writeCell: none,
   array: none,

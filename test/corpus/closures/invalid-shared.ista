@@ -1,14 +1,14 @@
-# error: 5001 at 25:8
-# error: 5001 at 26:10
+# error: 5001 at 25:14
+# error: 5001 at 26:16
 # error: 5508 at 27:5
 # error: 5507 at 28:13
 # error: 5307 at 29:16
-# error: 5309 at 30:16
-# error: 5309 at 31:16
-# A Shared value is written with values of the type `*x` reads (§3.8, §3.9), whole or in part, and
-# its fields are read with `->`, never `.`; only a handle has a value behind it. A handle's value
+# error: 5309 at 30:22
+# error: 5309 at 31:22
+# A Shared value's field is written with values of its type (§3.8, §3.9), whole or in part, and is
+# read through `->`, never `.`; only a shared struct has a value behind it. A shared struct's value
 # passed by `&` is a copy for the call (§3.7): never to an async function, and never beside
-# another place reached through a handle, since two handles may be one.
+# another place reached through a shared struct, since two handles may be one.
 
 struct Counter { n: int }
 
@@ -19,13 +19,13 @@ async fn later(n: &int):
   n += 1
 
 async fn subject():
-  const c = Shared(Counter{n: 1})
-  const d = Shared(Counter{n: 2})
-  *c = Counter{n: 2}
-  *c = "two"
-  c->n = "three"
-  c.n = 4
-  const e = *c->n
-  await later(&c->n)
-  both(&c->n, &d->n)
-  both(&c->n, &c->n)
+  const c = new Shared{value: Counter{n: 1}}
+  const d = new Shared{value: Counter{n: 2}}
+  c->value = Counter{n: 2}
+  c->value = "two"
+  c->value.n = "three"
+  c.value = Counter{n: 4}
+  const e = *c->value.n
+  await later(&c->value.n)
+  both(&c->value.n, &d->value.n)
+  both(&c->value.n, &c->value.n)

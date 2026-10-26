@@ -4,8 +4,7 @@
  *
  * A native receives values, never references: an argument passed by `&` is read through its
  * reference, and the native writes a changed value back through the context's `write`, which
- * writes the place the reference names. It reaches the instance's cells through `Shared<T>`
- * handles (§3.8), the futures it returns through the instance's futures and slots, weak
+ * writes the place the reference names. It reaches the futures it returns through the instance's futures and slots, weak
  * references through handles to what they refer to, and a host type's resources through the
  * instance's heap (§7).
  */
@@ -15,14 +14,8 @@ import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { TypeReference } from '../../definition/types.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { type FrameHeap, readThrough, writeReference } from '../interpreter/machine.ts';
-import type {
-  FullNativeContext,
-  Native,
-  NativeCells,
-  NativeResources,
-  NativeWeakSide,
-} from '../natives.ts';
+import { readThrough, writeReference } from '../interpreter/machine.ts';
+import type { FullNativeContext, Native, NativeResources, NativeWeakSide } from '../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import { type Heap, handleObject } from './heap.ts';
 import type { Instance } from './instance.ts';
@@ -32,7 +25,6 @@ export class NativeCalls {
   readonly #instance: Instance;
   readonly #startedAt: bigint;
   readonly #trace: () => string;
-  readonly #cells: NativeCells;
   readonly #weak: NativeWeakSide;
   readonly #resources: NativeResources;
 
@@ -41,7 +33,6 @@ export class NativeCalls {
     this.#instance = instance;
     this.#startedAt = startedAt;
     this.#trace = trace;
-    this.#cells = nativeCellsOf(instance.frameHeap);
     this.#weak = nativeWeakSideOf(instance.weak);
     this.#resources = nativeResourcesOf(instance.heap);
   }
@@ -94,7 +85,6 @@ export class NativeCalls {
           slots.operate(slot, operation, value),
       },
       trace: this.#trace,
-      cells: this.#cells,
       weak: this.#weak,
       resources: this.#resources,
     };
@@ -125,13 +115,6 @@ function nativeWeakSideOf(weak: WeakSide): NativeWeakSide {
     },
     watch: (reference) => weak.watch(reference),
     whenDisposed: (reference) => weak.whenDisposed(reference),
-  };
-}
-
-/** The instance's cells as natives reach them: made as the handles a handle's `H(v)` returns. */
-function nativeCellsOf(cells: FrameHeap): NativeCells {
-  return {
-    create: (type, value) => ({ kind: 'handle', object: cells.create(type, value) }),
   };
 }
 

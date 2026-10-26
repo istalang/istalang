@@ -28,8 +28,8 @@ export const wellKnown = {
   optional: { module: 'prelude', name: 'Optional' },
   /** The runtime's one primitive for sharing values between executions, run by natives (§6). */
   slot: { module: 'prelude', name: 'Slot' },
-  /** The cell a captured or referenced variable lives in (§3.7, §3.8). */
-  shared: { module: 'prelude', name: 'Shared' },
+  /** The cell a captured or referenced variable lives in (§3.7, §3.14). */
+  cell: { module: 'prelude', name: '_Cell' },
   /** What a function that can fail returns, and what `?` takes apart (§3.12). */
   result: { module: 'prelude', name: 'Result' },
   /** What `Err` carries by default, whose `trace` the runtime fills in (§3.12). */

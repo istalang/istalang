@@ -16,7 +16,7 @@ import { isHostExtern } from '../checker/host-externs.ts';
 import { instantiatedBody } from '../checker/types/instantiation.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { originOf } from '../syntax/derived-functions.ts';
+import { isFieldsFunction } from '../syntax/derived-functions.ts';
 import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';
 import {
   constantNativeEntry,
@@ -33,7 +33,7 @@ import {
   type NestedInstance,
   substitutionOf,
 } from './instances.ts';
-import { nativeKeyOf } from './names.ts';
+import { keyOf } from './names.ts';
 import { DefinitionTables, type PendingEntry } from './tables.ts';
 
 /**
@@ -115,7 +115,7 @@ function entryOf(
       body: instantiatedBody(body, substitutionOf(instance)),
     };
     const lowering = new FunctionLowering(lowered, instanceFrame(lowered, instance));
-    if (originOf(declaration)?.kind === 'fields') {
+    if (isFieldsFunction(declaration)) {
       return lowering.lowerFieldDefault(instance);
     }
     if (instance.arity < parameters.length) {
@@ -129,7 +129,7 @@ function entryOf(
   return {
     kind: 'extern',
     ...tables.entryHeader(instance),
-    key: nativeKeyOf(checker, declaration),
+    key: keyOf(checker, declaration, parameters),
     constant: false,
     parameters: parameters.map((parameter) => ({
       type: tables.typeReference(substitute(parameter.type, substitution)),

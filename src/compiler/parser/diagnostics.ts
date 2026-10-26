@@ -112,6 +112,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2024,
     message: () => "Only a field of a struct's or a variant's declaration has a default (§3.1).",
   },
+  newWithoutLiteral: {
+    code: 2025,
+    message: () =>
+      "'new' builds a shared struct, so a struct literal follows it: new Name{…} (§3.18).",
+  },
   invalidTupleElement: {
     code: 2200,
     message: (text: string) =>

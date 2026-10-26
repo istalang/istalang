@@ -38,7 +38,7 @@ import { partAt, withPart } from '../values/parts.ts';
 export interface FrameHeap {
   readonly read: (cell: number) => Value;
   readonly write: (cell: number, value: Value) => void;
-  /** A new cell of type entry `type` (a `Shared<T>`) holding `value`; its id. */
+  /** A new cell of type entry `type` (a shared struct's or a `_Cell<T>`) holding `value`; its id. */
   readonly create: (type: TypeId, value: Value) => number;
   /**
    * Notes that a frame no longer holds `contents`, which may have held something's last handle. A
@@ -177,6 +177,11 @@ export function writeRegister(frame: ActiveFrame, register: Register, value: Val
   } else {
     frame.heap.write(cellOf(contents), value);
   }
+}
+
+/** A handle to a new cell of type entry `type` holding `value`: a shared struct's (§3.18). */
+export function newCell(frame: ActiveFrame, type: TypeId, value: Value): Value {
+  return { kind: 'handle', object: frame.heap.create(type, value) };
 }
 
 /** The value in the cell the handle in `register` names (§3.9). */

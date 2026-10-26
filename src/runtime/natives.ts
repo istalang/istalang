@@ -12,7 +12,7 @@
  * Natives the runtime backs need the running instance, so each call also receives a context: the
  * extern being called, its declared result and type arguments, and the Definition's types (for building typed values), the time the segment
  * started, which is what `now()` means (§5), the futures the runtime creates for an extern that
- * returns one (§3.6), the instance's shared cells, its slots (§6), its weak references and its
+ * returns one (§3.6), its slots (§6), its weak references and its
  * resources (§7). A
  * native never holds the context beyond its call.
  */
@@ -20,14 +20,6 @@
 import type { TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/types.ts';
 import type { Value } from '../definition/values.ts';
-
-/**
- * The running instance's cells, which handles name (§3.18): a cell of the handle type entry `type`
- * made holding `value`, as a handle to it. `*x` reads and writes one with instructions instead.
- */
-export interface NativeCells {
-  readonly create: (type: TypeId, value: Value) => Value;
-}
 
 /** The running instance's resources (§7). */
 export interface NativeResources {
@@ -71,9 +63,6 @@ export interface NativeFutures {
 export interface NativeHostFutures {
   readonly pending: (token: string) => Value;
 }
-export interface WithCells {
-  readonly cells: NativeCells;
-}
 export interface WithSlots {
   readonly slots: NativeSlots;
 }
@@ -88,7 +77,6 @@ export type FullNativeContext = NativeContext &
   NativeTimers &
   NativeFutures &
   NativeHostFutures &
-  WithCells &
   WithSlots &
   WithWeakSide &
   WithResources;

@@ -72,6 +72,7 @@ import type { Constraint } from './traits/constraints.ts';
 import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
 import { resolveTypeNode, typeParametersOf } from './types/resolve-type.ts';
 import {
+  type AnonymousStructType,
   errorType,
   type FieldMember,
   isNominalEntity,
@@ -221,14 +222,14 @@ export class ProgramChecker implements CheckerContext {
     return optional;
   }
 
-  sharedOf(type: Type): NominalType {
-    const shared = this.wellKnownType(wellKnown.shared, [type]);
-    if (shared === undefined) {
+  cellOf(type: Type): NominalType {
+    const cell = this.wellKnownType(wellKnown.cell, [type]);
+    if (cell === undefined) {
       unreachable(
         "A variable needs a cell (passed by '&' or shared with a closure) in a program without a prelude.",
       );
     }
-    return shared;
+    return cell;
   }
 
   /** An arrow, so the relation can be passed around on its own (rules/agreement.ts). */
@@ -310,7 +311,7 @@ export class ProgramChecker implements CheckerContext {
     return this.#layouts.variantsOf(type);
   }
 
-  stateOf(type: NominalType): Type | undefined {
+  stateOf(type: NominalType): AnonymousStructType | undefined {
     return this.#layouts.stateOf(type);
   }
 

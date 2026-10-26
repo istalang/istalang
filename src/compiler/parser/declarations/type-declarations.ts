@@ -1,6 +1,6 @@
 /**
- * Declarations of types (§3.1, §3.10, §3.11, §3.17, §3.18): structs, enums, traits, type aliases
- * and handles.
+ * Declarations of types (§3.1, §3.10, §3.11, §3.17, §3.18): structs, shared ones included, enums,
+ * traits and type aliases.
  *
  * Structs, enums and traits list their members the same way: an indented block after `:`, or
  * braces on one line (`struct Req { id: int; value: string }`, `enum Color { Red; Green }`). A
@@ -12,14 +12,13 @@ import type {
   DeclaredField,
   EnumDeclaration,
   FunctionDeclaration,
-  HandleDeclaration,
   StructDeclaration,
   TraitDeclaration,
   TypeAliasDeclaration,
   Variant,
 } from '../../syntax/declarations.ts';
 import type { Invalid } from '../../syntax/node.ts';
-import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
+import type { FieldDeclaration } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { type ItemRules, type Items, parseBody, parseItemEntries } from '../layout.ts';
 import type { Parser } from '../parser.ts';
@@ -28,10 +27,21 @@ import { parseFunction } from './functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
 export function parseStruct(parser: Parser): StructDeclaration {
-  const { start, name, typeParameters } = parseTypeHead(parser);
+  return parseStructFrom(parser, parser.cursor.token.span.start, false);
+}
+
+/** `shared struct Name<T>: …`, from `shared`, a keyword only before `struct` (§2, §3.18). */
+export function parseSharedStruct(parser: Parser): StructDeclaration {
+  const { start } = parser.cursor.advance().span;
+  return parseStructFrom(parser, start, true);
+}
+
+/** A struct declaration from its `struct`, which starts at `start` with what precedes it. */
+function parseStructFrom(parser: Parser, start: number, isShared: boolean): StructDeclaration {
+  const { name, typeParameters } = parseTypeHead(parser);
   const fields = parseMembers(parser, declaredFieldRules, start);
   const span = parser.spanFrom(start);
-  return { kind: 'StructDeclaration', span, name, typeParameters, fields };
+  return { kind: 'StructDeclaration', span, isShared, name, typeParameters, fields };
 }
 
 export function parseEnum(parser: Parser): EnumDeclaration {
@@ -54,23 +64,6 @@ export function parseTypeAlias(parser: Parser): TypeAliasDeclaration {
   const type = parser.expect('=') === undefined ? parser.placeholder() : parser.type();
   const span = parser.spanFrom(start);
   return { kind: 'TypeAliasDeclaration', span, name, typeParameters, type };
-}
-
-/** `handle Name<T> of Type`, from `handle`; `handle` and `of` are keywords only here (§2). */
-export function parseHandle(parser: Parser): HandleDeclaration {
-  const { start, name, typeParameters } = parseTypeHead(parser);
-  const state = parseHandleState(parser);
-  const span = parser.spanFrom(start);
-  return { kind: 'HandleDeclaration', span, name, typeParameters, state };
-}
-
-/** `of Type`. */
-function parseHandleState(parser: Parser): TypeNode {
-  if (!parser.atWord('of')) {
-    return parser.missing("'of'");
-  }
-  parser.cursor.advance();
-  return parser.type();
 }
 
 /** The keyword, the declared name and its type parameters. */

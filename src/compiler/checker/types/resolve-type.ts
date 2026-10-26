@@ -199,8 +199,7 @@ function namedType(resolution: Resolution, node: NamedType): Type {
           return parameterType(declaration);
         case 'StructDeclaration':
         case 'EnumDeclaration':
-        case 'ExternStructDeclaration':
-        case 'HandleDeclaration': {
+        case 'ExternStructDeclaration': {
           const typeArguments = argumentsOf(resolution, node, declaration);
           return typeArguments === undefined ? errorType : nominalType(entity, typeArguments);
         }
