@@ -19,12 +19,12 @@ import {
   jsonOfPlain,
   jsonOfText,
   jsonText,
-  jsonTypeName,
   jsonTypeOf,
   plainOfJson,
 } from '../../definition/json-values.ts';
 import { isResourceType } from '../../definition/types.ts';
 import { elementsOf, type Value } from '../../definition/values.ts';
+import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';
@@ -45,7 +45,7 @@ function hostPayloadOf(value: Value, context: NativeContext & WithResources): un
 /** The code of every `Error` reading JSON returns. */
 const jsonErrorCode = 'json';
 
-const json = namedKey(jsonTypeName);
+const json = namedKey(qualifiedName(wellKnown.json));
 const string = primitiveKey('string');
 
 export const jsonNatives: Natives<NativeContext & WithResources> = {

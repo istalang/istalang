@@ -20,7 +20,12 @@ import { encodeJson } from '../../definition/codec.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { Tables } from '../../definition/tables.ts';
-import type { ExternRole, TypeDefinition, TypeReference } from '../../definition/types.ts';
+import type {
+  EnumRole,
+  ExternRole,
+  TypeDefinition,
+  TypeReference,
+} from '../../definition/types.ts';
 import { type Value, value } from '../../definition/values.ts';
 import { type WellKnownDeclaration, wellKnown } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
@@ -97,12 +102,15 @@ export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 
 type EntryType = NominalType | AnonymousStructType;
 
 /** The std type each role of an extern type entry is (definition/types.ts). */
-const roleDeclarations = {
+const externRoles = {
   cell: wellKnown.shared,
   future: wellKnown.future,
-} satisfies Record<ExternRole, WellKnownDeclaration>;
+} as const satisfies Record<ExternRole, WellKnownDeclaration>;
 
-const externRoles = Object.keys(roleDeclarations) as ExternRole[];
+/** The std type each role of an enum entry is (definition/types.ts). */
+const enumRoles = {
+  json: wellKnown.json,
+} as const satisfies Record<EnumRole, WellKnownDeclaration>;
 
 export class DefinitionTables {
   readonly #checker: Checker;
@@ -336,7 +344,8 @@ export class DefinitionTables {
           arguments: typeArguments,
           fields: this.#fields(this.#checker.fieldsOf(type) ?? []),
         };
-      case 'EnumDeclaration':
+      case 'EnumDeclaration': {
+        const role = this.#roleOf(enumRoles, type.entity);
         return {
           kind: 'enum',
           name,
@@ -345,9 +354,11 @@ export class DefinitionTables {
             name: variant.name,
             fields: this.#fields(variant.fields),
           })),
+          ...(role === undefined ? {} : { role }),
         };
+      }
       case 'ExternStructDeclaration': {
-        const role = this.#roleOf(type.entity);
+        const role = this.#roleOf(externRoles, type.entity);
         return {
           kind: 'extern',
           name,
@@ -364,10 +375,13 @@ export class DefinitionTables {
     }
   }
 
-  /** The role of the extern type `entity` declares: what the runtime makes of its values. */
-  #roleOf(entity: NominalType['entity']): ExternRole | undefined {
-    return externRoles.find(
-      (role) => this.#checker.wellKnownEntity(roleDeclarations[role]) === entity,
+  /** Which of `roles` the type `entity` declares has: what the runtime makes of its values. */
+  #roleOf<Role extends string>(
+    roles: Readonly<Record<Role, WellKnownDeclaration>>,
+    entity: NominalType['entity'],
+  ): Role | undefined {
+    return (Object.keys(roles) as Role[]).find(
+      (role) => this.#checker.wellKnownEntity(roles[role]) === entity,
     );
   }
 

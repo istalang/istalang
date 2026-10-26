@@ -6,6 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { jsonVariants } from '../language/well-known.ts';
 import { valuesEqual } from './equality.ts';
 import {
   JsonError,
@@ -14,20 +15,19 @@ import {
   jsonOfText,
   jsonText,
   jsonTypeIn,
-  jsonTypeName,
   plainOfJson,
 } from './json-values.ts';
 import { maximumDepth } from './values.ts';
 
-/** Where a program's types hold `Json`, as the json module declares it. */
+/** Where a program's types hold `Json`, as lowering lays out the json module's. */
 const shape: JsonType = (() => {
-  const variants = ['Null', 'Bool', 'Integer', 'Number', 'Text', 'List', 'Object'];
   const found = jsonTypeIn([
     {
       kind: 'enum',
-      name: jsonTypeName,
+      name: 'json.Json',
       arguments: [],
-      variants: variants.map((name) => ({ name, fields: [] })),
+      variants: Object.values(jsonVariants).map((name) => ({ name, fields: [] })),
+      role: 'json',
     },
   ]);
   if (found === undefined) {

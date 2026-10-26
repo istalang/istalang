@@ -20,9 +20,9 @@
  * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Shared<Lease>)`
  * makes every `Shared<Lease>` disposable, and the inbox module's every `Revertible<T>`.
  *
- * Where the runtime must know what an extern type's values are beyond what its natives do with
- * them, the entry says so by its `role`, which lowering sets from the checker's entities: no rule
- * of the runtime depends on how a std module spells a name.
+ * Where the runtime must know what an extern type's or an enum's values are beyond what its
+ * natives do with them, the entry says so by its `role`, which lowering sets from the checker's
+ * entities: no rule of the runtime depends on how a std module spells a name.
  */
 
 import { z } from 'zod';
@@ -93,11 +93,21 @@ const struct = z.strictObject({
   fields: z.array(field),
 });
 
+/**
+ * What the runtime makes of an enum's values: a `json` enum is the json module's `Json`, JSON held
+ * as a value, which the json natives and the host boundary move across (spec §9). Any other enum
+ * has none.
+ */
+const enumRole = z.enum(['json']);
+
 const enumeration = z.strictObject({
   kind: z.literal('enum'),
   ...identity,
   variants: z.array(z.strictObject({ name: z.string(), fields: z.array(field) })),
+  role: enumRole.optional(),
 });
+
+export type EnumRole = z.output<typeof enumRole>;
 
 const disposal = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('none') }),

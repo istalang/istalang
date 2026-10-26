@@ -20,7 +20,7 @@
  */
 
 import { compareCodeUnits } from '../language/values.ts';
-import { qualifiedName, wellKnown } from '../language/well-known.ts';
+import { jsonVariants } from '../language/well-known.ts';
 import { memo } from '../structures/memo.ts';
 import { unreachable } from '../structures/unreachable.ts';
 import { decodeJson } from './codec.ts';
@@ -35,15 +35,11 @@ export interface JsonType {
   readonly variants: Readonly<Record<JsonVariant, number>>;
 }
 
-const jsonVariants = ['Null', 'Bool', 'Integer', 'Number', 'Text', 'List', 'Object'] as const;
-type JsonVariant = (typeof jsonVariants)[number];
+type JsonVariant = (typeof jsonVariants)[keyof typeof jsonVariants];
 
 /** A JSON string, escapes included, and what isn't a bracket: what nesting depth skips. */
 const jsonStrings = /"(?:[^"\\]|\\.)*"/gu;
 const notBrackets = /[^[\]{}]/gu;
-
-/** The qualified name the json module's `Json` has in a Definition. */
-export const jsonTypeName = qualifiedName(wellKnown.json);
 
 const jsonTypes = new WeakMap<readonly TypeDefinition[], JsonType | undefined>();
 
@@ -63,14 +59,17 @@ export function jsonTypeOf(types: readonly TypeDefinition[]): JsonType {
 
 function findJsonType(types: readonly TypeDefinition[]): JsonType | undefined {
   const index = types.findIndex(
-    (candidate) => candidate.kind === 'enum' && candidate.name === jsonTypeName,
+    (candidate) => candidate.kind === 'enum' && candidate.role === 'json',
   );
   const entry = types[index];
   if (entry?.kind !== 'enum') {
     return undefined;
   }
   const variants = Object.fromEntries(
-    jsonVariants.map((name) => [name, entry.variants.findIndex((each) => each.name === name)]),
+    Object.values(jsonVariants).map((name) => [
+      name,
+      entry.variants.findIndex((each) => each.name === name),
+    ]),
   ) as Record<JsonVariant, number>;
   return { type: index, variants };
 }
@@ -191,7 +190,10 @@ function partsOf(
   if (!isJsonValue(json, shape)) {
     unreachable('Expected a Json value.');
   }
-  return [jsonVariants[json.variant], childValues(json)[0]];
+  const variant = (Object.keys(shape.variants) as JsonVariant[]).find(
+    (name) => shape.variants[name] === json.variant,
+  );
+  return [variant, childValues(json)[0]];
 }
 
 function written(json: Value, shape: JsonType, depth: number): string {

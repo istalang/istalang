@@ -115,7 +115,7 @@ A type entry is identified by its module-qualified declared `name` and its `argu
 
 Only extern types can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures and slots; or a `function`, the entry of the declared `dispose`'s instance, called with a handle to the value, as for `Shared<Lease>`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a `dispose` a program declares, for a `Shared` instantiation or a host's extern type, is a `function`. A host value of an extern type with `function` disposal, a cell's aside, is a `resource` object behind a handle, which the boundary makes as the value arrives from the host and unwraps to its payload as it leaves. No list of disposable types is kept anywhere.
 
-An extern entry's `role` says what the runtime makes of its values where its natives alone don't: `cell` for every `Shared<T>`, the type a cell must have, and `future` for every `Future<T>`, which a host's extern returning one gives back pending. Lowering sets it from the checker's entities, and any other extern type has none, so no runtime rule depends on how a std module spells a name.
+An extern or enum entry's `role` says what the runtime makes of its values where its natives alone don't: `cell` for every `Shared<T>`, the type a cell must have, `future` for every `Future<T>`, which a host's extern returning one gives back pending, and `json` for the json module's `Json`, which the json natives and the host boundary read and write (`definition/json-values.ts`). Lowering sets it from the checker's entities, and any other type has none, so no runtime rule depends on how a std module spells a type's name.
 
 Each module carries its line starts. The runtime has neither source text nor the compiler, yet it turns spans into locations for `Error.trace`, a panic's trace, `waitingAt()` and the operator's view.
 
@@ -144,7 +144,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `struct` declaration, indented or one-line (§3.1) | a `struct` type entry per instantiation, fields in declaration order |
 | Anonymous struct type, `struct { … }`, an indented field block (§3.1) | a `struct` type entry of its own; two anonymous structs are never the same entry |
 | Recursive types (§3.1) | type references by index, so a type can name itself through the table |
-| `enum` declaration, `T?`, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation; `Error` is a `struct` entry |
+| `enum` declaration, `T?`, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation, with, for `json.Json`, its `role`; `Error` is a `struct` entry |
 | `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable`, `disposal` (§7) and, for `Shared` and `Future`, its `role` |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |

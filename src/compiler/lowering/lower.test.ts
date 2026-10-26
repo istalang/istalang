@@ -189,6 +189,23 @@ describe('lowering', () => {
     expect(bump?.kind === 'code' && bump.cells).toEqual([]);
   });
 
+  it("gives the json module's Json enum the json role, and no other enum one", () => {
+    const program = stdProgramOf({
+      main: [
+        "import * as json from 'json'",
+        'enum Shape { Dot }',
+        'async fn main() -> Future<string>: json.stringify<Array<Shape>>([Dot])',
+      ].join('\n'),
+    });
+    const enums = compiledDefinition(program, 'main').types.flatMap((type) =>
+      type.kind === 'enum' ? [[type.name, type.role]] : [],
+    );
+    expect(enums).toContainEqual(['json.Json', 'json']);
+    expect(enums.filter(([name]) => name !== 'json.Json').map(([, role]) => role)).not.toContain(
+      'json',
+    );
+  });
+
   it('gives each anonymous struct an unnamed entry of its own, shared by its uses', () => {
     const program = stdProgramOf({
       main: [

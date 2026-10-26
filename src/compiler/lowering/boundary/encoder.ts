@@ -6,7 +6,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { codecHelpers } from '../../../language/well-known.ts';
+import { codecHelpers, jsonVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { DerivedForm, JsonField } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
@@ -46,7 +46,7 @@ export class Encoder {
         const items = form.elements.map((element, index) =>
           code.call(this.#codec(element, form.module), [code.field(value, index)]),
         );
-        code.return(this.#variant('List', [code.array(items)]));
+        code.return(this.#variant(jsonVariants.list, [code.array(items)]));
         return;
       }
       case 'enum':
@@ -107,7 +107,7 @@ export class Encoder {
         return [[code.constant(field.key), code.call(encode, [read(index)])]];
       }),
     ];
-    return this.#variant('Object', [code.map(entries)]);
+    return this.#variant(jsonVariants.object, [code.map(entries)]);
   }
 
   #variant(name: string, fields: readonly Register[]): Register {
@@ -120,7 +120,7 @@ export class Encoder {
     return {
       kind: 'variant' as const,
       type: tables.typeIndex(this.#json),
-      variant: variantIndexOf(checker, this.#json, 'Text'),
+      variant: variantIndexOf(checker, this.#json, jsonVariants.text),
       fields: [name],
     };
   }
