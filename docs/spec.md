@@ -816,6 +816,11 @@ for key, verdict in answered.entries():
 An annotation attaches a compile-time value to a declaration. It is a struct value written with `@` before it, and it applies to the declaration on the same line or, standing on its own line, to the next declaration:
 
 ```python
+import JsonName, JsonSkip from 'json'
+
+struct Deprecated:
+    reason: string
+
 struct GithubUser:
     login: string
     userId: int @JsonName{"user_id"}
@@ -1169,7 +1174,7 @@ async fn main():
 - **Operate** panicked instances: retry one from its last snapshot, where the failed segment runs again with the time it first started at (§5), or terminate it, which ends it as terminated and disposes what it holds (§3.12, §7).
 - **Learn of spawned instances:** advancing an instance tells the host which instances it spawned, so the host runs them too.
 
-A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(string, int)` or `purchase.approvalDeadline`, and a host handle's function by the extern returning the handle and the field's name, as in `purchase.sendRevertible(purchase.Queue<T>, T).retract`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `int` keeps every digit and reads apart from a `float`; it may give back a `bigint` or a whole number for one.
+A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(string, int)` or `purchase.approvalDeadline`, and a host handle's function by the extern returning the handle and the field's name, as in `purchase.sendRevertible(purchase.Queue<T>, T).retract`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `int` keeps every digit and reads apart from a `float`; it may give back a `bigint` or a whole number for one. What it gives back is read as `JSON.stringify` would write it, so `undefined` is `null`, or a missing field inside an object: a function returning nothing gives `unit` or `none`.
 
 Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`: the host names the new future with a token of its own choosing and fills it later. An extern's result, or a value an extern constant gives, that doesn't fit its declared type panics the instance; a future filled, or an instance started, with JSON that doesn't fit fails the host's call instead. Filling a future nothing waits on any more, because it was disposed (§7) or its instance ended, changes nothing; filling one of a panicked instance fails until the instance is retried.
 
@@ -1188,7 +1193,7 @@ The mapping follows JavaScript's `JSON.stringify`:
 | `Array<T>`, tuple | array; a tuple's has exactly its length |
 | `Map<K, V>` | object keyed by each key's `toString`, so `K` must be `Stringable` (and `Parsable` to be read) |
 | `int` | number, parsed and printed exactly at any size; a string of its digits with `@JsonBigInt` |
-| `float` | number; NaN and ±Infinity are written as `null`, as JavaScript does |
+| `float` | number; NaN and ±Infinity are written as `null`, as JavaScript does, so they can't be read back: a `float` that may be missing is a `float?` |
 | `Decimal` | string |
 | `bool`, `string` | boolean, string |
 | `T?` | `null`, or a missing field, for `none` |

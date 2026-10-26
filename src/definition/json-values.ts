@@ -13,7 +13,8 @@
  * - A host sees what `JSON.parse` of the text would give it, except that every integer is a
  *   `bigint`, so none loses digits and a host can tell an `int` from a `float`. Coming back, a
  *   bigint or a whole number is an `Integer`, any other number a `Number`, so a host need not say
- *   which it means.
+ *   which it means; and `undefined` reads as `JSON.stringify` writes it, `null`, or a field left
+ *   out of an object, so a host function returning nothing gives `unit` or `none`.
  * - `Json` nests no deeper than a persisted value may (`maximumDepth`), checked before either
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
@@ -136,6 +137,8 @@ export function jsonOfPlain(plain: unknown, shape: JsonType, depth = 0): Value {
       return variant('Bool', [plain]);
     case 'string':
       return variant('Text', [plain]);
+    case 'undefined':
+      return variant('Null', []);
     case 'bigint':
       return variant('Integer', [plain]);
     case 'number':
@@ -155,7 +158,9 @@ export function jsonOfPlain(plain: unknown, shape: JsonType, depth = 0): Value {
       }
       return variant('Object', [
         mapOf(
-          Object.entries(plain).map(([key, item]) => [key, jsonOfPlain(item, shape, depth + 1)]),
+          Object.entries(plain)
+            .filter(([, item]) => item !== undefined)
+            .map(([key, item]) => [key, jsonOfPlain(item, shape, depth + 1)]),
         ),
       ]);
     default:

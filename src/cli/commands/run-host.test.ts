@@ -203,6 +203,35 @@ describe('ista run --host', () => {
     expect(run.err).toContain('main.charge(string, int)');
   });
 
+  it("reads a host function's undefined as JSON.stringify writes it", async () => {
+    const root = project({
+      'main.ista': [
+        'struct Found:',
+        '  name: string?',
+        'extern fn note(text: string)',
+        'extern fn lookup() -> int?',
+        'extern fn found() -> Found',
+        'async fn main() -> Future<bool>:',
+        '  note("a")',
+        '  lookup() == none and found().name == none',
+        '',
+      ].join('\n'),
+      'host.mjs': [
+        'export default {',
+        "  'main.note(string)': () => {},",
+        "  'main.lookup()': () => undefined,",
+        "  'main.found()': () => ({ name: undefined }),",
+        '};',
+        '',
+      ].join('\n'),
+    });
+    expect(await ista(root, 'run', 'main.ista', '--host', 'host.mjs')).toEqual({
+      code: 0,
+      out: 'true\n',
+      err: '',
+    });
+  });
+
   it('keeps waiting on the promises still pending after one of them fails', async () => {
     const root = project({
       'main.ista': [

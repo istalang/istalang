@@ -51,6 +51,17 @@ function bigInts(_: string, value: unknown): unknown {
   return typeof value === 'number' && Number.isInteger(value) ? BigInt(value) : value;
 }
 
+/** JSON as a host might give it, with `undefined` anywhere a value goes, the top level too. */
+const withUndefined = fc.letrec((tie) => ({
+  value: fc.oneof(
+    { depthSize: 'small' },
+    fc.constant(undefined),
+    fc.jsonValue({ maxDepth: 0 }),
+    fc.array(tie('value')),
+    fc.dictionary(fc.string(), tie('value')),
+  ),
+})).value;
+
 describe('Json values', () => {
   it('carry any JSON a host gives as JSON.parse would read it back, integers as bigints', () => {
     fc.assert(
@@ -102,8 +113,17 @@ describe('Json values', () => {
     );
   });
 
+  it('read undefined as JSON.stringify writes it: null, or a field left out of an object', () => {
+    fc.assert(
+      fc.property(withUndefined, (plain) => {
+        const written: unknown = plain === undefined ? null : JSON.parse(JSON.stringify(plain));
+        expect(valuesEqual(jsonOfPlain(plain, shape), jsonOfPlain(written, shape))).toBe(true);
+      }),
+    );
+  });
+
   it('refuse JavaScript values JSON cannot hold', () => {
-    for (const plain of [Number.NaN, Number.POSITIVE_INFINITY, undefined, () => 1, Symbol('s')]) {
+    for (const plain of [Number.NaN, Number.POSITIVE_INFINITY, () => 1, Symbol('s')]) {
       expect(() => jsonOfPlain(plain, shape)).toThrow(JsonError);
     }
   });

@@ -74,7 +74,9 @@ its instance is numbered by, so its native sees only JSON:
   crosses only to its own host; an extern constant, one value for every read, can't hold one
   (5911).
 - Host natives (`runtime/boundary/host-natives.ts`) take and give JavaScript JSON, what
-  `JSON.parse` of the text gives but with every integer a `bigint`, so none loses digits. The
+  `JSON.parse` of the text gives but with every integer a `bigint`, so none loses digits; what a
+  host gives back is read as `JSON.stringify` would write it, `undefined` as `null` or a field
+  left out (definition/json-values.ts). The
   runtime's API takes them as `(arguments, call)`, where one returning a future gives back
   `call.pending(token)` and is filled later by `fill`: a durable host names the future so it can
   fill it from another process, and a name a future still waiting on the host has panics the
