@@ -537,7 +537,7 @@ fn multiply(left: Duration, factor: int) -> Duration:
 - **Floor division and remainder share a trait,** because they are defined together: `a == (a // b) * b + a % b` always holds. A type can thus offer exact division, floor division, or both.
 - **Not overloadable:** `and`, `or` and `not` (they short-circuit, and a function call would evaluate both sides), `=`, `.`, `->`, prefix `*` and `&`. `await` and `select` aren't overloaded either; they work on futures (§6).
 - **Compound assignment.** `x += y` is sugar for `x = x + y`.
-- **No implicit conversions.** Mixed-type operators work only through overloads. The prelude declares them for primitives, such as `add(int, float) -> float` and `add(string, int) -> string`, so `"Total: " + count` just works. Anything else converts explicitly with `T(x)` (§3.10).
+- **No implicit conversions.** Mixed-type operators work only through overloads, for primitives as for a program's own types. The prelude declares them for `int` and `float`, such as `add(int, float) -> float`, and `Decimal` declares its own beside it for `int` only: mixing it with `float` would bring back the rounding it exists to avoid. Any `Stringable` value appends to a string, on either side, through `add<T is Stringable>(left: string, right: T)` and its mirror, so `"Total: " + count` and `count + " items"` just work. Anything else converts explicitly with `T(x)` (§3.10).
 
 | Precedence, tightest first | Operators |
 | --- | --- |
@@ -599,7 +599,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 | `IndexAssignable<K, V, C = Self>` | `setIndex(self: &C, key, value)` | `x[k] = v` |
 | `Convertible<From, T = Self>` | `fn Self.from(value: From) -> Self` | `T(x)` |
 | `Default` | `fn Self.default() -> Self` | map literals for other types (§2); what a `@JsonSkip` field reads back as (§9) |
-| `Stringable` | `toString(self) -> string` | `string(x)`; map keys in JSON, and `json.encodeText` (§9) |
+| `Stringable` | `toString(self) -> string` | `string(x)`; appending to a string with `+` (§3.9); map keys in JSON, and `json.encodeText` (§9) |
 | `Parsable` | `fn Self.parse(text: string) -> Result<Self>` | reading map keys from JSON, and `json.decodeText` (§9) |
 | `Encodable`, `Decodable` | `toJson(self) -> json.Json`, and `fn Self.fromJson(json: json.Json, path: string) -> Result<Self>`, the codecs that write and read a type as JSON (§9); each implies `Sendable`. Declared in the `json` module, so code naming them imports them; derived for a struct, an enum, a tuple or a host type declaring neither function | extern parameters, and extern results and constants (§3.6); `json` |
 | `Addable`, `Subtractable`, `Multipliable`, `Divisible`, `FloorDivisible`, `Negatable`, `Comparable` | the functions in §3.9 | operators in generic code |

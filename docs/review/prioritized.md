@@ -26,7 +26,7 @@ tags: [review, architecture, refactoring, plan]
 | 12 | Generalize `@JsonSkip` and JSON forms (use `Default` trait) | checker, lowering | | by-argon | done |
 | 13 | Spec: JSON crossing as traits (`Encodable`/`Decodable` instead of closed table) | spec, compiler | D140 | by-opus | done |
 | 14 | Spec: Iterable materialization (`iterate` lazy form) | spec, stdlib | D141 | by-opus | |
-| 15 | Spec: Mixed arithmetic (overload matrix vs promotion) | spec, prelude | D142 | by-opus | |
+| 15 | Spec: Mixed arithmetic (overload matrix vs promotion) | spec, prelude | D142 | by-opus | done |
 | 16 | Spec: Witness incoherence (chosen per call site) | spec, checker | D143 | by-opus | done |
 | 17 | Spec: `Shared<T>` roles, Host Handles vs Resource handles, nominal handle declaration | spec, compiler | D105, D139 | by-argon, by-opus | done |
 | 18 | `Error{...}` trace field (remove hardcoded check, support default field expressions) | checker, syntax | | by-argon | done |

@@ -64,13 +64,13 @@ describe('ista run', () => {
 
   it('runs nothing when the program has errors, reporting them', async () => {
     const run = await ista(
-      project({ 'main.ista': 'async fn main():\n  1 + "a"\n' }),
+      project({ 'main.ista': 'async fn main():\n  1 - "a"\n' }),
       'run',
       'main.ista',
     );
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
-    expect(run.err).toContain("main.ista:2:3: error 5016: '+' isn't defined for int and string.");
+    expect(run.err).toContain("main.ista:2:3: error 5016: '-' isn't defined for int and string.");
   });
 
   it.each([

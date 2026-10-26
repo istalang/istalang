@@ -30,7 +30,7 @@ describe('checking reports', () => {
   it.each([
     ['a value of the wrong type', 'const x: int = "a"', reports.typeMismatch, '"a"'],
     ['a condition that is not bool', 'while n:\n  break', reports.typeMismatch, 'n'],
-    ['an operator no function takes', 'n + "a"', reports.operatorTypes, 'n + "a"'],
+    ['an operator no function takes', 'n - "a"', reports.operatorTypes, 'n - "a"'],
     ['== across types', 'c == n', reports.operatorTypes, 'c == n'],
     ['branches of different types', 'const v = if c: 1 else: "a"', reports.branchTypes, '"a"'],
     ['a value in an if without else', 'if c: 1', reports.ifWithoutElse, '1'],

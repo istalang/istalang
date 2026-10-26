@@ -9,7 +9,6 @@
  * - `/` divides as IEEE 754 does, so dividing by zero gives an infinity or NaN (§2); `//` and `%`
  *   by zero have no int to give, which is a bug in the program, so they panic (§3.12).
  * - `compare` on floats subtracts, so infinities compare as expected; see `sign` for NaN.
- * - Adding a primitive to a string appends its text, as `toString` writes it (text-forms.ts).
  * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
  * - `_trace()` runs as `Error`'s `trace` default, in the entry a literal leaving the field out
  *   calls (§3.1), so it leaves that entry's frame out: an `Error`'s trace starts where it is built.
@@ -23,7 +22,7 @@ import { arrayNatives } from './arrays.ts';
 import { mapNatives } from './maps.ts';
 import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
-import { primitiveText, textFormNatives } from './text-forms.ts';
+import { textFormNatives } from './text-forms.ts';
 import { weakNatives } from './weak-natives.ts';
 
 const numericPairs = [
@@ -76,12 +75,7 @@ export const preludeNatives: Natives = {
   [preludeKey('negate', 'float')]: ([value]) => -float(value),
   [preludeKey('compare', 'string', 'string')]: ([left, right]) =>
     sign(compareOrdered(text(left), text(right))),
-  ...Object.fromEntries(
-    (['string', 'int', 'float', 'bool'] as const).map((right) => [
-      preludeKey('add', 'string', right),
-      ([left, value]: readonly Value[]) => text(left) + primitiveText(value),
-    ]),
-  ),
+  [preludeKey('add', 'string', 'string')]: ([left, right]) => text(left) + text(right),
   [preludeKey('float.from', 'int')]: ([value]) => Number(int(value)),
   [preludeKey('int.from', 'float')]: ([value]) => truncated(float(value)),
   [preludeKey('panic', 'string')]: ([message]) => {

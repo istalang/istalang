@@ -110,14 +110,6 @@ describe('prelude natives', () => {
     );
   });
 
-  it('append the text of a primitive to a string, a whole float keeping its .0', () => {
-    expect(call(preludeKey('add', 'string', 'int'), 'n=', 42n)).toBe('n=42');
-    expect(call(preludeKey('add', 'string', 'float'), 'x=', 2)).toBe('x=2.0');
-    expect(call(preludeKey('add', 'string', 'float'), 'x=', 2.5)).toBe('x=2.5');
-    expect(call(preludeKey('add', 'string', 'float'), 'x=', 1e21)).toBe('x=1e+21');
-    expect(call(preludeKey('add', 'string', 'bool'), 'ok ', true)).toBe('ok true');
-  });
-
   it('panic with the message panic was given', () => {
     expect(() => call('prelude.panic(string)', 'bug')).toThrow(new Panic('bug'));
   });
