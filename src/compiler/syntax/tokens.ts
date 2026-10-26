@@ -96,6 +96,7 @@ export const punctuators = [
   '//=',
   '%=',
   '->',
+  '?->',
   '&',
   '@',
 ] as const;

@@ -12,6 +12,7 @@
  * (§2). Nothing else can stand before them, so the parser never needs to know what a name means.
  *
  * `x->f` is `(*x).f` (§3.9), so it is read as that: a member access on a `Dereference` of `x`.
+ * `x?->f` reads through an optional the same way, as a link of an optional chain (§4).
  *
  * After `.` or `->`, a number names a tuple element (§3.15). The scanner reads the `0.1` of
  * `t.0.1` as one float, so that token is split back into its two elements here.
@@ -105,19 +106,22 @@ export function memberParselet(isOptional: boolean): InfixParselet {
   };
 }
 
-export const arrowParselet: InfixParselet = {
-  level: 'postfix',
-  parse(parser, left) {
-    parser.cursor.advance();
-    const operand: Dereference = {
-      kind: 'Dereference',
-      span: parser.spanFrom(left.span.start),
-      operator: '->',
-      operand: left,
-    };
-    return parseMember(parser, operand, false);
-  },
-};
+/** `x->f`, or `x?->f`: a member of the value behind `x`. */
+export function arrowParselet(operator: '->' | '?->'): InfixParselet {
+  return {
+    level: 'postfix',
+    parse(parser, left) {
+      parser.cursor.advance();
+      const operand: Dereference = {
+        kind: 'Dereference',
+        span: parser.spanFrom(left.span.start),
+        operator,
+        operand: left,
+      };
+      return parseMember(parser, operand, false);
+    },
+  };
+}
 
 /** The member or tuple element of `target` named after its `.`, `?.` or `->`. */
 function parseMember(parser: Parser, target: Expression, isOptional: boolean): Expression {

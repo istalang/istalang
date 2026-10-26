@@ -237,12 +237,16 @@ export function lowerDereference(context: FunctionContext, node: Dereference): R
   return sharedAccessor(context, node).read(node.span);
 }
 
-/** The value behind the shared struct a place's root `node` reads, computing it (§3.9). */
+/**
+ * The value behind the shared struct a place's root `node` reads, computing it (§3.9); `x->` reads
+ * its handle as a link of an optional chain (optional-chains.ts).
+ */
 function sharedAccessor(context: FunctionContext, node: Expression): Accessor {
   if (node.kind !== 'Dereference') {
     unreachable(`A ${node.kind} is no place; the checker should have said so.`);
   }
-  const cell = context.expression(node.operand);
+  const cell =
+    node.operator === '*' ? context.expression(node.operand) : context.chains.target(context, node);
   return {
     node,
     read: (span, dst = context.code.allocate()) => {

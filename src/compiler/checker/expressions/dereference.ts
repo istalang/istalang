@@ -3,7 +3,8 @@
  * built in, as reading a field is, so they resolve no call: lowering reads and writes the handle's
  * cell. `x->f` is `(*x).f`, and writing a part of `*x` (`x->f = v`, `*x += v`) reads it and writes
  * it back whole, as writing a part of any place reached through a pair of reads and writes does
- * (calls/places.ts).
+ * (calls/places.ts). The `x->` of `x->f` is a link of an optional chain, as `.f` is, and `x?->`
+ * reads through an optional (optionals.ts); `*x` ends a chain, as a prefix operator does.
  *
  * `v` must fit the value `*x` reads, so it is checked against that type first: `none` or a value
  * wrapped into `T?` gets its expected type, and a value that doesn't fit is reported where it is
@@ -31,7 +32,8 @@ export function checkWholeWrite(context: BodyContext, node: Assignment, target: 
 
 /** The value behind the handle `node` reads through; undefined after a report. */
 function valueBehind(context: BodyContext, node: Dereference): Type | undefined {
-  const handle = context.expression(node.operand);
+  const handle =
+    node.operator === '*' ? context.expression(node.operand) : context.chains.target(context, node);
   if (handle.kind === 'error') {
     return undefined;
   }

@@ -1,12 +1,13 @@
 /**
- * Optional chains (§4): `a?.b`, `a?.m()`, and the links after them, such as `.c` in `a?.b.c`.
+ * Optional chains (§4): `a?.b`, `a?.m()`, `a?->b`, and the links after them, such as `.c` in
+ * `a?.b.c`.
  *
  * - A chain is lowered from its last link, the only one lowered as an expression: its result
  *   register gets the chain's value, wrapped into `Some` unless already optional, or `None` when
  *   a `?.` meets `None`, which jumps straight to the chain's end. Inner links are lowered as links,
  *   working on the value carried along, so nothing between them is ever wrapped.
  * - A link reads its target through `target`: a chained target is lowered as a link, and a `?.`
- *   switches on the value, carrying on with the value inside `Some`. What each link works on is
+ *   or `?->` switches on the value, carrying on with the value inside `Some`. What each link works on is
  *   the checker's record (`chainOf`), so nothing here re-derives a type.
  */
 

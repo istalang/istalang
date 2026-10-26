@@ -90,7 +90,8 @@ const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
   '[': indexParselet,
   '.': memberParselet(false),
   '?.': memberParselet(true),
-  '->': arrowParselet,
+  '->': arrowParselet('->'),
+  '?->': arrowParselet('?->'),
   '?': propagateParselet,
   '{': structLiteralParselet,
 };

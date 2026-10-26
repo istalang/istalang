@@ -45,6 +45,7 @@ export const patternTemplates = {
   },
   chainNotPlace: {
     code: 5407,
-    message: () => "A value read through '?.' is a copy, so it can't be assigned to or changed.",
+    message: () =>
+      "A value read through '?.' or '?->' is a copy, so it can't be assigned to or changed.",
   },
 } as const;

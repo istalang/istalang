@@ -188,11 +188,16 @@ export interface PlacePath {
 
 /**
  * Whether `node` names a place (§3.7, §3.9): a variable or a handle's value, with fields, tuple
- * elements and indexed elements read off it. A missing expression counts, being reported already.
+ * elements and indexed elements read off it. A handle's value read in an optional chain is a copy
+ * (§4), so it is none. A missing expression counts, being reported already.
  */
 export function isPlace(node: Expression): boolean {
   const { root } = placePath(node);
-  return root.kind === 'Identifier' || root.kind === 'Dereference' || root.kind === 'Missing';
+  return (
+    root.kind === 'Identifier' ||
+    root.kind === 'Missing' ||
+    (root.kind === 'Dereference' && !isOptionallyChained(root))
+  );
 }
 
 export function placePath(node: Expression): PlacePath {
@@ -222,10 +227,11 @@ export interface Propagate extends NodeOf<'Propagate'> {
 
 /**
  * `*x`: the value behind the shared struct `x` (§3.9). `x->f` is `(*x).f`, so the parser reads it
- * as a field of a `Dereference` spanning `x->`, written with the operator `->`.
+ * as a field of a `Dereference` spanning `x->`, written with the operator `->`, or `?->` when it
+ * reads through an optional, as a link of an optional chain (§4).
  */
 export interface Dereference extends NodeOf<'Dereference'> {
-  readonly operator: '*' | '->';
+  readonly operator: '*' | '->' | '?->';
   readonly operand: Expression;
 }
 
@@ -278,7 +284,10 @@ export interface Match extends NodeOf<'Match'> {
   readonly cases: readonly (MatchCase | Invalid)[];
 }
 
-/** The step a link of an optional chain takes (§4): what it works on, and whether through `?.`. */
+/**
+ * The step a link of an optional chain takes (§4): what it works on, and whether through `?.` or
+ * `?->`.
+ */
 export interface ChainStep {
   readonly target: Expression;
   readonly optional: boolean;
@@ -286,8 +295,9 @@ export interface ChainStep {
 
 /**
  * The step `node` takes when it may be a link of an optional chain: a field read, a tuple
- * element, an index, or a method call; undefined for any other expression. Whether it is a link is the
- * checker's to say: a call through a namespace has the same shape and never is.
+ * element, an index, a method call, or the value behind a handle read with `->`; undefined for
+ * any other expression, `*x` among them, which ends a chain as parentheses do. Whether it is a
+ * link is the checker's to say: a call through a namespace has the same shape and never is.
  */
 export function chainStepOf(node: Expression): ChainStep | undefined {
   switch (node.kind) {
@@ -300,12 +310,16 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
       return node.callee.kind === 'MemberAccess'
         ? { target: node.callee.target, optional: node.callee.isOptional }
         : undefined;
+    case 'Dereference':
+      return node.operator === '*'
+        ? undefined
+        : { target: node.operand, optional: node.operator === '?->' };
     default:
       return undefined;
   }
 }
 
-/** Whether `node` is a link of an optional chain at a `?.` or after one (§4). */
+/** Whether `node` is a link of an optional chain at a `?.` or `?->`, or after one (§4). */
 export function isOptionallyChained(node: Expression): boolean {
   for (let step = chainStepOf(node); step !== undefined; step = chainStepOf(step.target)) {
     if (step.optional) {

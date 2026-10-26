@@ -32,6 +32,8 @@ describe('punctuators', () => {
     ['a//b', ['identifier', '//', 'identifier']],
     ['fn f() -> int', ['fn', 'identifier', '(', ')', '->', 'identifier']],
     ['u->name', ['identifier', '->', 'identifier']],
+    ['u?->name', ['identifier', '?->', 'identifier']],
+    ['r? ->name', ['identifier', '?', '->', 'identifier']],
     ['[:]', ['[', ':', ']']],
     ['@JsonSkip', ['@', 'identifier']],
   ])('reads %s by longest match', (text, kinds) => {

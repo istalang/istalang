@@ -1,12 +1,17 @@
-# error: 5026 at 17:17
-# error: 5026 at 18:16
-# error: 5218 at 24:16
-# error: 5219 at 25:21
-# error: 5605 at 26:14
-# error: 5221 at 27:35
+# error: 5026 at 22:17
+# error: 5026 at 23:16
+# error: 5218 at 29:16
+# error: 5219 at 30:21
+# error: 5605 at 31:14
+# error: 5221 at 32:35
+# error: 5406 at 33:19
+# error: 5220 at 35:17
+# error: 5407 at 37:15
 # A shared struct (§3.18) is built with `new`, and only one is; its fields are read through it
 # with `->`, never `.`; and its values have an identity, so they never leave their instance, nor
 # does compile time compute one into a top-level const, by itself or as a field's default (§3).
+# `?->` reads through an optional shared struct only, and a value read through it is a copy, so a
+# method taking `&self` isn't called through it (§4).
 
 struct Tally { count: int }
 
@@ -25,3 +30,8 @@ async fn main():
   const plain = new Tally{count: 1}
   spawn keep(new Counter{count: 1})
   const read = plain.count + bare.count
+  const missing = bare?->count
+  const maybe: Tally? = plain
+  const inner = maybe?->count
+  const log: Shared<Array<int>>? = new Shared{value: [1]}
+  log?->value.push(2)

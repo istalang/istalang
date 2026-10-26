@@ -509,7 +509,7 @@ An operator is sugar for a named function: `a + b` calls `add(a, b)`. On concret
 | `for x in c` | `iterate` | `Iterable` |
 | `T(x)` | `T.from` | `Convertible` |
 
-**Shared structs.** `*x` is the value behind the shared struct `x` (§3.18), a plain anonymous struct of its fields, and `*x = v` writes it, for every copy of the handle. `x->f` is `(*x).f`: a field of that value, read or written, as in C. Writing a part (`x->name = "Y"`, `*x += 1`) reads the value, changes the part and writes the value back, atomically within the segment. Both are built in and work only on shared structs, so they call no function and can't be overloaded. A `const` shared struct stays writable, since writing through it changes what is behind the handle, not the handle.
+**Shared structs.** `*x` is the value behind the shared struct `x` (§3.18), a plain anonymous struct of its fields, and `*x = v` writes it, for every copy of the handle. `x->f` is `(*x).f`: a field of that value, read or written, as in C. Writing a part (`x->name = "Y"`, `*x += 1`) reads the value, changes the part and writes the value back, atomically within the segment. `x?->f` reads through an optional shared struct, as `?.` does (§4). Both are built in and work only on shared structs, so they call no function and can't be overloaded. A `const` shared struct stays writable, since writing through it changes what is behind the handle, not the handle.
 
 ```python statements
 const u = new Account{name: "Ares", email: "a@x"}   # a shared struct (§3.18)
@@ -517,6 +517,7 @@ u->name = "Ares K"          # writes through: every alias sees it
 const snapshot = *u         # a plain copy of the fields
 const alias = u             # the same handle; alias == u
 accounts[0]->name = "Y"     # -> works on any expression
+const next = head->next?->value   # int?: none when head->next is none
 ```
 
 All four comparisons go through a single `compare(left, right) -> int` (negative, zero or positive), so they can never contradict each other.
@@ -540,7 +541,7 @@ fn multiply(left: Duration, factor: int) -> Duration:
 
 | Precedence, tightest first | Operators |
 | --- | --- |
-| 1 | postfix: calls, indexing, `.`, `?.`, `->`, the error-propagating `?` |
+| 1 | postfix: calls, indexing, `.`, `?.`, `->`, `?->`, the error-propagating `?` |
 | 2 | prefix: `await`, unary `-`, `*`, `&` |
 | 3 | `*`, `/`, `//`, `%` |
 | 4 | `+`, `-` |
@@ -921,10 +922,10 @@ The rules:
 
 **Optionals.** Two operators work on `T?` values without a `match`:
 
-- `a?.b` reads the field `b`, or calls a method as in `a?.m()`, or a field of a function type as in `a?.f(x)` (§3.14), when `a` isn't `none`, and yields `none` otherwise. The result is optional.
+- `a?.b` reads the field `b`, or calls a method as in `a?.m()`, or a field of a function type as in `a?.f(x)` (§3.14), when `a` isn't `none`, and yields `none` otherwise. The result is optional. `a?->b` does the same for a field behind an optional shared struct (§3.9).
 - `a ?? b` yields the value inside `a`, or `b` when `a` is `none`; `b` is evaluated only then. `b` may have type `T`, and so does the result, or `T?`, giving a `T?`, so `a ?? b ?? c` reads left to right.
 
-Both work only on optionals; using either on any other value is an error. A `?.` starts an **optional chain**: the links after it, such as `.c`, `.0`, `[i]` and `.m()` in `a?.b.c`, `a?.b.0`, `a?.b[i]` and `a?.b.m()`, work on the value inside, and when a `?.` meets `none` the whole chain is `none`. Parentheses end a chain. The chain's value is wrapped into `T?` once, at its end, unless it already is optional, so results never nest. A value read through `?.` is a copy (§3.1), so a chain can't be assigned to, and a method taking `&self` isn't called through it.
+Both work only on optionals; using either on any other value is an error. A `?.` or `?->` starts an **optional chain**: the links after it, such as `.c`, `.0`, `[i]`, `.m()` and `->c` in `a?.b.c`, `a?.b.0`, `a?.b[i]`, `a?.b.m()` and `a?.b->c`, work on the value inside, and when a `?.` or `?->` meets `none` the whole chain is `none`. Parentheses end a chain, and so does a prefix `*`. The chain's value is wrapped into `T?` once, at its end, unless it already is optional, so results never nest. A value read through `?.` or `?->` is a copy (§3.1), so a chain can't be assigned to, and a method taking `&self` isn't called through it.
 
 `??` can't be mixed with `and` or `or` without parentheses, as in JavaScript. Neither operator is related to the postfix `?` on `Result`, which propagates errors (§3.12).
 

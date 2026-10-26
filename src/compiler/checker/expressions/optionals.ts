@@ -1,12 +1,12 @@
 /**
- * The operators on optionals (§4): `a?.b`, `a?.m()`, and `a ?? b`.
+ * The operators on optionals (§4): `a?.b`, `a?.m()`, `a?->b`, and `a ?? b`.
  *
- * - `?.` starts an optional chain. Every link after it (`.c`, `.0`, `[i]`, `.m()`) works on the
- *   value inside, and the whole chain yields `none` as soon as one `?.` meets `none`; parentheses
- *   end a chain. The chain's value is wrapped into `T?` once, at its last link, unless it already
+ * - `?.` and `?->` start an optional chain. Every link after it (`.c`, `.0`, `[i]`, `.m()`, `->c`)
+ *   works on the value inside, and the whole chain yields `none` as soon as one `?.` or `?->`
+ *   meets `none`; parentheses end a chain. The chain's value is wrapped into `T?` once, at its last link, unless it already
  *   is optional, so results never nest.
- * - A value read through `?.` is a copy (§3.1), so a chain is never a place: it isn't assigned to,
- *   and a method taking `&self` isn't called through it.
+ * - A value read through `?.` or `?->` is a copy (§3.1), so a chain is never a place: it isn't
+ *   assigned to, and a method taking `&self` isn't called through it.
  * - `a ?? b` is the value inside `a`, else `b`, evaluated only then. `b` may be a `T`, giving a `T`,
  *   or a `T?`, giving a `T?`, so `a ?? b ?? c` reads left to right.
  * - Both take an optional; anything else is reported.
@@ -61,7 +61,7 @@ export class OptionalChains {
     if (!this.continues(link)) {
       return targetType;
     }
-    const base = this.#baseOf(context, step, targetType);
+    const base = this.#baseOf(context, link, step, targetType);
     this.#bases.set(link, base);
     return base;
   }
@@ -87,14 +87,17 @@ export class OptionalChains {
     return this.#links.get(link);
   }
 
-  #baseOf(context: BodyContext, step: ChainStep, targetType: Type): Type {
+  #baseOf(context: BodyContext, link: Expression, step: ChainStep, targetType: Type): Type {
     const carried = this.#carried.get(step.target) ?? targetType;
     if (!step.optional || carried.kind === 'error') {
       return carried;
     }
     const inner = optionalInner(carried, context.checker.optionalEntity);
     if (inner === undefined) {
-      context.report(checkerDiagnostics.needsOptional(step.target.span, '?.', typeText(carried)));
+      const operator = link.kind === 'Dereference' ? '?->' : '?.';
+      context.report(
+        checkerDiagnostics.needsOptional(step.target.span, operator, typeText(carried)),
+      );
       return errorType;
     }
     return inner;
