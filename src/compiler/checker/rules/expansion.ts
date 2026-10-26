@@ -20,7 +20,7 @@
 
 import { memo } from '../../../structures/memo.ts';
 import { stronglyConnected } from '../../../structures/strongly-connected.ts';
-import type { ModuleId } from '../../program/program.ts';
+import { type ModuleId, programModule } from '../../program/program.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
@@ -54,8 +54,8 @@ export class Expansion {
 
   /** Reports every call in a generic function of `module` that makes an expanding cycle. */
   check(module: ModuleId): void {
-    const root = this.#checker.program.modules.get(module)?.tree.root;
-    const own = new Set(root === undefined ? [] : functionsOf(root).filter(isGeneric));
+    const { root } = programModule(this.#checker.program, module).tree;
+    const own = new Set(functionsOf(root).filter(isGeneric));
     const edges = this.#reachedFrom(own);
     const componentOf = stronglyConnected(edges);
     const reported = new Set<NodeOf<string>>();

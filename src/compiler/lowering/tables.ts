@@ -35,7 +35,7 @@ import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
 
-import type { ModuleId } from '../program/program.ts';
+import { type ModuleId, programModule } from '../program/program.ts';
 import type {
   ConstantDeclaration,
   ExternConstantDeclaration,
@@ -52,7 +52,7 @@ import {
   nestedName,
   ownerDeclaration,
 } from './instances.ts';
-import { loadedModule, qualifiedNameOf } from './names.ts';
+import { qualifiedNameOf } from './names.ts';
 
 /**
  * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
@@ -125,7 +125,7 @@ export class DefinitionTables {
   }
 
   #addModule(module: ModuleId): number {
-    const { lineStarts } = lineMapOf(loadedModule(this.#checker, module).tree.source);
+    const { lineStarts } = lineMapOf(programModule(this.#checker.program, module).tree.source);
     return this.#modules.push({ id: module, lineStarts: [...lineStarts] }) - 1;
   }
 
@@ -155,7 +155,7 @@ export class DefinitionTables {
   /** The header of a nested function's entry: named after its owner, where its node is. */
   nestedHeader(nested: NestedInstance): EntryHeader {
     const module = this.#checker.moduleOf(ownerDeclaration(nested.owner));
-    const { source } = loadedModule(this.#checker, module).tree;
+    const { source } = programModule(this.#checker.program, module).tree;
     const { line, column } = lineMapOf(source).positionAt(nested.node.span.start);
     return {
       name: nestedName(this.#checker, nested, `${line + 1}:${column + 1}`),

@@ -30,7 +30,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
-import type { ModuleId, Program } from '../program/program.ts';
+import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import {
   type Declaration,
   type EnumDeclaration,
@@ -337,8 +337,7 @@ export class ProgramChecker implements CheckerContext {
   diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
     if (!this.#checkedModules.has(module)) {
       this.#checkedModules.add(module);
-      const items = this.program.modules.get(module)?.tree.root.items ?? [];
-      for (const item of items) {
+      for (const item of programModule(this.program, module).tree.root.items) {
         if (item.kind !== 'Invalid') {
           checkDeclaration(this, module, item);
         }

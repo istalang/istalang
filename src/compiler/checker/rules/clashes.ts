@@ -15,7 +15,7 @@
  * they join (§3.13); a clash is reported at the later declaration.
  */
 
-import type { ModuleId } from '../../program/program.ts';
+import { type ModuleId, programModule } from '../../program/program.ts';
 import {
   declaredFunctions,
   type FunctionDeclaration,
@@ -29,9 +29,9 @@ import { mentionsError, type ParameterKey } from '../types/type.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
-  const root = checker.program.modules.get(module)?.tree.root;
+  const { root } = programModule(checker.program, module).tree;
   const groups = new Map<string, FunctionDeclaration[]>();
-  for (const item of root === undefined ? [] : declaredFunctions(root)) {
+  for (const item of declaredFunctions(root)) {
     const group = groupOf(checker, module, item);
     const earlier = groups.get(group) ?? [];
     const shapes = new Set(shapesOf(checker, item));

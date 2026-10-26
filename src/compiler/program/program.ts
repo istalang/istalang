@@ -26,6 +26,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { LanguageModule } from '../../language/well-known.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
@@ -83,6 +84,15 @@ export interface Program {
   readonly roles: Readonly<Partial<Record<LanguageModule, ModuleId>>>;
   /** Every module reachable from the roots, in load order. */
   readonly modules: ReadonlyMap<ModuleId, ProgramModule>;
+}
+
+/** The module `module` of `program`; every module a phase names is one of its program's. */
+export function programModule(program: Program, module: ModuleId): ProgramModule {
+  const loaded = program.modules.get(module);
+  if (loaded === undefined) {
+    unreachable(`Module ${module} is not in the program.`);
+  }
+  return loaded;
 }
 
 /** Whether the toolchain ships `module` (`LocatedModule.isStd`); false for one `program` lacks. */

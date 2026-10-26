@@ -6,7 +6,7 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { ModuleId } from '../../program/program.ts';
+import { type ModuleId, programModule } from '../../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
 import { isNominalEntity } from '../types/type.ts';
@@ -29,10 +29,8 @@ export class StaticFunctions {
 
   #index(module: ModuleId): ReadonlyMap<StaticOwner, readonly FunctionDeclaration[]> {
     const index = new Map<StaticOwner, FunctionDeclaration[]>();
-    const root = this.#checker.program.modules.get(module)?.tree.root;
-    const statics = (root === undefined ? [] : declaredFunctions(root)).filter(
-      (declared) => declared.owner !== undefined,
-    );
+    const { root } = programModule(this.#checker.program, module).tree;
+    const statics = declaredFunctions(root).filter((declared) => declared.owner !== undefined);
     for (const item of statics) {
       const owner = this.#ownerOf(module, item);
       if (owner !== undefined) {

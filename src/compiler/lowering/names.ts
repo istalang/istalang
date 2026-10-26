@@ -22,23 +22,14 @@ import {
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
-import type { ModuleId, ProgramModule } from '../program/program.ts';
+import { type ModuleId, programModule } from '../program/program.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 
-/** The program's module `module`; lowering only ever names modules of its program. */
-export function loadedModule(checker: Checker, module: ModuleId): ProgramModule {
-  const loaded = checker.program.modules.get(module);
-  if (loaded === undefined) {
-    unreachable(`Module ${module} is not in the program.`);
-  }
-  return loaded;
-}
-
 /** The canonical name a module's declarations are qualified with. */
 function moduleName(checker: Checker, module: ModuleId): string {
-  return loadedModule(checker, module).name;
+  return programModule(checker.program, module).name;
 }
 
 /** A function's name as declared, with its owner type for a static function: `Slot.create`. */
