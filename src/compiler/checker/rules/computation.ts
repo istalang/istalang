@@ -4,7 +4,8 @@
  * negated number among them, duration literals, tuples, structs in every literal form (a spread
  * copying a computed struct's fields), a struct without fields written bare, arrays and maps of
  * `Map`, lambdas, which capture nothing at the top level (§3.14), and other top-level constants;
- * anything else, a map literal of another type among them, is refused where it stands.
+ * anything else, a map literal of another type or a shared struct's `new` among them, is refused
+ * where it stands.
  *
  * A spread spreads only an array or a map compile time built itself: its elements, or its entries
  * as tuples. Anything else iterable is iterated by `iterate` when the program runs, and computing
@@ -125,8 +126,11 @@ class Computation {
       : refused(node);
   }
 
-  /** A struct in any literal form, its fields in declaration order. */
+  /** A struct in any literal form, its fields in declaration order; never a cell `new` makes. */
   #struct(node: StructLiteral): Outcome {
+    if (node.isNew) {
+      return refused(node);
+    }
     const type = this.#scope.checked.typeOf(node);
     const fields = this.#scope.checker.fieldsOf(type);
     if (fields === undefined || (type.kind !== 'nominal' && type.kind !== 'anonymous')) {

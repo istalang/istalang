@@ -196,7 +196,7 @@ Type annotations are required on the parameters of declared functions and on str
 
 ## 3. Declarations
 
-A program consists only of top-level declarations: imports, structs, enums, traits, type aliases, functions, `extern` declarations, and `const` values computable at compile time (literals, lambdas, and tuples, structs, arrays and maps built from them, in any literal form, a field left to its default (§3.1) computed as its default is; a spread there spreads another array or map so built). A lambda there reads other constants but captures nothing, so it is a function value made once (§3.14). A top-level `const` may destructure its value as a local one does (§3.15), each name a constant of its own. There are no top-level variables or statements.
+A program consists only of top-level declarations: imports, structs, enums, traits, type aliases, functions, `extern` declarations, and `const` values computable at compile time (literals, lambdas, and tuples, structs, arrays and maps built from them, in any literal form, a field left to its default (§3.1) computed as its default is; a spread there spreads another array or map so built; never a shared struct, whose cell lives in an instance (§3.18)). A lambda there reads other constants but captures nothing, so it is a function value made once (§3.14). A top-level `const` may destructure its value as a local one does (§3.15), each name a constant of its own. There are no top-level variables or statements.
 
 ### 3.1 Structs
 

@@ -1,13 +1,21 @@
-# error: 5218 at 16:16
-# error: 5219 at 17:21
-# error: 5605 at 18:14
-# error: 5221 at 19:35
+# error: 5026 at 17:17
+# error: 5026 at 18:16
+# error: 5218 at 24:16
+# error: 5219 at 25:21
+# error: 5605 at 26:14
+# error: 5221 at 27:35
 # A shared struct (§3.18) is built with `new`, and only one is; its fields are read through it
-# with `->`, never `.`; and its values have an identity, so they never leave their instance.
+# with `->`, never `.`; and its values have an identity, so they never leave their instance, nor
+# does compile time compute one into a top-level const, by itself or as a field's default (§3).
 
 struct Tally { count: int }
 
 shared struct Counter { count: int }
+
+struct Holder { counter: Counter = new Counter{count: 0} }
+
+const counter = new Counter{count: 1}
+const holder = Holder{}
 
 fn keep(counter: Counter):
   ()
