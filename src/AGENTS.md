@@ -14,4 +14,5 @@ Top-level folders are toolchain features. Their layers and contracts are in `doc
 
 Use a phase or feature folder only through its entry module. Upward imports and import cycles fail lint. Layers are an allow-list in `.dependency-cruiser.mjs`: a new folder can import nothing until you list it there.
 
-Reviews: a reviewer's first focus is DRY violations, double standards (two ways to solve one problem, two shapes for one concept) and cohesion by feature.
+Reviews: a reviewer's first focus must be DRY violations, double standards (two ways to solve one problem, two shapes for one concept) and cohesion by feature. Developer or viewer, you need to have clean-dev in your context or instructions. If you don't then read it:
+~/.claude/skills/clean-dev/SKILL.md
