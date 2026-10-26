@@ -30,7 +30,7 @@ export interface InvalidProgram {
   readonly errors: readonly ExpectedError[];
 }
 
-export interface ExpectedError {
+interface ExpectedError {
   readonly code: number;
   readonly line: number;
   readonly column: number;

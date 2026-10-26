@@ -85,7 +85,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
 }
 
 /** The types of written arguments, as a call's argument list reads: `&Stack, int`. */
-export function typesText(written: readonly WrittenArgument[]): string {
+function typesText(written: readonly WrittenArgument[]): string {
   return written
     .map(({ type, passing }) => {
       const text = type === undefined ? '_' : typeText(type);

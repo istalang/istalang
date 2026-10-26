@@ -24,11 +24,11 @@ import type { Pattern } from './patterns.ts';
 import type { Block } from './statements.ts';
 import type { NamedType, TypeNode } from './types.ts';
 
-export interface IntegerLiteral extends NodeOf<'IntegerLiteral'> {
+interface IntegerLiteral extends NodeOf<'IntegerLiteral'> {
   readonly value: bigint;
 }
 
-export interface FloatLiteral extends NodeOf<'FloatLiteral'> {
+interface FloatLiteral extends NodeOf<'FloatLiteral'> {
   readonly value: number;
 }
 
@@ -42,7 +42,7 @@ export interface StringLiteral extends NodeOf<'StringLiteral'> {
   readonly value: string;
 }
 
-export interface BooleanLiteral extends NodeOf<'BooleanLiteral'> {
+interface BooleanLiteral extends NodeOf<'BooleanLiteral'> {
   readonly value: boolean;
 }
 
@@ -88,7 +88,7 @@ export interface Tuple extends NodeOf<'Tuple'> {
   readonly elements: readonly Expression[];
 }
 
-export interface Parenthesized extends NodeOf<'Parenthesized'> {
+interface Parenthesized extends NodeOf<'Parenthesized'> {
   readonly expression: Expression;
 }
 
@@ -99,13 +99,13 @@ export interface StructLiteral extends NodeOf<'StructLiteral'> {
 }
 
 /** `first: 1`, or the shorthand `first` (meaning `first: first`) when `value` is undefined. */
-export interface FieldInitializer extends NodeOf<'FieldInitializer'> {
+interface FieldInitializer extends NodeOf<'FieldInitializer'> {
   readonly name: Identifier;
   readonly value: Expression | undefined;
 }
 
 /** The value of a single-field struct given without its name: `Ok{42}`, `Ok{(receipt)}`. */
-export interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
+interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
   readonly value: Expression;
 }
 
@@ -237,7 +237,7 @@ export interface Range extends NodeOf<'Range'> {
 }
 
 /** `{ a; b }` in an expression: its value is the block's (§4). */
-export interface BlockExpression extends NodeOf<'BlockExpression'> {
+interface BlockExpression extends NodeOf<'BlockExpression'> {
   readonly block: Block;
 }
 

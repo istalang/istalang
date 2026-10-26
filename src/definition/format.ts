@@ -35,7 +35,7 @@ export class FormatError extends Error {
 }
 
 /** A written value: its canonical text, and the hash a store keys it by. */
-export interface Persisted {
+interface Persisted {
   readonly text: string;
   readonly hash: string;
 }

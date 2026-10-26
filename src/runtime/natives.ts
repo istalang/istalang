@@ -43,7 +43,7 @@ export interface NativeResources {
 }
 
 /** The running instance's slots (§6): every operation returns a handle to its future. */
-export interface NativeSlots {
+interface NativeSlots {
   /** A new, empty slot. */
   readonly create: () => Value;
   readonly operate: (slot: Value, operation: 'put' | 'take' | 'read', value?: Value) => Value;

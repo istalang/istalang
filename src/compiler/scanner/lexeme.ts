@@ -12,7 +12,7 @@ type DistributiveOmit<Union, Key extends PropertyKey> = Union extends unknown
   ? Omit<Union, Key>
   : never;
 
-export type TokenFields = DistributiveOmit<Token, 'span' | 'firstOnLine'>;
+type TokenFields = DistributiveOmit<Token, 'span' | 'firstOnLine'>;
 
 export interface ScannedLexeme {
   readonly end: number;

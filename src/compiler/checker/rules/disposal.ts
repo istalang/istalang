@@ -68,7 +68,7 @@ function isRuntimeDispose(checker: CheckerContext, declaration: FunctionDeclarat
  * `Shared` instantiation or an extern type a host provides. A std module's other extern types are
  * either values, such as an `Array`, or disposed by the runtime already.
  */
-export function isOwnedHandle(checker: CheckerContext, type: NominalType): boolean {
+function isOwnedHandle(checker: CheckerContext, type: NominalType): boolean {
   if (type.entity.declaration.kind !== 'ExternStructDeclaration') {
     return false;
   }

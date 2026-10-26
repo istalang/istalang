@@ -64,7 +64,7 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
  * Checks that `node`, already checked as a value, may change as a place; false after a report.
  * The receiver of a method taking `&self` is checked this way once the method is known.
  */
-export function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
+function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
   const root = rootOf(node);
   if (root.kind === 'Unwrap') {
     if (use === 'referenced') {

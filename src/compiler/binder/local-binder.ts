@@ -68,7 +68,7 @@ export interface LocalResult {
 export const holdsNoNames = (): void => undefined;
 
 /** A declaration whose targets are patterns, owning every name they bind (§3.15). */
-export type TargetOwner = VariableDeclaration | For | Comprehension;
+type TargetOwner = VariableDeclaration | For | Comprehension;
 
 /** Where a pattern's bindings go (patterns.ts). */
 export interface PatternBindings {

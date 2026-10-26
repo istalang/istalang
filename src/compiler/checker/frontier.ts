@@ -6,8 +6,6 @@
 
 /** The constructs, narrower than a node kind, reported as not supported yet. */
 export const frontier = {
-  elementAssignment: 'Assigning to an element',
-  elementReference: 'Passing an element by reference',
   unwrapPart: "Passing a '$' value, or part of one, by reference",
   sharedValueField: "Reading a 'Shared' value as '.value' (write '$')",
   spreadArgument: 'A spread argument',

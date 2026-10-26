@@ -105,7 +105,7 @@ export type Keyword = (typeof keywords)[number];
 export type Punctuator = (typeof punctuators)[number];
 
 /** A token whose value is decoded from its text. */
-export type LiteralKind = 'integer' | 'float' | 'duration' | 'string';
+type LiteralKind = 'integer' | 'float' | 'duration' | 'string';
 
 /** `unknown` covers characters that start no token; `end` is the empty token at end of input. */
 export type TokenKind = Keyword | Punctuator | LiteralKind | 'identifier' | 'unknown' | 'end';

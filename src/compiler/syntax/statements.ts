@@ -26,7 +26,7 @@ export interface Block extends NodeOf<'Block'> {
   readonly statements: readonly (Statement | Invalid)[];
 }
 
-export interface ExpressionStatement extends NodeOf<'ExpressionStatement'>, Annotatable {
+interface ExpressionStatement extends NodeOf<'ExpressionStatement'>, Annotatable {
   readonly expression: Expression;
 }
 

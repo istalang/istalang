@@ -35,8 +35,6 @@ export type SyntaxNode =
   | Module
   | Annotation;
 
-export type SyntaxKind = SyntaxNode['kind'];
-
 /**
  * What parsing one source file yields: its module, its comments, and the diagnostics of scanning
  * and parsing it, in that order. Later phases need nothing else from the syntax of a file.

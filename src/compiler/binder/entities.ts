@@ -68,7 +68,7 @@ export interface FunctionsEntity {
   readonly overloads: readonly FunctionDeclaration[];
 }
 
-export type TypeDeclaration =
+type TypeDeclaration =
   | StructDeclaration
   | ExternStructDeclaration
   | EnumDeclaration
@@ -88,7 +88,7 @@ export interface PrimitiveEntity {
 }
 
 /** `Self` inside a trait: the type that satisfies it (§3.10). */
-export interface SelfEntity {
+interface SelfEntity {
   readonly kind: 'self';
   readonly trait: TraitDeclaration;
 }

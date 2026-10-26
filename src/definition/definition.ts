@@ -16,7 +16,7 @@ import { defineFormat } from './format.ts';
 import { checkReferences } from './references.ts';
 import { tables } from './tables.ts';
 
-export const definition = tables.superRefine(checkReferences);
+const definition = tables.superRefine(checkReferences);
 
 export type Definition = z.output<typeof definition>;
 

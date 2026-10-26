@@ -17,16 +17,16 @@ export interface NamedType extends NodeOf<'NamedType'> {
 }
 
 /** `T?`, sugar for `Optional<T>`. */
-export interface OptionalType extends NodeOf<'OptionalType'> {
+interface OptionalType extends NodeOf<'OptionalType'> {
   readonly inner: TypeNode;
 }
 
 /** `(A, B)`, `(A,)`, and `()` for unit. */
-export interface TupleType extends NodeOf<'TupleType'> {
+interface TupleType extends NodeOf<'TupleType'> {
   readonly elements: readonly TypeNode[];
 }
 
-export interface ParenthesizedType extends NodeOf<'ParenthesizedType'> {
+interface ParenthesizedType extends NodeOf<'ParenthesizedType'> {
   readonly inner: TypeNode;
 }
 

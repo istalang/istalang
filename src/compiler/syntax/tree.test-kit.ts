@@ -1,16 +1,3 @@
-/**
- * Observations on syntax trees, shared by every phase's tests.
- *
- * `dump` prints a tree as a compact S-expression derived from node fields, so a test states a
- * whole tree in one readable line and no printer needs updating when a node kind is added:
- * - a name prints as its text, and a literal as its value
- * - another node prints as `(Kind field…)`
- * - a true flag prints as its field name, and a false one is omitted
- * - an absent optional prints `_`; Missing prints `?` and Invalid `!`
- */
-
-import type { SourceText } from '../../text/source-text.ts';
-import { textOf } from '../../text/span.ts';
 import { childrenOf, isNode, type SyntaxNode } from './tree.ts';
 
 function dumpField(name: string, value: unknown): string | undefined {
@@ -99,9 +86,4 @@ export function errorNodes(root: SyntaxNode): readonly SyntaxNode[] {
       node.kind === 'Invalid' ||
       (node.kind === 'Identifier' && node.text === ''),
   );
-}
-
-/** The source text a node covers. */
-export function nodeText(source: SourceText, node: SyntaxNode): string {
-  return textOf(source, node.span);
 }

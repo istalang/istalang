@@ -14,7 +14,7 @@ import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node
 import type { ComparisonOperator } from './operators.ts';
 import type { NamedType } from './types.ts';
 
-export type WildcardPattern = NodeOf<'WildcardPattern'>;
+type WildcardPattern = NodeOf<'WildcardPattern'>;
 
 export interface NamePattern extends NodeOf<'NamePattern'> {
   readonly path: QualifiedName;
@@ -25,11 +25,11 @@ export interface LiteralPattern extends NodeOf<'LiteralPattern'> {
   readonly value: Literal | Unary;
 }
 
-export interface TuplePattern extends NodeOf<'TuplePattern'> {
+interface TuplePattern extends NodeOf<'TuplePattern'> {
   readonly elements: readonly Pattern[];
 }
 
-export interface ParenthesizedPattern extends NodeOf<'ParenthesizedPattern'> {
+interface ParenthesizedPattern extends NodeOf<'ParenthesizedPattern'> {
   readonly pattern: Pattern;
 }
 
@@ -58,7 +58,7 @@ export interface CompareFieldPattern extends NodeOf<'CompareFieldPattern'> {
 }
 
 /** `value is Verdict{…}`. */
-export interface NestedFieldPattern extends NodeOf<'NestedFieldPattern'> {
+interface NestedFieldPattern extends NodeOf<'NestedFieldPattern'> {
   readonly field: Identifier;
   readonly pattern: Pattern;
 }

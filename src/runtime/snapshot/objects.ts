@@ -41,7 +41,7 @@ export function isReference(contents: Value | Reference): contents is Reference 
   return contents !== null && typeof contents === 'object' && contents.kind === 'reference';
 }
 
-export const frame = z.strictObject({
+const frame = z.strictObject({
   function: functionId,
   /**
    * The top frame points at the `await` or `select` it stopped at; a caller frame points at the

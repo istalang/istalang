@@ -45,7 +45,7 @@ export interface JsonField {
   readonly codec: Codec | undefined;
 }
 
-export interface JsonVariant {
+interface JsonVariant {
   readonly name: string;
   readonly fields: readonly JsonField[];
 }

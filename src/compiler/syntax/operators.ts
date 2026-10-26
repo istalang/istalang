@@ -9,7 +9,7 @@
 
 import type { TokenKind } from './tokens.ts';
 
-export const precedenceLevels = [
+const precedenceLevels = [
   'coalesce',
   'or',
   'and',
@@ -67,7 +67,7 @@ export const operatorLevels = {
 } as const satisfies Record<string, PrecedenceLevel>;
 
 /** `=` and the compound assignments; `x += y` means `x = x + y` (§3.9). */
-export const assignmentOperators = [
+const assignmentOperators = [
   '=',
   '+=',
   '-=',
@@ -87,7 +87,7 @@ export function isAssignmentOperator(kind: string): kind is AssignmentOperator {
 }
 
 /** Whether a token kind is a binary operator. */
-export function isBinaryOperator(kind: string): kind is BinaryOperator {
+function isBinaryOperator(kind: string): kind is BinaryOperator {
   return Object.hasOwn(binaryOperatorLevels, kind);
 }
 

@@ -31,7 +31,7 @@ export const exitCodes = {
 
 export type ExitCode = (typeof exitCodes)[keyof typeof exitCodes];
 
-export interface CommandContext {
+interface CommandContext {
   readonly environment: CliEnvironment;
   /** Records the process exit code. */
   readonly exitWith: (code: ExitCode) => void;

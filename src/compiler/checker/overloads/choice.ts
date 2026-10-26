@@ -45,7 +45,7 @@ export interface Signature {
   readonly result: () => Type;
 }
 
-export interface SignatureSlot {
+interface SignatureSlot {
   readonly type: Type;
   readonly reference: boolean;
   readonly hasDefault: boolean;
@@ -138,7 +138,7 @@ export function choose(
 }
 
 /** Why `candidate` can't take `callArguments`, or how it takes them. */
-export function applicationOf(
+function applicationOf(
   checker: CheckerContext,
   candidate: Candidate,
   callArguments: readonly CallArgument[],

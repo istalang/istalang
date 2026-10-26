@@ -14,7 +14,7 @@ import { functionId, register } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
 import { argument } from './places.ts';
 
-export const callee = z.discriminatedUnion('kind', [
+const callee = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('function'), function: functionId }),
   z.strictObject({ kind: z.literal('value'), register }),
 ]);

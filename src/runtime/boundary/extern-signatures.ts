@@ -14,7 +14,7 @@ import { defineFormat } from '../../definition/format.ts';
 import { Refusal } from '../refusal.ts';
 import type { InstanceStore } from '../store.ts';
 
-export const externSignaturesFormat = defineFormat(
+const externSignaturesFormat = defineFormat(
   'istalang-externs',
   1,
   z.record(z.string(), z.string()),

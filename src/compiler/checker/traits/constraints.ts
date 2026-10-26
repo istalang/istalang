@@ -49,7 +49,7 @@ export function resolveConstraints(
 }
 
 /** The trait `node` names, with its arguments for a constrained type `self`; undefined after a report. */
-export function resolveConstraint(
+function resolveConstraint(
   checker: CheckerContext,
   module: ModuleId,
   node: TypeNode,

@@ -19,7 +19,7 @@ import { LazyChecks } from '../lazy-checks.ts';
 import { type DefaultValues, declaredParameters } from './signatures.ts';
 
 /** A body in which a function's defaults are checked, and what checking them found. */
-export interface DefaultsBody extends DefaultValues {
+interface DefaultsBody extends DefaultValues {
   readonly checked: () => CheckedBody;
 }
 

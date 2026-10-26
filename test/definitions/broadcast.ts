@@ -29,7 +29,7 @@ import {
   valueArgument as v,
 } from './fixture-kit.ts';
 
-export const broadcastSource = `import * as time from 'time'
+const broadcastSource = `import * as time from 'time'
 import Revertible from 'inbox'
 
 struct Announcement:

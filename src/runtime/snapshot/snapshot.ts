@@ -87,7 +87,7 @@ const snapshotContents = z.strictObject({
 
 type Contents = z.output<typeof snapshotContents>;
 
-export const snapshot = snapshotContents.superRefine(checkObjectReferences);
+const snapshot = snapshotContents.superRefine(checkObjectReferences);
 
 export type Snapshot = z.output<typeof snapshot>;
 
@@ -124,7 +124,7 @@ function checkObjectReferences(contents: Contents, context: z.RefinementCtx): vo
 }
 
 /** The ids of the objects `object` refers to: the ones it holds, and the ones it only watches. */
-export function referencedObjects(object: HeapObject): readonly number[] {
+function referencedObjects(object: HeapObject): readonly number[] {
   return [...heldObjects(object), ...watchedObjects(object)];
 }
 

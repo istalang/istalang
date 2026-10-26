@@ -42,7 +42,7 @@ function hostPayloadOf(value: Value, context: NativeContext): unknown {
 }
 
 /** The code of every `Error` reading JSON returns. */
-export const jsonErrorCode = 'json';
+const jsonErrorCode = 'json';
 
 const json = namedKey(jsonTypeName);
 const string = primitiveKey('string');

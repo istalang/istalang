@@ -20,7 +20,7 @@ import { Scope } from './scope.ts';
 type Body = (scope: Scope) => void;
 
 /** Binds a condition and returns the scope its bindings flow into when it holds. */
-export function bindCondition(binder: LocalBinder, node: Expression, scope: Scope): Scope {
+function bindCondition(binder: LocalBinder, node: Expression, scope: Scope): Scope {
   if (node.kind === 'Parenthesized') {
     return bindCondition(binder, node.expression, scope);
   }

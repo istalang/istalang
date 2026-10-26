@@ -31,7 +31,7 @@ import type { Span } from '../../text/span.ts';
 import type { Token, TokenKind } from '../syntax/tokens.ts';
 
 /** What stands in for the next token where a line break ends the current construct. */
-export interface LineBreak {
+interface LineBreak {
   readonly kind: 'lineBreak';
   /** Empty, just after the last token consumed. */
   readonly span: Span;

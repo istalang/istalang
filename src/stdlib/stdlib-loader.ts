@@ -41,7 +41,7 @@ export const runtimeName = 'runtime';
 export const futuresName = 'futures';
 
 /** The `inbox` module's name. */
-export const inboxName = 'inbox';
+const inboxName = 'inbox';
 
 /** Every std module's source, by name. */
 export const stdSources: Readonly<Record<string, string>> = {
@@ -58,7 +58,7 @@ export function preludeModule(): LocatedModule {
 }
 
 /** `time`, as a module for the program to load by role (§2). */
-export function timeModule(): LocatedModule {
+function timeModule(): LocatedModule {
   return stdModule(timeName, timeSource);
 }
 

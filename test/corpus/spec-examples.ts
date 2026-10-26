@@ -19,7 +19,7 @@
 import { readFileSync } from 'node:fs';
 
 /** A whole module, statements shown outside any function, or a sample that is neither. */
-export type ExampleForm = 'module' | 'statements' | 'fragment';
+type ExampleForm = 'module' | 'statements' | 'fragment';
 
 export interface SpecExample {
   readonly section: string;

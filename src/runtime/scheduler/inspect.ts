@@ -15,7 +15,7 @@ import type { Snapshot } from '../snapshot/snapshot.ts';
 import { stateOf } from './wake.ts';
 
 /** Where one execution waits: its waypoint, if the program named it, and its source location. */
-export interface WaitingPoint {
+interface WaitingPoint {
   readonly waypoint: string | undefined;
   /** `module:line:column`, as a trace names it. */
   readonly location: string;

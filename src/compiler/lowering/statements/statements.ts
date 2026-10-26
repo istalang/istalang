@@ -31,7 +31,7 @@ import { endScope, release } from './scopes.ts';
 import { lowerAssignment, lowerVariableDeclaration } from './variables.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-export const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void> = {
+const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void> = {
   ExpressionStatement: (context, node) => {
     context.expression(node.expression);
   },

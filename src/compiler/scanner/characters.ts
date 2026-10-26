@@ -30,7 +30,7 @@ export function isIdentifierStart(char: string | undefined): boolean {
   );
 }
 
-export function isIdentifierPart(char: string | undefined): boolean {
+function isIdentifierPart(char: string | undefined): boolean {
   return isIdentifierStart(char) || isDecimalDigit(char);
 }
 

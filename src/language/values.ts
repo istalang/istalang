@@ -28,7 +28,7 @@ export interface MapOf<Value> {
 }
 
 /** What `==` sees of a value: a primitive, a map, or a composite's parts. */
-export type Shape<Value> =
+type Shape<Value> =
   | { readonly kind: 'primitive'; readonly value: Primitive }
   | { readonly kind: 'map'; readonly map: MapOf<Value> }
   | { readonly kind: 'composite'; readonly parts: readonly Value[] };
@@ -183,7 +183,7 @@ type KeyStep<Value> =
   | { readonly kind: 'joinMap'; readonly entries: number };
 
 /** A value's structure as text: values `==` calls equal give the same text. */
-export function structuralKey<Value>(view: ValueView<Value>, value: Value): string {
+function structuralKey<Value>(view: ValueView<Value>, value: Value): string {
   const texts: string[] = [];
   const steps: KeyStep<Value>[] = [{ kind: 'visit', value }];
   for (let step = steps.pop(); step !== undefined; step = steps.pop()) {

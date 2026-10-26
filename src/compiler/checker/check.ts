@@ -94,7 +94,7 @@ export interface FunctionCall extends WrittenAs {
   readonly arity: number;
 }
 
-export interface RequirementCall extends WrittenAs {
+interface RequirementCall extends WrittenAs {
   readonly kind: 'requirement';
   /** The trait's function required. */
   readonly function: FunctionDeclaration;
@@ -137,7 +137,7 @@ export type FieldSource =
  * `Error`'s `trace` left out of its literal (§3.12): the call the checker resolved at the literal
  * gives it, writing the frames where the `Error` is built.
  */
-export interface TraceSource {
+interface TraceSource {
   readonly kind: 'trace';
 }
 

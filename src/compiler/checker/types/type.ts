@@ -73,7 +73,7 @@ export function nominalType(entity: TypeEntity, typeArguments: readonly Type[]):
   return { kind: 'nominal', entity, arguments: typeArguments };
 }
 
-export interface TupleType {
+interface TupleType {
   readonly kind: 'tuple';
   readonly elements: readonly Type[];
 }
@@ -99,7 +99,7 @@ export interface AnonymousStructType {
 }
 
 /** A parameter of a function type: its type, and whether it takes a reference (§3.7). */
-export interface ParameterSlot {
+interface ParameterSlot {
   readonly type: Type;
   readonly reference: boolean;
 }
@@ -117,7 +117,7 @@ export interface FunctionType {
 export type ParameterKey = TypeParameter | TraitDeclaration;
 
 /** A type parameter, opaque inside the declaration that introduces it (§3.5). */
-export interface TypeParameterType {
+interface TypeParameterType {
   readonly kind: 'parameter';
   readonly declaration: ParameterKey;
 }

@@ -19,7 +19,7 @@ export interface AnyShape {
 }
 
 /** A value built by one constructor, with a shape for each of its arguments. */
-export interface ConstructorShape {
+interface ConstructorShape {
   readonly kind: 'constructor';
   /** Tells constructors of one type apart: a variant's name, `true`, a literal's value. */
   readonly key: string;

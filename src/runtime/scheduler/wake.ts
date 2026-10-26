@@ -62,7 +62,7 @@ export function unstarted(
 }
 
 /** A value the host fills a future it named `token` with (§9). */
-export interface Arrival {
+interface Arrival {
   readonly token: string;
   readonly value: Value;
 }

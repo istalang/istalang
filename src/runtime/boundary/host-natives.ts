@@ -35,12 +35,12 @@ export interface HostCall {
 }
 
 /** A future the host will fill, as its extern gives it back. */
-export interface HostPending {
+interface HostPending {
   readonly token: string;
 }
 
 /** An extern a host implements, against JSON. */
-export type HostExtern = (arguments_: readonly unknown[], call: HostCall) => unknown;
+type HostExtern = (arguments_: readonly unknown[], call: HostCall) => unknown;
 
 /** A host's externs, by key: `purchase.chargeCard(string, int)`, `purchase.approvalDeadline`. */
 export type HostExterns = Readonly<Record<string, HostExtern>>;

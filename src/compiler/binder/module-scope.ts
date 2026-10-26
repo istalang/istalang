@@ -28,7 +28,7 @@ import { type Convention, isPrivate } from './naming.ts';
 import { type ImportPlaceholder, type LocalEntity, Scope } from './scope.ts';
 
 /** A top-level name and the identifier that first declared it. */
-export interface TopLevelName {
+interface TopLevelName {
   readonly name: Identifier;
   readonly entity: LocalEntity;
 }
