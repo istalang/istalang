@@ -310,12 +310,13 @@ function spreadItems(context: BodyContext, spread: Spread, item: Type | undefine
     item === undefined ? undefined : wellKnownOf(context.checker, wellKnown.array, [item]);
   const type = context.expression(spread.expression, expected);
   const own = wellKnownArguments(context.checker, wellKnown.array, type);
-  if (own !== undefined) {
-    context.iterations.record(spread, { kind: 'copied' });
+  if (own === undefined) {
+    const iterated = iteratedItem(context, spread, spread.expression, type);
+    return { type: iterated ?? errorType, span: spread.span, site: undefined };
   }
-  const element =
-    own === undefined ? iteratedItem(context, spread, spread.expression, type) : own[0];
-  return { type: element ?? errorType, span: spread.span, site: undefined };
+  context.iterations.record(spread, { kind: 'copied' });
+  const [element = errorType] = own;
+  return { type: element, span: spread.span, site: undefined };
 }
 
 /** The keys and the values of the `(key, value)` items `spread` gives in a map literal of a `Map`. */
@@ -325,12 +326,13 @@ function spreadEntries(
   map: Type | undefined,
 ): readonly [Produced, Produced] {
   const type = context.expression(spread.expression, map);
-  const own = wellKnownArguments(context.checker, wellKnown.map, type);
-  if (own !== undefined) {
+  let own = wellKnownArguments(context.checker, wellKnown.map, type);
+  if (own === undefined) {
+    own = pairOf(context, spread, iteratedItem(context, spread, spread.expression, type));
+  } else {
     context.iterations.record(spread, { kind: 'copied' });
   }
-  const [key = errorType, value = errorType] =
-    own ?? pairOf(context, spread, iteratedItem(context, spread, spread.expression, type));
+  const [key = errorType, value = errorType] = own;
   return [
     { type: key, span: spread.span, site: undefined },
     { type: value, span: spread.span, site: undefined },

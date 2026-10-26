@@ -159,14 +159,8 @@ function exportedFunctions(
 
 /** The module declaring `type`: a nominal type's own, a primitive's the prelude; none for others. */
 function declaringModule(checker: CheckerContext, type: Type): ModuleId | undefined {
-  switch (type.kind) {
-    case 'nominal':
-      return checker.moduleOf(type.entity.declaration);
-    case 'primitive':
-      return checker.program.roles.prelude;
-    default:
-      return undefined;
-  }
+  const target = staticTargetOf(checker, type);
+  return target?.kind === 'owner' ? target.module : undefined;
 }
 
 function requirementCandidates(
