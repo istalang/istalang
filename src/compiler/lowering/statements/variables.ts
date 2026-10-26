@@ -9,9 +9,8 @@
  *   which a reference or a closure can reach (docs/arch/definition.md, "Frames"): its register is
  *   listed in the function's `cells`, typed as the `Shared<T>` the cell is created as.
  * - An assignment evaluates its value, then writes each part to its place (`assignedOf`),
- *   wrapped as the checker found it fits the place (§2);
- *   `x$ = v` calls the function the checker resolved for it on the handle and the value. A
- *   compound assignment reads its place once, calls its operator's function on that value and the
+ *   wrapped as the checker found it fits the place (§2); a whole `x$`, like a last element, is
+ *   written with its write call alone (places.ts). A compound assignment reads its place once, calls its operator's function on that value and the
  *   operand, and writes the result back to the same place. A place reached through an element or
  *   a `x$` is copied in and written back around the write (places.ts).
  * - A value given to `_` is held until the block ends (§7), so an unnamed target keeps the whole
@@ -197,12 +196,6 @@ function copied(context: FunctionContext, value: Register, span: Span): Register
 }
 
 export function lowerAssignment(context: FunctionContext, node: Assignment): void {
-  const [first, ...more] = node.targets;
-  if (more.length === 0 && node.operator === '=' && first?.kind === 'Unwrap') {
-    const handle = context.expression(first.operand);
-    call(context, node, [handle, context.expression(node.value)]);
-    return;
-  }
   const parts = context.body.assignedOf(node);
   const [only] = parts;
   if (node.operator !== '=' && only !== undefined) {

@@ -41,6 +41,6 @@ export const closureTemplates = {
   notRewrappable: {
     code: 5507,
     message: (handle: string) =>
-      `Part of ${handle}$ can't be changed: no 'rewrap' writes the changed value back to ${handle}.`,
+      `What ${handle}$ reads can't be written: no 'rewrap' writes a value back to ${handle}.`,
   },
 } as const;

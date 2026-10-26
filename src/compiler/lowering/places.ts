@@ -36,8 +36,8 @@ import type { CodeContext, FunctionContext } from './context.ts';
 import { emitCall } from './emit-call.ts';
 
 /**
- * What a changed place is once its accessors are copied in: a Definition place, or, for `a[k] = v`,
- * the last accessor itself, which the assignment writes without reading it.
+ * What a changed place is once its accessors are copied in: a Definition place, or, for `a[k] = v`
+ * or `x$ = v`, the last accessor itself, which the assignment writes without reading it.
  */
 export type PlaceTarget =
   | { readonly kind: 'place'; readonly place: Place }
@@ -46,10 +46,11 @@ export type PlaceTarget =
 /**
  * A part of a place reached through calls (§3.7, §3.9): read with one, written back with another.
  * An element is read with its container's `index` and written with `setIndex(&container, key,
- * element)`; a `x$` value is read with `unwrap(handle)` and written with `rewrap(handle, value)`.
+ * element)`; a `x$` or `x.value` value is read with `unwrap(handle)` and written with
+ * `rewrap(handle, value)`.
  */
 interface Accessor {
-  readonly node: Index | Unwrap;
+  readonly node: Index | Unwrap | MemberAccess;
   /** Reads the part, into `dst` when given; its register. */
   readonly read: (span: Span, dst?: Register) => Register;
   readonly write: (value: Register) => void;
@@ -62,8 +63,8 @@ export interface EnteredPlace<Target extends PlaceTarget = PlaceTarget> {
 }
 
 /**
- * Enters the place `node` names for an assignment: every accessor but a last element is copied
- * in, so the target is a Definition place or, for `a[k] = v`, the element itself.
+ * Enters the place `node` names for an assignment: every accessor but a last one is copied in, so
+ * the target is a Definition place or, for `a[k] = v` or `x$ = v`, the accessor itself.
  */
 export function enterAssigned(context: FunctionContext, node: Expression): EnteredPlace {
   return enter(context, node, 'assigned');
@@ -151,7 +152,7 @@ type PlaceUse = 'assigned' | 'referenced';
 
 /** Computes the place's keys, copies in its root and accessors, and returns its target. */
 function enter(context: FunctionContext, node: Expression, use: PlaceUse): EnteredPlace {
-  const { root, steps } = placePath(node);
+  const { root, steps } = placePath(node, (step) => readsHandle(context, step));
   const lowered = steps.map((step) =>
     step.kind === 'Index'
       ? { step, key: context.expression(step.index) }
@@ -166,7 +167,13 @@ function enter(context: FunctionContext, node: Expression, use: PlaceUse): Enter
   };
   /** Whether the register copied in before step `position` is passed on by `&`. */
   const passedOn = (position: number) => use === 'referenced' || position <= lastIndex;
-  let current = rootPlace(context, root, passedOn(0), writeBacks);
+  if (root.kind !== 'Identifier' && use === 'assigned' && lowered.length === 0) {
+    return { target: { kind: 'accessor', accessor: handleAccessor(context, root) }, leave };
+  }
+  let current =
+    root.kind === 'Identifier'
+      ? { register: variableRegister(context, root), path: [] }
+      : copyIn(context, handleAccessor(context, root), passedOn(0), writeBacks);
   for (const [position, step] of lowered.entries()) {
     if (typeof step === 'number') {
       current = { ...current, path: [...current.path, step] };
@@ -179,23 +186,6 @@ function enter(context: FunctionContext, node: Expression, use: PlaceUse): Enter
     }
   }
   return { target: { kind: 'place', place: current }, leave };
-}
-
-/** The Definition place a place's root starts: its variable, or the value a `x$` reads. */
-function rootPlace(
-  context: FunctionContext,
-  root: Expression,
-  passedOn: boolean,
-  writeBacks: (() => void)[],
-): Place {
-  if (root.kind === 'Identifier') {
-    return { register: variableRegister(context, root), path: [] };
-  }
-  if (root.kind !== 'Unwrap') {
-    unreachable(`A ${root.kind} is no place; the checker should have said so.`);
-  }
-  const handle = context.expression(root.operand);
-  return copyIn(context, handleAccessor(context, root, handle), passedOn, writeBacks);
 }
 
 /** Copies in what `accessor` reads, to be written back once the change is made. */
@@ -242,17 +232,32 @@ function elementAccessor(
   };
 }
 
-/** The value of `handle` that `x$` reads, read and written with the calls the checker made at `node`. */
-function handleAccessor(context: FunctionContext, node: Unwrap, handle: Register): Accessor {
+/**
+ * The value a place's root `node` reads from a handle, with `x$` or `x.value`, computing the
+ * handle: read and written with the calls the checker made at `node`.
+ */
+function handleAccessor(context: FunctionContext, node: Expression): Accessor {
+  if (node.kind !== 'Unwrap' && !(node.kind === 'MemberAccess' && readsHandle(context, node))) {
+    unreachable(`A ${node.kind} is no place; the checker should have said so.`);
+  }
+  const handle = context.expression(node.kind === 'Unwrap' ? node.operand : node.target);
   return {
     node,
-    read: (span, dst) =>
-      emitCall(context, { span, callee: context.calleeIndex(node), arguments: [handle] }, dst),
+    read: (span, dst) => {
+      const callee =
+        node.kind === 'Unwrap' ? context.calleeIndex(node) : context.implicitCallee(node, 'read');
+      return emitCall(context, { span, callee, arguments: [handle] }, dst);
+    },
     write: (value) => {
       const callee = context.implicitCallee(node, 'write');
       emitCall(context, { span: node.span, callee, arguments: [handle, value] });
     },
   };
+}
+
+/** Whether `step` reads a handle's value, as the checker found `x.value` on a `Shared` does (§3.8). */
+function readsHandle(context: FunctionContext, step: MemberAccess): boolean {
+  return !step.isOptional && context.body.implicitCallOf(step, 'read') !== undefined;
 }
 
 /** Reads the value at `place`: its register's value, read along the place's field positions. */

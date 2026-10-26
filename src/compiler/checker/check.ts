@@ -254,9 +254,11 @@ export type ImplicitRole =
   | 'compare'
   /** Counting a loop's index up, or `..=` storing its end plus one. */
   | 'add'
+  /** Reading a handle's value where no `$` is written: `x.value` on a `Shared` (§3.8), `unwrap`. */
+  | 'read'
   /**
-   * Writing a part of a place back: an element with `setIndex` (§3.9), or the value `x$` read,
-   * changed, with `rewrap` (§3.8).
+   * Writing a part of a place back, changed or whole: an element with `setIndex` (§3.9), or the
+   * value `x$` or `x.value` reads with `rewrap` (§3.8).
    */
   | 'write'
   /** The `default()` a map literal of a type other than `Map` starts from (§2). */

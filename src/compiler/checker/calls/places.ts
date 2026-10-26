@@ -16,15 +16,18 @@
  *   an operator's function, so any type with a `setIndex` takes element writes (§3.7, §3.9). Each
  *   indexed step of a changing place records its `setIndex`, and both functions must run at once
  *   (collection-functions.ts).
- * - An element passed by `&` is copied in before its call and written back when the call returns
- *   (§3.7). An async call returns its future before its callee ends, so an element can't be passed
- *   by `&` to an async function. And a copy can't change together with another place of its
- *   variable, so two places of one variable passed by `&` to one call may not reach through an
- *   element: keys are known only when the program runs, so any two such places count.
- * - A `$` value is a place too (§3.9): assigning to part of it (`x$.f = v`, `x$ += v`) reads it
- *   with the `unwrap` its `x$` calls and writes it back changed with `rewrap(x, value)`, found as
- *   `x$ = v` finds it and recorded as the `x$`'s write, as an element's `setIndex` is. Passing it,
- *   or part of it, by `&` stays on the frontier.
+ * - A `$` value is a place too (§3.9), and so is `x.value` on a `Shared`, the same as `x$` (§3.8):
+ *   the place starts there, whatever the handle is read from, since changing it changes what is
+ *   behind the handle, not the handle. Changing it (`x$.f = v`, `x$ += v`, `&x$`) reads it with the
+ *   `unwrap` its read calls and writes it back with `rewrap(x, value)`, found as `x$ = v` finds it
+ *   and recorded as the read's write, as an element's `setIndex` is.
+ * - An element or a `$` value is an accessor: reached through a pair of calls, it is a copy for
+ *   the change. Passed by `&`, it is copied in before its call and written back when the call
+ *   returns (§3.7). An async call returns its future before its callee ends, so neither can be
+ *   passed by `&` to an async function. And a copy can't change together with another place it is
+ *   part of, so two places of one variable passed by `&` to one call may not reach through an
+ *   element, keys being known only when the program runs, and two places reaching through `$`
+ *   values may not be passed to one call at all, since two handles may be one.
  */
 
 import { rewrapFunction } from '../../../language/well-known.ts';
@@ -33,13 +36,14 @@ import {
   type Expression,
   type Index,
   isPlace,
+  type MemberAccess,
+  type PlacePath,
   placePath,
   type Unwrap,
 } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { Passing } from '../resolution/choice.ts';
 import { implicitCall } from '../resolution/implicit.ts';
@@ -56,10 +60,6 @@ export type PlaceUse = 'assigned' | 'referenced';
  * (statements/assignments.ts).
  */
 export function checkChangedPlace(context: BodyContext, node: Expression, use: PlaceUse): Type {
-  if (isOnFrontier(rootOf(node), use)) {
-    changePlace(context, node, use);
-    return errorType;
-  }
   const type = context.expression(node);
   if (type.kind === 'error') {
     return type;
@@ -73,18 +73,14 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
  * way once the method is known.
  */
 function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
-  const root = rootOf(node);
-  if (root.kind === 'Unwrap') {
-    if (use === 'referenced') {
-      context.unsupported(root, frontier.unwrapPart);
-      return false;
-    }
+  const { root } = pathOf(context, node);
+  if (isHandle(context, root)) {
     return writesAccessors(context, node);
   }
   if (root.kind !== 'Identifier') {
     return false;
   }
-  const passedByReference = use === 'referenced' || reachesElement(node);
+  const passedByReference = use === 'referenced' || reachesAccessor(context, node);
   return requireChangeable(context, root, passedByReference) && writesAccessors(context, node);
 }
 
@@ -96,9 +92,9 @@ export interface ReferencingCallee {
 }
 
 /**
- * Checks the places `written` passes by `&` against copying elements in and out (§3.7): none
- * reaches through an element when the callee is async, and no two of one variable when either
- * does.
+ * Checks the places `written` passes by `&` against copying accessors in and out (§3.7): none
+ * reaches through one when the callee is async, no two of one variable when either reaches through
+ * an element, and no two reaching through `$` values.
  */
 export function checkReferencedPlaces(
   context: BodyContext,
@@ -112,51 +108,74 @@ export function checkReferencedPlaces(
     return [argument.node.kind === 'Reference' ? argument.node.expression : argument.node];
   });
   places.forEach((place, position) => {
-    if (callee.isAsync && reachesElement(place)) {
-      context.report(checkerDiagnostics.elementToAsync(place.span, callee.name));
+    if (callee.isAsync && reachesAccessor(context, place)) {
+      context.report(checkerDiagnostics.accessorToAsync(place.span, callee.name));
     }
+    const earlier = places.slice(0, position);
     const variable = rootVariable(context, place);
-    const overlapping = places
-      .slice(0, position)
-      .some(
-        (earlier) =>
-          rootVariable(context, earlier) === variable &&
-          (reachesElement(earlier) || reachesElement(place)),
-      );
+    const overlapping = earlier.some(
+      (other) =>
+        rootVariable(context, other) === variable &&
+        (reachesAccessor(context, other) || reachesAccessor(context, place)),
+    );
     if (variable !== undefined && overlapping) {
       context.report(
         checkerDiagnostics.elementOverlap(place.span, variable.name.text, callee.name),
       );
     }
+    const throughHandles = isHandle(context, pathOf(context, place).root);
+    if (throughHandles && earlier.some((other) => isHandle(context, pathOf(context, other).root))) {
+      context.report(checkerDiagnostics.handleOverlap(place.span, callee.name));
+    }
   });
 }
 
-/** Whether the place `node` names steps through an indexed element. */
-function reachesElement(node: Expression): boolean {
-  return placePath(node).steps.some((step) => step.kind === 'Index');
+/**
+ * The place `node` names, as checked: a field read the checker found reading a `Shared`'s value
+ * (`x.value`) starts it, as `x$` does.
+ */
+function pathOf(context: BodyContext, node: Expression): PlacePath {
+  return placePath(node, (step) => readsHandle(context, step));
+}
+
+/** Whether `node` reads a handle's value, as `x$` does and `x.value` on a `Shared` (§3.8). */
+function isHandle(context: BodyContext, node: Expression): node is Unwrap | MemberAccess {
+  return node.kind === 'Unwrap' || (node.kind === 'MemberAccess' && readsHandle(context, node));
+}
+
+function readsHandle(context: BodyContext, node: MemberAccess): boolean {
+  return !node.isOptional && context.implicit.of(node, 'read') !== undefined;
+}
+
+/** Whether the place `node` names reaches through an accessor: a `$` value or an element. */
+function reachesAccessor(context: BodyContext, node: Expression): boolean {
+  return accessorsOf(context, node).length > 0;
 }
 
 /** The variable at the root of the place `node`, if a variable stands there. */
 function rootVariable(context: BodyContext, node: Expression): VariableEntity | undefined {
-  const { root } = placePath(node);
+  const { root } = pathOf(context, node);
   const entity = root.kind === 'Identifier' ? context.entityOf(root) : undefined;
   return entity?.kind === 'variable' ? entity : undefined;
 }
 
 /**
  * The accessors of the place `node`, the parts it reaches through a pair of calls, outermost
- * first: its `x$` root, then each indexed element.
+ * first: its `$` value, then each indexed element.
  */
-function accessorsOf(node: Expression): readonly (Unwrap | Index)[] {
-  const { root, steps } = placePath(node);
+function accessorsOf(
+  context: BodyContext,
+  node: Expression,
+): readonly (Unwrap | MemberAccess | Index)[] {
+  const { root, steps } = pathOf(context, node);
   const elements = steps.filter((step) => step.kind === 'Index');
-  return root.kind === 'Unwrap' ? [root, ...elements] : elements;
+  return isHandle(context, root) ? [root, ...elements] : elements;
 }
 
 /** Makes the call writing back each accessor of the place `node`; false after a report. */
 function writesAccessors(context: BodyContext, node: Expression): boolean {
-  return accessorsOf(node).every((accessor) =>
-    accessor.kind === 'Unwrap' ? writesBack(context, accessor) : writesElement(context, accessor),
+  return accessorsOf(context, node).every((accessor) =>
+    accessor.kind === 'Index' ? writesElement(context, accessor) : writesBack(context, accessor),
   );
 }
 
@@ -177,9 +196,9 @@ function writesElement(context: BodyContext, node: Index): boolean {
   );
 }
 
-/** Makes the `rewrap` writing back the value the place's `x$` reads, changed; false after a report. */
-function writesBack(context: BodyContext, node: Unwrap): boolean {
-  const handle = context.typeOf(node.operand);
+/** Makes the `rewrap` writing back the value `node` reads, changed; false after a report. */
+function writesBack(context: BodyContext, node: Unwrap | MemberAccess): boolean {
+  const handle = context.typeOf(node.kind === 'Unwrap' ? node.operand : node.target);
   const value = context.typeOf(node);
   const made = implicitCall(context, {
     node,
@@ -207,10 +226,6 @@ export function changeReceiver(context: BodyContext, receiver: Expression, metho
   } else {
     context.report(checkerDiagnostics.receiverNotPlace(receiver.span, method));
   }
-}
-
-function isOnFrontier(root: Expression, use: PlaceUse): boolean {
-  return root.kind === 'Unwrap' && use === 'referenced';
 }
 
 /**
@@ -258,12 +273,4 @@ function requireChangeable(
     context.variables.noteReferenced(entity);
   }
   return true;
-}
-
-/**
- * The innermost expression a place's fields and elements are read from: its variable, or
- * whatever else stands there (a call's result, a `$` value), which isn't one.
- */
-function rootOf(node: Expression): Expression {
-  return placePath(node).root;
 }

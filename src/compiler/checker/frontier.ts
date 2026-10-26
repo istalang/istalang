@@ -6,8 +6,6 @@
 
 /** The constructs, narrower than a node kind, reported as not supported yet. */
 export const frontier = {
-  unwrapPart: "Passing a '$' value, or part of one, by reference",
-  sharedValueField: "Reading a 'Shared' value as '.value' (write '$')",
   spreadArgument: 'A spread argument',
   restParameter: 'Rest parameter',
 } as const;

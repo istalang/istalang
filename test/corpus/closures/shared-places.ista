@@ -1,0 +1,36 @@
+# outcome: "24 a,b | 12 | start, write 7, write 8 | 5 1"
+# `x.value` on a Shared is `x$` (§3.8): read, written whole or in part. A `$` value, or part of
+# one, is a place (§3.7, §3.9): passed by `&`, or changed by a method taking `&self`, it is copied
+# in with `unwrap` and written back with `rewrap` when the call returns. A whole `$` value is
+# written with `rewrap` alone, assigned on its own or among other targets.
+
+struct Counter { n: int; items: Array<string> }
+
+struct Logged:
+  log: Shared<Array<string>>
+  value: int
+
+fn unwrap(self: Logged) -> int:
+  self.log$ = [...self.log$, "read"]
+  self.value
+
+fn rewrap(self: Logged, value: int):
+  self.log$ = [...self.log$, "write " + string(value)]
+
+fn bump(n: &int):
+  n += 1
+
+async fn main():
+  const c = Shared(Counter{n: 1, items: []})
+  bump(&c$.n)
+  c$.items.push("a")
+  c.value.items.push("b")
+  c.value.n += 10
+  const read = c.value.n
+  c.value = Counter{...c.value, n: c.value.n * 2}
+  const log = Shared(["start"])
+  const meter = Logged{log: log, value: 5}
+  meter$ = 7
+  let a = 0
+  a, meter$ = (1, 8)
+  string(c$.n) + " " + c.value.items.join(",") + " | " + string(read) + " | " + log$.join(", ") + " | " + string(meter.value) + " " + string(a)

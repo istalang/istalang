@@ -26,7 +26,6 @@ import {
 } from '../closures/function-values.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { namedType } from '../resolution/named.ts';
@@ -47,6 +46,7 @@ import {
   type LiteralSpread,
 } from './literal-fields.ts';
 import { entityValueType } from './names.ts';
+import { checkHandleValue } from './unwrap.ts';
 import { checkVariantLiteral, checkVariantName, variantsAccepted } from './variants.ts';
 
 export function checkStructLiteral(
@@ -217,7 +217,7 @@ export function checkMemberAccess(
     name === 'value' &&
     wellKnownArguments(context.checker, wellKnown.shared, type) !== undefined
   ) {
-    return context.unsupported(node, frontier.sharedValueField);
+    return checkHandleValue(context, node, type);
   }
   const isMethod = topLevelCandidates(context.checker, context.module, name, [type]).some(
     ({ declaration }) => isMethodDeclaration(declaration),

@@ -175,8 +175,10 @@ export function unparenthesized(node: Expression): Expression {
 export type PlaceStep = MemberAccess | TupleElement | Index;
 
 /**
- * A place as written: the expression its fields and elements are read from, a variable in any
- * valid place, and those reads, innermost first. `a?.b` is no step, so it stands as the root.
+ * A place as written: the expression its fields and elements are read from, a variable or a `$`
+ * value in any valid place, and those reads, innermost first. `a?.b` is no step, so it stands as
+ * the root; so does a field read that `readsHandle` says reads a handle's value, as `x.value` on a
+ * `Shared` does (§3.8), which the checker decides: like `x$`, it starts the place.
  */
 export interface PlacePath {
   readonly root: Expression;
@@ -192,13 +194,16 @@ export function isPlace(node: Expression): boolean {
   return root.kind === 'Identifier' || root.kind === 'Unwrap' || root.kind === 'Missing';
 }
 
-export function placePath(node: Expression): PlacePath {
+export function placePath(
+  node: Expression,
+  readsHandle: (step: MemberAccess) => boolean = () => false,
+): PlacePath {
   const steps: PlaceStep[] = [];
   let current = unparenthesized(node);
   while (
     current.kind === 'TupleElement' ||
     current.kind === 'Index' ||
-    (current.kind === 'MemberAccess' && !current.isOptional)
+    (current.kind === 'MemberAccess' && !current.isOptional && !readsHandle(current))
   ) {
     steps.unshift(current);
     current = unparenthesized(current.target);

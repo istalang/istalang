@@ -78,7 +78,7 @@ A referent has one `weakRef`, so `WeakRef(a) == WeakRef(a)`. Once a disposed obj
 
 A place is a register plus a path of field positions. A tuple element is a field by position, as `field` reads it. `store` writes a place with a non-empty path, and a `&` argument passes one; following a path never runs code.
 
-An indexed element is no step of a place, so every call a program makes is a `call` instruction, run on the scheduler's run stack. Lowering copies an element in, reading it with the `index` the checker resolved for its container into a register of its own, changes it there, and writes it back with `setIndex(&container, key, element)` (spec §3.7, §3.9). `a[i].b = v` is therefore `index`, a `store` to the copy, then `setIndex`; `a[i][j] = v` passes the copy of `a[i]` to the inner `setIndex` by `&`, so that copy is a cell; and `f(&m[k])` copies `m[k]` into a cell, calls `f`, then writes the cell's value back. A write that ends at an element is a `setIndex` alone, never reading the element first, since a map may not hold the key yet. Each key is computed once, before any element is read. A `x$` value is copied in the same way, with `unwrap` and `rewrap`. The container a `setIndex` takes by `&` is a cell: the checker records a variable whose element is written as passed by `&`, as `x.push(v)` passing `&x` is.
+An indexed element is no step of a place, so every call a program makes is a `call` instruction, run on the scheduler's run stack. Lowering copies an element in, reading it with the `index` the checker resolved for its container into a register of its own, changes it there, and writes it back with `setIndex(&container, key, element)` (spec §3.7, §3.9). `a[i].b = v` is therefore `index`, a `store` to the copy, then `setIndex`; `a[i][j] = v` passes the copy of `a[i]` to the inner `setIndex` by `&`, so that copy is a cell; and `f(&m[k])` copies `m[k]` into a cell, calls `f`, then writes the cell's value back. A write that ends at an element is a `setIndex` alone, never reading the element first, since a map may not hold the key yet. Each key is computed once, before any element is read. A `x$` or `x.value` value is copied in the same way, with `unwrap` and `rewrap`, and a write of the whole value is a `rewrap` alone. The container a `setIndex` takes by `&` is a cell: the checker records a variable whose element is written as passed by `&`, as `x.push(v)` passing `&x` is.
 
 ## Values
 
@@ -176,7 +176,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Tuple element `t.0`, `t.0 = v` (§3.15) | `field` by position; `store` with a field step |
 | Generic functions and types (§3.5) | one entry or type per instantiation |
 | `&x` argument, reference parameter (§3.7) | a place argument; `parameters[i].reference`; `x` is in `cells`; `&m[k]` copies the element into a cell around the call (Places) |
-| `Shared(v)`, `x$`, `x$ = v`, `x$.f = v` (§3.8, §3.9) | calls to `Shared.from`, `unwrap` and `rewrap`; a part write unwraps into a temporary, writes it there and rewraps (Places) |
+| `Shared(v)`, `x$`, `x.value`, `x$ = v`, `x$.f = v`, `&x$` (§3.7, §3.8, §3.9) | calls to `Shared.from`, `unwrap` and `rewrap`; a part write or a `&` unwraps into a temporary, changes it there and rewraps (Places) |
 | Operators (§3.9) | a `call` to the resolved function |
 | `<`, `<=`, `>`, `>=` (§3.9) | a `compare` call, then `order` |
 | `==`, `!=` (§3.9) | `equal`, plus `not` for `!=` |

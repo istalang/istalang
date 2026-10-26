@@ -12,7 +12,7 @@ import type { Expression, MemberAccess } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
 import { lowerAwait } from './await.ts';
-import { lowerCall } from './calls.ts';
+import { implicitCall, lowerCall } from './calls.ts';
 import { lowerFunctionValue, lowerLambda } from './closures.ts';
 import { lowerArrayLiteral, lowerIndex, lowerMapLiteral, lowerRange } from './collections.ts';
 import { lowerComprehension } from './comprehensions.ts';
@@ -70,13 +70,17 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
 
 /**
  * `a.b`: a variant qualified by its enum, a function named as a value through a namespace or its
- * type (closures.ts), or a field read.
+ * type (closures.ts), a `Shared`'s value read as `.value` (§3.8), or a field read.
  */
 function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Register {
   if (context.entityOf(node.member)?.kind === 'variant') {
     return lowerFieldlessVariant(context, node, node.member.text);
   }
-  return context.body.calls.has(node)
-    ? lowerFunctionValue(context, node)
-    : lowerFieldRead(context, node);
+  if (context.body.calls.has(node)) {
+    return lowerFunctionValue(context, node);
+  }
+  if (context.body.implicitCallOf(node, 'read') !== undefined) {
+    return implicitCall(context, node, 'read', [context.chains.target(context, node)]);
+  }
+  return lowerFieldRead(context, node);
 }
