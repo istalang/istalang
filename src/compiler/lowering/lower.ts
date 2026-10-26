@@ -11,9 +11,8 @@
 import type { Definition } from '../../definition/definition.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { CheckedBody, Checker } from '../checker/check.ts';
+import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
-import { instantiatedBody } from '../checker/types/instantiation.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { isFieldsFunction } from '../syntax/field-defaults.ts';
@@ -25,14 +24,8 @@ import {
   hostNativeEntry,
 } from './boundary/host-externs.ts';
 import { startableOf, startables, startEntry } from './boundary/starts.ts';
-import { instanceFrame, nestedFrame } from './function-lowering/frames.ts';
-import { FunctionLowering } from './function-lowering/index.ts';
-import {
-  type BodyOwner,
-  type FunctionInstance,
-  type NestedInstance,
-  substitutionOf,
-} from './instances.ts';
+import { instanceLowering, nestedLowering } from './function-lowering/index.ts';
+import { type FunctionInstance, type NestedInstance, substitutionOf } from './instances.ts';
 import { keyOf } from './names.ts';
 import { DefinitionTables, type PendingEntry } from './tables.ts';
 
@@ -105,16 +98,8 @@ function entryOf(
     return hostFunctionEntry({ checker, tables }, instance);
   }
   const parameters = checker.parametersOf(declaration);
-  const body = checkedBodyOf(checker, instance);
-  if (body !== undefined) {
-    const owner = { kind: 'function', instance } as const;
-    const lowered = {
-      checker,
-      tables,
-      owner,
-      body: instantiatedBody(body, substitutionOf(instance)),
-    };
-    const lowering = new FunctionLowering(lowered, instanceFrame(lowered, instance));
+  const lowering = instanceLowering({ checker, tables }, instance);
+  if (lowering !== undefined) {
     if (isFieldsFunction(declaration)) {
       return lowering.lowerFieldDefault(instance);
     }
@@ -146,31 +131,5 @@ function nestedEntryOf(
   tables: DefinitionTables,
   nested: NestedInstance,
 ): FunctionDefinition {
-  const { owner, node } = nested;
-  const body = ownerBodyOf(checker, owner);
-  if (body === undefined) {
-    unreachable(`The function at ${node.span.start} has no checked body holding it.`);
-  }
-  const frame = nestedFrame(tables, nested, body);
-  return new FunctionLowering({ checker, tables, owner, body }, frame).lowerNested(node);
-}
-
-/** The body holding `owner`'s nested functions: its instance's, read through it, or the constant's. */
-function ownerBodyOf(checker: Checker, owner: BodyOwner): CheckedBody | undefined {
-  if (owner.kind === 'constant') {
-    return checker.constantBodyOf(owner.declaration);
-  }
-  const body = checkedBodyOf(checker, owner.instance);
-  return body === undefined ? undefined : instantiatedBody(body, substitutionOf(owner.instance));
-}
-
-/**
- * The checked body an instance's code reads: its defaults' for an entry its callers leave
- * parameters of to their defaults (§3.3), else its own; undefined for an extern.
- */
-function checkedBodyOf(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {
-  const { declaration, arity } = instance;
-  return arity < checker.parametersOf(declaration).length
-    ? checker.defaultsOf(declaration)
-    : checker.bodyOf(declaration);
+  return nestedLowering({ checker, tables }, nested).lowerNested(nested.node);
 }

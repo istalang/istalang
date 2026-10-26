@@ -22,6 +22,8 @@
  * - A start entry (boundary/starts.ts) is a function's own body compiled once more with JSON at its
  *   edges: its arguments arrive as `Json` and are decoded into its parameters, and every return
  *   gives its value encoded, so a host-started instance runs as one execution of the function.
+ * - Which body an entry reads, and its frame, are frames.ts's; an entry is lowered only through
+ *   `instanceLowering` and `nestedLowering`, which put the two together.
  */
 
 import type { CodeFunction } from '../../../definition/functions.ts';
@@ -37,7 +39,6 @@ import type {
   CallSite,
   CheckedBody,
   Checker,
-  FunctionCall,
   ImplicitRole,
   ResolvedCall,
   SignatureParameter,
@@ -60,6 +61,7 @@ import {
   type FunctionInstance,
   fullInstance,
   instanceOfCall,
+  type NestedInstance,
   ownerDeclaration,
   ownerSubstitution,
 } from '../instances.ts';
@@ -68,20 +70,49 @@ import { LoopStack } from '../statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
 import { declareVariable, VariableRegisters } from '../statements/variables.ts';
 import type { DefinitionTables } from '../tables.ts';
-import type { Frame, LoweredFunction } from './frames.ts';
+import {
+  type Frame,
+  instanceFrame,
+  type LoweredFunction,
+  type Lowering,
+  loweredInstance,
+  loweredNested,
+  nestedFrame,
+  type StartFrame,
+} from './frames.ts';
 
 /**
  * The JSON at a start entry's edges: how each argument is read from `Json`, a mismatch failing the
- * host's start; the call encoding what the entry gives; and the value a named lambda's own name
- * stands for there.
+ * host's start, and the value a named lambda's own name stands for there.
  */
 export interface StartEdges {
   readonly parameters: readonly Inbound[];
-  readonly outcome: FunctionCall;
   readonly self: Value | undefined;
 }
 
-export class FunctionLowering implements FunctionContext {
+/** The lowering of `instance`'s entry; undefined for an instance with no body, an extern. */
+export function instanceLowering(
+  lowering: Lowering,
+  instance: FunctionInstance,
+  start?: StartFrame,
+): FunctionLowering | undefined {
+  const lowered = loweredInstance(lowering, instance);
+  return lowered === undefined
+    ? undefined
+    : new FunctionLowering(lowered, instanceFrame(lowered, instance, start));
+}
+
+/** The lowering of a nested function's entry, read through its owner's body (§3.14). */
+export function nestedLowering(
+  lowering: Lowering,
+  nested: NestedInstance,
+  start?: StartFrame,
+): FunctionLowering {
+  const lowered = loweredNested(lowering, nested.owner);
+  return new FunctionLowering(lowered, nestedFrame(lowered, nested, start));
+}
+
+class FunctionLowering implements FunctionContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
   readonly module: ModuleId;
@@ -92,8 +123,6 @@ export class FunctionLowering implements FunctionContext {
   readonly variables = new VariableRegisters();
   readonly loops = new LoopStack();
   readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
-  /** What a start entry encodes its returns with; undefined for any other entry. */
-  #outcome: FunctionCall | undefined;
 
   constructor(lowered: LoweredFunction, frame: Frame) {
     const { checker, tables, owner, body } = lowered;
@@ -128,7 +157,6 @@ export class FunctionLowering implements FunctionContext {
 
   /** The start entry of a function whose body is `body` (a block, or a lambda's), with `edges`. */
   lowerStart(edges: StartEdges, body: Block | Expression): CodeFunction {
-    this.#outcome = edges.outcome;
     const { span } = body;
     const arguments_ = this.frame.parameters.map(() => this.code.allocate());
     for (const [index, parameter] of this.frame.parameters.entries()) {
@@ -313,7 +341,7 @@ export class FunctionLowering implements FunctionContext {
   }
 
   returnValue(value: Register, span: Span): void {
-    const outcome = this.#outcome;
+    const { outcome } = this.frame;
     const given =
       outcome === undefined
         ? value

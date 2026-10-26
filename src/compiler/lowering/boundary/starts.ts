@@ -26,8 +26,7 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { constantValue } from '../constants.ts';
-import { instanceFrame, nestedFrame } from '../function-lowering/frames.ts';
-import { FunctionLowering, type StartEdges } from '../function-lowering/index.ts';
+import { instanceLowering, nestedLowering, type StartEdges } from '../function-lowering/index.ts';
 import { rootInstance } from '../instances.ts';
 import { keyOf } from '../names.ts';
 import type { DefinitionTables, StartTarget } from '../tables.ts';
@@ -143,29 +142,26 @@ export function startEntry(
         path: `${key} argument ${index + 1}`,
       }),
     ),
-    outcome: codecCall(checker, site, outcome, 'write'),
     self: undefined,
   };
-  const header = tables.declarationHeader(target);
+  const start = {
+    header: tables.declarationHeader(target),
+    outcome: codecCall(checker, site, outcome, 'write'),
+  };
   if (target.kind === 'FunctionDeclaration') {
-    const instance = rootInstance(checker, target);
-    const body = checker.bodyOf(target);
-    if (body === undefined || target.body === undefined) {
+    const entry = instanceLowering(lowering, rootInstance(checker, target), start);
+    if (entry === undefined || target.body === undefined) {
       unreachable('A startable function has no body.');
     }
-    const lowered = { checker, tables, owner: { kind: 'function', instance } as const, body };
-    const frame = { ...instanceFrame(lowered, instance), header };
-    return new FunctionLowering(lowered, frame).lowerStart(edges, target.body);
+    return entry.lowerStart(edges, target.body);
   }
   const form = checker.constantOf(target)?.form;
-  const body = checker.constantBodyOf(target);
-  if (form?.kind !== 'function' || body === undefined || form.lambda.body === undefined) {
+  if (form?.kind !== 'function' || form.lambda.body === undefined) {
     unreachable('A startable constant holds no lambda.');
   }
   const owner = { kind: 'constant', declaration: target } as const;
-  const frame = { ...nestedFrame(tables, { owner, node: form.lambda }, body), header };
   const self = constantValue(tables, form);
-  return new FunctionLowering({ checker, tables, owner, body }, frame).lowerStart(
+  return nestedLowering(lowering, { owner, node: form.lambda }, start).lowerStart(
     { ...edges, self },
     form.lambda.body,
   );
