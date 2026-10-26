@@ -10,7 +10,7 @@
 import { chainStepOf, type Dereference } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { optionalInner } from '../types/fit.ts';
+import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -30,11 +30,7 @@ function valueBehind(context: BodyContext, node: Dereference): Type | undefined 
   if (sharedValue !== undefined) {
     return sharedValue;
   }
-  const inner = optionalInner(handle, checker.optionalEntity);
-  context.report(
-    isLink && inner !== undefined && checker.sharedValueOf(inner) !== undefined
-      ? checkerDiagnostics.insideOptional(node.span, typeText(handle), '?->')
-      : checkerDiagnostics.notShared(node.span, typeText(handle)),
-  );
+  const inside = isLink ? insideOptional(checker, node.span, handle, '?->') : undefined;
+  context.report(inside ?? checkerDiagnostics.notShared(node.span, typeText(handle)));
   return undefined;
 }

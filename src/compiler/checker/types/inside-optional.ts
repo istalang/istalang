@@ -2,7 +2,8 @@
  * A step written on an optional where its value was meant (§4): `b.c.count`, `t.0`, `xs[0]`,
  * `f(1)` and `p.size()` all fail on a `T?` that `?.`, `?.[`, `?.(` or `?->` would read inside. Each
  * link's handler asks here once its own rule failed, with the operator its form reaches inside
- * with, so the hint is one rule whichever link fails, and only ever names a form that link has.
+ * with. The rule is one whichever link fails: the step's target is optional. What the value
+ * inside then takes is the next step's to say, so the hint never names a form that link lacks.
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';

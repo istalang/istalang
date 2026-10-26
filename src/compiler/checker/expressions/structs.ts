@@ -37,6 +37,7 @@ import type { Accepts } from '../resolution/choice.ts';
 import { namedType } from '../resolution/named.ts';
 import { requiredFields, requiredFieldType } from '../traits/constraints.ts';
 import { optionalInner } from '../types/fit.ts';
+import { insideOptional } from '../types/inside-optional.ts';
 import {
   errorType,
   type FieldMember,
@@ -255,7 +256,8 @@ export function checkMemberAccess(
 
 /**
  * Why `node` reads no field of `type`: it is behind the shared struct `type` is (`->`), or inside
- * the optional it is (`?.`, or `?->` both at once), or `node` names a method, read only by calling.
+ * the optional it is (`?.`, or `?->` for an optional shared struct), or `node` names a method,
+ * read only by calling.
  */
 function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnostic {
   const { checker } = context;
@@ -269,11 +271,10 @@ function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnost
     return checkerDiagnostics.fieldBehindShared(span, typeText(type), name, operator);
   }
   const inner = optionalInner(type, checker.optionalEntity);
-  if (inner !== undefined && behind(inner)) {
-    return checkerDiagnostics.insideOptional(span, typeText(type), '?->');
-  }
-  if (inner !== undefined && fieldOf(context, inner, name) !== undefined) {
-    return checkerDiagnostics.insideOptional(span, typeText(type), '?.');
+  const reach = inner !== undefined && checker.sharedValueOf(inner) !== undefined ? '?->' : '?.';
+  const inside = insideOptional(checker, span, type, reach);
+  if (inside !== undefined) {
+    return inside;
   }
   const isMethod = topLevelCandidates(checker, context.module, name, [type]).some(
     ({ declaration }) => isMethodDeclaration(declaration),

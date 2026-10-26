@@ -1,14 +1,16 @@
-# error: 5220 at 23:17
-# error: 5409 at 27:7
-# error: 5409 at 30:3
-# error: 5409 at 33:3
-# error: 5409 at 36:3
-# error: 5409 at 39:3
-# error: 5409 at 42:7
-# error: 5221 at 45:6
+# error: 5220 at 25:17
+# error: 5409 at 29:7
+# error: 5409 at 32:3
+# error: 5409 at 35:3
+# error: 5409 at 38:3
+# error: 5409 at 41:3
+# error: 5409 at 44:7
+# error: 5221 at 47:6
+# error: 5409 at 50:7
 # A step written on an optional where its value was meant points at the form of the same link
 # that reaches inside (§4): `?.` for a field, an element or a method, `?->` behind a shared struct,
-# `?.[` for an index and `?.(` for a call. A prefix `*` has no such form, so it is only refused.
+# `?.[` for an index and `?.(` for a call, whatever the value inside then takes. A prefix `*` has
+# no such form, so it is only refused.
 
 shared struct Counter { count: int }
 
@@ -43,5 +45,8 @@ fn field(b: Box) -> int:
 
 fn through(c: Counter?) -> int?:
   c?.count
+
+fn unknown(b: Box) -> int:
+  b.p.zzz
 
 async fn main(): 0
