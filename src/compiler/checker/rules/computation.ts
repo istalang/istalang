@@ -36,7 +36,7 @@ import { type ConstantForm, durationForm, formSemantics } from '../constant-form
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { instantiatedBody } from '../types/instantiation.ts';
-import { substitute, substitutionFor } from '../types/type.ts';
+import { type Substitution, substitute, substitutionFor } from '../types/type.ts';
 
 /**
  * What the walk reads: the checker's layouts and field defaults, the constant computed, its
@@ -66,7 +66,7 @@ const unknown: Outcome = { kind: 'unknown' };
 
 /** What compile time makes of `initializer`. */
 export function computeConstant(initializer: Expression, scope: ComputationScope): Outcome {
-  return new Computation(scope, new Map()).of(initializer);
+  return new Computation(scope, new Map(), new Map()).of(initializer);
 }
 
 /** Why compile time leaves `outcome` uncomputed, reported where its part stands. */
@@ -80,10 +80,17 @@ class Computation {
   readonly #scope: ComputationScope;
   /** The defaults being computed, by fields function and arity, which a cycle reaches again. */
   readonly #computing: Map<FunctionDeclaration, Set<number>>;
+  /** What the scope's body is read through, which the calls it records, as checked, still need. */
+  readonly #substitution: Substitution;
 
-  constructor(scope: ComputationScope, computing: Map<FunctionDeclaration, Set<number>>) {
+  constructor(
+    scope: ComputationScope,
+    computing: Map<FunctionDeclaration, Set<number>>,
+    substitution: Substitution,
+  ) {
     this.#scope = scope;
     this.#computing = computing;
+    this.#substitution = substitution;
   }
 
   of(node: Expression): Outcome {
@@ -221,7 +228,8 @@ class Computation {
     const declaration = call.function;
     const parameters = checker.parametersOf(declaration);
     const module = checker.moduleOf(declaration);
-    const substitution = substitutionFor(declaration.typeParameters, call.typeArguments);
+    const typeArguments = call.typeArguments.map((type) => substitute(type, this.#substitution));
+    const substitution = substitutionFor(declaration.typeParameters, typeArguments);
     const fields = new Map<VariableOwner, CheckedConstant>(
       parameters
         .slice(0, call.arity)
@@ -240,7 +248,7 @@ class Computation {
         return field ?? checker.constantNamed(module, name);
       },
     };
-    return new Computation(scope, this.#computing).of(value);
+    return new Computation(scope, this.#computing, substitution).of(value);
   }
 
   /** The field at `index` of a spread value, which must itself compute to a struct. */

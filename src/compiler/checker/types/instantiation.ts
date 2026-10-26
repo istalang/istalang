@@ -1,8 +1,10 @@
 /**
  * A checked body read through a substitution (§3.5): a body is checked once, generically, so what
- * runs for one instantiation reads it with every type it records substituted, the type arguments
- * of the field defaults it runs among them. Lowering reads a function instance's body this way,
- * and compile time a field's default for the literal running it (rules/computation.ts).
+ * runs for one instantiation reads it with every type it records substituted. The calls it records
+ * stay as checked: closing one takes the instantiation's witnesses too, which its reader has, so
+ * the reader closes it (lowering/instances.ts `closeCall`, rules/computation.ts for a default's).
+ * Lowering reads a function instance's body this way, and compile time a field's default for the
+ * literal running it.
  */
 
 import type { CheckedBody } from '../check.ts';
@@ -42,15 +44,6 @@ export function instantiatedBody(body: CheckedBody, substitution: Substitution):
         bindings: checked.bindings.map((binding) => ({ ...binding, type: concrete(binding.type) })),
       };
     },
-    sourcesOf: (literal) =>
-      body.sourcesOf(literal)?.map((source) =>
-        source.kind === 'default'
-          ? {
-              ...source,
-              call: { ...source.call, typeArguments: source.call.typeArguments.map(concrete) },
-            }
-          : source,
-      ),
     result: concrete(body.result),
   };
 }
