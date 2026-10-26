@@ -103,6 +103,8 @@ describe('assignments', () => {
     ['f().x = 1', invalidAssignmentTarget, 'f().x'],
     ['a?.b[0] = 1', invalidAssignmentTarget, 'a?.b[0]'],
     ['a?->b = 1', invalidAssignmentTarget, 'a?->b'],
+    ['xs?.[0] = 1', invalidAssignmentTarget, 'xs?.[0]'],
+    ['xs?.[0] += 1', invalidAssignmentTarget, 'xs?.[0]'],
     ['a?.b->c = 1', invalidAssignmentTarget, 'a?.b->c'],
     ['a, b += 1', compoundDestructuring, '+='],
     ['(a, b) += t', compoundDestructuring, '+='],

@@ -180,8 +180,8 @@ export type PlaceStep = MemberAccess | TupleElement | Index;
 
 /**
  * A place as written: the expression its fields and elements are read from, a variable or a
- * handle's value (`*x`) in any valid place, and those reads, innermost first. `a?.b` is no step, so
- * it stands as the root.
+ * handle's value (`*x`) in any valid place, and those reads, innermost first. `a?.b` and `a?.[i]`
+ * are no steps, so they stand as the root.
  */
 export interface PlacePath {
   readonly root: Expression;
@@ -207,8 +207,7 @@ export function placePath(node: Expression): PlacePath {
   let current = unparenthesized(node);
   while (
     current.kind === 'TupleElement' ||
-    current.kind === 'Index' ||
-    (current.kind === 'MemberAccess' && !current.isOptional)
+    ((current.kind === 'Index' || current.kind === 'MemberAccess') && !current.isOptional)
   ) {
     steps.unshift(current);
     current = unparenthesized(current.target);
@@ -216,9 +215,10 @@ export function placePath(node: Expression): PlacePath {
   return { root: current, steps };
 }
 
-/** `a[i]`, and slicing when the index is a range. */
+/** `a[i]`, and slicing when the index is a range; `a?.[i]` when `isOptional`. */
 export interface Index extends NodeOf<'Index'> {
   readonly target: Expression;
+  readonly isOptional: boolean;
   readonly index: Expression;
 }
 
@@ -307,8 +307,9 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
     case 'MemberAccess':
       return { target: node.target, optional: node.isOptional };
     case 'TupleElement':
-    case 'Index':
       return { target: node.target, optional: false };
+    case 'Index':
+      return { target: node.target, optional: node.isOptional };
     case 'Call':
       if (node.isOptional) {
         return { target: node.callee, optional: true };

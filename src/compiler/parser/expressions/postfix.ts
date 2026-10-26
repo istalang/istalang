@@ -22,6 +22,7 @@ import {
   type Call,
   type Dereference,
   type Expression,
+  type Index,
   isPlace,
   type Spread,
 } from '../../syntax/expressions.ts';
@@ -95,11 +96,14 @@ export const callParselet: InfixParselet = {
 
 export const indexParselet: InfixParselet = {
   level: 'postfix',
-  parse(parser, left) {
-    const index = parseEnclosed(parser, '[', () => parser.expression()).value;
-    return { kind: 'Index', span: parser.spanFrom(left.span.start), target: left, index };
-  },
+  parse: (parser, left) => parseIndex(parser, left, false),
 };
+
+/** `a[i]`, or `a?.[i]` after its `?.`, at the `[`. */
+function parseIndex(parser: Parser, target: Expression, isOptional: boolean): Index {
+  const index = parseEnclosed(parser, '[', () => parser.expression()).value;
+  return { kind: 'Index', span: parser.spanFrom(target.span.start), target, isOptional, index };
+}
 
 export const memberParselet: InfixParselet = {
   level: 'postfix',
@@ -109,14 +113,15 @@ export const memberParselet: InfixParselet = {
   },
 };
 
-/** `a?.b`, or `f?.(…)`, calling the function inside an optional. */
+/** `a?.b`, `f?.(…)` calling the function inside an optional, or `a?.[i]` indexing one. */
 export const optionalParselet: InfixParselet = {
   level: 'postfix',
   parse(parser, left) {
     parser.cursor.advance();
-    return parser.cursor.at('(')
-      ? parseCall(parser, left, true, [])
-      : parseMember(parser, left, true);
+    if (parser.cursor.at('(')) {
+      return parseCall(parser, left, true, []);
+    }
+    return parser.cursor.at('[') ? parseIndex(parser, left, true) : parseMember(parser, left, true);
   },
 };
 

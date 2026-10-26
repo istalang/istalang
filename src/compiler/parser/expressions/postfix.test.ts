@@ -37,6 +37,7 @@ describe('calls', () => {
     ['f(&g().x)', 'g().x'],
     ['f(&a?.b)', 'a?.b'],
     ['f(&a?->b)', 'a?->b'],
+    ['f(&xs?.[0])', 'xs?.[0]'],
     ['f(&a?.b->c)', 'a?.b->c'],
   ])("reports '&' passing what is no place, %s (§3.7)", (text, spanText) => {
     const { referenceNotPlace } = parserDiagnostics;
@@ -97,6 +98,9 @@ describe('indexing, members and postfix operators', () => {
     ['user?.name', '(MemberAccess user isOptional name)'],
     ['a?.m()', '(Call (MemberAccess a isOptional m) [] [])'],
     ['f?.()', '(Call f isOptional [] [])'],
+    ['xs?.[0]', '(Index xs isOptional 0)'],
+    ['m?.["a"]', '(Index m isOptional "a")'],
+    ['a?.b?.[i].c', '(MemberAccess (Index (MemberAccess a isOptional b) isOptional i) c)'],
     ['s.f?.(1, x)', '(Call (MemberAccess s f) isOptional [] [1 x])'],
     ['a?.f?.(x)', '(Call (MemberAccess a isOptional f) isOptional [] [x])'],
     ['2.pow(10)', '(Call (MemberAccess 2 pow) [] [10])'],
