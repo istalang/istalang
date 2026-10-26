@@ -26,12 +26,8 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { constantValue } from '../constants.ts';
-import {
-  FunctionLowering,
-  instanceFrame,
-  nestedFrame,
-  type StartEdges,
-} from '../function-lowering.ts';
+import { instanceFrame, nestedFrame, type StartEdges } from '../function-lowering/frames.ts';
+import { FunctionLowering } from '../function-lowering/index.ts';
 import { rootInstance } from '../instances.ts';
 import { keyOf } from '../names.ts';
 import type { DefinitionTables, StartTarget } from '../tables.ts';
@@ -132,7 +128,7 @@ function crossing(checker: Checker, startable: Startable): Startable | undefined
     : undefined;
 }
 
-/** The start entry of `startable`: its own body, with JSON at its edges (function-lowering.ts). */
+/** The start entry of `startable`: its own body, with JSON at its edges (function-lowering/). */
 export function startEntry(
   lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
   startable: Startable,

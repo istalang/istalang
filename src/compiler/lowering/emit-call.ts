@@ -3,7 +3,7 @@
  * function-table entry or a function value, with each argument a value or a place passed by `&`.
  * What a call targets is decided by its caller: a call site's resolved function or the value it
  * calls (expressions/calls.ts), an element step's `index` (places.ts), a defaults entry's full
- * function (function-lowering.ts).
+ * function (function-lowering/).
  */
 
 import type { Callee } from '../../definition/instructions/calls.ts';

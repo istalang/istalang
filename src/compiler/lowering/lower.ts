@@ -23,7 +23,8 @@ import {
   hostNativeEntry,
 } from './boundary/host-externs.ts';
 import { startableOf, startables, startEntry } from './boundary/starts.ts';
-import { FunctionLowering, instanceFrame, nestedFrame } from './function-lowering.ts';
+import { instanceFrame, nestedFrame } from './function-lowering/frames.ts';
+import { FunctionLowering } from './function-lowering/index.ts';
 import {
   type BodyOwner,
   type FunctionInstance,

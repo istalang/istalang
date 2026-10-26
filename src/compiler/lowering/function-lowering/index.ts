@@ -9,7 +9,7 @@
  *   (optional-chains.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
- * - The frame is laid out as the Definition says: the parameters, in order, then a closure's
+ * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, then a closure's
  *   captures, then locals and temporaries. A variable living in a cell is listed in `cells`; a
  *   reference parameter's register holds the caller's reference, and a captured cell's register
  *   the cell its closure carries.
@@ -23,137 +23,50 @@
  *   gives its value encoded, so a host-started instance runs as one execution of the function.
  */
 
-import type { CodeFunction } from '../../definition/functions.ts';
-import type { Instruction } from '../../definition/instructions/instruction.ts';
-import type { FunctionId, Register } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values.ts';
-import { optionalVariants } from '../../language/well-known.ts';
-import { handlerOf } from '../../structures/kind-table.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
-import type { Entity } from '../binder/entities.ts';
+import type { CodeFunction } from '../../../definition/functions.ts';
+import type { Instruction } from '../../../definition/instructions/instruction.ts';
+import type { FunctionId, Register } from '../../../definition/operands.ts';
+import type { Value } from '../../../definition/values.ts';
+import { optionalVariants } from '../../../language/well-known.ts';
+import { handlerOf } from '../../../structures/kind-table.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Span } from '../../../text/span.ts';
+import type { Entity } from '../../binder/entities.ts';
 import type {
   CallSite,
-  CapturedVariable,
   CheckedBody,
   Checker,
   FunctionCall,
   ImplicitRole,
-  NestedFunction,
   ResolvedCall,
-  SignatureParameter,
-} from '../checker/check.ts';
-import { substitute, type Type } from '../checker/types/type.ts';
-import type { ModuleId } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Expression, Lambda } from '../syntax/expressions.ts';
-import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
-import type { Block, Statement } from '../syntax/statements.ts';
-import { emitInbound, type Inbound } from './boundary/inbound.ts';
-import { CodeWriter } from './code-writer.ts';
-import type { FunctionContext } from './context.ts';
-import { emitCall, referenceTo } from './emit-call.ts';
-import { expressionHandlers } from './expressions/expressions.ts';
-import { buildVariant } from './expressions/variants.ts';
+} from '../../checker/check.ts';
+import { substitute, type Type } from '../../checker/types/type.ts';
+import type { ModuleId } from '../../program/program.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { Expression, Lambda } from '../../syntax/expressions.ts';
+import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
+import type { Block, Statement } from '../../syntax/statements.ts';
+import { emitInbound } from '../boundary/inbound.ts';
+import { CodeWriter } from '../code-writer.ts';
+import type { FunctionContext } from '../context.ts';
+import { emitCall, referenceTo } from '../emit-call.ts';
+import { expressionHandlers } from '../expressions/expressions.ts';
+import { buildVariant } from '../expressions/variants.ts';
 import {
   type BodyOwner,
   calleeOf,
   type FunctionInstance,
   fullInstance,
   instanceOfCall,
-  type NestedInstance,
   ownerDeclaration,
   ownerSubstitution,
-} from './instances.ts';
-import { OptionalChains } from './optional-chains.ts';
-import { LoopStack } from './statements/loops.ts';
-import { lowerBlock, lowerBody, lowerStatement } from './statements/statements.ts';
-import { declareVariable, VariableRegisters } from './statements/variables.ts';
-import type { DefinitionTables, EntryHeader } from './tables.ts';
-
-/**
- * The JSON at a start entry's edges: how each argument is read from `Json`, a mismatch failing the
- * host's start; the call encoding what the entry gives; and the value a named lambda's own name
- * stands for there.
- */
-export interface StartEdges {
-  readonly parameters: readonly Inbound[];
-  readonly outcome: FunctionCall;
-  readonly self: Value | undefined;
-}
-
-/** What lowering an entry starts from: what owns its body, the body read through it, the tables. */
-export interface LoweredFunction {
-  readonly checker: Checker;
-  readonly tables: DefinitionTables;
-  readonly owner: BodyOwner;
-  readonly body: CheckedBody;
-}
-
-/**
- * The frame an entry's code runs in: what it is called, what it takes, what it captures and what
- * it produces.
- */
-export interface Frame {
-  readonly header: EntryHeader;
-  readonly isAsync: boolean;
-  readonly parameters: readonly SignatureParameter[];
-  readonly captures: readonly CapturedVariable[];
-  /** The function the entry runs: a top-level declaration, or a nested function. */
-  readonly function: NestedFunction;
-  /** `T` for an async entry returning `Future<T>`. */
-  readonly result: Type;
-  /** The name a nested function calls itself by. */
-  readonly self: Identifier | undefined;
-}
-
-/**
- * The frame of a top-level function's instance, whose body `lowered` reads: the parameters its
- * callers give.
- */
-export function instanceFrame(lowered: LoweredFunction, instance: FunctionInstance): Frame {
-  const { checker, tables, body } = lowered;
-  const { declaration, arity } = instance;
-  const parameters = checker.parametersOf(declaration);
-  return {
-    header: tables.entryHeader(instance),
-    isAsync: declaration.isAsync && arity === parameters.length,
-    parameters: parameters.slice(0, arity),
-    captures: [],
-    function: declaration,
-    result: body.result,
-    self: undefined,
-  };
-}
-
-/** The frame of a nested function, as `body`, its owner's, checked it. */
-export function nestedFrame(
-  tables: DefinitionTables,
-  nested: NestedInstance,
-  body: CheckedBody,
-): Frame {
-  const { node } = nested;
-  const checked = body.functionOf(node);
-  if (checked === undefined) {
-    unreachable(`The function at ${node.span.start} was never checked.`);
-  }
-  const { type, parameters, captures } = checked;
-  return {
-    header: tables.nestedHeader(nested),
-    isAsync: type.isAsync,
-    parameters: parameters.map((parameter, index) => {
-      const slot = type.parameters[index];
-      if (slot === undefined) {
-        unreachable(`'${parameter.name.text}' has no slot in its function's type.`);
-      }
-      return { node: parameter, ...slot };
-    }),
-    captures,
-    function: node,
-    result: type.result,
-    self: node.name,
-  };
-}
+} from '../instances.ts';
+import { OptionalChains } from '../optional-chains.ts';
+import { LoopStack } from '../statements/loops.ts';
+import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
+import { declareVariable, VariableRegisters } from '../statements/variables.ts';
+import type { DefinitionTables } from '../tables.ts';
+import type { Frame, LoweredFunction, StartEdges } from './frames.ts';
 
 export class FunctionLowering implements FunctionContext {
   readonly checker: Checker;
