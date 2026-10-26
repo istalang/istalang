@@ -1,10 +1,13 @@
-# error: 5001 at 10:12
-# error: 4000 at 13:12
-# error: 5112 at 16:8
-# error: 5026 at 23:17
+# error: 5001 at 13:12
+# error: 4000 at 16:12
+# error: 5112 at 19:8
+# error: 5026 at 26:17
+# error: 5028 at 38:16
+# error: 5028 at 39:14
 # A field's default must fit its field (§3.1), sees only the fields before it, and can't reach its
 # own field when that field takes its type from it. A constant runs a default only when compile
-# time computes it, which arithmetic it doesn't.
+# time computes it, which arithmetic it doesn't, and one whose default builds a value needing that
+# default again would never be finished.
 
 struct Typed:
   n: int = "x"
@@ -21,5 +24,18 @@ struct Doubled:
   twice: int = base * 2
 
 const doubled = Doubled{}
+
+struct Nested:
+  inner: Nested? = Nested{}
+
+struct Ping:
+  n: int = 1
+  pong: Pong? = Pong{}
+
+struct Pong:
+  ping: Ping? = Ping{}
+
+const nested = Nested{}
+const ping = Ping{}
 
 async fn main(): 0

@@ -147,6 +147,11 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
     code: 5027,
     message: (name: string) => `'${name}' is defined through itself.`,
   },
+  endlessDefault: {
+    code: 5028,
+    message: () =>
+      "This value's field defaults build a value needing those defaults again, so it would never be finished.",
+  },
   ...genericTemplates,
   ...valueTemplates,
   ...collectionTemplates,

@@ -39,7 +39,7 @@ import { wellKnownConstraint } from '../traits/constraints.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { silent, useSite } from '../use-site.ts';
-import { computeConstant } from './computation.ts';
+import { computeConstant, refusalOf } from './computation.ts';
 
 /** The annotations the toolchain itself reads. */
 const known = {
@@ -199,7 +199,7 @@ export class Annotations implements AnnotationQueries {
       valueNamed: (name) => checker.constantNamed(module, name),
     });
     if (outcome.kind === 'refused') {
-      checker.report(module, checkerDiagnostics.notConstant(outcome.part.span));
+      checker.report(module, refusalOf(outcome));
     }
     return outcome.kind === 'computed' ? { node, type, form: outcome.form } : undefined;
   }

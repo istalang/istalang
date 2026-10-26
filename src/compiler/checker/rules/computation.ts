@@ -14,10 +14,13 @@
  * A field a struct literal leaves to its default (§3.1) is computed by the same walk over the
  * default, in its declaration's module, read through the literal's type arguments, with the fields
  * before it as computed: it is computed when the default is, and refused where it isn't, as a
- * default calling a function is.
+ * default calling a function is. A default reached again while it is being computed builds a value
+ * needing itself, which would never be finished, so it is refused as endless.
  */
 
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { VariableOwner } from '../../binder/entities.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -31,6 +34,7 @@ import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant, FieldSource, FunctionCall } from '../check.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../constant-form.ts';
 import type { CheckerContext } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { instantiatedBody } from '../types/instantiation.ts';
 import { substitute, substitutionFor } from '../types/type.ts';
 
@@ -53,8 +57,8 @@ export interface ComputationScope {
 /** How computing a part of an initializer went. */
 export type Outcome =
   | { readonly kind: 'computed'; readonly form: ConstantForm }
-  /** Compile time doesn't compute `part`. */
-  | { readonly kind: 'refused'; readonly part: NodeOf<string> }
+  /** Compile time doesn't compute `part`; `endless` when it needs a default being computed. */
+  | { readonly kind: 'refused'; readonly part: NodeOf<string>; readonly endless: boolean }
   /** An error a diagnostic already explained leaves no value. */
   | { readonly kind: 'unknown' };
 
@@ -62,14 +66,24 @@ const unknown: Outcome = { kind: 'unknown' };
 
 /** What compile time makes of `initializer`. */
 export function computeConstant(initializer: Expression, scope: ComputationScope): Outcome {
-  return new Computation(scope).of(initializer);
+  return new Computation(scope, new Map()).of(initializer);
+}
+
+/** Why compile time leaves `outcome` uncomputed, reported where its part stands. */
+export function refusalOf(outcome: Extract<Outcome, { kind: 'refused' }>): Diagnostic {
+  return outcome.endless
+    ? checkerDiagnostics.endlessDefault(outcome.part.span)
+    : checkerDiagnostics.notConstant(outcome.part.span);
 }
 
 class Computation {
   readonly #scope: ComputationScope;
+  /** The defaults being computed, by fields function and arity, which a cycle reaches again. */
+  readonly #computing: Map<FunctionDeclaration, Set<number>>;
 
-  constructor(scope: ComputationScope) {
+  constructor(scope: ComputationScope, computing: Map<FunctionDeclaration, Set<number>>) {
     this.#scope = scope;
+    this.#computing = computing;
   }
 
   of(node: Expression): Outcome {
@@ -166,7 +180,7 @@ class Computation {
         return this.#spreadField(source);
       case 'default': {
         const part = this.#default(source.call, earlier);
-        return part.kind === 'refused' ? refused(literal) : part;
+        return part.kind === 'refused' ? { ...part, part: literal } : part;
       }
       default: {
         const unhandled: never = source;
@@ -185,6 +199,27 @@ class Computation {
     if (value === undefined || checked === undefined) {
       return unknown;
     }
+    const computing = this.#computing.get(declaration) ?? new Set<number>();
+    if (computing.has(call.arity)) {
+      return { kind: 'refused', part: value, endless: true };
+    }
+    computing.add(call.arity);
+    this.#computing.set(declaration, computing);
+    const outcome = this.#defaultValue(call, value, checked, earlier);
+    computing.delete(call.arity);
+    return outcome;
+  }
+
+  /** The default `value` of `call`'s field, checked as `checked`, from the fields `earlier`. */
+  #defaultValue(
+    call: FunctionCall,
+    value: Expression,
+    checked: CheckedBody,
+    earlier: readonly ConstantForm[],
+  ): Outcome {
+    const { checker } = this.#scope;
+    const declaration = call.function;
+    const parameters = checker.parametersOf(declaration);
     const module = checker.moduleOf(declaration);
     const substitution = substitutionFor(declaration.typeParameters, call.typeArguments);
     const fields = new Map<VariableOwner, CheckedConstant>(
@@ -195,7 +230,7 @@ class Computation {
           { type: substitute(parameter.type, substitution), form: earlier[index] },
         ]),
     );
-    return new Computation({
+    const scope: ComputationScope = {
       checker,
       constant: undefined,
       checked: instantiatedBody(checked, substitution),
@@ -204,7 +239,8 @@ class Computation {
         const field = entity?.kind === 'variable' ? fields.get(entity.owner) : undefined;
         return field ?? checker.constantNamed(module, name);
       },
-    }).of(value);
+    };
+    return new Computation(scope, this.#computing).of(value);
   }
 
   /** The field at `index` of a spread value, which must itself compute to a struct. */
@@ -320,7 +356,7 @@ function computed(form: ConstantForm): Outcome {
 }
 
 function refused(part: NodeOf<string>): Outcome {
-  return { kind: 'refused', part };
+  return { kind: 'refused', part, endless: false };
 }
 
 /** A number literal, possibly parenthesized: what compile time negates. */

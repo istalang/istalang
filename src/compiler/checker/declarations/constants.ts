@@ -25,7 +25,7 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { LazyChecks } from '../lazy-checks.ts';
 import { walkTargets } from '../patterns/walk.ts';
-import { computeConstant } from '../rules/computation.ts';
+import { computeConstant, refusalOf } from '../rules/computation.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 /** What ProgramChecker gives the unit: how to find a constant's module, and to check a value. */
@@ -124,7 +124,7 @@ export class ConstantChecks {
       valueNamed: (name) => this.constantNamed(module, name),
     });
     if (outcome.kind === 'refused') {
-      checker.report(module, checkerDiagnostics.notConstant(outcome.part.span));
+      checker.report(module, refusalOf(outcome));
     }
     const bindings = walkTargets(
       {
