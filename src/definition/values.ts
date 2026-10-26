@@ -318,16 +318,17 @@ const noHandles: readonly number[] = [];
 
 /**
  * Each composite's summary, derived once, since a value never changes. Holders are decided by
- * walking values at every release point (runtime/lifetimes/), so a value walked before is free.
+ * walking values at every release point (runtime/lifetimes/), so a value walked before is free:
+ * its parts are never listed again.
  */
 const summaries = new WeakMap<CompositeValue, Summary>();
 
 function summaryOf(candidate: CompositeValue): Summary {
   const pending: CompositeValue[] = [candidate];
   for (let top = pending.at(-1); top !== undefined; top = pending.at(-1)) {
-    const parts = childValues(top).filter(isComposite);
+    const parts = summaries.has(top) ? [] : childValues(top).filter(isComposite);
     const unknown = parts.filter((part) => !summaries.has(part));
-    if (unknown.length > 0 && !summaries.has(top)) {
+    if (unknown.length > 0) {
       pushAll(pending, unknown);
     } else {
       pending.pop();
