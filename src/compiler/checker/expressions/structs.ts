@@ -18,6 +18,7 @@
  *   with `->` (§3.9); a call of one is a method call (calls.ts).
  */
 
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod as isMethodDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
 import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
@@ -244,30 +245,42 @@ export function checkMemberAccess(
   if (type.kind === 'error') {
     return errorType;
   }
-  const name = node.member.text;
-  const field = fieldOf(context, type, name);
-  if (field !== undefined) {
-    return field;
-  }
-  const sharedValue = context.checker.sharedValueOf(type);
-  if (sharedValue !== undefined && fieldOf(context, sharedValue, name) !== undefined) {
-    context.report(checkerDiagnostics.fieldBehindShared(node.member.span, typeText(type), name));
+  const field = fieldOf(context, type, node.member.text);
+  if (field === undefined) {
+    context.report(noField(context, node, type));
     return errorType;
   }
-  const inner = optionalInner(type, context.checker.optionalEntity);
+  return field;
+}
+
+/**
+ * Why `node` reads no field of `type`: it is behind the shared struct `type` is (`->`), or inside
+ * the optional it is (`?.`, or `?->` both at once), or `node` names a method, read only by calling.
+ */
+function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnostic {
+  const { checker } = context;
+  const { span, text: name } = node.member;
+  const behind = (owner: Type) => {
+    const sharedValue = checker.sharedValueOf(owner);
+    return sharedValue !== undefined && fieldOf(context, sharedValue, name) !== undefined;
+  };
+  if (behind(type)) {
+    const operator = node.isOptional ? '?->' : '->';
+    return checkerDiagnostics.fieldBehindShared(span, typeText(type), name, operator);
+  }
+  const inner = optionalInner(type, checker.optionalEntity);
+  if (inner !== undefined && behind(inner)) {
+    return checkerDiagnostics.insideOptional(span, typeText(type), '?->');
+  }
   if (inner !== undefined && fieldOf(context, inner, name) !== undefined) {
-    context.report(checkerDiagnostics.insideOptional(node.member.span, typeText(type), '?.'));
-    return errorType;
+    return checkerDiagnostics.insideOptional(span, typeText(type), '?.');
   }
-  const isMethod = topLevelCandidates(context.checker, context.module, name, [type]).some(
+  const isMethod = topLevelCandidates(checker, context.module, name, [type]).some(
     ({ declaration }) => isMethodDeclaration(declaration),
   );
-  context.report(
-    isMethod
-      ? checkerDiagnostics.methodValue(node.member.span, name)
-      : checkerDiagnostics.unknownField(node.member.span, typeText(type), name),
-  );
-  return errorType;
+  return isMethod
+    ? checkerDiagnostics.methodValue(span, name)
+    : checkerDiagnostics.unknownField(span, typeText(type), name);
 }
 
 /** The type of the field `name` of `type`, through a constraint for a type parameter. */

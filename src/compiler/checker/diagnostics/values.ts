@@ -91,8 +91,8 @@ export const valueTemplates = {
   },
   fieldBehindShared: {
     code: 5221,
-    message: (type: string, name: string) =>
-      `'${name}' is a field of the value behind the shared struct ${type}, not of its handle: read it as x->${name} (§3.9).`,
+    message: (type: string, name: string, operator: string) =>
+      `'${name}' is a field of the value behind the shared struct ${type}, not of its handle: read it as x${operator}${name} (§3.9).`,
   },
   passing: {
     code: 5215,

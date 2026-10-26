@@ -1,0 +1,47 @@
+# error: 5220 at 23:17
+# error: 5409 at 27:7
+# error: 5409 at 30:3
+# error: 5409 at 33:3
+# error: 5409 at 36:3
+# error: 5409 at 39:3
+# error: 5409 at 42:7
+# error: 5221 at 45:6
+# A step written on an optional where its value was meant points at the form of the same link
+# that reaches inside (§4): `?.` for a field, an element or a method, `?->` behind a shared struct,
+# `?.[` for an index and `?.(` for a call. A prefix `*` has no such form, so it is only refused.
+
+shared struct Counter { count: int }
+
+struct Pair { a: int }
+
+struct Box { c: Counter?; t: (int, int)?; xs: Array<int>?; f: (fn(int) -> int)?; p: Pair? }
+
+fn size(self: Pair) -> int:
+  1
+
+fn whole(b: Box) -> int:
+  const value = *b.c
+  0
+
+fn behind(b: Box) -> int:
+  b.c.count
+
+fn element(b: Box) -> int:
+  b.t.0
+
+fn indexed(b: Box) -> int:
+  b.xs[0]
+
+fn called(b: Box) -> int:
+  b.f(1)
+
+fn method(b: Box) -> int:
+  b.p.size()
+
+fn field(b: Box) -> int:
+  b.p.a
+
+fn through(c: Counter?) -> int?:
+  c?.count
+
+async fn main(): 0

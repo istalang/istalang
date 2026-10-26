@@ -10,6 +10,7 @@ import type { Index } from '../../syntax/expressions.ts';
 import { resolveCall } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
+import { insideOptional } from '../types/inside-optional.ts';
 import type { Type } from '../types/type.ts';
 
 export function checkIndex(context: BodyContext, node: Index, expected: Type | undefined): Type {
@@ -29,5 +30,6 @@ export function checkIndex(context: BodyContext, node: Index, expected: Type | u
     typeArguments: undefined,
     expected,
     form: 'operator',
+    hint: () => insideOptional(context.checker, node.target.span, container, '?.['),
   });
 }

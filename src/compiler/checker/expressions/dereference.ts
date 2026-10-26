@@ -33,8 +33,9 @@ function valueBehind(context: BodyContext, node: Dereference): Type | undefined 
     return sharedValue;
   }
   const inner = optionalInner(handle, checker.optionalEntity);
+  const throughArrow = inner !== undefined && chainStepOf(node) !== undefined;
   context.report(
-    inner !== undefined && checker.sharedValueOf(inner) !== undefined
+    throughArrow && checker.sharedValueOf(inner) !== undefined
       ? checkerDiagnostics.insideOptional(node.span, typeText(handle), '?->')
       : checkerDiagnostics.notShared(node.span, typeText(handle)),
   );

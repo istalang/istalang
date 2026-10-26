@@ -18,6 +18,7 @@
  *   made (resolution/calls-made.ts).
  */
 
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { disposeFunction } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions.ts';
@@ -64,6 +65,8 @@ export interface CallRequest {
   readonly form: 'call' | 'operator';
   /** A method call's receiver, its first argument (§3.7). */
   readonly receiver?: Expression;
+  /** What to report instead when no candidate takes the arguments, if anything. */
+  readonly hint?: () => Diagnostic | undefined;
 }
 
 /** Resolves `request`, recording the call; what it yields, or the error type after a report. */
@@ -82,9 +85,15 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
         checkerDiagnostics.ambiguousCall(request.site.span, request.name, typesText(written)),
       );
       return errorType;
-    case 'none':
-      explainNone(context, request, choice.reasons);
+    case 'none': {
+      const hint = request.hint?.();
+      if (hint === undefined) {
+        explainNone(context, request, choice.reasons);
+      } else {
+        context.report(hint);
+      }
       return errorType;
+    }
     default: {
       const unhandled: never = choice;
       return unhandled;

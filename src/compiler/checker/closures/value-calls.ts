@@ -15,6 +15,7 @@ import { explain, fitArguments, type WrittenArgument } from '../calls/resolve.ts
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { takenBy } from '../resolution/choice.ts';
+import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureOf } from '../types/well-known.ts';
@@ -37,7 +38,10 @@ export function checkValueCall(
     return errorType;
   }
   if (calleeType.kind !== 'function') {
-    context.report(checkerDiagnostics.notFunction(callee.span, typeText(calleeType)));
+    context.report(
+      insideOptional(context.checker, callee.span, calleeType, '?.(') ??
+        checkerDiagnostics.notFunction(callee.span, typeText(calleeType)),
+    );
     return errorType;
   }
   const { node, written, typeArguments } = call;

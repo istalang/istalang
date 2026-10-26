@@ -13,6 +13,7 @@ import type { Tuple, TupleElement } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
+import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -44,7 +45,10 @@ export function checkTupleElement(context: BodyContext, node: TupleElement): Typ
     return errorType;
   }
   if (type.kind !== 'tuple') {
-    context.report(checkerDiagnostics.notTuple(node.target.span, typeText(type)));
+    context.report(
+      insideOptional(context.checker, node.target.span, type, '?.') ??
+        checkerDiagnostics.notTuple(node.target.span, typeText(type)),
+    );
     return errorType;
   }
   const element = type.elements[node.element];
