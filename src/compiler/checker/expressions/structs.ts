@@ -248,7 +248,7 @@ export function checkMemberAccess(
   if (field !== undefined) {
     return field;
   }
-  const sharedValue = type.kind === 'nominal' ? context.checker.sharedValueOf(type) : undefined;
+  const sharedValue = context.checker.sharedValueOf(type);
   if (sharedValue !== undefined && fieldOf(context, sharedValue, name) !== undefined) {
     context.report(checkerDiagnostics.fieldBehindShared(node.member.span, typeText(type), name));
     return errorType;

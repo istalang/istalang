@@ -26,7 +26,7 @@ import { fieldIndexOf } from '../places.ts';
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const type = structTypeOf(context, node);
   const fields = literalFields(context, node);
-  const sharedValue = type.kind === 'nominal' ? context.checker.sharedValueOf(type) : undefined;
+  const sharedValue = context.checker.sharedValueOf(type);
   if (sharedValue === undefined) {
     return construct(context, type, fields, node.span);
   }

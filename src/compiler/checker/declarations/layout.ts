@@ -60,7 +60,10 @@ export class Layouts {
    * The value behind a shared struct, `*x`, substituted for its type arguments; undefined for
    * another type.
    */
-  sharedValueOf(type: NominalType): AnonymousStructType | undefined {
+  sharedValueOf(type: Type): AnonymousStructType | undefined {
+    if (type.kind !== 'nominal') {
+      return undefined;
+    }
     const { declaration } = type.entity;
     if (declaration.kind !== 'StructDeclaration' || !declaration.isShared) {
       return undefined;
