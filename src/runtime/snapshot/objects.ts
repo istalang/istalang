@@ -36,8 +36,11 @@ const reference = z.strictObject({ kind: z.literal('reference'), cell: objectId,
 
 export type Reference = z.output<typeof reference>;
 
+/** What a register holds: a value, or for a reference parameter, a reference. */
+export type RegisterContents = Value | Reference;
+
 /** Whether a register holds a reference rather than a value. */
-export function isReference(contents: Value | Reference): contents is Reference {
+export function isReference(contents: RegisterContents): contents is Reference {
   return contents !== null && typeof contents === 'object' && contents.kind === 'reference';
 }
 

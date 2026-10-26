@@ -85,7 +85,8 @@ src/
                         extern-signatures.ts (one name, one type across deploys)
                         scheduler/: heap.ts (objects by id), futures.ts (resolving, who waits, `first`), slots.ts (§6's queue),
                         weak-side.ts (weak references, `disposed()` and `disposing()`, told by disposal what it disposes),
-                        instance.ts (an instance in memory), segment/ (a segment; disposal-runs.ts, the code disposals run), native-calls.ts, wake.ts (advancing, commits, spawned children), inspect.ts
+                        instance.ts (an instance in memory, and the commit's snapshot from the one it was made from), segment/ (a segment; disposal-runs.ts, the code disposals run), native-calls.ts, wake.ts (advancing, commits, spawned children), inspect.ts
+                        snapshot/: objects.ts (heap objects and frames as stored), holdings.ts (what each object kind holds and watches, and the one rule for a frame, live or stored), snapshot.ts (the persisted instance), check.ts (a snapshot against its Definition)
     lifetimes/          holders and disposal (§7): holders.ts (what the live frames reach: held), orphans.ts (what to dispose now,
                         holders before what they hold), disposal.ts (each kind's disposal), collector.ts (rounds, a disposal's call on the run stack)
     natives.ts          the Natives seam, the context a native is called with, and the Panic it throws

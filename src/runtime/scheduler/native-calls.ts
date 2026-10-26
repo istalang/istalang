@@ -15,12 +15,7 @@ import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { TypeReference } from '../../definition/types.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import {
-  type FrameHeap,
-  type RegisterContents,
-  readThrough,
-  writeReference,
-} from '../interpreter/machine.ts';
+import { type FrameHeap, readThrough, writeReference } from '../interpreter/machine.ts';
 import type {
   FullNativeContext,
   Native,
@@ -28,7 +23,7 @@ import type {
   NativeResources,
   NativeWeakSide,
 } from '../natives.ts';
-import { isReference, type Reference } from '../snapshot/objects.ts';
+import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import { type Heap, handleObject } from './heap.ts';
 import type { Instance } from './instance.ts';
 import type { WeakSide } from './weak-side.ts';

@@ -103,9 +103,7 @@ export function advance(
     if (end.kind === 'panicked') {
       const replay = replayOf(committed.status, arrival);
       const status = { ...end, segmentStartedAt: startedAt, ...(replay && { replay }) };
-      const left =
-        committed.status.kind === 'unstarted' ? instance.unrun(status) : { ...committed, status };
-      return advanced(stateOf(commit(seams.store, left)));
+      return advanced(stateOf(commit(seams.store, { ...committed, status })));
     }
     spawned.push(...commitChildren(seams.store, instance));
     committed = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));

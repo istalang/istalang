@@ -18,8 +18,8 @@ import { handleTarget, type Value } from '../../definition/values.ts';
 import { pushAll } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { ActiveFrame } from '../interpreter/machine.ts';
+import { heldObjects } from '../snapshot/holdings.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
-import { heldObjects } from '../snapshot/snapshot.ts';
 
 export interface LiveExecution {
   readonly kind: 'execution';

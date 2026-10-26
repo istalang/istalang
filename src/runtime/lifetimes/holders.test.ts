@@ -9,9 +9,9 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { depthOf, handlesIn } from '../../definition/values.ts';
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
-import { valuesIn } from '../snapshot/snapshot.ts';
+import { frameValues, valuesIn } from '../snapshot/holdings.ts';
 import { heldFrom, holdsOf } from './holders.ts';
-import { frameValues, heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
+import { heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
 
 const handle = (object: number) => ({ kind: 'handle', object }) as const;
 

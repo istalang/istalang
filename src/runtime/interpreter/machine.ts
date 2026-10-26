@@ -30,7 +30,7 @@ import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register, TypeId } from '../../definition/operands.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { isReference, type Reference } from '../snapshot/objects.ts';
+import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import { partAt, withPart } from '../values/parts.ts';
 
@@ -46,9 +46,6 @@ export interface FrameHeap {
    */
   readonly released: (contents: RegisterContents) => void;
 }
-
-/** What a register holds: a value, or for a reference parameter, a reference. */
-export type RegisterContents = Value | Reference;
 
 /** A code entry a frame runs: its index, and its code. */
 export interface FrameEntry {

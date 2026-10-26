@@ -24,9 +24,11 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import { valueProblems } from '../../definition/references.ts';
 import { isSharedCellType, sharedTypeName } from '../../definition/types.ts';
 import { handleTarget } from '../../definition/values.ts';
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { Refusal } from '../refusal.ts';
+import { valuesIn } from './holdings.ts';
 import { type Frame, type HeapObject, isReference } from './objects.ts';
-import { type InstanceCall, type Snapshot, valuesIn } from './snapshot.ts';
+import type { InstanceCall, Snapshot } from './snapshot.ts';
 
 /** Throws a Refusal listing every way `snapshot` doesn't fit `definition`. */
 export function checkSnapshot(definition: Definition, snapshot: Snapshot): void {
@@ -48,33 +50,34 @@ function objectProblems(definition: Definition, object: HeapObject): readonly st
   const inValues = valuesIn(object).flatMap((value) =>
     valueProblems(definition, value).map(({ message }) => `object ${object.id}: ${message}`),
   );
-  return [...inValues, ...kindProblems(definition, object)];
+  return [...inValues, ...handlerOf(kindProblems, object)(definition, object)];
 }
 
-function kindProblems(definition: Definition, object: HeapObject): readonly string[] {
-  switch (object.kind) {
-    case 'execution':
-      return object.frames.flatMap((frame, index) =>
-        frameProblems(definition, frame, index === object.frames.length - 1 ? waits : isCall).map(
-          (problem) => `execution ${object.id}: ${problem}`,
-        ),
-      );
-    case 'cell':
-      return isSharedCellType(definition.types, object.type)
-        ? []
-        : [`cell ${object.id} is not a ${sharedTypeName}`];
-    case 'resource':
-      return definition.types[object.type]?.kind === 'extern'
-        ? []
-        : [`resource ${object.id} is not of an extern type`];
-    case 'mock':
-      return object.target < definition.functions.length
-        ? []
-        : [`mock ${object.id} replaces function ${object.target}, which doesn't exist`];
-    default:
-      return [];
-  }
-}
+/** What is wrong with each kind of object against the Definition, besides its values. */
+const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
+  execution: (definition, execution) =>
+    execution.frames.flatMap((frame, index) =>
+      frameProblems(definition, frame, index === execution.frames.length - 1 ? waits : isCall).map(
+        (problem) => `execution ${execution.id}: ${problem}`,
+      ),
+    ),
+  cell: (definition, cell) =>
+    isSharedCellType(definition.types, cell.type)
+      ? []
+      : [`cell ${cell.id} is not a ${sharedTypeName}`],
+  resource: (definition, resource) =>
+    definition.types[resource.type]?.kind === 'extern'
+      ? []
+      : [`resource ${resource.id} is not of an extern type`],
+  mock: (definition, mock) =>
+    mock.target < definition.functions.length
+      ? []
+      : [`mock ${mock.id} replaces function ${mock.target}, which doesn't exist`],
+  slot: () => [],
+  future: () => [],
+  weakRef: () => [],
+  guard: () => [],
+};
 
 /**
  * An execution stands at an instruction that waits on the futures its registers name, and is ready

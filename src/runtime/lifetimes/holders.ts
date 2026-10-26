@@ -9,8 +9,9 @@
  *   lists), plus the objects the scheduler names: the call futures of executions running on its
  *   run stack, which keep themselves alive until they suspend, and objects waiting in a collection
  *   round (collector.ts).
- * - An object holds what snapshot.ts's `heldObjects` says; a slot's queue and a weak reference hold
- *   nothing, so neither does a `disposed()` watch, which holds only its weak reference.
+ * - An object holds what its kind's entry says (snapshot/holdings.ts), and a frame what the one
+ *   frame rule there says; a slot's queue and a weak reference hold nothing, so neither does a
+ *   `disposed()` watch, which holds only its weak reference.
  * - The one walk also finds how deep the deepest held value nests, which is what a commit checks
  *   against `maximumDepth` (spec §5), so a commit walks the live state once.
  * - Asking about some objects (`heldUnlessAll`) walks breadth first, from the roots in the order
@@ -20,13 +21,14 @@
 
 import { depthOf, handlesIn, type Value } from '../../definition/values.ts';
 import { pushAll } from '../../structures/stack.ts';
-import type { ActiveFrame } from '../interpreter/machine.ts';
 import type { Heap, LiveObject } from '../scheduler/heap.ts';
-import { isReference } from '../snapshot/objects.ts';
-import { heldObjects, valuesIn } from '../snapshot/snapshot.ts';
-
-/** What of a frame holds things: its registers, and its kept list. */
-export type HoldingFrame = Pick<ActiveFrame, 'registers' | 'kept'>;
+import {
+  frameCells,
+  frameValues,
+  type HoldingFrame,
+  heldObjects,
+  valuesIn,
+} from '../snapshot/holdings.ts';
 
 /** Where holding starts: frames, and objects held for the scheduler's own reasons. */
 export interface Roots {
@@ -47,7 +49,7 @@ export function heldFrom(heap: Heap, roots: Roots): Held {
   const frames = [...roots.frames];
   const objects = reached(heap, frames, roots.objects, () => false);
   const values = [
-    ...frames.flatMap(valuesOfFrame),
+    ...frames.flatMap(frameValues),
     ...[...objects].flatMap((id) => valuesOf(heap, id)),
   ];
   return { objects, depth: deepestOf(values) };
@@ -113,8 +115,8 @@ function reached(
   const found = new Set<number>();
   const seeds = [...objects];
   for (const frame of frames) {
-    pushAll(seeds, cellsOfFrame(frame));
-    pushAll(seeds, valuesOfFrame(frame).flatMap(handlesIn));
+    pushAll(seeds, frameCells(frame));
+    pushAll(seeds, frameValues(frame).flatMap(handlesIn));
   }
   walkHolds(heap, seeds, (object) => {
     found.add(object.id);
@@ -126,21 +128,6 @@ function reached(
 function valuesOf(heap: Heap, id: number): readonly Value[] {
   const object = heap.objectOf(id);
   return object.kind === 'execution' ? [] : valuesIn(object);
-}
-
-/** The values a frame holds: in its registers, references aside, and in its kept list. */
-function valuesOfFrame(frame: HoldingFrame): readonly Value[] {
-  const inRegisters = frame.registers.filter(
-    (contents): contents is Value => contents !== undefined && !isReference(contents),
-  );
-  return [...inRegisters, ...frame.kept];
-}
-
-/** The cells a frame's references name, which a reference holds for its call. */
-function cellsOfFrame(frame: HoldingFrame): readonly number[] {
-  return frame.registers.flatMap((contents) =>
-    contents !== undefined && isReference(contents) ? [contents.cell] : [],
-  );
 }
 
 function deepestOf(values: readonly Value[]): number {

@@ -8,9 +8,8 @@
 import fc from 'fast-check';
 import type { TypeDefinition } from '../../definition/types.ts';
 import { valueArbitrary } from '../../definition/values.test-kit.ts';
-import type { Value } from '../../definition/values.ts';
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
-import type { HoldingFrame } from './holders.ts';
+import type { HoldingFrame } from '../snapshot/holdings.ts';
 
 /** Type entry 0 disposes by function 0; type entry 1 disposes nothing. */
 export const testTypes: readonly TypeDefinition[] = [
@@ -118,12 +117,4 @@ export function reachedFrom(
   };
   start.forEach(visit);
   return reached;
-}
-
-/** The values `frame` holds. */
-export function frameValues(frame: HoldingFrame): readonly Value[] {
-  return [
-    ...frame.registers.filter((contents): contents is Value => contents !== undefined),
-    ...frame.kept,
-  ];
 }

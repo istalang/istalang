@@ -29,13 +29,17 @@ import {
   type ActiveFrame,
   type FrameHeap,
   newFrame,
-  type RegisterContents,
   releaseFrame,
 } from '../interpreter/machine.ts';
 import { resume } from '../interpreter/suspension.ts';
 import { isDisposable } from '../lifetimes/disposal.ts';
 import { heldFrom } from '../lifetimes/holders.ts';
-import { type Frame, type HeapObject, isReference } from '../snapshot/objects.ts';
+import {
+  type Frame,
+  type HeapObject,
+  isReference,
+  type RegisterContents,
+} from '../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../snapshot/snapshot.ts';
 import { Futures } from './futures.ts';
 import { Heap, type LiveExecution, type LiveObject } from './heap.ts';
@@ -59,8 +63,6 @@ export interface StartOptions {
 
 export class Instance {
   readonly loaded: LoadedDefinition;
-  readonly name: string;
-  readonly crashEveryAwait: boolean;
   readonly heap: Heap;
   readonly futures: Futures;
   readonly slots: Slots;
@@ -78,21 +80,17 @@ export class Instance {
       }
     },
   };
-  /** How many instances this one spawned before its current segment. */
-  readonly #spawnedBefore: number;
+  /** The snapshot this instance was made from, which its commit changes only where it ran. */
+  readonly #from: Snapshot;
   readonly #spawns: InstanceCall[] = [];
   readonly #ready: number[];
   /** The extern constants read before this segment, and those it read itself (§3.6). */
-  readonly #pinnedBefore: Snapshot['pinned'];
   readonly #pinned: Map<string, Value>;
 
   private constructor(loaded: LoadedDefinition, snapshot: Snapshot) {
     this.loaded = loaded;
-    this.name = snapshot.instance;
-    this.crashEveryAwait = snapshot.crashEveryAwait;
-    this.#spawnedBefore = snapshot.spawned;
+    this.#from = snapshot;
     this.#ready = [...snapshot.ready];
-    this.#pinnedBefore = snapshot.pinned;
     this.#pinned = new Map(snapshot.pinned.map(({ key, value }) => [key, value]));
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
@@ -148,36 +146,33 @@ export class Instance {
     return { objects: persisted.map(storedObject), depth: held.depth };
   }
 
-  /** The instance as a snapshot with `status`, holding `objects`, what `persisted` found. */
+  /**
+   * The instance as a snapshot with `status`, holding `objects`, what `persisted` found: the
+   * snapshot it was made from, with what its segment changed.
+   */
   snapshot(
     status: Exclude<InstanceStatus, { kind: 'panicked' | 'unstarted' }>,
     objects: readonly HeapObject[],
   ): Snapshot {
     const active = status.kind === 'active';
     return {
-      ...this.unrun(status),
-      spawned: this.#spawnedBefore + this.#spawns.length,
+      ...this.#from,
+      status,
+      spawned: this.#from.spawned + this.#spawns.length,
       pinned: [...this.#pinned].map(([key, value]) => ({ key, value })),
       objects: active ? [...objects] : [],
       ready: active ? [...this.#ready] : [],
     };
   }
 
-  /**
-   * The instance with `status` and nothing it ran: its name and options, on its Definition. A
-   * panic before the first commit leaves it so.
-   */
-  unrun(status: InstanceStatus): Snapshot {
-    return {
-      definition: this.loaded.hash,
-      instance: this.name,
-      status,
-      crashEveryAwait: this.crashEveryAwait,
-      spawned: this.#spawnedBefore,
-      pinned: this.#pinnedBefore,
-      objects: [],
-      ready: [],
-    };
+  /** The instance's name, as its host gave it or as its parent's spawn made it (§9). */
+  get name(): string {
+    return this.#from.instance;
+  }
+
+  /** Whether every segment runs twice before it commits (§10). */
+  get crashEveryAwait(): boolean {
+    return this.#from.crashEveryAwait;
   }
 
   /**
@@ -201,7 +196,7 @@ export class Instance {
 
   /** How many instances this one spawned before its current segment, which numbers the next. */
   get spawnedBefore(): number {
-    return this.#spawnedBefore;
+    return this.#from.spawned;
   }
 
   /** Records `call` as spawned by this segment. */

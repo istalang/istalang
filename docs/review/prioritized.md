@@ -21,7 +21,7 @@ tags: [review, architecture, refactoring, plan]
 | 7 | Generalize Virtual Places (`Index`, `Unwrap`, `Shared.value` into projected/accessor steps) | checker, lowering | D86, D87, D96 | by-argon | |
 | 8 | Unify Destructuring Walk & Wrap Counts (single target walker, wrap counts on sites) | checker | D82, D97 | by-argon | |
 | 9 | Flow analysis extraction (one flow model / CFG instead of manual switches) | checker | D133 | by-argon, by-opus | |
-| 10 | Unify HeapObject table / Frame view / Snapshot builder | runtime | D110, D123, D126 | by-argon | |
+| 10 | Unify HeapObject table / Frame view / Snapshot builder | runtime | D110, D123, D126 | by-argon | done (6bd863e) |
 | 11 | Derive Heap indexes instead of linear scans | runtime | D134, D107, D111, D113 | by-opus | |
 | 12 | Generalize `@JsonSkip` and JSON forms (use `Default` trait) | checker, lowering | | by-argon | |
 | 13 | Spec: JSON crossing as traits (`Encodable`/`Decodable` instead of closed table) | spec, compiler | D140 | by-opus | |
