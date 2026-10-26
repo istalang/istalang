@@ -72,7 +72,11 @@ function specCode(section: string, wanted: (code: string) => boolean): string[] 
  * The host spec §12 declares, scripted: a queue is named after what it carries, and logs to
  * `queue.log` every send, retraction and charge, a send by the token it gave. The purchase requests
  * hold one request, then fail; a purchase's verdicts arrive one after the other, and its cancels
- * late, once nothing waits on them, so filling them changes nothing.
+ * late, once nothing waits on them, so filling them changes nothing. A cancel's timer starts only
+ * once the last verdict is given, which the run takes in before any timer can fire, so no load on
+ * the machine lets a cancel overtake a verdict. That holds while filling and advancing an instance
+ * are synchronous, as `memoryStore` keeps them: between a promise settling and its fill, the run
+ * waits only on microtasks.
  */
 const specHost = [
   "import { appendFileSync } from 'node:fs';",
@@ -84,6 +88,18 @@ const specHost = [
   "const sendRevertible = 'main.sendRevertible(main.Queue<T>, T)';",
   "const verdicts = [{ role: 'legal', ok: true, comment: '' }, { role: 'finance', ok: true, comment: '' }];",
   "const requests = [{ id: 'p1', item: 'laptop', amount: 900 }];",
+  'let verdictsGiven;',
+  'const allVerdictsGiven = new Promise((resolve) => {',
+  '  verdictsGiven = resolve;',
+  '});',
+  '/** The next verdict, a moment from now. */',
+  'const verdict = () =>',
+  '  new Promise((resolve) =>',
+  '    setTimeout(() => {',
+  '      resolve(verdicts.shift());',
+  '      if (verdicts.length === 0) verdictsGiven();',
+  '    }, 5),',
+  '  );',
   '/** A promise of what a receive from `queue` gets next. */',
   'const next = (queue) => {',
   "  if (queue === 'requests') {",
@@ -92,8 +108,8 @@ const specHost = [
   "      : Promise.reject(new Error('no more requests'));",
   '  }',
   "  return queue.startsWith('verdicts')",
-  '    ? new Promise((resolve) => setTimeout(() => resolve(verdicts.shift()), 5))',
-  "    : new Promise((resolve) => setTimeout(() => resolve({ reason: 'late' }), 50));",
+  '    ? verdict()',
+  "    : allVerdictsGiven.then(() => new Promise((resolve) => setTimeout(() => resolve({ reason: 'late' }))));",
   '};',
   'export default {',
   "  'main.purchaseRequests': () => 'requests',",

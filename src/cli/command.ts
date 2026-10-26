@@ -12,6 +12,11 @@ export interface CliEnvironment {
   readonly cwd: string;
   readonly write: (text: string) => void;
   readonly writeError: (text: string) => void;
+  /**
+   * Settles once the process has nothing left to run, so a promise still pending can never settle:
+   * `ista run --host` stops waiting on its host then.
+   */
+  readonly idle: Promise<void>;
 }
 
 /** What a command's exit code says. */

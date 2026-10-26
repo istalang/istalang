@@ -1,0 +1,50 @@
+# outcome: ["job 1","job 2","alive","worker disposing","defer2","defer1","scope 3"]
+# QA M3 (§3.4, §6, §7, §8): a worker held by `fn _` sees `disposing()` when `scope` returns, ahead of the defers (reverse creation order); the watcher held by a `_` of the same block dies with it, so `disposed()` never logs. `scope` waits for the worker to report both jobs, not for a time, so a slow machine can't reorder them.
+import Inbox, Revertible from 'inbox'
+import * as time from 'time'
+
+async fn worker(log: Inbox<string>, jobs: Inbox<int>, done: Inbox<int>):
+    while true:
+        await select:
+            case jobs.receive() as j:
+                log.send("job " + j.toString())
+                done.send(j)
+            case worker.disposing():
+                log.send("worker disposing")
+                return
+
+async fn watcher(log: Inbox<string>, w: WeakRef<Inbox<int>>):
+    await w.disposed()
+    log.send("inbox gone")
+
+async fn scope(log: Inbox<string>) -> Future<int>:
+    const jobs = Inbox.create<int>()
+    const done = Inbox.create<int>()
+    const wk = WeakRef(jobs)
+    _ = watcher(log, wk)
+    defer fn(): log.send("defer1")
+    defer fn(): log.send("defer2")
+    fn _ = worker(log, jobs, done)
+    jobs.send(1)
+    jobs.send(2)
+    _ = await done.receive()
+    _ = await done.receive()
+    log.send(if wk.deref() is none: "dead" else: "alive")
+    3
+
+async fn main() -> Future<Array<string>>:
+    const log = Inbox.create<string>()
+    const r = await scope(log)
+    log.send("scope " + r.toString())
+    await time.delay(10ms)
+    let out: Array<string> = []
+    while true:
+        const more: bool = select:
+            case log.receive() as s:
+                out.push(s)
+                true
+            else:
+                false
+        if not more:
+            break
+    out

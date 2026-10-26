@@ -52,6 +52,8 @@ export async function ista(cwd: string, ...args: string[]): Promise<Run> {
     writeError: (text) => {
       err += text;
     },
+    // A test's process always has work left, so its host's promises are never given up on.
+    idle: new Promise(() => undefined),
   });
   return { code, out, err };
 }

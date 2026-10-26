@@ -7,13 +7,14 @@
  *
  * The instance runs on real time: when it waits, the command sleeps until its earliest timer is
  * due, or until a promise its host gave settles, and wakes it. When nothing is left that could
- * wake it, it reports where it waits. Every instance it spawns runs alongside it, theirs too,
+ * wake it, it reports where it waits; a host's promise can wake it only while the process has
+ * something left to run, since once it has nothing, no promise can settle. Every instance it spawns runs alongside it, theirs too,
  * until all of them have settled; `main`'s outcome is printed, and a spawned instance that panics
  * or can never wake is reported on the error stream and fails the run. Nothing runs unless the
  * whole program checks clean. Diagnostics, warnings included, go to the error stream as `check`
  * renders them, so the output holds only the outcome.
  * Exit codes: 0 when `main` finishes; 1 when the program has errors, declares no `main`, panics,
- * or the runtime refuses it; 2 when the entry can't be read or the options don't fit together.
+ * the runtime refuses it, or an instance waits on nothing that can wake it; 2 when the entry can't be read or the options don't fit together.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -188,36 +189,46 @@ async function finish(
  * promise that failed settled and others are still pending, since a run ends when it is resumed
  * with nothing and no timer is due.
  */
-async function arrivalsBy(due: bigint | undefined, { runtime, host, environment }: Session) {
+async function arrivalsBy(due: bigint | undefined, session: Session) {
+  const { runtime, host, environment } = session;
   for (;;) {
     // biome-ignore lint/performance/noAwaitInLoops: each wait depends on what the last one settled.
-    await nextWake(due, host);
+    const woke = await nextWake(due, session);
     const arrived = host?.arrivals(runtime, environment.writeError) ?? [];
-    if (arrived.length > 0 || due !== undefined || host?.waiting() !== true) {
+    if (arrived.length > 0 || due !== undefined || woke === 'idle' || host?.waiting() !== true) {
       return arrived;
     }
   }
 }
 
+/** What ended a wait: a timer came due or a host's promise settled, or the process went idle. */
+type Wake = 'woke' | 'idle';
+
 /**
  * Until the earliest timer is due, or the host's next promise settles, whichever is first; at once
- * when nothing could wake an instance, so the run ends. A sleep a promise cut short is cancelled,
- * so a far timer, such as a day's reminder, keeps no process alive once the run ends.
+ * when nothing could wake an instance, so the run ends. Waiting only on the host's promises ends
+ * too when the process goes idle, since none of them can settle then. A sleep a promise cut short
+ * is cancelled, so a far timer, such as a day's reminder, keeps no process alive once the run ends.
  */
-async function nextWake(due: bigint | undefined, host: HostModule | undefined): Promise<void> {
+async function nextWake(due: bigint | undefined, { host, environment }: Session): Promise<Wake> {
   const sleeping = new AbortController();
-  const waits: Promise<unknown>[] = [];
+  const waits: Promise<Wake>[] = [];
   if (due !== undefined) {
     const delay = Math.max(0, Number(due - clock()));
-    waits.push(sleep(delay, undefined, { signal: sleeping.signal }));
+    waits.push(sleep(delay, 'woke', { signal: sleeping.signal }));
   }
   if (host?.waiting() === true) {
-    waits.push(host.nextSettled());
+    waits.push(
+      host.nextSettled().then(() => 'woke' as const),
+      environment.idle.then(() => 'idle' as const),
+    );
   }
-  if (waits.length > 0) {
-    await Promise.race(waits);
-    sleeping.abort();
+  if (waits.length === 0) {
+    return 'woke';
   }
+  const woke = await Promise.race(waits);
+  sleeping.abort();
+  return woke;
 }
 
 /** What the error stream says of an instance that didn't finish: `main`'s, or one it spawned. */

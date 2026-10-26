@@ -1,0 +1,34 @@
+# outcome: ["r1 read 10","t1 take 10","r2 read 20","t2 take 20","last 7"]
+# QA M3 (§6): one queue per slot, longest waiter first: a read before the first take sees the value, the take empties it, and a read queued behind that take waits for the next put.
+import Inbox from 'inbox'
+
+async fn reader(log: Inbox<string>, s: Slot<int>, name: string, take: bool):
+    if take:
+        const v = await s.take()
+        log.send(name + " take " + v.toString())
+    else:
+        const v = await s.read()
+        log.send(name + " read " + v.toString())
+
+async fn main() -> Future<Array<string>>:
+    const log = Inbox.create<string>()
+    const s = Slot.create<int>()
+    fn _ = reader(log, s, "r1", false)
+    fn _ = reader(log, s, "t1", true)
+    fn _ = reader(log, s, "r2", false)
+    fn _ = reader(log, s, "t2", true)
+    const p1 = s.put(10)
+    const p2 = s.put(20)
+    await p1
+    await p2
+    let out: Array<string> = []
+    for i in 0..3:
+        out.push(await log.receive())
+    const probe: string = select:
+        case log.receive() as x: x
+        else: "empty"
+    out.push(probe)
+    _ = s.put(7)
+    const t = await s.take()
+    out.push("last " + t.toString())
+    out

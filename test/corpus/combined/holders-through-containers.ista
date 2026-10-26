@@ -1,0 +1,46 @@
+# outcome: ["end of block","after block","cleared","a gone","w1 none: false"]
+# QA M3 (§6, §7): an inbox held through an array element outlives its block and is disposed only when the array drops it, signalling the `disposed()` watcher then; the block-local watcher and revertible holder die at block end without signalling.
+import Inbox, Revertible from 'inbox'
+import * as time from 'time'
+
+struct Holder:
+    box: Inbox<int>
+    me: int
+
+async fn watcher(log: Inbox<string>, name: string, w: WeakRef<Inbox<int>>):
+    await w.disposed()
+    log.send(name + " gone")
+
+async fn main() -> Future<Array<string>>:
+    const log = Inbox.create<string>()
+    let hs: Array<Holder> = []
+    let w1: WeakRef<Inbox<int>>? = none
+    let wd: Future<unit>? = none
+    if true:
+        const a = Inbox.create<int>()
+        hs.push(Holder{box: a, me: 1})
+        const wa = WeakRef(a)
+        wd = watcher(log, "a", wa)
+        w1 = wa
+        const b = Inbox.create<int>()
+        const r1 = b.sendRevertible(5)
+        _ = watcher(log, "b", WeakRef(b))
+        log.send("end of block")
+    await time.delay(5ms)
+    log.send("after block")
+    hs = []
+    log.send("cleared")
+    await time.delay(5ms)
+    const x = w1 == none
+    log.send("w1 none: " + x.toString())
+    let out: Array<string> = []
+    while true:
+        const more: bool = select:
+            case log.receive() as s:
+                out.push(s)
+                true
+            else:
+                false
+        if not more:
+            break
+    out
