@@ -3,7 +3,7 @@
  * written in, where type parameters and `Self` are visible.
  *
  * Fields live in their own namespace, so they are checked for convention and repeats but never
- * defined in a scope.
+ * defined in a scope, except as the variables the defaults after them read (declarations.ts, §3.1).
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';

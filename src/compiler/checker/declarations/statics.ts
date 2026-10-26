@@ -10,6 +10,7 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { declaredFunctions } from '../../syntax/derived-functions.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
+import { isNominalEntity } from '../types/type.ts';
 
 export class StaticFunctions {
   readonly #checker: CheckerContext;
@@ -62,11 +63,6 @@ export class StaticFunctions {
       }
       return aliased.kind === 'nominal' ? aliased.entity.declaration : undefined;
     }
-    return owner.kind === 'StructDeclaration' ||
-      owner.kind === 'EnumDeclaration' ||
-      owner.kind === 'ExternStructDeclaration' ||
-      owner.kind === 'HandleDeclaration'
-      ? owner
-      : undefined;
+    return isNominalEntity(entity) ? entity.declaration : undefined;
   }
 }

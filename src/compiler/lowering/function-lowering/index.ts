@@ -9,10 +9,10 @@
  *   (optional-chains.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
- * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, then a closure's
- *   captures, then locals and temporaries. A variable living in a cell is listed in `cells`; a
- *   reference parameter's register holds the caller's reference, and a captured cell's register
- *   the cell its closure carries.
+ * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, then a
+ *   closure's captures, then locals and temporaries. A variable living in a cell is listed in
+ *   `cells`; a reference parameter's register holds the caller's reference, and a captured cell's
+ *   register the cell its closure carries.
  * - A lambda or local function (§3.14) answers to its own name through the closure it runs,
  *   taken once at its entry (`currentClosure`).
  * - A defaults entry takes the arguments its callers give, computes the rest from the defaults

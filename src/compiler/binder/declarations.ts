@@ -9,7 +9,8 @@
  *   to one another (`<A, B is Convertible<A>>`).
  * - A parameter's default may use the parameters before it (§3.3), so each parameter is defined
  *   after its own type and default are bound. A field's default may use the fields before it the
- *   same way (§3.1), as a parameter of the function the fields read as (syntax/derived-functions.ts).
+ *   same way (§3.1), as a parameter of the function the fields read as
+ *   (syntax/derived-functions.ts).
  * - A named lambda's name is visible only inside the lambda (§3.14).
  * - `Self` is defined in a trait's scope, and only there (§3.10).
  * - A static function's owner (`Duration` in `fn Duration.zero()`) is a type use in the scope
@@ -76,7 +77,7 @@ function bindParameters(
 
 /**
  * The defaults of a struct's or a variant's fields, each seeing the fields before it (§3.1). The
- * fields' names were checked, and their types bound, with the fields.
+ * fields' names were checked, repeats reported, and their types bound, with the fields.
  */
 function bindFieldDefaults(
   binder: LocalBinder,
@@ -89,8 +90,7 @@ function bindFieldDefaults(
   const inner = Scope.nested(scope);
   bindDefaults(binder, fieldsFunction.parameters, inner, (field) => {
     const entity = { kind: 'variable', name: field.name, owner: field } as const;
-    binder.record(field.name, entity);
-    inner.define(field.name.text, entity);
+    binder.declare(inner, field.name, entity, { clash: false });
   });
 }
 

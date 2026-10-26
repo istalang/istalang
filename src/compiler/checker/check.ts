@@ -212,8 +212,8 @@ export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCa
  * Nodes a call can be written as: a call, an operator that calls a function (§3.9), `x$`, which
  * calls `unwrap`, indexing, which calls `index`, an assignment, whose compound operator or
  * `x$ = v` calls a function, a pattern's comparison such as `amount > 1000`, which calls `compare`
- * (§3.11). A function named as a value (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the expression
- * naming it, for the function its closure runs.
+ * (§3.11). A function named as a value (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the
+ * expression naming it, for the function its closure runs.
  */
 export type CallSite = NodeOf<
   | 'Call'
@@ -358,7 +358,10 @@ export interface Checker {
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
   readonly variantsOf: (type: NominalType) => readonly VariantMember[] | undefined;
-  /** What a handle's cell holds (§3.18), substituted for its type arguments; undefined for another type. */
+  /**
+   * What a handle's cell holds (§3.18), substituted for its type arguments; undefined for another
+   * type.
+   */
   readonly stateOf: (type: NominalType) => Type | undefined;
   /** Who disposes a value of `type` (rules/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;

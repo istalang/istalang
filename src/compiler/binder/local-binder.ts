@@ -182,7 +182,7 @@ export class LocalBinder {
       return false;
     }
     const defined = scope.define(name.text, entity);
-    if (!defined) {
+    if (!defined && clash !== false) {
       this.report(clash(name.span, name.text));
     }
     return defined;
@@ -249,8 +249,11 @@ export class LocalBinder {
 /** How a declared name is checked: its case, and how a name already defined is reported. */
 interface DeclarationRules {
   readonly convention?: Convention;
-  /** Makes the diagnostic for a name the scope already defines; a plain duplicate by default. */
-  readonly clash?: (span: Span, name: string) => Diagnostic;
+  /**
+   * Makes the diagnostic for a name the scope already defines; a plain duplicate by default, and
+   * none when `false`, for a name whose repeat its declaration reported already.
+   */
+  readonly clash?: ((span: Span, name: string) => Diagnostic) | false;
 }
 
 /** Whether a name's later parts can be resolved by name: through a module or an enum. */

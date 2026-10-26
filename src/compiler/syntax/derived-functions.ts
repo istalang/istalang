@@ -4,12 +4,12 @@
  * lowered. Each is made once from its declaration's own nodes, through one builder, and remembers
  * where it comes from (`originOf`):
  *
- * - A handle `H<T…>` of `S` (§3.18) declares `H.from(value: S) -> H<T…>`, `unwrap(self: H<T…>) -> S`
- *   and `rewrap(self: H<T…>, value: S)`, the functions `H(v)`, `x$` and `x$ = v` call (§3.9), as
- *   externs: their types are its type parameters, its state's type and `H<T…>`, a type node naming
- *   the handle (`selfType`), which the binder binds where the handle's parameters are visible. A
- *   handle is a cell, so their natives are the runtime's cells. They are a module's own functions,
- *   found by name (`declaredFunctions`).
+ * - A handle `H<T…>` of `S` (§3.18) declares `H.from(value: S) -> H<T…>`,
+ *   `unwrap(self: H<T…>) -> S` and `rewrap(self: H<T…>, value: S)`, the functions `H(v)`, `x$` and
+ *   `x$ = v` call (§3.9), as externs: their types are its type parameters, its state's type and
+ *   `H<T…>`, a type node naming the handle (`selfType`), which the binder binds where the handle's
+ *   parameters are visible. A handle is a cell, so their natives are the runtime's cells. They are
+ *   a module's own functions, found by name (`declaredFunctions`).
  * - The fields of a struct or a variant, when one has a default (§3.1), read as the parameters of a
  *   function of their own, each with its type and default, so a field's default is taken as a
  *   parameter's (§3.3): it sees the fields before it, a field without a written type takes its
@@ -81,7 +81,7 @@ export function declaredFunctions(module: Module): readonly FunctionDeclaration[
   });
 }
 
-/** Every function `item` derives: a handle's, or those a struct's or its variants' fields read as. */
+/** Every function `item` derives: a handle's, or those a struct's or variants' fields read as. */
 export function derivedFunctionsOf(item: Declaration): readonly FunctionDeclaration[] {
   switch (item.kind) {
     case 'HandleDeclaration': {

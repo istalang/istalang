@@ -4,9 +4,9 @@
  * unwrapped value, which assigning to a part of a value does, and write it back with `rewrap`
  * (calls/places.ts).
  *
- * - `x.value` on a handle (§3.18), `Shared` included, is the same as `x$`; written as a field read, it calls `unwrap` with no
- *   call written, so its call is recorded as the read's implicit one, apart from a static function
- *   named as a value at the same kind of node.
+ * - `x.value` on a handle (§3.18), `Shared` included, is the same as `x$`; written as a field
+ *   read, it calls `unwrap` with no call written, so its call is recorded as the read's implicit
+ *   one, apart from a static function named as a value at the same kind of node.
  * - `v` must fit the type `x$` reads, the result of the `unwrap` a read would call, so it is checked
  *   against that type first: `none` or a value wrapped into `T?` gets its expected type, and a value
  *   that doesn't fit is reported where it is written. A type with a `rewrap` and no `unwrap` is

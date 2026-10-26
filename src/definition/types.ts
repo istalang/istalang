@@ -117,8 +117,8 @@ const disposal = z.discriminatedUnion('kind', [
 
 /**
  * What the runtime makes of an extern type's values: a `cell` type is every handle's (spec §3.18),
- * `Shared<T>` the one variables live in (§3.7, §3.14); a `future` type is every `Future<T>`, which a
- * host's extern returning one gives back pending (§9). Any other extern type has none.
+ * `Shared<T>` the one variables live in (§3.7, §3.14); a `future` type is every `Future<T>`, which
+ * a host's extern returning one gives back pending (§9). Any other extern type has none.
  */
 const externRole = z.enum(['cell', 'future']);
 

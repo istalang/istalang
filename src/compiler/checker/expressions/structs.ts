@@ -213,7 +213,11 @@ export function checkMemberAccess(
   if (field !== undefined) {
     return field;
   }
-  if (name === 'value' && type.kind === 'nominal' && context.checker.stateOf(type) !== undefined) {
+  if (
+    name === 'value' &&
+    type.kind === 'nominal' &&
+    type.entity.declaration.kind === 'HandleDeclaration'
+  ) {
     return checkHandleValue(context, node, type);
   }
   const isMethod = topLevelCandidates(context.checker, context.module, name, [type]).some(

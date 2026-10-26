@@ -56,7 +56,7 @@ export function parseTypeAlias(parser: Parser): TypeAliasDeclaration {
   return { kind: 'TypeAliasDeclaration', span, name, typeParameters, type };
 }
 
-/** `handle Name<T> of Type`, starting at `handle`; `handle` and `of` are keywords only here (§2). */
+/** `handle Name<T> of Type`, from `handle`; `handle` and `of` are keywords only here (§2). */
 export function parseHandle(parser: Parser): HandleDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
   const state = parseHandleState(parser);
