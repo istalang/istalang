@@ -8,7 +8,8 @@
  * - A variable passed by `&` somewhere in the body, or a `let` a closure captures, lives in a cell,
  *   which a reference or a closure can reach (docs/arch/definition.md, "Frames"): its register is
  *   listed in the function's `cells`, typed as the `Shared<T>` the cell is created as.
- * - An assignment evaluates its value, then writes each part to its place (`assignedOf`);
+ * - An assignment evaluates its value, then writes each part to its place (`assignedOf`),
+ *   wrapped as the checker found it fits the place (§2);
  *   `x$ = v` calls the function the checker resolved for it on the handle and the value. A
  *   compound assignment reads its place once, calls its operator's function on that value and the
  *   operand, and writes the result back to the same place. A place reached through an element or
@@ -21,7 +22,7 @@
 import type { Register, TypeId } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
-import type { TargetOwner } from '../../checker/check.ts';
+import type { AssignedPart, TargetOwner } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { hasUnnamedPart } from '../../syntax/patterns.ts';
@@ -206,7 +207,7 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
   const [only] = parts;
   if (node.operator !== '=' && only !== undefined) {
     const { target, leave } = enterAssigned(context, only.target);
-    lowerCompound(context, node, target);
+    lowerCompound(context, node, target, only);
     leave();
     return;
   }
@@ -214,16 +215,32 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
   if (node.targets.some(hasUnnamedTarget)) {
     context.variables.hold(copied(context, value, node.span));
   }
-  for (const { target: written, path } of parts) {
-    const { target, leave } = enterAssigned(context, written);
-    writeTarget(context, target, readPart(context, value, path, node.span), node.span);
+  for (const part of parts) {
+    const { target, leave } = enterAssigned(context, part.target);
+    const read = readPart(context, value, part.path, node.span);
+    writeTarget(context, target, writtenPart(context, read, part, node.span), node.span);
     leave();
   }
 }
 
 /** `x op= v` at `target`: its value read once, the operator's function called, the result written. */
-function lowerCompound(context: FunctionContext, node: Assignment, target: PlaceTarget): void {
+function lowerCompound(
+  context: FunctionContext,
+  node: Assignment,
+  target: PlaceTarget,
+  part: AssignedPart,
+): void {
   const current = readTarget(context, target, node.span);
   const result = call(context, node, [current, context.expression(node.value)]);
-  writeTarget(context, target, result, node.span);
+  writeTarget(context, target, writtenPart(context, result, part, node.span), node.span);
+}
+
+/** `value`, the part of an assignment's value `part` writes, wrapped to fit its place (§2). */
+function writtenPart(
+  context: FunctionContext,
+  value: Register,
+  part: AssignedPart,
+  span: Span,
+): Register {
+  return context.wrapped(value, part.type, part.wraps, span);
 }

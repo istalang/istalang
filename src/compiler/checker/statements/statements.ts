@@ -45,7 +45,7 @@ export const statementHandlers: Handlers<
     return unitType;
   },
   Return: (context, node) => {
-    context.returns.check(context, node.value, node.span);
+    context.returns.check(context, node);
     return neverType;
   },
   Break: checkLoopExit,

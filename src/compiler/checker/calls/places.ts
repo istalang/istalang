@@ -2,7 +2,8 @@
  * Places that change (§3.4, §3.7): what an assignment to a part, a `&` argument, or a method
  * taking `&self` may change, and the variables each change counts against.
  *
- * - A place is a variable, or a field, tuple element or indexed element of one, at any depth. Its
+ * - A place is a variable, or a field, tuple element or indexed element of one, at any depth
+ *   (syntax `isPlace`, by which the parser reports a target or `&` argument that is none). Its
  *   root decides: a `let` may change, and so may a reference parameter, which changes the caller's
  *   place. A by-value parameter is as if declared `const` (§3.3), and a `const`, top-level or
  *   local, is deeply immutable, so no part of either may change; neither may a pattern's or loop's
@@ -28,7 +29,7 @@
 
 import { rewrapFunction } from '../../../language/well-known.ts';
 import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
-import { type Expression, placePath, type Unwrap } from '../../syntax/expressions.ts';
+import { type Expression, isPlace, placePath, type Unwrap } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -61,8 +62,9 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
 }
 
 /**
- * Checks that `node`, already checked as a value, may change as a place; false after a report.
- * The receiver of a method taking `&self` is checked this way once the method is known.
+ * Checks that `node`, already checked as a value, may change as a place; false after a report, or
+ * for no place, which the parser reported. The receiver of a method taking `&self` is checked this
+ * way once the method is known.
  */
 function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
   const root = rootOf(node);
@@ -74,7 +76,6 @@ function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boo
     return writesBack(context, root) && writesElements(context, node);
   }
   if (root.kind !== 'Identifier') {
-    context.report(checkerDiagnostics.notPlace(node.span, use));
     return false;
   }
   const passedByReference = use === 'referenced' || reachesElement(node);
@@ -182,8 +183,7 @@ function writesBack(context: BodyContext, node: Unwrap): boolean {
  * place that may change, so a call's result, say, is reported as needing one.
  */
 export function changeReceiver(context: BodyContext, receiver: Expression, method: string): void {
-  const root = rootOf(receiver);
-  if (root.kind === 'Identifier' || isOnFrontier(root, 'referenced')) {
+  if (isPlace(receiver)) {
     changePlace(context, receiver, 'referenced');
   } else {
     context.report(checkerDiagnostics.receiverNotPlace(receiver.span, method));

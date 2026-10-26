@@ -183,6 +183,15 @@ export interface PlacePath {
   readonly steps: readonly PlaceStep[];
 }
 
+/**
+ * Whether `node` names a place (§3.7, §3.9): a variable or a `$` value, with fields, tuple
+ * elements and indexed elements read off it. A missing expression counts, being reported already.
+ */
+export function isPlace(node: Expression): boolean {
+  const { root } = placePath(node);
+  return root.kind === 'Identifier' || root.kind === 'Unwrap' || root.kind === 'Missing';
+}
+
 export function placePath(node: Expression): PlacePath {
   const steps: PlaceStep[] = [];
   let current = unparenthesized(node);

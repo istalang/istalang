@@ -14,11 +14,13 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { unitType } from '../../checker/types/type.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import {
   type Block,
   type Drop,
   droppedName,
+  type Return,
   type Statement,
   tailExpressionOf,
 } from '../../syntax/statements.ts';
@@ -38,8 +40,7 @@ const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void
   VariableDeclaration: lowerVariableDeclaration,
   Assignment: lowerAssignment,
   Return: (context, node) => {
-    const value =
-      node.value === undefined ? context.constant(null, node.span) : context.expression(node.value);
+    const value = node.value === undefined ? unitOf(context, node) : context.expression(node.value);
     context.returnValue(value, node.span);
   },
   While: lowerWhile,
@@ -103,7 +104,13 @@ export function lowerBody(context: FunctionContext, block: Block): Register {
   for (const statement of statements) {
     context.statement(statement);
   }
-  return tail === undefined ? context.constant(null, block.span) : context.expression(tail);
+  return tail === undefined ? unitOf(context, block) : context.expression(tail);
+}
+
+/** The `unit` a bare `return`, or a block with no tail expression, gives, wrapped as checked (§2). */
+function unitOf(context: FunctionContext, site: Return | Block): Register {
+  const unit = context.constant(null, site.span);
+  return context.wrapped(unit, unitType, context.body.wrapsOf(site), site.span);
 }
 
 /** `drop x` releases the variable `x` (§7); `drop e` only computes `e`, a temporary. */

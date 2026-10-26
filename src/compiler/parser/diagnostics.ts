@@ -85,7 +85,7 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   invalidAssignmentTarget: {
     code: 2018,
     message: () =>
-      "Only a variable, a field, a tuple element, an index, a '$' value, or a tuple or struct of these can be assigned to.",
+      "Only a variable or a '$' value, a field, tuple element or index of one, or a tuple or struct of these can be assigned to.",
   },
   externWithBody: {
     code: 2019,
@@ -102,6 +102,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   nestingTooDeep: {
     code: 2022,
     message: (limit: number) => `This is nested more than ${limit} levels deep; split it up.`,
+  },
+  referenceNotPlace: {
+    code: 2023,
+    message: () =>
+      "Only a variable or a '$' value, or a field, tuple element or index of one, can be passed by '&'.",
   },
   invalidTupleElement: {
     code: 2200,

@@ -132,6 +132,10 @@ export function instantiatedBody(body: CheckedBody, instance: FunctionInstance):
       body
         .targetsOf(declaration)
         .map((binding) => ({ ...binding, type: substitute(binding.type, substitution) })),
+    assignedOf: (assignment) =>
+      body
+        .assignedOf(assignment)
+        .map((part) => ({ ...part, type: substitute(part.type, substitution) })),
     chainOf: (link) => {
       const chained = body.chainOf(link);
       return chained === undefined

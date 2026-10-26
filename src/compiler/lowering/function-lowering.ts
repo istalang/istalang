@@ -256,16 +256,21 @@ export class FunctionLowering implements FunctionContext {
   }
 
   expression(node: Expression): Register {
-    let register =
+    const register =
       this.body.chainOf(node) === undefined
         ? handlerOf(expressionHandlers, node)(this, node)
         : this.chains.lower(this, node);
-    let type = this.body.typeOf(node);
-    for (let wraps = this.body.wrapsOf(node); wraps > 0; wraps -= 1) {
-      const optional = this.checker.optionalOf(type);
+    return this.wrapped(register, this.body.typeOf(node), this.body.wrapsOf(node), node.span);
+  }
+
+  wrapped(value: Register, type: Type, wraps: number, span: Span): Register {
+    let register = value;
+    let current = type;
+    for (let left = wraps; left > 0; left -= 1) {
+      const optional = this.checker.optionalOf(current);
       const some = { type: optional, name: optionalVariants.some };
-      register = buildVariant(this, some, [register], node.span);
-      type = optional;
+      register = buildVariant(this, some, [register], span);
+      current = optional;
     }
     return register;
   }

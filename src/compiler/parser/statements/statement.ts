@@ -15,10 +15,10 @@
  * `=` can do.
  */
 
-import { type Expression, unparenthesized } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { isAssignmentOperator } from '../../syntax/operators.ts';
-import { destructures, type Statement, targetParts } from '../../syntax/statements.ts';
+import { destructures, isTarget, type Statement } from '../../syntax/statements.ts';
 import type { CursorKind } from '../cursor.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
@@ -100,7 +100,7 @@ function parseExpressionStatement(parser: Parser): Statement {
     parser.report(parserDiagnostics.compoundDestructuring(cursor.token.span, operator));
   }
   cursor.advance();
-  for (const target of targets.filter((each) => !isAssignable(each))) {
+  for (const target of targets.filter((each) => !isTarget(each))) {
     parser.report(parserDiagnostics.invalidAssignmentTarget(target.span));
   }
   const value = parser.expression();
@@ -115,33 +115,4 @@ function parseMoreTargets(parser: Parser, first: Expression): Expression[] | und
     targets.push(parser.expression());
   }
   return isAssignmentOperator(cursor.kind) ? targets : undefined;
-}
-
-/**
- * What may stand left of `=`: a variable, a field, a tuple element, an index, or a `$` value
- * (§3.9), or a tuple or struct literal made of these (§3.15), parenthesized or not; a struct's
- * positional value needs the parentheses (§3.1).
- */
-function isAssignable(target: Expression): boolean {
-  const bare = unparenthesized(target);
-  if (destructures(bare)) {
-    const itemsOnly =
-      bare.kind !== 'StructLiteral' ||
-      bare.items.every(
-        (item) => item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer',
-      );
-    return itemsOnly && targetParts(bare).every(isAssignable);
-  }
-  switch (bare.kind) {
-    case 'Identifier':
-    case 'Index':
-    case 'Unwrap':
-    case 'TupleElement':
-    case 'Missing':
-      return true;
-    case 'MemberAccess':
-      return !bare.isOptional;
-    default:
-      return false;
-  }
 }

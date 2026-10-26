@@ -312,7 +312,7 @@ function spreadItems(context: BodyContext, spread: Spread, item: Type | undefine
   return {
     type: checkIterated(context, spread, spread.expression, expected) ?? errorType,
     span: spread.span,
-    node: undefined,
+    site: undefined,
   };
 }
 
@@ -325,8 +325,8 @@ function spreadEntries(
   const item = checkIterated(context, spread, spread.expression, map);
   const [key, value] = pairOf(context, spread, item);
   return [
-    { type: key, span: spread.span, node: undefined },
-    { type: value, span: spread.span, node: undefined },
+    { type: key, span: spread.span, site: undefined },
+    { type: value, span: spread.span, site: undefined },
   ];
 }
 
@@ -348,7 +348,7 @@ function producedValue(
   node: Expression,
   expected: Type | undefined,
 ): Produced {
-  return { type: context.expression(node, expected), span: node.span, node };
+  return { type: context.expression(node, expected), span: node.span, site: node };
 }
 
 /** What a literal's `part`s agree on, reporting those that don't fit it. */

@@ -13,8 +13,7 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Expression } from '../../syntax/expressions.ts';
-import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
+import { type Block, type Return, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { agreedType, fitProduced, type Produced } from '../rules/agreement.ts';
@@ -41,18 +40,19 @@ export class ReturnScope {
     this.#isFunction = isFunction;
   }
 
-  /** Checks a `return` and what it returns, if anything, at `span`. */
-  check(context: BodyContext, value: Expression | undefined, span: Span): void {
+  /** Checks a `return` and what it returns: its value, or `unit` for a bare one. */
+  check(context: BodyContext, node: Return): void {
     const expected = this.declared;
+    const { value } = node;
     if (value === undefined) {
       if (expected !== undefined) {
-        context.fitUnwrapped(unitType, expected, span);
+        context.fit(unitType, expected, node);
       }
-      this.#returned.push({ type: unitType, span, node: undefined });
+      this.#returned.push({ type: unitType, span: node.span, site: node });
       return;
     }
     const type = context.expect(value, expected);
-    this.#returned.push({ type, span: value.span, node: value });
+    this.#returned.push({ type, span: value.span, site: value });
   }
 
   /** Notes a `?` at `span` that would return an `Err` of `error` (§3.12). */
@@ -87,9 +87,12 @@ export class ReturnScope {
   }
 }
 
-/** A block body's tail: its last expression's value, or unit at its last statement. */
+/**
+ * A block body's tail: its last expression's value, or the unit the block gives, reported at its
+ * last statement.
+ */
 export function blockTail(body: Block, type: Type): Produced {
-  return { type, span: tailNodeOf(body).span, node: tailExpressionOf(body) };
+  return { type, span: tailNodeOf(body).span, site: tailExpressionOf(body) ?? body };
 }
 
 /** Reports a `?` whose `Err` doesn't fit a function producing `result`. */

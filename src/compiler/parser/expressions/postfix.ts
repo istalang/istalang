@@ -15,7 +15,7 @@
  * one float, so that token is split back into its two elements here.
  */
 
-import type { Call, Expression, Spread } from '../../syntax/expressions.ts';
+import { type Call, type Expression, isPlace, type Spread } from '../../syntax/expressions.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
@@ -55,7 +55,7 @@ function parseCall(parser: Parser, callee: Expression, typeArguments: readonly T
   return { kind: 'Call', span, callee, typeArguments, arguments: items };
 }
 
-/** An argument; `&` is allowed only on a whole argument (§3.7). */
+/** An argument; `&` is allowed only on a whole argument (§3.7), and passes a place. */
 function parseArgument(parser: Parser): Expression | Spread {
   const { cursor } = parser;
   if (cursor.at('...')) {
@@ -68,6 +68,8 @@ function parseArgument(parser: Parser): Expression | Spread {
   const argument = parser.continueExpression(reference);
   if (argument !== reference) {
     parser.report(parserDiagnostics.misplacedReference(reference.span));
+  } else if (!isPlace(reference.expression)) {
+    parser.report(parserDiagnostics.referenceNotPlace(reference.expression.span));
   }
   return argument;
 }

@@ -1,0 +1,38 @@
+# outcome: "1 2 | 3 4 | 5 | false false | 7"
+# A value is wrapped wherever an optional is expected (§2), also one with no expression of its
+# own: a part a destructuring assignment writes, a compound assignment's result, the unit of a
+# bare `return`, and the unit of a block ending in a statement.
+
+struct Pair { first: int?; second: int }
+
+struct Count { n: int }
+
+fn add(left: Count?, right: int) -> Count:
+  Count{n: (left?.n ?? 0) + right}
+
+fn early(stop: bool) -> unit?:
+  if stop:
+    return
+  none
+
+fn finished() -> unit?:
+  let n = 0
+  n += 1
+
+fn kept<T>(value: T) -> T?:
+  let held: T? = none
+  let count = 0
+  held, count = (value, count + 1)
+  held
+
+async fn main():
+  let a: int? = none
+  let b = 0
+  a, b = (1, 2)
+  let p = Pair{first: none, second: 0}
+  (p.first, p.second) = (3, 4)
+  let c: Count? = none
+  c += 5
+  const stopped = early(true) is none
+  const ran = finished() is none
+  "" + (a ?? 0) + " " + b + " | " + (p.first ?? 0) + " " + p.second + " | " + (c?.n ?? 0) + " | " + stopped + " " + ran + " | " + (kept(7) ?? 0)

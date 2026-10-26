@@ -43,8 +43,13 @@ export interface FunctionContext {
    * local function's own, not its owner's.
    */
   readonly result: Type;
-  /** Lowers `node`; the register holding its value. */
+  /** Lowers `node`; the register holding its value, wrapped as the checker found (§2). */
   readonly expression: (node: Expression) => Register;
+  /**
+   * `value`, of `type`, wrapped into `Some` `wraps` times (§2): the one place a value the checker
+   * found wrapped is, whether an expression's, an assigned part's or a `unit` with no expression.
+   */
+  readonly wrapped: (value: Register, type: Type, wraps: number, span: Span) => Register;
   /** Lowers a block; the register holding its value (unit when it ends in a statement). */
   readonly block: (node: Block) => Register;
   readonly statement: (node: Statement | Invalid) => void;

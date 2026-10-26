@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
+import { reportedNothing, reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { dumpClean, named, parseAs, reported } from '../parse.test-kit.ts';
 
@@ -31,6 +31,22 @@ describe('calls', () => {
     expect(reported('expression', '&x')).toEqual(reportedOnce(misplacedReference.code, '&x'));
     expect(reported('expression', 'f((&x))')).toEqual(reportedOnce(misplacedReference.code, '&x'));
   });
+
+  it.each([
+    ['f(&g())', 'g()'],
+    ['f(&g().x)', 'g().x'],
+    ['f(&a?.b)', 'a?.b'],
+  ])("reports '&' passing what is no place, %s (§3.7)", (text, spanText) => {
+    const { referenceNotPlace } = parserDiagnostics;
+    expect(reported('expression', text)).toEqual(reportedOnce(referenceNotPlace.code, spanText));
+  });
+
+  it.each(['f(&x)', 'f(&x.y[0].1)', 'f(&x$.y)', 'f(&(x))'])(
+    "passes the place %s by '&'",
+    (text) => {
+      expect(reported('expression', text)).toEqual(reportedNothing);
+    },
+  );
 });
 
 describe('type arguments (§3.5)', () => {

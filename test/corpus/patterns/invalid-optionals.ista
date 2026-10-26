@@ -1,7 +1,7 @@
 # error: 5406 at 17:16
 # error: 5406 at 18:20
 # error: 5407 at 20:19
-# error: 5208 at 21:3
+# error: 2018 at 21:3
 # `?.` and `??` work on optionals (§4). A value read through `?.` is a copy, so a chain is never
 # assigned to, not even an element of it, and calls no method taking `&self`.
 

@@ -41,7 +41,7 @@ export class Branches {
     this.#produced.push({
       type: context.block(body, expected),
       span: tailNodeOf(body).span,
-      node: tailExpressionOf(body),
+      site: tailExpressionOf(body) ?? body,
     });
   }
 

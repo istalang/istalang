@@ -11,17 +11,20 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { ValueSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
 import { widened } from '../types/widening.ts';
 
-/** A type some part of a construct produced, where, and the expression producing it, if one does. */
+/**
+ * A type some part of a construct produced, where, and the node giving it: an expression, a bare
+ * `return` or a block with no tail expression; none for a spread's items, given as a whole.
+ */
 export interface Produced {
   readonly type: Type;
   readonly span: Span;
-  readonly node: Expression | undefined;
+  readonly site: ValueSite | undefined;
 }
 
 export interface Agreement {
@@ -79,23 +82,23 @@ export function settleAgreement(
   if (decided === undefined) {
     return undefined;
   }
-  for (const { type, span, node } of disagreeing) {
-    if (expected === undefined && wrapsToFit(type, decided) === undefined) {
-      context.report(mismatch(span, decided, type));
+  for (const each of disagreeing) {
+    if (expected === undefined && wrapsToFit(each.type, decided) === undefined) {
+      context.report(mismatch(each.span, decided, each.type));
     } else {
-      fitProduced(context, { type, span, node }, decided);
+      fitProduced(context, each, decided);
     }
   }
   return decided;
 }
 
-/** Fits what `produced` has to `expected`, at its expression when it has one. */
+/** Fits what `produced` has to `expected`, recording any wrap on the node giving it. */
 export function fitProduced(context: BodyContext, produced: Produced, expected: Type): void {
-  const { type, span, node } = produced;
-  if (node === undefined) {
+  const { type, span, site } = produced;
+  if (site === undefined) {
     context.fitUnwrapped(type, expected, span);
   } else {
-    context.fit(type, expected, node);
+    context.fit(type, expected, site, span);
   }
 }
 

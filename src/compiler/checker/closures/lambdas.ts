@@ -87,7 +87,7 @@ function checkLambdaAs(
     declaredResult,
     tail: (declared) => {
       const type = context.expression(node.body, declared);
-      return { type, span: node.body.span, node: node.body };
+      return { type, span: node.body.span, site: node.body };
     },
   });
 }

@@ -17,7 +17,7 @@
 import type { Span } from '../../text/span.ts';
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
-import { type Expression, itemName, itemValue, unparenthesized } from './expressions.ts';
+import { type Expression, isPlace, itemName, itemValue, unparenthesized } from './expressions.ts';
 import type { Identifier, Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
 import type { Pattern } from './patterns.ts';
@@ -105,6 +105,23 @@ export function destructuringOf(target: Expression): Destructuring<Expression> |
     default:
       return undefined;
   }
+}
+
+/**
+ * What may stand left of `=` (§3.4, §3.15): a place, or a tuple or struct literal made of targets,
+ * parenthesized or not; a struct's positional value needs the parentheses (§3.1).
+ */
+export function isTarget(target: Expression): boolean {
+  const bare = unparenthesized(target);
+  const itemsOnly =
+    bare.kind !== 'StructLiteral' ||
+    bare.items.every(
+      (item) => item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer',
+    );
+  if (!itemsOnly) {
+    return false;
+  }
+  return destructures(bare) ? targetParts(bare).every(isTarget) : isPlace(bare);
 }
 
 /**

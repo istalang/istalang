@@ -6,8 +6,9 @@
  *   inference), and reports against it only where the spec says a value must fit (`expect`, or
  *   `fit` for a type already checked). Every type mismatch is reported through `fit`.
  * - What lowering needs is recorded as checking goes: every expression's type, every call's
- *   target, and every value's implicit wraps into `T?` (§2), which `fit` finds. Nothing is
- *   recomputed later, so lowering sees exactly what was checked.
+ *   target, and every value's implicit wraps into `T?` (§2), which `fit` finds: on the node giving
+ *   the value, or, for a value an assignment writes, on its part (statements/assignments.ts).
+ *   Nothing is recomputed later, so lowering sees exactly what was checked.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. A lambda or local
  *   function is checked in this same body, in a function scope of its own (closures/), so its
@@ -26,7 +27,13 @@ import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { CallSite, CheckedBody, ResolvedCall, SignatureParameter } from './check.ts';
+import type {
+  CallSite,
+  CheckedBody,
+  ResolvedCall,
+  SignatureParameter,
+  ValueSite,
+} from './check.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
 import { inferLambda } from './closures/lambdas.ts';
@@ -76,7 +83,7 @@ export class BodyChecker implements BodyContext {
   readonly ownCalls = new OwnCalls();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
-  readonly #wraps = new Map<Expression, number>();
+  readonly #wraps = new Map<ValueSite, number>();
 
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
@@ -166,13 +173,24 @@ export class BodyChecker implements BodyContext {
     return type;
   }
 
-  fit(found: Type, expected: Type, node: Expression): void {
+  fit(found: Type, expected: Type, site: ValueSite, at = site.span): void {
+    const wraps = this.#wrapsToFit(found, expected, at);
+    if (wraps > 0) {
+      this.#wraps.set(site, wraps);
+    }
+  }
+
+  fitWritten(found: Type, expected: Type, at: Span): number {
+    return this.#wrapsToFit(found, expected, at);
+  }
+
+  /** How many times a `found` is wrapped to fit `expected`; none after reporting a mismatch at `at`. */
+  #wrapsToFit(found: Type, expected: Type, at: Span): number {
     const wraps = this.checker.wrapsToFit(found, expected);
     if (wraps === undefined) {
-      this.#mismatch(found, expected, node.span);
-    } else if (wraps > 0) {
-      this.#wraps.set(node, wraps);
+      this.#mismatch(found, expected, at);
     }
+    return wraps ?? 0;
   }
 
   fitUnwrapped(found: Type, expected: Type, at: Span): void {
@@ -237,7 +255,7 @@ export class BodyChecker implements BodyContext {
       calls,
       implicitCallOf: (node, role) => implicit.of(node, role),
       collectionFormOf: (literal) => collections.of(literal),
-      wrapsOf: (expression) => wraps.get(expression) ?? 0,
+      wrapsOf: (site) => wraps.get(site) ?? 0,
       targetsOf: (owner) => variables.targetsOf(owner),
       assignedOf: (assignment) => variables.assignedOf(assignment),
       inCell: (name) => variables.inCell(name),

@@ -26,7 +26,7 @@ import type {
 } from '../syntax/expressions.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { CompareFieldPattern, Pattern } from '../syntax/patterns.ts';
-import type { Assignment, For, VariableDeclaration } from '../syntax/statements.ts';
+import type { Assignment, Block, For, Return, VariableDeclaration } from '../syntax/statements.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { JsonFormQueries } from './json-form.ts';
@@ -192,11 +192,22 @@ export interface ChainLink {
   readonly wraps: boolean;
 }
 
-/** A place an assignment writes, and the positions of its part in the assigned value (§3.15). */
+/**
+ * A place an assignment writes, and the part of the assigned value it gets (§3.15): its positions
+ * in the value, its type, and how many times it is wrapped into `Some` to fit the place (§2).
+ */
 export interface AssignedPart {
   readonly target: Expression;
   readonly path: readonly number[];
+  readonly type: Type;
+  readonly wraps: number;
 }
+
+/**
+ * A node giving a value where one is expected (§2): an expression, or the `unit` a bare `return`,
+ * or a block with no tail expression, gives.
+ */
+export type ValueSite = Expression | Return | Block;
 
 /**
  * Per type parameter of a generic callee: for each of its constraints, in order, the call each
@@ -269,8 +280,8 @@ export interface CheckedBody {
   readonly implicitCallOf: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
   /** What a collection literal builds (§2). */
   readonly collectionFormOf: (literal: ArrayLiteral | MapLiteral) => CollectionForm;
-  /** How many times the value of `expression` is wrapped into `Some` where it is used (§2). */
-  readonly wrapsOf: (expression: Expression) => number;
+  /** How many times the value `site` gives is wrapped into `Some` where it is used (§2). */
+  readonly wrapsOf: (site: ValueSite) => number;
   /** What the targets of a declaration, or of a loop for each item, bind: each name's part of the value. */
   readonly targetsOf: (owner: TargetOwner) => readonly TargetBinding[];
   /** Where an assignment's value goes: each place written, with its part of the value. */

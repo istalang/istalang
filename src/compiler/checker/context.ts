@@ -29,7 +29,7 @@ import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { CallSite, Checker, ResolvedCall, VariantMember } from './check.ts';
+import type { CallSite, Checker, ResolvedCall, ValueSite, VariantMember } from './check.ts';
 import type { FunctionScopes } from './closures/functions.ts';
 import type { LoopScope } from './closures/loop-scope.ts';
 import type { OwnCalls } from './closures/own-calls.ts';
@@ -126,14 +126,19 @@ export interface BodyContext {
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
   /**
-   * Reports at `node` when its type `found`, already checked, doesn't fit `expected`. When it fits
-   * by the implicit wrap into `T?` (§2), records the wrap for lowering.
+   * Reports at `at` (the site's own span when absent) when `found`, the type of what `site` gives,
+   * doesn't fit `expected`. When it fits by the implicit wrap into `T?` (§2), records the wrap for
+   * lowering.
    */
-  readonly fit: (found: Type, expected: Type, node: Expression) => void;
+  readonly fit: (found: Type, expected: Type, site: ValueSite, at?: Span) => void;
   /**
-   * Reports at `at` when `found` doesn't fit `expected` as it is: the value has no expression of
-   * its own (a destructured part, a compound assignment's result, a bare `return`), and lowering
-   * wraps only expressions, so a fit by the implicit wrap is reported too (D97).
+   * Reports at `at` when `found`, written to a place of `expected` by an assignment, doesn't fit
+   * it; how many times the value is wrapped to fit (§2), which the assignment records on its part.
+   */
+  readonly fitWritten: (found: Type, expected: Type, at: Span) => number;
+  /**
+   * Reports at `at` when the items of a spread, of `found`, don't fit `expected` as they are: the
+   * spread gives its items as a whole, so none of them is wrapped (§2).
    */
   readonly fitUnwrapped: (found: Type, expected: Type, at: Span) => void;
   /** Checks a block in its own scope; its type is that of its last expression (§4). */

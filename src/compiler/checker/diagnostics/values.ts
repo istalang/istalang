@@ -40,11 +40,6 @@ export const valueTemplates = {
     message: (name: string, immutable: string) =>
       `'${name}' is ${immutable}, so no part of it can change.`,
   },
-  notPlace: {
-    code: 5208,
-    message: (use: 'assigned' | 'referenced') =>
-      `Only a variable, or a field or element of one, can be ${use === 'assigned' ? 'assigned to' : 'passed by reference'}.`,
-  },
   receiverNotPlace: {
     code: 5210,
     message: (name: string) =>
