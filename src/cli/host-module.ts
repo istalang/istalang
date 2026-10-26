@@ -37,19 +37,27 @@ export interface HostModule {
   readonly arrivals: (runtime: Runtime, report: (message: string) => void) => readonly Arrived[];
 }
 
-/** Loads the host module at `path`; a TypeError when its default export isn't an object of functions. */
-export async function loadHostModule(path: string): Promise<HostModule> {
+/** A host module loaded, or why its exports can't implement externs: the user's to fix. */
+export type LoadedHostModule =
+  | { readonly kind: 'loaded'; readonly module: HostModule }
+  | { readonly kind: 'unfit'; readonly problem: string };
+
+/** Loads the host module at `path`, whose default export must be an object of functions. */
+export async function loadHostModule(path: string): Promise<LoadedHostModule> {
   const loaded: unknown = await import(pathToFileURL(path).href);
   const given = (loaded as { readonly default?: unknown }).default;
   if (given === null || typeof given !== 'object') {
-    throw new TypeError(`${path} has no default export of extern implementations.`);
+    return { kind: 'unfit', problem: `${path} has no default export of extern implementations.` };
   }
   const entries = Object.entries(given);
   const notFunction = entries.find(([, each]) => typeof each !== 'function');
   if (notFunction !== undefined) {
-    throw new TypeError(`${path} exports '${notFunction[0]}', which isn't a function.`);
+    return {
+      kind: 'unfit',
+      problem: `${path} exports '${notFunction[0]}', which isn't a function.`,
+    };
   }
-  return promising(entries as [string, ModuleExtern][]);
+  return { kind: 'loaded', module: promising(entries as [string, ModuleExtern][]) };
 }
 
 /** A function of a host module: the extern's arguments in, its result out. */

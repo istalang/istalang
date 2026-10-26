@@ -203,6 +203,20 @@ describe('ista run --host', () => {
     expect(run.err).toContain('main.charge(string, int)');
   });
 
+  it.each([
+    ['has no default export', 'export const limit = 1;\n', 'has no default export'],
+    [
+      'exports what is no function',
+      "export default { 'main.limit': 1 };\n",
+      "exports 'main.limit'",
+    ],
+  ])("can't run as asked when the host module %s", async (_, exports, problem) => {
+    const root = project({ 'main.ista': program, 'host.mjs': exports });
+    const run = await ista(root, 'run', 'main.ista', '--host', 'host.mjs');
+    expect(run.code).toBe(2);
+    expect(run.err).toMatch(new RegExp(`^ista: \\S+host\\.mjs ${problem}`, 'u'));
+  });
+
   it("reads a host function's undefined as JSON.stringify writes it", async () => {
     const root = project({
       'main.ista': [

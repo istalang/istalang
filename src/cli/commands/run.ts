@@ -14,7 +14,8 @@
  * whole program checks clean. Diagnostics, warnings included, go to the error stream as `check`
  * renders them, so the output holds only the outcome.
  * Exit codes: 0 when `main` finishes; 1 when the program has errors, declares no `main`, panics,
- * the runtime refuses it, or an instance waits on nothing that can wake it; 2 when the entry can't be read or the options don't fit together.
+ * the runtime refuses it, or an instance waits on nothing that can wake it; 2 when the entry
+ * can't be read, the options don't fit together, or the host module implements no externs.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -72,10 +73,15 @@ async function run(
     environment.writeError('ista: --resume needs the --store that holds the instance.\n');
     return exitCodes.couldNotRun;
   }
-  const host =
+  const loaded =
     options.host === undefined
       ? undefined
       : await loadHostModule(resolve(environment.cwd, options.host));
+  if (loaded?.kind === 'unfit') {
+    environment.writeError(`ista: ${loaded.problem}\n`);
+    return exitCodes.couldNotRun;
+  }
+  const host = loaded?.module;
   const runtime = createRuntime({
     natives: stdNatives,
     store:
