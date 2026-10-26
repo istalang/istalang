@@ -20,7 +20,7 @@ tags: [review, architecture, refactoring, plan]
 | 6 | Extract shared checker helpers (remove cross-feature imports, enforce inner layers) | checker | D135 | by-argon, by-opus | done (173dabd) |
 | 7 | Generalize Virtual Places (`Index`, `Unwrap`, `Shared.value` into projected/accessor steps) | checker, lowering | D86, D87, D96 | by-argon | done |
 | 8 | Unify Destructuring Walk & Wrap Counts (single target walker, wrap counts on sites) | checker | D82, D97 | by-argon | done |
-| 9 | Flow analysis extraction (one flow model / CFG instead of manual switches) | checker | D133 | by-argon, by-opus | |
+| 9 | Flow analysis extraction (one flow model / CFG instead of manual switches) | checker | D133 | by-argon, by-opus | done |
 | 10 | Unify HeapObject table / Frame view / Snapshot builder | runtime | D110, D123, D126 | by-argon | done (6bd863e) |
 | 11 | Derive Heap indexes instead of linear scans | runtime | D134, D107, D111, D113 | by-opus | done (0b6a385) |
 | 12 | Generalize `@JsonSkip` and JSON forms (use `Default` trait) | checker, lowering | | by-argon | |

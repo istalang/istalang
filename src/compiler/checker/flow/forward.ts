@@ -7,17 +7,21 @@
  *
  * - Every expression and statement kind says how it runs, in a table exhaustive by type, so a new
  *   construct can't flow as straight-line code unnoticed. A part (a branch, a case, an item) runs
- *   only as its construct runs it; parts and names run their children in source order.
+ *   only as its construct runs it; parts run their children in source order. A statement's
+ *   annotations never run.
  * - A lambda or local function runs its body when it is called, not where it is made (syntax
  *   `nestsFunction`); but it captures what it uses where it is made, so its body flows from the
  *   state there, as a flow of its own whose end goes nowhere.
- * - `and`, `or` and `??` run their right side only sometimes: both paths join after.
+ * - `and`, `or` and `??` run their right side only sometimes, and so does whatever follows a `?.`
+ *   in an optional chain (§4): both paths join after. `e?` may return, which ends that path.
  * - An assignment runs its value first, then assigns its parts left to right (§3.15), a compound
- *   one reading its place first; a name assigned whole is written, not read.
+ *   one reading its place first; a name assigned whole is written, not read. A declaration runs
+ *   its initializer before its targets declare their names, and a comprehension runs as a loop.
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import {
+  chainStepOf,
   type Expression,
   type MatchCase,
   type SelectCase,
@@ -219,6 +223,25 @@ class FlowWalk {
       otherwise === undefined ? ends : [...ends, this.sequence([otherwise], evaluated)],
     );
   }
+
+  /**
+   * A link of a chain, `target` then its own `parts`: run only when no `?.` before it in the
+   * chain met `none` (§4).
+   */
+  link(node: Expression, target: SyntaxNode, parts: readonly SyntaxNode[], state: Opaque) {
+    const reached = this.node(target, state);
+    return skipsOnNone(node) ? this.sometimes(parts, reached) : this.sequence(parts, reached);
+  }
+}
+
+/** Whether a link of an optional chain runs only after a `?.` at it, or before it in its chain. */
+function skipsOnNone(node: Expression): boolean {
+  for (let step = chainStepOf(node); step !== undefined; step = chainStepOf(step.target)) {
+    if (step.optional) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** A construct whose parts run in source order. */
@@ -237,7 +260,14 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   NoneLiteral: children,
   ArrayLiteral: children,
   MapLiteral: children,
-  Comprehension: children,
+  Comprehension: (walk, node, state) =>
+    walk.loop(walk.node(node.iterable, state), (top) => ({
+      exit: top,
+      end: walk.sequence(
+        [...node.targets, ...(node.condition === undefined ? [] : [node.condition]), node.body],
+        top,
+      ),
+    })),
   Tuple: children,
   Parenthesized: children,
   StructLiteral: children,
@@ -245,11 +275,19 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
     walk.function(node.body, state);
     return state;
   },
-  Call: children,
+  Call: (walk, node, state) =>
+    node.callee.kind === 'MemberAccess'
+      ? walk.link(
+          node,
+          node.callee.target,
+          [node.callee.member, ...node.typeArguments, ...node.arguments],
+          state,
+        )
+      : children(walk, node, state),
   Reference: children,
-  MemberAccess: children,
-  TupleElement: children,
-  Index: children,
+  MemberAccess: (walk, node, state) => walk.link(node, node.target, [node.member], state),
+  TupleElement: (walk, node, state) => walk.link(node, node.target, [], state),
+  Index: (walk, node, state) => walk.link(node, node.target, [node.index], state),
   Propagate: children,
   Unwrap: children,
   Unary: children,
@@ -275,11 +313,12 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
       node.elseClause?.body,
       state,
     ),
-  Missing: children,
-  Invalid: children,
+  Missing: (_, __, state) => state,
+  Invalid: (_, __, state) => state,
   Block: children,
-  ExpressionStatement: children,
-  VariableDeclaration: children,
+  ExpressionStatement: (walk, node, state) => walk.node(node.expression, state),
+  VariableDeclaration: (walk, node, state) =>
+    walk.sequence(node.targets, walk.node(node.initializer, state)),
   FunctionDeclaration: (walk, node, state) => {
     if (node.body !== undefined) {
       walk.function(node.body, state);
@@ -288,7 +327,7 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   },
   Assignment: (walk, node, state) => walk.assignment(node, state),
   Return: (walk, node, state) => {
-    children(walk, node, state);
+    walk.sequence(node.value === undefined ? [] : [node.value], state);
   },
   Break: (walk, _, state) => walk.exit('breaks', state),
   Continue: (walk, _, state) => walk.exit('continues', state),
@@ -302,9 +341,9 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
       const tested = walk.node(node.condition, top);
       return { exit: tested, end: walk.sequence([node.body], tested) };
     }),
-  Defer: children,
+  Defer: (walk, node, state) => walk.node(node.action, state),
   Drop: (walk, node, state) => walk.drop(node, walk.node(node.value, state)),
-  Spawn: children,
+  Spawn: (walk, node, state) => walk.node(node.call, state),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

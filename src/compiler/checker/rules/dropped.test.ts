@@ -1,7 +1,7 @@
 /**
  * The rule of dropped variables (§7) over control flow: a use some path reaches from a `drop` is
- * reported once, through branches, short circuits, `match` cases, loops carrying a drop to their
- * next pass, `break` and `continue`; assigning a `let` again, a declaration run again and a branch
+ * reported once, through branches, short circuits, optional chains, `match` cases, loops and
+ * comprehensions carrying a drop to their next pass, `break` and `continue`; assigning a `let` again, a declaration run again and a branch
  * that leaves first make it usable; a lambda uses what it captures where it is made.
  */
 
@@ -58,6 +58,16 @@ describe('dropped variables', () => {
       lines('const t = "a"', 'while c:', '  drop t', '  break', 'const k = t.length()'),
     ],
     ['by a lambda made after', lines('const t = "a"', 'drop t', 'const f = fn(): t.length()')],
+    [
+      'when a `?.` before the assignment may skip it',
+      lines(
+        'let t = "a"',
+        'drop t',
+        'const u: string? = none',
+        'const k = u?.at({ t = "b"; 0 })',
+        'const j = t.length()',
+      ),
+    ],
   ])('may not be used %s', (_case, body) => {
     expect(reported(inFunction(body))).toEqual(reportedOnce(reports.droppedVariableUsed.code, 't'));
   });
@@ -78,6 +88,10 @@ describe('dropped variables', () => {
         '    continue',
         '  t = "b"',
       ),
+    ],
+    [
+      "early in a comprehension's next pass",
+      lines('const t = "a"', 'const k = [for i in 0..2: { const m = t.length(); drop t; m }]'),
     ],
   ])('may not be used, nor dropped again, %s', (_case, body) => {
     const { codes, spanTexts } = reported(inFunction(body));
