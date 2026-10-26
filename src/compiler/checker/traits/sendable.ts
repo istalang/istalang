@@ -16,7 +16,8 @@ import { type WellKnownDeclaration, wellKnown } from '../../../language/well-kno
 import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { jsonMarkers } from '../json-form.ts';
-import { type NominalType, type Type, typeChildren } from '../types/type.ts';
+import { heldParts } from '../types/held.ts';
+import type { NominalType, Type } from '../types/type.ts';
 
 /** The traits a type parameter may be constrained by to be sendable. */
 const sendableTraits: readonly WellKnownDeclaration[] = [
@@ -38,7 +39,7 @@ function sendable(checker: CheckerContext, type: Type, deciding: Set<string>): b
       return type.isSendable;
     case 'tuple':
     case 'anonymous':
-      return typeChildren(type).every((child) => sendable(checker, child, deciding));
+      return heldParts(checker, type).every((child) => sendable(checker, child, deciding));
     case 'parameter':
       return (
         type.declaration.kind === 'TypeParameter' &&
@@ -63,22 +64,16 @@ function nominalSendable(
   deciding: Set<string>,
 ): boolean {
   const { declaration } = type.entity;
+  const parts = () => heldParts(checker, type).every((part) => sendable(checker, part, deciding));
   if (declaration.kind === 'ExternStructDeclaration') {
-    return (
-      declaration.isSendable &&
-      type.arguments.every((argument) => sendable(checker, argument, deciding))
-    );
+    return declaration.isSendable && parts();
   }
   const key = checker.typeKeys.typeKey(type);
   if (deciding.has(key)) {
     return true;
   }
   deciding.add(key);
-  const fields =
-    declaration.kind === 'StructDeclaration'
-      ? (checker.fieldsOf(type) ?? [])
-      : (checker.variantsOf(type) ?? []).flatMap((variant) => variant.fields);
-  const result = fields.every((field) => sendable(checker, field.type, deciding));
+  const result = parts();
   deciding.delete(key);
   return result;
 }
