@@ -33,6 +33,10 @@ export function instantiatedBody(body: CheckedBody, substitution: Substitution):
       body.targetsOf(declaration).map((binding) => ({ ...binding, type: concrete(binding.type) })),
     assignedOf: (assignment) =>
       body.assignedOf(assignment).map((part) => ({ ...part, type: concrete(part.type) })),
+    iterationOf: (iteration) => {
+      const form = body.iterationOf(iteration);
+      return form.kind === 'cursor' ? { ...form, item: concrete(form.item) } : form;
+    },
     chainOf: (link) => {
       const chained = body.chainOf(link);
       return chained === undefined ? undefined : { ...chained, base: concrete(chained.base) };
