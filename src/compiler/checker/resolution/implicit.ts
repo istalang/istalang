@@ -20,7 +20,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { ImplicitRole, ResolvedCall } from '../check.ts';
+import type { ImplicitRole, MadeCall, ResolvedCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import type { Type } from '../types/type.ts';
 import { useSite } from '../use-site.ts';
@@ -41,6 +41,13 @@ export class ImplicitCalls {
 
   of(node: NodeOf<string>, role: ImplicitRole): ResolvedCall | undefined {
     return this.#calls.get(node)?.get(role);
+  }
+
+  /** Every call recorded, with its construct. */
+  made(): readonly MadeCall[] {
+    return [...this.#calls].flatMap(([site, roles]) =>
+      [...roles.values()].map((call) => ({ site, call })),
+    );
   }
 }
 

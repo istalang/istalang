@@ -38,7 +38,7 @@ import {
 } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { FieldSource, FunctionCall } from '../check.ts';
+import type { FieldSource, FunctionCall, MadeCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
@@ -89,6 +89,13 @@ export class StructLiterals {
 
   sourcesOf(literal: StructLiteral): readonly FieldSource[] | undefined {
     return this.#sources.get(literal);
+  }
+
+  /** The calls of the defaults the literals leave their fields to, each at its literal. */
+  made(): readonly MadeCall[] {
+    return [...this.#sources].flatMap(([site, sources]) =>
+      sources.flatMap((source) => (source.kind === 'default' ? [{ site, call: source.call }] : [])),
+    );
   }
 }
 

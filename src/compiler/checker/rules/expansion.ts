@@ -7,7 +7,10 @@
  * edge from each type parameter of `F` that a type argument mentions to the parameter of `G` it
  * is given for, an expanding edge when the parameter is nested inside the argument rather than
  * being the whole of it. Instantiation is endless exactly when a cycle holds an expanding edge,
- * which is reported at the call that makes it. Calls a witness makes count as calls too.
+ * which is reported at the call that makes it. Every call a function's code makes counts: its
+ * body's and its parameters' defaults', the calls the language makes for a construct, the defaults
+ * a struct literal leaves fields to, and the calls a witness makes. The functions a struct's
+ * fields read as (§3.1) are nodes too, so a cycle through a field's default is one like any.
  *
  * Checking stays lazy. A module's diagnostics follow edges only from its own generic functions,
  * so only the bodies those edges reach are checked. Every cycle through one of the module's calls
@@ -18,9 +21,10 @@
 import { memo } from '../../../structures/memo.ts';
 import { stronglyConnected } from '../../../structures/strongly-connected.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { Declaration, FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import type { CallSite, FunctionCall, ResolvedCall } from '../check.ts';
+import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import { functionsOf } from '../../syntax/field-defaults.ts';
+import type { NodeOf } from '../../syntax/node.ts';
+import type { FunctionCall, ResolvedCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { typeParametersOf } from '../types/resolve-type.ts';
@@ -32,7 +36,7 @@ interface Edge {
   readonly expanding: boolean;
   readonly caller: FunctionDeclaration;
   readonly callee: FunctionDeclaration;
-  readonly site: CallSite;
+  readonly site: NodeOf<string>;
 }
 
 /** The expansion rule over one checker's program. */
@@ -47,11 +51,11 @@ export class Expansion {
 
   /** Reports every call in a generic function of `module` that makes an expanding cycle. */
   check(module: ModuleId): void {
-    const items = this.#checker.program.modules.get(module)?.tree.root.items ?? [];
-    const own = new Set(items.filter(isGenericFunction));
+    const root = this.#checker.program.modules.get(module)?.tree.root;
+    const own = new Set(root === undefined ? [] : functionsOf(root).filter(isGeneric));
     const edges = this.#reachedFrom(own);
     const componentOf = stronglyConnected(edges);
-    const reported = new Set<CallSite>();
+    const reported = new Set<NodeOf<string>>();
     for (const edge of edges) {
       const inCycle = componentOf(edge.from) === componentOf(edge.to);
       if (own.has(edge.caller) && edge.expanding && inCycle && !reported.has(edge.site)) {
@@ -85,25 +89,26 @@ export class Expansion {
     return memo(this.#edges, caller, () => callerEdges(this.#checker, caller));
   }
 
-  /** The program's top-level generic functions, whose type parameters are the graph's nodes. */
+  /** The program's generic functions, whose type parameters are the graph's nodes. */
   #programGeneric(): ReadonlySet<FunctionDeclaration> {
     this.#generic ??= new Set(
       [...this.#checker.program.modules.values()].flatMap((module) =>
-        module.tree.root.items.filter(isGenericFunction),
+        functionsOf(module.tree.root).filter(isGeneric),
       ),
     );
     return this.#generic;
   }
 }
 
-function isGenericFunction(item: Declaration | Invalid): item is FunctionDeclaration {
-  return item.kind === 'FunctionDeclaration' && item.typeParameters.length > 0;
+function isGeneric(declaration: FunctionDeclaration): boolean {
+  return declaration.typeParameters.length > 0;
 }
 
 function callerEdges(checker: CheckerContext, caller: FunctionDeclaration): readonly Edge[] {
   const own = new Set<ParameterKey>(typeParametersOf(caller.typeParameters));
-  const calls = checker.bodyOf(caller)?.calls ?? new Map<CallSite, ResolvedCall>();
-  return [...calls].flatMap(([site, call]) =>
+  const bodies = [checker.bodyOf(caller), checker.defaultsOf(caller)];
+  const calls = bodies.flatMap((body) => body?.madeCalls() ?? []);
+  return calls.flatMap(({ site, call }) =>
     callsWithin(call).flatMap((each) =>
       typeParametersOf(each.function.typeParameters).flatMap((to, index) => {
         const argument = each.typeArguments[index] ?? errorType;

@@ -131,6 +131,12 @@ export interface TargetBinding {
   readonly path: readonly number[];
 }
 
+/** A call a body makes, and the node it makes it at. */
+export interface MadeCall {
+  readonly site: NodeOf<string>;
+  readonly call: ResolvedCall;
+}
+
 /**
  * Where a struct literal's field gets its value (§3.1): an expression of the literal, the field of
  * that position in its leading spread's value, or its default, which `call` computes from the
@@ -266,6 +272,11 @@ export interface CheckedBody {
   readonly typeOf: (expression: Expression) => Type;
   /** The function each call site of this body calls, or each function value names. */
   readonly calls: ReadonlyMap<CallSite, ResolvedCall>;
+  /**
+   * Every call the body makes, where it makes it: its call sites', the language's for constructs
+   * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to.
+   */
+  readonly madeCalls: () => readonly MadeCall[];
   /**
    * A call the language makes for the construct `node`, in `role`, with no call written for it
    * (resolution/implicit.ts); undefined for a role the construct doesn't need.

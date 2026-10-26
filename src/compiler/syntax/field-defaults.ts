@@ -13,13 +13,15 @@
  */
 
 import { memo } from '../../structures/memo.ts';
-import type {
-  Declaration,
-  DeclaredField,
-  EnumDeclaration,
-  FunctionDeclaration,
-  StructDeclaration,
-  Variant,
+import {
+  type Declaration,
+  type DeclaredField,
+  declaredFunctions,
+  type EnumDeclaration,
+  type FunctionDeclaration,
+  type Module,
+  type StructDeclaration,
+  type Variant,
 } from './declarations.ts';
 import type { Parameter } from './expressions.ts';
 import type { Invalid } from './node.ts';
@@ -31,8 +33,13 @@ const fieldsFunctions = new WeakMap<FieldsOwner, FunctionDeclaration | undefined
 
 const made = new WeakSet<FunctionDeclaration>();
 
+/** The functions `module` runs code in: its top-level `fn`s, then those its fields read as. */
+export function functionsOf(module: Module): readonly FunctionDeclaration[] {
+  return [...declaredFunctions(module), ...module.items.flatMap(fieldsFunctionsOf)];
+}
+
 /** The functions the fields of `item` read as: a struct's, or each of an enum's variants'. */
-export function fieldsFunctionsOf(item: Declaration): readonly FunctionDeclaration[] {
+export function fieldsFunctionsOf(item: Declaration | Invalid): readonly FunctionDeclaration[] {
   switch (item.kind) {
     case 'StructDeclaration':
       return present(fieldsFunctionOf(item));

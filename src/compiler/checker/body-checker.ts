@@ -253,6 +253,11 @@ export class BodyChecker implements BodyContext {
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
       calls,
+      madeCalls: () => [
+        ...[...calls].map(([site, call]) => ({ site, call })),
+        ...implicit.made(),
+        ...literals.made(),
+      ],
       implicitCallOf: (node, role) => implicit.of(node, role),
       collectionFormOf: (literal) => collections.of(literal),
       wrapsOf: (site) => wraps.get(site) ?? 0,

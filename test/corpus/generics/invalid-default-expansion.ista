@@ -1,0 +1,38 @@
+# error: 5111 at 22:4
+# error: 5111 at 27:3
+# error: 5111 at 34:40
+# A call a default makes counts towards endless instantiation as a written call does (§3.5): a
+# struct literal leaving out a field calls its default, and a default calls whatever it names. So
+# a cycle that grows a type argument through a field's or a parameter's default is reported where
+# it grows, as one through written calls is.
+
+struct Node<T>:
+  depth: int = 0
+  seed: Array<T> = []
+  next: Array<Node<Array<T>>> = grow(depth, seed)
+
+struct W<T>:
+  v: T
+  k: int
+  n: int = viaField(v, k)
+
+fn grow<T>(depth: int, seed: Array<T>) -> Array<Node<Array<T>>>:
+  if depth > 2:
+    return []
+  [Node<Array<T>>{depth: depth + 1, seed: [seed]}]
+
+fn viaField<T>(x: T, k: int) -> int:
+  if k == 0:
+    return 0
+  W<Array<T>>{v: [x], k: k - 1}.n
+
+fn viaParameter<T>(x: T, k: int) -> int:
+  if k == 0:
+    return 0
+  defaulted(x, k)
+
+fn defaulted<T>(x: T, k: int, n: int = viaParameter([x], k - 1)) -> int:
+  n
+
+async fn main() -> Future<int>:
+  string(Node<int>{}.next.length()).length() + viaField(1, 2) + viaParameter(1, 2)
