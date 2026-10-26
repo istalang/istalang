@@ -111,7 +111,7 @@ A function entry's `name` is for traces to read; entries are identified by index
 
 ## Types and locations
 
-A type entry is identified by its module-qualified declared `name` and its `arguments`, `time.Time` or `prelude.Optional` with `[int]`, so the runtime recognizes the types the boundary treats specially (spec §9) whatever their instantiation. An anonymous struct has no name.
+A type entry is identified by its module-qualified declared `name` and its `arguments`, `time.Time` or `prelude.Optional` with `[int]`, which traces and keys read; the runtime recognizes no type by its name, only by its `role` (below). An anonymous struct has no name.
 
 Only extern entries can be disposable (spec §7), and each entry's `disposal` says how: `none`; `runtime`, for futures and slots; or a `function`, the entry of the declared `dispose`'s instance, called with a handle to the value, as for a shared struct `Lease`. Lowering takes it from the checker, which derives it from the `dispose` declared for the type: an extern `dispose` a std module declares beside its extern type, as the prelude does for `Future` and `Slot`, is the runtime's; a `dispose` a program declares, for a shared struct (spec §3.18) or a host's extern type, is a `function`. A host value of an extern type with `function` disposal, a cell's aside, is a `resource` object behind a handle, which the boundary makes as the value arrives from the host and unwraps to its payload as it leaves. No list of disposable types is kept anywhere.
 
