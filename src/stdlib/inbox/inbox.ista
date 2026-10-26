@@ -39,10 +39,13 @@ struct RevertibleState<T>:
 
 handle Revertible<T> of RevertibleState<T>
 
-# A holder that keeps `resource` until it is released, and so disposes it then: how a queue the
-# host provides hands out a revertible send, a disposable host type its host retracts (§3.6).
+# A holder whose retraction lets go of `resource`, which disposes it: how a queue the host provides
+# hands out a revertible send, a disposable host type its host retracts (§3.6).
 fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
-  Revertible(RevertibleState<T>{retract: fn(): _hold(resource)})
+  const held = Shared<R?>(resource)
+  fn retract():
+    held$ = none
+  Revertible(RevertibleState<T>{retract})
 
 fn Inbox.create<T>() -> Inbox<T>:
   Inbox(InboxState<T>{slot: Slot.create<T>(), slotted: none, backlog: [], queued: 0})
@@ -96,10 +99,6 @@ fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: int):
     box$ = InboxState{...state, slotted, backlog: waiting}
     if taken:
       _fill(box)
-
-# Holds `resource` where a closure captures it, so that releasing the closure releases it.
-fn _hold<R>(resource: R):
-  ()
 
 # Whether `operation` settles at once. One that doesn't is let go with the parameter, and a slot
 # operation let go does nothing (§6), so a `take` that doesn't settle consumes nothing.
