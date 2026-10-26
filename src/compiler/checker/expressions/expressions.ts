@@ -120,7 +120,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   MapLiteral: mapAccepts,
   Comprehension: ownType,
   Tuple: tupleAccepts,
-  Lambda: (_context, node) => lambdaAccepts(node),
+  Lambda: lambdaAccepts,
   Reference: ownType,
   Index: ownType,
   Propagate: ownType,

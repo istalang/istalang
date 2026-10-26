@@ -121,6 +121,14 @@ describe('closures accept', () => {
       'fn bump(f: fn(&int) -> int) -> int:\n  let n = 1\n  f(&n)\n  n\nfn f() -> int: bump(fn(x): { x += 1; x })',
     ],
     [
+      'a lambda typed by the optional function type it is wrapped into',
+      'fn f() -> int:\n  const g: (fn(int) -> int)?? = fn(n): n * 2\n  if g is Some{value is Some{value as h}}: h(1) else: 0',
+    ],
+    [
+      'a lambda passed for an optional function parameter',
+      'fn maybe(g: (fn(int) -> int)?, x: int) -> int: if g is Some{value as h}: h(x) else: x\nfn f() -> int: maybe(fn(n): n + 1, 1)',
+    ],
+    [
       'a let shared with a closure and changed on both sides',
       'fn f() -> int:\n  let count = 0\n  const bump = fn(): { count += 1; count }\n  count += 10\n  bump()',
     ],

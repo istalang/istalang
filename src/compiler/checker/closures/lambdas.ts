@@ -2,7 +2,8 @@
  * Lambdas and local functions (§3.14): each is a function value, checked inside the body holding
  * it, in a FunctionScope of its own (functions.ts).
  *
- * - A lambda's parameter has its written type, or else the expected function type's. One with
+ * - A lambda's parameter has its written type, or else the expected function type's, found
+ *   through the optionals a value is wrapped into where one is expected (§2). One with
  *   neither is reported, as nothing could give it. Its result is its written type, or else the
  *   expected function type's, so a named lambda passed where a function is expected may call
  *   itself (§2); with neither, it is what the body produces, as it is for a lambda whose result
@@ -33,6 +34,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
+import { optionalInner } from '../types/fit.ts';
 import { errorType, type FunctionType, type Type, unitType } from '../types/type.ts';
 import { FunctionScope } from './function-scope.ts';
 import { blockTail, ReturnScope } from './returns.ts';
@@ -41,20 +43,36 @@ import { blockTail, ReturnScope } from './returns.ts';
  * For a lambda with a parameter to infer, which parameter types it can take, as an argument the
  * chosen function decides (§3.5); undefined for one whose parameters are all typed.
  */
-export function lambdaAccepts(node: Lambda): Accepts | undefined {
+export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | undefined {
   const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
   if (parameters.every((parameter) => parameter.type !== undefined)) {
     return undefined;
   }
-  return (expected) =>
-    expected.kind === 'function' &&
-    expected.isAsync === node.isAsync &&
-    expected.parameters.length === parameters.length;
+  return (expected) => {
+    const shape = expectedFunction(context, expected);
+    return (
+      shape !== undefined &&
+      shape.isAsync === node.isAsync &&
+      shape.parameters.length === parameters.length
+    );
+  };
 }
 
 export function checkLambda(context: BodyContext, node: Lambda, expected: Type | undefined): Type {
-  const shape = expected?.kind === 'function' ? expected : undefined;
+  const shape = expectedFunction(context, expected);
   return checkLambdaAs(context, node, shape?.parameters, shape?.result);
+}
+
+/** The function type `expected` asks a lambda for, through the optionals it is wrapped into (§2). */
+function expectedFunction(
+  context: BodyContext,
+  expected: Type | undefined,
+): FunctionType | undefined {
+  if (expected === undefined || expected.kind === 'function') {
+    return expected;
+  }
+  const inner = optionalInner(expected, context.checker.optionalEntity);
+  return inner === undefined ? undefined : expectedFunction(context, inner);
 }
 
 /**
