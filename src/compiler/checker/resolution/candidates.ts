@@ -11,8 +11,10 @@
  * and visible where it is called: in the calling module, the type's module, the prelude, or a
  * module the caller imports (§3.7); on a type parameter, among its constraints' static requirements.
  *
- * A witness of a trait's requirement (§3.10) is chosen among what a call of it would see, and what
- * the trait's own module declares: a module declaring a trait declares its functions for types
+ * A witness of a trait's requirement (§3.10) is chosen among the functions declared beside the
+ * types it takes (a primitive's in the prelude) or beside the trait, never among what the use site
+ * sees, so a type meets a trait with the same functions in every module that uses it: the
+ * coherence Rust's orphan rule gives. A module declaring a trait declares its functions for types
  * whose modules can't, such as primitives, and no caller has to import them.
  */
 
@@ -78,16 +80,19 @@ export function staticCandidates(
   target: StaticTarget,
   name: string,
 ): readonly Candidate[] {
-  return staticCandidatesIn(checker, [module], target, name);
+  const { program } = checker;
+  const imported = program.modules.get(module)?.imports.values() ?? [];
+  const prelude = program.roles.prelude === undefined ? [] : [program.roles.prelude];
+  return staticCandidatesIn(checker, [module, ...imported, ...prelude], target, name);
 }
 
 /**
  * The candidates of a witness of `required`, a trait's requirement taking `parameterTypes`, for
- * `type`, seen from `module`: a call's, then what the trait's own module declares.
+ * `type`: the functions declared beside those types or the trait, and on a type parameter its
+ * constraints' requirements.
  */
 export function witnessCandidates(
   checker: CheckerContext,
-  module: ModuleId,
   type: Type,
   {
     required,
@@ -97,17 +102,23 @@ export function witnessCandidates(
   const name = required.name.text;
   const home = checker.moduleOf(required);
   if (required.owner === undefined) {
-    const named = [
-      ...namedInModule(checker, module, name),
-      ...exportedFunctions(checker, home, name),
+    const declaring = parameterTypes.flatMap((each) => declaringModule(checker, each) ?? []);
+    const declarations = new Set(
+      [...new Set([home, ...declaring])].flatMap((each) => exportedFunctions(checker, each, name)),
+    );
+    return [
+      ...[...declarations].map((declaration) => ({ declaration })),
+      ...requirementCandidates(checker, name, parameterTypes),
     ];
-    return callCandidates(checker, named, name, parameterTypes);
   }
   const target = staticTargetOf(checker, type);
-  return target === undefined ? [] : staticCandidatesIn(checker, [module, home], target, name);
+  return target === undefined ? [] : staticCandidatesIn(checker, [home], target, name);
 }
 
-/** The candidates of a static call of `name` through `target`, seen from each of `modules`. */
+/**
+ * The candidates of a static call of `name` through `target`: on a type, those declared in its own
+ * module or one of `modules`.
+ */
 function staticCandidatesIn(
   checker: CheckerContext,
   modules: readonly ModuleId[],
@@ -119,17 +130,7 @@ function staticCandidatesIn(
       .filter((requirement) => requirement.declaration.owner !== undefined)
       .map((requirement) => ({ declaration: requirement.declaration, requirement }));
   }
-  const { program } = checker;
-  const visible = new Set<ModuleId>([...modules, target.module]);
-  for (const module of modules) {
-    for (const imported of program.modules.get(module)?.imports.values() ?? []) {
-      visible.add(imported);
-    }
-  }
-  if (program.roles.prelude !== undefined) {
-    visible.add(program.roles.prelude);
-  }
-  return [...visible].flatMap((each) =>
+  return [...new Set([...modules, target.module])].flatMap((each) =>
     checker
       .staticFunctionsIn(each, target.owner)
       .filter((declaration) => declaration.name.text === name)
@@ -164,8 +165,20 @@ function ownExports(
   type: NominalType,
   name: string,
 ): readonly FunctionDeclaration[] {
-  const module = checker.bindings.moduleOf(type.entity);
+  const module = declaringModule(checker, type);
   return module === undefined ? [] : exportedFunctions(checker, module, name);
+}
+
+/** The module declaring `type`: a nominal type's own, a primitive's the prelude; none for others. */
+function declaringModule(checker: CheckerContext, type: Type): ModuleId | undefined {
+  switch (type.kind) {
+    case 'nominal':
+      return checker.moduleOf(type.entity.declaration);
+    case 'primitive':
+      return checker.program.roles.prelude;
+    default:
+      return undefined;
+  }
 }
 
 function requirementCandidates(
@@ -185,19 +198,14 @@ function requirementCandidates(
 
 /** What static calls through `type` look at; undefined for a type with no static functions. */
 export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarget | undefined {
+  const module = declaringModule(checker, type);
   switch (type.kind) {
-    case 'primitive': {
-      const { prelude } = checker.program.roles;
-      return prelude === undefined
-        ? undefined
-        : { kind: 'owner', owner: type.name, module: prelude };
-    }
+    case 'primitive':
+      return module === undefined ? undefined : { kind: 'owner', owner: type.name, module };
     case 'nominal':
-      return {
-        kind: 'owner',
-        owner: type.entity.declaration,
-        module: checker.moduleOf(type.entity.declaration),
-      };
+      return module === undefined
+        ? undefined
+        : { kind: 'owner', owner: type.entity.declaration, module };
     case 'parameter':
       return type.declaration.kind === 'TypeParameter'
         ? { kind: 'parameter', parameter: type.declaration }

@@ -3,10 +3,10 @@
  *
  * - A chosen generic function's type parameters that the arguments left open come from the type
  *   the call is expected to have, then from their defaults; one still open can't be inferred.
- * - Every type argument must meet its parameter's constraints. A type meets a trait where it is
- *   met: the functions the trait requires must be visible there, in scope, through argument-
- *   dependent lookup on the type, or as a requirement of a type parameter's own constraints, or
- *   be declared in the trait's own module (resolution/candidates.ts). Each
+ * - Every type argument must meet its parameter's constraints. A type meets a trait with the same
+ *   functions wherever it is met: those the trait requires must be declared beside the types they
+ *   take or beside the trait, or be a requirement of a type parameter's own constraints
+ *   (resolution/candidates.ts). Each
  *   is found by resolving a call to it with the required parameter types, taken exactly: a
  *   function taking the type only once wrapped into an optional is one for the optional, not
  *   for it. It must give the required result. The calls found are the witnesses the
@@ -285,7 +285,7 @@ function witnessOf(
   const { checker } = site;
   const signature = signatureOf(checker, required.declaration, required.substitution);
   const parameterTypes = signature.parameters.map((parameter) => parameter.type);
-  const candidates = witnessCandidates(checker, site.module, type, {
+  const candidates = witnessCandidates(checker, type, {
     required: required.declaration,
     parameterTypes,
   });

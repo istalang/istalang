@@ -31,19 +31,24 @@ describe('a value crossing to its host', () => {
     expect(runToEnd(test, 'g', started)).toEqual({ kind: 'finished', outcome: '"hello ada"' });
   });
 
-  it("is written by the codec its caller found for a generic extern's type parameter", () => {
+  it("is written by the codec declared beside a generic extern's type argument", () => {
     const program = compiledText(
       [
         "import Json from 'json'",
         "import Point from 'shapes'",
         "import * as queue from 'queue'",
         'fn toJson(self: Point) -> Json:',
-        '  Text{value: "point " + string(self.x)}',
+        '  Text{value: "not this one"}',
         'async fn main():',
         '  queue.send(Point{x: 1})',
       ].join('\n'),
       {
-        shapes: 'struct Point { x: int }',
+        shapes: [
+          "import Json from 'json'",
+          'struct Point { x: int }',
+          'fn toJson(self: Point) -> Json:',
+          '  Text{value: "point " + string(self.x)}',
+        ].join('\n'),
         queue: "import Encodable from 'json'\nextern fn send<T is Encodable>(value: T)",
       },
     );

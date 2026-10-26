@@ -1,7 +1,8 @@
 /**
  * Meeting constraints (§3.10): a required field is met by a field of the same name and type, a
- * required function by a function visible where the constraint is met, with the required
- * result, and Sendable is derived from what a type holds (§3.1).
+ * required function by a function declared beside the type or the trait, with the required
+ * result, the same wherever the constraint is met, and Sendable is derived from what a type holds
+ * (§3.1).
  */
 
 import fc from 'fast-check';
@@ -124,6 +125,30 @@ describe('a required function', () => {
     const main = `import Money from 'lib'\n${monoid}\nfn main() -> int: ${call}`;
     expect(unmet(main, { lib })).toBe(false);
   });
+
+  it.each([
+    ['money', 'money', false],
+    ['main', 'money', true],
+    ['money', 'main', true],
+    ['main', 'main', true],
+  ])(
+    'with zero in %s and add in %s, is met only by functions beside the type or the trait: unmet %s',
+    (zeroIn, addIn, isUnmet) => {
+      const zero = 'fn Money.zero() -> Money: Money{cents: 0}';
+      const add =
+        'fn add(left: Money, right: Money) -> Money: Money{cents: left.cents + right.cents}';
+      const placed = (module: string) =>
+        [zeroIn === module ? zero : '', addIn === module ? add : ''].join('\n');
+      const money = `struct Money { cents: int }\n${placed('money')}`;
+      const main = [
+        "import Money from 'money'",
+        "import sum from 'monoid'",
+        placed('main'),
+        'fn main() -> int: sum(Money{cents: 1}, Money{cents: 2}).cents',
+      ].join('\n');
+      expect(unmet(main, { money, monoid })).toBe(isUnmet);
+    },
+  );
 });
 
 describe('Sendable', () => {
