@@ -69,7 +69,7 @@ export class VariableScope {
   }
 
   /** Notes that a closure captures `variable`, a `let`, so both share its storage (§3.14). */
-  noteShared(variable: VariableEntity): void {
+  noteCaptured(variable: VariableEntity): void {
     this.#inCell.add(variable.name);
   }
 
