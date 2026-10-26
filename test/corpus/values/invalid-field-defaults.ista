@@ -1,13 +1,16 @@
-# error: 5001 at 13:12
-# error: 4000 at 16:12
-# error: 5112 at 19:8
-# error: 5026 at 26:17
-# error: 5028 at 38:16
-# error: 5028 at 39:14
+# error: 5001 at 16:12
+# error: 4000 at 19:12
+# error: 5112 at 22:8
+# error: 5026 at 29:17
+# error: 5028 at 41:16
+# error: 5028 at 42:14
+# error: 5410 at 45:14
+# error: 5410 at 47:21
 # A field's default must fit its field (§3.1), sees only the fields before it, and can't reach its
 # own field when that field takes its type from it. A constant runs a default only when compile
 # time computes it, which arithmetic it doesn't, and one whose default builds a value needing that
-# default again would never be finished.
+# default again would never be finished. Only a function returns, so a default has no `return`, as
+# a parameter's hasn't.
 
 struct Typed:
   n: int = "x"
@@ -37,5 +40,11 @@ struct Pong:
 
 const nested = Nested{}
 const ping = Ping{}
+
+struct Returning:
+  x: int = { return "r"; 4 }
+
+fn early(n: int = { return 1; 2 }) -> int:
+  n
 
 async fn main(): 0

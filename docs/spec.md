@@ -286,7 +286,7 @@ log("info", "a", "b")        # log("info", ["a", "b"])
 log("info", "a", ...more)    # parts is "a" followed by the elements of more
 ```
 
-**Default parameters** are sugar for overloads. Parameters with defaults come after the others, and for each shorter call the compiler declares an overload that calls the full function with the missing values. A default is an expression evaluated at every call, and it may use earlier parameters, as in `fn window(start: int, end: int = start + 10)`. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A generated overload that clashes with a declared one is a compile error. A struct's fields have defaults the same way (§3.1).
+**Default parameters** are sugar for overloads. Parameters with defaults come after the others, and for each shorter call the compiler declares an overload that calls the full function with the missing values. A default is an expression evaluated at every call, and it may use earlier parameters, as in `fn window(start: int, end: int = start + 10)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A generated overload that clashes with a declared one is a compile error. A struct's fields have defaults the same way (§3.1).
 
 **Rest parameters** are sugar for an array. The last parameter, written `...name: Array<T>`, comes after any parameters with defaults and collects the remaining arguments; `...xs` at a call site spreads an existing array into them. When a call matches both a fixed-arity overload and one with a rest parameter, the fixed one wins.
 

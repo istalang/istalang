@@ -38,6 +38,10 @@ export const patternTemplates = {
     code: 5408,
     message: () => "'?' returns the Err from a function, but this value isn't in one.",
   },
+  returnOutsideFunction: {
+    code: 5410,
+    message: () => "'return' leaves a function, but this value isn't in one.",
+  },
   needsOptional: {
     code: 5406,
     message: (operator: string, found: string) =>

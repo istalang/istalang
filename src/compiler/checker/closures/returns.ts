@@ -8,7 +8,8 @@
  * - `e?` returns an `Err` early (§3.12), so the function must produce a `Result` whose error type
  *   is the same type as `e`'s. Its `Ok` type is the function's own business, so a `?` doesn't
  *   decide the result: it is checked against the declared result at once, or against the agreed
- *   one at the end. Only a function returns, so a `?` in any other value is refused.
+ *   one at the end. Only a function returns, so a `return` or a `?` in any other value, such as
+ *   a default or a constant's, is refused.
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
@@ -44,6 +45,13 @@ export class ReturnScope {
   check(context: BodyContext, node: Return): void {
     const expected = this.declared;
     const { value } = node;
+    if (!this.#isFunction) {
+      context.report(checkerDiagnostics.returnOutsideFunction(node.span));
+      if (value !== undefined) {
+        context.expression(value);
+      }
+      return;
+    }
     if (value === undefined) {
       if (expected !== undefined) {
         context.fit(unitType, expected, node);
