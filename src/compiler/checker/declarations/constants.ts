@@ -121,7 +121,7 @@ export class ConstantChecks {
       checker,
       constant: declaration,
       checked,
-      constantNamed: (name) => this.constantNamed(module, name),
+      valueNamed: (name) => this.constantNamed(module, name),
     });
     if (outcome.kind === 'refused') {
       checker.report(module, checkerDiagnostics.notConstant(outcome.part.span));

@@ -34,6 +34,7 @@ import type {
   StructDeclaration,
   TraitDeclaration,
   TypeParameter,
+  TypeParameters,
 } from '../../syntax/declarations.ts';
 import type { StructLiteral } from '../../syntax/expressions.ts';
 import type { StructType } from '../../syntax/types.ts';
@@ -252,6 +253,20 @@ export function comparable(first: Type, second: Type): boolean {
 
 /** Type parameters mapped to the types that replace them. */
 export type Substitution = ReadonlyMap<ParameterKey, Type>;
+
+/**
+ * The substitution giving a declaration's type `parameters` its `typeArguments`, in order; a
+ * parameter left without one stands for the error type.
+ */
+export function substitutionFor(
+  parameters: TypeParameters,
+  typeArguments: readonly Type[],
+): Substitution {
+  const declared = parameters.filter((parameter) => parameter.kind === 'TypeParameter');
+  return new Map(
+    declared.map((parameter, index) => [parameter, typeArguments[index] ?? errorType] as const),
+  );
+}
 
 /** `type` with every type parameter in `substitution` replaced. */
 export function substitute(type: Type, substitution: Substitution): Type {

@@ -30,8 +30,8 @@ import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant, FieldSource, FunctionCall } from '../check.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../constant-form.ts';
 import type { CheckerContext } from '../context.ts';
-import { typeParametersOf } from '../types/resolve-type.ts';
-import { errorType, type Substitution, substitute } from '../types/type.ts';
+import { instantiatedBody } from '../types/instantiation.ts';
+import { substitute, substitutionFor } from '../types/type.ts';
 
 /**
  * What the walk reads: the checker's layouts and field defaults, the constant computed, its
@@ -45,7 +45,8 @@ export interface ComputationScope {
   >;
   readonly constant: VariableDeclaration | undefined;
   readonly checked: CheckedBody;
-  readonly constantNamed: (name: Identifier) => CheckedConstant | undefined;
+  /** The constant `name` denotes, or in a field's default, the field before it so named. */
+  readonly valueNamed: (name: Identifier) => CheckedConstant | undefined;
 }
 
 /** How computing a part of an initializer went. */
@@ -88,7 +89,7 @@ class Computation {
           ? negated(this.of(node.operand))
           : refused(node);
       case 'Identifier': {
-        const constant = this.#scope.constantNamed(node);
+        const constant = this.#scope.valueNamed(node);
         if (constant === undefined) {
           return this.#bareStruct(node);
         }
@@ -181,12 +182,7 @@ class Computation {
       return unknown;
     }
     const module = checker.moduleOf(declaration);
-    const substitution: Substitution = new Map(
-      typeParametersOf(declaration.typeParameters).map((parameter, index) => [
-        parameter,
-        call.typeArguments[index] ?? errorType,
-      ]),
-    );
+    const substitution = substitutionFor(declaration.typeParameters, call.typeArguments);
     const fields = new Map<VariableOwner, CheckedConstant>(
       parameters
         .slice(0, call.arity)
@@ -198,8 +194,8 @@ class Computation {
     return new Computation({
       checker,
       constant: undefined,
-      checked: instantiated(checked, substitution),
-      constantNamed: (name) => {
+      checked: instantiatedBody(checked, substitution),
+      valueNamed: (name) => {
         const entity = checker.bindings.entityOf(module, name);
         const field = entity?.kind === 'variable' ? fields.get(entity.owner) : undefined;
         return field ?? checker.constantNamed(module, name);
@@ -295,28 +291,6 @@ class Computation {
       ? computed({ kind: 'struct', type, fields: [] })
       : refused(node);
   }
-}
-
-/** `body` read through `substitution`: its types, and the type arguments of the defaults it runs. */
-function instantiated(body: CheckedBody, substitution: Substitution): CheckedBody {
-  return {
-    ...body,
-    typeOf: (node) => substitute(body.typeOf(node), substitution),
-    sourcesOf: (literal) =>
-      body.sourcesOf(literal)?.map((source) =>
-        source.kind === 'default'
-          ? {
-              ...source,
-              call: {
-                ...source.call,
-                typeArguments: source.call.typeArguments.map((type) =>
-                  substitute(type, substitution),
-                ),
-              },
-            }
-          : source,
-      ),
-  };
 }
 
 /** The items a spread of `form`, an array or a map, gives: its elements, or its entries as tuples. */

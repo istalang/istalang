@@ -49,6 +49,7 @@ import {
   type ParameterKey,
   primitiveType,
   substitute,
+  substitutionFor,
   type Type,
   unitType,
 } from './type.ts';
@@ -210,11 +211,7 @@ function namedType(resolution: Resolution, node: NamedType): Type {
             ? errorType
             : substitute(
                 checker.aliasedType(declaration),
-                new Map(
-                  typeParametersOf(declaration.typeParameters).map(
-                    (parameter, index) => [parameter, typeArguments[index] ?? errorType] as const,
-                  ),
-                ),
+                substitutionFor(declaration.typeParameters, typeArguments),
               );
         }
         case 'TraitDeclaration':
@@ -255,9 +252,7 @@ export function constrainArguments(
   { at, declaration, types: typeArguments }: ArgumentList,
 ): void {
   const parameters = typeParametersOf(declaration.typeParameters);
-  const substitution = new Map<ParameterKey, Type>(
-    parameters.map((parameter, index) => [parameter, typeArguments[index] ?? errorType] as const),
-  );
+  const substitution = substitutionFor(declaration.typeParameters, typeArguments);
   for (const parameter of parameters.filter((each) => each.constraints.length > 0)) {
     checker.constrainLater(module, at, parameter, substitution);
   }

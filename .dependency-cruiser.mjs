@@ -112,6 +112,7 @@ const checkerSurface = [
   'host-externs.ts',
   'types/type.ts',
   'types/type-keys.ts',
+  'types/instantiation.ts',
   'types/well-known.ts',
 ];
 

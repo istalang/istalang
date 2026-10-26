@@ -17,11 +17,11 @@ import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { declaredFields } from '../types/resolve-type.ts';
 import {
-  errorType,
   type FieldMember,
   type NominalType,
   type Substitution,
   substitute,
+  substitutionFor,
   type Type,
 } from '../types/type.ts';
 
@@ -109,12 +109,7 @@ export class Layouts {
 
 /** The type arguments of `type`, by the type parameters of its declaration. */
 function substitutionOf(type: NominalType): Substitution {
-  const parameters = type.entity.declaration.typeParameters.filter(
-    (parameter) => parameter.kind === 'TypeParameter',
-  );
-  return new Map(
-    parameters.map((parameter, index) => [parameter, type.arguments[index] ?? errorType]),
-  );
+  return substitutionFor(type.entity.declaration.typeParameters, type.arguments);
 }
 
 function instantiated(

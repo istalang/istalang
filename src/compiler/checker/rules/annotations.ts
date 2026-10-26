@@ -196,7 +196,7 @@ export class Annotations implements AnnotationQueries {
       checker,
       constant: undefined,
       checked,
-      constantNamed: (name) => checker.constantNamed(module, name),
+      valueNamed: (name) => checker.constantNamed(module, name),
     });
     if (outcome.kind === 'refused') {
       checker.report(module, checkerDiagnostics.notConstant(outcome.part.span));

@@ -13,6 +13,7 @@ import type { FunctionDefinition } from '../../definition/functions.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { CheckedBody, Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
+import { instantiatedBody } from '../checker/types/instantiation.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { originOf } from '../syntax/derived-functions.ts';
@@ -29,7 +30,6 @@ import { FunctionLowering } from './function-lowering/index.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
-  instantiatedBody,
   type NestedInstance,
   substitutionOf,
 } from './instances.ts';
@@ -108,7 +108,12 @@ function entryOf(
   const body = checkedBodyOf(checker, instance);
   if (body !== undefined) {
     const owner = { kind: 'function', instance } as const;
-    const lowered = { checker, tables, owner, body: instantiatedBody(body, instance) };
+    const lowered = {
+      checker,
+      tables,
+      owner,
+      body: instantiatedBody(body, substitutionOf(instance)),
+    };
     const lowering = new FunctionLowering(lowered, instanceFrame(lowered, instance));
     if (originOf(declaration)?.kind === 'fields') {
       return lowering.lowerFieldDefault(instance);
@@ -156,7 +161,7 @@ function ownerBodyOf(checker: Checker, owner: BodyOwner): CheckedBody | undefine
     return checker.constantBodyOf(owner.declaration);
   }
   const body = checkedBodyOf(checker, owner.instance);
-  return body === undefined ? undefined : instantiatedBody(body, owner.instance);
+  return body === undefined ? undefined : instantiatedBody(body, substitutionOf(owner.instance));
 }
 
 /**
