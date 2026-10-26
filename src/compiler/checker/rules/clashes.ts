@@ -16,7 +16,7 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -26,10 +26,9 @@ import { mentionsError, type ParameterKey, type Type } from '../types/type.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
-  const items = checker.program.modules.get(module)?.tree.root.items ?? [];
+  const root = checker.program.modules.get(module)?.tree.root;
   const groups = new Map<string, FunctionDeclaration[]>();
-  const functions = items.filter((item) => item.kind === 'FunctionDeclaration');
-  for (const item of functions) {
+  for (const item of root === undefined ? [] : declaredFunctions(root)) {
     const group = groupOf(checker, module, item);
     const earlier = groups.get(group) ?? [];
     const shapes = new Set(shapesOf(checker, item));

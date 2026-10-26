@@ -13,11 +13,12 @@
  *   a bare one chosen by expected type resolve to the same entity.
  */
 
-import type {
-  Declaration,
-  EnumDeclaration,
-  FunctionDeclaration,
-  Module,
+import {
+  type Declaration,
+  declaredFunctions,
+  type EnumDeclaration,
+  type FunctionDeclaration,
+  type Module,
 } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
@@ -169,9 +170,9 @@ function ownNames(
 /** A set per name of the top-level functions; static functions belong to their type instead. */
 function functionSets(module: Module): ReadonlyMap<string, FunctionsEntity> {
   const sets = new Map<string, FunctionDeclaration[]>();
-  for (const item of module.items) {
-    if (item.kind === 'FunctionDeclaration' && item.owner === undefined) {
-      sets.set(item.name.text, [...(sets.get(item.name.text) ?? []), item]);
+  for (const declared of declaredFunctions(module)) {
+    if (declared.owner === undefined) {
+      sets.set(declared.name.text, [...(sets.get(declared.name.text) ?? []), declared]);
     }
   }
   return new Map(
