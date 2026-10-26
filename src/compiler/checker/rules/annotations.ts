@@ -34,11 +34,9 @@ import type {
 } from '../checked-annotation.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { witnessesFor } from '../resolution/conformance.ts';
-import { wellKnownConstraint } from '../traits/constraints.ts';
+import { defaultWitness } from '../resolution/default-witness.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { searchSite } from '../use-site.ts';
 import { computeConstant, refusalOf } from './computation.ts';
 
 /** The annotations the toolchain itself reads. */
@@ -171,7 +169,7 @@ export class Annotations implements AnnotationQueries {
     const means = placements[this.knownOf(annotation) ?? 'any'];
     const misplaced = means(
       place,
-      (held) => held.kind === 'error' || this.#defaultOf(held) !== undefined,
+      (held) => held.kind === 'error' || defaultWitness(this.#seams.checker, held) !== undefined,
     );
     if (misplaced === 'elsewhere') {
       return checkerDiagnostics.misplacedAnnotation(node.span, name, placeText(place));
@@ -210,15 +208,8 @@ export class Annotations implements AnnotationQueries {
   skippedDefaultOf(field: FieldMember): ResolvedCall | undefined {
     const { declared } = field;
     return declared !== undefined && this.fieldHas(field, 'jsonSkip')
-      ? this.#defaultOf(field.type)
+      ? defaultWitness(this.#seams.checker, field.type)
       : undefined;
-  }
-
-  /** The `default()` of `type`, Default's witness; undefined when it has none. */
-  #defaultOf(type: Type): ResolvedCall | undefined {
-    const { checker } = this.#seams;
-    const constraint = wellKnownConstraint(checker, wellKnown.default);
-    return witnessesFor(searchSite(checker), type, constraint)?.[0];
   }
 }
 
