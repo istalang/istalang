@@ -26,7 +26,7 @@ import {
   type Type,
 } from '../checker/types/type.ts';
 import type { TypeKeys } from '../checker/types/type-keys.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../syntax/declarations.ts';
 import type { Lambda } from '../syntax/expressions.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
@@ -163,14 +163,12 @@ export function closeCall(
     unreachable(`No witness for '${parameter.name.text}'; checking should have found one.`);
   }
   const own = new Map<ParameterKey, Type>(substitution);
-  resolved.function.typeParameters
-    .filter((each) => each.kind === 'TypeParameter')
-    .forEach((each, index) => {
-      const argument = resolved.typeArguments[index];
-      if (argument !== undefined) {
-        own.set(each, substitute(argument, substitution));
-      }
-    });
+  typeParametersOf(resolved.function.typeParameters).forEach((each, index) => {
+    const argument = resolved.typeArguments[index];
+    if (argument !== undefined) {
+      own.set(each, substitute(argument, substitution));
+    }
+  });
   return {
     ...witness,
     typeArguments: witness.typeArguments.map((type) => substitute(type, own)),

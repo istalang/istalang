@@ -12,17 +12,18 @@
 import type { WellKnownDeclaration } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type {
-  FunctionDeclaration,
-  TraitDeclaration,
-  TypeParameter,
+import {
+  type FunctionDeclaration,
+  type TraitDeclaration,
+  type TypeParameter,
+  typeParametersOf,
 } from '../../syntax/declarations.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
 import type { RequirementOrigin } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { parameterType, typeArgumentsFor, typeParametersOf } from '../types/resolve-type.ts';
+import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import { type ParameterKey, type Substitution, substitute, type Type } from '../types/type.ts';
 
 /** A trait a type must satisfy, with its type arguments; `Self` already the constrained type. */

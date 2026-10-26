@@ -18,12 +18,13 @@
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type {
-  Declaration,
-  EnumDeclaration,
-  FunctionDeclaration,
-  TraitDeclaration,
-  TypeParameters,
+import {
+  type Declaration,
+  type EnumDeclaration,
+  type FunctionDeclaration,
+  type TraitDeclaration,
+  type TypeParameters,
+  typeParametersOf,
 } from '../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../syntax/expressions.ts';
 import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
@@ -173,7 +174,7 @@ function typeParameterScope(binder: LocalBinder, parameters: TypeParameters, sco
 }
 
 function defineTypeParameters(binder: LocalBinder, parameters: TypeParameters, scope: Scope): void {
-  const declared = parameters.filter((parameter) => parameter.kind === 'TypeParameter');
+  const declared = typeParametersOf(parameters);
   for (const parameter of declared) {
     const entity = { kind: 'type', declaration: parameter } as const;
     binder.declare(scope, parameter.name, entity, { convention: 'type' });

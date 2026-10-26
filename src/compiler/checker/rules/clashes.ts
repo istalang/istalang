@@ -16,12 +16,15 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
+import {
+  declaredFunctions,
+  type FunctionDeclaration,
+  typeParametersOf,
+} from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { withoutOptionals } from '../types/fit.ts';
-import { typeParametersOf } from '../types/resolve-type.ts';
 import { mentionsError, type ParameterKey } from '../types/type.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */

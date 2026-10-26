@@ -7,6 +7,7 @@
  */
 
 import type { Entity } from '../../binder/entities.ts';
+import { typeParametersOf } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import {
   checkFunctionValue,
@@ -17,7 +18,6 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { fieldlessStructOf } from '../resolution/named.ts';
-import { typeParametersOf } from '../types/resolve-type.ts';
 import { errorType, nominalType, type Type } from '../types/type.ts';
 import { checkVariantName, variantsAccepted } from './variants.ts';
 

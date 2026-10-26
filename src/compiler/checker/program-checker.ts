@@ -31,13 +31,14 @@ import type { Span } from '../../text/span.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
-import type {
-  Declaration,
-  EnumDeclaration,
-  FunctionDeclaration,
-  StructDeclaration,
-  TypeAliasDeclaration,
-  TypeParameter,
+import {
+  type Declaration,
+  type EnumDeclaration,
+  type FunctionDeclaration,
+  type StructDeclaration,
+  type TypeAliasDeclaration,
+  type TypeParameter,
+  typeParametersOf,
 } from '../syntax/declarations.ts';
 import { fieldsFunctionsOf } from '../syntax/field-defaults.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
@@ -70,7 +71,7 @@ import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
 import type { Constraint } from './traits/constraints.ts';
 import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
-import { resolveTypeNode, typeParametersOf } from './types/resolve-type.ts';
+import { resolveTypeNode } from './types/resolve-type.ts';
 import {
   type AnonymousStructType,
   errorType,

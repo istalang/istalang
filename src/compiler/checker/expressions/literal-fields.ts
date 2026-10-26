@@ -27,6 +27,7 @@ import {
   type EnumDeclaration,
   type FunctionDeclaration,
   type StructDeclaration,
+  typeParametersOf,
 } from '../../syntax/declarations.ts';
 import {
   type Expression,
@@ -45,12 +46,7 @@ import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
 import { itemField } from '../patterns/struct-items.ts';
 import { callWithTypes } from '../resolution/typed-call.ts';
-import {
-  constrainArguments,
-  parameterType,
-  typeArgumentsFor,
-  typeParametersOf,
-} from '../types/resolve-type.ts';
+import { constrainArguments, parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import {
   errorType,
   type FieldMember,

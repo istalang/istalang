@@ -30,6 +30,11 @@ export interface TypeParameter extends NodeOf<'TypeParameter'> {
 
 export type TypeParameters = readonly (TypeParameter | Invalid)[];
 
+/** The type parameters a declaration introduces, leaving out what the parser couldn't read. */
+export function typeParametersOf(parameters: TypeParameters): readonly TypeParameter[] {
+  return parameters.filter((parameter) => parameter.kind === 'TypeParameter');
+}
+
 /**
  * A function: top-level, local, a trait's requirement, or extern. `owner` is the type a static
  * function is declared on: `Duration` in `fn Duration.zero()`.

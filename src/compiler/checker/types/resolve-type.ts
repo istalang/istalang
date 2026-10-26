@@ -28,13 +28,13 @@ import { wellKnown } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type {
-  Field,
-  FunctionDeclaration,
-  TraitDeclaration,
-  TypeAliasDeclaration,
-  TypeParameter,
-  TypeParameters,
+import {
+  type Field,
+  type FunctionDeclaration,
+  type TraitDeclaration,
+  type TypeAliasDeclaration,
+  type TypeParameter,
+  typeParametersOf,
 } from '../../syntax/declarations.ts';
 import { type Invalid, lastName } from '../../syntax/node.ts';
 import type { FunctionType as FunctionTypeNode, NamedType, TypeNode } from '../../syntax/types.ts';
@@ -94,11 +94,6 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
  */
 export function resolveTypeNode(checker: CheckerContext, module: ModuleId, node: TypeNode): Type {
   return handlerOf(typeHandlers, node)({ checker, module }, node);
-}
-
-/** The type parameters a declaration introduces, leaving out what the parser couldn't read. */
-export function typeParametersOf(parameters: TypeParameters): readonly TypeParameter[] {
-  return parameters.filter((parameter) => parameter.kind === 'TypeParameter');
 }
 
 /** The type a type parameter (or a trait's `Self`) stands for inside its declaration. */

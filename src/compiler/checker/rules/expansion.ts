@@ -21,13 +21,16 @@
 import { memo } from '../../../structures/memo.ts';
 import { stronglyConnected } from '../../../structures/strongly-connected.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import {
+  type FunctionDeclaration,
+  type TypeParameter,
+  typeParametersOf,
+} from '../../syntax/declarations.ts';
 import { functionsOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { FunctionCall, ResolvedCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { typeParametersOf } from '../types/resolve-type.ts';
 import { errorType, type ParameterKey, parametersIn, type Type } from '../types/type.ts';
 
 interface Edge {

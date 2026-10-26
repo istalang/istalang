@@ -20,10 +20,13 @@
  * report about a failed call explains the reason it found.
  */
 
-import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import {
+  type FunctionDeclaration,
+  type TypeParameter,
+  typeParametersOf,
+} from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { Inference } from '../inference/infer.ts';
-import { typeParametersOf } from '../types/resolve-type.ts';
 import {
   type ParameterKey,
   type Substitution,

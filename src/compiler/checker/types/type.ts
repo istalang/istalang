@@ -27,14 +27,15 @@ import type { PrimitiveName } from '../../../language/primitives.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type {
-  EnumDeclaration,
-  ExternStructDeclaration,
-  Field,
-  StructDeclaration,
-  TraitDeclaration,
-  TypeParameter,
-  TypeParameters,
+import {
+  type EnumDeclaration,
+  type ExternStructDeclaration,
+  type Field,
+  type StructDeclaration,
+  type TraitDeclaration,
+  type TypeParameter,
+  type TypeParameters,
+  typeParametersOf,
 } from '../../syntax/declarations.ts';
 import type { StructLiteral } from '../../syntax/expressions.ts';
 import type { StructType } from '../../syntax/types.ts';
@@ -255,9 +256,10 @@ export function substitutionFor(
   parameters: TypeParameters,
   typeArguments: readonly Type[],
 ): Substitution {
-  const declared = parameters.filter((parameter) => parameter.kind === 'TypeParameter');
   return new Map(
-    declared.map((parameter, index) => [parameter, typeArguments[index] ?? errorType] as const),
+    typeParametersOf(parameters).map(
+      (parameter, index) => [parameter, typeArguments[index] ?? errorType] as const,
+    ),
   );
 }
 

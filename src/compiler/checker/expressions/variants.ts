@@ -13,7 +13,7 @@
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
-import type { EnumDeclaration } from '../../syntax/declarations.ts';
+import { type EnumDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
 import type { MemberAccess, NoneLiteral, StructLiteral } from '../../syntax/expressions.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
@@ -22,7 +22,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { chooseVariant, sameEnum } from '../resolution/named.ts';
 import { optionalInner } from '../types/fit.ts';
-import { typeArgumentsFor, typeParametersOf } from '../types/resolve-type.ts';
+import { typeArgumentsFor } from '../types/resolve-type.ts';
 import { errorType, type NominalType, nominalType, type Type } from '../types/type.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
 
