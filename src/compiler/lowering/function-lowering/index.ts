@@ -48,7 +48,7 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Lambda } from '../../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
-import { emitInbound } from '../boundary/inbound.ts';
+import { emitInbound, type Inbound } from '../boundary/inbound.ts';
 import { CodeWriter } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall, referenceTo } from '../emit-call.ts';
@@ -68,7 +68,18 @@ import { LoopStack } from '../statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
 import { declareVariable, VariableRegisters } from '../statements/variables.ts';
 import type { DefinitionTables } from '../tables.ts';
-import type { Frame, LoweredFunction, StartEdges } from './frames.ts';
+import type { Frame, LoweredFunction } from './frames.ts';
+
+/**
+ * The JSON at a start entry's edges: how each argument is read from `Json`, a mismatch failing the
+ * host's start; the call encoding what the entry gives; and the value a named lambda's own name
+ * stands for there.
+ */
+export interface StartEdges {
+  readonly parameters: readonly Inbound[];
+  readonly outcome: FunctionCall;
+  readonly self: Value | undefined;
+}
 
 export class FunctionLowering implements FunctionContext {
   readonly checker: Checker;

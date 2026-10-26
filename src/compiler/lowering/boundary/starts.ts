@@ -26,8 +26,8 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { constantValue } from '../constants.ts';
-import { instanceFrame, nestedFrame, type StartEdges } from '../function-lowering/frames.ts';
-import { FunctionLowering } from '../function-lowering/index.ts';
+import { instanceFrame, nestedFrame } from '../function-lowering/frames.ts';
+import { FunctionLowering, type StartEdges } from '../function-lowering/index.ts';
 import { rootInstance } from '../instances.ts';
 import { keyOf } from '../names.ts';
 import type { DefinitionTables, StartTarget } from '../tables.ts';

@@ -1,35 +1,21 @@
 /**
  * The frames lowering lays an entry's code out in (docs/arch/definition.md, "Frames"): what an
- * entry is called, what it takes, captures and produces, for a function instance's entry and for a
- * nested function's, and the JSON at a start entry's edges.
+ * entry is lowered from, and what it is called, takes, captures and produces, for a function
+ * instance's entry and for a nested function's.
  */
 
-import type { Value } from '../../../definition/values.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type {
   CapturedVariable,
   CheckedBody,
   Checker,
-  FunctionCall,
   NestedFunction,
   SignatureParameter,
 } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { Inbound } from '../boundary/inbound.ts';
 import type { BodyOwner, FunctionInstance, NestedInstance } from '../instances.ts';
 import type { DefinitionTables, EntryHeader } from '../tables.ts';
-
-/**
- * The JSON at a start entry's edges: how each argument is read from `Json`, a mismatch failing the
- * host's start; the call encoding what the entry gives; and the value a named lambda's own name
- * stands for there.
- */
-export interface StartEdges {
-  readonly parameters: readonly Inbound[];
-  readonly outcome: FunctionCall;
-  readonly self: Value | undefined;
-}
 
 /** What lowering an entry starts from: what owns its body, the body read through it, the tables. */
 export interface LoweredFunction {
