@@ -16,7 +16,14 @@
 
 import { preludeKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
-import { type Native, type Natives, Panic } from '../../runtime/natives.ts';
+import {
+  type Native,
+  type NativeContext,
+  type Natives,
+  Panic,
+  type WithSlots,
+  type WithWeakSide,
+} from '../../runtime/natives.ts';
 import { float, int, text } from '../native-values.ts';
 import { arrayNatives } from './arrays.ts';
 import { mapNatives } from './maps.ts';
@@ -32,7 +39,7 @@ const numericPairs = [
   ['float', 'int'],
 ] as const;
 
-export const preludeNatives: Natives = {
+export const preludeNatives: Natives<NativeContext & WithSlots & WithWeakSide> = {
   ...arrayNatives,
   ...slotNatives,
   ...mapNatives,
@@ -92,9 +99,9 @@ function numeric(
   name: string,
   onInts: (left: bigint, right: bigint) => Value,
   onFloats: (left: number, right: number) => Value,
-): Natives {
+): Natives<NativeContext> {
   return Object.fromEntries(
-    numericPairs.map(([left, right]): [string, Native] => [
+    numericPairs.map(([left, right]): [string, Native<NativeContext>] => [
       preludeKey(name, left, right),
       left === 'int' && right === 'int'
         ? ([a, b]) => onInts(int(a), int(b))

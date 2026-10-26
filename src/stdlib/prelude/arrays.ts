@@ -15,7 +15,7 @@ import {
 } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
-import type { Natives } from '../../runtime/natives.ts';
+import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { arrayOf, int, optionalValue, resultOptional, text } from '../native-values.ts';
 import { atPosition, checkedIndex, spanOf } from './positions.ts';
 
@@ -25,7 +25,7 @@ const range = namedKey(qualifiedName(wellKnown.range));
 const intKey = primitiveKey('int');
 const what = 'an array';
 
-export const arrayNatives: Natives = {
+export const arrayNatives: Natives<NativeContext> = {
   [preludeKey('length', array)]: ([xs]) => BigInt(elementsOf(xs).length),
   [preludeKey('at', array, intKey)]: ([xs, index], context) => {
     const elements = elementsOf(xs);

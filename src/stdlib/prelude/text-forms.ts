@@ -12,7 +12,7 @@
 import { preludeKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
-import type { Natives } from '../../runtime/natives.ts';
+import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
 import { resultError, resultOk, text } from '../native-values.ts';
 
 /** The code of every `Error` a `parse` returns. */
@@ -51,7 +51,7 @@ export function readPrimitive(type: ParsedPrimitive, source: string): Value | un
   return readers[type](source);
 }
 
-export const textFormNatives: Natives = {
+export const textFormNatives: Natives<NativeContext> = {
   ...Object.fromEntries(
     (['int', 'float', 'bool'] as const).map((type) => [
       preludeKey('toString', type),
@@ -66,7 +66,7 @@ export const textFormNatives: Natives = {
         return read === undefined
           ? resultError(context, `'${text(source)}' is not ${articled(type)}.`, parseErrorCode)
           : resultOk(context, read);
-      }) satisfies Natives[string],
+      }) satisfies Native<NativeContext>,
     ]),
   ),
 };

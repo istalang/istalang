@@ -21,8 +21,14 @@
 import { JsonError, jsonOfPlain, jsonTypeOf, plainOfJson } from '../../definition/json-values.ts';
 import { hasRole } from '../../definition/types.ts';
 import type { Value } from '../../definition/values.ts';
-import type { NativeContext, NativeHostFutures, WithResources } from '../natives.ts';
-import { type Native, type Natives, Panic } from '../natives.ts';
+import {
+  type Native,
+  type NativeContext,
+  type NativeHostFutures,
+  type Natives,
+  Panic,
+  type WithResources,
+} from '../natives.ts';
 
 /** What a host extern is told about the call it runs. */
 export interface HostCall {
@@ -47,7 +53,9 @@ type HostExtern = (arguments_: readonly unknown[], call: HostCall) => unknown;
 export type HostExterns = Readonly<Record<string, HostExtern>>;
 
 /** `host` as natives, by the same keys. */
-export function hostNatives(host: HostExterns): Natives {
+export function hostNatives(
+  host: HostExterns,
+): Natives<NativeContext & NativeHostFutures & WithResources> {
   return Object.fromEntries(Object.entries(host).map(([key, extern]) => [key, hostNative(extern)]));
 }
 

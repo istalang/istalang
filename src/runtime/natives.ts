@@ -80,13 +80,17 @@ export type FullNativeContext = NativeContext &
   WithWeakSide &
   WithResources;
 
-export type Native<Context = NativeContext> = (
+/**
+ * A native needing `Context`. The runtime calls every native with the full context, so a native
+ * or a table of them states only the capabilities it uses and still joins the runtime's.
+ */
+export type Native<Context = FullNativeContext> = (
   argumentValues: readonly Value[],
   context: Context,
 ) => Value;
 
-// biome-ignore lint/suspicious/noExplicitAny: required for heterogeneous generic assignment
-export type Natives<Context = any> = Readonly<Record<string, Native<Context>>>;
+/** A table of natives needing `Context`, by key. */
+export type Natives<Context = FullNativeContext> = Readonly<Record<string, Native<Context>>>;
 
 /** Thrown by a native to panic the instance (§3.12). */
 export class Panic extends Error {

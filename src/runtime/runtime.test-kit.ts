@@ -8,7 +8,7 @@ import { stdNatives } from '../stdlib/natives.ts';
 import type { HostExterns } from './boundary/host-natives.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';
 import type { Advanced } from './instance-state.ts';
-import type { NativeContext, Natives } from './natives.ts';
+import type { FullNativeContext, Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
 import type { StartOptions } from './scheduler/instance.ts';
 import { type Settled, settle } from './settle.ts';
@@ -146,7 +146,7 @@ export function startToEnd(
 }
 
 /** A context for natives that never use theirs; touching it is a bug in the test. */
-export const unusedContext: NativeContext = new Proxy({} as NativeContext, {
+export const unusedContext: FullNativeContext = new Proxy({} as FullNativeContext, {
   get: (_target, property) => {
     throw new Error(`The native read its context's ${String(property)}.`);
   },

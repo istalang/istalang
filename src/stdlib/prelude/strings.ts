@@ -8,7 +8,7 @@
 
 import { namedKey, preludeKey, primitiveKey } from '../../definition/extern-key.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
-import type { Natives } from '../../runtime/natives.ts';
+import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { int, resultOptional, text } from '../native-values.ts';
 import { atPosition, checkedIndex, spanOf } from './positions.ts';
 
@@ -20,7 +20,7 @@ const what = 'a string';
 /** A string argument's code points. */
 const codePoints = (value: Parameters<typeof text>[0]): readonly string[] => [...text(value)];
 
-export const stringNatives: Natives = {
+export const stringNatives: Natives<NativeContext> = {
   [preludeKey('length', stringKey)]: ([s]) => BigInt(codePoints(s).length),
   [preludeKey('at', stringKey, intKey)]: ([s, index], context) => {
     const points = codePoints(s);
