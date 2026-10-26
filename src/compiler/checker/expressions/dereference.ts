@@ -37,9 +37,9 @@ function valueBehind(context: BodyContext, node: Dereference): Type | undefined 
   if (handle.kind === 'error') {
     return undefined;
   }
-  const state = handle.kind === 'nominal' ? context.checker.stateOf(handle) : undefined;
-  if (state === undefined) {
+  const sharedValue = handle.kind === 'nominal' ? context.checker.sharedValueOf(handle) : undefined;
+  if (sharedValue === undefined) {
     context.report(checkerDiagnostics.notShared(node.span, typeText(handle)));
   }
-  return state;
+  return sharedValue;
 }

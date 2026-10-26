@@ -362,7 +362,7 @@ export interface Checker {
    * The value behind a shared struct, `*x` (§3.18), substituted for its type arguments; undefined
    * for another type.
    */
-  readonly stateOf: (type: NominalType) => AnonymousStructType | undefined;
+  readonly sharedValueOf: (type: NominalType) => AnonymousStructType | undefined;
   /** Who disposes a value of `type` (rules/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;
   /** `T?` for `type`, the type a value of `type` is wrapped into (§2). */

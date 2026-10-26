@@ -26,11 +26,11 @@ import { fieldIndexOf } from '../places.ts';
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const type = structTypeOf(context, node);
   const fields = literalFields(context, node);
-  const state = type.kind === 'nominal' ? context.checker.stateOf(type) : undefined;
-  if (state === undefined) {
+  const sharedValue = type.kind === 'nominal' ? context.checker.sharedValueOf(type) : undefined;
+  if (sharedValue === undefined) {
     return construct(context, type, fields, node.span);
   }
-  const value = construct(context, state, fields, node.span);
+  const value = construct(context, sharedValue, fields, node.span);
   const dst = context.code.allocate();
   const cellType = context.tables.typeIndex(type);
   context.code.emit({ kind: 'newCell', span: node.span, dst, type: cellType, value });

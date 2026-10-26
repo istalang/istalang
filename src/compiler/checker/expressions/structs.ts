@@ -169,7 +169,7 @@ function declaredShape(
     typeOf,
     spreadOf: (typeArguments) => {
       const type = typeOf(typeArguments);
-      return context.checker.stateOf(type) ?? type;
+      return context.checker.sharedValueOf(type) ?? type;
     },
   };
 }
@@ -248,8 +248,8 @@ export function checkMemberAccess(
   if (field !== undefined) {
     return field;
   }
-  const state = type.kind === 'nominal' ? context.checker.stateOf(type) : undefined;
-  if (state !== undefined && fieldOf(context, state, name) !== undefined) {
+  const sharedValue = type.kind === 'nominal' ? context.checker.sharedValueOf(type) : undefined;
+  if (sharedValue !== undefined && fieldOf(context, sharedValue, name) !== undefined) {
     context.report(checkerDiagnostics.fieldBehindShared(node.member.span, typeText(type), name));
     return errorType;
   }

@@ -10,7 +10,7 @@ import { type Type, typeChildren } from './type.ts';
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
 export function heldType(
-  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'stateOf' | 'typeKeys'>,
+  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeKeys'>,
   type: Type,
   picks: (type: Type) => boolean,
 ): Type | undefined {
@@ -43,7 +43,7 @@ export function heldType(
  * which stand for the values the runtime or the host keeps in it.
  */
 export function heldParts(
-  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'stateOf'>,
+  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'sharedValueOf'>,
   type: Type,
 ): readonly Type[] {
   switch (type.kind) {
@@ -55,7 +55,7 @@ export function heldParts(
         case 'ExternStructDeclaration':
           return type.arguments;
         case 'StructDeclaration': {
-          const fields = checker.fieldsOf(type) ?? checker.stateOf(type)?.fields ?? [];
+          const fields = checker.fieldsOf(type) ?? checker.sharedValueOf(type)?.fields ?? [];
           return fields.map((field) => field.type);
         }
         default:

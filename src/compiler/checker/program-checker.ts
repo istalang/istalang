@@ -311,8 +311,8 @@ export class ProgramChecker implements CheckerContext {
     return this.#layouts.variantsOf(type);
   }
 
-  stateOf(type: NominalType): AnonymousStructType | undefined {
-    return this.#layouts.stateOf(type);
+  sharedValueOf(type: NominalType): AnonymousStructType | undefined {
+    return this.#layouts.sharedValueOf(type);
   }
 
   disposalOf(type: NominalType): Disposal {
