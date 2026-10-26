@@ -11,7 +11,7 @@
  * written.
  */
 
-import type { Dereference } from '../../syntax/expressions.ts';
+import { chainStepOf, type Dereference } from '../../syntax/expressions.ts';
 import type { Assignment } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -34,7 +34,9 @@ export function checkWholeWrite(context: BodyContext, node: Assignment, target: 
 /** The value behind the handle `node` reads through; undefined after a report. */
 function valueBehind(context: BodyContext, node: Dereference): Type | undefined {
   const handle =
-    node.operator === '*' ? context.expression(node.operand) : context.chains.target(context, node);
+    chainStepOf(node) === undefined
+      ? context.expression(node.operand)
+      : context.chains.target(context, node);
   if (handle.kind === 'error') {
     return undefined;
   }

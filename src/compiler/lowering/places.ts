@@ -29,6 +29,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { Type } from '../checker/types/type.ts';
 import {
+  chainStepOf,
   type Dereference,
   type Expression,
   type Index,
@@ -251,7 +252,9 @@ function sharedAccessor(context: FunctionContext, node: Expression): Accessor {
     unreachable(`A ${node.kind} is no place; the checker should have said so.`);
   }
   const cell =
-    node.operator === '*' ? context.expression(node.operand) : context.chains.target(context, node);
+    chainStepOf(node) === undefined
+      ? context.expression(node.operand)
+      : context.chains.target(context, node);
   return {
     node,
     read: (span, dst = context.code.allocate()) => {
