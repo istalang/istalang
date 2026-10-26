@@ -42,7 +42,7 @@ import type { Accepts } from '../resolution/choice.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
 import { checkIterated, checkIteration } from '../rules/iteration.ts';
-import { optionalInner } from '../types/fit.ts';
+import { withoutOptionals } from '../types/fit.ts';
 import { errorType, intType, type NominalType, neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
@@ -226,7 +226,8 @@ function literalTarget(
   expected: Type | undefined,
 ): LiteralTarget | undefined {
   const { checker } = context;
-  const type = expected === undefined ? undefined : withoutOptional(context, expected);
+  const type =
+    expected === undefined ? undefined : withoutOptionals(expected, checker.optionalEntity);
   if (type === undefined || type.kind !== 'nominal') {
     return undefined;
   }
@@ -239,10 +240,6 @@ function literalTarget(
 }
 
 /** `T` of any number of optionals around it (§2). */
-function withoutOptional(context: BodyContext, type: Type): Type {
-  const inner = optionalInner(type, context.checker.optionalEntity);
-  return inner === undefined ? type : withoutOptional(context, inner);
-}
 
 /**
  * A map literal, or an empty `[]`, of the declared type `type`: its `default()`, then a

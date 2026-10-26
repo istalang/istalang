@@ -20,9 +20,9 @@ import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declar
 import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { optionalInner } from '../types/fit.ts';
+import { withoutOptionals } from '../types/fit.ts';
 import { typeParametersOf } from '../types/resolve-type.ts';
-import { mentionsError, type ParameterKey, type Type } from '../types/type.ts';
+import { mentionsError, type ParameterKey } from '../types/type.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
@@ -91,7 +91,8 @@ function shapesOf(checker: CheckerContext, declaration: FunctionDeclaration): re
     const isSelf = index === 0 && parameter.node.name.text === 'self';
     const reference = parameter.reference && !isSelf ? '&' : '';
     return (
-      reference + checker.typeKeys.typeKey(withoutOptional(checker, parameter.type), positions)
+      reference +
+      checker.typeKeys.typeKey(withoutOptionals(parameter.type, checker.optionalEntity), positions)
     );
   });
   const required = parameters.filter(
@@ -102,10 +103,4 @@ function shapesOf(checker: CheckerContext, declaration: FunctionDeclaration): re
     .slice(required)
     .map((_, index) => generic + slots.slice(0, required + index).join(','))
     .concat([generic + slots.join(',')]);
-}
-
-/** `type` with its outer optionals removed: `T??` reads as `T`. */
-function withoutOptional(checker: CheckerContext, type: Type): Type {
-  const inner = optionalInner(type, checker.optionalEntity);
-  return inner === undefined ? type : withoutOptional(checker, inner);
 }

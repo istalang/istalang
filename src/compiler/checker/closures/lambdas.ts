@@ -34,7 +34,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
-import { optionalInner } from '../types/fit.ts';
+import { withoutOptionals } from '../types/fit.ts';
 import { errorType, type FunctionType, type Type, unitType } from '../types/type.ts';
 import { FunctionScope } from './function-scope.ts';
 import { blockTail, ReturnScope } from './returns.ts';
@@ -68,11 +68,9 @@ function expectedFunction(
   context: BodyContext,
   expected: Type | undefined,
 ): FunctionType | undefined {
-  if (expected === undefined || expected.kind === 'function') {
-    return expected;
-  }
-  const inner = optionalInner(expected, context.checker.optionalEntity);
-  return inner === undefined ? undefined : expectedFunction(context, inner);
+  const type =
+    expected === undefined ? undefined : withoutOptionals(expected, context.checker.optionalEntity);
+  return type?.kind === 'function' ? type : undefined;
 }
 
 /**

@@ -36,3 +36,9 @@ export function optionalInner(type: Type, optional: OptionalEntity): Type | unde
     ? type.arguments[0]
     : undefined;
 }
+
+/** `type` without every optional around it: `T` of `T`, `T?` and `T??`. */
+export function withoutOptionals(type: Type, optional: OptionalEntity): Type {
+  const inner = optionalInner(type, optional);
+  return inner === undefined ? type : withoutOptionals(inner, optional);
+}
