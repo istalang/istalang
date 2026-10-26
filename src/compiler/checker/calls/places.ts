@@ -29,7 +29,13 @@
 
 import { rewrapFunction } from '../../../language/well-known.ts';
 import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
-import { type Expression, isPlace, placePath, type Unwrap } from '../../syntax/expressions.ts';
+import {
+  type Expression,
+  type Index,
+  isPlace,
+  placePath,
+  type Unwrap,
+} from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -73,13 +79,13 @@ function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boo
       context.unsupported(root, frontier.unwrapPart);
       return false;
     }
-    return writesBack(context, root) && writesElements(context, node);
+    return writesAccessors(context, node);
   }
   if (root.kind !== 'Identifier') {
     return false;
   }
   const passedByReference = use === 'referenced' || reachesElement(node);
-  return requireChangeable(context, root, passedByReference) && writesElements(context, node);
+  return requireChangeable(context, root, passedByReference) && writesAccessors(context, node);
 }
 
 /** What the places a call passes by `&` are checked against: the callee's parameters and kind. */
@@ -137,25 +143,38 @@ function rootVariable(context: BodyContext, node: Expression): VariableEntity | 
   return entity?.kind === 'variable' ? entity : undefined;
 }
 
-/** Makes the `setIndex` call of every indexed step of the place `node`; false after a report. */
-function writesElements(context: BodyContext, node: Expression): boolean {
-  return placePath(node)
-    .steps.filter((step) => step.kind === 'Index')
-    .every((step) => {
-      const container = context.typeOf(step.target);
-      const key = context.typeOf(step.index);
-      return (
-        writeElement(context, {
-          node: step,
-          role: 'write',
-          container,
-          key,
-          element: context.typeOf(step),
-          failure: () =>
-            checkerDiagnostics.notIndexAssignable(step.span, typeText(container), typeText(key)),
-        }) && runsAtOnce(context, context.callAt(step), step.span)
-      );
-    });
+/**
+ * The accessors of the place `node`, the parts it reaches through a pair of calls, outermost
+ * first: its `x$` root, then each indexed element.
+ */
+function accessorsOf(node: Expression): readonly (Unwrap | Index)[] {
+  const { root, steps } = placePath(node);
+  const elements = steps.filter((step) => step.kind === 'Index');
+  return root.kind === 'Unwrap' ? [root, ...elements] : elements;
+}
+
+/** Makes the call writing back each accessor of the place `node`; false after a report. */
+function writesAccessors(context: BodyContext, node: Expression): boolean {
+  return accessorsOf(node).every((accessor) =>
+    accessor.kind === 'Unwrap' ? writesBack(context, accessor) : writesElement(context, accessor),
+  );
+}
+
+/** Makes the `setIndex` writing back the element `node` reads, changed; false after a report. */
+function writesElement(context: BodyContext, node: Index): boolean {
+  const container = context.typeOf(node.target);
+  const key = context.typeOf(node.index);
+  return (
+    writeElement(context, {
+      node,
+      role: 'write',
+      container,
+      key,
+      element: context.typeOf(node),
+      failure: () =>
+        checkerDiagnostics.notIndexAssignable(node.span, typeText(container), typeText(key)),
+    }) && runsAtOnce(context, context.callAt(node), node.span)
+  );
 }
 
 /** Makes the `rewrap` writing back the value the place's `x$` reads, changed; false after a report. */
