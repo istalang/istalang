@@ -35,6 +35,7 @@ import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { namedType } from '../resolution/named.ts';
 import { requiredFields, requiredFieldType } from '../traits/constraints.ts';
+import { optionalInner } from '../types/fit.ts';
 import {
   errorType,
   type FieldMember,
@@ -251,6 +252,11 @@ export function checkMemberAccess(
   const sharedValue = context.checker.sharedValueOf(type);
   if (sharedValue !== undefined && fieldOf(context, sharedValue, name) !== undefined) {
     context.report(checkerDiagnostics.fieldBehindShared(node.member.span, typeText(type), name));
+    return errorType;
+  }
+  const inner = optionalInner(type, context.checker.optionalEntity);
+  if (inner !== undefined && fieldOf(context, inner, name) !== undefined) {
+    context.report(checkerDiagnostics.insideOptional(node.member.span, typeText(type), '?.'));
     return errorType;
   }
   const isMethod = topLevelCandidates(context.checker, context.module, name, [type]).some(

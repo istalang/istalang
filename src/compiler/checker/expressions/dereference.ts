@@ -15,6 +15,7 @@ import type { Dereference } from '../../syntax/expressions.ts';
 import type { Assignment } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { optionalInner } from '../types/fit.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -37,9 +38,16 @@ function valueBehind(context: BodyContext, node: Dereference): Type | undefined 
   if (handle.kind === 'error') {
     return undefined;
   }
-  const sharedValue = context.checker.sharedValueOf(handle);
-  if (sharedValue === undefined) {
-    context.report(checkerDiagnostics.notShared(node.span, typeText(handle)));
+  const { checker } = context;
+  const sharedValue = checker.sharedValueOf(handle);
+  if (sharedValue !== undefined) {
+    return sharedValue;
   }
-  return sharedValue;
+  const inner = optionalInner(handle, checker.optionalEntity);
+  context.report(
+    inner !== undefined && checker.sharedValueOf(inner) !== undefined
+      ? checkerDiagnostics.insideOptional(node.span, typeText(handle), '?->')
+      : checkerDiagnostics.notShared(node.span, typeText(handle)),
+  );
+  return undefined;
 }

@@ -43,6 +43,11 @@ export const patternTemplates = {
     message: (operator: string, found: string) =>
       `'${operator}' works on an optional, but this is ${found}.`,
   },
+  insideOptional: {
+    code: 5409,
+    message: (found: string, operator: string) =>
+      `${found} is optional: reach inside it with '${operator}' (§4).`,
+  },
   chainNotPlace: {
     code: 5407,
     message: () =>

@@ -1,13 +1,18 @@
-# error: 5406 at 17:16
-# error: 5406 at 18:20
-# error: 5407 at 20:19
-# error: 2018 at 21:3
+# error: 5406 at 22:16
+# error: 5406 at 23:20
+# error: 5407 at 25:19
+# error: 2018 at 26:3
+# error: 5409 at 28:31
+# error: 5409 at 30:18
 # `?.` and `??` work on optionals (§4). A value read through `?.` is a copy, so a chain is never
-# assigned to, not even an element of it, and calls no method taking `&self`.
+# assigned to, not even an element of it, and calls no method taking `&self`. A `?.` or `?->`
+# reaches inside one optional only: an optional read further along the chain needs its own.
 
 struct Address { city: string; tags: Array<string> }
 
 struct Person { address: Address? }
+
+shared struct Node { value: int; next: Node? = none }
 
 fn rename(self: &Address, city: string):
   self.city = city
@@ -19,3 +24,7 @@ async fn main():
   const person = Person{address: none}
   person.address?.rename("y")
   person.address?.tags[0] = "x"
+  const maybe: Person? = person
+  const town = maybe?.address.city
+  const head = new Node{value: 1}
+  const second = head->next->value
