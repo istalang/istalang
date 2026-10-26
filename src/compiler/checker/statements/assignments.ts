@@ -155,13 +155,13 @@ function assignedPlace(context: BodyContext, written: Expression): Type {
 
 /** Reports a place written twice, or written whole and in part, by one assignment. */
 function checkDistinctPlaces(context: BodyContext, parts: readonly AssignedPart[]): void {
-  const written: string[] = [];
+  const written: PlaceName[] = [];
   for (const { target } of parts) {
     const place = placeName(target);
     const earlier =
       place === undefined ? undefined : written.find((other) => overlap(other, place));
     if (place !== undefined && earlier !== undefined) {
-      context.report(checkerDiagnostics.assignedTwice(target.span, place, earlier));
+      context.report(checkerDiagnostics.assignedTwice(target.span, place.text, earlier.text));
     }
     if (place !== undefined) {
       written.push(place);
@@ -169,12 +169,19 @@ function checkDistinctPlaces(context: BodyContext, parts: readonly AssignedPart[
   }
 }
 
+/** A place as its parts name it, the variable or the handle's value first, and as it reads. */
+interface PlaceName {
+  readonly parts: readonly string[];
+  readonly text: string;
+}
+
 /**
- * How a place on a variable reads, `p.first.0`; undefined for a place on anything else, and for
- * an indexed element, whose key is known only when running, so its writes simply happen left to
- * right (§3.15).
+ * How a place on a variable, `p.first.0`, or behind the handle a variable holds, `x->a` or `*x`,
+ * reads; undefined for a place on anything else, and for an indexed element, whose key is known
+ * only when running, so its writes simply happen left to right (§3.15). Two variables may hold one
+ * handle, which only running tells too.
  */
-function placeName(target: Expression): string | undefined {
+function placeName(target: Expression): PlaceName | undefined {
   const { root, steps } = placePath(target);
   const names: string[] = [];
   for (const step of steps) {
@@ -183,11 +190,22 @@ function placeName(target: Expression): string | undefined {
     }
     names.push(step.kind === 'MemberAccess' ? step.member.text : String(step.element));
   }
-  return root.kind === 'Identifier' ? [root.text, ...names].join('.') : undefined;
+  if (root.kind === 'Identifier') {
+    return { parts: [root.text, ...names], text: [root.text, ...names].join('.') };
+  }
+  if (root.kind !== 'Dereference' || root.operand.kind !== 'Identifier') {
+    return undefined;
+  }
+  const handle = root.operand.text;
+  const text = names.length === 0 ? `*${handle}` : `${handle}->${names.join('.')}`;
+  return { parts: [`*${handle}`, ...names], text };
 }
 
-function overlap(first: string, second: string): boolean {
-  return first === second || first.startsWith(`${second}.`) || second.startsWith(`${first}.`);
+/** Whether one of two places is the other or a part of it. */
+function overlap(first: PlaceName, second: PlaceName): boolean {
+  const shorter = first.parts.length <= second.parts.length ? first : second;
+  const longer = shorter === first ? second : first;
+  return shorter.parts.every((part, index) => longer.parts[index] === part);
 }
 
 function compoundOperator(operator: Exclude<AssignmentOperator, '='>): OverloadableOperator {

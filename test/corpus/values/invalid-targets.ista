@@ -1,18 +1,21 @@
-# error: 5203 at 18:9
-# error: 5203 at 19:14
-# error: 5001 at 20:9
-# error: 5212 at 21:9
-# error: 5013 at 22:14
-# error: 5203 at 23:9
-# error: 5217 at 25:6
-# error: 5217 at 27:6
-# error: 5217 at 28:37
+# error: 5203 at 21:9
+# error: 5203 at 22:14
+# error: 5001 at 23:9
+# error: 5212 at 24:9
+# error: 5013 at 25:14
+# error: 5203 at 26:9
+# error: 5217 at 28:6
+# error: 5217 at 30:6
+# error: 5217 at 31:37
+# error: 5217 at 33:9
+# error: 5217 at 35:7
 # A declaration's targets are irrefutable (§3.15): no literal, comparison or variant; a struct
 # target names a struct of the value's own type, and fields it has. An assignment writes each
-# place once: not twice, nor whole and in part.
+# place once: not twice, nor whole and in part, through a handle as on a variable (§3.18).
 
 struct Point { x: int; y: int }
 struct Pair { first: int; second: int }
+shared struct Cell { a: int; b: int }
 
 fn subject(n: int, o: int?):
   const 1 = n
@@ -26,3 +29,7 @@ fn subject(n: int, o: int?):
   let w = Pair{first: 1, second: 2}
   w, w.first = (Pair{first: 3, second: 4}, 5)
   (w.first, w.second), Pair{second: w.first} = ((1, 2), Pair{first: 3, second: 4})
+  const c = new Cell{a: 0, b: 0}
+  c->a, c->a = (1, 2)
+  const v = *c
+  *c, c->b = (v, 9)
