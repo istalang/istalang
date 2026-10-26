@@ -23,6 +23,7 @@ import type { Tables } from '../../definition/tables.ts';
 import type { TypeDefinition, TypeReference } from '../../definition/types.ts';
 import { type Value, value } from '../../definition/values.ts';
 import { memo } from '../../structures/memo.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/rules/annotations.ts';
@@ -261,7 +262,7 @@ export class DefinitionTables {
         };
       case 'parameter':
       case 'error':
-        throw new Error(`A ${type.kind} type can't reach lowering.`);
+        return unreachable(`A ${type.kind} type can't reach lowering.`);
       default: {
         const unhandled: never = type;
         return unhandled;
@@ -278,7 +279,7 @@ export class DefinitionTables {
   finish(main: FunctionId | undefined): Tables {
     const functions = this.#functions.map((entry, index) => {
       if (entry === undefined) {
-        throw new Error(`Function ${index} was referenced but never lowered.`);
+        unreachable(`Function ${index} was referenced but never lowered.`);
       }
       return entry;
     });

@@ -6,6 +6,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { resultVariants } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Propagate } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 import { branchOnVariant, buildVariant, isEnum, payloadOf, variantTestOf } from './variants.ts';
@@ -16,9 +17,7 @@ export function lowerPropagate(context: FunctionContext, node: Propagate): Regis
   const operandType = context.body.typeOf(node.operand);
   const returned = context.result;
   if (!(isEnum(operandType) && isEnum(returned))) {
-    throw new Error(
-      `'?' needs two Results at ${node.span.start}; the checker should have said so.`,
-    );
+    unreachable(`'?' needs two Results at ${node.span.start}; the checker should have said so.`);
   }
   const ok = code.newLabel();
   const err = code.newLabel();

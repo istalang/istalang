@@ -26,6 +26,7 @@ import {
   wellKnown,
 } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
@@ -180,7 +181,7 @@ export class ProgramChecker implements CheckerContext {
   moduleOf(declaration: Declaration | VariableDeclaration): ModuleId {
     const module = this.#modules.get(declaration);
     if (module === undefined) {
-      throw new Error(`No module declares ${declaration.kind} at ${declaration.span.start}.`);
+      unreachable(`No module declares ${declaration.kind} at ${declaration.span.start}.`);
     }
     return module;
   }
@@ -208,7 +209,7 @@ export class ProgramChecker implements CheckerContext {
   optionalOf(type: Type): NominalType {
     const optional = this.wellKnownType(wellKnown.optional, [type]);
     if (optional === undefined) {
-      throw new Error('A value was wrapped into an optional in a program without a prelude.');
+      unreachable('A value was wrapped into an optional in a program without a prelude.');
     }
     return optional;
   }
@@ -216,7 +217,7 @@ export class ProgramChecker implements CheckerContext {
   sharedOf(type: Type): NominalType {
     const shared = this.wellKnownType(wellKnown.shared, [type]);
     if (shared === undefined) {
-      throw new Error(
+      unreachable(
         "A variable needs a cell (passed by '&' or shared with a closure) in a program without a prelude.",
       );
     }

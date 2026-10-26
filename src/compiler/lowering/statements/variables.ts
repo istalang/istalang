@@ -19,6 +19,7 @@
  */
 
 import type { Register, TypeId } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { TargetOwner } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
@@ -128,7 +129,7 @@ export class VariableRegisters {
   registerOf(declaring: Identifier): Register {
     const register = this.#registers.get(declaring);
     if (register === undefined) {
-      throw new Error(`'${declaring.text}' has no register; the checker let an unknown name by.`);
+      unreachable(`'${declaring.text}' has no register; the checker let an unknown name by.`);
     }
     return register;
   }

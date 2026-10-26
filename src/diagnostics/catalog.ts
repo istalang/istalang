@@ -11,6 +11,7 @@
  * throws when the module loads, so no two catalogs can collide.
  */
 
+import { unreachable } from '../structures/unreachable.ts';
 import type { Span } from '../text/span.ts';
 import { codeBlockSize, codeBlocks, type DiagnosticPhase } from './code-blocks.ts';
 import type { Diagnostic, Severity } from './diagnostic.ts';
@@ -44,12 +45,10 @@ export function defineDiagnostics<const Templates extends Record<string, Diagnos
   const factories: Record<string, DiagnosticFactory<never[]>> = {};
   for (const [name, template] of Object.entries(templates)) {
     if (template.code < block || template.code >= block + codeBlockSize) {
-      throw new Error(
-        `Diagnostic code ${template.code} ('${name}') is outside the ${phase} block.`,
-      );
+      unreachable(`Diagnostic code ${template.code} ('${name}') is outside the ${phase} block.`);
     }
     if (seen.has(template.code)) {
-      throw new Error(`Diagnostic code ${template.code} is declared twice (at '${name}').`);
+      unreachable(`Diagnostic code ${template.code} is declared twice (at '${name}').`);
     }
     seen.add(template.code);
     const make = (span: Span, ...args: never[]): Diagnostic => ({

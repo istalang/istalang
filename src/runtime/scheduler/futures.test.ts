@@ -7,6 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../definition/values.ts';
+import { Unreachable } from '../../structures/unreachable.ts';
 import { Panic } from '../natives.ts';
 import { Futures } from './futures.ts';
 import { Heap, handleObject } from './heap.ts';
@@ -46,7 +47,7 @@ describe('futures', () => {
     const futures = freshFutures();
     const id = futures.create({ kind: 'timer', at: 5n });
     futures.resolve(id, null);
-    expect(() => futures.resolve(id, null)).toThrow(Error);
+    expect(() => futures.resolve(id, null)).toThrow(Unreachable);
   });
 
   it('race in first at the lowest position among those already resolved', () => {

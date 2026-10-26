@@ -23,6 +23,7 @@
  */
 
 import type { PrimitiveName } from '../../../language/primitives.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {
@@ -67,7 +68,7 @@ export function isNominalEntity(entity: TypeEntity): entity is NominalEntity {
  */
 export function nominalType(entity: TypeEntity, typeArguments: readonly Type[]): NominalType {
   if (!isNominalEntity(entity)) {
-    throw new Error(`A ${entity.declaration.kind} declares no nominal type.`);
+    unreachable(`A ${entity.declaration.kind} declares no nominal type.`);
   }
   return { kind: 'nominal', entity, arguments: typeArguments };
 }

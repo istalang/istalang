@@ -26,6 +26,7 @@ import { isResourceType } from '../../definition/types.ts';
 import { elementsOf, type Value } from '../../definition/values.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import { fieldOf, float, given, resultError, resultOk, text } from '../native-values.ts';
 import { jsonName } from '../stdlib-loader.ts';
 
@@ -37,7 +38,7 @@ function hostPayloadOf(value: Value, context: NativeContext): unknown {
   if (typeof value === 'object' && value !== null && value.kind === 'handle') {
     return context.resources.payloadOf(value);
   }
-  throw new TypeError('Expected a value of a host type.');
+  unreachable('Expected a value of a host type.');
 }
 
 /** The code of every `Error` reading JSON returns. */
@@ -84,16 +85,13 @@ export const jsonNatives: Natives = {
   [nativeKey(jsonName, '_encodeHandle', parameterKey('T'))]: ([value], context) =>
     jsonOfPlain(hostPayloadOf(given(value), context), jsonTypeOf(context.types)),
   [nativeKey(jsonName, '_decodeHandle', json, string)]: ([value], context) => {
-    const [type] = context.entry.kind === 'extern' ? context.entry.typeArguments : [];
-    if (type?.kind !== 'named') {
-      throw new TypeError(`${context.entry.name} reads no host type.`);
-    }
+    const type = context.typeArguments[0] ?? unreachable(`${context.name} reads no host type.`);
     const payload = plainOfJson(given(value), jsonTypeOf(context.types));
     return resultOk(
       context,
-      isResourceType(context.types, type.type)
-        ? context.resources.create(type.type, payload)
-        : { kind: 'extern', type: type.type, payload },
+      isResourceType(context.types, type)
+        ? context.resources.create(type, payload)
+        : { kind: 'extern', type, payload },
     );
   },
 };

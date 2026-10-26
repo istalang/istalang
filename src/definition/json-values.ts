@@ -20,6 +20,7 @@
 
 import { qualifiedName, wellKnown } from '../language/well-known.ts';
 import { memo } from '../structures/memo.ts';
+import { unreachable } from '../structures/unreachable.ts';
 import { compareCodeUnits, decodeJson } from './codec.ts';
 import { mapOf } from './equality.ts';
 import type { TypeId } from './operands.ts';
@@ -53,7 +54,7 @@ export function jsonTypeIn(types: readonly TypeDefinition[]): JsonType | undefin
 export function jsonTypeOf(types: readonly TypeDefinition[]): JsonType {
   const shape = jsonTypeIn(types);
   if (shape === undefined) {
-    throw new TypeError('A Json value reached a program without the Json type.');
+    unreachable('A Json value reached a program without the Json type.');
   }
   return shape;
 }
@@ -115,7 +116,7 @@ export function plainOfJson(json: Value, shape: JsonType, depth = 0): unknown {
         objectEntries(field).map(([key, item]) => [key, plainOfJson(item, shape, depth + 1)]),
       );
     default:
-      throw new TypeError(`Json has no variant ${variant}.`);
+      unreachable(`Json has no variant ${variant}.`);
   }
 }
 
@@ -182,7 +183,7 @@ function partsOf(
     throw new JsonError(`JSON nests deeper than ${maximumDepth} levels.`);
   }
   if (!isJsonValue(json, shape)) {
-    throw new TypeError('Expected a Json value.');
+    unreachable('Expected a Json value.');
   }
   return [jsonVariants[json.variant], childValues(json)[0]];
 }
@@ -208,20 +209,20 @@ function written(json: Value, shape: JsonType, depth: number): string {
         .map(([key, item]) => `${JSON.stringify(key)}:${written(item, shape, depth + 1)}`)
         .join(',')}}`;
     default:
-      throw new TypeError(`Json has no variant ${variant}.`);
+      unreachable(`Json has no variant ${variant}.`);
   }
 }
 
 function listItems(field: Value | undefined): readonly Value[] {
   if (field === undefined || field === null || !isComposite(field) || field.kind !== 'array') {
-    throw new TypeError('Expected the items of a Json list.');
+    unreachable('Expected the items of a Json list.');
   }
   return field.elements;
 }
 
 function objectEntries(field: Value | undefined): readonly (readonly [string, Value])[] {
   if (field === undefined || field === null || !isComposite(field) || field.kind !== 'map') {
-    throw new TypeError('Expected the fields of a Json object.');
+    unreachable('Expected the fields of a Json object.');
   }
   return field.entries
     .map(([key, item]): [string, Value] => [String(key), item])

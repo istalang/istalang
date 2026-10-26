@@ -9,6 +9,7 @@
 
 import type { CodeFunction } from '../../../definition/functions.ts';
 import { codecFunctions } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import { substitute } from '../../checker/types/type.ts';
 import { type FunctionInstance, substitutionOf } from '../instances.ts';
@@ -40,14 +41,14 @@ export function codecEntry(lowering: CodecLowering): CodeFunction {
   const { checker, tables, instance } = lowering;
   const [type] = instance.typeArguments;
   if (type === undefined) {
-    throw new Error('A codec instance has no type argument.');
+    unreachable('A codec instance has no type argument.');
   }
   const { declaration } = instance;
   const isEncoder = declaration.name.text === codecFunctions.encode;
   const code = new SynthesizedCode(lowering, declaration.name.span, isEncoder ? 1 : 2);
   const result = substitute(checker.resultOf(declaration), substitutionOf(instance));
   if (result.kind !== 'nominal') {
-    throw new Error('A codec returns a Json or a Result.');
+    unreachable('A codec returns a Json or a Result.');
   }
   const form = checker.json.formOf(type);
   if (isEncoder) {

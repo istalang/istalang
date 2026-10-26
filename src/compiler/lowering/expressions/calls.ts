@@ -17,6 +17,7 @@
 import type { Callee } from '../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/check.ts';
 import {
   type Call,
@@ -85,11 +86,8 @@ function receiverOf(
 function lowerValueCall(context: FunctionContext, node: Call): Register {
   const callee = valueCallee(context, node);
   const argumentList = node.arguments.map((argument) => argumentOf(context, argument, false));
-  const dst = context.code.allocate();
-  context.code.emit({
-    kind: 'call',
+  const dst = emitCall(context, {
     span: node.span,
-    dst,
     callee: { kind: 'value', register: callee },
     arguments: argumentList.map(({ argument }) => argument),
   });
@@ -111,7 +109,7 @@ function valueCallee(context: FunctionContext, node: Call): Register {
 export function lowerSpawn(context: FunctionContext, node: Spawn): void {
   const spawned = unparenthesized(node.call);
   if (spawned.kind !== 'Call') {
-    throw new Error('A spawn of no call checked clean.');
+    unreachable('A spawn of no call checked clean.');
   }
   const resolved = context.body.calls.get(spawned);
   const callee: Callee =

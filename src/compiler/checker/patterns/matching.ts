@@ -17,6 +17,7 @@
  */
 
 import { optionalVariants } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { VariantNaming } from '../../binder/entities.ts';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions.ts';
@@ -58,7 +59,7 @@ export class CheckedPatterns {
   patternOf(pattern: Pattern): CheckedPattern {
     const checked = this.#patterns.get(pattern);
     if (checked === undefined) {
-      throw new Error(`No pattern was checked at ${pattern.span.start}.`);
+      unreachable(`No pattern was checked at ${pattern.span.start}.`);
     }
     return checked;
   }

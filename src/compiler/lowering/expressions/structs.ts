@@ -7,6 +7,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
 import {
   type Expression,
@@ -29,7 +30,7 @@ export function lowerStructLiteral(context: FunctionContext, node: StructLiteral
 export function literalFields(context: FunctionContext, node: StructLiteral): Register[] {
   const sources = context.body.sourcesOf(node);
   if (sources === undefined) {
-    throw new Error(
+    unreachable(
       `A struct literal misses a field at ${node.span.start}; the checker should have said so.`,
     );
   }
@@ -99,7 +100,7 @@ function structTypeOf(
 ): NominalType | AnonymousStructType {
   const type = context.body.typeOf(node);
   if (type.kind !== 'nominal' && type.kind !== 'anonymous') {
-    throw new Error(`Expected a struct at ${node.span.start}; the checker should have said so.`);
+    unreachable(`Expected a struct at ${node.span.start}; the checker should have said so.`);
   }
   return type;
 }
@@ -107,7 +108,7 @@ function structTypeOf(
 function registerOf(values: ReadonlyMap<Expression, Register>, value: Expression): Register {
   const register = values.get(value);
   if (register === undefined) {
-    throw new Error(`No value was lowered for the item at ${value.span.start}.`);
+    unreachable(`No value was lowered for the item at ${value.span.start}.`);
   }
   return register;
 }

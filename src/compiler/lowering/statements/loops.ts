@@ -9,6 +9,7 @@
  */
 
 import { withPushed } from '../../../structures/stack.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { For, While } from '../../syntax/statements.ts';
@@ -37,9 +38,7 @@ export class LoopStack {
   current(span: Span): LoopTargets {
     const innermost = this.#loops.at(-1);
     if (innermost === undefined) {
-      throw new Error(
-        `A loop exit outside a loop at ${span.start}; the checker should have said so.`,
-      );
+      unreachable(`A loop exit outside a loop at ${span.start}; the checker should have said so.`);
     }
     return innermost;
   }

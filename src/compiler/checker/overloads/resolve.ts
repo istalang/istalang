@@ -17,6 +17,7 @@
  */
 
 import { disposeFunction } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
 import { checkDecidedLambdas } from '../closures/lambda-arguments.ts';
@@ -249,7 +250,7 @@ export function explain(
       return;
     default: {
       const unexplained: never = reason;
-      throw new TypeError(`No explanation for ${JSON.stringify(unexplained)}.`);
+      unreachable(`No explanation for ${JSON.stringify(unexplained)}.`);
     }
   }
 }

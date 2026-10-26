@@ -6,6 +6,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { JsonField, JsonForm } from '../../checker/rules/json-forms/form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { variantIndexOf } from '../expressions/variants.ts';
@@ -25,7 +26,7 @@ export class Encoder {
     const code = this.#code;
     const [value] = code.parameters;
     if (value === undefined) {
-      throw new Error('An encoder takes the value it writes.');
+      unreachable('An encoder takes the value it writes.');
     }
     switch (form.kind) {
       case 'json':
@@ -59,7 +60,7 @@ export class Encoder {
         return;
       default: {
         const unhandled: never = form;
-        throw new Error(`No encoder for ${JSON.stringify(unhandled)}.`);
+        unreachable(`No encoder for ${JSON.stringify(unhandled)}.`);
       }
     }
   }
@@ -72,7 +73,7 @@ export class Encoder {
   ): void {
     const code = this.#code;
     if (type.kind !== 'nominal') {
-      throw new Error('An enum form is of a nominal type.');
+      unreachable('An enum form is of a nominal type.');
     }
     const labels = variants.map(() => code.code.newLabel());
     code.code.switch(value, labels, code.span);

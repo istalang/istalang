@@ -10,14 +10,13 @@
  * commits; anything else it throws is a bug in the native itself and propagates.
  *
  * Natives the runtime backs need the running instance, so each call also receives a context: the
- * function-table entry being called and the Definition's types (for building typed values), the time the segment
+ * extern being called, its declared result and type arguments, and the Definition's types (for building typed values), the time the segment
  * started, which is what `now()` means (§5), the futures the runtime creates for an extern that
  * returns one (§3.6), the instance's shared cells, its slots (§6), its weak references and its
  * resources (§7). A
  * native never holds the context beyond its call.
  */
 
-import type { FunctionDefinition } from '../definition/functions.ts';
 import type { TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/types.ts';
 import type { Value } from '../definition/values.ts';
@@ -66,9 +65,16 @@ export interface NativeWeakSide {
 }
 
 export interface NativeContext {
-  /** The entry called: its extern's declared types, or a code entry a mock replaced. */
-  readonly entry: FunctionDefinition;
-  /** The Definition's types, which the entry's types index, for building values of them. */
+  /** The extern called, by its declared name. */
+  readonly name: string;
+  /**
+   * The type entry the extern's declared result names (a struct, an enum, `Shared` or `Future`);
+   * undefined for any other result, and for a code entry a mock replaced.
+   */
+  readonly resultType: TypeId | undefined;
+  /** The type entry each of the extern's type arguments names, in order (`json.parse<T>`). */
+  readonly typeArguments: readonly (TypeId | undefined)[];
+  /** The Definition's types, which the extern's types index, for building values of them. */
   readonly types: readonly TypeDefinition[];
   /** The instance whose code called the native, as its host names it (§9). */
   readonly instance: string;

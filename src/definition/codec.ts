@@ -15,6 +15,7 @@
 import { createHash } from 'node:crypto';
 import { parse, stringify } from 'lossless-json';
 import { z } from 'zod';
+import { unreachable } from '../structures/unreachable.ts';
 
 const integerSyntax = /^-?\d+$/u;
 
@@ -25,7 +26,7 @@ export const contentHashText = z.string().regex(/^[0-9a-f]{64}$/u);
 export function encodeJson(value: unknown): string {
   const text = stringify(value, sortKeys);
   if (text === undefined) {
-    throw new TypeError('Only JSON-shaped values can be encoded.');
+    unreachable('Only JSON-shaped values can be encoded.');
   }
   return text;
 }

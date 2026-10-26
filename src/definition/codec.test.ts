@@ -5,6 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { Unreachable } from '../structures/unreachable.ts';
 import { exactJson, looseText, reverseKeys } from './codec.test-kit.ts';
 import { contentHash, decodeJson, encodeJson } from './codec.ts';
 
@@ -63,6 +64,6 @@ describe('codec', () => {
   });
 
   it('refuses values JSON cannot hold', () => {
-    expect(() => encodeJson(undefined)).toThrow(TypeError);
+    expect(() => encodeJson(undefined)).toThrow(Unreachable);
   });
 });

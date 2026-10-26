@@ -29,6 +29,7 @@ import type { CodeFunction } from '../../definition/functions.ts';
 import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register, TypeId } from '../../definition/operands.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import { isReference, type Reference } from '../snapshot/objects.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import { partAt, withPart } from '../values/parts.ts';
@@ -154,7 +155,7 @@ export function resumeAt(frame: ActiveFrame, dst: Register | undefined, value: V
 export function readRegister(frame: ActiveFrame, register: Register): Value {
   const contents = frame.registers[register];
   if (contents === undefined) {
-    throw new Error(`Register ${register} is empty at pc ${frame.pc} of ${frame.code.name}.`);
+    unreachable(`Register ${register} is empty at pc ${frame.pc} of ${frame.code.name}.`);
   }
   if (isReference(contents)) {
     return readThrough(frame.heap, contents);
@@ -222,7 +223,7 @@ export function argumentContents(frame: ActiveFrame, argument: Argument): Regist
     return { kind: 'reference', cell: contents.cell, path: [...contents.path, ...path] };
   }
   if (contents === undefined || !isCell(frame, register)) {
-    throw new Error(`Register ${register} is passed by '&' but isn't a cell.`);
+    unreachable(`Register ${register} is passed by '&' but isn't a cell.`);
   }
   return { kind: 'reference', cell: cellOf(contents), path };
 }
@@ -244,7 +245,7 @@ function isCell(frame: ActiveFrame, register: Register): boolean {
 function cellOf(contents: RegisterContents): number {
   const cell = isReference(contents) ? undefined : handleTarget(contents);
   if (cell === undefined) {
-    throw new TypeError('A cell register holds no cell.');
+    unreachable('A cell register holds no cell.');
   }
   return cell;
 }

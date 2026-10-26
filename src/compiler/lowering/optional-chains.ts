@@ -13,6 +13,7 @@
 import type { Register } from '../../definition/operands.ts';
 import { optionalVariants } from '../../language/well-known.ts';
 import { withPushed } from '../../structures/stack.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import { chainStepOf, type Expression } from '../syntax/expressions.ts';
 import type { Label } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
@@ -39,9 +40,7 @@ export class OptionalChains {
     const { code } = context;
     const type = context.body.typeOf(link);
     if (!isEnum(type)) {
-      throw new Error(
-        `A chain at ${link.span.start} isn't optional; the checker should have said so.`,
-      );
+      unreachable(`A chain at ${link.span.start} isn't optional; the checker should have said so.`);
     }
     const result = code.allocate();
     const none = code.newLabel();
@@ -64,7 +63,7 @@ export class OptionalChains {
   target(context: FunctionContext, link: Expression): Register {
     const step = chainStepOf(link);
     if (step === undefined) {
-      throw new Error(`A ${link.kind} is no link; lowering asked the wrong node.`);
+      unreachable(`A ${link.kind} is no link; lowering asked the wrong node.`);
     }
     const { body } = context;
     const value =
@@ -77,9 +76,7 @@ export class OptionalChains {
       return value;
     }
     if (base === undefined || none === undefined) {
-      throw new Error(
-        `A '?.' at ${link.span.start} is outside a chain; lowering lost track of it.`,
-      );
+      unreachable(`A '?.' at ${link.span.start} is outside a chain; lowering lost track of it.`);
     }
     const some = context.code.newLabel();
     const optional = context.checker.optionalOf(base);

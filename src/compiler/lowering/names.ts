@@ -18,6 +18,7 @@ import {
   type KeyType,
   keyTypeText,
 } from '../../definition/extern-key.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
 import type { ModuleId, ProgramModule } from '../program/program.ts';
@@ -29,7 +30,7 @@ import type { VariableDeclaration } from '../syntax/statements.ts';
 export function loadedModule(checker: Checker, module: ModuleId): ProgramModule {
   const loaded = checker.program.modules.get(module);
   if (loaded === undefined) {
-    throw new Error(`Module ${module} is not in the program.`);
+    unreachable(`Module ${module} is not in the program.`);
   }
   return loaded;
 }
@@ -129,7 +130,7 @@ function keyType(checker: Checker, type: Type): KeyType {
         result: keyType(checker, type.result),
       };
     case 'error':
-      throw new Error('An extern with an unresolved type reached lowering.');
+      return unreachable('An extern with an unresolved type reached lowering.');
     default: {
       const unhandled: never = type;
       return unhandled;

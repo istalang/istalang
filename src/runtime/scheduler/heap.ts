@@ -16,6 +16,7 @@
 
 import { handleTarget, type Value } from '../../definition/values.ts';
 import { pushAll } from '../../structures/stack.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { ActiveFrame } from '../interpreter/machine.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
 import { heldObjects } from '../snapshot/snapshot.ts';
@@ -59,7 +60,7 @@ export class Heap {
   of<Kind extends LiveKind>(id: number, kind: Kind): LiveObjectOf<Kind> {
     const object = this.#objects.get(id);
     if (object?.kind !== kind) {
-      throw new Error(`Object ${id} is not a ${kind}.`);
+      unreachable(`Object ${id} is not a ${kind}.`);
     }
     return object as LiveObjectOf<Kind>;
   }
@@ -94,7 +95,7 @@ export class Heap {
   objectOf(id: number): LiveObject {
     const object = this.#objects.get(id);
     if (object === undefined) {
-      throw new Error(`No object ${id}.`);
+      unreachable(`No object ${id}.`);
     }
     return object;
   }
@@ -125,7 +126,7 @@ export class Heap {
 export function handleObject(handle: Value): number {
   const id = handleTarget(handle);
   if (id === undefined) {
-    throw new TypeError('Expected a handle.');
+    unreachable('Expected a handle.');
   }
   return id;
 }

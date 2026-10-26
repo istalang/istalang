@@ -16,6 +16,7 @@
  *   value is one entry, owned by the constant, which has no type parameters to substitute.
  */
 
+import { unreachable } from '../../structures/unreachable.ts';
 import type {
   CheckedBody,
   Checker,
@@ -211,7 +212,7 @@ function close(resolved: ResolvedCall, within: FunctionInstance | undefined): Fu
   const { parameter, constraint, member } = resolved.requirement;
   const witness = within?.witnesses.get(parameter)?.[constraint]?.[member];
   if (witness?.kind !== 'function') {
-    throw new Error(`No witness for '${parameter.name.text}'; checking should have found one.`);
+    unreachable(`No witness for '${parameter.name.text}'; checking should have found one.`);
   }
   const own = new Map<ParameterKey, Type>(substitution);
   resolved.function.typeParameters

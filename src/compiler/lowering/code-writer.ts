@@ -12,6 +12,7 @@
 
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Register } from '../../definition/operands.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 
 /** A place in the code, known once the code before it has been written. */
@@ -172,7 +173,7 @@ export class CodeWriter {
   finish(): WrittenCode {
     if (this.#patches.size > 0) {
       const labels = [...this.#patches.keys()].join(', ');
-      throw new Error(`Labels ${labels} are jumped to but never placed.`);
+      unreachable(`Labels ${labels} are jumped to but never placed.`);
     }
     return { registers: this.#registers, instructions: this.#instructions };
   }

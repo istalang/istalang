@@ -25,11 +25,11 @@
 
 import type { CodeFunction } from '../../definition/functions.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
-import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import { optionalVariants } from '../../language/well-known.ts';
 import { handlerOf } from '../../structures/kind-table.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type {
@@ -52,7 +52,7 @@ import type { Block, Statement } from '../syntax/statements.ts';
 import { emitInbound, type Inbound } from './boundary/inbound.ts';
 import { CodeWriter } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
-import { emitCall } from './emit-call.ts';
+import { emitCall, referenceTo } from './emit-call.ts';
 import { expressionHandlers } from './expressions/expressions.ts';
 import { buildVariant } from './expressions/variants.ts';
 import {
@@ -135,7 +135,7 @@ export function nestedFrame(
   const { node } = nested;
   const checked = body.functionOf(node);
   if (checked === undefined) {
-    throw new Error(`The function at ${node.span.start} was never checked.`);
+    unreachable(`The function at ${node.span.start} was never checked.`);
   }
   const { type, parameters, captures } = checked;
   return {
@@ -144,7 +144,7 @@ export function nestedFrame(
     parameters: parameters.map((parameter, index) => {
       const slot = type.parameters[index];
       if (slot === undefined) {
-        throw new Error(`'${parameter.name.text}' has no slot in its function's type.`);
+        unreachable(`'${parameter.name.text}' has no slot in its function's type.`);
       }
       return { node: parameter, ...slot };
     }),
@@ -191,7 +191,7 @@ export class FunctionLowering implements FunctionContext {
     this.#declareFrame();
     const { body } = node;
     if (body === undefined) {
-      throw new Error(`The local function at ${node.span.start} has no body.`);
+      unreachable(`The local function at ${node.span.start} has no body.`);
     }
     this.returnValue(
       body.kind === 'Block' ? lowerBody(this, body) : this.expression(body),
@@ -209,7 +209,7 @@ export class FunctionLowering implements FunctionContext {
       const edge = edges.parameters[index];
       const json = arguments_[index];
       if (edge === undefined || json === undefined) {
-        throw new Error(`No edge for argument ${index} of a start entry.`);
+        unreachable(`No edge for argument ${index} of a start entry.`);
       }
       const path = this.constant(edge.path, span);
       const value = emitInbound(this, { json, path }, edge, span);
@@ -235,7 +235,7 @@ export class FunctionLowering implements FunctionContext {
     for (const parameter of parameters.slice(given.length)) {
       const { defaultValue } = parameter.node;
       if (defaultValue === undefined) {
-        throw new Error(
+        unreachable(
           `'${parameter.node.name.text}' has no default; the checker should have said so.`,
         );
       }
@@ -244,20 +244,11 @@ export class FunctionLowering implements FunctionContext {
       this.code.emit({ kind: 'move', span: defaultValue.span, dst: register, src: value });
       all.push(register);
     }
-    const result = this.code.allocate();
-    this.code.emit({
-      kind: 'call',
+    const result = emitCall(this, {
       span: declaration.name.span,
-      dst: result,
-      callee: {
-        kind: 'function',
-        function: this.tables.functionIndex(fullInstance(this.checker, instance)),
-      },
-      arguments: all.map(
-        (register, index): Argument =>
-          parameters[index]?.reference === true
-            ? { kind: 'reference', place: { register, path: [] } }
-            : { kind: 'value', register },
+      callee: this.tables.functionIndex(fullInstance(this.checker, instance)),
+      arguments: all.map((register, index) =>
+        parameters[index]?.reference === true ? referenceTo(register) : register,
       ),
     });
     this.returnValue(result, declaration.name.span);
@@ -297,7 +288,7 @@ export class FunctionLowering implements FunctionContext {
 
   #functionOf(resolved: ResolvedCall | undefined, at: NodeOf<string>): FunctionId {
     if (resolved === undefined) {
-      throw new Error(`No call was made for the ${at.kind} at ${at.span.start}.`);
+      unreachable(`No call was made for the ${at.kind} at ${at.span.start}.`);
     }
     return this.tables.functionIndex(calleeOf(resolved, this.owner));
   }

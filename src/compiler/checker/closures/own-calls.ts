@@ -14,6 +14,7 @@
  */
 
 import { entryFunction, ownCall, wellKnown } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity, VariableEntity } from '../../binder/entities.ts';
 import type { Call } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
@@ -44,7 +45,7 @@ export class OwnCalls {
     if (variable === undefined) {
       const { name } = owner;
       if (name === undefined) {
-        throw new Error('Only a named function has a call its name watches.');
+        unreachable('Only a named function has a call its name watches.');
       }
       const hidden: Identifier = { kind: 'Identifier', span: name.span, text: name.text };
       variable = { kind: 'variable', name: hidden, owner };

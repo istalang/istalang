@@ -20,6 +20,7 @@
 
 import type { Place } from '../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../definition/operands.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { Type } from '../checker/types/type.ts';
 import {
@@ -65,7 +66,7 @@ export function enterReferenced(
 ): EnteredPlace<Extract<PlaceTarget, { kind: 'place' }>> {
   const { target, leave } = enter(context, node, 'referenced');
   if (target.kind !== 'place') {
-    throw new Error('A referenced place ended at an element it did not copy in.');
+    unreachable('A referenced place ended at an element it did not copy in.');
   }
   return { target, leave };
 }
@@ -98,7 +99,7 @@ export function writeTarget(
 export function variableRegister(context: FunctionContext, node: Identifier): Register {
   const entity = context.entityOf(node);
   if (entity?.kind !== 'variable') {
-    throw new Error(`'${node.text}' is not a variable; the checker should have said so.`);
+    unreachable(`'${node.text}' is not a variable; the checker should have said so.`);
   }
   return context.variables.registerOf(entity.name);
 }
@@ -131,7 +132,7 @@ export function fieldIndexOf(
     (field) => field.name === node.member.text,
   );
   if (index < 0) {
-    throw new Error(`No field '${node.member.text}'; the checker should have said so.`);
+    unreachable(`No field '${node.member.text}'; the checker should have said so.`);
   }
   return index;
 }
@@ -181,7 +182,7 @@ function rootPlace(
     return { register: variableRegister(context, root), path: [] };
   }
   if (root.kind !== 'Unwrap') {
-    throw new Error(`A ${root.kind} is no place; the checker should have said so.`);
+    unreachable(`A ${root.kind} is no place; the checker should have said so.`);
   }
   return copyInUnwrapped(context, root, passedOn, writeBacks);
 }

@@ -23,6 +23,7 @@ import type { Definition } from '../../definition/definition.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { handlesIn, type Value } from '../../definition/values.ts';
 import { pushAll } from '../../structures/stack.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { FunctionTable } from '../interpreter/function-table.ts';
 import {
   type ActiveFrame,
@@ -109,7 +110,7 @@ export class Instance {
    */
   static start(loaded: LoadedDefinition, snapshot: Snapshot): Instance {
     if (snapshot.status.kind !== 'unstarted') {
-      throw new Error(`Instance '${snapshot.instance}' has started already.`);
+      unreachable(`Instance '${snapshot.instance}' has started already.`);
     }
     const { call } = snapshot.status;
     const instance = new Instance(loaded, snapshot);
@@ -142,7 +143,7 @@ export class Instance {
           !held.objects.has(object.id) && isDisposable(this.loaded.definition.types, object),
       );
     if (lost !== undefined) {
-      throw new Error(`Object ${lost.id} lost its last holder without being disposed.`);
+      unreachable(`Object ${lost.id} lost its last holder without being disposed.`);
     }
     return { objects: persisted.map(storedObject), depth: held.depth };
   }
@@ -220,7 +221,7 @@ export class Instance {
   ): LiveExecution {
     const code = this.loaded.definition.functions[entry];
     if (code?.kind !== 'code') {
-      throw new Error(`Entry ${entry} is not code.`);
+      unreachable(`Entry ${entry} is not code.`);
     }
     const frame = newFrame({ function: entry, code }, contents, this.frameHeap, captures);
     return this.heap.add((id) => ({
@@ -300,7 +301,7 @@ export interface Persisted {
 export function topFrame(execution: LiveExecution): ActiveFrame {
   const frame = execution.frames.at(-1);
   if (frame === undefined) {
-    throw new Error(`Execution ${execution.id} has no frame.`);
+    unreachable(`Execution ${execution.id} has no frame.`);
   }
   return frame;
 }
@@ -320,7 +321,7 @@ function liveObject(definition: Definition, object: HeapObject, heap: FrameHeap)
 function liveFrame(definition: Definition, frame: Frame, heap: FrameHeap): ActiveFrame {
   const code = definition.functions[frame.function];
   if (code?.kind !== 'code') {
-    throw new Error(`Frame function ${frame.function} is not code; loading checks this.`);
+    unreachable(`Frame function ${frame.function} is not code; loading checks this.`);
   }
   const live = newFrame({ function: frame.function, code }, [], heap);
   for (const [register, contents] of frame.registers) {

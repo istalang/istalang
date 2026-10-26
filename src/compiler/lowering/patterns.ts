@@ -11,6 +11,7 @@
  */
 
 import type { Register } from '../../definition/operands.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { CheckedPattern, PatternTest, PatternValue } from '../checker/check.ts';
 import type { Label } from './code-writer.ts';
@@ -74,7 +75,7 @@ function passed(
     const comparison = call(context, test.site, [part, value]);
     const { operator } = test.site;
     if (operator === '==' || operator === '!=') {
-      throw new Error(`'${operator}' is an equal test; the checker should have made it one.`);
+      unreachable(`'${operator}' is an equal test; the checker should have made it one.`);
     }
     context.code.emit({
       kind: 'order',
@@ -107,7 +108,7 @@ function comparedWith(context: FunctionContext, value: PatternValue): Register {
   }
   const form = context.checker.constantNamed(context.module, value.name)?.form;
   if (form === undefined) {
-    throw new Error(`'${value.name.text}' has no value; the checker should have said so.`);
+    unreachable(`'${value.name.text}' has no value; the checker should have said so.`);
   }
   return context.constant(constantValue(context.tables, form), value.name.span);
 }

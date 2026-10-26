@@ -5,6 +5,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { optionalVariants } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
@@ -19,7 +20,7 @@ import { literalFields } from './structs.ts';
 export function variantIndexOf(checker: Checker, type: NominalType, name: string): number {
   const index = (checker.variantsOf(type) ?? []).findIndex((variant) => variant.name === name);
   if (index < 0) {
-    throw new Error(`No variant '${name}'; the checker should have said so.`);
+    unreachable(`No variant '${name}'; the checker should have said so.`);
   }
   return index;
 }
@@ -92,7 +93,7 @@ function emitVariant(
 ): Register {
   const type = context.body.typeOf(node);
   if (!isEnum(type)) {
-    throw new Error(`Expected an enum at ${node.span.start}; the checker should have said so.`);
+    unreachable(`Expected an enum at ${node.span.start}; the checker should have said so.`);
   }
   return buildVariant(context, { type, name }, fields, node.span);
 }

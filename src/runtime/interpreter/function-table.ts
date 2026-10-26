@@ -10,6 +10,7 @@
 import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/functions.ts';
 import type { FunctionId } from '../../definition/operands.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Native, Natives } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
 
@@ -43,7 +44,7 @@ export class FunctionTable {
   callee(index: FunctionId): Callable {
     const callable = this.#entries[index];
     if (callable === undefined) {
-      throw new RangeError(`No function ${index}; loading checks every index.`);
+      unreachable(`No function ${index}; loading checks every index.`);
     }
     return callable;
   }

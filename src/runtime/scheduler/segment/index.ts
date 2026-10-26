@@ -30,6 +30,7 @@ import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import { depthOf, maximumDepth, type Value } from '../../../definition/values.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import { runInstruction } from '../../interpreter/instructions.ts';
 import {
   type ActiveFrame,
@@ -171,7 +172,7 @@ class SegmentRunner implements Machine {
   return(frame: ActiveFrame, value: Value): void {
     const execution = this.#current();
     if (execution.frames.pop() !== frame) {
-      throw new Error('Only the top frame returns.');
+      unreachable('Only the top frame returns.');
     }
     releaseFrame(frame);
     if (this.#disposals.returned(execution, frame)) {
@@ -214,7 +215,7 @@ class SegmentRunner implements Machine {
       return;
     }
     if (execution.resolves === undefined) {
-      throw new Error(`Execution ${execution.id} runs on top of another without a call future.`);
+      unreachable(`Execution ${execution.id} runs on top of another without a call future.`);
     }
     this.#leave(execution.resolves, 'awaited');
   }
@@ -324,7 +325,7 @@ class SegmentRunner implements Machine {
     const frame = topFrame(this.#current());
     const instruction = frame.code.instructions[frame.pc];
     if (instruction === undefined) {
-      throw new RangeError(`pc ${frame.pc} is past the end; loading checks termination.`);
+      unreachable(`pc ${frame.pc} is past the end; loading checks termination.`);
     }
     runInstruction(this, frame, instruction);
   }
@@ -346,7 +347,7 @@ class SegmentRunner implements Machine {
   #current(): LiveExecution {
     const execution = this.#runStack.at(-1);
     if (execution === undefined) {
-      throw new Error('No execution is running.');
+      unreachable('No execution is running.');
     }
     return execution;
   }
@@ -375,7 +376,7 @@ function requireDepth(depth: number): void {
 function resumeAfterCall(frame: ActiveFrame, value: Value): void {
   const instruction = frame.code.instructions[frame.pc];
   if (instruction?.kind !== 'call') {
-    throw new Error(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a call.`);
+    unreachable(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a call.`);
   }
   resumeAt(frame, instruction.dst, value);
 }

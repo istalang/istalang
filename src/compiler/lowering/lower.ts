@@ -10,6 +10,7 @@
 
 import type { Definition } from '../../definition/definition.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { CheckedBody, Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/rules/host-boundary.ts';
 import { substitute } from '../checker/types/type.ts';
@@ -43,7 +44,7 @@ export function lower(checker: Checker, main: FunctionDeclaration): Definition {
   const tables = new DefinitionTables(checker);
   const started = startableOf(checker, main);
   if (started === undefined) {
-    throw new Error("'main' can't be started; the checker should have said why.");
+    unreachable("'main' can't be started; the checker should have said why.");
   }
   const mainIndex = tables.startIndex(main, started.key);
   for (const startable of startables(checker)) {
@@ -80,7 +81,7 @@ function pendingEntry(
     case 'start': {
       const startable = startableOf(checker, pending.target);
       if (startable === undefined) {
-        throw new Error('A start entry was made for what no host can start.');
+        unreachable('A start entry was made for what no host can start.');
       }
       return startEntry(lowering, startable);
     }
@@ -144,7 +145,7 @@ function nestedEntryOf(
   const { owner, node } = nested;
   const body = ownerBodyOf(checker, owner);
   if (body === undefined) {
-    throw new Error(`The function at ${node.span.start} has no checked body holding it.`);
+    unreachable(`The function at ${node.span.start} has no checked body holding it.`);
   }
   const frame = nestedFrame(tables, nested, body);
   return new FunctionLowering({ checker, tables, owner, body }, frame).lowerNested(node);

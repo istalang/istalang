@@ -16,6 +16,7 @@ import {
   type Value,
   withChildValues,
 } from '../../definition/values.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 
 /** The part of `value` at `path`. */
 export function partAt(value: Value, path: readonly number[]): Value {
@@ -37,7 +38,7 @@ export function withPart(value: Value, path: readonly number[], part: Value): Va
 function childAt(value: Value, index: number): Value {
   const parts = childValues(compositeAt(value, index));
   if (index >= parts.length) {
-    throw new RangeError(`No field ${index}; loading and checking rule this out.`);
+    unreachable(`No field ${index}; loading and checking rule this out.`);
   }
   // `unit` is `null`, so presence is the index, not the value.
   return parts[index] as Value;
@@ -45,7 +46,7 @@ function childAt(value: Value, index: number): Value {
 
 function compositeAt(value: Value, index: number): CompositeValue {
   if (!isComposite(value)) {
-    throw new TypeError(`A ${typeof value} has no field ${index}.`);
+    unreachable(`A ${typeof value} has no field ${index}.`);
   }
   return value;
 }

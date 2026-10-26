@@ -13,6 +13,7 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { childValues, elementsOf, isComposite, type Value } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import { isReference } from '../snapshot/objects.ts';
 import {
   type ActiveFrame,
@@ -69,7 +70,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     const composite = readRegister(frame, instruction.src);
     const value = isComposite(composite) ? childValues(composite)[instruction.index] : undefined;
     if (value === undefined) {
-      throw new Error(`No field ${instruction.index} at pc ${frame.pc}.`);
+      unreachable(`No field ${instruction.index} at pc ${frame.pc}.`);
     }
     next(frame, instruction.dst, value);
   },
@@ -84,7 +85,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   order: (_machine, instruction, frame) => {
     const comparison = readRegister(frame, instruction.comparison);
     if (typeof comparison !== 'bigint') {
-      throw new TypeError(`'compare' returned a non-int at pc ${frame.pc}.`);
+      unreachable(`'compare' returned a non-int at pc ${frame.pc}.`);
     }
     next(frame, instruction.dst, relations[instruction.relation](comparison));
   },
@@ -99,7 +100,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     const value = readRegister(frame, instruction.value);
     const target = isVariant(value) ? instruction.targets[value.variant] : undefined;
     if (target === undefined) {
-      throw new TypeError(`'switch' at pc ${frame.pc} found no variant it has a target for.`);
+      unreachable(`'switch' at pc ${frame.pc} found no variant it has a target for.`);
     }
     frame.pc = target;
   },
@@ -190,7 +191,7 @@ function calledFunction(
   }
   const closure = readRegister(frame, callee.register);
   if (!isComposite(closure) || closure.kind !== 'closure') {
-    throw new TypeError(`A non-function was called at pc ${frame.pc}; the checker forbids it.`);
+    unreachable(`A non-function was called at pc ${frame.pc}; the checker forbids it.`);
   }
   return { function: closure.function, captures: closure.captures };
 }
@@ -211,7 +212,7 @@ export function runInstruction(
 /** The key and value of a `(key, value)` tuple, a map spread's item. */
 function pairOf(item: Value): readonly [Value, Value] {
   if (!isComposite(item) || item.kind !== 'tuple' || item.elements.length !== 2) {
-    throw new TypeError('A map spread spreads (key, value) tuples.');
+    unreachable('A map spread spreads (key, value) tuples.');
   }
   return [item.elements[0] as Value, item.elements[1] as Value];
 }
@@ -225,7 +226,7 @@ function next(frame: ActiveFrame, dst: number, value: Value): void {
 function constantAt(machine: Machine, index: number): Value {
   const value = machine.definition.constants[index];
   if (value === undefined) {
-    throw new RangeError(`No constant ${index}; loading checks every index.`);
+    unreachable(`No constant ${index}; loading checks every index.`);
   }
   return value;
 }

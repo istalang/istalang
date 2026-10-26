@@ -21,6 +21,7 @@
 import { z } from 'zod';
 import type { MapOf } from '../language/values.ts';
 import { pushAll } from '../structures/stack.ts';
+import { unreachable } from '../structures/unreachable.ts';
 import { functionId, objectId, typeId, variantIndex } from './operands.ts';
 
 const specialFloats = ['NaN', 'Infinity', '-Infinity', '-0'] as const;
@@ -213,7 +214,7 @@ export const value: z.ZodType<Value, ValueOnDisk> = z.union([
 /** The elements of an array value; anything else is a bug in lowering or loading. */
 export function elementsOf(candidate: Value | undefined): readonly Value[] {
   if (candidate === undefined || !isComposite(candidate) || candidate.kind !== 'array') {
-    throw new TypeError('Expected an array.');
+    unreachable('Expected an array.');
   }
   return candidate.elements;
 }

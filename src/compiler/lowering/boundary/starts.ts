@@ -15,6 +15,7 @@
 
 import type { CodeFunction } from '../../../definition/functions.ts';
 import { codecHelpers } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import { futureArgument } from '../../checker/rules/futures.ts';
 import type { FunctionType, Type } from '../../checker/types/type.ts';
@@ -148,7 +149,7 @@ export function startEntry(
     const instance = rootInstance(checker, target);
     const body = checker.bodyOf(target);
     if (body === undefined || target.body === undefined) {
-      throw new Error('A startable function has no body.');
+      unreachable('A startable function has no body.');
     }
     const lowered = { checker, tables, owner: { kind: 'function', instance } as const, body };
     const frame = { ...instanceFrame(lowered, instance), header };
@@ -157,7 +158,7 @@ export function startEntry(
   const form = checker.constantOf(target)?.form;
   const body = checker.constantBodyOf(target);
   if (form?.kind !== 'function' || body === undefined || form.lambda.body === undefined) {
-    throw new Error('A startable constant holds no lambda.');
+    unreachable('A startable constant holds no lambda.');
   }
   const owner = { kind: 'constant', declaration: target } as const;
   const frame = { ...nestedFrame(tables, { owner, node: form.lambda }, body), header };

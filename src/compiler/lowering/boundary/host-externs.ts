@@ -21,6 +21,7 @@ import { handleFieldKey } from '../../../definition/extern-key.ts';
 import type { CodeFunction, FunctionDefinition } from '../../../definition/functions.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import { codecHelpers, wellKnown } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import { futureArgument } from '../../checker/rules/futures.ts';
 import { hostFilledOf, hostHandleOf } from '../../checker/rules/host-boundary.ts';
@@ -189,7 +190,7 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
   const { checker, tables } = lowering;
   const jsonType = checker.wellKnownType(wellKnown.json);
   if (jsonType === undefined) {
-    throw new Error('A host extern was lowered in a program without the json module.');
+    unreachable('A host extern was lowered in a program without the json module.');
   }
   const json = tables.typeReference(jsonType);
   const future = checker.wellKnownType(wellKnown.future, [jsonType]);
@@ -236,7 +237,7 @@ function encoded(code: SynthesizedCode, types: readonly Type[]): readonly Regist
 function handleFieldOf(checker: Checker, type: Type, field: string): FunctionType {
   const found = hostHandleOf(checker, type)?.fields.find(({ name }) => name === field);
   if (found === undefined) {
-    throw new Error(`No host handle with a function '${field}' was returned.`);
+    unreachable(`No host handle with a function '${field}' was returned.`);
   }
   return found.type;
 }
@@ -249,7 +250,7 @@ function received(code: SynthesizedCode, json: Register, inbound: Inbound): Regi
 function registerAt(registers: readonly Register[], index: number): Register {
   const register = registers[index];
   if (register === undefined) {
-    throw new Error(`No parameter ${index}.`);
+    unreachable(`No parameter ${index}.`);
   }
   return register;
 }

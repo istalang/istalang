@@ -27,6 +27,7 @@ import {
   wellKnown,
 } from '../../../../language/well-known.ts';
 import { memo } from '../../../../structures/memo.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
 import { isStdModule, type ModuleId } from '../../../program/program.ts';
 import type { FunctionCall } from '../../check.ts';
 import type { CheckerContext } from '../../context.ts';
@@ -354,7 +355,7 @@ export class JsonForms implements JsonFormQueries {
   #jsonCall(name: CodecName, typeArguments: readonly Type[]): FunctionCall {
     const call = this.#call(name, typeArguments, this.#jsonModule());
     if (call === undefined) {
-      throw new Error(
+      unreachable(
         `The json module's '${name}' doesn't take ${typeArguments.map(typeText).join(', ')}.`,
       );
     }
@@ -365,7 +366,7 @@ export class JsonForms implements JsonFormQueries {
   #jsonModule(): ModuleId {
     const { json } = this.#seams.checker.program.roles;
     if (json === undefined) {
-      throw new Error('A JSON form was decided in a program without the json module.');
+      unreachable('A JSON form was decided in a program without the json module.');
     }
     return json;
   }

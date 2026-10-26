@@ -74,11 +74,8 @@ function hostNative(extern: HostExtern): Native {
 
 /** Whether the extern called returns a future the host fills. */
 function returnsFuture(context: NativeContext): boolean {
-  const { entry, types } = context;
-  if (entry.kind !== 'extern' || entry.result.kind !== 'named') {
-    return false;
-  }
-  const result = types[entry.result.type];
+  const { resultType, types } = context;
+  const result = resultType === undefined ? undefined : types[resultType];
   return result?.kind === 'extern' && result.name === qualifiedName(wellKnown.future);
 }
 
@@ -89,7 +86,7 @@ function futureOf(
 ): Value {
   if (!pendings.has(given as HostPending)) {
     throw new Panic(
-      `The host's ${context.entry.name} gave no pending future, though it returns a Future.`,
+      `The host's ${context.name} gave no pending future, though it returns a Future.`,
     );
   }
   return context.pending((given as HostPending).token);

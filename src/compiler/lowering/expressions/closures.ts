@@ -11,6 +11,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda, MemberAccess } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
@@ -24,7 +25,7 @@ export function lowerLambda(context: FunctionContext, node: Lambda): Register {
 export function lowerLocalFunction(context: FunctionContext, node: FunctionDeclaration): void {
   const checked = context.body.functionOf(node);
   if (checked === undefined) {
-    throw new Error(`The local function '${node.name.text}' was never checked.`);
+    unreachable(`The local function '${node.name.text}' was never checked.`);
   }
   closureOf(context, node, declareVariable(context, node.name, checked.type));
 }
@@ -53,7 +54,7 @@ function closureOf(
 ): Register {
   const checked = context.body.functionOf(node);
   if (checked === undefined) {
-    throw new Error(`The function at ${node.span.start} was never checked.`);
+    unreachable(`The function at ${node.span.start} was never checked.`);
   }
   context.code.emit({
     kind: 'closure',

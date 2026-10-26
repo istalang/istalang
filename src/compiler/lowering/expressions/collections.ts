@@ -12,9 +12,9 @@
  */
 
 import type { Instruction } from '../../../definition/instructions/instruction.ts';
-import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { optionalVariants } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import { intType } from '../../checker/types/type.ts';
 import type {
@@ -28,6 +28,7 @@ import type {
 } from '../../syntax/expressions.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { FunctionContext } from '../context.ts';
+import { referenceTo } from '../emit-call.ts';
 import { emitLoop, iteratedArray } from '../iteration.ts';
 import { cellRegister, readPart } from '../places.ts';
 import { call, implicitCall } from './calls.ts';
@@ -91,7 +92,7 @@ export function lowerRange(context: FunctionContext, node: Range): Register {
   );
   const range = context.body.typeOf(node);
   if (range.kind !== 'nominal') {
-    throw new Error("A range isn't the prelude's Range; the checker should have said so.");
+    unreachable("A range isn't the prelude's Range; the checker should have said so.");
   }
   return construct(context, range, [start, end], span);
 }
@@ -120,7 +121,7 @@ function lowerDeclaredLiteral(
     dst: value,
     src: implicitCall(context, node, 'default', []),
   });
-  const container: Argument = { kind: 'reference', place: { register: value, path: [] } };
+  const container = referenceTo(value);
   for (const entry of entries) {
     if (entry.kind === 'MapEntry') {
       const key = context.expression(entry.key);

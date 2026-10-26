@@ -12,6 +12,7 @@
 
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Value } from '../../definition/values.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import {
   type ActiveFrame,
   clearRegister,
@@ -59,7 +60,7 @@ export function enterCase(
   const chosen = winner === undefined ? undefined : select.cases[winner.position];
   if (chosen === undefined) {
     if (select.otherwise === undefined) {
-      throw new Error('A blocking select resumed with no case resolved.');
+      unreachable('A blocking select resumed with no case resolved.');
     }
     frame.pc = select.otherwise;
     return;
@@ -77,7 +78,7 @@ export function resume(frame: ActiveFrame, settledOf: SettledOf): void {
     case 'await': {
       const settled = settledOf(readRegister(frame, instruction.future));
       if (settled === undefined) {
-        throw new Error(`Resumed an await at pc ${frame.pc} whose future hasn't resolved.`);
+        unreachable(`Resumed an await at pc ${frame.pc} whose future hasn't resolved.`);
       }
       resumeAt(frame, instruction.dst, settled.value);
       return;
@@ -86,6 +87,6 @@ export function resume(frame: ActiveFrame, settledOf: SettledOf): void {
       enterCase(frame, instruction, resolvedCase(frame, instruction, settledOf));
       return;
     default:
-      throw new Error(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a wait.`);
+      unreachable(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a wait.`);
   }
 }

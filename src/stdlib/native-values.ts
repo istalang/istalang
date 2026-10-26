@@ -9,9 +9,11 @@
  */
 
 import type { MapValue } from '../definition/equality.ts';
+import type { TypeId } from '../definition/operands.ts';
 import { childValues, isComposite, type Value } from '../definition/values.ts';
 import { optionalVariants, resultVariants } from '../language/well-known.ts';
 import type { NativeContext } from '../runtime/natives.ts';
+import { unreachable } from '../structures/unreachable.ts';
 
 interface ArgumentTypes {
   readonly bigint: bigint;
@@ -25,7 +27,7 @@ function argumentOf<Name extends keyof ArgumentTypes>(
 ): (value: Value | undefined) => ArgumentTypes[Name] {
   return (value) => {
     if (typeof value !== name) {
-      throw new TypeError(`Expected a ${name}, got ${typeof value}.`);
+      unreachable(`Expected a ${name}, got ${typeof value}.`);
     }
     return value as ArgumentTypes[Name];
   };
@@ -34,7 +36,7 @@ function argumentOf<Name extends keyof ArgumentTypes>(
 /** An argument of any type, as a generic native takes it; loading made sure it was passed. */
 export function given(value: Value | undefined): Value {
   if (value === undefined) {
-    throw new TypeError('An argument is missing.');
+    unreachable('An argument is missing.');
   }
   return value;
 }
@@ -47,18 +49,19 @@ export const text = argumentOf('string');
 export function fieldOf(value: Value | undefined, index: number): Value {
   const field = value !== undefined && isComposite(value) ? childValues(value)[index] : undefined;
   if (field === undefined) {
-    throw new TypeError(`Expected a struct with a field ${index}.`);
+    unreachable(`Expected a struct with a field ${index}.`);
   }
   return field;
 }
 
+/** The type entry the extern's declared result names: a struct, an enum or a `Shared`. */
+export function declaredResult(context: NativeContext): TypeId {
+  return context.resultType ?? unreachable(`${context.name} returns no named type.`);
+}
+
 /** A struct of the extern's declared result type, with `fields` in declaration order. */
 export function resultStruct(context: NativeContext, fields: Value[]): Value {
-  const { entry } = context;
-  if (entry.kind !== 'extern' || entry.result.kind !== 'named') {
-    throw new TypeError(`${entry.name} doesn't return a struct.`);
-  }
-  return { kind: 'struct', type: entry.result.type, fields };
+  return { kind: 'struct', type: declaredResult(context), fields };
 }
 
 export function arrayOf(elements: readonly Value[]): Value {
@@ -68,7 +71,7 @@ export function arrayOf(elements: readonly Value[]): Value {
 /** A map argument. */
 export function mapOfArgument(value: Value | undefined): MapValue {
   if (value === undefined || !isComposite(value) || value.kind !== 'map') {
-    throw new TypeError('Expected a map.');
+    unreachable('Expected a map.');
   }
   return value;
 }
@@ -76,7 +79,7 @@ export function mapOfArgument(value: Value | undefined): MapValue {
 /** The value inside an optional argument, or undefined for `none`. */
 export function optionalValue(value: Value | undefined): Value | undefined {
   if (value === undefined || !isComposite(value) || value.kind !== 'variant') {
-    throw new TypeError('Expected an optional.');
+    unreachable('Expected an optional.');
   }
   return value.fields[0];
 }
@@ -97,7 +100,7 @@ export function resultOk(context: NativeContext, value: Value): Value {
 export function resultOkStruct(context: NativeContext, fields: Value[]): Value {
   const held = resultVariantShape(context, resultVariants.ok).fields[0]?.type;
   if (held?.kind !== 'named') {
-    throw new TypeError(`${context.entry.name} doesn't return a Result of a struct.`);
+    unreachable(`${context.name} doesn't return a Result of a struct.`);
   }
   return resultOk(context, { kind: 'struct', type: held.type, fields });
 }
@@ -109,7 +112,7 @@ export function resultOkStruct(context: NativeContext, fields: Value[]): Value {
 export function resultError(context: NativeContext, message: string, code: string): Value {
   const error = resultVariantShape(context, resultVariants.err).fields[0]?.type;
   if (error?.kind !== 'named' || context.types[error.type]?.kind !== 'struct') {
-    throw new TypeError(`${context.entry.name} doesn't return a Result of an Error.`);
+    unreachable(`${context.name} doesn't return a Result of an Error.`);
   }
   const fields = [message, code, context.trace()];
   return resultVariant(context, resultVariants.err, [{ kind: 'struct', type: error.type, fields }]);
@@ -123,14 +126,13 @@ function resultVariant(context: NativeContext, name: string, fields: Value[]): V
 
 /** Where variant `name` of the extern's declared enum result is, with its declared fields. */
 function resultVariantShape(context: NativeContext, name: string) {
-  const { entry, types } = context;
-  const type = entry.kind === 'extern' && entry.result.kind === 'named' ? entry.result.type : -1;
-  const declared = types[type];
+  const type = declaredResult(context);
+  const declared = context.types[type];
   const variants = declared?.kind === 'enum' ? declared.variants : [];
   const variant = variants.findIndex((each) => each.name === name);
   const shape = variants[variant];
   if (shape === undefined) {
-    throw new TypeError(`${entry.name} doesn't return an enum with a variant ${name}.`);
+    unreachable(`${context.name} doesn't return an enum with a variant ${name}.`);
   }
   return { type, variant, fields: shape.fields };
 }

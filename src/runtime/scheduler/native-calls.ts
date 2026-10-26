@@ -10,8 +10,11 @@
  * instance's heap (§7).
  */
 
-import type { FunctionId } from '../../definition/operands.ts';
+import type { FunctionDefinition } from '../../definition/functions.ts';
+import type { FunctionId, TypeId } from '../../definition/operands.ts';
+import type { TypeReference } from '../../definition/types.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import {
   type FrameHeap,
   type RegisterContents,
@@ -55,7 +58,8 @@ export class NativeCalls {
   call(callee: FunctionId, native: Native, contents: readonly RegisterContents[]): Value {
     const heap = this.#instance.frameHeap;
     const values = contents.map((each) => (isReference(each) ? readThrough(heap, each) : each));
-    const context = this.#context(callee);
+    const entry = this.#entry(callee);
+    const context = this.#context(entry);
     const run = (): Value =>
       native(values, {
         ...context,
@@ -63,22 +67,26 @@ export class NativeCalls {
           writeReference(heap, referenceAt(contents, position), value);
         },
       });
-    const { entry } = context;
     return entry.kind === 'extern' && entry.constant
       ? this.#instance.pinned(entry.key, run)
       : run();
   }
 
-  #context(callee: FunctionId): Omit<NativeContext, 'write'> {
-    const { definition } = this.#instance.loaded;
-    const entry = definition.functions[callee];
-    if (entry === undefined) {
-      throw new RangeError(`No function ${callee}; loading checks every index.`);
-    }
+  #entry(callee: FunctionId): FunctionDefinition {
+    return (
+      this.#instance.loaded.definition.functions[callee] ??
+      unreachable(`No function ${callee}; loading checks every index.`)
+    );
+  }
+
+  #context(entry: FunctionDefinition): Omit<NativeContext, 'write'> {
     const { futures, slots } = this.#instance;
+    const declared = entry.kind === 'extern' ? entry : undefined;
     return {
-      entry,
-      types: definition.types,
+      name: entry.name,
+      resultType: declared === undefined ? undefined : namedType(declared.result),
+      typeArguments: declared?.typeArguments.map(namedType) ?? [],
+      types: this.#instance.loaded.definition.types,
       instance: this.#instance.name,
       segmentStartedAt: this.#startedAt,
       timer: (at) => futures.createHandle({ kind: 'timer', at }),
@@ -97,11 +105,16 @@ export class NativeCalls {
   }
 }
 
+/** The type entry `type` names, if it is a named type. */
+function namedType(type: TypeReference): TypeId | undefined {
+  return type.kind === 'named' ? type.type : undefined;
+}
+
 /** The reference a native's argument `position` was passed by `&`. */
 function referenceAt(contents: readonly RegisterContents[], position: number): Reference {
   const argument = contents[position];
   if (argument === undefined || !isReference(argument)) {
-    throw new Error(`A native wrote argument ${position}, which isn't passed by '&'.`);
+    unreachable(`A native wrote argument ${position}, which isn't passed by '&'.`);
   }
   return argument;
 }
@@ -140,7 +153,7 @@ function nativeResourcesOf(heap: Heap): NativeResources {
     payloadOf: (handle) => {
       const id = handleTarget(handle);
       if (id === undefined) {
-        throw new TypeError('A value of a disposable host type holds no resource.');
+        unreachable('A value of a disposable host type holds no resource.');
       }
       return heap.of(id, 'resource').payload;
     },
@@ -150,7 +163,7 @@ function nativeResourcesOf(heap: Heap): NativeResources {
 function cellIdOf(cell: Value): number {
   const id = handleTarget(cell);
   if (id === undefined) {
-    throw new TypeError('A Shared value holds no cell.');
+    unreachable('A Shared value holds no cell.');
   }
   return id;
 }

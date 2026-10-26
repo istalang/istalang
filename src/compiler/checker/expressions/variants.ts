@@ -10,6 +10,7 @@
  *   it (overloads/decided.ts), so `f(none)` reads like `const x: T? = none`.
  */
 
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Entity, VariantEntity, VariantNaming } from '../../binder/entities.ts';
 import type { EnumDeclaration, Variant } from '../../syntax/declarations.ts';
@@ -225,7 +226,7 @@ function enumType(
   const { checker } = context;
   const entity = checker.bindings.entityOf(checker.moduleOf(declaration), declaration.name);
   if (entity?.kind !== 'type') {
-    throw new Error(`Enum '${declaration.name.text}' has no type entity.`);
+    unreachable(`Enum '${declaration.name.text}' has no type entity.`);
   }
   return nominalType(entity, typeArguments);
 }

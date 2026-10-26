@@ -6,6 +6,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { optionalVariants } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import { sameType } from '../../checker/types/type.ts';
 import type { Binary } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
@@ -16,9 +17,7 @@ export function lowerNullish(context: FunctionContext, node: Binary): Register {
   const left = context.expression(node.left);
   const leftType = body.typeOf(node.left);
   if (!isEnum(leftType)) {
-    throw new Error(
-      `'??' needs an optional at ${node.span.start}; the checker should have said so.`,
-    );
+    unreachable(`'??' needs an optional at ${node.span.start}; the checker should have said so.`);
   }
   const result = code.allocate();
   const some = code.newLabel();

@@ -13,6 +13,7 @@ import {
   optionalVariants,
   resultVariants,
 } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionCall } from '../../checker/check.ts';
 import type { EmptyValue, JsonField, JsonForm } from '../../checker/rules/json-forms/form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
@@ -33,7 +34,7 @@ export class Decoder {
     const { checker } = code;
     const [json, path] = code.parameters;
     if (json === undefined || path === undefined) {
-      throw new Error('A decoder takes the Json it reads and its path.');
+      unreachable('A decoder takes the Json it reads and its path.');
     }
     switch (form.kind) {
       case 'json':
@@ -78,7 +79,7 @@ export class Decoder {
         throw unreadable(type);
       default: {
         const unhandled: never = form;
-        throw new Error(`No decoder for ${JSON.stringify(unhandled)}.`);
+        unreachable(`No decoder for ${JSON.stringify(unhandled)}.`);
       }
     }
   }
@@ -92,7 +93,7 @@ export class Decoder {
   ): void {
     const code = this.#code;
     if (type.kind !== 'nominal') {
-      throw new Error('An enum form is of a nominal type.');
+      unreachable('An enum form is of a nominal type.');
     }
     const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
     const tag = this.#passed(code.call(this.#helper(codecHelpers.tag), [fields, path]));
@@ -134,7 +135,7 @@ export class Decoder {
     switch (empty) {
       case 'none':
         if (type.kind !== 'nominal') {
-          throw new Error('An optional is a nominal type.');
+          unreachable('An optional is a nominal type.');
         }
         return code.variant(type, optionalVariants.none, []);
       case 'array':
@@ -150,7 +151,7 @@ export class Decoder {
 
   #struct(type: Type, values: readonly Register[]): Register {
     if (type.kind !== 'nominal' && type.kind !== 'anonymous') {
-      throw new Error('A record form is of a struct type.');
+      unreachable('A record form is of a struct type.');
     }
     return this.#code.struct(type, values);
   }

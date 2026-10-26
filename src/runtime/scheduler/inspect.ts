@@ -7,6 +7,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { InstanceState } from '../instance-state.ts';
 import { locationOf } from '../interpreter/trace.ts';
 import type { Frame } from '../snapshot/objects.ts';
@@ -40,7 +41,7 @@ function waitingPointOf(definition: Definition, frame: Frame): WaitingPoint {
   const code = definition.functions[frame.function];
   const instruction = code?.kind === 'code' ? code.instructions[frame.pc] : undefined;
   if (code?.kind !== 'code' || (instruction?.kind !== 'await' && instruction?.kind !== 'select')) {
-    throw new Error(`Frame of function ${frame.function} doesn't stand at a wait.`);
+    unreachable(`Frame of function ${frame.function} doesn't stand at a wait.`);
   }
   return {
     waypoint: instruction.waypoint,

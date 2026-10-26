@@ -12,6 +12,7 @@
  * - Both take an optional; anything else is reported.
  */
 
+import { unreachable } from '../../../structures/unreachable.ts';
 import {
   type Binary,
   type ChainStep,
@@ -52,7 +53,7 @@ export class OptionalChains {
   target(context: BodyContext, link: Expression): Type {
     const step = chainStepOf(link);
     if (step === undefined) {
-      throw new Error(`A ${link.kind} is no link; the checker asked the wrong node.`);
+      unreachable(`A ${link.kind} is no link; the checker asked the wrong node.`);
     }
     const targetType = context.expression(step.target);
     if (!this.continues(link)) {

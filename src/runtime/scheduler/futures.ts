@@ -12,6 +12,7 @@
 
 import { awaitedRegisters } from '../../definition/instructions/flow.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import { readRegister } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
@@ -83,7 +84,7 @@ export class Futures {
   #valueOf(id: number): Value {
     const { state } = this.#heap.of(id, 'future');
     if (state.kind !== 'resolved') {
-      throw new Error(`Future ${id} hasn't resolved.`);
+      unreachable(`Future ${id} hasn't resolved.`);
     }
     return state.value;
   }
@@ -92,7 +93,7 @@ export class Futures {
   #settle(id: number, value: Value): void {
     const future = this.#heap.of(id, 'future');
     if (future.state.kind === 'resolved') {
-      throw new Error(`Future ${id} has resolved already.`);
+      unreachable(`Future ${id} has resolved already.`);
     }
     this.#heap.replace({ ...future, state: { kind: 'resolved', value } });
   }

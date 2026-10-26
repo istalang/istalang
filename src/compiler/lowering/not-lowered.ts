@@ -6,11 +6,10 @@
  * tables.
  */
 
+import { unreachable } from '../../structures/unreachable.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { FunctionContext } from './context.ts';
 
 export const notLowered = (_context: FunctionContext, node: NodeOf<string>): never => {
-  throw new Error(
-    `Lowering ${node.kind} arrives with its feature; the checker should have said so.`,
-  );
+  unreachable(`Lowering ${node.kind} arrives with its feature; the checker should have said so.`);
 };

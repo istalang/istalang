@@ -8,6 +8,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { valueArbitrary } from '../../definition/values.test-kit.ts';
 import { childValues, isComposite, type Value } from '../../definition/values.ts';
+import { Unreachable } from '../../structures/unreachable.ts';
 import { partAt, withPart } from './parts.ts';
 
 /** The parts a field position reaches in `value`, as the `field` instruction reads them. */
@@ -70,8 +71,8 @@ describe('parts of values', () => {
   });
 
   it('refuses a field a value lacks', () => {
-    expect(() => partAt(5n, [0])).toThrow(TypeError);
+    expect(() => partAt(5n, [0])).toThrow(Unreachable);
     const empty: Value = { kind: 'tuple', elements: [] };
-    expect(() => partAt(empty, [0])).toThrow(RangeError);
+    expect(() => partAt(empty, [0])).toThrow(Unreachable);
   });
 });

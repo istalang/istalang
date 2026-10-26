@@ -4,6 +4,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import { durationForm } from '../../checker/constant-form.ts';
 import type { DurationLiteral } from '../../syntax/expressions.ts';
 import { constantValue } from '../constants.ts';
@@ -12,7 +13,7 @@ import type { FunctionContext } from '../context.ts';
 export function lowerDurationLiteral(context: FunctionContext, node: DurationLiteral): Register {
   const type = context.body.typeOf(node);
   if (type.kind !== 'nominal') {
-    throw new Error(
+    unreachable(
       `A duration at ${node.span.start} isn't a Duration; the checker should have said so.`,
     );
   }

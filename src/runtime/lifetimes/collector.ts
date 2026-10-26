@@ -20,6 +20,7 @@
  * so no later round takes it out of order.
  */
 
+import { unreachable } from '../../structures/unreachable.ts';
 import type { LiveObject } from '../scheduler/heap.ts';
 import { type DisposalContext, type DisposalRun, dispose, isDisposable } from './disposal.ts';
 import { heldUnlessAll, type Roots, walkHolds } from './holders.ts';
@@ -64,7 +65,7 @@ export class Collector {
   returned(): void {
     const round = this.#rounds.at(-1);
     if (round?.disposing === undefined) {
-      throw new Error('A disposal call returned with no round waiting on it.');
+      unreachable('A disposal call returned with no round waiting on it.');
     }
     this.#gone(round.disposing);
     round.disposing = undefined;
