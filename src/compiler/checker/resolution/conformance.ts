@@ -50,7 +50,14 @@ import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import { witnessCandidates } from './candidates.ts';
-import { type Application, type CallArgument, choose, signatureOf } from './choice.ts';
+import {
+  type Application,
+  type CallArgument,
+  type Choice,
+  choose,
+  type Signature,
+  signatureOf,
+} from './choice.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
@@ -284,19 +291,7 @@ function witnessOf(
 ): ResolvedCall | 'none' | Failure {
   const { checker } = site;
   const signature = signatureOf(checker, required.declaration, required.substitution);
-  const parameterTypes = signature.parameters.map((parameter) => parameter.type);
-  const candidates = witnessCandidates(checker, type, {
-    required: required.declaration,
-    parameterTypes,
-  });
-  const callArguments = signature.parameters.map(
-    ({ type: each, reference }): CallArgument => ({
-      type: each,
-      passing: reference ? 'reference' : 'value',
-      exact: true,
-    }),
-  );
-  const choice = choose(checker, candidates, callArguments, undefined);
+  const choice = chooseWitness(checker, type, signature);
   if (choice.kind !== 'chosen') {
     return 'none';
   }
@@ -309,8 +304,27 @@ function witnessOf(
   if (!sameType(result, signature.result())) {
     return 'none';
   }
-  const arity = callArguments.length;
-  return callMade(application.candidate, instantiation, arity);
+  return callMade(application.candidate, instantiation, signature.parameters.length);
+}
+
+/**
+ * The function declared to meet `required`, a requirement mapped for `type`: chosen among the
+ * witness candidates by the required parameter types, taken exactly.
+ */
+function chooseWitness(checker: CheckerContext, type: Type, required: Signature): Choice {
+  const parameterTypes = required.parameters.map((parameter) => parameter.type);
+  const candidates = witnessCandidates(checker, type, {
+    required: required.declaration,
+    parameterTypes,
+  });
+  const callArguments = required.parameters.map(
+    ({ type: each, reference }): CallArgument => ({
+      type: each,
+      passing: reference ? 'reference' : 'value',
+      exact: true,
+    }),
+  );
+  return choose(checker, candidates, callArguments, undefined);
 }
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
