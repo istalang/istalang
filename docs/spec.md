@@ -135,7 +135,7 @@ Design principles:
 - **Predictable disposal.** Resources such as pending futures, slots and inboxes are disposed when the last block holding them ends: by default, the block that created them.
 - **Explicit over implicit.** Every send states whether it is durable or revertible, by calling `send` or `sendRevertible`. There is no default.
 - **Strong static typing.** Every variable, parameter, field and return value has a static type, with generics. Variables are block scoped.
-- **Value semantics.** Structs and collections are copied when assigned, passed, returned or sent. Data that other code holds changes only through an explicit `&` reference or a `Shared` value.
+- **Value semantics.** Structs and collections are copied when assigned, passed, returned or sent. Data that other code holds changes only through an explicit `&` reference or a handle, such as a `Shared` value (§3.18).
 - **Everything that branches is an expression.** `if`, `match` and `select` produce values, and the compiler checks that all branches have the same type.
 
 ## 2. Lexical structure and types
@@ -239,7 +239,7 @@ A `struct{…}` literal takes its type from context: the expected type where the
 
 **No getters or setters.** Reading or assigning a field never runs code; a value computed from fields is a method, such as `order.total()`. This keeps structs plain data under value semantics.
 
-**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a `Shared` value (§3.8). `Slot<T>`, `Future<T>`, `Inbox<T>`, `Shared<T>`, `WeakRef<T>` and `Revertible<T>` are **handles**, and so is every type a handle declaration makes (§3.18): copying one copies the handle, not the state behind it, and `==` compares handles by identity.
+**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a handle, such as a `Shared` value (§3.8). `Slot<T>`, `Future<T>` and `WeakRef<T>` are **handles**, and so is every type a handle declaration makes (§3.18), such as `Shared<T>`, `Inbox<T>` and `Revertible<T>`: copying one copies the handle, not the state behind it, and `==` compares handles by identity.
 
 **Sendable types.** Only sendable values can leave an instance: as `spawn` arguments, or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when it is:
 
@@ -249,7 +249,7 @@ A `struct{…}` literal takes its type from context: the expected type where the
 - a type parameter constrained `is Sendable`;
 - a sendable function type, `sendable fn(A) -> R` (§3.14). It refers to code, so it goes only to an instance of the same program, through `spawn`: an extern declaration, or `json`, whose types contain one is a compile error.
 
-Futures, slots, `Shared` values, weak references and values of plain function types are never sendable, and neither is any value that contains one, such as an inbox. They therefore never leave the instance that created them: `spawn` arguments and extern declarations can't contain them, which is a compile error.
+Handles, such as futures, slots, `Shared` values, inboxes and weak references, and values of plain function types are never sendable, and neither is any value that contains one. They therefore never leave the instance that created them: `spawn` arguments and extern declarations can't contain them, which is a compile error.
 
 ### 3.2 Slots and inboxes
 
