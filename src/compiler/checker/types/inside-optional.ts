@@ -7,6 +7,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
+import type { ChainOperator } from '../../syntax/expressions.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from './fit.ts';
@@ -14,7 +15,7 @@ import type { Type } from './type.ts';
 import { typeText } from './type-text.ts';
 
 /** The operators that read inside an optional, one per form of link. */
-export type InsideOperator = '?.' | '?->' | '?.[' | '?.(';
+type InsideOperator = Extract<ChainOperator, `?${string}`>;
 
 /**
  * The diagnostic pointing a step that failed on `type` at `operator`, which reaches inside it;

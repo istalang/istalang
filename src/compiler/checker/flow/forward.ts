@@ -253,21 +253,17 @@ function link(walk: FlowWalk, node: Expression, state: Opaque): Flow {
 }
 
 /**
- * The parts of `node` other than `target`, a descendant: its children, a child holding `target`
- * opened up into its own parts, as a method call's callee is around its receiver.
+ * The parts of `node` other than its step's `target`, a child or, for a method call, the callee's
+ * child (`chainStepOf`): a callee holding the target is opened up into its other parts.
  */
 function partsBeside(node: SyntaxNode, target: SyntaxNode): readonly SyntaxNode[] {
   return childrenOf(node).flatMap((child) => {
     if (child === target) {
       return [];
     }
-    return holds(child, target) ? partsBeside(child, target) : [child];
+    const parts = childrenOf(child);
+    return parts.includes(target) ? parts.filter((part) => part !== target) : [child];
   });
-}
-
-/** Whether `node` is `descendant` or holds it. */
-function holds(node: SyntaxNode, descendant: SyntaxNode): boolean {
-  return node === descendant || childrenOf(node).some((child) => holds(child, descendant));
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.

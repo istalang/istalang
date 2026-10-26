@@ -20,10 +20,8 @@ export function checkDereference(context: BodyContext, node: Dereference): Type 
 
 /** The value behind the handle `node` reads through; undefined after a report. */
 function valueBehind(context: BodyContext, node: Dereference): Type | undefined {
-  const handle =
-    chainStepOf(node) === undefined
-      ? context.expression(node.operand)
-      : context.chains.target(context, node);
+  const isLink = chainStepOf(node) !== undefined;
+  const handle = isLink ? context.chains.target(context, node) : context.expression(node.operand);
   if (handle.kind === 'error') {
     return undefined;
   }
@@ -33,9 +31,8 @@ function valueBehind(context: BodyContext, node: Dereference): Type | undefined 
     return sharedValue;
   }
   const inner = optionalInner(handle, checker.optionalEntity);
-  const throughArrow = inner !== undefined && chainStepOf(node) !== undefined;
   context.report(
-    throughArrow && checker.sharedValueOf(inner) !== undefined
+    isLink && inner !== undefined && checker.sharedValueOf(inner) !== undefined
       ? checkerDiagnostics.insideOptional(node.span, typeText(handle), '?->')
       : checkerDiagnostics.notShared(node.span, typeText(handle)),
   );

@@ -294,7 +294,7 @@ export interface Match extends NodeOf<'Match'> {
  * element or a method), `->` or `[` on its target's value, or `?.`, `?->`, `?.[` and `?.(` (a call
  * of the function) on the value inside an optional.
  */
-type ChainOperator = '.' | '->' | '[' | '?.' | '?->' | '?.[' | '?.(';
+export type ChainOperator = '.' | '->' | '[' | '?.' | '?->' | '?.[' | '?.(';
 
 /** The step a link of an optional chain takes (§4): what it works on, and with which operator. */
 export interface ChainStep {

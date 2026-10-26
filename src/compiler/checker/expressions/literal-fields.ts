@@ -25,6 +25,7 @@
 import {
   type EnumDeclaration,
   type FunctionDeclaration,
+  hasDefault,
   type StructDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
@@ -310,16 +311,16 @@ function reportMissing(
   }
   const at = node.type?.span ?? node.span;
   for (const [index, field] of shape.fields.entries()) {
-    if (!(given.has(index) || hasDefault(shape, index))) {
+    if (!(given.has(index) || declaresDefault(shape, index))) {
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
     }
   }
 }
 
 /** Whether field `index` of `shape` declares a default (§3.1). */
-function hasDefault({ fields }: LiteralShape, index: number): boolean {
+function declaresDefault({ fields }: LiteralShape, index: number): boolean {
   const declared = fields[index]?.declared?.node;
-  return declared?.kind === 'DeclaredField' && declared.defaultValue !== undefined;
+  return declared !== undefined && hasDefault(declared);
 }
 
 /**
@@ -371,7 +372,7 @@ function defaultCalls(
   typeArguments: readonly Type[],
 ): readonly (FunctionCall | undefined)[] {
   const { defaults, fields } = shape;
-  const isLeftOut = (index: number) => !given.has(index) && hasDefault(shape, index);
+  const isLeftOut = (index: number) => !given.has(index) && declaresDefault(shape, index);
   if (defaults === undefined || !fields.some((_, index) => isLeftOut(index))) {
     return [];
   }

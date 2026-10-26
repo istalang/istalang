@@ -4,8 +4,9 @@
  *
  * - A chain is lowered from its last link, the only one lowered as an expression: its result
  *   register gets the chain's value, wrapped into `Some` unless already optional, or `None` when
- *   a `?.` or `?->` meets `None`, which jumps straight to the chain's end. Inner links are lowered as links,
- *   working on the value carried along, so nothing between them is ever wrapped.
+ *   a `?.` or `?->` meets `None`, which jumps straight to the chain's end. Inner links are
+ *   lowered as links, working on the value carried along, so nothing between them is ever
+ *   wrapped.
  * - A link reads its target through `target`: a chained target is lowered as a link, and a `?.`
  *   or `?->` switches on the value, carrying on with the value inside `Some`. What each link works
  *   on is the checker's record (`chainOf`), so nothing here re-derives a type.

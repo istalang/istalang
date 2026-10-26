@@ -20,6 +20,7 @@ import {
   declaredFunctions,
   type EnumDeclaration,
   type FunctionDeclaration,
+  hasDefault,
   type Module,
   type StructDeclaration,
   type Variant,
@@ -76,10 +77,7 @@ export function fieldsFunctionOf(
     return undefined;
   }
   return memo(fieldsFunctions, owner, () => {
-    const hasDefault = owner.fields.some(
-      (field) => field.kind === 'DeclaredField' && field.defaultValue !== undefined,
-    );
-    if (!hasDefault) {
+    if (!owner.fields.some(hasDefault)) {
       return;
     }
     const fields: FunctionDeclaration = {

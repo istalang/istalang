@@ -57,8 +57,11 @@ export interface ComputationScope {
 /** How computing a part of an initializer went. */
 export type Outcome =
   | { readonly kind: 'computed'; readonly form: ConstantForm }
-  /** Compile time doesn't compute `part`; `endless` when it needs a default being computed. */
-  | { readonly kind: 'refused'; readonly part: NodeOf<string>; readonly endless: boolean }
+  /**
+   * Compile time doesn't compute `part`: it is no form compile time computes, or it needs a
+   * default being computed, so it would never be finished.
+   */
+  | { readonly kind: 'refused'; readonly part: NodeOf<string>; readonly why: 'form' | 'endless' }
   /** An error a diagnostic already explained leaves no value. */
   | { readonly kind: 'unknown' };
 
@@ -71,7 +74,7 @@ export function computeConstant(initializer: Expression, scope: ComputationScope
 
 /** Why compile time leaves `outcome` uncomputed, reported where its part stands. */
 export function refusalOf(outcome: Extract<Outcome, { kind: 'refused' }>): Diagnostic {
-  return outcome.endless
+  return outcome.why === 'endless'
     ? checkerDiagnostics.endlessDefault(outcome.part.span)
     : checkerDiagnostics.notConstant(outcome.part.span);
 }
@@ -208,7 +211,7 @@ class Computation {
     }
     const computing = this.#computing.get(declaration) ?? new Set<number>();
     if (computing.has(call.arity)) {
-      return { kind: 'refused', part: value, endless: true };
+      return { kind: 'refused', part: value, why: 'endless' };
     }
     computing.add(call.arity);
     this.#computing.set(declaration, computing);
@@ -364,7 +367,7 @@ function computed(form: ConstantForm): Outcome {
 }
 
 function refused(part: NodeOf<string>): Outcome {
-  return { kind: 'refused', part, endless: false };
+  return { kind: 'refused', part, why: 'form' };
 }
 
 /** A number literal, possibly parenthesized: what compile time negates. */
