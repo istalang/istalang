@@ -160,6 +160,7 @@ export interface Reference extends NodeOf<'Reference'> {
  */
 export interface TupleElement extends NodeOf<'TupleElement'> {
   readonly target: Expression;
+  readonly isOptional: boolean;
   readonly element: number;
 }
 
@@ -180,8 +181,8 @@ export type PlaceStep = MemberAccess | TupleElement | Index;
 
 /**
  * A place as written: the expression its fields and elements are read from, a variable or a
- * handle's value (`*x`) in any valid place, and those reads, innermost first. `a?.b` and `a?.[i]`
- * are no steps, so they stand as the root.
+ * handle's value (`*x`) in any valid place, and those reads, innermost first. `a?.b`, `t?.0` and
+ * `a?.[i]` are no steps, so they stand as the root.
  */
 export interface PlacePath {
   readonly root: Expression;
@@ -206,8 +207,10 @@ export function placePath(node: Expression): PlacePath {
   const steps: PlaceStep[] = [];
   let current = unparenthesized(node);
   while (
-    current.kind === 'TupleElement' ||
-    ((current.kind === 'Index' || current.kind === 'MemberAccess') && !current.isOptional)
+    (current.kind === 'TupleElement' ||
+      current.kind === 'Index' ||
+      current.kind === 'MemberAccess') &&
+    !current.isOptional
   ) {
     steps.unshift(current);
     current = unparenthesized(current.target);
@@ -314,23 +317,27 @@ export function isOptionalStep(step: ChainStep): boolean {
 export function chainStepOf(node: Expression): ChainStep | undefined {
   switch (node.kind) {
     case 'MemberAccess':
-      return { target: node.target, operator: node.isOptional ? '?.' : '.' };
     case 'TupleElement':
-      return { target: node.target, operator: '.' };
+      return { target: node.target, operator: node.isOptional ? '?.' : '.' };
     case 'Index':
       return { target: node.target, operator: node.isOptional ? '?.[' : '[' };
     case 'Call':
-      if (node.isOptional) {
-        return { target: node.callee, operator: '?.(' };
-      }
-      return node.callee.kind === 'MemberAccess'
-        ? { target: node.callee.target, operator: node.callee.isOptional ? '?.' : '.' }
-        : undefined;
+      return callStepOf(node);
     case 'Dereference':
       return node.operator === '*' ? undefined : { target: node.operand, operator: node.operator };
     default:
       return undefined;
   }
+}
+
+/** A call's step: through the optional function it calls, or a method's to its receiver. */
+function callStepOf(node: Call): ChainStep | undefined {
+  if (node.isOptional) {
+    return { target: node.callee, operator: '?.(' };
+  }
+  return node.callee.kind === 'MemberAccess'
+    ? { target: node.callee.target, operator: node.callee.isOptional ? '?.' : '.' }
+    : undefined;
 }
 
 /** Whether `node` is a link of an optional chain at a `?.` or `?->`, or after one (§4). */

@@ -145,8 +145,8 @@ export function arrowParselet(operator: '->' | '?->'): InfixParselet {
 /** The member or tuple element of `target` named after its `.`, `?.` or `->`. */
 function parseMember(parser: Parser, target: Expression, isOptional: boolean): Expression {
   const { kind } = parser.cursor;
-  if (!isOptional && (kind === 'integer' || kind === 'float')) {
-    return parseTupleElements(parser, target);
+  if (kind === 'integer' || kind === 'float') {
+    return parseTupleElements(parser, target, isOptional);
   }
   const member = parser.identifier('a member name');
   const span = parser.spanFrom(target.span.start);
@@ -156,8 +156,8 @@ function parseMember(parser: Parser, target: Expression, isOptional: boolean): E
 /** Decimal positions only: `t.0`, `t.12`, and `t.0.1` read as one token. */
 const tupleElementText = /^(?:0|[1-9]\d*)(?:\.(?:0|[1-9]\d*))?$/u;
 
-/** The tuple element (or two, from a float token) after a `.`, at the number. */
-function parseTupleElements(parser: Parser, left: Expression): Expression {
+/** The tuple element (or two, from a float token) after a `.` or `?.`, at the number. */
+function parseTupleElements(parser: Parser, left: Expression, isOptional: boolean): Expression {
   const token = parser.cursor.advance();
   const text = parser.textOf(token);
   if (!tupleElementText.test(text)) {
@@ -170,13 +170,20 @@ function parseTupleElements(parser: Parser, left: Expression): Expression {
     kind: 'TupleElement',
     span: { start: left.span.start, end: firstEnd },
     target: left,
+    isOptional,
     element: Number(first),
   };
   if (second === undefined) {
     return outer;
   }
   const span = parser.spanFrom(left.span.start);
-  return { kind: 'TupleElement', span, target: outer, element: Number(second) };
+  return {
+    kind: 'TupleElement',
+    span,
+    target: outer,
+    isOptional: false,
+    element: Number(second),
+  };
 }
 
 export const propagateParselet: InfixParselet = {

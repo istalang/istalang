@@ -38,6 +38,7 @@ describe('calls', () => {
     ['f(&a?.b)', 'a?.b'],
     ['f(&a?->b)', 'a?->b'],
     ['f(&xs?.[0])', 'xs?.[0]'],
+    ['f(&t?.0)', 't?.0'],
     ['f(&a?.b->c)', 'a?.b->c'],
   ])("reports '&' passing what is no place, %s (§3.7)", (text, spanText) => {
     const { referenceNotPlace } = parserDiagnostics;
@@ -99,6 +100,8 @@ describe('indexing, members and postfix operators', () => {
     ['a?.m()', '(Call (MemberAccess a isOptional m) [] [])'],
     ['f?.()', '(Call f isOptional [] [])'],
     ['xs?.[0]', '(Index xs isOptional 0)'],
+    ['t?.0', '(TupleElement t isOptional 0)'],
+    ['t?.0.1', '(TupleElement (TupleElement t isOptional 0) 1)'],
     ['m?.["a"]', '(Index m isOptional "a")'],
     ['a?.b?.[i].c', '(MemberAccess (Index (MemberAccess a isOptional b) isOptional i) c)'],
     ['s.f?.(1, x)', '(Call (MemberAccess s f) isOptional [] [1 x])'],
@@ -151,12 +154,6 @@ describe('tuple elements (§3.15)', () => {
       );
     },
   );
-
-  it('takes no element after ?.', () => {
-    expect(reported('expression', 't?.0')).toEqual(
-      reportedOnce(parserDiagnostics.expected.code, '0'),
-    );
-  });
 
   it.each([
     ['a.', ''],
