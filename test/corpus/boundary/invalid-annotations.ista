@@ -9,8 +9,8 @@
 # error: 5908 at 44:3
 # error: 5903 at 46:3
 # An annotation is a struct value computed at compile time (§3.16), and what it means decides where
-# it may stand: the json module's on fields, @JsonSkip only on a field that reads back as none,
-# [] or [:], @JsonBigInt only on an int, @Waypoint only on a statement that waits, any other
+# it may stand: the json module's on fields, @JsonSkip only on a field whose type is Default, which
+# it reads back as, @JsonBigInt only on an int, @Waypoint only on a statement that waits, any other
 # struct on fields and functions. The same one twice says nothing new, and two fields can't share
 # a JSON name.
 

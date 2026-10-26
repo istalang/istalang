@@ -3,22 +3,18 @@
  * returns a `Result<T>`. It reads the way the encoder writes, stopping at the first part that
  * doesn't fit: each part's codec and each helper returns a `Result`, and an `Err` is passed on as
  * this codec's own, with the path it names. A field the JSON lacks is `none` when its type is
- * optional, and an `Err` otherwise; a `@JsonSkip` field is never read and gets its type's empty
- * value.
+ * optional, and an `Err` otherwise; a `@JsonSkip` field is never read and gets its type's
+ * `default()`.
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import {
-  type CodecHelper,
-  codecHelpers,
-  optionalVariants,
-  resultVariants,
-} from '../../../language/well-known.ts';
+import { type CodecHelper, codecHelpers, resultVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionCall } from '../../checker/check.ts';
-import type { DerivedForm, EmptyValue, JsonField } from '../../checker/json-form.ts';
+import type { DerivedForm, JsonField } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import type { ModuleId } from '../../program/program.ts';
+import { closeCall } from '../instances.ts';
 import { codecCall } from './codec-calls.ts';
 import type { SynthesizedCode } from './synthesized-code.ts';
 
@@ -118,7 +114,7 @@ export class Decoder {
 
   /**
    * Each field's value, read from `object` at `path` by its codec found in `module` or, when
-   * skipped, its type's empty value.
+   * skipped, its type's `default()`.
    */
   #fields(
     fields: readonly JsonField[],
@@ -128,7 +124,7 @@ export class Decoder {
     const code = this.#code;
     return fields.map((field) => {
       if (field.skipped !== undefined) {
-        return this.#empty(field.type, field.skipped);
+        return code.call(closeCall(field.skipped, undefined), []);
       }
       const key = code.constant(field.key);
       const at = code.call(this.#helper(codecHelpers.fieldPath), [path, key]);
@@ -138,26 +134,6 @@ export class Decoder {
       const decode = field.codec?.read ?? this.#codec(field.type, module);
       return this.#passed(code.call(decode, [json, at]));
     });
-  }
-
-  /** The value of a skipped field of `type`, which reads back as `empty` (§9). */
-  #empty(type: Type, empty: EmptyValue): Register {
-    const code = this.#code;
-    switch (empty) {
-      case 'none':
-        if (type.kind !== 'nominal') {
-          unreachable('An optional is a nominal type.');
-        }
-        return code.variant(type, optionalVariants.none, []);
-      case 'array':
-        return code.array([]);
-      case 'map':
-        return code.map([]);
-      default: {
-        const unhandled: never = empty;
-        return unhandled;
-      }
-    }
   }
 
   #struct(type: Type, values: readonly Register[]): Register {

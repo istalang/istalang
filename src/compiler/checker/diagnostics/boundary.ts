@@ -25,7 +25,7 @@ export const boundaryTemplates = {
   skippedWithoutDefault: {
     code: 5905,
     message: (type: string) =>
-      `A field '@JsonSkip' leaves out reads back as none, [] or [:], and ${type} is none of an optional, an Array or a Map.`,
+      `A field '@JsonSkip' leaves out reads back as its type's default(), and ${type} isn't Default.`,
   },
   bigIntNotInt: {
     code: 5906,

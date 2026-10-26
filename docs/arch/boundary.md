@@ -31,7 +31,8 @@ path):
 - A struct, an enum, a tuple or a host type declaring neither codec, beside it or in the `json`
   module, has both derived. The checker decides its derived form once (`checker/rules/json-forms/`,
   memoized per type key; the model is `checker/json-form.ts`, which later phases read through
-  `Checker.json`): field names after `@JsonName`, skipped and `@JsonBigInt` fields, and the module
+  `Checker.json`): field names after `@JsonName`, `@JsonBigInt` fields, what a `@JsonSkip` field
+  reads back as (its type's `Default` witness, found where the field is declared), and the module
   its parts' codecs are found in, its type's own (the `json` module for a tuple or an anonymous
   struct), so a derived codec belongs to its type alone. Conformance takes a derived codec when no
   declared one is found (`checker/resolution/conformance.ts`): a call to the `json` module's

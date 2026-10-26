@@ -248,7 +248,7 @@ export class JsonForms implements JsonCodecs {
       name: field.name,
       key: annotations.jsonNameOf(field),
       type: field.type,
-      skipped: annotations.skippedValueOf(field),
+      skipped: annotations.skippedDefaultOf(field),
       optional:
         wellKnownArguments(this.#seams.checker, wellKnown.optional, field.type) !== undefined,
       codec: annotations.fieldHas(field, 'jsonBigInt')

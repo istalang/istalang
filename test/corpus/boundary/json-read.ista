@@ -1,12 +1,13 @@
-# outcome: ["round trip","none, unknown fields ignored","$.items[0].qty: expected an integer, found a string","$.id: missing","$.shape.type: names no variant 'Square'","$.pair: expected 2 elements, found 1","$.due: 'P1Y' is not an ISO 8601 duration.","$.tags.x: 'x' is not an int.","$.items[0].qty: expected an integer, found a number","json","123456789012345678901234567890"]
+# outcome: ["round trip","none, unknown fields ignored","$.items[0].qty: expected an integer, found a string","$.id: missing","$.shape.type: names no variant 'Square'","$.pair: expected 2 elements, found 1","$.due: 'P1Y' is not an ISO 8601 duration.","$.tags.x: 'x' is not an int.","$.items[0].qty: expected an integer, found a number","json","123456789012345678901234567890","skipped 7"]
 # Reading JSON back by the declared type (§9): what stringify writes parses to an equal value, a
 # missing optional field is none and an unknown one is ignored, and every mismatch is an Err whose
 # message names the path of the part that doesn't fit; text that isn't JSON is an Err with code
-# json. A @JsonBigInt field reads the string of digits it was written as.
+# json. A @JsonBigInt field reads the string of digits it was written as, and a @JsonSkip field
+# reads back as its type's default().
 
 import * as json from 'json'
 import * as time from 'time'
-import JsonBigInt from 'json'
+import JsonBigInt, JsonSkip from 'json'
 
 struct Item:
   sku: string
@@ -27,6 +28,16 @@ struct Order:
 
 struct Big:
   value: int @JsonBigInt
+
+struct Counter:
+  count: int
+
+fn Counter.default() -> Counter:
+  Counter{count: 7}
+
+struct Tally:
+  name: string
+  counter: Counter @JsonSkip
 
 fn failure(text: string) -> string:
   match json.parse<Order>(text):
@@ -50,6 +61,9 @@ async fn main() -> Future<Array<string>>:
   const big = match json.parse<Big>("{\"value\":\"123456789012345678901234567890\"}"):
     case Ok{value}: string(value.value)
     case Err{error}: error.message
+  const skipped = match json.parse<Tally>("{\"name\":\"t\",\"counter\":{\"count\":1}}"):
+    case Ok{value}: "skipped " + value.counter.count
+    case Err{error}: error.message
   [
     roundTrip,
     lenient,
@@ -62,4 +76,5 @@ async fn main() -> Future<Array<string>>:
     failure("{\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":1.5}]}"),
     notJson,
     big,
+    skipped,
   ]

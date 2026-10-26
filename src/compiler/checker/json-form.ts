@@ -25,17 +25,17 @@ export const jsonTraits = {
   read: wellKnown.decodable,
 } as const satisfies Record<JsonDirection, WellKnownDeclaration>;
 
-/** What a `@JsonSkip` field reads back as (§9): `none`, `[]` or `[:]`. */
-export type EmptyValue = 'none' | 'array' | 'map';
-
 /** A field of a struct or variant as its derived codecs write and read it (§9). */
 export interface JsonField {
   readonly name: string;
   /** Its name in JSON: its own, or its `@JsonName` (§3.16). */
   readonly key: string;
   readonly type: Type;
-  /** `@JsonSkip`: never written, read back as this empty value; undefined for a field that crosses. */
-  readonly skipped: EmptyValue | undefined;
+  /**
+   * `@JsonSkip`: never written, read back as what this call gives, its type's `default()`;
+   * undefined for a field that crosses.
+   */
+  readonly skipped: ResolvedCall | undefined;
   /** Whether its type is optional, so JSON lacking it reads as `none` rather than failing. */
   readonly optional: boolean;
   /** `@JsonBigInt`: the field's own codecs, in place of its type's. */

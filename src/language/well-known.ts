@@ -50,7 +50,9 @@ export const wellKnown = {
   weakRef: { module: 'prelude', name: 'WeakRef' },
   /** The handle of an async call that `worker.disposing()` watches, private to the prelude (§7). */
   call: { module: 'prelude', name: '_Call' },
-  /** How a type is written as text, and read back (§3.10): its JSON form when it has them (§9). */
+  /** A type with a value to start from (§3.10): a map literal's, and a skipped JSON field's (§9). */
+  default: { module: 'prelude', name: 'Default' },
+  /** How a type is written as text, and read back (§3.10): map keys in JSON (§9). */
   stringable: { module: 'prelude', name: 'Stringable' },
   parsable: { module: 'prelude', name: 'Parsable' },
   /** Names an `await` or `select` statement's suspension point (§10). */

@@ -41,6 +41,10 @@ enum Optional<T>:
   Some { value: T }
   None
 
+# Default, as an Array and a Map are: what a skipped JSON field reads back as (§9).
+fn Optional.default<T>() -> T?:
+  none
+
 enum Result<T, E = Error>:
   Ok { value: T }
   Err { error: E }

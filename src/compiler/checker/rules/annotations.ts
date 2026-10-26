@@ -8,7 +8,8 @@
  *   constant is (computation.ts), so the two can't disagree on what compile time
  *   computes. A value that isn't a struct is no annotation.
  * - What an annotation means decides where it may stand: the json module's on fields
- *   (`@JsonSkip` only where reading back has a value to give, `@JsonBigInt` only on an `int`),
+ *   (`@JsonSkip` only on a field whose type is `Default`, which it reads back as, as found where
+ *   the field is declared; `@JsonBigInt` only on an `int`),
  *   `@Waypoint` on a statement that waits, and any other struct on fields and functions, kept for
  *   tools. The same annotation twice on one item says nothing new, so it is an error.
  * - Fields of one struct or variant that end up with the same JSON name are reported where they
@@ -25,7 +26,7 @@ import type { Expression } from '../../syntax/expressions.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { CheckedBody } from '../check.ts';
+import type { CheckedBody, ResolvedCall } from '../check.ts';
 import type {
   AnnotationPlace,
   AnnotationQueries,
@@ -33,18 +34,12 @@ import type {
 } from '../checked-annotation.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { EmptyValue } from '../json-form.ts';
+import { witnessesFor } from '../resolution/conformance.ts';
+import { wellKnownConstraint } from '../traits/constraints.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
+import { silent, useSite } from '../use-site.ts';
 import { computeConstant } from './computation.ts';
-
-/** The types a skipped field may have, and what each reads back as (§9). */
-const emptyValues = [
-  [wellKnown.optional, 'none'],
-  [wellKnown.array, 'array'],
-  [wellKnown.map, 'map'],
-] as const satisfies readonly (readonly [WellKnownDeclaration, EmptyValue])[];
 
 /** The annotations the toolchain itself reads. */
 const known = {
@@ -152,7 +147,7 @@ export class Annotations implements AnnotationQueries {
     for (const node of item.annotations ?? []) {
       const annotation = this.#value(module, node);
       const problem =
-        annotation === undefined ? undefined : this.#problem(annotation, found, place);
+        annotation === undefined ? undefined : this.#problem(module, annotation, found, place);
       if (problem !== undefined) {
         this.#seams.checker.report(module, problem);
       } else if (annotation !== undefined) {
@@ -162,8 +157,9 @@ export class Annotations implements AnnotationQueries {
     return found;
   }
 
-  /** Why `annotation` doesn't belong at `place` after those `found` there already. */
+  /** Why `annotation`, in `module`, doesn't belong at `place` after those `found` there already. */
   #problem(
+    module: ModuleId,
     annotation: CheckedAnnotation,
     found: readonly CheckedAnnotation[],
     place: AnnotationPlace,
@@ -174,7 +170,10 @@ export class Annotations implements AnnotationQueries {
       return checkerDiagnostics.repeatedAnnotation(node.span, name);
     }
     const means = placements[this.knownOf(annotation) ?? 'any'];
-    const misplaced = means(place, (at) => this.#hasEmptyValue(at));
+    const misplaced = means(
+      place,
+      (held) => held.kind === 'error' || this.#defaultOf(module, node.span, held) !== undefined,
+    );
     if (misplaced === 'elsewhere') {
       return checkerDiagnostics.misplacedAnnotation(node.span, name, placeText(place));
     }
@@ -205,23 +204,22 @@ export class Annotations implements AnnotationQueries {
     return outcome.kind === 'computed' ? { node, type, form: outcome.form } : undefined;
   }
 
-  /** What `field` reads back as when `@JsonSkip` leaves it out of JSON; undefined when it isn't. */
-  skippedValueOf(field: FieldMember): EmptyValue | undefined {
-    return this.fieldHas(field, 'jsonSkip') ? this.#emptyValueOf(field.type) : undefined;
+  /**
+   * The call giving what `field` reads back as when `@JsonSkip` leaves it out of JSON, its type's
+   * `default()`; undefined when it isn't skipped.
+   */
+  skippedDefaultOf(field: FieldMember): ResolvedCall | undefined {
+    const { declared } = field;
+    return declared !== undefined && this.fieldHas(field, 'jsonSkip')
+      ? this.#defaultOf(declared.module, declared.node.span, field.type)
+      : undefined;
   }
 
-  /** What a skipped field of `type` reads back as (§9); undefined for a type with none. */
-  #emptyValueOf(type: Type): EmptyValue | undefined {
+  /** The `default()` of `type` as code at `at` in `module` finds it; undefined when it has none. */
+  #defaultOf(module: ModuleId, at: Span, type: Type): ResolvedCall | undefined {
     const { checker } = this.#seams;
-    const found = emptyValues.find(([declaration]) =>
-      wellKnownArguments(checker, declaration, type),
-    );
-    return found?.[1];
-  }
-
-  /** Whether `@JsonSkip` may leave out a field of `type`: it reads back as something. */
-  #hasEmptyValue(type: Type): boolean {
-    return type.kind === 'error' || this.#emptyValueOf(type) !== undefined;
+    const site = silent(useSite(checker, module, at));
+    return witnessesFor(site, type, wellKnownConstraint(checker, wellKnown.default))?.[0];
   }
 }
 
@@ -234,15 +232,15 @@ const placements: Record<
   Known | 'any',
   (
     place: AnnotationPlace,
-    hasEmptyValue: (type: Type) => boolean,
+    isDefault: (type: Type) => boolean,
   ) => 'elsewhere' | ((at: Span) => Diagnostic) | undefined
 > = {
   jsonName: (place) => (place.kind === 'field' ? undefined : 'elsewhere'),
-  jsonSkip: (place, hasEmptyValue) => {
+  jsonSkip: (place, isDefault) => {
     if (place.kind !== 'field') {
       return 'elsewhere';
     }
-    return hasEmptyValue(place.type)
+    return isDefault(place.type)
       ? undefined
       : (at) => checkerDiagnostics.skippedWithoutDefault(at, typeText(place.type));
   },

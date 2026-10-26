@@ -480,7 +480,7 @@ fn add(left: Time, right: Duration) -> Time:     # Time + Duration
 - **`Array<T>`** is an ordered, growable sequence indexed from 0, like a JavaScript array, with JavaScript's method names: `length()`, `push(x)`, `pop()` (a `T?`), `at(i)`, `slice(start = 0, end = none)`, `indexOf(x)` (`-1` when absent), `includes(x)`, and `join(separator)` on an `Array<string>`; methods taking a function, such as `map` and `filter`, come with function values. `xs[i]` panics unless `0 <= i < xs.length()`; `xs.at(i)` returns `T?` and, as in JavaScript, accepts negative indexes counted from the end. Indexing with a range slices it (§3.9); `xs.slice(start, end)` is the clamping, JavaScript-style variant.
 - **`Map<K, V>`** maps keys to values and compares keys with the built-in `==`, so a key holding a NaN can be stored but is never found again. `m[k]` panics on a missing key; `m.get(k)` returns `V?`. Its methods are `size()`, `get(k)`, `has(k)`, `delete(k)` (whether it held `k`), `keys()`, `values()` and `entries()`. The order in which a map stores and iterates its entries is unspecified, so implementations are free to use hashing or sorting, and two maps are `==` when they hold equal values for equal keys, whatever their order.
 - **`Range`** is a plain, sendable struct with an optional `start` and `end`, built by `..` (and by `..=`, which stores `end + 1`). It is `Iterable<int>` when both ends are given: iterating `a..b` gives nothing when `a >= b`, and iterating a range without an end panics, since whether it has one is known only when it runs.
-- **`Array<T>`** and **`Map<K, V>`** satisfy `Default`: `Array.default()` and `Map.default()` are empty.
+- **`Array<T>`**, **`Map<K, V>`** and **`T?`** satisfy `Default`: `Array.default()` and `Map.default()` are empty, and `Optional.default()` is `none`.
 - An `extern struct` is not sendable unless it says `sendable`.
 - A sendable generic struct is sendable only when its type arguments are sendable: `Array<int>` is sendable, `Array<Future<int>>` is not.
 - Primitives are always sendable. `Time` and `Duration` are plain structs of `int`, so they are sendable by derivation.
@@ -597,7 +597,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 | `Indexable<K, V, C = Self>` | `index(self, key) -> V` | `x[k]` |
 | `IndexAssignable<K, V, C = Self>` | `setIndex(self: &C, key, value)` | `x[k] = v` |
 | `Convertible<From, T = Self>` | `fn Self.from(value: From) -> Self` | `T(x)` |
-| `Default` | `fn Self.default() -> Self` | map literals for other types (§2) |
+| `Default` | `fn Self.default() -> Self` | map literals for other types (§2); what a `@JsonSkip` field reads back as (§9) |
 | `Stringable` | `toString(self) -> string` | `string(x)`; map keys in JSON, and `json.encodeText` (§9) |
 | `Parsable` | `fn Self.parse(text: string) -> Result<Self>` | reading map keys from JSON, and `json.decodeText` (§9) |
 | `Encodable`, `Decodable` | `toJson(self) -> json.Json`, and `fn Self.fromJson(json: json.Json, path: string) -> Result<Self>`, the codecs that write and read a type as JSON (§9); each implies `Sendable`. Declared in the `json` module, so code naming them imports them; derived for a struct, an enum, a tuple or a host type declaring neither function | extern parameters, and extern results and constants (§3.6); `json` |
@@ -1191,7 +1191,7 @@ The mapping follows JavaScript's `JSON.stringify`:
 
 | Type | JSON |
 | --- | --- |
-| struct, named or anonymous, deriving its codecs | object keyed by field name, or by the name given with `@JsonName`; fields marked `@JsonSkip` are left out, and read back as `none`, `[]` or `[:]`, so only an optional, `Array` or `Map` field may be skipped |
+| struct, named or anonymous, deriving its codecs | object keyed by field name, or by the name given with `@JsonName`; fields marked `@JsonSkip` are left out, and read back as their type's `default()` (§3.10), so only a field whose type is `Default` may be skipped |
 | `Array<T>`, tuple | array; a tuple's has exactly its length |
 | `Map<K, V>` | object keyed by each key's `toString`, so `K` must be `Stringable` (and `Parsable` to be read) |
 | `int` | number, parsed and printed exactly at any size; a string of its digits with `@JsonBigInt` |
