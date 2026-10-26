@@ -7,8 +7,9 @@
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import type { Field } from '../syntax/declarations.ts';
 import type { Invalid } from '../syntax/node.ts';
-import type { FieldDeclaration, TypeNode } from '../syntax/types.ts';
+import type { TypeNode } from '../syntax/types.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import type { Scope } from './scope.ts';
 
@@ -45,7 +46,7 @@ function bindTypes(binder: LocalBinder, nodes: readonly TypeNode[], scope: Scope
 /** A field list of a struct, variant, anonymous struct or trait: names checked, types bound. */
 export function bindFields(
   binder: LocalBinder,
-  fields: readonly (FieldDeclaration | Invalid)[],
+  fields: readonly (Field | Invalid)[],
   scope: Scope,
 ): void {
   const declared = fields.filter((field) => field.kind === 'FieldDeclaration');

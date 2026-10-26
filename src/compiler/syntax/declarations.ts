@@ -16,7 +16,7 @@
  */
 
 import type { Annotatable } from './annotations.ts';
-import type { Parameter, StringLiteral } from './expressions.ts';
+import type { Expression, Parameter, StringLiteral } from './expressions.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
 import type { Block, VariableDeclaration } from './statements.ts';
 import type { FieldDeclaration, TypeNode } from './types.ts';
@@ -54,8 +54,23 @@ export function isMethod(declaration: FunctionDeclaration): boolean {
 export interface StructDeclaration extends NodeOf<'StructDeclaration'>, Annotatable {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
-  readonly fields: readonly (FieldDeclaration | Invalid)[];
+  readonly fields: readonly (DeclaredField | Invalid)[];
 }
+
+/**
+ * A field of a struct's or a variant's declaration: `name: Type`, `name: Type = default`, or
+ * `name = default`, whose type its default gives (§3.1). Only these fields have defaults, so they
+ * have a shape of their own beside a type's or a trait's `FieldDeclaration`, with its kind.
+ */
+export interface DeclaredField extends NodeOf<'FieldDeclaration'>, Annotatable {
+  readonly name: Identifier;
+  /** Undefined only beside a default, which gives the type. */
+  readonly type: TypeNode | undefined;
+  readonly defaultValue: Expression | undefined;
+}
+
+/** A field anywhere: of a struct's or a variant's declaration, of an anonymous struct type, or of a trait. */
+export type Field = DeclaredField | FieldDeclaration;
 
 /** `extern sendable struct Queue<T>`: a struct the host implements. */
 export interface ExternStructDeclaration extends NodeOf<'ExternStructDeclaration'>, Annotatable {
@@ -81,7 +96,7 @@ export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable 
 /** `Expired`, or `Rejected { by: string; reason: string }`. */
 export interface Variant extends NodeOf<'Variant'>, Annotatable {
   readonly name: Identifier;
-  readonly fields: readonly (FieldDeclaration | Invalid)[];
+  readonly fields: readonly (DeclaredField | Invalid)[];
 }
 
 /** Required functions (with no body) and fields (§3.10). */
@@ -145,4 +160,4 @@ export interface Module extends NodeOf<'Module'> {
 }
 
 /** Nodes that occur only as parts of a declaration. */
-export type DeclarationPart = TypeParameter | Variant;
+export type DeclarationPart = TypeParameter | Variant | DeclaredField;

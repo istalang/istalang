@@ -9,9 +9,9 @@
  */
 
 import { memo } from '../../structures/memo.ts';
-import { unreachable } from '../../structures/unreachable.ts';
 import type {
   Declaration,
+  DeclaredField,
   EnumDeclaration,
   FunctionDeclaration,
   StructDeclaration,
@@ -19,7 +19,6 @@ import type {
 } from './declarations.ts';
 import type { Parameter } from './expressions.ts';
 import type { Invalid } from './node.ts';
-import type { FieldDeclaration, TypeNode } from './types.ts';
 
 /** A declaration whose fields may have defaults: a struct, or one variant of an enum. */
 type FieldsOwner = StructDeclaration | Variant;
@@ -92,15 +91,7 @@ export function isFieldsFunction(declaration: FunctionDeclaration): boolean {
   return owners.has(declaration);
 }
 
-/** The type a field outside a struct's or a variant's declaration is written with. */
-export function writtenType(field: FieldDeclaration): TypeNode {
-  if (field.type === undefined) {
-    unreachable(`'${field.name.text}' has no default to give its type; the parser said so.`);
-  }
-  return field.type;
-}
-
-function parameterOf(field: FieldDeclaration | Invalid): Parameter | Invalid {
+function parameterOf(field: DeclaredField | Invalid): Parameter | Invalid {
   if (field.kind === 'Invalid') {
     return field;
   }

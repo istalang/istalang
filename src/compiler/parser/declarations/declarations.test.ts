@@ -9,6 +9,7 @@ import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import {
   bodyOf,
+  declaredField,
   dumpClean,
   field,
   int,
@@ -47,7 +48,7 @@ describe('type declarations', () => {
     ['struct Marker', '(StructDeclaration Marker [] [])'],
     [
       'struct Req { id: int; value: string }',
-      `(StructDeclaration Req [] [${field('id', int)} ${field('value', string)}])`,
+      `(StructDeclaration Req [] [${declaredField('id', int)} ${declaredField('value', string)}])`,
     ],
     [
       lines(
@@ -57,15 +58,15 @@ describe('type declarations', () => {
         '        value: int',
         '        result: string',
       ),
-      `(StructDeclaration Response [] [${field('id', string)} ${field('data', `(StructType [${field('value', int)} ${field('result', string)}])`)}])`,
+      `(StructDeclaration Response [] [${declaredField('id', string)} ${declaredField('data', `(StructType [${field('value', int)} ${field('result', string)}])`)}])`,
     ],
     [
       'struct Node<T is Sendable & Comparable = int> { value: T }',
-      `(StructDeclaration Node [(TypeParameter T [${named('Sendable')} ${named('Comparable')}] ${int})] [${field('value', named('T'))}])`,
+      `(StructDeclaration Node [(TypeParameter T [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}])`,
     ],
     [
       lines('enum Decision:', '    Approved { by: string }', '    Expired'),
-      `(EnumDeclaration Decision [] [(Variant Approved [${field('by', string)}]) (Variant Expired [])])`,
+      `(EnumDeclaration Decision [] [(Variant Approved [${declaredField('by', string)}]) (Variant Expired [])])`,
     ],
     [
       'enum Color { Red; Green; Blue }',
@@ -95,11 +96,11 @@ describe('type declarations', () => {
     ['handle Counter of int', `(HandleDeclaration Counter [] ${int})`],
     [
       lines('struct Retry:', '    times: int = 3', '    backoff = times * 2'),
-      `(StructDeclaration Retry [] [${field('times', int, '3')} ${field('backoff', '_', '(Binary times * 2)')}])`,
+      `(StructDeclaration Retry [] [${declaredField('times', int, '3')} ${declaredField('backoff', '_', '(Binary times * 2)')}])`,
     ],
     [
       'enum Shape { Circle { r: float = 1.0 } }',
-      `(EnumDeclaration Shape [] [(Variant Circle [${field('r', named('float'), '1')}])])`,
+      `(EnumDeclaration Shape [] [(Variant Circle [${declaredField('r', named('float'), '1')}])])`,
     ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));

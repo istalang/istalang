@@ -22,7 +22,7 @@ import { isStdModule, type ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import { handleFunctionList } from '../../syntax/declared-functions.ts';
-import { fieldsFunctionOf, writtenType } from '../../syntax/field-defaults.ts';
+import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
@@ -100,7 +100,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
       if (member.kind === 'FunctionDeclaration') {
         checkFunction(checker, member);
       } else if (member.kind === 'FieldDeclaration') {
-        const type = checker.resolveType(module, writtenType(member));
+        const type = checker.resolveType(module, member.type);
         checker.annotations.of(module, member, { kind: 'field', type });
       }
     }

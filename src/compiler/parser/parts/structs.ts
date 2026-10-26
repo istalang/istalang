@@ -10,6 +10,7 @@
  * else is read, so recovery goes on past it, then reported and left out of the tree.
  */
 
+import type { DeclaredField } from '../../syntax/declarations.ts';
 import type { Invalid, Missing } from '../../syntax/node.ts';
 import type { FieldDeclaration, StructType } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
@@ -33,16 +34,15 @@ export function afterStructKeyword<Body>(parser: Parser, parseBraced: () => Body
 
 /** `name: Type`, or `name:` over an indented block of fields: a field with no default. */
 export function parseField(parser: Parser): FieldDeclaration {
-  const field = parseDeclaredField(parser);
-  if (field.defaultValue === undefined) {
-    return field;
+  const { kind, span, name, type, defaultValue } = parseDeclaredField(parser);
+  if (defaultValue !== undefined) {
+    parser.report(parserDiagnostics.misplacedFieldDefault(defaultValue.span));
   }
-  parser.report(parserDiagnostics.misplacedFieldDefault(field.defaultValue.span));
-  return { ...field, type: field.type ?? parser.placeholder(), defaultValue: undefined };
+  return { kind, span, name, type: type ?? parser.placeholder() };
 }
 
 /** A struct's or a variant's field: `name: Type`, `name: Type = default` or `name = default`. */
-function parseDeclaredField(parser: Parser): FieldDeclaration {
+function parseDeclaredField(parser: Parser): DeclaredField {
   const name = parser.identifier('a field name');
   const { start } = name.span;
   const field = { kind: 'FieldDeclaration', name } as const;
@@ -65,7 +65,7 @@ const fieldRules: ItemRules<FieldDeclaration> = {
 };
 
 /** The fields of a struct's or a variant's declaration, which may have defaults. */
-export const declaredFieldRules: ItemRules<FieldDeclaration> = {
+export const declaredFieldRules: ItemRules<DeclaredField> = {
   parseItem: (parser) => nested(parser, () => parseDeclaredField(parser)),
   annotate: attachAnnotations,
 };
@@ -73,9 +73,8 @@ export const declaredFieldRules: ItemRules<FieldDeclaration> = {
 /** `{ a: A; b: B }`, the fields separated by `;` or line breaks; the cursor must be at the `{`. */
 export function parseFieldEntries(
   parser: Parser,
-  rules: ItemRules<FieldDeclaration> = fieldRules,
 ): Enclosed<readonly (FieldDeclaration | Invalid)[]> {
-  return parseItemEntries(parser, rules);
+  return parseItemEntries(parser, fieldRules);
 }
 
 function parseFieldBlock(parser: Parser, headerStart: number): StructType {

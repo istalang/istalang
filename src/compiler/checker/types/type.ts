@@ -29,13 +29,14 @@ import type { ModuleId } from '../../program/program.ts';
 import type {
   EnumDeclaration,
   ExternStructDeclaration,
+  Field,
   HandleDeclaration,
   StructDeclaration,
   TraitDeclaration,
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import type { StructLiteral } from '../../syntax/expressions.ts';
-import type { FieldDeclaration, StructType } from '../../syntax/types.ts';
+import type { StructType } from '../../syntax/types.ts';
 
 export interface PrimitiveType {
   readonly kind: 'primitive';
@@ -93,7 +94,7 @@ interface TupleType {
 export interface FieldMember {
   readonly name: string;
   readonly type: Type;
-  readonly declared?: { readonly node: FieldDeclaration; readonly module: ModuleId };
+  readonly declared?: { readonly node: Field; readonly module: ModuleId };
 }
 
 /**

@@ -9,6 +9,7 @@
  */
 
 import type {
+  DeclaredField,
   EnumDeclaration,
   FunctionDeclaration,
   HandleDeclaration,
@@ -22,7 +23,7 @@ import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { type ItemRules, type Items, parseBody, parseItemEntries } from '../layout.ts';
 import type { Parser } from '../parser.ts';
-import { declaredFieldRules, parseField, parseFieldEntries } from '../parts/structs.ts';
+import { declaredFieldRules, parseField } from '../parts/structs.ts';
 import { parseFunction } from './functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
@@ -80,11 +81,9 @@ function parseTypeHead(parser: Parser) {
 }
 
 /** An indented block or one-line braces of members, or none. */
-function parseMembers<Item extends FieldDeclaration | Variant | FunctionDeclaration>(
-  parser: Parser,
-  rules: ItemRules<Item>,
-  headerStart: number,
-): Items<Item> {
+function parseMembers<
+  Item extends DeclaredField | FieldDeclaration | Variant | FunctionDeclaration,
+>(parser: Parser, rules: ItemRules<Item>, headerStart: number): Items<Item> {
   const { cursor } = parser;
   if (cursor.eat(':') !== undefined) {
     return parseBody(parser, rules, headerStart).items;
@@ -95,7 +94,7 @@ function parseMembers<Item extends FieldDeclaration | Variant | FunctionDeclarat
 /** `Expired`, or `Rejected { by: string; reason: string }`. */
 function parseVariant(parser: Parser): Variant {
   const name = parser.identifier('a variant name');
-  const fields = parser.cursor.at('{') ? parseFieldEntries(parser, declaredFieldRules).value : [];
+  const fields = parser.cursor.at('{') ? parseItemEntries(parser, declaredFieldRules).value : [];
   return { kind: 'Variant', span: parser.spanFrom(name.span.start), name, fields };
 }
 

@@ -29,6 +29,7 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {
+  Field,
   FunctionDeclaration,
   TraitDeclaration,
   TypeAliasDeclaration,
@@ -36,12 +37,7 @@ import type {
   TypeParameters,
 } from '../../syntax/declarations.ts';
 import { type Invalid, lastName } from '../../syntax/node.ts';
-import type {
-  FieldDeclaration,
-  FunctionType as FunctionTypeNode,
-  NamedType,
-  TypeNode,
-} from '../../syntax/types.ts';
+import type { FunctionType as FunctionTypeNode, NamedType, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
@@ -275,10 +271,10 @@ export function constrainArguments(
 export function declaredFields(
   checker: CheckerContext,
   module: ModuleId,
-  fields: readonly (FieldDeclaration | Invalid)[],
+  fields: readonly (Field | Invalid)[],
   defaults?: FunctionDeclaration,
 ): readonly FieldMember[] {
-  const typeOf = (field: FieldDeclaration): Type =>
+  const typeOf = (field: Field): Type =>
     field.type === undefined
       ? defaultedType(checker, field, defaults)
       : checker.resolveType(module, field.type);
@@ -292,7 +288,7 @@ export function declaredFields(
 /** The type `field`'s default gives it, as the parameter of `defaults` it reads as. */
 function defaultedType(
   checker: CheckerContext,
-  field: FieldDeclaration,
+  field: Field,
   defaults: FunctionDeclaration | undefined,
 ): Type {
   const parameters = defaults === undefined ? [] : checker.parametersOf(defaults);
