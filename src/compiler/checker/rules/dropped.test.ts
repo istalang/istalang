@@ -99,3 +99,21 @@ describe('dropped variables', () => {
     expect(spanTexts).toEqual(['t', 't']);
   });
 });
+
+describe('the rules over a whole body', () => {
+  const dropping = '{ const t = "a"; drop t; t.length() }';
+  const unchanged = '{ let t = 1; t }';
+  const bodies = (value: string) => [
+    ['a function', `fn f() -> int: ${value}`],
+    ['a parameter default', `fn f(a: int = ${value}) -> int: a`],
+    ['a field default', `struct S { a: int = ${value} }`],
+  ];
+
+  it.each(bodies(dropping))('find a dropped variable used in %s', (_body, text) => {
+    expect(reported(text)).toEqual(reportedOnce(reports.droppedVariableUsed.code, 't'));
+  });
+
+  it.each(bodies(unchanged))('find a let never reassigned in %s', (_body, text) => {
+    expect(reported(text)).toEqual(reportedOnce(reports.letNeverReassigned.code, 't'));
+  });
+});

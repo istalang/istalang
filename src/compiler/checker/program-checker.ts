@@ -125,7 +125,7 @@ export class ProgramChecker implements CheckerContext {
         check: (value, declared) => body.expect(value, declared),
         declare: (node, type) =>
           body.variables.declareParameter({ node, type, reference: writtenByReference(node) }),
-        checked: () => body.defaults(),
+        checked: (values) => body.defaults(values),
       };
     },
   });

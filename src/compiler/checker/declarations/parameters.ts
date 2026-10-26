@@ -12,15 +12,16 @@
 
 import { memo } from '../../../structures/memo.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { Expression } from '../../syntax/expressions.ts';
 import type { CheckedBody, SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { LazyChecks } from '../lazy-checks.ts';
 import { type DefaultValues, declaredParameters } from './signatures.ts';
 
-/** A body in which a function's defaults are checked, and what checking them found. */
+/** A body in which a function's defaults are checked, and what checking `values` found. */
 interface DefaultsBody extends DefaultValues {
-  readonly checked: () => CheckedBody;
+  readonly checked: (values: readonly Expression[]) => CheckedBody;
 }
 
 interface ParameterUnit {
@@ -77,13 +78,14 @@ export class Parameters {
       const module = checker.moduleOf(declaration);
       const body = this.#unit.defaultsBody(declaration);
       const parameters = declaredParameters(checker, module, declaration, body);
-      return { parameters, defaults: body.checked() };
+      return { parameters, defaults: body.checked(defaultValuesOf(declaration)) };
     });
   }
 
   /** The defaults of a function whose parameters all declare their types, checked against them. */
   #checkDefaults(declaration: FunctionDeclaration): CheckedBody | undefined {
-    if (!hasDefaults(declaration)) {
+    const values = defaultValuesOf(declaration);
+    if (values.length === 0) {
       return undefined;
     }
     const body = this.#unit.defaultsBody(declaration);
@@ -94,13 +96,16 @@ export class Parameters {
       }
       body.declare(parameter.node, parameter.type);
     }
-    return body.checked();
+    return body.checked(values);
   }
 }
 
-function hasDefaults(declaration: FunctionDeclaration): boolean {
-  return declaration.parameters.some(
-    (parameter) => parameter.kind === 'Parameter' && parameter.defaultValue !== undefined,
+/** The default values of `declaration`'s parameters, in order. */
+function defaultValuesOf(declaration: FunctionDeclaration): readonly Expression[] {
+  return declaration.parameters.flatMap((parameter) =>
+    parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
+      ? [parameter.defaultValue]
+      : [],
   );
 }
 

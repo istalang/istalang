@@ -26,6 +26,7 @@ import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
+import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type {
   CallSite,
@@ -116,23 +117,28 @@ export class BodyChecker implements BodyContext {
       this.variables.declareParameter(parameter);
     }
     const tail = this.block(body, this.returns.declared);
-    const result = this.returns.result(this, blockTail(body, tail));
-    this.variables.warnUnchanged(this);
-    checkDropped(this, body);
-    return this.#checked(result);
+    return this.#finished([body], this.returns.result(this, blockTail(body, tail)));
   }
 
-  /** What checking a function's default values found (signatures.ts), once they are all checked. */
-  defaults(): CheckedBody {
-    return this.#checked(unitType);
+  /** What checking a function's default `values` found (signatures.ts), once they are all checked. */
+  defaults(values: readonly Expression[]): CheckedBody {
+    return this.#finished(values, unitType);
   }
 
   /** Checks a value of its own, such as a constant's initializer, against the declared result. */
   checkValue(node: Expression): CheckedBody {
     const { declared } = this.returns;
     const type = this.expect(node, declared);
-    checkDropped(this, node);
-    return this.#checked(declared ?? type);
+    return this.#finished([node], declared ?? type);
+  }
+
+  /** The body checked from `roots`, after the rules over a whole body ran on it. */
+  #finished(roots: readonly SyntaxNode[], result: Type): CheckedBody {
+    this.variables.warnUnchanged(this);
+    for (const root of roots) {
+      checkDropped(this, root);
+    }
+    return this.#checked(result);
   }
 
   expression(node: Expression, expected?: Type): Type {
