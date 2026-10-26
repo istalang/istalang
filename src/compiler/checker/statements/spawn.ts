@@ -46,7 +46,10 @@ function refusalOf(
   call: Call,
 ): { readonly callee: string; readonly why: string } | undefined {
   if (context.chains.chainOf(call) !== undefined) {
-    return { callee: 'A call through ?.', why: 'whether it happens is known only when it runs' };
+    return {
+      callee: 'A call in an optional chain',
+      why: 'whether it happens is known only when it runs',
+    };
   }
   const resolved = context.callAt(call);
   if (resolved === undefined) {

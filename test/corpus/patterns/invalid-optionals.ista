@@ -1,15 +1,20 @@
-# error: 5406 at 25:16
-# error: 5406 at 26:20
-# error: 5407 at 28:19
-# error: 2018 at 29:3
-# error: 5409 at 31:31
-# error: 5409 at 33:18
-# error: 5406 at 34:18
-# error: 5506 at 36:18
-# error: 5406 at 37:19
+# error: 5406 at 32:3
+# error: 5406 at 36:16
+# error: 5406 at 37:20
+# error: 5407 at 39:19
+# error: 2018 at 40:3
+# error: 5409 at 42:31
+# error: 5409 at 44:18
+# error: 5406 at 45:18
+# error: 5506 at 47:18
+# error: 5406 at 48:19
+# error: 5406 at 49:19
+# error: 5220 at 50:20
 # `?.` and `??` work on optionals (§4). A value read through `?.` is a copy, so a chain is never
 # assigned to, not even an element of it, and calls no method taking `&self`. A `?.` or `?->`
-# reaches inside one optional only: an optional read further along the chain needs its own.
+# reaches inside one optional only: an optional read further along the chain needs its own. A
+# function's name before `?.(` or `->` is its value, never the call of an enclosing async fn,
+# which only a `.` reads (§7).
 
 struct Address { city: string; tags: Array<string> }
 
@@ -19,6 +24,12 @@ shared struct Node { value: int; next: Node? = none }
 
 fn rename(self: &Address, city: string):
   self.city = city
+
+fn plain(n: int) -> int:
+  n
+
+async fn worker() -> Future<int>:
+  worker?.(1) ?? 0
 
 async fn main():
   const count = 5
@@ -35,3 +46,5 @@ async fn main():
   const seven: int? = 7
   const result = seven?.()
   const element = count?.[0]
+  const viaCall = plain?.(1)
+  const viaArrow = plain->count

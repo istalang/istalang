@@ -51,18 +51,22 @@ export class OptionalChains {
   /**
    * Checks the target of `link`'s step; the type the step works on: the value a chained target
    * carries, the value inside an optional after `?.`, or the error type after a report. A target
-   * naming functions is the call of one (closures/own-calls.ts).
+   * naming functions before a `.` or `?.` is the call of one (closures/own-calls.ts).
    */
   target(context: BodyContext, link: Expression): Type {
     const step = chainStepOf(link);
     if (step === undefined) {
       unreachable(`A ${link.kind} is no link; the checker asked the wrong node.`);
     }
-    const targetType = checkOwnCall(context, step.target) ?? context.expression(step.target);
+    const ownCall =
+      step.operator === '.' || step.operator === '?.'
+        ? checkOwnCall(context, step.target)
+        : undefined;
+    const targetType = ownCall ?? context.expression(step.target);
     if (!this.continues(link)) {
       return targetType;
     }
-    const base = this.#baseOf(context, link, step, targetType);
+    const base = this.#baseOf(context, step, targetType);
     this.#bases.set(link, base);
     return base;
   }
@@ -88,16 +92,15 @@ export class OptionalChains {
     return this.#links.get(link);
   }
 
-  #baseOf(context: BodyContext, link: Expression, step: ChainStep, targetType: Type): Type {
+  #baseOf(context: BodyContext, step: ChainStep, targetType: Type): Type {
     const carried = this.#carried.get(step.target) ?? targetType;
     if (!isOptionalStep(step) || carried.kind === 'error') {
       return carried;
     }
     const inner = optionalInner(carried, context.checker.optionalEntity);
     if (inner === undefined) {
-      const operator = link.kind === 'Dereference' ? '?->' : '?.';
       context.report(
-        checkerDiagnostics.needsOptional(step.target.span, operator, typeText(carried)),
+        checkerDiagnostics.needsOptional(step.target.span, step.operator, typeText(carried)),
       );
       return errorType;
     }
