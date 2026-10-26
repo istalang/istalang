@@ -8,13 +8,18 @@
 
 import type { Entity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import { checkFunctionValue, namedFunctions } from '../closures/function-values.ts';
+import {
+  checkFunctionValue,
+  functionsAccepted,
+  namedFunctions,
+} from '../closures/function-values.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Accepts } from '../resolution/choice.ts';
 import { fieldlessStructOf } from '../resolution/named.ts';
 import { typeParametersOf } from '../types/resolve-type.ts';
 import { errorType, nominalType, type Type } from '../types/type.ts';
-import { checkVariantName } from './variants.ts';
+import { checkVariantName, variantsAccepted } from './variants.ts';
 
 export function checkName(
   context: BodyContext,
@@ -22,6 +27,17 @@ export function checkName(
   expected: Type | undefined,
 ): Type {
   return entityValueType(context, node, context.entityOf(node), expected);
+}
+
+/**
+ * Which types a name passed to a call can take when the call decides its type (§3.5): a function
+ * among several or a generic one the function types it can be, a bare variant the enums having it.
+ */
+export function nameAccepts(context: BodyContext, node: Identifier): Accepts | undefined {
+  const functions = namedFunctions(context, node);
+  return functions === undefined
+    ? variantsAccepted(context, context.entityOf(node))
+    : functionsAccepted(context, functions);
 }
 
 /** The type of the value `entity` denotes where `node` names it. */

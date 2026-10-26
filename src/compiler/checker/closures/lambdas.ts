@@ -5,7 +5,8 @@
  * - A lambda's parameter has its written type, or else the expected function type's. One with
  *   neither is reported, as nothing could give it. Its result is its written type, or else the
  *   expected function type's, so a named lambda passed where a function is expected may call
- *   itself (§2); with neither, it is what the body produces.
+ *   itself (§2); with neither, it is what the body produces, as it is for a lambda whose result
+ *   binds a type parameter of the call it is passed to (§3.5, `inferLambda`).
  * - A local `fn` is a `const` bound to a lambda (§3.14): its parameters are typed as a declared
  *   function's are, and its result is written or inferred. Being one value, neither a lambda nor a
  *   local `fn` can be generic or have default values or rest parameters, which stand for overloads
@@ -29,6 +30,7 @@ import type { NestedFunction, SignatureParameter } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Accepts } from '../resolution/choice.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { errorType, type FunctionType, type Type, unitType } from '../types/type.ts';
@@ -39,7 +41,7 @@ import { blockTail, ReturnScope } from './returns.ts';
  * For a lambda with a parameter to infer, which parameter types it can take, as an argument the
  * chosen function decides (§3.5); undefined for one whose parameters are all typed.
  */
-export function lambdaAccepts(node: Lambda): ((expected: Type) => boolean) | undefined {
+export function lambdaAccepts(node: Lambda): Accepts | undefined {
   const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
   if (parameters.every((parameter) => parameter.type !== undefined)) {
     return undefined;
@@ -52,14 +54,35 @@ export function lambdaAccepts(node: Lambda): ((expected: Type) => boolean) | und
 
 export function checkLambda(context: BodyContext, node: Lambda, expected: Type | undefined): Type {
   const shape = expected?.kind === 'function' ? expected : undefined;
-  const fromShape = shape?.result.kind === 'error' ? undefined : shape?.result;
+  return checkLambdaAs(context, node, shape?.parameters, shape?.result);
+}
+
+/**
+ * A lambda passed where its parameters' types are known and its result is its body's to decide,
+ * since it binds type parameters of the call (§3.5).
+ */
+export function inferLambda(
+  context: BodyContext,
+  node: Lambda,
+  parameters: FunctionType['parameters'],
+): Type {
+  return checkLambdaAs(context, node, parameters, undefined);
+}
+
+/** A lambda where its position gives `slots` for its parameters and `result`, when it does. */
+function checkLambdaAs(
+  context: BodyContext,
+  node: Lambda,
+  slots: FunctionType['parameters'] | undefined,
+  result: Type | undefined,
+): Type {
   const declaredResult =
     node.returnType === undefined
-      ? fromShape
+      ? result
       : declaredBodyResult(context.checker, context.module, node);
   return checkNested(context, node, {
     name: node.name,
-    parameters: nestedParameters(context, node.parameters, shape),
+    parameters: nestedParameters(context, node.parameters, slots),
     isAsync: node.isAsync,
     declaredResult,
     tail: (declared) => {
@@ -150,7 +173,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
 function nestedParameters(
   context: BodyContext,
   nodes: readonly (Parameter | Invalid)[],
-  shape: FunctionType | undefined,
+  slots: FunctionType['parameters'] | undefined,
 ): readonly SignatureParameter[] {
   return nodes.flatMap((node, index) => {
     if (node.kind === 'Invalid') {
@@ -162,15 +185,11 @@ function nestedParameters(
     if (node.isRest) {
       context.report(checkerDiagnostics.nestedFunctionForm(node.name.span, 'a rest parameter'));
     }
-    const slot = shape?.parameters[index];
+    const slot = slots?.[index];
     const parameter = writtenParameter(context, node) ?? slot;
     if (parameter === undefined) {
       context.report(
-        checkerDiagnostics.parameterTypeUnknown(
-          node.name.span,
-          node.name.text,
-          shape?.parameters.length,
-        ),
+        checkerDiagnostics.parameterTypeUnknown(node.name.span, node.name.text, slots?.length),
       );
       return [{ node, type: errorType, reference: false }];
     }

@@ -25,7 +25,13 @@ import {
   staticCandidates,
   staticTargetOf,
 } from '../resolution/candidates.ts';
-import { type Application, choose, type Passing, signatureOf } from '../resolution/choice.ts';
+import {
+  type Accepts,
+  type Application,
+  choose,
+  type Passing,
+  signatureOf,
+} from '../resolution/choice.ts';
 import { instantiate } from '../resolution/conformance.ts';
 import { namedType } from '../resolution/named.ts';
 import { errorType, type FunctionType, substitute, type Type } from '../types/type.ts';
@@ -146,13 +152,12 @@ export function checkFunctionValue(
 
 /**
  * For functions named as an argument, the function types they can be passed as, so the call
- * decides which (expressions/decided.ts); undefined for a lone non-generic function, which has its
- * own type.
+ * decides which (§3.5); undefined for a lone non-generic function, which has its own type.
  */
 export function functionsAccepted(
   context: BodyContext,
   named: NamedFunctions,
-): ((expected: Type) => boolean) | undefined {
+): Accepts | undefined {
   if (loneFunction(context, named.candidates(undefined)) !== undefined) {
     return undefined;
   }

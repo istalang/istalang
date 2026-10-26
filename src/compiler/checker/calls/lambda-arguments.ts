@@ -6,15 +6,16 @@
  * Once a function is chosen, such a lambda is checked after the other arguments, which have bound
  * what they can of the type parameters, and before the call is instantiated: its parameter types
  * come from there, and what its body produces binds the type parameters of its result, as
- * `xs.map(fn x: x * 2)` binds `U` from `x * 2`. A lambda whose parameter types still mention a
- * type parameter nothing has bound is left for instantiating to report.
+ * `xs.map(fn x: x * 2)` binds `U` from `x * 2`: a result nothing has bound is left for the body
+ * to decide (`BodyContext.inferLambda`). A lambda whose parameter types still mention a type
+ * parameter nothing has bound is left for instantiating to report.
  */
 
 import { type Expression, unparenthesized } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import type { Application } from '../resolution/choice.ts';
-import { errorType, parametersIn, substitute, type Type } from '../types/type.ts';
+import { parametersIn, substitute, type Type } from '../types/type.ts';
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */
 interface Argument {
@@ -45,8 +46,9 @@ export function checkDecidedLambdas(
     ) {
       return;
     }
-    const result = isOpen(partial.result, inference) ? errorType : partial.result;
-    const checked = context.expression(node, { ...partial, result });
+    const checked = isOpen(partial.result, inference)
+      ? context.inferLambda(node, partial.parameters)
+      : context.expression(node, partial);
     inference.match(slot.type, checked);
     types.set(index, checked);
   });

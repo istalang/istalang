@@ -43,7 +43,6 @@ import {
 import { namedType } from '../resolution/named.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { decidedByCall } from './decided.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const argumentNodes: Expression[] = [];
@@ -97,7 +96,7 @@ function writtenArgument(context: BodyContext, argument: Expression): WrittenArg
     const type = checkChangedPlace(context, argument.expression, 'referenced');
     return { node: argument, passing: 'reference', type };
   }
-  const accepts = decidedByCall(context, argument);
+  const accepts = context.accepts(argument);
   return {
     node: argument,
     passing: 'value',

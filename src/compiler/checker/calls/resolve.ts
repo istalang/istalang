@@ -26,6 +26,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import type { Candidate } from '../resolution/candidates.ts';
 import {
+  type Accepts,
   type Application,
   choose,
   type Inapplicability,
@@ -46,7 +47,7 @@ export interface WrittenArgument {
   readonly node: Expression;
   readonly passing: Passing;
   readonly type: Type | undefined;
-  readonly accepts?: ((expected: Type) => boolean) | undefined;
+  readonly accepts?: Accepts | undefined;
 }
 
 /** A call to resolve, as written. */

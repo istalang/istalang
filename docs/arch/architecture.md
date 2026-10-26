@@ -172,6 +172,7 @@ The handler types of the phases from checking on, which feature slices extend:
 | Table | Type | A handler… |
 | --- | --- | --- |
 | checker expressions | `Handlers<BodyContext, Expression, [expected: Type \| undefined], Type>` | gives the node's type; `expected` guides inference, and `BodyContext.expect` enforces it where the spec says a value must fit |
+| checker accepts | `Handlers<BodyContext, Expression, [], Accepts \| undefined>` | for an argument with no type of its own, which the chosen function decides (§3.5), the parameter types it can take, so choosing rules out the rest; undefined for a kind with a type of its own. A kind holding others recurses through `BodyContext.accepts` |
 | checker statements | `Handlers<BodyContext, Statement \| Invalid, [expected: Type \| undefined], Type>` | gives the statement's type: an expression statement's value, `never` for one that leaves, else `unit`; dispatched through `BodyContext.statement` |
 | checker declarations | `Handlers<CheckerContext, Declaration, [ModuleId], void>` | resolves what a top-level item declares and checks bodies |
 | checker type nodes | `Handlers<Resolution, TypeNode, [], Type>` | gives the type a type node denotes |

@@ -39,12 +39,19 @@ import type { StructLiterals } from './expressions/literal-fields.ts';
 import type { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import type { CheckedPatterns } from './patterns/matching.ts';
+import type { Accepts } from './resolution/choice.ts';
 import type { ImplicitCalls } from './resolution/implicit.ts';
 import type { Annotations } from './rules/annotations.ts';
 import type { VariableScope } from './statements/variables.ts';
 import type { Constraint } from './traits/constraints.ts';
 import type { OptionalEntity } from './types/fit.ts';
-import type { FieldMember, NominalDeclaration, Substitution, Type } from './types/type.ts';
+import type {
+  FieldMember,
+  FunctionType,
+  NominalDeclaration,
+  Substitution,
+  Type,
+} from './types/type.ts';
 
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
@@ -102,6 +109,16 @@ export interface BodyContext {
   readonly module: ModuleId;
   /** Checks `node`, recording its type; `expected` guides inference but isn't enforced. */
   readonly expression: (node: Expression, expected?: Type) => Type;
+  /**
+   * Which parameter types `node` can take when the call it is passed to decides its type (§3.5);
+   * undefined when it has a type of its own, which takes part in choosing the function.
+   */
+  readonly accepts: (node: Expression) => Accepts | undefined;
+  /**
+   * Checks `node`, a lambda, maybe parenthesized, recording its type, where its parameters' types
+   * are known and its result is left for its body to decide (§3.5).
+   */
+  readonly inferLambda: (node: Expression, parameters: FunctionType['parameters']) => Type;
   /** The type `node` was checked to have; the error type for a node not checked yet. */
   readonly typeOf: (node: Expression) => Type;
   /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */

@@ -17,6 +17,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { handlerOf } from '../../structures/kind-table.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
@@ -28,23 +29,25 @@ import type { TypeNode } from '../syntax/types.ts';
 import type { CallSite, CheckedBody, ResolvedCall, SignatureParameter } from './check.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
+import { inferLambda } from './closures/lambdas.ts';
 import type { LoopScope } from './closures/loop-scope.ts';
 import { OwnCalls } from './closures/own-calls.ts';
 import { blockTail, ReturnScope } from './closures/returns.ts';
 import type { BodyContext, CheckerContext } from './context.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import { CollectionForms } from './expressions/collections.ts';
-import { expressionHandlers } from './expressions/expressions.ts';
+import { acceptsOf, expressionHandlers } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
 import { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
+import type { Accepts } from './resolution/choice.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { statementPlace } from './rules/annotations.ts';
 import { checkDropped } from './rules/dropped.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
-import { errorType, type Type, unitType } from './types/type.ts';
+import { errorType, type FunctionType, type Type, unitType } from './types/type.ts';
 import { typeText } from './types/type-text.ts';
 
 /**
@@ -124,7 +127,24 @@ export class BodyChecker implements BodyContext {
   }
 
   expression(node: Expression, expected?: Type): Type {
-    const value = handlerOf(expressionHandlers, node)(this, node, expected);
+    return this.#record(node, handlerOf(expressionHandlers, node)(this, node, expected));
+  }
+
+  accepts(node: Expression): Accepts | undefined {
+    return acceptsOf(this, node);
+  }
+
+  inferLambda(node: Expression, parameters: FunctionType['parameters']): Type {
+    if (node.kind === 'Parenthesized') {
+      return this.#record(node, this.inferLambda(node.expression, parameters));
+    }
+    if (node.kind !== 'Lambda') {
+      unreachable(`A ${node.kind} has no result to infer.`);
+    }
+    return this.#record(node, inferLambda(this, node, parameters));
+  }
+
+  #record(node: Expression, value: Type): Type {
     const type = this.chains.linked(this, node, value);
     this.#types.set(node, type);
     return type;

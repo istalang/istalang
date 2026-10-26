@@ -19,11 +19,16 @@ import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldSource } from '../check.ts';
-import { checkFunctionValue, namedFunctions } from '../closures/function-values.ts';
+import {
+  checkFunctionValue,
+  functionsAccepted,
+  namedFunctions,
+} from '../closures/function-values.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
+import type { Accepts } from '../resolution/choice.ts';
 import { namedType } from '../resolution/named.ts';
 import { requiredFields, requiredFieldType } from '../traits/constraints.ts';
 import {
@@ -42,7 +47,7 @@ import {
   type LiteralSpread,
 } from './literal-fields.ts';
 import { entityValueType } from './names.ts';
-import { checkVariantLiteral, checkVariantName } from './variants.ts';
+import { checkVariantLiteral, checkVariantName, variantsAccepted } from './variants.ts';
 
 export function checkStructLiteral(
   context: BodyContext,
@@ -241,4 +246,20 @@ function fieldOf(context: BodyContext, type: Type, name: string): Type | undefin
     }
   }
   return undefined;
+}
+
+/** Which types a member passed to a call can take when the call decides it: a function's (names.ts). */
+export function memberAccepts(context: BodyContext, node: MemberAccess): Accepts | undefined {
+  const functions = namedFunctions(context, node);
+  return functions === undefined ? undefined : functionsAccepted(context, functions);
+}
+
+/** Which types a literal of a bare variant (`Rejected{by: "legal"}`) can take: its enums. */
+export function structLiteralAccepts(
+  context: BodyContext,
+  node: StructLiteral,
+): Accepts | undefined {
+  return node.type === undefined
+    ? undefined
+    : variantsAccepted(context, context.entityOf(lastName(node.type.path)));
 }

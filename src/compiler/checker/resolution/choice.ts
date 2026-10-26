@@ -58,13 +58,19 @@ interface SignatureSlot {
 export type Passing = 'value' | 'reference' | 'receiver';
 
 /**
+ * Whether an argument the chosen function decides can take a parameter of type `expected`, where
+ * a part `isOpen` says inference hasn't found yet can be anything.
+ */
+export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boolean;
+
+/**
  * An argument as choosing sees it: its type, or, when the chosen function decides it, which
  * parameter types it can take; and how it is passed.
  */
 export interface CallArgument {
   readonly type: Type | undefined;
   readonly passing: Passing;
-  readonly accepts?: ((expected: Type) => boolean) | undefined;
+  readonly accepts?: Accepts | undefined;
 }
 
 /** A candidate that applies, with what inference has found for its type parameters so far. */
@@ -261,7 +267,6 @@ function isByReference(slot: SignatureSlot, argument: CallArgument): boolean {
 
 /** Whether an argument the chosen function decides can take a parameter of type `declared`. */
 function acceptsDecided(argument: CallArgument, declared: Type, inference: Inference): boolean {
-  const parameter = substitute(declared, inference.substitution());
-  const isOpen = parameter.kind === 'parameter' && inference.isUnknown(parameter.declaration);
-  return isOpen || (argument.accepts?.(parameter) ?? true);
+  const isOpen = (part: Type) => part.kind === 'parameter' && inference.isUnknown(part.declaration);
+  return argument.accepts?.(substitute(declared, inference.substitution()), isOpen) ?? true;
 }

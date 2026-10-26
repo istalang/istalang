@@ -7,7 +7,7 @@
  * - `none` needs an optional type to be expected (§3.11).
  * - A variant with fields is built with braces; naming it bare is an error.
  * - Where a call's chosen function decides an argument's type, `none` and a bare variant wait for
- *   it (decided.ts), so `f(none)` reads like `const x: T? = none`.
+ *   it (§3.5), so `f(none)` reads like `const x: T? = none`.
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
@@ -18,6 +18,7 @@ import type { MemberAccess, NoneLiteral, StructLiteral } from '../../syntax/expr
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Accepts } from '../resolution/choice.ts';
 import { chooseVariant, sameEnum } from '../resolution/named.ts';
 import { optionalInner } from '../types/fit.ts';
 import { typeArgumentsFor, typeParametersOf } from '../types/resolve-type.ts';
@@ -28,7 +29,7 @@ import { checkLiteralFields, knownArguments } from './literal-fields.ts';
 type VariantNode = Identifier | MemberAccess | StructLiteral;
 
 /** The types `none` can take, as an argument a call's chosen function decides: any optional. */
-export function noneAccepted(context: BodyContext): (expected: Type) => boolean {
+export function noneAccepted(context: BodyContext): Accepts {
   return (expected) => optionalInner(expected, context.checker.optionalEntity) !== undefined;
 }
 
@@ -36,7 +37,7 @@ export function noneAccepted(context: BodyContext): (expected: Type) => boolean 
 export function variantsAccepted(
   context: BodyContext,
   naming: Entity | undefined,
-): ((expected: Type) => boolean) | undefined {
+): Accepts | undefined {
   if (naming?.kind !== 'variants') {
     return undefined;
   }
