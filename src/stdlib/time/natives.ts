@@ -10,8 +10,12 @@
 
 import { namedKey, nativeKey, primitiveKey } from '../../definition/extern-key.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
-import type { NativeContext, NativeTimers } from '../../runtime/natives.ts';
-import { type Natives, Panic } from '../../runtime/natives.ts';
+import {
+  type NativeContext,
+  type Natives,
+  type NativeTimers,
+  Panic,
+} from '../../runtime/natives.ts';
 import { fieldOf, int, resultError, resultOkStruct, resultStruct, text } from '../native-values.ts';
 import { parseErrorCode } from '../prelude/text-forms.ts';
 import { timeName } from '../stdlib-loader.ts';

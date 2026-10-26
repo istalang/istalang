@@ -13,7 +13,7 @@ tags: [review, architecture, refactoring, plan]
 | Priority | Item | Scope | Tracker | Source | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Dead code elimination (frontier.ts, unsupported.ts) | tooling | | by-opus | done (f8f2e91) |
-| 2 | Deduplicate leaf helpers (compareCodeUnits, staticName, preludeKey) | definition, language, stdlib | D79, D128 | by-argon, by-opus | done (40dca52) |
+| 2 | Deduplicate leaf helpers (compareCodeUnits, staticName, preludeKey) | definition, language, stdlib | D79, D128 | by-argon, by-opus | partial (40dca52): `staticName` and the natives' shared keys are D79, D128 |
 | 3 | Split NativeContext into capability interfaces | runtime, stdlib | | by-opus | done (a70160f) |
 | 4 | Unify Context-Dependent / Target-Typed Argument Checking (add `accepts` facet) | checker, overloads | D84, D95, D102 | by-argon, by-opus | done (00b8021, 7d5a712) |
 | 5 | Fix heldType + must-use for declared structs/enums and `T is Disposable` | checker | D108 | by-argon | done (f87c155, 1bd7b35) |
@@ -21,8 +21,8 @@ tags: [review, architecture, refactoring, plan]
 | 7 | Generalize Virtual Places (`Index`, `Unwrap`, `Shared.value` into projected/accessor steps) | checker, lowering | D86, D87, D96 | by-argon | done |
 | 8 | Unify Destructuring Walk & Wrap Counts (single target walker, wrap counts on sites) | checker | D82, D97 | by-argon | done |
 | 9 | Flow analysis extraction (one flow model / CFG instead of manual switches) | checker | D133 | by-argon, by-opus | done |
-| 10 | Unify HeapObject table / Frame view / Snapshot builder | runtime | D110, D123, D126 | by-argon | done (6bd863e) |
-| 11 | Derive Heap indexes instead of linear scans | runtime | D134, D107, D111, D113 | by-opus | done (0b6a385) |
+| 10 | Unify HeapObject table / Frame view / Snapshot builder | runtime | D110, D123, D126 | by-argon | done (ebfda55) |
+| 11 | Derive Heap indexes instead of linear scans | runtime | D134, D107, D111, D113 | by-opus | done (23b87ac, 107cbbc) |
 | 12 | Generalize `@JsonSkip` and JSON forms (use `Default` trait) | checker, lowering | | by-argon | done |
 | 13 | Spec: JSON crossing as traits (`Encodable`/`Decodable` instead of closed table) | spec, compiler | D140 | by-opus | done |
 | 14 | Spec: Iterable materialization (`iterate` lazy form) | spec, stdlib | D141 | by-opus | done |
@@ -30,7 +30,7 @@ tags: [review, architecture, refactoring, plan]
 | 16 | Spec: Witness incoherence (chosen per call site) | spec, checker | D143 | by-opus | done |
 | 17 | Spec: `Shared<T>` roles, Host Handles vs Resource handles, nominal handle declaration | spec, compiler | D105, D139 | by-argon, by-opus | done |
 | 18 | `Error{...}` trace field (remove hardcoded check, support default field expressions) | checker, syntax | | by-argon | done |
-| 19 | `worker.disposing()` via Enclosing Function (general way instead of intercepting) | checker, runtime | | by-argon | done (2fba855) |
+| 19 | `worker.disposing()` via Enclosing Function (general way instead of intercepting) | checker, runtime | | by-argon | done (8669a6b) |
 | 20 | Std types by name in Definition (give extern type entries a role instead) | definition, lowering | D138 | by-opus | done (51f5f6d) |
 | 21 | CheckedBody side tables (keep records or elaborated tree) | checker | D136 | by-opus | |
 | 22 | Checker memoization (early cutoff for language service) | checker | D137 | by-opus | |

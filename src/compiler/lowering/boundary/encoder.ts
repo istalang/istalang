@@ -59,7 +59,7 @@ export class Encoder {
     }
   }
 
-  /** The codec writing `type`, as found in `module`. */
+  /** The codec writing `type`. */
   #codec(type: Type) {
     return codecCall(this.#code.checker, undefined, type, 'write');
   }

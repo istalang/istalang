@@ -241,8 +241,6 @@ function literalTarget(
   return entry === undefined ? { kind: 'declared', type } : { kind: 'map', type, arguments: entry };
 }
 
-/** `T` of any number of optionals around it (§2). */
-
 /**
  * A map literal, or an empty `[]`, of the declared type `type`: its `default()`, then a
  * `setIndex` for each entry and for each item of each spread (§2).

@@ -1,4 +1,3 @@
-import type { WithResources } from '../../runtime/natives.ts';
 /**
  * The `json` module's natives (json.ista): JSON text in and out, and the leaf steps of the compiled
  * codecs that need JavaScript's view of a number or the host's own JSON. Everything that walks a
@@ -26,7 +25,7 @@ import {
 import { isResourceType } from '../../definition/types.ts';
 import { elementsOf, type Value } from '../../definition/values.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
-import type { NativeContext, Natives } from '../../runtime/natives.ts';
+import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { fieldOf, float, given, resultErr, resultOk, text } from '../native-values.ts';

@@ -32,8 +32,6 @@ export const wellKnown = {
   cell: { module: 'prelude', name: '_Cell' },
   /** What a function that can fail returns, and what `?` takes apart (§3.12). */
   result: { module: 'prelude', name: 'Result' },
-  /** What `Err` carries by default, whose `trace` the runtime fills in (§3.12). */
-  error: { module: 'prelude', name: 'Error' },
   /** What a duration literal is (§2). */
   duration: { module: 'time', name: 'Duration' },
   /** A point in time, which the host boundary writes as ISO 8601 (§9). */

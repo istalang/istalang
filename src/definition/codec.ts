@@ -1,4 +1,3 @@
-import { compareCodeUnits } from '../language/values.ts';
 /**
  * The one JSON text form for everything the toolchain persists or hashes: Definitions, snapshots
  * and, from M3, values crossing the host boundary.
@@ -16,6 +15,7 @@ import { compareCodeUnits } from '../language/values.ts';
 import { createHash } from 'node:crypto';
 import { parse, stringify } from 'lossless-json';
 import { z } from 'zod';
+import { compareCodeUnits } from '../language/values.ts';
 import { unreachable } from '../structures/unreachable.ts';
 
 const integerSyntax = /^-?\d+$/u;
