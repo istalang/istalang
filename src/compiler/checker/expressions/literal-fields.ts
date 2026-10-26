@@ -139,7 +139,7 @@ export function checkLiteralFields(
   }
   const defaulted =
     spread === undefined ? defaultCalls(context, shape, items.given, completed.typeArguments) : [];
-  reportMissing(context, items, type, defaulted);
+  reportMissing(context, items, type);
   const sources = sourcesOf(shape, items.given, spread, defaulted);
   if (items.fits && sources !== undefined) {
     context.literals.record(node, sources);
@@ -288,12 +288,14 @@ function reportMisfit(
   }
 }
 
-/** With names alone, a field no item names is missing, unless it is `defaulted`. */
+/**
+ * With names alone, a field no item names is missing, unless it has a default: one that can't be
+ * called for these type arguments is reported where they are checked, not as a missing field.
+ */
 function reportMissing(
   context: BodyContext,
   { node, shape, given }: LiteralItems,
   type: Type,
-  defaulted: readonly (FunctionCall | undefined)[],
 ): void {
   const named = node.items.every(
     (item) => item.kind === 'FieldInitializer' || item.kind === 'Invalid',
@@ -303,10 +305,16 @@ function reportMissing(
   }
   const at = node.type?.span ?? node.span;
   for (const [index, field] of shape.fields.entries()) {
-    if (!given.has(index) && defaulted[index] === undefined) {
+    if (!(given.has(index) || hasDefault(shape, index))) {
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
     }
   }
+}
+
+/** Whether field `index` of `shape` declares a default (§3.1). */
+function hasDefault({ fields }: LiteralShape, index: number): boolean {
+  const declared = fields[index]?.declared?.node;
+  return declared !== undefined && defaultOf(declared) !== undefined;
 }
 
 /**
@@ -353,14 +361,12 @@ function sourceOf(
  */
 function defaultCalls(
   context: BodyContext,
-  { defaults, fields }: LiteralShape,
+  shape: LiteralShape,
   given: ReadonlyMap<number, GivenField>,
   typeArguments: readonly Type[],
 ): readonly (FunctionCall | undefined)[] {
-  const isLeftOut = (index: number) => {
-    const declared = fields[index]?.declared?.node;
-    return !given.has(index) && declared !== undefined && defaultOf(declared) !== undefined;
-  };
+  const { defaults, fields } = shape;
+  const isLeftOut = (index: number) => !given.has(index) && hasDefault(shape, index);
   if (defaults === undefined || !fields.some((_, index) => isLeftOut(index))) {
     return [];
   }

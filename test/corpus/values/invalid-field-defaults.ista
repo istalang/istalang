@@ -1,16 +1,19 @@
-# error: 5001 at 16:12
-# error: 4000 at 19:12
-# error: 5112 at 22:8
-# error: 5026 at 29:17
-# error: 5028 at 41:16
-# error: 5028 at 42:14
-# error: 5410 at 45:14
-# error: 5410 at 47:21
+# error: 5001 at 19:12
+# error: 4000 at 22:12
+# error: 5112 at 25:8
+# error: 5026 at 32:17
+# error: 5028 at 44:16
+# error: 5028 at 45:14
+# error: 5410 at 48:14
+# error: 5410 at 50:21
+# error: 2004 at 61:6
+# error: 5101 at 65:3
 # A field's default must fit its field (§3.1), sees only the fields before it, and can't reach its
 # own field when that field takes its type from it. A constant runs a default only when compile
 # time computes it, which arithmetic it doesn't, and one whose default builds a value needing that
 # default again would never be finished. Only a function returns, so a default has no `return`, as
-# a parameter's hasn't.
+# a parameter's hasn't. A field with a default is never missing, even where its default can't be
+# called, which is reported once, for itself.
 
 struct Typed:
   n: int = "x"
@@ -46,5 +49,22 @@ struct Returning:
 
 fn early(n: int = { return 1; 2 }) -> int:
   n
+
+struct Plain:
+  x: int
+
+struct Defaulting<T is Default>:
+  items: T = T.default()
+  size: int
+
+struct Referencing:
+  x: &int = 1
+  y: int = x
+
+fn plainBox() -> int:
+  Defaulting<Plain>{size: 1}.size
+
+fn referencing() -> int:
+  Referencing{}.y
 
 async fn main(): 0
