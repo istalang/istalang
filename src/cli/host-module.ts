@@ -5,14 +5,15 @@
  *
  * - An extern returning a `Future` may return a promise: the future is named by a token of this
  *   module's own, unique across runs, so a run resumed from a store never gives the name of a
- *   future an earlier run left pending, and filled with what the promise gives once it settles. A promise that rejects
- *   leaves its future unfilled, and says why on the error stream.
+ *   future an earlier run left pending, and filled with what the promise gives once it settles. A
+ *   promise that rejects leaves its future unfilled, and says why on the error stream.
  * - Filling happens between wakes, never inside one: a settled promise only queues its JSON, and
  *   the run's loop fills what is queued when it next resumes (`arrivals`), so the runtime is never
  *   entered while it runs.
  */
 
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { HostCall, HostExterns } from '../runtime/boundary/host-natives.ts';
 import type { Runtime } from '../runtime/host.ts';
@@ -37,14 +38,26 @@ export interface HostModule {
   readonly arrivals: (runtime: Runtime, report: (message: string) => void) => readonly Arrived[];
 }
 
-/** A host module loaded, or why its exports can't implement externs: the user's to fix. */
+/** A host module loaded, or why it can't implement externs: the user's to fix. */
 export type LoadedHostModule =
   | { readonly kind: 'loaded'; readonly module: HostModule }
   | { readonly kind: 'unfit'; readonly problem: string };
 
-/** Loads the host module at `path`, whose default export must be an object of functions. */
+/**
+ * Loads the host module at `path`, whose default export must be an object of functions. Whatever
+ * its import throws is the module's own failing (a syntax error, a throw at its top level, an
+ * import of its own that is missing), so it is reported as unfit, never as a toolchain bug.
+ */
 export async function loadHostModule(path: string): Promise<LoadedHostModule> {
-  const loaded: unknown = await import(pathToFileURL(path).href);
+  if (!existsSync(path)) {
+    return { kind: 'unfit', problem: `no such file: ${path}` };
+  }
+  let loaded: unknown;
+  try {
+    loaded = await import(pathToFileURL(path).href);
+  } catch (error) {
+    return { kind: 'unfit', problem: `${path} failed to load: ${String(error)}` };
+  }
   const given = (loaded as { readonly default?: unknown }).default;
   if (given === null || typeof given !== 'object') {
     return { kind: 'unfit', problem: `${path} has no default export of extern implementations.` };

@@ -15,7 +15,7 @@
  * renders them, so the output holds only the outcome.
  * Exit codes: 0 when `main` finishes; 1 when the program has errors, declares no `main`, panics,
  * the runtime refuses it, or an instance waits on nothing that can wake it; 2 when the entry
- * can't be read, the options don't fit together, or the host module implements no externs.
+ * can't be read, the options don't fit together, or the host module can't implement externs.
  */
 
 import { randomUUID } from 'node:crypto';

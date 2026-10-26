@@ -161,6 +161,21 @@ function runWith(order: string, charge: string) {
   return ista(root, 'run', 'main.ista', '--host', 'host.mjs');
 }
 
+const reported = /^ista: /u;
+
+/** A host module `ista run` can't use: what it holds (none when the file is missing), what is said. */
+const unfitHostModules: readonly (readonly [string, string | undefined, RegExp])[] = [
+  ['is missing', undefined, /^ista: no such file: \S+host\.mjs\n$/u],
+  ['has no default export', 'export const limit = 1;\n', /host\.mjs has no default export/u],
+  [
+    'exports what is no function',
+    "export default { 'main.limit': 1 };\n",
+    /host\.mjs exports 'main\.limit', which isn't a function/u,
+  ],
+  ['is no JavaScript', 'export default {,};\n', /host\.mjs failed to load: /u],
+  ['throws as it loads', "throw new Error('boom');\n", /host\.mjs failed to load: Error: boom/u],
+];
+
 describe('ista run --host', () => {
   it('runs the host externs: a host type, a promised future, a constant and a result', async () => {
     const run = await runWith(
@@ -203,19 +218,20 @@ describe('ista run --host', () => {
     expect(run.err).toContain('main.charge(string, int)');
   });
 
-  it.each([
-    ['has no default export', 'export const limit = 1;\n', 'has no default export'],
-    [
-      'exports what is no function',
-      "export default { 'main.limit': 1 };\n",
-      "exports 'main.limit'",
-    ],
-  ])("can't run as asked when the host module %s", async (_, exports, problem) => {
-    const root = project({ 'main.ista': program, 'host.mjs': exports });
-    const run = await ista(root, 'run', 'main.ista', '--host', 'host.mjs');
-    expect(run.code).toBe(2);
-    expect(run.err).toMatch(new RegExp(`^ista: \\S+host\\.mjs ${problem}`, 'u'));
-  });
+  it.each(unfitHostModules)(
+    "can't run as asked when the host module %s",
+    async (_, exports, problem) => {
+      const root = project({
+        'main.ista': program,
+        ...(exports === undefined ? {} : { 'host.mjs': exports }),
+      });
+      const run = await ista(root, 'run', 'main.ista', '--host', 'host.mjs');
+      expect(run.code).toBe(2);
+      expect(run.out).toBe('');
+      expect(run.err).toMatch(reported);
+      expect(run.err).toMatch(problem);
+    },
+  );
 
   it("reads a host function's undefined as JSON.stringify writes it", async () => {
     const root = project({
