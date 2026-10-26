@@ -1,0 +1,56 @@
+# outcome: "0 4 6 1 2 3 0 2 array map tuple 0 1"
+# An argument with no type of its own has the type its parameter gives (§3.5), as any value has
+# where a type is expected: an empty `[]` or `[:]`, and a tuple, a collection literal or a branch
+# holding `none` or a lambda with an untyped parameter, each element fitting its own type (§2). A
+# literal whose first item has a type of its own has that type, as without a call. Choosing among
+# overloads asks what such an argument can take; a generic function's type arguments it leaves
+# open come from the type the call is expected to have, and a conversion's from those written.
+
+fn count(xs: Array<int>) -> int: xs.length()
+
+fn sum(fs: Array<fn(int) -> int>) -> int:
+  let total = 0
+  for f in fs:
+    total = total + f(1)
+  total
+
+fn applied(pair: (int, fn(int) -> int)) -> int: pair.1(pair.0)
+
+fn present(pair: (int?, int?)) -> int: (pair.0 ?? 0) + (pair.1 ?? 0)
+
+fn kind(xs: Array<int>) -> string: "array"
+
+fn kind(n: int) -> string: "int"
+
+fn shape(m: Map<string, int>) -> string: "map"
+
+fn shape(p: (int, int?)) -> string: "tuple"
+
+fn same<T>(value: T) -> T: value
+
+fn picked(n: int) -> int:
+  present(match n:
+    case _: (none, n))
+
+async fn main() -> Future<string>:
+  const flag = true
+  const n = 3
+  const maybe: int? = n
+  const names = Shared<Array<string>>([])
+  const kept: (int, int?) = same((1, none))
+  const parts = [
+    string(count([])),
+    string(sum([fn(x): x + 1, fn x: x * 2])),
+    string(applied((5, fn(x): x + 1))),
+    string(present((1, none))),
+    string(present(if flag: (none, 2) else: (1, none))),
+    string(picked(n)),
+    string(count({ const unused = n; [] })),
+    string(same([maybe, none]).length()),
+    kind([]),
+    shape([:]),
+    shape((1, none)),
+    string(names$.length()),
+    string(kept.0),
+  ]
+  parts.join(" ")

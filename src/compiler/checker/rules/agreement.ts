@@ -13,6 +13,7 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
+import type { Accepts } from '../resolution/choice.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
 import { widened } from '../types/widening.ts';
 
@@ -104,4 +105,16 @@ export function decidedSoFar(
   produced: readonly Produced[],
 ): Type | undefined {
   return agreedType(produced, context.checker.wrapsToFit).decided;
+}
+
+/**
+ * Which types producers of one value can agree on when the call they are passed to decides it
+ * (§3.5), from what each can take, undefined for one with a type of its own: none when the first
+ * has a type of its own, since it decides for the rest, else any every other one can take.
+ */
+export function agreedAccepts(producers: readonly (Accepts | undefined)[]): Accepts | undefined {
+  if (producers[0] === undefined) {
+    return undefined;
+  }
+  return (expected, isOpen) => producers.every((accepts) => accepts?.(expected, isOpen) ?? true);
 }

@@ -63,6 +63,33 @@ const cases: readonly ChoiceCase[] = [
     chosen: 'string',
   },
   {
+    rule: 'an argument the call decides takes only a parameter of a type it can be',
+    overloads: ['fn f(a: Array<int>) -> bool: true', 'fn f(a: int) -> string: "c"'],
+    call: 'f([])',
+    chosen: 'bool',
+  },
+  {
+    rule: 'a tuple holding none takes only a tuple with an optional there',
+    overloads: ['fn f(a: (int, int?)) -> bool: true', 'fn f(a: (int, string)) -> string: "c"'],
+    call: 'f((1, none))',
+    chosen: 'bool',
+  },
+  {
+    rule: 'a lambda in an array takes only an array of functions of its arity',
+    overloads: [
+      'fn f(a: Array<fn(int) -> int>) -> bool: true',
+      'fn f(a: Array<fn(int, int) -> int>) -> string: "c"',
+    ],
+    call: 'f([fn(x): x])',
+    chosen: 'bool',
+  },
+  {
+    rule: 'an empty [] takes an array and a map alike',
+    overloads: ['fn f(a: Array<int>) -> bool: true', 'fn f(a: Map<string, int>) -> string: "c"'],
+    call: 'f([])',
+    chosen: undefined,
+  },
+  {
     rule: 'a call leaving a parameter to its default chooses the function with it',
     overloads: ['fn f(a: int, b: int = 1) -> bool: true', 'fn f(a: string) -> string: "c"'],
     call: 'f(1)',

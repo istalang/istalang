@@ -8,14 +8,16 @@
  * that first branch's type is what later branches are expected to have, so `if c: struct{a: 1}
  * else: struct{a: 2}` builds one anonymous type, not two (§3.1). Branches are added one at a time,
  * so a construct checks what comes before each body (a condition, a pattern) in source order.
+ * Passed to a call that decides their type (§3.5), they take what their tails agree on.
  */
 
 import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Accepts } from '../resolution/choice.ts';
 import { neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { decidedSoFar, type Produced, settleAgreement } from './agreement.ts';
+import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from './agreement.ts';
 
 export class Branches {
   readonly #context: BodyContext;
@@ -54,4 +56,18 @@ export class Branches {
     );
     return decided ?? neverType;
   }
+}
+
+/** Which types branches with `bodies` can take when the call they are passed to decides it. */
+export function branchesAccepts(
+  context: BodyContext,
+  bodies: readonly Block[],
+): Accepts | undefined {
+  return agreedAccepts(bodies.map((body) => blockAccepts(context, body)));
+}
+
+/** Which types `block` can take when the call it is passed to decides it: its tail's (§4). */
+export function blockAccepts(context: BodyContext, block: Block): Accepts | undefined {
+  const tail = tailExpressionOf(block);
+  return tail === undefined ? undefined : context.accepts(tail);
 }

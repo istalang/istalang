@@ -5,8 +5,10 @@
  *   and gives the node's type; the context records it.
  * - Accepting: passed to a call, an expression with no type of its own has the type the chosen
  *   function decides (§3.5), so choosing asks it which parameter types it can take. Each kind says
- *   beside its own rules: `none`, a bare variant, a lambda with a parameter to infer, and functions
- *   named by a name of several or a generic one. A parameter still to be inferred can be anything.
+ *   beside its own rules: `none`, a bare variant, a lambda with a parameter to infer, functions
+ *   named by a name of several or a generic one, and an empty `[]` or `[:]`; a tuple, collection
+ *   literal or branching expression holding one, unless what it agrees on is decided by a part with
+ *   a type of its own. A part still to be inferred can be anything.
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
@@ -14,26 +16,33 @@ import type { Expression, Reference } from '../../syntax/expressions.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import type { BodyContext } from '../context.ts';
 import type { Accepts } from '../resolution/choice.ts';
+import { blockAccepts } from '../rules/branches.ts';
 import { boolType, errorType, floatType, intType, stringType, type Type } from '../types/type.ts';
 import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';
-import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections.ts';
+import {
+  arrayAccepts,
+  checkArrayLiteral,
+  checkMapLiteral,
+  checkRange,
+  mapAccepts,
+} from './collections.ts';
 import { checkComprehension } from './comprehensions.ts';
-import { checkIf } from './control.ts';
+import { checkIf, ifAccepts } from './control.ts';
 import { checkIndex } from './indexing.ts';
 import { checkDurationLiteral } from './literals.ts';
-import { checkIs, checkMatch } from './match.ts';
+import { checkIs, checkMatch, matchAccepts } from './match.ts';
 import { checkName, nameAccepts } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
 import { checkPropagate } from './propagate.ts';
-import { checkSelect } from './select.ts';
+import { checkSelect, selectAccepts } from './select.ts';
 import {
   checkMemberAccess,
   checkStructLiteral,
   memberAccepts,
   structLiteralAccepts,
 } from './structs.ts';
-import { checkTuple, checkTupleElement } from './tuples.ts';
+import { checkTuple, checkTupleElement, tupleAccepts } from './tuples.ts';
 import { checkUnwrap } from './unwrap.ts';
 import { checkNone, noneAccepted } from './variants.ts';
 
@@ -103,14 +112,14 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   StructLiteral: structLiteralAccepts,
   MemberAccess: memberAccepts,
   TupleElement: ownType,
-  BlockExpression: ownType,
-  If: ownType,
+  BlockExpression: (context, node) => blockAccepts(context, node.block),
+  If: ifAccepts,
   DurationLiteral: ownType,
   NoneLiteral: noneAccepted,
-  ArrayLiteral: ownType,
-  MapLiteral: ownType,
+  ArrayLiteral: arrayAccepts,
+  MapLiteral: mapAccepts,
   Comprehension: ownType,
-  Tuple: ownType,
+  Tuple: tupleAccepts,
   Lambda: (_context, node) => lambdaAccepts(node),
   Reference: ownType,
   Index: ownType,
@@ -119,8 +128,8 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   Await: ownType,
   Is: ownType,
   Range: ownType,
-  Match: ownType,
-  Select: ownType,
+  Match: matchAccepts,
+  Select: selectAccepts,
   Missing: ownType,
   Invalid: ownType,
 };

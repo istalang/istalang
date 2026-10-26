@@ -12,9 +12,9 @@
  * - When concrete candidates apply, only they are chosen among: a concrete function beats a
  *   generic one (§3.7). Written type arguments consider only generic candidates. Any other tie is
  *   ambiguous.
- * - An argument whose type the chosen function decides (`none`, a bare variant) takes part with
- *   no type: it fits a parameter of a type it can take (an optional, an enum with that variant),
- *   or one of a type parameter still to be inferred.
+ * - An argument whose type the chosen function decides (`none`, a bare variant, a literal holding
+ *   one) takes part with no type: it fits a parameter of a type it can take (an optional, an enum
+ *   with that variant), any part of which may be a type parameter still to be inferred.
  *
  * `inapplicability` is the one rule: choosing keeps the candidates it finds nothing against, and a
  * report about a failed call explains the reason it found.

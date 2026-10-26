@@ -16,7 +16,8 @@
 import { type Select, type SelectCase, unparenthesized } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { Branches } from '../rules/branches.ts';
+import type { Accepts } from '../resolution/choice.ts';
+import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { checkDiscarded } from '../rules/must-use.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -73,4 +74,11 @@ function checkCaseFuture(context: BodyContext, selectCase: SelectCase): void {
   } else if (value !== undefined) {
     checkDiscarded(context, selectCase.future, value);
   }
+}
+
+/** A `select` takes what its cases and its `else` agree on. */
+export function selectAccepts(context: BodyContext, node: Select): Accepts | undefined {
+  const cases = node.cases.flatMap((each) => (each.kind === 'SelectCase' ? [each.body] : []));
+  const elseBody = node.elseClause?.body;
+  return branchesAccepts(context, elseBody === undefined ? cases : [...cases, elseBody]);
 }

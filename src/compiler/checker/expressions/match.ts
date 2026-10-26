@@ -18,7 +18,8 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';
 import { checkPattern } from '../patterns/matching.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
-import { Branches } from '../rules/branches.ts';
+import type { Accepts } from '../resolution/choice.ts';
+import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { boolType, type Type } from '../types/type.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {
@@ -71,4 +72,12 @@ function reportCoverage(
       context.report(checkerDiagnostics.unreachableCase(at));
     }
   }
+}
+
+/** A `match` takes what its cases agree on. */
+export function matchAccepts(context: BodyContext, node: Match): Accepts | undefined {
+  return branchesAccepts(
+    context,
+    casesOf(node).map(({ body }) => body),
+  );
 }

@@ -6,7 +6,8 @@
 import type { If } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { Branches } from '../rules/branches.ts';
+import type { Accepts } from '../resolution/choice.ts';
+import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { boolType, isAssignable, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -27,4 +28,12 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
     }
   }
   return unitType;
+}
+
+/** An `if` with `else` takes what its branches agree on; one without has a type of its own. */
+export function ifAccepts(context: BodyContext, node: If): Accepts | undefined {
+  const elseBody = node.elseClause?.body;
+  return elseBody === undefined
+    ? undefined
+    : branchesAccepts(context, [...node.branches.map(({ body }) => body), elseBody]);
 }

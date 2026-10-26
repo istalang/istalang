@@ -13,9 +13,11 @@
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
  *   `C.default()` and assigns each entry with `setIndex`, as `c[k] = v` would (§2). Those are calls
  *   the language makes (resolution/implicit.ts), which must run at once
- *   (calls/collection-functions.ts). Keys and values are checked on their own there, since `setIndex` is chosen by
- *   their types.
+ *   (calls/collection-functions.ts). Keys and values are checked on their own there, since
+ *   `setIndex` is chosen by their types.
  * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
+ * - Passed to a call, a literal whose first item has no type of its own, or an empty one, has the
+ *   type the call decides (§3.5), so it takes what each item without one can take.
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
@@ -36,8 +38,9 @@ import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { staticCandidates } from '../resolution/candidates.ts';
+import type { Accepts } from '../resolution/choice.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
-import { decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
+import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
 import { checkIterated, checkIteration } from '../rules/iteration.ts';
 import { optionalInner } from '../types/fit.ts';
 import { errorType, intType, type NominalType, neverType, type Type } from '../types/type.ts';
@@ -130,6 +133,52 @@ function entriesOf(
     }
   }
   return { keys, values };
+}
+
+/** Which types an array literal the call decides can take: what `[]` builds, or an array. */
+export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts | undefined {
+  if (node.elements.length === 0) {
+    return (expected) => literalTarget(context, expected) !== undefined;
+  }
+  const items = agreedAccepts(
+    node.elements.map((element) =>
+      element.kind === 'Spread' ? undefined : context.accepts(element),
+    ),
+  );
+  if (items === undefined) {
+    return undefined;
+  }
+  return (expected, isOpen) => {
+    const target = literalTarget(context, expected);
+    return target?.kind === 'array' && items(target.item, isOpen);
+  };
+}
+
+/** Which types a map literal the call decides can take: what `[:]` builds, or a `Map`. */
+export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | undefined {
+  if (node.entries.length === 0) {
+    return (expected) => {
+      const kind = literalTarget(context, expected)?.kind;
+      return kind === 'map' || kind === 'declared';
+    };
+  }
+  const entries = node.entries.map((entry) => (entry.kind === 'MapEntry' ? entry : undefined));
+  const keys = agreedAccepts(entries.map((entry) => entry && context.accepts(entry.key)));
+  const values = agreedAccepts(entries.map((entry) => entry && context.accepts(entry.value)));
+  if (keys === undefined && values === undefined) {
+    return undefined;
+  }
+  return (expected, isOpen) => {
+    const target = literalTarget(context, expected);
+    if (target?.kind !== 'map') {
+      return false;
+    }
+    const [key, value] = target.arguments;
+    return (
+      (key === undefined || (keys?.(key, isOpen) ?? true)) &&
+      (value === undefined || (values?.(value, isOpen) ?? true))
+    );
+  };
 }
 
 /** `a..b`, `a..=b` and the open forms: a prelude `Range` of ints; `..=` stores `end + 1` (§3.8). */
