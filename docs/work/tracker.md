@@ -26,7 +26,7 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D155.
+up, so the next one is D156.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |
@@ -68,3 +68,4 @@ up, so the next one is D155.
 | D152 | A field-default function is told apart by a module-level `WeakSet` (`made`, syntax/field-defaults.ts) plus special cases (signatures' `inOrder`, `lowerFieldDefault` dispatched before the arity check, an entry's body chosen by `arity < parameters`). The default-cycle diagnostic names the struct, not the field; entry names reuse the `/n` defaults notation with another meaning; a variant's entry leaves out its enum, so two enums' `Circle` both name `main.Circle/0`; D148 comes from the same model. Make "field default" a kind of instance or pending entry, named by owner and field (`main.Shape.Circle.r`). | review group E 2026-10-27 | open |
 | D153 | The value behind a shared struct prints as a plain anonymous struct, so a mismatch reads "Expected struct { value: int }, found struct { value: int }" (spreading a `Box`'s value into a `Shared`). `typeText` could spell an anonymous type whose origin is a shared struct as `*Box`, with its type arguments, which the anonymous type doesn't carry today. | review group E 2026-10-27 | open |
 | D154 | A struct literal's type arguments are constrained twice: once as the literal's (`constrainArguments`, deferred through `constrainLater`, which reports), and once silently by `callWithTypes` building the call of the defaults it leaves fields to, which needs the witnesses at once. One resolution would need the deferred constraint check to hand its witnesses back. | review group E 2026-10-27 | open |
+| D155 | Unbounded recursion exhausts the host's JS heap instead of panicking the instance: the interpreter keeps frames as data with no limit on their depth, so `fn loop(n: int) -> int: loop(n + 1)`, or `struct S { s: S? = S{} }` built in a body, runs until V8 gives up and the whole process dies, taking every other instance with it. A durable runtime should panic the instance at a frame-depth (or memory) limit, as it does for any other bug in the program (§3.12). | review group E 2026-10-27 | open |
