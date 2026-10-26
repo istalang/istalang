@@ -11,7 +11,13 @@ import { mapOf, valuesEqual } from '../../definition/equality.ts';
 import type { Callee } from '../../definition/instructions/calls.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { childValues, elementsOf, isComposite, type Value } from '../../definition/values.ts';
+import {
+  childValues,
+  elementsOf,
+  entriesOf,
+  isComposite,
+  type Value,
+} from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { isReference } from '../snapshot/objects.ts';
@@ -145,7 +151,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
       if (entry.kind === 'entry') {
         return [[readRegister(frame, entry.key), readRegister(frame, entry.value)]];
       }
-      return elementsOf(readRegister(frame, entry.value)).map(pairOf);
+      return [...entriesOf(readRegister(frame, entry.value))];
     });
     next(frame, instruction.dst, mapOf(entries));
   },
@@ -224,14 +230,6 @@ export function runInstruction(
   instruction: Instruction,
 ): void {
   handlerOf(handlers, instruction)(machine, instruction, frame);
-}
-
-/** The key and value of a `(key, value)` tuple, a map spread's item. */
-function pairOf(item: Value): readonly [Value, Value] {
-  if (!isComposite(item) || item.kind !== 'tuple' || item.elements.length !== 2) {
-    unreachable('A map spread spreads (key, value) tuples.');
-  }
-  return [item.elements[0] as Value, item.elements[1] as Value];
 }
 
 /** Writes `value` to `dst` and moves on to the next instruction. */

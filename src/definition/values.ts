@@ -219,6 +219,14 @@ export function elementsOf(candidate: Value | undefined): readonly Value[] {
   return candidate.elements;
 }
 
+/** The entries of a map value, in its order; anything else is a bug in lowering or loading. */
+export function entriesOf(candidate: Value | undefined): readonly (readonly [Value, Value])[] {
+  if (candidate === undefined || !isComposite(candidate) || candidate.kind !== 'map') {
+    unreachable('Expected a map.');
+  }
+  return candidate.entries;
+}
+
 /** A value that contains other values. */
 export type CompositeValue = Exclude<Value, null | boolean | string | bigint | number>;
 

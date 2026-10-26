@@ -1,13 +1,12 @@
 /**
- * Iteration (§3.10, §4): what a `for`, a comprehension and a spread run over, and the loop that
- * runs over it.
+ * Iteration (§3.10, §4): what a `for`, a comprehension and a spread run over.
  *
- * - Every iterable goes through `iterate`, which gives an array of its items, so any type with an
- *   `iterate` is iterable; an array's own `iterate` gives the array itself. `iterate` is found like
- *   an operator's function, so a program's types join in (resolution/implicit.ts).
- * - A loop over that array reads its `length` and each element by `index`, counting an int with
- *   `compare` and `add`. Those are the prelude's own functions, made once here for every
- *   construct that loops, so lowering emits one loop for all of them.
+ * - Every iterable goes through `iterate`, which gives a cursor, `fn() -> T?`: each call gives the
+ *   next item, and `none` once there are no more. Any type with an `iterate` is iterable;
+ *   `iterate` is found like an operator's function, so a program's types join in
+ *   (resolution/implicit.ts). Lowering calls the cursor until it gives `none`, so the loop makes
+ *   no call of the language's own.
+ * - Each iteration's item type is recorded, for lowering to test what the cursor gives.
  * - A loop's targets take each item apart as a declaration's do (§3.15): a map's items are
  *   `(key, value)`, so `for key, value in m:` works directly.
  */
@@ -15,17 +14,29 @@
 import { collectionFunctions, wellKnown } from '../../../language/well-known.ts';
 import type { Comprehension, Expression } from '../../syntax/expressions.ts';
 import type { For } from '../../syntax/statements.ts';
-import { operatorFunctions } from '../calls/operators.ts';
 import type { Iteration } from '../check.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
-import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
-import { errorType, intType, type Type } from '../types/type.ts';
+import { implicitCall } from '../resolution/implicit.ts';
+import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
+
+/** The item type of each iteration in one body. */
+export class IterationItems {
+  readonly #items = new Map<Iteration, Type>();
+
+  record(iteration: Iteration, item: Type): void {
+    this.#items.set(iteration, item);
+  }
+
+  of(iteration: Iteration): Type {
+    return this.#items.get(iteration) ?? errorType;
+  }
+}
 
 /**
  * Checks `iterable`, what `node` runs over, and makes its `iterate` call; the type of its items,
@@ -38,64 +49,49 @@ export function checkIterated(
   iterable: Expression,
   expected?: Type,
 ): Type | undefined {
-  const type = context.expression(iterable, expected);
-  const failure = () => checkerDiagnostics.notIterable(iterable.span, typeText(type));
-  const name = collectionFunctions.iterate;
-  const items = implicitCall(context, {
-    node,
-    role: 'iterate',
-    candidates: topLevelCandidates(context.checker, context.module, name, [type]),
-    arguments: [{ type, passing: 'value' }],
-    failure,
-  });
-  const item =
-    items === undefined ? undefined : wellKnownArguments(context.checker, wellKnown.array, items);
-  if (items !== undefined && item === undefined) {
-    context.report(failure());
-  }
-  return item?.[0];
+  return iteratedItem(context, node, iterable, context.expression(iterable, expected));
 }
 
 /**
- * Checks `iterable`, what `node` runs over, and makes the calls of `iterate` and of the loop over
- * the array it gives; the type of its items, or undefined after a report.
+ * Makes the `iterate` call of `iterable`, already checked as of `type`, which `node` runs over;
+ * the type of its items, or undefined after a report.
  */
-export function checkIteration(
+export function iteratedItem(
   context: BodyContext,
   node: Iteration,
   iterable: Expression,
+  type: Type,
 ): Type | undefined {
-  const item = checkIterated(context, node, iterable);
+  const failure = () => checkerDiagnostics.notIterable(iterable.span, typeText(type));
+  const cursor = implicitCall(context, {
+    node,
+    role: 'iterate',
+    candidates: topLevelCandidates(context.checker, context.module, collectionFunctions.iterate, [
+      type,
+    ]),
+    arguments: [{ type, passing: 'value' }],
+    failure,
+  });
+  const item = cursor === undefined ? undefined : cursorItem(context.checker, cursor);
+  if (cursor !== undefined && item === undefined) {
+    context.report(failure());
+  }
   if (item !== undefined) {
-    checkLoop(context, node, item);
+    context.iterations.record(node, item);
   }
   return item;
 }
 
 /** Checks a `for` or a comprehension running over its iterable, binding its targets to each item. */
 export function checkLoopOver(context: BodyContext, node: For | Comprehension): void {
-  bindLoopTargets(context, node, checkIteration(context, node, node.iterable));
+  bindLoopTargets(context, node, checkIterated(context, node, node.iterable));
 }
 
-/** Makes the calls of a loop over an array of `item`s, which `node` runs. */
-function checkLoop(context: BodyContext, node: Iteration, item: Type): void {
-  const array = wellKnownOf(context.checker, wellKnown.array, [item]);
-  const failure = () => checkerDiagnostics.notIterable(node.span, typeText(array));
-  const calls = [
-    { role: 'length', name: collectionFunctions.length, types: [array] },
-    { role: 'element', name: collectionFunctions.index, types: [array, intType] },
-    { role: 'compare', name: operatorFunctions['<'], types: [intType, intType] },
-    { role: 'add', name: operatorFunctions['+'], types: [intType, intType] },
-  ] as const;
-  for (const { role, name, types } of calls) {
-    implicitCall(context, {
-      node,
-      role,
-      candidates: preludeCandidates(context, name),
-      arguments: types.map((type) => ({ type, passing: 'value' })),
-      failure,
-    });
-  }
+/** The item a cursor of `type` gives: `T` of `fn() -> T?`; undefined for any other type. */
+function cursorItem(checker: CheckerContext, type: Type): Type | undefined {
+  return type.kind === 'function' && type.parameters.length === 0 && !type.isAsync
+    ? wellKnownArguments(checker, wellKnown.optional, type.result)?.[0]
+    : undefined;
 }
 
 /** Binds the targets of a `for` or a comprehension to each item, of type `item` (§3.15). */

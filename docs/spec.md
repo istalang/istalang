@@ -182,7 +182,7 @@ Duration literals are sugar for the standard library's `Duration`: an integer pl
 - **`true`, `false` and `none`.**
 - **Arrays:** `[1, 2, 3]`, and `[]` when empty.
 - **Maps:** `["legal": 1, "cfo": 2]`, and `[:]` when empty. Keys are expressions.
-- **Spread:** `[...xs, 4]` and `[...m, "a": 2]` build a new array or map from an existing one plus more elements or entries. A spread takes anything iterable (§3.10) and spreads what `iterate` gives: an array its elements, a map its `(key, value)` entries, a string its characters, a range its ints. In a map literal the items must be `(key, value)` tuples. A literal is a map literal only when it has a `key: value` entry or is `[:]`, so `[...m]` is an array of `m`'s entries.
+- **Spread:** `[...xs, 4]` and `[...m, "a": 2]` build a new array or map from an existing one plus more elements or entries. A spread takes anything iterable (§3.10) and spreads the items its cursor gives: an array its elements, a map its `(key, value)` entries, a string its characters, a range its ints. In a map literal the items must be `(key, value)` tuples. A literal is a map literal only when it has a `key: value` entry or is `[:]`, so `[...m]` is an array of `m`'s entries.
 - **Tuples:** `(1, "x")`, and `()` for `unit`.
 - **Ranges:** `3..5` covers 3 and 4 (half-open), `3..=5` includes 5, and either end may be left out: `..5`, `3..`.
 - **Structs and enum variants:** `Pair{first: 1, second: 2}`, `Rejected{by: "legal"}`, and `Ok{42}` for a type with a single field. A type without fields is just its name. `struct{value: 1}` is a struct literal whose type comes from context (§3.1).
@@ -594,7 +594,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 | --- | --- | --- |
 | `Sendable` | nothing: a marker, derived for user structs (§3.1) | `spawn` arguments; whatever crosses to the host, through `Encodable` and `Decodable` |
 | `Disposable` | `dispose`, synchronous; only shared structs (§3.18) and extern types (§7) | values the runtime disposes when their last holder ends (§7) |
-| `Iterable<T, C = Self>` | `iterate`, returning an `Array<T>` | `for x in c` |
+| `Iterable<T, C = Self>` | `iterate`, returning a cursor, `fn() -> T?` | `for x in c`, comprehensions and spreads |
 | `Indexable<K, V, C = Self>` | `index(self, key) -> V` | `x[k]` |
 | `IndexAssignable<K, V, C = Self>` | `setIndex(self: &C, key, value)` | `x[k] = v` |
 | `Convertible<From, T = Self>` | `fn Self.from(value: From) -> Self` | `T(x)` |
@@ -604,7 +604,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 | `Encodable`, `Decodable` | `toJson(self) -> json.Json`, and `fn Self.fromJson(json: json.Json, path: string) -> Result<Self>`, the codecs that write and read a type as JSON (§9); each implies `Sendable`. Declared in the `json` module, so code naming them imports them; derived for a struct, an enum, a tuple or a host type declaring neither function | extern parameters, and extern results and constants (§3.6); `json` |
 | `Addable`, `Subtractable`, `Multipliable`, `Divisible`, `FloorDivisible`, `Negatable`, `Comparable` | the functions in §3.9 | operators in generic code |
 
-**Iterable.** `for x in c` calls `iterate(c)` and loops over the returned array, so any type can support `for` by declaring `iterate`. Because `iterate` returns a copy, changing `c` inside the loop doesn't affect the iteration. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), and a `Range` with both ends is `Iterable<int>` (so `for i in 0..10:` works). `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
+**Iterable.** `for x in c` calls `iterate(c)` once, for a cursor: a function that gives the next item each time it is called, and `none` once there are no more. The loop calls it until then, so any type can support `for` by declaring `iterate`, and a cursor that never gives `none` runs for as long as the loop does. A cursor holds what it runs over as `iterate` was given it, a copy (§3.1), so changing `c` inside the loop doesn't affect the iteration. It is a plain function value (§3.14), kept in snapshots like any other, so a loop that waits mid-way keeps only the cursor's own state: a range's two ints, never its items. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), a `string` gives its characters, and a `Range` with both ends is `Iterable<int>` (so `for i in 0..10:` works). A type's `iterate` can hand over another's cursor, such as `self.items.iterate()`. `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
 
 **Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction, which uses braces. Only conversions that can't fail are written this way: `float(3)`, `int(3.7)` (which truncates toward zero) and `string(42)`. `string(x)` converts any `Stringable` value through its `toString`, the one place a type says how it is written. A float that is no number, NaN or an infinity, has no int, so `int(x)` of one is a bug and panics (§3.12). Fallible ones are ordinary functions returning `Result`, such as `int.parse("42")`, the `Parsable` requirement.
 
@@ -1475,6 +1475,5 @@ No open questions remain for v0.1. New ones go here as they come up.
 Features deliberately left out of v0.1:
 
 - **String interpolation.** JavaScript-style template literals, such as `` `Purchase ${req.id} awaits your review` ``.
-- **Lazy iteration.** `iterate` returns a whole array. Iterating lazily, for example over an endless sequence, would need an iterator type that a trait could name.
 - **Narrowing from function results.** Type predicates, as in TypeScript, so that `fn isOk(x): x is Ok` can narrow a value's type for later code, for example a `map` after a `filter`. Inside one function, `x is Pattern` in an `if` or `and` already narrows.
 - **Force-unwrapping optionals.** A postfix `!`, as in Swift, yielding the value inside a `T?` and panicking on `none`.

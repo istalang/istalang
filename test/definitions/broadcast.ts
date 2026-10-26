@@ -5,7 +5,7 @@
  * It exercises what the subset fixture doesn't:
  * - an async function that awaits
  * - extern calls with host types and type arguments
- * - a `for` loop lowered to `iterate`, `length` and `index`
+ * - a loop over an array, reading its `length` and each element by `index`
  * - `fn _` holdings that survive their iteration (`keep`), released only when `announce` returns,
  *   which is what retracts the unread copies
  *
@@ -66,18 +66,17 @@ const { announcement, stringArray, queue, revertible, time: timeType, futureUnit
 export const broadcastFunctions = {
   announcements: 0,
   sendRevertible: 1,
-  iterate: 2,
-  length: 3,
-  index: 4,
-  compare: 5,
-  add: 6,
-  now: 7,
-  at: 8,
-  delay: 9,
-  announce: 10,
+  length: 2,
+  index: 3,
+  compare: 4,
+  add: 5,
+  now: 6,
+  at: 7,
+  delay: 8,
+  announce: 9,
 } as const;
 
-const { announcements, sendRevertible, iterate, length, index, compare, add, now, delay } =
+const { announcements, sendRevertible, length, index, compare, add, now, delay } =
   broadcastFunctions;
 const timeAt = broadcastFunctions.at;
 const [zero, one] = [0, 1];
@@ -159,13 +158,6 @@ export const broadcastDefinition: Definition = {
     }),
     externFunction({
       module: prelude,
-      key: 'prelude.iterate(Array<T>)',
-      parameters: [named(stringArray)],
-      result: named(stringArray),
-      typeArguments: [string],
-    }),
-    externFunction({
-      module: prelude,
       key: 'prelude.length(Array<T>)',
       parameters: [named(stringArray)],
       result: int,
@@ -236,7 +228,7 @@ export const broadcastDefinition: Definition = {
       registers: 15,
       cells: [],
       instructions: [
-        { kind: 'call', span: loop, dst: 3, callee: functionCallee(iterate), arguments: [v(1)] },
+        { kind: 'move', span: loop, dst: 3, src: 1 },
         { kind: 'call', span: loop, dst: 4, callee: functionCallee(length), arguments: [v(3)] },
         { kind: 'constant', span: loop, dst: 5, constant: zero },
         {

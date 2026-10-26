@@ -77,7 +77,6 @@ extern fn index<T>(self: Array<T>, key: int) -> T
 extern fn index<T>(self: Array<T>, key: Range) -> Array<T>
 extern fn setIndex<T>(self: &Array<T>, key: int, value: T)
 extern fn setIndex<T>(self: &Array<T>, key: Range, value: Array<T>)
-extern fn iterate<T>(self: Array<T>) -> Array<T>
 extern fn Array.default<T>() -> Array<T>
 
 extern fn size<K, V>(self: Map<K, V>) -> int
@@ -89,16 +88,54 @@ extern fn values<K, V>(self: Map<K, V>) -> Array<V>
 extern fn entries<K, V>(self: Map<K, V>) -> Array<(K, V)>
 extern fn index<K, V>(self: Map<K, V>, key: K) -> V
 extern fn setIndex<K, V>(self: &Map<K, V>, key: K, value: V)
-extern fn iterate<K, V>(self: Map<K, V>) -> Array<(K, V)>
 extern fn Map.default<K, V>() -> Map<K, V>
 
 extern fn length(self: string) -> int
 extern fn at(self: string, index: int) -> string?
 extern fn index(self: string, key: int) -> string
 extern fn index(self: string, key: Range) -> string
-extern fn iterate(self: string) -> Array<string>
 
-extern fn iterate(self: Range) -> Array<int>
+# Iteration (§3.10): `iterate` gives a cursor, which gives the next item each time it is called and
+# `none` once there are no more. A cursor holds what it runs over as `iterate` was given it, so
+# changing the original meanwhile changes nothing, and it persists as any closure does: a range's
+# holds two ints, never its items.
+fn iterate<T>(self: Array<T>) -> fn() -> T?:
+  _cursor(self.length(), fn(position): self[position])
+
+fn iterate<K, V>(self: Map<K, V>) -> fn() -> (K, V)?:
+  _cursor(self.size(), fn(position): self._entryAt(position))
+
+fn iterate(self: Range) -> fn() -> int?:
+  if self is Range{start is Some{value as start}, end is Some{value as end}}:
+    return _cursor(if end > start: end - start else: 0, fn(position): start + position)
+  panic("A range without both ends can't be iterated.")
+
+# A string's cursor steps over its code points by where each starts in its UTF-16 text, so reading
+# the next one never counts from the start.
+fn iterate(self: string) -> fn() -> string?:
+  let offset = 0
+  fn next() -> string?:
+    if self._characterAt(offset) is Some{value is (character, after)}:
+      offset = after
+      return character
+    none
+  next
+
+# The cursor of `count` items, the item at each position read by `item`.
+fn _cursor<T>(count: int, item: fn(int) -> T) -> fn() -> T?:
+  let position = 0
+  fn next() -> T?:
+    if position == count:
+      return none
+    position += 1
+    item(position - 1)
+  next
+
+# The entry at `position` in a map's own order.
+extern fn _entryAt<K, V>(self: Map<K, V>, position: int) -> (K, V)
+
+# The code point starting at UTF-16 `offset` in a string, and the offset after it; none at the end.
+extern fn _characterAt(self: string, offset: int) -> (string, int)?
 
 # Where the running frames are, innermost first, from the code that called for the value: the
 # default of an `Error`'s `trace`, which runs in an entry of its own (§3.1, §3.12).
@@ -172,7 +209,7 @@ trait Disposable:
   fn dispose(self: Self)
 
 trait Iterable<T, C = Self>:
-  fn iterate(self: C) -> Array<T>
+  fn iterate(self: C) -> fn() -> T?
 
 trait Indexable<K, V, C = Self>:
   fn index(self: C, key: K) -> V

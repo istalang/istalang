@@ -6,8 +6,10 @@
  *   one, otherwise the first item's type, which later items are expected to have. An empty `[]`
  *   or `[:]` therefore needs an expected type.
  * - A spread takes any iterable (rules/iteration.ts): its items join an array literal's elements,
- *   and in a map literal they must be `(key, value)` tuples. Spreads always go through `iterate`,
- *   so an array spreads itself, a map its entries and a string its characters.
+ *   and in a map literal they must be `(key, value)` tuples. A spread of the very collection its
+ *   literal builds, an array into an array literal or a map into a map literal of `Map`, is copied
+ *   whole, with no `iterate`; any other goes through its cursor, so a string spreads its
+ *   characters, and a map into an array literal its entries.
  * - A literal is a map literal only with an entry or as `[:]` (the parser decides), so `[...m]`
  *   is an array of `m`'s entries. Where a `Map` is expected, `[]` is an empty map.
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
@@ -41,7 +43,7 @@ import { staticCandidates } from '../resolution/candidates.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
-import { checkIterated, checkIteration } from '../rules/iteration.ts';
+import { checkIterated, iteratedItem } from '../rules/iteration.ts';
 import { withoutOptionals } from '../types/fit.ts';
 import { errorType, intType, type NominalType, neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -289,7 +291,7 @@ function insertEntry(
   const [key, value] =
     entry.kind === 'MapEntry'
       ? [context.expression(entry.key), context.expression(entry.value)]
-      : pairOf(context, entry, checkIteration(context, entry, entry.expression));
+      : pairOf(context, entry, checkIterated(context, entry, entry.expression));
   if (failure !== undefined) {
     writeElement(context, {
       node: entry,
@@ -306,11 +308,11 @@ function insertEntry(
 function spreadItems(context: BodyContext, spread: Spread, item: Type | undefined): Produced {
   const expected =
     item === undefined ? undefined : wellKnownOf(context.checker, wellKnown.array, [item]);
-  return {
-    type: checkIterated(context, spread, spread.expression, expected) ?? errorType,
-    span: spread.span,
-    site: undefined,
-  };
+  const type = context.expression(spread.expression, expected);
+  const [element] = wellKnownArguments(context.checker, wellKnown.array, type) ?? [
+    iteratedItem(context, spread, spread.expression, type),
+  ];
+  return { type: element ?? errorType, span: spread.span, site: undefined };
 }
 
 /** The keys and the values of the `(key, value)` items `spread` gives in a map literal of a `Map`. */
@@ -319,8 +321,10 @@ function spreadEntries(
   spread: Spread,
   map: Type | undefined,
 ): readonly [Produced, Produced] {
-  const item = checkIterated(context, spread, spread.expression, map);
-  const [key, value] = pairOf(context, spread, item);
+  const type = context.expression(spread.expression, map);
+  const [key = errorType, value = errorType] =
+    wellKnownArguments(context.checker, wellKnown.map, type) ??
+    pairOf(context, spread, iteratedItem(context, spread, spread.expression, type));
   return [
     { type: key, span: spread.span, site: undefined },
     { type: value, span: spread.span, site: undefined },

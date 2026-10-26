@@ -25,7 +25,7 @@ tags: [review, architecture, refactoring, plan]
 | 11 | Derive Heap indexes instead of linear scans | runtime | D134, D107, D111, D113 | by-opus | done (0b6a385) |
 | 12 | Generalize `@JsonSkip` and JSON forms (use `Default` trait) | checker, lowering | | by-argon | done |
 | 13 | Spec: JSON crossing as traits (`Encodable`/`Decodable` instead of closed table) | spec, compiler | D140 | by-opus | done |
-| 14 | Spec: Iterable materialization (`iterate` lazy form) | spec, stdlib | D141 | by-opus | |
+| 14 | Spec: Iterable materialization (`iterate` lazy form) | spec, stdlib | D141 | by-opus | done |
 | 15 | Spec: Mixed arithmetic (overload matrix vs promotion) | spec, prelude | D142 | by-opus | done |
 | 16 | Spec: Witness incoherence (chosen per call site) | spec, checker | D143 | by-opus | done |
 | 17 | Spec: `Shared<T>` roles, Host Handles vs Resource handles, nominal handle declaration | spec, compiler | D105, D139 | by-argon, by-opus | done |

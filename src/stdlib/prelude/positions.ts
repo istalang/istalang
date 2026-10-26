@@ -7,7 +7,6 @@
  * - A range's open start means 0 and its open end the length. Slicing with it needs
  *   `0 <= start <= end <= length`, and panics otherwise.
  * - `slice(start, end)` clamps instead, a negative index counting from the end, as JavaScript does.
- * - Iterating a range needs both ends; it gives nothing when the start isn't below the end.
  */
 
 import type { Value } from '../../definition/values.ts';
@@ -35,18 +34,6 @@ export function spanOf(range: Value, length: number, what: string): readonly [nu
     throw new Panic(`The range ${start}..${end} is out of range for ${what} of length ${length}.`);
   }
   return [Number(start), Number(end)];
-}
-
-/** The ints a range with both ends covers, in order. */
-export function rangeInts(range: Value): readonly bigint[] {
-  const { start, end } = rangeEnds(range);
-  if (start === undefined || end === undefined) {
-    throw new Panic("A range without both ends can't be iterated.");
-  }
-  return Array.from(
-    { length: Math.max(0, Number(end - start)) },
-    (_, offset) => start + BigInt(offset),
-  );
 }
 
 /** The ends a prelude `Range` holds (§3.8): its `start` and `end` fields, each optional. */

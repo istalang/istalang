@@ -151,8 +151,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
 | `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; derived codecs are compiled from the checker's derived forms, which read them |
 | Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` an `Optional` variant |
-| Array literal and spread (§2) | `array` with item and spread elements; a spread spreads the array a call to its operand's `iterate` gives |
-| Map literal (§2) | `map` for a `Map`, a spread spreading the `(key, value)` tuples `iterate` gives; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
+| Array literal and spread (§2) | `array` with item and spread elements; a spread of an array is a spread element, which copies it, and any other spread the loop `for` runs over its operand, each item appended with `array` to what the elements before it built |
+| Map literal (§2) | `map` for a `Map`: a spread of a map is a spread entry, which copies its entries, and any other spread the loop `for` runs, each `(key, value)` item an entry added with `map` to what the entries before it built; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
 | Tuple, `()` (§3.15) | `tuple`; `()` is the unit constant |
 | Range `a..b`, `a..=b`, open ends (§2, §3.8) | `struct` of prelude `Range`; `..=` calls `add` to store `end + 1` |
 | Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | `struct`, fields in declaration order; a field left to its default from a `call` to its default's entry, given the fields before it |
@@ -188,7 +188,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `x[k] = v`, `a[k].b = v`, `x[k] += 1` (§3.9) | a `setIndex` call taking the container by `&`; a deeper write reads each element with `index` when it writes and writes it back with `setIndex` (Places); compound forms call `index` and the operator first |
 | `T(x)` (§3.10) | a call to `T.from` |
 | Trait-constrained calls, `T.zero()` (§3.10) | resolved per instantiation; plain calls |
-| `for x in c` (§3.10, §4) | a call to `iterate`, then a loop over the array it gives: its `length` once, each element by `index`, the position counted with the prelude's int `compare` (then `order`) and `add` |
+| `for x in c` (§3.10, §4) | a call to `iterate`, then a loop calling the cursor it gives, a function value, until a `switch` on what it gives finds `None`; each `Some`'s value is the item |
 | `if`, `elif`, `else`, `while` (§4) | `branch` and `jump`; a branching expression writes a result register |
 | Block expression (§4) | its statements, then `release` |
 | Comprehension (§4) | the loop `for` runs, appending each kept value with `array`, the last array spread first |

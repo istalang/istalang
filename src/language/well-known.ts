@@ -40,7 +40,7 @@ export const wellKnown = {
   time: { module: 'time', name: 'Time' },
   /** The marker trait of values that may leave an instance, derived rather than declared (§3.1). */
   sendable: { module: 'prelude', name: 'Sendable' },
-  /** What an array literal or a comprehension builds, and what `iterate` gives (§2, §3.10). */
+  /** What an array literal or a comprehension builds (§2, §3.10). */
   array: { module: 'prelude', name: 'Array' },
   /** What a map literal builds when no other type is expected (§2). */
   map: { module: 'prelude', name: 'Map' },
@@ -135,14 +135,12 @@ export const conversionFunction = 'from';
 
 /**
  * The functions collections go through (§3.9, §3.10): `x[k]`, `x[k] = v`, `for` and spreads, and
- * the static function a map literal of a type other than `Map` starts from (§2). Looping over the
- * array `iterate` gives reads its `length` and each element by `index`.
+ * the static function a map literal of a type other than `Map` starts from (§2).
  */
 export const collectionFunctions = {
   index: 'index',
   setIndex: 'setIndex',
   iterate: 'iterate',
-  length: 'length',
   default: 'default',
 } as const;
 

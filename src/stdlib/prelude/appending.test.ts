@@ -5,14 +5,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
-import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
+import { mainGives } from './prelude.test-kit.ts';
 
-/** The string `main`, returning `expression`, gives beside `declarations`. */
+/** The string `main` gives, returning `expression` beside `declarations`. */
 function appended(expression: string, declarations = ''): unknown {
-  const program = `${declarations}\nasync fn main() -> Future<string>:\n  ${expression}`;
-  const state = startToEnd(testRuntime(), compiledText(program));
-  return state.kind === 'finished' ? JSON.parse(String(state.outcome)) : state;
+  return mainGives('string', expression, declarations);
 }
 
 describe('appending to a string', () => {

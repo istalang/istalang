@@ -1,14 +1,13 @@
 /**
- * Positions in sequences: `at` agrees with JavaScript's, indexing and slicing panic exactly
- * outside the bounds and otherwise select what JavaScript's `slice` would, and a range iterates
- * its ints only with both ends.
+ * Positions in sequences: `at` agrees with JavaScript's, and indexing and slicing panic exactly
+ * outside the bounds and otherwise select what JavaScript's `slice` would.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../definition/values.ts';
 import { Panic } from '../../runtime/natives.ts';
-import { atPosition, checkedIndex, rangeInts, spanOf } from './positions.ts';
+import { atPosition, checkedIndex, spanOf } from './positions.ts';
 
 /** A prelude `Range` value: its ends are `Optional` variants, `Some` holding a field. */
 function rangeOf(start: bigint | undefined, end: bigint | undefined): Value {
@@ -68,21 +67,6 @@ describe('positions in sequences', () => {
         expect(outcomeOf(() => spanOf(rangeOf(start, last), size, 'an array'))).toEqual(
           inside ? [Number(from), Number(to)] : 'panic',
         );
-      }),
-    );
-  });
-
-  it('iterate a range with both ends, and nothing when it is empty', () => {
-    fc.assert(
-      fc.property(ends, ends, (start, last) => {
-        const expected =
-          start === undefined || last === undefined
-            ? 'panic'
-            : Array.from(
-                { length: Math.max(0, Number(last - start)) },
-                (_, offset) => start + BigInt(offset),
-              );
-        expect(outcomeOf(() => rangeInts(rangeOf(start, last)))).toEqual(expected);
       }),
     );
   });

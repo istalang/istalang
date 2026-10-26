@@ -1,7 +1,7 @@
 # outcome: "a=10;b=7; 17 3 100 0 1"
 # A program's own collection type (§2, §3.9, §3.10): a map literal of it starts from its
-# `default()` and assigns each entry with its `setIndex`, a spread's items included; `for` runs over
-# its `iterate`; and its elements are places, also inside an array of them.
+# `default()` and assigns each entry with its `setIndex`, a spread's items included; `for` runs the
+# cursor its `iterate` gives; and its elements are places, also inside an array of them.
 
 struct Bag { keys: Array<string>; values: Array<int> }
 
@@ -20,8 +20,14 @@ fn setIndex(self: &Bag, key: string, value: int):
   else:
     self.values[position] = value
 
-fn iterate(self: Bag) -> Array<(string, int)>:
-  [for position in 0..self.keys.length(): (self.keys[position], self.values[position])]
+fn iterate(self: Bag) -> fn() -> (string, int)?:
+  let position = 0
+  fn next() -> (string, int)?:
+    if position == self.keys.length():
+      return none
+    position += 1
+    (self.keys[position - 1], self.values[position - 1])
+  next
 
 async fn main() -> Future<string>:
   let bag: Bag = ["a": 1, "b": 2]

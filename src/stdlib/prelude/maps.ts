@@ -5,11 +5,18 @@
  */
 
 import { entryPosition, entryValue, withEntry, withoutEntry } from '../../definition/equality.ts';
-import { namedKey, parameterKey, preludeKey, referenceKey } from '../../definition/extern-key.ts';
+import {
+  namedKey,
+  parameterKey,
+  preludeKey,
+  primitiveKey,
+  referenceKey,
+} from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import { type Natives, Panic } from '../../runtime/natives.ts';
-import { arrayOf, mapOfArgument, resultOptional } from '../native-values.ts';
+import { arrayOf, int, mapOfArgument, resultOptional } from '../native-values.ts';
+import { checkedIndex } from './positions.ts';
 
 const keyType = parameterKey('K');
 const valueType = parameterKey('V');
@@ -45,6 +52,10 @@ export const mapNatives: Natives = {
     context.write(0, withEntry(mapOfArgument(m), k ?? null, v ?? null));
     return null;
   },
-  [preludeKey('iterate', map)]: ([m]) => entriesOf(m),
+  [preludeKey('_entryAt', map, primitiveKey('int'))]: ([m, position]) => {
+    const { entries } = mapOfArgument(m);
+    const [key, value] = entries[checkedIndex(int(position), entries.length, 'a map')] ?? [];
+    return { kind: 'tuple', elements: [key ?? null, value ?? null] };
+  },
   [preludeKey('Map.default')]: () => ({ kind: 'map', entries: [] }),
 };

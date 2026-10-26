@@ -2,8 +2,7 @@
  * The prelude's natives for arrays (§3.8, §3.9, §3.10): reading, `&self` methods and indexing.
  *
  * An array is an immutable value, so a method taking `&self` builds the changed array and writes
- * it back through its context (runtime/natives.ts). `iterate` gives the array itself: it is a copy
- * by value semantics, and values never change in place. Elements compare with the built-in `==`.
+ * it back through its context (runtime/natives.ts). Elements compare with the built-in `==`.
  */
 
 import { valuesEqual } from '../../definition/equality.ts';
@@ -84,6 +83,5 @@ export const arrayNatives: Natives = {
     context.write(0, arrayOf(elements.toSpliced(start, end - start, ...elementsOf(replacement))));
     return null;
   },
-  [preludeKey('iterate', array)]: ([xs]) => arrayOf(elementsOf(xs)),
   [preludeKey('Array.default')]: () => arrayOf([]),
 };

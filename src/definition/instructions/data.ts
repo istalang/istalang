@@ -69,7 +69,7 @@ const readCell = defineInstruction('readCell', { dst: register, cell: register }
 /** Writes `value` to the cell the handle in `cell` names, for every copy of it: `*x = v`. */
 const writeCell = defineInstruction('writeCell', { cell: register, value: register });
 
-/** `[a, ...xs, b]`. */
+/** `[a, ...xs, b]`, a spread copying another array's elements. */
 const array = defineInstruction('array', { dst: register, elements: z.array(item) });
 
 const entry = z.discriminatedUnion('kind', [
@@ -77,7 +77,10 @@ const entry = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('spread'), value: register }),
 ]);
 
-/** `[k: v, ...m]` for a Map; literals of other indexable types lower to `default` and `setIndex` calls. */
+/**
+ * `[k: v, ...m]` for a Map, a spread copying another map's entries; literals of other indexable
+ * types lower to `default` and `setIndex` calls.
+ */
 const map = defineInstruction('map', { dst: register, entries: z.array(entry) });
 
 /** A function value. A top-level function used as a value is a closure with no captures. */

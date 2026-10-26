@@ -43,6 +43,7 @@ import type { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
 import type { ImplicitCalls } from './resolution/implicit.ts';
 import type { Annotations } from './rules/annotations.ts';
+import type { IterationItems } from './rules/iteration.ts';
 import type { VariableScope } from './statements/variables.ts';
 import type { Constraint } from './traits/constraints.ts';
 import type { OptionalEntity } from './types/fit.ts';
@@ -169,6 +170,7 @@ export interface BodyContext {
   readonly loops: LoopScope;
   readonly implicit: ImplicitCalls;
   readonly collections: CollectionForms;
+  readonly iterations: IterationItems;
   readonly patterns: CheckedPatterns;
   readonly chains: OptionalChains;
   readonly ownCalls: OwnCalls;

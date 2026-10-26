@@ -246,15 +246,12 @@ export type Iteration = For | Comprehension | Spread;
  * (resolution/implicit.ts).
  */
 export type ImplicitRole =
-  /** `iterate`, which an iteration calls on what it runs over (§3.10). */
+  /**
+   * `iterate`, which an iteration calls on what it runs over for its cursor (§3.10); a spread its
+   * literal copies whole needs none.
+   */
   | 'iterate'
-  /** The `length` of the array a loop runs over. */
-  | 'length'
-  /** Reading the array a loop runs over at an index. */
-  | 'element'
-  /** Comparing a loop's index with the length. */
-  | 'compare'
-  /** Counting a loop's index up, or `..=` storing its end plus one. */
+  /** `..=` storing its end plus one. */
   | 'add'
   /** Writing an element of a place back, changed or whole, with `setIndex` (§3.9). */
   | 'write'
@@ -284,6 +281,8 @@ export interface CheckedBody {
   readonly implicitCallOf: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
   /** What a collection literal builds (§2). */
   readonly collectionFormOf: (literal: ArrayLiteral | MapLiteral) => CollectionForm;
+  /** The type of the items an iteration's cursor gives (§3.10). */
+  readonly itemOf: (iteration: Iteration) => Type;
   /** How many times the value `site` gives is wrapped into `Some` where it is used (§2). */
   readonly wrapsOf: (site: ValueSite) => number;
   /** What the targets of a declaration, or of a loop for each item, bind: each name's part of the value. */

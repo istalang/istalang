@@ -1,23 +1,26 @@
 /**
  * The loop every iterating construct runs (§3.10, §4; docs/arch/definition.md, "How each
- * construct lowers"): a `for`, a comprehension, and a spread into a map literal of a declared type.
- * Each calls `iterate` on what it runs over, which gives an array, then reads the array's length
- * once and each element by index, counting an int register up from 0. The calls are the ones the
- * checker made for the construct (checker rules/iteration.ts), so there is one loop for all.
+ * construct lowers"): a `for`, a comprehension, and a spread its literal doesn't copy whole. Each
+ * calls `iterate` on what it runs over, which gives a cursor, then calls the cursor until it gives
+ * `none`, running the body with the item each `Some` holds. `iterate` is the call the checker made
+ * for the construct (checker rules/iteration.ts), so there is one loop for all.
  */
 
 import type { Register } from '../../definition/operands.ts';
+import { optionalVariants } from '../../language/well-known.ts';
 import type { Iteration } from '../checker/check.ts';
 import type { Comprehension, Expression } from '../syntax/expressions.ts';
 import type { For } from '../syntax/statements.ts';
 import type { FunctionContext } from './context.ts';
+import { emitCall } from './emit-call.ts';
 import { implicitCall } from './expressions/calls.ts';
+import { branchOnVariant, payloadOf, variantTestOf } from './expressions/variants.ts';
 import type { LoopTargets } from './statements/loops.ts';
 import { endScope } from './statements/scopes.ts';
 import { bindTargets } from './statements/variables.ts';
 
-/** The array `node` runs over: `iterate` called on `iterable`'s value. */
-export function iteratedArray(
+/** The cursor `node` runs: `iterate` called on `iterable`'s value. */
+export function cursorOf(
   context: FunctionContext,
   node: Iteration,
   iterable: Expression,
@@ -26,37 +29,33 @@ export function iteratedArray(
 }
 
 /**
- * Runs `body` for each element of `array`, which `node` runs over: `body` receives the element's
- * register and where `continue` (the next element) and `break` (past the loop) go.
+ * Runs `body` for each item `cursor` gives, which `node` runs over: `body` receives the item's
+ * register and where `continue` (the next item) and `break` (past the loop) go.
  */
 export function emitLoop(
   context: FunctionContext,
   node: Iteration,
-  array: Register,
+  cursor: Register,
   body: (item: Register, targets: LoopTargets) => void,
 ): void {
-  const { code } = context;
+  const { code, checker } = context;
   const { span } = node;
-  const length = implicitCall(context, node, 'length', [array]);
-  const index = code.allocate();
-  code.emit({ kind: 'move', span, dst: index, src: context.constant(0n, span) });
-  const one = context.constant(1n, span);
-  const test = code.newLabel();
-  const element = code.newLabel();
   const next = code.newLabel();
+  const element = code.newLabel();
   const exit = code.newLabel();
-  code.place(test);
-  const comparison = implicitCall(context, node, 'compare', [index, length]);
-  const isLess = code.allocate();
-  code.emit({ kind: 'order', span, dst: isLess, comparison, relation: 'less' });
-  code.branch(isLess, element, exit, span);
+  code.place(next);
+  const given = emitCall(context, {
+    span,
+    callee: { kind: 'value', register: cursor },
+    arguments: [],
+  });
+  const optional = checker.optionalOf(context.body.itemOf(node));
+  const isSome = variantTestOf(checker, given, optional, optionalVariants.some);
+  branchOnVariant(context, isSome, { matched: element, otherwise: exit }, span);
   code.place(element);
   const { depth } = context.variables;
-  body(implicitCall(context, node, 'element', [array, index]), { exit, next, depth });
-  code.place(next);
-  const counted = implicitCall(context, node, 'add', [index, one]);
-  code.emit({ kind: 'move', span, dst: index, src: counted });
-  code.jump(test, span);
+  body(payloadOf(context, given, span), { exit, next, depth });
+  code.jump(next, span);
   code.place(exit);
 }
 
@@ -69,7 +68,7 @@ export function emitLoopOver(
   node: For | Comprehension,
   body: (targets: LoopTargets) => void,
 ): void {
-  emitLoop(context, node, iteratedArray(context, node, node.iterable), (item, targets) => {
+  emitLoop(context, node, cursorOf(context, node, node.iterable), (item, targets) => {
     const { scope } = context.variables.inBlock(() => {
       bindTargets(context, node, item, node.span);
       body(targets);

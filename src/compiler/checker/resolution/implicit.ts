@@ -2,15 +2,14 @@
  * Calls the language makes on its own (§2, §3.9, §3.10): what a construct means as calls that no
  * call written in the source stands for. A `for`, a comprehension and a spread call `iterate`;
  * writing an element calls `setIndex`; a map literal of a type other than `Map` calls its
- * `default` and a `setIndex` per entry; and a loop over the array `iterate` gave reads its
- * `length` and each element with `index`, counting with `compare` and `add` on ints.
+ * `default` and a `setIndex` per entry; and `..=` adds one to its end.
  *
  * - Which functions such a call may mean depends on whose it is. A program may give its own types
  *   `iterate`, `setIndex` and `default`, so those are found like an operator's function: in scope,
  *   through argument-dependent lookup, and among the requirements of type parameters (§3.13,
- *   §3.10). The loop machinery is the language's own, so it takes only the prelude's functions:
- *   a program's function of the same name joins the prelude's overloads (§3.13), but must never
- *   replace them.
+ *   §3.10). Adding to a range's end is the language's own, so it takes only the prelude's
+ *   functions: a program's function of the same name joins the prelude's overloads (§3.13), but
+ *   must never replace them.
  * - A call is chosen, instantiated and made exactly as a written call is (choice.ts,
  *   calls-made.ts); only the report differs, since there is no call written to point at, so the
  *   construct says what failed.
