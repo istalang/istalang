@@ -127,6 +127,7 @@ describe('lowering', () => {
   it('makes a host type disposable through the dispose its host implements (§3.6)', () => {
     const program = stdProgramOf({
       main: [
+        "import Encodable from 'json'",
         'extern struct Lease<T is Sendable>',
         'extern fn dispose<T is Encodable>(self: Lease<T>)',
         'extern fn lease() -> Lease<int>',

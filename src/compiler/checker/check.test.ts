@@ -103,9 +103,9 @@ describe('checking reports', () => {
       '"one"',
     ],
     [
-      'an extern the host implements taking a function, which has no JSON form',
+      "an extern the host implements taking a function, which isn't Encodable",
       'extern fn run(f: fn() -> int)',
-      reports.noJsonForm,
+      reports.notConforming,
       'f: fn() -> int',
     ],
     [

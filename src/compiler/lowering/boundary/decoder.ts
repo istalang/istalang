@@ -1,9 +1,10 @@
 /**
- * Writing `json._decodeAt<T>` (codecs.ts): its parameters are the `Json` and its path, and it
+ * Writing `json._fromJson<T>` (codecs.ts): its parameters are the `Json` and its path, and it
  * returns a `Result<T>`. It reads the way the encoder writes, stopping at the first part that
- * doesn't fit: each helper and nested codec returns a `Result`, and an `Err` is passed on as this
- * codec's own, with the path it names. A field the JSON lacks is `none` when its type is optional,
- * and an `Err` otherwise; a `@JsonSkip` field is never read and gets its type's empty value.
+ * doesn't fit: each part's codec and each helper returns a `Result`, and an `Err` is passed on as
+ * this codec's own, with the path it names. A field the JSON lacks is `none` when its type is
+ * optional, and an `Err` otherwise; a `@JsonSkip` field is never read and gets its type's empty
+ * value.
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -15,11 +16,13 @@ import {
 } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionCall } from '../../checker/check.ts';
-import type { EmptyValue, JsonField, JsonForm } from '../../checker/json-form.ts';
+import type { DerivedForm, EmptyValue, JsonField } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
+import type { ModuleId } from '../../program/program.ts';
+import { codecCall } from './codec-calls.ts';
 import type { SynthesizedCode } from './synthesized-code.ts';
 
-/** The body of `_decodeAt<T>`, written into `code`. */
+/** The body of `_fromJson<T>`, written into `code`. */
 export class Decoder {
   readonly #code: SynthesizedCode;
   readonly #result: NominalType;
@@ -29,32 +32,21 @@ export class Decoder {
     this.#result = result;
   }
 
-  read(form: JsonForm, type: Type): void {
+  read(form: DerivedForm, type: Type): void {
     const code = this.#code;
-    const { checker } = code;
     const [json, path] = code.parameters;
     if (json === undefined || path === undefined) {
       unreachable('A decoder takes the Json it reads and its path.');
     }
     switch (form.kind) {
-      case 'json':
-        code.return(this.#ok(json));
-        return;
-      case 'leaf':
-        code.return(code.call(decodeOf(form.codec.decode, type), [json, path]));
-        return;
-      case 'container':
+      case 'host':
         code.return(
-          code.call(decodeOf(form.codec.decode, type), [
-            json,
-            path,
-            code.closure(checker.json.decoderOf(form.element)),
-          ]),
+          code.call(code.checker.json.callOf(codecHelpers.decodeHandle, [type]), [json, path]),
         );
         return;
       case 'record': {
         const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
-        const values = this.#fields(form.fields, fields, path);
+        const values = this.#fields(form.fields, form.module, { object: fields, path });
         code.return(this.#ok(this.#struct(type, values)));
         return;
       }
@@ -67,16 +59,17 @@ export class Decoder {
           const position = code.constant(BigInt(index));
           const item = code.call(this.#helper(codecHelpers.element), [items, position]);
           const at = code.call(this.#helper(codecHelpers.elementPath), [path, position]);
-          return this.#passed(code.call(checker.json.decoderOf(element), [item, at]));
+          return this.#passed(code.call(this.#codec(element, form.module), [item, at]));
         });
         code.return(this.#ok(code.tuple(values)));
         return;
       }
       case 'enum':
-        this.#enum(form.variants, type, json, path);
+        this.#enum(form, type, json, path);
         return;
       case 'none':
-        throw unreadable(type);
+        unreachable('A type with nothing to derive from has a derived codec.');
+        return;
       default: {
         const unhandled: never = form;
         unreachable(`No decoder for ${JSON.stringify(unhandled)}.`);
@@ -84,9 +77,14 @@ export class Decoder {
     }
   }
 
+  /** The codec reading `type`, as found in `module`. */
+  #codec(type: Type, module: ModuleId): FunctionCall {
+    return codecCall(this.#code.checker, { module, within: undefined }, type, 'read');
+  }
+
   /** The variant its `"type"` names, each variant tried in order, else an `Err`. */
   #enum(
-    variants: Extract<JsonForm, { kind: 'enum' }>['variants'],
+    form: Extract<DerivedForm, { kind: 'enum' }>,
     type: Type,
     json: Register,
     path: Register,
@@ -97,13 +95,19 @@ export class Decoder {
     }
     const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
     const tag = this.#passed(code.call(this.#helper(codecHelpers.tag), [fields, path]));
-    for (const variant of variants) {
+    for (const variant of form.variants) {
       const matched = code.code.newLabel();
       const next = code.code.newLabel();
       code.code.branch(code.equal(tag, code.constant(variant.name)), matched, next, code.span);
       code.code.place(matched);
       code.return(
-        this.#ok(code.variant(type, variant.name, this.#fields(variant.fields, fields, path))),
+        this.#ok(
+          code.variant(
+            type,
+            variant.name,
+            this.#fields(variant.fields, form.module, { object: fields, path }),
+          ),
+        ),
       );
       code.code.place(next);
     }
@@ -112,8 +116,15 @@ export class Decoder {
     );
   }
 
-  /** Each field's value, read from `fields` or, when skipped, its type's empty value. */
-  #fields(fields: readonly JsonField[], object: Register, path: Register): readonly Register[] {
+  /**
+   * Each field's value, read from `object` at `path` by its codec found in `module` or, when
+   * skipped, its type's empty value.
+   */
+  #fields(
+    fields: readonly JsonField[],
+    module: ModuleId,
+    { object, path }: { readonly object: Register; readonly path: Register },
+  ): readonly Register[] {
     const code = this.#code;
     return fields.map((field) => {
       if (field.skipped !== undefined) {
@@ -124,7 +135,7 @@ export class Decoder {
       const json = field.optional
         ? code.call(this.#helper(codecHelpers.optionalField), [object, key])
         : this.#passed(code.call(this.#helper(codecHelpers.field), [object, key, path]));
-      const decode = field.codec?.decode ?? code.checker.json.decoderOf(field.type);
+      const decode = field.codec?.read ?? this.#codec(field.type, module);
       return this.#passed(code.call(decode, [json, at]));
     });
   }
@@ -171,16 +182,4 @@ export class Decoder {
   #helper(name: CodecHelper): FunctionCall {
     return this.#code.checker.json.callOf(name, []);
   }
-}
-
-function decodeOf(decode: FunctionCall | undefined, type: Type): FunctionCall {
-  if (decode === undefined) {
-    throw unreadable(type);
-  }
-  return decode;
-}
-
-/** A type reached a decoder without a form to read, which the checker rules out. */
-function unreadable(type: Type): Error {
-  return new Error(`'${JSON.stringify(type)}' can't be read; the checker should have said so.`);
 }

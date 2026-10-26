@@ -7,18 +7,18 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../compiler/checker/check.ts';
 import { keyOf } from '../compiler/lowering/names.ts';
-import { codecFunctions } from '../language/well-known.ts';
+import { derivedCodecs } from '../language/well-known.ts';
 import { stdNatives } from './natives.ts';
 import { jsonName, stdSources } from './stdlib-loader.ts';
 
 /**
  * Externs without a native, by module and name: the runtime disposes futures and slots itself, so
- * their `dispose` never has one, and the compiler writes the json codecs per type
+ * their `dispose` never has one, and the compiler writes the derived json codecs per type
  * (docs/arch/boundary.md).
  */
 const withoutNative = new Set([
   'prelude.dispose',
-  ...Object.values(codecFunctions).map((name) => `${jsonName}.${name}`),
+  ...Object.values(derivedCodecs).map((name) => `${jsonName}.${name}`),
 ]);
 
 describe('std natives', () => {

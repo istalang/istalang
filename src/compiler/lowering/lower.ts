@@ -15,7 +15,7 @@ import type { CheckedBody, Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { codecEntry, isCodec } from './boundary/codecs.ts';
+import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';
 import {
   constantNativeEntry,
   handleFieldEntry,
@@ -102,8 +102,8 @@ function entryOf(
   instance: FunctionInstance,
 ): FunctionDefinition {
   const { declaration } = instance;
-  if (isCodec(checker, instance)) {
-    return codecEntry({ checker, tables, instance });
+  if (isDerivedCodec(checker, instance)) {
+    return derivedCodecEntry({ checker, tables, instance });
   }
   if (isHostExtern(checker, declaration)) {
     return hostFunctionEntry({ checker, tables }, instance);

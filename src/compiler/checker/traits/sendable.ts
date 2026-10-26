@@ -8,21 +8,21 @@
  * so a type being decided counts as sendable while its own fields are.
  *
  * Code is sendable only to another instance of the same program; whether a value can go to the
- * host is whether it has a JSON form (rules/json-forms/), which no function type has. A host type
- * a `dispose` makes disposable has one, yet isn't sendable: its values have an identity.
+ * host is whether it has a codec (rules/json-forms/), which no function type has. A host type a
+ * `dispose` makes disposable has one, yet isn't sendable: its values have an identity.
  */
 
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { jsonMarkers } from '../json-form.ts';
+import { jsonTraits } from '../json-form.ts';
 import { heldParts } from '../types/held.ts';
 import type { NominalType, Type } from '../types/type.ts';
 
 /** The traits a type parameter may be constrained by to be sendable. */
 const sendableTraits: readonly WellKnownDeclaration[] = [
   wellKnown.sendable,
-  ...Object.values(jsonMarkers),
+  ...Object.values(jsonTraits),
 ];
 
 /** Whether values of `type` may leave an instance for another. */

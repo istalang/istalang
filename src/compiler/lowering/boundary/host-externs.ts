@@ -2,7 +2,8 @@
  * Externs a host implements (§3.6, §9; docs/arch/boundary.md). A program calls each through a
  * compiled wrapper, the entry its instance is numbered by, so the host's native sees only JSON:
  *
- * - The wrapper encodes every argument, calls the native entry, and decodes what comes back. A
+ * - The wrapper encodes every argument, calls the native entry, and decodes what comes back, each
+ *   by its declared type's codec, closed within the wrapper's instance (codec-calls.ts). A
  *   result that doesn't fit is a bug in the host, so it panics the instance; a future the host
  *   fills is awaited first, and JSON that doesn't fit it fails the host's call that filled it, so
  *   the wrapper of an extern returning `Future<T>` is async and gives `T`.
@@ -30,6 +31,7 @@ import type { ExternConstantDeclaration, FunctionDeclaration } from '../../synta
 import { type FunctionInstance, substitutionOf } from '../instances.ts';
 import { keyOf, qualifiedNameOf, spelledType } from '../names.ts';
 import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../tables.ts';
+import { type CodecSite, codecCall } from './codec-calls.ts';
 import { emitInbound, type Inbound, inboundOf } from './inbound.ts';
 import { SynthesizedCode } from './synthesized-code.ts';
 
@@ -39,8 +41,12 @@ interface Lowering {
   readonly tables: DefinitionTables;
 }
 
-/** A wrapper's call to a host native, and how it reads what the native gives. */
+/**
+ * A wrapper's call to a host native, and how it reads what the native gives: its types as
+ * declared, whose codecs are found at `site`.
+ */
 interface HostCall {
+  readonly site: CodecSite;
   readonly native: FunctionId;
   /** JSON passed before the arguments: the handle's, for one of its functions. */
   readonly leading: readonly Register[];
@@ -55,17 +61,16 @@ interface HostCall {
 export function hostFunctionEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
   const { checker, tables } = lowering;
   const { declaration } = instance;
-  const substitution = substitutionOf(instance);
-  const parameters = checker
-    .parametersOf(declaration)
-    .map(({ type }) => substitute(type, substitution));
-  const result = substitute(checker.resultOf(declaration), substitution);
+  const site = { module: checker.moduleOf(declaration), within: instance };
+  const parameters = checker.parametersOf(declaration).map(({ type }) => type);
+  const result = checker.resultOf(declaration);
   const code = new SynthesizedCode(lowering, declaration.name.span, parameters.length);
   const native = tables.hostNativeIndex(declaration);
   const header = tables.entryHeader(instance);
-  const handle = hostHandleOf(checker, result);
+  const handle = hostHandleOf(checker, substitute(result, substitutionOf(instance)));
   if (handle === undefined) {
     return wrapped(code, header, {
+      site,
       native,
       leading: [],
       parameters,
@@ -74,7 +79,7 @@ export function hostFunctionEntry(lowering: Lowering, instance: FunctionInstance
       path: qualifiedNameOf(checker, declaration),
     });
   }
-  const json = code.call(native, encoded(code, parameters));
+  const json = code.call(native, encoded(code, site, parameters));
   const functions = handle.fields.map(({ name }) =>
     code.closure(tables.handleFieldIndex(instance, name), [json]),
   );
@@ -91,8 +96,7 @@ export function handleFieldEntry(
 ): CodeFunction {
   const { checker, tables } = lowering;
   const { declaration } = instance;
-  const result = substitute(checker.resultOf(declaration), substitutionOf(instance));
-  const type = handleFieldOf(checker, result, field);
+  const type = handleFieldOf(checker, checker.resultOf(declaration), field);
   const parameters = type.parameters.map((parameter) => parameter.type);
   const code = new SynthesizedCode(lowering, declaration.name.span, parameters.length, 1);
   const header = tables.entryHeader(instance);
@@ -100,6 +104,7 @@ export function handleFieldEntry(
     code,
     { ...header, name: `${header.name}.${field}` },
     {
+      site: { module: checker.moduleOf(declaration), within: instance },
       native: tables.handleFieldNativeIndex(declaration, field),
       leading: code.captures,
       parameters,
@@ -120,9 +125,12 @@ export function hostConstantEntry(
   const code = new SynthesizedCode(lowering, declaration.name.span, 0);
   const native = code.call(tables.constantNativeIndex(declaration, type), []);
   const header = tables.declarationHeader(declaration);
-  code.return(
-    received(code, native, inboundOf(checker, type, codecHelpers.hostResult, header.name)),
-  );
+  const site = { module: checker.moduleOf(declaration), within: undefined };
+  const inbound = inboundOf(checker, site, type, {
+    accept: codecHelpers.hostResult,
+    path: header.name,
+  });
+  code.return(received(code, native, inbound));
   return code.entry(header, false);
 }
 
@@ -212,24 +220,32 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
 /** `code` finished as a wrapper making `call`: arguments encoded, what comes back decoded. */
 function wrapped(code: SynthesizedCode, header: EntryHeader, call: HostCall): CodeFunction {
   const { checker } = code;
-  const native = code.call(call.native, [...call.leading, ...encoded(code, call.parameters)]);
-  const { filled, path } = call;
+  const { site, filled, path } = call;
+  const native = code.call(call.native, [...call.leading, ...encoded(code, site, call.parameters)]);
   code.return(
     filled === undefined
-      ? received(code, native, inboundOf(checker, call.result, codecHelpers.hostResult, path))
+      ? received(
+          code,
+          native,
+          inboundOf(checker, site, call.result, { accept: codecHelpers.hostResult, path }),
+        )
       : received(
           code,
           code.await(native),
-          inboundOf(checker, filled, codecHelpers.hostInput, path),
+          inboundOf(checker, site, filled, { accept: codecHelpers.hostInput, path }),
         ),
   );
   return code.entry(header, filled !== undefined);
 }
 
-/** `code`'s parameters, of `types`, each encoded as JSON. */
-function encoded(code: SynthesizedCode, types: readonly Type[]): readonly Register[] {
+/** `code`'s parameters, of `types`, each encoded as JSON by its codec found at `site`. */
+function encoded(
+  code: SynthesizedCode,
+  site: CodecSite,
+  types: readonly Type[],
+): readonly Register[] {
   return types.map((type, index) =>
-    code.call(code.checker.json.encoderOf(type), [registerAt(code.parameters, index)]),
+    code.call(codecCall(code.checker, site, type, 'write'), [registerAt(code.parameters, index)]),
   );
 }
 

@@ -1,8 +1,8 @@
-# error: 5900 at 11:20
-# error: 5900 at 13:25
+# error: 5101 at 11:20
+# error: 5101 at 13:25
 # error: 5001 at 17:35
 # error: 5001 at 18:8
-# A sendable function type (§3.14) holds code, which only `spawn` sends: it has no JSON form, so
+# A sendable function type (§3.14) holds code, which only `spawn` sends: it isn't Encodable, so
 # an extern's types may not contain one (§9); and a function value capturing a `let`, which is a
 # `Shared`, has a plain function type, which doesn't fit where a sendable one is expected.
 

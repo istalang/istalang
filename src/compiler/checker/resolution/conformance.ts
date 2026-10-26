@@ -12,9 +12,10 @@
  *   for it. It must give the required result. The calls found are the witnesses the
  *   instantiation calls (check.ts).
  * - A required field is met by a struct field of the same name and type, or by a constraint on a
- *   type parameter requiring it too. `Sendable` is derived (traits/sendable.ts), and so are `Encodable`
- *   and `Decodable`: a JSON form (rules/json-forms/), and sendable, since each implies `Sendable`.
- *   A disposable host type has a form, to cross to its own host, yet isn't sendable.
+ *   type parameter requiring it too. `Sendable` is derived (traits/sendable.ts). `Encodable` and
+ *   `Decodable` each imply it, except where values cross to the host, which a disposable host type
+ *   does unsendable; a type declaring no codec of its own is met by the one the compiler derives
+ *   (rules/json-forms/).
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument
@@ -35,7 +36,7 @@ import type { ResolvedCall, Witnesses } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
-import { type JsonDirection, jsonMarkers } from '../json-form.ts';
+import { type JsonDirection, jsonTraits } from '../json-form.ts';
 import {
   type Constraint,
   constraintSubstitution,
@@ -137,7 +138,20 @@ function witnessesOf(
 
 /** Whether `type` meets `constraint` at the use site, reporting there when it doesn't. */
 export function meets(site: UseSite, type: Type, constraint: Constraint): boolean {
-  return !isFailure(conform(site, type, constraint, 0));
+  return witnessesFor(site, type, constraint) !== undefined;
+}
+
+/**
+ * The witness of every function `constraint` requires of `type` at the use site; undefined after
+ * reporting there why it isn't met.
+ */
+export function witnessesFor(
+  site: UseSite,
+  type: Type,
+  constraint: Constraint,
+): readonly ResolvedCall[] | undefined {
+  const witnesses = conform(site, type, constraint, 0);
+  return isFailure(witnesses) ? undefined : witnesses;
 }
 
 /**
@@ -158,13 +172,9 @@ function conform(
   if (isSendableTrait(checker, constraint.trait)) {
     return isSendable(checker, type) ? [] : lacks(meeting, 'every value inside it to be sendable');
   }
-  const direction = jsonMarkerDirection(checker, constraint.trait);
+  const direction = jsonDirectionOf(checker, constraint.trait);
   if (direction !== undefined) {
-    const problem = checker.json.problemOf(type, direction);
-    if (problem !== undefined) {
-      return lacks(meeting, `a JSON form to ${direction}, but ${problem}`);
-    }
-    return isSendable(checker, type) ? [] : lacks(meeting, 'every value inside it to be sendable');
+    return codecWitness(meeting, direction, depth);
   }
   for (const field of requiredFields(constraint.trait)) {
     const fieldType = requiredFieldType(checker, constraint, field, type);
@@ -189,8 +199,44 @@ function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
   return 'failed';
 }
 
-/** The witness of every function the constraint requires. */
-function functionWitnesses(meeting: Meeting, depth: number): readonly ResolvedCall[] | Failure {
+/**
+ * The codec meeting `Encodable` or `Decodable` (§3.10, §9): sendable, since each implies Sendable,
+ * except where values cross to the host as JSON; then the codec declared for the type, or else the
+ * one the compiler derives (rules/json-forms/).
+ */
+function codecWitness(
+  meeting: Meeting,
+  direction: JsonDirection,
+  depth: number,
+): readonly ResolvedCall[] | Failure {
+  const { site, type } = meeting;
+  const { checker } = site;
+  if (!(site.toHost || isSendable(checker, type))) {
+    return lacks(meeting, 'every value inside it to be sendable');
+  }
+  const refusal = checker.json.refusalOf(type);
+  if (refusal !== undefined) {
+    return lacks(meeting, refusal);
+  }
+  return functionWitnesses(meeting, depth, () => {
+    const derived = checker.json.derivedOf(site, type, direction);
+    return derived.kind === 'derived' ? derived.call : lacks(meeting, derived.missing);
+  });
+}
+
+/**
+ * The witness of every function the constraint requires; one no function meets is `unmet`'s,
+ * which by default reports it missing.
+ */
+function functionWitnesses(
+  meeting: Meeting,
+  depth: number,
+  unmet: (declaration: FunctionDeclaration) => ResolvedCall | Failure = (declaration) =>
+    lacks(
+      meeting,
+      `'${declaration.name.text}' as ${meeting.constraint.trait.name.text} declares it`,
+    ),
+): readonly ResolvedCall[] | Failure {
   const { site, type, constraint } = meeting;
   const substitution = constraintSubstitution(constraint, type);
   const witnesses: ResolvedCall[] = [];
@@ -198,11 +244,14 @@ function functionWitnesses(meeting: Meeting, depth: number): readonly ResolvedCa
     const required = { declaration, substitution };
     const witness = depth < maximumDepth ? witnessOf(site, type, required, depth) : 'endless';
     switch (witness) {
-      case 'none':
-        return lacks(
-          meeting,
-          `'${declaration.name.text}' as ${constraint.trait.name.text} declares it`,
-        );
+      case 'none': {
+        const met = unmet(declaration);
+        if (isFailure(met)) {
+          return met;
+        }
+        witnesses.push(met);
+        break;
+      }
       case 'endless': {
         const trait = constraint.trait.name.text;
         site.report(checkerDiagnostics.endlessConformance(site.at, typeText(type), trait));
@@ -291,12 +340,12 @@ function substituteConstraint(constraint: Constraint, substitution: Substitution
   };
 }
 
-/** Which way `trait` says a type crosses as JSON, for the derived `Encodable` and `Decodable`. */
-function jsonMarkerDirection(
+/** Which way `trait` says a type crosses as JSON: `Encodable` writes, `Decodable` reads. */
+function jsonDirectionOf(
   checker: CheckerContext,
   trait: TraitDeclaration,
 ): JsonDirection | undefined {
-  return (Object.keys(jsonMarkers) as JsonDirection[]).find((direction) =>
-    isWellKnownTrait(checker, trait, jsonMarkers[direction]),
+  return (Object.keys(jsonTraits) as JsonDirection[]).find((direction) =>
+    isWellKnownTrait(checker, trait, jsonTraits[direction]),
   );
 }

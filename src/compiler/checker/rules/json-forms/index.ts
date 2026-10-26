@@ -1,21 +1,22 @@
 /**
- * JSON forms (§9; docs/arch/boundary.md): how each type crosses as JSON, decided once per type.
- * Lowering writes each type's codecs from its form; the derived markers `Encodable` and
- * `Decodable` (§3.10) hold for a type whose form can be written, or read, all the way down.
+ * Codecs (§3.10, §9; docs/arch/boundary.md): a type crosses as JSON through its `toJson` and
+ * `fromJson`, what `Encodable` and `Decodable` require, found as any witness is (conformance.ts).
+ * A struct, an enum, a tuple or a host type declaring neither has both derived by the compiler from
+ * its form, decided here once per type, which lowering writes the derived codecs from.
  *
- * - A struct or enum that is `Stringable` is its `toString`, read back through `parse` when it is
- *   also `Parsable`; otherwise a struct is an object of its fields, an enum the same with a
- *   `"type"` tag, a tuple an array. Arrays, optionals and maps are containers, whose codecs are
- *   json-module helpers taking the codec of what they hold; every other leaf is a helper call.
- * - Every helper call is resolved here, with its witnesses, as a call written in the type's own
- *   module would be: a struct's `toString` and `parse` are the ones its module sees, so a form
- *   belongs to the type alone (§9).
- * - A type with no form says why, in words a diagnostic finishes: a function, a handle, a nested
- *   optional, a map whose keys aren't Stringable. A form that can be written but not read (a
- *   Stringable type that isn't Parsable) says why it can't be read.
- * - `never` has no value, so there is never one to write, and none to read.
- * - A recursive type has a form like any other: deciding whether it can be written or read counts
- *   the type being decided as fine while its own parts are, as Sendable does.
+ * - A struct is an object of its fields, an enum the same with a `"type"` tag naming the variant, a
+ *   tuple an array, a host type whatever JSON its host gave it.
+ * - What a struct or an enum holds crosses through the codecs found in its own module, so a
+ *   derived codec is its type's alone; a tuple and an anonymous struct, which have no module, find
+ *   theirs in the json module.
+ * - A type declares codecs beside it: in its own module, or in the json module, which does for
+ *   primitives, `Json` and the prelude's containers. Declaring either leaves nothing derived, so no
+ *   type is written one way and read another.
+ * - A derived codec exists when everything it holds meets the trait where its codecs are found. A
+ *   recursive type counts as meeting it while its own parts are decided, as Sendable does.
+ * - What has no codec says why, in words a diagnostic finishes ("it needs …"): a nested optional,
+ *   whose two nones JSON can't tell apart; an enum with a field named `type`, which the tag uses; a
+ *   function; a handle.
  */
 
 import {
@@ -23,27 +24,29 @@ import {
   type CodecName,
   codecFunctions,
   codecHelpers,
-  type WellKnownDeclaration,
+  derivedCodecs,
   wellKnown,
 } from '../../../../language/well-known.ts';
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import { isStdModule, type ModuleId } from '../../../program/program.ts';
-import type { FunctionCall } from '../../check.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { FunctionCall, ResolvedCall } from '../../check.ts';
+import type { CheckerContext, StaticOwner } from '../../context.ts';
 import {
-  type Codec,
+  type DerivedCodec,
+  type DerivedForm,
+  type JsonCodecs,
   type JsonDirection,
   type JsonField,
-  type JsonForm,
-  type JsonFormQueries,
-  jsonMarkers,
+  jsonTraits,
 } from '../../json-form.ts';
+import { witnessesFor } from '../../resolution/conformance.ts';
 import { callWithTypes } from '../../resolution/typed-call.ts';
-import { isWellKnownTrait } from '../../traits/sendable.ts';
+import type { Constraint } from '../../traits/constraints.ts';
 import type { FieldMember, NominalType, Type } from '../../types/type.ts';
-import { typeText } from '../../types/type-text.ts';
 import { wellKnownArguments } from '../../types/well-known.ts';
+import { hostSite, silent, type UseSite, useSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
 /** What the unit needs beside the checker: field annotations. */
@@ -52,121 +55,103 @@ export interface JsonFormSeams {
   readonly annotations: Annotations;
 }
 
-const leafHelpers = {
-  int: [codecHelpers.encodeInt, codecHelpers.decodeInt],
-  float: [codecHelpers.encodeFloat, codecHelpers.decodeFloat],
-  bool: [codecHelpers.encodeBool, codecHelpers.decodeBool],
-  string: [codecHelpers.encodeString, codecHelpers.decodeString],
-  unit: [codecHelpers.encodeUnit, codecHelpers.decodeUnit],
-} as const;
+/** What a derived codec writes and reads of a type: each part's type, named for a diagnostic. */
+interface Part {
+  readonly name: string;
+  readonly type: Type;
+}
 
-const containers = [
-  [wellKnown.array, codecHelpers.encodeArray, codecHelpers.decodeArray],
-  [wellKnown.optional, codecHelpers.encodeOptional, codecHelpers.decodeOptional],
-  [wellKnown.map, codecHelpers.encodeMap, codecHelpers.decodeMap],
-] as const satisfies readonly (readonly [WellKnownDeclaration, CodecHelper, CodecHelper])[];
-
-export class JsonForms implements JsonFormQueries {
+export class JsonForms implements JsonCodecs {
   readonly #seams: JsonFormSeams;
-  readonly #forms = new Map<string, JsonForm>();
+  readonly #forms = new Map<string, DerivedForm>();
+  /** The derived codecs being decided, by direction and type key, which count as found meanwhile. */
+  readonly #deciding = new Set<string>();
 
   constructor(seams: JsonFormSeams) {
     this.#seams = seams;
   }
 
-  /**
-   * How `type` crosses as JSON; a type parameter or an error type has none of its own, and
-   * nothing has one in a program without the json module, which every codec is made of.
-   */
-  formOf(type: Type): JsonForm {
-    if (this.#seams.checker.program.roles.json === undefined) {
-      return { kind: 'none', reason: 'the program has no json module' };
-    }
+  formOf(type: Type): DerivedForm {
     return memo(this.#forms, this.#seams.checker.typeKeys.typeKey(type), () => this.#form(type));
   }
 
-  /** Why `type` can't cross in `direction`, finishing "it has no JSON form: …"; undefined if it can. */
-  problemOf(type: Type, direction: JsonDirection): string | undefined {
-    return this.#problem(type, direction, new Set());
+  refusalOf(type: Type): string | undefined {
+    const { checker } = this.#seams;
+    const [inner] = wellKnownArguments(checker, wellKnown.optional, type) ?? [];
+    return inner !== undefined && wellKnownArguments(checker, wellKnown.optional, inner)
+      ? 'no optional directly inside it, since JSON has one null for both its nones'
+      : undefined;
   }
 
-  #problem(type: Type, direction: JsonDirection, deciding: Set<string>): string | undefined {
-    if (type.kind === 'error') {
-      return undefined;
+  derivedOf(site: UseSite, type: Type, direction: JsonDirection): DerivedCodec {
+    const form = this.formOf(type);
+    if (form.kind === 'none') {
+      const trait = jsonConstraint(this.#seams.checker, direction).trait.name.text;
+      const required = `'${codecFunctions[direction]}' as ${trait}`;
+      return { kind: 'lacking', missing: form.reason ?? `${required} declares it` };
     }
-    if (type.kind === 'primitive' && type.name === 'never' && direction === 'write') {
-      return undefined;
-    }
-    if (type.kind === 'parameter') {
-      return this.#constrained(type, direction)
-        ? undefined
-        : `'${typeText(type)}' isn't constrained 'is ${direction === 'write' ? 'Encodable' : 'Decodable'}'`;
-    }
-    const key = this.#seams.checker.typeKeys.typeKey(type);
-    if (deciding.has(key)) {
-      return undefined;
-    }
-    deciding.add(key);
-    const problem = this.#formProblem(this.formOf(type), direction, deciding);
-    deciding.delete(key);
-    return problem;
-  }
-
-  #formProblem(
-    form: JsonForm,
-    direction: JsonDirection,
-    deciding: Set<string>,
-  ): string | undefined {
-    const inside = (type: Type) => this.#problem(type, direction, deciding);
-    switch (form.kind) {
-      case 'json':
-        return undefined;
-      case 'none':
-        return form.reason;
-      case 'leaf':
-        return direction === 'read' ? form.unreadable : undefined;
-      case 'container':
-        return (direction === 'read' ? form.unreadable : undefined) ?? inside(form.element);
-      case 'tuple':
-        return firstOf(form.elements, inside);
-      case 'record':
-        return fieldsProblem(form.fields, inside);
-      case 'enum':
-        return firstOf(form.variants, (variant) => fieldsProblem(variant.fields, inside));
-      default: {
-        const unhandled: never = form;
-        return unhandled;
+    const key = `${direction} ${this.#seams.checker.typeKeys.typeKey(type)}`;
+    if (!this.#deciding.has(key)) {
+      this.#deciding.add(key);
+      try {
+        const missing = this.#partMissing(site, form, direction);
+        if (missing !== undefined) {
+          return { kind: 'lacking', missing };
+        }
+      } finally {
+        this.#deciding.delete(key);
       }
     }
+    return { kind: 'derived', call: this.#jsonCall(derivedCodecs[direction], [type]) };
   }
 
-  #constrained(type: Extract<Type, { kind: 'parameter' }>, direction: JsonDirection): boolean {
-    const { checker } = this.#seams;
-    return (
-      type.declaration.kind === 'TypeParameter' &&
-      checker
-        .constraintsOf(type.declaration)
-        .some(({ trait }) => isWellKnownTrait(checker, trait, jsonMarkers[direction]))
+  /** The first part of `form` that doesn't meet the trait of `direction`, said as it lacks. */
+  #partMissing(
+    site: UseSite,
+    form: Exclude<DerivedForm, { kind: 'none' }>,
+    direction: JsonDirection,
+  ): string | undefined {
+    if (form.kind === 'host') {
+      return undefined;
+    }
+    const inner = silent({ ...site, module: form.module });
+    const constraint = jsonConstraint(this.#seams.checker, direction);
+    const failing = partsOf(form).find(
+      ({ type }) => witnessesFor(inner, type, constraint) === undefined,
     );
+    return failing === undefined
+      ? undefined
+      : `its ${failing.name} to be ${constraint.trait.name.text}`;
   }
 
-  #form(type: Type): JsonForm {
+  codecOf(type: Type, direction: JsonDirection, module: ModuleId): ResolvedCall | undefined {
+    const { checker } = this.#seams;
+    if (checker.program.roles.json === undefined) {
+      return undefined;
+    }
+    const constraint = jsonConstraint(this.#seams.checker, direction);
+    const site = hostSite(silent(useSite(checker, module, constraint.trait.name.span)));
+    return witnessesFor(site, type, constraint)?.[0];
+  }
+
+  callOf(name: CodecHelper, typeArguments: readonly Type[]): FunctionCall {
+    return this.#jsonCall(name, typeArguments);
+  }
+
+  #form(type: Type): DerivedForm {
     switch (type.kind) {
-      case 'primitive':
-        return type.name in leafHelpers
-          ? this.#leaf(leafHelpers[type.name as keyof typeof leafHelpers], [])
-          : { kind: 'none', reason: `'${type.name}' has no value` };
-      case 'function':
-        return { kind: 'none', reason: 'a function never leaves for the host' };
       case 'tuple':
-        return { kind: 'tuple', elements: type.elements };
+        return { kind: 'tuple', module: this.#jsonModule(), elements: type.elements };
       case 'anonymous':
-        return this.#record(type.fields);
+        return this.#record(type.fields, this.#jsonModule());
       case 'nominal':
         return this.#nominal(type);
+      case 'function':
+        return { kind: 'none', reason: 'a JSON form, which no function has' };
+      case 'primitive':
       case 'parameter':
       case 'error':
-        return { kind: 'none', reason: `'${typeText(type)}' isn't a concrete type` };
+        return { kind: 'none', reason: undefined };
       default: {
         const unhandled: never = type;
         return unhandled;
@@ -174,107 +159,74 @@ export class JsonForms implements JsonFormQueries {
     }
   }
 
-  #nominal(type: NominalType): JsonForm {
+  #nominal(type: NominalType): DerivedForm {
     const { checker } = this.#seams;
     const { declaration } = type.entity;
-    const module = checker.bindings.moduleOf(type.entity) ?? this.#jsonModule();
-    if (checker.wellKnownEntity(wellKnown.json) === type.entity) {
-      return { kind: 'json' };
-    }
-    for (const [container, encode, decode] of containers) {
-      if (checker.wellKnownEntity(container) === type.entity) {
-        return this.#container(type, encode, decode, module);
-      }
+    const module = checker.moduleOf(declaration);
+    if (this.#declaresCodecs(declaration, module)) {
+      return { kind: 'none', reason: undefined };
     }
     if (declaration.kind === 'ExternStructDeclaration') {
-      return this.#external(type, declaration.isSendable, module);
-    }
-    const stringable = this.#stringable(type, module);
-    if (stringable !== undefined) {
-      return stringable;
+      return this.#host(type, declaration.isSendable, module);
     }
     if (declaration.kind === 'StructDeclaration') {
-      return this.#record(checker.fieldsOf(type) ?? []);
+      return this.#record(checker.fieldsOf(type) ?? [], module);
     }
-    return this.#enum(type);
+    if (declaration.kind === 'EnumDeclaration') {
+      return this.#enum(type, module);
+    }
+    return { kind: 'none', reason: undefined };
   }
 
   /**
-   * An extern type: a host type is its host's JSON, a plain value when it is declared sendable, or
-   * kept in a resource when a `dispose` makes it disposable (§7); anything else has no form.
+   * An extern type: a host type is its host's JSON when it is declared sendable, or kept in a
+   * resource when a `dispose` makes it disposable (§7); anything else has nothing to derive from.
    */
-  #external(type: NominalType, isSendable: boolean, module: ModuleId): JsonForm {
+  #host(type: NominalType, isSendable: boolean, module: ModuleId): DerivedForm {
     const { checker } = this.#seams;
     const isHost = !isStdModule(checker.program, module);
     if (isHost && (isSendable || checker.disposalOf(type).kind === 'function')) {
-      return this.#leaf([codecHelpers.encodeHandle, codecHelpers.decodeHandle], [type]);
+      return { kind: 'host' };
     }
     return {
       kind: 'none',
       reason: isHost
-        ? `'${typeText(type)}' is neither declared sendable nor disposable`
-        : `'${typeText(type)}' is a handle, which stays in its instance`,
+        ? 'a JSON form, which a host type has when declared sendable or disposable'
+        : 'a JSON form, which no handle has: it stays in its instance',
     };
   }
 
-  /** A struct or enum that is Stringable, as its `toString`; undefined for one that isn't. */
-  #stringable(type: NominalType, module: ModuleId): JsonForm | undefined {
-    const written = this.#call(codecHelpers.encodeText, [type], module);
-    if (written === undefined) {
-      return undefined;
-    }
-    const read = this.#call(codecHelpers.decodeParsed, [type], module);
-    return {
-      kind: 'leaf',
-      codec: { encode: written, decode: read },
-      unreadable:
-        read === undefined
-          ? `'${typeText(type)}' is Stringable but not Parsable, so it can't be read`
-          : undefined,
-    };
-  }
-
-  #container(
-    type: NominalType,
-    encodeName: CodecHelper,
-    decodeName: CodecHelper,
-    module: ModuleId,
-  ): JsonForm {
+  /** Whether a codec of `declaration` is declared beside it, or in the json module. */
+  #declaresCodecs(declaration: StaticOwner, module: ModuleId): boolean {
     const { checker } = this.#seams;
-    const element = type.arguments.at(-1);
-    const [first] = type.arguments;
-    if (element === undefined || first === undefined) {
-      return { kind: 'none', reason: `'${typeText(type)}' has no type arguments` };
-    }
-    if (
-      encodeName === codecHelpers.encodeOptional &&
-      element.kind === 'nominal' &&
-      element.entity === checker.optionalEntity
-    ) {
-      return {
-        kind: 'none',
-        reason: `'${typeText(type)}' nests an optional, whose two nones JSON can't tell apart`,
-      };
-    }
-    const encode = this.#call(encodeName, type.arguments, module);
-    if (encode === undefined) {
-      return { kind: 'none', reason: `its keys, '${typeText(first)}', aren't Stringable` };
-    }
-    const decode = this.#call(decodeName, type.arguments, module);
-    return {
-      kind: 'container',
-      element,
-      codec: { encode, decode },
-      unreadable:
-        decode === undefined ? `its keys, '${typeText(first)}', aren't Parsable` : undefined,
-    };
+    return [...new Set([module, this.#jsonModule()])].some(
+      (each) =>
+        checker
+          .staticFunctionsIn(each, declaration)
+          .some((function_) => function_.name.text === codecFunctions.read) ||
+        this.#functionsNamed(each, codecFunctions.write).some(
+          (function_) => this.#selfOf(function_) === declaration,
+        ),
+    );
   }
 
-  #record(fields: readonly FieldMember[]): JsonForm {
-    return { kind: 'record', fields: fields.map((field) => this.#field(field)) };
+  #functionsNamed(module: ModuleId, name: string): readonly FunctionDeclaration[] {
+    const { bindings } = this.#seams.checker;
+    const entity = bindings.topLevelNamed(module, name);
+    return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
   }
 
-  #enum(type: NominalType): JsonForm {
+  /** The declaration of the type a function's first parameter has, when it is nominal. */
+  #selfOf(function_: FunctionDeclaration): StaticOwner | undefined {
+    const [self] = this.#seams.checker.parametersOf(function_);
+    return self?.type.kind === 'nominal' ? self.type.entity.declaration : undefined;
+  }
+
+  #record(fields: readonly FieldMember[], module: ModuleId): DerivedForm {
+    return { kind: 'record', module, fields: fields.map((field) => this.#field(field)) };
+  }
+
+  #enum(type: NominalType, module: ModuleId): DerivedForm {
     const variants = (this.#seams.checker.variantsOf(type) ?? []).map((variant) => ({
       name: variant.name,
       fields: variant.fields.map((field) => this.#field(field)),
@@ -283,10 +235,10 @@ export class JsonForms implements JsonFormQueries {
       variant.fields.some((field) => field.key === 'type'),
     );
     return colliding === undefined
-      ? { kind: 'enum', variants }
+      ? { kind: 'enum', module, variants }
       : {
           kind: 'none',
-          reason: `its variant '${colliding.name}' has a field whose JSON name is 'type', which names the variant`,
+          reason: `no field named 'type' in JSON, which names the variant, as '${colliding.name}' has`,
         };
   }
 
@@ -300,102 +252,65 @@ export class JsonForms implements JsonFormQueries {
       optional:
         wellKnownArguments(this.#seams.checker, wellKnown.optional, field.type) !== undefined,
       codec: annotations.fieldHas(field, 'jsonBigInt')
-        ? this.#codec([codecHelpers.encodeBigInt, codecHelpers.decodeBigInt], [])
+        ? {
+            write: this.callOf(codecHelpers.encodeBigInt, []),
+            read: this.callOf(codecHelpers.decodeBigInt, []),
+          }
         : undefined,
     };
   }
 
-  #leaf(names: readonly [CodecHelper, CodecHelper], typeArguments: readonly Type[]): JsonForm {
-    return { kind: 'leaf', codec: this.#codec(names, typeArguments), unreadable: undefined };
-  }
-
-  /** A codec of two helpers that always apply. */
-  #codec(
-    [encode, decode]: readonly [CodecHelper, CodecHelper],
-    typeArguments: readonly Type[],
-  ): Codec {
-    return {
-      encode: this.callOf(encode, typeArguments),
-      decode: this.callOf(decode, typeArguments),
-    };
-  }
-
   /**
-   * The call to the json module's helper `name` with `typeArguments`, as made in `module`, where
-   * its constraints' witnesses are found; undefined when they aren't met.
+   * The call to the json module's function `name` with `typeArguments`, made in the json module;
+   * a derived codec or a helper always applies, so failing is a bug in the toolchain.
    */
-  #call(
-    name: CodecName,
-    typeArguments: readonly Type[],
-    module: ModuleId,
-  ): FunctionCall | undefined {
+  #jsonCall(name: CodecName, typeArguments: readonly Type[]): FunctionCall {
     const { checker } = this.#seams;
     const candidates = checker
       .languageFunctions('json', name)
       .map((declaration) => ({ declaration }));
-    return callWithTypes(checker, candidates, typeArguments, module);
-  }
-
-  callOf(name: CodecHelper, typeArguments: readonly Type[]): FunctionCall {
-    return this.#jsonCall(name, typeArguments);
-  }
-
-  encoderOf(type: Type): FunctionCall {
-    return this.#jsonCall(codecFunctions.encode, [type]);
-  }
-
-  decoderOf(type: Type): FunctionCall {
-    return this.#jsonCall(codecFunctions.decodeAt, [type]);
-  }
-
-  /**
-   * The call to the json module's function `name` with `typeArguments`, made in the json module;
-   * a codec or a helper always applies, so failing is a bug in the toolchain.
-   */
-  #jsonCall(name: CodecName, typeArguments: readonly Type[]): FunctionCall {
-    const call = this.#call(name, typeArguments, this.#jsonModule());
+    const call = callWithTypes(checker, candidates, typeArguments, this.#jsonModule());
     if (call === undefined) {
-      unreachable(
-        `The json module's '${name}' doesn't take ${typeArguments.map(typeText).join(', ')}.`,
-      );
+      unreachable(`The json module's '${name}' doesn't take the types it was given.`);
     }
     return call;
   }
 
-  /** The json module, which `formOf` makes sure the program has. */
+  /** The json module, which every type crossing as JSON needs. */
   #jsonModule(): ModuleId {
     const { json } = this.#seams.checker.program.roles;
     if (json === undefined) {
-      unreachable('A JSON form was decided in a program without the json module.');
+      unreachable('A codec was asked of a program without the json module.');
     }
     return json;
   }
 }
 
-/** The first problem `problemOf` finds among `items`. */
-function firstOf<Item>(
-  items: readonly Item[],
-  problemOf: (item: Item) => string | undefined,
-): string | undefined {
-  for (const item of items) {
-    const problem = problemOf(item);
-    if (problem !== undefined) {
-      return problem;
-    }
+/** `Encodable` or `Decodable`, the trait of `direction`, as a constraint a type meets. */
+export function jsonConstraint(checker: CheckerContext, direction: JsonDirection): Constraint {
+  const entity = checker.wellKnownEntity(jsonTraits[direction]);
+  if (entity?.kind !== 'type' || entity.declaration.kind !== 'TraitDeclaration') {
+    unreachable(`The json module declares no trait '${jsonTraits[direction].name}'.`);
   }
-  return undefined;
+  return { trait: entity.declaration, arguments: [] };
 }
 
-/** The first problem among the fields that cross, naming the field. */
-function fieldsProblem(
-  fields: readonly JsonField[],
-  inside: (type: Type) => string | undefined,
-): string | undefined {
-  return firstOf(fields, (field) => {
-    if (field.skipped !== undefined || field.codec !== undefined) {
-      return;
+/** The parts a derived codec writes and reads through their own types' codecs. */
+function partsOf(form: Extract<DerivedForm, { module: ModuleId }>): readonly Part[] {
+  const crossing = (fields: readonly JsonField[]): readonly Part[] =>
+    fields
+      .filter((field) => field.skipped === undefined && field.codec === undefined)
+      .map((field) => ({ name: `field '${field.name}'`, type: field.type }));
+  switch (form.kind) {
+    case 'record':
+      return crossing(form.fields);
+    case 'enum':
+      return form.variants.flatMap((variant) => crossing(variant.fields));
+    case 'tuple':
+      return form.elements.map((type, index) => ({ name: `element ${index}`, type }));
+    default: {
+      const unhandled: never = form;
+      return unhandled;
     }
-    const problem = inside(field.type);
-    return problem === undefined ? undefined : `its field '${field.name}': ${problem}`;
-  });
+  }
 }

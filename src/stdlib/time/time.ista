@@ -5,6 +5,8 @@
 # `now` and `at` controls all time (§10). The operators on Time and Duration are declared here, so
 # argument-dependent lookup finds them wherever the types are used (§3.13).
 
+import * as json from 'json'
+
 struct Duration:
   value: int
 
@@ -25,7 +27,7 @@ fn delay(duration: Duration) -> Future<unit>:
   at(now() + duration)
 
 # ISO 8601 text (§3.8, §9): a time as JavaScript's Date.toJSON writes it, a duration as
-# Temporal.Duration does. Both are Stringable and Parsable, which is also their JSON form.
+# Temporal.Duration does. Both are Stringable and Parsable, and cross as JSON as that text.
 extern fn toString(self: Time) -> string
 
 extern fn toString(self: Duration) -> string
@@ -33,3 +35,15 @@ extern fn toString(self: Duration) -> string
 extern fn Time.parse(text: string) -> Result<Time>
 
 extern fn Duration.parse(text: string) -> Result<Duration>
+
+fn toJson(self: Time) -> json.Json:
+  json.encodeText(self)
+
+fn toJson(self: Duration) -> json.Json:
+  json.encodeText(self)
+
+fn Time.fromJson(value: json.Json, path: string) -> Result<Time>:
+  json.decodeText(value, path)
+
+fn Duration.fromJson(value: json.Json, path: string) -> Result<Duration>:
+  json.decodeText(value, path)

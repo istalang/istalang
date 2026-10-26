@@ -3,11 +3,11 @@
 # error: 5101 at 31:7
 # error: 5101 at 33:7
 # error: 5101 at 35:8
-# error: 5909 at 37:20
-# json writes and reads only what has a JSON form to write, or to read (§9, Encodable and
-# Decodable): not a function, not a map whose keys aren't Stringable, not a nested optional, not
-# an enum with a variant field named type, which the tag uses; and a Stringable type that isn't
-# Parsable can be written but not read. main's outcome is written as JSON for its host.
+# error: 5101 at 37:20
+# json writes and reads only what is Encodable, or Decodable (§9): not a function, not a map whose
+# keys aren't Stringable, not a nested optional, not an enum with a variant field named type,
+# which the tag uses; and a type that declares a toJson but no fromJson can be written but not
+# read, since nothing is derived for it. main's outcome is written as JSON for its host.
 
 import * as json from 'json'
 
@@ -17,8 +17,8 @@ struct Point:
 struct Label:
   text: string
 
-fn toString(self: Label) -> string:
-  self.text
+fn toJson(self: Label) -> json.Json:
+  json.encode(self.text)
 
 enum Event:
   Typed { type: string }

@@ -24,7 +24,7 @@ tags: [review, architecture, refactoring, plan]
 | 10 | Unify HeapObject table / Frame view / Snapshot builder | runtime | D110, D123, D126 | by-argon | done (6bd863e) |
 | 11 | Derive Heap indexes instead of linear scans | runtime | D134, D107, D111, D113 | by-opus | done (0b6a385) |
 | 12 | Generalize `@JsonSkip` and JSON forms (use `Default` trait) | checker, lowering | | by-argon | |
-| 13 | Spec: JSON crossing as traits (`Encodable`/`Decodable` instead of closed table) | spec, compiler | D140 | by-opus | |
+| 13 | Spec: JSON crossing as traits (`Encodable`/`Decodable` instead of closed table) | spec, compiler | D140 | by-opus | done |
 | 14 | Spec: Iterable materialization (`iterate` lazy form) | spec, stdlib | D141 | by-opus | |
 | 15 | Spec: Mixed arithmetic (overload matrix vs promotion) | spec, prelude | D142 | by-opus | |
 | 16 | Spec: Witness incoherence (chosen per call site) | spec, checker | D143 | by-opus | |

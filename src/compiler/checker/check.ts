@@ -383,7 +383,7 @@ export interface Checker {
     declaration: WellKnownDeclaration,
     typeArguments?: readonly Type[],
   ) => NominalType | undefined;
-  /** How types cross to the host as JSON (§9; rules/json-forms/). */
+  /** How types cross as JSON (§9; rules/json-forms/): their codecs, and derived codecs' forms. */
   readonly json: JsonFormQueries;
   /** Annotations, each checked once where its item stands (§3.16; rules/annotations.ts). */
   readonly annotations: AnnotationQueries;

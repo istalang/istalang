@@ -15,6 +15,7 @@ const queueKey = 'main.sendRevertible(main.Queue<T>, T)';
 const revertible = compiledText(
   [
     "import Revertible from 'inbox'",
+    "import Encodable from 'json'",
     '',
     'extern sendable struct Queue<T is Sendable>',
     'extern fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>',

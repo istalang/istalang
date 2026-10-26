@@ -1,14 +1,10 @@
 /**
  * The checker's diagnostics of the host boundary, codes 5900–5999 (§3.6, §3.16, §9): externs a
- * host implements, JSON forms and annotations. A part of the checker's one catalog (index.ts).
+ * host implements and annotations; a type that can't cross as JSON is a constraint not met
+ * (generics.ts). A part of the checker's one catalog (index.ts).
  */
 
 export const boundaryTemplates = {
-  noJsonForm: {
-    code: 5900,
-    message: (type: string, reason: string) =>
-      `${type} crosses to the host as JSON, but it has no JSON form: ${reason}.`,
-  },
   hostReference: {
     code: 5901,
     message: () =>
@@ -44,11 +40,6 @@ export const boundaryTemplates = {
     code: 5908,
     message: () =>
       "'@Waypoint' names where a statement waits, and this one has no 'await' or 'select'.",
-  },
-  unprintableOutcome: {
-    code: 5909,
-    message: (type: string, reason: string) =>
-      `'main' gives ${type}, which its host reads as JSON, but it has no JSON form: ${reason}.`,
   },
   disposableSendable: {
     code: 5910,

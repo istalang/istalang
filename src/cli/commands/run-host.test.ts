@@ -17,13 +17,14 @@ const wrongResult =
   /^panic: The host gave what doesn't fit: main\.charge\.value: expected a string, found an integer\n/u;
 const unfitFill =
   /^ista: the host couldn't fill a future of instance \S+: main\.receive\.amount: expected an integer, found a string\n/u;
-const stuckAtReceive = /waits on nothing that can wake it, at \S+main\.ista:12:17, /u;
+const stuckAtReceive = /waits on nothing that can wake it, at \S+main\.ista:13:17, /u;
 const requestsFailed =
   /^ista: the host's main\.receive\(main\.Queue<T>\) failed: Error: no more requests\n/u;
 const mainStuck = /instance \S+ waits on nothing that can wake it/u;
 
 /** A program receiving an order from a host queue and charging it through the host. */
 const program = [
+  "import Decodable from 'json'",
   'struct Order:',
   '  id: string',
   '  amount: int',

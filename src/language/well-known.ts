@@ -53,55 +53,38 @@ export const wellKnown = {
   /** How a type is written as text, and read back (§3.10): its JSON form when it has them (§9). */
   stringable: { module: 'prelude', name: 'Stringable' },
   parsable: { module: 'prelude', name: 'Parsable' },
-  /** The derived markers of types with a JSON form to write, and to read (§3.10, §9). */
-  encodable: { module: 'prelude', name: 'Encodable' },
-  decodable: { module: 'prelude', name: 'Decodable' },
   /** Names an `await` or `select` statement's suspension point (§10). */
   waypoint: { module: 'prelude', name: 'Waypoint' },
   /** JSON as a value: what the codecs turn typed values into and back from (§9). */
   json: { module: 'json', name: 'Json' },
+  /** The traits of types that cross as JSON, written and read (§3.10, §9), each implying Sendable. */
+  encodable: { module: 'json', name: 'Encodable' },
+  decodable: { module: 'json', name: 'Decodable' },
   /** Annotations the boundary mapping reads on fields (§3.16, §9). */
   jsonName: { module: 'json', name: 'JsonName' },
   jsonSkip: { module: 'json', name: 'JsonSkip' },
   jsonBigInt: { module: 'json', name: 'JsonBigInt' },
 } as const satisfies Record<string, WellKnownDeclaration>;
 
-/**
- * The json module's functions the compiled codecs are made of (docs/arch/boundary.md): the two
- * whose bodies the compiler writes per type, and the helpers those bodies call.
- */
-export const codecFunctions = {
-  encode: '_encode',
-  decodeAt: '_decodeAt',
-} as const;
+/** The functions `Encodable` and `Decodable` require (§3.10): a type's codecs, by direction. */
+export const codecFunctions = { write: 'toJson', read: 'fromJson' } as const;
 
 /**
- * The json module's helpers compiled codecs and wrappers call (docs/arch/boundary.md): writing and
- * reading each leaf and container, taking JSON apart, and accepting what a host gave.
+ * The json module's functions whose bodies the compiler writes per type (docs/arch/boundary.md):
+ * the codecs it derives for a struct, an enum, a tuple or a host type declaring none of its own.
+ */
+export const derivedCodecs = { write: '_toJson', read: '_fromJson' } as const;
+
+/**
+ * The json module's helpers derived codecs and wrappers call (docs/arch/boundary.md): writing and
+ * reading an `@JsonBigInt` field and a host type's JSON, taking JSON apart, and accepting what a
+ * host gave.
  */
 export const codecHelpers = {
-  encodeInt: '_encodeInt',
-  decodeInt: '_decodeInt',
-  encodeFloat: '_encodeFloat',
-  decodeFloat: '_decodeFloat',
-  encodeBool: '_encodeBool',
-  decodeBool: '_decodeBool',
-  encodeString: '_encodeString',
-  decodeString: '_decodeString',
-  encodeUnit: '_encodeUnit',
-  decodeUnit: '_decodeUnit',
   encodeBigInt: '_encodeBigInt',
   decodeBigInt: '_decodeBigInt',
-  encodeText: '_encodeText',
-  decodeParsed: '_decodeParsed',
   encodeHandle: '_encodeHandle',
   decodeHandle: '_decodeHandle',
-  encodeArray: '_encodeArray',
-  decodeArray: '_decodeArray',
-  encodeOptional: '_encodeOptional',
-  decodeOptional: '_decodeOptional',
-  encodeMap: '_encodeMap',
-  decodeMap: '_decodeMap',
   fields: '_fields',
   field: '_field',
   optionalField: '_optionalField',
@@ -118,8 +101,8 @@ export const codecHelpers = {
 
 export type CodecHelper = (typeof codecHelpers)[keyof typeof codecHelpers];
 
-/** A json-module function the compiler calls: a codec or a helper. */
-export type CodecName = (typeof codecFunctions)[keyof typeof codecFunctions] | CodecHelper;
+/** A json-module function the compiler calls: a derived codec or a helper. */
+export type CodecName = (typeof derivedCodecs)[keyof typeof derivedCodecs] | CodecHelper;
 
 /** A well-known declaration's module-qualified name, as a Definition spells it: `prelude.Shared`. */
 export function qualifiedName({ module, name }: WellKnownDeclaration): string {

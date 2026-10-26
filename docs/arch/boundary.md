@@ -1,5 +1,5 @@
 ---
-description: the host boundary (spec §3.6, §9) — compiled JSON codecs, host externs and their futures, start entries, extern constants, the host API and the package's exports; read before changing externs, json, Stringable/Parsable, annotations, or how values reach a host
+description: the host boundary (spec §3.6, §9) — JSON codecs as traits and derived codecs, host externs and their futures, start entries, extern constants, the host API and the package's exports; read before changing externs, json, Stringable/Parsable, annotations, or how values reach a host
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -13,30 +13,42 @@ tags: [boundary, json, externs, host, runtime, lowering]
 Every value that crosses to or from a host is JSON, converted by the declared type (spec §9). This
 doc says where each part of that lives and why.
 
-## Codecs are compiled code
+## Codecs are traits
 
-A type's JSON form can run program code: a struct that is `Stringable` is written through its own
-`toString` and read back through its `parse`, and map keys go through `toString` too. The runtime
-can't call program code from inside a native (D-A removed the re-entrant call path), so the
-conversion is compiled, per type, the way generics are instantiated:
+A type crosses through its codecs, `toJson` and `fromJson`: what `Encodable` and `Decodable`
+require, declared in the `json` module (a language module, loaded with every program) beside
+`Json`, the enum holding any JSON. Codecs are program code, found as every trait's witnesses are,
+so the runtime never calls program code from inside a native (D-A removed the re-entrant call
+path):
 
-- The `json` module (a language module, loaded with every program) declares `Json`, an enum holding
-  any JSON, and two externs whose bodies the compiler writes per instantiation: `_encode<T>` and
-  `_decodeAt<T>(json, path)` (`language/well-known.ts`, `codecFunctions`). `encode`, `decode`,
-  `stringify` and `parse` are ordinary code over them, requiring `Encodable` or `Decodable`; the
-  two themselves require only a form, since a disposable host type crosses to its host without
-  being sendable.
-- The checker decides each type's form once (`checker/rules/json-forms/`, memoized per type key; the
-  form model is `form.ts`, which later phases read through `Checker.json`):
-  field names after `@JsonName`, skipped and `@JsonBigInt` fields, whether a struct or enum is
-  `Stringable` (and `Parsable`), and the helper calls each part needs, resolved with their witnesses
-  in the type's own module, so a form belongs to the type alone. A type with no form is a
-  diagnostic where it would cross: `Encodable` and `Decodable` are derived markers, like `Sendable`,
-  for "has a form to write / to read", and generic code and generic externs carry them.
-- Lowering writes each codec instance's body from the form (`lowering/boundary/encoder.ts`,
-  `decoder.ts`): structs, enums and tuples field by field, everything else as calls to json-module
-  helpers, a container's helper given the element's codec as a function value. A nested type is a
-  call to its own codec, so a recursive type's codecs call themselves.
+- Declared codecs are ordinary functions. The `json` module declares them for every primitive,
+  `Json`, `Array`, `T?` and `Map`, the containers' generic over their elements' codecs; a module
+  declares them beside its own types (the `time` module's `Time` and `Duration`, through
+  `encodeText` and `decodeText`). A trait's witness may be declared in the trait's own module
+  (`checker/resolution/candidates.ts`), which is how the `json` module's codecs are found from
+  every module without an import. `encode`, `decode`, `stringify` and `parse` are generic code
+  over the traits.
+- A struct, an enum, a tuple or a host type declaring neither codec, beside it or in the `json`
+  module, has both derived. The checker decides its derived form once (`checker/rules/json-forms/`,
+  memoized per type key; the model is `checker/json-form.ts`, which later phases read through
+  `Checker.json`): field names after `@JsonName`, skipped and `@JsonBigInt` fields, and the module
+  its parts' codecs are found in, its type's own (the `json` module for a tuple or an anonymous
+  struct), so a derived codec belongs to its type alone. Conformance takes a derived codec when no
+  declared one is found (`checker/resolution/conformance.ts`): a call to the `json` module's
+  `_toJson<T>` or `_fromJson<T>`, externs whose bodies lowering writes per type
+  (`language/well-known.ts`, `derivedCodecs`). A recursive type counts as meeting the trait while
+  its own parts are decided.
+- `Encodable` and `Decodable` imply Sendable, except where values cross to the host
+  (`checker/use-site.ts`, `toHost`): an extern's parameters and results, an extern constant,
+  `main`'s outcome, a start entry. There only codecs count, so a disposable host type, which isn't
+  sendable, crosses to its own host alone or inside other values.
+- Lowering writes each derived codec's body from its form (`lowering/boundary/encoder.ts`,
+  `decoder.ts`): structs, enums and tuples part by part, each part through its own type's codec,
+  and a host type through `_encodeHandle` and `_decodeHandle`. A recursive type's codecs call
+  themselves. Code with no syntax behind it calls a codec as the checker finds it where the code
+  stands (`lowering/boundary/codec-calls.ts`); a generic extern's wrapper finds its declared types'
+  codecs and closes them within its instance, so a type parameter's codec is the witness its caller
+  gave.
 - What is left to natives is leaf work with no program code in it (`stdlib/json/natives.ts`,
   `definition/json-values.ts`): JSON text to `Json` and back (lossless-json, integers exact, nesting
   bounded by `maximumDepth`), a float's finiteness, sorting an object's entries.
@@ -70,9 +82,9 @@ its instance is numbered by, so its native sees only JSON:
   value to the host's externs) has values with an identity of their own: `_decodeHandle` keeps
   the host's JSON in a `resource` object (`definition/types.ts`, `isResourceType`), `_encodeHandle`
   gives that JSON back, and the type entry's disposal calls the `dispose` at release. It can't be
-  declared sendable (5910) and isn't `Encodable` or `Decodable`, which imply Sendable, so it
-  crosses only to its own host; an extern constant, one value for every read, can't hold one
-  (5911).
+  declared sendable (5910) and, where values don't cross to the host, isn't `Encodable` or
+  `Decodable`, which imply Sendable, so it crosses only to its own host; an extern constant, one
+  value for every read, can't hold one (5911).
 - Host natives (`runtime/boundary/host-natives.ts`) take and give JavaScript JSON, what
   `JSON.parse` of the text gives but with every integer a `bigint`, so none loses digits; what a
   host gives back is read as `JSON.stringify` would write it, `undefined` as `null` or a field

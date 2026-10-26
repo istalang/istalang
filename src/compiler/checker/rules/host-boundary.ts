@@ -1,12 +1,13 @@
 /**
  * What crosses to the host (§3.6, §9): an extern a host implements takes and gives JSON, converted
- * by the declared types, so each parameter's type needs a JSON form to write and its result, or an
- * extern constant's type, one to read (rules/json-forms/ says why one hasn't): what `Encodable` and
- * `Decodable` say, but for a disposable host type, which crosses to its own host unsendable. A
- * result of `Future<T>` is a future the runtime creates and the host fills, so it is `T` that is
- * read. JSON can't be written back, so a host extern takes nothing by `&`. An extern constant is
- * read once and the same value given to every read (§3.6), so it holds no resource, whose identity
- * each read would share. A std module's externs are the runtime's own and take values as they are.
+ * by the declared types, so each parameter's type must be `Encodable` and its result, or an extern
+ * constant's type, `Decodable`, as must what `main` gives its host. These sites cross to the host,
+ * where only codecs matter, so a disposable host type, which isn't sendable, still crosses to its
+ * own host (use-site.ts). A result of `Future<T>` is a future the runtime creates and the host
+ * fills, so it is `T` that is read. JSON can't be written back, so a host extern takes nothing by
+ * `&`. An extern constant is read once and the same value given to every read (§3.6), so it holds
+ * no resource, whose identity each read would share. A std module's externs are the runtime's own
+ * and take values as they are.
  *
  * A result may instead be a host handle (host-externs.ts), whose fields' functions each take and
  * give what any extern does.
@@ -19,10 +20,13 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { hostFilledOf, hostHandleOf, isHostExtern } from '../host-externs.ts';
 import type { JsonDirection } from '../json-form.ts';
+import { meets } from '../resolution/conformance.ts';
 import { isSendable } from '../traits/sendable.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument } from '../types/well-known.ts';
+import { hostSite, useSite } from '../use-site.ts';
+import { jsonConstraint } from './json-forms/index.ts';
 
 /** Reports each type of the extern `node` declares, in `module`, that can't cross as JSON. */
 export function checkHostBoundary(
@@ -33,14 +37,8 @@ export function checkHostBoundary(
   if (!isHostExtern(checker, node)) {
     return;
   }
-  /** Whether `type` crosses as JSON `direction`, reporting why at `at` when it doesn't. */
-  const crossing = (at: NodeOf<string>, type: Type, direction: JsonDirection): boolean => {
-    const problem = checker.json.problemOf(type, direction);
-    if (problem !== undefined) {
-      checker.report(module, checkerDiagnostics.noJsonForm(at.span, typeText(type), problem));
-    }
-    return problem === undefined;
-  };
+  const crossing = (at: NodeOf<string>, type: Type, direction: JsonDirection): boolean =>
+    crossesToHost(checker, { module, at }, type, direction);
   if (node.kind === 'ExternConstantDeclaration') {
     const type = checker.resolveType(module, node.type);
     if (crossing(node.type, type, 'read') && !isSendable(checker, type)) {
@@ -74,4 +72,18 @@ export function checkHostBoundary(
     takes(field.parameters, () => resultAt);
     crossing(resultAt, hostFilledOf(checker, field) ?? field.result, 'read');
   }
+}
+
+/**
+ * Whether `type` crosses to the host as JSON `direction` where it stands, `at` in `module`,
+ * reporting there why when it doesn't.
+ */
+export function crossesToHost(
+  checker: CheckerContext,
+  { module, at }: { readonly module: ModuleId; readonly at: NodeOf<string> },
+  type: Type,
+  direction: JsonDirection,
+): boolean {
+  const site = hostSite(useSite(checker, module, at.span));
+  return meets(site, type, jsonConstraint(checker, direction));
 }

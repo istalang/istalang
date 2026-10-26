@@ -38,6 +38,7 @@ import type { CollectionForms } from './expressions/collections.ts';
 import type { StructLiterals } from './expressions/literal-fields.ts';
 import type { OptionalChains } from './expressions/optionals.ts';
 import type { FrontierConstruct } from './frontier.ts';
+import type { JsonCodecs } from './json-form.ts';
 import type { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
 import type { ImplicitCalls } from './resolution/implicit.ts';
@@ -73,6 +74,8 @@ export interface CheckerContext extends Checker {
     module: LanguageModule,
     name: string,
   ) => readonly FunctionDeclaration[];
+  /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§9). */
+  readonly json: JsonCodecs;
   /** The prelude's `Optional`, which the implicit wrap fills (§2); undefined without a prelude. */
   readonly optionalEntity: OptionalEntity;
   /** How many wraps into `Some` make `found` fit `expected`; undefined when nothing does (§2). */

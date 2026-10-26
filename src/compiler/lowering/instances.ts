@@ -91,7 +91,9 @@ export function substitutionOf(instance: FunctionInstance): Substitution {
 
 /** The instance a call resolved inside the body of `within` targets. */
 export function calleeOf(resolved: ResolvedCall, within: BodyOwner): FunctionInstance {
-  return instanceOfCall(close(resolved, within.kind === 'function' ? within.instance : undefined));
+  return instanceOfCall(
+    closeCall(resolved, within.kind === 'function' ? within.instance : undefined),
+  );
 }
 
 /** The instance a closed call targets: its function, every type concrete. */
@@ -203,7 +205,10 @@ export function instanceName(checker: Checker, instance: FunctionInstance): stri
  * `resolved`, closed inside `within`: type arguments substituted, requirements their witnesses.
  * A constant's value is within no instance, so nothing in it names a type parameter.
  */
-function close(resolved: ResolvedCall, within: FunctionInstance | undefined): FunctionCall {
+export function closeCall(
+  resolved: ResolvedCall,
+  within: FunctionInstance | undefined,
+): FunctionCall {
   const substitution =
     within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
   if (resolved.kind === 'function') {
@@ -237,7 +242,7 @@ function closeWitnesses(witnesses: Witnesses, within: FunctionInstance | undefin
   return new Map(
     [...witnesses].map(([parameter, constraints]) => [
       parameter,
-      constraints.map((calls) => calls.map((call) => close(call, within))),
+      constraints.map((calls) => calls.map((call) => closeCall(call, within))),
     ]),
   );
 }

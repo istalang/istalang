@@ -64,7 +64,7 @@ export const jsonNatives: Natives<NativeContext & WithResources> = {
   [nativeKey(jsonName, '_refuse', string)]: ([message]) => {
     throw new Refusal('unfitJson', text(message));
   },
-  [nativeKey(jsonName, '_encodeFloat', primitiveKey('float'))]: ([value], context) =>
+  [nativeKey(jsonName, 'toJson', primitiveKey('float'))]: ([value], context) =>
     jsonOfPlain(Number.isFinite(float(value)) ? float(value) : null, jsonTypeOf(context.types)),
   [nativeKey(
     jsonName,

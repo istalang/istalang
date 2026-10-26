@@ -35,6 +35,7 @@ import {
 import { rootInstance } from '../instances.ts';
 import { keyOf } from '../names.ts';
 import type { DefinitionTables, StartTarget } from '../tables.ts';
+import { codecCall } from './codec-calls.ts';
 import { inboundOf } from './inbound.ts';
 
 /** A function a host may start: what it is, the key it goes by, and its signature. */
@@ -122,10 +123,11 @@ function lambdaStartable(
 
 /** `startable` when what it takes can be read from JSON and what it gives written. */
 function crossing(checker: Checker, startable: Startable): Startable | undefined {
+  const module = checker.moduleOf(startable.target);
   const readable = startable.parameters.every(
-    (type) => checker.json.problemOf(type, 'read') === undefined,
+    (type) => checker.json.codecOf(type, 'read', module) !== undefined,
   );
-  return readable && checker.json.problemOf(startable.outcome, 'write') === undefined
+  return readable && checker.json.codecOf(startable.outcome, 'write', module) !== undefined
     ? startable
     : undefined;
 }
@@ -137,11 +139,15 @@ export function startEntry(
 ): CodeFunction {
   const { checker, tables } = lowering;
   const { target, parameters, outcome, key } = startable;
+  const site = { module: checker.moduleOf(target), within: undefined };
   const edges: StartEdges = {
     parameters: parameters.map((type, index) =>
-      inboundOf(checker, type, codecHelpers.hostInput, `${key} argument ${index + 1}`),
+      inboundOf(checker, site, type, {
+        accept: codecHelpers.hostInput,
+        path: `${key} argument ${index + 1}`,
+      }),
     ),
-    outcome: checker.json.encoderOf(outcome),
+    outcome: codecCall(checker, site, outcome, 'write'),
     self: undefined,
   };
   const header = tables.declarationHeader(target);

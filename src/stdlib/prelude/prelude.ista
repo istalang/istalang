@@ -209,11 +209,6 @@ trait Stringable:
 trait Parsable:
   fn Self.parse(text: string) -> Result<Self>
 
-# Derived, like Sendable: a sendable type with a JSON form to write, or to read (§9).
-trait Encodable
-
-trait Decodable
-
 # Names the suspension point of the statement it annotates, for tests and operators (§10).
 struct Waypoint:
   label: string

@@ -21,11 +21,9 @@ import type { Annotatable } from '../../syntax/annotations.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
-import { checkHostBoundary } from '../rules/host-boundary.ts';
+import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
 import { type GenericDeclaration, typeParametersOf } from '../types/resolve-type.ts';
-import { typeText } from '../types/type-text.ts';
 import { futureArgument } from '../types/well-known.ts';
 import { checkFiniteFields } from './struct-rules.ts';
 
@@ -55,21 +53,14 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   }
 }
 
-/** `main` gives its host an outcome as JSON (§9), so what it gives must have a JSON form. */
+/** `main` gives its host an outcome as JSON (§9), so what it gives must be `Encodable`. */
 function checkOutcome(checker: CheckerContext, node: FunctionDeclaration, module: ModuleId): void {
   if (node.name.text !== entryFunction || isStdModule(checker.program, module)) {
     return;
   }
   const result = checker.resultOf(node);
   const outcome = futureArgument(checker, result) ?? result;
-  const problem = checker.json.problemOf(outcome, 'write');
-  if (problem !== undefined) {
-    const at = node.returnType ?? node.name;
-    checker.report(
-      module,
-      checkerDiagnostics.unprintableOutcome(at.span, typeText(outcome), problem),
-    );
-  }
+  crossesToHost(checker, { module, at: node.returnType ?? node.name }, outcome, 'write');
 }
 
 /** Checks the annotations on a declaration none may stand on, which `description` names. */

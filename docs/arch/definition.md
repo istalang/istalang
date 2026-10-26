@@ -148,7 +148,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable`, `disposal` (§7) and, for `Shared` and `Future`, its `role` |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
-| `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; the codecs are compiled from the checker's JSON forms, which read them |
+| `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; derived codecs are compiled from the checker's derived forms, which read them |
 | Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` an `Optional` variant |
 | Array literal and spread (§2) | `array` with item and spread elements; a spread spreads the array a call to its operand's `iterate` gives |
 | Map literal (§2) | `map` for a `Map`, a spread spreading the `(key, value)` tuples `iterate` gives; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
@@ -215,6 +215,6 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `main` (§9) | `Definition.main`, the default start: `main`'s entry in `starts` |
 | Host starts an instance, operates a panicked one (§3.12, §9) | a start entry per startable function, listed in `starts` by key: the function's body with its arguments decoded from `Json` and every return encoded; the runtime's host API over Definitions and snapshots, the snapshot's `status` recording panics, outcomes and termination |
 | `spawn f(args)` (§9) | `spawn` with the call's callee, a function or the value of a sendable function type, and its arguments, a method's receiver first, all by value |
-| Values crossing the host boundary (§9), `json.encode`, `json.decode` | compiled codecs: the body of each `json.encode<T>` and `json._decodeAt<T>` instance, written from `T`'s JSON form (docs/arch/boundary.md) |
+| Values crossing the host boundary (§9), `json.encode`, `json.decode` | each type's codecs, `toJson` and `fromJson`: declared functions, or derived ones, the body of each `json._toJson<T>` and `json._fromJson<T>` instance, written from `T`'s derived form (docs/arch/boundary.md) |
 | `@Suite`, `mock`, `testing.start`, `handle<T>()` (§10) | function annotations; natives over the function table and the host API |
 | `crashEveryAwait` (§10) | an option of each instance, kept in its snapshot: every segment runs twice before it commits |
