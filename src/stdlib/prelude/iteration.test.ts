@@ -11,6 +11,17 @@ import { mainGives } from './prelude.test-kit.ts';
 
 const ends = fc.integer({ min: -5, max: 5 });
 
+/** Printable ASCII a string literal holds as it is. */
+const plain = /^[ !#-[\]-~]$/u;
+
+/** `text` as a string literal, each code point but plain ASCII escaped as `\u{…}`. */
+function literalOf(text: string): string {
+  const points = [...text].map((point) =>
+    plain.test(point) ? point : `\\u{${point.codePointAt(0)?.toString(16)}}`,
+  );
+  return `"${points.join('')}"`;
+}
+
 describe('a cursor', () => {
   it('gives the ints from a range start below its end, and nothing from any other', () => {
     fc.assert(
@@ -39,11 +50,7 @@ describe('a cursor', () => {
   it("gives a string's code points, astral ones whole", () => {
     fc.assert(
       fc.property(fc.string({ unit: 'binary', maxLength: 6 }), (text) => {
-        const literal = JSON.stringify(text).replaceAll(
-          /\\u(?<code>[\da-f]{4})/giu,
-          '\\u{$<code>}',
-        );
-        expect(mainGives('Array<string>', `[for c in ${literal}: c]`)).toEqual([...text]);
+        expect(mainGives('Array<string>', `[for c in ${literalOf(text)}: c]`)).toEqual([...text]);
       }),
       { numRuns: 10 },
     );
