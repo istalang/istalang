@@ -1,0 +1,83 @@
+# outcome: "10 1|10 1|7 5|10 1|10 1 1|1 5"
+# Writing a part of a value reached through a handle or an element (§3.7, §3.9) changes that part
+# of the value as it is when the write happens, so whatever changed another part meanwhile stays
+# changed: the right side of a compound assignment, the call a part is passed to by `&`, or
+# another execution while an `await` waits.
+
+import * as time from 'time'
+
+shared struct Counter:
+  a: int
+  b: int
+
+struct P:
+  a: int
+  b: int
+
+shared struct Board:
+  rows: Array<P>
+  touched: int
+
+fn bumpB(c: Counter) -> int:
+  c->b += 1
+  10
+
+fn setBoth(x: &int, c: Counter):
+  c->b = 5
+  x = 7
+
+fn compound() -> string:
+  const c = new Counter{a: 0, b: 0}
+  c->a += bumpB(c)
+  show(c->a, c->b)
+
+fn desugared() -> string:
+  const c = new Counter{a: 0, b: 0}
+  c->a = c->a + bumpB(c)
+  show(c->a, c->b)
+
+fn referenced() -> string:
+  const c = new Counter{a: 0, b: 0}
+  setBoth(&c->a, c)
+  show(c->a, c->b)
+
+fn element() -> string:
+  let xs = [P{a: 0, b: 0}]
+  fn g() -> int:
+    xs[0].b = 1
+    10
+  xs[0].a += g()
+  show(xs[0].a, xs[0].b)
+
+fn nested() -> string:
+  const board = new Board{rows: [P{a: 0, b: 0}], touched: 0}
+  fn g() -> int:
+    board->rows[0].b = 1
+    board->touched = 1
+    10
+  board->rows[0].a += g()
+  show(board->rows[0].a, board->rows[0].b) + " " + string(board->touched)
+
+async fn later() -> Future<int>:
+  await time.delay(10ms)
+  1
+
+async fn writeB(c: Counter):
+  await time.delay(5ms)
+  c->b = 5
+
+async fn bumpLater(c: Counter):
+  c->a += await later()
+
+async fn awaited() -> Future<string>:
+  const c = new Counter{a: 0, b: 0}
+  const w = writeB(c)
+  await bumpLater(c)
+  await w
+  show(c->a, c->b)
+
+fn show(a: int, b: int) -> string:
+  string(a) + " " + string(b)
+
+async fn main() -> Future<string>:
+  [compound(), desugared(), referenced(), element(), nested(), await awaited()].join("|")

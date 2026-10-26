@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-26
-last_updated: 2026-10-26
+last_updated: 2026-10-27
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -78,7 +78,7 @@ A referent has one `weakRef`, so `WeakRef(a) == WeakRef(a)`. Once a disposed obj
 
 A place is a register plus a path of field positions. A tuple element is a field by position, as `field` reads it. `store` writes a place with a non-empty path, and a `&` argument passes one; following a path never runs code.
 
-An indexed element is no step of a place, so every call a program makes is a `call` instruction, run on the scheduler's run stack. Lowering copies an element in, reading it with the `index` the checker resolved for its container into a register of its own, changes it there, and writes it back with `setIndex(&container, key, element)` (spec §3.7, §3.9). `a[i].b = v` is therefore `index`, a `store` to the copy, then `setIndex`; `a[i][j] = v` passes the copy of `a[i]` to the inner `setIndex` by `&`, so that copy is a cell; and `f(&m[k])` copies `m[k]` into a cell, calls `f`, then writes the cell's value back. A write that ends at an element is a `setIndex` alone, never reading the element first, since a map may not hold the key yet. Each key is computed once, before any element is read. The value behind a handle (`*x`) is copied in the same way, with `readCell` and `writeCell`, and a write of the whole value is a `writeCell` alone. The container a `setIndex` takes by `&` is a cell: the checker records a variable whose element is written as passed by `&`, as `x.push(v)` passing `&x` is.
+An indexed element is no step of a place, so every call a program makes is a `call` instruction, run on the scheduler's run stack. An element is reached through an accessor: read with the `index` the checker resolved for its container, written with `setIndex(&container, key, element)` (spec §3.7, §3.9). A place's handle and keys are computed once, in source order, when it is entered; a part behind an accessor is then read, and written, as the accessor's value stands at that moment. Writing it reads that value into a register of its own, stores the part, and writes it back, at each accessor from the innermost out, so a change made to another part between a compound assignment's read and its write stays. `a[i].b = v` is therefore `index`, a `store` to the read value, then `setIndex`; `a[i][j] = v` reads `a[i]` into a cell, which the inner `setIndex` takes by `&`, then writes it back; and `f(&m[k])` copies `m[k]` into a cell, calls `f`, then writes the cell's value back the same way. A write that ends at an element is a `setIndex` alone, never reading the element first, since a map may not hold the key yet. The value behind a handle (`*x`) is reached the same way, with `readCell` and `writeCell`, and a write of the whole value is a `writeCell` alone. The container a `setIndex` takes by `&` is a cell: the checker records a variable whose element is written as passed by `&`, as `x.push(v)` passing `&x` is.
 
 ## Values
 
@@ -179,13 +179,13 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Generic functions and types (§3.5) | one entry or type per instantiation |
 | `&x` argument, reference parameter (§3.7) | a place argument; `parameters[i].reference`; `x` is in `cells`; `&m[k]` copies the element into a cell around the call (Places) |
 | `new X{…}` (§3.18) | the fields' `struct`, then `newCell` with the shared struct's entry |
-| `*x`, `*x = v`, `x->f = v`, `&x->f` (§3.7, §3.9) | `readCell` and `writeCell` on the handle's cell; a part write or a `&` reads into a temporary, changes it there and writes it back (Places) |
+| `*x`, `*x = v`, `x->f = v`, `&x->f` (§3.7, §3.9) | `readCell` and `writeCell` on the handle's cell; a part write reads the value when it writes, stores the part and writes it back, and a `&` copies the part into a cell around its call (Places) |
 | Operators (§3.9) | a `call` to the resolved function |
 | `<`, `<=`, `>`, `>=` (§3.9) | a `compare` call, then `order` |
 | `==`, `!=` (§3.9) | `equal`, plus `not` for `!=` |
 | `not`, `and`, `or` (§3.9) | `not`; `branch` (short-circuit) |
 | `x[k]`, slicing (§3.9) | a call to the resolved `index` |
-| `x[k] = v`, `a[k].b = v`, `x[k] += 1` (§3.9) | a `setIndex` call taking the container by `&`; a deeper write copies each element in with `index` and writes it back with `setIndex` (Places); compound forms call `index` and the operator first |
+| `x[k] = v`, `a[k].b = v`, `x[k] += 1` (§3.9) | a `setIndex` call taking the container by `&`; a deeper write reads each element with `index` when it writes and writes it back with `setIndex` (Places); compound forms call `index` and the operator first |
 | `T(x)` (§3.10) | a call to `T.from` |
 | Trait-constrained calls, `T.zero()` (§3.10) | resolved per instantiation; plain calls |
 | `for x in c` (§3.10, §4) | a call to `iterate`, then a loop over the array it gives: its `length` once, each element by `index`, the position counted with the prelude's int `compare` (then `order`) and `add` |

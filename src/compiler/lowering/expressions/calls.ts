@@ -158,7 +158,7 @@ export function implicitCall(
 /** An argument as the call passes it, and for a place copied in, how it is written back. */
 interface PassedArgument {
   readonly argument: Argument;
-  readonly leave?: () => void;
+  readonly leave?: (() => void) | undefined;
 }
 
 /** How `argument` is passed: the place `&x` names, the receiver's place for a `&self`, or a value. */
@@ -174,8 +174,8 @@ function argumentOf(
   if (place === undefined) {
     return { argument: { kind: 'value', register: context.expression(argument) } };
   }
-  const { target, leave } = enterReferenced(context, place);
-  return { argument: { kind: 'reference', place: target.place }, leave };
+  const referenced = enterReferenced(context, place);
+  return { argument: { kind: 'reference', place: referenced.place }, leave: referenced.leave };
 }
 
 /** The place an argument passes by `&`: written `&x`, or a receiver taken as `&self`. */

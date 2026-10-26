@@ -8,15 +8,19 @@
  *   `move`. A register holding a cell or a reference is read and written through it by the
  *   runtime, so lowering emits the same instructions whatever the variable's storage is.
  * - An indexed element and the value behind a handle (`*x`) are reached through an accessor
- *   instead, a pair of reads and writes: copied in, read with the container's `index` (or the
- *   handle's `readCell`) into a register of their own, then changed there, and written back with
- *   `setIndex(&container, key, element)` (or `writeCell`) once the change is made. That makes an
- *   element passed by `&` copy-in/copy-out around its call.
- *   Each key is computed once, before any element is read, so reading and writing back see the
- *   same element. An assignment's last element isn't read first, since a map may not hold its key
- *   yet: it is written with `setIndex` directly.
- * - A register an element is copied into is a cell when something passes it on by `&`: a deeper
- *   element's `setIndex`, or the call the whole place is passed to.
+ *   instead, a pair of reads and writes: an element is read with its container's `index` and
+ *   written with `setIndex(&container, key, element)`, the value behind a handle with `readCell`
+ *   and `writeCell`. A place is located once, when entered: its handle and keys are computed then,
+ *   in source order, so reading and writing see the same parts.
+ * - A part behind an accessor is read and written as the accessor's value stands at that moment:
+ *   writing it reads that value, stores the part into it and writes it back, at each accessor from
+ *   the innermost out. So whatever changed another part between a compound assignment's read and
+ *   its write, or during the call a part is passed to by `&`, stays changed. An assignment ending
+ *   at an element doesn't read it, since a map may not hold its key yet: it is written with
+ *   `setIndex` directly.
+ * - A part behind an accessor passed by `&` is copied into a cell of its own, written back when
+ *   the call returns (copy-in/copy-out); so is an accessor's value whose element `setIndex` takes
+ *   by `&`.
  */
 
 import type { Place } from '../../definition/instructions/places.ts';
@@ -37,14 +41,6 @@ import type { CodeContext, FunctionContext } from './context.ts';
 import { emitCall } from './emit-call.ts';
 
 /**
- * What a changed place is once its accessors are copied in: a Definition place, or, for `a[k] = v`
- * or `*x = v`, the last accessor itself, which the assignment writes without reading it.
- */
-export type PlaceTarget =
-  | { readonly kind: 'place'; readonly place: Place }
-  | { readonly kind: 'accessor'; readonly accessor: Accessor };
-
-/**
  * A part of a place reached through a read and a write (§3.7, §3.9). An element is read with its
  * container's `index` and written with `setIndex(&container, key, element)`; the value behind a
  * handle is read with `readCell` and written with `writeCell`.
@@ -56,54 +52,48 @@ interface Accessor {
   readonly write: (value: Register) => void;
 }
 
-/** A place entered for a change: its target, and the write-backs that `leave` emits after it. */
-export interface EnteredPlace<Target extends PlaceTarget = PlaceTarget> {
-  readonly target: Target;
-  readonly leave: () => void;
+/** Where a place is: a Definition place, or field positions into the value an accessor reads. */
+type Location =
+  | { readonly kind: 'place'; readonly place: Place }
+  | { readonly kind: 'accessor'; readonly accessor: Accessor; readonly path: readonly number[] };
+
+/** A place entered for an assignment, read and written where it stands when each happens. */
+export interface AssignedPlace {
+  readonly read: (span: Span) => Register;
+  readonly write: (value: Register, span: Span) => void;
+}
+
+/** Enters the place `node` names for an assignment, computing its handle and keys. */
+export function enterAssigned(context: FunctionContext, node: Expression): AssignedPlace {
+  const location = locate(context, node);
+  return {
+    read: (span) => readAt(context, location, span),
+    write: (value, span) => writeAt(context, location, value, span),
+  };
+}
+
+/** A place passed by `&`, and what writes its copy back once the call returns. */
+export interface ReferencedPlace {
+  readonly place: Place;
+  readonly leave: (() => void) | undefined;
 }
 
 /**
- * Enters the place `node` names for an assignment: every accessor but a last one is copied in, so
- * the target is a Definition place or, for `a[k] = v` or `*x = v`, the accessor itself.
+ * Enters the place `node` names to pass it by `&`: a Definition place as it is, a part behind an
+ * accessor copied into a cell and written back by `leave`.
  */
-export function enterAssigned(context: FunctionContext, node: Expression): EnteredPlace {
-  return enter(context, node, 'assigned');
-}
-
-/** Enters the place `node` names to pass it by `&`: every accessor is copied in, into a cell. */
-export function enterReferenced(
-  context: FunctionContext,
-  node: Expression,
-): EnteredPlace<Extract<PlaceTarget, { kind: 'place' }>> {
-  const { target, leave } = enter(context, node, 'referenced');
-  if (target.kind !== 'place') {
-    unreachable('A referenced place ended at an accessor it did not copy in.');
+export function enterReferenced(context: FunctionContext, node: Expression): ReferencedPlace {
+  const location = locate(context, node);
+  if (location.kind === 'place') {
+    return { place: location.place, leave: undefined };
   }
-  return { target, leave };
-}
-
-/** The value at `target`. */
-export function readTarget(context: FunctionContext, target: PlaceTarget, span: Span): Register {
-  if (target.kind === 'place') {
-    return readPlace(context, target.place, span);
-  }
-  return target.accessor.read(span);
-}
-
-/** Writes `value` to `target`. */
-export function writeTarget(
-  context: FunctionContext,
-  target: PlaceTarget,
-  value: Register,
-  span: Span,
-): void {
-  if (target.kind === 'accessor') {
-    target.accessor.write(value);
-  } else if (target.place.path.length === 0) {
-    context.code.emit({ kind: 'move', span, dst: target.place.register, src: value });
-  } else {
-    context.code.emit({ kind: 'store', span, place: target.place, value });
-  }
+  const cell = cellRegister(context, context.body.typeOf(node));
+  const src = readAt(context, location, node.span);
+  context.code.emit({ kind: 'move', span: node.span, dst: cell, src });
+  return {
+    place: { register: cell, path: [] },
+    leave: () => writeAt(context, location, cell, node.span),
+  };
 }
 
 /** The register the variable `node` names lives in. */
@@ -148,85 +138,100 @@ export function fieldIndexOf(
   return index;
 }
 
-type PlaceUse = 'assigned' | 'referenced';
-
-/** Computes the place's keys, copies in its root and accessors, and returns its target. */
-function enter(context: FunctionContext, node: Expression, use: PlaceUse): EnteredPlace {
+/** Locates the place `node` names: its root, then each step, computing handle and keys in order. */
+function locate(context: FunctionContext, node: Expression): Location {
   const { root, steps } = placePath(node);
-  const lowered = steps.map((step) =>
-    step.kind === 'Index'
-      ? { step, key: context.expression(step.index) }
-      : fieldPosition(context, step),
-  );
-  const lastIndex = steps.findLastIndex((step) => step.kind === 'Index');
-  const writeBacks: (() => void)[] = [];
-  const leave = () => {
-    for (const writeBack of writeBacks.toReversed()) {
-      writeBack();
-    }
-  };
-  /** Whether the register copied in before step `position` is passed on by `&`. */
-  const passedOn = (position: number) => use === 'referenced' || position <= lastIndex;
-  if (root.kind !== 'Identifier' && use === 'assigned' && lowered.length === 0) {
-    return { target: { kind: 'accessor', accessor: sharedAccessor(context, root) }, leave };
-  }
-  let current =
+  let location: Location =
     root.kind === 'Identifier'
-      ? { register: variableRegister(context, root), path: [] }
-      : copyIn(context, sharedAccessor(context, root), passedOn(0), writeBacks);
-  for (const [position, step] of lowered.entries()) {
-    if (typeof step === 'number') {
-      current = { ...current, path: [...current.path, step] };
+      ? { kind: 'place', place: { register: variableRegister(context, root), path: [] } }
+      : { kind: 'accessor', accessor: sharedAccessor(context, root), path: [] };
+  for (const step of steps) {
+    if (step.kind === 'Index') {
+      const key = context.expression(step.index);
+      const accessor = elementAccessor(context, location, key, step);
+      location = { kind: 'accessor', accessor, path: [] };
     } else {
-      const accessor = elementAccessor(context, current, step.key, step.step);
-      if (use === 'assigned' && position === lowered.length - 1) {
-        return { target: { kind: 'accessor', accessor }, leave };
-      }
-      current = copyIn(context, accessor, passedOn(position + 1), writeBacks);
+      location = withField(location, fieldPosition(context, step));
     }
   }
-  return { target: { kind: 'place', place: current }, leave };
+  return location;
 }
 
-/** Copies in what `accessor` reads, to be written back once the change is made. */
-function copyIn(
-  context: FunctionContext,
-  accessor: Accessor,
-  passedOn: boolean,
-  writeBacks: (() => void)[],
-): Place {
-  const value = copyRegister(context, accessor.node, passedOn);
-  accessor.read(accessor.node.span, value);
-  writeBacks.push(() => {
-    accessor.write(value);
+/** `location` one field position deeper. */
+function withField(location: Location, index: number): Location {
+  return location.kind === 'place'
+    ? { ...location, place: { ...location.place, path: [...location.place.path, index] } }
+    : { ...location, path: [...location.path, index] };
+}
+
+/** Reads the value at `location` as it stands now. */
+function readAt(context: FunctionContext, location: Location, span: Span): Register {
+  if (location.kind === 'place') {
+    return readPlace(context, location.place, span);
+  }
+  const { accessor, path } = location;
+  return readPlace(context, { register: accessor.read(span), path: [...path] }, span);
+}
+
+/** Writes `value` at `location`: a part behind an accessor into its value as it stands now. */
+function writeAt(context: FunctionContext, location: Location, value: Register, span: Span): void {
+  if (location.kind === 'accessor' && location.path.length === 0) {
+    location.accessor.write(value);
+    return;
+  }
+  changeAt(context, location, false, (place) => {
+    if (place.path.length === 0) {
+      context.code.emit({ kind: 'move', span, dst: place.register, src: value });
+    } else {
+      context.code.emit({ kind: 'store', span, place, value });
+    }
   });
-  return { register: value, path: [] };
 }
 
-/** A register to copy `node`'s value into: a cell when it is passed on by `&`. */
-function copyRegister(context: FunctionContext, node: Expression, passedOn: boolean): Register {
-  return passedOn ? cellRegister(context, context.body.typeOf(node)) : context.code.allocate();
+/**
+ * Runs `change` on `location` as a Definition place: an accessor's value is read into a register,
+ * a cell when `change` passes it on by `&`, changed, then written back.
+ */
+function changeAt(
+  context: FunctionContext,
+  location: Location,
+  passedOn: boolean,
+  change: (place: Place) => void,
+): void {
+  if (location.kind === 'place') {
+    change(location.place);
+    return;
+  }
+  const { accessor, path } = location;
+  const register = passedOn
+    ? cellRegister(context, context.body.typeOf(accessor.node))
+    : context.code.allocate();
+  accessor.read(accessor.node.span, register);
+  change({ register, path: [...path] });
+  accessor.write(register);
 }
 
 /** The element of `container` at `key`, read and written with the calls the checker made at `node`. */
 function elementAccessor(
   context: FunctionContext,
-  container: Place,
+  container: Location,
   key: Register,
   node: Index,
 ): Accessor {
   return {
     node,
     read: (span, dst) => {
-      const value = readPlace(context, container, span);
+      const value = readAt(context, container, span);
       const callee = context.calleeIndex(node);
       return emitCall(context, { span, callee, arguments: [value, key] }, dst);
     },
     write: (value) => {
-      emitCall(context, {
-        span: node.span,
-        callee: context.implicitCallee(node, 'write'),
-        arguments: [{ kind: 'reference', place: container }, key, value],
+      changeAt(context, container, true, (place) => {
+        emitCall(context, {
+          span: node.span,
+          callee: context.implicitCallee(node, 'write'),
+          arguments: [{ kind: 'reference', place }, key, value],
+        });
       });
     },
   };

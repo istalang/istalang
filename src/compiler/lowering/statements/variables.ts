@@ -33,14 +33,7 @@ import {
 } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
 import { call } from '../expressions/calls.ts';
-import {
-  cellRegister,
-  enterAssigned,
-  type PlaceTarget,
-  readPart,
-  readTarget,
-  writeTarget,
-} from '../places.ts';
+import { type AssignedPlace, cellRegister, enterAssigned, readPart } from '../places.ts';
 
 /** A register holding a cell, and the `_Cell<T>` type entry it is created as. */
 export interface CellRegister {
@@ -200,9 +193,7 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
   const parts = context.body.assignedOf(node);
   const [only] = parts;
   if (node.operator !== '=' && only !== undefined) {
-    const { target, leave } = enterAssigned(context, only.target);
-    lowerCompound(context, node, target, only);
-    leave();
+    lowerCompound(context, node, enterAssigned(context, only.target), only);
     return;
   }
   const value = context.expression(node.value);
@@ -210,23 +201,25 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
     context.variables.hold(copied(context, value, node.span));
   }
   for (const part of parts) {
-    const { target, leave } = enterAssigned(context, part.target);
+    const place = enterAssigned(context, part.target);
     const read = readPart(context, value, part.path, node.span);
-    writeTarget(context, target, writtenPart(context, read, part, node.span), node.span);
-    leave();
+    place.write(writtenPart(context, read, part, node.span), node.span);
   }
 }
 
-/** `x op= v` at `target`: its value read once, the operator's function called, the result written. */
+/**
+ * `x op= v` at `place`: read before `v` is computed, the operator's function called, the result
+ * written as `x = x op v` writes it (§3.9).
+ */
 function lowerCompound(
   context: FunctionContext,
   node: Assignment,
-  target: PlaceTarget,
+  place: AssignedPlace,
   part: AssignedPart,
 ): void {
-  const current = readTarget(context, target, node.span);
+  const current = place.read(node.span);
   const result = call(context, node, [current, context.expression(node.value)]);
-  writeTarget(context, target, writtenPart(context, result, part, node.span), node.span);
+  place.write(writtenPart(context, result, part, node.span), node.span);
 }
 
 /** `value`, the part of an assignment's value `part` writes, wrapped to fit its place (§2). */
