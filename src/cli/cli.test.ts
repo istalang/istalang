@@ -3,12 +3,11 @@
  * behaviour, and once through the `ista` executable to cover the process boundary.
  */
 
-import { spawnSync } from 'node:child_process';
 import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { describe, expect, it } from 'vitest';
-import { builtCli, ista, tempProject as project } from './cli.test-kit.ts';
+import { builtCli, ista, istaProcess, tempProject as project } from './cli.test-kit.ts';
 
 const summaryOfOneError = /1 error, 0 warnings\.\n$/u;
 const otherPeoplesCode = /node_modules|vendor|hidden/u;
@@ -105,11 +104,9 @@ describe('ista', () => {
   });
 
   it('runs as the built executable, exiting with the code of the command', () => {
-    const main = builtCli;
-    expect(existsSync(main), 'the test setup builds dist/cli/main.js').toBe(true);
-    const root = project({ 'main.ista': 'fn f(: 1\n' });
-    const result = spawnSync(process.execPath, [main, 'check'], { cwd: root, encoding: 'utf8' });
-    expect(result.status).toBe(1);
-    expect(result.stdout).toContain('main.ista:1:');
+    expect(existsSync(builtCli), 'the test setup builds dist/cli/main.js').toBe(true);
+    const run = istaProcess(project({ 'main.ista': 'fn f(: 1\n' }), 'check');
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('main.ista:1:');
   });
 });

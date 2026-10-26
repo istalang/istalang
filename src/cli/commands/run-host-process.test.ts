@@ -5,10 +5,8 @@
  * executable is the thing to run.
  */
 
-import { spawnSync } from 'node:child_process';
-import process from 'node:process';
 import { describe, expect, it } from 'vitest';
-import { builtCli, tempProject as project } from '../cli.test-kit.ts';
+import { istaProcess, tempProject as project } from '../cli.test-kit.ts';
 
 const nodeWarning = /unsettled top-level await/u;
 const hostFailed = /^ista: the host's main\.bad\(\) failed: Error: x\n/u;
@@ -20,11 +18,7 @@ function runProcess(program: readonly string[], host: readonly string[]) {
     'main.ista': [...program, ''].join('\n'),
     'host.mjs': ['export default {', ...host, '};', ''].join('\n'),
   });
-  return spawnSync(process.execPath, [builtCli, 'run', 'main.ista', '--host', 'host.mjs'], {
-    cwd: root,
-    encoding: 'utf8',
-    timeout: 20_000,
-  });
+  return istaProcess(root, 'run', 'main.ista', '--host', 'host.mjs');
 }
 
 describe('ista run --host as a process', () => {
@@ -42,10 +36,10 @@ describe('ista run --host as a process', () => {
         "  'main.bad()': () => Promise.reject(new Error('x')),",
       ],
     );
-    expect(run.stderr).toMatch(hostFailed);
-    expect(run.stderr).toMatch(mainStuck);
-    expect(run.stderr).not.toMatch(nodeWarning);
-    expect(run.status).toBe(1);
+    expect(run.err).toMatch(hostFailed);
+    expect(run.err).toMatch(mainStuck);
+    expect(run.err).not.toMatch(nodeWarning);
+    expect(run.code).toBe(1);
   });
 
   it("exits 1, saying where main waits, when the host's only promise never settles", () => {
@@ -53,8 +47,8 @@ describe('ista run --host as a process', () => {
       ['extern fn never() -> Future<int>', 'async fn main() -> Future<int>:', '  await never()'],
       ["  'main.never()': () => new Promise(() => {}),"],
     );
-    expect(run.stderr).toMatch(mainStuck);
-    expect(run.stderr).not.toMatch(nodeWarning);
-    expect(run.status).toBe(1);
+    expect(run.err).toMatch(mainStuck);
+    expect(run.err).not.toMatch(nodeWarning);
+    expect(run.code).toBe(1);
   });
 });

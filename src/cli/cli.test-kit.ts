@@ -4,9 +4,11 @@
  * will.
  */
 
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { afterEach } from 'vitest';
 import { runCli } from './cli.ts';
@@ -35,7 +37,8 @@ export function tempProject(files: Readonly<Record<string, string>>): string {
 
 /** What one `ista` run produced. */
 export interface Run {
-  readonly code: number;
+  /** Its exit code; null for a process a signal ended, such as one past its time limit. */
+  readonly code: number | null;
   readonly out: string;
   readonly err: string;
 }
@@ -56,4 +59,17 @@ export async function ista(cwd: string, ...args: string[]): Promise<Run> {
     idle: new Promise(() => undefined),
   });
   return { code, out, err };
+}
+
+/**
+ * Runs the built `ista` executable with `args` in `cwd`, as a process of its own: what only a real
+ * process shows, such as its exit code once nothing is left to run.
+ */
+export function istaProcess(cwd: string, ...args: string[]): Run {
+  const run = spawnSync(process.execPath, [builtCli, ...args], {
+    cwd,
+    encoding: 'utf8',
+    timeout: 20_000,
+  });
+  return { code: run.status, out: run.stdout, err: run.stderr };
 }
