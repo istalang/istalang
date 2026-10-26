@@ -42,7 +42,9 @@ fn stringify<T is Encodable>(value: T) -> string:
   _write(value.toJson())
 
 fn parse<T is Decodable>(text: string) -> Result<T>:
-  T.fromJson(_read(text)?, "$")
+  match _read(text):
+    case Ok{value}: T.fromJson(value, "$")
+    case Err{error}: Err{error: _error(error)}
 
 # The codecs of a type that crosses as the text its toString writes, read back through its parse,
 # such as `Time` and `Duration`: a type declares its own as one call to each.
@@ -79,7 +81,7 @@ extern fn _refuse(message: string) -> never
 # JSON text: written as JavaScript's JSON.stringify writes it, and read with integers kept exact.
 extern fn _write(json: Json) -> string
 
-extern fn _read(text: string) -> Result<Json>
+extern fn _read(text: string) -> Result<Json, string>
 
 # Writing. A float JSON can't hold, NaN or an infinity, is written as null, as JavaScript does; an
 # object's keys are sorted when it is written, so equal values give the same JSON.
@@ -198,11 +200,11 @@ fn _field(fields: Map<string, Json>, name: string, path: string) -> Result<Json>
 fn _optionalField(fields: Map<string, Json>, name: string) -> Json:
   fields.get(name) ?? Null
 
-fn _tag(fields: Map<string, Json>, path: string) -> Result<string>:
-  string.fromJson(_field(fields, "type", path)?, _fieldPath(path, "type"))
+fn _tag(fields: Map<string, Json>, key: string, path: string) -> Result<string>:
+  string.fromJson(_field(fields, key, path)?, _fieldPath(path, key))
 
-fn _unknownVariant<T>(tag: string, path: string) -> Result<T>:
-  _failure(_fieldPath(path, "type"), "names no variant '" + tag + "'")
+fn _unknownVariant<T>(tag: string, key: string, path: string) -> Result<T>:
+  _failure(_fieldPath(path, key), "names no variant '" + tag + "'")
 
 fn _elements(json: Json, path: string, count: int) -> Result<Array<Json>>:
   match json:
@@ -231,7 +233,11 @@ fn _mismatch<T>(json: Json, path: string, expected: string) -> Result<T>:
   _failure(path, "expected " + expected + ", found " + _kind(json))
 
 fn _failure<T>(path: string, message: string) -> Result<T>:
-  Err{error: Error{message: path + ": " + message, code: "json"}}
+  Err{error: _error(path + ": " + message)}
+
+# The Error every read of JSON fails with.
+fn _error(message: string) -> Error:
+  Error{message: message, code: "json"}
 
 fn _kind(json: Json) -> string:
   match json:

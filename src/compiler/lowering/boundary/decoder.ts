@@ -11,7 +11,7 @@ import type { Register } from '../../../definition/operands.ts';
 import { type CodecHelper, codecHelpers, resultVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionCall } from '../../checker/check.ts';
-import type { DerivedForm, JsonField } from '../../checker/json-form.ts';
+import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { closeCall } from '../instances.ts';
 import { codecCall } from './codec-calls.ts';
@@ -77,7 +77,7 @@ export class Decoder {
     return codecCall(this.#code.checker, undefined, type, 'read');
   }
 
-  /** The variant its `"type"` names, each variant tried in order, else an `Err`. */
+  /** The variant its tag names, each variant tried in order, else an `Err`. */
   #enum(
     form: Extract<DerivedForm, { kind: 'enum' }>,
     type: Type,
@@ -89,7 +89,8 @@ export class Decoder {
       unreachable('An enum form is of a nominal type.');
     }
     const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
-    const tag = this.#passed(code.call(this.#helper(codecHelpers.tag), [fields, path]));
+    const key = code.constant(variantTagKey);
+    const tag = this.#passed(code.call(this.#helper(codecHelpers.tag), [fields, key, path]));
     for (const variant of form.variants) {
       const matched = code.code.newLabel();
       const next = code.code.newLabel();
@@ -103,7 +104,7 @@ export class Decoder {
       code.code.place(next);
     }
     code.return(
-      code.call(code.checker.json.callOf(codecHelpers.unknownVariant, [type]), [tag, path]),
+      code.call(code.checker.json.callOf(codecHelpers.unknownVariant, [type]), [tag, key, path]),
     );
   }
 

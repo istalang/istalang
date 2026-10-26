@@ -96,6 +96,11 @@ export function resultOkStruct(context: NativeContext, fields: Value[]): Value {
   return resultOk(context, { kind: 'struct', type: held.type, fields });
 }
 
+/** `Err` of `error`, of the extern's declared `Result` type (§3.12). */
+export function resultErr(context: NativeContext, error: Value): Value {
+  return resultVariant(context, resultVariants.err, [error]);
+}
+
 /**
  * `Err` of an `Error` with `message` and `code`, of the extern's declared `Result` type; its trace
  * is the frames running the native, as an `Error` literal without one gets (§3.12).
@@ -106,7 +111,7 @@ export function resultError(context: NativeContext, message: string, code: strin
     unreachable(`${context.name} doesn't return a Result of an Error.`);
   }
   const fields = [message, code, context.trace()];
-  return resultVariant(context, resultVariants.err, [{ kind: 'struct', type: error.type, fields }]);
+  return resultErr(context, { kind: 'struct', type: error.type, fields });
 }
 
 /** Variant `name` of the enum the extern declares as its result, holding `fields`. */

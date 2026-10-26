@@ -4,8 +4,8 @@
  * A struct, an enum, a tuple or a host type declaring neither has both derived by the compiler from
  * its form, decided here once per type, which lowering writes the derived codecs from.
  *
- * - A struct is an object of its fields, an enum the same with a `"type"` tag naming the variant, a
- *   tuple an array, a host type whatever JSON its host gave it.
+ * - A struct is an object of its fields, an enum the same with a tag naming the variant
+ *   (`variantTagKey`), a tuple an array, a host type whatever JSON its host gave it.
  * - What a struct, an enum or a tuple holds crosses through its own codecs, which are coherent
  *   witnesses (§3.10), so a derived codec is the same wherever its type is used.
  * - A codec declared for a type is a witness found as any is: beside the type, or in the json
@@ -14,8 +14,8 @@
  * - A derived codec exists when everything it holds meets the trait. A
  *   recursive type counts as meeting it while its own parts are decided, as Sendable does.
  * - What has no codec says why, in words a diagnostic finishes ("it needs …"): a nested optional,
- *   whose two nones JSON can't tell apart; an enum with a field named `type`, which the tag uses; a
- *   function; a handle.
+ *   whose two nones JSON can't tell apart; an enum with a field named as the tag; a function; a
+ *   handle.
  */
 
 import {
@@ -39,6 +39,7 @@ import {
   type JsonDirection,
   type JsonField,
   jsonTraits,
+  variantTagKey,
 } from '../../json-form.ts';
 import { declaresWitness, witnessesFor } from '../../resolution/conformance.ts';
 import { callWithTypes } from '../../resolution/typed-call.ts';
@@ -220,13 +221,13 @@ export class JsonForms implements JsonCodecs {
       fields: variant.fields.map((field) => this.#field(field)),
     }));
     const colliding = variants.find((variant) =>
-      variant.fields.some((field) => field.key === 'type'),
+      variant.fields.some((field) => field.key === variantTagKey),
     );
     return colliding === undefined
       ? { kind: 'enum', variants }
       : {
           kind: 'none',
-          reason: `no field named 'type' in JSON, which names the variant, as '${colliding.name}' has`,
+          reason: `no field named '${variantTagKey}' in JSON, which names the variant, as '${colliding.name}' has`,
         };
   }
 

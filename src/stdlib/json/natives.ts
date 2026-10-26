@@ -9,7 +9,8 @@ import type { WithResources } from '../../runtime/natives.ts';
  *   object sorts its keys (definition/json-values.ts).
  * - A host type's value is whatever JSON its host gave it, handed back unchanged (§9). A host type
  *   a `dispose` makes disposable keeps that JSON in a resource, made as the value arrives (§7).
- * - Text that isn't JSON is an `Err` with code `json`, never a panic: it comes from outside.
+ * - Text that isn't JSON is an `Err` saying why, never a panic: it comes from outside. The json
+ *   module makes it the `Error` every failed read gives.
  */
 
 import { mapOf } from '../../definition/equality.ts';
@@ -28,7 +29,7 @@ import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { fieldOf, float, given, resultError, resultOk, text } from '../native-values.ts';
+import { fieldOf, float, given, resultErr, resultOk, text } from '../native-values.ts';
 import { jsonName } from '../stdlib-loader.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */
@@ -41,9 +42,6 @@ function hostPayloadOf(value: Value, context: NativeContext & WithResources): un
   }
   unreachable('Expected a value of a host type.');
 }
-
-/** The code of every `Error` reading JSON returns. */
-const jsonErrorCode = 'json';
 
 const json = namedKey(qualifiedName(wellKnown.json));
 const string = primitiveKey('string');
@@ -58,7 +56,7 @@ export const jsonNatives: Natives<NativeContext & WithResources> = {
       if (!(error instanceof JsonError)) {
         throw error;
       }
-      return resultError(context, `Not JSON: ${error.message}`, jsonErrorCode);
+      return resultErr(context, `Not JSON: ${error.message}`);
     }
   },
   [nativeKey(jsonName, '_refuse', string)]: ([message]) => {

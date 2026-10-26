@@ -1,14 +1,14 @@
 /**
  * Writing `json._toJson<T>` (codecs.ts): its one parameter is the value, and it returns the `Json`.
  * A struct is an object of its fields, `@JsonSkip` ones left out, whose keys are sorted when it is
- * written; an enum the same, with its `"type"` tag; a tuple an array; a host type the JSON its host
+ * written; an enum the same, with its variant's tag; a tuple an array; a host type the JSON its host
  * gave, through the json module's helper. Each part is written by its own type's codec.
  */
 
 import type { Register } from '../../../definition/operands.ts';
 import { codecHelpers, jsonVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { DerivedForm, JsonField } from '../../checker/json-form.ts';
+import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { variantIndexOf } from '../expressions/variants.ts';
 import { codecCall } from './codec-calls.ts';
@@ -79,7 +79,7 @@ export class Encoder {
         const tag = code.constant(this.#text(variant.name));
         code.return(
           this.#object(variant.fields, (field) => code.field(value, field), [
-            [code.constant('type'), tag],
+            [code.constant(variantTagKey), tag],
           ]),
         );
       }
