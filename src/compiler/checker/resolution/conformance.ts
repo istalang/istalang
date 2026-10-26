@@ -273,6 +273,22 @@ function functionWitnesses(
   return witnesses;
 }
 
+/**
+ * Whether a function declared for `type` meets one that `constraint` requires, whether or not its
+ * own constraints are met: a declared witness, which nothing derived may stand beside.
+ */
+export function declaresWitness(
+  checker: CheckerContext,
+  type: Type,
+  constraint: Constraint,
+): boolean {
+  const substitution = constraintSubstitution(constraint, type);
+  return requiredFunctions(constraint.trait).some(
+    (declaration) =>
+      chooseWitness(checker, type, signatureOf(checker, declaration, substitution)).kind !== 'none',
+  );
+}
+
 /** A function a trait requires, mapped for the type that must meet it. */
 interface RequiredFunction {
   readonly declaration: FunctionDeclaration;

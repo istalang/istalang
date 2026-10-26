@@ -8,9 +8,9 @@
  *   tuple an array, a host type whatever JSON its host gave it.
  * - What a struct, an enum or a tuple holds crosses through its own codecs, which are coherent
  *   witnesses (§3.10), so a derived codec is the same wherever its type is used.
- * - A type declares codecs beside it: in its own module, or in the json module, which does for
- *   primitives, `Json` and the prelude's containers. Declaring either leaves nothing derived, so no
- *   type is written one way and read another.
+ * - A codec declared for a type is a witness found as any is: beside the type, or in the json
+ *   module, which declares them for primitives, `Json` and the prelude's containers. Declaring
+ *   either leaves nothing derived, so no type is written one way and read another.
  * - A derived codec exists when everything it holds meets the trait. A
  *   recursive type counts as meeting it while its own parts are decided, as Sendable does.
  * - What has no codec says why, in words a diagnostic finishes ("it needs …"): a nested optional,
@@ -29,9 +29,9 @@ import {
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import { isStdModule, type ModuleId } from '../../../program/program.ts';
-import { type FunctionDeclaration, isSharedStruct } from '../../../syntax/declarations.ts';
+import { isSharedStruct } from '../../../syntax/declarations.ts';
 import type { FunctionCall, ResolvedCall } from '../../check.ts';
-import type { CheckerContext, StaticOwner } from '../../context.ts';
+import type { CheckerContext } from '../../context.ts';
 import {
   type DerivedCodec,
   type DerivedForm,
@@ -40,7 +40,7 @@ import {
   type JsonField,
   jsonTraits,
 } from '../../json-form.ts';
-import { witnessesFor } from '../../resolution/conformance.ts';
+import { declaresWitness, witnessesFor } from '../../resolution/conformance.ts';
 import { callWithTypes } from '../../resolution/typed-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import type { FieldMember, NominalType, Type } from '../../types/type.ts';
@@ -166,12 +166,11 @@ export class JsonForms implements JsonCodecs {
   #nominal(type: NominalType): DerivedForm {
     const { checker } = this.#seams;
     const { declaration } = type.entity;
-    const module = checker.moduleOf(declaration);
-    if (this.#declaresCodecs(declaration, module)) {
+    if (this.#declaresCodecs(type)) {
       return { kind: 'none', reason: undefined };
     }
     if (declaration.kind === 'ExternStructDeclaration') {
-      return this.#host(type, declaration.isSendable, module);
+      return this.#host(type, declaration.isSendable, checker.moduleOf(declaration));
     }
     if (isSharedStruct(declaration)) {
       return { kind: 'none', reason: handleHasNoForm };
@@ -203,30 +202,12 @@ export class JsonForms implements JsonCodecs {
     };
   }
 
-  /** Whether a codec of `declaration` is declared beside it, or in the json module. */
-  #declaresCodecs(declaration: StaticOwner, module: ModuleId): boolean {
+  /** Whether a codec either way is declared for `type`. */
+  #declaresCodecs(type: NominalType): boolean {
     const { checker } = this.#seams;
-    return [...new Set([module, this.#jsonModule()])].some(
-      (each) =>
-        checker
-          .staticFunctionsIn(each, declaration)
-          .some((function_) => function_.name.text === codecFunctions.read) ||
-        this.#functionsNamed(each, codecFunctions.write).some(
-          (function_) => this.#selfOf(function_) === declaration,
-        ),
+    return Object.values(jsonTraits).some((trait) =>
+      declaresWitness(checker, type, wellKnownConstraint(checker, trait)),
     );
-  }
-
-  #functionsNamed(module: ModuleId, name: string): readonly FunctionDeclaration[] {
-    const { bindings } = this.#seams.checker;
-    const entity = bindings.topLevelNamed(module, name);
-    return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
-  }
-
-  /** The declaration of the type a function's first parameter has, when it is nominal. */
-  #selfOf(function_: FunctionDeclaration): StaticOwner | undefined {
-    const [self] = this.#seams.checker.parametersOf(function_);
-    return self?.type.kind === 'nominal' ? self.type.entity.declaration : undefined;
   }
 
   #record(fields: readonly FieldMember[]): DerivedForm {
@@ -281,15 +262,6 @@ export class JsonForms implements JsonCodecs {
       unreachable(`The json module's '${name}' doesn't take the types it was given.`);
     }
     return call;
-  }
-
-  /** The json module, which every type crossing as JSON needs. */
-  #jsonModule(): ModuleId {
-    const { json } = this.#seams.checker.program.roles;
-    if (json === undefined) {
-      unreachable('A codec was asked of a program without the json module.');
-    }
-    return json;
   }
 }
 

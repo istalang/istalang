@@ -59,3 +59,22 @@ describe('a type crossing as JSON', () => {
     expect(crossing(type)).toEqual({ writes, reads });
   });
 });
+
+describe('a codec found only by import', () => {
+  it('declares none, so the type still derives both', () => {
+    const main = [
+      "import Encodable, Decodable from 'json'",
+      "import toJson from 'codecs.ista'",
+      'struct Point { x: int }',
+      'fn writes<T is Encodable>() -> int: 1',
+      'fn reads<T is Decodable>() -> int: 1',
+      'fn main() -> int: writes<Point>() + reads<Point>()',
+    ].join('\n');
+    const codecs = [
+      "import Json from 'json'",
+      "import Point from 'main.ista'",
+      'fn toJson(self: Point) -> Json: Null',
+    ].join('\n');
+    expect(reported(main, { 'codecs.ista': codecs }).codes).toEqual([]);
+  });
+});
