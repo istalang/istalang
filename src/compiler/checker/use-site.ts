@@ -1,7 +1,8 @@
 /**
- * Where something is used, for checks that look at what is visible there and report there: the
- * module whose scope they search, the span they report at, and how they report. A search whose
- * failure its caller reports as a whole searches through a site that reports nothing.
+ * Where something is used, for checks that report there: how they report, at the span the site
+ * stands at, and whether values cross to the host there. What a check searches never depends on
+ * where it is used (witnesses are coherent, §3.10). A search whose failure its caller reports as a
+ * whole, or that can't fail, searches through a site that reports nothing.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -11,9 +12,8 @@ import type { CheckerContext } from './context.ts';
 
 export interface UseSite {
   readonly checker: CheckerContext;
-  readonly module: ModuleId;
-  readonly at: Span;
-  readonly report: (diagnostic: Diagnostic) => void;
+  /** Reports the diagnostic `diagnosticAt` makes at the site's span; a silent site reports none. */
+  readonly report: (diagnosticAt: (at: Span) => Diagnostic) => void;
   /**
    * Whether values cross to the host here, as JSON (§3.6, §9): only their codecs matter then, so
    * a type that isn't sendable, such as a disposable host type, still crosses to its own host.
@@ -21,15 +21,18 @@ export interface UseSite {
   readonly toHost: boolean;
 }
 
-/** A use site reporting through its module's checker. */
+/** A use site at `at` in `module`, reporting through the module's checker. */
 export function useSite(checker: CheckerContext, module: ModuleId, at: Span): UseSite {
   return {
     checker,
-    module,
-    at,
-    report: (diagnostic) => checker.report(module, diagnostic),
+    report: (diagnosticAt) => checker.report(module, diagnosticAt(at)),
     toHost: false,
   };
+}
+
+/** A site that only searches, reporting nothing. */
+export function searchSite(checker: CheckerContext): UseSite {
+  return { checker, report: () => undefined, toHost: false };
 }
 
 /** The same site, where values cross to the host. */

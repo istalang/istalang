@@ -45,7 +45,7 @@ import { callWithTypes } from '../../resolution/typed-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import type { FieldMember, NominalType, Type } from '../../types/type.ts';
 import { wellKnownArguments } from '../../types/well-known.ts';
-import { hostSite, silent, type UseSite, useSite } from '../../use-site.ts';
+import { hostSite, searchSite, silent, type UseSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
 /**
@@ -131,13 +131,11 @@ export class JsonForms implements JsonCodecs {
 
   codecOf(type: Type, direction: JsonDirection): ResolvedCall | undefined {
     const { checker } = this.#seams;
-    const { json } = checker.program.roles;
-    if (json === undefined) {
+    if (checker.program.roles.json === undefined) {
       return undefined;
     }
-    const constraint = wellKnownConstraint(this.#seams.checker, jsonTraits[direction]);
-    const site = hostSite(silent(useSite(checker, json, constraint.trait.name.span)));
-    return witnessesFor(site, type, constraint)?.[0];
+    const constraint = wellKnownConstraint(checker, jsonTraits[direction]);
+    return witnessesFor(hostSite(searchSite(checker)), type, constraint)?.[0];
   }
 
   callOf(name: CodecHelper, typeArguments: readonly Type[]): FunctionCall {
@@ -278,7 +276,7 @@ export class JsonForms implements JsonCodecs {
     const candidates = checker
       .languageFunctions('json', name)
       .map((declaration) => ({ declaration }));
-    const call = callWithTypes(checker, candidates, typeArguments, this.#jsonModule());
+    const call = callWithTypes(checker, candidates, typeArguments);
     if (call === undefined) {
       unreachable(`The json module's '${name}' doesn't take the types it was given.`);
     }

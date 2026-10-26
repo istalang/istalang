@@ -92,7 +92,7 @@ function instantiateAt(
   expected: Type | undefined,
   depth: number,
 ): Instantiation | Failure {
-  const { checker, at } = site;
+  const { checker } = site;
   const { signature, inference, candidate } = application;
   const { declaration, typeParameters } = signature;
   if (expected !== undefined && typeParameters.some((each) => !inference.boundOf(each))) {
@@ -101,7 +101,7 @@ function instantiateAt(
   const completion = completeInference(checker, declaration, typeParameters, inference);
   if (completion.kind === 'open') {
     const parameter = completion.parameter.name.text;
-    site.report(checkerDiagnostics.cannotInfer(at, declaration.name.text, parameter));
+    site.report((at) => checkerDiagnostics.cannotInfer(at, declaration.name.text, parameter));
     return 'failed';
   }
   const { typeArguments, substitution } = completion;
@@ -195,7 +195,7 @@ interface Meeting {
 /** Reports that the type lacks `missing` to meet the constraint. */
 function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
   const trait = constraint.trait.name.text;
-  site.report(checkerDiagnostics.notConforming(site.at, typeText(type), trait, missing));
+  site.report((at) => checkerDiagnostics.notConforming(at, typeText(type), trait, missing));
   return 'failed';
 }
 
@@ -254,7 +254,7 @@ function functionWitnesses(
       }
       case 'endless': {
         const trait = constraint.trait.name.text;
-        site.report(checkerDiagnostics.endlessConformance(site.at, typeText(type), trait));
+        site.report((at) => checkerDiagnostics.endlessConformance(at, typeText(type), trait));
         return 'endless';
       }
       case 'failed':

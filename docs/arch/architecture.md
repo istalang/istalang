@@ -54,7 +54,7 @@ src/
     checker/            check.ts is the entry and the surface later phases read
       context.ts program-checker.ts body-checker.ts              contexts and the classes that wire them
       lazy-checks.ts frontier.ts use-site.ts                     checking once on demand with cycle reports, the not-supported-yet vocabulary,
-                                                                 where a check searches and reports
+                                                                 where a check reports
       constant-form.ts json-form.ts checked-annotation.ts        models the surface names: computed constants, derived JSON forms, annotations,
       host-externs.ts                                            the externs a host implements
                                                                  folders, lowest layer first (Layers):

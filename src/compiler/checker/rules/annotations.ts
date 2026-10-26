@@ -38,7 +38,7 @@ import { witnessesFor } from '../resolution/conformance.ts';
 import { wellKnownConstraint } from '../traits/constraints.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { silent, useSite } from '../use-site.ts';
+import { searchSite } from '../use-site.ts';
 import { computeConstant, refusalOf } from './computation.ts';
 
 /** The annotations the toolchain itself reads. */
@@ -147,7 +147,7 @@ export class Annotations implements AnnotationQueries {
     for (const node of item.annotations ?? []) {
       const annotation = this.#value(module, node);
       const problem =
-        annotation === undefined ? undefined : this.#problem(module, annotation, found, place);
+        annotation === undefined ? undefined : this.#problem(annotation, found, place);
       if (problem !== undefined) {
         this.#seams.checker.report(module, problem);
       } else if (annotation !== undefined) {
@@ -157,9 +157,8 @@ export class Annotations implements AnnotationQueries {
     return found;
   }
 
-  /** Why `annotation`, in `module`, doesn't belong at `place` after those `found` there already. */
+  /** Why `annotation` doesn't belong at `place` after those `found` there already. */
   #problem(
-    module: ModuleId,
     annotation: CheckedAnnotation,
     found: readonly CheckedAnnotation[],
     place: AnnotationPlace,
@@ -172,7 +171,7 @@ export class Annotations implements AnnotationQueries {
     const means = placements[this.knownOf(annotation) ?? 'any'];
     const misplaced = means(
       place,
-      (held) => held.kind === 'error' || this.#defaultOf(module, node.span, held) !== undefined,
+      (held) => held.kind === 'error' || this.#defaultOf(held) !== undefined,
     );
     if (misplaced === 'elsewhere') {
       return checkerDiagnostics.misplacedAnnotation(node.span, name, placeText(place));
@@ -211,15 +210,15 @@ export class Annotations implements AnnotationQueries {
   skippedDefaultOf(field: FieldMember): ResolvedCall | undefined {
     const { declared } = field;
     return declared !== undefined && this.fieldHas(field, 'jsonSkip')
-      ? this.#defaultOf(declared.module, declared.node.span, field.type)
+      ? this.#defaultOf(field.type)
       : undefined;
   }
 
-  /** The `default()` of `type`, Default's witness, reported nowhere; undefined when it has none. */
-  #defaultOf(module: ModuleId, at: Span, type: Type): ResolvedCall | undefined {
+  /** The `default()` of `type`, Default's witness; undefined when it has none. */
+  #defaultOf(type: Type): ResolvedCall | undefined {
     const { checker } = this.#seams;
-    const site = silent(useSite(checker, module, at));
-    return witnessesFor(site, type, wellKnownConstraint(checker, wellKnown.default))?.[0];
+    const constraint = wellKnownConstraint(checker, wellKnown.default);
+    return witnessesFor(searchSite(checker), type, constraint)?.[0];
   }
 }
 

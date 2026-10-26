@@ -377,7 +377,7 @@ function defaultCalls(
     return [];
   }
   const candidates = [{ declaration: defaults }];
-  const call = callWithTypes(context.checker, candidates, typeArguments, context.module);
+  const call = callWithTypes(context.checker, candidates, typeArguments);
   return fields.map((_, index) =>
     isLeftOut(index) && call !== undefined ? { ...call, arity: index } : undefined,
   );

@@ -30,7 +30,7 @@ import { chooseSilently } from '../resolution/silent-choice.ts';
 import { requiredFunctions } from '../traits/constraints.ts';
 import { type NominalType, sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { silent, useSite } from '../use-site.ts';
+import { searchSite } from '../use-site.ts';
 
 const none: Disposal = { kind: 'none' };
 
@@ -122,9 +122,7 @@ function declaredDispose(checker: CheckerContext, type: NominalType): FunctionCa
     (candidate) =>
       candidate.requirement === undefined && isDisposeFunction(checker, candidate.declaration),
   );
-  const { declaration } = type.entity;
-  const site = silent(useSite(checker, checker.moduleOf(declaration), declaration.name.span));
-  const chosen = chooseSilently(site, candidates, [{ type, passing: 'value' }]);
+  const chosen = chooseSilently(searchSite(checker), candidates, [{ type, passing: 'value' }]);
   const call =
     chosen === undefined
       ? undefined

@@ -3,29 +3,26 @@
  * rather than inferred from arguments: a json-module helper a codec calls (rules/json-forms/), or
  * the defaults a struct literal leaves fields to (expressions/literal-fields.ts). It is chosen, instantiated and
  * made as a written call is (choice.ts, conformance.ts, calls-made.ts), each argument left for the
- * chosen function to decide, and its constraints' witnesses found in `module`, as a call written
- * there would find them.
+ * chosen function to decide, and its constraints' witnesses found as anywhere (§3.10).
  */
 
-import type { ModuleId } from '../../program/program.ts';
 import type { FunctionCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Type } from '../types/type.ts';
-import { silent, useSite } from '../use-site.ts';
+import { searchSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import type { Candidate } from './candidates.ts';
 import { choose } from './choice.ts';
 import { instantiate } from './conformance.ts';
 
 /**
- * The call to one of `candidates` with `typeArguments`, as made in `module`; undefined when none
- * takes them or a constraint isn't met there.
+ * The call to one of `candidates` with `typeArguments`; undefined when none takes them or a
+ * constraint isn't met.
  */
 export function callWithTypes(
   checker: CheckerContext,
   candidates: readonly Candidate[],
   typeArguments: readonly Type[],
-  module: ModuleId,
 ): FunctionCall | undefined {
   const [candidate] = candidates;
   if (candidate === undefined) {
@@ -41,8 +38,7 @@ export function callWithTypes(
   if (choice.kind !== 'chosen') {
     return undefined;
   }
-  const site = silent(useSite(checker, module, candidate.declaration.name.span));
-  const instantiation = instantiate(site, choice.application, undefined);
+  const instantiation = instantiate(searchSite(checker), choice.application, undefined);
   const call =
     instantiation === undefined
       ? undefined
