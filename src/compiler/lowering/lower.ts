@@ -15,7 +15,7 @@ import type { CheckedBody, Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { isFieldsFunction } from '../syntax/field-defaults.ts';
+import { originOf } from '../syntax/derived-functions.ts';
 import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';
 import {
   constantNativeEntry,
@@ -110,7 +110,7 @@ function entryOf(
     const owner = { kind: 'function', instance } as const;
     const lowered = { checker, tables, owner, body: instantiatedBody(body, instance) };
     const lowering = new FunctionLowering(lowered, instanceFrame(lowered, instance));
-    if (isFieldsFunction(declaration)) {
+    if (originOf(declaration)?.kind === 'fields') {
       return lowering.lowerFieldDefault(instance);
     }
     if (instance.arity < parameters.length) {

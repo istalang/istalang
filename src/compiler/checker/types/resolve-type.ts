@@ -36,6 +36,7 @@ import type {
   TypeParameter,
   TypeParameters,
 } from '../../syntax/declarations.ts';
+import { fieldParameterOf } from '../../syntax/derived-functions.ts';
 import { type Invalid, lastName } from '../../syntax/node.ts';
 import type { FunctionType as FunctionTypeNode, NamedType, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
@@ -266,7 +267,7 @@ export function constrainArguments(
  * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
  * resolved in `module`, where they are written, but not substituted. A field whose default gives
  * its type has its parameter's in `defaults`, the function its declaration's fields read as
- * (syntax/field-defaults.ts), whose defaults are checked to infer it (§3.1, §3.3).
+ * (syntax/derived-functions.ts), whose defaults are checked to infer it (§3.1, §3.3).
  */
 export function declaredFields(
   checker: CheckerContext,
@@ -291,6 +292,7 @@ function defaultedType(
   field: Field,
   defaults: FunctionDeclaration | undefined,
 ): Type {
+  const parameter = fieldParameterOf(field);
   const parameters = defaults === undefined ? [] : checker.parametersOf(defaults);
-  return parameters.find(({ node }) => node.name === field.name)?.type ?? errorType;
+  return parameters.find(({ node }) => node === parameter)?.type ?? errorType;
 }

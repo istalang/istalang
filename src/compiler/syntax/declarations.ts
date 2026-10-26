@@ -114,7 +114,7 @@ export interface TypeAliasDeclaration extends NodeOf<'TypeAliasDeclaration'>, An
 
 /**
  * `handle Inbox<T> of InboxState<T>`: a type of its own whose values are handles to a cell
- * holding a `state` (§3.18). The functions it declares are read from it (declared-functions.ts).
+ * holding a `state` (§3.18). The functions it declares are read from it (derived-functions.ts).
  */
 export interface HandleDeclaration extends NodeOf<'HandleDeclaration'>, Annotatable {
   readonly name: Identifier;

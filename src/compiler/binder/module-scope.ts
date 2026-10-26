@@ -20,7 +20,7 @@ import type {
   FunctionDeclaration,
   Module,
 } from '../syntax/declarations.ts';
-import { declaredFunctions, handleFunctionList } from '../syntax/declared-functions.ts';
+import { declaredFunctions, derivedFunctionsOf } from '../syntax/derived-functions.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import { binderDiagnostics } from './diagnostics.ts';
@@ -106,7 +106,7 @@ class TopLevelDefiner {
         return;
       case 'HandleDeclaration':
         this.#define(item.name, { kind: 'type', declaration: item }, 'declaration', 'type');
-        for (const declared of handleFunctionList(item)) {
+        for (const declared of derivedFunctionsOf(item)) {
           this.#defineFunction(declared);
         }
         return;

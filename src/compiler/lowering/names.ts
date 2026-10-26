@@ -31,7 +31,7 @@ import type {
   FunctionDeclaration,
   HandleDeclaration,
 } from '../syntax/declarations.ts';
-import { handleFunctionOf, handleFunctionsOf } from '../syntax/declared-functions.ts';
+import { handleFunctionsOf, originOf } from '../syntax/derived-functions.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 
@@ -104,9 +104,11 @@ export function keyOf(
 
 /** The key binding the extern function `declaration` to its native (definition/extern-key.ts). */
 export function nativeKeyOf(checker: Checker, declaration: FunctionDeclaration): string {
-  const origin = handleFunctionOf(declaration);
+  const origin = originOf(declaration);
   const bound =
-    origin === undefined ? declaration : handleFunctionsOf(preludeShared(checker))[origin.role];
+    origin?.kind === 'handle'
+      ? handleFunctionsOf(preludeShared(checker))[origin.role]
+      : declaration;
   return keyOf(checker, bound, checker.parametersOf(bound));
 }
 

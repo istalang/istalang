@@ -8,7 +8,7 @@
 import { memo } from '../../../structures/memo.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import { declaredFunctions } from '../../syntax/declared-functions.ts';
+import { declaredFunctions } from '../../syntax/derived-functions.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
 
 export class StaticFunctions {

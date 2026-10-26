@@ -18,7 +18,7 @@
  * - A defaults entry takes the arguments its callers give, computes the rest from the defaults
  *   (§3.3), each seeing the parameters before it, and calls the function with all of them, passing
  *   a reference parameter on as the reference it was given. A field default's entry takes the
- *   fields before its field, and gives that field's default (§3.1, syntax/field-defaults.ts).
+ *   fields before its field, and gives that field's default (§3.1, syntax/derived-functions.ts).
  * - A start entry (boundary/starts.ts) is a function's own body compiled once more with JSON at its
  *   edges: its arguments arrive as `Json` and are decoded into its parameters, and every return
  *   gives its value encoded, so a host-started instance runs as one execution of the function.

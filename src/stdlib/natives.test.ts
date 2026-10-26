@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../compiler/checker/check.ts';
 import { nativeKeyOf } from '../compiler/lowering/names.ts';
-import { declaredFunctions } from '../compiler/syntax/declared-functions.ts';
+import { declaredFunctions } from '../compiler/syntax/derived-functions.ts';
 import { derivedCodecs } from '../language/well-known.ts';
 import { stdNatives } from './natives.ts';
 import { jsonName, stdSources } from './stdlib-loader.ts';

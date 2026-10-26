@@ -15,8 +15,8 @@
  */
 
 import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
+import { fieldsFunctionOf } from '../../syntax/derived-functions.ts';
 import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
-import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldSource } from '../check.ts';
 import {

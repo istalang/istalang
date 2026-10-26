@@ -9,7 +9,7 @@
  *   to one another (`<A, B is Convertible<A>>`).
  * - A parameter's default may use the parameters before it (§3.3), so each parameter is defined
  *   after its own type and default are bound. A field's default may use the fields before it the
- *   same way (§3.1), as a parameter of the function the fields read as (syntax/field-defaults.ts).
+ *   same way (§3.1), as a parameter of the function the fields read as (syntax/derived-functions.ts).
  * - A named lambda's name is visible only inside the lambda (§3.14).
  * - `Self` is defined in a trait's scope, and only there (§3.10).
  * - A static function's owner (`Duration` in `fn Duration.zero()`) is a type use in the scope
@@ -26,9 +26,8 @@ import type {
   TraitDeclaration,
   TypeParameters,
 } from '../syntax/declarations.ts';
-import { handleFunctionsOf } from '../syntax/declared-functions.ts';
+import { fieldsFunctionOf, handleFunctionsOf } from '../syntax/derived-functions.ts';
 import type { Lambda, Parameter } from '../syntax/expressions.ts';
-import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';

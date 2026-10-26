@@ -39,8 +39,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
-import { handleFunctionList } from '../syntax/declared-functions.ts';
-import { fieldsFunctionsIn } from '../syntax/field-defaults.ts';
+import { derivedFunctionsOf } from '../syntax/derived-functions.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -153,8 +152,8 @@ export class ProgramChecker implements CheckerContext {
   }
 
   /**
-   * Notes `item` and what it declares inside (a trait's members, a handle's functions, the
-   * functions fields with defaults read as, type parameters) as `module`'s.
+   * Notes `item` and what it declares inside (a trait's members, the functions it derives, type
+   * parameters) as `module`'s.
    */
   #declare(item: Declaration, module: ModuleId): void {
     this.#modules.set(item, module);
@@ -170,8 +169,7 @@ export class ProgramChecker implements CheckerContext {
         }
       }
     }
-    const declaresFunctions = item.kind === 'HandleDeclaration' ? handleFunctionList(item) : [];
-    for (const declared of [...declaresFunctions, ...fieldsFunctionsIn(item)]) {
+    for (const declared of derivedFunctionsOf(item)) {
       this.#modules.set(declared, module);
     }
   }

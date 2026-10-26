@@ -17,7 +17,7 @@
  *   and compile time read it rather than reading the items again. A literal with a mistake in its
  *   items has no record: nothing compiles it.
  * - A field left out with names alone takes its default (§3.1), from the entry of arity `index` of
- *   the function the declaration's fields read as (syntax/field-defaults.ts), instantiated with
+ *   the function the declaration's fields read as (syntax/derived-functions.ts), instantiated with
  *   the literal's type arguments, its constraints met where the literal is. A spread gives every
  *   field, so a literal with one runs no default.
  */
@@ -27,6 +27,7 @@ import type {
   FunctionDeclaration,
   StructDeclaration,
 } from '../../syntax/declarations.ts';
+import { fieldParameterOf } from '../../syntax/derived-functions.ts';
 import {
   type Expression,
   type FieldItem,
@@ -337,21 +338,21 @@ function sourceOf(
 
 /**
  * By field position, the call giving each field the literal leaves out its default: the entry of
- * arity `index` of `shape`'s defaults, with the literal's `typeArguments`.
+ * arity `index` of `shape`'s defaults, with the literal's `typeArguments`. Its parameters are the
+ * fields in order, so they are numbered as the shape's fields are (syntax/derived-functions.ts).
  */
 function defaultCalls(
   context: BodyContext,
-  { defaults }: LiteralShape,
+  { defaults, fields }: LiteralShape,
   given: ReadonlyMap<number, GivenField>,
   typeArguments: readonly Type[],
 ): readonly (FunctionCall | undefined)[] {
-  if (defaults === undefined) {
-    return [];
-  }
-  const fields = defaults.parameters.filter((field) => field.kind === 'Parameter');
-  const isLeftOut = (index: number) =>
-    !given.has(index) && fields[index]?.defaultValue !== undefined;
-  if (!fields.some((_, index) => isLeftOut(index))) {
+  const isLeftOut = (index: number) => {
+    const declared = fields[index]?.declared?.node;
+    const parameter = declared === undefined ? undefined : fieldParameterOf(declared);
+    return !given.has(index) && parameter?.defaultValue !== undefined;
+  };
+  if (defaults === undefined || !fields.some((_, index) => isLeftOut(index))) {
     return [];
   }
   const candidates = [{ declaration: defaults }];

@@ -17,7 +17,7 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import { declaredFunctions } from '../../syntax/declared-functions.ts';
+import { declaredFunctions } from '../../syntax/derived-functions.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

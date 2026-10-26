@@ -21,8 +21,7 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { isStdModule, type ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
-import { handleFunctionList } from '../../syntax/declared-functions.ts';
-import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
+import { derivedFunctionsOf, fieldsFunctionOf } from '../../syntax/derived-functions.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
@@ -113,7 +112,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   HandleDeclaration: (checker, node, module) => {
     annotatedNowhere('a handle')(checker, node, module);
     checkTypeParameters(checker, node);
-    for (const declared of handleFunctionList(node)) {
+    for (const declared of derivedFunctionsOf(node)) {
       checkFunction(checker, declared);
     }
   },
