@@ -154,9 +154,9 @@ function isSpread(node: Expression | MapEntry | Spread): node is Spread {
   return node.kind === 'Spread';
 }
 
-/** Whether `spread` copies a value of the collection its literal builds, with no `iterate`. */
+/** Whether `spread` copies a value of the collection its literal builds whole. */
 function isCopied(context: FunctionContext, spread: Spread): boolean {
-  return context.body.implicitCallOf(spread, 'iterate') === undefined;
+  return context.body.iterationOf(spread).kind === 'copied';
 }
 
 /** A value of a declared type built by its `default()`, then `setIndex` for each of `entries`. */

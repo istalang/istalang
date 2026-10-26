@@ -8,6 +8,7 @@
 
 import type { Register } from '../../definition/operands.ts';
 import { optionalVariants } from '../../language/well-known.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Iteration } from '../checker/check.ts';
 import type { Comprehension, Expression } from '../syntax/expressions.ts';
 import type { For } from '../syntax/statements.ts';
@@ -49,7 +50,11 @@ export function emitLoop(
     callee: { kind: 'value', register: cursor },
     arguments: [],
   });
-  const optional = checker.optionalOf(context.body.itemOf(node));
+  const form = context.body.iterationOf(node);
+  if (form.kind !== 'cursor') {
+    unreachable('A loop runs over a spread its literal copies whole.');
+  }
+  const optional = checker.optionalOf(form.item);
   const isSome = variantTestOf(checker, given, optional, optionalVariants.some);
   branchOnVariant(context, isSome, { matched: element, otherwise: exit }, span);
   code.place(element);

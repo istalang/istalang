@@ -246,10 +246,7 @@ export type Iteration = For | Comprehension | Spread;
  * (resolution/implicit.ts).
  */
 export type ImplicitRole =
-  /**
-   * `iterate`, which an iteration calls on what it runs over for its cursor (§3.10); a spread its
-   * literal copies whole needs none.
-   */
+  /** `iterate`, which an iteration through a cursor calls on what it runs over (§3.10). */
   | 'iterate'
   /** `..=` storing its end plus one. */
   | 'add'
@@ -262,6 +259,14 @@ export type ImplicitRole =
 
 /** What a collection literal builds: an `Array`, a `Map`, or a value of another declared type (§2). */
 export type CollectionForm = 'array' | 'map' | 'declared';
+
+/**
+ * How an iteration runs (§3.10): through the cursor its `iterate` call gives, of `item`s, or, for
+ * a spread of the collection its literal builds, an array or a `Map`, copied whole.
+ */
+export type IterationForm =
+  | { readonly kind: 'cursor'; readonly item: Type }
+  | { readonly kind: 'copied' };
 
 /** What checking a function body found, for lowering (architecture: phase contracts). */
 export interface CheckedBody {
@@ -281,8 +286,8 @@ export interface CheckedBody {
   readonly implicitCallOf: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
   /** What a collection literal builds (§2). */
   readonly collectionFormOf: (literal: ArrayLiteral | MapLiteral) => CollectionForm;
-  /** The type of the items an iteration's cursor gives (§3.10). */
-  readonly itemOf: (iteration: Iteration) => Type;
+  /** How an iteration runs: through its cursor, or copied whole (§3.10). */
+  readonly iterationOf: (iteration: Iteration) => IterationForm;
   /** How many times the value `site` gives is wrapped into `Some` where it is used (§2). */
   readonly wrapsOf: (site: ValueSite) => number;
   /** What the targets of a declaration, or of a loop for each item, bind: each name's part of the value. */

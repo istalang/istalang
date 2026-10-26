@@ -6,15 +6,18 @@
  *   `iterate` is found like an operator's function, so a program's types join in
  *   (resolution/implicit.ts). Lowering calls the cursor until it gives `none`, so the loop makes
  *   no call of the language's own.
- * - Each iteration's item type is recorded, for lowering to test what the cursor gives.
+ * - How each iteration runs is recorded (`IterationForm`): through its cursor, of its items' type,
+ *   or, for a spread of the collection its literal builds, copied whole
+ *   (expressions/collections.ts).
  * - A loop's targets take each item apart as a declaration's do (§3.15): a map's items are
  *   `(key, value)`, so `for key, value in m:` works directly.
  */
 
 import { collectionFunctions, wellKnown } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Comprehension, Expression } from '../../syntax/expressions.ts';
 import type { For } from '../../syntax/statements.ts';
-import type { Iteration } from '../check.ts';
+import type { Iteration, IterationForm } from '../check.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { bodyScope } from '../patterns/parts.ts';
@@ -25,16 +28,21 @@ import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 
-/** The item type of each iteration in one body. */
-export class IterationItems {
-  readonly #items = new Map<Iteration, Type>();
+/** How each iteration in one body runs. */
+export class Iterations {
+  readonly #forms = new Map<Iteration, IterationForm>();
 
-  record(iteration: Iteration, item: Type): void {
-    this.#items.set(iteration, item);
+  record(iteration: Iteration, form: IterationForm): void {
+    this.#forms.set(iteration, form);
   }
 
-  of(iteration: Iteration): Type {
-    return this.#items.get(iteration) ?? errorType;
+  /** The form recorded for `iteration`; lowering asks only of a program checked clean. */
+  of(iteration: Iteration): IterationForm {
+    const form = this.#forms.get(iteration);
+    if (form === undefined) {
+      unreachable(`An iteration at ${iteration.span.start} was never checked.`);
+    }
+    return form;
   }
 }
 
@@ -77,7 +85,7 @@ export function iteratedItem(
     context.report(failure());
   }
   if (item !== undefined) {
-    context.iterations.record(node, item);
+    context.iterations.record(node, { kind: 'cursor', item });
   }
   return item;
 }

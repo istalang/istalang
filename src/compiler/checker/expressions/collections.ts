@@ -309,9 +309,12 @@ function spreadItems(context: BodyContext, spread: Spread, item: Type | undefine
   const expected =
     item === undefined ? undefined : wellKnownOf(context.checker, wellKnown.array, [item]);
   const type = context.expression(spread.expression, expected);
-  const [element] = wellKnownArguments(context.checker, wellKnown.array, type) ?? [
-    iteratedItem(context, spread, spread.expression, type),
-  ];
+  const own = wellKnownArguments(context.checker, wellKnown.array, type);
+  if (own !== undefined) {
+    context.iterations.record(spread, { kind: 'copied' });
+  }
+  const element =
+    own === undefined ? iteratedItem(context, spread, spread.expression, type) : own[0];
   return { type: element ?? errorType, span: spread.span, site: undefined };
 }
 
@@ -322,9 +325,12 @@ function spreadEntries(
   map: Type | undefined,
 ): readonly [Produced, Produced] {
   const type = context.expression(spread.expression, map);
+  const own = wellKnownArguments(context.checker, wellKnown.map, type);
+  if (own !== undefined) {
+    context.iterations.record(spread, { kind: 'copied' });
+  }
   const [key = errorType, value = errorType] =
-    wellKnownArguments(context.checker, wellKnown.map, type) ??
-    pairOf(context, spread, iteratedItem(context, spread, spread.expression, type));
+    own ?? pairOf(context, spread, iteratedItem(context, spread, spread.expression, type));
   return [
     { type: key, span: spread.span, site: undefined },
     { type: value, span: spread.span, site: undefined },

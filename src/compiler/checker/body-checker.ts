@@ -52,7 +52,7 @@ import type { Accepts } from './resolution/choice.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { statementPlace } from './rules/annotations.ts';
 import { checkDropped } from './rules/dropped.ts';
-import { IterationItems } from './rules/iteration.ts';
+import { Iterations } from './rules/iteration.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
 import { errorType, type FunctionType, type Type, unitType } from './types/type.ts';
@@ -79,7 +79,7 @@ export class BodyChecker implements BodyContext {
   readonly literals = new StructLiterals();
   readonly implicit = new ImplicitCalls();
   readonly collections = new CollectionForms();
-  readonly iterations = new IterationItems();
+  readonly iterations = new Iterations();
   readonly patterns = new CheckedPatterns();
   readonly chains = new OptionalChains();
   readonly ownCalls = new OwnCalls();
@@ -271,7 +271,7 @@ export class BodyChecker implements BodyContext {
       ],
       implicitCallOf: (node, role) => implicit.of(node, role),
       collectionFormOf: (literal) => collections.of(literal),
-      itemOf: (iteration) => iterations.of(iteration),
+      iterationOf: (iteration) => iterations.of(iteration),
       wrapsOf: (site) => wraps.get(site) ?? 0,
       targetsOf: (owner) => variables.targetsOf(owner),
       assignedOf: (assignment) => variables.assignedOf(assignment),
