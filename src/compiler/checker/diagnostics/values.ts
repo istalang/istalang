@@ -84,6 +84,16 @@ export const valueTemplates = {
     message: (type: string) =>
       `Only a shared struct is built with 'new', and ${type} isn't one: drop the 'new' (§3.18).`,
   },
+  notShared: {
+    code: 5220,
+    message: (found: string) =>
+      `'*' and '->' read the value behind a shared struct, and a ${found} isn't one (§3.9).`,
+  },
+  fieldBehindShared: {
+    code: 5221,
+    message: (type: string, name: string) =>
+      `'${name}' is a field of the value behind the shared struct ${type}, not of its handle: read it as x->${name} (§3.9).`,
+  },
   passing: {
     code: 5215,
     message: (name: string, position: number, reference: boolean) =>

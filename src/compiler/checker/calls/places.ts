@@ -118,7 +118,7 @@ export function checkReferencedPlaces(
       );
     }
     if (throughShared(place) && earlier.some(throughShared)) {
-      context.report(checkerDiagnostics.handleOverlap(place.span, callee.name));
+      context.report(checkerDiagnostics.sharedOverlap(place.span, callee.name));
     }
   });
 }

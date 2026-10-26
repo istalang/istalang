@@ -250,7 +250,7 @@ export function checkMemberAccess(
   }
   const state = type.kind === 'nominal' ? context.checker.stateOf(type) : undefined;
   if (state !== undefined && fieldOf(context, state, name) !== undefined) {
-    context.report(checkerDiagnostics.fieldBehindHandle(node.member.span, typeText(type), name));
+    context.report(checkerDiagnostics.fieldBehindShared(node.member.span, typeText(type), name));
     return errorType;
   }
   const isMethod = topLevelCandidates(context.checker, context.module, name, [type]).some(

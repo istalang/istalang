@@ -37,7 +37,7 @@ function valueBehind(context: BodyContext, node: Dereference): Type | undefined 
   }
   const state = handle.kind === 'nominal' ? context.checker.stateOf(handle) : undefined;
   if (state === undefined) {
-    context.report(checkerDiagnostics.notHandle(node.span, typeText(handle)));
+    context.report(checkerDiagnostics.notShared(node.span, typeText(handle)));
   }
   return state;
 }

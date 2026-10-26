@@ -49,8 +49,11 @@ import { wellKnownArguments } from '../../types/well-known.ts';
 import { hostSite, silent, type UseSite, useSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
-/** Why a shared struct has no codec: its values have an identity of their own (§3.18). */
-const handleHasNoForm = 'a JSON form, which no shared struct has: it stays in its instance';
+/**
+ * Why a handle has no codec, a std one such as a slot or a shared struct alike: its values have an
+ * identity of their own (§3.1, §3.18).
+ */
+const handleHasNoForm = 'a JSON form, which no handle has: it stays in its instance';
 
 /** What the unit needs beside the checker: field annotations. */
 export interface JsonFormSeams {
