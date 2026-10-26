@@ -113,6 +113,8 @@ describe('assignments', () => {
     ['Pair{...p} = q', invalidAssignmentTarget, 'Pair{...p}'],
     ['(a, f()) = t', invalidAssignmentTarget, '(a, f())'],
     ['Pair{first: 1} = q', invalidAssignmentTarget, 'Pair{first: 1}'],
+    ['new Pair{first, second} = q', invalidAssignmentTarget, 'new Pair{first, second}'],
+    ['(new Pair{first}, b) = q', invalidAssignmentTarget, '(new Pair{first}, b)'],
   ])('reports %s once', (text, diagnostic, spanText) => {
     expect(reported('statement', text)).toEqual(reportedOnce(diagnostic.code, spanText));
   });
