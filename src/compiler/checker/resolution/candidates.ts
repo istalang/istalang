@@ -88,8 +88,8 @@ export function staticCandidates(
 
 /**
  * The candidates of a witness of `required`, a trait's requirement taking `parameterTypes`, for
- * `type`: the functions declared beside those types or the trait, and on a type parameter its
- * constraints' requirements.
+ * `type`: the functions declared beside those types or the trait, a static one on `type` (whose
+ * own module counts too), and on a type parameter its constraints' requirements.
  */
 export function witnessCandidates(
   checker: CheckerContext,
@@ -105,7 +105,10 @@ export function witnessCandidates(
     return callCandidates(checker, exportedFunctions(checker, home, name), name, parameterTypes);
   }
   const target = staticTargetOf(checker, type);
-  return target === undefined ? [] : staticCandidatesIn(checker, [home], target, name);
+  const declaring = parameterTypes.flatMap((each) => declaringModule(checker, each) ?? []);
+  return target === undefined
+    ? []
+    : staticCandidatesIn(checker, [home, ...declaring], target, name);
 }
 
 /**

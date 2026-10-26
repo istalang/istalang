@@ -151,6 +151,30 @@ describe('a required function', () => {
   );
 });
 
+describe('a required static function', () => {
+  it.each([
+    ['dec', false],
+    ['main', true],
+  ])(
+    'taking a type declared in dec, with the function declared in %s, is unmet: %s',
+    (declaredIn, isUnmet) => {
+      const from = 'fn Money.from(value: Dec) -> Money: Money{cents: value.units}';
+      const placed = (module: string) => (declaredIn === module ? from : '');
+      const dec = `import Money from 'money'\nstruct Dec { units: int }\n${placed('dec')}`;
+      const main = [
+        "import Money from 'money'",
+        "import Dec from 'dec'",
+        placed('main'),
+        'fn convert<T is Convertible<Dec>>(value: Dec) -> T: T(value)',
+        'fn main() -> int:',
+        '  const money: Money = convert(Dec{units: 2})',
+        '  money.cents',
+      ].join('\n');
+      expect(unmet(main, { money: 'struct Money { cents: int }', dec })).toBe(isUnmet);
+    },
+  );
+});
+
 describe('Sendable', () => {
   const declarations = [
     'struct Envelope<T is Sendable> { value: T }',
