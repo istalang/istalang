@@ -7,7 +7,7 @@
  *   with its part's type.
  * - A `let` that nothing reassigns or changes gets a warning once the whole body has been seen
  *   (§3.4), so the body's VariableScope keeps which ones were, as assignments and places note
- *   them (assignments.ts, rules/places.ts).
+ *   them (assignments.ts, calls/places.ts).
  * - A parameter is declared with its checked signature, so whether it is a reference is known
  *   from one source, its written `&` or the expected function type's (closures/lambdas.ts).
  * - What lowering needs is recorded: each declaration's bindings, each assignment's parts, and

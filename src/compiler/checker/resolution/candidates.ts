@@ -136,3 +136,27 @@ function requirementCandidates(
       : [],
   );
 }
+
+/** What static calls through `type` look at; undefined for a type with no static functions. */
+export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarget | undefined {
+  switch (type.kind) {
+    case 'primitive': {
+      const { prelude } = checker.program.roles;
+      return prelude === undefined
+        ? undefined
+        : { kind: 'owner', owner: type.name, module: prelude };
+    }
+    case 'nominal':
+      return {
+        kind: 'owner',
+        owner: type.entity.declaration,
+        module: checker.moduleOf(type.entity.declaration),
+      };
+    case 'parameter':
+      return type.declaration.kind === 'TypeParameter'
+        ? { kind: 'parameter', parameter: type.declaration }
+        : undefined;
+    default:
+      return undefined;
+  }
+}

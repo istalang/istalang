@@ -9,8 +9,8 @@ import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { comparable, type Type } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
+import { comparable, type Type } from './type.ts';
+import { typeText } from './type-text.ts';
 
 /** A side of `==`: its type, and the expression giving it, if one does. */
 export interface EqualitySide {

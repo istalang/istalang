@@ -17,16 +17,15 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import type { VariableEntity } from '../../binder/entities.ts';
+import { localFunctionOf } from '../../binder/entities.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { type Drop, droppedName } from '../../syntax/statements.ts';
-import { localFunctionOf } from '../closures/function-scope.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { heldType } from '../types/held.ts';
 import { type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
-import { futureArgument } from './futures.ts';
+import { futureArgument, wellKnownArguments } from '../types/well-known.ts';
 
 /** How a must-use value is used, besides being kept or dropped. */
 type Use = 'await' | 'match' | 'propagate' | 'hold';

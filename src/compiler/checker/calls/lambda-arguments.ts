@@ -1,7 +1,7 @@
 /**
  * Lambdas passed as arguments (§3.5, §3.14). A lambda with an untyped parameter takes its types
  * from the parameter it is passed to, so the call decides it, as it decides `none`: choosing a
- * function looks only at whether the lambda's shape can fit (overloads/choice.ts).
+ * function looks only at whether the lambda's shape can fit (resolution/choice.ts).
  *
  * Once a function is chosen, such a lambda is checked after the other arguments, which have bound
  * what they can of the type parameters, and before the call is instantiated: its parameter types
@@ -10,23 +10,11 @@
  * type parameter nothing has bound is left for instantiating to report.
  */
 
-import { type Expression, type Lambda, unparenthesized } from '../../syntax/expressions.ts';
+import { type Expression, unparenthesized } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
-import type { Application } from '../overloads/choice.ts';
+import type { Application } from '../resolution/choice.ts';
 import { errorType, parametersIn, substitute, type Type } from '../types/type.ts';
-
-/** For a lambda the chosen function decides, which parameter types it can take. */
-export function lambdaAccepts(node: Lambda): ((expected: Type) => boolean) | undefined {
-  const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
-  if (parameters.every((parameter) => parameter.type !== undefined)) {
-    return undefined;
-  }
-  return (expected) =>
-    expected.kind === 'function' &&
-    expected.isAsync === node.isAsync &&
-    expected.parameters.length === parameters.length;
-}
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */
 interface Argument {

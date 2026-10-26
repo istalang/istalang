@@ -17,8 +17,8 @@ import type { CodeFunction } from '../../../definition/functions.ts';
 import { codecHelpers } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
-import { futureArgument } from '../../checker/rules/futures.ts';
 import type { FunctionType, Type } from '../../checker/types/type.ts';
+import { futureArgument } from '../../checker/types/well-known.ts';
 import type {
   ConstantDeclaration,
   Declaration,

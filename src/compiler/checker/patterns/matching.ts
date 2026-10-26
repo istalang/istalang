@@ -6,7 +6,7 @@
  * - A literal is compared with `==`, so it has the part's own type: no `T` stands in for a `T?`,
  *   since a pattern never wraps (`case Some{value == 1}` matches an optional holding 1). `none`
  *   is `Optional`'s `None`.
- * - A field compared with `==` or `!=` follows `==`'s rule (rules/equality.ts); any other
+ * - A field compared with `==` or `!=` follows `==`'s rule (types/equality.ts); any other
  *   comparison calls `compare`.
  * - A name that refers is a variant without fields, tested like one; a struct without fields,
  *   whose value is the only one of its type, so it matches with no test; or a top-level constant
@@ -29,13 +29,12 @@ import type {
   Pattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
+import { resolveOperator } from '../calls/operators.ts';
 import type { CheckedPattern, PatternTest } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { fieldlessStructOf } from '../expressions/names.ts';
-import { chooseVariant, nameNodeOf } from '../expressions/variants.ts';
-import { resolveOperator } from '../overloads/operators.ts';
-import { checkEqualSides } from '../rules/equality.ts';
+import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
+import { checkEqualSides } from '../types/equality.ts';
 import { comparable, errorType, type NominalDeclaration, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { bodyScope, type ValuePart } from './parts.ts';

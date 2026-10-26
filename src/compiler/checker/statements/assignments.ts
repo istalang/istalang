@@ -9,7 +9,7 @@
  *   field takes a positional target, as a literal takes a positional value (§3.1).
  * - Only a `let` is reassigned. A parameter is the function's own copy (§3.1), so it may be too;
  *   a `const`, and a binding a pattern or loop introduces, never is. Changing part of a variable is
- *   the rule of places (rules/places.ts).
+ *   the rule of places (calls/places.ts).
  * - A compound assignment `x += y` is `x = x + y` (§3.9): the operator's function is resolved for
  *   the place's type and recorded on the assignment, and its result must fit the place.
  * - `x$ = v` calls `rewrap` (§3.9), recorded on the assignment like any call (expressions/
@@ -30,13 +30,13 @@ import {
 } from '../../syntax/expressions.ts';
 import type { AssignmentOperator } from '../../syntax/operators.ts';
 import { type Assignment, destructures, isUnnamedTarget } from '../../syntax/statements.ts';
+import { type OverloadableOperator, resolveOperator } from '../calls/operators.ts';
+import { checkChangedPlace, immutableKind, isChangeable } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkRewrap } from '../expressions/unwrap.ts';
-import { type OverloadableOperator, resolveOperator } from '../overloads/operators.ts';
 import { bodyScope, elementParts, structParts, type ValuePart } from '../patterns/parts.ts';
-import { checkChangedPlace, immutableKind, isChangeable } from '../rules/places.ts';
 import { itemField } from '../rules/struct-items.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

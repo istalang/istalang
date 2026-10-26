@@ -58,6 +58,17 @@ export interface VariableEntity {
   readonly owner: VariableOwner;
 }
 
+/** The local `fn` or named lambda whose own name `variable` is; undefined for any other variable. */
+export function localFunctionOf(
+  variable: VariableEntity,
+): FunctionDeclaration | Lambda | undefined {
+  const { owner } = variable;
+  return (owner.kind === 'FunctionDeclaration' || owner.kind === 'Lambda') &&
+    owner.name === variable.name
+    ? owner
+    : undefined;
+}
+
 /**
  * A module's top-level functions sharing a name (§3.7); `overloadsOf` adds the prelude's. A called
  * name no scope defines denotes a set with no overloads, which argument-dependent lookup may fill.

@@ -5,7 +5,7 @@
  * the boundary's forms or lowering.
  *
  * - An annotation is checked as a value of its own in its module, and computed as a top-level
- *   constant is (declarations/computation.ts), so the two can't disagree on what compile time
+ *   constant is (computation.ts), so the two can't disagree on what compile time
  *   computes. A value that isn't a struct is no annotation.
  * - What an annotation means decides where it may stand: the json module's on fields
  *   (`@JsonSkip` only where reading back has a value to give, `@JsonBigInt` only on an `int`),
@@ -26,43 +26,18 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
 import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
-import type { ConstantForm } from '../constant-form.ts';
+import type {
+  AnnotationPlace,
+  AnnotationQueries,
+  CheckedAnnotation,
+} from '../checked-annotation.ts';
 import type { CheckerContext } from '../context.ts';
-import { computeConstant } from '../declarations/computation.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { FieldMember, NominalType, Type } from '../types/type.ts';
+import type { EmptyValue } from '../json-form.ts';
+import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
-import type { EmptyValue } from './json-forms/form.ts';
-
-/** Where an annotated item stands, which decides which annotations mean anything on it (§3.16). */
-export type AnnotationPlace =
-  | { readonly kind: 'field'; readonly type: Type }
-  | { readonly kind: 'function' }
-  | { readonly kind: 'statement'; readonly waits: boolean }
-  /** Anything else, named as a diagnostic says it: `an enum variant`, `a struct declaration`. */
-  | { readonly kind: 'other'; readonly description: string };
-
-/** An annotation as checked: its struct type and its value, computed at compile time. */
-export interface CheckedAnnotation {
-  readonly node: Annotation;
-  readonly type: NominalType;
-  readonly form: ConstantForm;
-}
-
-/** What later phases ask of annotations: an item's, a field's, and a statement's waypoint. */
-export interface AnnotationQueries {
-  /** The annotations on `item` of `module`, standing at `place`, checked once. */
-  readonly of: (
-    module: ModuleId,
-    item: Annotatable & NodeOf<string>,
-    place: AnnotationPlace,
-  ) => readonly CheckedAnnotation[];
-  /** The annotations on a struct's or variant's field, checked where it is declared. */
-  readonly ofField: (field: FieldMember) => readonly CheckedAnnotation[];
-  /** The name a statement's `@Waypoint` gives where it waits (§10); undefined without one. */
-  readonly waypointOf: (module: ModuleId, statement: Statement) => string | undefined;
-}
+import { computeConstant } from './computation.ts';
 
 /** The types a skipped field may have, and what each reads back as (§9). */
 const emptyValues = [

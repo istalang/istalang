@@ -17,6 +17,8 @@
  *   parameter (types/type.ts).
  * - `&T` is only ever a parameter's type (the parser enforces it); here it denotes `T`, and the
  *   signature records the reference.
+ * - Fields, of a struct, an enum's variant or an anonymous struct type, resolve in the module
+ *   writing them (`declaredFields`).
  * - A `{…}` type is an anonymous struct, a type of its own (§3.1), whose fields resolve here, and
  *   whose fields' annotations are checked here, since nothing declares it elsewhere (§3.16).
  * - Traits are constraints, never types (§3.10).
@@ -33,12 +35,18 @@ import type {
   TypeParameter,
   TypeParameters,
 } from '../../syntax/declarations.ts';
-import { lastName } from '../../syntax/node.ts';
-import type { FunctionType as FunctionTypeNode, NamedType, TypeNode } from '../../syntax/types.ts';
+import { type Invalid, lastName } from '../../syntax/node.ts';
+import type {
+  FieldDeclaration,
+  FunctionType as FunctionTypeNode,
+  NamedType,
+  TypeNode,
+} from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   errorType,
+  type FieldMember,
   type NominalDeclaration,
   nominalType,
   type ParameterKey,
@@ -46,8 +54,7 @@ import {
   substitute,
   type Type,
   unitType,
-} from '../types/type.ts';
-import { declaredFields } from './signatures.ts';
+} from './type.ts';
 
 interface Resolution {
   readonly checker: CheckerContext;
@@ -256,4 +263,26 @@ export function constrainArguments(
   for (const parameter of parameters.filter((each) => each.constraints.length > 0)) {
     checker.constrainLater(module, at, parameter, substitution);
   }
+}
+
+/**
+ * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
+ * resolved in `module`, where they are written, but not substituted.
+ */
+export function declaredFields(
+  checker: CheckerContext,
+  module: ModuleId,
+  fields: readonly (FieldDeclaration | Invalid)[],
+): readonly FieldMember[] {
+  return fields.flatMap((field) =>
+    field.kind === 'FieldDeclaration'
+      ? [
+          {
+            name: field.name.text,
+            type: checker.resolveType(module, field.type),
+            declared: { node: field, module },
+          },
+        ]
+      : [],
+  );
 }

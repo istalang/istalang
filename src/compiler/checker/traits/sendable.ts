@@ -15,7 +15,7 @@
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { jsonMarkers } from '../rules/json-forms/form.ts';
+import { jsonMarkers } from '../json-form.ts';
 import { type NominalType, type Type, typeChildren } from '../types/type.ts';
 
 /** The traits a type parameter may be constrained by to be sendable. */

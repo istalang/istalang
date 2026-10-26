@@ -16,13 +16,14 @@
 import { entryFunction, ownCall, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity, VariableEntity } from '../../binder/entities.ts';
+import { localFunctionOf } from '../../binder/entities.ts';
 import type { Call } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import type { NestedFunction } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { callMade } from '../overloads/calls-made.ts';
+import { callMade } from '../resolution/calls-made.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
-import { localFunctionOf, type NestedFunction } from './function-scope.ts';
 
 /** The hidden variables holding the calls a body watches, and the variable each watch reads. */
 export class OwnCalls {

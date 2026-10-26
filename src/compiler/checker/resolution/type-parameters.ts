@@ -1,7 +1,7 @@
 /**
  * Type parameters across the program (§3.5): where each is declared, its constraints resolved
  * there once, and the arguments noted for those constraints, checked once the module that gave
- * them is checked (resolve-type.ts explains why later, and why every check is noted by then).
+ * them is checked (types/resolve-type.ts explains why later, and why every check is noted by then).
  * Each check is keyed by where it was written, so it runs once.
  */
 
@@ -10,10 +10,10 @@ import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
+import { type Constraint, resolveConstraints } from '../traits/constraints.ts';
 import { type Substitution, substitute } from '../types/type.ts';
 import { useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
-import { type Constraint, resolveConstraints } from './constraints.ts';
 
 interface PendingCheck {
   readonly at: Span;

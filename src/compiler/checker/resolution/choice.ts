@@ -22,8 +22,8 @@
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { Inference } from '../inference/infer.ts';
+import { typeParametersOf } from '../types/resolve-type.ts';
 import {
   type ParameterKey,
   type Substitution,
@@ -159,7 +159,7 @@ export type Takes = Pick<Signature, 'typeParameters' | 'parameters'>;
 /**
  * How a function taking `takes` takes `callArguments` and any written type arguments: what
  * inference found matching them, or why it can't. A function value's call (closures/
- * value-calls.ts) is judged here too, as a signature with no type parameters.
+ * closures/value-calls.ts) is judged here too, as a signature with no type parameters.
  */
 export function takenBy(
   checker: CheckerContext,

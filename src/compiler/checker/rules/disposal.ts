@@ -10,7 +10,7 @@
  *   Shared<Lease>)` makes every `Shared<Lease>` disposable, and a host's extern type becomes
  *   disposable by a `dispose` declared beside it (§7). It is found the way an operator's
  *   function is, by argument-dependent lookup, so it lives beside the type it disposes: a
- *   `Shared<T>`'s beside `T` (overloads/candidates.ts).
+ *   `Shared<T>`'s beside `T` (resolution/candidates.ts).
  * - A `dispose` that runs as code is plain code that can't wait, and `self` can't escape it: it is
  *   used only as `self$` or passed to an extern, so a disposed value never becomes observable
  *   again (§7).
@@ -24,14 +24,14 @@ import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { Disposal, FunctionCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { callMade } from '../overloads/calls-made.ts';
-import { callCandidates } from '../overloads/candidates.ts';
-import { chooseSilently } from '../overloads/silent-choice.ts';
+import { isHostExtern } from '../host-externs.ts';
+import { callMade } from '../resolution/calls-made.ts';
+import { callCandidates } from '../resolution/candidates.ts';
+import { chooseSilently } from '../resolution/silent-choice.ts';
 import { type NominalType, sameType, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 import { silent, useSite } from '../use-site.ts';
-import { isHostExtern } from './host-boundary.ts';
 
 const none: Disposal = { kind: 'none' };
 

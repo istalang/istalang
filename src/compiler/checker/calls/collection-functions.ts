@@ -19,8 +19,8 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { ImplicitRole, ResolvedCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { topLevelCandidates } from '../overloads/candidates.ts';
-import { implicitCall } from '../overloads/implicit.ts';
+import { topLevelCandidates } from '../resolution/candidates.ts';
+import { implicitCall } from '../resolution/implicit.ts';
 import type { Type } from '../types/type.ts';
 
 /** An element written: by which construct and role, into what, and what to report when it can't. */

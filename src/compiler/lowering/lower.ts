@@ -12,7 +12,7 @@ import type { Definition } from '../../definition/definition.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { CheckedBody, Checker } from '../checker/check.ts';
-import { isHostExtern } from '../checker/rules/host-boundary.ts';
+import { isHostExtern } from '../checker/host-externs.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { codecEntry, isCodec } from './boundary/codecs.ts';

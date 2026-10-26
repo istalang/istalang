@@ -15,7 +15,8 @@
  * a Definition's line starts into positions with the line map's own search.
  *
  * Inside the parser, grammar categories reach one another only through the parsing context, and
- * the shared parts they all use import no category (src/compiler/parser/parser.ts).
+ * the shared parts they all use import no category (src/compiler/parser/parser.ts). Inside the
+ * checker, folders are layers too (below), and later phases read only its surface.
  */
 
 /**
@@ -81,6 +82,40 @@ const layers = {
   runtime: ['definition', 'text'],
 };
 
+/**
+ * The checker's folders, lowest first: each may import the folders before it, never one after, and
+ * a folder not listed may import none. Its root modules are its entry, contexts and contracts,
+ * which any folder may import, except the classes wiring a body and a program together.
+ */
+const checkerLayers = [
+  'diagnostics',
+  'types', // the type model, written types resolved, and the rules over types alone
+  'inference',
+  'traits',
+  'resolution', // what a call or a name may mean, choosing among overloads, conformance
+  'calls', // a call in a body: its arguments checked, the places it changes
+  'patterns',
+  'rules',
+  'declarations',
+  'closures',
+  'expressions',
+  'statements',
+];
+
+/** What later phases may import of the checker: its entry and the models its surface names. */
+const checkerSurface = [
+  'check.ts',
+  'constant-form.ts',
+  'json-form.ts',
+  'checked-annotation.ts',
+  'host-externs.ts',
+  'types/type.ts',
+  'types/type-keys.ts',
+  'types/well-known.ts',
+];
+
+const checkerFolder = (names) => `^src/compiler/checker/(${names.join('|')})/`;
+
 /** Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams. */
 const nodeLayers = ['cli'];
 
@@ -103,6 +138,33 @@ export default {
       severity: 'error',
       from: { path: '^src/compiler/parser/parts/' },
       to: { path: parserCategory },
+    },
+    ...checkerLayers.slice(0, -1).map((layer, index) => ({
+      name: `checker-${layer}-imports-above`,
+      severity: 'error',
+      from: { path: checkerFolder([layer]) },
+      to: { path: checkerFolder(checkerLayers.slice(index + 1)) },
+    })),
+    {
+      name: 'checker-folder-unlisted',
+      severity: 'error',
+      from: { path: '^src/compiler/checker/[^/]+/', pathNot: checkerFolder(checkerLayers) },
+      to: { path: '^src/compiler/checker/' },
+    },
+    {
+      name: 'checker-folder-imports-wiring',
+      severity: 'error',
+      from: { path: '^src/compiler/checker/[^/]+/' },
+      to: { path: '^src/compiler/checker/(body-checker|program-checker)\\.ts$' },
+    },
+    {
+      name: 'checker-internals-imported',
+      severity: 'error',
+      from: { path: '^src/', pathNot: '^src/compiler/checker/' },
+      to: {
+        path: '^src/compiler/checker/',
+        pathNot: `^src/compiler/checker/(${checkerSurface.join('|').replaceAll('.', '\\.')})$`,
+      },
     },
   ],
   allowed: [

@@ -1,11 +1,12 @@
 /**
  * Resolving a call in a body (§3.3, §3.7, §3.9): its arguments choose among the candidates
- * (choice.ts), the choice is instantiated with its constraints met (traits/conformance.ts), and
+ * (resolution/choice.ts), the choice is instantiated with its constraints met
+ * (resolution/conformance.ts), and
  * the call is recorded for lowering with its arguments fitted, so their implicit wraps are too.
  *
  * - An argument whose type the chosen function decides (`none`, a bare variant, a lambda with an
  *   untyped parameter) is checked only after choosing, against its parameter's type; a lambda,
- *   before instantiating, so its result can bind type parameters (closures/lambda-arguments.ts).
+ *   before instantiating, so its result can bind type parameters (lambda-arguments.ts).
  * - A method call records its receiver with the call, as lowering passes it first (§3.7). A
  *   receiver the chosen function's `self` takes by reference must be a place that may change.
  * - An argument of the error type was already reported, so the call reports nothing more.
@@ -13,28 +14,33 @@
  *   doesn't fit it, as choosing decided it, so an explanation never disagrees with the choice.
  * - Calling `dispose` directly is refused, since the runtime calls it once nothing holds a value
  *   (§7). The rules every call obeys, witnesses of constraints included, apply where the call is
- *   made (calls-made.ts).
+ *   made (resolution/calls-made.ts).
  */
 
 import { disposeFunction } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
-import { checkDecidedLambdas } from '../closures/lambda-arguments.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { changeReceiver, checkReferencedPlaces } from '../rules/places.ts';
-import { type Instantiation, instantiate } from '../traits/conformance.ts';
+import { callMade } from '../resolution/calls-made.ts';
+import type { Candidate } from '../resolution/candidates.ts';
+import {
+  type Application,
+  choose,
+  type Inapplicability,
+  type Passing,
+} from '../resolution/choice.ts';
+import { type Instantiation, instantiate } from '../resolution/conformance.ts';
 import { errorType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
-import { callMade } from './calls-made.ts';
-import type { Candidate } from './candidates.ts';
-import { type Application, choose, type Inapplicability, type Passing } from './choice.ts';
+import { checkDecidedLambdas } from './lambda-arguments.ts';
+import { changeReceiver, checkReferencedPlaces } from './places.ts';
 
 /**
  * An argument as written: its node, how it is passed, and its type, undefined when the chosen
- * function decides it, with which parameter types it can take (choice.ts).
+ * function decides it, with which parameter types it can take (resolution/choice.ts).
  */
 export interface WrittenArgument {
   readonly node: Expression;

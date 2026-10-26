@@ -19,13 +19,14 @@
 
 import { encloses } from '../../../text/span.ts';
 import type { VariableEntity } from '../../binder/entities.ts';
+import { localFunctionOf } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { CheckedFunction } from '../check.ts';
+import { isChangeable } from '../calls/places.ts';
+import type { CheckedFunction, NestedFunction } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isChangeable } from '../rules/places.ts';
 import { errorType, type Type } from '../types/type.ts';
-import { type FunctionScope, localFunctionOf, type NestedFunction } from './function-scope.ts';
+import type { FunctionScope } from './function-scope.ts';
 
 export class FunctionScopes {
   readonly #stack: FunctionScope[];

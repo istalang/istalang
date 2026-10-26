@@ -1,7 +1,7 @@
 /**
  * `x$` and `x$ = v` (§3.9): calls to `unwrap(x)` and `rewrap(x, v)`, found like any call by their
  * names and the operand's type. `x$.field = v` and `x$ += v` write part of the unwrapped value,
- * which assigning to a part of a value does, and write it back with `rewrap` (rules/places.ts).
+ * which assigning to a part of a value does, and write it back with `rewrap` (calls/places.ts).
  *
  * `v` must fit the type `x$` reads, the result of the `unwrap` a read would call, so it is checked
  * against that type first: `none` or a value wrapped into `T?` gets its expected type, and a value
@@ -11,10 +11,10 @@
 import { rewrapFunction, unwrapFunction } from '../../../language/well-known.ts';
 import type { Expression, Unwrap } from '../../syntax/expressions.ts';
 import type { Assignment } from '../../syntax/statements.ts';
+import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';
-import { topLevelCandidates } from '../overloads/candidates.ts';
-import { resolveCall, type WrittenArgument } from '../overloads/resolve.ts';
-import { chooseSilently } from '../overloads/silent-choice.ts';
+import { topLevelCandidates } from '../resolution/candidates.ts';
+import { chooseSilently } from '../resolution/silent-choice.ts';
 import type { Type } from '../types/type.ts';
 import { useSite } from '../use-site.ts';
 

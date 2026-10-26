@@ -28,11 +28,10 @@ import type {
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { CompareFieldPattern, Pattern } from '../syntax/patterns.ts';
 import type { Assignment, For, VariableDeclaration } from '../syntax/statements.ts';
-import type { NestedFunction } from './closures/function-scope.ts';
+import type { AnnotationQueries } from './checked-annotation.ts';
 import type { ConstantForm } from './constant-form.ts';
+import type { JsonFormQueries } from './json-form.ts';
 import { ProgramChecker } from './program-checker.ts';
-import type { AnnotationQueries } from './rules/annotations.ts';
-import type { JsonFormQueries } from './rules/json-forms/form.ts';
 import type { FieldMember, FunctionType, NominalType, Type } from './types/type.ts';
 import type { TypeKeys } from './types/type-keys.ts';
 
@@ -53,6 +52,9 @@ export interface CheckedFunction {
   readonly parameters: readonly Parameter[];
   readonly captures: readonly CapturedVariable[];
 }
+
+/** A function nested in a body: a lambda, or a local `fn` (a `const` bound to one, §3.14). */
+export type NestedFunction = Lambda | FunctionDeclaration;
 
 /** A variable a closure captures, with its type. */
 export interface CapturedVariable {
@@ -228,8 +230,8 @@ export type CallSite = NodeOf<
 export type Iteration = For | Comprehension | Spread;
 
 /**
- * What a call the language makes for a construct, with no call written, does there (overloads/
- * implicit.ts).
+ * What a call the language makes for a construct, with no call written, does there
+ * (resolution/implicit.ts).
  */
 export type ImplicitRole =
   /** `iterate`, which an iteration calls on what it runs over (§3.10). */
@@ -263,7 +265,7 @@ export interface CheckedBody {
   readonly calls: ReadonlyMap<CallSite, ResolvedCall>;
   /**
    * A call the language makes for the construct `node`, in `role`, with no call written for it
-   * (overloads/implicit.ts); undefined for a role the construct doesn't need.
+   * (resolution/implicit.ts); undefined for a role the construct doesn't need.
    */
   readonly implicitCallOf: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
   /** What a collection literal builds (§2). */

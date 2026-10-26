@@ -12,8 +12,8 @@
  *   is an array of `m`'s entries. Where a `Map` is expected, `[]` is an empty map.
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
  *   `C.default()` and assigns each entry with `setIndex`, as `c[k] = v` would (§2). Those are calls
- *   the language makes (overloads/implicit.ts), which must run at once (rules/collection-
- *   functions.ts). Keys and values are checked on their own there, since `setIndex` is chosen by
+ *   the language makes (resolution/implicit.ts), which must run at once
+ *   (calls/collection-functions.ts). Keys and values are checked on their own there, since `setIndex` is chosen by
  *   their types.
  * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
  */
@@ -30,14 +30,14 @@ import type {
   Spread,
 } from '../../syntax/expressions.ts';
 import type { Invalid } from '../../syntax/node.ts';
+import { runsAtOnce, writeElement } from '../calls/collection-functions.ts';
+import { operatorFunctions } from '../calls/operators.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { staticCandidates } from '../overloads/candidates.ts';
-import { implicitCall, preludeCandidates } from '../overloads/implicit.ts';
-import { operatorFunctions } from '../overloads/operators.ts';
+import { staticCandidates } from '../resolution/candidates.ts';
+import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
-import { runsAtOnce, writeElement } from '../rules/collection-functions.ts';
 import { checkIterated, checkIteration } from '../rules/iteration.ts';
 import { optionalInner } from '../types/fit.ts';
 import { errorType, intType, type NominalType, neverType, type Type } from '../types/type.ts';

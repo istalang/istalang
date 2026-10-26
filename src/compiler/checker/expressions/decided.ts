@@ -1,20 +1,20 @@
 /**
  * Arguments whose type the chosen function decides (§3.5): such an argument has no type of its
  * own to choose by, so choosing asks which parameter types it can take (`CallArgument.accepts`),
- * and it is checked once its parameter is known (resolve.ts).
+ * and it is checked once its parameter is known (calls/resolve.ts).
  *
  * Each construct contributes what it can take, beside its own rules: `none` and a bare variant
- * (expressions/variants.ts), a lambda with parameters to infer (closures/lambda-arguments.ts),
+ * (variants.ts), a lambda with parameters to infer (closures/lambdas.ts),
  * and functions named by a name of several or a generic one (closures/function-values.ts).
  */
 
 import type { Expression } from '../../syntax/expressions.ts';
 import { lastName } from '../../syntax/node.ts';
 import { functionsAccepted, namedFunctions } from '../closures/function-values.ts';
-import { lambdaAccepts } from '../closures/lambda-arguments.ts';
+import { lambdaAccepts } from '../closures/lambdas.ts';
 import type { BodyContext } from '../context.ts';
-import { noneAccepted, variantsAccepted } from '../expressions/variants.ts';
 import type { Type } from '../types/type.ts';
+import { noneAccepted, variantsAccepted } from './variants.ts';
 
 /**
  * When a call's chosen function decides the type of `node`, which parameter types it can take,

@@ -10,12 +10,12 @@
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import { instantiate } from '../traits/conformance.ts';
 import type { Type } from '../types/type.ts';
 import { silent, useSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import type { Candidate } from './candidates.ts';
 import { choose } from './choice.ts';
+import { instantiate } from './conformance.ts';
 
 /**
  * The call to one of `candidates` with `typeArguments`, as made in `module`; undefined when none

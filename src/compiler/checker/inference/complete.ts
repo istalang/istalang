@@ -6,7 +6,7 @@
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { defaultArgument, type GenericDeclaration } from '../declarations/resolve-type.ts';
+import { defaultArgument, type GenericDeclaration } from '../types/resolve-type.ts';
 import { errorType, type Substitution, substitute, type Type } from '../types/type.ts';
 import type { Inference } from './infer.ts';
 

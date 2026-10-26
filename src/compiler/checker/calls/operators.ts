@@ -11,8 +11,8 @@
 import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
+import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { Type } from '../types/type.ts';
-import { topLevelCandidates } from './candidates.ts';
 import { resolveCall } from './resolve.ts';
 
 /** The function each overloadable operator calls (§3.9). */

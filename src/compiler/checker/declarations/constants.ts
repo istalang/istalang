@@ -7,7 +7,7 @@
  *   annotation, which the initializer must fit, or else the initializer's own.
  * - Its targets take the value apart as a local declaration's do (patterns/walk.ts), so
  *   each name is a constant of its own: its part's type, and its part of the computed value.
- * - One walk both decides what compile time computes and computes it (computation.ts), into a
+ * - One walk both decides what compile time computes and computes it (rules/computation.ts), into a
  *   `ConstantForm` lowering only maps to a value. What it refuses is reported here. A lambda's
  *   form is lowered from the initializer's checking, which the unit keeps (`bodyOf`).
  * - A constant is checked once, on first demand, and one defined through itself, directly or
@@ -25,8 +25,8 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { LazyChecks } from '../lazy-checks.ts';
 import { walkTargets } from '../patterns/walk.ts';
+import { computeConstant } from '../rules/computation.ts';
 import { errorType, type Type } from '../types/type.ts';
-import { computeConstant } from './computation.ts';
 
 /** What ProgramChecker gives the unit: how to find a constant's module, and to check a value. */
 export interface ConstantSeams {

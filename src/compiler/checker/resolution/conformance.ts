@@ -9,7 +9,7 @@
  *   is found by resolving a call to it with the required parameter types, and must give the
  *   required result. The calls found are the witnesses the instantiation calls (check.ts).
  * - A required field is met by a struct field of the same name and type, or by a constraint on a
- *   type parameter requiring it too. `Sendable` is derived (sendable.ts), and so are `Encodable`
+ *   type parameter requiring it too. `Sendable` is derived (traits/sendable.ts), and so are `Encodable`
  *   and `Decodable`: a JSON form (rules/json-forms/), and sendable, since each implies `Sendable`.
  *   A disposable host type has a form, to cross to its own host, yet isn't sendable.
  * - A requirement with type parameters of its own is met by a function generic in the same way:
@@ -32,26 +32,26 @@ import type { ResolvedCall, Witnesses } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
-import { callMade } from '../overloads/calls-made.ts';
-import {
-  type Candidate,
-  type StaticTarget,
-  staticCandidates,
-  topLevelCandidates,
-} from '../overloads/candidates.ts';
-import { type Application, type CallArgument, choose, signatureOf } from '../overloads/choice.ts';
-import { type JsonDirection, jsonMarkers } from '../rules/json-forms/form.ts';
-import { errorType, type Substitution, sameType, substitute, type Type } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
-import { silent, type UseSite } from '../use-site.ts';
+import { type JsonDirection, jsonMarkers } from '../json-form.ts';
 import {
   type Constraint,
   constraintSubstitution,
   requiredFields,
   requiredFieldType,
   requiredFunctions,
-} from './constraints.ts';
-import { isSendable, isSendableTrait, isWellKnownTrait } from './sendable.ts';
+} from '../traits/constraints.ts';
+import { isSendable, isSendableTrait, isWellKnownTrait } from '../traits/sendable.ts';
+import { errorType, type Substitution, sameType, substitute, type Type } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
+import { silent, type UseSite } from '../use-site.ts';
+import { callMade } from './calls-made.ts';
+import {
+  type Candidate,
+  staticCandidates,
+  staticTargetOf,
+  topLevelCandidates,
+} from './candidates.ts';
+import { type Application, type CallArgument, choose, signatureOf } from './choice.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
@@ -155,30 +155,6 @@ function witnessCandidates(
   }
   const target = staticTargetOf(checker, type);
   return target === undefined ? [] : staticCandidates(checker, module, target, name);
-}
-
-/** What static calls through `type` look at; undefined for a type with no static functions. */
-export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarget | undefined {
-  switch (type.kind) {
-    case 'primitive': {
-      const { prelude } = checker.program.roles;
-      return prelude === undefined
-        ? undefined
-        : { kind: 'owner', owner: type.name, module: prelude };
-    }
-    case 'nominal':
-      return {
-        kind: 'owner',
-        owner: type.entity.declaration,
-        module: checker.moduleOf(type.entity.declaration),
-      };
-    case 'parameter':
-      return type.declaration.kind === 'TypeParameter'
-        ? { kind: 'parameter', parameter: type.declaration }
-        : undefined;
-    default:
-      return undefined;
-  }
 }
 
 /**

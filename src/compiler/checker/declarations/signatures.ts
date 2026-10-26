@@ -1,6 +1,6 @@
 /**
- * What a declaration promises before its body is checked: a function's parameters and declared
- * result (§3.3), a struct's fields (§3.1).
+ * What a function declaration promises before its body is checked: its parameters and declared
+ * result (§3.3).
  *
  * - A declared function's parameters carry types; the parser keeps them required. `&T` takes a
  *   reference (§3.7).
@@ -9,24 +9,18 @@
  *   default sees the parameters before it (`DefaultValues`). A parameter with a default may omit
  *   its type, which is then the default's. Every parameter after one with a default has one too.
  *   Rest parameters are sugar the checker doesn't expand yet.
- * - Fields, of a struct, an enum's variant or an anonymous struct type, resolve in the module
- *   writing them.
- * - Code that would hold a future in a parameter or a field is refused (rules/futures.ts); an
- *   extern's parameters are its native's to hold, so they aren't.
  */
 
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
-import { futureArgument, futureOf } from '../rules/futures.ts';
-import { errorType, type FieldMember, type Type } from '../types/type.ts';
+import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { futureArgument, futureOf } from '../types/well-known.ts';
 
 /** Where a function's defaults are checked: one body, seeing each parameter once declared. */
 export interface DefaultValues {
@@ -106,26 +100,4 @@ export function callResult(
   bodyResult: Type,
 ): Type {
   return declaration.isAsync ? futureOf(checker, bodyResult) : bodyResult;
-}
-
-/**
- * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
- * resolved in `module`, where they are written, but not substituted.
- */
-export function declaredFields(
-  checker: CheckerContext,
-  module: ModuleId,
-  fields: readonly (FieldDeclaration | Invalid)[],
-): readonly FieldMember[] {
-  return fields.flatMap((field) =>
-    field.kind === 'FieldDeclaration'
-      ? [
-          {
-            name: field.name.text,
-            type: checker.resolveType(module, field.type),
-            declared: { node: field, module },
-          },
-        ]
-      : [],
-  );
 }

@@ -24,16 +24,31 @@
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
-import type { SignatureParameter } from '../check.ts';
+import { isChangeable } from '../calls/places.ts';
+import type { NestedFunction, SignatureParameter } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Produced } from '../rules/agreement.ts';
-import { isChangeable } from '../rules/places.ts';
-import { blockTail, ReturnScope } from '../statements/returns.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { errorType, type FunctionType, type Type, unitType } from '../types/type.ts';
-import { FunctionScope, type NestedFunction } from './function-scope.ts';
+import { FunctionScope } from './function-scope.ts';
+import { blockTail, ReturnScope } from './returns.ts';
+
+/**
+ * For a lambda with a parameter to infer, which parameter types it can take, as an argument the
+ * chosen function decides (§3.5); undefined for one whose parameters are all typed.
+ */
+export function lambdaAccepts(node: Lambda): ((expected: Type) => boolean) | undefined {
+  const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
+  if (parameters.every((parameter) => parameter.type !== undefined)) {
+    return undefined;
+  }
+  return (expected) =>
+    expected.kind === 'function' &&
+    expected.isAsync === node.isAsync &&
+    expected.parameters.length === parameters.length;
+}
 
 export function checkLambda(context: BodyContext, node: Lambda, expected: Type | undefined): Type {
   const shape = expected?.kind === 'function' ? expected : undefined;

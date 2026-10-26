@@ -57,7 +57,7 @@ its instance is numbered by, so its native sees only JSON:
   (`Runtime.fill`), which runs the waiting wrapper in the same call, so JSON that doesn't decode
   (`_hostInput`, `_refuse`) fails the host's call and nothing commits.
 - An extern returning a host handle, a `Shared<S>` whose struct has only function fields
-  (`checker/rules/host-boundary.ts`, `hostHandleOf`), as the inbox module's `Revertible<T>` is,
+  (`checker/host-externs.ts`, `hostHandleOf`), as the inbox module's `Revertible<T>` is,
   takes JSON naming the handle from its native. The wrapper captures it in a closure for each
   field, whose entry calls that field's own native, keyed `<extern key>.<field>`
   (`handleFieldKey`), with the JSON first and then its arguments, read back as any wrapper reads;

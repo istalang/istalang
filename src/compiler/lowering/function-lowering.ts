@@ -39,10 +39,10 @@ import type {
   Checker,
   FunctionCall,
   ImplicitRole,
+  NestedFunction,
   ResolvedCall,
   SignatureParameter,
 } from '../checker/check.ts';
-import type { NestedFunction } from '../checker/closures/function-scope.ts';
 import { substitute, type Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';

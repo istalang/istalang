@@ -23,10 +23,10 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
-import { futureArgument } from '../rules/futures.ts';
 import { checkHostBoundary } from '../rules/host-boundary.ts';
+import { type GenericDeclaration, typeParametersOf } from '../types/resolve-type.ts';
 import { typeText } from '../types/type-text.ts';
-import { type GenericDeclaration, typeParametersOf } from './resolve-type.ts';
+import { futureArgument } from '../types/well-known.ts';
 import { checkFiniteFields } from './struct-rules.ts';
 
 /**

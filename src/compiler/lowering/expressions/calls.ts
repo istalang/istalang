@@ -144,7 +144,7 @@ export function call(
 
 /**
  * Calls the function the checker made for `node` in `role`, a call no source call stands for
- * (checker overloads/implicit.ts); a register argument is passed by value. The register of its
+ * (checker resolution/implicit.ts); a register argument is passed by value. The register of its
  * result.
  */
 export function implicitCall(

@@ -6,11 +6,11 @@
  * nothing.
  */
 
-import { type Instantiation, instantiate } from '../traits/conformance.ts';
 import { substitute, type Type } from '../types/type.ts';
 import { silent, type UseSite } from '../use-site.ts';
 import type { Candidate } from './candidates.ts';
 import { type Application, type CallArgument, choose } from './choice.ts';
+import { type Instantiation, instantiate } from './conformance.ts';
 
 /** A call chosen and instantiated: the candidate it applies, how, and the type it gives. */
 export interface SilentChoice {

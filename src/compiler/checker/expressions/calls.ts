@@ -1,6 +1,6 @@
 /**
  * Calls (§3.3, §3.7, §3.10): the callee names a set of candidates, and the arguments' types choose
- * one (overloads/). A callee is written as:
+ * one (resolution/, calls/). A callee is written as:
  *
  * - a function's name, plain or through a namespace (`m.f()`), which looks only in that module,
  *   with no argument-dependent lookup (§3.13);
@@ -19,7 +19,7 @@
  *   (closures/own-calls.ts).
  *
  * An argument written `&x` passes the place `x` by reference, which must be a place that may
- * change (rules/places.ts). Spread arguments are reported as not supported until the feature that
+ * change (calls/places.ts). Spread arguments are reported as not supported until the feature that
  * adds them.
  */
 
@@ -27,19 +27,23 @@ import { conversionFunction, ownCall } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
 import type { Call, Expression, MemberAccess } from '../../syntax/expressions.ts';
+import { checkChangedPlace } from '../calls/places.ts';
+import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import { checkOwnCall } from '../closures/own-calls.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
-import { callCandidates, staticCandidates, topLevelCandidates } from '../overloads/candidates.ts';
-import { decidedByCall } from '../overloads/decided.ts';
-import { resolveCall, type WrittenArgument } from '../overloads/resolve.ts';
-import { checkChangedPlace } from '../rules/places.ts';
-import { staticTargetOf } from '../traits/conformance.ts';
+import {
+  callCandidates,
+  staticCandidates,
+  staticTargetOf,
+  topLevelCandidates,
+} from '../resolution/candidates.ts';
+import { namedType } from '../resolution/named.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { namedType } from './variants.ts';
+import { decidedByCall } from './decided.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const argumentNodes: Expression[] = [];

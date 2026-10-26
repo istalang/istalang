@@ -1,15 +1,15 @@
 /**
  * Indexing and slicing (§3.9): `x[k]` calls `index(x, k)`, found like an operator's function, so
  * any type with an `index` can be indexed, and slicing is indexing with a `Range`. Writing an
- * element is the rule of places (rules/places.ts). An index can be a link of an optional chain
+ * element is the rule of places (calls/places.ts). An index can be a link of an optional chain
  * (expressions/optionals.ts), as in `a?.items[0]`.
  */
 
 import { collectionFunctions } from '../../../language/well-known.ts';
 import type { Index } from '../../syntax/expressions.ts';
+import { resolveCall } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';
-import { topLevelCandidates } from '../overloads/candidates.ts';
-import { resolveCall } from '../overloads/resolve.ts';
+import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { Type } from '../types/type.ts';
 
 export function checkIndex(context: BodyContext, node: Index, expected: Type | undefined): Type {

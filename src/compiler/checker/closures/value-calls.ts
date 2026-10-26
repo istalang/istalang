@@ -1,7 +1,7 @@
 /**
  * Calling a function value (§3.14): a variable, a field or any expression of a function type.
  * Its type says everything: there is one function to call, so nothing is chosen, but its
- * arguments are judged, reported and fitted as a chosen function's are (overloads/), as one
+ * arguments are judged, reported and fitted as a chosen function's are (calls/resolve.ts), as one
  * signature with no type parameters, so every argument rule has one home.
  *
  * - Calling an async function value starts it and yields its future, `Future<R>` for an
@@ -10,14 +10,14 @@
  */
 
 import type { Call, Expression } from '../../syntax/expressions.ts';
+import { checkReferencedPlaces } from '../calls/places.ts';
+import { explain, fitArguments, type WrittenArgument } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { takenBy } from '../overloads/choice.ts';
-import { explain, fitArguments, type WrittenArgument } from '../overloads/resolve.ts';
-import { futureOf } from '../rules/futures.ts';
-import { checkReferencedPlaces } from '../rules/places.ts';
+import { takenBy } from '../resolution/choice.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { futureOf } from '../types/well-known.ts';
 
 /** A call as written: where it stands, with its arguments and any type arguments. */
 export interface ValueCall {

@@ -5,23 +5,10 @@
  */
 
 import type { VariableEntity } from '../../binder/entities.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Lambda } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import { LoopScope } from '../statements/loops.ts';
-import type { ReturnScope } from '../statements/returns.ts';
-
-/** A function nested in a body: a lambda, or a local `fn` (a `const` bound to one, §3.14). */
-export type NestedFunction = Lambda | FunctionDeclaration;
-
-/** The local `fn` or named lambda whose own name `variable` is; undefined for any other variable. */
-export function localFunctionOf(variable: VariableEntity): NestedFunction | undefined {
-  const { owner } = variable;
-  return (owner.kind === 'FunctionDeclaration' || owner.kind === 'Lambda') &&
-    owner.name === variable.name
-    ? owner
-    : undefined;
-}
+import type { NestedFunction } from '../check.ts';
+import { LoopScope } from './loop-scope.ts';
+import type { ReturnScope } from './returns.ts';
 
 /** One function being checked: the body's own, or a nested one. */
 export class FunctionScope {

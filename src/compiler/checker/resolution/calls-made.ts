@@ -3,7 +3,7 @@
  * every call is made, whether written in a body or found as a witness of a constraint (§3.10). The
  * rules every call obeys live here, so no path that makes calls can skip them.
  *
- * Refusing to call `dispose` (§7) is a rule about calls written in code (overloads/resolve.ts): a
+ * Refusing to call `dispose` (§7) is a rule about calls written in code (calls/resolve.ts): a
  * witness of `Disposable` is `dispose` itself, and is only ever called by such a call.
  */
 

@@ -32,16 +32,12 @@ import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import {
-  constrainArguments,
-  typeArgumentsFor,
-  typeParametersOf,
-} from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
-import { callMade } from '../overloads/calls-made.ts';
+import { callMade } from '../resolution/calls-made.ts';
 import { itemField } from '../rules/struct-items.ts';
+import { constrainArguments, typeArgumentsFor, typeParametersOf } from '../types/resolve-type.ts';
 import {
   errorType,
   type FieldMember,

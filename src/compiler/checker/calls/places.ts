@@ -14,7 +14,7 @@
  *   its indexing resolved and writes it back with `setIndex(&container, key, element)`, found like
  *   an operator's function, so any type with a `setIndex` takes element writes (§3.7, §3.9). Each
  *   indexed step of a changing place records its `setIndex`, and both functions must run at once
- *   (rules/collection-functions.ts).
+ *   (collection-functions.ts).
  * - An element passed by `&` is copied in before its call and written back when the call returns
  *   (§3.7). An async call returns its future before its callee ends, so an element can't be passed
  *   by `&` to an async function. And a copy can't change together with another place of its
@@ -33,9 +33,9 @@ import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
-import { topLevelCandidates } from '../overloads/candidates.ts';
-import type { Passing } from '../overloads/choice.ts';
-import { implicitCall } from '../overloads/implicit.ts';
+import { topLevelCandidates } from '../resolution/candidates.ts';
+import type { Passing } from '../resolution/choice.ts';
+import { implicitCall } from '../resolution/implicit.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';

@@ -31,12 +31,6 @@ import { unreachable } from '../../../../structures/unreachable.ts';
 import { isStdModule, type ModuleId } from '../../../program/program.ts';
 import type { FunctionCall } from '../../check.ts';
 import type { CheckerContext } from '../../context.ts';
-import { callWithTypes } from '../../overloads/typed-call.ts';
-import { isWellKnownTrait } from '../../traits/sendable.ts';
-import type { FieldMember, NominalType, Type } from '../../types/type.ts';
-import { typeText } from '../../types/type-text.ts';
-import { wellKnownArguments } from '../../types/well-known.ts';
-import type { Annotations } from '../annotations.ts';
 import {
   type Codec,
   type JsonDirection,
@@ -44,7 +38,13 @@ import {
   type JsonForm,
   type JsonFormQueries,
   jsonMarkers,
-} from './form.ts';
+} from '../../json-form.ts';
+import { callWithTypes } from '../../resolution/typed-call.ts';
+import { isWellKnownTrait } from '../../traits/sendable.ts';
+import type { FieldMember, NominalType, Type } from '../../types/type.ts';
+import { typeText } from '../../types/type-text.ts';
+import { wellKnownArguments } from '../../types/well-known.ts';
+import type { Annotations } from '../annotations.ts';
 
 /** What the unit needs beside the checker: field annotations. */
 export interface JsonFormSeams {

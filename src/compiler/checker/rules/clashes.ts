@@ -19,9 +19,9 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
-import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from '../types/fit.ts';
+import { typeParametersOf } from '../types/resolve-type.ts';
 import { mentionsError, type ParameterKey, type Type } from '../types/type.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */

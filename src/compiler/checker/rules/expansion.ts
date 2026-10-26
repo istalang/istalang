@@ -22,8 +22,8 @@ import type { Declaration, FunctionDeclaration, TypeParameter } from '../../synt
 import type { Invalid } from '../../syntax/node.ts';
 import type { CallSite, FunctionCall, ResolvedCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import { typeParametersOf } from '../declarations/resolve-type.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { typeParametersOf } from '../types/resolve-type.ts';
 import { errorType, type ParameterKey, parametersIn, type Type } from '../types/type.ts';
 
 interface Edge {

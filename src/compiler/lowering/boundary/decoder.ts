@@ -15,7 +15,7 @@ import {
 } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionCall } from '../../checker/check.ts';
-import type { EmptyValue, JsonField, JsonForm } from '../../checker/rules/json-forms/form.ts';
+import type { EmptyValue, JsonField, JsonForm } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import type { SynthesizedCode } from './synthesized-code.ts';
 

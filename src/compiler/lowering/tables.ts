@@ -26,7 +26,7 @@ import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
-import type { CheckedAnnotation } from '../checker/rules/annotations.ts';
+import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
 
 import type { ModuleId } from '../program/program.ts';

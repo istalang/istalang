@@ -5,7 +5,7 @@
  * no captures, recorded as a site at the expression naming it (check.ts).
  *
  * - The expected function type chooses among the functions named, as a call with arguments of
- *   its parameter types would (overloads/choice.ts), and infers a generic one's type arguments
+ *   its parameter types would (resolution/choice.ts), and infers a generic one's type arguments
  *   from those and its result (§3.5). Its arity picks a shorter form of a function with defaults.
  *   A top-level name also finds what argument-dependent lookup does from those types (§3.13).
  * - With no expected function type, only a lone non-generic function can be named; any other
@@ -16,16 +16,21 @@
 import type { FunctionsEntity } from '../../binder/entities.ts';
 import type { MemberAccess } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import { recordChosen } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { namedType } from '../expressions/variants.ts';
-import { type Candidate, callCandidates, staticCandidates } from '../overloads/candidates.ts';
-import { type Application, choose, type Passing, signatureOf } from '../overloads/choice.ts';
-import { recordChosen } from '../overloads/resolve.ts';
-import { futureArgument, futureOf } from '../rules/futures.ts';
-import { instantiate, staticTargetOf } from '../traits/conformance.ts';
+import {
+  type Candidate,
+  callCandidates,
+  staticCandidates,
+  staticTargetOf,
+} from '../resolution/candidates.ts';
+import { type Application, choose, type Passing, signatureOf } from '../resolution/choice.ts';
+import { instantiate } from '../resolution/conformance.ts';
+import { namedType } from '../resolution/named.ts';
 import { errorType, type FunctionType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { futureArgument, futureOf } from '../types/well-known.ts';
 import { useSite } from '../use-site.ts';
 
 /** Functions an expression names as a value: where, by what name in messages, and which. */
@@ -141,7 +146,7 @@ export function checkFunctionValue(
 
 /**
  * For functions named as an argument, the function types they can be passed as, so the call
- * decides which (overloads/decided.ts); undefined for a lone non-generic function, which has its
+ * decides which (expressions/decided.ts); undefined for a lone non-generic function, which has its
  * own type.
  */
 export function functionsAccepted(

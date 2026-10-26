@@ -23,7 +23,8 @@ import { checkFunctionValue, namedFunctions } from '../closures/function-values.
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
-import { topLevelCandidates } from '../overloads/candidates.ts';
+import { topLevelCandidates } from '../resolution/candidates.ts';
+import { namedType } from '../resolution/named.ts';
 import { requiredFields, requiredFieldType } from '../traits/constraints.ts';
 import {
   errorType,
@@ -41,7 +42,7 @@ import {
   type LiteralSpread,
 } from './literal-fields.ts';
 import { entityValueType } from './names.ts';
-import { checkVariantLiteral, checkVariantName, namedType } from './variants.ts';
+import { checkVariantLiteral, checkVariantName } from './variants.ts';
 
 export function checkStructLiteral(
   context: BodyContext,

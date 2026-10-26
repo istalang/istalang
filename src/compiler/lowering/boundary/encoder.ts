@@ -7,7 +7,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { JsonField, JsonForm } from '../../checker/rules/json-forms/form.ts';
+import type { JsonField, JsonForm } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { variantIndexOf } from '../expressions/variants.ts';
 import type { SynthesizedCode } from './synthesized-code.ts';

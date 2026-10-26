@@ -5,7 +5,7 @@
  * own `Array` would be a different type.
  */
 
-import type { WellKnownDeclaration } from '../../../language/well-known.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { errorType, type Type } from './type.ts';
@@ -33,4 +33,17 @@ export function wellKnownOf(
   typeArguments: readonly Type[] = [],
 ): Type {
   return checker.wellKnownType(declaration, typeArguments) ?? errorType;
+}
+
+/** `Future<T>`, what an async call returns; the error type in a program without a prelude. */
+export function futureOf(checker: CheckerContext, value: Type): Type {
+  return wellKnownOf(checker, wellKnown.future, [value]);
+}
+
+/** `T` when `type` is `Future<T>`; undefined for any other type. */
+export function futureArgument(
+  checker: Pick<Checker, 'wellKnownType'>,
+  type: Type,
+): Type | undefined {
+  return wellKnownArguments(checker, wellKnown.future, type)?.[0];
 }

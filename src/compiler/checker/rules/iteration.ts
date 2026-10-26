@@ -4,7 +4,7 @@
  *
  * - Every iterable goes through `iterate`, which gives an array of its items, so any type with an
  *   `iterate` is iterable; an array's own `iterate` gives the array itself. `iterate` is found like
- *   an operator's function, so a program's types join in (overloads/implicit.ts).
+ *   an operator's function, so a program's types join in (resolution/implicit.ts).
  * - A loop over that array reads its `length` and each element by `index`, counting an int with
  *   `compare` and `add`. Those are the prelude's own functions, made once here for every
  *   construct that loops, so lowering emits one loop for all of them.
@@ -15,14 +15,14 @@
 import { collectionFunctions, wellKnown } from '../../../language/well-known.ts';
 import type { Comprehension, Expression } from '../../syntax/expressions.ts';
 import type { For } from '../../syntax/statements.ts';
+import { operatorFunctions } from '../calls/operators.ts';
 import type { Iteration } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { topLevelCandidates } from '../overloads/candidates.ts';
-import { implicitCall, preludeCandidates } from '../overloads/implicit.ts';
-import { operatorFunctions } from '../overloads/operators.ts';
 import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
+import { topLevelCandidates } from '../resolution/candidates.ts';
+import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { errorType, intType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments, wellKnownOf } from '../types/well-known.ts';

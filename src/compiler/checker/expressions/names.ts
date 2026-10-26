@@ -7,12 +7,12 @@
  */
 
 import type { Entity } from '../../binder/entities.ts';
-import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { checkFunctionValue, namedFunctions } from '../closures/function-values.ts';
-import type { BodyContext, CheckerContext } from '../context.ts';
-import { typeParametersOf } from '../declarations/resolve-type.ts';
+import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { fieldlessStructOf } from '../resolution/named.ts';
+import { typeParametersOf } from '../types/resolve-type.ts';
 import { errorType, nominalType, type Type } from '../types/type.ts';
 import { checkVariantName } from './variants.ts';
 
@@ -68,17 +68,6 @@ export function entityValueType(
       return bare ?? errorType;
     }
   }
-}
-
-/** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */
-export function fieldlessStructOf(
-  checker: Pick<CheckerContext, 'declaredFieldsOf'>,
-  entity: Entity,
-): StructDeclaration | undefined {
-  if (entity.kind !== 'type' || entity.declaration.kind !== 'StructDeclaration') {
-    return undefined;
-  }
-  return checker.declaredFieldsOf(entity.declaration).length > 0 ? undefined : entity.declaration;
 }
 
 /**

@@ -1,6 +1,6 @@
 /**
  * `e?` on a `Result` (§3.12): the `Ok` value, or an early return of the `Err` from the function,
- * whose result must hold the same error type (statements/returns.ts). An optional isn't taken
+ * whose result must hold the same error type (closures/returns.ts). An optional isn't taken
  * apart by `?`; `??` and `match` do that (§4).
  */
 

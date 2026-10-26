@@ -8,9 +8,9 @@ import type { Span } from '../../../text/span.ts';
 import type { Await } from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { futureArgument, futureOf } from '../rules/futures.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { futureArgument, futureOf } from '../types/well-known.ts';
 
 export function checkAwait(context: BodyContext, node: Await, expected: Type | undefined): Type {
   reportWait(context, node.span);

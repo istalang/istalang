@@ -11,8 +11,8 @@ import { idOf } from '../../program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import { reported } from '../check.test-kit.ts';
+import type { NestedFunction } from '../check.ts';
 import { checkProgram } from '../check.ts';
-import type { NestedFunction } from './function-scope.ts';
 
 /** `worker`, whose `select` waits on its own `disposing()` and then runs `cleanup`. */
 function cleaningUp(cleanup: string): string {

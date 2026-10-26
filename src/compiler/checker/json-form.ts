@@ -1,6 +1,6 @@
 /**
  * The JSON form model (§9; docs/arch/boundary.md): how a type crosses as JSON, which the checker
- * decides (index.ts) and lowering writes each type's codecs from, and what later phases may ask
+ * decides (rules/json-forms/) and lowering writes each type's codecs from, and what later phases may ask
  * of the forms. It holds no decisions beyond which marker means which direction, so the checker's
  * surface (check.ts) and lowering depend on it without depending on how forms are decided.
  */
@@ -9,9 +9,9 @@ import {
   type CodecHelper,
   type WellKnownDeclaration,
   wellKnown,
-} from '../../../../language/well-known.ts';
-import type { FunctionCall } from '../../check.ts';
-import type { Type } from '../../types/type.ts';
+} from '../../language/well-known.ts';
+import type { FunctionCall } from './check.ts';
+import type { Type } from './types/type.ts';
 
 /** Which way a value crosses to the host (§9): written to JSON, or read from it. */
 export type JsonDirection = 'write' | 'read';

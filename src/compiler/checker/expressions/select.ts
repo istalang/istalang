@@ -17,10 +17,10 @@ import { type Select, type SelectCase, unparenthesized } from '../../syntax/expr
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches } from '../rules/branches.ts';
-import { futureArgument } from '../rules/futures.ts';
 import { checkDiscarded } from '../rules/must-use.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { futureArgument } from '../types/well-known.ts';
 import { reportWait } from './await.ts';
 
 export function checkSelect(context: BodyContext, node: Select, expected: Type | undefined): Type {

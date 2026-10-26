@@ -13,6 +13,7 @@ import { memo } from '../../../structures/memo.ts';
 import type { EnumDeclaration, StructDeclaration } from '../../syntax/declarations.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
+import { declaredFields } from '../types/resolve-type.ts';
 import {
   errorType,
   type FieldMember,
@@ -21,7 +22,6 @@ import {
   substitute,
   type Type,
 } from '../types/type.ts';
-import { declaredFields } from './signatures.ts';
 
 export class Layouts {
   readonly #checker: CheckerContext;

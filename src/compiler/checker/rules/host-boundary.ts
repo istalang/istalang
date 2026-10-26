@@ -8,68 +8,21 @@
  * read once and the same value given to every read (§3.6), so it holds no resource, whose identity
  * each read would share. A std module's externs are the runtime's own and take values as they are.
  *
- * A result may instead be a host handle: a `Shared<S>` whose struct `S` has only function fields,
- * such as the inbox module's `Revertible<T>` (§6). The host gives JSON naming it, and implements
- * each field as an extern of its own, so each field's function takes and gives what any extern
- * does.
+ * A result may instead be a host handle (host-externs.ts), whose fields' functions each take and
+ * give what any extern does.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
-import { isStdModule, type ModuleId } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { JsonDirection } from '../rules/json-forms/form.ts';
+import { hostFilledOf, hostHandleOf, isHostExtern } from '../host-externs.ts';
+import type { JsonDirection } from '../json-form.ts';
 import { isSendable } from '../traits/sendable.ts';
-import type { FunctionType, NominalType, Type } from '../types/type.ts';
+import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
-import { futureArgument } from './futures.ts';
-
-/** A host handle (§3.6): the struct it shares, and that struct's fields, each a function. */
-export interface HostHandle {
-  readonly state: NominalType;
-  readonly fields: readonly { readonly name: string; readonly type: FunctionType }[];
-}
-
-/** `type` as a host handle; undefined for any other type. */
-export function hostHandleOf(
-  checker: Pick<Checker, 'wellKnownType' | 'fieldsOf'>,
-  type: Type,
-): HostHandle | undefined {
-  const [state] = wellKnownArguments(checker, wellKnown.shared, type) ?? [];
-  if (state?.kind !== 'nominal' || state.entity.declaration.kind !== 'StructDeclaration') {
-    return undefined;
-  }
-  const fields = checker.fieldsOf(state) ?? [];
-  const functions = fields.flatMap(({ name, type: field }) =>
-    field.kind === 'function' ? [{ name, type: field }] : [],
-  );
-  return functions.length > 0 && functions.length === fields.length
-    ? { state, fields: functions }
-    : undefined;
-}
-
-/** What the host fills when a call of `type` gives a future: `T` for `Future<T>`, or an async one's. */
-export function hostFilledOf(
-  checker: Pick<Checker, 'wellKnownType'>,
-  type: FunctionType,
-): Type | undefined {
-  return type.isAsync ? type.result : futureArgument(checker, type.result);
-}
-
-/** Whether `declaration` is an extern its host implements, rather than the runtime. */
-export function isHostExtern(
-  checker: Pick<Checker, 'program' | 'moduleOf'>,
-  declaration: FunctionDeclaration | ExternConstantDeclaration,
-): boolean {
-  return (
-    (declaration.kind === 'ExternConstantDeclaration' || declaration.isExtern) &&
-    !isStdModule(checker.program, checker.moduleOf(declaration))
-  );
-}
+import { futureArgument } from '../types/well-known.ts';
 
 /** Reports each type of the extern `node` declares, in `module`, that can't cross as JSON. */
 export function checkHostBoundary(

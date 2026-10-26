@@ -56,20 +56,20 @@ import { ConstantChecks } from './declarations/constants.ts';
 import { checkDeclaration } from './declarations/declarations.ts';
 import { Layouts } from './declarations/layout.ts';
 import { Parameters } from './declarations/parameters.ts';
-import { resolveTypeNode, typeParametersOf } from './declarations/resolve-type.ts';
 import { callResult, declaredBodyResult, writtenByReference } from './declarations/signatures.ts';
 import { StaticFunctions } from './declarations/statics.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
+import { TypeParameters } from './resolution/type-parameters.ts';
 import { Annotations } from './rules/annotations.ts';
 import { checkClashes } from './rules/clashes.ts';
 import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
 import type { Constraint } from './traits/constraints.ts';
-import { TypeParameters } from './traits/type-parameters.ts';
 import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
+import { resolveTypeNode, typeParametersOf } from './types/resolve-type.ts';
 import {
   errorType,
   type FieldMember,

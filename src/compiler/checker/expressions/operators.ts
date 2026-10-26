@@ -1,18 +1,18 @@
 /**
  * Operator expressions (§3.9).
  *
- * - Arithmetic, negation and the comparisons call functions (overloads/operators.ts); a comparison
+ * - Arithmetic, negation and the comparisons call functions (calls/operators.ts); a comparison
  *   is `bool` whatever `compare` returns, since lowering turns its int into the relation.
- * - `==` and `!=` are built in for every type and can't be overloaded (rules/equality.ts). The
+ * - `==` and `!=` are built in for every type and can't be overloaded (types/equality.ts). The
  *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
  * - `and`, `or` and `not` take and give `bool`; they short-circuit, so they are never calls.
  * - `??` works on optionals (optionals.ts).
  */
 
 import type { Binary, Unary } from '../../syntax/expressions.ts';
+import { type Operand, resolveOperator } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
-import { type Operand, resolveOperator } from '../overloads/operators.ts';
-import { checkEqualSides } from '../rules/equality.ts';
+import { checkEqualSides } from '../types/equality.ts';
 import { boolType, errorType, type Type } from '../types/type.ts';
 import { checkNullish } from './optionals.ts';
 
