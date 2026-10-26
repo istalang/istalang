@@ -6,8 +6,10 @@
  * - Every type argument must meet its parameter's constraints. A type meets a trait where it is
  *   met: the functions the trait requires must be visible there, in scope, through argument-
  *   dependent lookup on the type, or as a requirement of a type parameter's own constraints. Each
- *   is found by resolving a call to it with the required parameter types, and must give the
- *   required result. The calls found are the witnesses the instantiation calls (check.ts).
+ *   is found by resolving a call to it with the required parameter types, taken exactly: a
+ *   function taking the type only once wrapped into an optional is one for the optional, not
+ *   for it. It must give the required result. The calls found are the witnesses the
+ *   instantiation calls (check.ts).
  * - A required field is met by a struct field of the same name and type, or by a constraint on a
  *   type parameter requiring it too. `Sendable` is derived (traits/sendable.ts), and so are `Encodable`
  *   and `Decodable`: a JSON form (rules/json-forms/), and sendable, since each implies `Sendable`.
@@ -258,6 +260,7 @@ function witnessOf(
     ({ type: each, reference }): CallArgument => ({
       type: each,
       passing: reference ? 'reference' : 'value',
+      exact: true,
     }),
   );
   const choice = choose(checker, candidates, callArguments, undefined);

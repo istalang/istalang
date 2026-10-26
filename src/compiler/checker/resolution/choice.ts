@@ -71,6 +71,8 @@ export interface CallArgument {
   readonly type: Type | undefined;
   readonly passing: Passing;
   readonly accepts?: Accepts | undefined;
+  /** Whether it fits only a parameter of its type exactly, with no wrap: a witness's (§3.10). */
+  readonly exact?: boolean;
 }
 
 /** A candidate that applies, with what inference has found for its type parameters so far. */
@@ -235,8 +237,7 @@ function argumentsInapplicability(
     const fits =
       argument.type === undefined
         ? acceptsDecided(argument, slot.type, inference)
-        : inference.match(slot.type, argument.type) &&
-          exactWhenReferenced(slot, argument, inference);
+        : typedFits(slot, { ...argument, type: argument.type }, inference);
     const [conflict] = [...inference.conflicts].slice(conflicts);
     if (conflict?.kind === 'TypeParameter') {
       return { kind: 'conflict', parameter: conflict };
@@ -246,6 +247,20 @@ function argumentsInapplicability(
     }
   }
   return misfits.length === 0 ? undefined : { kind: 'arguments', misfits };
+}
+
+/** Whether an argument with a type fits `slot`, matching it for inference. */
+function typedFits(
+  slot: SignatureSlot,
+  argument: CallArgument & { readonly type: Type },
+  inference: Inference,
+): boolean {
+  if (argument.exact === true) {
+    return inference.matchExactly(slot.type, argument.type);
+  }
+  return (
+    inference.match(slot.type, argument.type) && exactWhenReferenced(slot, argument, inference)
+  );
 }
 
 /** A reference's type is its parameter's exactly: no wrap into `T?` reaches the caller's place. */

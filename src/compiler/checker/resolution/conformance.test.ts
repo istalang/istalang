@@ -79,6 +79,16 @@ describe('a required function', () => {
       true,
     ],
     [
+      'is unmet by a function taking the type only wrapped into an optional',
+      [
+        'struct Money { cents: int }',
+        'fn Money.zero() -> Money: Money{cents: 0}',
+        'fn add<T>(left: T?, right: T?) -> T: panic("unreached")',
+      ].join('\n'),
+      'sum(Money{cents: 1}, Money{cents: 2}).cents',
+      true,
+    ],
+    [
       "is met by a type parameter's own constraint",
       'fn int.zero() -> int: 0\nfn twice<U is Monoid>(a: U) -> U: sum(a, a)',
       'twice(1)',
