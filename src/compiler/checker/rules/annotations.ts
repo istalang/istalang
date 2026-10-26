@@ -24,7 +24,7 @@ import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
 import type {
   AnnotationPlace,
@@ -293,11 +293,5 @@ export function statementPlace(statement: Statement): AnnotationPlace {
 }
 
 function waits(node: SyntaxNode): boolean {
-  if (node.kind === 'Await' || node.kind === 'Select') {
-    return true;
-  }
-  if (node.kind === 'Lambda' || node.kind === 'FunctionDeclaration') {
-    return false;
-  }
-  return childrenOf(node).some(waits);
+  return node.kind === 'Await' || node.kind === 'Select' || bodyChildrenOf(node).some(waits);
 }

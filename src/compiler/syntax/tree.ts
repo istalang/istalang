@@ -10,8 +10,8 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import type { Annotation } from './annotations.ts';
-import type { Declaration, DeclarationPart, Module } from './declarations.ts';
-import type { Expression, ExpressionPart } from './expressions.ts';
+import type { Declaration, DeclarationPart, FunctionDeclaration, Module } from './declarations.ts';
+import type { Expression, ExpressionPart, Lambda } from './expressions.ts';
 import type { Identifier, Invalid, Missing } from './node.ts';
 import type { Pattern, PatternPart } from './patterns.ts';
 import type { Block, Statement } from './statements.ts';
@@ -56,4 +56,18 @@ export function childrenOf(node: SyntaxNode): readonly SyntaxNode[] {
   return Object.values(node)
     .flatMap((value: unknown) => (Array.isArray(value) ? value : [value]).filter(isNode))
     .toSorted((first, second) => first.span.start - second.span.start);
+}
+
+/** Whether `node` makes a function of its own, a lambda or a local function (§3.14). */
+export function nestsFunction(node: SyntaxNode): node is Lambda | FunctionDeclaration {
+  return node.kind === 'Lambda' || node.kind === 'FunctionDeclaration';
+}
+
+/**
+ * The children of `node` that run where it stands, as part of the function holding it: none for a
+ * lambda or local function, whose body runs when it is called. Walking a body by these alone
+ * never enters a function it nests.
+ */
+export function bodyChildrenOf(node: SyntaxNode): readonly SyntaxNode[] {
+  return nestsFunction(node) ? [] : childrenOf(node);
 }

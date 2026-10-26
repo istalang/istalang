@@ -20,7 +20,7 @@ import { disposeFunction, wellKnown } from '../../../language/well-known.ts';
 import { isStdModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Parameter } from '../../syntax/expressions.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { childrenOf, nestsFunction, type SyntaxNode } from '../../syntax/tree.ts';
 import type { Disposal, FunctionCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -196,7 +196,7 @@ function checkSelfStays(
         checker.report(module, checkerDiagnostics.disposeSelfEscapes(node.span, self.name.text));
       }
     }
-    const inner = nested || node.kind === 'Lambda' || node.kind === 'FunctionDeclaration';
+    const inner = nested || nestsFunction(node);
     for (const child of childrenOf(node)) {
       visit(child, [node, ...outer], inner);
     }
