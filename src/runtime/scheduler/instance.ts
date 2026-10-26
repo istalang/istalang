@@ -138,7 +138,8 @@ export class Instance {
       .objects()
       .find(
         (object) =>
-          !held.objects.has(object.id) && isDisposable(this.loaded.definition.types, object),
+          !held.objects.has(object.id) &&
+          isDisposable({ heap: this.heap, types: this.loaded.definition.types }, object),
       );
     if (lost !== undefined) {
       unreachable(`Object ${lost.id} lost its last holder without being disposed.`);

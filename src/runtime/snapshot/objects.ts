@@ -12,11 +12,11 @@
  *   (instructions/suspension.ts), whose registers name the futures.
  * - Timers are the futures whose state is a timer.
  *
- * Disposability follows from an object's kind or type, never from a flag of its own. Slots,
- * futures, guards and mocks are disposed by the runtime, and an execution is stopped when its call
- * future is. A cell or resource is
- * disposable as its type entry's `disposal` says (definition/types.ts), so a restore knows that a
- * `Shared<Lease>` cell has a `dispose` to call and a `Shared<int>` cell doesn't.
+ * Disposability follows from an object's kind and state, its type, and whether a weak reference
+ * refers to it, never from a flag of its own (runtime/lifetimes/disposal.ts). Slots, futures, guards
+ * and mocks are disposed by the runtime, and an execution is stopped when its call future is. A cell
+ * or resource is disposable as its type entry's `disposal` says (definition/types.ts), so a restore
+ * knows that a `Shared<Lease>` cell has a `dispose` to call and a `Shared<int>` cell doesn't.
  *
  * The slot, future and resource parts are what the language's concurrency and disposal need before
  * any code runs them, so they may still change as that code arrives (docs/arch/definition.md).

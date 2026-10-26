@@ -13,7 +13,9 @@ import { heldFrom, holdsOf } from './holders.ts';
 import { heapArbitrary, reachedFrom, testTypes } from './lifetimes.test-kit.ts';
 import { readyOrphans } from './orphans.ts';
 
-const disposable = (object: LiveObject) => isDisposable(testTypes, object);
+/** Whether `object` of `heap` is disposed when nothing holds it. */
+const disposableIn = (heap: Heap) => (object: LiveObject) =>
+  isDisposable({ heap, types: testTypes }, object);
 
 const handle = (object: number) => ({ kind: 'handle', object }) as const;
 
@@ -27,6 +29,7 @@ describe('ready orphans', () => {
         const edges = (id: number) => holdsOf(heap.objectOf(id)).filter((to) => isOrphan.has(to));
         const reaches = (source: number, target: number) =>
           edges(source).some((next) => reachedFrom([next], edges).has(target));
+        const disposable = disposableIn(heap);
         const candidates = orphans.filter(disposable).map(({ id }) => id);
         const expected = candidates.filter(
           (id) =>
@@ -52,6 +55,6 @@ describe('ready orphans', () => {
     const frames = [{ registers: [handle(3)], kept: [] }];
     const held = heldFrom(heap, { frames, objects: [] }).objects;
     const from = [0, 2];
-    expect(readyOrphans(heap, { held, from, isDisposable: disposable })).toEqual([2, 1, 0]);
+    expect(readyOrphans(heap, { held, from, isDisposable: disposableIn(heap) })).toEqual([2, 1, 0]);
   });
 });

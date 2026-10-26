@@ -112,13 +112,13 @@ export class Collector {
 
   /** Starts a round of what is ready, if anything is, after the objects `released` lost a holder. */
   #startRound(released: readonly number[]): void {
-    const { heap, types } = this.#seams;
+    const { heap } = this.#seams;
     const reached = disposablesFrom(this.#seams, released);
     const held = reached.size === 0 ? undefined : heldUnlessAll(heap, this.#roots(), reached);
     if (held === undefined) {
       return;
     }
-    const isDisposableObject = (object: LiveObject) => isDisposable(types, object);
+    const isDisposableObject = (object: LiveObject) => isDisposable(this.#seams, object);
     const ready = readyOrphans(heap, { held, from: released, isDisposable: isDisposableObject });
     if (ready.length > 0) {
       this.#rounds.push({ queue: [...ready], disposing: undefined });
@@ -139,7 +139,7 @@ export class Collector {
 function disposablesFrom(seams: CollectorSeams, released: readonly number[]): ReadonlySet<number> {
   const disposables = new Set<number>();
   walkHolds(seams.heap, released, (object) => {
-    if (isDisposable(seams.types, object)) {
+    if (isDisposable(seams, object)) {
       disposables.add(object.id);
     }
     return 'through';
