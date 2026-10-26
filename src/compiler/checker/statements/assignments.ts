@@ -35,7 +35,6 @@ import { checkChangedPlace, immutableKind, isChangeable } from '../calls/places.
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { checkWholeWrite } from '../expressions/dereference.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/walk.ts';
@@ -48,10 +47,6 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
   }
   if (more.length === 0 && node.operator !== '=') {
     checkCompound(context, node, only, node.operator);
-    return;
-  }
-  if (more.length === 0 && only.kind === 'Dereference') {
-    checkWholeWrite(context, node, only);
     return;
   }
   if (more.length === 0 && !destructures(only)) {
