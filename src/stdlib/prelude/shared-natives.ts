@@ -15,14 +15,14 @@ import {
   unwrapFunction,
   wellKnown,
 } from '../../language/well-known.ts';
-import type { Natives } from '../../runtime/natives.ts';
+import type { NativeContext, Natives, WithCells } from '../../runtime/natives.ts';
 import { declaredResult, given } from '../native-values.ts';
 
 const { module, name } = wellKnown.shared;
 const value = parameterKey('T');
 const shared = namedKey(qualifiedName(wellKnown.shared), value);
 
-export const sharedNatives: Natives = {
+export const sharedNatives: Natives<NativeContext & WithCells> = {
   [nativeKey(module, `${name}.${conversionFunction}`, value)]: ([initial], context) =>
     context.cells.create(declaredResult(context), given(initial)),
   [nativeKey(module, unwrapFunction, shared)]: ([cell], context) => context.cells.read(given(cell)),

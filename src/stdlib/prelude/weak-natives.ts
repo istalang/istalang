@@ -12,14 +12,14 @@ import {
   qualifiedName,
   wellKnown,
 } from '../../language/well-known.ts';
-import type { Natives } from '../../runtime/natives.ts';
+import type { NativeContext, Natives, WithWeakSide } from '../../runtime/natives.ts';
 import { given, resultOptional } from '../native-values.ts';
 
 const { module, name } = wellKnown.weakRef;
 const referent = parameterKey('T');
 const weakRef = namedKey(qualifiedName(wellKnown.weakRef), referent);
 
-export const weakNatives: Natives = {
+export const weakNatives: Natives<NativeContext & WithWeakSide> = {
   [nativeKey(module, `${name}.${conversionFunction}`, referent)]: ([value], context) =>
     context.weak.reference(given(value)),
   [nativeKey(module, 'deref', weakRef)]: ([weak], context) =>

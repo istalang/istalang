@@ -21,7 +21,8 @@
 import { JsonError, jsonOfPlain, jsonTypeOf, plainOfJson } from '../../definition/json-values.ts';
 import type { Value } from '../../definition/values.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
-import { type Native, type NativeContext, type Natives, Panic } from '../natives.ts';
+import type { NativeContext, NativeHostFutures, WithResources } from '../natives.ts';
+import { type Native, type Natives, Panic } from '../natives.ts';
 
 /** What a host extern is told about the call it runs. */
 export interface HostCall {
@@ -50,7 +51,7 @@ export function hostNatives(host: HostExterns): Natives {
   return Object.fromEntries(Object.entries(host).map(([key, extern]) => [key, hostNative(extern)]));
 }
 
-function hostNative(extern: HostExtern): Native {
+function hostNative(extern: HostExtern): Native<NativeContext & NativeHostFutures & WithResources> {
   return (values, context) => {
     const shape = jsonTypeOf(context.types);
     const pendings = new Set<HostPending>();
@@ -82,7 +83,7 @@ function returnsFuture(context: NativeContext): boolean {
 function futureOf(
   given: unknown,
   pendings: ReadonlySet<HostPending>,
-  context: NativeContext,
+  context: NativeContext & NativeHostFutures,
 ): Value {
   if (!pendings.has(given as HostPending)) {
     throw new Panic(

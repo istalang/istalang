@@ -6,14 +6,14 @@
 
 import { namedKey, nativeKey, parameterKey } from '../../definition/extern-key.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
-import type { Natives } from '../../runtime/natives.ts';
+import type { NativeContext, Natives, WithSlots } from '../../runtime/natives.ts';
 import { given } from '../native-values.ts';
 
 const { module, name } = wellKnown.slot;
 const value = parameterKey('T');
 const slot = namedKey(qualifiedName(wellKnown.slot), value);
 
-export const slotNatives: Natives = {
+export const slotNatives: Natives<NativeContext & WithSlots> = {
   [nativeKey(module, `${name}.create`)]: (_arguments, context) => context.slots.create(),
   [nativeKey(module, 'put', slot, value)]: ([target, put], context) =>
     context.slots.operate(given(target), 'put', given(put)),

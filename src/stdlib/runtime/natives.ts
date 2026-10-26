@@ -4,9 +4,9 @@
  */
 
 import { nativeKey } from '../../definition/extern-key.ts';
-import type { Natives } from '../../runtime/natives.ts';
+import type { NativeContext, NativeFutures, Natives } from '../../runtime/natives.ts';
 import { runtimeName } from '../stdlib-loader.ts';
 
-export const runtimeNatives: Natives = {
+export const runtimeNatives: Natives<NativeContext & NativeFutures> = {
   [nativeKey(runtimeName, 'commit')]: (_arguments, context) => context.resolved(null),
 };

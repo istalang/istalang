@@ -10,6 +10,7 @@
 
 import { namedKey, nativeKey, primitiveKey } from '../../definition/extern-key.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import type { NativeContext, NativeTimers } from '../../runtime/natives.ts';
 import { type Natives, Panic } from '../../runtime/natives.ts';
 import { fieldOf, int, resultError, resultOkStruct, resultStruct, text } from '../native-values.ts';
 import { parseErrorCode } from '../prelude/text-forms.ts';
@@ -20,7 +21,7 @@ const timeType = namedKey(qualifiedName(wellKnown.time));
 const durationType = namedKey(qualifiedName(wellKnown.duration));
 const stringType = primitiveKey('string');
 
-export const timeNatives: Natives = {
+export const timeNatives: Natives<NativeContext & NativeTimers> = {
   [nativeKey(timeName, 'now')]: (_arguments, context) =>
     resultStruct(context, [context.segmentStartedAt]),
   [nativeKey(timeName, 'at', timeType)]: ([time], context) => context.timer(int(fieldOf(time, 0))),

@@ -1,3 +1,4 @@
+import type { WithResources } from '../../runtime/natives.ts';
 /**
  * The `json` module's natives (json.ista): JSON text in and out, and the leaf steps of the compiled
  * codecs that need JavaScript's view of a number or the host's own JSON. Everything that walks a
@@ -31,7 +32,7 @@ import { fieldOf, float, given, resultError, resultOk, text } from '../native-va
 import { jsonName } from '../stdlib-loader.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */
-function hostPayloadOf(value: Value, context: NativeContext): unknown {
+function hostPayloadOf(value: Value, context: NativeContext & WithResources): unknown {
   if (typeof value === 'object' && value !== null && value.kind === 'extern') {
     return value.payload;
   }
@@ -47,7 +48,7 @@ const jsonErrorCode = 'json';
 const json = namedKey(jsonTypeName);
 const string = primitiveKey('string');
 
-export const jsonNatives: Natives = {
+export const jsonNatives: Natives<NativeContext & WithResources> = {
   [nativeKey(jsonName, '_write', json)]: ([value], context) =>
     jsonText(given(value), jsonTypeOf(context.types)),
   [nativeKey(jsonName, '_read', string)]: ([source], context) => {

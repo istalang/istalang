@@ -22,9 +22,9 @@ import {
   writeReference,
 } from '../interpreter/machine.ts';
 import type {
+  FullNativeContext,
   Native,
   NativeCells,
-  NativeContext,
   NativeResources,
   NativeWeakSide,
 } from '../natives.ts';
@@ -79,7 +79,7 @@ export class NativeCalls {
     );
   }
 
-  #context(entry: FunctionDefinition): Omit<NativeContext, 'write'> {
+  #context(entry: FunctionDefinition): Omit<FullNativeContext, 'write'> {
     const { futures, slots } = this.#instance;
     const declared = entry.kind === 'extern' ? entry : undefined;
     return {
@@ -89,13 +89,14 @@ export class NativeCalls {
       types: this.#instance.loaded.definition.types,
       instance: this.#instance.name,
       segmentStartedAt: this.#startedAt,
-      timer: (at) => futures.createHandle({ kind: 'timer', at }),
-      resolved: (value) => futures.createHandle({ kind: 'resolved', value }),
-      pending: (token) => futures.createHost(token),
-      first: (handles) => futures.first(handles),
+      timer: (at: bigint) => futures.createHandle({ kind: 'timer', at }),
+      resolved: (value: Value) => futures.createHandle({ kind: 'resolved', value }),
+      pending: (token: string) => futures.createHost(token),
+      first: (handles: readonly Value[]) => futures.first(handles),
       slots: {
         create: () => slots.create(),
-        operate: (slot, operation, value) => slots.operate(slot, operation, value),
+        operate: (slot: Value, operation: 'put' | 'take' | 'read', value?: Value) =>
+          slots.operate(slot, operation, value),
       },
       trace: this.#trace,
       cells: this.#cells,

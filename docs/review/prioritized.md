@@ -14,7 +14,7 @@ tags: [review, architecture, refactoring, plan]
 | --- | --- | --- | --- | --- | --- |
 | 1 | Dead code elimination (frontier.ts, unsupported.ts) | tooling | | by-opus | done (a067ee0) |
 | 2 | Deduplicate leaf helpers (compareCodeUnits, staticName, preludeKey) | definition, language, stdlib | D79, D128 | by-argon, by-opus | |
-| 3 | Split NativeContext into capability interfaces | runtime, stdlib | | by-opus | |
+| 3 | Split NativeContext into capability interfaces | runtime, stdlib | | by-opus | done (a900f97) |
 | 4 | Unify Context-Dependent / Target-Typed Argument Checking (add `accepts` facet) | checker, overloads | D84, D95, D102 | by-argon, by-opus | |
 | 5 | Fix heldType + must-use for declared structs/enums and `T is Disposable` | checker | D108 | by-argon | |
 | 6 | Extract shared checker helpers (remove cross-feature imports, enforce inner layers) | checker | D135 | by-argon, by-opus | |
