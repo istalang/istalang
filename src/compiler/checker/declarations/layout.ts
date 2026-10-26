@@ -16,7 +16,7 @@
 
 import { memo } from '../../../structures/memo.ts';
 import type { EnumDeclaration, StructDeclaration } from '../../syntax/declarations.ts';
-import { fieldsFunctionOf } from '../../syntax/derived-functions.ts';
+import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { declaredFields } from '../types/resolve-type.ts';

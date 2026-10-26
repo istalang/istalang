@@ -13,8 +13,8 @@
  *
  * `x->f` is `(*x).f` (§3.9), so it is read as that: a member access on a `Dereference` of `x`.
  *
- * After `.` or `->`, a number names a tuple element (§3.15). The scanner reads the `0.1` of `t.0.1` as
- * one float, so that token is split back into its two elements here.
+ * After `.` or `->`, a number names a tuple element (§3.15). The scanner reads the `0.1` of
+ * `t.0.1` as one float, so that token is split back into its two elements here.
  */
 
 import {

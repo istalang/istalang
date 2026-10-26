@@ -21,7 +21,7 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { isStdModule, type ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
-import { fieldsFunctionOf } from '../../syntax/derived-functions.ts';
+import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';

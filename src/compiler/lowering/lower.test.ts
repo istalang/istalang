@@ -18,6 +18,7 @@ import { compiledDefinition } from '../compile.test-kit.ts';
 import { compileProgram, diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
+import { declaredFunctions } from '../syntax/declarations.ts';
 import { keyOf } from './names.ts';
 
 const specModules = specExamples
@@ -28,11 +29,9 @@ const corpusTexts = runPrograms.map((program) => program.text);
 /** The keys of the externs module `key` declares, in order. */
 function externKeys(program: Program, key: string): readonly string[] {
   const checker = checkProgram(program);
-  const items = program.modules.get(idOf(key))?.tree.root.items ?? [];
-  return items.flatMap((item) =>
-    item.kind === 'FunctionDeclaration' && item.isExtern
-      ? [keyOf(checker, item, checker.parametersOf(item))]
-      : [],
+  const root = program.modules.get(idOf(key))?.tree.root;
+  return (root === undefined ? [] : declaredFunctions(root)).flatMap((item) =>
+    item.isExtern ? [keyOf(checker, item, checker.parametersOf(item))] : [],
   );
 }
 

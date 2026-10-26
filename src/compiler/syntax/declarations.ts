@@ -158,6 +158,11 @@ export interface Module extends NodeOf<'Module'> {
   readonly items: readonly (Declaration | Invalid)[];
 }
 
+/** The top-level functions `module` declares, static ones included. */
+export function declaredFunctions(module: Module): readonly FunctionDeclaration[] {
+  return module.items.filter((item) => item.kind === 'FunctionDeclaration');
+}
+
 /** Nodes that occur only as parts of a declaration. */
 export type DeclarationPart = TypeParameter | Variant | DeclaredField;
 

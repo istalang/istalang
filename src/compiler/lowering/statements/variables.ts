@@ -10,9 +10,10 @@
  *   listed in the function's `cells`, typed as the `_Cell<T>` the cell is created as.
  * - An assignment evaluates its value, then writes each part to its place (`assignedOf`),
  *   wrapped as the checker found it fits the place (§2); a whole `*x`, like a last element, is
- *   written with its write alone (places.ts). A compound assignment reads its place once, calls its operator's function on that value and the
- *   operand, and writes the result back to the same place. A place reached through an element or
- *   a handle's value is copied in and written back around the write (places.ts).
+ *   written with its write alone (places.ts). A compound assignment reads its place once, calls
+ *   its operator's function on that value and the operand, and writes the result back to the same
+ *   place. A place reached through an element or a shared struct's value is copied in and written
+ *   back around the write (places.ts).
  * - A value given to `_` is held until the block ends (§7), so an unnamed target keeps the whole
  *   value in a variable of its own, with no name. A `fn let`, `fn const` or `fn _` variable lasts
  *   until the function returns (§3.4): its block keeps it (`keep`) before releasing its register.

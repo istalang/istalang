@@ -1,16 +1,15 @@
 /**
- * Function declarations derived from the fields of a struct or a variant, which every phase reads
- * as it reads a written one, so they need no rule of their own where they are checked or lowered.
- * Each is made once from its declaration's own nodes, and is known as derived
- * (`isFieldsFunction`).
- *
- * The fields of a struct or a variant, when one has a default (§3.1), read as the parameters of a
- * function of their own, each with its type and default, so a field's default is taken as a
- * parameter's (§3.3): it sees the fields before it, a field without a written type takes its
- * default's, and a default reaching its own field is a cycle. Its parameters are the fields in
+ * Field defaults (§3.1): the fields of a struct or a variant, when one has a default, read as the
+ * parameters of a function of their own, each with its type and default, so a field's default is
+ * taken as a parameter's (§3.3): it sees the fields before it, a field without a written type takes
+ * its default's, and a default reaching its own field is a cycle. Its parameters are the fields in
  * order, so a layout's field `i` is its parameter `i`. It is called by no name: a literal leaving
  * field `i` out calls its entry of arity `i`, which gives that field's value from the fields
  * before it.
+ *
+ * Each such function is made once from its declaration's own nodes and is checked and lowered as a
+ * written one is, but where it differs (`isFieldsFunction`): its defaults needn't trail
+ * (declarations/signatures.ts), and lowering gives each entry its one field (lowering/lower.ts).
  */
 
 import { memo } from '../../structures/memo.ts';
@@ -30,10 +29,10 @@ type FieldsOwner = StructDeclaration | Variant;
 
 const fieldsFunctions = new WeakMap<FieldsOwner, FunctionDeclaration | undefined>();
 
-const derived = new WeakSet<FunctionDeclaration>();
+const made = new WeakSet<FunctionDeclaration>();
 
-/** Every function `item` derives: those a struct's or its variants' fields read as. */
-export function derivedFunctionsOf(item: Declaration): readonly FunctionDeclaration[] {
+/** The functions the fields of `item` read as: a struct's, or each of an enum's variants'. */
+export function fieldsFunctionsOf(item: Declaration): readonly FunctionDeclaration[] {
   switch (item.kind) {
     case 'StructDeclaration':
       return present(fieldsFunctionOf(item));
@@ -48,7 +47,7 @@ export function derivedFunctionsOf(item: Declaration): readonly FunctionDeclarat
 
 /** Whether `declaration` is the function a declaration's fields read as, not a written one. */
 export function isFieldsFunction(declaration: FunctionDeclaration): boolean {
-  return derived.has(declaration);
+  return made.has(declaration);
 }
 
 /**
@@ -88,7 +87,7 @@ export function fieldsFunctionOf(
       returnType: undefined,
       body: undefined,
     };
-    derived.add(fields);
+    made.add(fields);
     return fields;
   });
 }

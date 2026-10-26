@@ -1,11 +1,16 @@
-# outcome: "3 true false 8 counted"
+# outcome: "3 true false 8 counted 1 2"
 # A shared struct (§3.18) is a type of its own whose values are handles to a cell holding its
 # fields: `new Counter{…}` makes one, `x->f` reads and writes a field and `*x` the whole value, for
-# every copy, while `==` tells handles apart by identity.
+# every copy, while `==` tells handles apart by identity. A field may hold the shared struct itself,
+# since what it holds is a handle.
 
 shared struct Counter:
   count: int
   label: string = "counted"
+
+shared struct Node:
+  value: int
+  next: Node? = none
 
 fn bump(self: Counter):
   self->count = self->count + 1
@@ -23,4 +28,10 @@ async fn main() -> Future<string>:
     string(a == other),
     string(other->count),
     b->label,
+    nodes(),
   ].join(" ")
+
+fn nodes() -> string:
+  const head = new Node{value: 1, next: new Node{value: 2}}
+  const second = if head->next is Some{value as next}: next->value else: 0
+  string(head->value) + " " + string(second)

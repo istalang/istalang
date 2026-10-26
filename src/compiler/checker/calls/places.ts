@@ -117,14 +117,14 @@ export function checkReferencedPlaces(
         checkerDiagnostics.elementOverlap(place.span, variable.name.text, callee.name),
       );
     }
-    if (throughHandle(place) && earlier.some(throughHandle)) {
+    if (throughShared(place) && earlier.some(throughShared)) {
       context.report(checkerDiagnostics.handleOverlap(place.span, callee.name));
     }
   });
 }
 
 /** Whether the place `node` names starts at the value behind a handle. */
-function throughHandle(node: Expression): boolean {
+function throughShared(node: Expression): boolean {
   return placePath(node).root.kind === 'Dereference';
 }
 

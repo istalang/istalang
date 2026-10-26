@@ -39,7 +39,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
-import { derivedFunctionsOf } from '../syntax/derived-functions.ts';
+import { fieldsFunctionsOf } from '../syntax/field-defaults.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -170,7 +170,7 @@ export class ProgramChecker implements CheckerContext {
         }
       }
     }
-    for (const declared of derivedFunctionsOf(item)) {
+    for (const declared of fieldsFunctionsOf(item)) {
       this.#modules.set(declared, module);
     }
   }

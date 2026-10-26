@@ -4,9 +4,9 @@
  *
  * A native receives values, never references: an argument passed by `&` is read through its
  * reference, and the native writes a changed value back through the context's `write`, which
- * writes the place the reference names. It reaches the futures it returns through the instance's futures and slots, weak
- * references through handles to what they refer to, and a host type's resources through the
- * instance's heap (§7).
+ * writes the place the reference names. It reaches the futures it returns through the instance's
+ * futures and slots, weak references through handles to what they refer to, and a host type's
+ * resources through the instance's heap (§7).
  */
 
 import type { FunctionDefinition } from '../../definition/functions.ts';

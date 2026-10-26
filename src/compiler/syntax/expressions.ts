@@ -221,8 +221,9 @@ export interface Propagate extends NodeOf<'Propagate'> {
 }
 
 /**
- * `*x`: the value behind the handle `x` (§3.9). `x->f` is `(*x).f`, so the parser reads it as a
- * field of a `Dereference` spanning `x->`.
+ * `*x`: the value behind the shared struct `x` (§3.9). `x->f` is `(*x).f`, so the parser reads it
+ * as a field of a `Dereference` spanning `x->`: a formatter tells the two forms apart by whether
+ * its span starts at its operand's.
  */
 export interface Dereference extends NodeOf<'Dereference'> {
   readonly operand: Expression;

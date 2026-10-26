@@ -134,7 +134,7 @@ export interface TargetBinding {
 /**
  * Where a struct literal's field gets its value (§3.1): an expression of the literal, the field of
  * that position in its leading spread's value, or its default, which `call` computes from the
- * fields before it (syntax/derived-functions.ts).
+ * fields before it (syntax/field-defaults.ts).
  */
 export type FieldSource =
   | { readonly kind: 'value'; readonly value: Expression }
@@ -217,8 +217,9 @@ export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCa
 /**
  * Nodes a call can be written as: a call, an operator that calls a function (§3.9), indexing,
  * which calls `index`, an assignment, whose compound operator calls a function, a pattern's
- * comparison such as `amount > 1000`, which calls `compare` (§3.11). A function named as a value (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the
- * expression naming it, for the function its closure runs.
+ * comparison such as `amount > 1000`, which calls `compare` (§3.11). A function named as a value
+ * (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the expression naming it, for the function its
+ * closure runs.
  */
 export type CallSite = NodeOf<
   | 'Call'

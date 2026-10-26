@@ -1,6 +1,6 @@
 /**
  * Postfix forms (§3.9): calls with type arguments (§3.5), `&` and spread arguments (§3.7, §2),
- * indexing and slicing, member access, `?.`, `?` and `$`.
+ * indexing and slicing, member access, `?.`, `->` and `?`.
  */
 
 import { describe, expect, it } from 'vitest';

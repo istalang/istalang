@@ -260,7 +260,7 @@ export function constrainArguments(
  * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
  * resolved in `module`, where they are written, but not substituted. A field whose default gives
  * its type has its parameter's in `defaults`, the function its declaration's fields read as
- * (syntax/derived-functions.ts), whose defaults are checked to infer it (§3.1, §3.3).
+ * (syntax/field-defaults.ts), whose defaults are checked to infer it (§3.1, §3.3).
  */
 export function declaredFields(
   checker: CheckerContext,

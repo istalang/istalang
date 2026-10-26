@@ -9,14 +9,14 @@
  *   default sees the parameters before it (`DefaultValues`). A parameter with a default may omit
  *   its type, which is then the default's. Every parameter after one with a default has one too,
  *   since a call gives its arguments in order; a struct's or a variant's fields, read as
- *   parameters (syntax/derived-functions.ts), are named in a literal, so any of them may have one.
+ *   parameters (syntax/field-defaults.ts), are named in a literal, so any of them may have one.
  *   Rest parameters are sugar the checker doesn't expand yet.
  */
 
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import { isFieldsFunction } from '../../syntax/derived-functions.ts';
 import type { Expression, Parameter } from '../../syntax/expressions.ts';
+import { isFieldsFunction } from '../../syntax/field-defaults.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

@@ -17,7 +17,7 @@
  *   and compile time read it rather than reading the items again. A literal with a mistake in its
  *   items has no record: nothing compiles it.
  * - A field left out with names alone takes its default (§3.1), from the entry of arity `index` of
- *   the function the declaration's fields read as (syntax/derived-functions.ts), instantiated with
+ *   the function the declaration's fields read as (syntax/field-defaults.ts), instantiated with
  *   the literal's type arguments, its constraints met where the literal is. A spread gives every
  *   field, so a literal with one runs no default.
  */
@@ -342,7 +342,7 @@ function sourceOf(
 /**
  * By field position, the call giving each field the literal leaves out its default: the entry of
  * arity `index` of `shape`'s defaults, with the literal's `typeArguments`. Its parameters are the
- * fields in order, so they are numbered as the shape's fields are (syntax/derived-functions.ts).
+ * fields in order, so they are numbered as the shape's fields are (syntax/field-defaults.ts).
  */
 function defaultCalls(
   context: BodyContext,

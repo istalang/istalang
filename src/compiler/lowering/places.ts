@@ -168,12 +168,12 @@ function enter(context: FunctionContext, node: Expression, use: PlaceUse): Enter
   /** Whether the register copied in before step `position` is passed on by `&`. */
   const passedOn = (position: number) => use === 'referenced' || position <= lastIndex;
   if (root.kind !== 'Identifier' && use === 'assigned' && lowered.length === 0) {
-    return { target: { kind: 'accessor', accessor: handleAccessor(context, root) }, leave };
+    return { target: { kind: 'accessor', accessor: sharedAccessor(context, root) }, leave };
   }
   let current =
     root.kind === 'Identifier'
       ? { register: variableRegister(context, root), path: [] }
-      : copyIn(context, handleAccessor(context, root), passedOn(0), writeBacks);
+      : copyIn(context, sharedAccessor(context, root), passedOn(0), writeBacks);
   for (const [position, step] of lowered.entries()) {
     if (typeof step === 'number') {
       current = { ...current, path: [...current.path, step] };
@@ -232,8 +232,13 @@ function elementAccessor(
   };
 }
 
-/** The value behind the handle a place's root `node` reads, computing the handle (§3.9). */
-function handleAccessor(context: FunctionContext, node: Expression): Accessor {
+/** `*x` read as a value: the value behind the shared struct `x`, read from its cell (§3.9). */
+export function lowerDereference(context: FunctionContext, node: Dereference): Register {
+  return sharedAccessor(context, node).read(node.span);
+}
+
+/** The value behind the shared struct a place's root `node` reads, computing it (§3.9). */
+function sharedAccessor(context: FunctionContext, node: Expression): Accessor {
   if (node.kind !== 'Dereference') {
     unreachable(`A ${node.kind} is no place; the checker should have said so.`);
   }

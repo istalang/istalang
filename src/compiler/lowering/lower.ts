@@ -16,7 +16,7 @@ import { isHostExtern } from '../checker/host-externs.ts';
 import { instantiatedBody } from '../checker/types/instantiation.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { isFieldsFunction } from '../syntax/derived-functions.ts';
+import { isFieldsFunction } from '../syntax/field-defaults.ts';
 import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';
 import {
   constantNativeEntry,

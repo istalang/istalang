@@ -1,9 +1,9 @@
 # outcome: "made, disposed b, disposed a, after cycle, inner kept, disposed outer, disposed inner, after nesting"
 # A `dispose` declared beside a shared struct makes it disposable (§7, §3.18): it runs as code,
-# with the handle, when nothing holds it any more. Two leases holding each other are disposed together,
-# newest first, at the release that leaves them held by nothing else. A value held by another one
-# being disposed loses its last holder only once that disposal is done, so a lease is disposed
-# after the lease holding it, however old it is.
+# with the handle, when nothing holds it any more. Two leases holding each other are disposed
+# together, newest first, at the release that leaves them held by nothing else. A value held by
+# another one being disposed loses its last holder only once that disposal is done, so a lease is
+# disposed after the lease holding it, however old it is.
 
 shared struct Lease:
   name: string

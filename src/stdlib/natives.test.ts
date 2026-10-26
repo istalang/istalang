@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../compiler/checker/check.ts';
 import { keyOf } from '../compiler/lowering/names.ts';
+import { declaredFunctions } from '../compiler/syntax/declarations.ts';
 import { derivedCodecs } from '../language/well-known.ts';
 import { stdNatives } from './natives.ts';
 import { jsonName, stdSources } from './stdlib-loader.ts';
@@ -29,10 +30,8 @@ describe('std natives', () => {
     const std = [...program.modules.values()].filter((module) => module.isStd);
     expect(std.length).toBe(Object.keys(stdSources).length + 1);
     const callable = std.flatMap((module) =>
-      module.tree.root.items.flatMap((item) =>
-        item.kind === 'FunctionDeclaration' &&
-        item.isExtern &&
-        !withoutNative.has(`${module.name}.${item.name.text}`)
+      declaredFunctions(module.tree.root).flatMap((item) =>
+        item.isExtern && !withoutNative.has(`${module.name}.${item.name.text}`)
           ? [keyOf(checker, item, checker.parametersOf(item))]
           : [],
       ),

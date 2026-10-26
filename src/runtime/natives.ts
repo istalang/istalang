@@ -10,11 +10,10 @@
  * commits; anything else it throws is a bug in the native itself and propagates.
  *
  * Natives the runtime backs need the running instance, so each call also receives a context: the
- * extern being called, its declared result and type arguments, and the Definition's types (for building typed values), the time the segment
- * started, which is what `now()` means (§5), the futures the runtime creates for an extern that
- * returns one (§3.6), its slots (§6), its weak references and its
- * resources (§7). A
- * native never holds the context beyond its call.
+ * extern being called, its declared result and type arguments, and the Definition's types (for
+ * building typed values), the time the segment started, which is what `now()` means (§5), the
+ * futures the runtime creates for an extern that returns one (§3.6), its slots (§6), its weak
+ * references and its resources (§7). A native never holds the context beyond its call.
  */
 
 import type { TypeId } from '../definition/operands.ts';
