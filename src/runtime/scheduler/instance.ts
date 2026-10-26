@@ -256,7 +256,8 @@ export class Instance {
 
   /** The root execution, which resolves no call future; undefined once it has returned. */
   root(): LiveExecution | undefined {
-    return this.heap.objectsOf('execution').find((execution) => execution.resolves === undefined);
+    const [root] = this.heap.find('executions', undefined);
+    return root;
   }
 
   /** Removes an execution whose call returned. */

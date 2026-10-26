@@ -114,9 +114,7 @@ function disposeFuture(
 ): Cleanup | undefined {
   const { state } = future;
   if (state.kind === 'call') {
-    const execution = context.heap
-      .objectsOf('execution')
-      .find((candidate) => candidate.resolves === future.id);
+    const [execution] = context.heap.find('executions', future.id);
     return execution === undefined ? undefined : disposeCall(context, execution);
   }
   if (state.kind === 'slot' && context.heap.has(state.slot)) {

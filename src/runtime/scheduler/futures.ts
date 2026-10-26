@@ -122,15 +122,14 @@ export class Futures {
   }
 
   #hostFuture(token: string): LiveObjectOf<'future'> | undefined {
-    return this.#heap
-      .objectsOf('future')
-      .find(({ state }) => state.kind === 'host' && state.token === token);
+    const [future] = this.#heap.find('hostFutures', token);
+    return future;
   }
 
   /** Resolves every timer due at `now`, earliest first. */
   resolveDueTimers(now: bigint): void {
     const due = this.#heap
-      .objectsOf('future')
+      .find('pending', 'timer')
       .flatMap(({ id, state }) =>
         state.kind === 'timer' && state.at <= now ? [{ id, ...state }] : [],
       )
@@ -161,7 +160,7 @@ export class Futures {
   }
 
   #pendingFirsts(): readonly FirstFuture[] {
-    return this.#heap.objectsOf('future').filter(isFirst);
+    return this.#heap.find('pending', 'first').filter(isFirst);
   }
 }
 

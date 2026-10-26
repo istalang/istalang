@@ -2,8 +2,9 @@
  * The weak side of disposal (spec §6, §7): weak references, and the futures that resolve when
  * what they watch is disposed.
  *
- * - A referent has one weak reference, found among the heap's rather than indexed, so
- *   `WeakRef(a) == WeakRef(a)` compares like any two handles, also after `a` is disposed.
+ * - A referent has one weak reference, which the heap finds by its referent rather than the
+ *   referent naming it, so `WeakRef(a) == WeakRef(a)` compares like any two handles, also after `a`
+ *   is disposed.
  * - A call is watched the same way: `currentCall` gives the weak reference to the call's
  *   execution, and `worker.disposing()` watches it as `disposed()` watches any other referent. A
  *   call that returns was never disposed, so its weak reference loses its target and resolves
@@ -91,13 +92,11 @@ export class WeakSide {
       return [];
     }
     this.#heap.replace({ kind: 'weakRef', id: weak.id });
-    return this.#heap
-      .objectsOf('future')
-      .filter(({ state }) => state.kind === 'disposed' && state.weakRef === weak.id)
-      .map(({ id }) => id);
+    return this.#heap.find('watches', weak.id).map(({ id }) => id);
   }
 
   #referenceTo(target: number): LiveObjectOf<'weakRef'> | undefined {
-    return this.#heap.objectsOf('weakRef').find((weak) => weak.target === target);
+    const [weak] = this.#heap.find('weakRefs', target);
+    return weak;
   }
 }

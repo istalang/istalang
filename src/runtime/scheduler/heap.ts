@@ -12,6 +12,11 @@
  * - Replacing or removing an object notes the objects it held, as frames note what their
  *   registers let go (interpreter/machine.ts): each may have lost its last holder. The scheduler
  *   takes the notes after each instruction and collects (runtime/lifetimes/).
+ * - Finding an object by a field is a lookup, not a scan: the heap indexes the fields its users
+ *   find objects by (`indexes`), each key derived from the object alone. No key reads an
+ *   execution's frames, the one part that changes in place, so `add`, `replace` and `remove`, the
+ *   only ways to change the heap, keep every index exact. A heap made from a snapshot builds them,
+ *   and none is persisted.
  */
 
 import { handleTarget, type Value } from '../../definition/values.ts';
@@ -38,14 +43,58 @@ export type LiveKind = LiveObject['kind'];
 
 export type LiveObjectOf<Kind extends LiveKind> = Extract<LiveObject, { readonly kind: Kind }>;
 
+/** A field the heap finds objects of `kind` by: each such object's keys, derived from it alone. */
+interface Index<Kind extends LiveKind, Key> {
+  readonly kind: Kind;
+  readonly keys: (object: LiveObjectOf<Kind>) => readonly Key[];
+}
+
+function index<Kind extends LiveKind, Key>(
+  kind: Kind,
+  keys: (object: LiveObjectOf<Kind>) => readonly Key[],
+): Index<Kind, Key> {
+  return { kind, keys };
+}
+
+const indexes = {
+  /** Every execution, by the call future its return resolves: the root's, which has none, is undefined. */
+  executions: index('execution', (execution) => [execution.resolves]),
+  /** Each weak reference, by its referent while it has one. */
+  weakRefs: index('weakRef', (weak) => (weak.target === undefined ? [] : [weak.target])),
+  /** Each pending `disposed()` watch, by the weak reference it is on. */
+  watches: index('future', ({ state }) => (state.kind === 'disposed' ? [state.weakRef] : [])),
+  /** Each pending future its host fills, by its token. */
+  hostFutures: index('future', ({ state }) => (state.kind === 'host' ? [state.token] : [])),
+  /** Each pending timer and `first`, by its state's kind. */
+  pending: index('future', ({ state }) =>
+    state.kind === 'timer' || state.kind === 'first' ? [state.kind] : [],
+  ),
+};
+
+type Indexes = typeof indexes;
+
+type IndexName = keyof Indexes;
+
+type IndexKey<Name extends IndexName> = ReturnType<Indexes[Name]['keys']>[number];
+
+const indexNames = Object.keys(indexes) as IndexName[];
+
 export class Heap {
   readonly #objects: Map<number, LiveObject>;
   #next: number;
   readonly #released: number[] = [];
+  /** Each kind's objects, in creation order: a kind never changes, and ids only grow. */
+  readonly #kinds = new Map<LiveKind, Set<number>>();
+  readonly #indexes = new Map<IndexName, Map<unknown, Set<number>>>(
+    indexNames.map((name) => [name, new Map()]),
+  );
 
   constructor(objects: readonly LiveObject[]) {
     this.#objects = new Map(objects.map((object) => [object.id, object]));
     this.#next = Math.max(-1, ...this.#objects.keys()) + 1;
+    for (const object of objects) {
+      this.#enter(object);
+    }
   }
 
   /** A new object, made by `make` with the next id. */
@@ -53,6 +102,7 @@ export class Heap {
     const object = make(this.#next);
     this.#next += 1;
     this.#objects.set(object.id, object);
+    this.#enter(object);
     return object;
   }
 
@@ -65,15 +115,36 @@ export class Heap {
     return object as LiveObjectOf<Kind>;
   }
 
-  /** Replaces the object with `object`'s id. */
+  /** Replaces the object with `object`'s id, which keeps its kind. */
   replace(object: LiveObject): void {
-    this.#noteHoldings(this.#objects.get(object.id), object);
+    const old = this.objectOf(object.id);
+    if (old.kind !== object.kind) {
+      unreachable(`Object ${object.id} is a ${old.kind}, not a ${object.kind}.`);
+    }
+    this.#noteHoldings(old, object);
+    this.#leave(old);
     this.#objects.set(object.id, object);
+    this.#enter(object);
   }
 
   remove(id: number): void {
-    this.#noteHoldings(this.#objects.get(id));
-    this.#objects.delete(id);
+    const old = this.#objects.get(id);
+    if (old !== undefined) {
+      this.#noteHoldings(old);
+      this.#leave(old);
+      this.#kinds.get(old.kind)?.delete(id);
+      this.#objects.delete(id);
+    }
+  }
+
+  /** The objects index `name` holds under `key`, in creation order. */
+  find<Name extends IndexName>(
+    name: Name,
+    key: IndexKey<Name>,
+  ): readonly LiveObjectOf<Indexes[Name]['kind']>[] {
+    const kind: Indexes[Name]['kind'] = indexes[name].kind;
+    const ids = this.#indexes.get(name)?.get(key) ?? [];
+    return [...ids].sort((first, second) => first - second).map((id) => this.of(id, kind));
   }
 
   /** Notes that the objects `ids` may have lost their last holder. */
@@ -107,12 +178,34 @@ export class Heap {
 
   /** Every object of `kind`, in creation order. */
   objectsOf<Kind extends LiveKind>(kind: Kind): readonly LiveObjectOf<Kind>[] {
-    return this.objects().filter((object): object is LiveObjectOf<Kind> => object.kind === kind);
+    return [...(this.#kinds.get(kind) ?? [])].map((id) => this.of(id, kind));
+  }
+
+  /** Files a new or replacing `object` under its kind and its keys. */
+  #enter(object: LiveObject): void {
+    const ofKind = this.#kinds.get(object.kind) ?? new Set();
+    this.#kinds.set(object.kind, ofKind.add(object.id));
+    for (const [name, key] of keysOf(object)) {
+      const byKey = this.#indexes.get(name);
+      byKey?.set(key, (byKey.get(key) ?? new Set()).add(object.id));
+    }
+  }
+
+  /** Takes `object`, being replaced or removed, out from under its keys. */
+  #leave(object: LiveObject): void {
+    for (const [name, key] of keysOf(object)) {
+      const byKey = this.#indexes.get(name);
+      const ids = byKey?.get(key);
+      ids?.delete(object.id);
+      if (ids?.size === 0) {
+        byKey?.delete(key);
+      }
+    }
   }
 
   /** Notes what `old`, an object being replaced or removed, held and its replacement doesn't. */
-  #noteHoldings(old: LiveObject | undefined, replacement?: LiveObject): void {
-    if (old === undefined || old.kind === 'execution') {
+  #noteHoldings(old: LiveObject, replacement?: LiveObject): void {
+    if (old.kind === 'execution') {
       return;
     }
     const kept = new Set(
@@ -120,6 +213,14 @@ export class Heap {
     );
     this.noteReleased(heldObjects(old).filter((id) => !kept.has(id)));
   }
+}
+
+/** Every key `object` has, with the index it has it in. */
+function keysOf(object: LiveObject): readonly (readonly [IndexName, unknown])[] {
+  return indexNames.flatMap((name) => {
+    const { kind, keys } = indexes[name] as Index<LiveKind, unknown>;
+    return kind === object.kind ? keys(object).map((key) => [name, key] as const) : [];
+  });
 }
 
 /** The object `handle` names; anything else is a bug the checker rules out. */

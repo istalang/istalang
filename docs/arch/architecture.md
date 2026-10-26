@@ -83,7 +83,7 @@ src/
     values/ interpreter/ scheduler/ snapshot/ boundary/          parts of values along paths, the instruction table, segments and commits, the persisted instance, values crossing to the host
                         boundary/: host-natives.ts (host externs, against JSON, as natives), outbound.ts (an outcome's JSON),
                         extern-signatures.ts (one name, one type across deploys)
-                        scheduler/: heap.ts (objects by id), futures.ts (resolving, who waits, `first`), slots.ts (§6's queue),
+                        scheduler/: heap.ts (objects by id, and indexes finding them by field, derived, never persisted), futures.ts (resolving, who waits, `first`), slots.ts (§6's queue),
                         weak-side.ts (weak references, `disposed()` and `disposing()`, told by disposal what it disposes),
                         instance.ts (an instance in memory, and the commit's snapshot from the one it was made from), segment/ (a segment; disposal-runs.ts, the code disposals run), native-calls.ts, wake.ts (advancing, commits, spawned children), inspect.ts
                         snapshot/: objects.ts (heap objects and frames as stored), holdings.ts (what each object kind holds and watches, and the one rule for a frame, live or stored), snapshot.ts (the persisted instance), check.ts (a snapshot against its Definition)
