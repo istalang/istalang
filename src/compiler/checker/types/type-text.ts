@@ -41,11 +41,14 @@ export function typeText(type: Type): string {
   }
 }
 
-/** `Optional<T>` reads as `T?` (§2); anything else as `Name<Arguments>`. */
+/**
+ * `Optional<T>` reads as `T?` (§2), a function type in parentheses, since its result would take
+ * the `?`; anything else as `Name<Arguments>`.
+ */
 function nominalText(name: string, typeArguments: readonly Type[]): string {
   const [only] = typeArguments;
   if (name === wellKnown.optional.name && typeArguments.length === 1 && only !== undefined) {
-    return `${typeText(only)}?`;
+    return only.kind === 'function' ? `(${typeText(only)})?` : `${typeText(only)}?`;
   }
   return typeArguments.length === 0 ? name : `${name}<${typeArguments.map(typeText).join(', ')}>`;
 }
