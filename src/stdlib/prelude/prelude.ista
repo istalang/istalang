@@ -25,9 +25,9 @@ extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
 extern struct _Call
 extern fn disposing(self: _Call) -> Future<unit>
 
-# A Shared value (§3.8) is a handle to a cell: `Shared(v)` makes one, `x$` reads its value and
-# `x$ = v` writes it, for every copy of the handle. Its functions are the ones every handle
-# declares (§3.18), whose natives are the runtime's cells.
+# A Shared value (§3.8) is a handle to a cell: `Shared(v)` makes one, `*x` reads its value and
+# `*x = v` writes it, for every copy of the handle. `Shared(v)` is the function every handle
+# declares (§3.18), whose native makes a cell.
 handle Shared<T> of T
 
 # Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
@@ -162,12 +162,6 @@ trait Sendable
 
 trait Disposable:
   fn dispose(self: Self)
-
-trait Wrapper<T, W = Self>:
-  fn unwrap(self: W) -> T
-
-trait MutableWrapper<T, W = Self>:
-  fn rewrap(self: W, value: T)
 
 trait Iterable<T, C = Self>:
   fn iterate(self: C) -> Array<T>

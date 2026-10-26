@@ -41,7 +41,7 @@ describe('calls', () => {
     expect(reported('expression', text)).toEqual(reportedOnce(referenceNotPlace.code, spanText));
   });
 
-  it.each(['f(&x)', 'f(&x.y[0].1)', 'f(&x$.y)', 'f(&(x))'])(
+  it.each(['f(&x)', 'f(&x.y[0].1)', 'f(&x->y)', 'f(&*x)', 'f(&(x))'])(
     "passes the place %s by '&'",
     (text) => {
       expect(reported('expression', text)).toEqual(reportedNothing);
@@ -97,9 +97,10 @@ describe('indexing, members and postfix operators', () => {
     ['2.pow(10)', '(Call (MemberAccess 2 pow) [] [10])'],
     ['T.zero()', '(Call (MemberAccess T zero) [] [])'],
     ['chargeCard(id)?', '(Propagate (Call chargeCard [] [id]))'],
-    ['u$', '(Unwrap u)'],
-    ['u$.name', '(MemberAccess (Unwrap u) name)'],
-    ['users[0]$.name', '(MemberAccess (Unwrap (Index users 0)) name)'],
+    ['u->name', '(MemberAccess (Dereference u) name)'],
+    ['u->name.first', '(MemberAccess (MemberAccess (Dereference u) name) first)'],
+    ['users[0]->name', '(MemberAccess (Dereference (Index users 0)) name)'],
+    ['t->0', '(TupleElement (Dereference t) 0)'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });

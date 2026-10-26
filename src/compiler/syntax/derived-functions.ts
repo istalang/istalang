@@ -4,12 +4,11 @@
  * lowered. Each is made once from its declaration's own nodes, through one builder, and remembers
  * where it comes from (`originOf`):
  *
- * - A handle `H<T…>` of `S` (§3.18) declares `H.from(value: S) -> H<T…>`,
- *   `unwrap(self: H<T…>) -> S` and `rewrap(self: H<T…>, value: S)`, the functions `H(v)`, `x$` and
- *   `x$ = v` call (§3.9), as externs: their types are its type parameters, its state's type and
- *   `H<T…>`, a type node naming the handle (`selfType`), which the binder binds where the handle's
- *   parameters are visible. A handle is a cell, so their natives are the runtime's cells. They are
- *   a module's own functions, found by name (`declaredFunctions`).
+ * - A handle `H<T…>` of `S` (§3.18) declares `H.from(value: S) -> H<T…>`, the function `H(v)`
+ *   calls, as an extern: its types are its type parameters, its state's type and `H<T…>`, a type
+ *   node naming the handle (`selfType`), which the binder binds where the handle's parameters are
+ *   visible. A handle is a cell, so its native makes one. It is a module's own function, found by
+ *   name (`declaredFunctions`).
  * - The fields of a struct or a variant, when one has a default (§3.1), read as the parameters of a
  *   function of their own, each with its type and default, so a field's default is taken as a
  *   parameter's (§3.3): it sees the fields before it, a field without a written type takes its
@@ -18,7 +17,7 @@
  *   `i`, which gives that field's value from the fields before it.
  */
 
-import { conversionFunction, rewrapFunction, unwrapFunction } from '../../language/well-known.ts';
+import { conversionFunction } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
 import type { Span } from '../../text/span.ts';
 import type {
@@ -36,12 +35,10 @@ import type { Parameter } from './expressions.ts';
 import type { Identifier, Invalid } from './node.ts';
 import type { NamedType, TypeNode } from './types.ts';
 
-/** What a handle declares: the type node naming it, and its three functions. */
+/** What a handle declares: the type node naming it, and its function. */
 export interface HandleFunctions {
   readonly selfType: NamedType;
   readonly from: FunctionDeclaration;
-  readonly unwrap: FunctionDeclaration;
-  readonly rewrap: FunctionDeclaration;
 }
 
 /** Which of its handle's functions a function is. */
@@ -55,7 +52,7 @@ export type DerivedOrigin =
   | { readonly kind: 'handle'; readonly handle: HandleDeclaration; readonly role: HandleRole }
   | { readonly kind: 'fields'; readonly owner: FieldsOwner };
 
-const handleRoles = ['from', 'unwrap', 'rewrap'] as const satisfies readonly HandleRole[];
+const handleRoles = ['from'] as const satisfies readonly HandleRole[];
 
 const handles = new WeakMap<HandleDeclaration, HandleFunctions>();
 
@@ -106,20 +103,20 @@ export function handleFunctionsOf(handle: HandleDeclaration): HandleFunctions {
     const { name, state, typeParameters } = handle;
     const selfType = selfTypeOf(handle);
     const [owner] = selfType.path;
-    const self = parameter(name.span, nameAt(name.span, 'self'), selfType);
     const value = parameter(name.span, nameAt(name.span, 'value'), state);
-    const extern = (role: HandleRole, signature: Omit<Signature, 'isExtern' | 'typeParameters'>) =>
-      derive({ kind: 'handle', handle, role }, { ...signature, isExtern: true, typeParameters });
     return {
       selfType,
-      from: extern('from', {
-        owner,
-        name: conversionFunction,
-        parameters: [value],
-        result: selfType,
-      }),
-      unwrap: extern('unwrap', { name: unwrapFunction, parameters: [self], result: state }),
-      rewrap: extern('rewrap', { name: rewrapFunction, parameters: [self, value] }),
+      from: derive(
+        { kind: 'handle', handle, role: 'from' },
+        {
+          isExtern: true,
+          owner,
+          name: conversionFunction,
+          typeParameters,
+          parameters: [value],
+          result: selfType,
+        },
+      ),
     };
   });
 }

@@ -65,6 +65,8 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
     }),
   field: none,
   store: none,
+  readCell: none,
+  writeCell: none,
   array: none,
   map: none,
   closure: (tables, i) => closureProblem(tables, i.function, i.captures.length),

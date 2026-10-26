@@ -2,8 +2,7 @@
  * Choosing a call no written call stands for (§3.9, §3.10): one function among candidates, for the
  * arguments' types, instantiated, with nothing reported, since there is no call written to point
  * at. Each caller says what failing means: a call the language makes for a construct reports the
- * construct (implicit.ts), while finding a type's `dispose` or the type `x$` reads simply finds
- * nothing.
+ * construct (implicit.ts), while finding a type's `dispose` simply finds nothing.
  */
 
 import { substitute, type Type } from '../types/type.ts';

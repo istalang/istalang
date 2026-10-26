@@ -20,7 +20,7 @@ import {
   type PrecedenceLevel,
 } from '../../syntax/operators.ts';
 
-type Prefix = '-' | 'not' | 'await';
+type Prefix = '-' | '*' | 'not' | 'await';
 
 export type OperatorTree =
   | { readonly atom: string }
@@ -41,7 +41,10 @@ export const operatorTree: fc.Arbitrary<OperatorTree> = fc.letrec<{ tree: Operat
         left: tie('tree'),
         right: tie('tree'),
       }),
-      fc.record({ prefix: fc.constantFrom<Prefix>('-', 'not', 'await'), operand: tie('tree') }),
+      fc.record({
+        prefix: fc.constantFrom<Prefix>('-', '*', 'not', 'await'),
+        operand: tie('tree'),
+      }),
       fc.record({ range: fc.boolean(), start: tie('tree'), end: tie('tree') }),
       fc.record({ isSubject: tie('tree') }),
     ),
@@ -62,7 +65,7 @@ function levelOf(tree: OperatorTree): PrecedenceLevel {
 }
 
 function prefixText(prefix: Prefix): string {
-  return prefix === '-' ? '-' : `${prefix} `;
+  return prefix === '-' || prefix === '*' ? prefix : `${prefix} `;
 }
 
 function rangeText(isInclusive: boolean): string {
@@ -151,6 +154,8 @@ export function shapeOf(expression: Expression): OperatorTree | { readonly unexp
       };
     case 'Unary':
       return { prefix: expression.operator, operand: shapeOf(expression.operand) as OperatorTree };
+    case 'Dereference':
+      return { prefix: '*', operand: shapeOf(expression.operand) as OperatorTree };
     case 'Await':
       return { prefix: 'await', operand: shapeOf(expression.operand) as OperatorTree };
     case 'Range':

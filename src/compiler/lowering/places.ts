@@ -7,10 +7,11 @@
  *   which builds the new value along it (values are immutable); writing a bare register is a
  *   `move`. A register holding a cell or a reference is read and written through it by the
  *   runtime, so lowering emits the same instructions whatever the variable's storage is.
- * - An indexed element and a `x$` value are reached through an accessor instead, a pair of calls:
- *   copied in, read with the container's `index` (or the `x$`'s `unwrap`) into a register of their
- *   own, then changed there, and written back with `setIndex(&container, key, element)` (or
- *   `rewrap(handle, value)`) once the change is made. That makes an element passed by `&` copy-in/copy-out around its call.
+ * - An indexed element and the value behind a handle (`*x`) are reached through an accessor
+ *   instead, a pair of reads and writes: copied in, read with the container's `index` (or the
+ *   handle's `readCell`) into a register of their own, then changed there, and written back with
+ *   `setIndex(&container, key, element)` (or `writeCell`) once the change is made. That makes an
+ *   element passed by `&` copy-in/copy-out around its call.
  *   Each key is computed once, before any element is read, so reading and writing back see the
  *   same element. An assignment's last element isn't read first, since a map may not hold its key
  *   yet: it is written with `setIndex` directly.
@@ -24,12 +25,12 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { Type } from '../checker/types/type.ts';
 import {
+  type Dereference,
   type Expression,
   type Index,
   type MemberAccess,
   type PlaceStep,
   placePath,
-  type Unwrap,
 } from '../syntax/expressions.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
@@ -37,20 +38,19 @@ import { emitCall } from './emit-call.ts';
 
 /**
  * What a changed place is once its accessors are copied in: a Definition place, or, for `a[k] = v`
- * or `x$ = v`, the last accessor itself, which the assignment writes without reading it.
+ * or `*x = v`, the last accessor itself, which the assignment writes without reading it.
  */
 export type PlaceTarget =
   | { readonly kind: 'place'; readonly place: Place }
   | { readonly kind: 'accessor'; readonly accessor: Accessor };
 
 /**
- * A part of a place reached through calls (§3.7, §3.9): read with one, written back with another.
- * An element is read with its container's `index` and written with `setIndex(&container, key,
- * element)`; a `x$` or `x.value` value is read with `unwrap(handle)` and written with
- * `rewrap(handle, value)`.
+ * A part of a place reached through a read and a write (§3.7, §3.9). An element is read with its
+ * container's `index` and written with `setIndex(&container, key, element)`; the value behind a
+ * handle is read with `readCell` and written with `writeCell`.
  */
 interface Accessor {
-  readonly node: Index | Unwrap | MemberAccess;
+  readonly node: Index | Dereference;
   /** Reads the part, into `dst` when given; its register. */
   readonly read: (span: Span, dst?: Register) => Register;
   readonly write: (value: Register) => void;
@@ -64,7 +64,7 @@ export interface EnteredPlace<Target extends PlaceTarget = PlaceTarget> {
 
 /**
  * Enters the place `node` names for an assignment: every accessor but a last one is copied in, so
- * the target is a Definition place or, for `a[k] = v` or `x$ = v`, the accessor itself.
+ * the target is a Definition place or, for `a[k] = v` or `*x = v`, the accessor itself.
  */
 export function enterAssigned(context: FunctionContext, node: Expression): EnteredPlace {
   return enter(context, node, 'assigned');
@@ -152,7 +152,7 @@ type PlaceUse = 'assigned' | 'referenced';
 
 /** Computes the place's keys, copies in its root and accessors, and returns its target. */
 function enter(context: FunctionContext, node: Expression, use: PlaceUse): EnteredPlace {
-  const { root, steps } = placePath(node, (step) => readsHandle(context, step));
+  const { root, steps } = placePath(node);
   const lowered = steps.map((step) =>
     step.kind === 'Index'
       ? { step, key: context.expression(step.index) }
@@ -232,32 +232,22 @@ function elementAccessor(
   };
 }
 
-/**
- * The value a place's root `node` reads from a handle, with `x$` or `x.value`, computing the
- * handle: read and written with the calls the checker made at `node`.
- */
+/** The value behind the handle a place's root `node` reads, computing the handle (§3.9). */
 function handleAccessor(context: FunctionContext, node: Expression): Accessor {
-  if (node.kind !== 'Unwrap' && !(node.kind === 'MemberAccess' && readsHandle(context, node))) {
+  if (node.kind !== 'Dereference') {
     unreachable(`A ${node.kind} is no place; the checker should have said so.`);
   }
-  const handle = context.expression(node.kind === 'Unwrap' ? node.operand : node.target);
+  const cell = context.expression(node.operand);
   return {
     node,
-    read: (span, dst) => {
-      const callee =
-        node.kind === 'Unwrap' ? context.calleeIndex(node) : context.implicitCallee(node, 'read');
-      return emitCall(context, { span, callee, arguments: [handle] }, dst);
+    read: (span, dst = context.code.allocate()) => {
+      context.code.emit({ kind: 'readCell', span, dst, cell });
+      return dst;
     },
     write: (value) => {
-      const callee = context.implicitCallee(node, 'write');
-      emitCall(context, { span: node.span, callee, arguments: [handle, value] });
+      context.code.emit({ kind: 'writeCell', span: node.span, cell, value });
     },
   };
-}
-
-/** Whether `step` reads a handle's value, as the checker found `x.value` on a `Shared` does (§3.8). */
-function readsHandle(context: FunctionContext, step: MemberAccess): boolean {
-  return !step.isOptional && context.body.implicitCallOf(step, 'read') !== undefined;
 }
 
 /** Reads the value at `place`: its register's value, read along the place's field positions. */

@@ -11,7 +11,8 @@
  *   they hold.
  * - Reading `s.f` gives the field's type, substituted for the struct's type arguments; through a
  *   type parameter, a field a constraint requires (§3.10). A member that isn't a field is
- *   reported as unknown here; a call of one is a method call (calls.ts).
+ *   reported as unknown here, or, when it is a field of the value behind a handle, as to be read
+ *   with `->` (§3.9); a call of one is a method call (calls.ts).
  */
 
 import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
@@ -45,7 +46,6 @@ import {
   type LiteralSpread,
 } from './literal-fields.ts';
 import { entityValueType } from './names.ts';
-import { checkHandleValue } from './unwrap.ts';
 import { checkVariantLiteral, checkVariantName, variantsAccepted } from './variants.ts';
 
 export function checkStructLiteral(
@@ -213,12 +213,10 @@ export function checkMemberAccess(
   if (field !== undefined) {
     return field;
   }
-  if (
-    name === 'value' &&
-    type.kind === 'nominal' &&
-    type.entity.declaration.kind === 'HandleDeclaration'
-  ) {
-    return checkHandleValue(context, node, type);
+  const state = type.kind === 'nominal' ? context.checker.stateOf(type) : undefined;
+  if (state !== undefined && fieldOf(context, state, name) !== undefined) {
+    context.report(checkerDiagnostics.fieldBehindHandle(node.member.span, typeText(type), name));
+    return errorType;
   }
   const isMethod = topLevelCandidates(context.checker, context.module, name, [type]).some(
     ({ declaration }) => isMethodDeclaration(declaration),

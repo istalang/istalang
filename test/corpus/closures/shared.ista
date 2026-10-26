@@ -9,20 +9,20 @@ struct User { name: string; email: string }
 struct Pair { first: int; second: int }
 
 fn rename(user: Shared<User>, name: string):
-  user$.name = name
+  user->name = name
 
 async fn main():
   const u = Shared(User{name: "Ares", email: "a@x"})
   const alias = u
   rename(alias, "Ares K")
-  const shown = u$.name + " " + u$.email
+  const shown = u->name + " " + u->email
   const counts = Shared(Pair{first: 1, second: 2})
-  counts$.first += 9
-  counts$ = Pair{...counts$, second: counts$.second}
-  const total = counts$.first + counts$.second
+  counts->first += 9
+  *counts = Pair{...*counts, second: counts->second}
+  const total = counts->first + counts->second
   const other = Shared(User{name: "Ares K", email: "a@x"})
   const same = string(alias == u) + " " + string(other == u)
   const tally = Shared(0)
-  const bump = fn(): { tally$ += 1; tally$ }
+  const bump = fn(): { *tally += 1; *tally }
   const ignored = bump() + bump()
   shown + " | " + string(total) + " | " + same + " | " + string(bump())

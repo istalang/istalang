@@ -21,8 +21,10 @@ import {
   clearRegister,
   currentClosure,
   type Machine,
+  readCell,
   readRegister,
   storeAt,
+  writeCell,
   writeRegister,
 } from './machine.ts';
 import { enterCase, resolvedCase } from './suspension.ts';
@@ -49,6 +51,13 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   },
   store: (_machine, instruction, frame) => {
     storeAt(frame, instruction.place, readRegister(frame, instruction.value));
+    frame.pc += 1;
+  },
+  readCell: (_machine, instruction, frame) => {
+    next(frame, instruction.dst, readCell(frame, instruction.cell));
+  },
+  writeCell: (_machine, instruction, frame) => {
+    writeCell(frame, instruction.cell, readRegister(frame, instruction.value));
     frame.pc += 1;
   },
   struct: (_machine, instruction, frame) => {

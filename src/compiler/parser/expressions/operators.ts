@@ -43,6 +43,12 @@ export const parseNot: PrefixParselet = (parser, minLevel) => {
   return { kind: 'Unary', span: parser.spanFrom(start), operator: 'not', operand };
 };
 
+export const parseDereference: PrefixParselet = (parser, minLevel) => {
+  const start = advancePrefix(parser, operatorLevels.dereference, minLevel);
+  const operand = parser.expression(operatorLevels.dereference);
+  return { kind: 'Dereference', span: parser.spanFrom(start), operand };
+};
+
 export const parseAwait: PrefixParselet = (parser, minLevel) => {
   const start = advancePrefix(parser, operatorLevels.await, minLevel);
   if (parser.cursor.at('select')) {

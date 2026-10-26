@@ -13,10 +13,10 @@ struct LeaseState:
 handle Lease of LeaseState
 
 fn dispose(self: Lease):
-  note(self$.log, "disposed " + self$.name)
+  note(self->log, "disposed " + self->name)
 
 fn note(log: Shared<Array<string>>, text: string):
-  log$ = [...log$, text]
+  *log = [...*log, text]
 
 fn lease(name: string, log: Shared<Array<string>>) -> Lease:
   Lease(LeaseState{name, log, partner: none})
@@ -24,14 +24,14 @@ fn lease(name: string, log: Shared<Array<string>>) -> Lease:
 fn cycle(log: Shared<Array<string>>):
   const a = lease("a", log)
   const b = lease("b", log)
-  b$.partner = a
-  a$.partner = b
+  b->partner = a
+  a->partner = b
   note(log, "made")
 
 fn nesting(log: Shared<Array<string>>):
   const outer = lease("outer", log)
   const inner = lease("inner", log)
-  outer$.partner = inner
+  outer->partner = inner
   drop inner
   note(log, "inner kept")
   drop outer
@@ -43,4 +43,4 @@ async fn main() -> Future<string>:
   cycle(log)
   note(log, "after cycle")
   nesting(log)
-  log$.join(", ")
+  log->join(", ")

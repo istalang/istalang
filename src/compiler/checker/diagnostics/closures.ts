@@ -38,9 +38,14 @@ export const closureTemplates = {
     code: 5506,
     message: (found: string) => `A ${found} can't be called: it isn't a function.`,
   },
-  notRewrappable: {
+  notHandle: {
     code: 5507,
-    message: (handle: string) =>
-      `What ${handle}$ reads can't be written: no 'rewrap' writes a value back to ${handle}.`,
+    message: (found: string) =>
+      `'*' and '->' read the value behind a handle, and a ${found} isn't one (§3.9).`,
+  },
+  fieldBehindHandle: {
+    code: 5508,
+    message: (handle: string, name: string) =>
+      `'${name}' is a field of the value behind the ${handle}, not of the handle: read it as x->${name} (§3.9).`,
   },
 } as const;

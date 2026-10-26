@@ -95,6 +95,8 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
   field: (s) =>
     fc.record({ dst: index(s.registers), src: index(s.registers), index: fc.nat({ max: 4 }) }),
   store: (s) => fc.record({ place: place(s, 1), value: index(s.registers) }),
+  readCell: (s) => fc.record({ dst: index(s.registers), cell: index(s.registers) }),
+  writeCell: (s) => fc.record({ cell: index(s.registers), value: index(s.registers) }),
   array: (s) =>
     fc.record({
       dst: index(s.registers),

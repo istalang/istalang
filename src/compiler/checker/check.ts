@@ -209,17 +209,15 @@ export type ValueSite = Expression | Return | Block;
 export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCall[])[]>;
 
 /**
- * Nodes a call can be written as: a call, an operator that calls a function (§3.9), `x$`, which
- * calls `unwrap`, indexing, which calls `index`, an assignment, whose compound operator or
- * `x$ = v` calls a function, a pattern's comparison such as `amount > 1000`, which calls `compare`
- * (§3.11). A function named as a value (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the
+ * Nodes a call can be written as: a call, an operator that calls a function (§3.9), indexing,
+ * which calls `index`, an assignment, whose compound operator calls a function, a pattern's
+ * comparison such as `amount > 1000`, which calls `compare` (§3.11). A function named as a value (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the
  * expression naming it, for the function its closure runs.
  */
 export type CallSite = NodeOf<
   | 'Call'
   | 'Binary'
   | 'Unary'
-  | 'Unwrap'
   | 'Assignment'
   | 'Index'
   | 'CompareFieldPattern'
@@ -245,12 +243,7 @@ export type ImplicitRole =
   | 'compare'
   /** Counting a loop's index up, or `..=` storing its end plus one. */
   | 'add'
-  /** Reading a handle's value where no `$` is written: `x.value` on a `Shared` (§3.8), `unwrap`. */
-  | 'read'
-  /**
-   * Writing a part of a place back, changed or whole: an element with `setIndex` (§3.9), or the
-   * value `x$` or `x.value` reads with `rewrap` (§3.8).
-   */
+  /** Writing an element of a place back, changed or whole, with `setIndex` (§3.9). */
   | 'write'
   /** The `default()` a map literal of a type other than `Map` starts from (§2). */
   | 'default'

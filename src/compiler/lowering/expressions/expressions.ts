@@ -12,11 +12,12 @@ import type { Expression, MemberAccess } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
 import { lowerAwait } from './await.ts';
-import { implicitCall, lowerCall } from './calls.ts';
+import { lowerCall } from './calls.ts';
 import { lowerFunctionValue, lowerLambda } from './closures.ts';
 import { lowerArrayLiteral, lowerIndex, lowerMapLiteral, lowerRange } from './collections.ts';
 import { lowerComprehension } from './comprehensions.ts';
 import { lowerIf } from './control.ts';
+import { lowerDereference } from './dereference.ts';
 import { lowerDurationLiteral } from './literals.ts';
 import { lowerIs, lowerMatch } from './matching.ts';
 import { lowerName } from './names.ts';
@@ -25,7 +26,6 @@ import { lowerPropagate } from './propagate.ts';
 import { lowerSelect } from './select.ts';
 import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
-import { lowerUnwrap } from './unwrap.ts';
 import { isEnum, lowerFieldlessVariant, lowerNone, lowerVariantLiteral } from './variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -57,7 +57,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Reference: notLowered,
   Index: lowerIndex,
   Propagate: lowerPropagate,
-  Unwrap: lowerUnwrap,
+  Dereference: lowerDereference,
   Await: lowerAwait,
   Is: lowerIs,
   Range: lowerRange,
@@ -70,7 +70,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
 
 /**
  * `a.b`: a variant qualified by its enum, a function named as a value through a namespace or its
- * type (closures.ts), a `Shared`'s value read as `.value` (§3.8), or a field read.
+ * type (closures.ts), or a field read.
  */
 function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Register {
   if (context.entityOf(node.member)?.kind === 'variant') {
@@ -78,9 +78,6 @@ function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Regist
   }
   if (context.body.calls.has(node)) {
     return lowerFunctionValue(context, node);
-  }
-  if (context.body.implicitCallOf(node, 'read') !== undefined) {
-    return implicitCall(context, node, 'read', [context.chains.target(context, node)]);
   }
   return lowerFieldRead(context, node);
 }

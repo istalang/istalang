@@ -128,14 +128,10 @@ function nativeWeakSideOf(weak: WeakSide): NativeWeakSide {
   };
 }
 
-/** The instance's cells as natives reach them: through `Shared<T>` handles (§3.8). */
+/** The instance's cells as natives reach them: made as the handles a handle's `H(v)` returns. */
 function nativeCellsOf(cells: FrameHeap): NativeCells {
   return {
     create: (type, value) => ({ kind: 'handle', object: cells.create(type, value) }),
-    read: (cell) => cells.read(cellIdOf(cell)),
-    write: (cell, value) => {
-      cells.write(cellIdOf(cell), value);
-    },
   };
 }
 
@@ -154,12 +150,4 @@ function nativeResourcesOf(heap: Heap): NativeResources {
       return heap.of(id, 'resource').payload;
     },
   };
-}
-
-function cellIdOf(cell: Value): number {
-  const id = handleTarget(cell);
-  if (id === undefined) {
-    unreachable('A Shared value holds no cell.');
-  }
-  return id;
 }

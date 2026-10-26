@@ -1,5 +1,5 @@
 /**
- * Postfix parselets (§3.9, tightest level): calls, indexing, member access, `?`, `$`, struct
+ * Postfix parselets (§3.9, tightest level): calls, indexing, member access, `->`, `?`, struct
  * literals after a name, and type arguments.
  *
  * `name<…>` is ambiguous with a comparison. Following C#, it is read as type arguments only when
@@ -11,11 +11,19 @@
  * A struct literal's `{` and type arguments both attach only to a name or a qualified name
  * (§2). Nothing else can stand before them, so the parser never needs to know what a name means.
  *
- * After `.`, a number names a tuple element (§3.15). The scanner reads the `0.1` of `t.0.1` as
+ * `x->f` is `(*x).f` (§3.9), so it is read as that: a member access on a `Dereference` of `x`.
+ *
+ * After `.` or `->`, a number names a tuple element (§3.15). The scanner reads the `0.1` of `t.0.1` as
  * one float, so that token is split back into its two elements here.
  */
 
-import { type Call, type Expression, isPlace, type Spread } from '../../syntax/expressions.ts';
+import {
+  type Call,
+  type Dereference,
+  type Expression,
+  isPlace,
+  type Spread,
+} from '../../syntax/expressions.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
@@ -92,15 +100,33 @@ export function memberParselet(isOptional: boolean): InfixParselet {
     level: 'postfix',
     parse(parser, left) {
       parser.cursor.advance();
-      const { kind } = parser.cursor;
-      if (!isOptional && (kind === 'integer' || kind === 'float')) {
-        return parseTupleElements(parser, left);
-      }
-      const member = parser.identifier('a member name');
-      const span = parser.spanFrom(left.span.start);
-      return { kind: 'MemberAccess', span, target: left, isOptional, member };
+      return parseMember(parser, left, isOptional);
     },
   };
+}
+
+export const arrowParselet: InfixParselet = {
+  level: 'postfix',
+  parse(parser, left) {
+    parser.cursor.advance();
+    const operand: Dereference = {
+      kind: 'Dereference',
+      span: parser.spanFrom(left.span.start),
+      operand: left,
+    };
+    return parseMember(parser, operand, false);
+  },
+};
+
+/** The member or tuple element of `target` named after its `.`, `?.` or `->`. */
+function parseMember(parser: Parser, target: Expression, isOptional: boolean): Expression {
+  const { kind } = parser.cursor;
+  if (!isOptional && (kind === 'integer' || kind === 'float')) {
+    return parseTupleElements(parser, target);
+  }
+  const member = parser.identifier('a member name');
+  const span = parser.spanFrom(target.span.start);
+  return { kind: 'MemberAccess', span, target, isOptional, member };
 }
 
 /** Decimal positions only: `t.0`, `t.12`, and `t.0.1` read as one token. */
@@ -134,14 +160,6 @@ export const propagateParselet: InfixParselet = {
   parse(parser, left) {
     parser.cursor.advance();
     return { kind: 'Propagate', span: parser.spanFrom(left.span.start), operand: left };
-  },
-};
-
-export const unwrapParselet: InfixParselet = {
-  level: 'postfix',
-  parse(parser, left) {
-    parser.cursor.advance();
-    return { kind: 'Unwrap', span: parser.spanFrom(left.span.start), operand: left };
   },
 };
 

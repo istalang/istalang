@@ -53,7 +53,7 @@ type LevelOperators<Level extends PrecedenceLevel> = {
 /** The operators a struct pattern may use to test a field (§3.11). */
 export type ComparisonOperator = LevelOperators<'comparison'>;
 
-/** Prefix operators that build a `Unary` node; `await` and `&` have nodes of their own. */
+/** Prefix operators that build a `Unary` node; `await`, `*` and `&` have nodes of their own. */
 export type UnaryOperator = '-' | 'not';
 
 /** Where the non-binary operators sit. `is` shares the comparison level, `..` the range level. */
@@ -61,6 +61,7 @@ export const operatorLevels = {
   unaryMinus: 'prefix',
   not: 'not',
   await: 'prefix',
+  dereference: 'prefix',
   reference: 'prefix',
   is: 'comparison',
   range: 'range',

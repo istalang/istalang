@@ -175,10 +175,9 @@ export function unparenthesized(node: Expression): Expression {
 export type PlaceStep = MemberAccess | TupleElement | Index;
 
 /**
- * A place as written: the expression its fields and elements are read from, a variable or a `$`
- * value in any valid place, and those reads, innermost first. `a?.b` is no step, so it stands as
- * the root; so does a field read that `readsHandle` says reads a handle's value, as `x.value` on a
- * `Shared` does (§3.8), which the checker decides: like `x$`, it starts the place.
+ * A place as written: the expression its fields and elements are read from, a variable or a
+ * handle's value (`*x`) in any valid place, and those reads, innermost first. `a?.b` is no step, so
+ * it stands as the root.
  */
 export interface PlacePath {
   readonly root: Expression;
@@ -186,24 +185,21 @@ export interface PlacePath {
 }
 
 /**
- * Whether `node` names a place (§3.7, §3.9): a variable or a `$` value, with fields, tuple
+ * Whether `node` names a place (§3.7, §3.9): a variable or a handle's value, with fields, tuple
  * elements and indexed elements read off it. A missing expression counts, being reported already.
  */
 export function isPlace(node: Expression): boolean {
   const { root } = placePath(node);
-  return root.kind === 'Identifier' || root.kind === 'Unwrap' || root.kind === 'Missing';
+  return root.kind === 'Identifier' || root.kind === 'Dereference' || root.kind === 'Missing';
 }
 
-export function placePath(
-  node: Expression,
-  readsHandle: (step: MemberAccess) => boolean = () => false,
-): PlacePath {
+export function placePath(node: Expression): PlacePath {
   const steps: PlaceStep[] = [];
   let current = unparenthesized(node);
   while (
     current.kind === 'TupleElement' ||
     current.kind === 'Index' ||
-    (current.kind === 'MemberAccess' && !current.isOptional && !readsHandle(current))
+    (current.kind === 'MemberAccess' && !current.isOptional)
   ) {
     steps.unshift(current);
     current = unparenthesized(current.target);
@@ -222,8 +218,11 @@ export interface Propagate extends NodeOf<'Propagate'> {
   readonly operand: Expression;
 }
 
-/** Postfix `$`. */
-export interface Unwrap extends NodeOf<'Unwrap'> {
+/**
+ * `*x`: the value behind the handle `x` (§3.9). `x->f` is `(*x).f`, so the parser reads it as a
+ * field of a `Dereference` spanning `x->`.
+ */
+export interface Dereference extends NodeOf<'Dereference'> {
   readonly operand: Expression;
 }
 
@@ -353,7 +352,7 @@ export type Expression =
   | TupleElement
   | Index
   | Propagate
-  | Unwrap
+  | Dereference
   | Unary
   | Await
   | Binary

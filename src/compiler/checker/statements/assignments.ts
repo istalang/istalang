@@ -14,8 +14,8 @@
  *   the place's type and recorded on the assignment, and its result must fit the place.
  * - A value written to an optional place is wrapped into it (§2), whether the whole value, a part
  *   of it or an operator's result, so each part records its own wraps.
- * - `x$ = v` calls `rewrap` (§3.9), recorded on the assignment like any call (expressions/
- *   unwrap.ts); it writes no part.
+ * - `*x = v` writes the value behind the handle `x` whole (§3.9; expressions/dereference.ts), as
+ *   its one part.
  * - `_` as a target holds the value without a name, so it records no part to write (§3.4).
  * - Taking a value apart writes each place once: no target is another's place, or a part of it,
  *   so the order the parts are written in never decides a value (§3.15).
@@ -35,7 +35,7 @@ import { checkChangedPlace, immutableKind, isChangeable } from '../calls/places.
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { checkRewrap } from '../expressions/unwrap.ts';
+import { checkWholeWrite } from '../expressions/dereference.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/walk.ts';
@@ -50,8 +50,8 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
     checkCompound(context, node, only, node.operator);
     return;
   }
-  if (more.length === 0 && only.kind === 'Unwrap') {
-    checkRewrap(context, node, only);
+  if (more.length === 0 && only.kind === 'Dereference') {
+    checkWholeWrite(context, node, only);
     return;
   }
   if (more.length === 0 && !destructures(only)) {

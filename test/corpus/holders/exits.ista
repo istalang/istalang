@@ -7,7 +7,7 @@
 import * as time from 'time'
 
 fn note(log: Shared<Array<string>>, text: string):
-  log$ = [...log$, text]
+  *log = [...*log, text]
 
 async fn sleeper(id: int, log: Shared<Array<string>>):
   defer fn(): note(log, "stopped " + string(id))
@@ -47,4 +47,4 @@ async fn main() -> Future<string>:
   const v = await viaReturn(log)
   note(log, "v=" + string(v))
   await selecting(log)
-  log$.join(", ")
+  log->join(", ")

@@ -4,10 +4,11 @@
  * Only what can't be an ordinary call is an instruction:
  * - construction of the built-in shapes (tuple, struct, variant, array, map, closure)
  * - field access and writes through places
- * - the operators the spec makes non-overloadable (§3.9): structural `==`, and `not`
+ * - the operators the spec makes non-overloadable (§3.9): structural `==`, `not`, and `*` and
+ *   `*x = v`, which read and write the cell behind a handle
  * - turning `compare`'s result into a boolean, since all four comparisons go through one
  *   `compare` (spec §3.9)
- * Arithmetic, indexing, `$`, conversions and iteration are calls to resolved functions, which
+ * Arithmetic, indexing, conversions and iteration are calls to resolved functions, which
  * for primitives are prelude externs.
  *
  * Writing a register that holds a cell (a variable passed by `&` or captured by a closure) or a
@@ -56,6 +57,12 @@ const item = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('spread'), value: register }),
 ]);
 
+/** dst = the value in the cell the handle in `cell` names: `*x` (spec §3.9). */
+const readCell = defineInstruction('readCell', { dst: register, cell: register });
+
+/** Writes `value` to the cell the handle in `cell` names, for every copy of it: `*x = v`. */
+const writeCell = defineInstruction('writeCell', { cell: register, value: register });
+
 /** `[a, ...xs, b]`. */
 const array = defineInstruction('array', { dst: register, elements: z.array(item) });
 
@@ -97,6 +104,8 @@ export const dataInstructions = [
   variant,
   field,
   store,
+  readCell,
+  writeCell,
   array,
   map,
   closure,

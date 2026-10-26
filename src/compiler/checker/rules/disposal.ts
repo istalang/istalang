@@ -11,7 +11,7 @@
  *   beside it (§7). It is found the way an operator's function is, by argument-dependent lookup,
  *   so it lives beside the type it disposes (resolution/candidates.ts).
  * - A `dispose` that runs as code is plain code that can't wait, and `self` can't escape it: it is
- *   used only as `self$` or passed to an extern, so a disposed value never becomes observable
+ *   used only as `*self` (or `self->f`) or passed to an extern, so a disposed value never becomes observable
  *   again (§7).
  */
 
@@ -168,7 +168,7 @@ export function checkDisposeDeclaration(
   checkSelfStays(checker, declaration, self.node);
 }
 
-/** Reports each use of `dispose`'s `self` other than `self$` or an argument of an extern call. */
+/** Reports each use of `dispose`'s `self` other than `*self` or an argument of an extern call. */
 function checkSelfStays(
   checker: CheckerContext,
   declaration: FunctionDeclaration,
@@ -183,7 +183,7 @@ function checkSelfStays(
     if (entity?.kind === 'variable' && entity.owner === self) {
       const [parent, grandparent] = outer.filter((each) => each.kind !== 'Parenthesized');
       const stays =
-        parent?.kind === 'Unwrap' ||
+        parent?.kind === 'Dereference' ||
         (parent?.kind === 'Call' && parent.callee !== node && isExternCall(parent)) ||
         (parent?.kind === 'MemberAccess' && isExternCall(grandparent));
       if (nested || !stays) {

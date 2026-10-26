@@ -8,7 +8,7 @@
 import * as time from 'time'
 
 fn note(log: Shared<Array<string>>, text: string):
-  log$ = [...log$, text]
+  *log = [...*log, text]
 
 async fn sleeper(id: int, log: Shared<Array<string>>):
   defer fn(): note(log, "stopped " + string(id))
@@ -33,9 +33,9 @@ async fn withHeader(log: Shared<Array<string>>):
   drop arr
   note(log, "arr dropped")
   const m = Shared(sleeper(12, log))
-  const copy = m$
+  const copy = *m
   note(log, "copy")
-  m$ = sleeper(13, log)
+  *m = sleeper(13, log)
   note(log, "m set")
   drop copy
   note(log, "copy dropped")
@@ -45,4 +45,4 @@ async fn main() -> Future<string>:
   const log = Shared(empty)
   await a(log)
   await withHeader(log)
-  log$.join(", ")
+  log->join(", ")

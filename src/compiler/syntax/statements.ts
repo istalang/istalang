@@ -51,7 +51,7 @@ export interface VariableDeclaration extends NodeOf<'VariableDeclaration'>, Anno
 
 /**
  * `x = v`, `x += v`, and `a, b = (b, a)` when there are several targets. A target is a place (a
- * variable, field, tuple element, index or `$` value), or a tuple or struct literal of targets
+ * variable, field, tuple element, index or handle's value `*x`), or a tuple or struct literal of targets
  * that destructures the value into them (§3.15).
  */
 export interface Assignment extends NodeOf<'Assignment'>, Annotatable {

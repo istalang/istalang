@@ -28,6 +28,7 @@ import {
   binaryParselet,
   isParselet,
   parseAwait,
+  parseDereference,
   parseMisplacedReference,
   parseNegation,
   parseNot,
@@ -36,13 +37,13 @@ import {
 } from './operators.ts';
 import type { InfixParselet, PrefixParselet } from './parselet.ts';
 import {
+  arrowParselet,
   callParselet,
   indexParselet,
   memberParselet,
   parseTypeApplication,
   propagateParselet,
   structLiteralParselet,
-  unwrapParselet,
 } from './postfix.ts';
 import { parseAnonymousStructLiteral } from './struct-literals.ts';
 
@@ -61,6 +62,7 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   async: parseLambda,
   struct: parseAnonymousStructLiteral,
   '-': parseNegation,
+  '*': parseDereference,
   not: parseNot,
   await: parseAwait,
   '&': parseMisplacedReference,
@@ -88,8 +90,8 @@ const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
   '[': indexParselet,
   '.': memberParselet(false),
   '?.': memberParselet(true),
+  '->': arrowParselet,
   '?': propagateParselet,
-  $: unwrapParselet,
   '{': structLiteralParselet,
 };
 

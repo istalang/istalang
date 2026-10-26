@@ -7,7 +7,7 @@ import Inbox from 'inbox'
 import * as time from 'time'
 
 fn note(log: Shared<Array<string>>, entry: string):
-  log$ = [...log$, entry]
+  *log = [...*log, entry]
 
 async fn worker(jobs: Inbox<int>, acks: Inbox<int>, log: Shared<Array<string>>) -> Future<unit>:
   let handled = 0
@@ -40,4 +40,4 @@ async fn main() -> Future<string>:
     const second = await acks.receive()
   }
   note(log, "cleaned up")
-  log$.join(", ") + " | done"
+  log->join(", ") + " | done"

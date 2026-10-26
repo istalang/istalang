@@ -289,7 +289,7 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   TupleElement: (walk, node, state) => walk.link(node, node.target, [], state),
   Index: (walk, node, state) => walk.link(node, node.target, [node.index], state),
   Propagate: children,
-  Unwrap: children,
+  Dereference: children,
   Unary: children,
   Await: children,
   Binary: (walk, node, state) => {

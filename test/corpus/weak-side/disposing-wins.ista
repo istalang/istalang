@@ -6,7 +6,7 @@
 import Inbox from 'inbox'
 
 fn note(log: Shared<Array<string>>, entry: string):
-  log$ = [...log$, entry]
+  *log = [...*log, entry]
 
 async fn worker(jobs: Inbox<int>, log: Shared<Array<string>>) -> Future<unit>:
   await select:
@@ -24,4 +24,4 @@ async fn main() -> Future<string>:
     jobs.send(3)
   }
   note(log, "job unhandled")
-  log$.join(" | ")
+  log->join(" | ")

@@ -42,7 +42,7 @@ export const collectionTemplates = {
   accessorToAsync: {
     code: 5307,
     message: (callee: string) =>
-      `An element or a '$' value can't be passed by '&' to '${callee}', which is async: it is copied in and written back when its call returns (§3.7). Copy it into a 'let', pass that, and assign it back.`,
+      `An element or a handle's value can't be passed by '&' to '${callee}', which is async: it is copied in and written back when its call returns (§3.7). Copy it into a 'let', pass that, and assign it back.`,
   },
   elementOverlap: {
     code: 5308,
@@ -52,6 +52,6 @@ export const collectionTemplates = {
   handleOverlap: {
     code: 5309,
     message: (callee: string) =>
-      `'${callee}' is passed two places by '&' that reach through '$' values: each is a copy for the call (§3.7), and two handles may be one, so the two couldn't change together. Pass them in separate calls.`,
+      `'${callee}' is passed two places by '&' that reach through handles: each is a copy for the call (§3.7), and two handles may be one, so the two couldn't change together. Pass them in separate calls.`,
   },
 } as const;

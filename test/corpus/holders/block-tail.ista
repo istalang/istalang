@@ -9,18 +9,18 @@ struct LeaseState:
 handle Lease of LeaseState
 
 fn note(log: Shared<Array<string>>, entry: string):
-  log$ = [...log$, entry]
+  *log = [...*log, entry]
 
 fn dispose(self: Lease):
-  note(self$.log, "disposed " + string(self$.id))
+  note(self->log, "disposed " + string(self->id))
 
 fn checked(log: Shared<Array<string>>, n: int) -> bool:
   note(log, "check")
   n < 2
 
 fn opened(lease: Lease) -> int:
-  note(lease$.log, "lease " + string(lease$.id))
-  lease$.id
+  note(lease->log, "lease " + string(lease->id))
+  lease->id
 
 async fn main() -> Future<string>:
   const empty: Array<string> = []
@@ -30,4 +30,4 @@ async fn main() -> Future<string>:
     n += 1
     opened(Lease(LeaseState{log, id: n}))
   note(log, "after")
-  log$.join(", ")
+  log->join(", ")

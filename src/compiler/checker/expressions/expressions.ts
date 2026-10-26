@@ -29,6 +29,7 @@ import {
 } from './collections.ts';
 import { checkComprehension } from './comprehensions.ts';
 import { checkIf, ifAccepts } from './control.ts';
+import { checkDereference } from './dereference.ts';
 import { checkIndex } from './indexing.ts';
 import { checkDurationLiteral } from './literals.ts';
 import { checkIs, checkMatch, matchAccepts } from './match.ts';
@@ -43,7 +44,6 @@ import {
   structLiteralAccepts,
 } from './structs.ts';
 import { checkTuple, checkTupleElement, tupleAccepts } from './tuples.ts';
-import { checkUnwrap } from './unwrap.ts';
 import { checkNone, noneAccepted } from './variants.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
@@ -84,7 +84,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Reference: misplacedReference,
   Index: checkIndex,
   Propagate: checkPropagate,
-  Unwrap: checkUnwrap,
+  Dereference: checkDereference,
   Await: checkAwait,
   Is: checkIs,
   Range: checkRange,
@@ -124,7 +124,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   Reference: ownType,
   Index: ownType,
   Propagate: ownType,
-  Unwrap: ownType,
+  Dereference: ownType,
   Await: ownType,
   Is: ownType,
   Range: ownType,

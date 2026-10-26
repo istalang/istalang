@@ -4,9 +4,9 @@
 # call, which becomes ready first, so it runs before the caller that awaited the resolved put.
 
 async fn waiter(s: Slot<int>, log: Shared<Array<string>>):
-  log$ = [...log$, "started"]
+  *log = [...*log, "started"]
   const value = await s.take()
-  log$ = [...log$, "took " + string(value)]
+  *log = [...*log, "took " + string(value)]
 
 async fn main() -> Future<string>:
   const empty: Array<string> = []
@@ -14,7 +14,7 @@ async fn main() -> Future<string>:
   const s = Slot.create<int>()
   const running = waiter(s, log)
   await s.put(7)
-  log$ = [...log$, "main"]
+  *log = [...*log, "main"]
   await running
-  log$ = [...log$, "done"]
-  log$.join(",")
+  *log = [...*log, "done"]
+  log->join(",")

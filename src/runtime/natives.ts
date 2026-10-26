@@ -22,14 +22,11 @@ import type { TypeDefinition } from '../definition/types.ts';
 import type { Value } from '../definition/values.ts';
 
 /**
- * The running instance's shared cells, which `Shared<T>` values are handles to (§3.8): a cell of
- * the `Shared<T>` type entry `type` made holding `value`, and a cell's value read and written.
+ * The running instance's cells, which handles name (§3.18): a cell of the handle type entry `type`
+ * made holding `value`, as a handle to it. `*x` reads and writes one with instructions instead.
  */
-/** The running instance's shared cells, which `Shared<T>` values are handles to (§3.8). */
 export interface NativeCells {
   readonly create: (type: TypeId, value: Value) => Value;
-  readonly read: (cell: Value) => Value;
-  readonly write: (cell: Value, value: Value) => void;
 }
 
 /** The running instance's resources (§7). */

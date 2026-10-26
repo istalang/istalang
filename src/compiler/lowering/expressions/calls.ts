@@ -6,7 +6,7 @@
  *
  * An argument written `&x` passes the place `x`; a method's receiver is its first argument,
  * passed as a place when its `self` takes a reference (§3.7), which the `&` left implicit. A place
- * reached through an element or a `x$` is copied in before the call and written back after it
+ * reached through an element or a handle's value (`*x`) is copied in before the call and written back after it
  * (places.ts).
  *
  * A call the checker resolved no function for is a call of a function value (§3.14): the callee's

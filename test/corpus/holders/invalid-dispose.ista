@@ -25,8 +25,8 @@ async fn dispose(self: Holder):
 
 fn dispose(self: Lease):
   const copy = self
-  const name = self$.name
-  const later = fn(): self$.name
+  const name = self->name
+  const later = fn(): self->name
 
 fn dispose(self: Shared<LeaseState>):
   ()

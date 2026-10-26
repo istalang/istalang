@@ -44,7 +44,7 @@ handle Revertible<T> of RevertibleState<T>
 fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
   const held = Shared<R?>(resource)
   fn retract():
-    held$ = none
+    *held = none
   Revertible(RevertibleState<T>{retract})
 
 fn Inbox.create<T>() -> Inbox<T>:
@@ -62,7 +62,7 @@ fn sendRevertible<T>(self: Inbox<T>, message: T) -> Revertible<T>:
 
 fn receive<T>(self: Inbox<T>) -> Future<T>:
   _fill(self)
-  self$.slot.take()
+  self->slot.take()
 
 # Disposing an inbox (§6, §7) lets go of its state, so the slot dies with the message in it, and
 # the backlog with it. Declaring `dispose` is what makes an inbox disposable, and so something a
@@ -71,32 +71,32 @@ fn dispose<T>(self: Inbox<T>):
   ()
 
 fn dispose<T>(self: Revertible<T>):
-  self$.retract()
+  self->retract()
 
 # Queues `message` behind the others; its number.
 fn _queue<T>(self: Inbox<T>, message: T) -> int:
-  const state = self$
+  const state = *self
   const queued = Queued{number: state.queued, message}
-  self$ = InboxState{...state, backlog: [...state.backlog, queued], queued: state.queued + 1}
+  *self = InboxState{...state, backlog: [...state.backlog, queued], queued: state.queued + 1}
   _fill(self)
   queued.number
 
 # Moves the first message of the backlog into the slot, if the slot is empty.
 fn _fill<T>(self: Inbox<T>):
-  const state = self$
+  const state = *self
   if state.backlog.length() > 0 and not _settles(state.slot.read()):
     const next = state.backlog[0]
     drop state.slot.put(next.message)
-    self$ = InboxState{...state, slotted: next.number, backlog: state.backlog[1..]}
+    *self = InboxState{...state, slotted: next.number, backlog: state.backlog[1..]}
 
 # Removes message `number` from the inbox, if the inbox is still there and the message unread.
 fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: int):
   if inbox.deref() is Some{value as box}:
-    const state = box$
+    const state = *box
     const waiting = [for queued in state.backlog if queued.number != number: queued]
     const taken = state.slotted == number and _settles(state.slot.take())
     const slotted: int? = if taken: none else: state.slotted
-    box$ = InboxState{...state, slotted, backlog: waiting}
+    *box = InboxState{...state, slotted, backlog: waiting}
     if taken:
       _fill(box)
 

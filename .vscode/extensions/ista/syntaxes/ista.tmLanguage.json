@@ -159,7 +159,7 @@
         { "name": "keyword.operator.spread.ista", "match": "\\.\\.\\." },
         { "name": "keyword.operator.range.ista", "match": "\\.\\.=?" },
         { "name": "keyword.operator.optional.ista", "match": "\\?\\.|\\?\\?|\\?" },
-        { "name": "keyword.operator.reference.ista", "match": "[&$]" },
+        { "name": "keyword.operator.reference.ista", "match": "&" },
         {
           "name": "keyword.operator.ista",
           "match": "//=|//|\\+=|-=|\\*=|/=|%=|==|!=|<=|>=|[-+*/%<>=]"

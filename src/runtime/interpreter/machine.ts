@@ -179,6 +179,16 @@ export function writeRegister(frame: ActiveFrame, register: Register, value: Val
   }
 }
 
+/** The value in the cell the handle in `register` names (§3.9). */
+export function readCell(frame: ActiveFrame, register: Register): Value {
+  return frame.heap.read(cellOf(readRegister(frame, register)));
+}
+
+/** Writes `value` to the cell the handle in `register` names, for every copy of the handle. */
+export function writeCell(frame: ActiveFrame, register: Register, value: Value): void {
+  frame.heap.write(cellOf(readRegister(frame, register)), value);
+}
+
 /** Empties `register`, letting go of what it held: a cell register, its cell. */
 export function clearRegister(frame: ActiveFrame, register: Register): void {
   const contents = frame.registers[register];
@@ -242,7 +252,7 @@ function isCell(frame: ActiveFrame, register: Register): boolean {
 function cellOf(contents: RegisterContents): number {
   const cell = isReference(contents) ? undefined : handleTarget(contents);
   if (cell === undefined) {
-    unreachable('A cell register holds no cell.');
+    unreachable('A cell register or a dereferenced handle holds no cell.');
   }
   return cell;
 }

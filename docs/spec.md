@@ -17,7 +17,7 @@ fn _ = startJob()                  # held until the function ends, even inside a
 fn let pending = 0                 # name block scoped, holdings function scoped
 drop audit.record(event)           # discard a must-use value right away
 const u = Shared(user)             # a shared handle
-u$.name = "x"                      # read or write the shared value with $
+u->name = "x"                      # read or write what is behind it with * and ->
 
 "text"  'text'  42  1_000  0x1F  3.14  true  false  none  5d  30s
 [1, 2]   ["a": 1]   [:]   [...xs, 3]   (1, "x")   0..10   0..=10
@@ -165,7 +165,7 @@ Every expression has a static type, and there is no `any` type. There are no imp
 | `Slot<T>` | Handle to a slot shared by the concurrent executions of one instance: empty or full (§6). |
 | `Future<T>` | Read-only view of a slot: something to wait on (§6). |
 | `Inbox<T>` | Standard-library message queue built on slots (§6). |
-| `Shared<T>` | Handle to a mutable value in the instance's own memory: every copy sees the same value, read and written as `x$` (§3.8). |
+| `Shared<T>` | Handle to a mutable value in the instance's own memory: every copy sees the same value, read and written as `*x` (§3.8). |
 | Struct types | Declared with `struct` (§3.1). They may be generic. |
 | Enum types | Declared with `enum` (§3.11): exactly one of several variants. `Result<T>` is one (§3.12). |
 | Function types | `fn(A, B) -> R`, `async fn(A) -> R` (§3.14). |
@@ -299,7 +299,7 @@ const roles = ["legal", "finance"]
 roles.push("cfo")                  # compile error: roles is const
 ```
 
-`let` declares a mutable variable and `const` an immutable one. A `const` is deeply immutable: it can't be reassigned, its fields and elements can't be changed, and you can't take `&` of it, so mutating methods like `push` are rejected. Immutability stops at handles: a `const` slot or inbox can still be used, and the contents of a `const` `Shared` can still change through `x$`, because that changes the state behind the handle, not the handle itself. The compiler warns about a `let` that is never reassigned or mutated: assigning to one of its fields or elements, passing it by `&`, and calling a method that takes `&self` on it all count as mutating it. In a `let` declaring several names, each name never changed is warned about, to be declared as a `const` of its own.
+`let` declares a mutable variable and `const` an immutable one. A `const` is deeply immutable: it can't be reassigned, its fields and elements can't be changed, and you can't take `&` of it, so mutating methods like `push` are rejected. Immutability stops at handles: a `const` slot or inbox can still be used, and the contents of a `const` `Shared` can still change through `*x`, because that changes the state behind the handle, not the handle itself. The compiler warns about a `let` that is never reassigned or mutated: assigning to one of its fields or elements, passing it by `&`, and calling a method that takes `&self` on it all count as mutating it. In a `let` declaring several names, each name never changed is warned about, to be declared as a `const` of its own.
 
 Variables are block scoped: a variable is visible only inside the block that declares it and in blocks nested within it. A variable declared inside an `if` body does not exist after the `if`. A loop variable (`for x in xs`) and every variable declared in a loop body are fresh on each iteration, so closures created in different iterations never share them. Unlike Python, assigning to an undeclared name is a compile error. Declaring a name twice in one block is a compile error too, also for two local functions, which therefore can't be overloaded; a nested block may shadow a name from an enclosing one. Types and values share one namespace per scope.
 
@@ -383,11 +383,11 @@ async fn signContract(contract: Contract) -> Future<Array<Signature>>:
 
 The rules:
 
-- **Explicit at the call site.** An argument passed by reference is written `&x`. Only a method's `self` takes its reference implicitly, so `x.f()` passes `x` by reference when the chosen `f` takes `&self`; `x` must then be a place that may change (a variable, a field or element of one, or a `$` value or a part of one), never a call's result or a `const`. `&` may stand only before a whole call argument, and `&T` only as a parameter's type; anywhere else either is a compile error.
+- **Explicit at the call site.** An argument passed by reference is written `&x`. Only a method's `self` takes its reference implicitly, so `x.f()` passes `x` by reference when the chosen `f` takes `&self`; `x` must then be a place that may change (a variable, a field or element of one, or a handle's value `*x` or a part of one), never a call's result or a `const`. `&` may stand only before a whole call argument, and `&T` only as a parameter's type; anywhere else either is a compile error.
 - **Exact types.** A reference names the caller's own variable, so its type must be the parameter's exactly: no `T` is wrapped into `T?` through a reference.
 - **One kind of reference, and it allows mutation.** A read-only reference would add nothing, because a by-value parameter can't change at all (§3.3).
-- **What can be referenced.** A `let` variable or a parameter, a field or tuple element path of one (`&self.items`, `&t.0`), an element of any indexable value (`&m["a"]`), or a `$` value or a path of one (`&u$`, `&u$.items`, `&u.value.items`). A reference parameter passed on with `&` passes the same reference. One variable may be passed by `&` twice in one call, and both refer to it; but not when either reaches through an element of it (`f(&xs[i], &xs[j])`, `f(&a[0].x, &a[0].y)`, `f(&xs, &xs[0])`), a compile error, since an element is a copy for the call. Nor may one call be passed two places that reach through `$` values (`f(&u$.a, &w$.b)`), since a `$` value is a copy too and two handles may be one. An element is read through its container's `index` and written back with `setIndex`, whether the container is an `Array`, a `Map` or a user type (§3.9).
-- **Elements and `$` values are copied in and out.** An element passed by `&` (`&m["a"]`, or `m["a"].f()` for a method taking `&self`) is read with `index` before the call, which panics for a key the map doesn't hold, and written back with `setIndex` when the call returns. A `$` value passed by `&` (`&u$.items`, or `u$.items.push(x)`) is read with `unwrap` and written back with `rewrap` the same way (§3.9). During the call the container, or the handle, still holds the old value, as a closure sharing it or a second `&` to it sees. An async call returns its future before its callee ends, so passing an element or a `$` value by `&` to an async function is a compile error: copy it into a `let`, pass that, and assign it back.
+- **What can be referenced.** A `let` variable or a parameter, a field or tuple element path of one (`&self.items`, `&t.0`), an element of any indexable value (`&m["a"]`), or a handle's value or a path of one (`&*u`, `&u->items`). A reference parameter passed on with `&` passes the same reference. One variable may be passed by `&` twice in one call, and both refer to it; but not when either reaches through an element of it (`f(&xs[i], &xs[j])`, `f(&a[0].x, &a[0].y)`, `f(&xs, &xs[0])`), a compile error, since an element is a copy for the call. Nor may one call be passed two places that reach through handles (`f(&u->a, &w->b)`), since a handle's value is a copy too and two handles may be one. An element is read through its container's `index` and written back with `setIndex`, whether the container is an `Array`, a `Map` or a user type (§3.9).
+- **Elements and handles' values are copied in and out.** An element passed by `&` (`&m["a"]`, or `m["a"].f()` for a method taking `&self`) is read with `index` before the call, which panics for a key the map doesn't hold, and written back with `setIndex` when the call returns. A handle's value passed by `&` (`&u->items`, or `u->items.push(x)`) is read from its cell and written back the same way (§3.9). During the call the container, or the handle, still holds the old value, as a closure sharing it or a second `&` to it sees. An async call returns its future before its callee ends, so passing an element or a handle's value by `&` to an async function is a compile error: copy it into a `let`, pass that, and assign it back.
 - **References aren't values.** They can't be stored in variables or struct fields, returned or sent. Aliasing exists only for the duration of a call.
 - **No references to constants.** Neither a `const` variable nor an `extern` constant can be passed by `&`.
 - **No dangling references.** A referenced variable's storage stays alive until every call holding a reference to it has ended, even if its block ends first. It just can't be named after its block ends.
@@ -440,8 +440,8 @@ extern fn read<T>(self: Slot<T>) -> Future<T>               # waits until full, 
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>   # WeakRef(x): the one weak handle to x
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
 extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
-# Shared.from(value: T), unwrap(self) and rewrap(self, value), as every handle declares them:
-# Shared(v) makes a new cell holding v, x$ reads it, x$ = v writes it
+# Shared.from(value: T), as every handle declares it: Shared(v) makes a new cell holding v,
+# *x reads it and *x = v writes it
 ```
 
 The prelude also contains `Optional`, `Result`, `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `int`, `float`, `bool` and `string` satisfy), the `Waypoint` annotation (§10) and `panic`.
@@ -488,7 +488,7 @@ fn add(left: Time, right: Duration) -> Time:     # Time + Duration
 - A sendable generic struct is sendable only when its type arguments are sendable: `Array<int>` is sendable, `Array<Future<int>>` is not.
 - Primitives are always sendable. `Time` and `Duration` are plain structs of `int`, so they are sendable by derivation.
 - Methods on primitives are ordinary functions whose `self` is a primitive, such as `"abc".indexOf("b")` or `2.pow(10)`.
-- **`Shared<T>`** is a mutable value in the instance's own memory, created with `Shared(value)`. Copying a `Shared` copies the handle, so every copy sees the same value. `x$` reads the value and `x$ = v` or `x$.field = v` writes it (§3.9); `x.value` is the same as `x$`. It is not sendable, and it lives as long as it is reachable (§5).
+- **`Shared<T>`** is a mutable value in the instance's own memory, created with `Shared(value)`. Copying a `Shared` copies the handle, so every copy sees the same value. `*x` reads the value and `*x = v` or `x->field = v` writes it (§3.9). It is not sendable, and it lives as long as it is reachable (§5).
 - **`WeakRef<T>`** refers to a disposable value without holding it (§7).
 
 ### 3.9 Operator overloading
@@ -506,19 +506,17 @@ An operator is sugar for a named function: `a + b` calls `add(a, b)`. On concret
 | `<`, `<=`, `>`, `>=` | `compare` | `Comparable` |
 | `x[k]` | `index` | `Indexable` |
 | `x[k] = v` | `setIndex` | `IndexAssignable` |
-| `x$` | `unwrap` | `Wrapper` |
-| `x$ = v` | `rewrap` | `MutableWrapper` |
 | `for x in c` | `iterate` | `Iterable` |
 | `T(x)` | `T.from` | `Convertible` |
 
-**Unwrapping.** `x$` calls `unwrap(x)`, and `x$ = v` calls `rewrap(x, v)`. A field write such as `x$.name = "Y"` is sugar for reading with `unwrap`, changing the field and writing back with `rewrap`, atomically within the segment. `rewrap` takes `self` by value, so a `const` handle stays writable; this also means only handle types, like `Shared<T>`, can usefully implement `MutableWrapper`.
+**Handles.** `*x` is the value behind the handle `x` (§3.18), such as a `Shared` (§3.8), and `*x = v` writes it, for every copy of the handle. `x->f` is `(*x).f`: a field of that value, read or written, as in C. Writing a part (`x->name = "Y"`, `*x += 1`) reads the value, changes the part and writes the value back, atomically within the segment. Both are built in and work only on handles, so they call no function and can't be overloaded. A `const` handle stays writable, since writing through it changes what is behind the handle, not the handle.
 
 ```python statements
 const u = Shared(User{name: "Ares", email: "a@x"})
-u$.name = "Ares K"          # writes through: every alias sees it
-const snapshot = u$         # a plain copy of the contents
+u->name = "Ares K"          # writes through: every alias sees it
+const snapshot = *u         # a plain copy of the contents
 const alias = u             # the same handle; alias == u
-users[0]$.name = "Y"        # $ works on any expression
+users[0]->name = "Y"        # -> works on any expression
 ```
 
 All four comparisons go through a single `compare(left, right) -> int` (negative, zero or positive), so they can never contradict each other.
@@ -536,14 +534,14 @@ fn multiply(left: Duration, factor: int) -> Duration:
 - **Slicing** is indexing with a `Range`, through ordinary `index` and `setIndex` overloads. `a[3..5]` returns a copy, so changing it never affects `a`. `a[3..5] = xs` replaces that span of `a` in place, even with a different length. A range's open start means 0 and its open end the length, so `a[..]` copies `a`; a range outside the bounds, or ending before it starts, panics, and `a.slice(start, end)` clamps instead. Strings slice the same way: `s[1..3]`.
 - **Equality is built in.** `==` and `!=` work on every type and can't be overloaded: values compare structurally, handles by identity (§3.1). This keeps `Map` keys consistent.
 - **Floor division and remainder share a trait,** because they are defined together: `a == (a // b) * b + a % b` always holds. A type can thus offer exact division, floor division, or both.
-- **Not overloadable:** `and`, `or` and `not` (they short-circuit, and a function call would evaluate both sides), `=`, `.` and `&`. `await` and `select` aren't overloaded either; they work on futures (§6).
+- **Not overloadable:** `and`, `or` and `not` (they short-circuit, and a function call would evaluate both sides), `=`, `.`, `->`, prefix `*` and `&`. `await` and `select` aren't overloaded either; they work on futures (§6).
 - **Compound assignment.** `x += y` is sugar for `x = x + y`.
 - **No implicit conversions.** Mixed-type operators work only through overloads. The prelude declares them for primitives, such as `add(int, float) -> float` and `add(string, int) -> string`, so `"Total: " + count` just works. Anything else converts explicitly with `T(x)` (§3.10).
 
 | Precedence, tightest first | Operators |
 | --- | --- |
-| 1 | postfix: calls, indexing, `.`, `?.`, `$`, the error-propagating `?` |
-| 2 | prefix: `await`, unary `-`, `&` |
+| 1 | postfix: calls, indexing, `.`, `?.`, `->`, the error-propagating `?` |
+| 2 | prefix: `await`, unary `-`, `*`, `&` |
 | 3 | `*`, `/`, `//`, `%` |
 | 4 | `+`, `-` |
 | 5 | `..`, `..=` |
@@ -594,8 +592,6 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 | --- | --- | --- |
 | `Sendable` | nothing: a marker, derived for user structs (§3.1) | `spawn` arguments; whatever crosses to the host, through `Encodable` and `Decodable` |
 | `Disposable` | `dispose`, synchronous; only handles (§3.18) and extern types (§7) | values the runtime disposes when their last holder ends (§7) |
-| `Wrapper<T, W = Self>` | `unwrap(self: W) -> T` | `x$` |
-| `MutableWrapper<T, W = Self>` | `rewrap(self: W, value: T)` | `x$ = v`, `x$.field = v` |
 | `Iterable<T, C = Self>` | `iterate`, returning an `Array<T>` | `for x in c` |
 | `Indexable<K, V, C = Self>` | `index(self, key) -> V` | `x[k]` |
 | `IndexAssignable<K, V, C = Self>` | `setIndex(self: &C, key, value)` | `x[k] = v` |
@@ -739,7 +735,7 @@ fn makeCounter(start: int) -> fn() -> int:
     next
 ```
 
-**A closure is sugar.** Each captured `let` becomes a `Shared` (§3.8) that the outer code and the closure share; the compiler inserts the `.value` access on both sides. The closure itself is an anonymous struct holding those `Shared` values and copies of the captured `const`s, paired with a reference to the function's code.
+**A closure is sugar.** Each captured `let` becomes a `Shared` (§3.8) that the outer code and the closure share; the compiler reads and writes it with `*` on both sides. The closure itself is an anonymous struct holding those `Shared` values and copies of the captured `const`s, paired with a reference to the function's code.
 
 - **`const` variables are copied** into the closure.
 - **`let` variables are shared.** The closure and the outer code use the same storage, so a change made on either side is visible on the other, as in JavaScript. The loop variable and any `let` declared in a loop body are fresh on each iteration (§3.4); a `let` declared outside the loop is shared by every closure created in it.
@@ -857,7 +853,7 @@ handle Lease of LeaseState
 handle Counter of int
 ```
 
-- **Its functions.** `handle H<T> of S` declares `fn H.from<T>(value: S) -> H<T>`, `fn unwrap<T>(self: H<T>) -> S` and `fn rewrap<T>(self: H<T>, value: S)`, beside it in its module. So `H(v)` makes a new cell holding `v`, `x$` and `x.value` read it, and `x$ = v` and `x$.field = v` write it (§3.9), for every copy of the handle. They are found, overloaded and exported as declared functions are, and they meet `Convertible`, `Wrapper` and `MutableWrapper` in generic code (§3.10). A handle has no fields of its own and isn't built with braces.
+- **Its function and its value.** `handle H<T> of S` declares `fn H.from<T>(value: S) -> H<T>` beside it in its module, so `H(v)` makes a new cell holding `v`. It is found, overloaded and exported as a declared function is, and meets `Convertible` in generic code (§3.10). `*x` reads the cell, `*x = v` writes it and `x->field` reads or writes a field of its value (§3.9), for every copy of the handle. A handle has no fields of its own, so `x.field` is a compile error, and it isn't built with braces.
 - **Identity.** Copying a handle copies the handle, not the cell, and `==` compares handles by identity (§3.1). A handle is never sendable, so it stays in its instance, and has no JSON form (§9).
 - **Its own module.** A handle is a nominal type of the module declaring it, so argument-dependent lookup finds that module's functions for it (§3.13), and a diagnostic names it as declared.
 - **Disposal.** A handle has an identity, so a `dispose` declared beside it makes it disposable (§7), which is how a module makes a resource of its own.
@@ -1025,7 +1021,7 @@ The owner keeps its inbox and gives the child only the weak side, starting it wi
 
 Pending futures, slots and inboxes, and revertible messages are **disposable**: they satisfy the built-in `Disposable` trait, and the runtime calls `dispose` when nothing holds them anymore. Only a value with an identity of its own can be disposable, so only a handle (§3.18) or an extern type may be. That is how user code gets a disposable resource: `fn dispose(self: Lease)` makes the handle `Lease` disposable, and a `dispose` declared for an extern type a host provides makes it disposable too. A plain struct that declares `dispose` is a compile error, because copies of a value have no single identity to dispose.
 
-A program's `dispose` is found the way an operator's function is (§3.9), beside the type it disposes: in the module declaring that type. It is plain code: it takes the value as its one parameter, returns unit, and can't be `async`. The value can't outlive its disposal, so inside `dispose` it is used only as `self$` or passed to an extern function; storing it, copying it into a variable, capturing it or passing it to any other function is a compile error.
+A program's `dispose` is found the way an operator's function is (§3.9), beside the type it disposes: in the module declaring that type. It is plain code: it takes the value as its one parameter, returns unit, and can't be `async`. The value can't outlive its disposal, so inside `dispose` it is used only as `*self` (or `self->field`) or passed to an extern function; storing it, copying it into a variable, capturing it or passing it to any other function is a compile error.
 
 ```python
 trait Disposable:
@@ -1071,10 +1067,10 @@ In every case, each `disposed()` future watching the value resolves afterwards.
 ```python statements
 const sub = Shared<Future<unit>?>(bus.subscribe(fn msg: show(msg)))
 ...
-sub$ = none               # the subscription is disposed here
+*sub = none               # the subscription is disposed here
 ```
 
-Code that copies the future out (`const f = sub.value`) becomes a holder itself, and keeps it alive.
+Code that copies the future out (`const f = *sub`) becomes a holder itself, and keeps it alive.
 
 **Graceful disposal.** Inside an `async fn`, the function's own name gives the current call's context. `worker.disposing()` returns a `Future<unit>` that resolves when the call is disposed, which gives the call a chance to clean up:
 

@@ -50,7 +50,7 @@ async fn main() -> Future<string>:
     kind([]),
     shape([:]),
     shape((1, none)),
-    string(names$.length()),
+    string(names->length()),
     string(kept.0),
   ]
   parts.join(" ")
