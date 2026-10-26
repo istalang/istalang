@@ -8,8 +8,9 @@
  *   through its substitution (checker/types/instantiation.ts), and closes every call it makes:
  *   type arguments naming the instance's own parameters are substituted, and a call to a
  *   requirement becomes the witness the instance was given for it.
- * - Two instances are one entry when their key is: the declaration, its arguments' types, its
- *   witnesses' keys, and its arity.
+ * - Two instances are one entry when their key is: the declaration, its arguments' types, and its
+ *   arity. Witnesses are coherent (§3.10), the same for the same types wherever they are found, so
+ *   the types decide them.
  * - A lambda or local function (§3.14) is an entry of its own per instance of the top-level
  *   function holding it: it is checked within that body, so it reads the body through the same
  *   substitution, and its key is the instance's plus its node. A lambda in a top-level constant's
@@ -121,8 +122,7 @@ export function nestedName(checker: Checker, nested: NestedInstance, where: stri
 /** The key two instances share exactly when they are one entry. */
 export function instanceKey(keys: TypeKeys, instance: FunctionInstance): string {
   const typeArguments = instance.typeArguments.map((type) => keys.typeKey(type));
-  const witnesses = witnessesKey(keys, instance.witnesses);
-  return `${keys.identityOf(instance.declaration)}<${typeArguments.join(',')}>[${witnesses}]/${instance.arity}`;
+  return `${keys.identityOf(instance.declaration)}<${typeArguments.join(',')}>/${instance.arity}`;
 }
 
 /**
@@ -182,27 +182,4 @@ function closeWitnesses(witnesses: Witnesses, within: FunctionInstance | undefin
       constraints.map((calls) => calls.map((call) => closeCall(call, within))),
     ]),
   );
-}
-
-function witnessesKey(keys: TypeKeys, witnesses: Witnesses): string {
-  return [...witnesses.values()]
-    .map((constraints) =>
-      constraints
-        .map((calls) =>
-          calls
-            .map((call) =>
-              call.kind === 'function'
-                ? instanceKey(keys, {
-                    declaration: call.function,
-                    typeArguments: call.typeArguments,
-                    witnesses: call.witnesses,
-                    arity: call.arity,
-                  })
-                : '?',
-            )
-            .join(';'),
-        )
-        .join('|'),
-    )
-    .join('&');
 }

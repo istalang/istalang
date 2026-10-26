@@ -6,13 +6,12 @@
  *
  * - A struct is an object of its fields, an enum the same with a `"type"` tag naming the variant, a
  *   tuple an array, a host type whatever JSON its host gave it.
- * - What a struct or an enum holds crosses through the codecs found in its own module, so a
- *   derived codec is its type's alone; a tuple and an anonymous struct, which have no module, find
- *   theirs in the json module.
+ * - What a struct, an enum or a tuple holds crosses through its own codecs, which are coherent
+ *   witnesses (§3.10), so a derived codec is the same wherever its type is used.
  * - A type declares codecs beside it: in its own module, or in the json module, which does for
  *   primitives, `Json` and the prelude's containers. Declaring either leaves nothing derived, so no
  *   type is written one way and read another.
- * - A derived codec exists when everything it holds meets the trait where its codecs are found. A
+ * - A derived codec exists when everything it holds meets the trait. A
  *   recursive type counts as meeting it while its own parts are decided, as Sendable does.
  * - What has no codec says why, in words a diagnostic finishes ("it needs …"): a nested optional,
  *   whose two nones JSON can't tell apart; an enum with a field named `type`, which the tag uses; a
@@ -120,7 +119,7 @@ export class JsonForms implements JsonCodecs {
     if (form.kind === 'host') {
       return undefined;
     }
-    const inner = silent({ ...site, module: form.module });
+    const inner = silent(site);
     const constraint = wellKnownConstraint(this.#seams.checker, jsonTraits[direction]);
     const failing = partsOf(form).find(
       ({ type }) => witnessesFor(inner, type, constraint) === undefined,
@@ -130,13 +129,14 @@ export class JsonForms implements JsonCodecs {
       : `its ${failing.name} to be ${constraint.trait.name.text}`;
   }
 
-  codecOf(type: Type, direction: JsonDirection, module: ModuleId): ResolvedCall | undefined {
+  codecOf(type: Type, direction: JsonDirection): ResolvedCall | undefined {
     const { checker } = this.#seams;
-    if (checker.program.roles.json === undefined) {
+    const { json } = checker.program.roles;
+    if (json === undefined) {
       return undefined;
     }
     const constraint = wellKnownConstraint(this.#seams.checker, jsonTraits[direction]);
-    const site = hostSite(silent(useSite(checker, module, constraint.trait.name.span)));
+    const site = hostSite(silent(useSite(checker, json, constraint.trait.name.span)));
     return witnessesFor(site, type, constraint)?.[0];
   }
 
@@ -147,9 +147,9 @@ export class JsonForms implements JsonCodecs {
   #form(type: Type): DerivedForm {
     switch (type.kind) {
       case 'tuple':
-        return { kind: 'tuple', module: this.#jsonModule(), elements: type.elements };
+        return { kind: 'tuple', elements: type.elements };
       case 'anonymous':
-        return this.#record(type.fields, this.#jsonModule());
+        return this.#record(type.fields);
       case 'nominal':
         return this.#nominal(type);
       case 'function':
@@ -179,10 +179,10 @@ export class JsonForms implements JsonCodecs {
       return { kind: 'none', reason: handleHasNoForm };
     }
     if (declaration.kind === 'StructDeclaration') {
-      return this.#record(checker.fieldsOf(type) ?? [], module);
+      return this.#record(checker.fieldsOf(type) ?? []);
     }
     if (declaration.kind === 'EnumDeclaration') {
-      return this.#enum(type, module);
+      return this.#enum(type);
     }
     return { kind: 'none', reason: undefined };
   }
@@ -231,11 +231,11 @@ export class JsonForms implements JsonCodecs {
     return self?.type.kind === 'nominal' ? self.type.entity.declaration : undefined;
   }
 
-  #record(fields: readonly FieldMember[], module: ModuleId): DerivedForm {
-    return { kind: 'record', module, fields: fields.map((field) => this.#field(field)) };
+  #record(fields: readonly FieldMember[]): DerivedForm {
+    return { kind: 'record', fields: fields.map((field) => this.#field(field)) };
   }
 
-  #enum(type: NominalType, module: ModuleId): DerivedForm {
+  #enum(type: NominalType): DerivedForm {
     const variants = (this.#seams.checker.variantsOf(type) ?? []).map((variant) => ({
       name: variant.name,
       fields: variant.fields.map((field) => this.#field(field)),
@@ -244,7 +244,7 @@ export class JsonForms implements JsonCodecs {
       variant.fields.some((field) => field.key === 'type'),
     );
     return colliding === undefined
-      ? { kind: 'enum', module, variants }
+      ? { kind: 'enum', variants }
       : {
           kind: 'none',
           reason: `no field named 'type' in JSON, which names the variant, as '${colliding.name}' has`,
@@ -296,7 +296,7 @@ export class JsonForms implements JsonCodecs {
 }
 
 /** The parts a derived codec writes and reads through their own types' codecs. */
-function partsOf(form: Extract<DerivedForm, { module: ModuleId }>): readonly Part[] {
+function partsOf(form: Exclude<DerivedForm, { kind: 'host' | 'none' }>): readonly Part[] {
   const crossing = (fields: readonly JsonField[]): readonly Part[] =>
     fields
       .filter((field) => field.skipped === undefined && field.codec === undefined)

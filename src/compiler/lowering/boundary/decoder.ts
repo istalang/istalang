@@ -13,7 +13,6 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionCall } from '../../checker/check.ts';
 import type { DerivedForm, JsonField } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
-import type { ModuleId } from '../../program/program.ts';
 import { closeCall } from '../instances.ts';
 import { codecCall } from './codec-calls.ts';
 import type { SynthesizedCode } from './synthesized-code.ts';
@@ -42,7 +41,7 @@ export class Decoder {
         return;
       case 'record': {
         const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
-        const values = this.#fields(form.fields, form.module, { object: fields, path });
+        const values = this.#fields(form.fields, { object: fields, path });
         code.return(this.#ok(this.#struct(type, values)));
         return;
       }
@@ -55,7 +54,7 @@ export class Decoder {
           const position = code.constant(BigInt(index));
           const item = code.call(this.#helper(codecHelpers.element), [items, position]);
           const at = code.call(this.#helper(codecHelpers.elementPath), [path, position]);
-          return this.#passed(code.call(this.#codec(element, form.module), [item, at]));
+          return this.#passed(code.call(this.#codec(element), [item, at]));
         });
         code.return(this.#ok(code.tuple(values)));
         return;
@@ -73,9 +72,9 @@ export class Decoder {
     }
   }
 
-  /** The codec reading `type`, as found in `module`. */
-  #codec(type: Type, module: ModuleId): FunctionCall {
-    return codecCall(this.#code.checker, { module, within: undefined }, type, 'read');
+  /** The codec reading `type`. */
+  #codec(type: Type): FunctionCall {
+    return codecCall(this.#code.checker, undefined, type, 'read');
   }
 
   /** The variant its `"type"` names, each variant tried in order, else an `Err`. */
@@ -98,11 +97,7 @@ export class Decoder {
       code.code.place(matched);
       code.return(
         this.#ok(
-          code.variant(
-            type,
-            variant.name,
-            this.#fields(variant.fields, form.module, { object: fields, path }),
-          ),
+          code.variant(type, variant.name, this.#fields(variant.fields, { object: fields, path })),
         ),
       );
       code.code.place(next);
@@ -113,12 +108,11 @@ export class Decoder {
   }
 
   /**
-   * Each field's value, read from `object` at `path` by its codec found in `module` or, when
-   * skipped, its type's `default()`.
+   * Each field's value, read from `object` at `path` by its codec or, when skipped, its type's
+   * `default()`.
    */
   #fields(
     fields: readonly JsonField[],
-    module: ModuleId,
     { object, path }: { readonly object: Register; readonly path: Register },
   ): readonly Register[] {
     const code = this.#code;
@@ -131,7 +125,7 @@ export class Decoder {
       const json = field.optional
         ? code.call(this.#helper(codecHelpers.optionalField), [object, key])
         : this.#passed(code.call(this.#helper(codecHelpers.field), [object, key, path]));
-      const decode = field.codec?.read ?? this.#codec(field.type, module);
+      const decode = field.codec?.read ?? this.#codec(field.type);
       return this.#passed(code.call(decode, [json, at]));
     });
   }

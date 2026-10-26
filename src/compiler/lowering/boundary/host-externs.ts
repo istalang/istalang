@@ -25,7 +25,7 @@ import type { ExternConstantDeclaration, FunctionDeclaration } from '../../synta
 import type { FunctionInstance } from '../instances.ts';
 import { keyOf, qualifiedNameOf, spelledType } from '../names.ts';
 import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../tables.ts';
-import { type CodecSite, codecCall } from './codec-calls.ts';
+import { codecCall } from './codec-calls.ts';
 import { emitInbound, type Inbound, inboundOf } from './inbound.ts';
 import { SynthesizedCode } from './synthesized-code.ts';
 
@@ -37,10 +37,10 @@ interface Lowering {
 
 /**
  * A wrapper's call to a host native, and how it reads what the native gives: its types as
- * declared, whose codecs are found at `site`.
+ * declared, whose codecs are closed `within` the extern's instance.
  */
 interface HostCall {
-  readonly site: CodecSite;
+  readonly within: FunctionInstance | undefined;
   readonly native: FunctionId;
   readonly parameters: readonly Type[];
   readonly result: Type;
@@ -53,12 +53,11 @@ interface HostCall {
 export function hostFunctionEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
   const { checker, tables } = lowering;
   const { declaration } = instance;
-  const site = { module: checker.moduleOf(declaration), within: instance };
   const parameters = checker.parametersOf(declaration).map(({ type }) => type);
   const result = checker.resultOf(declaration);
   const code = new SynthesizedCode(lowering, declaration.name.span, parameters.length);
   return wrapped(code, tables.entryHeader(instance), {
-    site,
+    within: instance,
     native: tables.hostNativeIndex(declaration),
     parameters,
     result,
@@ -77,8 +76,7 @@ export function hostConstantEntry(
   const code = new SynthesizedCode(lowering, declaration.name.span, 0);
   const native = code.call(tables.constantNativeIndex(declaration, type), []);
   const header = tables.declarationHeader(declaration);
-  const site = { module: checker.moduleOf(declaration), within: undefined };
-  const inbound = inboundOf(checker, site, type, {
+  const inbound = inboundOf(checker, undefined, type, {
     accept: codecHelpers.hostResult,
     path: header.name,
   });
@@ -152,32 +150,32 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
 /** `code` finished as a wrapper making `call`: arguments encoded, what comes back decoded. */
 function wrapped(code: SynthesizedCode, header: EntryHeader, call: HostCall): CodeFunction {
   const { checker } = code;
-  const { site, filled, path } = call;
-  const native = code.call(call.native, encoded(code, site, call.parameters));
+  const { within, filled, path } = call;
+  const native = code.call(call.native, encoded(code, within, call.parameters));
   code.return(
     filled === undefined
       ? received(
           code,
           native,
-          inboundOf(checker, site, call.result, { accept: codecHelpers.hostResult, path }),
+          inboundOf(checker, within, call.result, { accept: codecHelpers.hostResult, path }),
         )
       : received(
           code,
           code.await(native),
-          inboundOf(checker, site, filled, { accept: codecHelpers.hostInput, path }),
+          inboundOf(checker, within, filled, { accept: codecHelpers.hostInput, path }),
         ),
   );
   return code.entry(header, filled !== undefined);
 }
 
-/** `code`'s parameters, of `types`, each encoded as JSON by its codec found at `site`. */
+/** `code`'s parameters, of `types`, each encoded as JSON by its codec, closed `within`. */
 function encoded(
   code: SynthesizedCode,
-  site: CodecSite,
+  within: FunctionInstance | undefined,
   types: readonly Type[],
 ): readonly Register[] {
   return types.map((type, index) =>
-    code.call(codecCall(code.checker, site, type, 'write'), [registerAt(code.parameters, index)]),
+    code.call(codecCall(code.checker, within, type, 'write'), [registerAt(code.parameters, index)]),
   );
 }
 

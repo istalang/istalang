@@ -215,7 +215,7 @@ export class Annotations implements AnnotationQueries {
       : undefined;
   }
 
-  /** The `default()` of `type` as code at `at` in `module` finds it; undefined when it has none. */
+  /** The `default()` of `type`, Default's witness, reported nowhere; undefined when it has none. */
   #defaultOf(module: ModuleId, at: Span, type: Type): ResolvedCall | undefined {
     const { checker } = this.#seams;
     const site = silent(useSite(checker, module, at));

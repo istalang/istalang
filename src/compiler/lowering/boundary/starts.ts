@@ -118,11 +118,10 @@ function lambdaStartable(
 
 /** `startable` when what it takes can be read from JSON and what it gives written. */
 function crossing(checker: Checker, startable: Startable): Startable | undefined {
-  const module = checker.moduleOf(startable.target);
   const readable = startable.parameters.every(
-    (type) => checker.json.codecOf(type, 'read', module) !== undefined,
+    (type) => checker.json.codecOf(type, 'read') !== undefined,
   );
-  return readable && checker.json.codecOf(startable.outcome, 'write', module) !== undefined
+  return readable && checker.json.codecOf(startable.outcome, 'write') !== undefined
     ? startable
     : undefined;
 }
@@ -134,10 +133,9 @@ export function startEntry(
 ): CodeFunction {
   const { checker, tables } = lowering;
   const { target, parameters, outcome, key } = startable;
-  const site = { module: checker.moduleOf(target), within: undefined };
   const edges: StartEdges = {
     parameters: parameters.map((type, index) =>
-      inboundOf(checker, site, type, {
+      inboundOf(checker, undefined, type, {
         accept: codecHelpers.hostInput,
         path: `${key} argument ${index + 1}`,
       }),
@@ -146,7 +144,7 @@ export function startEntry(
   };
   const start = {
     header: tables.declarationHeader(target),
-    outcome: codecCall(checker, site, outcome, 'write'),
+    outcome: codecCall(checker, undefined, outcome, 'write'),
   };
   if (target.kind === 'FunctionDeclaration') {
     const entry = instanceLowering(lowering, rootInstance(checker, target), start);

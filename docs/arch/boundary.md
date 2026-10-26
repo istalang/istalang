@@ -32,10 +32,9 @@ path):
   module, has both derived. The checker decides its derived form once (`checker/rules/json-forms/`,
   memoized per type key; the model is `checker/json-form.ts`, which later phases read through
   `Checker.json`): field names after `@JsonName`, `@JsonBigInt` fields, what a `@JsonSkip` field
-  reads back as (its type's `Default` witness), and the module its parts' codecs are found in, its
-  type's own (the `json` module for a tuple or an anonymous struct). Witnesses are coherent (spec
-  §3.10): found beside the types they take or the trait, never where they are asked for, so a
-  derived codec belongs to its type alone. Conformance takes a derived codec when no
+  reads back as (its type's `Default` witness). Its parts cross through their own codecs, and
+  witnesses are coherent (spec §3.10): found beside the types they take or the trait, never where
+  they are asked for, so a derived codec belongs to its type alone. Conformance takes a derived codec when no
   declared one is found (`checker/resolution/conformance.ts`): a call to the `json` module's
   `_toJson<T>` or `_fromJson<T>`, externs whose bodies lowering writes per type
   (`language/well-known.ts`, `derivedCodecs`). A recursive type counts as meeting the trait while

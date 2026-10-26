@@ -13,8 +13,8 @@ import type { Checker, FunctionCall } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
-import { closeCall, instanceOfCall } from '../instances.ts';
-import { type CodecSite, codecCall } from './codec-calls.ts';
+import { closeCall, type FunctionInstance, instanceOfCall } from '../instances.ts';
+import { codecCall } from './codec-calls.ts';
 
 /** How JSON at `path` becomes a value: the call decoding it, and the call accepting the result. */
 export interface Inbound {
@@ -24,19 +24,19 @@ export interface Inbound {
 }
 
 /**
- * JSON at `path` read as `type` by its codec found at `site`, a mismatch handled by the json
- * module's `accept`.
+ * JSON at `path` read as `type` by its codec, a mismatch handled by the json module's `accept`,
+ * both closed `within` the instance reading it.
  */
 export function inboundOf(
   checker: Checker,
-  site: CodecSite,
+  within: FunctionInstance | undefined,
   type: Type,
   { accept, path }: { readonly accept: CodecHelper; readonly path: string },
 ): Inbound {
   return {
     path,
-    decode: codecCall(checker, site, type, 'read'),
-    accept: closeCall(checker.json.callOf(accept, [type]), site.within),
+    decode: codecCall(checker, within, type, 'read'),
+    accept: closeCall(checker.json.callOf(accept, [type]), within),
   };
 }
 

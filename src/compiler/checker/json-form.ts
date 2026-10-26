@@ -11,7 +11,6 @@ import {
   type WellKnownDeclaration,
   wellKnown,
 } from '../../language/well-known.ts';
-import type { ModuleId } from '../program/program.ts';
 import type { FunctionCall, ResolvedCall } from './check.ts';
 import type { Type } from './types/type.ts';
 import type { UseSite } from './use-site.ts';
@@ -48,13 +47,13 @@ interface JsonVariant {
 }
 
 /**
- * What the compiler derives a type's codecs from. The codecs of what a struct, an enum or a tuple
- * holds are those found in `module`: its type's, or the json module for one that has none.
+ * What the compiler derives a type's codecs from. What a struct, an enum or a tuple holds crosses
+ * through its own codecs, found as every witness is (§3.10).
  */
 export type DerivedForm =
-  | { readonly kind: 'record'; readonly module: ModuleId; readonly fields: readonly JsonField[] }
-  | { readonly kind: 'enum'; readonly module: ModuleId; readonly variants: readonly JsonVariant[] }
-  | { readonly kind: 'tuple'; readonly module: ModuleId; readonly elements: readonly Type[] }
+  | { readonly kind: 'record'; readonly fields: readonly JsonField[] }
+  | { readonly kind: 'enum'; readonly variants: readonly JsonVariant[] }
+  | { readonly kind: 'tuple'; readonly elements: readonly Type[] }
   /** A host type: whatever JSON its host gave it, handed back unchanged (§9). */
   | { readonly kind: 'host' }
   /** Nothing to derive from; `reason` finishes "it needs …" when there is more to say. */
@@ -64,15 +63,11 @@ export type DerivedForm =
 export interface JsonFormQueries {
   readonly formOf: (type: Type) => DerivedForm;
   /**
-   * The codec writing or reading `type`, as found in `module`, where `type` may name the type
-   * parameters in scope there; undefined when it has none. A disposable host type has one, to
-   * cross to its own host, though it isn't Encodable or Decodable.
+   * The codec writing or reading `type`, which may name type parameters, then met by their
+   * constraints; undefined when it has none. A disposable host type has one, to cross to its own
+   * host, though it isn't Encodable or Decodable.
    */
-  readonly codecOf: (
-    type: Type,
-    direction: JsonDirection,
-    module: ModuleId,
-  ) => ResolvedCall | undefined;
+  readonly codecOf: (type: Type, direction: JsonDirection) => ResolvedCall | undefined;
   /** The call to the json module's helper `name` with `typeArguments`. */
   readonly callOf: (name: CodecHelper, typeArguments: readonly Type[]) => FunctionCall;
 }

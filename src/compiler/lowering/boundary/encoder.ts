@@ -10,7 +10,6 @@ import { codecHelpers, jsonVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { DerivedForm, JsonField } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
-import type { ModuleId } from '../../program/program.ts';
 import { variantIndexOf } from '../expressions/variants.ts';
 import { codecCall } from './codec-calls.ts';
 import type { SynthesizedCode } from './synthesized-code.ts';
@@ -38,13 +37,11 @@ export class Encoder {
         );
         return;
       case 'record':
-        code.return(
-          this.#object(form.fields, form.module, (index) => code.field(value, index), []),
-        );
+        code.return(this.#object(form.fields, (index) => code.field(value, index), []));
         return;
       case 'tuple': {
         const items = form.elements.map((element, index) =>
-          code.call(this.#codec(element, form.module), [code.field(value, index)]),
+          code.call(this.#codec(element), [code.field(value, index)]),
         );
         code.return(this.#variant(jsonVariants.list, [code.array(items)]));
         return;
@@ -63,8 +60,8 @@ export class Encoder {
   }
 
   /** The codec writing `type`, as found in `module`. */
-  #codec(type: Type, module: ModuleId) {
-    return codecCall(this.#code.checker, { module, within: undefined }, type, 'write');
+  #codec(type: Type) {
+    return codecCall(this.#code.checker, undefined, type, 'write');
   }
 
   /** One branch per variant, each writing its tag and fields. */
@@ -81,7 +78,7 @@ export class Encoder {
         code.code.place(label);
         const tag = code.constant(this.#text(variant.name));
         code.return(
-          this.#object(variant.fields, form.module, (field) => code.field(value, field), [
+          this.#object(variant.fields, (field) => code.field(value, field), [
             [code.constant('type'), tag],
           ]),
         );
@@ -89,10 +86,9 @@ export class Encoder {
     }
   }
 
-  /** The `Json.Object` of `fields`, each written by its codec found in `module`, after `before`. */
+  /** The `Json.Object` of `fields`, each written by its codec, after `before`. */
   #object(
     fields: readonly JsonField[],
-    module: ModuleId,
     read: (index: number) => Register,
     before: readonly (readonly [Register, Register])[],
   ): Register {
@@ -103,7 +99,7 @@ export class Encoder {
         if (field.skipped !== undefined) {
           return [];
         }
-        const encode = field.codec?.write ?? this.#codec(field.type, module);
+        const encode = field.codec?.write ?? this.#codec(field.type);
         return [[code.constant(field.key), code.call(encode, [read(index)])]];
       }),
     ];
