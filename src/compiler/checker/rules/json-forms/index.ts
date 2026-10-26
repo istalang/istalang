@@ -43,7 +43,7 @@ import {
 } from '../../json-form.ts';
 import { witnessesFor } from '../../resolution/conformance.ts';
 import { callWithTypes } from '../../resolution/typed-call.ts';
-import type { Constraint } from '../../traits/constraints.ts';
+import { wellKnownConstraint } from '../../traits/constraints.ts';
 import type { FieldMember, NominalType, Type } from '../../types/type.ts';
 import { wellKnownArguments } from '../../types/well-known.ts';
 import { hostSite, silent, type UseSite, useSite } from '../../use-site.ts';
@@ -86,7 +86,7 @@ export class JsonForms implements JsonCodecs {
   derivedOf(site: UseSite, type: Type, direction: JsonDirection): DerivedCodec {
     const form = this.formOf(type);
     if (form.kind === 'none') {
-      const trait = jsonConstraint(this.#seams.checker, direction).trait.name.text;
+      const trait = wellKnownConstraint(this.#seams.checker, jsonTraits[direction]).trait.name.text;
       const required = `'${codecFunctions[direction]}' as ${trait}`;
       return { kind: 'lacking', missing: form.reason ?? `${required} declares it` };
     }
@@ -115,7 +115,7 @@ export class JsonForms implements JsonCodecs {
       return undefined;
     }
     const inner = silent({ ...site, module: form.module });
-    const constraint = jsonConstraint(this.#seams.checker, direction);
+    const constraint = wellKnownConstraint(this.#seams.checker, jsonTraits[direction]);
     const failing = partsOf(form).find(
       ({ type }) => witnessesFor(inner, type, constraint) === undefined,
     );
@@ -129,7 +129,7 @@ export class JsonForms implements JsonCodecs {
     if (checker.program.roles.json === undefined) {
       return undefined;
     }
-    const constraint = jsonConstraint(this.#seams.checker, direction);
+    const constraint = wellKnownConstraint(this.#seams.checker, jsonTraits[direction]);
     const site = hostSite(silent(useSite(checker, module, constraint.trait.name.span)));
     return witnessesFor(site, type, constraint)?.[0];
   }
@@ -284,15 +284,6 @@ export class JsonForms implements JsonCodecs {
     }
     return json;
   }
-}
-
-/** `Encodable` or `Decodable`, the trait of `direction`, as a constraint a type meets. */
-export function jsonConstraint(checker: CheckerContext, direction: JsonDirection): Constraint {
-  const entity = checker.wellKnownEntity(jsonTraits[direction]);
-  if (entity?.kind !== 'type' || entity.declaration.kind !== 'TraitDeclaration') {
-    unreachable(`The json module declares no trait '${jsonTraits[direction].name}'.`);
-  }
-  return { trait: entity.declaration, arguments: [] };
 }
 
 /** The parts a derived codec writes and reads through their own types' codecs. */

@@ -9,6 +9,8 @@
  *   satisfies it find each other per instantiation.
  */
 
+import type { WellKnownDeclaration } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {
   FunctionDeclaration,
@@ -27,6 +29,18 @@ import { type ParameterKey, type Substitution, substitute, type Type } from '../
 export interface Constraint {
   readonly trait: TraitDeclaration;
   readonly arguments: readonly Type[];
+}
+
+/** The well-known trait `declaration` names, as a constraint with no type arguments. */
+export function wellKnownConstraint(
+  checker: CheckerContext,
+  declaration: WellKnownDeclaration,
+): Constraint {
+  const entity = checker.wellKnownEntity(declaration);
+  if (entity?.kind !== 'type' || entity.declaration.kind !== 'TraitDeclaration') {
+    unreachable(`The ${declaration.module} module declares no trait '${declaration.name}'.`);
+  }
+  return { trait: entity.declaration, arguments: [] };
 }
 
 /** A function a constraint requires, and how its trait's parameters and `Self` map. */

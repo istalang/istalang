@@ -19,14 +19,14 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { hostFilledOf, hostHandleOf, isHostExtern } from '../host-externs.ts';
-import type { JsonDirection } from '../json-form.ts';
+import { type JsonDirection, jsonTraits } from '../json-form.ts';
 import { meets } from '../resolution/conformance.ts';
+import { wellKnownConstraint } from '../traits/constraints.ts';
 import { isSendable } from '../traits/sendable.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument } from '../types/well-known.ts';
 import { hostSite, useSite } from '../use-site.ts';
-import { jsonConstraint } from './json-forms/index.ts';
 
 /** Reports each type of the extern `node` declares, in `module`, that can't cross as JSON. */
 export function checkHostBoundary(
@@ -85,5 +85,5 @@ export function crossesToHost(
   direction: JsonDirection,
 ): boolean {
   const site = hostSite(useSite(checker, module, at.span));
-  return meets(site, type, jsonConstraint(checker, direction));
+  return meets(site, type, wellKnownConstraint(checker, jsonTraits[direction]));
 }
