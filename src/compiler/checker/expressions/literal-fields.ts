@@ -45,7 +45,12 @@ import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
 import { itemField } from '../patterns/struct-items.ts';
 import { callWithTypes } from '../resolution/typed-call.ts';
-import { constrainArguments, typeArgumentsFor, typeParametersOf } from '../types/resolve-type.ts';
+import {
+  constrainArguments,
+  parameterType,
+  typeArgumentsFor,
+  typeParametersOf,
+} from '../types/resolve-type.ts';
 import {
   errorType,
   type FieldMember,
@@ -119,8 +124,11 @@ export function checkLiteralFields(
   const spreadType =
     spread === undefined ? undefined : (spread.type ?? context.expression(spread.node.expression));
   const parameters = shape.owner === undefined ? [] : typeParametersOf(shape.owner.typeParameters);
-  const decided = decidedArguments(shape, parameters, spreadType);
+  const decided = decidedArguments(shape, parameters);
   const inference = new Inference(parameters, context.checker.optionalEntity, decided);
+  if (spreadType !== undefined) {
+    inference.matchExactly(spreadOf(shape, parameters.map(parameterType)), spreadType);
+  }
   const items: LiteralItems = { node, shape, inference, given: new Map(), fits: true };
   for (const item of node.items) {
     checkItem(context, items, item, spread?.node);
@@ -134,8 +142,7 @@ export function checkLiteralFields(
     context.fit(value.type, substitute(value.declared, completed.substitution), value.node);
   }
   if (spread !== undefined && spreadType !== undefined) {
-    const spreadOf = shape.spreadOf?.(completed.typeArguments) ?? type;
-    context.fit(spreadType, spreadOf, spread.node.expression);
+    context.fit(spreadType, spreadOf(shape, completed.typeArguments), spread.node.expression);
   }
   const defaulted =
     spread === undefined ? defaultCalls(context, shape, items.given, completed.typeArguments) : [];
@@ -173,21 +180,24 @@ function argumentsFor(
   return type?.kind === 'nominal' && type.entity.declaration === owner ? type.arguments : undefined;
 }
 
-/** The type arguments known before the items: written or expected, else the spread's. */
+/** The type arguments known before the items, written or expected; a spread's are inferred. */
 function decidedArguments(
-  { owner, known }: LiteralShape,
+  { known }: LiteralShape,
   parameters: readonly ParameterKey[],
-  spreadType: Type | undefined,
 ): Map<ParameterKey, Type> {
-  const fromSpread = argumentsFor(owner, spreadType);
   const decided = new Map<ParameterKey, Type>();
   for (const [index, parameter] of parameters.entries()) {
-    const type = known?.[index] ?? fromSpread?.[index];
+    const type = known?.[index];
     if (type !== undefined) {
       decided.set(parameter, type);
     }
   }
   return decided;
+}
+
+/** The type a spread gives a literal of `shape`: its own, or a shared struct's value (§3.18). */
+function spreadOf(shape: LiteralShape, typeArguments: readonly Type[]): Type {
+  return shape.spreadOf?.(typeArguments) ?? shape.typeOf(typeArguments);
 }
 
 /** The type arguments inference completed, constrained; undefined after a report. */

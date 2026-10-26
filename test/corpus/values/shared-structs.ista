@@ -1,9 +1,10 @@
-# outcome: "3 true false 8 counted 1 2 0 2 2"
+# outcome: "3 true false 8 counted 1 2 0 2 2 2"
 # A shared struct (§3.18) is a type of its own whose values are handles to a cell holding its
 # fields: `new Counter{…}` makes one, `x->f` reads and writes a field and `*x` the whole value, for
 # every copy, while `==` tells handles apart by identity. A field may hold the shared struct itself,
 # since what it holds is a handle, read through when there is one with `?->`, which chains as `?.`
-# does (§4).
+# does (§4). A spread of a value behind one decides a generic shared struct's type arguments, as a
+# struct's own spread does.
 
 shared struct Counter:
   count: int
@@ -14,6 +15,9 @@ shared struct Node:
   next: Node? = none
 
 struct Spot { node: Node }
+
+shared struct Box<T>:
+  value: T
 
 fn bump(self: Counter):
   self->count = self->count + 1
@@ -32,6 +36,7 @@ async fn main() -> Future<string>:
     string(other->count),
     b->label,
     nodes(),
+    boxes(),
   ].join(" ")
 
 fn nodes() -> string:
@@ -43,3 +48,10 @@ fn nodes() -> string:
   const kept: Shared<Array<int>>? = new Shared{value: [4, 5]}
   const size = kept?->value.length() ?? 0
   [string(head->value), string(second), string(third), string(fromSpot), string(size)].join(" ")
+
+fn boxes() -> string:
+  const b = new Box{value: 1}
+  const c = new Box{...*b}
+  const s = new Shared{value: 1}
+  const d = new Shared{...*s}
+  string(c->value + d->value)
