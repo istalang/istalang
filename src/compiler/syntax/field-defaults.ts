@@ -76,7 +76,7 @@ export function fieldsFunctionOf(
   }
   return memo(fieldsFunctions, owner, () => {
     const hasDefault = owner.fields.some(
-      (field) => field.kind === 'FieldDeclaration' && field.defaultValue !== undefined,
+      (field) => field.kind === 'DeclaredField' && field.defaultValue !== undefined,
     );
     if (!hasDefault) {
       return;

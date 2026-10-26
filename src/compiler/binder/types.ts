@@ -49,7 +49,7 @@ export function bindFields(
   fields: readonly (Field | Invalid)[],
   scope: Scope,
 ): void {
-  const declared = fields.filter((field) => field.kind === 'FieldDeclaration');
+  const declared = fields.filter((field) => field.kind !== 'Invalid');
   binder.checkMemberNames(
     declared.map((field) => field.name),
     'value',

@@ -17,7 +17,7 @@ export function checkFiniteFields(checker: CheckerContext, declaration: StructDe
     return;
   }
   const module = checker.moduleOf(declaration);
-  const written = declaration.fields.filter((field) => field.kind === 'FieldDeclaration');
+  const written = declaration.fields.filter((field) => field.kind === 'DeclaredField');
   checker.declaredFieldsOf(declaration).forEach((field, index) => {
     const node = written[index];
     if (node !== undefined && holds(checker, field.type, declaration, new Set())) {

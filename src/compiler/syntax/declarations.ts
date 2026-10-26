@@ -70,9 +70,9 @@ export interface StructDeclaration extends NodeOf<'StructDeclaration'>, Annotata
 /**
  * A field of a struct's or a variant's declaration: `name: Type`, `name: Type = default`, or
  * `name = default`, whose type its default gives (§3.1). Only these fields have defaults, so they
- * have a shape of their own beside a type's or a trait's `FieldDeclaration`, with its kind.
+ * are a kind of their own beside a type's or a trait's `FieldDeclaration`.
  */
-export interface DeclaredField extends NodeOf<'FieldDeclaration'>, Annotatable {
+export interface DeclaredField extends NodeOf<'DeclaredField'>, Annotatable {
   readonly name: Identifier;
   /** Undefined only beside a default, which gives the type. */
   readonly type: TypeNode | undefined;
@@ -81,11 +81,6 @@ export interface DeclaredField extends NodeOf<'FieldDeclaration'>, Annotatable {
 
 /** A field anywhere: of a struct's or a variant's declaration, an anonymous struct type or a trait. */
 export type Field = DeclaredField | FieldDeclaration;
-
-/** `field`'s default: only a struct's or a variant's field may have one. */
-export function defaultOf(field: Field): Expression | undefined {
-  return 'defaultValue' in field ? field.defaultValue : undefined;
-}
 
 /** `extern sendable struct Queue<T>`: a struct the host implements. */
 export interface ExternStructDeclaration extends NodeOf<'ExternStructDeclaration'>, Annotatable {

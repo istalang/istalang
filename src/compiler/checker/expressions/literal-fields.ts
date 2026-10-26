@@ -23,7 +23,6 @@
  */
 
 import {
-  defaultOf,
   type EnumDeclaration,
   type FunctionDeclaration,
   type StructDeclaration,
@@ -320,7 +319,7 @@ function reportMissing(
 /** Whether field `index` of `shape` declares a default (§3.1). */
 function hasDefault({ fields }: LiteralShape, index: number): boolean {
   const declared = fields[index]?.declared?.node;
-  return declared !== undefined && defaultOf(declared) !== undefined;
+  return declared?.kind === 'DeclaredField' && declared.defaultValue !== undefined;
 }
 
 /**

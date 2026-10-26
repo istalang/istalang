@@ -263,7 +263,7 @@ export function declaredFields(
   fields: readonly (Field | Invalid)[],
   defaults?: FunctionDeclaration,
 ): readonly FieldMember[] {
-  const declared = fields.filter((field) => field.kind === 'FieldDeclaration');
+  const declared = fields.filter((field) => field.kind !== 'Invalid');
   return declared.map((field, index) => ({
     name: field.name.text,
     type:

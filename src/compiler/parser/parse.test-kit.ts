@@ -107,7 +107,7 @@ export function field(name: string, type: string): string {
 
 /** The dump of a field of a struct's or a variant's declaration, with its default's when it has one. */
 export function declaredField(name: string, type: string, defaultValue = '_'): string {
-  return `(FieldDeclaration ${name} ${type} ${defaultValue})`;
+  return `(DeclaredField ${name} ${type} ${defaultValue})`;
 }
 
 /** The dump of a named type without type arguments. */
