@@ -267,15 +267,19 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
     walk.function(node.body, state);
     return state;
   },
-  Call: (walk, node, state) =>
-    node.callee.kind === 'MemberAccess'
+  Call: (walk, node, state) => {
+    if (node.isOptional) {
+      return walk.link(node, node.callee, [...node.typeArguments, ...node.arguments], state);
+    }
+    return node.callee.kind === 'MemberAccess'
       ? walk.link(
           node,
           node.callee.target,
           [node.callee.member, ...node.typeArguments, ...node.arguments],
           state,
         )
-      : children(walk, node, state),
+      : children(walk, node, state);
+  },
   Reference: children,
   MemberAccess: (walk, node, state) => walk.link(node, node.target, [node.member], state),
   TupleElement: (walk, node, state) => walk.link(node, node.target, [], state),

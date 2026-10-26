@@ -13,7 +13,8 @@
  *   picks decides whether `self` is a reference, and only then must the receiver be a place that
  *   may change.
  * - a function value: a variable, a field of the receiver, or any other expression of a function
- *   type (closures/value-calls.ts). `x.f()` naming both a field and a method of `x`'s type is
+ *   type (closures/value-calls.ts), or of an optional one, called as `f?.(…)`, a link of an
+ *   optional chain (optionals.ts). `x.f()` naming both a field and a method of `x`'s type is
  *   ambiguous, so it is reported; `(x.f)()` calls the field.
  * - `worker.disposing()`, a method of the call an async function's own name is before a `.`
  *   (closures/own-calls.ts).
@@ -61,6 +62,9 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
     written: argumentNodes.map((argument) => writtenArgument(context, argument)),
   };
   const { callee } = node;
+  if (node.isOptional) {
+    return checkValueCall(context, call, callee, context.chains.target(context, node));
+  }
   switch (callee.kind) {
     case 'Identifier':
       return callEntity(context, call, callee.text, context.entityOf(callee));

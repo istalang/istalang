@@ -1,7 +1,8 @@
-# outcome: "legal|none|5|-|42|7|9|none|0|bo|-"
+# outcome: "legal|none|5|-|42|7|9|none|0|bo|-|8|0|10"
 # The operators on optionals (§4): `?.` reads a field or calls a method on the value inside, later
 # links such as `[i]` work on that value too, and the chain short-circuits to `none`; a value
-# already optional isn't wrapped again.
+# already optional isn't wrapped again. `f?.(x)` calls an optional function, its arguments
+# evaluated only when there is one.
 # `a ?? b` is the value inside `a`, else `b`, which runs only then; with a `T?` on the right it
 # gives a `T?`, so `a ?? b ?? c` reads left to right.
 
@@ -12,6 +13,8 @@ struct Person { name: string; address: Address? }
 struct Verdict { role: string }
 
 struct Team { members: Array<string> }
+
+struct Hooks { onDone: (fn(int) -> int)? }
 
 fn length(self: Address) -> int:
   5
@@ -35,8 +38,13 @@ async fn main() -> Future<string>:
   const both: int? = first ?? none
   const team: Team? = Team{members: ["ada", "bo"]}
   const noTeam: Team? = none
+  const hooks = Hooks{onDone: fn(n): n * 2}
+  const noHooks = Hooks{onDone: none}
+  const maybeHooks: Hooks? = hooks
   (roleOf(Verdict{role: "legal"}) + "|" + roleOf(none) + "|" + string(counted ?? 0)
     + "|" + (nobody.address?.city ?? "-") + "|" + string(zip ?? 0)
     + "|" + string(seven ?? neverCalled()) + "|" + string(chained ?? 0)
     + "|" + (if both == none: "none" else: "some") + "|" + string(missingZip ?? 0)
-    + "|" + (team?.members[1] ?? "-") + "|" + (noTeam?.members[1] ?? "-"))
+    + "|" + (team?.members[1] ?? "-") + "|" + (noTeam?.members[1] ?? "-")
+    + "|" + string(hooks.onDone?.(4) ?? 0) + "|" + string(noHooks.onDone?.(neverCalled()) ?? 0)
+    + "|" + string(maybeHooks?.onDone?.(5) ?? 0))

@@ -24,6 +24,7 @@ describe('childrenOf', () => {
       kind: 'Call',
       span: at(0, 7),
       callee,
+      isOptional: false,
       typeArguments: [],
       arguments: [first, second],
     };

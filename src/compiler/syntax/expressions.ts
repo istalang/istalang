@@ -141,8 +141,10 @@ export interface Lambda extends NodeOf<'Lambda'> {
   readonly body: Expression;
 }
 
+/** `f(…)`, or `f?.(…)` when `isOptional`, calling the function inside an optional (§4). */
 export interface Call extends NodeOf<'Call'> {
   readonly callee: Expression;
+  readonly isOptional: boolean;
   readonly typeArguments: readonly TypeNode[];
   readonly arguments: readonly (Expression | Spread)[];
 }
@@ -295,9 +297,10 @@ export interface ChainStep {
 
 /**
  * The step `node` takes when it may be a link of an optional chain: a field read, a tuple
- * element, an index, a method call, or the value behind a handle read with `->`; undefined for
- * any other expression, `*x` among them, which ends a chain as parentheses do. Whether it is a
- * link is the checker's to say: a call through a namespace has the same shape and never is.
+ * element, an index, a method call, a call of an optional function (`f?.()`, whose step works on
+ * the function), or the value behind a handle read with `->`; undefined for any other
+ * expression, `*x` among them, which ends a chain as parentheses do. Whether it is a link is the
+ * checker's to say: a call through a namespace has the same shape and never is.
  */
 export function chainStepOf(node: Expression): ChainStep | undefined {
   switch (node.kind) {
@@ -307,6 +310,9 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
     case 'Index':
       return { target: node.target, optional: false };
     case 'Call':
+      if (node.isOptional) {
+        return { target: node.callee, optional: true };
+      }
       return node.callee.kind === 'MemberAccess'
         ? { target: node.callee.target, optional: node.callee.isOptional }
         : undefined;

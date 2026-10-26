@@ -90,8 +90,11 @@ function lowerValueCall(context: FunctionContext, node: Call): Register {
   return dst;
 }
 
-/** The function value a call of no resolved function calls. */
+/** The function value a call of no resolved function calls; `f?.()` calls the one inside `f`. */
 function valueCallee(context: FunctionContext, node: Call): Register {
+  if (node.isOptional) {
+    return context.chains.target(context, node);
+  }
   return node.callee.kind === 'MemberAccess'
     ? lowerFieldRead(context, node.callee, node)
     : context.expression(node.callee);

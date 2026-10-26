@@ -49,7 +49,7 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
     return undefined;
   }
   if (parser.cursor.at('(')) {
-    return parseCall(parser, left, typeArguments);
+    return parseCall(parser, left, false, typeArguments);
   }
   return parseStructLiteralBody(
     parser,
@@ -58,10 +58,15 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
   );
 }
 
-function parseCall(parser: Parser, callee: Expression, typeArguments: readonly TypeNode[]): Call {
+function parseCall(
+  parser: Parser,
+  callee: Expression,
+  isOptional: boolean,
+  typeArguments: readonly TypeNode[],
+): Call {
   const { items } = parseDelimited(parser, '(', () => parseArgument(parser));
   const span = parser.spanFrom(callee.span.start);
-  return { kind: 'Call', span, callee, typeArguments, arguments: items };
+  return { kind: 'Call', span, callee, isOptional, typeArguments, arguments: items };
 }
 
 /** An argument; `&` is allowed only on a whole argument (§3.7), and passes a place. */
@@ -85,7 +90,7 @@ function parseArgument(parser: Parser): Expression | Spread {
 
 export const callParselet: InfixParselet = {
   level: 'postfix',
-  parse: (parser, left) => parseCall(parser, left, []),
+  parse: (parser, left) => parseCall(parser, left, false, []),
 };
 
 export const indexParselet: InfixParselet = {
@@ -96,15 +101,24 @@ export const indexParselet: InfixParselet = {
   },
 };
 
-export function memberParselet(isOptional: boolean): InfixParselet {
-  return {
-    level: 'postfix',
-    parse(parser, left) {
-      parser.cursor.advance();
-      return parseMember(parser, left, isOptional);
-    },
-  };
-}
+export const memberParselet: InfixParselet = {
+  level: 'postfix',
+  parse(parser, left) {
+    parser.cursor.advance();
+    return parseMember(parser, left, false);
+  },
+};
+
+/** `a?.b`, or `f?.(…)`, calling the function inside an optional. */
+export const optionalParselet: InfixParselet = {
+  level: 'postfix',
+  parse(parser, left) {
+    parser.cursor.advance();
+    return parser.cursor.at('(')
+      ? parseCall(parser, left, true, [])
+      : parseMember(parser, left, true);
+  },
+};
 
 /** `x->f`, or `x?->f`: a member of the value behind `x`. */
 export function arrowParselet(operator: '->' | '?->'): InfixParselet {
