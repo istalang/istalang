@@ -1,34 +1,40 @@
 /**
  * What a value of a type holds at any depth, for rules about values held inside others: a future
- * that must be awaited (§3.3), a `Result` that must be used (§3.12). A type holds itself, its
- * type arguments, its tuple elements and an anonymous struct's fields; a declared struct's fields
- * are its declaration's business, checked where it is declared.
+ * that must be awaited (§3.3), a `Result` that must be used (§3.12). A type holds itself and what
+ * its parts hold: a tuple's elements, a struct's fields, an enum's variants' fields, and an extern
+ * type's type arguments (`heldParts`). A recursive type is walked once.
  */
 
 import type { CheckerContext } from '../context.ts';
 import { type Type, typeChildren } from './type.ts';
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
-export function heldType(type: Type, picks: (type: Type) => boolean): Type | undefined {
-  if (picks(type)) {
-    return type;
-  }
-  return partsOf(type)
-    .map((part) => heldType(part, picks))
-    .find((held) => held !== undefined);
-}
-
-function partsOf(type: Type): readonly Type[] {
-  switch (type.kind) {
-    case 'nominal':
-      return type.arguments;
-    case 'tuple':
-      return type.elements;
-    case 'anonymous':
-      return type.fields.map((field) => field.type);
-    default:
-      return [];
-  }
+export function heldType(
+  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'typeKeys'>,
+  type: Type,
+  picks: (type: Type) => boolean,
+): Type | undefined {
+  const walked = new Set<string>();
+  const held = (part: Type): Type | undefined => {
+    if (picks(part)) {
+      return part;
+    }
+    if (part.kind === 'nominal') {
+      const key = checker.typeKeys.typeKey(part);
+      if (walked.has(key)) {
+        return undefined;
+      }
+      walked.add(key);
+    }
+    for (const inner of heldParts(checker, part)) {
+      const found = held(inner);
+      if (found !== undefined) {
+        return found;
+      }
+    }
+    return undefined;
+  };
+  return held(type);
 }
 
 /**

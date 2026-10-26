@@ -16,7 +16,7 @@ tags: [review, architecture, refactoring, plan]
 | 2 | Deduplicate leaf helpers (compareCodeUnits, staticName, preludeKey) | definition, language, stdlib | D79, D128 | by-argon, by-opus | done (40dca52) |
 | 3 | Split NativeContext into capability interfaces | runtime, stdlib | | by-opus | done (a70160f) |
 | 4 | Unify Context-Dependent / Target-Typed Argument Checking (add `accepts` facet) | checker, overloads | D84, D95, D102 | by-argon, by-opus | done |
-| 5 | Fix heldType + must-use for declared structs/enums and `T is Disposable` | checker | D108 | by-argon | |
+| 5 | Fix heldType + must-use for declared structs/enums and `T is Disposable` | checker | D108 | by-argon | done |
 | 6 | Extract shared checker helpers (remove cross-feature imports, enforce inner layers) | checker | D135 | by-argon, by-opus | done |
 | 7 | Generalize Virtual Places (`Index`, `Unwrap`, `Shared.value` into projected/accessor steps) | checker, lowering | D86, D87, D96 | by-argon | |
 | 8 | Unify Destructuring Walk & Wrap Counts (single target walker, wrap counts on sites) | checker | D82, D97 | by-argon | |

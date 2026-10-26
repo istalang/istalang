@@ -1,0 +1,28 @@
+# error: 5025 at 22:3
+# error: 5025 at 26:3
+# error: 5025 at 27:3
+# A value holding a future, a Result or a disposable must be used, at any depth (§7): a declared
+# struct holds its fields and an enum its variants' fields, as a tuple holds its elements, and a
+# value of a type parameter constrained to be Disposable is disposable. A recursive type holding
+# none of them may be discarded.
+
+struct Pending { job: Future<int> }
+
+enum Outcome { Done{result: Result<int>}; Idle }
+
+struct Chain { value: int; rest: Chain? }
+
+async fn work() -> Future<int>: 1
+
+fn outcome() -> Outcome: Idle
+
+fn chain() -> Chain: Chain{value: 1, rest: none}
+
+fn keep<T is Disposable>(value: T) -> int:
+  value
+  1
+
+async fn main():
+  Pending{job: work()}
+  outcome()
+  chain()

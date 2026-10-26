@@ -6,7 +6,8 @@
  * - A future must be used because its unawaited call would run on unseen, a `Result` because
  *   ignoring it ignores a failure, and any other disposable because it would be disposed at once.
  *   Any of them makes a value holding it must-use too, at any depth (types/held.ts): a `Result?`
- *   that `?.` gives, a tuple with a future in it.
+ *   that `?.` gives, a tuple or a struct with a future in it. A value of a type parameter is
+ *   disposable when its constraints require a `dispose` (rules/disposal.ts).
  * - A statement's value is discarded unless it is its block's value, and a block run for its
  *   effects, like a loop's body, discards even its last.
  * - `drop e` discards `e` on purpose (§7), whatever it is. `drop x` on a variable also releases
@@ -26,6 +27,7 @@ import { heldType } from '../types/held.ts';
 import { type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, wellKnownArguments } from '../types/well-known.ts';
+import { isDisposable } from './disposal.ts';
 
 /** How a must-use value is used, besides being kept or dropped. */
 type Use = 'await' | 'match' | 'propagate' | 'hold';
@@ -83,9 +85,11 @@ function mustUseAs(context: BodyContext, type: Type): Use | undefined {
   const isFuture = (part: Type) => futureArgument(checker, part) !== undefined;
   const isResult = (part: Type) =>
     wellKnownArguments(checker, wellKnown.result, part) !== undefined;
-  const isDisposable = (part: Type) =>
-    part.kind === 'nominal' && checker.disposalOf(part).kind !== 'none';
-  const held = heldType(type, (part) => isFuture(part) || isResult(part) || isDisposable(part));
+  const held = heldType(
+    checker,
+    type,
+    (part) => isFuture(part) || isResult(part) || isDisposable(checker, part),
+  );
   if (held === undefined) {
     return undefined;
   }

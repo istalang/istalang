@@ -28,12 +28,35 @@ import { isHostExtern } from '../host-externs.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import { callCandidates } from '../resolution/candidates.ts';
 import { chooseSilently } from '../resolution/silent-choice.ts';
-import { type NominalType, sameType, unitType } from '../types/type.ts';
+import { requiredFunctions } from '../traits/constraints.ts';
+import { type NominalType, sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 import { silent, useSite } from '../use-site.ts';
 
 const none: Disposal = { kind: 'none' };
+
+/**
+ * Whether values of `type` are disposable: a handle with a `dispose`, or a type parameter whose
+ * constraints require one, as `Disposable` does, so every type meeting them has one (§3.10).
+ */
+export function isDisposable(checker: CheckerContext, type: Type): boolean {
+  switch (type.kind) {
+    case 'nominal':
+      return checker.disposalOf(type).kind !== 'none';
+    case 'parameter':
+      return (
+        type.declaration.kind === 'TypeParameter' &&
+        checker
+          .constraintsOf(type.declaration)
+          .some(({ trait }) =>
+            requiredFunctions(trait).some(({ name }) => name.text === disposeFunction),
+          )
+      );
+    default:
+      return false;
+  }
+}
 
 export function disposalOf(checker: CheckerContext, type: NominalType): Disposal {
   if (type.entity.declaration.kind !== 'ExternStructDeclaration') {
