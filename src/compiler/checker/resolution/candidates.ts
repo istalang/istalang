@@ -3,7 +3,7 @@
  *
  * - the functions its name denotes where it is written, the prelude's joined (the binder's set);
  * - argument-dependent lookup: the exported functions of that name in the modules declaring the
- *   arguments' own types, not their type arguments';
+ *   arguments' own types, not their type arguments' (a primitive's is the prelude);
  * - the functions the constraints on a type parameter require, for every type parameter the
  *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other.
  *
@@ -12,8 +12,8 @@
  * module the caller imports (§3.7); on a type parameter, among its constraints' static requirements.
  *
  * A witness of a trait's requirement (§3.10) is chosen among the functions declared beside the
- * types it takes (a primitive's in the prelude) or beside the trait, never among what the use site
- * sees, so a type meets a trait with the same functions in every module that uses it: the
+ * types it takes, which argument-dependent lookup finds, or beside the trait, never among what the
+ * use site sees, so a type meets a trait with the same functions in every module that uses it: the
  * coherence Rust's orphan rule gives. A module declaring a trait declares its functions for types
  * whose modules can't, such as primitives, and no caller has to import them.
  */
@@ -22,7 +22,7 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
 import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
-import { type NominalType, parametersIn, type Type } from '../types/type.ts';
+import { parametersIn, type Type } from '../types/type.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
 export interface Candidate {
@@ -36,8 +36,8 @@ export type StaticTarget =
   | { readonly kind: 'parameter'; readonly parameter: TypeParameter };
 
 /**
- * The candidates of a call of `name` written in `module` without a namespace, as an operator, a
- * method and a requirement's witness are: the functions its top level sees, then ADL's.
+ * The candidates of a call of `name` written in `module` without a namespace, as an operator's
+ * and a method's are: the functions its top level sees, then ADL's.
  */
 export function topLevelCandidates(
   checker: CheckerContext,
@@ -102,14 +102,7 @@ export function witnessCandidates(
   const name = required.name.text;
   const home = checker.moduleOf(required);
   if (required.owner === undefined) {
-    const declaring = parameterTypes.flatMap((each) => declaringModule(checker, each) ?? []);
-    const declarations = new Set(
-      [...new Set([home, ...declaring])].flatMap((each) => exportedFunctions(checker, each, name)),
-    );
-    return [
-      ...[...declarations].map((declaration) => ({ declaration })),
-      ...requirementCandidates(checker, name, parameterTypes),
-    ];
+    return callCandidates(checker, exportedFunctions(checker, home, name), name, parameterTypes);
   }
   const target = staticTargetOf(checker, type);
   return target === undefined ? [] : staticCandidatesIn(checker, [home], target, name);
@@ -138,14 +131,16 @@ function staticCandidatesIn(
   );
 }
 
+/** The functions named `name` the modules declaring `argumentTypes` export (§3.13). */
 function argumentDependent(
   checker: CheckerContext,
   name: string,
   argumentTypes: readonly Type[],
 ): readonly FunctionDeclaration[] {
-  return argumentTypes.flatMap((argument) =>
-    argument.kind === 'nominal' ? ownExports(checker, argument, name) : [],
-  );
+  return argumentTypes.flatMap((argument) => {
+    const module = declaringModule(checker, argument);
+    return module === undefined ? [] : exportedFunctions(checker, module, name);
+  });
 }
 
 /** The functions named `name` that `module` exports. */
@@ -157,16 +152,6 @@ function exportedFunctions(
   const { bindings } = checker;
   const entity = bindings.exportsOf(module).get(name);
   return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
-}
-
-/** The functions named `name` the module declaring `type` exports: what lookup finds (§3.13). */
-function ownExports(
-  checker: CheckerContext,
-  type: NominalType,
-  name: string,
-): readonly FunctionDeclaration[] {
-  const module = declaringModule(checker, type);
-  return module === undefined ? [] : exportedFunctions(checker, module, name);
 }
 
 /** The module declaring `type`: a nominal type's own, a primitive's the prelude; none for others. */
@@ -198,14 +183,17 @@ function requirementCandidates(
 
 /** What static calls through `type` look at; undefined for a type with no static functions. */
 export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarget | undefined {
-  const module = declaringModule(checker, type);
   switch (type.kind) {
-    case 'primitive':
-      return module === undefined ? undefined : { kind: 'owner', owner: type.name, module };
-    case 'nominal':
-      return module === undefined
+    case 'primitive': {
+      const { prelude } = checker.program.roles;
+      return prelude === undefined
         ? undefined
-        : { kind: 'owner', owner: type.entity.declaration, module };
+        : { kind: 'owner', owner: type.name, module: prelude };
+    }
+    case 'nominal': {
+      const owner = type.entity.declaration;
+      return { kind: 'owner', owner, module: checker.moduleOf(owner) };
+    }
     case 'parameter':
       return type.declaration.kind === 'TypeParameter'
         ? { kind: 'parameter', parameter: type.declaration }
