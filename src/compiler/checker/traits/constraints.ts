@@ -12,11 +12,10 @@
 import type { WellKnownDeclaration } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ModuleId } from '../../program/program.ts';
-import {
-  type FunctionDeclaration,
-  type TraitDeclaration,
-  type TypeParameter,
-  typeParametersOf,
+import type {
+  FunctionDeclaration,
+  TraitDeclaration,
+  TypeParameter,
 } from '../../syntax/declarations.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
@@ -24,7 +23,13 @@ import type { RequirementOrigin } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
-import { type ParameterKey, type Substitution, substitute, type Type } from '../types/type.ts';
+import {
+  type ParameterKey,
+  type Substitution,
+  substitute,
+  substitutionFor,
+  type Type,
+} from '../types/type.ts';
 
 /** A trait a type must satisfy, with its type arguments; `Self` already the constrained type. */
 export interface Constraint {
@@ -105,14 +110,10 @@ export function requiredFields(trait: TraitDeclaration): readonly FieldDeclarati
 
 /** How a constraint maps its trait's parameters, and `Self` to `constrained`. */
 export function constraintSubstitution(constraint: Constraint, constrained: Type): Substitution {
-  const substitution = new Map<ParameterKey, Type>([[constraint.trait, constrained]]);
-  typeParametersOf(constraint.trait.typeParameters).forEach((parameter, index) => {
-    const argument = constraint.arguments[index];
-    if (argument !== undefined) {
-      substitution.set(parameter, argument);
-    }
-  });
-  return substitution;
+  return new Map<ParameterKey, Type>([
+    [constraint.trait, constrained],
+    ...substitutionFor(constraint.trait.typeParameters, constraint.arguments),
+  ]);
 }
 
 /** Every function the constraints on `parameter` require, named `name`. */
