@@ -222,10 +222,10 @@ export interface Propagate extends NodeOf<'Propagate'> {
 
 /**
  * `*x`: the value behind the shared struct `x` (§3.9). `x->f` is `(*x).f`, so the parser reads it
- * as a field of a `Dereference` spanning `x->`: a formatter tells the two forms apart by whether
- * its span starts at its operand's.
+ * as a field of a `Dereference` spanning `x->`, written with the operator `->`.
  */
 export interface Dereference extends NodeOf<'Dereference'> {
+  readonly operator: '*' | '->';
   readonly operand: Expression;
 }
 
@@ -303,6 +303,16 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
     default:
       return undefined;
   }
+}
+
+/** Whether `node` is a link of an optional chain at a `?.` or after one (§4). */
+export function isOptionallyChained(node: Expression): boolean {
+  for (let step = chainStepOf(node); step !== undefined; step = chainStepOf(step.target)) {
+    if (step.optional) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** `case pattern if guard: body`. */

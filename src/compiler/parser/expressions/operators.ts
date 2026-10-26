@@ -46,7 +46,7 @@ export const parseNot: PrefixParselet = (parser, minLevel) => {
 export const parseDereference: PrefixParselet = (parser, minLevel) => {
   const start = advancePrefix(parser, operatorLevels.dereference, minLevel);
   const operand = parser.expression(operatorLevels.dereference);
-  return { kind: 'Dereference', span: parser.spanFrom(start), operand };
+  return { kind: 'Dereference', span: parser.spanFrom(start), operator: '*', operand };
 };
 
 export const parseAwait: PrefixParselet = (parser, minLevel) => {

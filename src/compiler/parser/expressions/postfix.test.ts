@@ -97,10 +97,10 @@ describe('indexing, members and postfix operators', () => {
     ['2.pow(10)', '(Call (MemberAccess 2 pow) [] [10])'],
     ['T.zero()', '(Call (MemberAccess T zero) [] [])'],
     ['chargeCard(id)?', '(Propagate (Call chargeCard [] [id]))'],
-    ['u->name', '(MemberAccess (Dereference u) name)'],
-    ['u->name.first', '(MemberAccess (MemberAccess (Dereference u) name) first)'],
-    ['users[0]->name', '(MemberAccess (Dereference (Index users 0)) name)'],
-    ['t->0', '(TupleElement (Dereference t) 0)'],
+    ['u->name', '(MemberAccess (Dereference -> u) name)'],
+    ['u->name.first', '(MemberAccess (MemberAccess (Dereference -> u) name) first)'],
+    ['users[0]->name', '(MemberAccess (Dereference -> (Index users 0)) name)'],
+    ['t->0', '(TupleElement (Dereference -> t) 0)'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });

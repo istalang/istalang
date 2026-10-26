@@ -112,6 +112,7 @@ export const arrowParselet: InfixParselet = {
     const operand: Dereference = {
       kind: 'Dereference',
       span: parser.spanFrom(left.span.start),
+      operator: '->',
       operand: left,
     };
     return parseMember(parser, operand, false);

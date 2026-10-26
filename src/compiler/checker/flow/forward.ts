@@ -21,8 +21,8 @@
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import {
-  chainStepOf,
   type Expression,
+  isOptionallyChained,
   type MatchCase,
   type SelectCase,
   unparenthesized,
@@ -230,18 +230,10 @@ class FlowWalk {
    */
   link(node: Expression, target: SyntaxNode, parts: readonly SyntaxNode[], state: Opaque) {
     const reached = this.node(target, state);
-    return skipsOnNone(node) ? this.sometimes(parts, reached) : this.sequence(parts, reached);
+    return isOptionallyChained(node)
+      ? this.sometimes(parts, reached)
+      : this.sequence(parts, reached);
   }
-}
-
-/** Whether a link of an optional chain runs only after a `?.` at it, or before it in its chain. */
-function skipsOnNone(node: Expression): boolean {
-  for (let step = chainStepOf(node); step !== undefined; step = chainStepOf(step.target)) {
-    if (step.optional) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /** A construct whose parts run in source order. */
