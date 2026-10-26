@@ -98,6 +98,22 @@ describe('a required function', () => {
     expect(unmet(`${monoid}\n${declared}\nfn main() -> int: ${call}`)).toBe(isUnmet);
   });
 
+  it('is met through the module declaring the trait, without importing the functions', () => {
+    const lib = [
+      'trait Named:',
+      '  fn name(self: Self) -> string',
+      '  fn Self.anonymous() -> Self',
+      'fn name(self: int) -> string: "int"',
+      'fn int.anonymous() -> int: 0',
+    ].join('\n');
+    const main = [
+      "import Named from 'lib'",
+      'fn named<T is Named>(value: T) -> string: value.name()',
+      'fn main() -> string: named(1)',
+    ].join('\n');
+    expect(unmet(main, { lib })).toBe(false);
+  });
+
   it('is met through the module declaring the type, without importing the functions', () => {
     const lib = [
       'struct Money { cents: int }',

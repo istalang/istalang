@@ -5,7 +5,8 @@
  *   the call is expected to have, then from their defaults; one still open can't be inferred.
  * - Every type argument must meet its parameter's constraints. A type meets a trait where it is
  *   met: the functions the trait requires must be visible there, in scope, through argument-
- *   dependent lookup on the type, or as a requirement of a type parameter's own constraints. Each
+ *   dependent lookup on the type, or as a requirement of a type parameter's own constraints, or
+ *   be declared in the trait's own module (resolution/candidates.ts). Each
  *   is found by resolving a call to it with the required parameter types, taken exactly: a
  *   function taking the type only once wrapped into an optional is one for the optional, not
  *   for it. It must give the required result. The calls found are the witnesses the
@@ -47,12 +48,7 @@ import { errorType, type Substitution, sameType, substitute, type Type } from '.
 import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
-import {
-  type Candidate,
-  staticCandidates,
-  staticTargetOf,
-  topLevelCandidates,
-} from './candidates.ts';
+import { witnessCandidates } from './candidates.ts';
 import { type Application, type CallArgument, choose, signatureOf } from './choice.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
@@ -142,21 +138,6 @@ function witnessesOf(
 /** Whether `type` meets `constraint` at the use site, reporting there when it doesn't. */
 export function meets(site: UseSite, type: Type, constraint: Constraint): boolean {
   return !isFailure(conform(site, type, constraint, 0));
-}
-
-/** Where a witness for `required` may come from: calls of its name, or statics of `type`. */
-function witnessCandidates(
-  { checker, module }: UseSite,
-  type: Type,
-  required: FunctionDeclaration,
-  parameterTypes: readonly Type[],
-): readonly Candidate[] {
-  const name = required.name.text;
-  if (required.owner === undefined) {
-    return topLevelCandidates(checker, module, name, parameterTypes);
-  }
-  const target = staticTargetOf(checker, type);
-  return target === undefined ? [] : staticCandidates(checker, module, target, name);
 }
 
 /**
@@ -255,7 +236,10 @@ function witnessOf(
   const { checker } = site;
   const signature = signatureOf(checker, required.declaration, required.substitution);
   const parameterTypes = signature.parameters.map((parameter) => parameter.type);
-  const candidates = witnessCandidates(site, type, required.declaration, parameterTypes);
+  const candidates = witnessCandidates(checker, site.module, type, {
+    required: required.declaration,
+    parameterTypes,
+  });
   const callArguments = signature.parameters.map(
     ({ type: each, reference }): CallArgument => ({
       type: each,

@@ -11,6 +11,10 @@
  * A static function (`Duration.zero()`, `T.zero()`) is chosen among those declared on its type
  * and visible where it is called: in the calling module, the type's module, the prelude, or a
  * module the caller imports (§3.7); on a type parameter, among its constraints' static requirements.
+ *
+ * A witness of a trait's requirement (§3.10) is chosen among what a call of it would see, and what
+ * the trait's own module declares: a module declaring a trait declares its functions for types
+ * whose modules can't, such as primitives, and no caller has to import them.
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
@@ -77,15 +81,53 @@ export function staticCandidates(
   target: StaticTarget,
   name: string,
 ): readonly Candidate[] {
+  return staticCandidatesIn(checker, [module], target, name);
+}
+
+/**
+ * The candidates of a witness of `required`, a trait's requirement taking `parameterTypes`, for
+ * `type`, seen from `module`: a call's, then what the trait's own module declares.
+ */
+export function witnessCandidates(
+  checker: CheckerContext,
+  module: ModuleId,
+  type: Type,
+  {
+    required,
+    parameterTypes,
+  }: { readonly required: FunctionDeclaration; readonly parameterTypes: readonly Type[] },
+): readonly Candidate[] {
+  const name = required.name.text;
+  const home = checker.moduleOf(required);
+  if (required.owner === undefined) {
+    const named = [
+      ...namedInModule(checker, module, name),
+      ...exportedFunctions(checker, home, name),
+    ];
+    return callCandidates(checker, named, name, parameterTypes);
+  }
+  const target = staticTargetOf(checker, type);
+  return target === undefined ? [] : staticCandidatesIn(checker, [module, home], target, name);
+}
+
+/** The candidates of a static call of `name` through `target`, seen from each of `modules`. */
+function staticCandidatesIn(
+  checker: CheckerContext,
+  modules: readonly ModuleId[],
+  target: StaticTarget,
+  name: string,
+): readonly Candidate[] {
   if (target.kind === 'parameter') {
     return requirementsNamed(checker, target.parameter, name)
       .filter((requirement) => requirement.declaration.owner !== undefined)
       .map((requirement) => ({ declaration: requirement.declaration, requirement }));
   }
   const { program } = checker;
-  const visible = new Set<ModuleId>([module, target.module]);
-  for (const imported of program.modules.get(module)?.imports.values() ?? []) {
-    visible.add(imported);
+  const visible = new Set<ModuleId>([...modules, target.module]);
+  for (const module of modules) {
+    for (const imported of program.modules.get(module)?.imports.values() ?? []) {
+      visible.add(imported);
+    }
   }
   if (program.roles.prelude !== undefined) {
     visible.add(program.roles.prelude);
@@ -103,14 +145,23 @@ function argumentDependent(
   name: string,
   argumentTypes: readonly Type[],
 ): readonly FunctionDeclaration[] {
-  const { bindings } = checker;
   return argumentTypes.flatMap((argument) =>
     lookupTypes(checker, argument).flatMap((type) => {
-      const module = bindings.moduleOf(type.entity);
-      const entity = module === undefined ? undefined : bindings.exportsOf(module).get(name);
-      return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
+      const module = checker.bindings.moduleOf(type.entity);
+      return module === undefined ? [] : exportedFunctions(checker, module, name);
     }),
   );
+}
+
+/** The functions named `name` that `module` exports. */
+function exportedFunctions(
+  checker: CheckerContext,
+  module: ModuleId,
+  name: string,
+): readonly FunctionDeclaration[] {
+  const { bindings } = checker;
+  const entity = bindings.exportsOf(module).get(name);
+  return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
 }
 
 /** The types whose modules lookup searches for an argument of `type` (§3.13). */
