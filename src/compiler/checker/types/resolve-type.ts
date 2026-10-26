@@ -36,7 +36,6 @@ import type {
   TypeParameter,
   TypeParameters,
 } from '../../syntax/declarations.ts';
-import { fieldParameterOf } from '../../syntax/derived-functions.ts';
 import { type Invalid, lastName } from '../../syntax/node.ts';
 import type { FunctionType as FunctionTypeNode, NamedType, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
@@ -270,24 +269,24 @@ export function declaredFields(
   fields: readonly (Field | Invalid)[],
   defaults?: FunctionDeclaration,
 ): readonly FieldMember[] {
-  const typeOf = (field: Field): Type =>
-    field.type === undefined
-      ? defaultedType(checker, field, defaults)
-      : checker.resolveType(module, field.type);
-  return fields.flatMap((field) =>
-    field.kind === 'FieldDeclaration'
-      ? [{ name: field.name.text, type: typeOf(field), declared: { node: field, module } }]
-      : [],
-  );
+  const declared = fields.filter((field) => field.kind === 'FieldDeclaration');
+  return declared.map((field, index) => ({
+    name: field.name.text,
+    type:
+      field.type === undefined
+        ? defaultedType(checker, index, defaults)
+        : checker.resolveType(module, field.type),
+    declared: { node: field, module },
+  }));
 }
 
-/** The type `field`'s default gives it, as the parameter of `defaults` it reads as. */
+/** The type field `index`'s default gives it: its parameter's in `defaults`, read in order. */
 function defaultedType(
   checker: CheckerContext,
-  field: Field,
+  index: number,
   defaults: FunctionDeclaration | undefined,
 ): Type {
-  const parameter = fieldParameterOf(field);
-  const parameters = defaults === undefined ? [] : checker.parametersOf(defaults);
-  return parameters.find(({ node }) => node === parameter)?.type ?? errorType;
+  return (
+    (defaults === undefined ? undefined : checker.parametersOf(defaults)[index]?.type) ?? errorType
+  );
 }

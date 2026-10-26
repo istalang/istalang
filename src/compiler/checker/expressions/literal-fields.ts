@@ -22,12 +22,12 @@
  *   field, so a literal with one runs no default.
  */
 
-import type {
-  EnumDeclaration,
-  FunctionDeclaration,
-  StructDeclaration,
+import {
+  defaultOf,
+  type EnumDeclaration,
+  type FunctionDeclaration,
+  type StructDeclaration,
 } from '../../syntax/declarations.ts';
-import { fieldParameterOf } from '../../syntax/derived-functions.ts';
 import {
   type Expression,
   type FieldItem,
@@ -349,8 +349,7 @@ function defaultCalls(
 ): readonly (FunctionCall | undefined)[] {
   const isLeftOut = (index: number) => {
     const declared = fields[index]?.declared?.node;
-    const parameter = declared === undefined ? undefined : fieldParameterOf(declared);
-    return !given.has(index) && parameter?.defaultValue !== undefined;
+    return !given.has(index) && declared !== undefined && defaultOf(declared) !== undefined;
   };
   if (defaults === undefined || !fields.some((_, index) => isLeftOut(index))) {
     return [];

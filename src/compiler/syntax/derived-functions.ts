@@ -14,8 +14,7 @@
  *   function of their own, each with its type and default, so a field's default is taken as a
  *   parameter's (§3.3): it sees the fields before it, a field without a written type takes its
  *   default's, and a default reaching its own field is a cycle. Its parameters are the fields in
- *   order, so a layout's field `i` is its parameter `i` (`fieldParameterOf` names the one a field
- *   reads as). It is called by no name: a literal leaving field `i` out calls its entry of arity
+ *   order, so a layout's field `i` is its parameter `i`. It is called by no name: a literal leaving field `i` out calls its entry of arity
  *   `i`, which gives that field's value from the fields before it.
  */
 
@@ -26,7 +25,6 @@ import type {
   Declaration,
   DeclaredField,
   EnumDeclaration,
-  Field,
   FunctionDeclaration,
   HandleDeclaration,
   Module,
@@ -64,8 +62,6 @@ const handles = new WeakMap<HandleDeclaration, HandleFunctions>();
 const fieldsFunctions = new WeakMap<FieldsOwner, FunctionDeclaration | undefined>();
 
 const origins = new WeakMap<FunctionDeclaration, DerivedOrigin>();
-
-const fieldParameters = new WeakMap<Field, Parameter>();
 
 /** The top-level functions `module` declares, found by name: written ones, and its handles'. */
 export function declaredFunctions(module: Module): readonly FunctionDeclaration[] {
@@ -164,11 +160,6 @@ export function fieldsFunctionOf(
   });
 }
 
-/** The parameter `field` reads as in its declaration's fields function, when it has one. */
-export function fieldParameterOf(field: Field): Parameter | undefined {
-  return fieldParameters.get(field);
-}
-
 /** What sets a derived function apart from the others. */
 interface Signature {
   readonly isExtern: boolean;
@@ -215,14 +206,11 @@ function selfTypeOf(handle: HandleDeclaration): NamedType {
   return { ...named(handle.name.text), typeArguments };
 }
 
-/** The parameter a field reads as, noted for `fieldParameterOf`. */
+/** The parameter a field reads as. */
 function fieldParameter(field: DeclaredField | Invalid): Parameter | Invalid {
-  if (field.kind === 'Invalid') {
-    return field;
-  }
-  const read = parameter(field.span, field.name, field.type, field.defaultValue);
-  fieldParameters.set(field, read);
-  return read;
+  return field.kind === 'Invalid'
+    ? field
+    : parameter(field.span, field.name, field.type, field.defaultValue);
 }
 
 function parameter(

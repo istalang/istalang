@@ -72,6 +72,11 @@ export interface DeclaredField extends NodeOf<'FieldDeclaration'>, Annotatable {
 /** A field anywhere: of a struct's or a variant's declaration, an anonymous struct type or a trait. */
 export type Field = DeclaredField | FieldDeclaration;
 
+/** `field`'s default: only a struct's or a variant's field may have one. */
+export function defaultOf(field: Field): Expression | undefined {
+  return 'defaultValue' in field ? field.defaultValue : undefined;
+}
+
 /** `extern sendable struct Queue<T>`: a struct the host implements. */
 export interface ExternStructDeclaration extends NodeOf<'ExternStructDeclaration'>, Annotatable {
   readonly isSendable: boolean;

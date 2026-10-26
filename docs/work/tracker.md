@@ -26,7 +26,7 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D148.
+up, so the next one is D149.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |

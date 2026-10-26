@@ -5,9 +5,9 @@
  *   constraints (§3.10), and how many arguments its callers give: a call leaving parameters to
  *   their defaults targets a generated entry of its own (§3.3).
  * - A body is checked once, generically (checker), so lowering one instance reads the body
- *   through its substitution (checker/types/instantiation.ts), and closes every call it makes: type arguments
- *   naming the instance's own parameters are substituted, and a call to a requirement becomes the
- *   witness the instance was given for it.
+ *   through its substitution (checker/types/instantiation.ts), and closes every call it makes:
+ *   type arguments naming the instance's own parameters are substituted, and a call to a
+ *   requirement becomes the witness the instance was given for it.
  * - Two instances are one entry when their key is: the declaration, its arguments' types, its
  *   witnesses' keys, and its arity.
  * - A lambda or local function (§3.14) is an entry of its own per instance of the top-level

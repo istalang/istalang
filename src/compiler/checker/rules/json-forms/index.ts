@@ -49,7 +49,7 @@ import { wellKnownArguments } from '../../types/well-known.ts';
 import { hostSite, silent, type UseSite, useSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
-/** Why a handle, a cell or a std module's other extern type, has no codec (§3.1). */
+/** Why a handle has no codec: its values have an identity of their own (§3.1). */
 const handleHasNoForm = 'a JSON form, which no handle has: it stays in its instance';
 
 /** What the unit needs beside the checker: field annotations. */
