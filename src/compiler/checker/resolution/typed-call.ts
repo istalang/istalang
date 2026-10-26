@@ -1,7 +1,7 @@
 /**
  * A call the toolchain makes on its own to a function it knows by name, its type arguments given
  * rather than inferred from arguments: a json-module helper a codec calls (rules/json-forms/), or
- * the `dispose` a host declares for its type (rules/disposal.ts). It is chosen, instantiated and
+ * the defaults a struct literal leaves fields to (expressions/literal-fields.ts). It is chosen, instantiated and
  * made as a written call is (choice.ts, conformance.ts, calls-made.ts), each argument left for the
  * chosen function to decide, and its constraints' witnesses found in `module`, as a call written
  * there would find them.

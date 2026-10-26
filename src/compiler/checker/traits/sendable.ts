@@ -2,9 +2,8 @@
  * Which types are Sendable (§3.1): derived, never declared, except for extern types, which say so.
  *
  * Primitives are; a struct, an enum or a tuple is when everything in it is; an extern type is when
- * it is declared `sendable` and its type arguments are; a handle never is, since its values have an
- * identity (§3.18); a function type is when it is declared
- * `sendable` (§3.14); a type parameter is when constrained `is Sendable`, or by a trait that implies
+ * it is declared `sendable` and its type arguments are; a shared struct never is, since its values
+ * have an identity (§3.18); a function type is when it is declared `sendable` (§3.14); a type parameter is when constrained `is Sendable`, or by a trait that implies
  * it (`Encodable`, `Decodable`). A recursive type is sendable unless something in its cycle isn't,
  * so a type being decided counts as sendable while its own fields are.
  *

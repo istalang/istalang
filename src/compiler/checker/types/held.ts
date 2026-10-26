@@ -1,8 +1,8 @@
 /**
  * What a value of a type holds at any depth, for rules about values held inside others: a future
  * that must be awaited (§3.3), a `Result` that must be used (§3.12). A type holds itself and what
- * its parts hold: a tuple's elements, a struct's fields, an enum's variants' fields, a handle's
- * state, and an extern type's type arguments (`heldParts`). A recursive type is walked once.
+ * its parts hold: a tuple's elements, a struct's fields, an enum's variants' fields, the value
+ * behind a shared struct, and an extern type's type arguments (`heldParts`). A recursive type is walked once.
  */
 
 import type { CheckerContext } from '../context.ts';

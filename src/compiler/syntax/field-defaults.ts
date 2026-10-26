@@ -9,7 +9,8 @@
  *
  * Each such function is made once from its declaration's own nodes and is checked and lowered as a
  * written one is, but where it differs (`isFieldsFunction`): its defaults needn't trail
- * (declarations/signatures.ts), and lowering gives each entry its one field (lowering/lower.ts).
+ * (declarations/signatures.ts), and lowering gives each entry its one field
+ * (lowering/function-lowering/).
  */
 
 import { memo } from '../../structures/memo.ts';

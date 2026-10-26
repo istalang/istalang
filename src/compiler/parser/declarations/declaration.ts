@@ -6,8 +6,9 @@
  * `const` are statements as well (a local `fn`, a local `const`). Which item may stand where is
  * decided once, for modules and blocks alike (syntax/placement.ts, parts/items.ts).
  *
- * `struct`, `type` and `handle` start a declaration only when a name follows: `struct{…}` is an
- * anonymous struct literal, and `type` and `handle` are keywords only before a declared name (§2).
+ * `struct` and `type` start a declaration only when a name follows: `struct{…}` is an anonymous
+ * struct literal, and `type` is a keyword only before a declared name (§2). `shared` is one only
+ * before `struct` (§3.18).
  */
 
 import type { Declaration, Module } from '../../syntax/declarations.ts';

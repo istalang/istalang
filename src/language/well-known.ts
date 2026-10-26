@@ -105,7 +105,7 @@ export type CodecHelper = (typeof codecHelpers)[keyof typeof codecHelpers];
 /** A json-module function the compiler calls: a derived codec or a helper. */
 export type CodecName = (typeof derivedCodecs)[keyof typeof derivedCodecs] | CodecHelper;
 
-/** A well-known declaration's module-qualified name, as a Definition spells it: `prelude.Shared`. */
+/** A well-known declaration's module-qualified name, as a Definition spells it: `prelude.Future`. */
 export function qualifiedName({ module, name }: WellKnownDeclaration): string {
   return `${module}.${name}`;
 }

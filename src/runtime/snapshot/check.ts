@@ -12,7 +12,7 @@
  *   names none
  * - a new instance's call starts a function with code, given its captures and its arguments by
  *   value, with values the Definition agrees with
- * - a cell is a `Shared` instantiation and a resource of an extern type
+ * - a cell is a type entry of role `cell` and a resource of an extern type
  * - every value held anywhere names types and functions the Definition has, and agrees with them,
  *   by the same check the Definition's own constants pass (definition/references.ts)
  */
