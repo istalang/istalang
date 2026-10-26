@@ -21,10 +21,10 @@ extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
 extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
 
-# `worker.disposing()` (§7): an async call's handle, a weak reference to the call, and the future
-# that resolves when the call is disposed.
+# An async call's handle, a weak reference to the call, which the function's own name is before a
+# `.` (§7): `worker.disposing()` is the future that resolves when the call is disposed.
 extern struct _Call
-extern fn _disposing(call: _Call) -> Future<unit>
+extern fn disposing(self: _Call) -> Future<unit>
 
 # A Shared value (§3.8) is a handle to a cell: `Shared(v)` makes one, `x$` reads its value and
 # `x$ = v` writes it, for every copy of the handle.

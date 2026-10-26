@@ -31,14 +31,9 @@ import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { notLowered } from '../not-lowered.ts';
 import { enterReferenced } from '../places.ts';
-import { lowerOwnCall } from './own-calls.ts';
 import { lowerFieldRead } from './structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
-  const watched = context.body.watchedCallOf(node);
-  if (watched !== undefined) {
-    return lowerOwnCall(context, node, watched);
-  }
   const resolved = context.body.calls.get(node);
   if (resolved === undefined) {
     return lowerValueCall(context, node);

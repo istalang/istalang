@@ -1,13 +1,14 @@
 /**
  * The checker's diagnostics of the weak side of disposal, codes 5800–5899 (§7): an async call's
- * own `disposing()`. A part of the checker's one catalog (index.ts).
+ * own handle, which its function's name is before a `.`, and its `disposing()`. A part of the
+ * checker's one catalog (index.ts).
  */
 
 export const weakSideTemplates = {
   notOwnCall: {
     code: 5800,
     message: (name: string) =>
-      `'${name}.disposing()' watches the call of an enclosing async fn named '${name}', and there is none.`,
+      `Before a '.', '${name}' is the call of an enclosing async fn named '${name}', and there is none.`,
   },
   mainNeverDisposed: {
     code: 5801,

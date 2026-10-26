@@ -245,7 +245,7 @@ export class BodyChecker implements BodyContext {
       sourcesOf: (literal) => literals.sourcesOf(literal),
       patternOf: (pattern) => patterns.patternOf(pattern),
       chainOf: (link) => chains.chainOf(link),
-      watchedCallOf: (site) => ownCalls.watchedAt(site),
+      ownCallReadAt: (name) => ownCalls.readAt(name),
       ownCallOf: (owner) => ownCalls.variableOf(owner),
       result,
     };

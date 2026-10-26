@@ -20,6 +20,7 @@ import {
   type Expression,
 } from '../../syntax/expressions.ts';
 import type { ChainLink } from '../check.ts';
+import { checkOwnCall } from '../closures/own-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from '../types/fit.ts';
@@ -48,14 +49,15 @@ export class OptionalChains {
 
   /**
    * Checks the target of `link`'s step; the type the step works on: the value a chained target
-   * carries, the value inside an optional after `?.`, or the error type after a report.
+   * carries, the value inside an optional after `?.`, or the error type after a report. A target
+   * naming functions is the call of one (closures/own-calls.ts).
    */
   target(context: BodyContext, link: Expression): Type {
     const step = chainStepOf(link);
     if (step === undefined) {
       unreachable(`A ${link.kind} is no link; the checker asked the wrong node.`);
     }
-    const targetType = context.expression(step.target);
+    const targetType = checkOwnCall(context, step.target) ?? context.expression(step.target);
     if (!this.continues(link)) {
       return targetType;
     }

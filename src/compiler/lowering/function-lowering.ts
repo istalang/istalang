@@ -305,8 +305,9 @@ export class FunctionLowering implements FunctionContext {
     });
   }
 
+  /** What `name` denotes: the binder's answer, unless it reads an async function's own call (§7). */
   entityOf(name: Identifier): Entity | undefined {
-    return this.checker.bindings.entityOf(this.module, name);
+    return this.body.ownCallReadAt(name) ?? this.checker.bindings.entityOf(this.module, name);
   }
 
   /**

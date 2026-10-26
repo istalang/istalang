@@ -15,7 +15,6 @@ import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
-  Call,
   Comprehension,
   Expression,
   Lambda,
@@ -293,13 +292,14 @@ export interface CheckedBody {
   /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
   readonly chainOf: (link: Expression) => ChainLink | undefined;
   /**
-   * The hidden variable holding the handle of the call whose disposal the `worker.disposing()` at
-   * `site` watches (§7).
+   * The hidden variable holding the handle of the call an async function's own name reads where
+   * it stands before a `.` (§7), such as `worker` in `worker.disposing()`; undefined for any other
+   * expression.
    */
-  readonly watchedCallOf: (site: Call) => VariableEntity | undefined;
+  readonly ownCallReadAt: (name: Expression) => VariableEntity | undefined;
   /**
    * The hidden variable `owner`, a function of this body, takes its own call's handle into at its
-   * entry, when `worker.disposing()` watches that call (§7).
+   * entry, when its name reads that call (§7).
    */
   readonly ownCallOf: (owner: NestedFunction) => VariableEntity | undefined;
   /** What the body produces: `T` for an async function returning `Future<T>`. */

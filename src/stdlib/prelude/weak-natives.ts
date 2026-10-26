@@ -1,17 +1,12 @@
 /**
  * The natives of the prelude's weak references (spec §7): `WeakRef(x)`, `deref()` and
- * `disposed()`, and the watch on an async call's handle that `worker.disposing()` lowers to. What
+ * `disposed()`, and `disposing()` on an async call's handle, a watch on it like `disposed()`. What
  * a weak reference is, and when its watchers resolve, are the runtime's
  * (runtime/scheduler/weak-side.ts).
  */
 
 import { namedKey, nativeKey, parameterKey } from '../../definition/extern-key.ts';
-import {
-  conversionFunction,
-  ownCall,
-  qualifiedName,
-  wellKnown,
-} from '../../language/well-known.ts';
+import { conversionFunction, qualifiedName, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithWeakSide } from '../../runtime/natives.ts';
 import { given, resultOptional } from '../native-values.ts';
 
@@ -26,6 +21,6 @@ export const weakNatives: Natives<NativeContext & WithWeakSide> = {
     resultOptional(context, context.weak.target(given(weak))),
   [nativeKey(module, 'disposed', weakRef)]: ([weak], context) =>
     context.weak.whenDisposed(given(weak)),
-  [nativeKey(module, ownCall.watch, namedKey(qualifiedName(wellKnown.call)))]: ([call], context) =>
+  [nativeKey(module, 'disposing', namedKey(qualifiedName(wellKnown.call)))]: ([call], context) =>
     context.weak.watch(given(call)),
 };

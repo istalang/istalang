@@ -206,7 +206,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Inbox, `futures`, `rpc`, `fanout` (§3.8, §6) | library code over slots: an `Inbox<T>` is a `Shared` of its state, one slot and a backlog, and `receive` is the slot's `take`; `futures.first` is the one extern, a `first` future |
 | `defer f` (§7) | `defer`, into an unnamed register of the block |
 | `WeakRef`, `deref()`, `disposed()` (§7) | calls to prelude externs |
-| `worker.disposing()` (§7) | `currentCall` at the function's entry, into a hidden variable a nested function captures like any other, then a call to the prelude's private `_disposing` |
+| `worker.disposing()` (§7) | `currentCall` at the function's entry, into a hidden variable a nested function captures like any other, which the function's own name reads before a `.`; `disposing` is then an ordinary prelude method on that `_Call` handle |
 | `sendRevertible`, `Revertible<T>` (§6) | library code: a `Revertible<T>` is a `Shared` of its retraction, a `fn() -> unit`, which its declared `dispose` calls; an inbox retracts through a weak reference to itself, a host queue through its host (a host handle, docs/arch/boundary.md) |
 | `select`, `await select` (§8) | the case futures in source order, then `select`; per case: the future, the registers its expression created (`holds`), `bind` for `as`, and the target, where the case's `as` is a target its body declares; `otherwise` for the non-blocking form, which is `else`'s body. The `holds` are unnamed registers of the enclosing block, so the winner's last until it ends |
 | Prelude and standard-library functions: `push`, `at`, `get`, `length`, … (§3.8) | calls to their entries; runtime-backed ones are externs |

@@ -1,7 +1,7 @@
 /**
  * `worker.disposing()` (§7) through the checker: whose call it watches, which nested functions
- * capture that call, and the warning on an `await` in a case cleaning up after the call is
- * disposed. Errors are corpus programs (`test/corpus/weak-side/`), which state their positions.
+ * capture that call, that `disposing()` is a method of what the name reads, and the warning on an
+ * `await` in a case cleaning up after the call is disposed. Errors are corpus programs (`test/corpus/weak-side/`), which state their positions.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -62,6 +62,25 @@ describe('the call disposing() watches', () => {
       const captured = body?.functionOf(node)?.captures.map((capture) => capture.entity);
       expect(captured).toEqual([call]);
     }
+  });
+
+  it("is what the function's own name reads before a '.', with disposing() a method on it", () => {
+    const program = stdProgramOf({
+      'main.ista': ['async fn worker() -> Future<unit>:', '  await worker.disposing()'].join('\n'),
+    });
+    const checker = checkProgram(program);
+    const worker = program.modules.get(idOf('main.ista'))?.tree.root
+      .items[0] as FunctionDeclaration;
+    const body = checker.bodyOf(worker);
+    const [site, resolved] = [...(body?.calls ?? [])][0] ?? [];
+    expect(checker.diagnosticsOf(idOf('main.ista'))).toEqual([]);
+    expect(resolved?.function.name?.text).toBe('disposing');
+    const receiver = resolved?.receiver;
+    expect(receiver?.kind === 'Identifier' && receiver.text).toBe('worker');
+    expect(site?.kind).toBe('Call');
+    expect(receiver === undefined ? undefined : body?.ownCallReadAt(receiver)).toBe(
+      body?.ownCallOf(worker),
+    );
   });
 });
 

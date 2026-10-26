@@ -1,100 +1,97 @@
 /**
- * `worker.disposing()` (§7): the future of an enclosing async call's disposal, which an async
- * function's own name gives.
+ * An async function's own name before a `.` (§7): the handle of the enclosing call of that
+ * function, a `_Call`, whose members are the prelude's like any type's, so `worker.disposing()` is
+ * an ordinary method call on it.
  *
- * - The name is resolved like any other, so `worker` is the enclosing function it denotes: a
- *   top-level `fn` of the body's own overloads, or a local `fn` or named lambda the body nests.
+ * - A function's name has no members of its own, so a link's target that names functions is read
+ *   this way (optionals.ts, the one place a link's target is checked). It denotes the enclosing
+ *   function it names: a top-level `fn` of the body's own overloads, or a local `fn` or named
+ *   lambda the body nests.
  * - `main` is refused: nothing holds its call, so it is never disposed.
- * - The call's handle is a hidden variable of the function, which lowering fills at its entry
+ * - The handle is a hidden variable of the function, which lowering fills at its entry
  *   (`currentCall`). It is declared where the function's name is, so a function nested in it
  *   captures it like any variable (functions.ts), and a closure watches the call it was made in,
  *   wherever it runs.
- * - The watch is a call to the prelude's private `_disposing`, recorded at the site like any call,
- *   with the handle as its argument.
  */
 
-import { entryFunction, ownCall, wellKnown } from '../../../language/well-known.ts';
+import { entryFunction, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity, VariableEntity } from '../../binder/entities.ts';
 import { localFunctionOf } from '../../binder/entities.ts';
-import type { Call } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { NestedFunction } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { callMade } from '../resolution/calls-made.ts';
-import { errorType, type Type, unitType } from '../types/type.ts';
+import { errorType, type Type } from '../types/type.ts';
 
-/** The hidden variables holding the calls a body watches, and the variable each watch reads. */
+/** The hidden variables holding the calls a body reads, and the variable each read names. */
 export class OwnCalls {
   readonly #variables = new Map<NestedFunction, VariableEntity>();
-  readonly #watches = new Map<Call, VariableEntity>();
+  readonly #reads = new Map<Expression, VariableEntity>();
 
-  /** The variable holding the handle of the call the `worker.disposing()` at `site` watches. */
-  watchedAt(site: Call): VariableEntity | undefined {
-    return this.#watches.get(site);
+  /** The variable holding the handle of the call the name `node` reads; undefined for any other node. */
+  readAt(node: Expression): VariableEntity | undefined {
+    return this.#reads.get(node);
   }
 
-  /** The variable `owner`'s entry takes its call's handle into, when anything watches it. */
+  /** The variable `owner`'s entry takes its call's handle into, when anything reads it. */
   variableOf(owner: NestedFunction): VariableEntity | undefined {
     return this.#variables.get(owner);
   }
 
-  /** Records that the watch at `site` reads `owner`'s call, typed `type`; that call's variable. */
-  record(context: BodyContext, site: Call, owner: NestedFunction, type: Type): VariableEntity {
+  /** Records that `name` reads `owner`'s call, typed `type`; that call's variable. */
+  record(
+    context: BodyContext,
+    name: Identifier,
+    owner: NestedFunction,
+    type: Type,
+  ): VariableEntity {
     let variable = this.#variables.get(owner);
     if (variable === undefined) {
-      const { name } = owner;
-      if (name === undefined) {
-        unreachable('Only a named function has a call its name watches.');
+      const declared = owner.name;
+      if (declared === undefined) {
+        unreachable('Only a named function has a call its name reads.');
       }
-      const hidden: Identifier = { kind: 'Identifier', span: name.span, text: name.text };
+      const hidden: Identifier = { kind: 'Identifier', span: declared.span, text: declared.text };
       variable = { kind: 'variable', name: hidden, owner };
       context.variables.declare(hidden, type);
       this.#variables.set(owner, variable);
     }
-    this.#watches.set(site, variable);
+    this.#reads.set(name, variable);
     return variable;
   }
 }
 
 /**
- * Checks `name.disposing()` at `node` when `name` denotes a function; undefined when it denotes
- * anything else, whose `disposing` is an ordinary method.
+ * The type of the link target `target` when it names functions: the enclosing call's handle, or
+ * the error type after a report; undefined for any other target, which is checked as a value.
  */
-export function checkOwnCall(context: BodyContext, node: Call, name: Identifier): Type | undefined {
-  const entity = context.checker.bindings.entityOf(context.module, name);
+export function checkOwnCall(context: BodyContext, target: Expression): Type | undefined {
+  if (target.kind !== 'Identifier') {
+    return undefined;
+  }
+  const entity = context.checker.bindings.entityOf(context.module, target);
   const functions = functionsNamed(entity);
   if (functions === undefined) {
     return undefined;
   }
-  if (node.arguments.length > 0) {
-    const method = `${name.text}.${ownCall.method}`;
-    context.report(checkerDiagnostics.argumentCount(node.span, method, 0, node.arguments.length));
-    return errorType;
-  }
-  if (entity?.kind === 'functions' && name.text === entryFunction) {
-    context.report(checkerDiagnostics.mainNeverDisposed(node.span));
+  if (entity?.kind === 'functions' && target.text === entryFunction) {
+    context.report(checkerDiagnostics.mainNeverDisposed(target.span));
     return errorType;
   }
   const scope = context.functions.enclosing(functions);
   if (scope?.function === undefined || !scope.isAsync) {
-    context.report(checkerDiagnostics.notOwnCall(node.span, name.text));
+    context.report(checkerDiagnostics.notOwnCall(target.span, target.text));
     return errorType;
   }
-  const { checker } = context;
-  const [watch] = checker.languageFunctions('prelude', ownCall.watch);
-  const future = checker.wellKnownType(wellKnown.future, [unitType]);
-  const handle = checker.wellKnownType(wellKnown.call);
-  const plain = { typeArguments: [], witnesses: new Map() };
-  const call = watch === undefined ? undefined : callMade({ declaration: watch }, plain, 0);
-  if (call === undefined || future === undefined || handle === undefined) {
+  const handle = context.checker.wellKnownType(wellKnown.call);
+  if (handle === undefined) {
     return errorType;
   }
-  const variable = context.ownCalls.record(context, node, scope.function, handle);
+  const variable = context.ownCalls.record(context, target, scope.function, handle);
   context.functions.noteUse(context, variable.name, variable);
-  context.recordCall(node, call);
-  return future;
+  return handle;
 }
 
 /**

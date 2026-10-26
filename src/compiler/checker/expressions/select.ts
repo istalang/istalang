@@ -9,8 +9,8 @@
  *   as a `Result`, is reported as a bare expression's would be.
  * - The case bodies and `else` agree on the select's type as an `if`'s branches do
  *   (rules/branches.ts).
- * - A case on the function's own `disposing()` runs while its call is being disposed, so an
- *   `await` in its body stops the call instead of waiting (§7), which is warned about.
+ * - A case on the function's own call, its `disposing()`, runs while the call is being disposed,
+ *   so an `await` in its body stops the call instead of waiting (§7), which is warned about.
  */
 
 import { type Select, type SelectCase, unparenthesized } from '../../syntax/expressions.ts';
@@ -33,7 +33,9 @@ export function checkSelect(context: BodyContext, node: Select, expected: Type |
       const scope = context.functions.current;
       const future = unparenthesized(selectCase.future);
       const cleansUp =
-        future.kind === 'Call' && context.ownCalls.watchedAt(future)?.owner === scope.function;
+        future.kind === 'Call' &&
+        future.callee.kind === 'MemberAccess' &&
+        context.ownCalls.readAt(future.callee.target)?.owner === scope.function;
       if (cleansUp) {
         scope.cleanup(() => branches.add(selectCase.body));
       } else {

@@ -161,11 +161,5 @@ export const collectionFunctions = {
   default: 'default',
 } as const;
 
-/**
- * `worker.disposing()` (§7): the method an async function's own name takes, and the prelude's
- * private extern that watches the call's handle.
- */
-export const ownCall = { method: 'disposing', watch: '_disposing' } as const;
-
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';
