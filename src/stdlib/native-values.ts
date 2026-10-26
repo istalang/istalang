@@ -8,7 +8,6 @@
  * one throws a TypeError rather than panicking.
  */
 
-import type { MapValue } from '../definition/equality.ts';
 import type { TypeId } from '../definition/operands.ts';
 import { childValues, isComposite, type Value } from '../definition/values.ts';
 import { optionalVariants, resultVariants } from '../language/well-known.ts';
@@ -66,14 +65,6 @@ export function resultStruct(context: NativeContext, fields: Value[]): Value {
 
 export function arrayOf(elements: readonly Value[]): Value {
   return { kind: 'array', elements: [...elements] };
-}
-
-/** A map argument. */
-export function mapOfArgument(value: Value | undefined): MapValue {
-  if (value === undefined || !isComposite(value) || value.kind !== 'map') {
-    unreachable('Expected a map.');
-  }
-  return value;
 }
 
 /** The value inside an optional argument, or undefined for `none`. */

@@ -14,8 +14,8 @@ import type { FunctionId } from '../../definition/operands.ts';
 import {
   childValues,
   elementsOf,
-  entriesOf,
   isComposite,
+  mapValueOf,
   type Value,
 } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
@@ -151,7 +151,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
       if (entry.kind === 'entry') {
         return [[readRegister(frame, entry.key), readRegister(frame, entry.value)]];
       }
-      return [...entriesOf(readRegister(frame, entry.value))];
+      return [...mapValueOf(readRegister(frame, entry.value)).entries];
     });
     next(frame, instruction.dst, mapOf(entries));
   },

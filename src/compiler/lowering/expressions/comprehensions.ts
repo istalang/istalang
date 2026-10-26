@@ -1,13 +1,13 @@
 /**
  * Array comprehensions (§4): the loop every iterating construct runs (iteration.ts), appending the
- * body's value for each item the condition keeps. Appending builds the next array from the last
- * with `array`, as values are immutable anyway.
+ * body's value for each item the condition keeps (collections.ts).
  */
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Comprehension } from '../../syntax/expressions.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitLoopOver } from '../iteration.ts';
+import { appendElement } from './collections.ts';
 
 export function lowerComprehension(context: FunctionContext, node: Comprehension): Register {
   const { code } = context;
@@ -20,16 +20,7 @@ export function lowerComprehension(context: FunctionContext, node: Comprehension
       code.branch(context.expression(node.condition), kept, next, node.condition.span);
       code.place(kept);
     }
-    const value = context.expression(node.body);
-    code.emit({
-      kind: 'array',
-      span,
-      dst: result,
-      elements: [
-        { kind: 'spread', value: result },
-        { kind: 'item', value },
-      ],
-    });
+    appendElement(context, span, result, context.expression(node.body));
   });
   return result;
 }

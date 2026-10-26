@@ -28,7 +28,7 @@ import type {
   Spread,
 } from '../../syntax/expressions.ts';
 import type { Invalid } from '../../syntax/node.ts';
-import type { FunctionContext } from '../context.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
 import { referenceTo } from '../emit-call.ts';
 import { cursorOf, emitLoop } from '../iteration.ts';
 import { cellRegister, readPart } from '../places.ts';
@@ -45,14 +45,31 @@ type MapItem = Extract<Instruction, { kind: 'map' }>['entries'][number];
 /**
  * How an `array` or a `map` instruction takes the parts of a literal of `Node`s: `emit` writes one
  * building `dst`, `written` is the part an item or an entry written in the literal makes, `copied`
- * the part copying a value of the collection whole, and `appended` the part one item a cursor
- * gives makes.
+ * the part copying a value of the collection whole, and `append` adds one item a spread's cursor
+ * gives to `dst`.
  */
 interface LiteralParts<Part, Node> {
   readonly emit: (dst: Register, parts: readonly Part[]) => void;
   readonly written: (node: Node) => Part;
   readonly copied: (value: Register) => Part;
-  readonly appended: (item: Register, spread: Spread) => Part;
+  readonly append: (dst: Register, item: Register, spread: Spread) => void;
+}
+
+/**
+ * Appends `item` to the array in `dst`, building the next array from the last with `array`, as
+ * values are immutable: what a comprehension and a spread through a cursor do per item.
+ */
+export function appendElement(
+  context: CodeContext,
+  span: Span,
+  dst: Register,
+  item: Register,
+): void {
+  const elements: ArrayItem[] = [
+    { kind: 'spread', value: dst },
+    { kind: 'item', value: item },
+  ];
+  context.code.emit({ kind: 'array', span, dst, elements });
 }
 
 export function lowerArrayLiteral(context: FunctionContext, node: ArrayLiteral): Register {
@@ -70,7 +87,7 @@ export function lowerArrayLiteral(context: FunctionContext, node: ArrayLiteral):
     emit: (dst, items) => context.code.emit({ kind: 'array', span, dst, elements: [...items] }),
     written: (element) => ({ kind: 'item', value: context.expression(element) }),
     copied: (value) => ({ kind: 'spread', value }),
-    appended: (item) => ({ kind: 'item', value: item }),
+    append: (dst, item) => appendElement(context, span, dst, item),
   };
   return built(context, parts, node.elements);
 }
@@ -88,11 +105,19 @@ export function lowerMapLiteral(context: FunctionContext, node: MapLiteral): Reg
       value: context.expression(entry.value),
     }),
     copied: (value) => ({ kind: 'spread', value }),
-    appended: (item, spread) => ({
-      kind: 'entry',
-      key: readPart(context, item, [0], spread.span),
-      value: readPart(context, item, [1], spread.span),
-    }),
+    append: (dst, item, spread) => {
+      const key = readPart(context, item, [0], spread.span);
+      const value = readPart(context, item, [1], spread.span);
+      context.code.emit({
+        kind: 'map',
+        span,
+        dst,
+        entries: [
+          { kind: 'spread', value: dst },
+          { kind: 'entry', key, value },
+        ],
+      });
+    },
   };
   return built(
     context,
@@ -141,7 +166,7 @@ function built<Part, Node extends Expression | MapEntry>(
     } else {
       parts.emit(dst, pending);
       emitLoop(context, node, cursorOf(context, node, node.expression), (item) => {
-        parts.emit(dst, [parts.copied(dst), parts.appended(item, node)]);
+        parts.append(dst, item, node);
       });
       pending = [parts.copied(dst)];
     }
