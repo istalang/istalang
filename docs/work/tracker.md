@@ -26,7 +26,7 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D159.
+up, so the next one is D160.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |
@@ -69,3 +69,4 @@ up, so the next one is D159.
 | D156 | A function a module declares for a type and a trait it owns neither of is never a witness (§3.10, coherence), and nothing says so: a `toJson(Point)` beside a caller of `queue.send(point)` is silently passed over for `Point`'s own or derived codec. A warning where such a function's signature matches a requirement of a trait in scope would name the surprise. | review group F 2026-10-27 | open |
 | D157 | A loop step through a cursor (§3.10) costs about 2.5 times the old array loop's: each item calls the cursor, and an array's, a map's or a range's calls the item function `_cursor` was given (prelude.ista), two interpreted frames where the array loop made three native calls (measured: 131k array items 0.81 s against 0.37 s, 200k range ints 1.04 s against 0.42 s, startup included). `newFrame` (runtime/interpreter/machine.ts) leads the profile; cheaper frames would speed every call, not only loops. Measure against real workflows first. | review group F 2026-10-27 | open |
 | D158 | `JsonForms.#declaresCodecs` (checker/rules/json-forms/index.ts) is a second implementation of the coherence rule (spec §3.10) that `witnessCandidates` (resolution/candidates.ts) owns: "a codec declared beside the type or in the json module", searched with `topLevelNamed`, which also sees imported names, where witnesses search the declaring module's exports. The two can disagree: a `toJson(Point)` imported into `Point`'s module suppresses derivation without being a witness, leaving `Point` with no codec. Ask conformance whether a declared witness exists instead. | review rows 14–16 2026-10-27 | open |
+| D159 | A program type iterated by position hand-writes the cursor the prelude's private `_cursor(count, item)` already is (prelude.ista; the corpus `Bag`, test/corpus/collections/declared.ista). Export it as `cursor` (spec §3.10) once a std or program type needs one; the human chose not to before then. | review group F 2026-10-27 | open |
