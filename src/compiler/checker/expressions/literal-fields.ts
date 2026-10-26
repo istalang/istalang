@@ -3,7 +3,7 @@
  * and where each field's value comes from, which the checker records for later phases.
  *
  * - Every field is given exactly once, each value fitting the field's type, by the one rule of
- *   which field an item gives (rules/struct-items.ts): by name, by the shorthand `first` for
+ *   which field an item gives (patterns/struct-items.ts): by name, by the shorthand `first` for
  *   `first: first`, or positionally when there is one field. With names alone, every field must
  *   be given; a struct literal's leading spread gives the rest, and a positional value is the only
  *   item (the parser enforces that), so neither leaves fields to report as missing. A variant
@@ -24,6 +24,7 @@ import type { EnumDeclaration, StructDeclaration } from '../../syntax/declaratio
 import {
   type Expression,
   type FieldItem,
+  itemName,
   itemValue,
   type Spread,
   type StructLiteral,
@@ -35,8 +36,8 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
+import { itemField } from '../patterns/struct-items.ts';
 import { callMade } from '../resolution/calls-made.ts';
-import { itemField } from '../rules/struct-items.ts';
 import { constrainArguments, typeArgumentsFor, typeParametersOf } from '../types/resolve-type.ts';
 import {
   errorType,
@@ -230,7 +231,7 @@ function checkItem(
     return;
   }
   const { shape, inference, given } = items;
-  const index = itemField(item, shape.fields);
+  const index = itemField(itemName(item), shape.fields);
   const field = shape.fields[index];
   const value = itemValue(item);
   if (field === undefined || given.has(index)) {

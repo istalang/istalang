@@ -1,10 +1,10 @@
 /**
  * Assignments (§3.4, §3.9, §3.15).
  *
- * - A target is a place, or a tuple or struct literal of targets that takes the value apart, with
- *   the same parts a declaration's targets give (patterns/parts.ts); several targets are a
- *   tuple of them. Taking a value apart checks the value on its own first, then fits each part to
- *   the place it goes to.
+ * - A target is a place, or a tuple or struct literal of targets that takes the value apart, by
+ *   the walk a declaration's targets take (patterns/walk.ts); several targets are a tuple of them.
+ *   Taking a value apart checks the value on its own first, then fits each part to the place it
+ *   goes to.
  * - In a struct target, the shorthand `first` assigns the variable `first`, and a struct with one
  *   field takes a positional target, as a literal takes a positional value (§3.1).
  * - Only a `let` is reassigned. A parameter is the function's own copy (§3.1), so it may be too;
@@ -20,26 +20,24 @@
  * - What lowering needs is recorded: each place written, with its part of the value.
  */
 
-import {
-  type Expression,
-  type FieldItem,
-  itemValue,
-  placePath,
-  type StructLiteral,
-  unparenthesized,
-} from '../../syntax/expressions.ts';
+import { type Expression, placePath, unparenthesized } from '../../syntax/expressions.ts';
 import type { AssignmentOperator } from '../../syntax/operators.ts';
-import { type Assignment, destructures, isUnnamedTarget } from '../../syntax/statements.ts';
+import {
+  type Assignment,
+  destructures,
+  destructuringOf,
+  isUnnamedTarget,
+} from '../../syntax/statements.ts';
 import { type OverloadableOperator, resolveOperator } from '../calls/operators.ts';
 import { checkChangedPlace, immutableKind, isChangeable } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkRewrap } from '../expressions/unwrap.ts';
-import { bodyScope, elementParts, structParts, type ValuePart } from '../patterns/parts.ts';
-import { itemField } from '../rules/struct-items.ts';
+import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
+import { bodyScope, type ValuePart } from '../patterns/parts.ts';
+import { type Taking, takeApart, takeTargets } from '../patterns/walk.ts';
 import { errorType, type Type } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
   const [only, ...more] = node.targets;
@@ -64,12 +62,8 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
     return;
   }
   const whole = { type: context.expression(node.value), path: [] };
-  const assigning = { context, parts: [] as AssignedPart[] };
-  if (more.length === 0) {
-    assignTo(assigning, only, whole);
-  } else {
-    assignElements(assigning, node.targets, whole, node.span);
-  }
+  const assigning = assigningIn(context);
+  takeTargets(assigning, node.targets, whole, node.span);
   checkDistinctPlaces(context, assigning.parts);
   context.variables.recordAssigned(node, assigning.parts);
 }
@@ -91,72 +85,41 @@ function checkCompound(
   context.variables.recordAssigned(node, [{ target, path: [] }]);
 }
 
-/** Taking an assigned value apart: where parts are collected. */
-interface Assigning {
-  readonly context: BodyContext;
+/** Taking an assigned value apart (patterns/walk.ts): where the places written are collected. */
+interface Assigning extends Taking<Expression> {
   readonly parts: AssignedPart[];
 }
 
-function assignTo(assigning: Assigning, target: Expression, part: ValuePart): void {
-  const { context } = assigning;
-  const bare = unparenthesized(target);
-  switch (bare.kind) {
-    case 'Tuple':
-      assignElements(assigning, bare.elements, part, bare.span);
-      return;
-    case 'StructLiteral':
-      assignFields(assigning, bare, part);
-      return;
-    default: {
-      const place = assignedPlace(context, bare);
-      context.fitUnwrapped(part.type, place, bare.span);
-      if (!isUnnamedTarget(bare)) {
-        assigning.parts.push({ target: bare, path: part.path });
-      }
-    }
-  }
-}
-
-function assignElements(
-  assigning: Assigning,
-  targets: readonly Expression[],
-  part: ValuePart,
-  span: Assignment['span'],
-): void {
-  const parts = elementParts(assigning.context, part, targets.length, span);
-  for (const [index, target] of targets.entries()) {
-    assignTo(assigning, target, parts[index] ?? part);
-  }
+function assigningIn(context: BodyContext): Assigning {
+  const assigning: Assigning = {
+    scope: bodyScope(context),
+    parts: [],
+    take: (target, part) => assignPart(context, assigning, target, part),
+  };
+  return assigning;
 }
 
 /**
- * A struct literal of targets: each item's target takes the part of the field it gives, by the
- * rule a literal's items follow (rules/struct-items.ts).
+ * A part of the assigned value going to `target`: taken apart further when it destructures, else
+ * fitted to the place it names, which takes any value of its type.
  */
-function assignFields(assigning: Assigning, target: StructLiteral, part: ValuePart): void {
-  const { context } = assigning;
-  const fields = structParts(bodyScope(context), target.type, part.type, target.span);
-  for (const item of target.items) {
-    if (item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer') {
-      const index = fields === undefined ? -1 : itemField(item, fields);
-      const field = fields?.[index];
-      if (fields !== undefined && field === undefined) {
-        reportUnknown(context, item, part.type, fields.length);
-      }
-      const fieldPart = { type: field?.type ?? errorType, path: [...part.path, index] };
-      assignTo(assigning, itemValue(item), fieldPart);
-    }
+function assignPart(
+  context: BodyContext,
+  assigning: Assigning,
+  target: Expression,
+  part: ValuePart,
+): Shape | undefined {
+  const destructuring = destructuringOf(target);
+  if (destructuring !== undefined) {
+    return takeApart(assigning, destructuring, part);
   }
-}
-
-/** An item giving no field of the struct a target takes apart. */
-function reportUnknown(context: BodyContext, item: FieldItem, type: Type, count: number): void {
-  const text = typeText(type);
-  context.report(
-    item.kind === 'PositionalInitializer'
-      ? checkerDiagnostics.positionalNeedsOneField(item.span, text, count)
-      : checkerDiagnostics.unknownField(item.name.span, text, item.name.text),
-  );
+  const bare = unparenthesized(target);
+  const place = assignedPlace(context, bare);
+  context.fitUnwrapped(part.type, place, bare.span);
+  if (!isUnnamedTarget(bare)) {
+    assigning.parts.push({ target: bare, path: part.path });
+  }
+  return anyShape;
 }
 
 /**

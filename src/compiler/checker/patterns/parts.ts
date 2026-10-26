@@ -17,6 +17,7 @@ import type { Checker } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { itemField } from './struct-items.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */
 export interface PatternScope {
@@ -101,19 +102,24 @@ export function structParts(
 }
 
 /**
- * The part of a struct or variant value of `part` that its field `name` holds, among `fields`;
- * an unknown name is reported, and its part has the error type.
+ * The part of a struct or variant value of `part` that the field `item` gives holds, among
+ * `fields` (struct-items.ts); an item giving none is reported, and its part has the error type.
  */
 export function fieldPart(
   scope: Pick<PatternScope, 'report'>,
   fields: readonly FieldMember[] | undefined,
-  name: Identifier,
+  item: { readonly name: Identifier | undefined; readonly span: Span },
   part: ValuePart,
 ): { readonly index: number; readonly part: ValuePart } {
-  const index = fields?.findIndex((candidate) => candidate.name === name.text) ?? -1;
+  const index = fields === undefined ? -1 : itemField(item.name, fields);
   const field = fields?.[index];
   if (fields !== undefined && field === undefined) {
-    scope.report(checkerDiagnostics.unknownField(name.span, typeText(part.type), name.text));
+    const type = typeText(part.type);
+    scope.report(
+      item.name === undefined
+        ? checkerDiagnostics.positionalNeedsOneField(item.span, type, fields.length)
+        : checkerDiagnostics.unknownField(item.name.span, type, item.name.text),
+    );
   }
   return { index, part: { type: field?.type ?? errorType, path: [...part.path, index] } };
 }

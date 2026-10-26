@@ -117,6 +117,11 @@ export function itemValue(item: FieldItem): Expression {
   return item.kind === 'FieldInitializer' ? (item.value ?? item.name) : item.value;
 }
 
+/** The field an item names; undefined for a positional item, which gives a struct's one field. */
+export function itemName(item: FieldItem): Identifier | undefined {
+  return item.kind === 'FieldInitializer' ? item.name : undefined;
+}
+
 export interface Parameter extends NodeOf<'Parameter'> {
   /** `...name`, collecting the remaining arguments. */
   readonly isRest: boolean;

@@ -14,13 +14,14 @@
  * variable that holds the value until the block ends (§3.4).
  */
 
+import type { Span } from '../../text/span.ts';
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
-import { type Expression, itemValue, unparenthesized } from './expressions.ts';
+import { type Expression, itemName, itemValue, unparenthesized } from './expressions.ts';
 import type { Identifier, Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
 import type { Pattern } from './patterns.ts';
-import type { TypeNode } from './types.ts';
+import type { NamedType, TypeNode } from './types.ts';
 
 export interface Block extends NodeOf<'Block'> {
   readonly statements: readonly (Statement | Invalid)[];
@@ -60,12 +61,58 @@ export interface Assignment extends NodeOf<'Assignment'>, Annotatable {
 }
 
 /**
+ * What a target takes its value apart into, as written (§3.15): a tuple's elements, or a struct's
+ * items, each a target of its own. A declaration's targets are patterns and an assignment's are
+ * expressions, but both read as one of these, which the checker takes apart by one walk.
+ */
+export type Destructuring<Target> =
+  | { readonly kind: 'tuple'; readonly elements: readonly Target[]; readonly span: Span }
+  | {
+      readonly kind: 'struct';
+      readonly type: NamedType | undefined;
+      readonly items: readonly FieldTarget<Target>[];
+      readonly span: Span;
+    };
+
+/** A struct target's item: the field it names, none when positional (§3.1), and its target. */
+export interface FieldTarget<Target> {
+  readonly name: Identifier | undefined;
+  readonly span: Span;
+  readonly target: Target;
+}
+
+/**
+ * What an assignment's target takes its value apart into, each part without its parentheses;
+ * undefined for a target naming one place. A struct target's item takes the field it gives as a
+ * literal's item does, and the shorthand `first` assigns the variable `first`.
+ */
+export function destructuringOf(target: Expression): Destructuring<Expression> | undefined {
+  const bare = unparenthesized(target);
+  switch (bare.kind) {
+    case 'Tuple':
+      return { kind: 'tuple', elements: bare.elements.map(unparenthesized), span: bare.span };
+    case 'StructLiteral':
+      return {
+        kind: 'struct',
+        type: bare.type,
+        items: bare.items.flatMap((item) =>
+          item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer'
+            ? [{ name: itemName(item), span: item.span, target: unparenthesized(itemValue(item)) }]
+            : [],
+        ),
+        span: bare.span,
+      };
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Whether an assignment's target takes its value apart, a tuple or struct literal of targets,
  * parenthesized or not, rather than naming one place (§3.15).
  */
 export function destructures(target: Expression): boolean {
-  const bare = unparenthesized(target);
-  return bare.kind === 'Tuple' || bare.kind === 'StructLiteral';
+  return destructuringOf(target) !== undefined;
 }
 
 /** The name `drop` releases, parentheses seen through; undefined when it drops a value (§7). */
@@ -90,16 +137,12 @@ export function hasUnnamedTarget(target: Expression): boolean {
  * elements, or the values of a struct literal's items; none for a place.
  */
 export function targetParts(target: Expression): readonly Expression[] {
-  const bare = unparenthesized(target);
-  switch (bare.kind) {
-    case 'Tuple':
-      return bare.elements.map(unparenthesized);
-    case 'StructLiteral':
-      return bare.items.flatMap((item) =>
-        item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer'
-          ? [unparenthesized(itemValue(item))]
-          : [],
-      );
+  const destructuring = destructuringOf(target);
+  switch (destructuring?.kind) {
+    case 'tuple':
+      return destructuring.elements;
+    case 'struct':
+      return destructuring.items.map((item) => item.target);
     default:
       return [];
   }
