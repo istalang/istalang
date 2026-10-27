@@ -217,13 +217,18 @@ function nestedParameters(
       context.report(
         checkerDiagnostics.parameterTypeUnknown(node.name.span, node.name.text, count),
       );
-      return [{ node, type: errorType, reference: false }];
+      return [{ node, type: errorType, reference: false, rest: restOf(node) }];
     }
-    return [{ node, ...parameter }];
+    return [{ node, ...parameter, rest: restOf(node) }];
   });
 }
 
-/** Whether a nested function's rest parameter of type `type` may be one: a pack, or a mistake reported. */
+/** What a nested function's parameter collects into: a rest parameter, a pack's tuple (§3.14). */
+function restOf(node: Parameter): 'pack' | undefined {
+  return node.isRest ? 'pack' : undefined;
+}
+
+/** Whether a nested function's rest may be of type `type`: a pack, or a mistake reported. */
 function fillsRest(type: Type): boolean {
   return isPack(type) || type.kind === 'error';
 }

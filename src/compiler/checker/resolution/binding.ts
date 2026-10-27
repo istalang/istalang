@@ -134,7 +134,13 @@ function bindByPosition(
       return { kind: 'argument', index: given.index };
     }
     return parameter === restIndex && toRest.length > 0
-      ? { kind: 'rest', items: toRest.map(({ index }) => index) }
+      ? {
+          kind: 'rest',
+          items: toRest.map(({ argument, index }) => ({
+            index,
+            isSpread: argument.isSpread === true,
+          })),
+        }
       : undefined;
   });
 }

@@ -19,7 +19,7 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
 import { isFieldsFunction } from '../../syntax/field-defaults.ts';
-import type { SignatureParameter } from '../check.ts';
+import type { RestKind, SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, isPack, type Type } from '../types/type.ts';
@@ -63,11 +63,19 @@ export function declaredParameters(
         : defaults.check(defaultValue, declared);
     const type = declared ?? valueType ?? errorType;
     defaults?.declare(node, type);
-    return [{ node, type, reference: writtenByReference(node) }];
+    return [{ node, type, reference: writtenByReference(node), rest: restKindOf(node, type) }];
   });
 }
 
-/** Reports what a rest parameter breaks of its rules: last, an array or a pack, no default (§3.3, §3.5). */
+/** What a rest parameter of type `type` collects into: a pack's tuple, or an array. */
+function restKindOf(node: Parameter, type: Type): RestKind | undefined {
+  if (!node.isRest) {
+    return undefined;
+  }
+  return isPack(type) ? 'pack' : 'array';
+}
+
+/** Reports what a rest parameter breaks of its rules: last, an array or a pack, no default (§3.3). */
 function checkRest(
   checker: CheckerContext,
   module: ModuleId,

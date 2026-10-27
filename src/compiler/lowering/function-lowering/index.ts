@@ -10,9 +10,9 @@
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
  * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, a pack's
- *   elements each one (packs.ts), then a closure's captures, then locals and temporaries. A variable living in a cell is listed in
- *   `cells`; a reference parameter's register holds the caller's reference, and a captured cell's
- *   register the cell its closure carries.
+ *   elements each one (packs.ts), then a closure's captures, then locals and temporaries. A
+ *   variable living in a cell is listed in `cells`; a reference parameter's register holds the
+ *   caller's reference, and a captured cell's register the cell its closure carries.
  * - A lambda or local function (§3.14) answers to its own name through the closure it runs,
  *   taken once at its entry (`currentClosure`).
  * - A default's entry takes the parameters before its own, and gives its default (§3.1, §3.3);
@@ -61,7 +61,7 @@ import {
   ownerSubstitution,
 } from '../instances.ts';
 import { OptionalChains } from '../optional-chains.ts';
-import { isPackParameter, packElements } from '../packs.ts';
+import { packElements } from '../packs.ts';
 import { readPart } from '../places.ts';
 import { HoldScopes } from '../statements/holds.ts';
 import { LoopStack } from '../statements/loops.ts';
@@ -111,6 +111,12 @@ export function nestedLowering(
   return new FunctionLowering(lowered, nestedFrame(lowered, nested, start));
 }
 
+/** A parameter of a frame, with the element types it takes as parameters when it is a pack's. */
+interface FrameSlot {
+  readonly parameter: SignatureParameter;
+  readonly elements: readonly Type[] | undefined;
+}
+
 class FunctionLowering implements FunctionContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
@@ -123,6 +129,7 @@ class FunctionLowering implements FunctionContext {
   readonly holds = new HoldScopes(this);
   readonly loops = new LoopStack();
   readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
+  #layout: readonly FrameSlot[] | undefined;
 
   constructor(lowered: LoweredFunction, frame: Frame) {
     const { checker, tables, owner, body } = lowered;
@@ -246,7 +253,7 @@ class FunctionLowering implements FunctionContext {
           type: { kind: 'tuple', elements: [typed.type] },
         };
       case 'untupled': {
-        const [element] = singleElement(typed.type);
+        const element = singleElement(typed.type);
         if (element === undefined) {
           unreachable('Only a one-element tuple is untupled.');
         }
@@ -305,13 +312,14 @@ class FunctionLowering implements FunctionContext {
 
   /**
    * Declares the frame's variables in its layout's order: the parameters, each in a register of
-   * its own, then the captures, then a nested function's own name; the parameters' registers.
+   * its own and a pack's elements in one each, then the captures, then a nested function's own
+   * name, then each pack's tuple; the parameters' registers.
    */
   #declareFrame(): readonly Register[] {
     const packs: { readonly parameter: SignatureParameter; readonly elements: Register[] }[] = [];
-    const parameters = this.frame.parameters.flatMap((parameter) => {
-      if (isPackParameter(parameter)) {
-        const elements = this.#packOf(parameter).map(() => this.code.allocate());
+    const parameters = this.#slots().flatMap(({ parameter, elements: types }) => {
+      if (types !== undefined) {
+        const elements = types.map(() => this.code.allocate());
         packs.push({ parameter, elements });
         return elements;
       }
@@ -339,9 +347,14 @@ class FunctionLowering implements FunctionContext {
     return parameters;
   }
 
-  /** The element types a pack's rest parameter takes in this instantiation (packs.ts). */
-  #packOf(parameter: SignatureParameter): readonly Type[] {
-    return packElements(this.#concrete(parameter.type));
+  /** The frame's parameters, a pack's with the element types it takes as parameters (packs.ts). */
+  #slots(): readonly FrameSlot[] {
+    this.#layout ??= this.frame.parameters.map((parameter) => ({
+      parameter,
+      elements:
+        parameter.rest === 'pack' ? packElements(this.#concrete(parameter.type)) : undefined,
+    }));
+    return this.#layout;
   }
 
   /** Declares the variable an async function reads its own call through (§7), when it reads it. */
@@ -366,16 +379,16 @@ class FunctionLowering implements FunctionContext {
   }
 
   #entry(): CodeFunction {
-    const { header, isAsync, parameters, captures } = this.frame;
+    const { header, isAsync, captures } = this.frame;
     const { registers, instructions } = this.code.finish();
     return {
       kind: 'code',
       ...header,
       async: isAsync,
-      parameters: parameters.flatMap((parameter) =>
-        isPackParameter(parameter)
-          ? this.#packOf(parameter).map(() => ({ reference: false }))
-          : [{ reference: parameter.reference }],
+      parameters: this.#slots().flatMap(({ parameter, elements }) =>
+        elements === undefined
+          ? [{ reference: parameter.reference }]
+          : elements.map(() => ({ reference: false })),
       ),
       captures: captures.length,
       registers,

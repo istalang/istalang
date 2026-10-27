@@ -311,8 +311,8 @@ function insertEntry(
 }
 
 /**
- * What a call's spread passes (§3.3, §3.5): a pack's value is the pack, which fills a rest of that
- * pack; anything else gives its items, which a rest parameter collects.
+ * What a call's spread passes (§3.3, §3.5): a pack's value is the pack, which fills a rest of
+ * that pack; anything else gives its items, which a rest parameter collects.
  */
 export function spreadArgumentType(context: BodyContext, spread: Spread): Type {
   const type = context.expression(spread.expression);

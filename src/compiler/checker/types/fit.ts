@@ -9,9 +9,9 @@
  *   fits `int?`, never `int??` by wrapping `int?` when an exact fit exists.
  * - A value is converted into an `any` type, made async, or converted between a one-element tuple
  *   and its element, only where that type itself is expected, so the conversion comes first and at
- *   most once: an `Email` fits `(any Notifier)?` by
- *   a conversion, then a wrap, and an `Array<fn()>` is never an `Array<async fn()>`. An `any` type
- *   converts into another whose constraints are among its own.
+ *   most once: an `Email` fits `(any Notifier)?` by a conversion, then a wrap, and an
+ *   `Array<fn()>` is never an `Array<async fn()>`. An `any` type converts into another whose
+ *   constraints are among its own.
  * - Which nominal type is `Optional`, and whether a type meets a constraint, are the program's to
  *   say (`Fitting`).
  */
@@ -86,17 +86,17 @@ export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | unde
  * where one of it is expected, or taken out where its element is; undefined when neither.
  */
 function singleConversion(found: Type, expected: Type): 'tupled' | 'untupled' | undefined {
-  const [element] = singleElement(expected);
+  const element = singleElement(expected);
   if (element !== undefined && isAssignable(found, element)) {
     return 'tupled';
   }
-  const [inside] = singleElement(found);
+  const inside = singleElement(found);
   return inside !== undefined && isAssignable(inside, expected) ? 'untupled' : undefined;
 }
 
-/** The element of a one-element tuple type, alone; nothing for any other type. */
-export function singleElement(type: Type): readonly Type[] {
-  return type.kind === 'tuple' && type.elements.length === 1 ? type.elements : [];
+/** The element of a one-element tuple type; undefined for any other type. */
+export function singleElement(type: Type): Type | undefined {
+  return type.kind === 'tuple' && type.elements.length === 1 ? type.elements[0] : undefined;
 }
 
 /** Whether `fit` changes a value's own shape, as a call taking it as it is wouldn't (§3.7). */

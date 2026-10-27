@@ -85,10 +85,10 @@ export function lowerArrayLiteral(context: FunctionContext, node: ArrayLiteral):
 }
 
 /**
- * The array `elements` build in order, as an array literal's: what an array literal and the
- * arguments a rest parameter collects (§3.3) both build.
+ * The array `elements` build in order, as an array literal's: what an array literal and a spread
+ * a rest parameter collects (§3.3, `spreadArray`) both build.
  */
-export function arrayOf(
+function arrayOf(
   context: FunctionContext,
   elements: readonly (Expression | Spread)[],
   span: Span,
@@ -183,6 +183,16 @@ function built<Part, Node extends Expression | MapEntry>(
   }
   parts.emit(dst, pending);
   return dst;
+}
+
+/**
+ * The items `spread` gives, as an array: the array it spreads, which an `array` instruction copies
+ * whole, or the array its cursor's items build (§3.3).
+ */
+export function spreadArray(context: FunctionContext, spread: Spread): Register {
+  return isCopied(context, spread)
+    ? context.expression(spread.expression)
+    : arrayOf(context, [spread], spread.span);
 }
 
 function isSpread(node: Expression | MapEntry | Spread): node is Spread {

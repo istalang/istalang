@@ -213,8 +213,9 @@ export function fillsPack(type: Type): boolean {
 }
 
 /**
- * `type` ending in `pack`: a pack it keeps, a tuple it flattens into parameters by value, `unit` into
- * none (§3.5); anything else was refused where it was bound to a pack, so it leaves the error type.
+ * `type` ending in `pack`: a pack it keeps, a tuple it flattens into parameters by value, `unit`
+ * into none (§3.5); anything else was refused where it was bound to a pack, so it leaves the error
+ * type.
  */
 export function withPack(type: FunctionType, pack: Type | undefined): FunctionType {
   if (pack === undefined) {

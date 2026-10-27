@@ -33,6 +33,7 @@ import {
   type TypeParameter,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
+import type { RestKind } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
@@ -40,7 +41,6 @@ import { reshapes } from '../types/fit.ts';
 import {
   errorType,
   fillsPack,
-  isPack,
   type ParameterKey,
   type Substitution,
   sameType,
@@ -170,7 +170,7 @@ export function signatureOf(
   return {
     declaration,
     typeParameters: typeParametersOf(declaration.typeParameters),
-    parameters: checker.parametersOf(declaration).map(({ node, type, reference }, index) => {
+    parameters: checker.parametersOf(declaration).map(({ node, type, reference, rest }, index) => {
       const substituted = substitute(type, substitution);
       const isSelf = index === 0 && node.name.text === 'self';
       return {
@@ -178,20 +178,20 @@ export function signatureOf(
         reference,
         name: isSelf ? undefined : node.name.text,
         hasDefault: node.defaultValue !== undefined,
-        rest: node.isRest ? restSlotOf(checker, substituted) : undefined,
+        rest: rest === undefined ? undefined : restSlotOf(checker, rest, substituted),
       };
     }),
     result: () => substitute(checker.resultOf(declaration), substitution),
   };
 }
 
-/** A rest parameter of type `type`: a pack's, or an array's, whose items are its elements. */
-function restSlotOf(checker: CheckerContext, type: Type): RestSlot {
-  if (isPack(type)) {
-    return { kind: 'pack' };
+/** A rest parameter of `kind` and type `type` as choosing sees it: an array's has its items' type. */
+function restSlotOf(checker: CheckerContext, kind: RestKind, type: Type): RestSlot {
+  if (kind === 'pack') {
+    return { kind };
   }
   const item = wellKnownArguments(checker, wellKnown.array, type)?.[0] ?? errorType;
-  return { kind: 'array', item };
+  return { kind, item };
 }
 
 /** Chooses among `candidates` for `callArguments` and any written type arguments. */

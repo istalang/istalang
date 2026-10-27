@@ -1,0 +1,13 @@
+# outcome: [{"type":"Ok","value":10},{"type":"Ok","value":6},{"type":"Ok","value":3}]
+# A spawned call passes what a rest parameter collects as a call does, spreads included, and the
+# new instance fills its parameters (§3.3, §3.5, §9).
+fn total(...xs: Array<int>) -> int:
+  let t = 0
+  for x in xs:
+    t += x
+  t
+fn call<...A, R>(f: fn(...A) -> R, ...args: A) -> R: f(...args)
+fn add3(a: int, b: int, c: int) -> int: a + b + c
+async fn main() -> Future<(Result<int>, Result<int>, Result<int>)>:
+  const xs = [2, 3]
+  (await spawn total(1, ...xs, 4).result(), await spawn call(add3, 1, 2, 3).result(), await spawn total(...0..3).result())

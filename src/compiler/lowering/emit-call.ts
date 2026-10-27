@@ -7,8 +7,11 @@
  * its default's entry from the parameters before it (§3.1, §3.3). So a default sees those
  * parameters however the call gave them, and every call fills its defaults one way, a filling
  * entry's included (instances.ts). A dispatch on an `any` value's own type binds the required
- * function's parameters the same way, then runs its dispatch entry (§3.10). A pack's rest
- * parameter takes its arguments as single parameters, as its instantiation flattens it (packs.ts).
+ * function's parameters the same way, then runs its dispatch entry (§3.10).
+ *
+ * This is the one place a rest parameter is made of what a call passes: an array of its items, a
+ * spread's spliced in, or, for a pack, its items as single parameters and a spread's tuple as its
+ * elements, as the instantiation flattens the pack (packs.ts).
  */
 
 import type { Callee } from '../../definition/instructions/calls.ts';
@@ -18,10 +21,11 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { SignatureParameter } from '../checker/check.ts';
 import type { CallSite, ImplicitRole } from '../checker/resolved-call.ts';
+import { type Substitution, substitute, substitutionFor } from '../checker/types/type.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
-import { type ClosedCall, defaultEntryOf } from './instances.ts';
-import { isPackParameter } from './packs.ts';
+import { type ClosedCall, defaultEntryOf, substitutionOf } from './instances.ts';
+import { packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */
 export interface CallToEmit {
@@ -79,7 +83,8 @@ export function emitFunctionCall(
 
 /**
  * The parameters `toEmit` passes its function, in their order, as its binding says: an argument,
- * a rest parameter's array, or a default computed by its entry from the parameters before it.
+ * a rest parameter's array or a pack's elements, or a default computed by its entry from the
+ * parameters before it.
  */
 function boundParameters(
   context: CodeContext,
@@ -96,10 +101,15 @@ function boundParameters(
         parameters.push(passed(source.index));
         break;
       case 'rest': {
-        const items = source.items.map(passed);
         const declared = declaredParameters[parameter];
-        const isPackRest = declared !== undefined && isPackParameter(declared);
-        parameters.push(...(isPackRest ? items : [restArray(context, span, items)]));
+        if (declared === undefined) {
+          unreachable(`A rest source binds no parameter ${parameter}.`);
+        }
+        const items = source.items.map(({ index, isSpread }) => ({
+          value: registerOf(passed(index)),
+          isSpread,
+        }));
+        parameters.push(...restParameters(context, { call, span, declared }, items));
         break;
       }
       case 'default': {
@@ -119,25 +129,55 @@ function boundParameters(
   return parameters;
 }
 
+/** What a rest parameter collects: an argument's value, which a spread spreads. */
+interface CollectedItem {
+  readonly value: Register;
+  readonly isSpread: boolean;
+}
+
 /**
- * The array a rest parameter takes from `items` passed by value; a call written in code builds
- * its own from what it writes, spreads included (expressions/calls.ts), so only an empty one, or
- * one of plain items, is built here.
+ * What the rest parameter `declared` of `call` takes of `items`: for an array's, one array of
+ * them, a spread's array spliced in; for a pack's, each as a parameter of its own, a spread's
+ * tuple as its elements.
  */
-function restArray(
+function restParameters(
   context: CodeContext,
-  span: Span,
-  items: readonly (Register | Argument)[],
-): Register {
-  const elements = items.map((item) => {
-    if (typeof item !== 'number' && item.kind !== 'value') {
-      unreachable('A rest parameter collects values, never a place.');
-    }
-    return { kind: 'item', value: typeof item === 'number' ? item : item.register } as const;
-  });
+  rest: { readonly call: ClosedCall; readonly span: Span; readonly declared: SignatureParameter },
+  items: readonly CollectedItem[],
+): readonly Register[] {
+  const { call, span, declared } = rest;
+  if (declared.rest === 'pack') {
+    const type = substitute(declared.type, substitutionOfCall(call));
+    return items.flatMap(({ value, isSpread }) =>
+      isSpread ? packElementsOf(context, value, { type, span }) : [value],
+    );
+  }
+  const elements = items.map(({ value, isSpread }) =>
+    isSpread ? ({ kind: 'spread', value } as const) : ({ kind: 'item', value } as const),
+  );
   const dst = context.code.allocate();
   context.code.emit({ kind: 'array', span, dst, elements });
-  return dst;
+  return [dst];
+}
+
+/** The register of a value passed, which a rest parameter collects: never a place. */
+function registerOf(argument: Register | Argument): Register {
+  if (typeof argument === 'number') {
+    return argument;
+  }
+  if (argument.kind !== 'value') {
+    unreachable('A rest parameter collects values, never a place.');
+  }
+  return argument.register;
+}
+
+/** How `call`'s function maps its type parameters: its instance's, or its dispatch's. */
+function substitutionOfCall(call: ClosedCall): Substitution {
+  if (call.kind === 'function') {
+    return substitutionOf(call.instance);
+  }
+  const { required, typeArguments } = call.dispatch;
+  return substitutionFor(required.typeParameters, typeArguments);
 }
 
 /** The parameters of the function `called` runs, or of the required one a dispatch runs. */

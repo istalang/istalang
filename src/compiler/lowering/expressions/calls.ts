@@ -9,11 +9,10 @@
  * reached through an element or a shared struct's value (`*x`) is copied in before the call and
  * written back after it (places.ts).
  *
- * Arguments are evaluated in the order written, named ones included (§3.3). Those an array's rest
- * parameter collects stand together after the fixed ones, and are built into its array, as an
- * array literal of them is, where the first of them stands; the call's binding is renumbered to
- * pass that array. A pack's (§3.5) are passed as they stand, a spread of a pack's value as its
- * elements, since an instantiation flattens the pack (packs.ts).
+ * Arguments are evaluated in the order written, named ones included (§3.3), and passed numbered as
+ * the checker's binding numbers them. A spread an array's rest parameter collects gives its items
+ * as an array where it stands, so a cursor it runs runs in the order written; emit-call then makes
+ * the rest parameter of what is passed, an array or a pack's elements (§3.5).
  *
  * A call the checker resolved no function for is a call of a function value (§3.14): the callee's
  * value is the closure called, and each argument is passed as written, which the checker matched
@@ -24,7 +23,8 @@ import type { Callee } from '../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { type Binding, parameterOfArgument } from '../../checker/resolved-call.ts';
+import type { RestKind, SignatureParameter } from '../../checker/check.ts';
+import { parameterOfArgument } from '../../checker/resolved-call.ts';
 import {
   argumentValue,
   type Call,
@@ -35,9 +35,9 @@ import {
 import type { FunctionContext } from '../context.ts';
 import { calledParameters, emitCall, emitFunctionCall } from '../emit-call.ts';
 import type { ClosedCall } from '../instances.ts';
-import { isPackParameter, packElements } from '../packs.ts';
-import { enterReferenced, readPart } from '../places.ts';
-import { arrayOf } from './collections.ts';
+import { packElementsOf } from '../packs.ts';
+import { enterReferenced } from '../places.ts';
+import { spreadArray } from './collections.ts';
 import { lowerFieldRead } from './structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
@@ -46,19 +46,20 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
     return lowerValueCall(context, node);
   }
   const called = context.callAt(node);
-  const byReference = referenceParameters(context, called);
+  const parameterAt = parametersByArgument(context, called);
+  const byReference = (index: number) => parameterAt(index)?.reference === true;
   const receiver = receiverOf(context, node, resolved.receiver, byReference(0));
   const passed = passedArguments(context, node, {
     receiver,
     byReference,
-    rest: arrayRestItems(context, called),
+    spreadFills: (index) => restKindAt(parameterAt, index),
   });
   const dst = emitFunctionCall(context, {
     span: node.span,
-    call: passedCall(context, called, passed.numbers),
-    arguments: passed.list.map(({ argument }) => argument),
+    call: called,
+    arguments: passed.map(({ argument }) => argument),
   });
-  leaveAll(passed.list);
+  leaveAll(passed);
   return dst;
 }
 
@@ -87,13 +88,13 @@ function receiverOf(
  */
 function lowerValueCall(context: FunctionContext, node: Call): Register {
   const callee = valueCallee(context, node);
-  const { list } = passedArguments(context, node, { byReference: () => false, rest: [] });
+  const passed = passedArguments(context, node, packsOnly);
   const dst = emitCall(context, {
     span: node.span,
     callee: { kind: 'value', register: callee },
-    arguments: list.map(({ argument }) => argument),
+    arguments: valueArguments(context, node, passed),
   });
-  leaveAll(list);
+  leaveAll(passed);
   return dst;
 }
 
@@ -124,14 +125,23 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
     called === undefined ? { kind: 'value', register: valueCallee(context, spawned) } : undefined;
   const receiver =
     resolved?.receiver === undefined ? undefined : argumentOf(context, resolved.receiver, false);
-  const rest = called === undefined ? [] : arrayRestItems(context, called);
-  const copied = passedArguments(context, spawned, { receiver, byReference: () => false, rest });
+  const passing: Passing =
+    called === undefined
+      ? packsOnly
+      : {
+          receiver,
+          byReference: () => false,
+          spreadFills: (index) => restKindAt(parametersByArgument(context, called), index),
+        };
+  const copied = passedArguments(context, spawned, passing);
   const callee: Callee = value ?? {
     kind: 'function',
-    function: context.tables.callIndex(
-      passedCall(context, called ?? unreachable('A spawn calls nothing.'), copied.numbers),
-    ),
+    function: context.tables.callIndex(called ?? unreachable('A spawn calls nothing.')),
   };
+  const arguments_ =
+    called === undefined
+      ? valueArguments(context, spawned, copied)
+      : copied.map(({ argument }) => argument);
   const instance = context.body.typeOf(node);
   if (instance.kind !== 'nominal') {
     unreachable('A spawn checked clean is an Instance<T>.');
@@ -143,7 +153,7 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
     dst,
     type: context.tables.types.index(instance),
     callee,
-    arguments: copied.list.map(({ argument }) => {
+    arguments: arguments_.map((argument) => {
       if (argument.kind !== 'value') {
         unreachable('A spawned call passes everything by value; the checker refuses references.');
       }
@@ -159,148 +169,88 @@ interface PassedArgument {
   readonly leave?: (() => void) | undefined;
 }
 
-/** Whether the parameter `called` passes its `index`-th argument to takes a reference (§3.7). */
-function referenceParameters(
+/** The parameter of `called` each argument, numbered as its binding numbers them, fills. */
+function parametersByArgument(
   context: FunctionContext,
   called: ClosedCall,
-): (index: number) => boolean {
+): (index: number) => SignatureParameter | undefined {
   const parameters = calledParameters(context, called);
   const parameterOf = parameterOfArgument(called.binding);
   return (index) => {
     const parameter = parameterOf.get(index);
-    return parameter !== undefined && parameters[parameter]?.reference === true;
+    return parameter === undefined ? undefined : parameters[parameter];
   };
 }
 
+/** What the spread argument `index` fills: the rest parameter `parameterAt` gives it. */
+function restKindAt(
+  parameterAt: (index: number) => SignatureParameter | undefined,
+  index: number,
+): RestKind {
+  return parameterAt(index)?.rest ?? unreachable(`Spread ${index} fills no rest parameter.`);
+}
+
 /**
- * How a call passes its arguments: its receiver, already passed, which take `&`, and which a rest
- * parameter collects, numbered as the binding numbers them.
+ * How a call passes its arguments: its receiver, already passed, which take `&`, and what each
+ * spread fills, numbered as the binding numbers them.
  */
 interface Passing {
   readonly receiver?: PassedArgument | undefined;
   readonly byReference: (index: number) => boolean;
-  readonly rest: readonly number[];
+  readonly spreadFills: (index: number) => RestKind;
 }
 
-/** The arguments an array's rest parameter of `called` collects, numbered as passed. */
-function arrayRestItems(context: FunctionContext, called: ClosedCall): readonly number[] {
-  const parameters = calledParameters(context, called);
-  return called.binding.flatMap((source, index) => {
-    const parameter = parameters[index];
-    return source.kind === 'rest' && parameter !== undefined && !isPackParameter(parameter)
-      ? source.items
-      : [];
-  });
-}
-
-/** `called`, its binding numbering what is passed as `numbers` renumbered it (`passedArguments`). */
-function passedCall(context: FunctionContext, called: ClosedCall, numbers: Numbers): ClosedCall {
-  const parameters = calledParameters(context, called);
-  const isPackRest = (index: number) => {
-    const parameter = parameters[index];
-    return parameter !== undefined && isPackParameter(parameter);
-  };
-  return {
-    ...called,
-    binding: called.binding.map((source, index) => renumbered(source, numbers, isPackRest(index))),
-  };
-}
+/** How a function value's call passes its arguments: by value, a spread only of a pack (§3.14). */
+const packsOnly: Passing = { byReference: () => false, spreadFills: () => 'pack' };
 
 /**
- * By argument number as the binding numbers it, where it now stands in what is passed: one place,
- * an array's rest items their array's, a spread of a pack's value its elements' places.
- */
-type Numbers = ReadonlyMap<number, readonly number[]>;
-
-/**
- * What a call passes, as written: a method's receiver, already passed, then each argument, by
- * reference where `byReference` says its parameter takes one, those a rest parameter collects
- * built into its array; and by argument number, where each now stands. Every call is lowered
- * through here, a spawned one included.
+ * What a call passes, as written and numbered as its binding numbers it: a method's receiver,
+ * already passed, then each argument in order, by reference where `byReference` says its parameter
+ * takes one. A spread an array's rest takes gives its items as an array, made where it stands, so
+ * a cursor runs in the order written (§3.3); a pack's spread is the pack's tuple (§3.5). What a
+ * rest parameter takes of these is emit-call's to make. Every call is lowered through here.
  */
 function passedArguments(
   context: FunctionContext,
   node: Call,
-  { receiver, byReference, rest }: Passing,
-): { readonly list: readonly PassedArgument[]; readonly numbers: Numbers } {
+  { receiver, byReference, spreadFills }: Passing,
+): readonly PassedArgument[] {
   const offset = receiver === undefined ? 0 : 1;
-  const list: PassedArgument[] = receiver === undefined ? [] : [receiver];
-  const numbers = new Map<number, readonly number[]>(receiver === undefined ? [] : [[0, [0]]]);
-  const [first] = rest;
+  const passed: PassedArgument[] = receiver === undefined ? [] : [receiver];
   for (const [position, argument] of node.arguments.entries()) {
     const index = position + offset;
-    const from = list.length;
-    if (rest.includes(index)) {
-      if (index === first) {
-        const elements = rest.map((item) => restElement(node, item - offset));
-        const register = arrayOf(context, elements, node.span);
-        list.push({ argument: { kind: 'value', register } });
-      }
-    } else if (argument.kind === 'Spread') {
-      list.push(...packSpread(context, argument.expression));
+    if (argument.kind === 'Spread') {
+      const fills = spreadFills(index);
+      const register =
+        fills === 'pack' ? context.expression(argument.expression) : spreadArray(context, argument);
+      passed.push({ argument: { kind: 'value', register } });
     } else {
-      list.push(argumentOf(context, argumentValue(argument), byReference(index)));
+      passed.push(argumentOf(context, argumentValue(argument), byReference(index)));
     }
-    const array = first === undefined ? undefined : numbers.get(first);
-    const placed = Array.from({ length: list.length - from }, (_, offset_) => from + offset_);
-    numbers.set(index, rest.includes(index) && array !== undefined ? array : placed);
   }
-  return { list, numbers };
+  return passed;
 }
 
 /**
- * A spread no array's rest parameter collects, of a pack's value (§3.5): its elements, each
- * passed by value, as the instantiation flattens the pack it fills.
+ * The arguments a function value takes of what its call passes: each as passed, a pack's spread
+ * as the elements of its tuple, since the value's type flattens the pack (§3.5).
  */
-function packSpread(context: FunctionContext, spread: Expression): PassedArgument[] {
-  const tuple = context.expression(spread);
-  return packElements(context.body.typeOf(spread)).map((_, element) => ({
-    argument: { kind: 'value', register: readPart(context, tuple, [element], spread.span) },
-  }));
-}
-
-/** A written argument a rest parameter collects: an item, or a spread. */
-function restElement(
+function valueArguments(
+  context: FunctionContext,
   node: Call,
-  position: number,
-): Expression | Extract<Call['arguments'][number], { kind: 'Spread' }> {
-  const argument = node.arguments[position];
-  if (argument === undefined || argument.kind === 'NamedArgument') {
-    unreachable(`A rest parameter collects no argument ${position}.`);
-  }
-  return argument;
-}
-
-/**
- * `source`, its arguments numbered as passed: an array's rest parameter's items as the one array,
- * a pack's each where it now stands.
- */
-function renumbered(
-  source: Binding[number],
-  numbers: Numbers,
-  isPackRest: boolean,
-): Binding[number] {
-  const placesOf = (index: number) =>
-    numbers.get(index) ?? unreachable(`Argument ${index} isn't passed.`);
-  const numberOf = (index: number) =>
-    placesOf(index)[0] ?? unreachable(`Argument ${index} is passed nowhere.`);
-  switch (source.kind) {
-    case 'argument':
-      return { kind: 'argument', index: numberOf(source.index) };
-    case 'rest': {
-      const [first] = source.items;
-      if (isPackRest) {
-        return { kind: 'rest', items: source.items.flatMap(placesOf) };
-      }
-      return first === undefined ? source : { kind: 'argument', index: numberOf(first) };
+  passed: readonly PassedArgument[],
+): readonly Argument[] {
+  return node.arguments.flatMap((argument, index) => {
+    const { argument: given } = passed[index] ?? unreachable(`Argument ${index} isn't passed.`);
+    if (argument.kind !== 'Spread' || given.kind !== 'value') {
+      return [given];
     }
-    case 'default':
-      return source;
-    default: {
-      const unhandled: never = source;
-      return unhandled;
-    }
-  }
+    const elements = packElementsOf(context, given.register, {
+      type: context.body.typeOf(argument.expression),
+      span: argument.span,
+    });
+    return elements.map((register) => ({ kind: 'value', register }) as const);
+  });
 }
 
 /** How `argument` is passed: the place `&x` names, the receiver's place for a `&self`, or a value. */

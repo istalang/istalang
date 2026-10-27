@@ -90,8 +90,9 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
 
 /**
  * An argument as written: `&x` passes the place `x`, checked as a place that may change; a spread,
- * its items, as an array literal's spread gives them (§2), or a pack's value, as it is (§3.5); any other is a value, checked now
- * unless the chosen function decides its type. A named argument is its value, named.
+ * its items, as an array literal's spread gives them (§2), or a pack's value, as it is (§3.5); any
+ * other is a value, checked now unless the chosen function decides its type. A named argument is
+ * its value, named.
  */
 function writtenArgument(context: BodyContext, argument: CallArgument): WrittenArgument {
   switch (argument.kind) {

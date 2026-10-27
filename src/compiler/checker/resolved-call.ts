@@ -45,15 +45,21 @@ export interface FunctionCall extends WrittenAs {
 /**
  * Where each parameter of a called function takes its value from, in parameter order (§3.3): an
  * argument the call passes, numbered as passed (a method's receiver first, then the others as
- * written); for a rest parameter, the arguments it collects into an array, spreads included; or
- * its default, computed from the parameters before it.
+ * written); for a rest parameter, the arguments it collects, into an array or a pack's tuple, each
+ * said to be a spread or not; or its default, computed from the parameters before it.
  */
 export type Binding = readonly ParameterSource[];
 
 type ParameterSource =
   | { readonly kind: 'argument'; readonly index: number }
-  | { readonly kind: 'rest'; readonly items: readonly number[] }
+  | { readonly kind: 'rest'; readonly items: readonly RestItem[] }
   | { readonly kind: 'default' };
+
+/** An argument a rest parameter collects: its number, and whether it spreads its items (§3.3). */
+interface RestItem {
+  readonly index: number;
+  readonly isSpread: boolean;
+}
 
 /** By argument number, the parameter `binding` passes it to, a rest parameter's items included. */
 export function parameterOfArgument(binding: Binding): ReadonlyMap<number, number> {
@@ -62,8 +68,8 @@ export function parameterOfArgument(binding: Binding): ReadonlyMap<number, numbe
     if (source.kind === 'argument') {
       parameters.set(source.index, parameter);
     } else if (source.kind === 'rest') {
-      for (const item of source.items) {
-        parameters.set(item, parameter);
+      for (const { index } of source.items) {
+        parameters.set(index, parameter);
       }
     }
   }

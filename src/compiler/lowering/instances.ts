@@ -197,7 +197,7 @@ function sourceKey(source: Binding[number]): string {
     case 'argument':
       return String(source.index);
     case 'rest':
-      return `r${source.items.join('.')}`;
+      return `r${source.items.map(({ index, isSpread }) => `${isSpread ? '*' : ''}${index}`).join('.')}`;
     case 'default':
       return 'd';
     default: {

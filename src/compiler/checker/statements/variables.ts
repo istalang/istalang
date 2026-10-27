@@ -44,7 +44,7 @@ export class VariableScope {
     this.#types.set(name, type);
   }
 
-  declareParameter(parameter: SignatureParameter): void {
+  declareParameter(parameter: Pick<SignatureParameter, 'node' | 'type' | 'reference'>): void {
     this.declare(parameter.node.name, parameter.type);
     if (parameter.reference) {
       this.#references.add(parameter.node.name);

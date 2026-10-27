@@ -87,8 +87,8 @@ export class Inference {
 
   /** Matches across the conversion between a one-element tuple and its element (§3.15). */
   #matchSingle(declared: Type, given: Type): boolean {
-    const [element] = singleElement(declared);
-    const [inside] = singleElement(given);
+    const element = singleElement(declared);
+    const inside = singleElement(given);
     return (
       (element !== undefined && this.#matchExact(element, given)) ||
       (inside !== undefined && this.#matchExact(declared, inside))

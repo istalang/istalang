@@ -7,23 +7,32 @@
  * - The entry takes the elements as parameters, and builds the pack's variable, the tuple, from
  *   them (function-lowering).
  * - A call passes a pack's arguments as single values, and a spread of a pack's value as its
- *   elements (expressions/calls.ts, emit-call.ts).
+ *   elements (emit-call.ts; expressions/calls.ts for a function value's call).
  */
 
+import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { SignatureParameter } from '../checker/check.ts';
-import { isPack, type Type, tupleElements } from '../checker/types/type.ts';
-
-/**
- * Whether `parameter` is a pack's rest parameter, which an instantiation flattens: its type is the
- * pack, or the tuple an instantiation substituted, never an array's.
- */
-export function isPackParameter(parameter: Pick<SignatureParameter, 'node' | 'type'>): boolean {
-  const { node, type } = parameter;
-  return node.isRest && (isPack(type) || tupleElements(type) !== undefined);
-}
+import type { Span } from '../../text/span.ts';
+import { type Type, tupleElements } from '../checker/types/type.ts';
+import type { CodeContext } from './context.ts';
 
 /** The element types of a pack, `concrete` as an instantiation substitutes it: a tuple's. */
 export function packElements(concrete: Type): readonly Type[] {
   return tupleElements(concrete) ?? unreachable('A pack is a tuple once instantiated.');
+}
+
+/**
+ * The elements of the pack's tuple in `tuple`, of the `type` an instantiation gives, each read by
+ * position at `span`, as `t.0` reads one (expressions/tuples.ts).
+ */
+export function packElementsOf(
+  context: CodeContext,
+  tuple: Register,
+  { type, span }: { readonly type: Type; readonly span: Span },
+): readonly Register[] {
+  return packElements(type).map((_, index) => {
+    const dst = context.code.allocate();
+    context.code.emit({ kind: 'field', span, dst, src: tuple, index });
+    return dst;
+  });
 }

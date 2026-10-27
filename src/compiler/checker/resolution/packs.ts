@@ -16,7 +16,8 @@ export function packItems(takes: Takes, binding: Binding): ReadonlySet<number> {
   return new Set(
     takes.parameters.flatMap((slot, parameter) => {
       const source = binding[parameter];
-      return slot.rest?.kind === 'pack' && source?.kind === 'rest' ? source.items : [];
+      const fillsPack = slot.rest?.kind === 'pack' && source?.kind === 'rest';
+      return fillsPack ? source.items.map(({ index }) => index) : [];
     }),
   );
 }
@@ -34,10 +35,10 @@ export function packInapplicability(
   for (const [parameter, slot] of takes.parameters.entries()) {
     const source = binding[parameter];
     if (slot.rest?.kind === 'pack' && source?.kind === 'rest') {
-      const found = packOf(source.items.map((index) => callArguments[index]));
+      const found = packOf(source.items.map(({ index }) => callArguments[index]));
       if (found === undefined || !inference.matchExactly(slot.type, found)) {
         const expected = substitute(slot.type, inference.substitution());
-        return { kind: 'pack', index: source.items[0] ?? 0, expected, found };
+        return { kind: 'pack', index: source.items[0]?.index ?? 0, expected, found };
       }
     }
   }

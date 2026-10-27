@@ -158,7 +158,7 @@ export function nestedFrame(
       if (slot === undefined) {
         unreachable(`'${parameter.name.text}' has no slot in its function's type.`);
       }
-      return { node: parameter, ...slot };
+      return { node: parameter, ...slot, rest: parameter.isRest ? 'pack' : undefined };
     }),
     captures,
     function: node,

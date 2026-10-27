@@ -23,6 +23,9 @@ import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureOf } from '../types/well-known.ts';
 
+/** The rest of a function value's type ending in a pack (§3.5). */
+const packRest = { kind: 'pack' } as const;
+
 /** A call as written: where it stands, with its arguments and any type arguments. */
 export interface ValueCall {
   readonly node: Call;
@@ -61,20 +64,11 @@ export function checkValueCall(
     return errorType;
   }
   const { parameters, pack } = calleeType;
-  const fixed = parameters.map((slot) => ({ ...slot, name: undefined, hasDefault: false }));
-  const packSlot = {
-    type: pack ?? errorType,
-    reference: false,
-    name: undefined,
-    hasDefault: false,
-  };
-  const takes = {
-    typeParameters: [],
-    parameters: [
-      ...fixed.map((slot) => ({ ...slot, rest: undefined })),
-      ...(pack === undefined ? [] : [{ ...packSlot, rest: { kind: 'pack' } as const }]),
-    ],
-  };
+  const unnamed = { name: undefined, hasDefault: false };
+  const fixed = parameters.map((slot) => ({ ...slot, ...unnamed, rest: undefined }));
+  const packed =
+    pack === undefined ? [] : [{ type: pack, reference: false, ...unnamed, rest: packRest }];
+  const takes = { typeParameters: [], parameters: [...fixed, ...packed] };
   const callArguments = written.map(callArgumentOf);
   const binder = bindArguments;
   const taken = takenBy(context.checker, takes, { callArguments, written: typeArguments, binder });

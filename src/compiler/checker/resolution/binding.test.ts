@@ -30,7 +30,10 @@ function positional(count: number, given: number, rest: number | undefined): Bin
   if (rest === undefined) {
     return fixed;
   }
-  const items = Array.from({ length: rest }, (_, index) => given + index);
+  const items = Array.from({ length: rest }, (_, index) => ({
+    index: given + index,
+    isSpread: false,
+  }));
   return [...fixed, { kind: 'rest', items }];
 }
 
@@ -127,7 +130,13 @@ describe('binding spreads', () => {
     expect(binding).toEqual([
       { kind: 'argument', index: 0 },
       { kind: 'default' },
-      { kind: 'rest', items: [1, 2] },
+      {
+        kind: 'rest',
+        items: [
+          { index: 1, isSpread: true },
+          { index: 2, isSpread: false },
+        ],
+      },
     ]);
   });
 
