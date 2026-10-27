@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-24
-last_updated: 2026-10-25
+last_updated: 2026-10-27
 tags: [plan, roadmap]
 ---
 
@@ -60,9 +60,9 @@ D. Two ∥ structural debt forks before 6: runtime and IR (D80, D78, D81), check
 8. ∥ with 7 — Weak side: `WeakRef`, `disposed()`, `disposing()`, revertible sends.
 9. ∥ with 6–8 — Host boundary: externs, boundary JSON, annotations, `json`, host API, `ista run --host`.
 
-**M4 — Standard library.** The remaining §3.8 modules, partitioned by module group and built ∥. *Done when:* every listed function exists and is exercised e2e.
+**M4 — Standard library** (details: `m4-m5.md`, built together with M5). The remaining §3.8 modules, partitioned by module group and built ∥. *Done when:* every listed function exists and is exercised e2e.
 
-**M5 — Test runner.** The `testing` natives, the binder rule that only `.test.ista` modules may import `testing`, the in-language test library (`test`, `group`, setups, `FakeClock`, `FakeQueue`, assertions) and `ista test`. *Done when:* §10's suite runs, including clock-driven expiry, mocks and `crashEveryAwait`.
+**M5 — Test runner** (details: `m4-m5.md`). The `testing` natives, the binder rule that only `.test.ista` modules may import `testing`, the in-language test library (`test`, `group`, setups, `FakeClock`, `FakeQueue`, assertions) and `ista test`. *Done when:* §10's suite runs, including clock-driven expiry, mocks and `crashEveryAwait`.
 
 *MVP boundary: M1–M5 compile, run and test programs end to end.*
 
