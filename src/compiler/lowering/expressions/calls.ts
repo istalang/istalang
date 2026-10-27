@@ -33,8 +33,8 @@ import {
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
-import { calledParameters, emitCall, emitFunctionCall } from '../emit-call.ts';
-import type { ClosedCall } from '../instances.ts';
+import { emitCall, emitFunctionCall } from '../emit-call.ts';
+import { type ClosedCall, calledParameters } from '../instances.ts';
 import { packElementsOf } from '../packs.ts';
 import { enterReferenced } from '../places.ts';
 import { spreadArray } from './collections.ts';
@@ -125,13 +125,14 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
     called === undefined ? { kind: 'value', register: valueCallee(context, spawned) } : undefined;
   const receiver =
     resolved?.receiver === undefined ? undefined : argumentOf(context, resolved.receiver, false);
+  const parameterAt = called === undefined ? undefined : parametersByArgument(context, called);
   const passing: Passing =
-    called === undefined
+    parameterAt === undefined
       ? packsOnly
       : {
           receiver,
           byReference: () => false,
-          spreadFills: (index) => restKindAt(parametersByArgument(context, called), index),
+          spreadFills: (index) => restKindAt(parameterAt, index),
         };
   const copied = passedArguments(context, spawned, passing);
   const callee: Callee = value ?? {
@@ -174,7 +175,7 @@ function parametersByArgument(
   context: FunctionContext,
   called: ClosedCall,
 ): (index: number) => SignatureParameter | undefined {
-  const parameters = calledParameters(context, called);
+  const parameters = calledParameters(context.checker, called);
   const parameterOf = parameterOfArgument(called.binding);
   return (index) => {
     const parameter = parameterOf.get(index);

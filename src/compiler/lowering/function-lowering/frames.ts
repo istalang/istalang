@@ -19,7 +19,7 @@ import type {
   SignatureParameter,
 } from '../../checker/check.ts';
 import { instantiatedBody } from '../../checker/types/instantiation.ts';
-import { type FunctionType, type Type, tupleType } from '../../checker/types/type.ts';
+import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { ClosedCall } from '../instances.ts';
 import {
@@ -153,29 +153,11 @@ export function nestedFrame(
   return {
     header: start?.header ?? lowered.tables.nestedHeader(nested),
     isAsync: type.isAsync,
-    parameters: parameters.map((parameter, index) => {
-      const slot = parameter.isRest ? packSlot(type, index) : type.parameters[index];
-      if (slot === undefined) {
-        unreachable(`'${parameter.name.text}' has no slot in its function's type.`);
-      }
-      return { node: parameter, ...slot, rest: parameter.isRest ? 'pack' : undefined };
-    }),
+    parameters,
     captures,
     function: node,
     result: type.result,
     self: node.name,
     outcome: start?.outcome,
   };
-}
-
-/**
- * The slot of a nested function's rest parameter, the `index`-th, a pack (§3.5): its type's pack,
- * or, once an instantiation has flattened it, the tuple of the parameters from there on.
- */
-function packSlot(
-  type: FunctionType,
-  index: number,
-): { readonly type: Type; readonly reference: false } {
-  const rest = tupleType(type.parameters.slice(index).map((slot) => slot.type));
-  return { type: type.pack ?? rest, reference: false };
 }

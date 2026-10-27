@@ -149,7 +149,7 @@ interface NestedHeader {
 
 function checkNested(context: BodyContext, node: NestedFunction, header: NestedHeader): Type {
   const { name, parameters, isAsync, declaredResult } = header;
-  const rest = parameters.find((parameter) => parameter.node.isRest);
+  const rest = parameters.find((parameter) => parameter.rest !== undefined);
   const slots = parameters
     .filter((parameter) => parameter !== rest)
     .map((parameter) => ({ type: parameter.type, reference: parameter.reference }));
@@ -182,11 +182,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   if (name !== undefined) {
     context.variables.declare(name, type);
   }
-  context.functions.record(node, {
-    type,
-    parameters: parameters.map((parameter) => parameter.node),
-    captures,
-  });
+  context.functions.record(node, { type, parameters, captures });
   return type;
 }
 

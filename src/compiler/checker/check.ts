@@ -63,13 +63,13 @@ export interface SignatureParameter {
 export type RestKind = 'array' | 'pack';
 
 /**
- * A lambda or local function as checked (§3.14): its type, the parameters its slots are declared
- * as, in order, and what it captures in the order first used. Lowering makes it a function-table
- * entry of its own.
+ * A lambda or local function as checked (§3.14): its type, its parameters as checked, in order,
+ * a rest one a pack's (§3.5), and what it captures in the order first used. Lowering makes it a
+ * function-table entry of its own.
  */
 export interface CheckedFunction {
   readonly type: FunctionType;
-  readonly parameters: readonly Parameter[];
+  readonly parameters: readonly SignatureParameter[];
   readonly captures: readonly CapturedVariable[];
 }
 

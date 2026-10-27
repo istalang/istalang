@@ -23,7 +23,7 @@
  */
 
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Checker, ValueSite } from '../checker/check.ts';
+import type { Checker, SignatureParameter, ValueSite } from '../checker/check.ts';
 import {
   type Binding,
   type FunctionCall,
@@ -231,6 +231,25 @@ export function instanceName(checker: Checker, instance: FunctionInstance): stri
 export type ClosedCall =
   | ClosedFunctionCall
   | { readonly kind: 'dispatch'; readonly dispatch: Dispatch; readonly binding: Binding };
+
+/** The parameters of the function `called` runs, or of the required one a dispatch runs. */
+export function calledParameters(
+  checker: Pick<Checker, 'parametersOf'>,
+  called: ClosedCall,
+): readonly SignatureParameter[] {
+  const declaration =
+    called.kind === 'dispatch' ? called.dispatch.required : called.instance.declaration;
+  return checker.parametersOf(declaration);
+}
+
+/** How `call`'s function maps its type parameters: its instance's, or its dispatch's. */
+export function substitutionOfCall(call: ClosedCall): Substitution {
+  if (call.kind === 'function') {
+    return substitutionOf(call.instance);
+  }
+  const { required, typeArguments } = call.dispatch;
+  return substitutionFor(required.typeParameters, typeArguments);
+}
 
 /** A closed call of a function: its own entry's instance, and the call's binding. */
 export interface ClosedFunctionCall {

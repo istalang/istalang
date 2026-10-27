@@ -21,10 +21,15 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { SignatureParameter } from '../checker/check.ts';
 import type { CallSite, ImplicitRole } from '../checker/resolved-call.ts';
-import { type Substitution, substitute, substitutionFor } from '../checker/types/type.ts';
+import { substitute } from '../checker/types/type.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
-import { type ClosedCall, defaultEntryOf, substitutionOf } from './instances.ts';
+import {
+  type ClosedCall,
+  calledParameters,
+  defaultEntryOf,
+  substitutionOfCall,
+} from './instances.ts';
 import { packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */
@@ -94,7 +99,7 @@ function boundParameters(
   const parameters: (Register | Argument)[] = [];
   const passed = (index: number) =>
     toEmit.arguments[index] ?? unreachable(`Argument ${index} of a call isn't passed.`);
-  const declaredParameters = calledParameters(context, call);
+  const declaredParameters = calledParameters(context.checker, call);
   for (const [parameter, source] of call.binding.entries()) {
     switch (source.kind) {
       case 'argument':
@@ -169,25 +174,6 @@ function registerOf(argument: Register | Argument): Register {
     unreachable('A rest parameter collects values, never a place.');
   }
   return argument.register;
-}
-
-/** How `call`'s function maps its type parameters: its instance's, or its dispatch's. */
-function substitutionOfCall(call: ClosedCall): Substitution {
-  if (call.kind === 'function') {
-    return substitutionOf(call.instance);
-  }
-  const { required, typeArguments } = call.dispatch;
-  return substitutionFor(required.typeParameters, typeArguments);
-}
-
-/** The parameters of the function `called` runs, or of the required one a dispatch runs. */
-export function calledParameters(
-  context: Pick<CodeContext, 'checker'>,
-  called: ClosedCall,
-): readonly SignatureParameter[] {
-  const declaration =
-    called.kind === 'dispatch' ? called.dispatch.required : called.instance.declaration;
-  return context.checker.parametersOf(declaration);
 }
 
 /** A register's whole value passed by `&`. */

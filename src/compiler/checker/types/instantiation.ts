@@ -28,6 +28,10 @@ export function instantiatedBody(body: CheckedBody, substitution: Substitution):
         : {
             ...checked,
             type: substituteFunction(checked.type, substitution),
+            parameters: checked.parameters.map((parameter) => ({
+              ...parameter,
+              type: concrete(parameter.type),
+            })),
             captures: checked.captures.map((captured) => ({
               ...captured,
               type: concrete(captured.type),
