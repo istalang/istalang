@@ -43,7 +43,7 @@ export const valueTemplates = {
   receiverNotPlace: {
     code: 5210,
     message: (name: string) =>
-      `'${name}' changes its receiver, which must be a place: a variable, a field or element of one, or the value behind a shared struct.`,
+      `'${name}' changes its receiver, which must be a place: a variable, a field or element of one, or the value behind a shared struct, never a value read through '?.' or '?->', which is a copy.`,
   },
   recursiveField: {
     code: 5211,

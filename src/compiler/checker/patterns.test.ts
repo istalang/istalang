@@ -159,11 +159,13 @@ describe('optional operators', () => {
   });
 
   it.each([
-    ['right after the ?.', 'outer?.reset()'],
-    ['on a later link', 'plain?.inner.reset()'],
-  ])("refuses a '&self' method through a chain, %s", (_case, call) => {
+    ['right after the ?.', 'outer?.reset()', 'outer'],
+    ['on a later link', 'plain?.inner.reset()', 'plain?.inner'],
+  ])("refuses a '&self' method through a chain, %s, as no place", (_case, call, receiver) => {
     const lines = ['fn reset(self: &Inner): self.code = 0', ...chained, `  ${call}`];
-    expect(reported(lines.join('\n'))).toEqual(reportedOnce(reports.chainNotPlace.code, 'reset'));
+    expect(reported(lines.join('\n'))).toEqual(
+      reportedOnce(reports.receiverNotPlace.code, receiver),
+    );
   });
 });
 

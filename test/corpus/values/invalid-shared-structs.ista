@@ -6,7 +6,7 @@
 # error: 5221 at 32:35
 # error: 5406 at 33:19
 # error: 5220 at 35:17
-# error: 5407 at 37:15
+# error: 5210 at 37:3
 # A shared struct (§3.18) is built with `new`, and only one is; its fields are read through it
 # with `->`, never `.`; and its values have an identity, so they never leave their instance, nor
 # does compile time compute one into a top-level const, by itself or as a field's default (§3).

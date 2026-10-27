@@ -52,9 +52,4 @@ export const patternTemplates = {
     message: (found: string, operator: string) =>
       `${found} is optional: reach inside it with '${operator}' (§4).`,
   },
-  chainNotPlace: {
-    code: 5407,
-    message: () =>
-      "A value read through '?.' or '?->' is a copy, so it can't be assigned to or changed.",
-  },
 } as const;

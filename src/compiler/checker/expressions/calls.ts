@@ -139,7 +139,7 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
   if (candidates.length === 0) {
     context.report(
       methods.length > 0
-        ? checkerDiagnostics.chainNotPlace(callee.member.span)
+        ? checkerDiagnostics.receiverNotPlace(receiver.span, name)
         : checkerDiagnostics.noMember(callee.member.span, typeText(receiverType), name),
     );
     return errorType;
