@@ -1,6 +1,6 @@
 /**
- * A name read as a value, alone or as a namespace's member: the binder says which variable it is, and the register the variable
- * lives in holds its value (§3.4). A top-level constant lives in no register: its value was
+ * A name read as a value, alone or as a namespace's member: the binder says which variable it is,
+ * and the register the variable lives in holds its value (§3.4). A top-level constant lives in no register: its value was
  * computed while compiling (constants.ts). A variant named bare is a value of its enum
  * (variants.ts), and a struct without fields is a value of its own, written bare (§3.1). A top-level
  * function named as a value is a closure (closures.ts), and a local function or named lambda lives

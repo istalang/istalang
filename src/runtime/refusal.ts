@@ -4,9 +4,9 @@
  * was given for (§9), an instance the store doesn't hold or already holds, an operation its
  * status doesn't allow (filling a panicked one, retrying one that hasn't panicked), a snapshot whose
  * Definition the store lacks, a snapshot that doesn't fit its Definition, or a seed of the wrong
- * length from the host's `seed` seam. A host catches these, together with the FormatError an invalid or unknown-version
- * text raises (definition/format.ts), and reports them as the request failing. Anything else the
- * runtime throws is a bug, and propagates with its stack.
+ * length from the host's `seed` seam. A host catches these, together with the FormatError an
+ * invalid or unknown-version text raises (definition/format.ts), and reports them as the request
+ * failing. Anything else the runtime throws is a bug, and propagates with its stack.
  */
 
 export type RefusalReason =

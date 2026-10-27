@@ -19,7 +19,7 @@
  *   reach the host only then too (§3.8 `log`).
  * - Its random values are draws from the source its snapshot keeps (random-source.ts), counted
  *   from the draws committed before the segment, so a segment that runs again draws the same ones.
- *   Each instance it spawns is seeded with a draw.
+ *   Each instance it spawns is seeded with the first bytes of a draw.
  * - A mock this instance holds replaces its target for the calls it makes itself (`mockOf`); one an
  *   instance it descends from holds replaces it too, through the runtime running the test.
  * - The instance is its frames' heap (interpreter/machine.ts): a variable passed by `&` is a cell
@@ -41,7 +41,7 @@ import {
 import { resume } from '../interpreter/suspension.ts';
 import { isDisposable } from '../lifetimes/disposal.ts';
 import { heldFrom } from '../lifetimes/holders.ts';
-import { seedTextOf } from '../random-seed.ts';
+import { seedBytes, seedTextOf } from '../random-seed.ts';
 import {
   type Frame,
   type HeapObject,
@@ -236,7 +236,7 @@ export class Instance {
       name,
       call,
       crashEveryAwait: this.crashEveryAwait || crashEveryAwait,
-      seed: seedTextOf(this.draw()),
+      seed: seedTextOf(this.draw().subarray(0, seedBytes)),
     });
     return name;
   }
