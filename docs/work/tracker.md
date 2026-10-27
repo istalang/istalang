@@ -17,8 +17,8 @@ tags: [tracker]
 | M1 Syntax | done |
 | M2 Skeleton | done |
 | M3 Feature slices | done |
-| M4 Standard library | planned |
-| M5 Test runner | planned |
+| M4 Standard library | done |
+| M5 Test runner | done |
 | M6 Formatter | planned |
 | M7 Language service and LSP | planned |
 | M8 Packages | planned |
