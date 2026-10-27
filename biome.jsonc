@@ -60,13 +60,15 @@
     },
     {
       // A test's literals are its expectations, its describe blocks are tables rather than logic,
-      // and its inputs are deliberately odd strings.
+      // and its inputs are deliberately odd strings, Istalang sources among them, whose templates
+      // write `${…}` as JavaScript's do.
       "includes": ["**/*.test.ts", "**/*.test-kit.ts", "test/**"],
       "linter": {
         "rules": {
           "style": { "noMagicNumbers": "off" },
           "complexity": { "noExcessiveLinesPerFunction": "off" },
-          "security": { "noSecrets": "off" }
+          "security": { "noSecrets": "off" },
+          "suspicious": { "noTemplateCurlyInString": "off" }
         }
       }
     },

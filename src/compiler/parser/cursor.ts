@@ -103,9 +103,15 @@ export class Cursor {
   /** The `=` left of a `>=` whose `>` closed type arguments; it stands at `#index`. */
   #remainder: Token | undefined;
 
-  /** `tokens` must end with the `end` token, as a ScanResult's do. */
-  constructor(tokens: readonly Token[]) {
+  readonly #origin: number;
+
+  /**
+   * `tokens` must end with the `end` token, as a ScanResult's do. `origin` is where they start in
+   * the source: 0 for a file, after the `${` for a template's value.
+   */
+  constructor(tokens: readonly Token[], origin = 0) {
     this.#tokens = tokens;
+    this.#origin = origin;
   }
 
   get index(): number {
@@ -146,7 +152,7 @@ export class Cursor {
     if (this.#remainder !== undefined) {
       return this.#remainder.span.start;
     }
-    return this.#index === 0 ? 0 : this.#rawAt(this.#index - 1).span.end;
+    return this.#index === 0 ? this.#origin : this.#rawAt(this.#index - 1).span.end;
   }
 
   /** Consumes the next token. A line break or the end is never consumed: it is returned as is. */
@@ -300,6 +306,18 @@ export class Cursor {
   inBlock<Result>(column: number, parse: () => Result): Result {
     const { closer } = this.#current;
     return this.#inLineRegion({ lineBreaks: 'separate', closer, ownsCloser: false, column }, parse);
+  }
+
+  /** Runs `parse` where line breaks are ignored, as in brackets, though no closer ends it. */
+  ignoringLineBreaks<Result>(parse: () => Result): Result {
+    const region = {
+      lineBreaks: 'ignored',
+      start: this.#index,
+      closer: undefined,
+      ownsCloser: false,
+      column: undefined,
+    } as const;
+    return this.#inRegion(region, parse);
   }
 
   /** Runs `parse` inside a region where a line break, after its first token, ends it. */

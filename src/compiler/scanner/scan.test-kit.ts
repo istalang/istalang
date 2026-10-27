@@ -14,6 +14,7 @@ import fc from 'fast-check';
 import { soupOf } from '../../../test/soup.ts';
 import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
+import type { Span } from '../../text/span.ts';
 import { textOf } from '../../text/span.ts';
 import type { ScanResult, Token } from '../syntax/tokens.ts';
 import { scan } from './scan.ts';
@@ -52,15 +53,35 @@ function isTrivia(gap: string): boolean {
 }
 
 /**
+ * The spans a token covers itself. A template covers its delimiters and texts; the tokens of its
+ * values cover the code inside each `${…}`, as top-level tokens cover the rest.
+ */
+function coveredSpans(token: Token): readonly Span[] {
+  if (token.kind !== 'template') {
+    return [token.span];
+  }
+  const own: Span[] = [];
+  let from = token.span.start;
+  for (const value of token.values) {
+    own.push({ start: from, end: value.span.start + 2 });
+    from = value.tokens.at(-1)?.span.start ?? value.span.end;
+  }
+  own.push({ start: from, end: token.span.end });
+  const inner = token.values.flatMap((value) => value.tokens.flatMap(coveredSpans));
+  return [...own.filter((span) => span.end > span.start), ...inner];
+}
+
+/**
  * How a scan fails to cover its text exactly: overlaps, gaps holding more than whitespace, empty
  * tokens, a missing or misplaced end token. Empty when the scan is lossless.
  */
 export function losslessnessViolations(scanned: ScannedText): readonly string[] {
   const { text } = scanned.source;
   const violations: string[] = [];
-  const pieces = [...scanned.tokens, ...scanned.comments]
-    .map((piece) => piece.span)
-    .sort((left, right) => left.start - right.start || left.end - right.end);
+  const pieces = [
+    ...scanned.tokens.flatMap(coveredSpans),
+    ...scanned.comments.map((comment) => comment.span),
+  ].sort((left, right) => left.start - right.start || left.end - right.end);
   let covered = 0;
   for (const span of pieces) {
     if (span.start < covered) {
@@ -151,6 +172,14 @@ const fragments = [
   '\uFEFF',
   '\\',
   '`',
+  '`text ${x} more`',
+  '`${`${1}`}`',
+  '`a\\`b ${ {} } \\${`',
+  '`open ${',
+  '${',
+  '}',
+  '"""doc"""',
+  '"""',
 ];
 
 const separators = [' ', '', '\n', '\r\n', '\r', '\t', '  '];

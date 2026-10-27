@@ -131,6 +131,15 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2050,
     message: () => 'Named arguments come after the positional ones and spreads (§3.3).',
   },
+  emptyTemplateValue: {
+    code: 2100,
+    message: () => "A template's value holds an expression: write it inside the braces (§2).",
+  },
+  misplacedDocstring: {
+    code: 2101,
+    message: () =>
+      'A docstring stands first in the body of a function, struct, enum or trait, on the line after a declaration without one, or first in a module (§2).',
+  },
   misplacedLabel: {
     code: 2130,
     message: () =>

@@ -1,0 +1,38 @@
+# outcome: "documented"
+# Comments may stand before a module's docstring.
+"""
+Docstrings document a module, and its functions, structs, enums and traits, from the first line
+of their bodies, or from the line below a declaration without one (§2).
+"""
+
+struct Point:
+  """A point on the plane."""
+  x: int
+  y: int
+
+enum Shape:
+  """
+  What can be drawn.
+  """
+  Dot
+  Line
+
+trait Named:
+  """Has a name."""
+  fn name(self: Self) -> string
+    """The name, as people read it."""
+
+struct Empty { x: int }
+  """A struct in braces, documented below."""
+
+fn name(self: Point) -> string:
+  """Points are named by their coordinates."""
+  `${self.x},${self.y}`
+
+async fn main():
+  """Runs the program."""
+  const shape: Shape = Dot
+  const point = Point{x: 1, y: 2}
+  drop(shape)
+  drop(Empty{x: 1})
+  if point.name() == "1,2": "documented" else: "not"

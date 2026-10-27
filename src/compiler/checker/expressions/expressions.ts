@@ -44,6 +44,7 @@ import {
   memberAccepts,
   structLiteralAccepts,
 } from './structs.ts';
+import { checkTemplate } from './templates.ts';
 import { checkTuple, checkTupleElement, tupleAccepts } from './tuples.ts';
 import { checkNone, noneAccepted } from './variants.ts';
 
@@ -88,7 +89,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Spawn: checkSpawn,
   Unwrap: (context, node) => context.unsupported(node),
   ChainedComparison: (context, node) => context.unsupported(node),
-  TemplateLiteral: (context, node) => context.unsupported(node),
+  TemplateLiteral: checkTemplate,
   Dereference: checkDereference,
   Await: checkAwait,
   Is: checkIs,

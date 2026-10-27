@@ -289,7 +289,7 @@ export interface Range extends NodeOf<'Range'> {
  * `` `text ${value} text` ``, or `` tag`…` `` calling `tag` with the texts and the values. `texts` has
  * one more item than `values`: the text before each value, and the text after the last.
  */
-interface TemplateLiteral extends NodeOf<'TemplateLiteral'> {
+export interface TemplateLiteral extends NodeOf<'TemplateLiteral'> {
   readonly tag: Expression | undefined;
   readonly texts: readonly TemplateText[];
   readonly values: readonly Expression[];

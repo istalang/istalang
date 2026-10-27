@@ -19,7 +19,7 @@ drop audit.record(event)           # discard a must-use value right away
 const u = new Shared{value: user}  # a shared struct: a handle to its fields
 u->value.name = "x"                # read or write behind it with -> and *
 
-"text"  'text'  42  1_000  0x1F  3.14  true  false  none  5d  30s
+"text"  'text'  `a ${x}`  42  1_000  0x1F  3.14  true  false  none  5d  30s
 [1, 2]   ["a": 1]   [:]   [...xs, 3]   (1, "x")   0..10   0..=10
 
 int  float  bool  string  unit  never  T?  (A, B)
@@ -181,7 +181,18 @@ Duration literals are sugar for the standard library's `Duration`: an integer pl
 
 **Literals:**
 
-- **Strings:** `"…"` or `'…'` on a single line, with the escapes `\n`, `\t`, `\\`, `\"`, `\'` and `\u{…}`, which takes 1 to 6 hex digits naming a Unicode scalar value. Any other escape is a compile error.
+- **Strings:** `"…"` or `'…'` on a single line, with the escapes `\n`, `\t`, `\\`, `\"`, `\'`, `` \` ``, `\$` and `\u{…}`, which takes 1 to 6 hex digits naming a Unicode scalar value. Any other escape is a compile error.
+- **Templates:** `` `Purchase ${req.id} awaits ${who}` `` is a `string`. Each `${…}` holds an expression, whose value is written as text by its `toString`, found as an operator's function is (§3.9), so a program's own type, a type parameter that is `Stringable` and an `any Stringable` all work; a value with no such `toString` is a compile error. A template takes a string's escapes: `\${` writes `${`, and a `$` not before `{` is plain text. Inside `${…}` line breaks are ignored, as inside brackets, and a `#` comment runs to the end of its line. A template without values is a constant, as a string literal is. For text whose shape comes from data, `strings.format` remains (§3.8).
+- **Tagged templates:** `` tag`a ${x} b` `` is the call `tag(["a ", " b"], x)`: the texts, one more than the values, then each value. It is an ordinary call, so `tag` is any function, method or function value, and its parameters decide what the values must be, as `fn sql(parts: Array<string>, ...values: Array<any Stringable>)` takes any text-writable ones. A tag stands on the template's line, as a call's `(` does.
+- **Multi-line text:** a template, and a docstring (below), may span lines. A line break in it is `\n`, whichever the source uses. If the opening delimiter ends its line, that line break goes, and so does the one before a closing delimiter alone on its line, with the spaces before it. Then every line after the first loses the leading spaces they all share; blank lines don't count. Indentation is read before escapes are, so an escaped `\n` or `\t` is never a line break or indentation:
+
+```python statements
+const message = `
+    Dear ${name},
+      your order ${id} has shipped.
+    `
+# "Dear Ada,\n  your order 42 has shipped."
+```
 - **Numbers:** `42`, `1_000_000`, `0x1F` and `0b1010` for `int`; `3.14`, `1e9`, `2E6` and `2.5e-3` for `float`. A `_` stands only between digits, radix prefixes are lowercase, and there are no octal literals. A float has digits on both sides of its `.`, so `2.pow(10)` calls a method on the `int` `2`, and `0..10` is a range.
 - **`true`, `false` and `none`.**
 - **Arrays:** `[1, 2, 3]`, and `[]` when empty.
@@ -191,6 +202,22 @@ Duration literals are sugar for the standard library's `Duration`: an integer pl
 - **Ranges:** `3..5` covers 3 and 4 (half-open), `3..=5` includes 5, and either end may be left out: `..5`, `3..`.
 - **Structs and enum variants:** `Pair{first: 1, second: 2}`, `Rejected{by: "legal"}`, and `Ok{42}` for a type with a single field. A type without fields is just its name. `struct{value: 1}` is a struct literal whose type comes from context (§3.1).
 - **Lambdas:** `fn(x): x * 2` (§3.14).
+
+**Docstrings.** `"""…"""` says what a module, function, struct, enum or trait is for; tools show it, and the program never reads it. It is the first line of the declaration's indented body, or of a module, where only comments may come before it. A declaration without an indented body, such as an `extern fn`, a trait's requirement, an `extern struct` or a struct in braces, takes it on the next line, indented deeper. Fields, variants, aliases and constants take none, and a docstring anywhere else is a compile error. Its text is raw, with no escapes or values, ends at the first `"""`, and lays out its lines as a template does:
+
+```python
+trait Notifier:
+    """Sends a message to whoever a value stands for."""
+    fn notify(self: Self, text: string) -> unit
+        """Delivers `text`; nothing waits for an answer."""
+
+fn greet(name: string) -> string:
+    """
+    A greeting for `name`,
+    in one line.
+    """
+    `Hello ${name}`
+```
 
 **What each kind of bracket means.** `[…]` is for collections: array and map literals, indexing and slicing. `{…}` is for structured values and blocks: right after a name, a qualified name, type arguments or `struct` it constructs a value, in a type position it lists fields, and any other `{…}` in an expression is a block (§4). No construct puts a block right after a name, so the parser never needs to know what a name means; the compiler reports a name before `{` that isn't a struct or variant. `(…)` is for calls and conversions (§3.10), tuples and grouping. A map literal works for any type that satisfies `IndexAssignable<K, V>` and `Default` (§3.10), given an expected type `C`: `[k1: v1, k2: v2]` builds `C.default()` and assigns each entry with `c[k] = v`, and an empty `[]` or `[:]` builds just `C.default()`; a spread's entries are assigned the same way. Where a `Map` is expected, `[]` is an empty map. Without an expected type, `[k: v]` makes a `Map<K, V>`. An array literal's elements, and a map literal's keys and its values, each have one type, as the branches of an `if` do (§4): the expected type's decides when there is one, otherwise the first item's, so an empty `[]` or `[:]` needs an expected type. Of two equal keys in one map literal, the later one's value wins.
 
@@ -1542,6 +1569,5 @@ No open questions remain for v0.1. New ones go here as they come up.
 
 Features deliberately left out of v0.1:
 
-- **String interpolation.** JavaScript-style template literals, such as `` `Purchase ${req.id} awaits your review` ``.
 - **Narrowing from function results.** Type predicates, as in TypeScript, so that `fn isOk(x): x is Ok` can narrow a value's type for later code, for example a `map` after a `filter`. Inside one function, `x is Pattern` in an `if` or `and` already narrows.
 - **Force-unwrapping optionals.** A postfix `!`, as in Swift, yielding the value inside a `T?` and panicking on `none`.

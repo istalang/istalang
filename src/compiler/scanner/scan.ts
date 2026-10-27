@@ -11,6 +11,10 @@
  * This module owns the main loop: trivia, line starts, identifiers and unknown characters. Each
  * literal family lives in its own module. Characters that start no token are grouped into one
  * `unknown` token per run, so a pasted paragraph of prose costs one diagnostic, not one per letter.
+ *
+ * A template's values are code, scanned by the same loop up to the `}` that closes each: braces
+ * opened inside a value are counted, and anything else that could hold a `}` (strings, templates)
+ * is already one token. Their comments join the file's, in source order.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -30,6 +34,13 @@ import type { ScannedLexeme } from './lexeme.ts';
 import { scanNumber } from './numbers.ts';
 import { matchPunctuator } from './punctuators.ts';
 import { scanString } from './strings.ts';
+import { docstringDelimiter, type ScannedValue, scanDocstring, scanTemplate } from './templates.ts';
+
+/**
+ * How deeply template values may nest. Each level costs a few host stack frames, so this keeps
+ * scanning far from the stack's limit, as the parser's nesting limit does for parsing.
+ */
+const templateNestingLimit = 100;
 
 /** Splits a source into tokens, comments and diagnostics; never throws. */
 export function scan(source: SourceText): ScanResult {
@@ -38,27 +49,64 @@ export function scan(source: SourceText): ScanResult {
 
 class Scanner {
   readonly #text: string;
-  readonly #tokens: Token[] = [];
   readonly #comments: Comment[] = [];
   readonly #diagnostics: Diagnostic[] = [];
   #offset = 0;
   #lineHasToken = false;
   /** Offset of the first tab in the current line's leading whitespace (§2). */
   #indentationTab: number | undefined;
+  /** How many template values enclose the token being scanned. */
+  #valueDepth = 0;
 
   constructor(text: string) {
     this.#text = text;
   }
 
   run(): ScanResult {
+    const { tokens } = this.#scanTokens(false);
+    return { tokens, comments: this.#comments, diagnostics: this.#diagnostics };
+  }
+
+  /**
+   * Scans tokens to the end of the text or, for a template's value, to the `}` closing it, and
+   * adds the `end` token there.
+   */
+  #scanTokens(isValue: boolean): ScannedValue {
+    const tokens: Token[] = [];
+    let depth = 0;
     this.#skipTrivia();
     while (this.#offset < this.#text.length) {
-      this.#scanToken();
+      if (isValue && depth === 0 && this.#text[this.#offset] === '}') {
+        return { tokens: [...tokens, this.#endToken()], closed: true };
+      }
+      const token = this.#scanToken();
+      depth += braceChange[token.kind] ?? 0;
+      tokens.push(token);
       this.#skipTrivia();
     }
-    const end = this.#text.length;
-    this.#tokens.push({ kind: 'end', span: { start: end, end }, firstOnLine: true });
-    return { tokens: this.#tokens, comments: this.#comments, diagnostics: this.#diagnostics };
+    return { tokens: [...tokens, this.#endToken()], closed: false };
+  }
+
+  #endToken(): Token {
+    const end = this.#offset;
+    return { kind: 'end', span: { start: end, end }, firstOnLine: true };
+  }
+
+  /**
+   * Scans the value of a template from `from`; the main loop goes on where the template ends.
+   * Past the nesting limit, the value is refused and its `${` stays text.
+   */
+  #scanValue(from: number): ScannedValue | undefined {
+    if (this.#valueDepth >= templateNestingLimit) {
+      const span = { start: from - 2, end: from };
+      this.#diagnostics.push(scannerDiagnostics.templateNestingTooDeep(span, templateNestingLimit));
+      return undefined;
+    }
+    this.#offset = from;
+    this.#valueDepth += 1;
+    const value = this.#scanTokens(true);
+    this.#valueDepth -= 1;
+    return value;
   }
 
   /** Skips whitespace, line breaks and comments, tracking where lines start. */
@@ -93,7 +141,7 @@ class Scanner {
     this.#comments.push({ span: { start, end: this.#offset } });
   }
 
-  #scanToken(): void {
+  #scanToken(): Token {
     const start = this.#offset;
     const firstOnLine = !this.#lineHasToken;
     if (firstOnLine && this.#indentationTab !== undefined) {
@@ -103,8 +151,10 @@ class Scanner {
     this.#lineHasToken = true;
     const scanLexeme = this.#lexemeScannerAt(start);
     const lexeme = scanLexeme === undefined ? this.#scanUnknownRun(start) : scanLexeme();
-    this.#tokens.push({ ...lexeme.token, span: { start, end: lexeme.end }, firstOnLine });
+    // A template's values pass line breaks; the template still stands on the line it ends on.
+    this.#lineHasToken = true;
     this.#offset = lexeme.end;
+    return { ...lexeme.token, span: { start, end: lexeme.end }, firstOnLine };
   }
 
   /**
@@ -120,8 +170,14 @@ class Scanner {
     if (isDecimalDigit(char)) {
       return () => scanNumber(text, start, this.#diagnostics);
     }
+    if (text.startsWith(docstringDelimiter, start)) {
+      return () => scanDocstring(text, start, this.#diagnostics);
+    }
     if (isQuote(char)) {
       return () => scanString(text, start, this.#diagnostics);
+    }
+    if (char === '`') {
+      return () => scanTemplate(text, start, this.#diagnostics, (from) => this.#scanValue(from));
     }
     const punctuator = matchPunctuator(text, start);
     return punctuator === undefined
@@ -145,6 +201,9 @@ class Scanner {
     return { end, token: { kind: 'unknown' } };
   }
 }
+
+/** How a token changes the depth of braces a template's value has opened. */
+const braceChange: Partial<Record<Token['kind'], number>> = { '{': 1, '}': -1 };
 
 /** A keyword or an identifier. */
 function scanWord(text: string, start: number): ScannedLexeme {

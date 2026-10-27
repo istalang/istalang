@@ -21,13 +21,13 @@ import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
 import type { Block, VariableDeclaration } from './statements.ts';
 import type { FieldDeclaration, TypeNode } from './types.ts';
 
-/** `"""…"""`: what a declaration or module is for, as its first line says (§3.16); tools read it. */
-interface Docstring extends NodeOf<'Docstring'> {
+/** `"""…"""`: what a declaration or module is for, in its own words (§2); tools read it. */
+export interface Docstring extends NodeOf<'Docstring'> {
   readonly value: string;
 }
 
 /** What a docstring may describe; the field is absent without one. */
-interface Documented {
+export interface Documented {
   readonly doc?: Docstring;
 }
 
@@ -102,7 +102,10 @@ export function hasDefault(field: Field | Invalid): boolean {
 }
 
 /** `extern sendable struct Queue<T>`: a struct the host implements. */
-export interface ExternStructDeclaration extends NodeOf<'ExternStructDeclaration'>, Annotatable {
+export interface ExternStructDeclaration
+  extends NodeOf<'ExternStructDeclaration'>,
+    Annotatable,
+    Documented {
   readonly isSendable: boolean;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;

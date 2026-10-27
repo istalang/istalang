@@ -140,4 +140,8 @@ export type ImplicitRole =
   /** The `default()` a map literal of a type other than `Map` starts from (§2). */
   | 'default'
   /** Assigning an entry of such a map literal with `setIndex`. */
-  | 'insert';
+  | 'insert'
+  /** A template's value written as text with its `toString` (§2). */
+  | 'interpolate'
+  /** A template's texts and values joined into its string (§2). */
+  | 'join';

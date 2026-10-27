@@ -1,0 +1,25 @@
+# outcome: ["select ? from ?|2","hi x!",">a$b$","[1, 2]"]
+# A tagged template is the call it stands for: `tag(texts, values…)` through a function, a method or
+# a function value, so the tag's parameters decide what its values must be (§2).
+struct Query:
+  text: string
+  count: int
+
+fn sql(parts: Array<string>, ...values: Array<any Stringable>) -> Query:
+  Query{text: parts.join("?"), count: values.length()}
+
+fn greet(parts: Array<string>, name: string) -> string:
+  parts[0] + name + parts[1]
+
+struct Db:
+  prefix: string
+
+fn query(self: Db, parts: Array<string>, ...values: Array<int>) -> string:
+  self.prefix + parts.join("$")
+
+async fn main():
+  const id = 7
+  const q = sql`select ${id} from ${"t"}`
+  const db = Db{prefix: ">"}
+  const pair = fn(parts: Array<string>, first: int, second: int): `[${first}, ${second}]`
+  [`${q.text}|${q.count}`, greet`hi ${"x"}!`, db.query`a${1}b${2}`, pair`${1}${2}`]

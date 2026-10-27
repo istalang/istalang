@@ -1,9 +1,10 @@
 /**
  * The one walk over a top-level constant's initializer (§3): it decides what compile time computes
  * and computes it, in the same switch, so the two can't disagree. Compile time computes literals, a
- * negated number among them, duration literals, tuples, structs in every literal form (a spread
- * copying a computed struct's fields), a struct without fields written bare, arrays and maps of
- * `Map`, lambdas, which capture nothing at the top level (§3.14), and other top-level constants;
+ * negated number and a template without values among them, duration literals, tuples, structs in
+ * every literal form (a spread copying a computed struct's fields), a struct without fields written
+ * bare, arrays and maps of `Map`, lambdas, which capture nothing at the top level (§3.14), and
+ * other top-level constants;
  * anything else, a map literal of another type or a shared struct's `new` among them, is refused
  * where it stands.
  *
@@ -104,6 +105,11 @@ class Computation {
       case 'StringLiteral':
       case 'BooleanLiteral':
         return computed({ kind: 'primitive', value: node.value });
+      case 'TemplateLiteral':
+        // Only a template without values or a tag is its text, as a string literal is (§2).
+        return node.tag === undefined && node.values.length === 0
+          ? computed({ kind: 'primitive', value: node.texts[0]?.value ?? '' })
+          : refused(node);
       case 'DurationLiteral': {
         const type = this.#scope.checked.typeOf(node);
         return type.kind === 'nominal' ? computed(durationForm(type, node.value)) : unknown;

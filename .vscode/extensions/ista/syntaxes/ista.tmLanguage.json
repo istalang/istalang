@@ -24,6 +24,17 @@
     "string": {
       "patterns": [
         {
+          "name": "string.quoted.docstring.ista",
+          "begin": "\"\"\"",
+          "end": "\"\"\""
+        },
+        {
+          "name": "string.template.ista",
+          "begin": "`",
+          "end": "`",
+          "patterns": [{ "include": "#escape" }, { "include": "#interpolation" }]
+        },
+        {
           "name": "string.quoted.double.ista",
           "begin": "\"",
           "end": "\"|$",
@@ -37,11 +48,24 @@
         }
       ]
     },
+    "interpolation": {
+      "name": "meta.embedded.template-expression.ista",
+      "begin": "\\$\\{",
+      "end": "\\}",
+      "beginCaptures": { "0": { "name": "punctuation.definition.template-expression.begin.ista" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.template-expression.end.ista" } },
+      "patterns": [{ "include": "#braces" }, { "include": "$self" }]
+    },
+    "braces": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [{ "include": "#braces" }, { "include": "$self" }]
+    },
     "escape": {
       "patterns": [
         {
           "name": "constant.character.escape.ista",
-          "match": "\\\\([nt\\\\\"']|u\\{[0-9A-Fa-f]{1,6}\\})"
+          "match": "\\\\([nt\\\\\"'`$]|u\\{[0-9A-Fa-f]{1,6}\\})"
         },
         { "name": "invalid.illegal.escape.ista", "match": "\\\\." }
       ]

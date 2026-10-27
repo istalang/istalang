@@ -26,16 +26,22 @@
  * the next item of the block. One written on an item's line applies to that item, before it or
  * after it. Where items can't carry annotations (match and select cases), an annotation is
  * reported and kept as an Invalid node.
+ *
+ * Docstrings are placed here too (§2): first in a documented body or a module, or on the line right
+ * after a declaration without an indented body, deeper than the declaration. A docstring starting
+ * any other item is reported.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotation } from '../syntax/annotations.ts';
+import type { Docstring } from '../syntax/declarations.ts';
 import type { Invalid } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import { parseAnnotations } from './annotations.ts';
 import type { CursorKind } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
+import { misplacedDocstring, parseDocstring } from './docstrings.ts';
 import type { Parser } from './parser.ts';
 import {
   atRegionEnd,
@@ -67,6 +73,10 @@ export interface Body<Item> {
   readonly span: Span;
 }
 
+export interface DocumentedBody<Item> extends Body<Item> {
+  readonly doc: Docstring | undefined;
+}
+
 /**
  * The body after a construct's `:`. `headerStart` is where the construct starts: an indented
  * body must be deeper than that line.
@@ -76,6 +86,38 @@ export function parseBody<Item extends SyntaxNode>(
   rules: ItemRules<Item>,
   headerStart: number,
 ): Body<Item> {
+  return parseBodyOf(parser, rules, headerStart, false);
+}
+
+/** The body after a declaration's `:`, whose first line may be its docstring when indented. */
+export function parseDocumentedBody<Item extends SyntaxNode>(
+  parser: Parser,
+  rules: ItemRules<Item>,
+  headerStart: number,
+): DocumentedBody<Item> {
+  return parseBodyOf(parser, rules, headerStart, true);
+}
+
+/**
+ * The docstring of a declaration without an indented body, starting at `headerStart`: on the next
+ * line, deeper than the declaration's, and first there.
+ */
+export function parseDocstringBelow(parser: Parser, headerStart: number): Docstring | undefined {
+  const { cursor } = parser;
+  const next = cursor.lineStart;
+  if (next?.kind !== 'docstring' || parser.columnOf(next) <= parser.indentationAt(headerStart)) {
+    return undefined;
+  }
+  cursor.crossLineBreak();
+  return parseDocstring(parser);
+}
+
+function parseBodyOf<Item extends SyntaxNode>(
+  parser: Parser,
+  rules: ItemRules<Item>,
+  headerStart: number,
+  isDocumented: boolean,
+): DocumentedBody<Item> {
   const { cursor } = parser;
   const next = cursor.lineStart;
   if (next !== undefined) {
@@ -84,8 +126,9 @@ export function parseBody<Item extends SyntaxNode>(
       return emptyBody(parser);
     }
     return cursor.inBlock(column, () => {
+      const doc = isDocumented ? parseDocstring(parser) : undefined;
       const { items } = parseLines(parser, rules);
-      return { items, span: spanOfItems(parser, items) };
+      return { items, span: spanOfItems(parser, items), doc };
     });
   }
   if (cursor.at(';') || atRegionEnd(parser)) {
@@ -95,7 +138,7 @@ export function parseBody<Item extends SyntaxNode>(
   if (cursor.at(';')) {
     parser.report(parserDiagnostics.semicolonAfterInlineBody(cursor.token.span));
   }
-  return { items, span: spanOfItems(parser, items) };
+  return { items, span: spanOfItems(parser, items), doc: undefined };
 }
 
 /** One item on its line with the annotations there, as a one-line body: never any pending. */
@@ -107,17 +150,23 @@ function parseAnnotatedItems<Item extends SyntaxNode>(
   return [...step.items, ...rejectAnnotations(parser, step.pending, danglingAnnotation)];
 }
 
-/** A module: the block at column 0, whose first line, unlike a body's, may start too deep. */
+/**
+ * A module: the block at column 0, whose first line, unlike a body's, may start too deep, and may
+ * be the module's docstring.
+ */
 export function parseModuleLines<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
-): Items<Item> {
+): { readonly items: Items<Item>; readonly doc: Docstring | undefined } {
   const { cursor } = parser;
   const { token } = cursor;
   if (token.kind !== 'end' && parser.columnOf(token) > 0) {
     parser.report(parserDiagnostics.unexpectedIndent(token.span));
   }
-  return cursor.inBlock(0, () => parseLines(parser, rules).items);
+  return cursor.inBlock(0, () => {
+    const doc = parseDocstring(parser);
+    return { items: parseLines(parser, rules).items, doc };
+  });
 }
 
 /**
@@ -195,7 +244,7 @@ function parseLineItem<Item extends SyntaxNode>(
   if (before.length > 0 && (parser.cursor.at(';') || atRegionEnd(parser))) {
     return { items: [], pending: [...pending, ...before] };
   }
-  const item = rules.parseItem(parser);
+  const item = parser.cursor.at('docstring') ? misplacedDocstring(parser) : rules.parseItem(parser);
   const annotations = { leading: [...pending, ...before], trailing: parseAnnotations(parser) };
   return { items: annotate(parser, rules, item, annotations), pending: [] };
 }
@@ -258,7 +307,8 @@ function moveToItem(parser: Parser): boolean {
   const next = cursor.lineStart;
   if (next !== undefined) {
     const place = placeOfNextLine(parser, next);
-    if (place === 'deeper') {
+    // A deeper docstring reads as one below the item before; it is reported as misplaced instead.
+    if (place === 'deeper' && next.kind !== 'docstring') {
       parser.report(parserDiagnostics.unexpectedIndent(next.span));
     } else if (place === 'strayDedent') {
       parser.report(parserDiagnostics.inconsistentDedent(next.span));
@@ -353,7 +403,7 @@ function spanOfItems(parser: Parser, items: Items<SyntaxNode>): Span {
 }
 
 /** A body that isn't there: reported where it should start. */
-function emptyBody<Item>(parser: Parser): Body<Item> {
+function emptyBody<Item>(parser: Parser): DocumentedBody<Item> {
   parser.report(parserDiagnostics.expectedIndentedBlock(parser.nextSpan, parser.describeNext()));
-  return { items: [], span: spanOfItems(parser, []) };
+  return { items: [], span: spanOfItems(parser, []), doc: undefined };
 }

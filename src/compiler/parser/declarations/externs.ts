@@ -1,7 +1,8 @@
 /**
  * Extern declarations (§3.6, §3.8): what the host implements. After `extern` comes a function, a
  * struct (which may be `sendable`), or a constant, written `name: Type` with no value.
- * `sendable` is a keyword only right after `extern` (§2).
+ * `sendable` is a keyword only right after `extern` (§2). An extern struct's docstring stands on
+ * the line below it.
  */
 
 import type {
@@ -9,6 +10,8 @@ import type {
   ExternStructDeclaration,
   FunctionDeclaration,
 } from '../../syntax/declarations.ts';
+import { documentedBy } from '../docstrings.ts';
+import { parseDocstringBelow } from '../layout.ts';
 import type { Parser } from '../parser.ts';
 import { parseFunction } from './functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';
@@ -42,6 +45,14 @@ function parseExternStruct(
   parser.expect('struct');
   const name = parser.identifier('a type name');
   const typeParameters = parseTypeParameters(parser);
+  const doc = parseDocstringBelow(parser, start);
   const span = parser.spanFrom(start);
-  return { kind: 'ExternStructDeclaration', span, isSendable, name, typeParameters };
+  return {
+    kind: 'ExternStructDeclaration',
+    span,
+    isSendable,
+    name,
+    typeParameters,
+    ...documentedBy(doc),
+  };
 }

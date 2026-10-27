@@ -4,15 +4,18 @@
  *
  * The forms differ only in their body. A defined function needs one, a trait's requirement may
  * omit it, and an extern function must not have one: the host implements it. A body written on
- * an extern function is reported but kept, so the tree shows what was written.
+ * an extern function is reported but kept, so the tree shows what was written. A function's
+ * docstring is the first line of its body, or the line below a function without one (§2).
  */
 
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { Docstring, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Block } from '../../syntax/statements.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
+import { documentedBy } from '../docstrings.ts';
+import { parseDocstringBelow } from '../layout.ts';
 import type { Parser } from '../parser.ts';
-import { parseStatementBody } from '../parts/blocks.ts';
+import { parseDocumentedStatementBody } from '../parts/blocks.ts';
 import { parseFunctionKeyword } from '../parts/functions.ts';
 import { parseParameters } from '../parts/parameters.ts';
 import { parseTypeParameters } from './type-parameters.ts';
@@ -32,7 +35,10 @@ export function parseFunction(
   const hasParameters = cursor.at('(');
   const parameters = hasParameters ? parseParameters(parser) : missingParameters(parser);
   const returnType = cursor.eat('->') === undefined ? undefined : parser.type();
-  const body = parseFunctionBody(parser, form, { start, signatureIsComplete: hasParameters });
+  const { body, doc } = parseFunctionBody(parser, form, {
+    start,
+    signatureIsComplete: hasParameters,
+  });
   return {
     kind: 'FunctionDeclaration',
     span: parser.spanFrom(start),
@@ -44,6 +50,7 @@ export function parseFunction(
     parameters,
     returnType,
     body,
+    ...documentedBy(doc),
   };
 }
 
@@ -72,22 +79,23 @@ function missingParameters(parser: Parser): [] {
 }
 
 /**
- * The body after `:`, if any. A missing body is reported only for a defined function whose
+ * The body after `:`, if any, and the function's docstring: first in the body, or on the line
+ * after a function without one (§2). A missing body is reported only for a defined function whose
  * signature is complete: a broken signature has already been reported.
  */
 function parseFunctionBody(
   parser: Parser,
   form: FunctionForm,
   { start, signatureIsComplete }: { readonly start: number; readonly signatureIsComplete: boolean },
-): Block | undefined {
+): { readonly body: Block | undefined; readonly doc: Docstring | undefined } {
   const required = form === 'defined' && signatureIsComplete;
   const colon = required ? parser.expect(':') : parser.cursor.eat(':');
   if (colon === undefined) {
-    return undefined;
+    return { body: undefined, doc: parseDocstringBelow(parser, start) };
   }
-  const body = parseStatementBody(parser, start);
+  const documented = parseDocumentedStatementBody(parser, start);
   if (form === 'extern') {
-    parser.report(parserDiagnostics.externWithBody(body.span));
+    parser.report(parserDiagnostics.externWithBody(documented.body.span));
   }
-  return body;
+  return documented;
 }

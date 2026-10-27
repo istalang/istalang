@@ -111,6 +111,14 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - where a docstring stands (default: the first line of a function, struct, enum or trait body, or of a module);
   - field docstrings (default: no);
   - `strings.format` kept for templates from data (default: yes).
+- **Decided in L6 (human, 2026-10-28), all defaults:**
+  - one layout rule for templates and docstrings: a raw line break is `\n`; an opening delimiter ending its line drops that line, a closing one alone on its line drops its line; the lines after the first lose their shared indentation, blank lines aside, decided before escapes;
+  - one escape list for strings and templates, adding `` \` `` and `\$`;
+  - a value's `toString` is found as an operator's function is; line breaks in `${…}` are ignored, a `#` comment there runs to the line's end;
+  - a template without values is a constant; `` tag`…` `` is the ordinary call `tag(texts, ...values)`, decoded texts only;
+  - docstrings are `"""` only and raw; first line of a function, struct, enum or trait body or of a module, or the indented line below a declaration without an indented body; fields, variants, aliases and constants take none; anywhere else is a parse error;
+  - `strings.format` stays.
+- **Landed differently:** the scanner keeps each `${…}` value's tokens in the template token and the parser parses those (`Parser.withinTemplateValue`), rather than re-scanning each body: one scan, one report of its diagnostics.
 
 ## F10 Patterns: or, array, range
 

@@ -157,6 +157,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
 | `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; derived codecs are compiled from the checker's derived forms, which read them |
 | Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` an `Optional` variant |
+| Template (§2) | without values, its text's `constant`; otherwise each value's `toString` call, in order, an `array` of the non-empty texts and those, and a call to the prelude's `join` with `""`; a tagged template is the call it stands for, its texts an `array` of constants |
+| Docstring (§2) | nothing: tools read it from the tree |
 | Array literal and spread (§2) | `array` with item and spread elements; a spread of an array is a spread element, which copies it, and any other spread the loop `for` runs over its operand, each item appended with `array` to what the elements before it built |
 | Map literal (§2) | `map` for a `Map`: a spread of a map is a spread entry, which copies its entries, and any other spread the loop `for` runs, each `(key, value)` item an entry added with `map` to what the entries before it built; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
 | Tuple, `()` (§3.15) | `tuple`; `()` is the unit constant |

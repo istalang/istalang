@@ -20,6 +20,8 @@ const namedEscapes: Readonly<Record<string, string>> = {
   '\\': '\\\\',
   '"': '\\"',
   "'": "\\'",
+  '`': '\\`',
+  $: '\\$',
 };
 
 /** Writes `value` as a string literal, escaping what must be and, by choice, other characters. */
@@ -100,7 +102,7 @@ describe('malformed strings', () => {
   it('lists the valid escapes in its message', () => {
     const [diagnostic] = scanText('"\\q"').diagnostics;
     expect(diagnostic?.message).toBe(
-      "Invalid escape sequence '\\q'. Valid escapes are \\n, \\t, \\\\, \\\", \\', \\u{…}.",
+      "Invalid escape sequence '\\q'. Valid escapes are \\n, \\t, \\\\, \\\", \\', \\`, \\$, \\u{…}.",
     );
   });
 });

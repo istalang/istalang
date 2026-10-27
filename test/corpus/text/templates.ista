@@ -1,0 +1,26 @@
+# outcome: ["plain","a world b","Hello world!\n  point (1, 2)\ndone 1.5 true","nested 1","x is 3 of 7","`${not a value}`","between"]
+# A template writes each value with its toString, found as an operator's function is, so a type's
+# own `toString`, a type parameter's requirement and an `any Stringable` all work; a multi-line
+# one loses the line its backtick ends and the indentation its lines share (§2).
+struct Point:
+  x: int
+  y: int
+
+fn toString(self: Point) -> string:
+  `(${self.x}, ${self.y})`
+
+fn describe<T is Stringable>(value: T, of: any Stringable) -> string:
+  `x is ${value} of ${of}`
+
+const constant = `between`
+
+async fn main():
+  const name = "world"
+  const point = Point{x: 1, y: 2}
+  const multi = `
+    Hello ${name}!
+      point ${point}
+    done ${1.5} ${true}
+    `
+  const escaped = `\`\${not a value}\``
+  [`plain`, `a ${name} b`, multi, `${`nested ${point.x}`}`, describe(3, 7), escaped, constant]

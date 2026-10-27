@@ -1,0 +1,28 @@
+# error: 5026 at 21:18
+# error: 5060 at 25:23
+# error: 5060 at 26:15
+# error: 2100 at 27:15
+# error: 5001 at 28:20
+# A template's values need a toString that gives a string, and a value inside their braces (§2). A
+# tagged template is a call, so its values must fit the tag's parameters; a template with values
+# isn't computed at compile time (§3).
+struct Opaque:
+  x: int
+
+struct Odd:
+  x: int
+
+fn toString(self: Odd) -> int:
+  self.x
+
+fn tag(parts: Array<string>, value: int) -> string:
+  parts[0]
+
+const computed = `a ${1}`
+
+fn main():
+  const opaque = Opaque{x: 1}
+  drop(`no text for ${opaque}`)
+  drop(`odd ${Odd{x: 1}}`)
+  drop(`empty ${}`)
+  drop(tag`wrong ${"text"}`)

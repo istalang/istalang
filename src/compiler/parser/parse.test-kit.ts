@@ -176,6 +176,10 @@ const tokenFragments = [
   'struct',
   'match',
   '!',
+  '`t ${a} u`',
+  '`${',
+  '`',
+  '"""doc"""',
 ];
 
 const separators = [' ', '', '\n', '\n    '];
@@ -183,5 +187,8 @@ const separators = [' ', '', '\n', '\n    '];
 /** Random token sequences, valid and broken, with line breaks between some of them. */
 export const tokenSoup = soupOf(tokenFragments, separators, 30);
 
-/** A token soup with no `(` or `)`, so a surrounding call's parentheses are the only ones. */
-export const parenFreeSoup = tokenSoup.map((text) => text.replaceAll(/[()]/gu, ' '));
+/**
+ * A token soup with no `(` or `)`, so a surrounding call's parentheses are the only ones, and no
+ * backtick: a template left open runs to the end of the text, past any closer (§2).
+ */
+export const parenFreeSoup = tokenSoup.map((text) => text.replaceAll(/[()`]/gu, ' '));

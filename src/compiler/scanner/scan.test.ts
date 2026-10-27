@@ -141,7 +141,6 @@ describe('unknown characters', () => {
   it.each([
     ['€', '€'],
     ['😀', '😀'],
-    ['`', '`'],
     ['\\', '\\'],
   ])('reports %j as one unexpected run', (input, spanText) => {
     expect(scanMalformed(input)).toEqual(

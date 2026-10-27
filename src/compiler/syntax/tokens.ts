@@ -18,6 +18,10 @@
  *
  * Literal tokens carry their decoded value. The scanner already validates digits and escapes while
  * finding a literal's end, so decoding there keeps that knowledge in one place.
+ *
+ * A template is one token. Finding where a `${…}` ends means scanning the code inside it, so its
+ * tokens are kept in the template token rather than scanned again by the parser; tokens at the top
+ * level stay flat, and only a template's own values nest.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -130,7 +134,7 @@ export type Keyword = (typeof keywords)[number];
 export type Punctuator = (typeof punctuators)[number];
 
 /** A token whose value is decoded from its text. */
-type LiteralKind = 'integer' | 'float' | 'duration' | 'string';
+type LiteralKind = 'integer' | 'float' | 'duration' | 'string' | 'template' | 'docstring';
 
 /** `unknown` covers characters that start no token; `end` is the empty token at end of input. */
 export type TokenKind = Keyword | Punctuator | LiteralKind | 'identifier' | 'unknown' | 'end';
@@ -146,9 +150,29 @@ export type Token =
   /** `integer` holds its value; `duration` holds milliseconds (`5d` is 432_000_000n). */
   | (TokenOf<'integer' | 'duration'> & { readonly value: bigint })
   | (TokenOf<'float'> & { readonly value: number })
-  /** The decoded text, escapes resolved. */
-  | (TokenOf<'string'> & { readonly value: string })
+  /** The decoded text: a string's escapes resolved, a docstring's lines laid out (§2). */
+  | (TokenOf<'string' | 'docstring'> & { readonly value: string })
+  /** `texts` has one more item than `values`: the text before each value, and the text after. */
+  | (TokenOf<'template'> & {
+      readonly texts: readonly TemplateTextPart[];
+      readonly values: readonly TemplateValue[];
+    })
   | TokenOf<Keyword | Punctuator | 'identifier' | 'unknown' | 'end'>;
+
+/** A template's text between two values, or before the first or after the last; decoded. */
+interface TemplateTextPart {
+  readonly span: Span;
+  readonly value: string;
+}
+
+/**
+ * A template's `${…}`: from `${` through its `}`, or to where scanning stopped without one. Its
+ * value is scanned once, here, so its tokens end with one `end` token where the `}` stands.
+ */
+export interface TemplateValue {
+  readonly span: Span;
+  readonly tokens: readonly Token[];
+}
 
 /** A `#` comment, up to but excluding its line break. */
 export interface Comment {

@@ -13,6 +13,7 @@
 
 import type { Declaration, Module } from '../../syntax/declarations.ts';
 import { attachAnnotations } from '../annotations.ts';
+import { documentedBy } from '../docstrings.ts';
 import { type ItemRules, parseModuleLines } from '../layout.ts';
 import type { Parser } from '../parser.ts';
 import { parseModuleItem } from '../parts/items.ts';
@@ -68,9 +69,9 @@ function topLevelKeyword(parser: Parser): TopLevelKeyword | undefined {
 
 /** A whole source file: declarations at column 0. */
 export function parseModule(parser: Parser): Module {
-  const items = parseModuleLines(parser, moduleRules);
+  const { items, doc } = parseModuleLines(parser, moduleRules);
   const { end } = parser.cursor.token.span;
-  return { kind: 'Module', span: { start: 0, end }, items };
+  return { kind: 'Module', span: { start: 0, end }, items, ...documentedBy(doc) };
 }
 
 const moduleRules: ItemRules<Declaration> = {

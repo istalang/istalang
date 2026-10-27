@@ -50,4 +50,21 @@ export const scannerDiagnostics = defineDiagnostics('scanner', {
     code: 1010,
     message: () => 'Indentation must use spaces, not tabs.',
   },
+  unterminatedTemplate: {
+    code: 1011,
+    message: () => 'Unterminated template: no ` closes it.',
+  },
+  unterminatedTemplateValue: {
+    code: 1012,
+    message: () => "Unterminated template value: no '}' closes it.",
+  },
+  unterminatedDocstring: {
+    code: 1013,
+    message: () => 'Unterminated docstring: no """ closes it.',
+  },
+  templateNestingTooDeep: {
+    code: 1014,
+    message: (limit: number) =>
+      `Templates nest more than ${limit} deep here; this value is read as text.`,
+  },
 });

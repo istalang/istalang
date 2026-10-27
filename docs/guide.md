@@ -328,7 +328,7 @@ fn suite() -> Array<Test>: [
 - `if x: a; b` is an error, since readers would expect both in the body. Write `if x: { a; b }`.
 - `??` mixed with `and` or `or` needs parentheses.
 - `f<A>(x)` parses as type arguments, so a comparison that looks like one needs parentheses: `(a < b) > c`.
-- These are missing in v0.1: string interpolation (write `"id: " + id`), `try`/`catch`, force-unwrap `!` and top-level statements.
+- These are missing in v0.1: `try`/`catch`, force-unwrap `!` and top-level statements. Strings interpolate with templates: `` `id: ${id}` ``.
 
 **Values and mutation**
 - A `const` is deeply immutable (`const xs = []; xs.push(1)` is an error), but a handle behind it still changes: `const u = new Lease{…}; u->name = "x"` is fine.

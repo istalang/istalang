@@ -25,6 +25,7 @@ import { lowerBinary, lowerUnary } from './operators.ts';
 import { lowerPropagate } from './propagate.ts';
 import { lowerSelect } from './select.ts';
 import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
+import { lowerTemplate } from './templates.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
 import { isEnum, lowerNone, lowerVariantLiteral } from './variants.ts';
 
@@ -60,7 +61,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Spawn: lowerSpawn,
   Unwrap: notLowered,
   ChainedComparison: notLowered,
-  TemplateLiteral: notLowered,
+  TemplateLiteral: lowerTemplate,
   Dereference: lowerDereference,
   Await: lowerAwait,
   Is: lowerIs,

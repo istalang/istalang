@@ -26,7 +26,7 @@ import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { Statement } from '../syntax/statements.ts';
-import type { ContextualWord, Token, TokenKind } from '../syntax/tokens.ts';
+import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { Cursor } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
@@ -65,7 +65,9 @@ export interface Grammar {
 export const nestingLimit = 200;
 
 export class Parser {
-  readonly cursor: Cursor;
+  #cursor: Cursor;
+  /** The `end` token's reading in a message: the input's end, or a template value's `}`. */
+  #endReading = 'the end of the input';
   readonly #source: SourceText;
   readonly #grammar: Grammar;
   readonly #diagnostics: Diagnostic[] = [];
@@ -73,9 +75,28 @@ export class Parser {
   #nesting = 0;
 
   constructor(source: SourceText, tokens: readonly Token[], grammar: Grammar) {
-    this.cursor = new Cursor(tokens);
+    this.#cursor = new Cursor(tokens);
     this.#source = source;
     this.#grammar = grammar;
+  }
+
+  get cursor(): Cursor {
+    return this.#cursor;
+  }
+
+  /**
+   * Runs `parse` over a template value's own tokens (syntax/tokens.ts), whose `end` stands where
+   * its `}` does; line breaks there are ignored, as in brackets (§2).
+   */
+  withinTemplateValue<Result>(value: TemplateValue, parse: () => Result): Result {
+    const outer = this.#cursor;
+    const outerReading = this.#endReading;
+    this.#cursor = new Cursor(value.tokens, value.span.start + 2);
+    this.#endReading = "'}'";
+    const result = this.#cursor.ignoringLineBreaks(parse);
+    this.#cursor = outer;
+    this.#endReading = outerReading;
+    return result;
   }
 
   get diagnostics(): readonly Diagnostic[] {
@@ -242,7 +263,11 @@ export class Parser {
       case 'lineBreak':
         return 'the end of the line';
       case 'end':
-        return 'the end of the input';
+        return this.#endReading;
+      case 'template':
+        return 'a template';
+      case 'docstring':
+        return 'a docstring';
       case 'identifier':
         return `name '${this.textOf(this.cursor.token)}'`;
       case 'integer':

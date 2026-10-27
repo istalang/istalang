@@ -21,6 +21,7 @@ import {
   unaryOperators,
 } from '../../syntax/operators.ts';
 import type { CursorKind } from '../cursor.ts';
+import { misplacedDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';
 import { parseLiteral, parseName, parseParenthesized } from './atoms.ts';
 import { parseBlockExpression, parseIf, parseMatch, parseSelect } from './branches.ts';
@@ -51,6 +52,7 @@ import {
   unwrapParselet,
 } from './postfix.ts';
 import { parseAnonymousStructLiteral } from './struct-literals.ts';
+import { parseTemplate, templateParselet } from './templates.ts';
 
 const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   identifier: parseName,
@@ -58,6 +60,8 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   float: parseLiteral,
   duration: parseLiteral,
   string: parseLiteral,
+  template: parseTemplate,
+  docstring: misplacedDocstring,
   true: parseLiteral,
   false: parseLiteral,
   none: parseLiteral,
@@ -112,6 +116,7 @@ const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
   '?': propagateParselet,
   '!': unwrapParselet,
   '{': structLiteralParselet,
+  template: templateParselet,
 };
 
 /** An expression whose operators all bind at least as tightly as `minLevel`. */

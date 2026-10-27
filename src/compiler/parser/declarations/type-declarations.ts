@@ -10,6 +10,7 @@
 
 import type {
   DeclaredField,
+  Docstring,
   EnumDeclaration,
   FunctionDeclaration,
   StructDeclaration,
@@ -20,7 +21,14 @@ import type {
 import type { Invalid } from '../../syntax/node.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
-import { type ItemRules, type Items, parseBody, parseItemEntries } from '../layout.ts';
+import { documentedBy } from '../docstrings.ts';
+import {
+  type ItemRules,
+  type Items,
+  parseDocstringBelow,
+  parseDocumentedBody,
+  parseItemEntries,
+} from '../layout.ts';
 import type { Parser } from '../parser.ts';
 import { declaredFieldRules, parseField } from '../parts/structs.ts';
 import { parseFunction } from './functions.ts';
@@ -39,23 +47,31 @@ export function parseSharedStruct(parser: Parser): StructDeclaration {
 /** A struct declaration from its `struct`, which starts at `start` with what precedes it. */
 function parseStructFrom(parser: Parser, start: number, isShared: boolean): StructDeclaration {
   const { name, typeParameters } = parseTypeHead(parser);
-  const fields = parseMembers(parser, declaredFieldRules, start);
+  const { items: fields, doc } = parseMembers(parser, declaredFieldRules, start);
   const span = parser.spanFrom(start);
-  return { kind: 'StructDeclaration', span, isShared, name, typeParameters, fields };
+  return {
+    kind: 'StructDeclaration',
+    span,
+    isShared,
+    name,
+    typeParameters,
+    fields,
+    ...documentedBy(doc),
+  };
 }
 
 export function parseEnum(parser: Parser): EnumDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
-  const variants = parseMembers(parser, variantRules, start);
+  const { items: variants, doc } = parseMembers(parser, variantRules, start);
   const span = parser.spanFrom(start);
-  return { kind: 'EnumDeclaration', span, name, typeParameters, variants };
+  return { kind: 'EnumDeclaration', span, name, typeParameters, variants, ...documentedBy(doc) };
 }
 
 export function parseTrait(parser: Parser): TraitDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
-  const members = parseMembers(parser, traitMemberRules, start);
+  const { items: members, doc } = parseMembers(parser, traitMemberRules, start);
   const span = parser.spanFrom(start);
-  return { kind: 'TraitDeclaration', span, name, typeParameters, members };
+  return { kind: 'TraitDeclaration', span, name, typeParameters, members, ...documentedBy(doc) };
 }
 
 /** `type Name<T> = Type`, starting at `type`, which is a keyword only here (§2). */
@@ -73,15 +89,23 @@ function parseTypeHead(parser: Parser) {
   return { start, name, typeParameters: parseTypeParameters(parser) };
 }
 
-/** An indented block or one-line braces of members, or none. */
+/**
+ * An indented block or one-line braces of members, or none, and the declaration's docstring: first
+ * in the block, or on the line below a declaration without one (§2).
+ */
 function parseMembers<
   Item extends DeclaredField | FieldDeclaration | Variant | FunctionDeclaration,
->(parser: Parser, rules: ItemRules<Item>, headerStart: number): Items<Item> {
+>(
+  parser: Parser,
+  rules: ItemRules<Item>,
+  headerStart: number,
+): { readonly items: Items<Item>; readonly doc: Docstring | undefined } {
   const { cursor } = parser;
   if (cursor.eat(':') !== undefined) {
-    return parseBody(parser, rules, headerStart).items;
+    return parseDocumentedBody(parser, rules, headerStart);
   }
-  return cursor.at('{') ? parseItemEntries(parser, rules).value : [];
+  const items = cursor.at('{') ? parseItemEntries(parser, rules).value : [];
+  return { items, doc: parseDocstringBelow(parser, headerStart) };
 }
 
 /** `Expired`, or `Rejected { by: string; reason: string }`. */
