@@ -1089,7 +1089,7 @@ async fn worker(jobs: Inbox<Job>):
 
 - **Cleanup runs inside the disposal.** When the call's last holder releases it, the runtime resolves its `disposing()` future. If the call is suspended where it can resume on that future (awaiting it, or in a `select` with a case for it), it resumes at once, in the same segment as the disposal, and that case wins over any other.
 - **The next `await` aborts.** After disposal, the first `await` the call reaches stops it, and its variables are released. A call that never watches `disposing()`, or isn't waiting on it at that moment, is stopped right where it is suspended.
-- **Cleanup can't wait.** Because the next `await` aborts the call, cleanup is synchronous by construction, and the compiler warns about an `await` inside a `disposing()` case.
+- **Cleanup can't wait.** Because the next `await` aborts the call, cleanup is synchronous by construction. Cleanup is decided by the future: whatever the call is suspended on, if it is the call's `disposing()` future, it resumes as cleanup. The compiler warns about an `await` inside a `select` case written as `worker.disposing()`; one held in a variable is the same future, but gets no warning.
 - **Lexical.** `worker.disposing()` always refers to the enclosing call of `worker`, also from a nested local function, so nested functions are never ambiguous. It is a compile error outside an `async fn` of that name, and for `main`, which nothing holds.
 - **Calls nothing can dispose.** An instance's root call, such as a spawned function, and a call that has already returned are never disposed, so their `disposing()` never resolves.
 

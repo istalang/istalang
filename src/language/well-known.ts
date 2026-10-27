@@ -48,6 +48,8 @@ export const wellKnown = {
   weakRef: { module: 'prelude', name: 'WeakRef' },
   /** The handle of an async call that `worker.disposing()` watches, private to the prelude (§7). */
   call: { module: 'prelude', name: '_Call' },
+  /** The future a call's disposal resolves, whose `select` case is the call's cleanup (§7). */
+  disposing: { module: 'prelude', name: 'disposing' },
   /** A type with a value to start from (§3.10): a map literal's, and a skipped JSON field's (§9). */
   default: { module: 'prelude', name: 'Default' },
   /** How a type is written as text, and read back (§3.10): map keys in JSON (§9). */

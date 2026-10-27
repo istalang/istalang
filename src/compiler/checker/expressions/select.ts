@@ -9,11 +9,19 @@
  *   as a `Result`, is reported as a bare expression's would be.
  * - The case bodies and `else` agree on the select's type as an `if`'s branches do
  *   (rules/branches.ts).
- * - A case on the function's own call, its `disposing()`, runs while the call is being disposed,
- *   so an `await` in its body stops the call instead of waiting (§7), which is warned about.
+ * - A case on the function's own call's `disposing()` runs while the call is being disposed, so
+ *   an `await` in its body stops the call instead of waiting (§7), which is warned about. The
+ *   runtime decides cleanup by the future; the warning sees it where the case calls `disposing`
+ *   on the function's own name, not through a variable holding that future.
  */
 
-import { type Select, type SelectCase, unparenthesized } from '../../syntax/expressions.ts';
+import { wellKnown } from '../../../language/well-known.ts';
+import {
+  type Expression,
+  type Select,
+  type SelectCase,
+  unparenthesized,
+} from '../../syntax/expressions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
@@ -30,14 +38,8 @@ export function checkSelect(context: BodyContext, node: Select, expected: Type |
   for (const selectCase of node.cases) {
     if (selectCase.kind === 'SelectCase') {
       checkCaseFuture(context, selectCase);
-      const scope = context.functions.current;
-      const future = unparenthesized(selectCase.future);
-      const cleansUp =
-        future.kind === 'Call' &&
-        future.callee.kind === 'MemberAccess' &&
-        context.ownCalls.readAt(future.callee.target)?.owner === scope.function;
-      if (cleansUp) {
-        scope.cleanup(() => branches.add(selectCase.body));
+      if (watchesOwnDisposal(context, selectCase.future)) {
+        context.functions.current.cleanup(() => branches.add(selectCase.body));
       } else {
         branches.add(selectCase.body);
       }
@@ -47,6 +49,21 @@ export function checkSelect(context: BodyContext, node: Select, expected: Type |
     branches.add(node.elseClause.body);
   }
   return branches.agreedType();
+}
+
+/** Whether `future` is the `disposing()` of the current function's own call (§7). */
+function watchesOwnDisposal(context: BodyContext, future: Expression): boolean {
+  const bare = unparenthesized(future);
+  if (bare.kind !== 'Call' || bare.callee.kind !== 'MemberAccess') {
+    return false;
+  }
+  const call = context.callAt(bare);
+  const { module, name } = wellKnown.disposing;
+  return (
+    call?.kind === 'function' &&
+    context.checker.languageFunctions(module, name).includes(call.function) &&
+    context.ownCalls.readAt(bare.callee.target)?.owner === context.functions.current.function
+  );
 }
 
 /** Reports a select that waits outside an async function, or has `else` exactly when it waits. */

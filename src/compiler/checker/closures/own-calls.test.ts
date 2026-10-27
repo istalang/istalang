@@ -1,7 +1,8 @@
 /**
  * `worker.disposing()` (§7) through the checker: whose call it watches, which nested functions
  * capture that call, that `disposing()` is a method of what the name reads, and the warning on an
- * `await` in a case cleaning up after the call is disposed. Errors are corpus programs (`test/corpus/weak-side/`), which state their positions.
+ * `await` in a case cleaning up after the call is disposed, its `disposing()` and no other
+ * method. Errors are corpus programs (`test/corpus/weak-side/`), which state their positions.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -30,6 +31,20 @@ function cleaningUp(cleanup: string): string {
 describe('a disposing() case', () => {
   it('warns about an await in its body, which stops the call being disposed', () => {
     expect(reported(cleaningUp('await tick()'))).toEqual(reportedOnce(5802, 'await tick()'));
+  });
+
+  it('is only the case on disposing() itself, not on another method of the call', () => {
+    const other = [
+      'async fn tick() -> Future<int>: 1',
+      'async fn other<T>(self: T) -> Future<int>: 1',
+      'async fn worker() -> Future<int>:',
+      '  await select:',
+      '    case worker.other() as m:',
+      '      await tick()',
+      '    case tick() as n:',
+      '      n',
+    ].join('\n');
+    expect(reported(other)).toEqual(reportedNothing);
   });
 
   it("leaves alone a nested async function's own awaits, which don't stop the call", () => {
