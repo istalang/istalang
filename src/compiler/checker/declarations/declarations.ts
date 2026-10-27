@@ -29,6 +29,7 @@ import {
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { frontier } from '../frontier.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
@@ -111,6 +112,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
     for (const member of node.members) {
       if (member.kind === 'FunctionDeclaration') {
         checkFunction(checker, member);
+        refuseRequiredDefaults(checker, module, member);
       } else if (member.kind === 'FieldDeclaration') {
         const type = checker.resolveType(module, member.type);
         checker.annotations.of(module, member, { kind: 'field', type });
@@ -160,6 +162,23 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   },
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/**
+ * A trait's required function takes no defaults (§3.10): a call through it binds against its own
+ * parameters, and the default each witness would give may differ.
+ */
+function refuseRequiredDefaults(
+  checker: CheckerContext,
+  module: ModuleId,
+  required: FunctionDeclaration,
+): void {
+  for (const parameter of required.parameters) {
+    if (parameter.kind === 'Parameter' && parameter.defaultValue !== undefined) {
+      const { name } = parameter;
+      checker.report(module, checkerDiagnostics.requiredDefault(name.span, name.text));
+    }
+  }
+}
 
 /** Checks `declaration`, a top-level item of `module`, reporting what it finds. */
 export function checkDeclaration(

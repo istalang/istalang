@@ -600,6 +600,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 - **Fields.** A trait may require fields, written like struct fields: `value: int`. A struct satisfies one with a field of the same name and type.
 - **Static functions.** A trait may require a static function, declared on `Self`, such as `fn Self.zero() -> Self`. Generic code calls it through the type parameter: `T.zero()` (§3.7).
 - **Generic requirements.** A required function may have type parameters of its own, such as `fn map<U>(self: Self, f: fn(T) -> U) -> Array<U>`. A function satisfies it when it is generic in the same way, up to the names of its type parameters.
+- **Calls through a requirement.** A call through a constraint or an `any` value binds its arguments against the required function's own parameters (§3.3): names are its parameters', and its rest parameter reaches the function meeting it as one array. A required function has no defaults, since each type meeting the trait could give another; the function meeting it may have more parameters, each with a default, which it computes when called through the trait.
 
 **Trait objects.** `any A & B` is the type of a value of any type meeting each of its traits; `any T?` is `(any T)?`. It is how values of different types share a collection, a field or a parameter:
 

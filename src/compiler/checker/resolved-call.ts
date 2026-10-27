@@ -28,6 +28,11 @@ export type ResolvedCall = FunctionCall | RequirementCall;
 interface WrittenAs {
   /** A method call's receiver (`x` in `x.f()`), passed as the call's first argument (§3.7). */
   readonly receiver?: Expression;
+  /**
+   * Which argument each parameter takes; a requirement's, its required function's parameters
+   * (§3.10), which a witness's binding then maps onto its own.
+   */
+  readonly binding: Binding;
 }
 
 export interface FunctionCall extends WrittenAs {
@@ -35,7 +40,6 @@ export interface FunctionCall extends WrittenAs {
   readonly function: FunctionDeclaration;
   readonly typeArguments: readonly Type[];
   readonly witnesses: Witnesses;
-  readonly binding: Binding;
 }
 
 /**

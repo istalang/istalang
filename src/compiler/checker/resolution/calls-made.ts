@@ -23,6 +23,7 @@ export function callMade(
       requirement: requirement.origin,
       typeArguments: instantiation.typeArguments,
       witnesses: instantiation.witnesses,
+      binding: application.binding,
     };
   }
   return {

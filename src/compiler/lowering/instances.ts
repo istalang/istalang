@@ -230,7 +230,7 @@ export function instanceName(checker: Checker, instance: FunctionInstance): stri
  */
 export type ClosedCall =
   | ClosedFunctionCall
-  | { readonly kind: 'dispatch'; readonly dispatch: Dispatch };
+  | { readonly kind: 'dispatch'; readonly dispatch: Dispatch; readonly binding: Binding };
 
 /** A closed call of a function: its own entry's instance, and the call's binding. */
 export interface ClosedFunctionCall {
@@ -269,10 +269,11 @@ export function closeCall(resolved: ResolvedCall, within: Closing | undefined): 
   if (on.kind !== 'any') {
     unreachable(`No witness for '${on.name.text}'; checking should have found one.`);
   }
-  const { function: required, typeArguments, witnesses } = closed;
+  const { function: required, typeArguments, witnesses, binding } = closed;
   return {
     kind: 'dispatch',
     dispatch: { on, constraint, member, required, typeArguments, witnesses },
+    binding,
   };
 }
 
@@ -328,7 +329,23 @@ function closedInside(resolved: ResolvedCall, within: Closing | undefined): Reso
   if (witness === undefined) {
     return { ...resolved, typeArguments, witnesses };
   }
-  return closedInside(witness, { declaration: resolved.function, typeArguments, witnesses });
+  const met = closedInside(witness, { declaration: resolved.function, typeArguments, witnesses });
+  return { ...met, binding: composed(met.binding, resolved.binding) };
+}
+
+/**
+ * A witness's `binding`, over its own parameters, taking the required function's in their order,
+ * composed with the `required` binding the call through the requirement made (§3.10): each of the
+ * witness's parameters takes what the call gave the required parameter it takes, or its own
+ * default.
+ */
+function composed(binding: Binding, required: Binding): Binding {
+  return binding.map((source) => {
+    if (source.kind !== 'argument') {
+      return source;
+    }
+    return required[source.index] ?? unreachable(`No required parameter ${source.index} is bound.`);
+  });
 }
 
 function closeWitnesses(witnesses: Witnesses, within: Closing | undefined): Witnesses {

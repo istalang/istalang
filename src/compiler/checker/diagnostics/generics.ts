@@ -110,6 +110,11 @@ export const genericTemplates = {
     message: () =>
       "An async replacement can't mock a plain function: the target would be made async, which is another function.",
   },
+  requiredDefault: {
+    code: 5124,
+    message: (name: string) =>
+      `A trait's required function has no defaults, so '${name}' can't have one: each type meeting the trait could give another.`,
+  },
   valueCallArgument: {
     code: 5122,
     message: (form: string) =>

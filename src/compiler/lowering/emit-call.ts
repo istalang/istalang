@@ -6,7 +6,8 @@
  * ones the call passes, and before them, in parameter order, each one it leaves out computed by
  * its default's entry from the parameters before it (§3.1, §3.3). So a default sees those
  * parameters however the call gave them, and every call fills its defaults one way, a filling
- * entry's included (instances.ts).
+ * entry's included (instances.ts). A dispatch on an `any` value's own type binds the required
+ * function's parameters the same way, then runs its dispatch entry (§3.10).
  */
 
 import type { Callee } from '../../definition/instructions/calls.ts';
@@ -56,8 +57,8 @@ export interface FunctionCallToEmit {
 }
 
 /**
- * Writes `toEmit`, filling the parameters it leaves out first; `dst` holds its result. A dispatch
- * passes every argument by position (§3.10).
+ * Writes `toEmit`, its parameters filled as its binding says first; `dst` holds its result. A
+ * dispatch takes the required function's parameters, which have no defaults (§3.10).
  */
 export function emitFunctionCall(
   context: CodeContext,
@@ -65,10 +66,23 @@ export function emitFunctionCall(
   dst?: Register,
 ): Register {
   const { span, call } = toEmit;
-  if (call.kind === 'dispatch') {
-    const callee = context.tables.dispatchIndex(call.dispatch);
-    return emitCall(context, { span, callee, arguments: toEmit.arguments }, dst);
-  }
+  const parameters = boundParameters(context, toEmit);
+  const callee =
+    call.kind === 'dispatch'
+      ? context.tables.dispatchIndex(call.dispatch)
+      : context.tables.functionIndex(call.instance);
+  return emitCall(context, { span, callee, arguments: parameters }, dst);
+}
+
+/**
+ * The parameters `toEmit` passes its function, in their order, as its binding says: an argument,
+ * a rest parameter's array, or a default computed by its entry from the parameters before it.
+ */
+function boundParameters(
+  context: CodeContext,
+  toEmit: FunctionCallToEmit,
+): (Register | Argument)[] {
+  const { span, call } = toEmit;
   const parameters: (Register | Argument)[] = [];
   const passed = (index: number) =>
     toEmit.arguments[index] ?? unreachable(`Argument ${index} of a call isn't passed.`);
@@ -81,6 +95,9 @@ export function emitFunctionCall(
         parameters.push(restArray(context, span, source.items.map(passed)));
         break;
       case 'default': {
+        if (call.kind === 'dispatch') {
+          unreachable('A required function has no defaults; checking refuses them.');
+        }
         const callee = context.tables.functionIndex(defaultEntryOf(call, parameter));
         parameters.push(emitCall(context, { span, callee, arguments: [...parameters] }));
         break;
@@ -91,8 +108,7 @@ export function emitFunctionCall(
       }
     }
   }
-  const callee = context.tables.functionIndex(call.instance);
-  return emitCall(context, { span, callee, arguments: parameters }, dst);
+  return parameters;
 }
 
 /**

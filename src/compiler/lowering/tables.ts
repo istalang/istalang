@@ -20,6 +20,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Span } from '../../text/span.ts';
 import type { Checker } from '../checker/check.ts';
+import { passesAll } from '../checker/resolved-call.ts';
 import type { AnyType, Type } from '../checker/types/type.ts';
 
 import { type ModuleId, programModule } from '../program/program.ts';
@@ -192,9 +193,15 @@ export class DefinitionTables {
    * dispatch's (§3.10).
    */
   callIndex(call: ClosedCall): FunctionId {
-    return call.kind === 'function'
-      ? this.functionIndex(takingPassed(call))
-      : this.dispatchIndex(call.dispatch);
+    if (call.kind === 'function') {
+      return this.functionIndex(takingPassed(call));
+    }
+    if (!passesAll(call.binding)) {
+      unreachable(
+        'A requirement is never spawned or named as a value with its arguments reordered.',
+      );
+    }
+    return this.dispatchIndex(call.dispatch);
   }
 
   /** The index of the entry calling `dispatch`'s function for each type its value may have. */

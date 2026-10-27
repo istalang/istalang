@@ -157,11 +157,9 @@ function referenceParameters(
   context: FunctionContext,
   called: ClosedCall,
 ): (index: number) => boolean {
-  if (called.kind === 'dispatch') {
-    const parameters = context.checker.parametersOf(called.dispatch.required);
-    return (index) => parameters[index]?.reference === true;
-  }
-  const parameters = context.checker.parametersOf(called.instance.declaration);
+  const declaration =
+    called.kind === 'dispatch' ? called.dispatch.required : called.instance.declaration;
+  const parameters = context.checker.parametersOf(declaration);
   const parameterOf = parameterOfArgument(called.binding);
   return (index) => {
     const parameter = parameterOf.get(index);
@@ -181,19 +179,12 @@ interface Passing {
 
 /** The arguments a rest parameter of `called` collects, numbered as passed. */
 function restItems(called: ClosedCall): readonly number[] {
-  return called.kind === 'dispatch'
-    ? []
-    : called.binding.flatMap((source) => (source.kind === 'rest' ? source.items : []));
+  return called.binding.flatMap((source) => (source.kind === 'rest' ? source.items : []));
 }
 
-/**
- * `called`, its binding numbering what is passed as `numbers` renumbered it (`passedArguments`);
- * a dispatch passes its arguments by position, as written.
- */
+/** `called`, its binding numbering what is passed as `numbers` renumbered it (`passedArguments`). */
 function passedCall(called: ClosedCall, numbers: ReadonlyMap<number, number>): ClosedCall {
-  return called.kind === 'dispatch'
-    ? called
-    : { ...called, binding: called.binding.map((source) => renumbered(source, numbers)) };
+  return { ...called, binding: called.binding.map((source) => renumbered(source, numbers)) };
 }
 
 /**

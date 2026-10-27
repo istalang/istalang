@@ -9,7 +9,13 @@ import type { CheckerContext } from '../context.ts';
 import { constraintSubstitution, requiredFunctions } from '../traits/constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import { witnessCandidates } from './candidates.ts';
-import { type CallArgument, type Choice, choose, type Signature, signatureOf } from './choice.ts';
+import {
+  type CallArgument,
+  type Choice,
+  chooseAsValue,
+  type Signature,
+  signatureOf,
+} from './choice.ts';
 
 /**
  * Whether a function declared for `type` meets one that `constraint` requires, whether or not its
@@ -29,7 +35,8 @@ export function declaresWitness(
 
 /**
  * The function declared to meet `required`, a requirement mapped for `type`: chosen among the
- * witness candidates by the required parameter types, taken exactly.
+ * witness candidates by the required parameter types, taken exactly and bound as a function value
+ * is, a rest parameter one array, since a call through the requirement passes it so (§3.10).
  */
 export function chooseWitness(checker: CheckerContext, type: Type, required: Signature): Choice {
   const parameterTypes = required.parameters.map((parameter) => parameter.type);
@@ -44,5 +51,5 @@ export function chooseWitness(checker: CheckerContext, type: Type, required: Sig
       exact: true,
     }),
   );
-  return choose(checker, candidates, callArguments, undefined);
+  return chooseAsValue(checker, candidates, callArguments);
 }

@@ -1,0 +1,5 @@
+# error: 5124 at 5:35
+# A trait's required function has no defaults: a call through it binds against its own parameters,
+# and each type meeting the trait could give another (§3.10).
+trait Shape:
+  fn area(self: Self, scale: int, offset: int = 5) -> int
