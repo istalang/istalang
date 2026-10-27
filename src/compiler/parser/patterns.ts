@@ -11,9 +11,11 @@
  * matched value; after a field it renames the field, so a field's own `as` is read first.
  */
 
+import { unreachable } from '../../structures/unreachable.ts';
 import { isComparisonOperator, operatorLevels, tighterLevel } from '../syntax/operators.ts';
 import type { Pattern, StructPattern } from '../syntax/patterns.ts';
 import type { NamedType } from '../syntax/types.ts';
+import type { CursorKind } from './cursor.ts';
 import type { Parser } from './parser.ts';
 import { literalFrom } from './parts/literals.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
@@ -29,20 +31,26 @@ export function parsePattern(parser: Parser): Pattern {
   return { kind: 'AsPattern', span: parser.spanFrom(pattern.span.start), pattern, name };
 }
 
+/** How a pattern starting at a token of some kind is parsed. */
+type PatternParselet = (parser: Parser) => Pattern;
+
+const patternParselets: Partial<Record<CursorKind, PatternParselet>> = {
+  identifier: parseNamedPattern,
+  struct: parseAnonymousStructPattern,
+  '(': parseTuplePattern,
+  '-': parseNegativeLiteral,
+  integer: parseLiteralPattern,
+  float: parseLiteralPattern,
+  duration: parseLiteralPattern,
+  string: parseLiteralPattern,
+  true: parseLiteralPattern,
+  false: parseLiteralPattern,
+  none: parseLiteralPattern,
+};
+
 function parsePrimaryPattern(parser: Parser): Pattern {
-  const { cursor } = parser;
-  switch (cursor.kind) {
-    case 'identifier':
-      return parseNamedPattern(parser);
-    case 'struct':
-      return parseAnonymousStructPattern(parser);
-    case '(':
-      return parseTuplePattern(parser);
-    case '-':
-      return parseNegativeLiteral(parser);
-    default:
-      return parseLiteralPattern(parser);
-  }
+  const parselet = patternParselets[parser.cursor.kind];
+  return parselet === undefined ? parser.missing('a pattern') : parselet(parser);
 }
 
 function parseNamedPattern(parser: Parser): Pattern {
@@ -107,7 +115,7 @@ function parseTuplePattern(parser: Parser): Pattern {
 function parseLiteralPattern(parser: Parser): Pattern {
   const literal = literalFrom(parser.cursor.token);
   if (literal === undefined) {
-    return parser.missing('a pattern');
+    return unreachable('A literal pattern starts at a literal token.');
   }
   parser.cursor.advance();
   return { kind: 'LiteralPattern', span: literal.span, value: literal };

@@ -12,6 +12,7 @@
  */
 
 import type { ReferenceType, TypeNode } from '../syntax/types.ts';
+import type { CursorKind } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 import { parseFunctionKeyword } from './parts/functions.ts';
@@ -19,16 +20,46 @@ import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
 import { afterStructKeyword, parseFieldEntries } from './parts/structs.ts';
 import { parseDelimited, parseGroup } from './recovery.ts';
 
+/** How a type starting at a token of some kind is parsed. */
+type TypeParselet = (parser: Parser) => TypeNode;
+
+/** How a type is extended by the token after it. */
+type PostfixTypeParselet = (parser: Parser, type: TypeNode) => TypeNode;
+
+const typeParselets: Partial<Record<CursorKind, TypeParselet>> = {
+  identifier: parseWordType,
+  '(': parseTupleType,
+  fn: parseFunctionType,
+  async: parseFunctionType,
+  '{': parseStructType,
+  struct: parseStructType,
+  '&': parseMisplacedReferenceType,
+};
+
+/**
+ * Types a contextual word starts, when what follows it fits; the word is a type's name otherwise
+ * (tokens.ts).
+ */
+const wordParselets: Readonly<
+  Record<string, { readonly starts: (parser: Parser) => boolean; readonly parse: TypeParselet }>
+> = {
+  sendable: { starts: atFunctionKeyword, parse: parseFunctionType },
+};
+
+const postfixTypeParselets: Partial<Record<CursorKind, PostfixTypeParselet>> = {
+  '?': parseOptionalType,
+  '??': parseOptionalType,
+};
+
 export function parseType(parser: Parser): TypeNode {
-  const { cursor } = parser;
-  let type = parsePrimaryType(parser);
-  while (cursor.at('?') || cursor.at('??')) {
-    const token = cursor.advance();
-    const { start } = type.span;
-    if (token.kind === '??') {
-      type = { kind: 'OptionalType', span: { start, end: token.span.start + 1 }, inner: type };
-    }
-    type = { kind: 'OptionalType', span: { start, end: token.span.end }, inner: type };
+  const parselet = typeParselets[parser.cursor.kind];
+  let type = parselet === undefined ? parser.missing('a type') : parselet(parser);
+  for (
+    let postfix = postfixTypeParselets[parser.cursor.kind];
+    postfix !== undefined;
+    postfix = postfixTypeParselets[parser.cursor.kind]
+  ) {
+    type = postfix(parser, type);
   }
   return type;
 }
@@ -38,23 +69,21 @@ export function parseParameterType(parser: Parser): TypeNode {
   return parser.cursor.at('&') ? parseReferenceType(parser) : parser.type();
 }
 
-function parsePrimaryType(parser: Parser): TypeNode {
-  switch (parser.cursor.kind) {
-    case 'identifier':
-      return atSendableFunction(parser) ? parseFunctionType(parser) : parseNamedType(parser);
-    case '(':
-      return parseTupleType(parser);
-    case 'fn':
-    case 'async':
-      return parseFunctionType(parser);
-    case '{':
-    case 'struct':
-      return parseStructType(parser);
-    case '&':
-      return parseMisplacedReferenceType(parser);
-    default:
-      return parser.missing('a type');
-  }
+/** A type a contextual word starts, or else a named type. */
+function parseWordType(parser: Parser): TypeNode {
+  const word = wordParselets[parser.textOf(parser.cursor.token)];
+  return word?.starts(parser) ? word.parse(parser) : parseNamedType(parser);
+}
+
+/** `T?`, and `T??`, which arrives as one token and means `T?` twice. */
+function parseOptionalType(parser: Parser, inner: TypeNode): TypeNode {
+  const token = parser.cursor.advance();
+  const { start } = inner.span;
+  const once: TypeNode =
+    token.kind === '??'
+      ? { kind: 'OptionalType', span: { start, end: token.span.start + 1 }, inner }
+      : inner;
+  return { kind: 'OptionalType', span: { start, end: token.span.end }, inner: once };
 }
 
 /** `<A, B>`, starting at the `<`. */
@@ -76,10 +105,10 @@ function parseTupleType(parser: Parser): TypeNode {
   });
 }
 
-/** Whether the cursor stands at `sendable` before a function type's `fn` or `async` (§3.14). */
-function atSendableFunction(parser: Parser): boolean {
+/** Whether a function type's `fn` or `async` follows the word at the cursor (`sendable`, §3.14). */
+function atFunctionKeyword(parser: Parser): boolean {
   const next = parser.cursor.kindAt(1);
-  return parser.atWord('sendable') && (next === 'fn' || next === 'async');
+  return next === 'fn' || next === 'async';
 }
 
 /** `fn(A) -> R`, `async fn(A) -> R`, each maybe after `sendable`. */
