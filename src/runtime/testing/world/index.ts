@@ -20,30 +20,30 @@
  * - An extern no mock replaces panics the instance calling it: a test's only host is its mocks.
  */
 
-import type { Definition } from '../../definition/definition.ts';
-import { jsonOfPlain, jsonTypeOf } from '../../definition/json-values.ts';
-import type { FunctionId } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values.ts';
-import { memo } from '../../structures/memo.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { InstanceGroup } from '../instance-group.ts';
-import type { LogRecord } from '../instance-state.ts';
-import { type Native, type Natives, Panic } from '../natives.ts';
-import { seedTextOf } from '../random-seed.ts';
-import type { Answered, Watch } from '../scheduler/futures.ts';
-import { type Inspection, inspection } from '../scheduler/inspect.ts';
-import { type LoadedDefinition, loadDefinition } from '../scheduler/loaded-definition.ts';
-import { reachingMock } from '../scheduler/mocks.ts';
-import type { MockAnswer, MockCall, TestWorld } from '../scheduler/test-world.ts';
+import type { Definition } from '../../../definition/definition.ts';
+import type { FunctionId } from '../../../definition/operands.ts';
+import type { Value } from '../../../definition/values.ts';
+import { memo } from '../../../structures/memo.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { InstanceGroup } from '../../instance-group.ts';
+import type { LogRecord } from '../../instance-state.ts';
+import type { Natives } from '../../natives.ts';
+import { seedTextOf } from '../../random-seed.ts';
+import type { Answered, Watch } from '../../scheduler/futures.ts';
+import { type Inspection, inspection } from '../../scheduler/inspect.ts';
+import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
+import { reachingMock } from '../../scheduler/mocks.ts';
+import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/test-world.ts';
 import {
   type Advance,
   type AdvanceFirst,
   advance,
   type SchedulerSeams,
   unstarted,
-} from '../scheduler/wake.ts';
-import { type InstanceCall, type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
-import { memoryStore } from '../store.ts';
+} from '../../scheduler/wake.ts';
+import { type InstanceCall, type Snapshot, snapshotFormat } from '../../snapshot/snapshot.ts';
+import { memoryStore } from '../../store.ts';
+import { unmockedExterns } from './test-host.ts';
 
 /** A failed test: why, where, and the log records its instances committed, in order (§10). */
 export interface Failed {
@@ -365,39 +365,4 @@ function mocksOf(
       }),
     );
   });
-}
-
-/**
- * A test's host (§10), for each extern of `definition` the runtime's `natives` lack: one no mock
- * replaces panics, except a host type's `dispose`, the native its type entry names
- * (definition/types.ts), which does nothing, since the test has nothing of its host's to release,
- * and gives back the JSON `null` a host's function returning nothing gives (§9).
- */
-function unmockedExterns(definition: Definition, natives: Natives): Natives {
-  const releasing = new Set(
-    definition.types.flatMap((entry) =>
-      entry.kind === 'extern' &&
-      entry.disposal.kind === 'function' &&
-      entry.disposal.host !== undefined
-        ? [entry.disposal.host]
-        : [],
-    ),
-  );
-  const nothing: Native = () => jsonOfPlain(null, jsonTypeOf(definition.types));
-  return Object.fromEntries(
-    definition.functions.flatMap((entry, index) => {
-      if (entry.kind !== 'extern' || Object.hasOwn(natives, entry.key)) {
-        return [];
-      }
-      const native = releasing.has(index) ? nothing : unmocked(entry.name);
-      return [[entry.key, native]];
-    }),
-  );
-}
-
-/** The native of the extern `name` in a test no mock replaced: calling it panics. */
-function unmocked(name: string): Native {
-  return () => {
-    throw new Panic(`No mock replaces ${name}, which a test's host would implement.`);
-  };
 }

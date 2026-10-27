@@ -7,7 +7,8 @@
  * prefix operator does.
  */
 
-import { chainStepOf, type Dereference } from '../../syntax/expressions.ts';
+import { chainStepOf } from '../../syntax/expressions/chains.ts';
+import type { Dereference } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { insideOptional } from '../types/inside-optional.ts';

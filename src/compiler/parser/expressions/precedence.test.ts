@@ -5,7 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import { parseAs } from '../parse.test-kit.ts';
 import { operatorTree, printFull, printMinimal, shapeOf } from './precedence.test-kit.ts';
 

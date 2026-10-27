@@ -30,13 +30,8 @@
  */
 
 import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
-import {
-  type Dereference,
-  type Expression,
-  type Index,
-  isPlace,
-  placePath,
-} from '../../syntax/expressions.ts';
+import type { Dereference, Expression, Index } from '../../syntax/expressions/index.ts';
+import { isPlace, placePath } from '../../syntax/expressions/places.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

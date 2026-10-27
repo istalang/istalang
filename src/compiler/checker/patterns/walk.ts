@@ -30,7 +30,7 @@ import type {
   StructPattern,
 } from '../../syntax/patterns.ts';
 import type { Destructuring, FieldTarget } from '../../syntax/statements.ts';
-import type { PatternTest, TargetBinding } from '../check.ts';
+import type { PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';

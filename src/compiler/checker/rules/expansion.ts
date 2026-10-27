@@ -28,9 +28,9 @@ import {
 } from '../../syntax/declarations.ts';
 import { functionsOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { FunctionCall, ResolvedCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { FunctionCall, ResolvedCall } from '../resolved-call.ts';
 import { errorType, type ParameterKey, parametersIn, type Type } from '../types/type.ts';
 
 interface Edge {

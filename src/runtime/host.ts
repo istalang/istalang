@@ -37,7 +37,7 @@ import type { Natives } from './natives.ts';
 import { seedTextOf } from './random-seed.ts';
 import { Refusal } from './refusal.ts';
 import { type Inspection, inspection } from './scheduler/inspect.ts';
-import type { StartOptions } from './scheduler/instance.ts';
+import type { StartOptions } from './scheduler/instance/index.ts';
 import { spawnedSeparator } from './scheduler/instance-names.ts';
 import { type LoadedDefinition, loadDefinition } from './scheduler/loaded-definition.ts';
 import {

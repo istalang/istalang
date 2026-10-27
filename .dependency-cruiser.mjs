@@ -106,6 +106,8 @@ const checkerLayers = [
 /** What later phases may import of the checker: its entry and the models its surface names. */
 const checkerSurface = [
   'check.ts',
+  'resolved-call.ts',
+  'checked-pattern.ts',
   'constant-form.ts',
   'json-form.ts',
   'checked-annotation.ts',

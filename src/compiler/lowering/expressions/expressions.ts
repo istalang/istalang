@@ -8,7 +8,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Handlers } from '../../../structures/kind-table.ts';
-import type { Expression, MemberAccess } from '../../syntax/expressions.ts';
+import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
 import { lowerDereference } from '../places.ts';

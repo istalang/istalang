@@ -4,7 +4,7 @@
  */
 
 import type { ImportDeclaration } from '../../syntax/declarations.ts';
-import type { StringLiteral } from '../../syntax/expressions.ts';
+import type { StringLiteral } from '../../syntax/expressions/index.ts';
 import type { Missing } from '../../syntax/node.ts';
 import type { Parser } from '../parser.ts';
 import { parseNames } from '../parts/names.ts';

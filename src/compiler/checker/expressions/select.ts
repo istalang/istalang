@@ -21,7 +21,7 @@ import {
   type Select,
   type SelectCase,
   unparenthesized,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';

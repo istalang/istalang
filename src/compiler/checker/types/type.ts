@@ -37,7 +37,7 @@ import {
   type TypeParameters,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
-import type { StructLiteral } from '../../syntax/expressions.ts';
+import type { StructLiteral } from '../../syntax/expressions/index.ts';
 import type { StructType } from '../../syntax/types.ts';
 
 export interface PrimitiveType {

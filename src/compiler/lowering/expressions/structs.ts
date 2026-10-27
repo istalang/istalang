@@ -18,7 +18,7 @@ import {
   itemValue,
   type MemberAccess,
   type StructLiteral,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { fieldIndexOf } from '../places.ts';
@@ -32,7 +32,7 @@ export function lowerStructLiteral(context: FunctionContext, node: StructLiteral
   }
   const value = construct(context, sharedValue, fields, node.span);
   const dst = context.code.allocate();
-  const cellType = context.tables.typeIndex(type);
+  const cellType = context.tables.types.index(type);
   context.code.emit({ kind: 'newCell', span: node.span, dst, type: cellType, value });
   return dst;
 }
@@ -127,7 +127,7 @@ export function construct(
   span: StructLiteral['span'],
 ): Register {
   const dst = context.code.allocate();
-  const index = context.tables.typeIndex(type);
+  const index = context.tables.types.index(type);
   context.code.emit({ kind: 'struct', span, dst, type: index, fields: [...fields] });
   return dst;
 }

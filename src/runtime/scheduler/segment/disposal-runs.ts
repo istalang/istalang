@@ -17,9 +17,10 @@ import { type ActiveFrame, newFrame, releaseFrame } from '../../interpreter/mach
 import { resume } from '../../interpreter/suspension.ts';
 import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposal.ts';
 import type { LiveExecution } from '../heap.ts';
-import { type Instance, topFrame } from '../instance.ts';
+import { type Instance, topFrame } from '../instance/index.ts';
 import { type Caller, callTargetOf } from '../mocks.ts';
 import type { NativeCalls } from '../native-calls.ts';
+import type { RunStack } from './run-stack.ts';
 
 export interface DisposalRunSeams {
   readonly instance: Instance;
@@ -27,7 +28,7 @@ export interface DisposalRunSeams {
   readonly caller: Caller;
   readonly natives: NativeCalls;
   /** The segment's run stack, shared with it: what runs is its top. */
-  readonly runStack: LiveExecution[];
+  readonly runStack: RunStack;
   /** Tells the collector that the disposal its innermost round waits on is done. */
   readonly returned: () => void;
 }
@@ -82,7 +83,7 @@ export class DisposalRuns {
    */
   abandon(): void {
     const { runStack, instance } = this.#seams;
-    for (let execution = runStack.at(-1); execution !== undefined; execution = runStack.at(-1)) {
+    for (let execution = runStack.top(); execution !== undefined; execution = runStack.top()) {
       const { frames } = execution;
       const at = frames.findLastIndex((frame) => this.#frames.has(frame));
       if (at >= 0) {
@@ -113,7 +114,7 @@ export class DisposalRuns {
     }
     const frame = newFrame(callable, call.arguments, instance.frameHeap, target.captures);
     this.#frames.add(frame);
-    let running = runStack.at(-1);
+    let running = runStack.top();
     if (running === undefined) {
       running = this.#carrier;
       runStack.push(running);

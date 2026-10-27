@@ -28,7 +28,7 @@ import { staticName } from '../../../language/static-names.ts';
 import { conversionFunction } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
-import type { Call, Expression, MemberAccess } from '../../syntax/expressions.ts';
+import type { Call, Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import { checkValueCall } from '../closures/value-calls.ts';

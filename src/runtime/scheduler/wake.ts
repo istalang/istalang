@@ -41,7 +41,7 @@ import {
 } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
 import type { Answered } from './futures.ts';
-import { Instance, type StartOptions } from './instance.ts';
+import { Instance, type StartOptions } from './instance/index.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import { arriving } from './mocks.ts';
 import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';

@@ -24,11 +24,11 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
-import type { Expression } from '../syntax/expressions.ts';
+import type { Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { CallSite, Checker, ResolvedCall, ValueSite, VariantMember } from './check.ts';
+import type { Checker, ValueSite, VariantMember } from './check.ts';
 import type { FunctionScopes } from './closures/functions.ts';
 import type { LoopScope } from './closures/loop-scope.ts';
 import type { OwnCalls } from './closures/own-calls.ts';
@@ -41,6 +41,7 @@ import type { JsonCodecs } from './json-form.ts';
 import type { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
 import type { ImplicitCalls } from './resolution/implicit.ts';
+import type { CallSite, ResolvedCall } from './resolved-call.ts';
 import type { Annotations } from './rules/annotations.ts';
 import type { Iterations } from './rules/iteration.ts';
 import type { VariableScope } from './statements/variables.ts';

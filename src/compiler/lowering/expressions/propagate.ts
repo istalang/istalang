@@ -7,7 +7,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { resultVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Propagate } from '../../syntax/expressions.ts';
+import type { Propagate } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { branchOnVariant, buildVariant, isEnum, payloadOf, variantTestOf } from './variants.ts';
 

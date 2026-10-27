@@ -18,11 +18,11 @@
  * was written.
  */
 
-import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
-import type { BinaryOperator, UnaryOperator } from './operators.ts';
-import type { Pattern } from './patterns.ts';
-import type { Block } from './statements.ts';
-import type { NamedType, TypeNode } from './types.ts';
+import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
+import type { BinaryOperator, UnaryOperator } from '../operators.ts';
+import type { Pattern } from '../patterns.ts';
+import type { Block } from '../statements.ts';
+import type { NamedType, TypeNode } from '../types.ts';
 
 interface IntegerLiteral extends NodeOf<'IntegerLiteral'> {
   readonly value: bigint;
@@ -176,48 +176,6 @@ export function unparenthesized(node: Expression): Expression {
   return node.kind === 'Parenthesized' ? unparenthesized(node.expression) : node;
 }
 
-/** A field, a tuple element or an indexed element read off a place (§3.7, §3.9). */
-export type PlaceStep = MemberAccess | TupleElement | Index;
-
-/**
- * A place as written: the expression its fields and elements are read from, a variable or a
- * handle's value (`*x`) in any valid place, and those reads, innermost first. `a?.b`, `t?.0` and
- * `a?.[i]` are no steps, so they stand as the root.
- */
-export interface PlacePath {
-  readonly root: Expression;
-  readonly steps: readonly PlaceStep[];
-}
-
-/**
- * Whether `node` names a place (§3.7, §3.9): a variable or a handle's value, with fields, tuple
- * elements and indexed elements read off it. A handle's value read in an optional chain is a copy
- * (§4), so it is none. A missing expression counts, being reported already.
- */
-export function isPlace(node: Expression): boolean {
-  const { root } = placePath(node);
-  return (
-    root.kind === 'Identifier' ||
-    root.kind === 'Missing' ||
-    (root.kind === 'Dereference' && !isOptionallyChained(root))
-  );
-}
-
-export function placePath(node: Expression): PlacePath {
-  const steps: PlaceStep[] = [];
-  let current = unparenthesized(node);
-  while (
-    (current.kind === 'TupleElement' ||
-      current.kind === 'Index' ||
-      current.kind === 'MemberAccess') &&
-    !current.isOptional
-  ) {
-    steps.unshift(current);
-    current = unparenthesized(current.target);
-  }
-  return { root: current, steps };
-}
-
 /** `a[i]`, and slicing when the index is a range; `a?.[i]` when `isOptional`. */
 export interface Index extends NodeOf<'Index'> {
   readonly target: Expression;
@@ -287,67 +245,6 @@ export interface ConditionalBranch extends NodeOf<'ConditionalBranch'> {
 export interface Match extends NodeOf<'Match'> {
   readonly subject: Expression;
   readonly cases: readonly (MatchCase | Invalid)[];
-}
-
-/**
- * The operator a link of an optional chain takes its step with (§4): `.` (a field, a tuple
- * element or a method), `->` or `[` on its target's value, or `?.`, `?->`, `?.[` and `?.(` (a call
- * of the function) on the value inside an optional.
- */
-export type ChainOperator = '.' | '->' | '[' | '?.' | '?->' | '?.[' | '?.(';
-
-/** The step a link of an optional chain takes (§4): what it works on, and with which operator. */
-export interface ChainStep {
-  readonly target: Expression;
-  readonly operator: ChainOperator;
-}
-
-/** Whether `step` reads through an optional, so meeting `none` ends its whole chain (§4). */
-export function isOptionalStep(step: ChainStep): boolean {
-  return step.operator.startsWith('?');
-}
-
-/**
- * The step `node` takes when it may be a link of an optional chain: a field read, a tuple
- * element, an index, a method call, a call of an optional function (`f?.()`, whose step works on
- * the function), or the value behind a handle read with `->`; undefined for any other
- * expression, `*x` among them, which ends a chain as parentheses do. Whether it is a link is the
- * checker's to say: a call through a namespace has the same shape and never is.
- */
-export function chainStepOf(node: Expression): ChainStep | undefined {
-  switch (node.kind) {
-    case 'MemberAccess':
-    case 'TupleElement':
-      return { target: node.target, operator: node.isOptional ? '?.' : '.' };
-    case 'Index':
-      return { target: node.target, operator: node.isOptional ? '?.[' : '[' };
-    case 'Call':
-      return callStepOf(node);
-    case 'Dereference':
-      return node.operator === '*' ? undefined : { target: node.operand, operator: node.operator };
-    default:
-      return undefined;
-  }
-}
-
-/** A call's step: through the optional function it calls, or a method's to its receiver. */
-function callStepOf(node: Call): ChainStep | undefined {
-  if (node.isOptional) {
-    return { target: node.callee, operator: '?.(' };
-  }
-  return node.callee.kind === 'MemberAccess'
-    ? { target: node.callee.target, operator: node.callee.isOptional ? '?.' : '.' }
-    : undefined;
-}
-
-/** Whether `node` is a link of an optional chain at a `?.` or `?->`, or after one (§4). */
-export function isOptionallyChained(node: Expression): boolean {
-  for (let step = chainStepOf(node); step !== undefined; step = chainStepOf(step.target)) {
-    if (isOptionalStep(step)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /** `case pattern if guard: body`. */

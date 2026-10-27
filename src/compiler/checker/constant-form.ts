@@ -6,7 +6,7 @@
  */
 
 import { type MapOf, ValueSemantics } from '../../language/values.ts';
-import type { Lambda } from '../syntax/expressions.ts';
+import type { Lambda } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import { type NominalType, type StructValueType, sameType } from './types/type.ts';
 

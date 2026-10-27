@@ -12,7 +12,7 @@
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import type { Expression, Reference } from '../../syntax/expressions.ts';
+import type { Expression, Reference } from '../../syntax/expressions/index.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import type { BodyContext } from '../context.ts';
 import type { Accepts } from '../resolution/choice.ts';

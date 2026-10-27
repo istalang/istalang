@@ -28,15 +28,9 @@ import type { Register, TypeId } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { Type } from '../checker/types/type.ts';
-import {
-  chainStepOf,
-  type Dereference,
-  type Expression,
-  type Index,
-  type MemberAccess,
-  type PlaceStep,
-  placePath,
-} from '../syntax/expressions.ts';
+import { chainStepOf } from '../syntax/expressions/chains.ts';
+import type { Dereference, Expression, Index, MemberAccess } from '../syntax/expressions/index.ts';
+import { type PlaceStep, placePath } from '../syntax/expressions/places.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
 import { emitCall } from './emit-call.ts';
@@ -285,5 +279,5 @@ function fieldPosition(context: FunctionContext, step: Exclude<PlaceStep, Index>
 
 /** The `_Cell<T>` entry a cell holding a `type` is created as. */
 function cellTypeIndex(context: FunctionContext, type: Type): TypeId {
-  return context.tables.typeIndex(context.checker.cellOf(type));
+  return context.tables.types.index(context.checker.cellOf(type));
 }

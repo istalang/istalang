@@ -11,7 +11,7 @@
  */
 
 import fc from 'fast-check';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
   binaryOperatorLevels,

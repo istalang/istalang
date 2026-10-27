@@ -7,12 +7,12 @@
  */
 
 import { languageModules, testingFunctions } from '../../../language/well-known.ts';
-import { type Call, type Expression, unparenthesized } from '../../syntax/expressions.ts';
+import { type Call, type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { CallSite, ResolvedCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostType } from '../host-externs.ts';
+import type { CallSite, ResolvedCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 

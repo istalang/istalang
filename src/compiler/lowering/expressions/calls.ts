@@ -18,13 +18,13 @@ import type { Callee } from '../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/check.ts';
+import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/resolved-call.ts';
 import {
   type Call,
   type Expression,
   type Spread,
   unparenthesized,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Spawn } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';

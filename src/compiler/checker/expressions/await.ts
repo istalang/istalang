@@ -5,7 +5,7 @@
  */
 
 import type { Span } from '../../../text/span.ts';
-import type { Await } from '../../syntax/expressions.ts';
+import type { Await } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type } from '../types/type.ts';

@@ -11,7 +11,7 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import type { Annotation } from './annotations.ts';
 import type { Declaration, DeclarationPart, FunctionDeclaration, Module } from './declarations.ts';
-import type { Expression, ExpressionPart, Lambda } from './expressions.ts';
+import type { Expression, ExpressionPart, Lambda } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing } from './node.ts';
 import type { Pattern, PatternPart } from './patterns.ts';
 import type { Block, Statement } from './statements.ts';

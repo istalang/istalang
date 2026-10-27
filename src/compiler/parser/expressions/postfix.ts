@@ -18,14 +18,14 @@
  * `t.0.1` as one float, so that token is split back into its two elements here.
  */
 
-import {
-  type Call,
-  type Dereference,
-  type Expression,
-  type Index,
-  isPlace,
-  type Spread,
-} from '../../syntax/expressions.ts';
+import type {
+  Call,
+  Dereference,
+  Expression,
+  Index,
+  Spread,
+} from '../../syntax/expressions/index.ts';
+import { isPlace } from '../../syntax/expressions/places.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';

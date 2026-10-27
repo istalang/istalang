@@ -23,18 +23,12 @@ import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Expression } from '../syntax/expressions.ts';
+import type { Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type {
-  CallSite,
-  CheckedBody,
-  ResolvedCall,
-  SignatureParameter,
-  ValueSite,
-} from './check.ts';
+import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
 import { inferLambda } from './closures/lambdas.ts';
@@ -51,6 +45,7 @@ import type { FrontierConstruct } from './frontier.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
+import type { CallSite, ResolvedCall } from './resolved-call.ts';
 import { statementPlace } from './rules/annotations.ts';
 import { checkDisposeUses } from './rules/disposal.ts';
 import { checkDropped } from './rules/dropped.ts';

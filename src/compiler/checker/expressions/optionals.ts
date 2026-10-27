@@ -14,13 +14,8 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
-import {
-  type Binary,
-  type ChainStep,
-  chainStepOf,
-  type Expression,
-  isOptionalStep,
-} from '../../syntax/expressions.ts';
+import { type ChainStep, chainStepOf, isOptionalStep } from '../../syntax/expressions/chains.ts';
+import type { Binary, Expression } from '../../syntax/expressions/index.ts';
 import type { ChainLink } from '../check.ts';
 import { checkOwnCall } from '../closures/own-calls.ts';
 import type { BodyContext } from '../context.ts';

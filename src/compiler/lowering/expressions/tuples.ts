@@ -4,7 +4,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { Tuple, TupleElement } from '../../syntax/expressions.ts';
+import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { readPart } from '../places.ts';
 

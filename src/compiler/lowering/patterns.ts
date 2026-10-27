@@ -13,7 +13,7 @@
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
-import type { CheckedPattern, PatternTest, PatternValue } from '../checker/check.ts';
+import type { CheckedPattern, PatternTest, PatternValue } from '../checker/checked-pattern.ts';
 import type { Label } from './code-writer.ts';
 import { constantValue } from './constants.ts';
 import type { FunctionContext } from './context.ts';

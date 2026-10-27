@@ -20,14 +20,13 @@
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { chainStepOf, isOptionallyChained } from '../../syntax/expressions/chains.ts';
 import {
-  chainStepOf,
   type Expression,
-  isOptionallyChained,
   type MatchCase,
   type SelectCase,
   unparenthesized,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import {
   type Assignment,

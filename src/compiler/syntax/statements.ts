@@ -17,7 +17,8 @@
 import type { Span } from '../../text/span.ts';
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
-import { type Expression, isPlace, itemName, itemValue, unparenthesized } from './expressions.ts';
+import { type Expression, itemName, itemValue, unparenthesized } from './expressions/index.ts';
+import { isPlace } from './expressions/places.ts';
 import type { Identifier, Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
 import type { Pattern } from './patterns.ts';

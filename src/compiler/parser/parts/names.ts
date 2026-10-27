@@ -5,7 +5,7 @@
  * targets, so each rule lives here once.
  */
 
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier, QualifiedName } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { NamedType, TypeNode } from '../../syntax/types.ts';

@@ -7,8 +7,9 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Checker, FunctionCall } from '../../checker/check.ts';
+import type { Checker } from '../../checker/check.ts';
 import type { JsonDirection } from '../../checker/json-form.ts';
+import type { FunctionCall } from '../../checker/resolved-call.ts';
 import type { Type } from '../../checker/types/type.ts';
 import { closeCall, type FunctionInstance } from '../instances.ts';
 

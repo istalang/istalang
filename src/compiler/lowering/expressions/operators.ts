@@ -10,7 +10,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Binary, Unary } from '../../syntax/expressions.ts';
+import type { Binary, Unary } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { call } from './calls.ts';
 import { lowerNullish } from './nullish.ts';

@@ -6,8 +6,8 @@
  * chosen function to decide, and its constraints' witnesses found as anywhere (§3.10).
  */
 
-import type { FunctionCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
+import type { FunctionCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { searchSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';

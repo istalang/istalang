@@ -11,7 +11,7 @@
  * parameter nothing has bound is left for instantiating to report.
  */
 
-import { type Expression, unparenthesized } from '../../syntax/expressions.ts';
+import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import type { Application } from '../resolution/choice.ts';

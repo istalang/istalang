@@ -115,7 +115,7 @@ export class Encoder {
     const { checker, tables } = this.#code;
     return {
       kind: 'variant' as const,
-      type: tables.typeIndex(this.#json),
+      type: tables.types.index(this.#json),
       variant: variantIndexOf(checker, this.#json, jsonVariants.text),
       fields: [name],
     };

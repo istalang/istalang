@@ -13,7 +13,8 @@ import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values.ts';
 import { resultVariants } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Checker, FunctionCall } from '../../checker/check.ts';
+import type { Checker } from '../../checker/check.ts';
+import type { FunctionCall } from '../../checker/resolved-call.ts';
 import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
 import { CodeWriter } from '../code-writer.ts';
 import type { CodeContext } from '../context.ts';
@@ -70,7 +71,7 @@ export class SynthesizedCode implements CodeContext {
       kind: 'struct',
       span: this.span,
       dst,
-      type: this.tables.typeIndex(type),
+      type: this.tables.types.index(type),
       fields: [...fields],
     });
     return dst;

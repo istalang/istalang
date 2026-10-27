@@ -21,7 +21,7 @@ import type {
   Expression,
   MatchCase,
   SelectCase,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { type ItemRules, moveToContinuation, parseBlockBraces, parseBody } from '../layout.ts';

@@ -4,7 +4,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { Comprehension } from '../../syntax/expressions.ts';
+import type { Comprehension } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitLoopOver } from '../iteration.ts';
 import { appendElement } from './collections.ts';

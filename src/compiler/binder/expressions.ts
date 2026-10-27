@@ -7,7 +7,12 @@
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { casesOf, type Expression, type MemberAccess, type Spread } from '../syntax/expressions.ts';
+import {
+  casesOf,
+  type Expression,
+  type MemberAccess,
+  type Spread,
+} from '../syntax/expressions/index.ts';
 import type { Identifier, QualifiedName } from '../syntax/node.ts';
 import { underBindings, underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';

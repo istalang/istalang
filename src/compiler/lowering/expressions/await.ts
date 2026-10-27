@@ -4,7 +4,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { Await } from '../../syntax/expressions.ts';
+import type { Await } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 
 export function lowerAwait(context: FunctionContext, node: Await): Register {

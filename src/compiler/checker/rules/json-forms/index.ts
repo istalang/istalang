@@ -29,7 +29,6 @@ import {
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import { isSharedStruct } from '../../../syntax/declarations.ts';
-import type { FunctionCall, ResolvedCall } from '../../check.ts';
 import type { CheckerContext } from '../../context.ts';
 import { isHostType } from '../../host-externs.ts';
 import {
@@ -43,6 +42,7 @@ import {
 } from '../../json-form.ts';
 import { declaresWitness, witnessesFor } from '../../resolution/conformance.ts';
 import { callWithTypes } from '../../resolution/typed-call.ts';
+import type { FunctionCall, ResolvedCall } from '../../resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import type { FieldMember, NominalType, Type } from '../../types/type.ts';
 import { wellKnownArguments } from '../../types/well-known.ts';

@@ -31,7 +31,7 @@ import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
 import type { ImportDeclaration } from '../syntax/declarations.ts';
-import type { StringLiteral } from '../syntax/expressions.ts';
+import type { StringLiteral } from '../syntax/expressions/index.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
 import { programDiagnostics } from './diagnostics.ts';
 

@@ -15,7 +15,7 @@
  * `=` can do.
  */
 
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { isAssignmentOperator } from '../../syntax/operators.ts';
 import { destructures, isTarget, type Statement } from '../../syntax/statements.ts';

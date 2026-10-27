@@ -21,7 +21,7 @@ import { lineMapOf } from '../../text/line-map.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import { type Span, textOf } from '../../text/span.ts';
 import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Expression } from '../syntax/expressions.ts';
+import type { Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
 import type { Pattern } from '../syntax/patterns.ts';

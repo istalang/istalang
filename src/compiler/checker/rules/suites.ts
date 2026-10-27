@@ -13,9 +13,9 @@ import type { ModuleId } from '../../program/program.ts';
 import { type FunctionDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { ResolvedCall } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { ResolvedCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 

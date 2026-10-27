@@ -5,36 +5,21 @@
  *   from a worklist, so a call can name one that isn't lowered yet, including itself. Only what
  *   `main` reaches is lowered: generics are compiled per instantiation (§3.5), which only
  *   reachability can enumerate.
- * - Types and constants are interned: one entry per distinct type or value, a type keyed as the
- *   checker keys it (types/type-keys.ts), a value by its persisted text.
- * - A type entry is numbered before its fields are lowered, so a recursive type refers to itself
- *   through the table (§3.1). Every nominal type can be laid out: a struct by its fields, an enum
- *   by its variants, an extern type by who disposes it, which the checker derives from the
- *   `dispose` declared for it (checker/rules/disposal.ts).
- * - An anonymous struct is a struct entry without a name, one per type, so two never share an
- *   entry (§3.1).
+ * - Types and constants are interned: one entry per distinct type (type-table.ts) or value, a
+ *   value keyed by its persisted text.
  */
 
 import { z } from 'zod';
 import { encodeJson } from '../../definition/codec.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
-import type { FunctionId, TypeId } from '../../definition/operands.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import type { Tables } from '../../definition/tables.ts';
-import type {
-  EnumRole,
-  ExternRole,
-  TypeDefinition,
-  TypeReference,
-} from '../../definition/types.ts';
 import { type Value, value } from '../../definition/values.ts';
-import { type WellKnownDeclaration, wellKnown } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
-import type { Checker, Disposal } from '../checker/check.ts';
-import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
-import { isHostExtern } from '../checker/host-externs.ts';
-import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
+import type { Checker } from '../checker/check.ts';
+import type { Type } from '../checker/types/type.ts';
 
 import { type ModuleId, programModule } from '../program/program.ts';
 import type {
@@ -42,18 +27,18 @@ import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
 } from '../syntax/declarations.ts';
-import { constantValue } from './constants.ts';
+import { annotationValues } from './constants.ts';
 import {
   type FunctionInstance,
   instanceKey,
   instanceName,
-  instanceOfCall,
   type NestedInstance,
   nestedKey,
   nestedName,
   ownerDeclaration,
 } from './instances.ts';
 import { qualifiedNameOf } from './names.ts';
+import { TypeTable } from './type-table.ts';
 
 /**
  * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
@@ -86,29 +71,11 @@ export type StartTarget = FunctionDeclaration | ConstantDeclaration;
 /** What every function-table entry starts with: its name, and where it is declared. */
 export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 'annotations'>;
 
-/** A type with an entry of its own: a declared struct, enum or extern type, or an anonymous struct. */
-type EntryType = NominalType | AnonymousStructType;
-
-/**
- * The std type each role of an extern type entry is (definition/types.ts). A shared struct's entry
- * is a cell's too (§3.18).
- */
-const externRoles = {
-  cell: wellKnown.cell,
-  future: wellKnown.future,
-} as const satisfies Record<ExternRole, WellKnownDeclaration>;
-
-/** The std type each role of an enum entry is (definition/types.ts). */
-const enumRoles = {
-  json: wellKnown.json,
-} as const satisfies Record<EnumRole, WellKnownDeclaration>;
-
 export class DefinitionTables {
   readonly #checker: Checker;
+  readonly types: TypeTable;
   readonly #modules: Tables['modules'][number][] = [];
   readonly #moduleIndexes = new Map<ModuleId, number>();
-  readonly #types: TypeDefinition[] = [];
-  readonly #typeIndexes = new Map<string, TypeId>();
   readonly #constants: Value[] = [];
   readonly #constantIndexes = new Map<string, number>();
   readonly #functions: (FunctionDefinition | undefined)[] = [];
@@ -118,6 +85,11 @@ export class DefinitionTables {
 
   constructor(checker: Checker) {
     this.#checker = checker;
+    this.types = new TypeTable(checker, {
+      functionIndex: (instance) => this.functionIndex(instance),
+      hostNativeIndex: (declaration) => this.hostNativeIndex(declaration),
+      annotationValues: (annotations) => annotationValues(this, annotations),
+    });
   }
 
   /** The index of `module` in the module table, with its line starts for spans. */
@@ -147,7 +119,8 @@ export class DefinitionTables {
       name: instanceName(this.#checker, instance),
       module: this.moduleIndex(module),
       span: declaration.name.span,
-      annotations: this.#annotationValues(
+      annotations: annotationValues(
+        this,
         this.#checker.annotations.of(module, declaration, { kind: 'function' }),
       ),
     };
@@ -236,41 +209,6 @@ export class DefinitionTables {
     this.#functions[index] = entry;
   }
 
-  /** How the Definition refers to `type`. */
-  typeReference(type: Type): TypeReference {
-    switch (type.kind) {
-      case 'primitive':
-        return { kind: 'primitive', name: type.name };
-      case 'nominal':
-      case 'anonymous':
-        return { kind: 'named', type: this.#typeEntry(type) };
-      case 'tuple':
-        return {
-          kind: 'tuple',
-          elements: type.elements.map((element) => this.typeReference(element)),
-        };
-      case 'function':
-        return {
-          kind: 'function',
-          async: type.isAsync,
-          parameters: type.parameters.map((parameter) => this.typeReference(parameter.type)),
-          result: this.typeReference(type.result),
-        };
-      case 'parameter':
-      case 'error':
-        return unreachable(`A ${type.kind} type can't reach lowering.`);
-      default: {
-        const unhandled: never = type;
-        return unhandled;
-      }
-    }
-  }
-
-  /** The index of the type entry for `type`. */
-  typeIndex(type: EntryType): TypeId {
-    return this.#typeEntry(type);
-  }
-
   /** The finished tables, every referenced function lowered. */
   finish(main: FunctionId | undefined): Tables {
     const functions = this.#functions.map((entry, index) => {
@@ -282,123 +220,11 @@ export class DefinitionTables {
     const withMain = main === undefined ? {} : { main };
     return {
       modules: this.#modules,
-      types: this.#types,
+      types: [...this.types.entries],
       functions,
       constants: this.#constants,
       starts: this.#starts,
       ...withMain,
     };
-  }
-
-  /**
-   * Not `memo`: the index is recorded before the layout is computed, because a recursive type's
-   * layout refers to the type itself.
-   */
-  #typeEntry(type: EntryType): TypeId {
-    const key = this.#checker.typeKeys.typeKey(type);
-    const known = this.#typeIndexes.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const index = this.#types.length;
-    this.#typeIndexes.set(key, index);
-    this.#types.push({ kind: 'struct', name: '', arguments: [], fields: [] });
-    this.#types[index] = this.#layout(type);
-    return index;
-  }
-
-  /** The entry describing `type`: its fields, its variants, or how an extern type is disposed. */
-  #layout(type: EntryType): TypeDefinition {
-    if (type.kind === 'anonymous') {
-      return { kind: 'struct', name: '', arguments: [], fields: this.#fields(type.fields) };
-    }
-    const { declaration } = type.entity;
-    const name = qualifiedNameOf(this.#checker, declaration);
-    const typeArguments = type.arguments.map((argument) => this.typeReference(argument));
-    switch (declaration.kind) {
-      case 'StructDeclaration':
-        if (declaration.isShared) {
-          return {
-            kind: 'extern',
-            name,
-            arguments: typeArguments,
-            sendable: false,
-            disposal: this.#disposal(this.#checker.disposalOf(type)),
-            role: 'cell',
-          };
-        }
-        return {
-          kind: 'struct',
-          name,
-          arguments: typeArguments,
-          fields: this.#fields(this.#checker.fieldsOf(type) ?? []),
-        };
-      case 'EnumDeclaration': {
-        const role = this.#roleOf(enumRoles, type.entity);
-        return {
-          kind: 'enum',
-          name,
-          arguments: typeArguments,
-          variants: (this.#checker.variantsOf(type) ?? []).map((variant) => ({
-            name: variant.name,
-            fields: this.#fields(variant.fields),
-          })),
-          ...(role === undefined ? {} : { role }),
-        };
-      }
-      case 'ExternStructDeclaration': {
-        const role = this.#roleOf(externRoles, type.entity);
-        return {
-          kind: 'extern',
-          name,
-          arguments: typeArguments,
-          sendable: declaration.isSendable,
-          disposal: this.#disposal(this.#checker.disposalOf(type)),
-          ...(role === undefined ? {} : { role }),
-        };
-      }
-      default: {
-        const unhandled: never = declaration;
-        return unhandled;
-      }
-    }
-  }
-
-  /** Which of `roles` the type `entity` declares has: what the runtime makes of its values. */
-  #roleOf<Role extends string>(
-    roles: Readonly<Record<Role, WellKnownDeclaration>>,
-    entity: NominalType['entity'],
-  ): Role | undefined {
-    return (Object.keys(roles) as Role[]).find(
-      (role) => this.#checker.wellKnownEntity(roles[role]) === entity,
-    );
-  }
-
-  /**
-   * A type entry's disposal: a declared `dispose` is the entry of its instance (§7), and one a host
-   * implements names its native too (boundary/host-externs.ts).
-   */
-  #disposal(disposal: Disposal): Extract<TypeDefinition, { kind: 'extern' }>['disposal'] {
-    if (disposal.kind !== 'function') {
-      return disposal;
-    }
-    const instance = instanceOfCall(disposal.call);
-    const entry = { kind: 'function', function: this.functionIndex(instance) } as const;
-    return isHostExtern(this.#checker, instance.declaration)
-      ? { ...entry, host: this.hostNativeIndex(instance.declaration) }
-      : entry;
-  }
-
-  #fields(fields: readonly FieldMember[]) {
-    return fields.map((field) => ({
-      name: field.name,
-      type: this.typeReference(field.type),
-      annotations: this.#annotationValues(this.#checker.annotations.ofField(field)),
-    }));
-  }
-
-  /** The values of `annotations`, as an entry carries them for tools to read. */
-  #annotationValues(annotations: readonly CheckedAnnotation[]): Value[] {
-    return annotations.map(({ form }) => constantValue(this, form));
   }
 }

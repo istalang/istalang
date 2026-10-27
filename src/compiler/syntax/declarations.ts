@@ -16,7 +16,7 @@
  */
 
 import type { Annotatable } from './annotations.ts';
-import type { Expression, Parameter, StringLiteral } from './expressions.ts';
+import type { Expression, Parameter, StringLiteral } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
 import type { Block, VariableDeclaration } from './statements.ts';
 import type { FieldDeclaration, TypeNode } from './types.ts';

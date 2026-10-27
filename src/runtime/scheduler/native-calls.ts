@@ -32,7 +32,7 @@ import { Panic } from '../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { Futures } from './futures.ts';
 import { type Heap, handleObject } from './heap.ts';
-import type { Instance } from './instance.ts';
+import type { Instance } from './instance/index.ts';
 import type { Slots } from './slots.ts';
 import type { TestWorld } from './test-world.ts';
 import type { WeakSide } from './weak-side.ts';

@@ -21,7 +21,7 @@ import { elementsOf, isComposite, type Value } from '../../definition/values.ts'
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Natives } from '../natives.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
-import { type Ended, type Failed, World } from './world.ts';
+import { type Ended, type Failed, World } from './world/index.ts';
 
 export interface TestRunOptions {
   readonly natives: Natives;

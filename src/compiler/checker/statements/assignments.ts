@@ -22,7 +22,8 @@
  * - What lowering needs is recorded: each place written, with its part of the value and its wraps.
  */
 
-import { type Expression, placePath, unparenthesized } from '../../syntax/expressions.ts';
+import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
+import { placePath } from '../../syntax/expressions/places.ts';
 import type { AssignmentOperator } from '../../syntax/operators.ts';
 import {
   type Assignment,

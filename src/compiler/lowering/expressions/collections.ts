@@ -26,7 +26,7 @@ import type {
   MapLiteral,
   Range,
   Spread,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { referenceTo } from '../emit-call.ts';
@@ -230,7 +230,7 @@ function optionalInt(
     kind: 'variant',
     span,
     dst,
-    type: context.tables.typeIndex(optional),
+    type: context.tables.types.index(optional),
     variant: variantIndexOf(context.checker, optional, name),
     fields: end === undefined ? [] : [adjust(context.expression(end))],
   });

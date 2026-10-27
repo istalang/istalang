@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Call } from './expressions.ts';
+import type { Call } from './expressions/index.ts';
 import type { Identifier } from './node.ts';
 import { childrenOf } from './tree.ts';
 

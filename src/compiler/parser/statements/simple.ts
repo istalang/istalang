@@ -6,7 +6,7 @@
  * bare `return` at the end of a line both return unit.
  */
 
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Break, Continue, Defer, Drop, Return, Spawn } from '../../syntax/statements.ts';
 import type { Parser } from '../parser.ts';
 

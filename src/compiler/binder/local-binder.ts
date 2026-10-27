@@ -21,7 +21,7 @@ import { memo } from '../../structures/memo.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Comprehension, Expression, Lambda } from '../syntax/expressions.ts';
+import type { Comprehension, Expression, Lambda } from '../syntax/expressions/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { Block, For, VariableDeclaration } from '../syntax/statements.ts';

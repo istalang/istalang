@@ -6,7 +6,7 @@
  */
 
 import type { Span } from '../../../text/span.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { comparable, type Type } from './type.ts';

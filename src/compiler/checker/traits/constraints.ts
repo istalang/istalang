@@ -19,9 +19,9 @@ import type {
 } from '../../syntax/declarations.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
-import type { RequirementOrigin } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { RequirementOrigin } from '../resolved-call.ts';
 import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import {
   type ParameterKey,

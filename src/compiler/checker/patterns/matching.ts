@@ -20,7 +20,7 @@ import { optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { VariantNaming } from '../../binder/entities.ts';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
 import type {
   CompareFieldPattern,
@@ -30,7 +30,7 @@ import type {
   StructPattern,
 } from '../../syntax/patterns.ts';
 import { resolveOperator } from '../calls/operators.ts';
-import type { CheckedPattern, PatternTest } from '../check.ts';
+import type { CheckedPattern, PatternTest } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';

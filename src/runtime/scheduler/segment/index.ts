@@ -16,9 +16,8 @@
  * other execution stands at an `await`, as a snapshot requires. Every call is a `call`
  * instruction, so a program's calls never nest on JavaScript's stack.
  *
- * What a segment leaves is persisted when it commits, and a persisted value nests at most
- * `maximumDepth` levels (definition/values.ts). A segment leaving a deeper value, where an
- * execution can reach it or as its outcome, panics where it ended instead, so it commits nothing.
+ * What a segment leaves is persisted when it commits, so it must nest no deeper than a snapshot
+ * may (limits.ts).
  *
  * After every instruction that let go of something, the segment collects (runtime/lifetimes/):
  * what lost its last holder is disposed right there (§7). A disposal that runs code runs on the
@@ -30,7 +29,7 @@
 import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import { depthOf, maximumDepth, type Value } from '../../../definition/values.ts';
+import { depthOf, type Value } from '../../../definition/values.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { runInstruction } from '../../interpreter/instructions.ts';
 import {
@@ -42,18 +41,17 @@ import {
   releaseFrame,
   resumeAfterCall,
 } from '../../interpreter/machine.ts';
-import { traceOf } from '../../interpreter/trace.ts';
 import { Collector } from '../../lifetimes/collector.ts';
 import type { Roots } from '../../lifetimes/holders.ts';
-import { Panic } from '../../natives.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../heap.ts';
-import { type Instance, topFrame } from '../instance.ts';
+import { type Instance, topFrame } from '../instance/index.ts';
 import { type Caller, callTargetOf, driverOf, type SegmentStart } from '../mocks.ts';
 import { NativeCalls } from '../native-calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
-import { panicOf } from './limits.ts';
+import { panicOf, requireDepth } from './limits.ts';
+import { RunStack } from './run-stack.ts';
 
 export type SegmentEnd =
   /** A driver awaited: commit `objects`, then run the next segment. */
@@ -95,16 +93,17 @@ class SegmentRunner implements Machine {
   readonly #instance: Instance;
   readonly #caller: Caller;
   readonly #natives: NativeCalls;
-  readonly #runStack: LiveExecution[] = [];
+  readonly #runStack = new RunStack();
   readonly #collector: Collector;
   readonly #disposals: DisposalRuns;
-  #driver: LiveExecution | undefined;
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
     this.#caller = { instance, startedAt };
-    this.#natives = new NativeCalls(instance, startedAt, (leftOut) => this.#trace(leftOut));
+    this.#natives = new NativeCalls(instance, startedAt, (leftOut) =>
+      this.#runStack.trace(this.definition, leftOut),
+    );
     this.#disposals = new DisposalRuns({
       instance,
       caller: this.#caller,
@@ -137,7 +136,11 @@ class SegmentRunner implements Machine {
     } catch (error) {
       const panic = panicOf(error);
       if (panic !== undefined) {
-        return { kind: 'panicked', message: panic.message, trace: this.#trace() };
+        return {
+          kind: 'panicked',
+          message: panic.message,
+          trace: this.#runStack.trace(this.definition),
+        };
       }
       throw error;
     }
@@ -184,11 +187,11 @@ class SegmentRunner implements Machine {
       return;
     }
     const calleeFrame = newFrame(callable, contents, frame.heap, target.captures);
-    this.#current().frames.push(calleeFrame);
+    this.#runStack.current().frames.push(calleeFrame);
   }
 
   return(frame: ActiveFrame, value: Value): void {
-    const execution = this.#current();
+    const execution = this.#runStack.current();
     if (execution.frames.pop() !== frame) {
       unreachable('Only the top frame returns.');
     }
@@ -215,7 +218,7 @@ class SegmentRunner implements Machine {
   }
 
   wait(frame: ActiveFrame): void {
-    const execution = this.#current();
+    const execution = this.#runStack.current();
     if (this.#disposals.suspended(execution)) {
       return;
     }
@@ -224,7 +227,7 @@ class SegmentRunner implements Machine {
     if (awaited.some((register) => this.settled(readRegister(frame, register)) !== undefined)) {
       this.#instance.markReady(execution);
     }
-    if (this.#runStack.length === 1) {
+    if (this.#runStack.driverOnly) {
       this.#runStack.pop();
       this.#instance.heap.noteReleased(
         execution.resolves === undefined ? [] : [execution.resolves],
@@ -251,7 +254,7 @@ class SegmentRunner implements Machine {
   }
 
   currentCall(): Value {
-    return this.#instance.weak.reference(this.#current().id);
+    return this.#instance.weak.reference(this.#runStack.current().id);
   }
 
   /** Runs drivers until one awaits, the root returns, or nothing is ready. */
@@ -289,8 +292,7 @@ class SegmentRunner implements Machine {
 
   /** Runs `driver` until it awaits or returns, and collecting what that let go of is done. */
   #drive(driver: LiveExecution): DriveEnd {
-    this.#driver = driver;
-    this.#runStack.splice(0, this.#runStack.length, driver);
+    this.#runStack.drive(driver);
     this.#end = undefined;
     for (;;) {
       if (this.#collected() && this.#end !== undefined) {
@@ -331,16 +333,13 @@ class SegmentRunner implements Machine {
    * lets go of is mostly held there.
    */
   #roots(): Roots {
-    const running = this.#runStack.toReversed();
+    const running = this.#runStack.innermostFirst();
     const waiting = this.#instance.heap
       .objectsOf('execution')
       .filter((execution) => !running.includes(execution));
     return {
       frames: [...running, ...waiting].flatMap((execution) => execution.frames.toReversed()),
-      objects: [
-        ...this.#runStack.flatMap(({ resolves }) => resolves ?? []),
-        ...this.#instance.answers(),
-      ],
+      objects: [...this.#runStack.callFutures(), ...this.#instance.answers()],
     };
   }
 
@@ -360,7 +359,7 @@ class SegmentRunner implements Machine {
 
   /** Runs the instruction the top frame stands at. */
   #step(): void {
-    const frame = topFrame(this.#current());
+    const frame = topFrame(this.#runStack.current());
     const instruction = frame.code.instructions[frame.pc];
     if (instruction === undefined) {
       unreachable(`pc ${frame.pc} is past the end; loading checks termination.`);
@@ -373,39 +372,11 @@ class SegmentRunner implements Machine {
    * under it receives the call's future; with none under it, the driver's run ends with `end`.
    */
   #leave(future: number, end: 'awaited' | 'returned'): void {
-    this.#runStack.pop();
-    const caller = this.#runStack.at(-1);
+    const caller = this.#runStack.pop();
     if (caller === undefined) {
       this.#end = end;
       return;
     }
     resumeAfterCall(topFrame(caller), { kind: 'handle', object: future });
-  }
-
-  #current(): LiveExecution {
-    const execution = this.#runStack.at(-1);
-    if (execution === undefined) {
-      unreachable('No execution is running.');
-    }
-    return execution;
-  }
-
-  /**
-   * Where every running frame is, innermost first (§3.12), without the innermost `leftOut`; once
-   * the driver has stopped at its await, where it stopped.
-   */
-  #trace(leftOut = 0): string {
-    const stack = this.#runStack.length === 0 && this.#driver ? [this.#driver] : this.#runStack;
-    const frames = stack.toReversed().flatMap((execution) => execution.frames.toReversed());
-    return traceOf(this.definition, frames.slice(leftOut));
-  }
-}
-
-/** Panics when a value nesting `depth` levels is too deep to persist (§5). */
-function requireDepth(depth: number): void {
-  if (depth > maximumDepth) {
-    throw new Panic(
-      `A value nests ${depth} levels deep, deeper than the ${maximumDepth} an instance can persist.`,
-    );
   }
 }

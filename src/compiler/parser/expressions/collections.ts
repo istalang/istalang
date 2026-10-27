@@ -15,7 +15,7 @@ import type {
   MapEntry,
   MapLiteral,
   Spread,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';

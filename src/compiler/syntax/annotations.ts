@@ -11,7 +11,7 @@
  * there are none, which keeps every unannotated item free of annotation noise.
  */
 
-import type { Expression } from './expressions.ts';
+import type { Expression } from './expressions/index.ts';
 import type { NodeOf } from './node.ts';
 
 export interface Annotation extends NodeOf<'Annotation'> {

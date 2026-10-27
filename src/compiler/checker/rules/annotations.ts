@@ -23,11 +23,11 @@ import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { CheckedBody, ResolvedCall } from '../check.ts';
+import type { CheckedBody } from '../check.ts';
 import type {
   AnnotationPlace,
   AnnotationQueries,
@@ -36,6 +36,7 @@ import type {
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { defaultWitness } from '../resolution/default-witness.ts';
+import type { ResolvedCall } from '../resolved-call.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { searchSite } from '../use-site.ts';

@@ -10,7 +10,7 @@
  */
 
 import type { Annotatable, Annotation } from '../syntax/annotations.ts';
-import type { Expression } from '../syntax/expressions.ts';
+import type { Expression } from '../syntax/expressions/index.ts';
 import type { Invalid } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import { parserDiagnostics } from './diagnostics.ts';

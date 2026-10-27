@@ -9,7 +9,7 @@
  * decides (§3.5) is decided with it.
  */
 
-import type { Tuple, TupleElement } from '../../syntax/expressions.ts';
+import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';

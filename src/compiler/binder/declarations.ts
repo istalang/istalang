@@ -26,7 +26,7 @@ import {
   type TypeParameters,
   typeParametersOf,
 } from '../syntax/declarations.ts';
-import type { Lambda, Parameter } from '../syntax/expressions.ts';
+import type { Lambda, Parameter } from '../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';

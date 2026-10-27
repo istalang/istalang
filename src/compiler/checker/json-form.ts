@@ -11,7 +11,7 @@ import {
   type WellKnownDeclaration,
   wellKnown,
 } from '../../language/well-known.ts';
-import type { FunctionCall, ResolvedCall } from './check.ts';
+import type { FunctionCall, ResolvedCall } from './resolved-call.ts';
 import type { Type } from './types/type.ts';
 import type { UseSite } from './use-site.ts';
 

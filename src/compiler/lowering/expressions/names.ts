@@ -10,7 +10,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { MemberAccess } from '../../syntax/expressions.ts';
+import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { constantValue } from '../constants.ts';
 import type { FunctionContext } from '../context.ts';

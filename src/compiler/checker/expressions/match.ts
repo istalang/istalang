@@ -12,7 +12,7 @@
  */
 
 import type { Span } from '../../../text/span.ts';
-import { casesOf, type Is, type Match } from '../../syntax/expressions.ts';
+import { casesOf, type Is, type Match } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';

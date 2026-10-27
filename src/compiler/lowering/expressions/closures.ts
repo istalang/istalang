@@ -13,7 +13,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Lambda, MemberAccess } from '../../syntax/expressions.ts';
+import type { Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { FunctionContext } from '../context.ts';
 import { declareVariable } from '../statements/variables.ts';

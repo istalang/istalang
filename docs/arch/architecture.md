@@ -41,7 +41,7 @@ src/
   diagnostics/          Diagnostic model, per-phase catalog helper, renderer
   compiler/
     syntax/             contract: token kinds, tree node types, where items may stand, generic traversal, node-at-offset,
-                        how targets, places and struct items read as written, and the function a declaration's
+                        how targets, places (expressions/places.ts), optional chains (expressions/chains.ts) and struct items read as written, and the function a declaration's
                         fields with defaults read as (field-defaults.ts)
     scanner/            text → tokens + comments + diagnostics
     parser/             tokens → SyntaxTree; parse.ts is the entry
@@ -55,7 +55,8 @@ src/
       context.ts program-checker.ts body-checker.ts              contexts and the classes that wire them
       lazy-checks.ts frontier.ts unsupported.ts use-site.ts      checking once on demand with cycle reports, the not-supported-yet vocabulary
                                                                  and its one diagnostic, where a check reports
-      constant-form.ts json-form.ts checked-annotation.ts        models the surface names: computed constants, derived JSON forms, annotations,
+      resolved-call.ts checked-pattern.ts                        models the surface names: what calls resolved to, patterns and targets as checked,
+      constant-form.ts json-form.ts checked-annotation.ts        computed constants, derived JSON forms, annotations,
       host-externs.ts                                            the externs a host implements
                                                                  folders, lowest layer first (Layers):
       diagnostics/ types/                                        the catalog; the type model, written types resolved, rules over types and the
@@ -73,7 +74,7 @@ src/
                                                                  scopes, returns and captures, lambdas and local fns, function values
     lowering/           checked program → Definition (all desugaring lives here); lower.ts is the entry
       context.ts function-lowering/ code-writer.ts               one function's context, its composition and frames, its code and labels
-      tables.ts names.ts constants.ts instances.ts               the interned tables, qualified names, compile-time constants,
+      tables.ts type-table.ts names.ts constants.ts instances.ts the interned tables (types in type-table.ts), qualified names, compile-time constants,
                                                                  function instances (one entry per instantiation)
       places.ts                                                  places and parts of values: what assignments write and `&` passes
       optional-chains.ts patterns.ts                             a chain's links jumping to its end on `None`; a value matched against a
@@ -91,7 +92,7 @@ src/
                         extern-signatures.ts (one name, one type across deploys)
                         scheduler/: heap.ts (objects by id, and indexes finding them by field, derived, never persisted), futures.ts (resolving, who waits, `first`), slots.ts (§6's queue),
                         weak-side.ts (weak references, `disposed()` and `disposing()`, told by disposal what it disposes),
-                        instance.ts (an instance in memory, and the commit's snapshot from the one it was made from), segment/ (a segment; disposal-runs.ts, the code disposals run), native-calls.ts, wake.ts (advancing, commits, spawned children), inspect.ts, random-source.ts (an instance's draws),
+                        instance/ (an instance in memory, and the commit's snapshot from the one it was made from; live-objects.ts, heap objects as stored and as running), segment/ (a segment; run-stack.ts, the executions running on one another; disposal-runs.ts, the code disposals run; limits.ts, the limits a program runs into as panics), native-calls.ts, wake.ts (advancing, commits, spawned children), inspect.ts, random-source.ts (an instance's draws),
                         instance-names.ts (`<parent>/<n>`, and the ancestors a name says), mocks.ts (the mock a call reaches, and calls answered by another instance's), test-world.ts (the seam a test's instances reach each other through)
                         snapshot/: objects.ts (heap objects and frames as stored), holdings.ts (what each object kind holds and watches, and the one rule for a frame, live or stored), snapshot.ts (the persisted instance), check.ts (a snapshot against its Definition)
     lifetimes/          holders and disposal (§7): holders.ts (what the live frames reach: held), orphans.ts (what to dispose now,
@@ -101,7 +102,7 @@ src/
     instance-state.ts   where an instance stands after the runtime advanced it
     host.ts             public host API: createRuntime(seams) → deploy, start, wake
     settle.ts           the host's wake-until-settled loop over an instance and every instance it spawns, waiting each host's own way
-    testing/            running a test Definition (§10): world.ts (one test's fresh runtime in memory: its instances, the mocks they reach, its watches, timers on the caller's clock), run-tests.ts (listing each suite, then each test in a world of its own)
+    testing/            running a test Definition (§10): world/ (one test's fresh runtime in memory: its instances, the mocks they reach, its watches, timers on the caller's clock; test-host.ts, the externs no mock replaces), run-tests.ts (listing each suite, then each test in a world of its own)
   stdlib/               std-modules.ts: the one list of std modules, each a record (std-module.ts: name, embedded source, natives built from keys bound to the name, which key its functions and its own types; a module whose natives take another std module's type gets that module's keys where the list builds it, as `decimal` gets `math`'s for `Rounding`), where a module's name is spelled unless the language names it by role; stdlib-loader.ts: the std ModuleLoader (simple name → source) and the roles, derived from the list; natives.ts: every std native in one table, derived from the list; native-values.ts: the values natives read and return; positions.ts: what an index, a range, `at` and `slice` select of an array or a string; prelude/ and one folder per std module: <module>.ista + natives.ts (keys built by definition/extern-key.ts, as lowering's are)
   formatter/            SyntaxTree → text; one printer per construct
   language-service/     editor-agnostic queries over Program snapshots; one folder per feature

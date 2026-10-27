@@ -8,7 +8,7 @@
  * same reason (§3.9). `..` without an end is the open range `a..`; `..=` always needs one.
  */
 
-import type { Expression, Reference } from '../../syntax/expressions.ts';
+import type { Expression, Reference } from '../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
   binaryOperatorLevels,

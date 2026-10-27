@@ -130,7 +130,7 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
   if (jsonType === undefined) {
     unreachable('A host extern was lowered in a program without the json module.');
   }
-  const json = tables.typeReference(jsonType);
+  const json = tables.types.reference(jsonType);
   const future = checker.wellKnownType(wellKnown.future, [jsonType]);
   return {
     header: {
@@ -143,7 +143,7 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
       Array.from({ length: count }, () => ({ type: json, reference: false })),
     /** What the native gives: JSON, or a future the host fills with JSON when it fills `filled`. */
     given: (filled: Type | undefined) =>
-      filled === undefined || future === undefined ? json : tables.typeReference(future),
+      filled === undefined || future === undefined ? json : tables.types.reference(future),
   };
 }
 

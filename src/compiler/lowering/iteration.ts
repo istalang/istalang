@@ -10,7 +10,7 @@ import type { Register } from '../../definition/operands.ts';
 import { optionalVariants } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Iteration } from '../checker/check.ts';
-import type { Comprehension, Expression } from '../syntax/expressions.ts';
+import type { Comprehension, Expression } from '../syntax/expressions/index.ts';
 import type { For } from '../syntax/statements.ts';
 import type { FunctionContext } from './context.ts';
 import { emitCall } from './emit-call.ts';

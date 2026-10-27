@@ -21,7 +21,11 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod as isMethodDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
-import { itemValue, type MemberAccess, type StructLiteral } from '../../syntax/expressions.ts';
+import {
+  itemValue,
+  type MemberAccess,
+  type StructLiteral,
+} from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldSource } from '../check.ts';

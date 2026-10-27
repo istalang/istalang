@@ -11,7 +11,7 @@
  * `a + f<T>(x)`, comparison is too loose to apply, but a postfix type application is not.
  */
 
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
   binaryOperatorLevels,

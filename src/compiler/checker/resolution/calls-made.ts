@@ -7,7 +7,7 @@
  * witness of `Disposable` is `dispose` itself, and is only ever called by such a call.
  */
 
-import type { FunctionCall, ResolvedCall } from '../check.ts';
+import type { FunctionCall, ResolvedCall } from '../resolved-call.ts';
 import type { Candidate } from './candidates.ts';
 
 /** The call `candidate`, instantiated, makes with `arity` arguments. */

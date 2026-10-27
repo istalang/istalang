@@ -14,7 +14,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import { type EnumDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
-import type { MemberAccess, NoneLiteral, StructLiteral } from '../../syntax/expressions.ts';
+import type { MemberAccess, NoneLiteral, StructLiteral } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';

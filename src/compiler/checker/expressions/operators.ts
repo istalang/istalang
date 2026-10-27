@@ -9,7 +9,7 @@
  * - `??` works on optionals (optionals.ts).
  */
 
-import type { Binary, Unary } from '../../syntax/expressions.ts';
+import type { Binary, Unary } from '../../syntax/expressions/index.ts';
 import { type Operand, resolveOperator } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { checkEqualSides } from '../types/equality.ts';

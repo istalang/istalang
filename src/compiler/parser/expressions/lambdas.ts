@@ -9,7 +9,7 @@
  * rule. Several statements need a block expression.
  */
 
-import type { Expression, Parameter } from '../../syntax/expressions.ts';
+import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { Parser } from '../parser.ts';
 import { parseFunctionKeyword } from '../parts/functions.ts';

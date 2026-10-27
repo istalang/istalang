@@ -25,7 +25,7 @@ import {
   type StructDeclaration,
   type Variant,
 } from './declarations.ts';
-import type { Parameter } from './expressions.ts';
+import type { Parameter } from './expressions/index.ts';
 import type { Invalid } from './node.ts';
 
 /** A declaration whose fields may have defaults: a struct, or one variant of an enum. */

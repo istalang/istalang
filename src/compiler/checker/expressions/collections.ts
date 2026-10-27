@@ -32,7 +32,7 @@ import type {
   MapLiteral,
   Range,
   Spread,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import { operatorFunctions } from '../calls/operators.ts';

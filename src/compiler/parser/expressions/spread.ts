@@ -3,7 +3,7 @@
  * expression on its own, so only those lists offer it.
  */
 
-import type { Spread } from '../../syntax/expressions.ts';
+import type { Spread } from '../../syntax/expressions/index.ts';
 import type { Parser } from '../parser.ts';
 
 /** A spread, starting at its `...`. */

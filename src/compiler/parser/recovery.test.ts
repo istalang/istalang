@@ -16,7 +16,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
-import type { MemberAccess } from '../syntax/expressions.ts';
+import type { MemberAccess } from '../syntax/expressions/index.ts';
 import { dump, errorNodes, spanViolations } from '../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { operatorTree, printFull } from './expressions/precedence.test-kit.ts';

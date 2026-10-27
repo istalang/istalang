@@ -36,16 +36,17 @@ import {
   itemValue,
   type Spread,
   type StructLiteral,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { FieldSource, FunctionCall, MadeCall } from '../check.ts';
+import type { FieldSource } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
 import { itemField } from '../patterns/struct-items.ts';
 import { callWithTypes } from '../resolution/typed-call.ts';
+import type { FunctionCall, MadeCall } from '../resolved-call.ts';
 import { constrainArguments, parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import {
   errorType,

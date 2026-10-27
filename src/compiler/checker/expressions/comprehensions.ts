@@ -6,7 +6,7 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
-import type { Comprehension } from '../../syntax/expressions.ts';
+import type { Comprehension } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, type Type } from '../types/type.ts';

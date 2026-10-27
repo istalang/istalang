@@ -26,37 +26,31 @@
  *   object here, a reference names one, and what a frame lets go of is noted on the heap.
  */
 
-import type { Definition } from '../../definition/definition.ts';
-import type { FunctionId } from '../../definition/operands.ts';
-import { handlesIn, type Value } from '../../definition/values.ts';
-import { pushAll } from '../../structures/stack.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { LogRecord } from '../instance-state.ts';
+import type { FunctionId } from '../../../definition/operands.ts';
+import { handlesIn, type Value } from '../../../definition/values.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { LogRecord } from '../../instance-state.ts';
 import {
   type ActiveFrame,
   type FrameHeap,
   newFrame,
   releaseFrame,
-} from '../interpreter/machine.ts';
-import { resume } from '../interpreter/suspension.ts';
-import { isDisposable } from '../lifetimes/disposal.ts';
-import { heldFrom } from '../lifetimes/holders.ts';
-import { seedBytes, seedTextOf } from '../random-seed.ts';
-import {
-  type Frame,
-  type HeapObject,
-  isReference,
-  type RegisterContents,
-} from '../snapshot/objects.ts';
-import type { InstanceCall, Snapshot } from '../snapshot/snapshot.ts';
-import { type Answered, Futures } from './futures.ts';
-import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './heap.ts';
-import { spawnedName } from './instance-names.ts';
-import type { LoadedDefinition } from './loaded-definition.ts';
-import { leaving, reachingMock } from './mocks.ts';
-import { drawOf } from './random-source.ts';
-import { Slots } from './slots.ts';
-import { WeakSide } from './weak-side.ts';
+} from '../../interpreter/machine.ts';
+import { resume } from '../../interpreter/suspension.ts';
+import { isDisposable } from '../../lifetimes/disposal.ts';
+import { heldFrom } from '../../lifetimes/holders.ts';
+import { seedBytes, seedTextOf } from '../../random-seed.ts';
+import { type HeapObject, isReference, type RegisterContents } from '../../snapshot/objects.ts';
+import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
+import { type Answered, Futures } from '../futures.ts';
+import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from '../heap.ts';
+import { spawnedName } from '../instance-names.ts';
+import type { LoadedDefinition } from '../loaded-definition.ts';
+import { leaving, reachingMock } from '../mocks.ts';
+import { drawOf } from '../random-source.ts';
+import { Slots } from '../slots.ts';
+import { WeakSide } from '../weak-side.ts';
+import { liveObject, storedObject } from './live-objects.ts';
 
 /**
  * A call this segment spawned (§9), or started as a test does (§10): the new instance's name, what
@@ -375,49 +369,4 @@ export function topFrame(execution: LiveExecution): ActiveFrame {
     unreachable(`Execution ${execution.id} has no frame.`);
   }
   return frame;
-}
-
-/** A snapshot's object as the running instance holds it: an execution's frames made live. */
-function liveObject(definition: Definition, object: HeapObject, heap: FrameHeap): LiveObject {
-  if (object.kind !== 'execution') {
-    return object;
-  }
-  return {
-    ...object,
-    resolves: object.resolves,
-    frames: object.frames.map((frame) => liveFrame(definition, frame, heap)),
-  };
-}
-
-function liveFrame(definition: Definition, frame: Frame, heap: FrameHeap): ActiveFrame {
-  const code = definition.functions[frame.function];
-  if (code?.kind !== 'code') {
-    unreachable(`Frame function ${frame.function} is not code; loading checks this.`);
-  }
-  const live = newFrame({ function: frame.function, code }, [], heap);
-  for (const [register, contents] of frame.registers) {
-    live.registers[register] = contents;
-  }
-  pushAll(live.kept, frame.kept);
-  live.pc = frame.pc;
-  return live;
-}
-
-function storedObject(object: LiveObject): HeapObject {
-  if (object.kind !== 'execution') {
-    return object;
-  }
-  const { resolves, ...rest } = object;
-  return {
-    ...rest,
-    ...(resolves === undefined ? {} : { resolves }),
-    frames: object.frames.map((frame) => ({
-      function: frame.function,
-      pc: frame.pc,
-      registers: frame.registers.flatMap((contents, register) =>
-        contents === undefined ? [] : [[register, contents] as [number, RegisterContents]],
-      ),
-      kept: [...frame.kept],
-    })),
-  };
 }

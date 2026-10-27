@@ -32,11 +32,11 @@ import type {
   TraitDeclaration,
   TypeParameter,
 } from '../../syntax/declarations.ts';
-import type { ResolvedCall, Witnesses } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
 import { type JsonDirection, jsonTraits } from '../json-form.ts';
+import type { ResolvedCall, Witnesses } from '../resolved-call.ts';
 import {
   type Constraint,
   constraintSubstitution,

@@ -22,7 +22,8 @@
 import type { Register, TypeId } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
-import type { AssignedPart, TargetOwner } from '../../checker/check.ts';
+import type { AssignedPart } from '../../checker/check.ts';
+import type { TargetOwner } from '../../checker/checked-pattern.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { hasUnnamedPart } from '../../syntax/patterns.ts';

@@ -28,13 +28,14 @@ import type {
   MapLiteral,
   Spread,
   StructLiteral,
-} from '../../syntax/expressions.ts';
+} from '../../syntax/expressions/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
-import type { CheckedBody, CheckedConstant, FieldSource, FunctionCall } from '../check.ts';
+import type { CheckedBody, CheckedConstant, FieldSource } from '../check.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../constant-form.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { FunctionCall } from '../resolved-call.ts';
 import { instantiatedBody } from '../types/instantiation.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/type.ts';
 

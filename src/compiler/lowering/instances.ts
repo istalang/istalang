@@ -18,7 +18,8 @@
  */
 
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Checker, FunctionCall, ResolvedCall, Witnesses } from '../checker/check.ts';
+import type { Checker } from '../checker/check.ts';
+import type { FunctionCall, ResolvedCall, Witnesses } from '../checker/resolved-call.ts';
 import {
   type ParameterKey,
   type Substitution,
@@ -28,7 +29,7 @@ import {
 } from '../checker/types/type.ts';
 import type { TypeKeys } from '../checker/types/type-keys.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Lambda } from '../syntax/expressions.ts';
+import type { Lambda } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
 

@@ -3,7 +3,7 @@
  * parameters, and reference types, which only a parameter's type may have (§3.7).
  */
 
-import type { Parameter } from '../../syntax/expressions.ts';
+import type { Parameter } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { Parser } from '../parser.ts';
 import { parseDelimited } from '../recovery.ts';

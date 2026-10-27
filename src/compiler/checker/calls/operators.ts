@@ -8,10 +8,10 @@
  * mention (§3.10).
  */
 
-import type { Expression } from '../../syntax/expressions.ts';
-import type { CallSite } from '../check.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
+import type { CallSite } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { resolveCall } from './resolve.ts';
 

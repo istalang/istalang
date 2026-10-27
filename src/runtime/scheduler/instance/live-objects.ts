@@ -1,0 +1,61 @@
+/**
+ * The two forms of a heap object: as a snapshot stores it, and as a running instance holds it. Only
+ * an execution differs: its frames are live (interpreter/machine.ts), their registers a dense array
+ * and their code resolved, and its call future is optional rather than absent.
+ */
+
+import type { Definition } from '../../../definition/definition.ts';
+import { pushAll } from '../../../structures/stack.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { type ActiveFrame, type FrameHeap, newFrame } from '../../interpreter/machine.ts';
+import type { Frame, HeapObject, RegisterContents } from '../../snapshot/objects.ts';
+import type { LiveObject } from '../heap.ts';
+
+/** A snapshot's object as the running instance holds it: an execution's frames made live. */
+export function liveObject(
+  definition: Definition,
+  object: HeapObject,
+  heap: FrameHeap,
+): LiveObject {
+  if (object.kind !== 'execution') {
+    return object;
+  }
+  return {
+    ...object,
+    resolves: object.resolves,
+    frames: object.frames.map((frame) => liveFrame(definition, frame, heap)),
+  };
+}
+
+function liveFrame(definition: Definition, frame: Frame, heap: FrameHeap): ActiveFrame {
+  const code = definition.functions[frame.function];
+  if (code?.kind !== 'code') {
+    unreachable(`Frame function ${frame.function} is not code; loading checks this.`);
+  }
+  const live = newFrame({ function: frame.function, code }, [], heap);
+  for (const [register, contents] of frame.registers) {
+    live.registers[register] = contents;
+  }
+  pushAll(live.kept, frame.kept);
+  live.pc = frame.pc;
+  return live;
+}
+
+export function storedObject(object: LiveObject): HeapObject {
+  if (object.kind !== 'execution') {
+    return object;
+  }
+  const { resolves, ...rest } = object;
+  return {
+    ...rest,
+    ...(resolves === undefined ? {} : { resolves }),
+    frames: object.frames.map((frame) => ({
+      function: frame.function,
+      pc: frame.pc,
+      registers: frame.registers.flatMap((contents, register) =>
+        contents === undefined ? [] : [[register, contents] as [number, RegisterContents]],
+      ),
+      kept: [...frame.kept],
+    })),
+  };
+}

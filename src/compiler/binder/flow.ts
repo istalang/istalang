@@ -12,7 +12,7 @@
  * Each rule lives here once, and every construct binds its body through it.
  */
 
-import type { Comprehension, Expression } from '../syntax/expressions.ts';
+import type { Comprehension, Expression } from '../syntax/expressions/index.ts';
 import type { For } from '../syntax/statements.ts';
 import type { LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';

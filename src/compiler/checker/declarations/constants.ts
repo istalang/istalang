@@ -15,11 +15,12 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
-import type { CheckedBody, CheckedConstant, TargetBinding } from '../check.ts';
+import type { CheckedBody, CheckedConstant } from '../check.ts';
+import type { TargetBinding } from '../checked-pattern.ts';
 import { formAt } from '../constant-form.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

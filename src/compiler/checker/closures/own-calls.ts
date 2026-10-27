@@ -18,7 +18,7 @@ import { entryFunction, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity, VariableEntity } from '../../binder/entities.ts';
 import { localFunctionOf } from '../../binder/entities.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { NestedFunction } from '../check.ts';
 import type { BodyContext } from '../context.ts';

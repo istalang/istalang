@@ -8,7 +8,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { If } from '../../syntax/expressions.ts';
+import type { If } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { lowerGuarded } from '../statements/scopes.ts';
 

@@ -11,7 +11,7 @@
  *   sendable (§3.1).
  */
 
-import { type Call, type Expression, unparenthesized } from '../../syntax/expressions.ts';
+import { type Call, type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import type { Spawn } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

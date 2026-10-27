@@ -16,7 +16,8 @@ import type { Register } from '../../definition/operands.ts';
 import { optionalVariants } from '../../language/well-known.ts';
 import { withPushed } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { chainStepOf, type Expression, isOptionalStep } from '../syntax/expressions.ts';
+import { chainStepOf, isOptionalStep } from '../syntax/expressions/chains.ts';
+import type { Expression } from '../syntax/expressions/index.ts';
 import type { Label } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
 import {

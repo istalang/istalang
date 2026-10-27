@@ -15,7 +15,7 @@
 
 import { staticName } from '../../../language/static-names.ts';
 import type { FunctionsEntity } from '../../binder/entities.ts';
-import type { MemberAccess } from '../../syntax/expressions.ts';
+import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { recordChosen } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';

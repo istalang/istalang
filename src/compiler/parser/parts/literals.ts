@@ -2,7 +2,7 @@
  * The literal a token denotes. Expressions and patterns accept the same literals (§2, §3.11).
  */
 
-import type { Literal } from '../../syntax/expressions.ts';
+import type { Literal } from '../../syntax/expressions/index.ts';
 import type { CursorToken } from '../cursor.ts';
 
 /** The literal a token denotes, or undefined if it denotes none. */

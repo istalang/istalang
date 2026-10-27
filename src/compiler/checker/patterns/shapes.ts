@@ -11,7 +11,7 @@
  *   looked into.
  */
 
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Checker } from '../check.ts';
 import { type FieldMember, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

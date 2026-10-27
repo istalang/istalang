@@ -15,11 +15,11 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { collectionFunctions } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { ImplicitRole, ResolvedCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall } from '../resolution/implicit.ts';
+import type { ImplicitRole, ResolvedCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 
 /** An element written: by which construct and role, into what, and what to report when it can't. */

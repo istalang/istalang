@@ -9,7 +9,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
-import type { Expression, StructLiteral } from '../../syntax/expressions.ts';
+import type { Expression, StructLiteral } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { Label } from '../code-writer.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
@@ -110,7 +110,7 @@ export function buildVariant(
     kind: 'variant',
     span,
     dst,
-    type: context.tables.typeIndex(type),
+    type: context.tables.types.index(type),
     variant: variantIndexOf(context.checker, type, name),
     fields: [...fields],
   });

@@ -9,7 +9,8 @@
 import type { Register } from '../../../definition/operands.ts';
 import type { CodecHelper } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Checker, FunctionCall } from '../../checker/check.ts';
+import type { Checker } from '../../checker/check.ts';
+import type { FunctionCall } from '../../checker/resolved-call.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';

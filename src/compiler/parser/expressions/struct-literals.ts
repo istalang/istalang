@@ -9,7 +9,7 @@
  *   is passed positionally.
  */
 
-import type { Expression, StructLiteral } from '../../syntax/expressions.ts';
+import type { Expression, StructLiteral } from '../../syntax/expressions/index.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';

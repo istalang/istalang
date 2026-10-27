@@ -9,7 +9,7 @@
  * - Type arguments can't be given: a function value is one instance, never generic.
  */
 
-import type { Call, Expression } from '../../syntax/expressions.ts';
+import type { Call, Expression } from '../../syntax/expressions/index.ts';
 import { checkReferencedPlaces } from '../calls/places.ts';
 import { explain, fitArguments, type WrittenArgument } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';

@@ -15,10 +15,10 @@ import type {
   CapturedVariable,
   CheckedBody,
   Checker,
-  FunctionCall,
   NestedFunction,
   SignatureParameter,
 } from '../../checker/check.ts';
+import type { FunctionCall } from '../../checker/resolved-call.ts';
 import { instantiatedBody } from '../../checker/types/instantiation.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';

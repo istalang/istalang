@@ -20,8 +20,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Expression } from '../../syntax/expressions.ts';
-import type { CallSite } from '../check.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { callMade } from '../resolution/calls-made.ts';
@@ -34,6 +33,7 @@ import {
   type Passing,
 } from '../resolution/choice.ts';
 import { type Instantiation, instantiate } from '../resolution/conformance.ts';
+import type { CallSite } from '../resolved-call.ts';
 import { errorType, substitute, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';

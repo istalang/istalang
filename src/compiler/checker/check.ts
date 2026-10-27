@@ -12,7 +12,7 @@ import type { LanguageModule, WellKnownDeclaration } from '../../language/well-k
 import { memo } from '../../structures/memo.ts';
 import type { Bindings, Entity, VariableEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
-import type { Declaration, FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
+import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
   Comprehension,
@@ -20,17 +20,24 @@ import type {
   Lambda,
   MapLiteral,
   Parameter,
-  SelectCase,
   Spread,
   StructLiteral,
-} from '../syntax/expressions.ts';
+} from '../syntax/expressions/index.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
-import type { CompareFieldPattern, Pattern } from '../syntax/patterns.ts';
+import type { Pattern } from '../syntax/patterns.ts';
 import type { Assignment, Block, For, Return, VariableDeclaration } from '../syntax/statements.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
+import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { JsonFormQueries } from './json-form.ts';
 import { ProgramChecker } from './program-checker.ts';
+import type {
+  CallSite,
+  FunctionCall,
+  ImplicitRole,
+  MadeCall,
+  ResolvedCall,
+} from './resolved-call.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -74,70 +81,6 @@ export interface VariantMember {
 }
 
 /**
- * What a call resolved to (§3.5, §3.7, §3.10). Generics are compiled per instantiation, so a call
- * carries everything its instantiation is made of; types in it may name the calling function's own
- * type parameters, which each of the caller's instantiations substitutes.
- *
- * - `function`: a declared function, with its type arguments, the function each requirement of
- *   its type parameters' constraints calls (`witnesses`), and how many arguments the call gives,
- *   fewer than its parameters when defaults fill the rest (§3.3).
- * - `requirement`: a function a constraint on one of the calling function's own type parameters
- *   requires, such as `add` under `T is Addable`. Which function it is depends on the caller's
- *   instantiation: the `witnesses` of the call that made it.
- */
-export type ResolvedCall = FunctionCall | RequirementCall;
-
-/** What every resolved call may carry about how it was written. */
-interface WrittenAs {
-  /** A method call's receiver (`x` in `x.f()`), passed as the call's first argument (§3.7). */
-  readonly receiver?: Expression;
-}
-
-export interface FunctionCall extends WrittenAs {
-  readonly kind: 'function';
-  readonly function: FunctionDeclaration;
-  readonly typeArguments: readonly Type[];
-  readonly witnesses: Witnesses;
-  readonly arity: number;
-}
-
-interface RequirementCall extends WrittenAs {
-  readonly kind: 'requirement';
-  /** The trait's function required. */
-  readonly function: FunctionDeclaration;
-  readonly requirement: RequirementOrigin;
-  /** The requirement's own type arguments, when the required function is generic. */
-  readonly typeArguments: readonly Type[];
-}
-
-/** Which required function: the `member`-th function of the trait of the `constraint`-th constraint on `parameter`. */
-export interface RequirementOrigin {
-  readonly parameter: TypeParameter;
-  readonly constraint: number;
-  readonly member: number;
-}
-
-/**
- * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, or a select
- * case's `as` for the value of its future (§8).
- */
-export type TargetOwner = VariableDeclaration | For | Comprehension | SelectCase;
-
-/** A name a target binds: its part's type, and the positions leading to it (§3.15). */
-export interface TargetBinding {
-  readonly name: Identifier;
-  readonly type: Type;
-  /** Field or tuple element positions from the whole value to the part, outermost first. */
-  readonly path: readonly number[];
-}
-
-/** A call a body makes, and the node it makes it at. */
-export interface MadeCall {
-  readonly site: NodeOf<string>;
-  readonly call: ResolvedCall;
-}
-
-/**
  * Where a struct literal's field gets its value (§3.1): an expression of the literal, the field of
  * that position in its leading spread's value, or its default, which `call` computes from the
  * fields before it (syntax/field-defaults.ts).
@@ -146,46 +89,6 @@ export type FieldSource =
   | { readonly kind: 'value'; readonly value: Expression }
   | { readonly kind: 'spread'; readonly from: Expression; readonly index: number }
   | { readonly kind: 'default'; readonly call: FunctionCall };
-
-/**
- * One test a value must pass to match a pattern (§3.11), on its part at `path` (field or tuple
- * element positions from the whole value, as for a binding). A pattern's tests run in order, so a
- * variant's fields are read only after its variant was tested.
- *
- * - `variant`: the part is the `variant`-th of its enum's `count` variants.
- * - `equal`: the part `==` a value: a literal or comparison's expression, or a top-level
- *   constant's name; `negated` for `!=`.
- * - `compare`: `compare(part, value)` called at `site`, in the relation its operator names.
- */
-export type PatternTest =
-  | {
-      readonly kind: 'variant';
-      readonly path: readonly number[];
-      readonly variant: number;
-      readonly count: number;
-    }
-  | {
-      readonly kind: 'equal';
-      readonly path: readonly number[];
-      readonly value: PatternValue;
-      readonly negated: boolean;
-    }
-  | {
-      readonly kind: 'compare';
-      readonly path: readonly number[];
-      readonly site: CompareFieldPattern;
-    };
-
-/** What an `equal` test compares with: an expression, or the constant a pattern names. */
-export type PatternValue =
-  | { readonly kind: 'expression'; readonly node: Expression }
-  | { readonly kind: 'constant'; readonly name: Identifier };
-
-/** A `match` case's or `is`'s pattern as checked: its tests, then the names it binds. */
-export interface CheckedPattern {
-  readonly tests: readonly PatternTest[];
-  readonly bindings: readonly TargetBinding[];
-}
 
 /**
  * A link of an optional chain (§4): the type its own step works on (the value inside, after
@@ -214,48 +117,8 @@ export interface AssignedPart {
  */
 export type ValueSite = Expression | Return | Block;
 
-/**
- * Per type parameter of a generic callee: for each of its constraints, in order, the call each
- * function of the constraint's trait resolves to, in the trait's order.
- */
-export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCall[])[]>;
-
-/**
- * Nodes a call can be written as: a call, an operator that calls a function (§3.9), indexing,
- * which calls `index`, an assignment, whose compound operator calls a function, a pattern's
- * comparison such as `amount > 1000`, which calls `compare` (§3.11). A function named as a value
- * (§3.14), `f`, `ns.f` or `T.f`, is a site too, at the expression naming it, for the function its
- * closure runs.
- */
-export type CallSite = NodeOf<
-  | 'Call'
-  | 'Binary'
-  | 'Unary'
-  | 'Assignment'
-  | 'Index'
-  | 'CompareFieldPattern'
-  | 'Identifier'
-  | 'MemberAccess'
->;
-
 /** A construct that runs over an iterable (§3.10): a `for`, a comprehension, or a spread. */
 export type Iteration = For | Comprehension | Spread;
-
-/**
- * What a call the language makes for a construct, with no call written, does there
- * (resolution/implicit.ts).
- */
-export type ImplicitRole =
-  /** `iterate`, which an iteration through a cursor calls on what it runs over (§3.10). */
-  | 'iterate'
-  /** `..=` storing its end plus one. */
-  | 'add'
-  /** Writing an element of a place back, changed or whole, with `setIndex` (§3.9). */
-  | 'write'
-  /** The `default()` a map literal of a type other than `Map` starts from (§2). */
-  | 'default'
-  /** Assigning an entry of such a map literal with `setIndex`. */
-  | 'insert';
 
 /** What a collection literal builds: an `Array`, a `Map`, or a value of another declared type (§2). */
 export type CollectionForm = 'array' | 'map' | 'declared';

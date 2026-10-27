@@ -15,7 +15,7 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Expression, Parameter } from '../../syntax/expressions.ts';
+import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
 import { isFieldsFunction } from '../../syntax/field-defaults.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';

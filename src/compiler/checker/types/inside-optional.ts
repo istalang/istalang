@@ -8,7 +8,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
-import type { ChainOperator } from '../../syntax/expressions.ts';
+import type { ChainOperator } from '../../syntax/expressions/chains.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from './fit.ts';

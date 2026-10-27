@@ -7,6 +7,7 @@
  */
 
 import type { Value } from '../../definition/values.ts';
+import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import type { ConstantForm } from '../checker/constant-form.ts';
 import type { DefinitionTables } from './tables.ts';
 
@@ -18,7 +19,7 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
     case 'struct':
       return {
         kind: 'struct',
-        type: tables.typeIndex(form.type),
+        type: tables.types.index(form.type),
         fields: form.fields.map((field) => constantValue(tables, field)),
       };
     case 'tuple':
@@ -49,4 +50,12 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
       return unhandled;
     }
   }
+}
+
+/** The values of `annotations`, as an entry carries them for tools to read (§3.16). */
+export function annotationValues(
+  tables: DefinitionTables,
+  annotations: readonly CheckedAnnotation[],
+): Value[] {
+  return annotations.map(({ form }) => constantValue(tables, form));
 }

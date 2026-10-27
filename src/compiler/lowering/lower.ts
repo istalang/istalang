@@ -155,11 +155,11 @@ function entryOf(
     key: keyOf(checker, declaration, parameters),
     constant: false,
     parameters: parameters.map((parameter) => ({
-      type: tables.typeReference(substitute(parameter.type, substitution)),
+      type: tables.types.reference(substitute(parameter.type, substitution)),
       reference: parameter.reference,
     })),
-    result: tables.typeReference(substitute(checker.resultOf(declaration), substitution)),
-    typeArguments: instance.typeArguments.map((type) => tables.typeReference(type)),
+    result: tables.types.reference(substitute(checker.resultOf(declaration), substitution)),
+    typeArguments: instance.typeArguments.map((type) => tables.types.reference(type)),
   };
 }
 

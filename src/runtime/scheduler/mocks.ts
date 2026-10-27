@@ -34,7 +34,7 @@ import { passedValues } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
 import type { RegisterContents } from '../snapshot/objects.ts';
 import type { LiveExecution, LiveObjectOf } from './heap.ts';
-import type { Instance } from './instance.ts';
+import type { Instance } from './instance/index.ts';
 import { ancestorsOf } from './instance-names.ts';
 import type { NativeCalls } from './native-calls.ts';
 import type { MockCall } from './test-world.ts';

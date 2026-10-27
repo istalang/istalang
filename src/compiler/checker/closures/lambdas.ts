@@ -24,7 +24,7 @@
  */
 
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Lambda, Parameter } from '../../syntax/expressions.ts';
+import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
 import { isChangeable } from '../calls/places.ts';
 import type { NestedFunction, SignatureParameter } from '../check.ts';

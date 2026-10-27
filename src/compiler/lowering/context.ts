@@ -13,17 +13,12 @@ import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
-import type {
-  CallSite,
-  CheckedBody,
-  Checker,
-  ImplicitRole,
-  ResolvedCall,
-} from '../checker/check.ts';
+import type { CheckedBody, Checker } from '../checker/check.ts';
+import type { CallSite, ImplicitRole, ResolvedCall } from '../checker/resolved-call.ts';
 import type { Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Expression, Lambda } from '../syntax/expressions.ts';
+import type { Expression, Lambda } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { CodeWriter } from './code-writer.ts';

@@ -8,7 +8,7 @@
 import type { Span } from '../../../text/span.ts';
 import type { Entity, VariantEntity, VariantNaming } from '../../binder/entities.ts';
 import type { EnumDeclaration, StructDeclaration, Variant } from '../../syntax/declarations.ts';
-import type { Expression } from '../../syntax/expressions.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

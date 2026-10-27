@@ -3,7 +3,7 @@
  * `else` produces nothing, so its branches must be `unit`.
  */
 
-import type { If } from '../../syntax/expressions.ts';
+import type { If } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';

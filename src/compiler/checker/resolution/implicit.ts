@@ -20,8 +20,8 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { ImplicitRole, MadeCall, ResolvedCall } from '../check.ts';
 import type { BodyContext } from '../context.ts';
+import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { useSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
