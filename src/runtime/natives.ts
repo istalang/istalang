@@ -125,7 +125,7 @@ export interface NativeTesting {
   readonly inspect: (instance: string) => Inspection | undefined;
   /** A future that resolves once `instance` meets `until`. */
   readonly watch: (instance: string, until: Watch['until']) => Value;
-  /** A value of the host type entry `type` equal to no other. */
+  /** A value of the host type entry `type` equal to no other, held as its host holds one. */
   readonly handle: (type: TypeId) => Value;
 }
 

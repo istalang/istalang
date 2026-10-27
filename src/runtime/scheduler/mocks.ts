@@ -12,8 +12,10 @@
  *   given, and the holder records the call. A segment that runs again calls it again, as it calls
  *   an extern again (§5).
  * - Only values without handles cross, except a host value a `dispose` made a resource: it
- *   crosses as its host's JSON and arrives as the receiving instance's resource for that JSON, the
- *   one it has already if any, so a handle a mock hands out and gets back stays the same (§3.6).
+ *   crosses as its host's JSON. The instance answering plays the host, so it holds such a value
+ *   as that JSON and never disposes it (§7), and `testing.handle` makes one so; the caller gets it
+ *   as its resource for that JSON, the one it has already if any, so a handle a mock hands out and
+ *   gets back stays the same (§3.6), and the caller alone disposes it.
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
@@ -220,7 +222,7 @@ function startAnswer(
   call: MockCall,
 ): LiveExecution | undefined {
   const mock = instance.heap.of(call.mock, 'mock');
-  const values = call.arguments.map((value) => arriving(instance, value));
+  const values = call.arguments;
   recordCall(instance, mock, values);
   const { replacement } = mock;
   if (!isComposite(replacement) || replacement.kind !== 'closure') {

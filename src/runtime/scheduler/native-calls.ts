@@ -12,7 +12,7 @@
 
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
-import { isResourceType, type TypeReference } from '../../definition/types.ts';
+import type { TypeReference } from '../../definition/types.ts';
 import { handleTarget, isComposite, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { passedValues, writeReference } from '../interpreter/machine.ts';
@@ -192,13 +192,6 @@ function nativeTestingOf(instance: Instance): NativeTesting {
     },
     inspect: (name) => world().inspect(name),
     watch: (name, until) => instance.futures.createHandle({ kind: 'watch', instance: name, until }),
-    handle: (type) => {
-      const payload = world().handlePayload();
-      if (!isResourceType(instance.loaded.definition.types, type)) {
-        return { kind: 'extern', type, payload };
-      }
-      const resource = instance.heap.add((id) => ({ kind: 'resource', id, type, payload }));
-      return { kind: 'handle', object: resource.id };
-    },
+    handle: (type) => ({ kind: 'extern', type, payload: world().handlePayload() }),
   };
 }

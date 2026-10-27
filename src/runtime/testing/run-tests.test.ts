@@ -330,6 +330,29 @@ fn suite() -> Array<Test>: [testCase("unmocked", unmockedDispose), testCase("moc
       'disposal › mocked: passed',
     ]);
   });
+
+  it('runs once, in the instance owning the value, never in the test that answered with it', () => {
+    const source = testModule(`
+extern struct Sent
+extern fn dispose(self: Sent)
+extern fn post(n: int) -> Sent
+
+async fn posts() -> Future<unit>:
+  fn _ = post(1)
+  fn _ = post(2)
+
+async fn handedOut():
+  fn _ = mock(post, fn(n: int): handle<Sent>())
+  const disposed = mock(dispose, fn(given: Sent): ())
+  drop await testing.start(posts).result()
+  if disposed.calls().length() != 2:
+    panic("disposed " + disposed.calls().length() + " times")
+
+@Suite{"ownership"}
+fn suite() -> Array<Test>: [testCase("handed out", handedOut)]
+`);
+    expect(outcomesOf(reportsOf(source))).toEqual(['ownership › handed out: passed']);
+  });
 });
 
 describe('a failing test', () => {
