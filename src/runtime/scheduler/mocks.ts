@@ -49,12 +49,9 @@ export function reachingMock<Mock extends { readonly id: number }>(
   );
 }
 
-/** What a call with `values` records for `m.calls()`: unit for none, the value for one, else a tuple. */
+/** What a call with `values` records for `m.calls()`: the tuple of them, unit for none (§10). */
 function callRecord(values: readonly Value[]): Value {
-  if (values.length === 0) {
-    return null;
-  }
-  return values.length === 1 ? (values[0] ?? null) : { kind: 'tuple', elements: [...values] };
+  return values.length === 0 ? null : { kind: 'tuple', elements: [...values] };
 }
 
 /** Records a call with `values` on `mock` of `instance`. */

@@ -13,16 +13,22 @@
  *   a rest parameter nothing fills is empty.
  * - A function named as a value is bound as its type calls it (`bindValue`): by position, its rest
  *   parameter one array, its trailing parameters left to their defaults (§3.14).
+ * - A pack's rest parameter (§3.5) collects as an array's does, by position only, since its
+ *   arguments have no names; its type flattens into a function value's parameters, so `bindValue`
+ *   collects into it too. Which arguments a pack takes is choosing's to judge (choice.ts).
  */
 
 import { type Binding, parameterOfArgument } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 
+/** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
+export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
+
 /** What binding needs to know of a parameter: its name, if it can be named, and its kind. */
 export interface BoundSlot {
   readonly name?: string | undefined;
   readonly hasDefault: boolean;
-  readonly isRest: boolean;
+  readonly rest?: Pick<RestSlot, 'kind'> | undefined;
 }
 
 /** What binding needs to know of an argument: its name, when named, and whether it spreads. */
@@ -39,6 +45,8 @@ export type BindingFailure =
   | { readonly kind: 'unnamed'; readonly name: string }
   /** A parameter is given twice, by position and by name, or twice by name. */
   | { readonly kind: 'twice'; readonly name: string }
+  /** A named argument names a pack's rest parameter, whose arguments have no names (§3.5). */
+  | { readonly kind: 'packNamed'; readonly name: string }
   /** A parameter without a default is given no argument. */
   | { readonly kind: 'missing'; readonly name: string }
   /** A spread with no rest parameter to collect it. */
@@ -55,7 +63,7 @@ export function positionalCounts(slots: readonly BoundSlot[]): {
   readonly minimum: number;
   readonly maximum: number;
 } {
-  const fixed = slots.filter((slot) => !slot.isRest);
+  const fixed = slots.filter((slot) => slot.rest === undefined);
   return {
     minimum: fixed.filter((slot) => !slot.hasDefault).length,
     maximum: fixed.length < slots.length ? Number.POSITIVE_INFINITY : fixed.length,
@@ -82,9 +90,15 @@ function isFailure(bound: Sources | BindingFailure): bound is BindingFailure {
   return !Array.isArray(bound);
 }
 
-/** The binding of a function value's arguments, all by position, its rest parameter one array. */
-export const bindValue: Binder = (slots, callArguments) =>
-  callArguments.length > slots.length
+/**
+ * The binding of a function value's arguments, all by position, an array's rest parameter one
+ * array, a pack's collecting what is left.
+ */
+export const bindValue: Binder = (slots, callArguments) => {
+  if (slots.some((slot) => slot.rest?.kind === 'pack')) {
+    return bindArguments(slots, callArguments);
+  }
+  return callArguments.length > slots.length
     ? arityOf(slots)
     : filled(
         slots,
@@ -93,6 +107,7 @@ export const bindValue: Binder = (slots, callArguments) =>
         ),
         false,
       );
+};
 
 /** A source not yet found for a parameter. */
 type Sources = readonly (Binding[number] | undefined)[];
@@ -105,7 +120,7 @@ function bindByPosition(
   slots: readonly BoundSlot[],
   positional: readonly { readonly argument: BoundArgument; readonly index: number }[],
 ): Sources | BindingFailure {
-  const restIndex = slots.findIndex((slot) => slot.isRest);
+  const restIndex = slots.findIndex((slot) => slot.rest !== undefined);
   const fixed = restIndex === -1 ? slots.length : restIndex;
   const spread = positional.findIndex(({ argument }) => argument.isSpread === true);
   const toFixed = positional.slice(0, Math.min(fixed, spread === -1 ? fixed : spread));
@@ -135,6 +150,9 @@ function bindByName(
     const parameter = slots.findIndex((slot) => slot.name === name);
     if (parameter === -1) {
       return { kind: 'unnamed', name };
+    }
+    if (slots[parameter]?.rest?.kind === 'pack') {
+      return { kind: 'packNamed', name };
     }
     if (bound[parameter] !== undefined) {
       return { kind: 'twice', name };
@@ -168,7 +186,7 @@ function filled(
 
 /** What a parameter no argument fills takes: its default, or an empty rest; nothing otherwise. */
 function unfilled(slot: BoundSlot): Binding[number] | undefined {
-  if (slot.isRest) {
+  if (slot.rest !== undefined) {
     return { kind: 'rest', items: [] };
   }
   return slot.hasDefault ? { kind: 'default' } : undefined;
@@ -184,19 +202,23 @@ export interface ArgumentSlot {
   readonly reference: boolean;
 }
 
-/** By argument number, the slot `binding` passes each argument to. */
+/**
+ * By argument number, the slot `binding` passes each argument to; a pack's arguments have none of
+ * their own, since together they fill it (choice.ts).
+ */
 export function argumentSlotsOf(
-  slots: readonly (ArgumentSlot & { readonly item?: Type | undefined })[],
+  slots: readonly (ArgumentSlot & { readonly rest?: RestSlot | undefined })[],
   binding: Binding,
 ): ReadonlyMap<number, ArgumentSlot> {
   return new Map(
     [...parameterOfArgument(binding)].flatMap(([argument, parameter]) => {
       const slot = slots[parameter];
-      if (binding[parameter]?.kind !== 'rest') {
+      if (slot === undefined || binding[parameter]?.kind !== 'rest') {
         return slot === undefined ? [] : [[argument, slot] as const];
       }
-      const item = slot?.item;
-      return item === undefined ? [] : [[argument, { type: item, reference: false }] as const];
+      return slot.rest?.kind === 'array'
+        ? [[argument, { type: slot.rest.item, reference: false }] as const]
+        : [];
     }),
   );
 }

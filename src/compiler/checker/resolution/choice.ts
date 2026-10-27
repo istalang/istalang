@@ -11,10 +11,13 @@
  *   as given (§3.5).
  * - When concrete candidates apply, only they are chosen among: a concrete function beats a
  *   generic one (§3.7); then a function without a rest parameter beats one with (§3.3); then one
- *   taking every argument as it is beats one making a plain function async (§3.14), so a pair
- *   taking `fn(A)` and `async fn(A)` keeps each function its own type. Written type arguments
+ *   taking every argument as it is beats one making a plain function async (§3.14) or converting
+ *   between a one-element tuple and its element (§3.15), so a pair taking `fn(A)` and
+ *   `async fn(A)` keeps each function its own type. Written type arguments
  *   consider only generic candidates. Any other tie is ambiguous.
  * - A rest parameter's items, and a spread's items, are matched against its array's element type.
+ *   A pack's (§3.5) are matched together against the pack: single values as the tuple of their
+ *   types, or one spread of a value of a pack as that pack, exactly.
  * - An argument whose type the chosen function decides (`none`, a bare variant, a literal holding
  *   one) takes part with no type: it fits a parameter of a type it can take (an optional, an enum
  *   with that variant), any part of which may be a type parameter still to be inferred.
@@ -33,8 +36,11 @@ import {
 import type { CheckerContext } from '../context.ts';
 import { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
+import { reshapes } from '../types/fit.ts';
 import {
   errorType,
+  fillsPack,
+  isPack,
   type ParameterKey,
   type Substitution,
   sameType,
@@ -50,8 +56,10 @@ import {
   bindArguments,
   bindValue,
   isBinding,
+  type RestSlot,
 } from './binding.ts';
 import type { Candidate } from './candidates.ts';
+import { packInapplicability, packItems } from './packs.ts';
 
 /**
  * What a candidate takes and gives, with a requirement's trait mapped (traits/constraints.ts).
@@ -67,13 +75,13 @@ export interface Signature {
 
 /**
  * A parameter as choosing sees it: its type and passing, its name, unless a method's `self`, which
- * no call names (§3.3), whether it has a default, and for a rest parameter its array's element type.
+ * no call names (§3.3), whether it has a default, and whether it is a rest parameter, an array's
+ * or a pack's.
  */
 interface SignatureSlot extends ArgumentSlot {
   readonly name: string | undefined;
   readonly hasDefault: boolean;
-  readonly isRest: boolean;
-  readonly item: Type | undefined;
+  readonly rest: RestSlot | undefined;
 }
 
 /**
@@ -115,8 +123,11 @@ export interface Application {
   readonly signature: Signature;
   readonly inference: Inference;
   readonly binding: Binding;
-  /** Whether it takes a plain function argument only made async (§3.14). */
-  readonly makesAsync: boolean;
+  /**
+   * Whether it takes an argument only reshaped: a plain function made async (§3.14), or converted
+   * between a one-element tuple and its element (§3.15).
+   */
+  readonly reshapes: boolean;
 }
 
 /** Why a candidate can't take a call's arguments. */
@@ -127,10 +138,22 @@ export type Inapplicability =
   | { readonly kind: 'reference'; readonly index: number; readonly reference: boolean }
   /** Two arguments gave one type parameter types that don't agree (§3.5). */
   | { readonly kind: 'conflict'; readonly parameter: TypeParameter }
+  /**
+   * The arguments a pack's rest parameter collects don't fill it (§3.5): `index` is the first, and
+   * `found` the tuple of their types when they are single values, which fill no pack of `expected`.
+   */
+  | {
+      readonly kind: 'pack';
+      readonly index: number;
+      readonly expected: Type;
+      readonly found: Type | undefined;
+    }
+  /** A written type argument for a pack isn't a tuple type (§3.5). */
+  | { readonly kind: 'packTypeArgument'; readonly parameter: TypeParameter; readonly type: Type }
   /** The arguments that don't fit their parameters, by position, with the parameter's type. */
   | {
       readonly kind: 'arguments';
-      readonly misfits: readonly { readonly index: number; readonly expected: Type }[];
+      readonly misfits: readonly Misfit[];
     };
 
 export type Choice =
@@ -155,14 +178,20 @@ export function signatureOf(
         reference,
         name: isSelf ? undefined : node.name.text,
         hasDefault: node.defaultValue !== undefined,
-        isRest: node.isRest,
-        item: node.isRest
-          ? (wellKnownArguments(checker, wellKnown.array, substituted)?.[0] ?? errorType)
-          : undefined,
+        rest: node.isRest ? restSlotOf(checker, substituted) : undefined,
       };
     }),
     result: () => substitute(checker.resultOf(declaration), substitution),
   };
+}
+
+/** A rest parameter of type `type`: a pack's, or an array's, whose items are its elements. */
+function restSlotOf(checker: CheckerContext, type: Type): RestSlot {
+  if (isPack(type)) {
+    return { kind: 'pack' };
+  }
+  const item = wellKnownArguments(checker, wellKnown.array, type)?.[0] ?? errorType;
+  return { kind: 'array', item };
 }
 
 /** Chooses among `candidates` for `callArguments` and any written type arguments. */
@@ -201,8 +230,8 @@ function chosenAmong(
   }
   const preferred = [
     ({ signature }: Application) => signature.typeParameters.length === 0,
-    ({ signature }: Application) => !signature.parameters.some((slot) => slot.isRest),
-    ({ makesAsync }: Application) => !makesAsync,
+    ({ signature }: Application) => !signature.parameters.some((slot) => slot.rest !== undefined),
+    ({ reshapes: reshaped }: Application) => !reshaped,
   ].reduce((chosen, isPreferred) => {
     const kept = chosen.filter(isPreferred);
     return kept.length > 0 ? kept : chosen;
@@ -267,25 +296,31 @@ export function takenBy(
   }
   const inference = new Inference(takes.typeParameters, checker.fitting, known);
   const slots = argumentSlotsOf(takes.parameters, binding);
-  const misfit = argumentsInapplicability(callArguments, slots, inference);
+  const packed = packItems(takes, binding);
+  const matchPacks = () => packInapplicability(takes, binding, callArguments, inference);
+  const misfit = argumentsInapplicability(callArguments, { slots, packed, matchPacks }, inference);
   if (misfit !== undefined) {
     return misfit;
   }
-  const makesAsync = callArguments.some((argument, index) => {
+  const reshaped = callArguments.some((argument, index) => {
     const slot = slots.get(index);
     if (argument.type === undefined || slot === undefined) {
       return false;
     }
     const expected = substitute(slot.type, inference.substitution());
-    return checker.fitOf(argument.type, expected)?.conversion.kind === 'async';
+    const fit = checker.fitOf(argument.type, expected);
+    return fit !== undefined && reshapes(fit);
   });
-  return { inference, binding, makesAsync };
+  return { inference, binding, reshapes: reshaped };
 }
 
-/** How a function takes a call's arguments: what inference found, the binding, any made async. */
-type Taken = Pick<Application, 'inference' | 'binding' | 'makesAsync'>;
+/** How a function takes a call's arguments: what inference found, the binding, any reshaped. */
+type Taken = Pick<Application, 'inference' | 'binding' | 'reshapes'>;
 
-/** Why the count of written type arguments doesn't suit `typeParameters`, if it doesn't. */
+/**
+ * Why the written type arguments don't suit `typeParameters`, if they don't: too few or too many,
+ * or one for a pack that isn't a tuple type (§3.5).
+ */
 function typeArgumentsInapplicability(
   { typeParameters }: Takes,
   written: readonly Type[] | undefined,
@@ -295,49 +330,93 @@ function typeArgumentsInapplicability(
   }
   const minimum = typeParameters.filter((parameter) => parameter.defaultType === undefined).length;
   const maximum = typeParameters.length;
-  return maximum === 0 || written.length < minimum || written.length > maximum
-    ? { kind: 'typeArgumentCount', minimum, maximum }
-    : undefined;
+  if (maximum === 0 || written.length < minimum || written.length > maximum) {
+    return { kind: 'typeArgumentCount', minimum, maximum };
+  }
+  const misfit = typeParameters.findIndex(
+    (each, index) => each.isPack && !fillsPack(written[index] ?? errorType),
+  );
+  const [pack, type] = [typeParameters[misfit], written[misfit]];
+  return pack === undefined || type === undefined
+    ? undefined
+    : { kind: 'packTypeArgument', parameter: pack, type };
+}
+
+/**
+ * By argument number, the slot each argument fills, and the arguments a pack takes together, which
+ * `matchPacks` matches, saying why they don't fill it.
+ */
+interface BoundArguments {
+  readonly slots: ReadonlyMap<number, ArgumentSlot>;
+  readonly packed: ReadonlySet<number>;
+  readonly matchPacks: () => Inapplicability | undefined;
 }
 
 /**
  * Why the arguments don't fit `signature`'s parameters, matching them for inference meanwhile.
  * Arguments with types are matched first, in any order, so what inference finds doesn't depend on
- * where an argument the chosen function decides stands; those are judged against what was found.
+ * where an argument the chosen function decides stands; then a pack's, which take what those
+ * found; and last those the chosen function decides, judged against what was found.
  */
 function argumentsInapplicability(
   callArguments: readonly CallArgument[],
-  slots: ReadonlyMap<number, ArgumentSlot>,
+  bound: BoundArguments,
   inference: Inference,
 ): Inapplicability | undefined {
-  const indexed = [...callArguments.entries()];
-  const typedFirst = [
-    ...indexed.filter(([, argument]) => argument.type !== undefined),
-    ...indexed.filter(([, argument]) => argument.type === undefined),
-  ];
-  const misfits: { index: number; expected: Type }[] = [];
-  for (const [index, argument] of typedFirst) {
-    const slot = slots.get(index);
-    if (slot === undefined) {
-      unreachable(`Argument ${index} was bound to no parameter.`);
+  const single = [...callArguments.entries()].filter(([index]) => !bound.packed.has(index));
+  const misfits: Misfit[] = [];
+  const judged = (arguments_: typeof single): Inapplicability | undefined => {
+    for (const [index, argument] of arguments_) {
+      const judgement = judgedArgument(index, argument, bound.slots, inference);
+      if (judgement !== 'fits') {
+        if ('kind' in judgement) {
+          return judgement;
+        }
+        misfits.push(judgement);
+      }
     }
-    if (argument.passing !== 'receiver' && slot.reference !== (argument.passing === 'reference')) {
-      return { kind: 'reference', index, reference: slot.reference };
-    }
-    const conflicts = inference.conflicts.size;
-    const fits =
-      argument.type === undefined
-        ? acceptsDecided(argument, slot.type, inference)
-        : typedFits(slot, { ...argument, type: argument.type }, inference);
-    const [conflict] = [...inference.conflicts].slice(conflicts);
-    if (conflict?.kind === 'TypeParameter') {
-      return { kind: 'conflict', parameter: conflict };
-    }
-    if (!fits) {
-      misfits.push({ index, expected: substitute(slot.type, inference.substitution()) });
-    }
+    return undefined;
+  };
+  const refused =
+    judged(single.filter(([, argument]) => argument.type !== undefined)) ??
+    bound.matchPacks() ??
+    judged(single.filter(([, argument]) => argument.type === undefined));
+  if (refused !== undefined) {
+    return refused;
   }
   return misfits.length === 0 ? undefined : { kind: 'arguments', misfits };
+}
+
+/** An argument that doesn't fit, by position, with its parameter's type as found so far. */
+interface Misfit {
+  readonly index: number;
+  readonly expected: Type;
+}
+
+/** How the `index`-th argument fits its slot: it fits, it doesn't, or the call can't take it. */
+function judgedArgument(
+  index: number,
+  argument: CallArgument,
+  slots: ReadonlyMap<number, ArgumentSlot>,
+  inference: Inference,
+): 'fits' | Misfit | Inapplicability {
+  const slot = slots.get(index);
+  if (slot === undefined) {
+    unreachable(`Argument ${index} was bound to no parameter.`);
+  }
+  if (argument.passing !== 'receiver' && slot.reference !== (argument.passing === 'reference')) {
+    return { kind: 'reference', index, reference: slot.reference };
+  }
+  const conflicts = inference.conflicts.size;
+  const fits =
+    argument.type === undefined
+      ? acceptsDecided(argument, slot.type, inference)
+      : typedFits(slot, { ...argument, type: argument.type }, inference);
+  const [conflict] = [...inference.conflicts].slice(conflicts);
+  if (conflict?.kind === 'TypeParameter') {
+    return { kind: 'conflict', parameter: conflict };
+  }
+  return fits ? 'fits' : { index, expected: substitute(slot.type, inference.substitution()) };
 }
 
 /** Whether an argument with a type fits `slot`, matching it for inference. */

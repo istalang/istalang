@@ -7,8 +7,8 @@
  * - Calling an async function value starts it and yields its future, `Future<R>` for an
  *   `async fn(…) -> R`, as calling a declared async function does (§3.3).
  * - Type arguments can't be given: a function value is one instance, never generic.
- * - Its type names no parameters and has no rest parameter, so its call gives every argument by
- *   position, with no name and no spread (§3.3).
+ * - Its type names no parameters, so its call gives every argument by position, with no name;
+ *   a spread only fills a pack its type ends in (§3.3, §3.5).
  */
 
 import type { Call, Expression } from '../../syntax/expressions/index.ts';
@@ -52,23 +52,28 @@ export function checkValueCall(
     return errorType;
   }
   const unpositional = written.find(
-    ({ name, isSpread }) => name !== undefined || isSpread === true,
+    ({ name, isSpread }) =>
+      name !== undefined || (isSpread === true && calleeType.pack === undefined),
   );
   if (unpositional !== undefined) {
     const form = unpositional.isSpread === true ? 'spread' : 'named argument';
     context.report(checkerDiagnostics.valueCallArgument(unpositional.node.span, form));
     return errorType;
   }
-  const { parameters } = calleeType;
+  const { parameters, pack } = calleeType;
+  const fixed = parameters.map((slot) => ({ ...slot, name: undefined, hasDefault: false }));
+  const packSlot = {
+    type: pack ?? errorType,
+    reference: false,
+    name: undefined,
+    hasDefault: false,
+  };
   const takes = {
     typeParameters: [],
-    parameters: parameters.map((slot) => ({
-      ...slot,
-      name: undefined,
-      hasDefault: false,
-      isRest: false,
-      item: undefined,
-    })),
+    parameters: [
+      ...fixed.map((slot) => ({ ...slot, rest: undefined })),
+      ...(pack === undefined ? [] : [{ ...packSlot, rest: { kind: 'pack' } as const }]),
+    ],
   };
   const callArguments = written.map(callArgumentOf);
   const binder = bindArguments;

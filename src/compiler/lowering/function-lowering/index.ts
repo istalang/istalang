@@ -9,8 +9,8 @@
  *   (optional-chains.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
- * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, then a
- *   closure's captures, then locals and temporaries. A variable living in a cell is listed in
+ * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, a pack's
+ *   elements each one (packs.ts), then a closure's captures, then locals and temporaries. A variable living in a cell is listed in
  *   `cells`; a reference parameter's register holds the caller's reference, and a captured cell's
  *   register the cell its closure carries.
  * - A lambda or local function (§3.14) answers to its own name through the closure it runs,
@@ -36,7 +36,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/resolved-call.ts';
-import type { Fit } from '../../checker/types/fit.ts';
+import { type Fit, singleElement } from '../../checker/types/fit.ts';
 import { type FunctionType, substitute, type Type } from '../../checker/types/type.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
@@ -49,6 +49,7 @@ import { CodeWriter } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitFunctionCall } from '../emit-call.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
+import { tupleOf } from '../expressions/tuples.ts';
 import { buildVariant } from '../expressions/variants.ts';
 import {
   type BodyOwner,
@@ -60,6 +61,8 @@ import {
   ownerSubstitution,
 } from '../instances.ts';
 import { OptionalChains } from '../optional-chains.ts';
+import { isPackParameter, packElements } from '../packs.ts';
+import { readPart } from '../places.ts';
 import { HoldScopes } from '../statements/holds.ts';
 import { LoopStack } from '../statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
@@ -211,7 +214,10 @@ class FunctionLowering implements FunctionContext {
     return register;
   }
 
-  /** `typed`, converted by `conversion` at `site`: into an `any` type, or a plain function made async. */
+  /**
+   * `typed`, converted by `conversion` at `site`: into an `any` type, a plain function made async,
+   * or between a one-element tuple and its element.
+   */
   #converted(
     typed: { readonly value: Register; readonly type: Type },
     conversion: Fit['conversion'],
@@ -233,6 +239,18 @@ class FunctionLowering implements FunctionContext {
         const plain = functionTypeOf(typed.type);
         const value = madeAsync(this, { owner: this.owner, site, type: plain }, typed.value);
         return { value, type: { ...plain, isAsync: true } };
+      }
+      case 'tupled':
+        return {
+          value: tupleOf(this, [typed.value], site.span),
+          type: { kind: 'tuple', elements: [typed.type] },
+        };
+      case 'untupled': {
+        const [element] = singleElement(typed.type);
+        if (element === undefined) {
+          unreachable('Only a one-element tuple is untupled.');
+        }
+        return { value: readPart(this, typed.value, [0], site.span), type: element };
       }
       default: {
         const unhandled: never = conversion;
@@ -290,13 +308,19 @@ class FunctionLowering implements FunctionContext {
    * its own, then the captures, then a nested function's own name; the parameters' registers.
    */
   #declareFrame(): readonly Register[] {
-    const parameters = this.frame.parameters.map((parameter) => {
+    const packs: { readonly parameter: SignatureParameter; readonly elements: Register[] }[] = [];
+    const parameters = this.frame.parameters.flatMap((parameter) => {
+      if (isPackParameter(parameter)) {
+        const elements = this.#packOf(parameter).map(() => this.code.allocate());
+        packs.push({ parameter, elements });
+        return elements;
+      }
       if (!parameter.reference) {
-        return declareVariable(this, parameter.node.name, this.#concrete(parameter.type));
+        return [declareVariable(this, parameter.node.name, this.#concrete(parameter.type))];
       }
       const register = this.code.allocate();
       this.variables.declare(parameter.node.name, register);
-      return register;
+      return [register];
     });
     for (const { entity, type } of this.frame.captures) {
       declareVariable(this, entity.name, this.#concrete(type));
@@ -306,7 +330,18 @@ class FunctionLowering implements FunctionContext {
       this.#declareFilled(self, (dst) => ({ kind: 'currentClosure', span: self.span, dst }));
     }
     this.#declareOwnCall();
+    for (const { parameter, elements } of packs) {
+      const { name } = parameter.node;
+      const tuple = tupleOf(this, elements, name.span);
+      const register = declareVariable(this, name, this.#concrete(parameter.type));
+      this.code.emit({ kind: 'move', span: name.span, dst: register, src: tuple });
+    }
     return parameters;
+  }
+
+  /** The element types a pack's rest parameter takes in this instantiation (packs.ts). */
+  #packOf(parameter: SignatureParameter): readonly Type[] {
+    return packElements(this.#concrete(parameter.type));
   }
 
   /** Declares the variable an async function reads its own call through (§7), when it reads it. */
@@ -337,7 +372,11 @@ class FunctionLowering implements FunctionContext {
       kind: 'code',
       ...header,
       async: isAsync,
-      parameters: parameters.map((parameter) => ({ reference: parameter.reference })),
+      parameters: parameters.flatMap((parameter) =>
+        isPackParameter(parameter)
+          ? this.#packOf(parameter).map(() => ({ reference: false }))
+          : [{ reference: parameter.reference }],
+      ),
       captures: captures.length,
       registers,
       cells: [...this.variables.cells],

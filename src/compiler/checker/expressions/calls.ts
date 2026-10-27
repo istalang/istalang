@@ -51,7 +51,7 @@ import { namedType } from '../resolution/named.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { spreadItemType } from './collections.ts';
+import { spreadArgumentType } from './collections.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   if (misplacedArgument(node.arguments) !== undefined) {
@@ -90,7 +90,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
 
 /**
  * An argument as written: `&x` passes the place `x`, checked as a place that may change; a spread,
- * its items, as an array literal's spread gives them (§2); any other is a value, checked now
+ * its items, as an array literal's spread gives them (§2), or a pack's value, as it is (§3.5); any other is a value, checked now
  * unless the chosen function decides its type. A named argument is its value, named.
  */
 function writtenArgument(context: BodyContext, argument: CallArgument): WrittenArgument {
@@ -99,7 +99,7 @@ function writtenArgument(context: BodyContext, argument: CallArgument): WrittenA
       return {
         node: argument.expression,
         passing: 'value',
-        type: spreadItemType(context, argument),
+        type: spreadArgumentType(context, argument),
         isSpread: true,
       };
     case 'NamedArgument':

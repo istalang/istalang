@@ -2,8 +2,11 @@
  * Inferring type arguments (§3.5): matching the types a call or literal gives against the types its
  * declaration takes, which mention the type parameters still to be found.
  *
- * - Matching is exact, except at the top of a match, where a `T` may fill a `T?` (§2): the wrap
- *   applies to a whole value, never inside a collection or a function type.
+ * - Matching is exact, except at the top of a match, where a `T` may fill a `T?` (§2), a plain
+ *   function an async one (§3.14), and a one-element tuple and its element each other (§3.15): a
+ *   conversion applies to a whole value, never inside a collection or a function type.
+ * - A pack binds only what can stand for one, a tuple, `unit` or a pack (§3.5); a function type's
+ *   pack binds to the parameters past the fixed ones (types/type.ts, `sameShape`).
  * - The types found for a parameter must agree, whatever order the arguments come in: a later
  *   one fits the bound type (a conversion included), or the bound type fits it, which then binds, so
  *   `same(o, 2)` and `same(2, o)` both bind `T` to `int?` for `o: int?`. Two types neither fits
@@ -11,20 +14,20 @@
  * - The error type and `never` fit anything and bind nothing, so one mistake is reported once.
  */
 
-import { type Fitting, fitOf, optionalInner } from '../types/fit.ts';
+import { type Fitting, fitOf, optionalInner, singleElement } from '../types/fit.ts';
 import {
   type AnyType,
   type FunctionType,
+  fillsPack,
   isPrimitive,
   type ParameterKey,
-  parametersIn,
   type Substitution,
   sameShape,
   sameType,
   substitute,
   type Type,
-  typeChildren,
 } from '../types/type.ts';
+import { parametersIn, typeChildren } from '../types/type-parts.ts';
 
 export class Inference {
   readonly #unknowns: ReadonlySet<ParameterKey>;
@@ -45,7 +48,11 @@ export class Inference {
     if (given.kind === 'error' || isPrimitive(given, 'never')) {
       return true;
     }
-    if (this.#matchExact(declared, given) || this.#matchMadeAsync(declared, given)) {
+    if (
+      this.#matchExact(declared, given) ||
+      this.#matchMadeAsync(declared, given) ||
+      this.#matchSingle(declared, given)
+    ) {
       return true;
     }
     if (declared.kind === 'any') {
@@ -75,6 +82,16 @@ export class Inference {
       declared.isAsync &&
       !given.isAsync &&
       this.#matchExact(declared, { ...given, isAsync: true })
+    );
+  }
+
+  /** Matches across the conversion between a one-element tuple and its element (§3.15). */
+  #matchSingle(declared: Type, given: Type): boolean {
+    const [element] = singleElement(declared);
+    const [inside] = singleElement(given);
+    return (
+      (element !== undefined && this.#matchExact(element, given)) ||
+      (inside !== undefined && this.#matchExact(declared, inside))
     );
   }
 
@@ -180,6 +197,9 @@ export class Inference {
   }
 
   #bind(parameter: ParameterKey, given: Type): boolean {
+    if (parameter.kind === 'TypeParameter' && parameter.isPack && !fillsPack(given)) {
+      return false;
+    }
     const bound = this.#bound.get(parameter);
     if (bound === undefined) {
       this.#bound.set(parameter, given);

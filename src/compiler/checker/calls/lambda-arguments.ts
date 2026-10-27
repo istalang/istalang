@@ -16,7 +16,8 @@ import type { BodyContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import { argumentSlotsOf } from '../resolution/binding.ts';
 import type { Application } from '../resolution/choice.ts';
-import { parametersIn, substitute, type Type } from '../types/type.ts';
+import { substitute, type Type } from '../types/type.ts';
+import { parametersIn } from '../types/type-parts.ts';
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */
 interface Argument {
@@ -44,12 +45,13 @@ export function checkDecidedLambdas(
     const partial = substitute(slot.type, inference.substitution());
     if (
       partial.kind !== 'function' ||
-      partial.parameters.some((parameter) => isOpen(parameter.type, inference))
+      partial.parameters.some((parameter) => isOpen(parameter.type, inference)) ||
+      (partial.pack !== undefined && isOpen(partial.pack, inference))
     ) {
       return;
     }
     const checked = isOpen(partial.result, inference)
-      ? context.inferLambda(node, partial.parameters)
+      ? context.inferLambda(node, partial)
       : context.expression(node, partial);
     inference.match(slot.type, checked);
     types.set(index, checked);

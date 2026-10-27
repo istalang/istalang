@@ -27,6 +27,9 @@ export function typeText(type: Type): string {
       const parameters = type.parameters.map(
         (parameter) => `${parameter.reference ? '&' : ''}${typeText(parameter.type)}`,
       );
+      if (type.pack !== undefined) {
+        parameters.push(`...${typeText(type.pack)}`);
+      }
       const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
       return `${prefix}fn(${parameters.join(', ')}) -> ${typeText(type.result)}`;
     }

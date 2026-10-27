@@ -20,11 +20,11 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   type Constraint,
   errorType,
-  parametersIn,
   substitute,
   substitutionFor,
   type Type,
 } from '../types/type.ts';
+import { parametersIn } from '../types/type-parts.ts';
 import { requiredFields, requiredFunctions, resolveAnyConstraints } from './constraints.ts';
 
 /** The type `any` followed by `traits` denotes in `module`; the error type after a report. */

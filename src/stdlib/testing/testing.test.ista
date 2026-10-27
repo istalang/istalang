@@ -153,7 +153,7 @@ fn clocks() -> Array<Test>: [
     await second.idle()
     clock.advance(Duration{value: 2})
     assertEq([await late.result(), await first.result(), await second.result()], [Ok{()}, Ok{()}, Ok{()}])
-    assertEq(records.calls(), ["first", "second", "late"])
+    assertEq(records.calls(), [("first",), ("second",), ("late",)])
   }),
   test("resolves a deadline already reached at once", async fn(): {
     const clock = FakeClock{start: Time{value: 5}}

@@ -217,11 +217,30 @@ function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnost
       const spread = request.arguments.find((argument) => argument.isSpread === true);
       return checkerDiagnostics.spreadWithoutRest(spread?.node.span ?? site.span, name);
     }
+    case 'packNamed':
+      return checkerDiagnostics.packNamed(namedAt(request, reason.name), reason.name);
     default: {
       const unhandled: never = reason;
       return unhandled;
     }
   }
+}
+
+/** The report saying why a pack's arguments, or a written pack, don't fill it (§3.5). */
+function packReport(
+  request: ExplainedCall,
+  reason: Extract<Inapplicability, { kind: 'pack' | 'packTypeArgument' }>,
+): Diagnostic {
+  const { site } = request;
+  if (reason.kind === 'packTypeArgument') {
+    const { parameter, type } = reason;
+    return checkerDiagnostics.packTypeArgument(site.span, parameter.name.text, typeText(type));
+  }
+  const at = request.arguments[reason.index]?.node.span ?? site.span;
+  const { expected, found } = reason;
+  return found === undefined
+    ? checkerDiagnostics.packArguments(at, typeText(expected))
+    : checkerDiagnostics.packMismatch(at, typeText(expected), typeText(found));
 }
 
 /** Where the argument named `name` is written; the call, if none is. */
@@ -278,7 +297,12 @@ export function explain(
     case 'twice':
     case 'missing':
     case 'spread':
+    case 'packNamed':
       context.report(bindingReport(request, reason));
+      return;
+    case 'pack':
+    case 'packTypeArgument':
+      context.report(packReport(request, reason));
       return;
     case 'typeArgumentCount': {
       const count = request.typeArguments?.length ?? 0;

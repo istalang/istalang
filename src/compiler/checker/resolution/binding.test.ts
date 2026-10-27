@@ -14,9 +14,8 @@ function slotsOf(count: number, defaults: number, rest: boolean): BoundSlot[] {
   const fixed = Array.from({ length: count }, (_, index) => ({
     name: `p${index}`,
     hasDefault: index >= count - defaults,
-    isRest: false,
   }));
-  return rest ? [...fixed, { name: 'rest', hasDefault: false, isRest: true }] : fixed;
+  return rest ? [...fixed, { name: 'rest', hasDefault: false, rest: { kind: 'array' } }] : fixed;
 }
 
 const shapes = fc
@@ -117,10 +116,7 @@ describe('binding named arguments', () => {
   });
 
   it("doesn't name a method's self", () => {
-    const slots = [
-      { hasDefault: false, isRest: false },
-      { name: 'x', hasDefault: false, isRest: false },
-    ];
+    const slots = [{ hasDefault: false }, { name: 'x', hasDefault: false }];
     expect(bindArguments(slots, [{}, { name: 'self' }])).toEqual({ kind: 'unnamed', name: 'self' });
   });
 });
@@ -152,5 +148,32 @@ describe('binding a function named as a value', () => {
       { kind: 'default' },
       { kind: 'rest', items: [] },
     ]);
+  });
+});
+
+/** `slots` with their rest parameter a pack's (§3.5). */
+function withPackRest(slots: readonly BoundSlot[]): BoundSlot[] {
+  return slots.map((slot) =>
+    slot.rest === undefined ? slot : { ...slot, rest: { kind: 'pack' } },
+  );
+}
+
+describe('binding a pack', () => {
+  it('collects positional arguments as an array does, from a call and as a value alike', () => {
+    fc.assert(
+      fc.property(shapes, fc.nat(6), ({ count, defaults }, given) => {
+        const slots = withPackRest(slotsOf(count, defaults, true));
+        const arguments_ = Array.from({ length: given }, () => ({}));
+        expect(bindValue(slots, arguments_)).toEqual(bindArguments(slots, arguments_));
+      }),
+    );
+  });
+
+  it('gives no name to its arguments', () => {
+    const slots = withPackRest(slotsOf(1, 0, true));
+    expect(bindArguments(slots, [{}, { name: 'rest' }])).toEqual({
+      kind: 'packNamed',
+      name: 'rest',
+    });
   });
 });

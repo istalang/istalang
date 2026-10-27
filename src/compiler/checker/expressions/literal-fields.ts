@@ -52,11 +52,11 @@ import {
   errorType,
   type FieldMember,
   type ParameterKey,
-  parametersIn,
   type Substitution,
   substitute,
   type Type,
 } from '../types/type.ts';
+import { parametersIn } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
 
 /**

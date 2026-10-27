@@ -31,7 +31,8 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FunctionCall, ResolvedCall } from '../resolved-call.ts';
-import { errorType, type ParameterKey, parametersIn, type Type } from '../types/type.ts';
+import { errorType, type ParameterKey, type Type } from '../types/type.ts';
+import { parametersIn } from '../types/type-parts.ts';
 
 interface Edge {
   readonly from: TypeParameter;

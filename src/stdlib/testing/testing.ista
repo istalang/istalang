@@ -5,9 +5,9 @@
 # provides mocks, the inspection of spawned instances and handles through externs; the rest is
 # written here.
 #
-# The language has no variadic generics, so a function over any function type is one overload per
-# arity, up to six, each for plain and async functions: `mock`, `calls` and `setups` are those
-# overloads, one line each, over one function of their own.
+# `mock` and `calls` take a pack (§3.5), one declaration for plain functions and one for async
+# ones. Setups map each of their types (each test's function takes the setups' environments), which
+# a pack can't say, so `setups` stays one overload per arity, up to six, over one function.
 #
 # `ista test` lists and runs a suite's tests through `_list` and `_run`, the one place a suite's
 # tests are flattened, so the listing and each test's own instance (§10) walk the same list.
@@ -75,37 +75,13 @@ extern fn dispose<F>(self: Mock<F>)
 extern fn _mock<F>(target: F, replacement: F) -> Mock<F>
 extern fn _calls<F, A>(self: Mock<F>) -> Array<A>
 
-fn mock<R>(target: fn() -> R, replacement: fn() -> R) -> Mock<fn() -> R>: _mock(target, replacement)
-fn mock<A, R>(target: fn(A) -> R, replacement: fn(A) -> R) -> Mock<fn(A) -> R>: _mock(target, replacement)
-fn mock<A, B, R>(target: fn(A, B) -> R, replacement: fn(A, B) -> R) -> Mock<fn(A, B) -> R>: _mock(target, replacement)
-fn mock<A, B, C, R>(target: fn(A, B, C) -> R, replacement: fn(A, B, C) -> R) -> Mock<fn(A, B, C) -> R>: _mock(target, replacement)
-fn mock<A, B, C, D, R>(target: fn(A, B, C, D) -> R, replacement: fn(A, B, C, D) -> R) -> Mock<fn(A, B, C, D) -> R>: _mock(target, replacement)
-fn mock<A, B, C, D, E, R>(target: fn(A, B, C, D, E) -> R, replacement: fn(A, B, C, D, E) -> R) -> Mock<fn(A, B, C, D, E) -> R>: _mock(target, replacement)
-fn mock<A, B, C, D, E, G, R>(target: fn(A, B, C, D, E, G) -> R, replacement: fn(A, B, C, D, E, G) -> R) -> Mock<fn(A, B, C, D, E, G) -> R>: _mock(target, replacement)
-fn mock<R>(target: async fn() -> R, replacement: async fn() -> R) -> Mock<async fn() -> R>: _mock(target, replacement)
-fn mock<A, R>(target: async fn(A) -> R, replacement: async fn(A) -> R) -> Mock<async fn(A) -> R>: _mock(target, replacement)
-fn mock<A, B, R>(target: async fn(A, B) -> R, replacement: async fn(A, B) -> R) -> Mock<async fn(A, B) -> R>: _mock(target, replacement)
-fn mock<A, B, C, R>(target: async fn(A, B, C) -> R, replacement: async fn(A, B, C) -> R) -> Mock<async fn(A, B, C) -> R>: _mock(target, replacement)
-fn mock<A, B, C, D, R>(target: async fn(A, B, C, D) -> R, replacement: async fn(A, B, C, D) -> R) -> Mock<async fn(A, B, C, D) -> R>: _mock(target, replacement)
-fn mock<A, B, C, D, E, R>(target: async fn(A, B, C, D, E) -> R, replacement: async fn(A, B, C, D, E) -> R) -> Mock<async fn(A, B, C, D, E) -> R>: _mock(target, replacement)
-fn mock<A, B, C, D, E, G, R>(target: async fn(A, B, C, D, E, G) -> R, replacement: async fn(A, B, C, D, E, G) -> R) -> Mock<async fn(A, B, C, D, E, G) -> R>: _mock(target, replacement)
+fn mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>: _mock(target, replacement)
+fn mock<...A, R>(target: async fn(...A) -> R, replacement: async fn(...A) -> R) -> Mock<async fn(...A) -> R>: _mock(target, replacement)
 
-# The arguments of every call so far, oldest first: a function of one parameter gives its values,
-# one of none a `unit` per call, and any other a tuple per call.
-fn calls<R>(self: Mock<fn() -> R>) -> Array<unit>: _calls(self)
-fn calls<A, R>(self: Mock<fn(A) -> R>) -> Array<A>: _calls(self)
-fn calls<A, B, R>(self: Mock<fn(A, B) -> R>) -> Array<(A, B)>: _calls(self)
-fn calls<A, B, C, R>(self: Mock<fn(A, B, C) -> R>) -> Array<(A, B, C)>: _calls(self)
-fn calls<A, B, C, D, R>(self: Mock<fn(A, B, C, D) -> R>) -> Array<(A, B, C, D)>: _calls(self)
-fn calls<A, B, C, D, E, R>(self: Mock<fn(A, B, C, D, E) -> R>) -> Array<(A, B, C, D, E)>: _calls(self)
-fn calls<A, B, C, D, E, G, R>(self: Mock<fn(A, B, C, D, E, G) -> R>) -> Array<(A, B, C, D, E, G)>: _calls(self)
-fn calls<R>(self: Mock<async fn() -> R>) -> Array<unit>: _calls(self)
-fn calls<A, R>(self: Mock<async fn(A) -> R>) -> Array<A>: _calls(self)
-fn calls<A, B, R>(self: Mock<async fn(A, B) -> R>) -> Array<(A, B)>: _calls(self)
-fn calls<A, B, C, R>(self: Mock<async fn(A, B, C) -> R>) -> Array<(A, B, C)>: _calls(self)
-fn calls<A, B, C, D, R>(self: Mock<async fn(A, B, C, D) -> R>) -> Array<(A, B, C, D)>: _calls(self)
-fn calls<A, B, C, D, E, R>(self: Mock<async fn(A, B, C, D, E) -> R>) -> Array<(A, B, C, D, E)>: _calls(self)
-fn calls<A, B, C, D, E, G, R>(self: Mock<async fn(A, B, C, D, E, G) -> R>) -> Array<(A, B, C, D, E, G)>: _calls(self)
+# The arguments of every call so far, oldest first, a tuple per call: `(x,)` for a function of one
+# parameter, and `()`, the unit, for one of none.
+fn calls<...A, R>(self: Mock<fn(...A) -> R>) -> Array<A>: _calls(self)
+fn calls<...A, R>(self: Mock<async fn(...A) -> R>) -> Array<A>: _calls(self)
 
 # Where an instance stands, as its last commit says (§10).
 enum InstanceState:

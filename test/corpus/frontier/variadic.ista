@@ -1,8 +1,0 @@
-# error: 5000 at 7:11
-# error: 5000 at 7:26
-# error: 5000 at 7:44
-# Type parameter packs and rest parameters in function types parse, and are not checked yet
-# (language features, L7).
-
-fn logged<...A, R>(f: fn(...A) -> R) -> fn(...A) -> R:
-  f

@@ -22,7 +22,7 @@ import { isFieldsFunction } from '../../syntax/field-defaults.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType, isPack, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, futureOf, wellKnownArguments } from '../types/well-known.ts';
 
@@ -67,7 +67,7 @@ export function declaredParameters(
   });
 }
 
-/** Reports what a rest parameter breaks of its rules: last, an array, no default (§3.3). */
+/** Reports what a rest parameter breaks of its rules: last, an array or a pack, no default (§3.3, §3.5). */
 function checkRest(
   checker: CheckerContext,
   module: ModuleId,
@@ -81,11 +81,12 @@ function checkRest(
   if (node.defaultValue !== undefined) {
     checker.report(module, checkerDiagnostics.restDefault(name.span, name.text));
   }
-  const isArray =
+  const collects =
     declared === undefined ||
     declared.kind === 'error' ||
+    isPack(declared) ||
     wellKnownArguments(checker, wellKnown.array, declared) !== undefined;
-  if (!isArray) {
+  if (!collects) {
     const at = node.type?.span ?? name.span;
     checker.report(module, checkerDiagnostics.restNotArray(at, name.text, typeText(declared)));
   }

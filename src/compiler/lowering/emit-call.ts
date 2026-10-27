@@ -7,7 +7,8 @@
  * its default's entry from the parameters before it (§3.1, §3.3). So a default sees those
  * parameters however the call gave them, and every call fills its defaults one way, a filling
  * entry's included (instances.ts). A dispatch on an `any` value's own type binds the required
- * function's parameters the same way, then runs its dispatch entry (§3.10).
+ * function's parameters the same way, then runs its dispatch entry (§3.10). A pack's rest
+ * parameter takes its arguments as single parameters, as its instantiation flattens it (packs.ts).
  */
 
 import type { Callee } from '../../definition/instructions/calls.ts';
@@ -15,10 +16,12 @@ import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
+import type { SignatureParameter } from '../checker/check.ts';
 import type { CallSite, ImplicitRole } from '../checker/resolved-call.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
 import { type ClosedCall, defaultEntryOf } from './instances.ts';
+import { isPackParameter } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */
 export interface CallToEmit {
@@ -86,14 +89,19 @@ function boundParameters(
   const parameters: (Register | Argument)[] = [];
   const passed = (index: number) =>
     toEmit.arguments[index] ?? unreachable(`Argument ${index} of a call isn't passed.`);
+  const declaredParameters = calledParameters(context, call);
   for (const [parameter, source] of call.binding.entries()) {
     switch (source.kind) {
       case 'argument':
         parameters.push(passed(source.index));
         break;
-      case 'rest':
-        parameters.push(restArray(context, span, source.items.map(passed)));
+      case 'rest': {
+        const items = source.items.map(passed);
+        const declared = declaredParameters[parameter];
+        const isPackRest = declared !== undefined && isPackParameter(declared);
+        parameters.push(...(isPackRest ? items : [restArray(context, span, items)]));
         break;
+      }
       case 'default': {
         if (call.kind === 'dispatch') {
           unreachable('A required function has no defaults; checking refuses them.');
@@ -130,6 +138,16 @@ function restArray(
   const dst = context.code.allocate();
   context.code.emit({ kind: 'array', span, dst, elements });
   return dst;
+}
+
+/** The parameters of the function `called` runs, or of the required one a dispatch runs. */
+export function calledParameters(
+  context: Pick<CodeContext, 'checker'>,
+  called: ClosedCall,
+): readonly SignatureParameter[] {
+  const declaration =
+    called.kind === 'dispatch' ? called.dispatch.required : called.instance.declaration;
+  return context.checker.parametersOf(declaration);
 }
 
 /** A register's whole value passed by `&`. */

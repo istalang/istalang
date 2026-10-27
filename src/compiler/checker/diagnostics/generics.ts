@@ -80,7 +80,7 @@ export const genericTemplates = {
   restNotArray: {
     code: 5116,
     message: (name: string, found: string) =>
-      `The rest parameter '${name}' collects arguments into an array, so its type is an Array<T>, not ${found}.`,
+      `The rest parameter '${name}' collects arguments into an array or a pack, so its type is an Array<T> or a pack (§3.5), not ${found}.`,
   },
   restDefault: {
     code: 5117,

@@ -173,6 +173,15 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - how a pack type parameter is declared (default: `<...A>`);
   - a pack beside an `Array` rest parameter (default: refused);
   - named arguments into a pack (default: refused, since packs have no names).
+- **Decided in L7's sweep (human, 2026-10-28):** the three defaults above, and:
+  - a pack takes no constraint or default, only a function declares one, and a function type's rest is a pack only (`...Array<T>` is refused: a function value takes an array's rest as one array);
+  - a pack's arguments are single values by position, or one spread of a value of a pack; positional arguments into an open pack, a spread of a concrete tuple, and a spread mixed with single values are refused;
+  - a written pack is a tuple type (`logged<(int, int), int>(area)`); overloads need no new rule (no-rest beats a rest, and a pack is one), and for clashes a pack's items count as any type by value;
+  - a lambda or local function may take a pack of the function around it as its rest;
+  - `calls()` gives a tuple for every arity, `(x,)` for one parameter;
+  - `mock` and `calls` are one declaration each for plain and async functions (four in all), since exact beats async (§3.7) keeps the pairs apart;
+  - a one-element tuple and its element each fit where the other is expected (§3.15), once, before a wrap, and a call taking every argument as it is beats one converting it;
+  - lowering does flatten a pack, against "nothing in lowering" above: an instantiation takes its elements as single parameters and builds the tuple at entry, and a spread of a pack's value passes its elements, so a function value of a pack's function has the type its substitution gives. Nothing changes in the Definition, the runtime or snapshots.
 
 ## F2 `**`; F13 bitwise operators, chained comparisons, `in`, range step
 

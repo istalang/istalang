@@ -125,20 +125,28 @@ interface ParameterSlot {
   readonly reference: boolean;
 }
 
-/** A function type; a sendable one's values capture only sendable values (§3.14). */
+/**
+ * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters
+ * may end in a pack (`fn(int, ...A) -> R`, §3.5), which stands for the parameters a tuple
+ * substituted for it flattens into (`withPack`), so a type with a pack is always generic.
+ */
 export interface FunctionType {
   readonly kind: 'function';
   readonly isSendable: boolean;
   readonly isAsync: boolean;
   readonly parameters: readonly ParameterSlot[];
+  readonly pack?: PackType | undefined;
   readonly result: Type;
 }
+
+/** A function type's pack: a pack type parameter, or the error type for one that failed. */
+export type PackType = TypeParameterType | ErrorType;
 
 /** What a type parameter is keyed by: its declaration, or a trait standing for its `Self`. */
 export type ParameterKey = TypeParameter | TraitDeclaration;
 
 /** A type parameter, opaque inside the declaration that introduces it (§3.5). */
-interface TypeParameterType {
+export interface TypeParameterType {
   readonly kind: 'parameter';
   readonly declaration: ParameterKey;
 }
@@ -175,6 +183,52 @@ export const errorType: ErrorType = { kind: 'error' };
 
 export function isPrimitive(type: Type, name: PrimitiveName): boolean {
   return type.kind === 'primitive' && type.name === name;
+}
+
+/** The tuple of `elements`: `unit` for none, the empty tuple (§3.15). */
+export function tupleType(elements: readonly Type[]): Type {
+  return elements.length === 0 ? unitType : { kind: 'tuple', elements };
+}
+
+/** The elements of a tuple type, none of `unit`; undefined for any other type. */
+export function tupleElements(type: Type): readonly Type[] | undefined {
+  if (type.kind === 'tuple') {
+    return type.elements;
+  }
+  return isPrimitive(type, 'unit') ? [] : undefined;
+}
+
+/** Whether `type` is a pack, a type parameter standing for a tuple of types (§3.5). */
+export function isPack(type: Type): type is TypeParameterType {
+  return (
+    type.kind === 'parameter' &&
+    type.declaration.kind === 'TypeParameter' &&
+    type.declaration.isPack
+  );
+}
+
+/** Whether `type` can stand for a pack: a tuple, `unit` (the empty tuple), or a pack (§3.5). */
+export function fillsPack(type: Type): boolean {
+  return type.kind === 'error' || isPack(type) || tupleElements(type) !== undefined;
+}
+
+/**
+ * `type` ending in `pack`: a pack it keeps, a tuple it flattens into parameters by value, `unit` into
+ * none (§3.5); anything else was refused where it was bound to a pack, so it leaves the error type.
+ */
+export function withPack(type: FunctionType, pack: Type | undefined): FunctionType {
+  if (pack === undefined) {
+    return { ...type, pack: undefined };
+  }
+  if (isPack(pack) || pack.kind === 'error') {
+    return { ...type, pack };
+  }
+  const elements = tupleElements(pack);
+  if (elements === undefined) {
+    return { ...type, pack: errorType };
+  }
+  const flattened = elements.map((element) => ({ type: element, reference: false }));
+  return { ...type, parameters: [...type.parameters, ...flattened], pack: undefined };
 }
 
 /** Whether two types are the same type. */
@@ -234,14 +288,17 @@ export function sameConstraint(first: Constraint, second: Constraint): boolean {
  * Whether two function types take the same parameters, each by value or by `&` alike, and give the
  * same result, their types compared by `parts`: exactly (`sameType`), or as inference matches a
  * declared type against a given one. Whether each is sendable or async is the caller's to compare.
+ * A declared pack takes the given type's parameters past the declared ones, as their tuple, or the
+ * given type's own pack when none are left (§3.5).
  */
 export function sameShape(
   declared: FunctionType,
   given: FunctionType,
   parts: (declared: Type, given: Type) => boolean,
 ): boolean {
-  return (
-    declared.parameters.length === given.parameters.length &&
+  const fixed = declared.parameters.length;
+  const samePrefix =
+    given.parameters.length >= fixed &&
     declared.parameters.every((parameter, index) => {
       const other = given.parameters[index];
       return (
@@ -249,9 +306,31 @@ export function sameShape(
         parameter.reference === other.reference &&
         parts(parameter.type, other.type)
       );
-    }) &&
-    parts(declared.result, given.result)
-  );
+    });
+  if (!samePrefix) {
+    return false;
+  }
+  if (declared.pack === undefined) {
+    return (
+      given.parameters.length === fixed &&
+      given.pack === undefined &&
+      parts(declared.result, given.result)
+    );
+  }
+  const rest = restOf(given, fixed);
+  return rest !== undefined && parts(declared.pack, rest) && parts(declared.result, given.result);
+}
+
+/**
+ * `type`'s parameters from `start` on as one pack: its own pack when none are left, otherwise the
+ * tuple of those, `unit` of none; undefined when they can't be one, since one takes a `&`.
+ */
+function restOf(type: FunctionType, start: number): Type | undefined {
+  const rest = type.parameters.slice(start);
+  if (type.pack !== undefined) {
+    return rest.length === 0 ? type.pack : undefined;
+  }
+  return rest.some((slot) => slot.reference) ? undefined : tupleType(rest.map((slot) => slot.type));
 }
 
 function sameTypes(first: readonly Type[], second: readonly Type[]): boolean {
@@ -279,31 +358,6 @@ export function isAssignable(source: Type, target: Type): boolean {
       source.isSendable &&
       sameType({ ...source, isSendable: false }, target))
   );
-}
-
-/**
- * Whether a plain function of type `source` fits where `target`, an async function of the same
- * parameters and result, is expected: calling it gives a future already resolved (§3.14).
- */
-export function fitsAsync(source: Type, target: Type): boolean {
-  return (
-    source.kind === 'function' &&
-    target.kind === 'function' &&
-    !source.isAsync &&
-    target.isAsync &&
-    (source.isSendable || !target.isSendable) &&
-    sameShape(target, source, sameType)
-  );
-}
-
-/**
- * Whether `==` and `!=` may compare values of these types (§3.9): one type on both sides. The
- * error type compares with anything, so one mistake is reported once, and so does `never`, which a
- * side that doesn't produce a value has.
- */
-export function comparable(first: Type, second: Type): boolean {
-  const unchecked = (type: Type) => type.kind === 'error' || isPrimitive(type, 'never');
-  return unchecked(first) || unchecked(second) || sameType(first, second);
 }
 
 /** Type parameters mapped to the types that replace them. */
@@ -367,14 +421,17 @@ export function mapChildren(type: Type, map: (child: Type) => Type): Type {
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':
-      return {
-        ...type,
-        parameters: type.parameters.map((parameter) => ({
-          ...parameter,
-          type: map(parameter.type),
-        })),
-        result: map(type.result),
-      };
+      return withPack(
+        {
+          ...type,
+          parameters: type.parameters.map((parameter) => ({
+            ...parameter,
+            type: map(parameter.type),
+          })),
+          result: map(type.result),
+        },
+        type.pack === undefined ? undefined : map(type.pack),
+      );
     case 'any':
       return {
         ...type,
@@ -388,53 +445,4 @@ export function mapChildren(type: Type, map: (child: Type) => Type): Type {
       return unhandled;
     }
   }
-}
-
-/** The types `type` is built from, one level down. */
-export function typeChildren(type: Type): readonly Type[] {
-  switch (type.kind) {
-    case 'nominal':
-      return type.arguments;
-    case 'anonymous':
-      return type.fields.map((field) => field.type);
-    case 'tuple':
-      return type.elements;
-    case 'function':
-      return [...type.parameters.map((parameter) => parameter.type), type.result];
-    case 'any':
-      return type.constraints.flatMap((constraint) => constraint.arguments);
-    case 'primitive':
-    case 'parameter':
-    case 'error':
-      return [];
-    default: {
-      const unhandled: never = type;
-      return unhandled;
-    }
-  }
-}
-
-/** The type parameters `type` mentions, each once, in order of appearance. */
-export function parametersIn(type: Type): readonly ParameterKey[] {
-  if (type.kind === 'parameter') {
-    return [type.declaration];
-  }
-  const mentioned = new Set(typeChildren(type).flatMap(parametersIn));
-  if (type.kind === 'any') {
-    for (const { trait } of type.constraints) {
-      mentioned.delete(trait);
-    }
-  }
-  return [...mentioned];
-}
-
-/** The `any` types `type` is or is built from, outermost first. */
-export function anyTypesIn(type: Type): readonly AnyType[] {
-  const inner = typeChildren(type).flatMap(anyTypesIn);
-  return type.kind === 'any' ? [type, ...inner] : inner;
-}
-
-/** Whether `type` is, or is built from, the error type. */
-export function mentionsError(type: Type): boolean {
-  return type.kind === 'error' || typeChildren(type).some(mentionsError);
 }

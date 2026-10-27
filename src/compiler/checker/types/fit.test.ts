@@ -1,7 +1,8 @@
 /**
- * Fitting by the implicit conversions (§2, §3.14): a `T` fits `T?`, `T??` and so on by one wrap
- * per level, never the other way round, and only into optionals of the same `T`; a plain function
- * fits an async one of its parameters and result, made async, but never inside another type.
+ * Fitting by the implicit conversions (§2, §3.14, §3.15): a `T` fits `T?`, `T??` and so on by one
+ * wrap per level, never the other way round, and only into optionals of the same `T`; a plain
+ * function fits an async one of its parameters and result, made async, and a one-element tuple
+ * and its element each other, but never inside another type.
  */
 
 import fc from 'fast-check';
@@ -151,5 +152,37 @@ describe('fitting a plain function where an async one is expected', () => {
     const async = functionOf(intType, intType, { isAsync: true, isSendable: false });
     const tuple = (element: Type): Type => ({ kind: 'tuple', elements: [element, intType] });
     expect(fitOf(tuple(plain), tuple(async), fitting)).toBeUndefined();
+  });
+});
+
+/** The one-element tuple of `type`. */
+function single(type: Type): Type {
+  return { kind: 'tuple', elements: [type] };
+}
+
+describe('fitting between a one-element tuple and its element', () => {
+  it('converts each into the other before any wrap', () => {
+    fc.assert(
+      fc.property(types, levelCounts, (type, count) => {
+        expect(fitOf(type, wrapped(single(type), count), fitting)).toEqual({
+          conversion: { kind: 'tupled' },
+          wraps: count,
+        });
+        expect(fitOf(single(type), wrapped(type, count), fitting)).toEqual({
+          conversion: { kind: 'untupled' },
+          wraps: count,
+        });
+      }),
+    );
+  });
+
+  it('converts once, and never inside another type', () => {
+    fc.assert(
+      fc.property(types, (type) => {
+        expect(fitOf(type, single(single(type)), fitting)).toBeUndefined();
+        expect(fitOf(single(single(type)), type, fitting)).toBeUndefined();
+        expect(fitOf(wrapped(single(type), 1), wrapped(type, 1), fitting)).toBeUndefined();
+      }),
+    );
   });
 });

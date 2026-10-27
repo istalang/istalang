@@ -6,7 +6,8 @@
  */
 
 import type { CheckerContext } from '../context.ts';
-import { type Type, typeChildren } from './type.ts';
+import type { Type } from './type.ts';
+import { typeChildren } from './type-parts.ts';
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
 export function heldType(

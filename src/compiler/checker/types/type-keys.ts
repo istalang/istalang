@@ -46,6 +46,9 @@ export class TypeKeys {
         const parameters = type.parameters.map(
           (parameter) => `${parameter.reference ? '&' : ''}${key(parameter.type)}`,
         );
+        if (type.pack !== undefined) {
+          parameters.push(`...${key(type.pack)}`);
+        }
         const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
         return `${prefix}fn(${parameters.join(',')})->${key(type.result)}`;
       }

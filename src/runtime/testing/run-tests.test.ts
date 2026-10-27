@@ -136,7 +136,7 @@ async fn everywhere():
   assertEq(await report(), "hi charged 5 42")
   assertEq(await spawn parent().result(), Ok{"hi charged 5 42"})
   await time.delay(1s)
-  assertEq(charged.calls(), [5, 5, 7])
+  assertEq(charged.calls(), [(5,), (5,), (7,)])
 
 @Suite{"mocks"}
 fn mocks() -> Array<Test>: [test("everywhere", everywhere)]
@@ -144,7 +144,7 @@ fn mocks() -> Array<Test>: [test("everywhere", everywhere)]
     expect(outcomesOf(reportsOf(source))).toEqual(['mocks › everywhere: passed']);
   });
 
-  it('are released with their holder, the newest reaching calls, and record calls by arity', () => {
+  it('are released with their holder, the newest reaching calls, and record each call as a tuple', () => {
     const source = testModule(`
 fn greet() -> string: "hello"
 fn one(a: int) -> int: a
@@ -165,7 +165,7 @@ async fn recorded():
   drop one(1)
   drop two(2, "b")
   assertEq(nothing.calls(), [()])
-  assertEq(single.calls(), [1])
+  assertEq(single.calls(), [(1,)])
   assertEq(pair.calls(), [(2, "b")])
 
 @Suite{"holders"}

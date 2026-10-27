@@ -1,0 +1,25 @@
+# outcome: [12,10,42,"ok",3,"7",[[1,"a"]]]
+# A pack stands for a tuple of types (§3.5): a function taking one takes any parameters, a
+# function type ending in one flattens once it is a tuple, and a pack's value is passed through by
+# a spread. Each instantiation is a function of single parameters, so the wrapped function is
+# called as its own type says.
+fn logged<...A, R>(f: fn(...A) -> R) -> fn(...A) -> R:
+  fn(...args: A) -> R: f(...args)
+
+fn call<...A, R>(f: fn(...A) -> R, ...args: A) -> R: f(...args)
+
+fn forward<...A, R>(f: fn(...A) -> R, ...args: A) -> R: call(f, ...args)
+
+fn apply<...A, R>(f: fn(...A) -> R, args: A) -> R: f(...args)
+
+fn area(width: int, height: int) -> int: width * height
+fn inc(x: int) -> int: x + 1
+fn ok() -> string: "ok"
+fn shown(x: int) -> string: string(x)
+
+fn kept<...A>(...args: A) -> Array<A>: [args]
+
+async fn main() -> Future<(int, int, int, string, int, string, Array<(int, string)>)>:
+  const measure = logged(area)
+  const named: fn(int, int) -> int = logged<(int, int), int>(area)
+  (measure(3, 4), named(2, 5), forward(inc, 41), call(ok), apply(area, (1, 3)), apply(shown, (7,)), kept(1, "a"))

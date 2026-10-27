@@ -46,7 +46,14 @@ import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
 import { withoutOptionals } from '../types/fit.ts';
-import { errorType, intType, type NominalType, neverType, type Type } from '../types/type.ts';
+import {
+  errorType,
+  intType,
+  isPack,
+  type NominalType,
+  neverType,
+  type Type,
+} from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
 import { searchSite, useSite } from '../use-site.ts';
@@ -303,16 +310,24 @@ function insertEntry(
   }
 }
 
-/** The type of the items `spread` gives, as a call's argument to a rest parameter (§3.3). */
-export function spreadItemType(context: BodyContext, spread: Spread): Type {
-  return spreadItems(context, spread, undefined).type;
+/**
+ * What a call's spread passes (§3.3, §3.5): a pack's value is the pack, which fills a rest of that
+ * pack; anything else gives its items, which a rest parameter collects.
+ */
+export function spreadArgumentType(context: BodyContext, spread: Spread): Type {
+  const type = context.expression(spread.expression);
+  return isPack(type) ? type : itemsOf(context, spread, type).type;
 }
 
 /** The items `spread` gives, as an array literal's element, its items expected to be `item`s. */
 function spreadItems(context: BodyContext, spread: Spread, item: Type | undefined): Produced {
   const expected =
     item === undefined ? undefined : wellKnownOf(context.checker, wellKnown.array, [item]);
-  const type = context.expression(spread.expression, expected);
+  return itemsOf(context, spread, context.expression(spread.expression, expected));
+}
+
+/** The items a spread of a value of `type` gives: an array's elements, or what iterating gives. */
+function itemsOf(context: BodyContext, spread: Spread, type: Type): Produced {
   const own = wellKnownArguments(context.checker, wellKnown.array, type);
   if (own === undefined) {
     const iterated = iteratedItem(context, spread, spread.expression, type);

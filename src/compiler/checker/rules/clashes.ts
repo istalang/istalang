@@ -11,8 +11,8 @@
  *   numbers of them never clash: written type arguments tell them apart (§3.7);
  * - a function with defaults is compared for every number of arguments a call by position may give
  *   it, a rest parameter taking its element's type at every position past the fixed ones (§3.3,
- *   resolution/binding.ts); a function with a rest parameter never clashes with one without, since
- *   the one without wins a call both take (§3.7);
+ *   resolution/binding.ts), a pack's taking any type by value (§3.5); a function with a rest
+ *   parameter never clashes with one without, since the one without wins a call both take (§3.7);
  * - a parameter's `fn(A) -> R` and `async fn(A) -> R` differ: a call fitting both takes the one that
  *   needs no plain function made async (§3.7, §3.14).
  *
@@ -33,10 +33,11 @@ import {
 import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { positionalCounts } from '../resolution/binding.ts';
+import { positionalCounts, type RestSlot } from '../resolution/binding.ts';
 import { signatureOf } from '../resolution/choice.ts';
 import { withoutOptionals } from '../types/fit.ts';
-import { mentionsError, type ParameterKey, type Type } from '../types/type.ts';
+import type { ParameterKey, Type } from '../types/type.ts';
+import { mentionsError } from '../types/type-parts.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
@@ -115,7 +116,19 @@ function clash(first: Shape | undefined, second: Shape | undefined): boolean {
   const keysAt = (shape: Shape) =>
     Array.from({ length: count }, (_, index) => shape.fixed[index] ?? shape.rest);
   const [firstKeys, secondKeys] = [keysAt(first), keysAt(second)];
-  return firstKeys.every((key, index) => key !== undefined && key === secondKeys[index]);
+  return firstKeys.every((key, index) => {
+    const other = secondKeys[index];
+    return key !== undefined && other !== undefined && sameKey(key, other);
+  });
+}
+
+/** The key a pack's items have at every position: they take any type by value (§3.5). */
+const packItemKey = '...';
+
+/** Whether a call's argument fits parameters of both keys alike. */
+function sameKey(first: string, second: string): boolean {
+  const takesAny = (key: string, other: string) => key === packItemKey && !other.startsWith('&');
+  return first === second || takesAny(first, second) || takesAny(second, first);
 }
 
 /**
@@ -134,14 +147,19 @@ function shapeOf(checker: CheckerContext, declaration: FunctionDeclaration): Sha
     (reference ? '&' : '') +
     checker.typeKeys.typeKey(withoutOptionals(type, checker.optionalEntity), positions);
   const slots = signatureOf(checker, declaration).parameters;
-  const fixed = slots.filter((slot) => !slot.isRest);
-  const rest = slots.find((slot) => slot.isRest)?.item;
+  const fixed = slots.filter((slot) => slot.rest === undefined);
+  const rest = slots.find((slot) => slot.rest !== undefined)?.rest;
   // A method's `self` has no name to give (choice.ts), and is passed either way, so it is keyed
   // as by value.
   return {
     generic: positions.size,
     fixed: fixed.map((slot) => keyOf(slot.type, slot.reference && slot.name !== undefined)),
-    rest: rest === undefined ? undefined : keyOf(rest, false),
+    rest: rest === undefined ? undefined : restKeyOf(rest, keyOf),
     minimum: positionalCounts(slots).minimum,
   };
+}
+
+/** The key of every item a rest parameter takes: an array's element's, or a pack's any type. */
+function restKeyOf(rest: RestSlot, keyOf: (type: Type, reference: boolean) => string): string {
+  return rest.kind === 'pack' ? packItemKey : keyOf(rest.item, false);
 }

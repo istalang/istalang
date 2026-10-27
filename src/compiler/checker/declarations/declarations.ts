@@ -24,13 +24,13 @@ import type { Annotatable } from '../../syntax/annotations.ts';
 import {
   type Declaration,
   type FunctionDeclaration,
+  type TypeParameter,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
 import { checkSuite } from '../rules/suites.ts';
@@ -45,12 +45,31 @@ import { checkFiniteFields } from './struct-rules.ts';
 function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclaration): void {
   for (const parameter of typeParametersOf(declaration.typeParameters)) {
     if (parameter.isPack) {
-      checker.unsupported(checker.moduleOf(declaration), parameter, frontier.typeParameterPack);
+      checkPack(checker, declaration, parameter);
     }
     checker.constraintsOf(parameter);
     if (parameter.defaultType !== undefined) {
       checker.resolveType(checker.moduleOf(declaration), parameter.defaultType);
     }
+  }
+}
+
+/** Reports what a pack breaks of its rules: a function's, with no constraint or default (§3.5). */
+function checkPack(
+  checker: CheckerContext,
+  declaration: GenericDeclaration,
+  pack: TypeParameter,
+): void {
+  const module = checker.moduleOf(declaration);
+  const { name } = pack;
+  if (declaration.kind !== 'FunctionDeclaration') {
+    checker.report(module, checkerDiagnostics.packOutsideFunction(name.span, name.text));
+  }
+  if (pack.constraints.length > 0) {
+    checker.report(module, checkerDiagnostics.packConstrained(name.span, name.text, 'constraint'));
+  }
+  if (pack.defaultType !== undefined) {
+    checker.report(module, checkerDiagnostics.packConstrained(name.span, name.text, 'default'));
   }
 }
 

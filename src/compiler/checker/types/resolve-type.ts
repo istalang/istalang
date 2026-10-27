@@ -48,15 +48,19 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   errorType,
   type FieldMember,
+  isPack,
   type NominalDeclaration,
   nominalType,
+  type PackType,
   type ParameterKey,
   primitiveType,
   substitute,
   substitutionFor,
   type Type,
   unitType,
+  withPack,
 } from './type.ts';
+import { typeText } from './type-text.ts';
 
 interface Resolution {
   readonly checker: CheckerContext;
@@ -170,20 +174,32 @@ function resolve({ checker, module }: Resolution, node: TypeNode): Type {
 }
 
 function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
+  const fixed = node.parameters.filter(isTypeNode);
   const rest = node.parameters.find((parameter) => parameter.kind === 'RestType');
-  if (rest !== undefined) {
-    return resolution.checker.unsupported(resolution.module, rest);
+  return withPack(
+    {
+      kind: 'function',
+      isSendable: node.isSendable,
+      isAsync: node.isAsync,
+      parameters: fixed.map((parameter) => ({
+        type: resolve(resolution, parameter),
+        reference: parameter.kind === 'ReferenceType',
+      })),
+      result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
+    },
+    rest === undefined ? undefined : packOf(resolution, rest, rest === node.parameters.at(-1)),
+  );
+}
+
+/** The pack a function type's rest names (§3.5); the error type, reported, for anything else. */
+function packOf(resolution: Resolution, rest: RestType, isLast: boolean): PackType {
+  const { checker, module } = resolution;
+  const type = resolve(resolution, rest.type);
+  if (type.kind === 'error' || (isPack(type) && isLast)) {
+    return type;
   }
-  return {
-    kind: 'function',
-    isSendable: node.isSendable,
-    isAsync: node.isAsync,
-    parameters: node.parameters.filter(isTypeNode).map((parameter) => ({
-      type: resolve(resolution, parameter),
-      reference: parameter.kind === 'ReferenceType',
-    })),
-    result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
-  };
+  checker.report(module, checkerDiagnostics.restNotPack(rest.span, typeText(type)));
+  return errorType;
 }
 
 /** Whether a function type's parameter is a type, rather than a rest. */

@@ -7,7 +7,6 @@
 /** The constructs, narrower than a node kind, reported as not supported yet. */
 export const frontier = {
   rangeStep: 'A range step',
-  typeParameterPack: 'A type parameter pack',
   bitwiseOperator: 'A bitwise operator',
   powerOperator: "The '**' operator",
   membership: "Membership with 'in'",

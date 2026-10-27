@@ -23,7 +23,8 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
 import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
-import { anyTypesIn, parametersIn, type Type } from '../types/type.ts';
+import type { Type } from '../types/type.ts';
+import { anyTypesIn, parametersIn } from '../types/type-parts.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
 export interface Candidate {

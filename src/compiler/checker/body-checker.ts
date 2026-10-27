@@ -153,7 +153,7 @@ export class BodyChecker implements BodyContext {
     return acceptsOf(this, node);
   }
 
-  inferLambda(node: Expression, parameters: FunctionType['parameters']): Type {
+  inferLambda(node: Expression, parameters: Pick<FunctionType, 'parameters' | 'pack'>): Type {
     if (node.kind === 'Parenthesized') {
       return this.#record(node, this.inferLambda(node.expression, parameters));
     }

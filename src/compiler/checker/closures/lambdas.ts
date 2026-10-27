@@ -10,8 +10,9 @@
  *   binds a type parameter of the call it is passed to (§3.5, `inferLambda`).
  * - A local `fn` is a `const` bound to a lambda (§3.14): its parameters are typed as a declared
  *   function's are, and its result is written or inferred. Being one value, neither a lambda nor a
- *   local `fn` can be generic or have default values or rest parameters, which stand for overloads
- *   (§3.3).
+ *   local `fn` can be generic or have default values or an array's rest parameter, which stand for
+ *   overloads (§3.3). Its rest may be a pack of the function around it (§3.5), which each
+ *   instantiation flattens into single parameters, so its type ends in that pack.
  * - An async function's written result is its `Future<T>`, as for a declared one (§3.3); its
  *   function type's result is the `T` an `await` on a call yields.
  * - The function's own name, a local `fn`'s or a named lambda's, is declared before the body is
@@ -35,7 +36,14 @@ import type { Accepts } from '../resolution/choice.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { withoutOptionals } from '../types/fit.ts';
-import { errorType, type FunctionType, type Type, unitType } from '../types/type.ts';
+import {
+  errorType,
+  type FunctionType,
+  isPack,
+  type Type,
+  unitType,
+  withPack,
+} from '../types/type.ts';
 import { FunctionScope } from './function-scope.ts';
 import { blockTail, ReturnScope } from './returns.ts';
 
@@ -49,19 +57,22 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | und
   if (parameters.every((parameter) => parameter.type !== undefined)) {
     return undefined;
   }
+  const fixed = parameters.filter((parameter) => !parameter.isRest).length;
+  const hasRest = fixed < parameters.length;
   return (expected) => {
     const shape = expectedFunction(context, expected);
     return (
       shape !== undefined &&
       (shape.isAsync || !node.isAsync) &&
-      shape.parameters.length === parameters.length
+      shape.parameters.length === fixed &&
+      (shape.pack !== undefined) === hasRest
     );
   };
 }
 
 export function checkLambda(context: BodyContext, node: Lambda, expected: Type | undefined): Type {
   const shape = expectedFunction(context, expected);
-  return checkLambdaAs(context, node, shape?.parameters, shape?.result);
+  return checkLambdaAs(context, node, shape, shape?.result);
 }
 
 /** The function type `expected` asks a lambda for, through the optionals it is wrapped into (§2). */
@@ -78,19 +89,18 @@ function expectedFunction(
  * A lambda passed where its parameters' types are known and its result is its body's to decide,
  * since it binds type parameters of the call (§3.5).
  */
-export function inferLambda(
-  context: BodyContext,
-  node: Lambda,
-  parameters: FunctionType['parameters'],
-): Type {
-  return checkLambdaAs(context, node, parameters, undefined);
+export function inferLambda(context: BodyContext, node: Lambda, slots: ParameterSlots): Type {
+  return checkLambdaAs(context, node, slots, undefined);
 }
+
+/** What an expected function type gives a lambda's parameters: their slots, and any pack. */
+type ParameterSlots = Pick<FunctionType, 'parameters' | 'pack'>;
 
 /** A lambda where its position gives `slots` for its parameters and `result`, when it does. */
 function checkLambdaAs(
   context: BodyContext,
   node: Lambda,
-  slots: FunctionType['parameters'] | undefined,
+  slots: ParameterSlots | undefined,
   result: Type | undefined,
 ): Type {
   const declaredResult =
@@ -139,17 +149,15 @@ interface NestedHeader {
 
 function checkNested(context: BodyContext, node: NestedFunction, header: NestedHeader): Type {
   const { name, parameters, isAsync, declaredResult } = header;
-  const slots = parameters.map((parameter) => ({
-    type: parameter.type,
-    reference: parameter.reference,
-  }));
-  const typeWith = (produces: Type, sendable = false): FunctionType => ({
-    kind: 'function',
-    isSendable: sendable,
-    isAsync,
-    parameters: slots,
-    result: produces,
-  });
+  const rest = parameters.find((parameter) => parameter.node.isRest);
+  const slots = parameters
+    .filter((parameter) => parameter !== rest)
+    .map((parameter) => ({ type: parameter.type, reference: parameter.reference }));
+  const typeWith = (produces: Type, sendable = false): FunctionType =>
+    withPack(
+      { kind: 'function', isSendable: sendable, isAsync, parameters: slots, result: produces },
+      rest?.type,
+    );
   if (name !== undefined && declaredResult !== undefined) {
     context.variables.declare(name, typeWith(declaredResult));
   }
@@ -184,13 +192,13 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
 
 /**
  * A nested function's parameters: each written type, or else the slot of the expected function
- * type at its position, a reference if the slot takes one; default values and rest parameters are
- * refused.
+ * type at its position, a reference if the slot takes one, and for a rest parameter the expected
+ * type's pack; default values, and a rest parameter that isn't a pack, are refused (§3.14).
  */
 function nestedParameters(
   context: BodyContext,
   nodes: readonly (Parameter | Invalid)[],
-  slots: FunctionType['parameters'] | undefined,
+  slots: ParameterSlots | undefined,
 ): readonly SignatureParameter[] {
   return nodes.flatMap((node, index) => {
     if (node.kind === 'Invalid') {
@@ -199,19 +207,37 @@ function nestedParameters(
     if (node.defaultValue !== undefined) {
       context.report(checkerDiagnostics.nestedFunctionForm(node.name.span, 'default values'));
     }
-    if (node.isRest) {
-      context.report(checkerDiagnostics.nestedFunctionForm(node.name.span, 'a rest parameter'));
+    const parameter = writtenParameter(context, node) ?? expectedSlot(node, index, slots);
+    if (node.isRest && parameter !== undefined && !fillsRest(parameter.type)) {
+      const form = "an array's rest parameter";
+      context.report(checkerDiagnostics.nestedFunctionForm(node.name.span, form));
     }
-    const slot = slots?.[index];
-    const parameter = writtenParameter(context, node) ?? slot;
     if (parameter === undefined) {
+      const count = slots?.parameters.length;
       context.report(
-        checkerDiagnostics.parameterTypeUnknown(node.name.span, node.name.text, slots?.length),
+        checkerDiagnostics.parameterTypeUnknown(node.name.span, node.name.text, count),
       );
       return [{ node, type: errorType, reference: false }];
     }
     return [{ node, ...parameter }];
   });
+}
+
+/** Whether a nested function's rest parameter of type `type` may be one: a pack, or a mistake reported. */
+function fillsRest(type: Type): boolean {
+  return isPack(type) || type.kind === 'error';
+}
+
+/** What the expected function type gives the parameter `node` at `index`: its slot, or its pack. */
+function expectedSlot(
+  node: Parameter,
+  index: number,
+  slots: ParameterSlots | undefined,
+): FunctionType['parameters'][number] | undefined {
+  if (!node.isRest) {
+    return slots?.parameters[index];
+  }
+  return slots?.pack === undefined ? undefined : { type: slots.pack, reference: false };
 }
 
 function writtenParameter(

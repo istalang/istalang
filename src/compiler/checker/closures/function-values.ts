@@ -37,7 +37,7 @@ import {
 } from '../resolution/choice.ts';
 import { instantiate } from '../resolution/conformance.ts';
 import { namedType } from '../resolution/named.ts';
-import { errorType, type FunctionType, substitute, type Type } from '../types/type.ts';
+import { errorType, type FunctionType, substitute, type Type, withPack } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, futureOf } from '../types/well-known.ts';
 import { useSite } from '../use-site.ts';
@@ -137,16 +137,21 @@ export function checkFunctionValue(
   recordChosen(context, { site, application, instantiation });
   const { substitution } = instantiation;
   const result = substitute(signature.result(), substitution);
-  const type: FunctionType = {
-    kind: 'function',
-    isSendable: true,
-    isAsync: signature.declaration.isAsync,
-    parameters: signature.parameters
-      .filter((_, index) => binding[index]?.kind === 'argument')
-      .map((slot) => ({ type: substitute(slot.type, substitution), reference: slot.reference })),
-    result: signature.declaration.isAsync ? (futureArgument(checker, result) ?? errorType) : result,
-  };
-  return type;
+  const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
+  return withPack(
+    {
+      kind: 'function',
+      isSendable: true,
+      isAsync: signature.declaration.isAsync,
+      parameters: signature.parameters
+        .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
+        .map((slot) => ({ type: substitute(slot.type, substitution), reference: slot.reference })),
+      result: signature.declaration.isAsync
+        ? (futureArgument(checker, result) ?? errorType)
+        : result,
+    },
+    pack === undefined ? undefined : substitute(pack.type, substitution),
+  );
 }
 
 /**
@@ -186,12 +191,18 @@ function loneFunction(
   return choice.kind === 'chosen' ? choice.application : undefined;
 }
 
-/** The candidate that takes `shape`'s parameters, as a call passing them would choose it. */
+/**
+ * The candidate that takes `shape`'s parameters, as a call passing them would choose it; none for
+ * a shape ending in a pack, whose parameters are known only once a function is chosen (§3.5).
+ */
 function chosenFor(
   context: BodyContext,
   candidates: readonly Candidate[],
   shape: FunctionType,
 ): Application | undefined {
+  if (shape.pack !== undefined) {
+    return undefined;
+  }
   const arguments_ = shape.parameters.map((slot) => ({
     type: slot.type,
     passing: passingOf(slot.reference),

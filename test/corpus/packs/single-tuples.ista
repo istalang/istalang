@@ -1,0 +1,14 @@
+# outcome: [3,[4],5,"6",null,7,"int 1","tuple"]
+# A one-element tuple and its element each fit where the other is expected (§3.15), once, before
+# a wrap into T? (§2); a function taking every argument as it is beats one converting it (§3.7).
+fn twice(x: int) -> int: x * 2
+
+fn pick(x: int) -> string: "int " + x
+fn pick(x: (int,)) -> string: "tuple"
+
+async fn main() -> Future<(int, (int,), int, string, int?, int?, string, string)>:
+  const one: (int,) = 3
+  const back: int = one
+  const wrapped: (int,) = 4
+  const maybe: int? = (7,)
+  (back, wrapped, twice((2,)) + 1, string(twice((3,))), none, maybe, pick(1), pick((1,)))

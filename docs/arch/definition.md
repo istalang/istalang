@@ -168,11 +168,13 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Struct without fields, written bare (§3.1) | `struct` with no fields; a constant when it is one |
 | Enum variant (§3.11) | `variant`; a variant without fields may be a constant |
 | Implicit wrap of `T` into `T?` (§2) | `variant` `Some` |
+| A one-element tuple and its element converted into each other (§3.15) | `tuple` of the one value; a `field` read of element 0 |
 | `fn`, `async fn`, methods, static functions (§3.3, §3.7) | function-table entries; a method's `self` is its first parameter |
 | Overloads (§3.7) | distinct entries; calls name one |
 | Default parameters (§3.3) | the caller computes each parameter it leaves out, in parameter order, with a `call` to that parameter's default entry given the parameters before it, then calls the function's own entry; a function named as a value of a shorter type, a spawned call and a call the runtime makes target a filling entry instead, whose code does the same, and which for an async function is async and awaits it |
 | Field defaults (§3.1) | the default entry of the field's parameter in the function the fields read as (one per instantiation), called as a parameter's default is |
 | Rest parameter, spread argument (§3.3) | the caller builds the rest parameter's `array` from the arguments it collects, as an array literal of them, spreads included, where the first of them stands; an extern's native takes that array |
+| Pack (§3.5) | nothing of its own: each instantiation is a concrete tuple, so a pack's rest parameter is one parameter per element, of which the entry builds the parameter's `tuple`; a caller passes a pack's arguments as they stand, and a spread of a pack's value as a `field` read of each element |
 | Named arguments (§3.3) | the arguments are evaluated in the order written, then each call takes its parameters in their order; names don't reach the Definition |
 | `return`, last expression (§3.3) | `return` |
 | `extern fn`, extern constant (§3.6) | `extern` function entries; reading a constant is a `call`; a host's is called through its wrapper, which converts to and from `Json` (Externs) |
