@@ -363,10 +363,9 @@ function chooseWitness(checker: CheckerContext, type: Type, required: Signature)
 }
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
-  if (type.kind === 'nominal') {
-    return (checker.fieldsOf(type) ?? []).some(
-      (field) => field.name === name && sameType(field.type, fieldType),
-    );
+  const fields = checker.fieldsOf(type);
+  if (fields !== undefined) {
+    return fields.some((field) => field.name === name && sameType(field.type, fieldType));
   }
   if (type.kind === 'parameter' && type.declaration.kind === 'TypeParameter') {
     return checker

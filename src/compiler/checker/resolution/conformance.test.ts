@@ -1,5 +1,5 @@
 /**
- * Meeting constraints (§3.10): a required field is met by a field of the same name and type, a
+ * Meeting constraints (§3.10): a required field is met by a struct's field of the same name and type, a
  * required function by a function declared beside the type or the trait, with the required
  * result, the same wherever the constraint is met, and Sendable is derived from what a type holds
  * (§3.1).
@@ -38,15 +38,19 @@ const fields = fc.record({
 });
 
 describe('a required field', () => {
-  it('is met exactly by a field of the same name and the same type', () => {
+  it("is met exactly by a struct's field of the same name and the same type, named or not", () => {
     fc.assert(
-      fc.property(fields, fields, (required, declared) => {
+      fc.property(fields, fields, fc.boolean(), (required, declared, isNamed) => {
         const [declaredType, value] = declared.type;
+        const field = `${declared.name}: ${declaredType}`;
+        const type = isNamed ? 'Item' : `struct { ${field} }`;
         const text = [
           `trait Priced { ${required.name}: ${required.type[0]} }`,
-          `struct Item { ${declared.name}: ${declaredType} }`,
+          `struct Item { ${field} }`,
           'fn priceOf<T is Priced>(item: T) -> int: 1',
-          `fn main() -> int: priceOf(Item{${declared.name}: ${value}})`,
+          'fn main() -> int:',
+          `  const item: ${type} = ${isNamed ? 'Item' : 'struct'}{${declared.name}: ${value}}`,
+          '  priceOf(item)',
         ].join('\n');
         const same = required.name === declared.name && required.type === declared.type;
         expect(unmet(text)).toBe(!same);
