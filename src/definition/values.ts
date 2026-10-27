@@ -22,6 +22,7 @@ import { z } from 'zod';
 import type { MapOf } from '../language/values.ts';
 import { pushAll } from '../structures/stack.ts';
 import { unreachable } from '../structures/unreachable.ts';
+import { encodeJson } from './codec.ts';
 import { functionId, objectId, typeId, variantIndex } from './operands.ts';
 
 const specialFloats = ['NaN', 'Infinity', '-Infinity', '-0'] as const;
@@ -231,37 +232,11 @@ export function mapValueOf(candidate: Value | undefined): MapOf<Value> {
 export type CompositeValue = Exclude<Value, null | boolean | string | bigint | number>;
 
 /**
- * Whether two extern payloads are one value: plain JSON, compared by content, since a snapshot
- * round trip rebuilds every object it holds. An object's key order and prototype don't count, as
- * JSON gives them no meaning.
+ * Whether two extern payloads are one value: one canonical JSON text (codec.ts), since a snapshot
+ * round trip rebuilds every object a payload holds and decodes a safe bigint as a number.
  */
 export function samePayload(first: unknown, second: unknown): boolean {
-  if (first === second) {
-    return true;
-  }
-  if (
-    typeof first !== 'object' ||
-    typeof second !== 'object' ||
-    first === null ||
-    second === null
-  ) {
-    return false;
-  }
-  if (Array.isArray(first) || Array.isArray(second)) {
-    return (
-      Array.isArray(first) &&
-      Array.isArray(second) &&
-      first.length === second.length &&
-      first.every((item, index) => samePayload(item, second[index]))
-    );
-  }
-  const firstEntries = Object.entries(first);
-  return (
-    firstEntries.length === Object.keys(second).length &&
-    firstEntries.every(
-      ([key, item]) => Object.hasOwn(second, key) && samePayload(item, Reflect.get(second, key)),
-    )
-  );
+  return first === second || encodeJson(first) === encodeJson(second);
 }
 
 /** The heap object a handle names; undefined for any other value. */
