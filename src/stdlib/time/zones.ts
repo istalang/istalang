@@ -16,13 +16,13 @@
  */
 
 import { Temporal } from 'temporal-polyfill';
+import type { NamedFields } from '../../definition/declared-values.ts';
 import type { Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import {
   fieldNamed,
   int,
-  type NamedFields,
   okExtern,
   okStruct,
   parseResult,

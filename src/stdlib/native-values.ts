@@ -8,10 +8,18 @@
  * one throws a TypeError rather than panicking.
  */
 
+import {
+  type NamedFields,
+  namedType,
+  optionalOf,
+  structOf,
+  typeArgumentOf,
+  variantOf,
+  variantShape,
+} from '../definition/declared-values.ts';
 import type { TypeId } from '../definition/operands.ts';
-import type { TypeDefinition, TypeReference } from '../definition/types.ts';
 import { childValues, isComposite, type Value } from '../definition/values.ts';
-import { optionalVariants, resultVariants } from '../language/well-known.ts';
+import { resultVariants } from '../language/well-known.ts';
 import type { NativeContext } from '../runtime/natives.ts';
 import { unreachable } from '../structures/unreachable.ts';
 
@@ -53,9 +61,6 @@ export function fieldOf(value: Value | undefined, index: number): Value {
   }
   return field;
 }
-
-/** Fields given by name, as a struct or a variant is built (`structOf`, `resultVariant`). */
-export type NamedFields = Readonly<Record<string, Value>>;
 
 /** The type entry the extern's declared result names: a struct or an enum. */
 function declaredResult(context: NativeContext): TypeId {
@@ -155,51 +160,9 @@ export function resultError(context: NativeContext, message: string, code: strin
   );
 }
 
-/** The type entry `reference` names. */
-export function namedType(reference: TypeReference | undefined): TypeId {
-  if (reference?.kind !== 'named') {
-    unreachable('Expected a named type.');
-  }
-  return reference.type;
-}
-
 /** Type argument `position` of the extern's declared result: the `T` of an `Array<T>` or a `T?`. */
 export function resultTypeArgument(context: NativeContext, position: number): TypeId {
   return typeArgumentOf(context.types, declaredResult(context), position);
-}
-
-/** The declared type of field `name` of struct entry `type`. */
-export function fieldTypeOf(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  name: string,
-): TypeReference {
-  const declared = types[type];
-  const field =
-    declared?.kind === 'struct' ? declared.fields.find((each) => each.name === name) : undefined;
-  return field?.type ?? unreachable(`Type ${type} isn't a struct with a field ${name}.`);
-}
-
-/** Type argument `position` of type entry `type`, a named type: `T` of an `Array<T>`. */
-export function typeArgumentOf(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  position: number,
-): TypeId {
-  return namedType(types[type]?.arguments[position]);
-}
-
-/**
- * `fields` in the order `declared` lists them: a composite is built through its declaration, never
- * by position, so a field this doesn't give fails loudly here.
- */
-function inDeclaredOrder(
-  declared: readonly { readonly name: string }[],
-  fields: NamedFields,
-): Value[] {
-  return declared.map(
-    ({ name }) => fields[name] ?? unreachable(`A native gives no field '${name}'.`),
-  );
 }
 
 /** Field `name` of a struct argument, found by the name its type declares, never by position. */
@@ -227,30 +190,6 @@ export function variantEntry<Entry>(
   return entry === undefined
     ? unreachable(`${context.name} has no entry for variant ${name}.`)
     : entry;
-}
-
-/** A struct of type entry `type` with `fields` by name. */
-export function structOf(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  fields: NamedFields,
-): Value {
-  const declared = types[type];
-  if (declared?.kind !== 'struct') {
-    unreachable(`Type ${type} isn't a struct.`);
-  }
-  return { kind: 'struct', type, fields: inDeclaredOrder(declared.fields, fields) };
-}
-
-/** An optional of type entry `type`: `Some` of `value`, or `None` without one. */
-export function optionalOf(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  value: Value | undefined,
-): Value {
-  return value === undefined
-    ? variantOf(types, type, optionalVariants.none, {})
-    : variantOf(types, type, optionalVariants.some, { value });
 }
 
 /** The code of every `Error` a `parse` returns (§3.10). */
@@ -281,30 +220,7 @@ export function resultVariant(context: NativeContext, name: string, fields: Name
   return variantOf(context.types, declaredResult(context), name, fields);
 }
 
-/** Variant `name` of enum entry `type`, holding `fields` by name. */
-function variantOf(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  name: string,
-  fields: NamedFields,
-): Value {
-  const { variant, fields: declared } = variantShape(types, type, name);
-  return { kind: 'variant', type, variant, fields: inDeclaredOrder(declared, fields) };
-}
-
 /** Where the extern's declared enum result has variant `name`, with its declared fields. */
 function resultVariantShape(context: NativeContext, name: string) {
   return variantShape(context.types, declaredResult(context), name);
-}
-
-/** Where enum entry `type` has variant `name`, with its declared fields. */
-function variantShape(types: readonly TypeDefinition[], type: TypeId, name: string) {
-  const declared = types[type];
-  const variants = declared?.kind === 'enum' ? declared.variants : [];
-  const variant = variants.findIndex((each) => each.name === name);
-  const shape = variants[variant];
-  if (shape === undefined) {
-    unreachable(`Type ${type} isn't an enum with a variant ${name}.`);
-  }
-  return { variant, fields: shape.fields };
 }

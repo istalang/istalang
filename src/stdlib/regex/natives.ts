@@ -12,6 +12,13 @@
 
 import { LRUCache } from 'lru-cache';
 import { RE2JS, RE2JSException } from 're2js';
+import {
+  fieldTypeOf,
+  namedType,
+  optionalOf,
+  structOf,
+  typeArgumentOf,
+} from '../../definition/declared-values.ts';
 import { mapOf } from '../../definition/equality.ts';
 import type { TypeId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/types.ts';
@@ -22,17 +29,12 @@ import { codePointPositions } from '../../text/code-points.ts';
 import {
   arrayOf,
   fieldOf,
-  fieldTypeOf,
-  namedType,
   okStruct,
-  optionalOf,
   parseFailure,
   resultOk,
   resultOptional,
   resultTypeArgument,
-  structOf,
   text,
-  typeArgumentOf,
 } from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
 import { split } from './split.ts';
