@@ -6,9 +6,9 @@
  * the grammar it implements. Other kinds are named. The word lists below are the single source of
  * truth: the kind types and the scanner's lookup tables are derived from them.
  *
- * `type`, `from`, `sendable`, `shared` and `new` are not keywords (§2). They are keywords only in
- * one position each, and ordinary names elsewhere: `type` as a field name (§9), `from` as a
- * function name (`T.from`, §3.10). The scanner emits them as identifiers, and the parser
+ * The contextual words are not keywords (§2). They are keywords only in one position each, and
+ * ordinary names elsewhere: `type` as a field name (§9), `from` as a function name (`T.from`,
+ * §3.10), `any` as `futures.any`. The scanner emits them as identifiers, and the parser
  * recognizes them by text where the grammar expects them.
  *
  * Layout is not tokenized: there are no INDENT/DEDENT/NEWLINE tokens. Whether a line break matters
@@ -82,6 +82,13 @@ export const punctuators = [
   '/',
   '//',
   '%',
+  '**',
+  '|',
+  '^',
+  '~',
+  '<<',
+  '>>',
+  '!',
   '=',
   '==',
   '!=',
@@ -95,11 +102,22 @@ export const punctuators = [
   '/=',
   '//=',
   '%=',
+  '**=',
+  '&=',
+  '|=',
+  '^=',
+  '<<=',
+  '>>=',
   '->',
   '?->',
   '&',
   '@',
 ] as const;
+
+/** Words that are keywords only where the grammar expects them (§2). */
+const contextualWords = ['type', 'from', 'sendable', 'shared', 'new', 'hold', 'by', 'any'] as const;
+
+export type ContextualWord = (typeof contextualWords)[number];
 
 export type Keyword = (typeof keywords)[number];
 export type Punctuator = (typeof punctuators)[number];

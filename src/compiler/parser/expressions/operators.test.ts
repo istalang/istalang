@@ -29,7 +29,7 @@ describe('levels and associativity', () => {
     ['name ?? "anonymous"', '(Binary name ?? "anonymous")'],
     ['(a ?? b) or c', '(Binary (Parenthesized (Binary a ?? b)) or c)'],
     ['a ?? (b or c)', '(Binary a ?? (Parenthesized (Binary b or c)))'],
-    ['a < b == c', '(Binary (Binary a < b) == c)'],
+    ['a < b == c', '(ChainedComparison [a b c] [< ==])'],
   ])('groups %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
@@ -44,14 +44,14 @@ describe('is and ranges', () => {
     ],
     ['not x is P', '(Unary not (Is x (NamePattern [P])))'],
     ['x is P < y', '(Binary (Is x (NamePattern [P])) < y)'],
-    ['0..10', '(Range 0 10)'],
-    ['0..=10', '(Range 0 isInclusive 10)'],
-    ['..5', '(Range _ 5)'],
-    ['..=5', '(Range _ isInclusive 5)'],
-    ['3..', '(Range 3 _)'],
-    ['..', '(Range _ _)'],
-    ['a..b + 1', '(Range a (Binary b + 1))'],
-    ['a..b == c', '(Binary (Range a b) == c)'],
+    ['0..10', '(Range 0 10 _)'],
+    ['0..=10', '(Range 0 isInclusive 10 _)'],
+    ['..5', '(Range _ 5 _)'],
+    ['..=5', '(Range _ isInclusive 5 _)'],
+    ['3..', '(Range 3 _ _)'],
+    ['..', '(Range _ _ _)'],
+    ['a..b + 1', '(Range a (Binary b + 1) _)'],
+    ['a..b == c', '(Binary (Range a b _) == c)'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
@@ -72,5 +72,31 @@ describe('reports', () => {
     ['a +\nb', expected.code, ''],
   ])('reports %j once', (text, code, spanText) => {
     expect(reported('expression', text)).toEqual(reportedOnce(code, spanText));
+  });
+});
+
+describe('bitwise operators, `**`, membership and chains', () => {
+  it.each([
+    [
+      'a | b ^ c & d << e >> f',
+      '(Binary a | (Binary b ^ (Binary c & (Binary (Binary d << e) >> f))))',
+    ],
+    ['a + b << c', '(Binary (Binary a + b) << c)'],
+    ['0..1 << k', '(Range 0 (Binary 1 << k) _)'],
+    ['a | b..c', '(Range (Binary a | b) c _)'],
+    ['2 ** 3 ** 2', '(Binary 2 ** (Binary 3 ** 2))'],
+    ['2 ** -1', '(Binary 2 ** (Unary - 1))'],
+    ['-2 ** 2', '(Unary - (Binary 2 ** 2))'],
+    ['**x', '(Dereference * (Dereference * x))'],
+    ['~a & b', '(Binary (Unary ~ a) & b)'],
+    ['x in xs', '(Binary x in xs)'],
+    ['x not in xs and y', '(Binary (Binary x not in xs) and y)'],
+    ['a < b <= c', '(ChainedComparison [a b c] [< <=])'],
+    ['(a < b) <= c', '(Binary (Parenthesized (Binary a < b)) <= c)'],
+    ['0..10 by 2', '(Range 0 10 2)'],
+    ['..10 by 2', '(Range _ 10 2)'],
+    ['0.. by 2', '(Range 0 _ 2)'],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('expression', text)).toBe(tree);
   });
 });

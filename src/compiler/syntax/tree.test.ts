@@ -44,6 +44,7 @@ describe('childrenOf', () => {
         start: undefined,
         isInclusive: false,
         end: undefined,
+        step: undefined,
       }),
     ).toEqual([]);
     expect(childrenOf(name('x', 0))).toEqual([]);

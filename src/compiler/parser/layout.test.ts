@@ -52,12 +52,12 @@ describe('bodies', () => {
     [
       'statements separated by ";" on one line',
       lines('while a:', '    b; c'),
-      `(While a ${block(statement('b'), statement('c'))})`,
+      `(While _ a ${block(statement('b'), statement('c'))})`,
     ],
     [
       'any indentation width, consistent within a block',
       lines('while a:', '  b', '  c'),
-      `(While a ${block(statement('b'), statement('c'))})`,
+      `(While _ a ${block(statement('b'), statement('c'))})`,
     ],
   ])('parses %s', (_name, text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);
@@ -93,7 +93,7 @@ describe('if chains (§4)', () => {
   it('continues a multi-line if used as a value at the column its line starts', () => {
     const text = lines('const x = if a:', '    1', 'else:', '    2');
     expect(dumpClean('statement', text)).toBe(
-      `(VariableDeclaration [(NamePattern [x])] _ ${ifThen('a', bodyOf('1'), bodyOf('2'))})`,
+      `(VariableDeclaration _ [(NamePattern [x])] _ ${ifThen('a', bodyOf('1'), bodyOf('2'))})`,
     );
   });
 

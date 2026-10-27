@@ -44,7 +44,9 @@ export function checkTestingCalls(
 function checkTarget(context: BodyContext, site: Call): Expression | undefined {
   const [argument] = site.arguments;
   const target =
-    argument === undefined || argument.kind === 'Spread' ? undefined : unparenthesized(argument);
+    argument === undefined || argument.kind === 'Spread' || argument.kind === 'NamedArgument'
+      ? undefined
+      : unparenthesized(argument);
   const names =
     (target?.kind === 'Identifier' || target?.kind === 'MemberAccess') &&
     context.callAt(target)?.kind === 'function';

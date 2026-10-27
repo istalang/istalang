@@ -26,7 +26,7 @@ import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { Statement } from '../syntax/statements.ts';
-import type { Token, TokenKind } from '../syntax/tokens.ts';
+import type { ContextualWord, Token, TokenKind } from '../syntax/tokens.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { Cursor } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
@@ -164,7 +164,7 @@ export class Parser {
   }
 
   /** Whether the cursor stands at `word`, a keyword only in one position, a name elsewhere (§2). */
-  atWord(word: 'from' | 'type' | 'sendable' | 'shared' | 'new'): boolean {
+  atWord(word: ContextualWord): boolean {
     return this.cursor.at('identifier') && this.textOf(this.cursor.token) === word;
   }
 

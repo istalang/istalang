@@ -1,10 +1,13 @@
 /**
- * Statements (§3.4, §4, §7, §9), dispatched on their first token.
+ * Statements (§3.4, §4, §7), dispatched on their first token.
  *
  * Three first tokens need a look further ahead:
- * - `fn` starts a variable held by the function (`fn let`, `fn const`, `fn _ =`), a local
+ * - `fn` starts a held variable in its older spelling (`fn let`, `fn const`, `fn _ =`), a local
  *   function (`fn name…`), or else a lambda expression (`fn(x): …`, `fn x: …`).
  * - `async` starts a local function only when a name follows `fn`.
+ * - A name starts a held variable when it is the word `hold` before one (`hold let`,
+ *   `hold(outer) _ =`), a labelled loop when `:` and `for` or `while` follow, and else an
+ *   expression, a call of a function named `hold` included.
  * Declarations only the top level allows are not statements; a block rejects them
  * (parts/blocks.ts).
  *
@@ -22,16 +25,15 @@ import { destructures, isTarget, type Statement } from '../../syntax/statements.
 import type { CursorKind } from '../cursor.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
-import { parseFor, parseWhile } from './loops.ts';
+import { atLabel, parseFor, parseLabelledLoop, parseWhile } from './loops.ts';
+import { parseBreak, parseContinue, parseDefer, parseDrop, parseReturn } from './simple.ts';
 import {
-  parseBreak,
-  parseContinue,
-  parseDefer,
-  parseDrop,
-  parseReturn,
-  parseSpawn,
-} from './simple.ts';
-import { parseFunctionHeldVariable, parseVariable } from './variables.ts';
+  atHold,
+  parseFunctionHeldVariable,
+  parseHeldVariable,
+  parseVariable,
+  startsHeldVariableAt,
+} from './variables.ts';
 
 type StatementParselet = (parser: Parser) => Statement | Invalid;
 
@@ -47,7 +49,7 @@ const statementParselets: Partial<Record<CursorKind, StatementParselet>> = {
   while: parseWhile,
   defer: parseDefer,
   drop: parseDrop,
-  spawn: parseSpawn,
+  identifier: parseNamedStatement,
 };
 
 export function parseStatement(parser: Parser): Statement | Invalid {
@@ -56,18 +58,20 @@ export function parseStatement(parser: Parser): Statement | Invalid {
 }
 
 function parseFnStatement(parser: Parser): Statement | Invalid {
-  const { cursor } = parser;
-  const next = cursor.peek(1);
-  const holdsVariable =
-    next.kind === 'let' ||
-    next.kind === 'const' ||
-    (next.kind === 'identifier' && parser.textOf(next) === '_' && cursor.kindAt(2) === '=');
-  if (holdsVariable) {
+  if (startsHeldVariableAt(parser, 1)) {
     return parseFunctionHeldVariable(parser);
   }
   return namesFunctionAt(parser, 1)
     ? parser.functionDeclaration()
     : parseExpressionStatement(parser);
+}
+
+/** A held variable, a labelled loop, or an expression, each starting at a name. */
+function parseNamedStatement(parser: Parser): Statement {
+  if (atHold(parser)) {
+    return parseHeldVariable(parser);
+  }
+  return atLabel(parser) ? parseLabelledLoop(parser) : parseExpressionStatement(parser);
 }
 
 /** `async fn name(…)` declares a function; any other `async fn` is a lambda. */

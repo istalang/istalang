@@ -58,7 +58,6 @@ const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
     underCondition(binder, node.condition, scope, (flow) => bindBlock(binder, node.body, flow)),
   Defer: (binder, node, scope) => binder.walk.expression(binder, node.action, scope),
   Drop: (binder, node, scope) => binder.walk.expression(binder, node.value, scope),
-  Spawn: (binder, node, scope) => binder.walk.expression(binder, node.call, scope),
 };
 
 const declaresNothing = (): readonly Identifier[] => [];
@@ -76,7 +75,6 @@ const declaredNames: Handlers<undefined, Statement, [], readonly Identifier[]> =
   While: declaresNothing,
   Defer: declaresNothing,
   Drop: declaresNothing,
-  Spawn: declaresNothing,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

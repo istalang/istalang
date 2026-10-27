@@ -53,6 +53,29 @@ const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
     walk(binder, node.pattern, binding);
     define(binder, binding.bindings, node.name, node);
   },
+  OrPattern: (binder, node, binding) => {
+    // Only the first alternative binds names, which is enough while or-patterns are refused
+    // (checker/frontier.ts); the others still resolve what they refer to.
+    const [first, ...others] = node.alternatives;
+    if (first !== undefined) {
+      walk(binder, first, binding);
+    }
+    for (const other of others) {
+      walk(binder, other, { ...binding, bindings: { ...binding.bindings, into: undefined } });
+    }
+  },
+  ArrayPattern: (binder, node, binding) => {
+    for (const element of node.elements) {
+      if (element.kind === 'RestPattern') {
+        if (element.target.kind === 'Identifier') {
+          define(binder, binding.bindings, element.target, element);
+        }
+      } else {
+        walk(binder, element, binding);
+      }
+    }
+  },
+  RangePattern: holdsNoNames,
   StructPattern: (binder, node, binding) => {
     if (node.type !== undefined) {
       binder.constructedType(node.type, binding.scope);

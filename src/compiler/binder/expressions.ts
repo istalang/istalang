@@ -8,10 +8,10 @@
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import {
+  type CallArgument,
   casesOf,
   type Expression,
   type MemberAccess,
-  type Spread,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, QualifiedName } from '../syntax/node.ts';
 import { underBindings, underCondition, underLoop } from './flow.ts';
@@ -43,11 +43,15 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   Parenthesized: (binder, node, scope) => bindExpression(binder, node.expression, scope),
   Reference: (binder, node, scope) => bindExpression(binder, node.expression, scope),
   Propagate: (binder, node, scope) => bindExpression(binder, node.operand, scope),
+  Unwrap: (binder, node, scope) => bindExpression(binder, node.operand, scope),
+  Spawn: (binder, node, scope) => bindExpression(binder, node.call, scope),
+  ChainedComparison: (binder, node, scope) => bindAll(binder, node.operands, scope),
+  TemplateLiteral: (binder, node, scope) => bindAll(binder, [node.tag, ...node.values], scope),
   Dereference: (binder, node, scope) => bindExpression(binder, node.operand, scope),
   Unary: (binder, node, scope) => bindExpression(binder, node.operand, scope),
   Await: (binder, node, scope) => bindExpression(binder, node.operand, scope),
   Index: (binder, node, scope) => bindAll(binder, [node.target, node.index], scope),
-  Range: (binder, node, scope) => bindAll(binder, [node.start, node.end], scope),
+  Range: (binder, node, scope) => bindAll(binder, [node.start, node.end, node.step], scope),
   Call: (binder, node, scope) => {
     if (node.callee.kind === 'Identifier') {
       binder.use(node.callee, scope, 'callee');
@@ -145,14 +149,17 @@ function bindValueCondition(binder: LocalBinder, node: Expression, scope: Scope)
   underCondition(binder, node, scope, () => undefined);
 }
 
+/** Binds each value given: an expression, a spread's, or a named argument's. */
 function bindAll(
   binder: LocalBinder,
-  nodes: readonly (Expression | Spread | undefined)[],
+  nodes: readonly (CallArgument | undefined)[],
   scope: Scope,
 ): void {
   for (const node of nodes) {
     if (node?.kind === 'Spread') {
       bindExpression(binder, node.expression, scope);
+    } else if (node?.kind === 'NamedArgument') {
+      bindExpression(binder, node.value, scope);
     } else if (node !== undefined) {
       bindExpression(binder, node, scope);
     }

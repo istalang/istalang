@@ -123,4 +123,8 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: (text: string) =>
       `A tuple element is named by its position, a decimal number such as 0 or 1, not '${text}'.`,
   },
+  rangeBound: {
+    code: 2026,
+    message: () => "A range pattern's bounds are literals.",
+  },
 });

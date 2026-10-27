@@ -1,0 +1,8 @@
+# error: 5000 at 8:5
+# Named arguments parse, and are not checked yet (language features, L1).
+
+fn f(times: int) -> int:
+  times
+
+fn g() -> int:
+  f(times: 1)

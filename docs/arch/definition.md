@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-26
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -33,7 +33,7 @@ An execution is a stack of frames. A frame's registers are laid out as parameter
 
 - **`cells`** lists registers that hold a shared cell, a variable passed by `&` or a `let` a closure captured (spec §3.14), each with the `_Cell<T>` type entry the cell is created as, so its disposability is known (a `_Cell` never is: only the prelude could declare its `dispose`). Reads and writes go through the cell, and a cell outlives its block while a call or closure still holds it (spec §3.7).
 - **A reference parameter's register** holds a reference: a cell plus a path. References exist only in registers.
-- **`kept`** collects what `keep` moved there: `fn let`, `fn const` and `fn _` holdings, which last until the function returns even from a loop body.
+- **`kept`** collects what `keep` moved there: `hold let`, `hold const` and `hold _` holdings (`fn let`, `fn const`, `fn _` in their older spelling), which last until the function returns even from a loop body.
 - **A stopped execution's pc** is always its `await` or `select`: the only instructions that wait, and the commit points (spec §5). A non-blocking `select` never waits.
 - **A caller frame's pc** points at the `call` it made. On return, the runtime writes the result to that `call`'s `dst` and continues at the next instruction.
 - **An async call** starts a new execution and its `call` future (spec §3.3); the execution names the future its return resolves (`resolves`), and the root, the one the instance started with, names none. The callee runs on top of its caller, in the caller's segment, until it awaits or returns; only then does the caller's `call` receive the future. Only an `await` or blocking `select` by the execution that began the segment ends it and commits, so when a commit happens every other execution stands at an `await` or `select`. Every wait commits, even on a future that has resolved, and the execution then runs after the executions that became ready before it (spec §6).
@@ -48,7 +48,7 @@ Loading refuses code the interpreter couldn't run, so no instruction handler nee
 - waiting (`await`, a `select` without `otherwise`, `currentCall`) outside an async function
 
 Release points are explicit (spec §3.4, §7):
-- `release` runs at a block's end on every exit path, for the variables it declared, with `keep` first for its `fn let`, `fn const` and `fn _` variables. `break` and `continue` end every block they leave the same way. A function's own body releases nothing, its `return` releasing every register and the kept list.
+- `release` runs at a block's end on every exit path, for the variables it declared, with `keep` first for its `hold` variables. `break` and `continue` end every block they leave the same way. A function's own body releases nothing, its `return` releasing every register and the kept list.
 - A statement's end releases its temporaries: the registers it allocated that no variable lives in. A header's temporaries (an `if` or `while` condition, a `match` subject or guard) are released on every path out of the header, before the body.
 - `drop x` is a `release` of `x`; a value given to `_` lives in a register of its block with no name, as does a `defer` guard, and the holdings of a `select`'s winning case.
 - Each pass of a loop, each branch of an `if` and each `match` or `select` case is a scope of its own, so the bindings a pattern or a loop's targets make end with it.
@@ -175,7 +175,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Top-level `const` (§3) | computed while compiling into a constant; reading one is a `constant` instruction, like a literal; a lambda in one is a closure constant of no captures, its function an entry of its own |
 | Block end, `break`, `continue` (§3.4, §4) | `release` of the block's registers, then `jump` where needed |
 | Statement end, a header's end (§7) | `release` of the temporaries it left; a header's on every path out of it, before the body |
-| `fn let`, `fn const`, `fn _` (§3.4) | `keep`, then `release`, at the block's end |
+| `hold let`, `hold const`, `hold _` (§3.4; `fn let` spelled the old way) | `keep`, then `release`, at the block's end |
 | `_ = e` (§7) | an unnamed register, released at the block's end |
 | `drop x`, `drop e` (§7) | `release` of `x`; for an expression, its temporaries at the statement's end |
 | Destructuring `a, b = t`, `const Pair{first} = p`, at any depth (§3.15) | the value once, then `field` reads along each target's path, and a `move` or `store` per target |

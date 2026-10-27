@@ -14,7 +14,7 @@ import type { Declaration, DeclarationPart, FunctionDeclaration, Module } from '
 import type { Expression, ExpressionPart, Lambda } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing } from './node.ts';
 import type { Pattern, PatternPart } from './patterns.ts';
-import type { Block, Statement } from './statements.ts';
+import type { Block, Statement, StatementPart } from './statements.ts';
 import type { Comment } from './tokens.ts';
 import type { TypeNode, TypePart } from './types.ts';
 
@@ -29,6 +29,7 @@ export type SyntaxNode =
   | Pattern
   | PatternPart
   | Statement
+  | StatementPart
   | Block
   | Declaration
   | DeclarationPart

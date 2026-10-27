@@ -4,8 +4,9 @@
  * Both printers read their levels from syntax/operators.ts, the table the parser uses:
  * - The full printer parenthesizes every operator.
  * - The minimal printer parenthesizes only where the table requires it: levels, associativity and
- *   the operands an operator refuses without parentheses (§3.9). Besides the table, it knows one
- *   grammar rule: `name < name > (…)` reads as a generic call (§3.5), so its comparison is wrapped.
+ *   the operands an operator refuses without parentheses (§3.9). Besides the table, it knows two
+ *   grammar rules: comparisons in a row chain, so a comparison under another is wrapped, and
+ *   `name < name > (…)` reads as a generic call (§3.5), so its comparison is wrapped.
  * `shapeOf` turns a parsed expression back into a tree, ignoring parentheses, so the printed text
  * can be compared with the tree it came from.
  */
@@ -17,6 +18,7 @@ import {
   type BinaryOperatorEntry,
   binaryOperators,
   bindingPower,
+  isComparisonOperator,
   operatorLevels,
   type PrecedenceLevel,
   rightOperandLevel,
@@ -129,8 +131,11 @@ function printBinary(tree: Extract<OperatorTree, { binary: BinaryOperator }>): s
   const entry: BinaryOperatorEntry = binaryOperators[tree.binary];
   const refused = (child: OperatorTree) =>
     'binary' in child && (entry.refusesUnparenthesized ?? []).includes(child.binary);
+  // A comparison right after another would extend it into a chain, so the tree's own needs grouping.
+  const chains = (child: OperatorTree) =>
+    'binary' in child && isComparisonOperator(tree.binary) && isComparisonOperator(child.binary);
   const leftLevel = entry.associativity === 'right' ? tighterLevel(entry.level) : entry.level;
-  let left = operand(tree.left, leftLevel, refused(tree.left));
+  let left = operand(tree.left, leftLevel, refused(tree.left) || chains(tree.left));
   const right = operand(tree.right, rightOperandLevel(tree.binary), refused(tree.right));
   if (tree.binary === '>' && right.startsWith('(') && genericLookalike.test(left)) {
     left = `(${left})`;

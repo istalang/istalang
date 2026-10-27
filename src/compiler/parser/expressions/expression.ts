@@ -29,8 +29,10 @@ import { parseLambda } from './lambdas.ts';
 import {
   binaryParselet,
   isParselet,
+  notInParselet,
   parseAwait,
   parseDereference,
+  parseDoubleDereference,
   parseMisplacedReference,
   parseOpenRange,
   rangeParselet,
@@ -46,6 +48,7 @@ import {
   parseTypeApplication,
   propagateParselet,
   structLiteralParselet,
+  unwrapParselet,
 } from './postfix.ts';
 import { parseAnonymousStructLiteral } from './struct-literals.ts';
 
@@ -65,6 +68,8 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   struct: parseAnonymousStructLiteral,
   ...unaryParselets(),
   '*': parseDereference,
+  '**': parseDoubleDereference,
+  spawn: parseSpawn,
   await: parseAwait,
   '&': parseMisplacedReference,
   '..': parseOpenRange,
@@ -85,16 +90,17 @@ function unaryParselets(): Record<UnaryOperator, PrefixParselet> {
   ) as Record<UnaryOperator, PrefixParselet>;
 }
 
+/** A parselet per binary operator spelled as one token; `not in`'s starts at its `not`. */
 const binaryParselets = Object.fromEntries(
-  (Object.keys(binaryOperators) as BinaryOperator[]).map((operator) => [
-    operator,
-    binaryParselet(operator),
-  ]),
+  (Object.keys(binaryOperators) as BinaryOperator[])
+    .filter((operator) => operator !== 'not in')
+    .map((operator) => [operator, binaryParselet(operator)]),
 );
 
 const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
   ...binaryParselets,
   is: isParselet,
+  not: notInParselet,
   '..': rangeParselet(false),
   '..=': rangeParselet(true),
   '(': callParselet,
@@ -104,6 +110,7 @@ const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
   '->': arrowParselet('->'),
   '?->': arrowParselet('?->'),
   '?': propagateParselet,
+  '!': unwrapParselet,
   '{': structLiteralParselet,
 };
 
@@ -146,6 +153,49 @@ function extend(
     return undefined;
   }
   return parselet.parse(parser, left);
+}
+
+/**
+ * `spawn f(args)` (§9), binding as JavaScript's `new` does: the callee, with its members, elements
+ * and type arguments, then one argument list. What follows applies to what the spawn gives, so
+ * `spawn w.run(job).result()` reads the result of the spawn. Anything but a call after `spawn` is
+ * kept as written, for the checker to refuse.
+ */
+function parseSpawn(parser: Parser): Expression {
+  const { start } = parser.cursor.advance().span;
+  const primary = prefixParselets[parser.cursor.kind];
+  let callee: Expression =
+    primary === undefined ? parser.missing('a call') : primary(parser, 'postfix');
+  for (
+    let step = calleeStep(parser, callee);
+    step !== undefined;
+    step = calleeStep(parser, callee)
+  ) {
+    callee = step;
+  }
+  const call =
+    callee.kind !== 'Call' && parser.cursor.at('(')
+      ? (callParselet.parse(parser, callee) ?? callee)
+      : callee;
+  return { kind: 'Spawn', span: parser.spanFrom(start), call };
+}
+
+/** The postfix forms a spawned callee is built of, before its call. */
+const calleeSteps: ReadonlySet<CursorKind> = new Set(['.', '?.', '->', '?->', '[', '{']);
+
+/**
+ * One step of a spawned callee: a member, an element, a struct literal, or type arguments; the
+ * first call, which a `?.(` or type arguments may already have made, ends it.
+ */
+function calleeStep(parser: Parser, callee: Expression): Expression | undefined {
+  const { kind } = parser.cursor;
+  if (callee.kind === 'Call') {
+    return undefined;
+  }
+  if (kind === '<') {
+    return parseTypeApplication(parser, callee);
+  }
+  return calleeSteps.has(kind) ? infixParselets[kind]?.parse(parser, callee) : undefined;
 }
 
 /** Whether the next token can start an expression. */

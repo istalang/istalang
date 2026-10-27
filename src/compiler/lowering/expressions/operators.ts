@@ -14,6 +14,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Binary, Unary } from '../../syntax/expressions/index.ts';
 import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
 import type { FunctionContext } from '../context.ts';
+import { notLowered } from '../not-lowered.ts';
 import { call } from './calls.ts';
 import { lowerNullish } from './nullish.ts';
 
@@ -24,6 +25,8 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
       return shortCircuit(context, node, meaning.rightWhen);
     case 'coalesce':
       return lowerNullish(context, node);
+    case 'membership':
+      return notLowered(context, node);
     case 'equality': {
       const dst = context.code.allocate();
       const [left, right] = operands(context, node);

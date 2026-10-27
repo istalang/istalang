@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-27
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 tags: [architecture, compiler, runtime, tooling]
 ---
 
@@ -48,7 +48,7 @@ src/
       parser.ts grammar.ts                                       context, category wiring
       cursor.ts layout.ts recovery.ts nesting.ts annotations.ts  line regions, blocks and bodies, lists, depth limit, annotations
       parts/                                                     pieces every category may import; imports no category
-      expressions/ patterns types statements declarations        by construct (Pratt parselets in expressions/)
+      expressions/ patterns types statements declarations        by construct (parselet tables by token kind in expressions/, patterns.ts, types.ts)
     program/            Program snapshot, module graph, the ModuleLoader seam; imposes no path syntax
     binder/             entities, scopes, imports/exports, name resolution
     checker/            check.ts is the entry and the surface later phases read
@@ -172,7 +172,8 @@ A seam is an interface owned by its consumer. Each app's composition root picks 
 
 An open set of handlers is an explicit typed table, assembled in one module and made exhaustive by type. Node-kind and instruction-kind tables alike use `Handlers` from `structures/kind-table.ts`. Adding a node or instruction kind therefore fails compilation until every table over it handles it. Self-registration through import side effects is not used. Tables of this kind:
 
-- parser: prefix and infix parselets by token kind; statements and declarations by leading keyword
+- parser: prefix and infix parselets by token kind, for expressions, patterns and types; statements and declarations by leading keyword
+- operators: one table in `syntax/operators.ts` gives each its level, associativity, meaning (a call of a named function, an ordering through `compare`, built-in equality, short-circuit logic, `??`, membership) and the operands it refuses unparenthesized; the parser builds its operator parselets from it, and the checker, lowering and flow analysis dispatch on the meaning, so an operator is spelled once
 - binder, checker, lowering, formatter, interpreter: one handler per node kind
 - LSP providers, CLI commands, std natives, diagnostic catalogs
 

@@ -13,7 +13,7 @@ import type { FunctionContext } from '../context.ts';
 import { notLowered } from '../not-lowered.ts';
 import { lowerDereference } from '../places.ts';
 import { lowerAwait } from './await.ts';
-import { lowerCall } from './calls.ts';
+import { lowerCall, lowerSpawn } from './calls.ts';
 import { lowerFunctionValue, lowerLambda } from './closures.ts';
 import { lowerArrayLiteral, lowerIndex, lowerMapLiteral, lowerRange } from './collections.ts';
 import { lowerComprehension } from './comprehensions.ts';
@@ -57,6 +57,10 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Reference: notLowered,
   Index: lowerIndex,
   Propagate: lowerPropagate,
+  Spawn: lowerSpawn,
+  Unwrap: notLowered,
+  ChainedComparison: notLowered,
+  TemplateLiteral: notLowered,
   Dereference: lowerDereference,
   Await: lowerAwait,
   Is: lowerIs,

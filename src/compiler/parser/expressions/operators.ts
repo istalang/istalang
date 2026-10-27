@@ -9,12 +9,18 @@
  * `a..`; `..=` always needs one.
  */
 
-import type { Expression, Reference } from '../../syntax/expressions/index.ts';
+import type {
+  ChainedComparison,
+  Expression,
+  Range,
+  Reference,
+} from '../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
   type BinaryOperatorEntry,
   binaryOperators,
   bindingPower,
+  isComparisonOperator,
   operatorLevels,
   type PrecedenceLevel,
   rightOperandLevel,
@@ -52,6 +58,19 @@ export const parseDereference: PrefixParselet = (parser, minLevel) => {
   return { kind: 'Dereference', span: parser.spanFrom(start), operator: '*', operand };
 };
 
+/** `**x` before an operand: the value behind the value behind `x`, two dereferences in one token. */
+export const parseDoubleDereference: PrefixParselet = (parser, minLevel) => {
+  const start = advancePrefix(parser, operatorLevels.dereference, minLevel);
+  const operand = parser.expression(operatorLevels.dereference);
+  const inner: Expression = {
+    kind: 'Dereference',
+    span: { start: start + 1, end: operand.span.end },
+    operator: '*',
+    operand,
+  };
+  return { kind: 'Dereference', span: parser.spanFrom(start), operator: '*', operand: inner };
+};
+
 export const parseAwait: PrefixParselet = (parser, minLevel) => {
   const start = advancePrefix(parser, operatorLevels.await, minLevel);
   if (parser.cursor.at('select')) {
@@ -79,15 +98,33 @@ export const parseMisplacedReference: PrefixParselet = (parser) => {
 export const parseOpenRange: PrefixParselet = (parser, minLevel) => {
   const isInclusive = parser.cursor.at('..=');
   const start = advancePrefix(parser, operatorLevels.range, minLevel);
-  const end = parseRangeEnd(parser, isInclusive);
-  return { kind: 'Range', span: parser.spanFrom(start), start: undefined, isInclusive, end };
+  return parseRangeRest(parser, start, undefined, isInclusive);
 };
 
+/** A range's end and `by` step, after its `..` or `..=`. */
+function parseRangeRest(
+  parser: Parser,
+  start: number,
+  first: Expression | undefined,
+  isInclusive: boolean,
+): Range {
+  const end = parseRangeEnd(parser, isInclusive);
+  const step = parser.atWord('by') ? parseRangeStep(parser) : undefined;
+  return { kind: 'Range', span: parser.spanFrom(start), start: first, isInclusive, end, step };
+}
+
+/** A range's end, unless `by` follows the `..` at once: `by` is a word only a range reads. */
 function parseRangeEnd(parser: Parser, isInclusive: boolean): Expression | undefined {
-  if (parser.startsExpression()) {
+  if (parser.startsExpression() && !parser.atWord('by')) {
     return parser.expression(tighterLevel(operatorLevels.range));
   }
   return isInclusive ? parser.missing('the end of an inclusive range') : undefined;
+}
+
+/** `by step`, binding as a range's end does. */
+function parseRangeStep(parser: Parser): Expression {
+  parser.cursor.advance();
+  return parser.expression(tighterLevel(operatorLevels.range));
 }
 
 export function rangeParselet(isInclusive: boolean): InfixParselet {
@@ -95,14 +132,7 @@ export function rangeParselet(isInclusive: boolean): InfixParselet {
     level: operatorLevels.range,
     parse(parser, left) {
       parser.cursor.advance();
-      const end = parseRangeEnd(parser, isInclusive);
-      return {
-        kind: 'Range',
-        span: parser.spanFrom(left.span.start),
-        start: left,
-        isInclusive,
-        end,
-      };
+      return parseRangeRest(parser, left.span.start, left, isInclusive);
     },
   };
 }
@@ -117,16 +147,56 @@ export const isParselet: InfixParselet = {
 };
 
 export function binaryParselet(operator: BinaryOperator): InfixParselet {
-  const entry: BinaryOperatorEntry = binaryOperators[operator];
   return {
-    level: entry.level,
+    level: binaryOperators[operator].level,
     parse(parser, left) {
       parser.cursor.advance();
-      const right = parser.expression(rightOperandLevel(operator));
-      reportMixed(parser, operator, entry.refusesUnparenthesized ?? [], [left, right]);
-      return { kind: 'Binary', span: parser.spanFrom(left.span.start), left, operator, right };
+      return parseBinaryRest(parser, left, operator);
     },
   };
+}
+
+/** `not in`, starting at the `not` that follows an operand. */
+export const notInParselet: InfixParselet = {
+  level: binaryOperators['not in'].level,
+  parse(parser, left) {
+    parser.cursor.advance();
+    parser.expect('in');
+    return parseBinaryRest(parser, left, 'not in');
+  },
+};
+
+/**
+ * The right operand of `operator`, its operator just consumed, and the node they make: a `Binary`,
+ * or a link added to a chain of comparisons.
+ */
+function parseBinaryRest(parser: Parser, left: Expression, operator: BinaryOperator): Expression {
+  const entry: BinaryOperatorEntry = binaryOperators[operator];
+  const right = parser.expression(rightOperandLevel(operator));
+  reportMixed(parser, operator, entry.refusesUnparenthesized ?? [], [left, right]);
+  const span = parser.spanFrom(left.span.start);
+  const chain = isComparisonOperator(operator) ? comparisonsOf(left) : undefined;
+  if (chain !== undefined && isComparisonOperator(operator)) {
+    return {
+      kind: 'ChainedComparison',
+      span,
+      operands: [...chain.operands, right],
+      operators: [...chain.operators, operator],
+    };
+  }
+  return { kind: 'Binary', span, left, operator, right };
+}
+
+/** The comparisons `node` makes, unparenthesized, which a further comparison extends into a chain. */
+function comparisonsOf(
+  node: Expression,
+): Pick<ChainedComparison, 'operands' | 'operators'> | undefined {
+  if (node.kind === 'ChainedComparison') {
+    return node;
+  }
+  return node.kind === 'Binary' && isComparisonOperator(node.operator)
+    ? { operands: [node.left, node.right], operators: [node.operator] }
+    : undefined;
 }
 
 /** Reports each operand of `operator` that uses one of `refused` without parentheses (§3.9). */

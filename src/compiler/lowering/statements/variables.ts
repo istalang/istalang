@@ -163,9 +163,9 @@ export function lowerVariableDeclaration(
   bindTargets(context, node, value, node.span);
 }
 
-/** How long what `owner`'s targets hold lasts: a `fn let`'s, `fn const`'s or `fn _`'s, its function's. */
+/** How long what `owner`'s targets hold lasts: a `hold`'s, its function's. */
 function lifetimeOf(owner: TargetOwner): Lifetime {
-  return owner.kind === 'VariableDeclaration' && owner.heldByFunction ? 'function' : 'block';
+  return owner.kind === 'VariableDeclaration' && owner.hold !== undefined ? 'function' : 'block';
 }
 
 /** Declares each name `owner`'s targets bind, moving in its part of `value` (§3.15). */

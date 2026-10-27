@@ -33,6 +33,7 @@ import type { Destructuring, FieldTarget } from '../../syntax/statements.ts';
 import type { PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FieldMember, Type } from '../types/type.ts';
+import { notSupported } from '../unsupported.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import {
   elementParts,
@@ -166,11 +167,21 @@ function newWalk(scope: PatternScope, tests: PatternTests | undefined): Walk {
   return walk;
 }
 
+/** A pattern form the checker doesn't take yet: reported, and matching anything meanwhile. */
+function notSupportedYet(walk: Walk, node: Pattern | PatternPart): Shape {
+  walk.scope.report(notSupported(node));
+  return anyShape;
+}
+
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape | undefined> = {
   WildcardPattern: () => anyShape,
   Missing: () => anyShape,
   Invalid: () => anyShape,
+  OrPattern: notSupportedYet,
+  ArrayPattern: notSupportedYet,
+  RangePattern: notSupportedYet,
+  RestPattern: notSupportedYet,
   NamePattern: (walk, node, part) => {
     const [name, ...rest] = node.path;
     const entity = walk.scope.entityOf(name);

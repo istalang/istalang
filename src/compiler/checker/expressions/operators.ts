@@ -14,6 +14,7 @@ import type { Binary, Unary } from '../../syntax/expressions/index.ts';
 import { binaryOperators } from '../../syntax/operators.ts';
 import { type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
+import { frontier } from '../frontier.ts';
 import { checkEqualSides } from '../types/equality.ts';
 import { boolType, type Type } from '../types/type.ts';
 import { checkNullish } from './optionals.ts';
@@ -30,6 +31,8 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
       return checkEquality(context, node);
     case 'coalesce':
       return checkNullish(context, node, expected);
+    case 'membership':
+      return context.unsupported(node, frontier.membership);
     case 'order':
     case 'call': {
       const applied = { spelling: operator, function: meaning.function };

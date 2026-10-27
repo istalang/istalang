@@ -34,7 +34,7 @@ import type {
 } from '../syntax/declarations.ts';
 import type { Comprehension, Lambda, Parameter, SelectCase } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
-import type { AsPattern, BindFieldPattern, NamePattern } from '../syntax/patterns.ts';
+import type { AsPattern, BindFieldPattern, NamePattern, RestPattern } from '../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../syntax/statements.ts';
 
 /** The node that declares a variable's name; the checker reads its type and mutability there. */
@@ -48,6 +48,7 @@ export type VariableOwner =
   | NamePattern
   | BindFieldPattern
   | AsPattern
+  | RestPattern
   | FunctionDeclaration
   | Lambda;
 

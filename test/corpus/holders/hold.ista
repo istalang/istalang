@@ -1,0 +1,29 @@
+# outcome: "stopped 1, reassigned, block done, end, stopped 5, stopped 4, stopped 3, stopped 2"
+# `hold let`, `hold const` and `hold _` keep what they hold when their block ends, until the
+# function ends, where everything left is released newest first (§7), as `fn let` does.
+
+import * as time from 'time'
+
+fn note(log: Shared<Array<string>>, text: string):
+  log->value = [...log->value, text]
+
+async fn sleeper(id: int, log: Shared<Array<string>>):
+  defer fn(): note(log, "stopped " + string(id))
+  await time.delay(1h)
+
+async fn held(log: Shared<Array<string>>):
+  hold let h = sleeper(1, log)
+  h = sleeper(2, log)
+  note(log, "reassigned")
+  if true:
+    hold const k = sleeper(3, log)
+  note(log, "block done")
+  hold _ = sleeper(4, log)
+  _ = sleeper(5, log)
+  note(log, "end")
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = new Shared{value: empty}
+  await held(log)
+  log->value.join(", ")

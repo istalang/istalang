@@ -37,8 +37,18 @@ interface ParenthesizedType extends NodeOf<'ParenthesizedType'> {
 export interface FunctionType extends NodeOf<'FunctionType'> {
   readonly isSendable: boolean;
   readonly isAsync: boolean;
-  readonly parameters: readonly TypeNode[];
+  readonly parameters: readonly (TypeNode | RestType)[];
   readonly returnType: TypeNode | undefined;
+}
+
+/** `...A` among a function type's parameters: the rest, an array or a pack (§3.3, §3.5). */
+export interface RestType extends NodeOf<'RestType'> {
+  readonly type: TypeNode;
+}
+
+/** `any T` or `any A & B`: a value of any type conforming to the traits (§3.10). */
+interface AnyType extends NodeOf<'AnyType'> {
+  readonly traits: readonly TypeNode[];
 }
 
 /** An anonymous struct: `{ sku: string; qty: int }` or `struct { … }`. */
@@ -65,8 +75,9 @@ export type TypeNode =
   | FunctionType
   | StructType
   | ReferenceType
+  | AnyType
   | Missing
   | Invalid;
 
 /** Nodes that occur only as parts of a type. */
-export type TypePart = FieldDeclaration;
+export type TypePart = FieldDeclaration | RestType;

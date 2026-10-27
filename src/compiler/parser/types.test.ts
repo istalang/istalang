@@ -85,3 +85,22 @@ describe('malformed types', () => {
     expect(reported('type', text)).toEqual(reportedOnce(code, spanText));
   });
 });
+
+describe('`any` and rest parameters', () => {
+  it.each([
+    ['any Notifier', `(AnyType [${named('Notifier')}])`],
+    ['any A & B?', `(OptionalType (AnyType [${named('A')} ${named('B')}]))`],
+    ['any', named('any')],
+    [
+      'fn(int, ...Array<string>) -> R',
+      `(FunctionType [${int} (RestType (NamedType [Array] [${named('string')}]))] ${named('R')})`,
+    ],
+    ['fn(...A) -> R', `(FunctionType [(RestType ${named('A')})] ${named('R')})`],
+    [
+      'Map<K, Array<Array<int>>>',
+      `(NamedType [Map] [${named('K')} (NamedType [Array] [(NamedType [Array] [${int}])])])`,
+    ],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('type', text)).toBe(tree);
+  });
+});

@@ -117,7 +117,7 @@ describe('type declarations', () => {
 
   it('reads `shared` as a name where no `struct` follows it', () => {
     expect(dumpClean('module', 'const shared = 1')).toBe(
-      moduleOf('(VariableDeclaration [(NamePattern [shared])] _ 1)'),
+      moduleOf('(VariableDeclaration _ [(NamePattern [shared])] _ 1)'),
     );
   });
 });
@@ -141,7 +141,7 @@ describe('externs and functions', () => {
       'fn Duration.zero() -> Duration: Duration{value: 0}',
       `(FunctionDeclaration Duration zero [] [] ${named('Duration')} ${bodyOf(`(StructLiteral ${named('Duration')} [(FieldInitializer value 0)])`)})`,
     ],
-    ['const limit: int = 50_000', `(VariableDeclaration [(NamePattern [limit])] ${int} 50000)`],
+    ['const limit: int = 50_000', `(VariableDeclaration _ [(NamePattern [limit])] ${int} 50000)`],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));
   });
@@ -153,5 +153,13 @@ describe('externs and functions', () => {
     ['fn let x = 1', topLevelStatement, 'fn let x = 1'],
   ])('reports %s once', (text, diagnostic, spanText) => {
     expect(reported('module', text)).toEqual(reportedOnce(diagnostic.code, spanText));
+  });
+});
+
+describe('type parameter packs', () => {
+  it('reads `...A` as a pack, beside plain type parameters', () => {
+    expect(dumpClean('module', 'fn logged<...A, R>(f: fn(...A) -> R): f')).toContain(
+      `[(TypeParameter isPack A [] _) ${typeParameter('R')}]`,
+    );
   });
 });

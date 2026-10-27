@@ -28,6 +28,7 @@ import {
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import { binaryOperators } from '../../syntax/operators.ts';
 import {
   type Assignment,
   type Block,
@@ -297,12 +298,21 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   TupleElement: link,
   Index: link,
   Propagate: children,
+  Unwrap: children,
+  Spawn: (walk, node, state) => walk.node(node.call, state),
+  TemplateLiteral: children,
+  ChainedComparison: (walk, node, state) => {
+    // Each comparison after the first runs only when the ones before it held.
+    const first = walk.sequence(node.operands.slice(0, 2), state);
+    return walk.sometimes(node.operands.slice(2), first);
+  },
   Dereference: link,
   Unary: children,
   Await: children,
   Binary: (walk, node, state) => {
     const left = walk.node(node.left, state);
-    const sometimes = node.operator === 'and' || node.operator === 'or' || node.operator === '??';
+    const { kind } = binaryOperators[node.operator].meaning;
+    const sometimes = kind === 'logic' || kind === 'coalesce';
     return sometimes ? walk.sometimes([node.right], left) : walk.sequence([node.right], left);
   },
   Is: children,
@@ -351,7 +361,6 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
     }),
   Defer: (walk, node, state) => walk.node(node.action, state),
   Drop: (walk, node, state) => walk.drop(node, walk.node(node.value, state)),
-  Spawn: (walk, node, state) => walk.node(node.call, state),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

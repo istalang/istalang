@@ -83,6 +83,7 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
     checker.annotations.checkFields(fields);
     return { kind: 'anonymous', origin: node, fields };
   },
+  AnyType: ({ checker, module }, node) => checker.unsupported(module, node),
   Missing: () => errorType,
   Invalid: () => errorType,
 };
@@ -164,14 +165,19 @@ function resolve({ checker, module }: Resolution, node: TypeNode): Type {
 }
 
 function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
+  const rest = node.parameters.find((parameter) => parameter.kind === 'RestType');
+  if (rest !== undefined) {
+    return resolution.checker.unsupported(resolution.module, rest);
+  }
   return {
     kind: 'function',
     isSendable: node.isSendable,
     isAsync: node.isAsync,
-    parameters: node.parameters.map((parameter) => ({
-      type: resolve(resolution, parameter),
-      reference: parameter.kind === 'ReferenceType',
-    })),
+    parameters: node.parameters.flatMap((parameter) =>
+      parameter.kind === 'RestType'
+        ? []
+        : [{ type: resolve(resolution, parameter), reference: parameter.kind === 'ReferenceType' }],
+    ),
     result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
   };
 }

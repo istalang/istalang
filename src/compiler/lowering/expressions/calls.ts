@@ -21,12 +21,12 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/resolved-call.ts';
 import {
   type Call,
+  type CallArgument,
   type Expression,
-  type Spread,
+  type Spawn,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { Spawn } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { notLowered } from '../not-lowered.ts';
@@ -102,9 +102,10 @@ function valueCallee(context: FunctionContext, node: Call): Register {
 
 /**
  * `spawn f(args)` (§9): what the call would run, the function the checker resolved or the value of
- * a sendable function type, and its arguments, a method's receiver first, all by value.
+ * a sendable function type, and its arguments, a method's receiver first, all by value; its value
+ * is `unit`.
  */
-export function lowerSpawn(context: FunctionContext, node: Spawn): void {
+export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
   const spawned = unparenthesized(node.call);
   if (spawned.kind !== 'Call') {
     unreachable('A spawn of no call checked clean.');
@@ -121,9 +122,12 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): void {
     span: node.span,
     callee,
     arguments: copied.map((argument) =>
-      argument.kind === 'Spread' ? notLowered(context, argument) : context.expression(argument),
+      argument.kind === 'Spread' || argument.kind === 'NamedArgument'
+        ? notLowered(context, argument)
+        : context.expression(argument),
     ),
   });
+  return context.constant(null, node.span);
 }
 
 /** Calls the function the checker resolved for `site` with values; the register of its result. */
@@ -164,10 +168,10 @@ interface PassedArgument {
 /** How `argument` is passed: the place `&x` names, the receiver's place for a `&self`, or a value. */
 function argumentOf(
   context: FunctionContext,
-  argument: Expression | Spread,
+  argument: CallArgument,
   byReference: boolean,
 ): PassedArgument {
-  if (argument.kind === 'Spread') {
+  if (argument.kind === 'Spread' || argument.kind === 'NamedArgument') {
     return { argument: notLowered(context, argument) };
   }
   const place = referencedPlace(argument, byReference);

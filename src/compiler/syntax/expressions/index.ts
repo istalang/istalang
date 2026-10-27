@@ -19,7 +19,7 @@
  */
 
 import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
-import type { BinaryOperator, UnaryOperator } from '../operators.ts';
+import type { BinaryOperator, ComparisonOperator, UnaryOperator } from '../operators.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements.ts';
 import type { NamedType, TypeNode } from '../types.ts';
@@ -146,7 +146,37 @@ export interface Call extends NodeOf<'Call'> {
   readonly callee: Expression;
   readonly isOptional: boolean;
   readonly typeArguments: readonly TypeNode[];
-  readonly arguments: readonly (Expression | Spread)[];
+  readonly arguments: readonly CallArgument[];
+}
+
+/** `name: value` among a call's arguments, naming the parameter it gives (§3.3). */
+interface NamedArgument extends NodeOf<'NamedArgument'> {
+  readonly name: Identifier;
+  readonly value: Expression;
+}
+
+/** What a call's parentheses hold: values by position, spreads, and values by name. */
+export type CallArgument = Expression | Spread | NamedArgument;
+
+/** The expression an argument gives: itself, what it spreads, or the value it names. */
+export function argumentValue(argument: CallArgument): Expression {
+  switch (argument.kind) {
+    case 'Spread':
+      return argument.expression;
+    case 'NamedArgument':
+      return argument.value;
+    default:
+      return argument;
+  }
+}
+
+/**
+ * `spawn f(args)`: starts the call as a new instance (§9). It binds as JavaScript's `new` does: the
+ * callee, its members and type arguments, then one argument list, so what follows applies to what
+ * the spawn gives. `call` is whatever followed `spawn`, which the checker requires to be a call.
+ */
+export interface Spawn extends NodeOf<'Spawn'> {
+  readonly call: Expression;
 }
 
 /** `&x`: a call argument passed by reference. */
@@ -188,6 +218,11 @@ export interface Propagate extends NodeOf<'Propagate'> {
   readonly operand: Expression;
 }
 
+/** Postfix `!` on an optional: its value, or a panic on `none`. */
+interface Unwrap extends NodeOf<'Unwrap'> {
+  readonly operand: Expression;
+}
+
 /**
  * `*x`: the value behind the shared struct `x` (§3.9). `x->f` is `(*x).f`, so the parser reads it
  * as a field of a `Dereference` spanning `x->`, written with the operator `->`, or `?->` when it
@@ -213,17 +248,43 @@ export interface Binary extends NodeOf<'Binary'> {
   readonly right: Expression;
 }
 
+/**
+ * Two or more comparisons in a row, `a < b <= c`: each operand compared with the next, `b` read
+ * once. A single comparison is a `Binary`.
+ */
+export interface ChainedComparison extends NodeOf<'ChainedComparison'> {
+  readonly operands: readonly Expression[];
+  /** One fewer than the operands: `operators[i]` compares `operands[i]` with `operands[i + 1]`. */
+  readonly operators: readonly ComparisonOperator[];
+}
+
 /** `x is Pattern`. */
 export interface Is extends NodeOf<'Is'> {
   readonly subject: Expression;
   readonly pattern: Pattern;
 }
 
-/** `a..b`, `a..=b`, and the open forms `..b`, `a..`, `..`. */
+/** `a..b`, `a..=b`, the open forms `..b`, `a..`, `..`, and any of them with `by step`. */
 export interface Range extends NodeOf<'Range'> {
   readonly start: Expression | undefined;
   readonly isInclusive: boolean;
   readonly end: Expression | undefined;
+  readonly step: Expression | undefined;
+}
+
+/**
+ * `` `text ${value} text` ``, or `` tag`…` `` calling `tag` with the texts and the values. `texts` has
+ * one more item than `values`: the text before each value, and the text after the last.
+ */
+interface TemplateLiteral extends NodeOf<'TemplateLiteral'> {
+  readonly tag: Expression | undefined;
+  readonly texts: readonly TemplateText[];
+  readonly values: readonly Expression[];
+}
+
+/** The decoded text between a template's values. */
+interface TemplateText extends NodeOf<'TemplateText'> {
+  readonly value: string;
 }
 
 /** `{ a; b }` in an expression: its value is the block's (§4). */
@@ -292,17 +353,21 @@ export type Expression =
   | StructLiteral
   | Lambda
   | Call
+  | Spawn
   | Reference
   | MemberAccess
   | TupleElement
   | Index
   | Propagate
+  | Unwrap
   | Dereference
   | Unary
   | Await
   | Binary
+  | ChainedComparison
   | Is
   | Range
+  | TemplateLiteral
   | BlockExpression
   | If
   | Match
@@ -313,6 +378,8 @@ export type Expression =
 /** Nodes that occur only as parts of an expression. */
 export type ExpressionPart =
   | Spread
+  | NamedArgument
+  | TemplateText
   | MapEntry
   | FieldInitializer
   | PositionalInitializer

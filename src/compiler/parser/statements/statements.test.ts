@@ -22,24 +22,24 @@ const { expected, invalidAssignmentTarget, compoundDestructuring, declarationInB
 
 describe('variables', () => {
   it.each([
-    ['let count = 0', '(VariableDeclaration isMutable [(NamePattern [count])] _ 0)'],
-    ['const limit: int = 50_000', `(VariableDeclaration [(NamePattern [limit])] ${int} 50000)`],
+    ['let count = 0', '(VariableDeclaration _ isMutable [(NamePattern [count])] _ 0)'],
+    ['const limit: int = 50_000', `(VariableDeclaration _ [(NamePattern [limit])] ${int} 50000)`],
     [
       'let a, b = (1, "x")',
-      '(VariableDeclaration isMutable [(NamePattern [a]) (NamePattern [b])] _ (Tuple [1 "x"]))',
+      '(VariableDeclaration _ isMutable [(NamePattern [a]) (NamePattern [b])] _ (Tuple [1 "x"]))',
     ],
     [
       'fn let pending = 0',
-      '(VariableDeclaration heldByFunction isMutable [(NamePattern [pending])] _ 0)',
+      '(VariableDeclaration (Hold _) isMutable [(NamePattern [pending])] _ 0)',
     ],
-    ['fn const x = 1', '(VariableDeclaration heldByFunction [(NamePattern [x])] _ 1)'],
+    ['fn const x = 1', '(VariableDeclaration (Hold _) [(NamePattern [x])] _ 1)'],
     [
       'fn _ = startJob()',
-      '(VariableDeclaration heldByFunction [(WildcardPattern)] _ (Call startJob [] []))',
+      '(VariableDeclaration (Hold _) [(WildcardPattern)] _ (Call startJob [] []))',
     ],
     [
       'let xs: Array<int>= []',
-      `(VariableDeclaration isMutable [(NamePattern [xs])] (NamedType [Array] [${int}]) (ArrayLiteral []))`,
+      `(VariableDeclaration _ isMutable [(NamePattern [xs])] (NamedType [Array] [${int}]) (ArrayLiteral []))`,
     ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);
@@ -54,17 +54,20 @@ describe('destructuring declarations (§3.15)', () => {
   it.each([
     [
       'let (a, b), c = t',
-      '(VariableDeclaration isMutable [(TuplePattern [(NamePattern [a]) (NamePattern [b])]) (NamePattern [c])] _ t)',
+      '(VariableDeclaration _ isMutable [(TuplePattern [(NamePattern [a]) (NamePattern [b])]) (NamePattern [c])] _ t)',
     ],
     [
       'const Pair{first, second as s} = p',
-      '(VariableDeclaration [(StructPattern (NamedType [Pair] []) [(BindFieldPattern first _) (BindFieldPattern second s)])] _ p)',
+      '(VariableDeclaration _ [(StructPattern (NamedType [Pair] []) [(BindFieldPattern first _) (BindFieldPattern second s)])] _ p)',
     ],
     [
       'const struct{first is (x, _)} = p',
-      '(VariableDeclaration [(StructPattern _ [(NestedFieldPattern first (TuplePattern [(NamePattern [x]) (WildcardPattern)]))])] _ p)',
+      '(VariableDeclaration _ [(StructPattern _ [(NestedFieldPattern first (TuplePattern [(NamePattern [x]) (WildcardPattern)]))])] _ p)',
     ],
-    ['const _, max = pair', '(VariableDeclaration [(WildcardPattern) (NamePattern [max])] _ pair)'],
+    [
+      'const _, max = pair',
+      '(VariableDeclaration _ [(WildcardPattern) (NamePattern [max])] _ pair)',
+    ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);
   });
@@ -130,16 +133,16 @@ describe('keyword statements', () => {
   it.each([
     ['return', '(Return _)'],
     ['return x + 1', '(Return (Binary x + 1))'],
-    ['break', '(Break)'],
-    ['continue', '(Continue)'],
+    ['break', '(Break _)'],
+    ['continue', '(Continue _)'],
     ['defer fn(): log("exited")', '(Defer (Lambda _ [] _ (Call log [] ["exited"])))'],
     ['drop audit.record(event)', '(Drop (Call (MemberAccess audit record) [] [event]))'],
-    ['spawn purchase(req)', '(Spawn (Call purchase [] [req]))'],
+    ['spawn purchase(req)', '(ExpressionStatement (Spawn (Call purchase [] [req])))'],
     [
       'for key, value in m: use(key)',
-      `(For [(NamePattern [key]) (NamePattern [value])] m ${bodyOf('(Call use [] [key])')})`,
+      `(For _ [(NamePattern [key]) (NamePattern [value])] m ${bodyOf('(Call use [] [key])')})`,
     ],
-    ['while pending: wait()', `(While pending ${bodyOf('(Call wait [] [])')})`],
+    ['while pending: wait()', `(While _ pending ${bodyOf('(Call wait [] [])')})`],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);
   });
@@ -180,5 +183,24 @@ describe('declarations only the top level allows', () => {
   ])('are reported once inside a block: %s', (text) => {
     const source = lines('fn f():', `    ${text}`);
     expect(reported('module', source)).toEqual(reportedOnce(declarationInBlock.code, text));
+  });
+});
+
+describe('labels, `hold` and spawn as a value', () => {
+  it.each([
+    [
+      'outer: for x in xs: break outer',
+      '(For outer [(NamePattern [x])] xs (Block [(Break outer)]))',
+    ],
+    ['outer: while c: continue outer', '(While outer c (Block [(Continue outer)]))'],
+    ['hold let x = 1', '(VariableDeclaration (Hold _) isMutable [(NamePattern [x])] _ 1)'],
+    ['hold _ = x', '(VariableDeclaration (Hold _) [(WildcardPattern)] _ x)'],
+    ['hold(outer) const y = 2', '(VariableDeclaration (Hold outer) [(NamePattern [y])] _ 2)'],
+    ['hold(x)', '(ExpressionStatement (Call hold [] [x]))'],
+    ['spawn f(x)', '(ExpressionStatement (Spawn (Call f [] [x])))'],
+    ['x **= 2', '(Assignment [x] **= 2)'],
+    ['x >>= 1', '(Assignment [x] >>= 1)'],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('statement', text)).toBe(tree);
   });
 });

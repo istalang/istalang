@@ -88,3 +88,26 @@ describe('malformed patterns', () => {
     expect(reported('pattern', 'Foo{a, b')).toEqual(reportedOnce(unclosedBracket.code, '{'));
   });
 });
+
+describe('or, array and range patterns', () => {
+  it.each([
+    ['A | B as x', '(AsPattern (OrPattern [(NamePattern [A]) (NamePattern [B])]) x)'],
+    [
+      '[first, ...rest, last]',
+      '(ArrayPattern [(NamePattern [first]) (RestPattern rest) (NamePattern [last])])',
+    ],
+    ['[..._]', '(ArrayPattern [(RestPattern (WildcardPattern))])'],
+    ['1..=5', '(RangePattern (LiteralPattern 1) isInclusive (LiteralPattern 5))'],
+    ['..5', '(RangePattern _ (LiteralPattern 5))'],
+    ['5..', '(RangePattern (LiteralPattern 5) _)'],
+    ['-3..=3', '(RangePattern (LiteralPattern (Unary - 3)) isInclusive (LiteralPattern 3))'],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('pattern', text)).toBe(tree);
+  });
+
+  it('reports a range bound that is not a literal', () => {
+    expect(reported('pattern', 'a..=5')).toEqual(
+      reportedOnce(parserDiagnostics.rangeBound.code, 'a'),
+    );
+  });
+});

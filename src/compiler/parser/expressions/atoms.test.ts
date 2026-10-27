@@ -74,7 +74,7 @@ describe('comprehensions', () => {
   it.each([
     [
       '[for i in 1..10: 5 * i]',
-      '(Comprehension [(NamePattern [i])] (Range 1 10) _ (Binary 5 * i))',
+      '(Comprehension [(NamePattern [i])] (Range 1 10 _) _ (Binary 5 * i))',
     ],
     [
       '[for x in xs if x < 20: x * 2]',

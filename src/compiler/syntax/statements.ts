@@ -33,21 +33,27 @@ interface ExpressionStatement extends NodeOf<'ExpressionStatement'>, Annotatable
 }
 
 /**
- * `let x = 1`, `const a, b = pair`, and with `heldByFunction` the `fn let`, `fn const` and
- * `fn _` forms, whose holdings last until the enclosing function ends (§3.4). `fn _` means
- * `fn const _`, so it is stored that way.
+ * `let x = 1`, `const a, b = pair`, and with a `hold` the `hold let`, `hold const` and `hold _`
+ * forms, whose holdings last until the enclosing function ends, or the loop or function `hold`
+ * names (§3.4, §7). `hold _` means `hold const _`, so it is stored that way, and `fn let`,
+ * `fn const` and `fn _` are older spellings of the same, read until every one is rewritten.
  *
  * Each target is a pattern (§3.15): a name, `_`, or a tuple or struct pattern destructuring the
  * value, nested at will. Several targets destructure a tuple, as if parenthesized. A target must
  * always match, which the checker enforces; the parser reads any pattern.
  */
 export interface VariableDeclaration extends NodeOf<'VariableDeclaration'>, Annotatable {
-  readonly heldByFunction: boolean;
+  readonly hold: Hold | undefined;
   readonly isMutable: boolean;
   /** Several targets destructure a tuple; `_` is an unnamed one. */
   readonly targets: readonly Pattern[];
   readonly type: TypeNode | undefined;
   readonly initializer: Expression;
+}
+
+/** `hold`, or `hold(name)` naming the loop or function the holdings last until (§7). */
+export interface Hold extends NodeOf<'Hold'> {
+  readonly label: Identifier | undefined;
 }
 
 /**
@@ -172,18 +178,30 @@ export interface Return extends NodeOf<'Return'>, Annotatable {
   readonly value: Expression | undefined;
 }
 
-export type Break = NodeOf<'Break'> & Annotatable;
+/** `break`, or `break outer` leaving the loop labelled `outer`. */
+export interface Break extends NodeOf<'Break'>, Annotatable {
+  readonly label: Identifier | undefined;
+}
 
-export type Continue = NodeOf<'Continue'> & Annotatable;
+/** `continue`, or `continue outer` going on with the loop labelled `outer`. */
+export interface Continue extends NodeOf<'Continue'>, Annotatable {
+  readonly label: Identifier | undefined;
+}
 
-/** `for x in xs: …`; its targets are a declaration's (VariableDeclaration). */
+/**
+ * `for x in xs: …`, or `outer: for …` labelled; its targets are a declaration's
+ * (VariableDeclaration).
+ */
 export interface For extends NodeOf<'For'>, Annotatable {
+  readonly label: Identifier | undefined;
   readonly targets: readonly Pattern[];
   readonly iterable: Expression;
   readonly body: Block;
 }
 
+/** `while c: …`, or `outer: while …` labelled. */
 export interface While extends NodeOf<'While'>, Annotatable {
+  readonly label: Identifier | undefined;
   readonly condition: Expression;
   readonly body: Block;
 }
@@ -198,11 +216,6 @@ export interface Drop extends NodeOf<'Drop'>, Annotatable {
   readonly value: Expression;
 }
 
-/** `spawn f(args)`: starts a new instance (§9). */
-export interface Spawn extends NodeOf<'Spawn'>, Annotatable {
-  readonly call: Expression;
-}
-
 export type Statement =
   | ExpressionStatement
   | VariableDeclaration
@@ -214,8 +227,10 @@ export type Statement =
   | For
   | While
   | Defer
-  | Drop
-  | Spawn;
+  | Drop;
+
+/** Nodes that occur only as parts of a statement. */
+export type StatementPart = Hold;
 
 /**
  * The expression whose value is the block's (§4): its last statement's, when that is an

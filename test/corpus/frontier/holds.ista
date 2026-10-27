@@ -1,0 +1,9 @@
+# error: 5000 at 7:3
+# error: 5000 at 8:5
+# error: 5000 at 9:11
+# Labels and `hold(name)` parse, and are not checked yet (language features, L4).
+
+fn f(xs: Array<int>):
+  outer: for x in xs:
+    hold(outer) _ = x
+    break outer

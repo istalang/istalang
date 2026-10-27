@@ -39,6 +39,7 @@ import { writeElement } from '../calls/collection-functions.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { frontier } from '../frontier.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { declaresDefault, defaultWitness } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
@@ -186,6 +187,9 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
 
 /** `a..b`, `a..=b` and the open forms: a prelude `Range` of ints; `..=` stores `end + 1` (§3.8). */
 export function checkRange(context: BodyContext, node: Range): Type {
+  if (node.step !== undefined) {
+    return context.unsupported(node.step, frontier.rangeStep);
+  }
   for (const end of [node.start, node.end]) {
     if (end !== undefined) {
       context.expect(end, intType);

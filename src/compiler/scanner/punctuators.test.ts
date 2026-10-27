@@ -40,15 +40,14 @@ describe('punctuators', () => {
     expect(kindsAndTexts(scanText(text)).map(([kind]) => kind)).toEqual(kinds);
   });
 
-  it('never merges closing angle brackets, so nested type arguments close one by one', () => {
+  it('scans >> as one shift, which the parser splits where it closes type arguments', () => {
     expect(kindsAndTexts(scanText('Array<Array<int>>')).map(([kind]) => kind)).toEqual([
       'identifier',
       '<',
       'identifier',
       '<',
       'identifier',
-      '>',
-      '>',
+      '>>',
     ]);
   });
 });

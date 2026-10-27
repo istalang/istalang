@@ -20,10 +20,11 @@
  * whole bracket group for recovery reads past line breaks inside the group, as the group's own
  * region would.
  *
- * Inside `<…>`, a `>=` reads as `>`: the scanner can't know that `Array<int>= []` closes type
- * arguments there. Consuming that `>` leaves the `=` behind as the next token.
+ * Inside `<…>`, a token starting with `>` (`>=`, `>>`, `>>=`) reads as `>`: the scanner can't know
+ * that `Array<int>= []` or `Array<Array<int>>` closes type arguments there. Consuming that `>`
+ * leaves the rest (`=`, `>`, `>=`) behind as the next token, which may close another `<…>` in turn.
  *
- * `mark` and `reset` undo speculation completely: the position, a `>=` split, and a line break
+ * `mark` and `reset` undo speculation completely: the position, a split, and a line break
  * crossed in the current region since the mark.
  */
 
@@ -155,9 +156,10 @@ export class Cursor {
       return token;
     }
     const raw = this.#rawAt(this.#index);
-    if (raw.kind === '>=' && token.kind === '>') {
+    const rest = restAfterAngle.get(raw.kind);
+    if (rest !== undefined && token.kind === '>') {
       const span = { start: token.span.end, end: raw.span.end };
-      this.#remainder = { kind: '=', span, firstOnLine: false };
+      this.#remainder = { kind: rest, span, firstOnLine: false };
       return token;
     }
     this.#remainder = undefined;
@@ -351,10 +353,10 @@ export class Cursor {
     );
   }
 
-  /** The token at `index` as the current region reads it: a glued `>=` closing `<…>` reads as `>`. */
+  /** The token at `index` as the current region reads it: a glued `>…` closing `<…>` reads as `>`. */
   #readAt(index: number): Token {
     const token = this.#rawAt(index);
-    if (token.kind !== '>=' || this.#current.closer !== '>') {
+    if (!restAfterAngle.has(token.kind) || this.#current.closer !== '>') {
       return token;
     }
     const { start } = token.span;
@@ -368,6 +370,13 @@ export class Cursor {
     return this.#tokens[Math.min(index, this.#tokens.length - 1)] ?? endOfNothing;
   }
 }
+
+/** What is left of a token starting with `>` once that `>` has closed a `<…>`. */
+const restAfterAngle: ReadonlyMap<TokenKind, '=' | '>' | '>='> = new Map([
+  ['>=', '='],
+  ['>>', '>'],
+  ['>>=', '>='],
+] as const);
 
 /** Stands in only if a caller breaks the contract and passes no tokens at all. */
 const endOfNothing: Token = { kind: 'end', span: { start: 0, end: 0 }, firstOnLine: true };

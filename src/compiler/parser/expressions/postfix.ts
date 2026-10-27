@@ -1,6 +1,9 @@
 /**
- * Postfix parselets (§3.9, tightest level): calls, indexing, member access, `->`, `?`, struct
+ * Postfix parselets (§3.9, tightest level): calls, indexing, member access, `->`, `?`, `!`, struct
  * literals after a name, and type arguments.
+ *
+ * A call's argument is a value, a spread, or `name: value` naming its parameter (§3.3); only a
+ * name directly followed by `:` names one, since nothing else in an argument list starts so.
  *
  * `name<…>` is ambiguous with a comparison. Following C#, it is read as type arguments only when
  * the bracket contents parse as types and a `(` or `{` follows (§3.5). Otherwise it is a
@@ -20,10 +23,10 @@
 
 import type {
   Call,
+  CallArgument,
   Dereference,
   Expression,
   Index,
-  Spread,
 } from '../../syntax/expressions/index.ts';
 import { isPlace } from '../../syntax/expressions/places.ts';
 import type { TypeNode } from '../../syntax/types.ts';
@@ -70,12 +73,24 @@ function parseCall(
   return { kind: 'Call', span, callee, isOptional, typeArguments, arguments: items };
 }
 
-/** An argument; `&` is allowed only on a whole argument (§3.7), and passes a place. */
-function parseArgument(parser: Parser): Expression | Spread {
+/** An argument: a spread, a value named by its parameter, or a value. */
+function parseArgument(parser: Parser): CallArgument {
   const { cursor } = parser;
   if (cursor.at('...')) {
     return parseSpread(parser);
   }
+  if (cursor.at('identifier') && cursor.kindAt(1) === ':') {
+    const name = parser.identifier('a parameter name');
+    cursor.advance();
+    const value = parseArgumentValue(parser);
+    return { kind: 'NamedArgument', span: parser.spanFrom(name.span.start), name, value };
+  }
+  return parseArgumentValue(parser);
+}
+
+/** An argument's value; `&` is allowed only on a whole value (§3.7), and passes a place. */
+function parseArgumentValue(parser: Parser): Expression {
+  const { cursor } = parser;
   if (!cursor.at('&')) {
     return parser.expression();
   }
@@ -191,6 +206,14 @@ export const propagateParselet: InfixParselet = {
   parse(parser, left) {
     parser.cursor.advance();
     return { kind: 'Propagate', span: parser.spanFrom(left.span.start), operand: left };
+  },
+};
+
+export const unwrapParselet: InfixParselet = {
+  level: 'postfix',
+  parse(parser, left) {
+    parser.cursor.advance();
+    return { kind: 'Unwrap', span: parser.spanFrom(left.span.start), operand: left };
   },
 };
 

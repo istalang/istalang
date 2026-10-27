@@ -1,7 +1,7 @@
 /**
  * Type parameters (§3.5, §3.10, §3.11): `<T, U>`, constrained by traits (`T is Sendable &
- * Comparable`), with defaults (`E = Error`). In a constraint, `&` joins traits; it never means a
- * reference there.
+ * Comparable`), with defaults (`E = Error`), and packs of types (`...A`). In a constraint, `&`
+ * joins traits; it never means a reference there.
  */
 
 import type { TypeParameter, TypeParameters } from '../../syntax/declarations.ts';
@@ -18,7 +18,9 @@ export function parseTypeParameters(parser: Parser): TypeParameters {
 
 function parseTypeParameter(parser: Parser): TypeParameter {
   const { cursor } = parser;
+  const pack = cursor.eat('...');
   const name = parser.identifier('a type parameter');
+  const start = pack?.span.start ?? name.span.start;
   const constraints: TypeNode[] = [];
   if (cursor.eat('is') !== undefined) {
     constraints.push(parser.type());
@@ -27,6 +29,13 @@ function parseTypeParameter(parser: Parser): TypeParameter {
     }
   }
   const defaultType = cursor.eat('=') === undefined ? undefined : parser.type();
-  const span = parser.spanFrom(name.span.start);
-  return { kind: 'TypeParameter', span, name, constraints, defaultType };
+  const span = parser.spanFrom(start);
+  return {
+    kind: 'TypeParameter',
+    span,
+    isPack: pack !== undefined,
+    name,
+    constraints,
+    defaultType,
+  };
 }

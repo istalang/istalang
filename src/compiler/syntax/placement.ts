@@ -37,7 +37,7 @@ function placeOf(item: Item): 'module' | 'block' | 'both' {
     case 'FunctionDeclaration':
       return item.isExtern || item.owner !== undefined ? 'module' : 'both';
     case 'VariableDeclaration':
-      return item.isMutable || item.heldByFunction ? 'block' : 'both';
+      return item.isMutable || item.hold !== undefined ? 'block' : 'both';
     case 'ExpressionStatement':
     case 'Assignment':
     case 'Return':
@@ -47,7 +47,6 @@ function placeOf(item: Item): 'module' | 'block' | 'both' {
     case 'While':
     case 'Defer':
     case 'Drop':
-    case 'Spawn':
       return 'block';
     default: {
       const unhandled: never = item;

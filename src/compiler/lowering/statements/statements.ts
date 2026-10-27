@@ -25,7 +25,6 @@ import {
   tailExpressionOf,
 } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
-import { lowerSpawn } from '../expressions/calls.ts';
 import { lowerLocalFunction } from '../expressions/closures.ts';
 import { notLowered } from '../not-lowered.ts';
 import { lowerFor, lowerLoopExit, lowerWhile } from './loops.ts';
@@ -55,7 +54,6 @@ const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void
     context.variables.hold(guard);
   },
   Drop: lowerDrop,
-  Spawn: lowerSpawn,
   Invalid: notLowered,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

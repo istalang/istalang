@@ -29,6 +29,7 @@ import {
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
+import { frontier } from '../frontier.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
 import { checkSuite } from '../rules/suites.ts';
@@ -42,6 +43,9 @@ import { checkFiniteFields } from './struct-rules.ts';
  */
 function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclaration): void {
   for (const parameter of typeParametersOf(declaration.typeParameters)) {
+    if (parameter.isPack) {
+      checker.unsupported(checker.moduleOf(declaration), parameter, frontier.typeParameterPack);
+    }
     checker.constraintsOf(parameter);
     if (parameter.defaultType !== undefined) {
       checker.resolveType(checker.moduleOf(declaration), parameter.defaultType);

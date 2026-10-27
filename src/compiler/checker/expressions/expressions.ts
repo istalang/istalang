@@ -37,6 +37,7 @@ import { checkName, nameAccepts } from './names.ts';
 import { checkBinary, checkUnary } from './operators.ts';
 import { checkPropagate } from './propagate.ts';
 import { checkSelect, selectAccepts } from './select.ts';
+import { checkSpawn } from './spawn.ts';
 import {
   checkMemberAccess,
   checkStructLiteral,
@@ -84,6 +85,10 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Reference: misplacedReference,
   Index: checkIndex,
   Propagate: checkPropagate,
+  Spawn: checkSpawn,
+  Unwrap: (context, node) => context.unsupported(node),
+  ChainedComparison: (context, node) => context.unsupported(node),
+  TemplateLiteral: (context, node) => context.unsupported(node),
   Dereference: checkDereference,
   Await: checkAwait,
   Is: checkIs,
@@ -124,6 +129,10 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   Reference: ownType,
   Index: ownType,
   Propagate: ownType,
+  Spawn: ownType,
+  Unwrap: ownType,
+  ChainedComparison: ownType,
+  TemplateLiteral: ownType,
   Dereference: ownType,
   Await: ownType,
   Is: ownType,

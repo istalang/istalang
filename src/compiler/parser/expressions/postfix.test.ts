@@ -70,11 +70,11 @@ describe('type arguments (§3.5)', () => {
 
   it.each([
     ['a < b', '(Binary a < b)'],
-    ['a < b > c', '(Binary (Binary a < b) > c)'],
+    ['a < b > c', '(ChainedComparison [a b c] [< >])'],
     ['(a < b) > (c)', '(Binary (Parenthesized (Binary a < b)) > (Parenthesized c))'],
-    ['a < 1 > (c)', '(Binary (Binary a < 1) > (Parenthesized c))'],
-    ['a < b + c > (d)', '(Binary (Binary a < (Binary b + c)) > (Parenthesized d))'],
-    ['f() < b > (c)', '(Binary (Binary (Call f [] []) < b) > (Parenthesized c))'],
+    ['a < 1 > (c)', '(ChainedComparison [a 1 (Parenthesized c)] [< >])'],
+    ['a < b + c > (d)', '(ChainedComparison [a (Binary b + c) (Parenthesized d)] [< >])'],
+    ['f() < b > (c)', '(ChainedComparison [(Call f [] []) b (Parenthesized c)] [< >])'],
   ])('reads %s as comparisons, reporting nothing', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
@@ -90,10 +90,10 @@ describe('indexing, members and postfix operators', () => {
   it.each([
     ['a[1]', '(Index a 1)'],
     ['m["a"]', '(Index m "a")'],
-    ['a[1..3]', '(Index a (Range 1 3))'],
-    ['xs[..5]', '(Index xs (Range _ 5))'],
-    ['xs[3..]', '(Index xs (Range 3 _))'],
-    ['xs[..]', '(Index xs (Range _ _))'],
+    ['a[1..3]', '(Index a (Range 1 3 _))'],
+    ['xs[..5]', '(Index xs (Range _ 5 _))'],
+    ['xs[3..]', '(Index xs (Range 3 _ _))'],
+    ['xs[..]', '(Index xs (Range _ _ _))'],
     ['a.b', '(MemberAccess a b)'],
     ['a.type', '(MemberAccess a type)'],
     ['user?.name', '(MemberAccess user isOptional name)'],
@@ -169,5 +169,32 @@ describe('tuple elements (§3.15)', () => {
     const parsed = parseAs('expression', 'a\n.b');
     expect(parsed.rest).toBe(2);
     expect(parsed.diagnostics).toEqual([]);
+  });
+});
+
+describe('`!`, named arguments and `spawn`', () => {
+  it.each([
+    ['x!', '(Unwrap x)'],
+    ['a?.b!', '(Unwrap (MemberAccess a isOptional b))'],
+    [
+      'f(times: 5, backoff: 2s)',
+      '(Call f [] [(NamedArgument times 5) (NamedArgument backoff 2000ms)])',
+    ],
+    ['f(1, target: &x)', '(Call f [] [1 (NamedArgument target (Reference x))])'],
+    [
+      'spawn w.run(job).result()',
+      '(Call (MemberAccess (Spawn (Call (MemberAccess w run) [] [job])) result) [] [])',
+    ],
+    ['spawn f<int>(x)', '(Spawn (Call f [(NamedType [int] [])] [x]))'],
+    [
+      'await spawn f(x).result()',
+      '(Await (Call (MemberAccess (Spawn (Call f [] [x])) result) [] []))',
+    ],
+    [
+      'spawn Job{a}.run()',
+      '(Spawn (Call (MemberAccess (StructLiteral (NamedType [Job] []) [(FieldInitializer a _)]) run) [] []))',
+    ],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('expression', text)).toBe(tree);
   });
 });

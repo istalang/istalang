@@ -1,0 +1,8 @@
+# error: 5000 at 7:12
+# `any T` parses, and is not checked yet (language features, L3).
+
+trait Named:
+  fn name(self: Self) -> string
+
+fn show(x: any Named) -> string:
+  "x"

@@ -21,8 +21,19 @@ import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
 import type { Block, VariableDeclaration } from './statements.ts';
 import type { FieldDeclaration, TypeNode } from './types.ts';
 
-/** `T`, `T is Sendable & Comparable`, `E = Error`. */
+/** `"""…"""`: what a declaration or module is for, as its first line says (§3.16); tools read it. */
+interface Docstring extends NodeOf<'Docstring'> {
+  readonly value: string;
+}
+
+/** What a docstring may describe; the field is absent without one. */
+interface Documented {
+  readonly doc?: Docstring;
+}
+
+/** `T`, `T is Sendable & Comparable`, `E = Error`, and `...A`, a pack of types (§3.5). */
 export interface TypeParameter extends NodeOf<'TypeParameter'> {
+  readonly isPack: boolean;
   readonly name: Identifier;
   readonly constraints: readonly TypeNode[];
   readonly defaultType: TypeNode | undefined;
@@ -39,7 +50,10 @@ export function typeParametersOf(parameters: TypeParameters): readonly TypeParam
  * A function: top-level, local, a trait's requirement, or extern. `owner` is the type a static
  * function is declared on: `Duration` in `fn Duration.zero()`.
  */
-export interface FunctionDeclaration extends NodeOf<'FunctionDeclaration'>, Annotatable {
+export interface FunctionDeclaration
+  extends NodeOf<'FunctionDeclaration'>,
+    Annotatable,
+    Documented {
   readonly isExtern: boolean;
   readonly isAsync: boolean;
   readonly owner: Identifier | undefined;
@@ -60,7 +74,7 @@ export function isMethod(declaration: FunctionDeclaration): boolean {
  * `struct Pair: …`, or `shared struct Inbox<T>: …`, whose values are handles to a cell holding its
  * fields, built with `new` and read through with `*` and `->` (§3.18).
  */
-export interface StructDeclaration extends NodeOf<'StructDeclaration'>, Annotatable {
+export interface StructDeclaration extends NodeOf<'StructDeclaration'>, Annotatable, Documented {
   readonly isShared: boolean;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
@@ -102,7 +116,7 @@ export interface ExternConstantDeclaration
   readonly type: TypeNode;
 }
 
-export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable {
+export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable, Documented {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
   readonly variants: readonly (Variant | Invalid)[];
@@ -115,7 +129,7 @@ export interface Variant extends NodeOf<'Variant'>, Annotatable {
 }
 
 /** Required functions (with no body) and fields (§3.10). */
-export interface TraitDeclaration extends NodeOf<'TraitDeclaration'>, Annotatable {
+export interface TraitDeclaration extends NodeOf<'TraitDeclaration'>, Annotatable, Documented {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
   readonly members: readonly (FunctionDeclaration | FieldDeclaration | Invalid)[];
@@ -144,7 +158,7 @@ export type ImportDeclaration = NamedImport | NamespaceImport;
 /** A top-level `const`: the one kind of variable a module may declare (§3). */
 export type ConstantDeclaration = VariableDeclaration & {
   readonly isMutable: false;
-  readonly heldByFunction: false;
+  readonly hold: undefined;
 };
 
 export type Declaration =
@@ -159,7 +173,7 @@ export type Declaration =
   | ConstantDeclaration;
 
 /** One source file. Its span is the whole text. */
-export interface Module extends NodeOf<'Module'> {
+export interface Module extends NodeOf<'Module'>, Documented {
   readonly items: readonly (Declaration | Invalid)[];
 }
 
@@ -169,7 +183,7 @@ export function declaredFunctions(module: Module): readonly FunctionDeclaration[
 }
 
 /** Nodes that occur only as parts of a declaration. */
-export type DeclarationPart = TypeParameter | Variant | DeclaredField;
+export type DeclarationPart = TypeParameter | Variant | DeclaredField | Docstring;
 
 /** Whether `declaration` declares a shared struct (§3.18). */
 export function isSharedStruct(declaration: Declaration | DeclarationPart): boolean {

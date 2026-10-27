@@ -16,7 +16,6 @@ import { checkDiscarded, checkDrop } from '../rules/must-use.ts';
 import { type FunctionType, neverType, type Type, unitType } from '../types/type.ts';
 import { checkAssignment } from './assignments.ts';
 import { checkFor, checkLoopExit, checkWhile } from './loops.ts';
-import { checkSpawn } from './spawn.ts';
 import { checkVariableDeclaration } from './variables.ts';
 
 /** What `defer` runs when its block ends (§7): a plain function of nothing, so it can't wait. */
@@ -58,7 +57,6 @@ export const statementHandlers: Handlers<
     return unitType;
   },
   Drop: checkDrop,
-  Spawn: checkSpawn,
   Invalid: () => unitType,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

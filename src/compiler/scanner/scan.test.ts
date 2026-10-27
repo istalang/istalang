@@ -139,7 +139,6 @@ describe('tabs (§2)', () => {
 
 describe('unknown characters', () => {
   it.each([
-    ['!', '!'],
     ['€', '€'],
     ['😀', '😀'],
     ['`', '`'],

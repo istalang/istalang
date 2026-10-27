@@ -1,6 +1,6 @@
 /**
- * Type grammar (§2, §3): named and generic types, `T?`, tuples, function types, anonymous structs,
- * and `&T`.
+ * Type grammar (§2, §3): named and generic types, `T?`, tuples, function types (whose parameters
+ * may end in a rest, `...A`), anonymous structs, `any T`, and `&T`.
  *
  * Only a parameter's type may be a reference (§3.7), and `parseParameterType` is the one entry
  * that allows it. A `&` met anywhere else is still parsed, so the tree shows what was written, but
@@ -11,7 +11,7 @@
  * `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 
-import type { ReferenceType, TypeNode } from '../syntax/types.ts';
+import type { FunctionType, ReferenceType, RestType, TypeNode } from '../syntax/types.ts';
 import type { CursorKind } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
@@ -44,6 +44,7 @@ const wordParselets: Readonly<
   Record<string, { readonly starts: (parser: Parser) => boolean; readonly parse: TypeParselet }>
 > = {
   sendable: { starts: atFunctionKeyword, parse: parseFunctionType },
+  any: { starts: (parser) => parser.cursor.kindAt(1) === 'identifier', parse: parseAnyType },
 };
 
 const postfixTypeParselets: Partial<Record<CursorKind, PostfixTypeParselet>> = {
@@ -132,13 +133,35 @@ function parseFunctionType(parser: Parser): TypeNode {
   };
 }
 
-/** `(A, &B)`: a function type's parameter types. */
-function parseParameterTypes(parser: Parser): readonly TypeNode[] {
+/** `(A, &B)` or `(A, ...B)`: a function type's parameter types. */
+function parseParameterTypes(parser: Parser): FunctionType['parameters'] {
   if (!parser.cursor.at('(')) {
     parser.reportExpected("'('");
     return [];
   }
-  return parseDelimited(parser, '(', () => parser.parameterType()).items;
+  return parseDelimited(parser, '(', () =>
+    parser.cursor.at('...') ? parseRestType(parser) : parser.parameterType(),
+  ).items;
+}
+
+/** `...A`: the rest of a function type's parameters, an array or a pack (§3.3, §3.5). */
+function parseRestType(parser: Parser): RestType {
+  const { start } = parser.cursor.advance().span;
+  const type = parser.type();
+  return { kind: 'RestType', span: parser.spanFrom(start), type };
+}
+
+/**
+ * `any T` or `any A & B`, at `any`; `?` after it applies to the whole, so `any T?` is `(any T)?`.
+ */
+function parseAnyType(parser: Parser): TypeNode {
+  const { cursor } = parser;
+  const { start } = cursor.advance().span;
+  const traits = [parseNamedType(parser)];
+  while (cursor.eat('&') !== undefined) {
+    traits.push(parseNamedType(parser));
+  }
+  return { kind: 'AnyType', span: parser.spanFrom(start), traits };
 }
 
 /** `{ a: A; b: B }`, or the same after `struct`. */

@@ -19,9 +19,14 @@ const precedenceLevels = [
   'not',
   'comparison',
   'range',
+  'bitwiseOr',
+  'bitwiseXor',
+  'bitwiseAnd',
+  'shift',
   'additive',
   'multiplicative',
   'prefix',
+  'power',
   'postfix',
 ] as const;
 
@@ -41,11 +46,13 @@ type BinaryMeaning =
   /** `and` and `or`: on bools, the right side run, and given, only when the left one is `rightWhen`. */
   | { readonly kind: 'logic'; readonly rightWhen: boolean }
   /** `??`: the left side's value inside an optional, else the right side (§4). */
-  | { readonly kind: 'coalesce' };
+  | { readonly kind: 'coalesce' }
+  /** `in` and `not in`: whether the right side contains the left. */
+  | { readonly kind: 'membership'; readonly negated: boolean };
 
 export interface BinaryOperatorEntry {
   readonly level: PrecedenceLevel;
-  /** Left unless stated. */
+  /** Left unless stated: `2 ** 3 ** 2` is `2 ** (3 ** 2)`. */
   readonly associativity?: 'right';
   readonly meaning: BinaryMeaning;
   /** Operators an operand of this one may not use unless parenthesized (§3.9). */
@@ -55,7 +62,10 @@ export interface BinaryOperatorEntry {
 const call = (name: string) => ({ kind: 'call', function: name }) as const;
 const order = (relation: Relation) => ({ kind: 'order', function: 'compare', relation }) as const;
 
-/** Every binary operator, by its spelling, which is its token's kind. */
+/**
+ * Every binary operator, by its spelling. Every spelling but `not in` is a token kind; that one is
+ * two words.
+ */
 export const binaryOperators = {
   '??': { level: 'coalesce', meaning: { kind: 'coalesce' }, refusesUnparenthesized: ['and', 'or'] },
   or: { level: 'or', meaning: { kind: 'logic', rightWhen: false } },
@@ -66,12 +76,20 @@ export const binaryOperators = {
   '>=': { level: 'comparison', meaning: order('greaterOrEqual') },
   '==': { level: 'comparison', meaning: { kind: 'equality', negated: false } },
   '!=': { level: 'comparison', meaning: { kind: 'equality', negated: true } },
+  in: { level: 'comparison', meaning: { kind: 'membership', negated: false } },
+  'not in': { level: 'comparison', meaning: { kind: 'membership', negated: true } },
+  '|': { level: 'bitwiseOr', meaning: call('bitOr') },
+  '^': { level: 'bitwiseXor', meaning: call('bitXor') },
+  '&': { level: 'bitwiseAnd', meaning: call('bitAnd') },
+  '<<': { level: 'shift', meaning: call('shiftLeft') },
+  '>>': { level: 'shift', meaning: call('shiftRight') },
   '+': { level: 'additive', meaning: call('add') },
   '-': { level: 'additive', meaning: call('subtract') },
   '*': { level: 'multiplicative', meaning: call('multiply') },
   '/': { level: 'multiplicative', meaning: call('divide') },
   '//': { level: 'multiplicative', meaning: call('floorDivide') },
   '%': { level: 'multiplicative', meaning: call('remainder') },
+  '**': { level: 'power', associativity: 'right', meaning: call('power') },
 } as const satisfies Record<string, BinaryOperatorEntry>;
 
 export type BinaryOperator = keyof typeof binaryOperators;
@@ -95,6 +113,7 @@ type UnaryMeaning = ReturnType<typeof call> | { readonly kind: 'negation' };
 /** Prefix operators that build a `Unary` node; `await`, `*` and `&` have nodes of their own. */
 export const unaryOperators = {
   '-': { level: 'prefix', meaning: call('negate') },
+  '~': { level: 'prefix', meaning: call('bitNot') },
   not: { level: 'not', meaning: { kind: 'negation' } },
 } as const satisfies Record<
   string,
@@ -131,6 +150,12 @@ const assignmentOperators = [
   '/=',
   '//=',
   '%=',
+  '**=',
+  '&=',
+  '|=',
+  '^=',
+  '<<=',
+  '>>=',
 ] as const satisfies readonly TokenKind[];
 
 export type AssignmentOperator = (typeof assignmentOperators)[number];

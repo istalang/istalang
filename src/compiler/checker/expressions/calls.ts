@@ -52,6 +52,9 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
     if (argument.kind === 'Spread') {
       return context.unsupported(argument, frontier.spreadArgument);
     }
+    if (argument.kind === 'NamedArgument') {
+      return context.unsupported(argument, frontier.namedArgument);
+    }
     argumentNodes.push(argument);
   }
   const call: WrittenCall = {

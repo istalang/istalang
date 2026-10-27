@@ -24,10 +24,17 @@ const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
   ReferenceType: (binder, node, scope) => bindType(binder, node.referent, scope),
   TupleType: (binder, node, scope) => bindTypes(binder, node.elements, scope),
   FunctionType: (binder, node, scope) => {
-    bindTypes(binder, node.parameters, scope);
+    bindTypes(
+      binder,
+      node.parameters.map((parameter) =>
+        parameter.kind === 'RestType' ? parameter.type : parameter,
+      ),
+      scope,
+    );
     bindTypes(binder, node.returnType === undefined ? [] : [node.returnType], scope);
   },
   StructType: (binder, node, scope) => bindFields(binder, node.fields, scope),
+  AnyType: (binder, node, scope) => bindTypes(binder, node.traits, scope),
   Missing: holdsNoNames,
   Invalid: holdsNoNames,
 };

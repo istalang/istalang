@@ -63,6 +63,28 @@ interface NestedFieldPattern extends NodeOf<'NestedFieldPattern'> {
   readonly pattern: Pattern;
 }
 
+/** `A | B`: matches what any alternative matches (§3.11). */
+interface OrPattern extends NodeOf<'OrPattern'> {
+  readonly alternatives: readonly Pattern[];
+}
+
+/** `[first, ...rest, last]`: an array of a length, its elements matched in order (§3.11). */
+interface ArrayPattern extends NodeOf<'ArrayPattern'> {
+  readonly elements: readonly (Pattern | RestPattern)[];
+}
+
+/** `...rest` in an array pattern: the elements between those matched before and after it. */
+export interface RestPattern extends NodeOf<'RestPattern'> {
+  readonly target: Identifier | WildcardPattern;
+}
+
+/** `1..=5`, `..5`, `5..`: a value in a range of literals (§3.11). */
+interface RangePattern extends NodeOf<'RangePattern'> {
+  readonly start: LiteralPattern | undefined;
+  readonly isInclusive: boolean;
+  readonly end: LiteralPattern | undefined;
+}
+
 /** `Pattern as name`: binds the whole matched value. */
 export interface AsPattern extends NodeOf<'AsPattern'> {
   readonly pattern: Pattern;
@@ -77,11 +99,14 @@ export type Pattern =
   | ParenthesizedPattern
   | StructPattern
   | AsPattern
+  | OrPattern
+  | ArrayPattern
+  | RangePattern
   | Missing
   | Invalid;
 
 /** Nodes that occur only as parts of a pattern. */
-export type PatternPart = BindFieldPattern | CompareFieldPattern | NestedFieldPattern;
+export type PatternPart = BindFieldPattern | CompareFieldPattern | NestedFieldPattern | RestPattern;
 
 /** A part of a declaration's or loop's target that takes a value: a name, or `_`. */
 type TargetLeaf = Identifier | WildcardPattern;
@@ -95,6 +120,10 @@ const targetLeafHandlers: Handlers<undefined, Pattern | PatternPart, [], readonl
   ParenthesizedPattern: (_, node) => targetLeaves(node.pattern),
   TuplePattern: (_, node) => node.elements.flatMap(targetLeaves),
   StructPattern: (_, node) => node.fields.flatMap(targetLeaves),
+  OrPattern: (_, node) => node.alternatives.flatMap(targetLeaves),
+  ArrayPattern: (_, node) => node.elements.flatMap(targetLeaves),
+  RestPattern: (_, node) => [node.target],
+  RangePattern: () => [],
   WildcardPattern: (_, node) => [node],
   LiteralPattern: () => [],
   CompareFieldPattern: () => [],

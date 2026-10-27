@@ -1,6 +1,6 @@
 /**
- * `spawn f(args)` (§9): starts a call as a new, independent instance and goes on at once, so it
- * is a statement of type `unit`, in any function.
+ * `spawn f(args)` (§9): starts a call as a new, independent instance and goes on at once, so its
+ * value is `unit`, in any function.
  *
  * - The call is checked as any call is, which resolves what it runs. A function with code may be
  *   spawned, a method or a generic instance included, and so may a value of a sendable function
@@ -11,8 +11,13 @@
  *   sendable (§3.1).
  */
 
-import { type Call, type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
-import type { Spawn } from '../../syntax/statements.ts';
+import {
+  argumentValue,
+  type Call,
+  type Expression,
+  type Spawn,
+  unparenthesized,
+} from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isSendable } from '../traits/sendable.ts';
@@ -77,8 +82,6 @@ function refusalOf(
 /** What `call` copies into the new instance: a method's receiver, then each argument written. */
 function copiedArguments(context: BodyContext, call: Call): readonly Expression[] {
   const receiver = context.callAt(call)?.receiver;
-  const written = call.arguments.map((argument) =>
-    argument.kind === 'Spread' ? argument.expression : argument,
-  );
+  const written = call.arguments.map(argumentValue);
   return receiver === undefined ? written : [receiver, ...written];
 }
