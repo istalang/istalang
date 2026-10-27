@@ -89,7 +89,8 @@ const futureState = z.discriminatedUnion('kind', [
   /**
    * `t.idle()`, `t.reaches(label)` and `t.result()` (spec §10): resolves once the instance `t`
    * started, `instance`, is idle, waits at waypoint `label`, or has finished, as its last commit
-   * says. Only a test runs one, and the runtime running the test resolves it (runtime/testing/).
+   * says; `expectPanic`'s wait resolves once it has panicked, with the message. Only a test runs
+   * one, and the runtime running the test resolves it (runtime/testing/).
    */
   z.strictObject({
     kind: z.literal('watch'),
@@ -98,6 +99,7 @@ const futureState = z.discriminatedUnion('kind', [
       z.strictObject({ kind: z.literal('idle') }),
       z.strictObject({ kind: z.literal('waypoint'), label: z.string() }),
       z.strictObject({ kind: z.literal('finished') }),
+      z.strictObject({ kind: z.literal('panicked') }),
     ]),
   }),
 ]);

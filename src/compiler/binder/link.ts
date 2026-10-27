@@ -46,6 +46,8 @@ import type { FreeName, QualifiedPath } from './local-binder.ts';
 import type { ImportPlaceholder, LocalEntity } from './scope.ts';
 
 interface ModuleLinks {
+  /** The module linked. */
+  readonly module: ModuleId;
   readonly local: ModuleBindings;
   /** Free names and the later parts of qualified names. */
   readonly resolved: Map<Identifier, Entity>;
@@ -143,7 +145,13 @@ class Linker {
     if (local === undefined) {
       return;
     }
-    const links: ModuleLinks = { local, resolved: new Map(), imports: new Map(), diagnostics: [] };
+    const links: ModuleLinks = {
+      module: id,
+      local,
+      resolved: new Map(),
+      imports: new Map(),
+      diagnostics: [],
+    };
     this.#links.set(id, links);
     for (const placeholder of local.imports) {
       const module = this.#program.modules.get(id)?.imports.get(placeholder.declaration);
@@ -205,14 +213,20 @@ class Linker {
     }
   }
 
-  /** The export `name` of `module`, or a diagnostic saying why there is none. */
+  /**
+   * What the module of `links` sees as `name` of `module`, or a diagnostic saying why there is
+   * none: its export, or, for a test module, its private declaration too, so a test can mock what
+   * a module keeps private (§10).
+   */
   #exported(module: ModuleId, name: Identifier, links: ModuleLinks): Entity | undefined {
     const target = this.#locals.get(module);
-    const entity = target?.exports.get(name.text);
+    const entity =
+      target?.exports.get(name.text) ??
+      (isTestModule(links.module) ? target?.privates.get(name.text) : undefined);
     if (entity === undefined && target !== undefined) {
       const label = this.#program.modules.get(module)?.tree.source.path ?? module;
       links.diagnostics.push(
-        target.privateNames.has(name.text)
+        target.privates.has(name.text)
           ? binderDiagnostics.privateExport(name.span, label, name.text)
           : binderDiagnostics.missingExport(name.span, label, name.text),
       );

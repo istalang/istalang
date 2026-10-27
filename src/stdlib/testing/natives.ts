@@ -57,6 +57,8 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
       context.testing.watch(instanceOf(handle), { kind: 'waypoint', label: text(label) }),
     [ofStarted('result')]: ([handle], context) =>
       context.testing.watch(instanceOf(handle), { kind: 'finished' }),
+    [ofStarted('_panicked')]: ([handle], context) =>
+      context.testing.watch(instanceOf(handle), { kind: 'panicked' }),
     [ofStarted('waitingAt')]: ([handle], context) =>
       arrayOf(
         (context.testing.inspect(instanceOf(handle))?.waitingAt ?? []).map(

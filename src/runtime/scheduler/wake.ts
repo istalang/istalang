@@ -22,7 +22,8 @@
  * - Under a test (§10), a segment also starts by resolving the watches whose condition the test
  *   world says holds, and an advance may start by answering another instance's call to one of
  *   this instance's mocks. The answers a segment gives are, like its spawns, effects of its
- *   commit, which the advance reports for the world to deliver.
+ *   commit, which the advance reports for the world to deliver; it ends at that commit, so the
+ *   answers arrive, and the instances they wake run, before this instance runs on.
  * - Where the instance stands afterwards is read from the last commit (`stateOf`), the one place
  *   a host's view of an instance comes from.
  */
@@ -125,8 +126,9 @@ export function advance(
     }
     spawned.push(...commitChildren(seams.store, instance));
     committed = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
-    answered.push(...instance.answered());
-    if (end.kind === 'finished') {
+    const given = instance.answered();
+    answered.push(...given);
+    if (end.kind === 'finished' || given.length > 0) {
       return advanced(stateOf(committed));
     }
   }

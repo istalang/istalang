@@ -3,7 +3,9 @@
  * the tests themselves can do is runtime/testing/'s to test; here they only pass, fail or skip.
  */
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { specCode } from '../../../test/corpus/spec-examples.ts';
 import { ista, tempProject as project } from '../cli.test-kit.ts';
 
 /** A line reporting one test: its mark, then its title. */
@@ -12,16 +14,16 @@ const testLine = /^[✓✗-] /u;
 /** A test module with one suite, `title`, of a passing, a failing and a skipped test. */
 function suiteModule(title: string): string {
   return [
-    "import Suite, Test from 'testing'",
+    "import Suite, Test, test, skip from 'testing'",
     'async fn passes():',
     '  ()',
     'async fn fails() -> Future<unit>:',
     '  panic("on purpose")',
     `@Suite{"${title}"}`,
     'fn suite() -> Array<Test>: [',
-    '  Case{title: "passes", body: passes, focus: Plain},',
-    '  Case{title: "fails", body: fails, focus: Plain},',
-    '  Case{title: "skipped", body: fails, focus: Skipped},',
+    '  test("passes", passes),',
+    '  test("fails", fails),',
+    '  skip(test("skipped", fails)),',
     ']',
   ].join('\n');
 }
@@ -29,11 +31,11 @@ function suiteModule(title: string): string {
 /** A test module with one suite, `title`, of one passing test. */
 function passingModule(title: string): string {
   return [
-    "import Suite, Test from 'testing'",
+    "import Suite, Test, test from 'testing'",
     'async fn passes():',
     '  ()',
     `@Suite{"${title}"}`,
-    'fn suite() -> Array<Test>: [Case{title: "passes", body: passes, focus: Plain}]',
+    'fn suite() -> Array<Test>: [test("passes", passes)]',
   ].join('\n');
 }
 
@@ -106,12 +108,12 @@ describe('ista test', () => {
   it("follows a failure's message with the trace through the failing functions", async () => {
     const root = project({
       'a.test.ista': [
-        "import Suite, Test from 'testing'",
+        "import Suite, Test, test from 'testing'",
         'fn inner() -> unit: panic("trace me")',
         'async fn fails() -> Future<unit>:',
         '  inner()',
         '@Suite{"s"}',
-        'fn suite() -> Array<Test>: [Case{title: "t", body: fails, focus: Plain}]',
+        'fn suite() -> Array<Test>: [test("t", fails)]',
       ].join('\n'),
     });
     const run = await ista(root, 'test');
@@ -130,5 +132,19 @@ describe('ista test', () => {
     const run = await ista(root, 'check');
     expect(run.code).toBe(1);
     expect(run.err + run.out).toContain('error 4015');
+  });
+
+  it("runs spec §10's suite against spec §12.1's purchase approval", async () => {
+    const suite = new URL('../../../test/spec-suites/purchase.test.ista', import.meta.url);
+    const root = project({
+      'purchase.ista': [...specCode('12.1 Purchase approval'), ''].join('\n'),
+      'purchase.test.ista': readFileSync(suite, 'utf8'),
+    });
+    const run = await ista(root, 'test');
+    expect(run.err).toBe('');
+    expect(
+      run.out.split('\n').filter((line) => testLine.test(line) && !line.startsWith('✓ ')),
+    ).toEqual([]);
+    expect(run.code).toBe(0);
   });
 });

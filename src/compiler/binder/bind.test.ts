@@ -166,6 +166,15 @@ describe('binding reports, once and at the name', () => {
     expect(boundReport(files)).toEqual(reportedOnce(rule.code, name));
   });
 
+  it('lets a test module name the private declarations of the modules it imports', () => {
+    const files = {
+      'main.test.ista':
+        "import _hidden from 'lib'\nimport * as lib from 'lib'\nfn f(): lib._hidden()",
+      lib: 'fn _hidden(): 1',
+    };
+    expect(boundReport(files)).toEqual(reportedNothing);
+  });
+
   it("lets a test module import another, and the program's other modules", () => {
     const files = {
       'main.test.ista': "import x from 'helper.test.ista'\nimport y from 'lib'",

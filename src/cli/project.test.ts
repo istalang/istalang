@@ -34,7 +34,7 @@ describe('loadProject', () => {
     ]);
   });
 
-  it('loads the prelude, time, json and testing with every program, by their roles', () => {
+  it('loads the prelude, time, json and testing with every program, by their roles, and what they import', () => {
     const root = tempProject({ 'main.ista': '' });
     const { program } = loadProject(root, ['main.ista']);
     expect(program.roles).toEqual({
@@ -50,6 +50,7 @@ describe('loadProject', () => {
       ['time', true],
       ['json', true],
       ['testing', true],
+      ['inbox', true],
     ]);
   });
 

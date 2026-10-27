@@ -460,7 +460,7 @@ The **standard library** is a set of modules, imported explicitly, for example `
 | `random` | Random integers and UUIDs, recorded in the snapshot |
 | `log` | Structured logs, committed together with their segment |
 | `runtime` | The instance's id and version, and `commit()`, an already-resolved future: `await runtime.commit()` commits without waiting |
-| `inbox` | `Inbox<T>`, a FIFO message queue built on slots, with `send`, `sendRevertible` and `receive`, and `Revertible<T>`, the holder of a revertible message (§6) |
+| `inbox` | `Inbox<T>`, a FIFO message queue built on slots, with `send`, `sendRevertible`, `receive` and `pending`, and `Revertible<T>`, the holder of a revertible message (§6) |
 | `collections` | `WeakMap<K, V>`, which keeps an entry only while its key is alive; built on `WeakRef` and `disposed()` |
 | `futures` | `all`, `any`, `race`, `allSettled`, `quorum(n, fs)`, `timeout(f, d)`, `retry`; built on one runtime primitive, `first<T>(fs: Array<Future<T>>) -> Future<(int, T)>`, that races a list of futures: it resolves with the position and value of the first to resolve, the lowest position among futures that resolved together, panics on an empty list, and disposes none of them |
 | `rpc` | `create<P, R>()` makes a method. `onMessage(handler)` serves calls, the handler's return value being the reply, and `await method.call(msg)` calls it, returning `Result<R>`. Each reply travels in a one-shot slot. |
@@ -708,7 +708,7 @@ fn _normalize(id: string) -> string:     # private to this module
     ...
 ```
 
-- **Exports.** Every top-level declaration is exported, except names starting with `_`. There are no default exports, and imported names are not re-exported.
+- **Exports.** Every top-level declaration is exported, except names starting with `_`, which only a test module (§10) may also name, from the modules it imports. There are no default exports, and imported names are not re-exported.
 - **Imports.** `import a, b from 'path'` brings named exports into scope. `import * as m from 'path'` binds them under a namespace, used as `m.name`. A name imported twice, or clashing with a local declaration, is a compile error.
 - **Paths.** Each path must name exactly one module: a path that names none, or several, is a compile error. Which module a path names is decided by the module loaders of whatever runs the compiler, much as a bundler resolves imports, so a host may use its own paths and its own module store.
 - **The toolchain's paths.** The `ista` toolchain resolves a path as names separated by `/`, with the `.ista` extension implied. A path starting with `./` or `../` is relative to the importing file. Any other path names a standard-library module, or a module under the project root: the directory holding `ista.json` (§11), or the directory the toolchain runs in when there is none. A path that matches both a standard-library module and a project file is therefore an error.
@@ -980,7 +980,7 @@ When the runtime or the host fills a slot, it wakes the waiters even if the whol
 
 `await` and `select` work only on futures. A future resolves once and stays resolved.
 
-**Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s, and written in the language. It is a shared struct (§3.18), which the `inbox` module makes disposable by declaring its `dispose` (§7), so an inbox is a handle that a `WeakRef` can watch. It is created with `Inbox.create<T>()`:
+**Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s, and written in the language. It is a shared struct (§3.18), which the `inbox` module makes disposable by declaring its `dispose` (§7), so an inbox is a handle that a `WeakRef` can watch. It is created with `Inbox.create<T>()`, and `box.pending()` gives the messages waiting in it, oldest first, without receiving them:
 
 ```python statements
 const box = Inbox.create<Verdict>()
@@ -1230,7 +1230,7 @@ Every object's keys are emitted sorted, in UTF-16 order as JavaScript sorts stri
 
 ## 10. Testing
 
-Tests are ordinary code. The runtime adds a few primitives, in the `testing` module, and everything else is a library written in the language, in the same module. A test module is a file whose name ends in `.test.ista`. Only a test module may import `testing`, and only a test module may import another test module, so production code can never install a mock; either import elsewhere is a compile error.
+Tests are ordinary code. The runtime adds a few primitives, in the `testing` module, and everything else is a library written in the language, in the same module. A test module is a file whose name ends in `.test.ista`. Only a test module may import `testing`, and only a test module may import another test module, so production code can never install a mock; either import elsewhere is a compile error. A test module also sees the private (`_`) declarations of the modules it imports, so a test can mock what a module keeps private, such as a raw extern behind a public wrapper.
 
 **Suites.** `@Suite{"title"}` marks a function that returns the suite's tests as an `Array<Test>`. Tests are values, built by library functions:
 
@@ -1253,7 +1253,7 @@ fn approvalSuite() -> Array<Test>: [
 
 - **Each test runs in a fresh instance.** Function values aren't sendable, so the runner calls the suite function again inside each new instance and runs the entry at that test's position.
 - **Suite functions only build their list,** which the compiler enforces: a suite function is a plain `fn` (not `async`) that doesn't call externs or touch shared structs, slots or inboxes, so it builds the same list every time it is called. The rule is checked on the suite function's own body, not on the functions it calls or the tests it builds; in each test's instance the runner also checks that the list still holds that test's title at its position, and fails the test when it doesn't.
-- **The library** provides `test(title, body)`, `test(title, setup, body)`, `group(title, tests)`, `skip(test)` and `only(test)`. Table-driven tests are comprehensions, as above.
+- **The library** provides `test(title, body)`, `test(title, setup, body)`, `group(title, tests)`, `skip(test)` and `only(test)`. A test's body is a plain or an `async` function, taking the setup's environment when it has one. Table-driven tests are comprehensions, as above.
 - **Skipping and focusing.** `skip` and `only` take a test or a group. A skipped test is reported but not run. When any test of a run is marked `only`, directly or through its group, only those tests run, and the rest are reported as skipped.
 
 **Environments.** A setup is an "around" function of type `Setup<E> = async fn(async fn(E))`: it prepares an environment, runs the test inside it, and tears it down afterwards. Teardown is ordinary code, so it may `await`, and holdings such as mocks are released when the function ends, even if the test fails:
@@ -1266,16 +1266,25 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
     await test(PurchaseEnv{clock})
 ```
 
-`setups(a, b)` combines several environments into one, with overloads for up to six: `setups(withPurchaseEnv, withFakeHost)` is a `Setup<(PurchaseEnv, HostEnv)>`.
+`setups(a, b)` combines several environments into one, with overloads for up to six: `setups(withPurchaseEnv, withFakeHost)` is a `Setup<(PurchaseEnv, HostEnv)>`, whose test receives both as a tuple. The first setup is the outermost: it prepares first and tears down last.
 
 **Mocking.** `mock(target, replacement)` replaces any named function (an extern, a standard-library function or one of the program's own) while the `Mock<F>` it returns is held, `F` being the function's type, so a mock follows block lifetimes like every other resource. The language has no variadic generics, so `mock` is one overload per arity up to six, for plain and async functions, such as `mock<A, B, R>(target: fn(A, B) -> R, replacement: fn(A, B) -> R) -> Mock<fn(A, B) -> R>`, and explicit type arguments name the parameter and result types. It applies to everything the test runs, including instances it starts. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace. A host type's `dispose`, which the runtime calls (§7), may be a mock's target, the one place it may be named. Starting or spawning an instance isn't a call, so an instance runs the function it starts with, whatever mocks it. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(string, int)>` for `chargeCard`; a function of one parameter gives its values, as `Array<string>`, and one of none gives a `unit` per call.
 
 - **Mocking twice.** Mocking a target that is already mocked replaces it while the new handle is held; releasing that handle brings back the mock before it.
 - **Across instances.** A mock applies to the instance holding it and to every instance started or spawned from it. Such an instance calls the replacement in the instance holding the mock, as a host's extern is called (§9): the arguments and the result are copied between the two, so they must be sendable, or the call panics. A future the replacement returns is followed across as well. The instance answering plays the host, so a host value it receives or hands back isn't its to dispose: only the instance that got it from the call owns it (§7).
 
-**Time.** `time.at(t)` is the runtime's only time primitive, and `delay(d)` is library code for `at(now() + d)`. Mocking `time.now` and `time.at` therefore controls all time. The library's `FakeClock` does exactly that, with slots it fills as `clock.advance(d)` passes each deadline.
+**Time.** `time.at(t)` is the runtime's only time primitive, and `delay(d)` is library code for `at(now() + d)`. Mocking `time.now` and `time.at` therefore controls all time. The library's `FakeClock` is made for that: `FakeClock{start}` stands still at `start`, and its fields `now` and `at` are the replacements, as above. `clock.advance(d)` moves it forward by `d` at once and fills every deadline it passes, the earliest first, and deadlines that tie in the order `at` was called. A deadline already reached resolves at once, and advancing by a negative duration panics.
 
-**Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one: each call gives a value equal to no other, and a `T` that isn't an extern type is a compile error. The library's `FakeQueue<T>` uses it: it mocks a queue factory such as `reviewQueue` to return such handles, and mocks `send` and `receive` to use an ordinary inbox behind each handle, with `pending()` and `post(msg)` for the test.
+**Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one: each call gives a value equal to no other, and a `T` that isn't an extern type is a compile error. The library's `FakeQueue<Q, T, K = string>` fakes a host's queues of type `Q` carrying `T`, with an ordinary inbox behind each: `FakeQueue<Queue<Verdict>, Verdict>{make: handle}`. Its fields are replacements for the program's externs: `open`, for a queue factory such as `verdicts`, gives the queue of a key of type `K`, made with `make` the first time; `send` and `receive` use that queue's inbox. A mock's target must name a function, so the test mocks the program's externs with them itself:
+
+```python statements
+const verdictQueues = FakeQueue<Queue<Verdict>, Verdict>{make: handle}
+fn _ = mock(verdicts, verdictQueues.open)
+fn _ = mock(receive, verdictQueues.receive)
+verdictQueues.post("p1", Verdict{role: "legal", ok: true, comment: ""})
+```
+
+For the test, `pending(key)` gives the messages waiting in a key's queue, oldest first, `post(key, msg)` sends one into it, and `sendRevertible(queue, msg)` sends one revertibly, for a program's own revertible send to answer with.
 
 **Driving an instance.** `testing.start(f, args…)` starts `f` as a new instance and returns a `Started<R>`, `R` being what `f` returns, or the `T` of an async `f`'s `Future<T>`. `f` and its arguments follow `spawn`'s rules (§9): `f` is any value of a sendable function type, and the arguments, up to six, are copied into the new instance, which exists once the test's segment commits.
 
@@ -1291,7 +1300,9 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
 
 **Waypoints.** `@Waypoint{"approval"}` on a statement that awaits gives that suspension point a name, for `reaches` and `waitingAt`, and for the host's operator view, which can show an instance as waiting at `approval`.
 
-**Failures.** The library's `assert` and `assertEq` panic on failure, and a panic in the test or in an instance it started fails the test at once, with that instance's message and trace. `expectPanic(f)` passes only if `f` panics.
+**Failures.** The library's `assert` and `assertEq` panic on failure, and a panic in the test or in an instance it started fails the test at once, with that instance's message and trace. `assert(condition)` and `assert(condition, message)` take a `bool`; `assertEq(actual, expected)` takes any `Encodable` type, every struct, enum and tuple deriving it (§9), and its message shows both as JSON: `expected "expired", found "approved"`. Other values are compared with `assert(a == b)`.
+
+`await expectPanic(f)` passes only if `f` panics, and gives the panic's message. A panic freezes the instance it happens in (§5), so `f`, a plain or `async` function taking nothing, runs as an instance of its own, following `start`'s rules; that panic doesn't fail the test, since the test waits for it. `expectPanic` panics when `f` returns instead.
 
 **Built in versus library.** The runtime provides the `@Suite` runner with a fresh instance per test, `mock` and `Mock<F>`, `time.at`, `testing.handle<T>()`, `testing.start`, `testing.startCrashingEveryAwait` and their members, and the panic capture behind failures. Everything else is written in the language: `test`, `group`, `skip`, `only`, `Setup` and `setups`, `FakeClock`, `FakeQueue`, the assertions and `delay`.
 

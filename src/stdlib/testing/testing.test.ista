@@ -1,0 +1,175 @@
+# The test library (spec §10): building tests, setups, assertions, expectPanic and the fakes.
+#
+# `only` would skip every other test of the run, the whole standard library's, so the focus the
+# constructors give is read from the tests they build; the runner's own tests run focused tests.
+
+import Suite, Test, test, group, skip, only, Setup, setups, assert, assertEq, expectPanic from 'testing'
+import FakeClock, FakeQueue, mock, handle from 'testing'
+import * as testing from 'testing'
+import * as time from 'time'
+import Time, Duration from 'time'
+import Encodable, Decodable from 'json'
+
+extern sendable struct Queue<T is Sendable>
+extern fn send<T is Encodable>(self: Queue<T>, msg: T)
+extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>
+extern fn queueOf(name: string) -> Queue<int>
+
+shared struct Log:
+  lines: Array<string> = []
+
+# A setup handing `value` to its test, logging around it in `log`.
+fn logged(log: Log, value: int) -> Setup<int>:
+  async fn(body: async fn(int) -> unit): {
+    log->lines.push("prepare " + value)
+    await body(value)
+    log->lines.push("tear down " + value)
+  }
+
+async fn withFortyOne(body: async fn(int) -> unit):
+  await body(41)
+
+# The title and focus of `entry`, as the runner reads them.
+fn described(entry: Test) -> string:
+  match entry:
+    case Case{title, focus}:
+      title + " " + named(focus)
+    case Group{title, focus}:
+      title + " " + named(focus)
+
+fn named(focus: testing.Focus) -> string:
+  match focus:
+    case Plain: "plain"
+    case Skipped: "skipped"
+    case Only: "only"
+
+async fn panicsLater() -> Future<unit>:
+  await time.delay(Duration{value: 0})
+  panic("later")
+
+async fn waitsAday() -> Future<int>:
+  await time.delay(Duration{value: 86_400_000})
+  time.now().value
+
+fn sendsToAnother():
+  const fake = FakeQueue<Queue<int>, int>{make: handle}
+  (fake.send)(handle<Queue<int>>(), 1)
+
+# Receives from queue `name`, and sends what it got, plus one, to queue "out".
+async fn relays(name: string) -> Future<int>:
+  const got = await queueOf(name).receive()
+  queueOf("out").send(got + 1)
+  got
+
+@Suite{"testing › tests"}
+fn tests() -> Array<Test>: [
+  test("run a plain body", fn(): assert(true)),
+  test("run an async body", async fn(): await time.delay(Duration{value: 0})),
+  test("hand a setup's environment to a plain body", withFortyOne, fn(n): assertEq(n, 41)),
+  test("hand a setup's environment to an async body", withFortyOne, async fn(n): assertEq(n, 41)),
+  test("are marked by skip and only, as are groups, the last mark winning", fn(): {
+    const plain = test("t", fn(): ())
+    assertEq(described(plain), "t plain")
+    assertEq(described(skip(plain)), "t skipped")
+    assertEq(described(only(plain)), "t only")
+    assertEq(described(skip(only(group("g", [plain])))), "g skipped")
+  }),
+]
+
+@Suite{"testing › setups"}
+fn setupTests() -> Array<Test>: [
+  test("nest the first outermost, handing the test every environment", async fn(): {
+    const log = new Log{}
+    await setups(logged(log, 1), logged(log, 2))(async fn(both: (int, int)): log->lines.push("test " + both.0 + both.1))
+    assertEq(log->lines, ["prepare 1", "prepare 2", "test 12", "tear down 2", "tear down 1"])
+  }),
+  test("join up to six", async fn(): {
+    const log = new Log{}
+    const six = setups(logged(log, 1), logged(log, 2), logged(log, 3), logged(log, 4), logged(log, 5), logged(log, 6))
+    await six(async fn(all: (int, int, int, int, int, int)): assertEq(all, (1, 2, 3, 4, 5, 6)))
+  }),
+]
+
+@Suite{"testing › assertions"}
+fn assertions() -> Array<Test>: [
+  test("assert panics with its message, or a default one", async fn(): {
+    assert(1 < 2)
+    assertEq(await expectPanic(fn(): assert(false)), "The assertion failed.")
+    assertEq(await expectPanic(fn(): assert(1 > 2, "one isn't more")), "one isn't more")
+  }),
+  test("assertEq panics showing both values as JSON", async fn(): {
+    assertEq([1, 2], [1, 2])
+    assertEq(await expectPanic(fn(): assertEq("approved", "expired")), "expected \"expired\", found \"approved\"")
+    assertEq(await expectPanic(fn(): assertEq([1, 2], [1])), "expected [1], found [1,2]")
+  }),
+  test("expectPanic gives the message of a plain or an async function's panic", async fn(): {
+    assertEq(await expectPanic(fn(): panic("now")), "now")
+    assertEq(await expectPanic(panicsLater), "later")
+  }),
+  test("expectPanic panics when the function returns", async fn(): {
+    const message = await expectPanic(async fn(): assertEq(await expectPanic(fn(): 1), ""))
+    assertEq(message, "expectPanic expected a panic, but the function returned.")
+  }),
+]
+
+@Suite{"testing › FakeClock"}
+fn clocks() -> Array<Test>: [
+  test("stands still at its start until advanced", fn(): {
+    const clock = FakeClock{start: Time{value: 7}}
+    fn _ = mock(time.now, clock.now)
+    assertEq(time.now(), Time{value: 7})
+    clock.advance(Duration{value: 3})
+    assertEq(time.now(), Time{value: 10})
+  }),
+  test("fills a deadline once advanced to it, in an instance the test started", async fn(): {
+    const clock = FakeClock{start: Time{value: 0}}
+    fn _ = mock(time.now, clock.now)
+    fn _ = mock(time.at, clock.at)
+    const started = testing.start(waitsAday)
+    await started.idle()
+    clock.advance(Duration{value: 86_399_999})
+    await started.idle()
+    assert(started.state() is Waiting)
+    clock.advance(Duration{value: 1})
+    assertEq(await started.result(), 86_400_000)
+  }),
+  test("resolves a deadline already reached at once", async fn(): {
+    const clock = FakeClock{start: Time{value: 5}}
+    fn _ = mock(time.at, clock.at)
+    await time.at(Time{value: 5})
+    await time.at(Time{value: 1})
+  }),
+  test("panics when advanced by a negative duration", async fn(): {
+    const message = await expectPanic(fn(): FakeClock{start: Time{value: 0}}.advance(Duration{value: -1}))
+    assertEq(message, "A fake clock only moves forward, not by " + Duration{value: -1} + ".")
+  }),
+]
+
+@Suite{"testing › FakeQueue"}
+fn queues() -> Array<Test>: [
+  test("opens one queue per key, with an inbox behind each", async fn(): {
+    const fake = FakeQueue<Queue<int>, int>{make: handle}
+    fn _ = mock(queueOf, fake.open)
+    fn _ = mock(send, fake.send)
+    fn _ = mock(receive, fake.receive)
+    assert(queueOf("in") == queueOf("in") and queueOf("in") != queueOf("out"))
+    const started = testing.start(relays, "in")
+    await started.idle()
+    assertEq(fake.pending("in"), [])
+    fake.post("in", 41)
+    assertEq(await started.result(), 41)
+    assertEq(fake.pending("out"), [42])
+  }),
+  test("retracts a revertible send once its holder lets go", fn(): {
+    const fake = FakeQueue<Queue<int>, int>{make: handle}
+    const held = fake.sendRevertible(fake.open("a"), 1)
+    fake.post("a", 2)
+    assertEq(fake.pending("a"), [1, 2])
+    drop held
+    assertEq(fake.pending("a"), [2])
+  }),
+  test("panics given a queue it didn't open", async fn(): {
+    const message = await expectPanic(sendsToAnother)
+    assertEq(message, "This FakeQueue didn't open the queue it was given.")
+  }),
+]

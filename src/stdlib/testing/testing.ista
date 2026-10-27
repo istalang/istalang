@@ -1,14 +1,25 @@
-# The testing module (spec §10): suites, mocks, started instances and host handles.
+# The testing module (spec §10): suites, mocks, started instances and host handles, and the test
+# library over them.
 #
 # Only test modules may import it (§10), so production code can never install a mock. The runtime
-# provides mocks, started instances and handles through externs; the rest is written here.
+# provides mocks, started instances, handles and the wait for a panic through externs; the rest is
+# written here.
 #
 # The language has no variadic generics, so a function over any function type is one overload per
-# arity, up to six, each for plain and async functions: `mock`, `calls` and `start` are those
-# overloads, one line each, over one extern of their own.
+# arity, up to six, each for plain and async functions: `mock`, `calls`, `start` and `setups` are
+# those overloads, one line each, over one function of their own.
 #
 # `ista test` lists and runs a suite's tests through `_list` and `_run`, the one place a suite's
 # tests are flattened, so the listing and each test's own instance (§10) walk the same list.
+#
+# The fakes' fields are functions, since a mock's replacement is a function value and a method
+# isn't one: `mock(time.now, clock.now)`. A field default sees the fields before it, so each fake
+# is built as a literal, and its state is a shared struct its copies share.
+
+import * as json from 'json'
+import Encodable from 'json'
+import Inbox, Revertible from 'inbox'
+import Time, Duration from 'time'
 
 # Marks a function returning a suite's tests: `@Suite{"purchase approval"}`.
 struct Suite:
@@ -157,5 +168,157 @@ extern fn state<R>(self: Started<R>) -> InstanceState
 # Resolves with the instance's outcome when it finishes.
 extern fn result<R>(self: Started<R>) -> Future<R>
 
+# Resolves with the message the instance panics with. A panic waited for so fails no test.
+extern fn _panicked<R>(self: Started<R>) -> Future<string>
+
 # A value of extern type `T` equal to no other, for mocks that must return one (§10).
 extern fn handle<T>() -> T
+
+# A test of `body`, run in an instance of its own (§10).
+fn test(title: string, body: async fn() -> unit) -> Test: Case{title, body, focus: Plain}
+fn test(title: string, body: fn() -> unit) -> Test: test(title, async fn(): body())
+
+# A test of `body`, run inside the environment `setup` prepares (§10).
+fn test<E>(title: string, setup: Setup<E>, body: async fn(E) -> unit) -> Test:
+  test(title, async fn(): await setup(body))
+fn test<E>(title: string, setup: Setup<E>, body: fn(E) -> unit) -> Test:
+  test(title, setup, async fn(environment: E): body(environment))
+
+fn group(title: string, tests: Array<Test>) -> Test: Group{title, tests, focus: Plain}
+
+# `entry`, reported but not run (§10).
+fn skip(entry: Test) -> Test: _focused(entry, Skipped)
+
+# `entry`, which runs while every test of the run that isn't focused so is skipped (§10).
+fn only(entry: Test) -> Test: _focused(entry, Only)
+
+fn _focused(entry: Test, focus: Focus) -> Test:
+  match entry:
+    case Case{title, body}:
+      Case{title, body, focus}
+    case Group{title, tests}:
+      Group{title, tests, focus}
+
+# An environment for tests (§10): prepares it, runs the test inside it, and tears it down after.
+type Setup<E> = async fn(async fn(E) -> unit) -> unit
+
+# Several environments as one (§10): the first outermost, the test receiving them as a tuple.
+fn setups<A, B>(a: Setup<A>, b: Setup<B>) -> Setup<(A, B)>: _joined(a, b, fn(x: A, y: B): (x, y))
+fn setups<A, B, C>(a: Setup<A>, b: Setup<B>, c: Setup<C>) -> Setup<(A, B, C)>:
+  _joined(setups(a, b), c, fn(p: (A, B), z: C): (p.0, p.1, z))
+fn setups<A, B, C, D>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>) -> Setup<(A, B, C, D)>:
+  _joined(setups(a, b, c), d, fn(p: (A, B, C), z: D): (p.0, p.1, p.2, z))
+fn setups<A, B, C, D, E>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>, e: Setup<E>) -> Setup<(A, B, C, D, E)>:
+  _joined(setups(a, b, c, d), e, fn(p: (A, B, C, D), z: E): (p.0, p.1, p.2, p.3, z))
+fn setups<A, B, C, D, E, G>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>, e: Setup<E>, g: Setup<G>) -> Setup<(A, B, C, D, E, G)>:
+  _joined(setups(a, b, c, d, e), g, fn(p: (A, B, C, D, E), z: G): (p.0, p.1, p.2, p.3, p.4, z))
+
+# `outer` around `inner`, the test receiving their environments as `join` makes one of them.
+fn _joined<O, I, J>(outer: Setup<O>, inner: Setup<I>, join: fn(O, I) -> J) -> Setup<J>:
+  async fn(body: async fn(J) -> unit): await outer(async fn(o: O): await inner(async fn(i: I): await body(join(o, i))))
+
+# Panics unless `condition` holds (§10).
+fn assert(condition: bool): assert(condition, "The assertion failed.")
+fn assert(condition: bool, message: string):
+  if not condition:
+    panic(message)
+
+# Panics unless `actual` equals `expected`, showing both as JSON (§10).
+fn assertEq<T is Encodable>(actual: T, expected: T):
+  if actual != expected:
+    panic("expected " + json.stringify(expected) + ", found " + json.stringify(actual))
+
+# Runs `f` as an instance of its own, since a panic freezes the instance it happens in (§5): the
+# message it panics with. Panics if `f` returns instead (§10).
+async fn expectPanic<R is Sendable>(f: sendable fn() -> R) -> Future<string>: await _panicOf(start(f))
+async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<string>: await _panicOf(start(f))
+
+async fn _panicOf<R>(started: Started<R>) -> Future<string>:
+  await select:
+    case _panicked(started) as message:
+      message
+    case started.result():
+      panic("expectPanic expected a panic, but the function returned.")
+
+# A clock standing still at `start` until `advance` moves it (§10): `now` and `at` replace
+# `time.now` and `time.at`.
+struct FakeClock:
+  start: Time
+  _state: _Clock = new _Clock{now: start}
+  now: fn() -> Time = fn(): _state->now
+  at: fn(Time) -> Future<unit> = fn(deadline: Time): _waitUntil(_state, deadline)
+
+# A fake clock's time, and the waits it fills as it passes their deadlines: ordered by deadline,
+# ties in the order they began, so it fills them in that order.
+shared struct _Clock:
+  now: Time
+  waits: Array<_Wait> = []
+
+struct _Wait:
+  deadline: Time
+  slot: Slot<unit>
+
+fn _waitUntil(clock: _Clock, deadline: Time) -> Future<unit>:
+  const slot = Slot.create<unit>()
+  if deadline.value <= clock->now.value:
+    drop slot.put(())
+  else:
+    const sooner = [for each in clock->waits if each.deadline.value <= deadline.value: each]
+    const later = [for each in clock->waits if each.deadline.value > deadline.value: each]
+    clock->waits = [...sooner, _Wait{deadline, slot}, ...later]
+  slot.take()
+
+# Moves the clock forward by `by`, filling every wait whose deadline it passes (§10).
+fn advance(self: FakeClock, by: Duration):
+  if by.value < 0:
+    panic("A fake clock only moves forward, not by " + by + ".")
+  const clock = self._state
+  clock->now = clock->now + by
+  const due = [for each in clock->waits if each.deadline.value <= clock->now.value: each]
+  clock->waits = clock->waits[due.length()..]
+  for each in due:
+    drop each.slot.put(())
+
+# A host's queues of type `Q` carrying `T`, one per key, each faked with an inbox (§10). Its fields
+# replace the program's externs: `open` a queue factory, `send` and `receive` a queue's own.
+struct FakeQueue<Q, T, K = string>:
+  make: fn() -> Q
+  _queues: _Queues<Q, T, K> = new _Queues<Q, T, K>{}
+  open: fn(K) -> Q = fn(key: K): _opened(_queues, make, key).queue
+  send: fn(Q, T) -> unit = fn(queue: Q, message: T): _inboxOf(_queues, queue).send(message)
+  receive: fn(Q) -> Future<T> = fn(queue: Q): _inboxOf(_queues, queue).receive()
+
+shared struct _Queues<Q, T, K>:
+  opened: Array<_Queue<Q, T, K>> = []
+
+struct _Queue<Q, T, K>:
+  key: K
+  queue: Q
+  inbox: Inbox<T>
+
+# The messages waiting in the queue of `key`, oldest first.
+fn pending<Q, T, K>(self: FakeQueue<Q, T, K>, key: K) -> Array<T>:
+  _opened(self._queues, self.make, key).inbox.pending()
+
+# Sends `message` into the queue of `key`.
+fn post<Q, T, K>(self: FakeQueue<Q, T, K>, key: K, message: T):
+  _opened(self._queues, self.make, key).inbox.send(message)
+
+# Sends `message` into `queue` revertibly, for a program's own revertible send to answer with.
+fn sendRevertible<Q, T, K>(self: FakeQueue<Q, T, K>, queue: Q, message: T) -> Revertible<T>:
+  _inboxOf(self._queues, queue).sendRevertible(message)
+
+# The queue of `key`, made the first time.
+fn _opened<Q, T, K>(queues: _Queues<Q, T, K>, make: fn() -> Q, key: K) -> _Queue<Q, T, K>:
+  for each in queues->opened:
+    if each.key == key:
+      return each
+  const made = _Queue{key, queue: make(), inbox: Inbox.create<T>()}
+  queues->opened.push(made)
+  made
+
+fn _inboxOf<Q, T, K>(queues: _Queues<Q, T, K>, queue: Q) -> Inbox<T>:
+  for each in queues->opened:
+    if each.queue == queue:
+      return each.inbox
+  panic("This FakeQueue didn't open the queue it was given.")

@@ -11,10 +11,6 @@ import { renderDiagnostic } from '../../diagnostics/render.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { runTests, type TestReport } from './run-tests.ts';
 
-/** A suite's case built in the language, as the test library will (`test(title, body)`). */
-export const caseHelper =
-  'fn testCase(title: string, body: async fn() -> unit) -> Test: Case{title, body, focus: Plain}';
-
 export interface ReportsOptions {
   readonly filter?: string;
   /** How long a test may run, in milliseconds of the manual clock. */

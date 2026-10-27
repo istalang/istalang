@@ -4,16 +4,15 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { caseHelper, outcomesOf, reportsOf } from './testing.test-kit.ts';
+import { outcomesOf, reportsOf } from './testing.test-kit.ts';
 
-/** A test module: the imports every program here uses, the case helper, then `body`. */
+/** A test module: the imports every program here uses, then `body`. */
 function testModule(body: string): string {
   return [
-    "import Suite, Test, mock, calls, handle from 'testing'",
+    "import Suite, Test, test, group, skip, only, assertEq, FakeClock, mock, calls, handle from 'testing'",
     "import * as testing from 'testing'",
     "import * as time from 'time'",
     "import Time, Duration from 'time'",
-    caseHelper,
     body,
   ].join('\n');
 }
@@ -29,13 +28,13 @@ async fn fails() -> Future<unit>:
 
 @Suite{"first"}
 fn first() -> Array<Test>: [
-  testCase("passes", passes),
-  Group{title: "group", tests: [testCase("fails", fails)], focus: Plain},
-  Case{title: "skipped", body: fails, focus: Skipped},
+  test("passes", passes),
+  group("group", [test("fails", fails)]),
+  skip(test("skipped", fails)),
 ]
 
 @Suite{"second"}
-fn second() -> Array<Test>: [Group{title: "all", tests: [testCase("inherits", fails)], focus: Skipped}]
+fn second() -> Array<Test>: [skip(group("all", [test("inherits", fails)]))]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual([
       'first › passes: passed',
@@ -51,10 +50,10 @@ async fn passes():
   ()
 
 @Suite{"one"}
-fn one() -> Array<Test>: [testCase("a", passes), Case{title: "b", body: passes, focus: Only}]
+fn one() -> Array<Test>: [test("a", passes), only(test("b", passes))]
 
 @Suite{"two"}
-fn two() -> Array<Test>: [Group{title: "g", tests: [testCase("c", passes)], focus: Only}, testCase("d", passes)]
+fn two() -> Array<Test>: [only(group("g", [test("c", passes)])), test("d", passes)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual([
       'one › a: skipped',
@@ -73,7 +72,7 @@ async fn passes():
 fn title() -> string: "at " + time.now().value
 
 @Suite{"changing"}
-fn changing() -> Array<Test>: [testCase(title(), passes)]
+fn changing() -> Array<Test>: [test(title(), passes)]
 `);
     const [report] = reportsOf(source, { tick: (before) => before + 1n });
     expect(report?.outcome).toMatchObject({ kind: 'failed' });
@@ -123,7 +122,7 @@ async fn everywhere():
     panic("calls: " + charged.calls().length())
 
 @Suite{"mocks"}
-fn mocks() -> Array<Test>: [testCase("everywhere", everywhere)]
+fn mocks() -> Array<Test>: [test("everywhere", everywhere)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual(['mocks › everywhere: passed']);
   });
@@ -154,7 +153,7 @@ async fn recorded():
     panic("calls aren't recorded by arity")
 
 @Suite{"holders"}
-fn holders() -> Array<Test>: [testCase("released", released), testCase("recorded", recorded)]
+fn holders() -> Array<Test>: [test("released", released), test("recorded", recorded)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual([
       'holders › released: passed',
@@ -179,7 +178,7 @@ async fn breaking():
   drop await testing.start(describes).result()
 
 @Suite{"replacements"}
-fn suite() -> Array<Test>: [testCase("native", native), testCase("breaking", breaking)]
+fn suite() -> Array<Test>: [test("native", native), test("breaking", breaking)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual([
       'replacements › native: passed',
@@ -200,7 +199,7 @@ async fn unmocked():
     panic("an earlier test's mock reached this one")
 
 @Suite{"isolated"}
-fn isolated() -> Array<Test>: [testCase("fails", failsMocked), testCase("next", unmocked)]
+fn isolated() -> Array<Test>: [test("fails", failsMocked), test("next", unmocked)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual([
       'isolated › fails: failed: failed',
@@ -229,9 +228,38 @@ async fn watched():
     panic("expected it finished")
 
 @Suite{"watches"}
-fn watches() -> Array<Test>: [testCase("watched", watched)]
+fn watches() -> Array<Test>: [test("watched", watched)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual(['watches › watched: passed']);
+  });
+
+  it("aren't idle while a segment of theirs calls the test's mocks", () => {
+    const source = testModule(`
+fn first() -> int: 1
+fn second() -> int: 2
+
+async fn wakesAndCalls():
+  await time.delay(1s)
+  drop first()
+  drop second()
+  await time.delay(1s)
+
+async fn idleAfterCalls():
+  const clock = FakeClock{start: Time{value: 0}}
+  fn _ = mock(time.now, clock.now)
+  fn _ = mock(time.at, clock.at)
+  fn _ = mock(first, fn(): 10)
+  const seconds = mock(second, fn(): 20)
+  const started = testing.start(wakesAndCalls)
+  await started.idle()
+  clock.advance(1s)
+  await started.idle()
+  assertEq(seconds.calls().length(), 1)
+
+@Suite{"idle"}
+fn suite() -> Array<Test>: [test("after calls", idleAfterCalls)]
+`);
+    expect(outcomesOf(reportsOf(source))).toEqual(['idle › after calls: passed']);
   });
 
   it('fail the test at once when one panics, naming the instance', () => {
@@ -244,7 +272,7 @@ async fn starts():
   await time.delay(1s)
 
 @Suite{"panics"}
-fn panics() -> Array<Test>: [testCase("starts", starts)]
+fn panics() -> Array<Test>: [test("starts", starts)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual([
       'panics › starts: failed: Instance test/1 panicked: broken',
@@ -267,7 +295,7 @@ async fn crashing():
     panic("ran its first segment " + effects.calls().length() + " times")
 
 @Suite{"crash"}
-fn crash() -> Array<Test>: [testCase("crashing", crashing)]
+fn crash() -> Array<Test>: [test("crashing", crashing)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual(['crash › crashing: passed']);
   });
@@ -293,7 +321,7 @@ async fn handles():
     panic("the handle didn't come back the same")
 
 @Suite{"handles"}
-fn suite() -> Array<Test>: [testCase("handles", handles)]
+fn suite() -> Array<Test>: [test("handles", handles)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual(['handles › handles: passed']);
   });
@@ -323,7 +351,7 @@ async fn mockedDispose():
     panic("the started instance's disposal didn't reach the mock with the same handle")
 
 @Suite{"disposal"}
-fn suite() -> Array<Test>: [testCase("unmocked", unmockedDispose), testCase("mocked", mockedDispose)]
+fn suite() -> Array<Test>: [test("unmocked", unmockedDispose), test("mocked", mockedDispose)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual([
       'disposal › unmocked: passed',
@@ -349,7 +377,7 @@ async fn handedOut():
     panic("disposed " + disposed.calls().length() + " times")
 
 @Suite{"ownership"}
-fn suite() -> Array<Test>: [testCase("handed out", handedOut)]
+fn suite() -> Array<Test>: [test("handed out", handedOut)]
 `);
     expect(outcomesOf(reportsOf(source))).toEqual(['ownership › handed out: passed']);
   });
@@ -370,7 +398,7 @@ async fn tooLong():
   await time.delay(10s)
 
 @Suite{"failing"}
-fn failing() -> Array<Test>: [testCase("unmocked", unmocked), testCase("forever", forever), testCase("long", tooLong)]
+fn failing() -> Array<Test>: [test("unmocked", unmocked), test("forever", forever), test("long", tooLong)]
 `);
     const messages = reportsOf(source, { timeout: 1000n }).map(({ outcome }) =>
       outcome.kind === 'failed' ? outcome.message : outcome.kind,

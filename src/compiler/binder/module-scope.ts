@@ -42,7 +42,7 @@ export interface ModuleScope {
   readonly variants: ReadonlyMap<EnumDeclaration, ReadonlyMap<string, VariantEntity>>;
   readonly exports: ReadonlyMap<string, Entity>;
   /** The module's own declarations its exports leave out because a leading `_` keeps them private. */
-  readonly privateNames: ReadonlySet<string>;
+  readonly privates: ReadonlyMap<string, Entity>;
 }
 
 type Origin = 'import' | 'declaration';
@@ -153,18 +153,15 @@ function clashRule(previous: Origin | undefined, current: Origin) {
  */
 function ownNames(
   topLevel: ReadonlyMap<string, TopLevelName>,
-): Pick<ModuleScope, 'exports' | 'privateNames'> {
+): Pick<ModuleScope, 'exports' | 'privates'> {
   const exports = new Map<string, Entity>();
-  const privateNames = new Set<string>();
+  const privates = new Map<string, Entity>();
   for (const [text, { entity }] of topLevel) {
-    const isOwn = entity.kind !== 'import' && entity.kind !== 'namespace';
-    if (isOwn && isPrivate(text)) {
-      privateNames.add(text);
-    } else if (isOwn) {
-      exports.set(text, entity);
+    if (entity.kind !== 'import' && entity.kind !== 'namespace') {
+      (isPrivate(text) ? privates : exports).set(text, entity);
     }
   }
-  return { exports, privateNames };
+  return { exports, privates };
 }
 
 /** A set per name of the top-level functions; static functions belong to their type instead. */

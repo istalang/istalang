@@ -1,0 +1,24 @@
+# The inbox module's `pending` (spec §6); the rest of the module is the corpus's.
+
+import Suite, Test, test, assertEq from 'testing'
+import Inbox from 'inbox'
+
+@Suite{"inbox › pending"}
+fn pending() -> Array<Test>: [
+  test("gives the waiting messages, oldest first, without receiving them", async fn(): {
+    const box = Inbox.create<int>()
+    assertEq(box.pending(), [])
+    box.send(1)
+    box.send(2)
+    assertEq(box.pending(), [1, 2])
+    assertEq(await box.receive(), 1)
+    assertEq(box.pending(), [2])
+  }),
+  test("leaves out a retracted message", fn(): {
+    const box = Inbox.create<int>()
+    const held = box.sendRevertible(1)
+    box.send(2)
+    drop held
+    assertEq(box.pending(), [2])
+  }),
+]

@@ -6,14 +6,17 @@
  * - Instances run one at a time, each advanced from its last commit: what one reads of another is
  *   that one's last commit, as a host would see it. An instance calling a mock another holds runs
  *   the holder's replacement inside its own segment (scheduler/mocks.ts); the answers the holder
- *   gives later are filled in once the caller's advance is over, as a host fills a future.
+ *   gives later are filled in once the caller's advance is over, as a host fills a future. The
+ *   holder may run on meanwhile, and sees the caller neither idle nor at a waypoint, since the
+ *   caller's segment hasn't committed.
  * - Each pass runs what can run now: answers to deliver, ready instances, then instances whose
  *   watches hold. When nothing can, the world waits for the earliest timer, on real time unless
  *   the test mocked it (§10), and that wait is the caller's to make, as `settle` leaves it
  *   (runtime/settle.ts), so the runtime never sleeps. A wait past the deadline ends the test.
  * - The test ends when its own instance finishes, or when any instance panics, which fails it at
- *   once with that panic (§10). One whose instances all wait on nothing left to wake them fails,
- *   naming where each waits.
+ *   once with that panic (§10), unless an instance waits for that panic (`expectPanic`). Such a
+ *   wait ends once it is answered, so the world remembers each panic waited for as it records it.
+ *   One whose instances all wait on nothing left to wake them fails, naming where each waits.
  * - An extern no mock replaces panics the instance calling it: a test's only host is its mocks.
  */
 
@@ -67,6 +70,10 @@ export class World implements TestWorld {
   readonly #arrivals: Answered[] = [];
   readonly #read = new Map<string, { readonly text: string; readonly snapshot: Snapshot }>();
   readonly #mocks = new WeakMap<Snapshot, ReadonlyMap<FunctionId, number>>();
+  /** The instances in a segment that waits on a mock another instance is answering. */
+  readonly #calling = new Set<string>();
+  /** The instances whose panic some instance waited for, which therefore fails no test. */
+  readonly #expectedPanics = new Set<string>();
   #handles = 0;
 
   constructor({ definition, hash, natives, now, deadline }: WorldSeams) {
@@ -117,7 +124,13 @@ export class World implements TestWorld {
     if (snapshot?.status.kind !== 'active') {
       return { kind: 'failed' };
     }
-    const advanced = advance(this.#seams, this.#loaded, snapshot, { answering: call });
+    this.#calling.add(call.instance);
+    let advanced: Advance;
+    try {
+      advanced = advance(this.#seams, this.#loaded, snapshot, { answering: call });
+    } finally {
+      this.#calling.delete(call.instance);
+    }
     const given = advanced.answered.find(
       ({ instance, token }) => instance === call.instance && token === call.token,
     );
@@ -134,14 +147,19 @@ export class World implements TestWorld {
   readonly watched = (watch: Watch): Value | undefined => {
     const snapshot = this.#snapshotOf(watch.instance);
     const status = snapshot?.status.kind;
+    // A segment of the instance running on has done more than its last commit says.
+    const settled = !this.#calling.has(watch.instance);
     switch (watch.until.kind) {
       case 'idle':
-        return status === 'active' || status === 'finished' ? null : undefined;
+        return settled && (status === 'active' || status === 'finished') ? null : undefined;
       case 'finished':
         return snapshot?.status.kind === 'finished' ? snapshot.status.outcome : undefined;
+      case 'panicked':
+        return snapshot?.status.kind === 'panicked' ? snapshot.status.message : undefined;
       case 'waypoint': {
         const { label } = watch.until;
         const waits =
+          settled &&
           snapshot !== undefined &&
           status === 'active' &&
           inspection(this.#loaded.definition, snapshot).waitingAt.some(
@@ -204,12 +222,28 @@ export class World implements TestWorld {
   #record(instance: string, advanced: Advance): void {
     this.#group.record(instance, advanced);
     this.#arrivals.push(...advanced.answered);
+    if (advanced.state.kind === 'panicked' && this.#waitsForPanicOf(instance)) {
+      this.#expectedPanics.add(instance);
+    }
+  }
+
+  /** Whether some instance's last commit waits for `instance` to panic. */
+  #waitsForPanicOf(instance: string): boolean {
+    return [...this.#group.states.keys()].some((watcher) =>
+      this.#snapshotOf(watcher)?.objects.some(
+        (object) =>
+          object.kind === 'future' &&
+          object.state.kind === 'watch' &&
+          object.state.instance === instance &&
+          object.state.until.kind === 'panicked',
+      ),
+    );
   }
 
   /** How the test ended, if it has: its instance finished, or some instance panicked. */
   #ended(): Ended | undefined {
     for (const [instance, state] of this.#group.states) {
-      if (state.kind === 'panicked') {
+      if (state.kind === 'panicked' && !this.#expectedPanics.has(instance)) {
         const message =
           instance === testInstance
             ? state.message
