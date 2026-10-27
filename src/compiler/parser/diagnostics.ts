@@ -18,9 +18,10 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2002,
     message: (open: string, close: string) => `This '${open}' is never closed by a '${close}'.`,
   },
-  mixedCoalesce: {
+  mixedOperators: {
     code: 2003,
-    message: () => "'??' can't be mixed with 'and' or 'or' without parentheses.",
+    message: (operator: string, operand: string) =>
+      `'${operator}' can't be mixed with '${operand}' without parentheses.`,
   },
   misplacedReference: {
     code: 2004,

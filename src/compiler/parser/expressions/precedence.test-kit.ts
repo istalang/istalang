@@ -3,9 +3,9 @@
  *
  * Both printers read their levels from syntax/operators.ts, the table the parser uses:
  * - The full printer parenthesizes every operator.
- * - The minimal printer parenthesizes only where the table requires it. Besides levels, it knows
- *   two grammar rules: `??` operands that are `and`/`or` need parentheses (§3.9), and
- *   `name < name > (…)` reads as a generic call (§3.5), so its comparison is wrapped.
+ * - The minimal printer parenthesizes only where the table requires it: levels, associativity and
+ *   the operands an operator refuses without parentheses (§3.9). Besides the table, it knows one
+ *   grammar rule: `name < name > (…)` reads as a generic call (§3.5), so its comparison is wrapped.
  * `shapeOf` turns a parsed expression back into a tree, ignoring parentheses, so the printed text
  * can be compared with the tree it came from.
  */
@@ -14,13 +14,24 @@ import fc from 'fast-check';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
-  binaryOperatorLevels,
+  type BinaryOperatorEntry,
+  binaryOperators,
   bindingPower,
   operatorLevels,
   type PrecedenceLevel,
+  rightOperandLevel,
+  tighterLevel,
+  type UnaryOperator,
+  unaryOperators,
 } from '../../syntax/operators.ts';
 
-type Prefix = '-' | '*' | 'not' | 'await';
+type Prefix = UnaryOperator | '*' | 'await';
+
+const prefixes: readonly Prefix[] = [
+  ...(Object.keys(unaryOperators) as UnaryOperator[]),
+  '*',
+  'await',
+];
 
 export type OperatorTree =
   | { readonly atom: string }
@@ -29,7 +40,7 @@ export type OperatorTree =
   | { readonly range: boolean; readonly start: OperatorTree; readonly end: OperatorTree }
   | { readonly isSubject: OperatorTree };
 
-const binaryOperators = Object.keys(binaryOperatorLevels) as BinaryOperator[];
+const binaryOperatorList = Object.keys(binaryOperators) as BinaryOperator[];
 
 export const operatorTree: fc.Arbitrary<OperatorTree> = fc.letrec<{ tree: OperatorTree }>(
   (tie) => ({
@@ -37,12 +48,12 @@ export const operatorTree: fc.Arbitrary<OperatorTree> = fc.letrec<{ tree: Operat
       { depthSize: 'small', withCrossShrink: true },
       fc.constantFrom('a', 'b', 'c', 'd', '1', '2').map((atom) => ({ atom })),
       fc.record({
-        binary: fc.constantFrom(...binaryOperators),
+        binary: fc.constantFrom(...binaryOperatorList),
         left: tie('tree'),
         right: tie('tree'),
       }),
       fc.record({
-        prefix: fc.constantFrom<Prefix>('-', '*', 'not', 'await'),
+        prefix: fc.constantFrom(...prefixes),
         operand: tie('tree'),
       }),
       fc.record({ range: fc.boolean(), start: tie('tree'), end: tie('tree') }),
@@ -53,10 +64,10 @@ export const operatorTree: fc.Arbitrary<OperatorTree> = fc.letrec<{ tree: Operat
 
 function levelOf(tree: OperatorTree): PrecedenceLevel {
   if ('binary' in tree) {
-    return binaryOperatorLevels[tree.binary];
+    return binaryOperators[tree.binary].level;
   }
   if ('prefix' in tree) {
-    return tree.prefix === 'not' ? operatorLevels.not : operatorLevels.unaryMinus;
+    return prefixLevel(tree.prefix);
   }
   if ('range' in tree) {
     return operatorLevels.range;
@@ -64,8 +75,21 @@ function levelOf(tree: OperatorTree): PrecedenceLevel {
   return 'isSubject' in tree ? operatorLevels.is : 'postfix';
 }
 
+function prefixLevel(prefix: Prefix): PrecedenceLevel {
+  switch (prefix) {
+    case '*':
+      return operatorLevels.dereference;
+    case 'await':
+      return operatorLevels.await;
+    default:
+      return unaryOperators[prefix].level;
+  }
+}
+
+const wordOperator = /^\w/u;
+
 function prefixText(prefix: Prefix): string {
-  return prefix === '-' || prefix === '*' ? prefix : `${prefix} `;
+  return wordOperator.test(prefix) ? `${prefix} ` : prefix;
 }
 
 function rangeText(isInclusive: boolean): string {
@@ -90,29 +114,24 @@ export function printFull(tree: OperatorTree): string {
 }
 
 /**
- * Prints `child`, in parentheses when it binds looser than `level` (or as loose, if `strict`), or
- * when a grammar rule demands them (`mustGroup`).
+ * Prints `child`, in parentheses when it binds looser than `minLevel`, the level its position
+ * parses at, or when a grammar rule demands them (`mustGroup`).
  */
-function operand(
-  child: OperatorTree,
-  level: PrecedenceLevel,
-  strict: boolean,
-  mustGroup = false,
-): string {
+function operand(child: OperatorTree, minLevel: PrecedenceLevel, mustGroup = false): string {
   const text = printMinimal(child);
-  const childPower = bindingPower(levelOf(child));
-  const looser = strict ? childPower <= bindingPower(level) : childPower < bindingPower(level);
+  const looser = bindingPower(levelOf(child)) < bindingPower(minLevel);
   return looser || mustGroup ? `(${text})` : text;
 }
 
 const genericLookalike = /[A-Za-z_]\w* < [A-Za-z_]\w*$/u;
 
 function printBinary(tree: Extract<OperatorTree, { binary: BinaryOperator }>): string {
-  const level = binaryOperatorLevels[tree.binary];
-  const isLogicUnderCoalesce = (child: OperatorTree) =>
-    tree.binary === '??' && 'binary' in child && (child.binary === 'and' || child.binary === 'or');
-  let left = operand(tree.left, level, false, isLogicUnderCoalesce(tree.left));
-  const right = operand(tree.right, level, true, isLogicUnderCoalesce(tree.right));
+  const entry: BinaryOperatorEntry = binaryOperators[tree.binary];
+  const refused = (child: OperatorTree) =>
+    'binary' in child && (entry.refusesUnparenthesized ?? []).includes(child.binary);
+  const leftLevel = entry.associativity === 'right' ? tighterLevel(entry.level) : entry.level;
+  let left = operand(tree.left, leftLevel, refused(tree.left));
+  const right = operand(tree.right, rightOperandLevel(tree.binary), refused(tree.right));
   if (tree.binary === '>' && right.startsWith('(') && genericLookalike.test(left)) {
     left = `(${left})`;
   }
@@ -128,13 +147,13 @@ export function printMinimal(tree: OperatorTree): string {
     return printBinary(tree);
   }
   if ('prefix' in tree) {
-    return prefixText(tree.prefix) + operand(tree.operand, levelOf(tree), false);
+    return prefixText(tree.prefix) + operand(tree.operand, levelOf(tree));
   }
   if ('range' in tree) {
-    const start = operand(tree.start, operatorLevels.range, false);
-    return start + rangeText(tree.range) + operand(tree.end, operatorLevels.range, true);
+    const start = operand(tree.start, operatorLevels.range);
+    return start + rangeText(tree.range) + operand(tree.end, tighterLevel(operatorLevels.range));
   }
-  return `${operand(tree.isSubject, operatorLevels.is, false)} is P`;
+  return `${operand(tree.isSubject, operatorLevels.is)} is P`;
 }
 
 /** The operator tree an expression denotes, parentheses ignored; other nodes show their kind. */

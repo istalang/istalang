@@ -14,9 +14,11 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
-  binaryOperatorLevels,
+  binaryOperators,
   bindingPower,
   type PrecedenceLevel,
+  type UnaryOperator,
+  unaryOperators,
 } from '../../syntax/operators.ts';
 import type { CursorKind } from '../cursor.ts';
 import type { Parser } from '../parser.ts';
@@ -30,10 +32,9 @@ import {
   parseAwait,
   parseDereference,
   parseMisplacedReference,
-  parseNegation,
-  parseNot,
   parseOpenRange,
   rangeParselet,
+  unaryParselet,
 } from './operators.ts';
 import type { InfixParselet, PrefixParselet } from './parselet.ts';
 import {
@@ -62,9 +63,8 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   fn: parseLambda,
   async: parseLambda,
   struct: parseAnonymousStructLiteral,
-  '-': parseNegation,
+  ...unaryParselets(),
   '*': parseDereference,
-  not: parseNot,
   await: parseAwait,
   '&': parseMisplacedReference,
   '..': parseOpenRange,
@@ -75,8 +75,18 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   select: parseSelect,
 };
 
+/** A parselet per prefix operator of the table in syntax/operators.ts. */
+function unaryParselets(): Record<UnaryOperator, PrefixParselet> {
+  return Object.fromEntries(
+    (Object.keys(unaryOperators) as UnaryOperator[]).map((operator) => [
+      operator,
+      unaryParselet(operator),
+    ]),
+  ) as Record<UnaryOperator, PrefixParselet>;
+}
+
 const binaryParselets = Object.fromEntries(
-  (Object.keys(binaryOperatorLevels) as BinaryOperator[]).map((operator) => [
+  (Object.keys(binaryOperators) as BinaryOperator[]).map((operator) => [
     operator,
     binaryParselet(operator),
   ]),

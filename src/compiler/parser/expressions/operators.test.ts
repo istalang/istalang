@@ -58,12 +58,12 @@ describe('is and ranges', () => {
 });
 
 describe('reports', () => {
-  const { expected, mixedCoalesce, operatorNeedsParentheses } = parserDiagnostics;
+  const { expected, mixedOperators, operatorNeedsParentheses } = parserDiagnostics;
 
   it.each([
-    ['a ?? b or c', mixedCoalesce.code, 'b or c'],
-    ['a or b ?? c', mixedCoalesce.code, 'a or b'],
-    ['a and b ?? c', mixedCoalesce.code, 'a and b'],
+    ['a ?? b or c', mixedOperators.code, 'b or c'],
+    ['a or b ?? c', mixedOperators.code, 'a or b'],
+    ['a and b ?? c', mixedOperators.code, 'a and b'],
     ['a == not b', operatorNeedsParentheses.code, 'not'],
     ['a + ..b', operatorNeedsParentheses.code, '..'],
     ['0..=', expected.code, ''],

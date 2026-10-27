@@ -1,8 +1,9 @@
 /**
  * Operator expressions (§3.9).
  *
- * - Arithmetic, negation and the comparisons call functions (calls/operators.ts); a comparison
- *   is `bool` whatever `compare` returns, since lowering turns its int into the relation.
+ * - An operator's meaning (syntax/operators.ts) decides how it is checked. Arithmetic, negation and
+ *   the orderings call functions (calls/operators.ts); an ordering is `bool` whatever `compare`
+ *   returns, since lowering turns its int into the relation.
  * - `==` and `!=` are built in for every type and can't be overloaded (types/equality.ts). The
  *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
  * - `and`, `or` and `not` take and give `bool`; they short-circuit, so they are never calls.
@@ -10,34 +11,35 @@
  */
 
 import type { Binary, Unary } from '../../syntax/expressions/index.ts';
-import { type Operand, resolveOperator } from '../calls/operators.ts';
+import { binaryOperators } from '../../syntax/operators.ts';
+import { type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { checkEqualSides } from '../types/equality.ts';
-import { boolType, errorType, type Type } from '../types/type.ts';
+import { boolType, type Type } from '../types/type.ts';
 import { checkNullish } from './optionals.ts';
 
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
   const { operator } = node;
-  switch (operator) {
-    case 'and':
-    case 'or':
+  const { meaning } = binaryOperators[operator];
+  switch (meaning.kind) {
+    case 'logic':
       context.expect(node.left, boolType);
       context.expect(node.right, boolType);
       return boolType;
-    case '==':
-    case '!=':
+    case 'equality':
       return checkEquality(context, node);
-    case '??':
+    case 'coalesce':
       return checkNullish(context, node, expected);
-    case '<':
-    case '<=':
-    case '>':
-    case '>=': {
-      const compared = resolveOperator(context, node, operator, operandsOf(context, node));
-      return compared.kind === 'error' ? errorType : boolType;
+    case 'order':
+    case 'call': {
+      const applied = { spelling: operator, function: meaning.function };
+      const result = resolveOperator(context, node, applied, operandsOf(context, node));
+      return meaning.kind === 'call' || result.kind === 'error' ? result : boolType;
     }
-    default:
-      return resolveOperator(context, node, operator, operandsOf(context, node));
+    default: {
+      const unhandled: never = meaning;
+      return unhandled;
+    }
   }
 }
 
@@ -46,7 +48,7 @@ export function checkUnary(context: BodyContext, node: Unary): Type {
     context.expect(node.operand, boolType);
     return boolType;
   }
-  return resolveOperator(context, node, 'negate', [
+  return resolveOperator(context, node, unaryApplied(node.operator), [
     { node: node.operand, type: context.expression(node.operand) },
   ]);
 }

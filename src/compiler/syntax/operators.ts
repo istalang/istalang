@@ -1,10 +1,13 @@
 /**
- * Operator precedence (spec §3.9): fixed by the language, so it lives with the syntax contract.
- * The parser builds its operator tables from it, and the formatter will use it to decide where
- * parentheses are needed.
+ * Operators (spec §3.9) as data: each one's precedence, associativity, what it means, and the
+ * operands it refuses without parentheses. The language fixes them, so they live with the syntax
+ * contract: the parser builds its operator parselets from these tables, the checker and lowering
+ * dispatch on an operator's meaning, and the formatter will decide where parentheses are needed
+ * from the same levels. An operator is spelled once, here.
  *
  * Levels are listed from loosest to tightest, the §3.9 table read bottom-up, so a level's position
- * is its binding power. Operators on one level associate to the left.
+ * is its binding power. Operators on one level associate to the left unless their entry says
+ * otherwise.
  */
 
 import type { TokenKind } from './tokens.ts';
@@ -24,42 +27,94 @@ const precedenceLevels = [
 
 export type PrecedenceLevel = (typeof precedenceLevels)[number];
 
-export const binaryOperatorLevels = {
-  '??': 'coalesce',
-  or: 'or',
-  and: 'and',
-  '<': 'comparison',
-  '<=': 'comparison',
-  '>': 'comparison',
-  '>=': 'comparison',
-  '==': 'comparison',
-  '!=': 'comparison',
-  '+': 'additive',
-  '-': 'additive',
-  '*': 'multiplicative',
-  '/': 'multiplicative',
-  '//': 'multiplicative',
-  '%': 'multiplicative',
-} as const satisfies Partial<Record<TokenKind, PrecedenceLevel>>;
+/** The relation `compare`'s int is in for an ordering operator (§3.9). */
+export type Relation = 'less' | 'lessOrEqual' | 'greater' | 'greaterOrEqual';
 
-export type BinaryOperator = keyof typeof binaryOperatorLevels;
+/** What a binary operator does (§3.9). */
+type BinaryMeaning =
+  /** Calls `function` with both operands, so a type gives it meaning through the function's trait. */
+  | { readonly kind: 'call'; readonly function: string }
+  /** Calls `function`, `compare`, and is whether its int is in `relation`. */
+  | { readonly kind: 'order'; readonly function: 'compare'; readonly relation: Relation }
+  /** The built-in `==` every type has, negated for `!=`. */
+  | { readonly kind: 'equality'; readonly negated: boolean }
+  /** `and` and `or`: on bools, the right side run, and given, only when the left one is `rightWhen`. */
+  | { readonly kind: 'logic'; readonly rightWhen: boolean }
+  /** `??`: the left side's value inside an optional, else the right side (§4). */
+  | { readonly kind: 'coalesce' };
 
-type LevelOperators<Level extends PrecedenceLevel> = {
-  [Operator in BinaryOperator]: (typeof binaryOperatorLevels)[Operator] extends Level
+export interface BinaryOperatorEntry {
+  readonly level: PrecedenceLevel;
+  /** Left unless stated. */
+  readonly associativity?: 'right';
+  readonly meaning: BinaryMeaning;
+  /** Operators an operand of this one may not use unless parenthesized (§3.9). */
+  readonly refusesUnparenthesized?: readonly string[];
+}
+
+const call = (name: string) => ({ kind: 'call', function: name }) as const;
+const order = (relation: Relation) => ({ kind: 'order', function: 'compare', relation }) as const;
+
+/** Every binary operator, by its spelling, which is its token's kind. */
+export const binaryOperators = {
+  '??': { level: 'coalesce', meaning: { kind: 'coalesce' }, refusesUnparenthesized: ['and', 'or'] },
+  or: { level: 'or', meaning: { kind: 'logic', rightWhen: false } },
+  and: { level: 'and', meaning: { kind: 'logic', rightWhen: true } },
+  '<': { level: 'comparison', meaning: order('less') },
+  '<=': { level: 'comparison', meaning: order('lessOrEqual') },
+  '>': { level: 'comparison', meaning: order('greater') },
+  '>=': { level: 'comparison', meaning: order('greaterOrEqual') },
+  '==': { level: 'comparison', meaning: { kind: 'equality', negated: false } },
+  '!=': { level: 'comparison', meaning: { kind: 'equality', negated: true } },
+  '+': { level: 'additive', meaning: call('add') },
+  '-': { level: 'additive', meaning: call('subtract') },
+  '*': { level: 'multiplicative', meaning: call('multiply') },
+  '/': { level: 'multiplicative', meaning: call('divide') },
+  '//': { level: 'multiplicative', meaning: call('floorDivide') },
+  '%': { level: 'multiplicative', meaning: call('remainder') },
+} as const satisfies Record<string, BinaryOperatorEntry>;
+
+export type BinaryOperator = keyof typeof binaryOperators;
+
+/** A binary operator with the meaning `Kind`. */
+type BinaryOperatorOf<Kind extends BinaryMeaning['kind']> = {
+  [Operator in BinaryOperator]: (typeof binaryOperators)[Operator]['meaning']['kind'] extends Kind
     ? Operator
     : never;
 }[BinaryOperator];
 
-/** The operators a struct pattern may use to test a field (§3.11). */
-export type ComparisonOperator = LevelOperators<'comparison'>;
+/**
+ * The operators that compare two values: the orderings and equality. A struct pattern tests a
+ * field with one (§3.11), and two or more of them in a row are one chain.
+ */
+export type ComparisonOperator = BinaryOperatorOf<'order' | 'equality'>;
+
+/** What a prefix operator that builds a `Unary` node does: calls `function`, or negates a bool. */
+type UnaryMeaning = ReturnType<typeof call> | { readonly kind: 'negation' };
 
 /** Prefix operators that build a `Unary` node; `await`, `*` and `&` have nodes of their own. */
-export type UnaryOperator = '-' | 'not';
+export const unaryOperators = {
+  '-': { level: 'prefix', meaning: call('negate') },
+  not: { level: 'not', meaning: { kind: 'negation' } },
+} as const satisfies Record<
+  string,
+  { readonly level: PrecedenceLevel; readonly meaning: UnaryMeaning }
+>;
 
-/** Where the non-binary operators sit. `is` shares the comparison level, `..` the range level. */
+export type UnaryOperator = keyof typeof unaryOperators;
+
+/** A binary operator that calls a function, which gives it meaning for a type (§3.9). */
+export type CallingBinaryOperator = BinaryOperatorOf<'call' | 'order'>;
+
+/** A prefix operator that calls a function. */
+export type CallingUnaryOperator = {
+  [Operator in UnaryOperator]: (typeof unaryOperators)[Operator]['meaning']['kind'] extends 'call'
+    ? Operator
+    : never;
+}[UnaryOperator];
+
+/** Where the operators without an entry above sit. `is` shares the comparison level, `..` the range level. */
 export const operatorLevels = {
-  unaryMinus: 'prefix',
-  not: 'not',
   await: 'prefix',
   dereference: 'prefix',
   reference: 'prefix',
@@ -80,6 +135,9 @@ const assignmentOperators = [
 
 export type AssignmentOperator = (typeof assignmentOperators)[number];
 
+/** A compound assignment: one that applies a binary operator. */
+export type CompoundAssignment = Exclude<AssignmentOperator, '='>;
+
 const assignmentOperatorSet: ReadonlySet<string> = new Set(assignmentOperators);
 
 /** Whether a token kind is an assignment operator. */
@@ -87,19 +145,38 @@ export function isAssignmentOperator(kind: string): kind is AssignmentOperator {
   return assignmentOperatorSet.has(kind);
 }
 
-/** Whether a token kind is a binary operator. */
-function isBinaryOperator(kind: string): kind is BinaryOperator {
-  return Object.hasOwn(binaryOperatorLevels, kind);
+/** The binary operator a compound assignment applies: `+` for `+=`. */
+export function compoundOperator(assignment: CompoundAssignment): CompoundOf<CompoundAssignment> {
+  return assignment.slice(0, -1) as CompoundOf<CompoundAssignment>;
 }
 
-/** Whether a token kind is one of the comparison operators. */
+/** The binary operator spelled before the `=` of a compound assignment. */
+type CompoundOf<Assignment> = Assignment extends `${infer Operator}=`
+  ? Extract<Operator, BinaryOperator>
+  : never;
+
+/** Whether a token kind is one of the operators comparing two values. */
 export function isComparisonOperator(kind: string): kind is ComparisonOperator {
-  return isBinaryOperator(kind) && binaryOperatorLevels[kind] === 'comparison';
+  if (!Object.hasOwn(binaryOperators, kind)) {
+    return false;
+  }
+  const { meaning } = binaryOperators[kind as BinaryOperator];
+  return meaning.kind === 'order' || meaning.kind === 'equality';
 }
 
-/** The level just above `level`: an operand of a left-associative operator parses at it. */
+/** The level just above `level`. */
 export function tighterLevel(level: PrecedenceLevel): PrecedenceLevel {
   return precedenceLevels[precedenceLevels.indexOf(level) + 1] ?? 'postfix';
+}
+
+/**
+ * The level the right operand of `operator` parses at: one tighter than its own for a
+ * left-associative operator, so equal levels group to the left; the prefix level for a
+ * right-associative one, so its right side may itself be the operator.
+ */
+export function rightOperandLevel(operator: BinaryOperator): PrecedenceLevel {
+  const entry: BinaryOperatorEntry = binaryOperators[operator];
+  return entry.associativity === 'right' ? 'prefix' : tighterLevel(entry.level);
 }
 
 /** A level's binding power: higher binds tighter. */

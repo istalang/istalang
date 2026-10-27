@@ -34,8 +34,8 @@ import type {
   Spread,
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
+import { binaryOperators } from '../../syntax/operators.ts';
 import { writeElement } from '../calls/collection-functions.ts';
-import { operatorFunctions } from '../calls/operators.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -195,7 +195,7 @@ export function checkRange(context: BodyContext, node: Range): Type {
     implicitCall(context, {
       node,
       role: 'add',
-      candidates: preludeCandidates(context, operatorFunctions['+']),
+      candidates: preludeCandidates(context, binaryOperators['+'].meaning.function),
       arguments: [
         { type: intType, passing: 'value' },
         { type: intType, passing: 'value' },

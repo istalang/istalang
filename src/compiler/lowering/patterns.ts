@@ -14,11 +14,12 @@ import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { CheckedPattern, PatternTest, PatternValue } from '../checker/checked-pattern.ts';
+import { binaryOperators } from '../syntax/operators.ts';
 import type { Label } from './code-writer.ts';
 import { constantValue } from './constants.ts';
 import type { FunctionContext } from './context.ts';
 import { call } from './expressions/calls.ts';
-import { comparisonRelations } from './expressions/operators.ts';
+import { ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
 import { readPart } from './places.ts';
 import { declareVariable } from './statements/variables.ts';
@@ -69,23 +70,16 @@ function passed(
   part: Register,
   span: Span,
 ): Register {
-  const dst = context.code.allocate();
   if (test.kind === 'compare') {
     const value = context.expression(test.site.value);
     const comparison = call(context, test.site, [part, value]);
-    const { operator } = test.site;
-    if (operator === '==' || operator === '!=') {
-      unreachable(`'${operator}' is an equal test; the checker should have made it one.`);
+    const { meaning } = binaryOperators[test.site.operator];
+    if (meaning.kind !== 'order') {
+      unreachable(`'${test.site.operator}' is an equal test; the checker should have made it one.`);
     }
-    context.code.emit({
-      kind: 'order',
-      span,
-      dst,
-      comparison,
-      relation: comparisonRelations[operator],
-    });
-    return dst;
+    return ordered(context, span, comparison, meaning.relation);
   }
+  const dst = context.code.allocate();
   context.code.emit({
     kind: 'equal',
     span,

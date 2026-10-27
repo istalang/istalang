@@ -24,14 +24,14 @@
 
 import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import { placePath } from '../../syntax/expressions/places.ts';
-import type { AssignmentOperator } from '../../syntax/operators.ts';
+import { type CompoundAssignment, compoundOperator } from '../../syntax/operators.ts';
 import {
   type Assignment,
   destructures,
   destructuringOf,
   isUnnamedTarget,
 } from '../../syntax/statements.ts';
-import { type OverloadableOperator, resolveOperator } from '../calls/operators.ts';
+import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import { checkChangedPlace, immutableKind, isChangeable } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
@@ -72,11 +72,11 @@ function checkCompound(
   context: BodyContext,
   node: Assignment,
   target: Expression,
-  operator: Exclude<AssignmentOperator, '='>,
+  operator: CompoundAssignment,
 ): void {
   const place = assignedPlace(context, target);
   const operand = context.expression(node.value);
-  const result = resolveOperator(context, node, compoundOperator(operator), [
+  const result = resolveOperator(context, node, binaryApplied(compoundOperator(operator)), [
     { node: target, type: place },
     { node: node.value, type: operand },
   ]);
@@ -202,8 +202,4 @@ function overlap(first: PlaceName, second: PlaceName): boolean {
   const shorter = first.parts.length <= second.parts.length ? first : second;
   const longer = shorter === first ? second : first;
   return shorter.parts.every((part, index) => longer.parts[index] === part);
-}
-
-function compoundOperator(operator: Exclude<AssignmentOperator, '='>): OverloadableOperator {
-  return operator.slice(0, -1) as OverloadableOperator;
 }

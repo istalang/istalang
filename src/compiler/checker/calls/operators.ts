@@ -1,6 +1,6 @@
 /**
- * Operators as calls (§3.9): `a + b` calls `add(a, b)`, and the four comparisons all call one
- * `compare`. The table below is the one place that says which function an operator means.
+ * Operators as calls (§3.9): `a + b` calls `add(a, b)`, and the four orderings all call one
+ * `compare`. Which function an operator calls is its entry's in syntax/operators.ts.
  *
  * An operator's function is found like any call's: by its name where the operator is written, the
  * prelude's included, which declares the operators on primitives as externs; through the modules
@@ -9,28 +9,33 @@
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
+import {
+  binaryOperators,
+  type CallingBinaryOperator,
+  type CallingUnaryOperator,
+  unaryOperators,
+} from '../../syntax/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { CallSite } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { resolveCall } from './resolve.ts';
 
-/** The function each overloadable operator calls (§3.9). */
-export const operatorFunctions = {
-  '+': 'add',
-  '-': 'subtract',
-  '*': 'multiply',
-  '/': 'divide',
-  '//': 'floorDivide',
-  '%': 'remainder',
-  '<': 'compare',
-  '<=': 'compare',
-  '>': 'compare',
-  '>=': 'compare',
-  negate: 'negate',
-} as const;
+/** An operator a call site applies: as it is written, and the function it calls (§3.9). */
+export interface AppliedOperator {
+  readonly spelling: string;
+  readonly function: string;
+}
 
-export type OverloadableOperator = keyof typeof operatorFunctions;
+/** What a binary operator that calls a function applies. */
+export function binaryApplied(operator: CallingBinaryOperator): AppliedOperator {
+  return { spelling: operator, function: binaryOperators[operator].meaning.function };
+}
+
+/** What a prefix operator that calls a function applies. */
+export function unaryApplied(operator: CallingUnaryOperator): AppliedOperator {
+  return { spelling: operator, function: unaryOperators[operator].meaning.function };
+}
 
 /** An operand: the expression written, and its type. */
 export interface Operand {
@@ -45,15 +50,14 @@ export interface Operand {
 export function resolveOperator(
   context: BodyContext,
   site: CallSite,
-  operator: OverloadableOperator,
+  operator: AppliedOperator,
   operands: readonly Operand[],
 ): Type {
-  const name = operatorFunctions[operator];
   const types = operands.map(({ type }) => type);
   return resolveCall(context, {
     site,
-    name: operator === 'negate' ? '-' : operator,
-    candidates: topLevelCandidates(context.checker, context.module, name, types),
+    name: operator.spelling,
+    candidates: topLevelCandidates(context.checker, context.module, operator.function, types),
     arguments: operands.map((operand) => ({ ...operand, passing: 'value' })),
     typeArguments: undefined,
     expected: undefined,

@@ -29,7 +29,7 @@ import type {
   Pattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
-import { resolveOperator } from '../calls/operators.ts';
+import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import type { CheckedPattern, PatternTest } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -109,7 +109,7 @@ function comparison(context: BodyContext, item: CompareFieldPattern, part: Value
   const { operator, value } = item;
   if (operator !== '==' && operator !== '!=') {
     const field = { node: item.field, type: part.type };
-    resolveOperator(context, item, operator, [
+    resolveOperator(context, item, binaryApplied(operator), [
       field,
       { node: value, type: context.expression(value) },
     ]);

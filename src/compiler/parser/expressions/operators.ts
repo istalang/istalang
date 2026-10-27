@@ -4,18 +4,23 @@
  * A prefix operator's operand parses at the operator's own level, so `not not a` and `- -a` nest. A
  * prefix operator that binds more loosely than the operand position it stands in (`a == not b`,
  * `a + ..b`) is still parsed, so the tree shows what was written, but it is reported: the reader
- * can't tell how far it reaches. `??` mixed with `and`/`or` without parentheses is reported for the
- * same reason (§3.9). `..` without an end is the open range `a..`; `..=` always needs one.
+ * can't tell how far it reaches. An operand an operator's entry refuses without parentheses, such as
+ * `and` under `??`, is reported for the same reason (§3.9). `..` without an end is the open range
+ * `a..`; `..=` always needs one.
  */
 
 import type { Expression, Reference } from '../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
-  binaryOperatorLevels,
+  type BinaryOperatorEntry,
+  binaryOperators,
   bindingPower,
   operatorLevels,
   type PrecedenceLevel,
+  rightOperandLevel,
   tighterLevel,
+  type UnaryOperator,
+  unaryOperators,
 } from '../../syntax/operators.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
@@ -31,17 +36,15 @@ function advancePrefix(parser: Parser, level: PrecedenceLevel, minLevel: Precede
   return token.span.start;
 }
 
-export const parseNegation: PrefixParselet = (parser, minLevel) => {
-  const start = advancePrefix(parser, operatorLevels.unaryMinus, minLevel);
-  const operand = parser.expression(operatorLevels.unaryMinus);
-  return { kind: 'Unary', span: parser.spanFrom(start), operator: '-', operand };
-};
-
-export const parseNot: PrefixParselet = (parser, minLevel) => {
-  const start = advancePrefix(parser, operatorLevels.not, minLevel);
-  const operand = parser.expression(operatorLevels.not);
-  return { kind: 'Unary', span: parser.spanFrom(start), operator: 'not', operand };
-};
+/** A prefix operator building a `Unary` node, its operand parsed at the operator's own level. */
+export function unaryParselet(operator: UnaryOperator): PrefixParselet {
+  const { level } = unaryOperators[operator];
+  return (parser, minLevel) => {
+    const start = advancePrefix(parser, level, minLevel);
+    const operand = parser.expression(level);
+    return { kind: 'Unary', span: parser.spanFrom(start), operator, operand };
+  };
+}
 
 export const parseDereference: PrefixParselet = (parser, minLevel) => {
   const start = advancePrefix(parser, operatorLevels.dereference, minLevel);
@@ -114,25 +117,28 @@ export const isParselet: InfixParselet = {
 };
 
 export function binaryParselet(operator: BinaryOperator): InfixParselet {
-  const level = binaryOperatorLevels[operator];
+  const entry: BinaryOperatorEntry = binaryOperators[operator];
   return {
-    level,
+    level: entry.level,
     parse(parser, left) {
       parser.cursor.advance();
-      const right = parser.expression(tighterLevel(level));
-      if (operator === '??') {
-        reportMixedLogic(parser, [left, right]);
-      }
+      const right = parser.expression(rightOperandLevel(operator));
+      reportMixed(parser, operator, entry.refusesUnparenthesized ?? [], [left, right]);
       return { kind: 'Binary', span: parser.spanFrom(left.span.start), left, operator, right };
     },
   };
 }
 
-/** `??` is the loosest level, so only its operands can be unparenthesized `and`/`or`. */
-function reportMixedLogic(parser: Parser, operands: readonly Expression[]): void {
+/** Reports each operand of `operator` that uses one of `refused` without parentheses (§3.9). */
+function reportMixed(
+  parser: Parser,
+  operator: BinaryOperator,
+  refused: readonly string[],
+  operands: readonly Expression[],
+): void {
   for (const operand of operands) {
-    if (operand.kind === 'Binary' && (operand.operator === 'and' || operand.operator === 'or')) {
-      parser.report(parserDiagnostics.mixedCoalesce(operand.span));
+    if (operand.kind === 'Binary' && refused.includes(operand.operator)) {
+      parser.report(parserDiagnostics.mixedOperators(operand.span, operator, operand.operator));
     }
   }
 }
