@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
+import { dump } from '../../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import {
   bodyOf,
@@ -14,6 +15,7 @@ import {
   ifThen,
   int,
   lines,
+  parseAs,
   reported,
 } from '../parse.test-kit.ts';
 
@@ -27,15 +29,6 @@ describe('variables', () => {
     [
       'let a, b = (1, "x")',
       '(VariableDeclaration _ isMutable [(NamePattern [a]) (NamePattern [b])] _ (Tuple [1 "x"]))',
-    ],
-    [
-      'fn let pending = 0',
-      '(VariableDeclaration (Hold _) isMutable [(NamePattern [pending])] _ 0)',
-    ],
-    ['fn const x = 1', '(VariableDeclaration (Hold _) [(NamePattern [x])] _ 1)'],
-    [
-      'fn _ = startJob()',
-      '(VariableDeclaration (Hold _) [(WildcardPattern)] _ (Call startJob [] []))',
     ],
     [
       'let xs: Array<int>= []',
@@ -196,11 +189,32 @@ describe('labels, `hold` and spawn as a value', () => {
     ['hold let x = 1', '(VariableDeclaration (Hold _) isMutable [(NamePattern [x])] _ 1)'],
     ['hold _ = x', '(VariableDeclaration (Hold _) [(WildcardPattern)] _ x)'],
     ['hold(outer) const y = 2', '(VariableDeclaration (Hold outer) [(NamePattern [y])] _ 2)'],
+    [
+      'batch:\n  hold(batch) _ = x',
+      '(LabelledBlock batch (Block [(VariableDeclaration (Hold batch) [(WildcardPattern)] _ x)]))',
+    ],
     ['hold(x)', '(ExpressionStatement (Call hold [] [x]))'],
     ['spawn f(x)', '(ExpressionStatement (Spawn (Call f [] [x])))'],
     ['x **= 2', '(Assignment [x] **= 2)'],
     ['x >>= 1', '(Assignment [x] >>= 1)'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);
+  });
+
+  it.each([
+    ['outer: if c: f()', 'outer:'],
+    ['outer: x = 1', 'outer:'],
+  ])('reports a label before anything but a loop or block once: %s', (text, spanText) => {
+    expect(reported('statement', text)).toEqual(
+      reportedOnce(parserDiagnostics.misplacedLabel.code, spanText),
+    );
+  });
+
+  it('parses what follows a misplaced label as the statement', () => {
+    expect(dump(parseAs('statement', 'outer: x = 1').node)).toBe('(Assignment [x] = 1)');
+  });
+
+  it('no longer reads `fn let`, the older spelling of `hold let`', () => {
+    expect(reported('statement', 'fn let x = 1').codes).not.toEqual([]);
   });
 });

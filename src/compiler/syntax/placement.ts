@@ -45,6 +45,7 @@ function placeOf(item: Item): 'module' | 'block' | 'both' {
     case 'Continue':
     case 'For':
     case 'While':
+    case 'LabelledBlock':
     case 'Defer':
     case 'Drop':
       return 'block';

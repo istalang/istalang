@@ -34,9 +34,8 @@ interface ExpressionStatement extends NodeOf<'ExpressionStatement'>, Annotatable
 
 /**
  * `let x = 1`, `const a, b = pair`, and with a `hold` the `hold let`, `hold const` and `hold _`
- * forms, whose holdings last until the enclosing function ends, or the loop or function `hold`
- * names (§3.4, §7). `hold _` means `hold const _`, so it is stored that way, and `fn let`,
- * `fn const` and `fn _` are older spellings of the same, read until every one is rewritten.
+ * forms, whose holdings last until the enclosing function ends, or the loop, block or function
+ * `hold` names (§3.4, §7). `hold _` means `hold const _`, so it is stored that way.
  *
  * Each target is a pattern (§3.15): a name, `_`, or a tuple or struct pattern destructuring the
  * value, nested at will. Several targets destructure a tuple, as if parenthesized. A target must
@@ -51,7 +50,7 @@ export interface VariableDeclaration extends NodeOf<'VariableDeclaration'>, Anno
   readonly initializer: Expression;
 }
 
-/** `hold`, or `hold(name)` naming the loop or function the holdings last until (§7). */
+/** `hold`, or `hold(name)` naming the loop, block or function the holdings last until (§7). */
 export interface Hold extends NodeOf<'Hold'> {
   readonly label: Identifier | undefined;
 }
@@ -206,6 +205,15 @@ export interface While extends NodeOf<'While'>, Annotatable {
   readonly body: Block;
 }
 
+/**
+ * `batch:` then an indented block: a block a `hold(batch)` inside it names, holding until it ends
+ * (§3.4). A statement of type `unit`; `break` and `continue` name loops only.
+ */
+export interface LabelledBlock extends NodeOf<'LabelledBlock'>, Annotatable {
+  readonly label: Identifier;
+  readonly body: Block;
+}
+
 /** `defer f`: runs `f` when the block ends (§7). */
 export interface Defer extends NodeOf<'Defer'>, Annotatable {
   readonly action: Expression;
@@ -226,6 +234,7 @@ export type Statement =
   | Continue
   | For
   | While
+  | LabelledBlock
   | Defer
   | Drop;
 

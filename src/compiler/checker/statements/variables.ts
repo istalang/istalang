@@ -22,11 +22,11 @@ import type { AssignedPart, SignatureParameter } from '../check.ts';
 import type { TargetBinding, TargetOwner } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { widened } from '../types/widening.ts';
+import { checkHoldScope } from './loops.ts';
 
 /**
  * The variables of one body: each one's type by its declaring name, which were changed, and what
@@ -114,8 +114,8 @@ export class VariableScope {
 }
 
 export function checkVariableDeclaration(context: BodyContext, node: VariableDeclaration): void {
-  if (node.hold?.label !== undefined) {
-    context.unsupported(node.hold, frontier.holdUntil);
+  if (node.hold !== undefined) {
+    checkHoldScope(context, node.hold);
   }
   const declared = node.type === undefined ? undefined : context.resolveType(node.type);
   const initial = context.expect(node.initializer, declared);

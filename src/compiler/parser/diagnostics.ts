@@ -131,4 +131,9 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2050,
     message: () => 'Named arguments come after the positional ones and spreads (§3.3).',
   },
+  misplacedLabel: {
+    code: 2130,
+    message: () =>
+      "A label stands only before 'for', 'while', or a block indented on the lines after it (§4).",
+  },
 });

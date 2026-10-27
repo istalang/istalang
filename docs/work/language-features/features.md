@@ -85,7 +85,13 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - **Lowering:** `LoopStack` finds a loop by label. `scopeSince(depth)` already unwinds any depth.
   - **IR:** `keep` gains a target scope, because frame-level `kept` only covers the function case. That is an amendment to `definition.md`.
 - **Migrates:** every `fn let`, `fn const` and `fn _` in the spec, corpus, spec suites, std and the VS Code grammar. This is a hard switch, since v0.1 has no users.
-- **Gaps:** labels on bare blocks (default: no); an unused label (default: warning).
+- **Decided in L4's sweep (human, 2026-10-28):**
+  - A bare block takes a label for `hold` only: `batch:` then an indented block, a statement of type `unit` whose value is discarded; `hold(batch)` holds until it ends. `break` and `continue` name loops only.
+  - An unused label is a warning. A label repeating an enclosing label of the same function, or the function's own name, is an error, so a name means one scope. A name that is no enclosing label of this function (nor, for `hold`, its own name) is an error.
+  - `hold(f)` naming the current function is plain `hold`.
+  - What `hold(name)` holds is released when that scope ends, however it ends; `continue` of a labelled loop keeps it.
+  - `fn let`, `fn const` and `fn _` no longer parse, with no message of their own.
+  - IR: each hold scope (the function, and each labelled loop or block some `hold` names) has a hidden variable holding a list; `keep` names the one it adds to, starting the list when the variable is empty. The frame's separate `kept` list is gone.
 
 ## F6 Template strings; F9 docstrings
 

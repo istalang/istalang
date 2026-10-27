@@ -1,6 +1,6 @@
 /**
- * The checker's diagnostics of holders and disposal, codes 5700–5799 (§3.4, §7): a part of the
- * checker's one catalog (index.ts).
+ * The checker's diagnostics of holders and disposal, codes 5700–5799 (§3.4, §4, §7), the labels
+ * `hold`, `break` and `continue` name included: a part of the checker's one catalog (index.ts).
  */
 
 export const lifetimeTemplates = {
@@ -31,5 +31,34 @@ export const lifetimeTemplates = {
   notDroppable: {
     code: 5705,
     message: (name: string, reason: string) => `'${name}' can't be dropped: ${reason}.`,
+  },
+  unknownLoopLabel: {
+    code: 5706,
+    message: (keyword: string, name: string) =>
+      `No loop around this '${keyword}' is labelled '${name}'.`,
+  },
+  blockLabel: {
+    code: 5707,
+    message: (keyword: string, name: string) =>
+      `'${name}' labels a block, which only 'hold' names; '${keyword}' names a loop.`,
+  },
+  unknownHoldScope: {
+    code: 5708,
+    message: (name: string) =>
+      `No loop or block around this 'hold' is labelled '${name}', and it isn't this function's name.`,
+  },
+  repeatedLabel: {
+    code: 5709,
+    message: (name: string) => `'${name}' already labels a loop or block around this one.`,
+  },
+  ownNameLabel: {
+    code: 5710,
+    message: (name: string) =>
+      `'${name}' is this function's own name, which 'hold(${name})' names, so it can't label a loop or block.`,
+  },
+  unusedLabel: {
+    code: 5711,
+    severity: 'warning',
+    message: (name: string) => `Nothing names the label '${name}'; remove it.`,
   },
 } as const;

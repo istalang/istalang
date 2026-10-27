@@ -152,7 +152,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 - **Continuation.** A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal, so a call or literal may span lines. Inside braces that list fields or variants, as in `{ sku: string; qty: int }`, a line break separates entries just as `;` does. There is no backslash continuation.
 - **Trailing commas** are allowed in every comma-separated list.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
-- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Six more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, and `any` before a trait's name in a type (§3.10). So `T.from` (§3.10) and a field named `type` (§9) are valid.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Seven more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, `any` before a trait's name in a type (§3.10), and `hold` before the variable declaration it holds (§3.4). So `T.from` (§3.10), a field named `type` (§9) and a function named `hold` are valid.
 
 Every expression has a static type; a value whose type is known only when the program runs has a trait's, `any T` (§3.10). There are no implicit conversions, with two exceptions: a `T` is wrapped into `T?` wherever an optional is expected (§3.11), and a value is converted into an `any` type wherever one is expected (§3.10).
 
@@ -315,11 +315,20 @@ roles.push("cfo")                  # compile error: roles is const
 
 Variables are block scoped: a variable is visible only inside the block that declares it and in blocks nested within it. A variable declared inside an `if` body does not exist after the `if`. A loop variable (`for x in xs`) and every variable declared in a loop body are fresh on each iteration, so closures created in different iterations never share them. Unlike Python, assigning to an undeclared name is a compile error. Declaring a name twice in one block is a compile error too, also for two local functions, which therefore can't be overloaded; a nested block may shadow a name from an enclosing one. Types and values share one namespace per scope.
 
-**Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§7). A loop body is a block, so each iteration releases its own holdings. `hold let` and `hold const` declare a variable whose *name* is still block scoped but whose holdings last until the enclosing function ends, which is how a loop keeps what it starts: what the variable holds when its block ends is kept, while a value it held before and lost to an assignment was released then, as any overwritten value is. The common unnamed case has a short form: `hold _ = expr` means `hold const _ = expr`.
+**Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§7). A loop body is a block, so each iteration releases its own holdings. `hold let` and `hold const` declare a variable whose *name* is still block scoped but whose holdings last longer, which is how a loop keeps what it starts: until the enclosing function ends, or, written `hold(name)`, until the loop or block labelled `name` (§4) ends, however it ends; `continue` of that loop keeps them. `hold(f)` naming the enclosing function is plain `hold`. What the variable holds when its block ends is kept, while a value it held before and lost to an assignment was released then, as any overwritten value is. The common unnamed case has a short form: `hold _ = expr` means `hold const _ = expr`.
 
 ```python statements
 for role in roles:
     hold _ = reviewQueue(role).sendRevertible(request) # revertible until the function returns
+```
+
+A block takes a label only so that a `hold` can name it: the label ends its line, and the block is indented below it. It is a statement of type `unit`, and `break` and `continue` never name it.
+
+```python statements
+batch:
+    for job in jobs:
+        hold(batch) _ = start(job)                      # runs until the batch ends
+    await allDone()
 ```
 
 ### 3.5 Generics
@@ -950,7 +959,8 @@ The rules:
 - `match` must be exhaustive. Use `case _:` for the rest. Patterns are described in §3.11.
 - A `case` may have a guard: `case Verdict{ok == false} as v if v.role == "cfo":`. A guarded case matches only when its condition is true, so guarded cases don't count toward exhaustiveness.
 - `x is Pattern` tests a value against a pattern outside `match`, as in `if r is Ok{value as y}:` (§3.11).
-- `while` and `for x in xs` are statements of type `unit`. `for` works on any type that satisfies `Iterable` (§3.10). `break` and `continue` work as in Python.
+- `while` and `for x in xs` are statements of type `unit`. `for` works on any type that satisfies `Iterable` (§3.10). `break` and `continue` work as in Python, on the innermost loop.
+- **Labels.** A label stands before a loop, `outer: for x in xs:`, and `break outer` and `continue outer` leave or go on with that loop from any depth inside it, as in Java or JavaScript. A label also names a block for `hold` (§3.4). A label belongs to its function: a nested function never sees it, and it may not repeat a label around it nor take the function's own name, so a name means one loop or block. A label nothing names is warned about.
 - `return expr` exits the enclosing function; `expr` must have the function's return type.
 
 **Optionals.** Two operators work on `T?` values without a `match`:
@@ -1062,7 +1072,7 @@ trait Disposable:
     fn dispose(self: Self)
 ```
 
-**Holders.** A disposable value is held by whatever the running instance can still reach it through: variables (`_` included), struct fields, array and map elements, closure captures and values waiting in a slot, of the executions that are live, and through other values held so. Copying a value that contains a disposable handle adds a holder, overwriting a variable or field releases the old value, and returning a value hands it to the caller. When a block ends, it releases everything its variables hold, except `hold let` and `hold const` variables, which the enclosing function releases when it ends (§3.4); every disposable that has just lost its last holder is disposed. **Temporaries**, such as the result of `parent.deref()` used inside one expression, are released at the end of their statement. The temporaries of a header, such as an `if` or `while` condition or a `match` subject, are released when it has been evaluated, before the body runs.
+**Holders.** A disposable value is held by whatever the running instance can still reach it through: variables (`_` included), struct fields, array and map elements, closure captures and values waiting in a slot, of the executions that are live, and through other values held so. Copying a value that contains a disposable handle adds a holder, overwriting a variable or field releases the old value, and returning a value hands it to the caller. When a block ends, it releases everything its variables hold, except `hold let` and `hold const` variables, whose holdings the enclosing function releases when it ends, or the loop or block their `hold(name)` names (§3.4); every disposable that has just lost its last holder is disposed. **Temporaries**, such as the result of `parent.deref()` used inside one expression, are released at the end of their statement. The temporaries of a header, such as an `if` or `while` condition or a `match` subject, are released when it has been evaluated, before the body runs.
 
 Some holds are implicit:
 
@@ -1071,7 +1081,7 @@ Some holds are implicit:
 - A `futures.first` holds the futures it races, and a resolved future holds its value.
 - A `WeakRef` and a `disposed()` future watch what they refer to without holding it.
 
-**Unnamed and dropped values.** A value that must be used (a future, a `Result` or a disposable) is a compile error when left as a bare expression. `_ = expr` keeps it in an unnamed variable, so it lasts until the block ends, and `hold _ = expr` until the function ends. `drop expr` says "I don't need this": a disposable is disposed right away if nothing else holds it, and anything else is simply discarded. A typical use is a best-effort call whose failure doesn't matter, such as `drop audit.record(event)`, which ignores its `Result` on purpose. `drop x` releases the variable `x`, which can't be used afterwards: a use that some path reaches from the `drop` is a compile error, unless a `let` is assigned again first, and a variable declared again, as in a loop's next iteration, is a fresh one. Only a variable the function holds itself can be dropped: not one a closure captured from outside it, not a reference parameter, and not a top-level constant. Neither ever makes a disposed value observable.
+**Unnamed and dropped values.** A value that must be used (a future, a `Result` or a disposable) is a compile error when left as a bare expression. `_ = expr` keeps it in an unnamed variable, so it lasts until the block ends, `hold _ = expr` until the function ends, and `hold(name) _ = expr` until the loop or block `name` ends. `drop expr` says "I don't need this": a disposable is disposed right away if nothing else holds it, and anything else is simply discarded. A typical use is a best-effort call whose failure doesn't matter, such as `drop audit.record(event)`, which ignores its `Result` on purpose. `drop x` releases the variable `x`, which can't be used afterwards: a use that some path reaches from the `drop` is a compile error, unless a `let` is assigned again first, and a variable declared again, as in a loop's next iteration, is a fresh one. Only a variable the function holds itself can be dropped: not one a closure captured from outside it, not a reference parameter, and not a top-level constant. Neither ever makes a disposed value observable.
 
 In the common case nothing is stored anywhere else, so a disposable lives exactly as long as the function that created it. That isn't forced, though: storing, returning or sending a disposable keeps it alive, and doing so is the developer's choice.
 

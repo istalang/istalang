@@ -1,0 +1,28 @@
+# error: 5706 at 15:22
+# error: 5707 at 17:27
+# error: 5708 at 19:10
+# error: 5709 at 21:5
+# error: 5710 at 23:3
+# error: 5708 at 24:8
+# error: 5706 at 27:26
+#
+# A label names one loop or block of its function (§3.4, §4): `break` and `continue` name loops
+# only, `hold(name)` a loop, a block or the function itself, a label may not repeat one around it
+# nor take the function's name, a block's label means nothing after the block, and no name
+# crosses into a nested function.
+
+fn labels(xs: Array<int>):
+  for x in xs: break missing
+  batch:
+    for x in xs: continue batch
+  for x in xs:
+    hold(nowhere) _ = x
+  outer: for x in xs:
+    outer: for y in xs: break outer
+    break outer
+  labels: for x in xs: break labels
+  hold(batch) _ = 1
+  around: for x in xs:
+    fn inner():
+      for y in xs: break around
+    break around

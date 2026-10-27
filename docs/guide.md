@@ -3,7 +3,7 @@ description: A developer's guide to writing Istalang programs, breadth first —
 owner: tech-lead
 status: active
 applies_to: istalang
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 tags: [language, guide]
 ---
 
@@ -191,6 +191,9 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 const size = if n < 10: "small" elif n < 100: "medium" else: "large"
 for i in 0..10: total += i
 for key, value in m: …
+outer: for row in rows:                                   # a label: break outer, continue outer
+    for cell in row:
+        if cell == 0: continue outer
 const evens = [for x in xs if x % 2 == 0: x * 2]          # comprehension
 const t = { const base = price * qty; base + tax(base) }  # block expression
 
@@ -255,6 +258,7 @@ The runtime disposes a resource, such as an unfinished call's future, a slot, an
 ```python
 _ = startJob()              # held until this block ends
 hold _ = startJob()         # held until the function ends, even when written in a loop
+hold(rows) _ = startJob()   # held until the loop or block labelled rows ends
 drop x                      # release now
 defer fn(): log("exited")   # runs when the block ends, however it ends
 ```

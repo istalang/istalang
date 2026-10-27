@@ -15,7 +15,7 @@ import type { BodyContext } from '../context.ts';
 import { checkDiscarded, checkDrop } from '../rules/must-use.ts';
 import { type FunctionType, neverType, type Type, unitType } from '../types/type.ts';
 import { checkAssignment } from './assignments.ts';
-import { checkFor, checkLoopExit, checkWhile } from './loops.ts';
+import { checkFor, checkLabelledBlock, checkLoopExit, checkWhile } from './loops.ts';
 import { checkVariableDeclaration } from './variables.ts';
 
 /** What `defer` runs when its block ends (§7): a plain function of nothing, so it can't wait. */
@@ -52,6 +52,7 @@ export const statementHandlers: Handlers<
   While: checkWhile,
   FunctionDeclaration: checkLocalFunction,
   For: checkFor,
+  LabelledBlock: checkLabelledBlock,
   Defer: (context, node) => {
     context.expect(node.action, deferredFunction);
     return unitType;

@@ -150,7 +150,7 @@ describe('externs and functions', () => {
     ['extern fn f(): 1', externWithBody, '1'],
     ['fn f', expected, ''],
     ['let x = 1', topLevelStatement, 'let x = 1'],
-    ['fn let x = 1', topLevelStatement, 'fn let x = 1'],
+    ['hold let x = 1', topLevelStatement, 'hold let x = 1'],
   ])('reports %s once', (text, diagnostic, spanText) => {
     expect(reported('module', text)).toEqual(reportedOnce(diagnostic.code, spanText));
   });

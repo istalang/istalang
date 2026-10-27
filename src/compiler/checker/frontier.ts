@@ -6,8 +6,6 @@
 
 /** The constructs, narrower than a node kind, reported as not supported yet. */
 export const frontier = {
-  loopLabel: 'A loop label',
-  holdUntil: 'Holding until a named loop or function ends',
   rangeStep: 'A range step',
   typeParameterPack: 'A type parameter pack',
   bitwiseOperator: 'A bitwise operator',

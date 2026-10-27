@@ -56,6 +56,7 @@ const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
     underLoop(binder, node, scope, (variables) => bindBlock(binder, node.body, variables)),
   While: (binder, node, scope) =>
     underCondition(binder, node.condition, scope, (flow) => bindBlock(binder, node.body, flow)),
+  LabelledBlock: (binder, node, scope) => bindBlock(binder, node.body, scope),
   Defer: (binder, node, scope) => binder.walk.expression(binder, node.action, scope),
   Drop: (binder, node, scope) => binder.walk.expression(binder, node.value, scope),
 };
@@ -73,6 +74,7 @@ const declaredNames: Handlers<undefined, Statement, [], readonly Identifier[]> =
   Continue: declaresNothing,
   For: declaresNothing,
   While: declaresNothing,
+  LabelledBlock: declaresNothing,
   Defer: declaresNothing,
   Drop: declaresNothing,
 };

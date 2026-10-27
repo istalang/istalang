@@ -2,10 +2,16 @@
  * Loops (§4): `for x in xs: …`, whose targets destructure as a declaration's do, and `while c: …`,
  * either maybe after a label, `outer: for …`, which `break outer` and `continue outer` name. Both
  * are statements of type unit, so they are not expressions.
+ *
+ * A label also stands before an indented block, `batch:` at the end of its line, which only
+ * `hold(batch)` names (§3.4). The line break tells it from anything else a name and `:` start.
+ * A name and `:` before anything else is a label in the wrong place: nothing else at the start of
+ * a statement reads so. It is reported, and the statement after it parsed as if it weren't there.
  */
 
-import type { Identifier } from '../../syntax/node.ts';
-import type { For, While } from '../../syntax/statements.ts';
+import type { Identifier, Invalid } from '../../syntax/node.ts';
+import type { For, Statement, While } from '../../syntax/statements.ts';
+import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { parseHeaderBody } from '../parts/blocks.ts';
 import { parseTargets } from '../parts/names.ts';
@@ -18,23 +24,35 @@ export function parseWhile(parser: Parser): While {
   return parseWhileAfter(parser, parser.cursor.token.span.start, undefined);
 }
 
-/** Whether a label stands at the cursor: a name, `:`, and the loop it labels. */
+/** Whether a label stands at the cursor: a name and `:`. */
 export function atLabel(parser: Parser): boolean {
-  const { cursor } = parser;
-  const loop = cursor.kindAt(2);
-  return (
-    cursor.at('identifier') && cursor.kindAt(1) === ':' && (loop === 'for' || loop === 'while')
-  );
+  return parser.cursor.at('identifier') && parser.cursor.kindAt(1) === ':';
 }
 
-/** `outer: for …` or `outer: while …`, starting at the label. */
-export function parseLabelledLoop(parser: Parser): For | While {
+/**
+ * `outer: for …`, `outer: while …` or `batch:` and a block, starting at the label; a label before
+ * anything else is reported, and `statement` parses what follows it.
+ */
+export function parseLabelled(
+  parser: Parser,
+  statement: () => Statement | Invalid,
+): Statement | Invalid {
   const label = parser.identifier('a label');
-  parser.expect(':');
   const { start } = label.span;
-  return parser.cursor.at('for')
-    ? parseForAfter(parser, start, label)
-    : parseWhileAfter(parser, start, label);
+  const labelled = parser.cursor.kindAt(1);
+  if (labelled === 'lineBreak') {
+    const body = parseHeaderBody(parser, start);
+    return { kind: 'LabelledBlock', span: parser.spanFrom(start), label, body };
+  }
+  parser.expect(':');
+  if (labelled === 'for') {
+    return parseForAfter(parser, start, label);
+  }
+  if (labelled === 'while') {
+    return parseWhileAfter(parser, start, label);
+  }
+  parser.report(parserDiagnostics.misplacedLabel(parser.spanFrom(start)));
+  return statement();
 }
 
 function parseForAfter(parser: Parser, start: number, label: Identifier | undefined): For {

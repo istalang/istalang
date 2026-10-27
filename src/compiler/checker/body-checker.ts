@@ -30,10 +30,10 @@ import type { Block, Statement } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
+import type { EnclosingScopes } from './closures/enclosing-scopes.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
 import { inferLambda } from './closures/lambdas.ts';
-import type { LoopScope } from './closures/loop-scope.ts';
 import { OwnCalls } from './closures/own-calls.ts';
 import { blockTail, ReturnScope } from './closures/returns.ts';
 import type { BodyContext, CheckerContext } from './context.ts';
@@ -108,8 +108,8 @@ export class BodyChecker implements BodyContext {
     return this.functions.current.returns;
   }
 
-  get loops(): LoopScope {
-    return this.functions.current.loops;
+  get enclosing(): EnclosingScopes {
+    return this.functions.current.enclosing;
   }
 
   /** Checks a function's body against its parameters and its declared result, if any. */

@@ -1,0 +1,62 @@
+# outcome: "row 0, row 1, stopped 11, stopped 10, stopped 1, stopped 0, rows done, stopped 21, stopped 20, broke out, last pass, stopped 33, stopped 32, stopped 31, while done, batch started, stopped 41, stopped 40, after batch, function done, stopped 50"
+# `hold(name)` keeps what it holds until the loop or block `name` labels ends, however it ends
+# (§3.4, §4): normally, by `break` of a loop around it, as the earlier pass's holdings show when the
+# `break` stands before the hold, and kept across `continue`; awaiting inside it keeps them across
+# a commit. `hold(f)` naming the function is plain `hold`. Each scope releases newest first (§7).
+
+import * as time from 'time'
+
+fn note(log: Shared<Array<string>>, text: string):
+  log->value = [...log->value, text]
+
+async fn sleeper(id: int, log: Shared<Array<string>>):
+  defer fn(): note(log, "stopped " + string(id))
+  await time.delay(1h)
+
+async fn rows(log: Shared<Array<string>>):
+  outer: for i in 0..2:
+    for j in 0..2:
+      hold(outer) _ = sleeper(10 * i + j, log)
+      await time.delay(1ms)
+    note(log, "row " + string(i))
+  note(log, "rows done")
+
+async fn breaking(log: Shared<Array<string>>):
+  outer: for i in 0..3:
+    inner: for j in 0..3:
+      if j == 2:
+        break outer
+      hold(inner) _ = sleeper(20 + j, log)
+  note(log, "broke out")
+
+async fn counting(log: Shared<Array<string>>):
+  let k = 0
+  passes: while k < 3:
+    k += 1
+    hold(passes) _ = sleeper(30 + k, log)
+    if k < 3:
+      continue passes
+    note(log, "last pass")
+  note(log, "while done")
+
+async fn batched(log: Shared<Array<string>>):
+  batch:
+    for i in 0..2:
+      hold(batch) _ = sleeper(40 + i, log)
+    note(log, "batch started")
+  note(log, "after batch")
+
+async fn whole(log: Shared<Array<string>>):
+  for i in 0..1:
+    hold(whole) _ = sleeper(50 + i, log)
+  note(log, "function done")
+
+async fn main() -> Future<string>:
+  const empty: Array<string> = []
+  const log = new Shared{value: empty}
+  await rows(log)
+  await breaking(log)
+  await counting(log)
+  await batched(log)
+  await whole(log)
+  log->value.join(", ")

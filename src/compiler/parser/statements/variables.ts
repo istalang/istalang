@@ -1,8 +1,7 @@
 /**
  * Variable declarations (§3.4, §3.15): `let`, `const`, their destructuring forms, and the forms
- * whose holdings last until the function ends or a named loop does (§7): `hold let`, `hold const`,
- * `hold _ = expr`, which means `hold const _ = expr`, and `hold(name) …`. `fn let`, `fn const` and
- * `fn _` are older spellings of the unnamed `hold`, read into the same tree.
+ * whose holdings last until the function ends or a named loop or block does (§7): `hold let`,
+ * `hold const`, `hold _ = expr`, which means `hold const _ = expr`, and `hold(name) …`.
  *
  * An initializer is always required. A missing one is reported and stands as a Missing node.
  */
@@ -17,10 +16,8 @@ export function parseVariable(parser: Parser): VariableDeclaration {
   return parseVariableAfter(parser, start, undefined);
 }
 
-/**
- * Whether a held variable's declaration starts `ahead` tokens on: `let`, `const`, or `_ =`.
- */
-export function startsHeldVariableAt(parser: Parser, ahead: number): boolean {
+/** Whether a held variable's declaration starts `ahead` tokens on: `let`, `const`, or `_ =`. */
+function startsHeldVariableAt(parser: Parser, ahead: number): boolean {
   const { cursor } = parser;
   const next = cursor.peek(ahead);
   return (
@@ -48,17 +45,11 @@ export function parseHeldVariable(parser: Parser): VariableDeclaration {
   const { start } = cursor.advance().span;
   let label: Hold['label'];
   if (cursor.eat('(') !== undefined) {
-    label = parser.identifier('a loop or function name');
+    label = parser.identifier('a label or function name');
     parser.expect(')');
   }
   const hold: Hold = { kind: 'Hold', span: parser.spanFrom(start), label };
   return parseVariableAfter(parser, start, hold);
-}
-
-/** `fn let …`, `fn const …` or `fn _ = …`, starting at `fn`. */
-export function parseFunctionHeldVariable(parser: Parser): VariableDeclaration {
-  const { span } = parser.cursor.advance();
-  return parseVariableAfter(parser, span.start, { kind: 'Hold', span, label: undefined });
 }
 
 function parseVariableAfter(

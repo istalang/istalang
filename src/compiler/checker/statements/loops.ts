@@ -1,45 +1,82 @@
 /**
- * Loops (§4): `while`, `for`, and the `break` and `continue` that leave their bodies. A loop is a
- * statement of type `unit`; its body runs for its effects, so the body's value is discarded.
- * What a `for` runs over, and how, is the rule of iteration (rules/iteration.ts).
+ * Loops and labels (§3.4, §4): `while`, `for`, the `break` and `continue` that leave their bodies,
+ * blocks labelled for `hold`, and the names labels give. A loop or labelled block is a statement
+ * of type `unit`; its body runs for its effects, so the body's value is discarded. What a `for`
+ * runs over, and how, is the rule of iteration (rules/iteration.ts).
+ *
+ * A label names one scope of its function: it may not repeat a label around it, nor the
+ * function's own name, which `hold(name)` names too, so a name never means two things. A label
+ * nothing names is a warning, found when its scope ends.
  */
 
-import type { Identifier } from '../../syntax/node.ts';
-import type { Break, Continue, For, While } from '../../syntax/statements.ts';
+import type { LabelledScope } from '../../syntax/labels.ts';
+import type { Break, Continue, For, Hold, LabelledBlock, While } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, neverType, type Type, unitType } from '../types/type.ts';
 
 export function checkWhile(context: BodyContext, node: While): Type {
-  reportLabel(context, node.label);
   context.expect(node.condition, boolType);
-  context.loops.inside(node, () => context.effectBlock(node.body));
+  checkScope(context, node);
   return unitType;
 }
 
 export function checkFor(context: BodyContext, node: For): Type {
-  reportLabel(context, node.label);
   checkLoopOver(context, node);
-  context.loops.inside(node, () => context.effectBlock(node.body));
+  checkScope(context, node);
   return unitType;
 }
 
-/** `break` or `continue`: `never`, allowed only inside a loop. */
+export function checkLabelledBlock(context: BodyContext, node: LabelledBlock): Type {
+  checkScope(context, node);
+  return unitType;
+}
+
+/** `break` or `continue`: `never`, leaving the innermost loop or the one its label names. */
 export function checkLoopExit(context: BodyContext, node: Break | Continue): Type {
-  reportLabel(context, node.label);
-  if (!context.loops.active) {
-    context.report(
-      checkerDiagnostics.outsideLoop(node.span, node.kind === 'Break' ? 'break' : 'continue'),
-    );
+  const keyword = node.kind === 'Break' ? 'break' : 'continue';
+  const { label } = node;
+  if (label === undefined) {
+    if (!context.enclosing.inLoop) {
+      context.report(checkerDiagnostics.outsideLoop(node.span, keyword));
+    }
+    return neverType;
+  }
+  const target = context.enclosing.name(label);
+  if (target === undefined) {
+    context.report(checkerDiagnostics.unknownLoopLabel(label.span, keyword, label.text));
+  } else if (target.kind === 'LabelledBlock') {
+    context.report(checkerDiagnostics.blockLabel(label.span, keyword, label.text));
   }
   return neverType;
 }
 
-/** A loop's label, or the one `break` or `continue` names, which the checker doesn't take yet. */
-function reportLabel(context: BodyContext, label: Identifier | undefined): void {
+/** `hold(name)`: names a loop or block around it, or the function itself. */
+export function checkHoldScope(context: BodyContext, hold: Hold): void {
+  const { label } = hold;
+  if (
+    label === undefined ||
+    context.enclosing.name(label) !== undefined ||
+    context.enclosing.isOwnName(label)
+  ) {
+    return;
+  }
+  context.report(checkerDiagnostics.unknownHoldScope(label.span, label.text));
+}
+
+/** Checks `scope`'s label and its body, and warns when nothing in the body named the label. */
+function checkScope(context: BodyContext, scope: LabelledScope): void {
+  const { label } = scope;
   if (label !== undefined) {
-    context.unsupported(label, frontier.loopLabel);
+    if (context.enclosing.labelled(label) !== undefined) {
+      context.report(checkerDiagnostics.repeatedLabel(label.span, label.text));
+    } else if (context.enclosing.isOwnName(label)) {
+      context.report(checkerDiagnostics.ownNameLabel(label.span, label.text));
+    }
+  }
+  const { named } = context.enclosing.inside(scope, () => context.effectBlock(scope.body));
+  if (label !== undefined && !named) {
+    context.report(checkerDiagnostics.unusedLabel(label.span, label.text));
   }
 }

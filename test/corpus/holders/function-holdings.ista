@@ -1,7 +1,7 @@
 # outcome: "stopped 1, reassigned, block done, end a, stopped 5, stopped 4, stopped 3, stopped 2, stopped 8, body, arr, stopped 11, stopped 10, arr dropped, copy, m set, stopped 12, copy dropped, stopped 13"
-# `hold let` and `hold const` keep what they hold when their block ends, until the function ends, where
-# everything left is released newest first (§3.4, §7); a value a `hold let` lost to an assignment is
-# released at that assignment. A header's temporaries end before the body, dropping an array
+# `hold let`, `hold const` and `hold _` keep what they hold when their block ends, until the
+# function ends, where everything left is released newest first (§3.4, §7); a value a `hold let`
+# lost to an assignment is released at that assignment. A header's temporaries end before the body, dropping an array
 # releases its elements newest first, and a value another holder still reaches (a copy out of a
 # `Shared`) survives being overwritten there until the copy goes.
 

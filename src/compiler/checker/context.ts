@@ -29,8 +29,8 @@ import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { Checker, ValueSite, VariantMember } from './check.ts';
+import type { EnclosingScopes } from './closures/enclosing-scopes.ts';
 import type { FunctionScopes } from './closures/functions.ts';
-import type { LoopScope } from './closures/loop-scope.ts';
 import type { OwnCalls } from './closures/own-calls.ts';
 import type { ReturnScope } from './closures/returns.ts';
 import type { CollectionForms } from './expressions/collections.ts';
@@ -165,8 +165,8 @@ export interface BodyContext {
   readonly functions: FunctionScopes;
   /** The innermost function's result. */
   readonly returns: ReturnScope;
-  /** The innermost function's loops. */
-  readonly loops: LoopScope;
+  /** The innermost function's loops and labelled blocks. */
+  readonly enclosing: EnclosingScopes;
   readonly implicit: ImplicitCalls;
   readonly collections: CollectionForms;
   readonly iterations: Iterations;

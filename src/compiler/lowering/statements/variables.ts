@@ -181,10 +181,10 @@ export function lowerVariableDeclaration(
   bindTargets(context, node, value, node.span);
 }
 
-/** How long what `owner`'s targets hold lasts: a `hold`'s, until its function returns. */
+/** How long what `owner`'s targets hold lasts: a `hold`'s, until its hold scope ends. */
 function lifetimeOf(context: FunctionContext, owner: TargetOwner): Lifetime {
   return owner.kind === 'VariableDeclaration' && owner.hold !== undefined
-    ? { into: context.holds.functionList }
+    ? { into: context.holds.listOf(owner.hold) }
     : 'block';
 }
 
