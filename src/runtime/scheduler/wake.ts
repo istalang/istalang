@@ -43,7 +43,7 @@ import { Instance, type StartOptions } from './instance.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import { arriving } from './mocks.ts';
 import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
-import type { MockCall } from './test-world.ts';
+import type { CallerFuture, MockCall } from './test-world.ts';
 
 export interface SchedulerSeams {
   readonly store: InstanceStore;
@@ -77,12 +77,13 @@ interface Arrival {
 }
 
 /**
- * What an advance does before its first segment: fill a future, answer a call to a mock (§10), or
- * start at a given time.
+ * What an advance does before its first segment: fill a future, answer a call to a mock or drop
+ * the answers to calls whose callers let go of their futures (§10), or start at a given time.
  */
 export interface AdvanceFirst {
   readonly arrival?: Arrival;
   readonly answering?: MockCall;
+  readonly withdrawn?: readonly CallerFuture[];
   /** When the first segment counts as started, for a retry of one that panicked (§3.12, §5). */
   readonly startedAt?: bigint;
 }
@@ -166,7 +167,7 @@ interface SegmentRun {
 
 /**
  * Runs one segment from `committed`: the future `arrival` names filled first, or the answer to
- * `answering` started first. Undefined when nothing can run and nothing arrived, or when
+ * `answering` started first, once the answers that would fill `withdrawn` are dropped. Undefined when nothing can run and nothing arrived, or when
  * `arrival` names no future the instance waits on: one it disposed, whose later fill changes
  * nothing (§7), or one it never had.
  */
@@ -174,7 +175,7 @@ function runFrom(
   loaded: LoadedDefinition,
   committed: Snapshot,
   startedAt: bigint,
-  { arrival, answering }: Omit<AdvanceFirst, 'startedAt'>,
+  { arrival, answering, withdrawn }: Omit<AdvanceFirst, 'startedAt'>,
 ): SegmentRun | undefined {
   if (committed.status.kind === 'unstarted') {
     const instance = Instance.start(loaded, committed);
@@ -189,12 +190,20 @@ function runFrom(
   ) {
     return undefined;
   }
+  if (withdrawn !== undefined) {
+    instance.futures.withdraw(withdrawn);
+  }
   instance.futures.resolveDueTimers(startedAt);
   const { world } = loaded;
   if (world !== undefined) {
     instance.futures.resolveWatches(world.watched);
   }
-  if (instance.idle && arrival === undefined && answering === undefined) {
+  if (
+    instance.idle &&
+    arrival === undefined &&
+    answering === undefined &&
+    withdrawn === undefined
+  ) {
     return undefined;
   }
   const first =

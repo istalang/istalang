@@ -254,6 +254,7 @@ class SegmentRunner implements Machine {
 
   /** Runs drivers until one awaits, the root returns, or nothing is ready. */
   #runDrivers(first: LiveExecution | undefined): RunEnd {
+    this.#collectBeforeDriving();
     for (
       let driver = first ?? this.#instance.resumeNext();
       driver !== undefined;
@@ -293,6 +294,16 @@ class SegmentRunner implements Machine {
       if (this.#collected() && this.#end !== undefined) {
         return this.#end;
       }
+      this.#step();
+    }
+  }
+
+  /**
+   * Collects what the segment let go of before any execution ran, as answers withdrawn from their
+   * callers let go of what they wait on (§10), running any disposal's call to its end.
+   */
+  #collectBeforeDriving(): void {
+    while (!this.#collected()) {
       this.#step();
     }
   }

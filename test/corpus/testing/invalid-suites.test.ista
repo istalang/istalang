@@ -37,7 +37,7 @@ fn makesShared() -> Array<Test>: _with(new Box{n: 1})
 fn makesSlot() -> Array<Test>: _of(Slot.create<int>())
 
 @Suite{"a test may do anything"}
-fn fine() -> Array<Test>: [Case{title: "t", body: async fn(): { drop fetch(); () }, focus: Plain}]
+fn fine() -> Array<Test>: [Case{title: "t", body: async fn(): { drop fetch(); () }}]
 
 fn _with(box: Box) -> Array<Test>: []
 fn _of(slot: Slot<int>) -> Array<Test>: []

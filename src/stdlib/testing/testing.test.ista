@@ -29,23 +29,26 @@ fn logged(log: Log, value: int) -> Setup<int>:
 async fn withFortyOne(body: async fn(int) -> unit):
   await body(41)
 
-# The title and focus of `entry`, as the runner reads them.
+# The title and marks of `entry`, as the runner reads them.
 fn described(entry: Test) -> string:
   match entry:
-    case Case{title, focus}:
-      title + " " + named(focus)
-    case Group{title, focus}:
-      title + " " + named(focus)
+    case Case{title, skipped, only}:
+      marked(title, skipped, only)
+    case Group{title, skipped, only}:
+      marked(title, skipped, only)
 
-fn named(focus: testing.Focus) -> string:
-  match focus:
-    case Plain: "plain"
-    case Skipped: "skipped"
-    case Only: "only"
+fn marked(title: string, skipped: bool, only: bool) -> string:
+  title + (if skipped: " skipped" else: "") + (if only: " only" else: "")
 
 async fn panicsLater() -> Future<unit>:
   await time.delay(Duration{value: 0})
   panic("later")
+
+fn record(name: string): ()
+
+async fn waitsThenRecords(name: string, deadline: int):
+  await time.at(Time{value: deadline})
+  record(name)
 
 async fn waitsAday() -> Future<int>:
   await time.delay(Duration{value: 86_400_000})
@@ -67,12 +70,12 @@ fn tests() -> Array<Test>: [
   test("run an async body", async fn(): await time.delay(Duration{value: 0})),
   test("hand a setup's environment to a plain body", withFortyOne, fn(n): assertEq(n, 41)),
   test("hand a setup's environment to an async body", withFortyOne, async fn(n): assertEq(n, 41)),
-  test("are marked by skip and only, as are groups, the last mark winning", fn(): {
+  test("are marked by skip and only, as are groups, each mark kept", fn(): {
     const plain = test("t", fn(): ())
-    assertEq(described(plain), "t plain")
+    assertEq(described(plain), "t")
     assertEq(described(skip(plain)), "t skipped")
     assertEq(described(only(plain)), "t only")
-    assertEq(described(skip(only(group("g", [plain])))), "g skipped")
+    assertEq(described(only(skip(group("g", [plain])))), "g skipped only")
   }),
 ]
 
@@ -132,6 +135,22 @@ fn clocks() -> Array<Test>: [
     assert(started.state() is Waiting)
     clock.advance(Duration{value: 1})
     assertEq(await started.result(), 86_400_000)
+  }),
+  test("fills deadlines earliest first, ties in the order they were set", async fn(): {
+    const clock = FakeClock{start: Time{value: 0}}
+    fn _ = mock(time.at, clock.at)
+    const records = mock(record, fn(name: string): ())
+    const late = testing.start(waitsThenRecords, "late", 2)
+    await late.idle()
+    const first = testing.start(waitsThenRecords, "first", 1)
+    await first.idle()
+    const second = testing.start(waitsThenRecords, "second", 1)
+    await second.idle()
+    clock.advance(Duration{value: 2})
+    await late.result()
+    await first.result()
+    await second.result()
+    assertEq(records.calls(), ["first", "second", "late"])
   }),
   test("resolves a deadline already reached at once", async fn(): {
     const clock = FakeClock{start: Time{value: 5}}

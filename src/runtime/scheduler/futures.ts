@@ -22,6 +22,7 @@ import { readRegister } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
 import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
+import type { CallerFuture } from './test-world.ts';
 
 export type FutureState = Extract<HeapObject, { kind: 'future' }>['state'];
 
@@ -143,6 +144,22 @@ export class Futures {
     );
     if (this.#heap.of(future, 'future').state.kind === 'resolved') {
       this.#answer(answer);
+    }
+  }
+
+  /**
+   * Drops the answers that would fill `withdrawn`, futures their callers let go of, so what each
+   * answer waits on is let go too (§7, §10).
+   */
+  withdraw(withdrawn: readonly CallerFuture[]): void {
+    for (const answer of this.#heap.objectsOf('answer')) {
+      if (
+        withdrawn.some(
+          ({ instance, token }) => answer.instance === instance && answer.token === token,
+        )
+      ) {
+        this.#heap.remove(answer.id);
+      }
     }
   }
 

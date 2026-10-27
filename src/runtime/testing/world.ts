@@ -222,8 +222,34 @@ export class World implements TestWorld {
   #record(instance: string, advanced: Advance): void {
     this.#group.record(instance, advanced);
     this.#arrivals.push(...advanced.answered);
+    this.#withdrawAnswersTo(instance);
     if (advanced.state.kind === 'panicked' && this.#waitsForPanicOf(instance)) {
       this.#expectedPanics.add(instance);
+    }
+  }
+
+  /**
+   * Has every holder drop its answers to the calls of `caller` whose futures `caller` let go of,
+   * as a host frees the token of a disposed future (§7), so a mocked receive that lost a `select`
+   * takes nothing (§6).
+   */
+  #withdrawAnswersTo(caller: string): void {
+    const waiting = new Set(
+      this.#snapshotOf(caller)?.objects.flatMap((object) =>
+        object.kind === 'future' && object.state.kind === 'host' ? [object.state.token] : [],
+      ),
+    );
+    for (const holder of this.#group.states.keys()) {
+      const snapshot = this.#snapshotOf(holder);
+      const withdrawn = (snapshot?.status.kind === 'active' ? snapshot.objects : []).flatMap(
+        (object) =>
+          object.kind === 'answer' && object.instance === caller && !waiting.has(object.token)
+            ? [{ instance: caller, token: object.token }]
+            : [],
+      );
+      if (withdrawn.length > 0) {
+        this.#advance(holder, { withdrawn });
+      }
     }
   }
 

@@ -9,7 +9,8 @@ import { outcomesOf, reportsOf } from './testing.test-kit.ts';
 /** A test module: the imports every program here uses, then `body`. */
 function testModule(body: string): string {
   return [
-    "import Suite, Test, test, group, skip, only, assertEq, FakeClock, mock, calls, handle from 'testing'",
+    "import Suite, Test, test, group, skip, only, assert, assertEq, FakeClock, FakeQueue, mock, calls, handle from 'testing'",
+    "import Decodable from 'json'",
     "import * as testing from 'testing'",
     "import * as time from 'time'",
     "import Time, Duration from 'time'",
@@ -64,6 +65,26 @@ fn two() -> Array<Test>: [only(group("g", [test("c", passes)])), test("d", passe
     expect(outcomesOf(reportsOf(source, { filter: 'g ›' }))).toEqual(['two › g › c: passed']);
   });
 
+  it('skips a test skip marks, whatever only marks, and at whatever level', () => {
+    const source = testModule(`
+async fn passes():
+  ()
+
+@Suite{"marks"}
+fn marks() -> Array<Test>: [
+  only(skip(test("only over skip", passes))),
+  skip(only(test("skip over only", passes))),
+  only(group("g", [skip(test("skip inside only", passes)), test("focused", passes)])),
+]
+`);
+    expect(outcomesOf(reportsOf(source))).toEqual([
+      'marks › only over skip: skipped',
+      'marks › skip over only: skipped',
+      'marks › g › skip inside only: skipped',
+      'marks › g › focused: passed',
+    ]);
+  });
+
   it('fails a test whose suite lists other tests in its instance than it listed before', () => {
     const source = testModule(`
 async fn passes():
@@ -111,15 +132,10 @@ async fn everywhere():
   const charged = mock(charge, fn(amount: int): "charged " + amount)
   fn _ = mock(greet, fn(): "hi")
   fn _ = mock(time.now, fn(): Time{value: 42})
-  if await report() != "hi charged 5 42":
-    panic("in the test: " + await report())
-  const started = testing.start(parent)
-  const got = await started.result()
-  if got != "hi charged 5 42":
-    panic("in a started instance: " + got)
+  assertEq(await report(), "hi charged 5 42")
+  assertEq(await testing.start(parent).result(), "hi charged 5 42")
   await time.delay(1s)
-  if charged.calls() != [5, 5, 7]:
-    panic("calls: " + charged.calls().length())
+  assertEq(charged.calls(), [5, 5, 7])
 
 @Suite{"mocks"}
 fn mocks() -> Array<Test>: [test("everywhere", everywhere)]
@@ -136,11 +152,9 @@ fn two(a: int, b: string) -> int: a
 async fn released():
   fn _ = mock(greet, fn(): "outer")
   const inner = mock(greet, fn(): "inner")
-  if greet() != "inner":
-    panic("the newest mock doesn't reach the call")
+  assertEq(greet(), "inner")
   drop inner
-  if greet() != "outer":
-    panic("releasing the newest doesn't bring back the one before")
+  assertEq(greet(), "outer")
 
 async fn recorded():
   const nothing = mock(greet, fn(): "x")
@@ -149,8 +163,9 @@ async fn recorded():
   drop greet()
   drop one(1)
   drop two(2, "b")
-  if nothing.calls() != [()] or single.calls() != [1] or pair.calls() != [(2, "b")]:
-    panic("calls aren't recorded by arity")
+  assertEq(nothing.calls(), [()])
+  assertEq(single.calls(), [1])
+  assertEq(pair.calls(), [(2, "b")])
 
 @Suite{"holders"}
 fn holders() -> Array<Test>: [test("released", released), test("recorded", recorded)]
@@ -170,8 +185,7 @@ async fn describes() -> Future<string>:
 
 async fn native():
   fn _ = mock(describe, toString)
-  if await testing.start(describes).result() != "42":
-    panic("a native replacement didn't answer the started instance")
+  assertEq(await testing.start(describes).result(), "42")
 
 async fn breaking():
   fn _ = mock(describe, fn(n: int) -> string: panic("the replacement broke"))
@@ -186,6 +200,37 @@ fn suite() -> Array<Test>: [test("native", native), test("breaking", breaking)]
     ]);
   });
 
+  it('drop an answer whose caller let go of its future, so a receive losing a select takes nothing', () => {
+    const source = testModule(`
+extern sendable struct Queue<T is Sendable>
+extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>
+extern fn queueOf(name: string) -> Queue<int>
+
+async fn pollsThenWaits() -> Future<int>:
+  const polled: int = select:
+    case queueOf("q").receive() as n:
+      n
+    else:
+      0
+  polled + await queueOf("q").receive()
+
+async fn posted():
+  const fake = FakeQueue<Queue<int>, int>{make: handle}
+  fn _ = mock(queueOf, fake.open)
+  fn _ = mock(receive, fake.receive)
+  const started = testing.start(pollsThenWaits)
+  await started.idle()
+  fake.post("q", 5)
+  assertEq(await started.result(), 5)
+
+@Suite{"withdrawn"}
+fn suite() -> Array<Test>: [test("posted after a lost select", posted)]
+`);
+    expect(outcomesOf(reportsOf(source))).toEqual([
+      'withdrawn › posted after a lost select: passed',
+    ]);
+  });
+
   it('of a failed test reach no later test, each running in a world of its own', () => {
     const source = testModule(`
 fn greet() -> string: "hello"
@@ -195,8 +240,7 @@ async fn failsMocked() -> Future<unit>:
   panic("failed")
 
 async fn unmocked():
-  if greet() != "hello":
-    panic("an earlier test's mock reached this one")
+  assertEq(greet(), "hello")
 
 @Suite{"isolated"}
 fn isolated() -> Array<Test>: [test("fails", failsMocked), test("next", unmocked)]
@@ -218,14 +262,13 @@ async fn sleeper(days: int) -> Future<string>:
 
 async fn watched():
   const started = testing.start(sleeper, 2)
-  if not (started.state() is Running):
-    panic("an instance that hasn't run yet is running")
+  assert(started.state() is Running)
   await started.idle()
-  if not (started.state() is Waiting) or started.waitingAt() != ["sleeping"]:
-    panic("expected it waiting at its waypoint: " + started.waitingAt().length())
+  assert(started.state() is Waiting)
+  assertEq(started.waitingAt(), ["sleeping"])
   await started.reaches("sleeping")
-  if await started.result() != "woke" or not (started.state() is Finished):
-    panic("expected it finished")
+  assertEq(await started.result(), "woke")
+  assert(started.state() is Finished)
 
 @Suite{"watches"}
 fn watches() -> Array<Test>: [test("watched", watched)]
@@ -291,8 +334,7 @@ async fn twice() -> Future<int>:
 async fn crashing():
   const effects = mock(effect, fn(n: int): n)
   drop await testing.startCrashingEveryAwait(twice).result()
-  if effects.calls().length() != 2:
-    panic("ran its first segment " + effects.calls().length() + " times")
+  assertEq(effects.calls().length(), 2)
 
 @Suite{"crash"}
 fn crash() -> Array<Test>: [test("crashing", crashing)]
@@ -313,12 +355,10 @@ async fn opens() -> Future<string>:
 
 async fn handles():
   const queue = handle<Queue>()
-  if queue == handle<Queue>():
-    panic("two handles are equal")
+  assert(queue != handle<Queue>())
   fn _ = mock(open, fn(): queue)
   fn _ = mock(name, fn(given: Queue): if given == queue: "same" else: "other")
-  if await testing.start(opens).result() != "same":
-    panic("the handle didn't come back the same")
+  assertEq(await testing.start(opens).result(), "same")
 
 @Suite{"handles"}
 fn suite() -> Array<Test>: [test("handles", handles)]
@@ -347,8 +387,7 @@ async fn mockedDispose():
   fn _ = mock(open, fn(): queue)
   const disposed = mock(dispose, fn(given: Queue): ())
   drop await testing.start(opensAndLets).result()
-  if disposed.calls() != [queue]:
-    panic("the started instance's disposal didn't reach the mock with the same handle")
+  assert(disposed.calls() == [queue])
 
 @Suite{"disposal"}
 fn suite() -> Array<Test>: [test("unmocked", unmockedDispose), test("mocked", mockedDispose)]
@@ -373,8 +412,7 @@ async fn handedOut():
   fn _ = mock(post, fn(n: int): handle<Sent>())
   const disposed = mock(dispose, fn(given: Sent): ())
   drop await testing.start(posts).result()
-  if disposed.calls().length() != 2:
-    panic("disposed " + disposed.calls().length() + " times")
+  assertEq(disposed.calls().length(), 2)
 
 @Suite{"ownership"}
 fn suite() -> Array<Test>: [test("handed out", handedOut)]

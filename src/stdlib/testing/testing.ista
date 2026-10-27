@@ -25,16 +25,11 @@ import Time, Duration from 'time'
 struct Suite:
   title: string
 
-# How a run treats a test or every test of a group (§10).
-enum Focus:
-  Plain
-  Skipped
-  Only
-
-# A test, or a group of tests, as the library builds them (§10).
+# A test, or a group of tests, as the library builds them (§10), marked by `skip` and `only`,
+# which a group's marks reach every test of.
 enum Test:
-  Case { title: string; body: async fn() -> unit; focus: Focus }
-  Group { title: string; tests: Array<Test>; focus: Focus }
+  Case { title: string; body: async fn() -> unit; skipped: bool = false; only: bool = false }
+  Group { title: string; tests: Array<Test>; skipped: bool = false; only: bool = false }
 
 # A test as the runner lists it: its full title, and whether the run skips or focuses it.
 struct Listed:
@@ -59,16 +54,16 @@ async fn _run(suite: fn() -> Array<Test>, title: string, position: int, expected
   else:
     panic("The suite listed other tests when it was called again, so test '" + expected + "' can't be found.")
 
-# The tests of `tests`, depth first, titled under `title` and inheriting a group's focus.
+# The tests of `tests`, depth first, titled under `title` and marked as their groups are.
 fn _entries(title: string, tests: Array<Test>, skipped: bool, only: bool) -> Array<_Entry>:
   let entries: Array<_Entry> = []
   for each in tests:
     match each:
-      case Case{title as own, body, focus}:
-        const listed = Listed{title: title + " › " + own, skipped: skipped or focus is Skipped, only: only or focus is Only}
+      case Case{title as own, body, skipped as skips, only as focuses}:
+        const listed = Listed{title: title + " › " + own, skipped: skipped or skips, only: only or focuses}
         entries.push(_Entry{listed, body})
-      case Group{title as own, tests as inner, focus}:
-        entries = [...entries, ..._entries(title + " › " + own, inner, skipped or focus is Skipped, only or focus is Only)]
+      case Group{title as own, tests as inner, skipped as skips, only as focuses}:
+        entries = [...entries, ..._entries(title + " › " + own, inner, skipped or skips, only or focuses)]
   entries
 
 # A mock's handle (§10): while it is held, calls to its target run its replacement, and the
@@ -175,7 +170,7 @@ extern fn _panicked<R>(self: Started<R>) -> Future<string>
 extern fn handle<T>() -> T
 
 # A test of `body`, run in an instance of its own (§10).
-fn test(title: string, body: async fn() -> unit) -> Test: Case{title, body, focus: Plain}
+fn test(title: string, body: async fn() -> unit) -> Test: Case{title, body}
 fn test(title: string, body: fn() -> unit) -> Test: test(title, async fn(): body())
 
 # A test of `body`, run inside the environment `setup` prepares (§10).
@@ -184,20 +179,21 @@ fn test<E>(title: string, setup: Setup<E>, body: async fn(E) -> unit) -> Test:
 fn test<E>(title: string, setup: Setup<E>, body: fn(E) -> unit) -> Test:
   test(title, setup, async fn(environment: E): body(environment))
 
-fn group(title: string, tests: Array<Test>) -> Test: Group{title, tests, focus: Plain}
+fn group(title: string, tests: Array<Test>) -> Test: Group{title, tests}
 
-# `entry`, reported but not run (§10).
-fn skip(entry: Test) -> Test: _focused(entry, Skipped)
+# `entry`, reported but not run, even if `only` marks it too (§10).
+fn skip(entry: Test) -> Test: _marked(entry, true, false)
 
-# `entry`, which runs while every test of the run that isn't focused so is skipped (§10).
-fn only(entry: Test) -> Test: _focused(entry, Only)
+# `entry`, which runs while every test of the run `only` doesn't mark is skipped (§10).
+fn only(entry: Test) -> Test: _marked(entry, false, true)
 
-fn _focused(entry: Test, focus: Focus) -> Test:
+# `entry` with the marks it has and those given.
+fn _marked(entry: Test, skips: bool, focuses: bool) -> Test:
   match entry:
-    case Case{title, body}:
-      Case{title, body, focus}
-    case Group{title, tests}:
-      Group{title, tests, focus}
+    case Case{title, body, skipped, only}:
+      Case{title, body, skipped: skipped or skips, only: only or focuses}
+    case Group{title, tests, skipped, only}:
+      Group{title, tests, skipped: skipped or skips, only: only or focuses}
 
 # An environment for tests (§10): prepares it, runs the test inside it, and tears it down after.
 type Setup<E> = async fn(async fn(E) -> unit) -> unit
@@ -260,12 +256,9 @@ struct _Wait:
 
 fn _waitUntil(clock: _Clock, deadline: Time) -> Future<unit>:
   const slot = Slot.create<unit>()
-  if deadline.value <= clock->now.value:
-    drop slot.put(())
-  else:
-    const sooner = [for each in clock->waits if each.deadline.value <= deadline.value: each]
-    const later = [for each in clock->waits if each.deadline.value > deadline.value: each]
-    clock->waits = [...sooner, _Wait{deadline, slot}, ...later]
+  const (due, later) = _splitDue(clock->waits, deadline)
+  clock->waits = [...due, _Wait{deadline, slot}, ...later]
+  _fillDue(clock)
   slot.take()
 
 # Moves the clock forward by `by`, filling every wait whose deadline it passes (§10).
@@ -274,10 +267,18 @@ fn advance(self: FakeClock, by: Duration):
     panic("A fake clock only moves forward, not by " + by + ".")
   const clock = self._state
   clock->now = clock->now + by
-  const due = [for each in clock->waits if each.deadline.value <= clock->now.value: each]
-  clock->waits = clock->waits[due.length()..]
+  _fillDue(clock)
+
+# Fills every wait whose deadline the clock has reached, in order, and lets go of them.
+fn _fillDue(clock: _Clock):
+  const (due, later) = _splitDue(clock->waits, clock->now)
+  clock->waits = later
   for each in due:
     drop each.slot.put(())
+
+# `waits` split at `time`: those due by then, and the later ones, each in their order.
+fn _splitDue(waits: Array<_Wait>, time: Time) -> (Array<_Wait>, Array<_Wait>):
+  ([for each in waits if each.deadline.value <= time.value: each], [for each in waits if each.deadline.value > time.value: each])
 
 # A host's queues of type `Q` carrying `T`, one per key, each faked with an inbox (§10). Its fields
 # replace the program's externs: `open` a queue factory, `send` and `receive` a queue's own.

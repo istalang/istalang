@@ -104,7 +104,23 @@ fn approvalSuite() -> Array<Test>: [
       assertEq(env.reviews.pending("legal"), [])
       assertEq(env.reviews.pending("finance"), [])
     }),
+    test("cancels after a verdict has come", withPurchaseEnv, async fn(env): {
+      const t = testing.start(app.purchase, laptop)
+      await t.idle()
+      env.verdicts.post("p1", Verdict{role: "legal", ok: true, comment: ""})
+      await t.idle()
+      env.cancels.post("p1", Cancel{reason: "too late"})
+      assertEq(await t.result(), "cancelled: too late")
+    }),
   ]),
+  test("takes the verdicts that come after a reminder", withPurchaseEnv, async fn(env): {
+    const t = testing.start(app.purchase, laptop)
+    await t.idle()
+    env.clock.advance(1d)
+    await t.idle()
+    approveAll(env, ["legal", "finance"])
+    assertEq(await t.result(), "paid: r-p1-900")
+  }),
   ...[for amount in [10, 50_000, 60_000]:
     test("amount " + amount, withPurchaseEnv, async fn(env): {
       const roles = if amount > 50_000: ["legal", "finance", "cfo"] else: ["legal", "finance"]

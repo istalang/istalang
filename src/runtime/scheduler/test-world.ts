@@ -13,15 +13,18 @@ import type { Value } from '../../definition/values.ts';
 import type { Watch } from './futures.ts';
 import type { Inspection } from './inspect.ts';
 
+/** The future a call to another instance's mock fills: its caller, and the token it named it. */
+export interface CallerFuture {
+  readonly instance: string;
+  readonly token: string;
+}
+
 /** A call one instance makes to a mock another holds (§10), and the future that waits for it. */
-export interface MockCall {
+export interface MockCall extends CallerFuture {
   /** The mock object, in the holder's heap. */
   readonly mock: number;
   /** The call's arguments, as values that can leave an instance (mocks.ts). */
   readonly arguments: readonly Value[];
-  /** The calling instance, and the token of the future it fills with the answer. */
-  readonly instance: string;
-  readonly token: string;
 }
 
 /**
