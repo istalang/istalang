@@ -14,10 +14,8 @@
  *   calls (§3.1), so it leaves that entry's frame out: an `Error`'s trace starts where it is built.
  */
 
-import type { Value } from '../../definition/values.ts';
 import { conversionFunction } from '../../language/well-known.ts';
 import {
-  type Native,
   type NativeContext,
   type Natives,
   Panic,
@@ -25,6 +23,7 @@ import {
   type WithWeakSide,
 } from '../../runtime/natives.ts';
 import { float, int, text } from '../native-values.ts';
+import { divisionByZero, numeric } from '../numeric.ts';
 import type { NativeKeys } from '../std-module.ts';
 import { arrayNatives } from './arrays.ts';
 import { mapNatives } from './maps.ts';
@@ -32,13 +31,6 @@ import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
 import { textFormNatives } from './text-forms.ts';
 import { weakNatives } from './weak-natives.ts';
-
-const numericPairs = [
-  ['int', 'int'],
-  ['float', 'float'],
-  ['int', 'float'],
-  ['float', 'int'],
-] as const;
 
 export const preludeNatives = (
   keys: NativeKeys,
@@ -104,26 +96,6 @@ const arithmeticNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.ofStatic('int', conversionFunction, 'float')]: ([value]) => truncated(float(value)),
 });
 
-/**
- * The four numeric overloads of operator `name`: two ints go to `onInts`, any pair with a float
- * to `onFloats`, the int converted.
- */
-function numeric(
-  keys: NativeKeys,
-  name: string,
-  onInts: (left: bigint, right: bigint) => Value,
-  onFloats: (left: number, right: number) => Value,
-): Natives<NativeContext> {
-  return Object.fromEntries(
-    numericPairs.map(([left, right]): [string, Native<NativeContext>] => [
-      keys.of(name, left, right),
-      left === 'int' && right === 'int'
-        ? ([a, b]) => onInts(int(a), int(b))
-        : ([a, b]) => onFloats(asFloat(a), asFloat(b)),
-    ]),
-  );
-}
-
 function floorDivide(dividend: bigint, by: bigint): bigint {
   const quotient = dividend / by;
   const inexact = quotient * by !== dividend;
@@ -133,7 +105,7 @@ function floorDivide(dividend: bigint, by: bigint): bigint {
 /** `by`, when an int can be divided by it; dividing by zero panics (§3.12). */
 function nonZero(by: bigint): bigint {
   if (by === 0n) {
-    throw new Panic('Division by zero.');
+    throw divisionByZero();
   }
   return by;
 }
@@ -158,8 +130,4 @@ function truncated(value: number): bigint {
     throw new Panic(`${value} has no int.`);
   }
   return BigInt(Math.trunc(value));
-}
-
-function asFloat(value: Value | undefined): number {
-  return typeof value === 'bigint' ? Number(value) : float(value);
 }
