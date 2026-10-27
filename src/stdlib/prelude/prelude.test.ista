@@ -1,0 +1,132 @@
+# The prelude's array and map methods taking a function, and the array methods beside them
+# (spec §3.8); the rest of the prelude is the corpus's.
+
+import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
+
+struct Item:
+  name: string
+  rank: int
+
+fn byRank(left: Item, right: Item) -> int:
+  left.rank - right.rank
+
+fn isEven(n: int) -> bool:
+  n % 2 == 0
+
+fn panicsOnThree(n: int) -> bool:
+  if n == 3:
+    panic("three")
+  false
+
+@Suite{"prelude › arrays"}
+fn arrays() -> Array<Test>: [
+  group("transforming", [
+    test("map gives each item's result, in order", fn(): {
+      assertEq([1, 2, 3].map(fn(n): n * 10), [10, 20, 30])
+      assertEq([1, 2].map(fn(n): "#" + n), ["#1", "#2"])
+    }),
+    test("filter keeps the items its test accepts, in order", fn(): {
+      assertEq([1, 2, 3, 4].filter(isEven), [2, 4])
+      assertEq([1, 3].filter(isEven), [])
+    }),
+    test("flatMap joins each item's array", fn(): {
+      assertEq([1, 2].flatMap(fn(n): [n, n]), [1, 1, 2, 2])
+      assertEq([1, 2].flatMap(fn(n): [for _ in 0..0: n]), [])
+    }),
+    test("flat joins the arrays of an array, one level deep", fn(): {
+      assertEq([[1], [], [2, 3]].flat(), [1, 2, 3])
+      assertEq([[[1]], [[2]]].flat(), [[1], [2]])
+    }),
+    test("reduce folds from the initial value, which an empty array gives back", fn(): {
+      assertEq([1, 2, 3].reduce(fn(sum, n): sum + n, 0), 6)
+      assertEq([1, 2].reduce(fn(text, n): text + n, ">"), ">12")
+      const empty: Array<int> = []
+      assertEq(empty.reduce(fn(sum, n): sum + n, 7), 7)
+    }),
+  ]),
+  group("searching", [
+    test("find and findIndex give the first item its test accepts", fn(): {
+      assertEq([1, 2, 3, 4].find(isEven), 2)
+      assertEq([1, 2, 3, 4].findIndex(isEven), 1)
+    }),
+    test("findLast and findLastIndex give the last", fn(): {
+      assertEq([1, 2, 3, 4, 5].findLast(isEven), 4)
+      assertEq([1, 2, 3, 4, 5].findLastIndex(isEven), 3)
+    }),
+    test("a search that finds nothing gives none or -1", fn(): {
+      assertEq([1, 3].find(isEven), none)
+      assertEq([1, 3].findLast(isEven), none)
+      assertEq([1, 3].findIndex(isEven), -1)
+      assertEq([1, 3].findLastIndex(isEven), -1)
+    }),
+    test("some and every", fn(): {
+      assert([1, 2].some(isEven))
+      assert(not [1, 3].some(isEven))
+      assert([2, 4].every(isEven))
+      assert(not [2, 3].every(isEven))
+      const empty: Array<int> = []
+      assert(not empty.some(isEven))
+      assert(empty.every(isEven))
+    }),
+    test("a search stops at the first item it finds", fn(): {
+      assertEq([1, 2, 3].find(fn(n): n == 2 or panicsOnThree(n)), 2)
+      assert([2, 3].some(fn(n): isEven(n) or panicsOnThree(n)))
+    }),
+    test("a panic in the function a method calls panics the caller", async fn(): {
+      assertEq(await expectPanic(fn(): [1, 2, 3].filter(panicsOnThree)), "three")
+    }),
+    test("lastIndexOf gives the last position of an equal item, or -1", fn(): {
+      assertEq([1, 2, 1].lastIndexOf(1), 2)
+      assertEq([1, 2].lastIndexOf(3), -1)
+    }),
+  ]),
+  group("ordering", [
+    test("sort orders Comparable items in place", fn(): {
+      let numbers = [3, 1, 2, 1]
+      numbers.sort()
+      assertEq(numbers, [1, 1, 2, 3])
+      let words = ["b", "c", "a"]
+      words.sort()
+      assertEq(words, ["a", "b", "c"])
+    }),
+    test("sort orders by a comparator, keeping level items in order", fn(): {
+      let items = [
+        Item{name: "c", rank: 2},
+        Item{name: "a", rank: 1},
+        Item{name: "d", rank: 2},
+        Item{name: "b", rank: 1},
+      ]
+      items.sort(byRank)
+      assertEq(items.map(fn(item): item.name), ["a", "b", "c", "d"])
+      items.sort(fn(left, right): right.rank - left.rank)
+      assertEq(items.map(fn(item): item.name), ["c", "d", "a", "b"])
+    }),
+    test("sort leaves an empty array and a single item alone", fn(): {
+      let empty: Array<int> = []
+      empty.sort()
+      assertEq(empty, [])
+      let one = [5]
+      one.sort()
+      assertEq(one, [5])
+    }),
+    test("reverse reverses in place", fn(): {
+      let numbers = [1, 2, 3]
+      numbers.reverse()
+      assertEq(numbers, [3, 2, 1])
+    }),
+  ]),
+]
+
+@Suite{"prelude › maps"}
+fn maps() -> Array<Test>: [
+  test("Map.groupBy groups items by key, keeping their order", fn(): {
+    const groups = Map.groupBy([1, 2, 3, 4, 5], fn(n): isEven(n))
+    assertEq(groups[true], [2, 4])
+    assertEq(groups[false], [1, 3, 5])
+    assertEq(groups.size(), 2)
+  }),
+  test("Map.groupBy of no items is empty", fn(): {
+    const groups = Map.groupBy([], fn(n: int): n)
+    assertEq(groups.size(), 0)
+  }),
+]

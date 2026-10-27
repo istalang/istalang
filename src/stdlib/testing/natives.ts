@@ -67,7 +67,7 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
       ),
     [ofStarted('state')]: ([handle], context) => {
       const state = context.testing.inspect(instanceOf(handle))?.state.kind ?? 'ready';
-      return resultVariant(context, stateVariants[state], []);
+      return resultVariant(context, stateVariants[state], {});
     },
     [keys.of('handle')]: (_, context) =>
       context.testing.handle(

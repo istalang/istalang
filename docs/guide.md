@@ -281,7 +281,7 @@ import helper from './helper'                     # relative to this file
 ```
 
 - **Modules.** Every top-level name is exported unless it starts with `_`. Import cycles are fine, and the prelude (`Optional`, `Result`, `Array`, `panic`, …) needs no import.
-- **Standard library modules:** `time`, `math`, `decimal`, `text`, `json`, `regex`, `crypto`, `random`, `log`, `runtime`, `inbox`, `collections`, `futures`, `rpc`, `fanout` and `testing`. None of them touches files, the network or the environment.
+- **Standard library modules:** `time`, `math`, `decimal`, `strings`, `json`, `regex`, `crypto`, `random`, `log`, `runtime`, `inbox`, `collections`, `futures`, `rpc`, `fanout` and `testing`. None of them touches files, the network or the environment.
 - **Externs.** `extern fn`, `extern name: Type` and `extern struct` are implemented by the host. Their values cross as JSON: a struct becomes an object, an enum an object with a `"type"` field, `none` becomes `null` or a missing field, and `@JsonName{"user_id"}` or `@JsonSkip` adjust a field. Inbound JSON is validated before the program sees it.
 - **JSON in code.** `json.parse<T>(s)` returns a `Result<T>`, and `json.stringify(v)` goes the other way.
 - **Tools:**

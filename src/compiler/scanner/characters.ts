@@ -38,13 +38,6 @@ export function isQuote(char: string | undefined): boolean {
   return char === '"' || char === "'";
 }
 
-const lastBasicPlaneCodePoint = 0xff_ff;
-
-/** UTF-16 length of the code point at `offset`: 2 for a surrogate pair, else 1. */
-export function codePointWidth(text: string, offset: number): number {
-  return (text.codePointAt(offset) ?? 0) > lastBasicPlaneCodePoint ? 2 : 1;
-}
-
 /** Index just past the run of identifier characters starting at `offset`. */
 export function identifierRunEnd(text: string, offset: number): number {
   let end = offset;

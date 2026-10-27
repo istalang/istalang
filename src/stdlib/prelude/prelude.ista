@@ -64,14 +64,17 @@ extern fn panic(message: string) -> never
 
 # Collections (§3.8, §3.9, §3.10). Indexing panics outside the bounds, while `at` and `get` return an
 # optional, and `at` and `slice` count a negative index from the end, as JavaScript does. A string
-# counts code points. Methods that take a function arrive with function values.
+# counts code points. Methods taking a function are code, below, since only code calls one.
 extern fn length<T>(self: Array<T>) -> int
 extern fn at<T>(self: Array<T>, index: int) -> T?
 extern fn push<T>(self: &Array<T>, item: T)
 extern fn pop<T>(self: &Array<T>) -> T?
 extern fn slice<T>(self: Array<T>, start: int = 0, end: int? = none) -> Array<T>
 extern fn indexOf<T>(self: Array<T>, item: T) -> int
+extern fn lastIndexOf<T>(self: Array<T>, item: T) -> int
 extern fn includes<T>(self: Array<T>, item: T) -> bool
+extern fn reverse<T>(self: &Array<T>)
+extern fn flat<T>(self: Array<Array<T>>) -> Array<T>
 extern fn join(self: Array<string>, separator: string) -> string
 extern fn index<T>(self: Array<T>, key: int) -> T
 extern fn index<T>(self: Array<T>, key: Range) -> Array<T>
@@ -94,6 +97,86 @@ extern fn length(self: string) -> int
 extern fn at(self: string, index: int) -> string?
 extern fn index(self: string, key: int) -> string
 extern fn index(self: string, key: Range) -> string
+
+# Methods taking a function (§3.8), with JavaScript's names. Each calls its function on the items in
+# order, a search only until it finds one.
+fn map<T, U>(self: Array<T>, f: fn(T) -> U) -> Array<U>:
+  [for item in self: f(item)]
+
+fn filter<T>(self: Array<T>, keep: fn(T) -> bool) -> Array<T>:
+  [for item in self if keep(item): item]
+
+fn flatMap<T, U>(self: Array<T>, f: fn(T) -> Array<U>) -> Array<U>:
+  self.map(f).flat()
+
+fn find<T>(self: Array<T>, test: fn(T) -> bool) -> T?:
+  self._itemAt(self.findIndex(test))
+
+fn findLast<T>(self: Array<T>, test: fn(T) -> bool) -> T?:
+  self._itemAt(self.findLastIndex(test))
+
+fn findIndex<T>(self: Array<T>, test: fn(T) -> bool) -> int:
+  for position in 0..self.length():
+    if test(self[position]):
+      return position
+  -1
+
+fn findLastIndex<T>(self: Array<T>, test: fn(T) -> bool) -> int:
+  let position = self.length() - 1
+  while position >= 0 and not test(self[position]):
+    position -= 1
+  position
+
+fn some<T>(self: Array<T>, test: fn(T) -> bool) -> bool:
+  self.findIndex(test) >= 0
+
+fn every<T>(self: Array<T>, test: fn(T) -> bool) -> bool:
+  not self.some(fn(item): not test(item))
+
+fn reduce<T, A>(self: Array<T>, f: fn(A, T) -> A, initial: A) -> A:
+  let result = initial
+  for item in self:
+    result = f(result, item)
+  result
+
+# Sorting is a merge sort, so it is stable: of two items the order puts level, the earlier stays
+# first.
+fn sort<T is Comparable>(self: &Array<T>):
+  self.sort(fn(left, right): compare(left, right))
+
+fn sort<T>(self: &Array<T>, order: fn(T, T) -> int):
+  self = _sorted(self, order)
+
+fn Map.groupBy<K, T>(items: Array<T>, key: fn(T) -> K) -> Map<K, Array<T>>:
+  let groups: Map<K, Array<T>> = [:]
+  for item in items:
+    const group = key(item)
+    groups[group] = [...(groups.get(group) ?? []), item]
+  groups
+
+# The item at `position`, which a search found, or none for the -1 of a search that found none.
+fn _itemAt<T>(self: Array<T>, position: int) -> T?:
+  if position < 0: none else: self[position]
+
+fn _sorted<T>(items: Array<T>, order: fn(T, T) -> int) -> Array<T>:
+  if items.length() <= 1:
+    return items
+  const middle = items.length() // 2
+  _merged(_sorted(items[..middle], order), _sorted(items[middle..], order), order)
+
+# `left` and `right`, each sorted, merged into one sorted array; `left`'s items go first on a tie.
+fn _merged<T>(left: Array<T>, right: Array<T>, order: fn(T, T) -> int) -> Array<T>:
+  let merged: Array<T> = []
+  let fromLeft = 0
+  let fromRight = 0
+  while fromLeft < left.length() and fromRight < right.length():
+    if order(right[fromRight], left[fromLeft]) < 0:
+      merged.push(right[fromRight])
+      fromRight += 1
+    else:
+      merged.push(left[fromLeft])
+      fromLeft += 1
+  [...merged, ...left[fromLeft..], ...right[fromRight..]]
 
 # Iteration (§3.10): `iterate` gives a cursor, which gives the next item each time it is called and
 # `none` once there are no more. A cursor holds what it runs over as `iterate` was given it, so

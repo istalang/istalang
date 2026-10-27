@@ -5,8 +5,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Value } from '../../definition/values.ts';
-import { Panic } from '../../runtime/natives.ts';
+import type { Value } from '../definition/values.ts';
+import { Panic } from '../runtime/natives.ts';
 import { atPosition, checkedIndex, spanOf } from './positions.ts';
 
 /** A prelude `Range` value: its ends are `Optional` variants, `Some` holding a field. */

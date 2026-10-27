@@ -10,8 +10,8 @@ import { mapValueOf, type Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { arrayOf, int, resultOptional } from '../native-values.ts';
+import { checkedIndex } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
-import { checkedIndex } from './positions.ts';
 
 const keyType = parameterKey('K');
 const valueType = parameterKey('V');

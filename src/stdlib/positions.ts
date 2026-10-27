@@ -9,9 +9,9 @@
  * - `slice(start, end)` clamps instead, a negative index counting from the end, as JavaScript does.
  */
 
-import type { Value } from '../../definition/values.ts';
-import { Panic } from '../../runtime/natives.ts';
-import { fieldOf, int, optionalValue } from '../native-values.ts';
+import type { Value } from '../definition/values.ts';
+import { Panic } from '../runtime/natives.ts';
+import { fieldOf, int, optionalValue } from './native-values.ts';
 
 /** The position `key` names in a sequence of `length` of `what`, which must hold it. */
 export function checkedIndex(key: bigint, length: number, what: string): number {
@@ -25,6 +25,11 @@ export function checkedIndex(key: bigint, length: number, what: string): number 
 export function atPosition(key: bigint, length: number): number | undefined {
   const position = key < 0n ? BigInt(length) + key : key;
   return position >= 0n && position < BigInt(length) ? Number(position) : undefined;
+}
+
+/** The items `slice(start, end)` selects of `items`: clamped, a negative index counting from the end. */
+export function sliced<T>(items: readonly T[], start: bigint, end: bigint | undefined): T[] {
+  return items.slice(Number(start), end === undefined ? undefined : Number(end));
 }
 
 /** The start and end of the span `range` selects in a sequence of `length` of `what`. */

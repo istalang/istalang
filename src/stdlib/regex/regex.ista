@@ -1,0 +1,45 @@
+# The regex module (spec §3.8): regular expressions in RE2's syntax, run in time linear in the text.
+#
+# A regex is its pattern, a plain struct, so it is a value like any other: copied, sent, persisted
+# and compared by its text. `Regex{"\\d+"}` is a literal one, a pattern written in the program,
+# which panics where it is used if it is invalid, as a bug does; `Regex.parse` checks a pattern
+# that comes from outside. Positions count code points, as a string's indexing does.
+
+import * as json from 'json'
+
+struct Regex:
+  pattern: string
+
+# One match: the text matched, where it starts, and what each capture group took. Group `n` is
+# `captures[n - 1]`, none when it took no part; `named` holds the named groups that took part.
+struct Match:
+  text: string
+  index: int
+  captures: Array<string?>
+  named: Map<string, string>
+
+extern fn Regex.parse(text: string) -> Result<Regex>
+
+fn toString(self: Regex) -> string:
+  self.pattern
+
+fn toJson(self: Regex) -> json.Json:
+  json.encodeText(self)
+
+fn Regex.fromJson(value: json.Json, path: string) -> Result<Regex>:
+  json.decodeText(value, path)
+
+# Whether the regex matches anywhere in `s`.
+extern fn test(self: Regex, s: string) -> bool
+extern fn find(self: Regex, s: string) -> Match?
+extern fn findAll(self: Regex, s: string) -> Array<Match>
+
+# `replacement` expands `$1`, `$<name>`, `$&` and `$$` as JavaScript's does.
+extern fn replace(self: Regex, s: string, replacement: string) -> string
+extern fn replaceAll(self: Regex, s: string, replacement: string) -> string
+
+# `s` split around each match, as JavaScript's `split` does without capture groups.
+extern fn split(self: Regex, s: string) -> Array<string>
+
+# The pattern matching `text` literally.
+extern fn escape(text: string) -> string

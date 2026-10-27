@@ -47,6 +47,8 @@
   "dependencies": {
     "commander": "15.0.0",
     "lossless-json": "4.3.3",
+    "lru-cache": "11.5.3",
+    "re2js": "2.9.0",
     "zod": "4.6.7"
   }
 }

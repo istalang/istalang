@@ -1,0 +1,93 @@
+# The collections module's WeakMap (spec §3.8, §7).
+
+import Suite, Test, test, assert, assertEq, startCrashingEveryAwait from 'testing'
+import WeakMap from 'collections'
+import Inbox from 'inbox'
+import * as runtime from 'runtime'
+
+type Boxes = WeakMap<Inbox<int>, Inbox<int>>
+
+# Weak references to an entry's key and value, which tell when each is let go of.
+struct Watched:
+  key: WeakRef<Inbox<int>>
+  value: WeakRef<Inbox<int>>
+
+# Sets an entry of `map` for the key `holder` holds, to a value only the map holds.
+fn entryOf(map: Boxes, holder: Shared<Inbox<int>?>) -> Watched:
+  if holder->value is Some{value as key}:
+    const value = Inbox.create<int>()
+    map.set(key, value)
+    return Watched{key: WeakRef(key), value: WeakRef(value)}
+  panic("The holder holds no key.")
+
+async fn evictedAcrossSnapshots() -> Future<string>:
+  const map: Boxes = WeakMap.create()
+  const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+  const watched = entryOf(map, holder)
+  await runtime.commit()
+  assert(watched.value.deref() is Some{})
+  holder->value = none
+  await watched.value.disposed()
+  "evicted"
+
+@Suite{"collections › WeakMap"}
+fn weakMap() -> Array<Test>: [
+  test("gives what was set for a key, and none for another", fn(): {
+    const map = WeakMap.create<Inbox<int>, string>()
+    const key = Inbox.create<int>()
+    const other = Inbox.create<int>()
+    map.set(key, "a")
+    assertEq(map.get(key), "a")
+    assert(map.has(key))
+    assertEq(map.get(other), none)
+    assert(not map.has(other))
+  }),
+  test("setting a key again replaces its value", fn(): {
+    const map = WeakMap.create<Inbox<int>, string>()
+    const key = Inbox.create<int>()
+    map.set(key, "a")
+    map.set(key, "b")
+    assertEq(map.get(key), "b")
+  }),
+  test("delete says whether the map held the key", fn(): {
+    const map = WeakMap.create<Inbox<int>, string>()
+    const key = Inbox.create<int>()
+    map.set(key, "a")
+    assert(map.delete(key))
+    assert(not map.has(key))
+    assert(not map.delete(key))
+  }),
+  test("keeps an entry while its key lives", async fn(): {
+    const map: Boxes = WeakMap.create()
+    const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+    const watched = entryOf(map, holder)
+    await runtime.commit()
+    assert(watched.value.deref() is Some{})
+  }),
+  test("holds no key", fn(): {
+    const map: Boxes = WeakMap.create()
+    const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+    const watched = entryOf(map, holder)
+    holder->value = none
+    assert(watched.key.deref() is None)
+  }),
+  test("lets go of an entry and its value once its key is disposed", async fn(): {
+    const map: Boxes = WeakMap.create()
+    const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+    const watched = entryOf(map, holder)
+    holder->value = none
+    await watched.value.disposed()
+    assert(watched.value.deref() is None)
+  }),
+  test("deleting an entry lets go of its value", async fn(): {
+    const map: Boxes = WeakMap.create()
+    const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+    const watched = entryOf(map, holder)
+    if holder->value is Some{value as key}:
+      assert(map.delete(key))
+    await watched.value.disposed()
+  }),
+  test("lets go of an entry whose key is disposed after a snapshot", async fn(): {
+    assertEq(await startCrashingEveryAwait(evictedAcrossSnapshots).result(), "evicted")
+  }),
+]

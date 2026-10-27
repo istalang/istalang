@@ -14,11 +14,11 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { codePointWidth } from '../../text/code-points.ts';
 import { lineBreakLength } from '../../text/line-map.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import { type Comment, isKeyword, type ScanResult, type Token } from '../syntax/tokens.ts';
 import {
-  codePointWidth,
   identifierRunEnd,
   isDecimalDigit,
   isIdentifierStart,

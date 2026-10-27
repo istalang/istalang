@@ -24,7 +24,8 @@ const timeType = knownTypeKey(wellKnown.time);
 const durationType = knownTypeKey(wellKnown.duration);
 
 export const timeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutures> => ({
-  [keys.of('now')]: (_arguments, context) => resultStruct(context, [context.segmentStartedAt]),
+  [keys.of('now')]: (_arguments, context) =>
+    resultStruct(context, { value: context.segmentStartedAt }),
   [keys.of('at', timeType)]: ([time], context) => context.futures.timer(int(fieldOf(time, 0))),
   [keys.of('toString', timeType)]: ([time]) => {
     const milliseconds = int(fieldOf(time, 0));
@@ -45,14 +46,15 @@ export const timeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutur
   ),
 });
 
-/** A `parse` reading a struct of one int field, its milliseconds, with `read` (§3.10). */
+/** A `parse` reading a struct of one int field, `value`, its milliseconds, with `read` (§3.10). */
 function parsedStruct(
   what: string,
   read: (source: string) => bigint | undefined,
 ): Native<NativeContext> {
   return ([source], context) => {
     const milliseconds = read(text(source));
-    const parsed = milliseconds === undefined ? undefined : okStruct(context, [milliseconds]);
+    const parsed =
+      milliseconds === undefined ? undefined : okStruct(context, { value: milliseconds });
     return parseResult(context, text(source), what, parsed);
   };
 }

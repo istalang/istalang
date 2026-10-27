@@ -9,6 +9,7 @@
  */
 
 import { languageModules } from '../language/well-known.ts';
+import collectionsSource from './collections/collections.ista';
 import fanoutSource from './fanout/fanout.ista';
 import futuresSource from './futures/futures.ista';
 import { futuresNatives } from './futures/natives.ts';
@@ -17,10 +18,14 @@ import jsonSource from './json/json.ista';
 import { jsonNatives } from './json/natives.ts';
 import { preludeNatives } from './prelude/natives.ts';
 import preludeSource from './prelude/prelude.ista';
+import { regexNatives } from './regex/natives.ts';
+import regexSource from './regex/regex.ista';
 import rpcSource from './rpc/rpc.ista';
 import { runtimeNatives } from './runtime/natives.ts';
 import runtimeSource from './runtime/runtime.ista';
 import { type StdModule, stdModule } from './std-module.ts';
+import { stringsNatives } from './strings/natives.ts';
+import stringsSource from './strings/strings.ista';
 import { testingNatives } from './testing/natives.ts';
 import testingSource from './testing/testing.ista';
 import { timeNatives } from './time/natives.ts';
@@ -35,5 +40,8 @@ export const stdModules: readonly StdModule[] = [
   stdModule('rpc', rpcSource),
   stdModule('fanout', fanoutSource),
   stdModule('runtime', runtimeSource, runtimeNatives),
+  stdModule('strings', stringsSource, stringsNatives),
+  stdModule('regex', regexSource, regexNatives),
+  stdModule('collections', collectionsSource),
   stdModule(languageModules.testing, testingSource, testingNatives),
 ];

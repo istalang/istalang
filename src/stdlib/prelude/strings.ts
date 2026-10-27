@@ -8,28 +8,27 @@
 
 import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
+import { codePoints } from '../../text/code-points.ts';
 import { int, resultOptional, text } from '../native-values.ts';
+import { atPosition, checkedIndex, spanOf } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
-import { atPosition, checkedIndex, spanOf } from './positions.ts';
 
 const range = knownTypeKey(wellKnown.range);
 const what = 'a string';
 
-const codePoints = (value: Parameters<typeof text>[0]): readonly string[] => [...text(value)];
-
 export const stringNatives = (keys: NativeKeys): Natives<NativeContext> => ({
-  [keys.of('length', 'string')]: ([s]) => BigInt(codePoints(s).length),
+  [keys.of('length', 'string')]: ([s]) => BigInt(codePoints(text(s)).length),
   [keys.of('at', 'string', 'int')]: ([s, index], context) => {
-    const points = codePoints(s);
+    const points = codePoints(text(s));
     const position = atPosition(int(index), points.length);
     return resultOptional(context, position === undefined ? undefined : points[position]);
   },
   [keys.of('index', 'string', 'int')]: ([s, index]) => {
-    const points = codePoints(s);
+    const points = codePoints(text(s));
     return points[checkedIndex(int(index), points.length, what)] ?? '';
   },
   [keys.of('index', 'string', range)]: ([s, span]) => {
-    const points = codePoints(s);
+    const points = codePoints(text(s));
     return points.slice(...spanOf(span ?? null, points.length, what)).join('');
   },
   [keys.of('_characterAt', 'string', 'int')]: ([s, offset], context) => {

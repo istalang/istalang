@@ -1,0 +1,46 @@
+# The strings module (spec §3.8): string methods, with JavaScript's names.
+#
+# Every position and length counts code points, as a string's own indexing does (§3.8), so none
+# splits a code point. They are called as `strings.trim(s)`, or as `s.trim()` where `trim` is
+# imported, the way any module's functions on a primitive are (§3.13).
+
+extern fn indexOf(self: string, search: string, from: int = 0) -> int
+extern fn lastIndexOf(self: string, search: string) -> int
+extern fn includes(self: string, search: string) -> bool
+extern fn startsWith(self: string, prefix: string) -> bool
+extern fn endsWith(self: string, suffix: string) -> bool
+
+extern fn slice(self: string, start: int = 0, end: int? = none) -> string
+extern fn split(self: string, separator: string) -> Array<string>
+
+extern fn trim(self: string) -> string
+extern fn trimStart(self: string) -> string
+extern fn trimEnd(self: string) -> string
+extern fn padStart(self: string, length: int, fill: string = " ") -> string
+extern fn padEnd(self: string, length: int, fill: string = " ") -> string
+extern fn repeat(self: string, count: int) -> string
+
+# Plain text: `$` in a replacement is just a `$`. Patterns are the regex module's.
+extern fn replace(self: string, search: string, replacement: string) -> string
+extern fn replaceAll(self: string, search: string, replacement: string) -> string
+
+extern fn toUpperCase(self: string) -> string
+extern fn toLowerCase(self: string) -> string
+
+# `format(template, ...values)`, one overload per count of values until rest parameters land (D193),
+# so calls are already written as they will be.
+fn format(template: string) -> string: _format(template, [])
+fn format(template: string, a: string) -> string: _format(template, [a])
+fn format(template: string, a: string, b: string) -> string: _format(template, [a, b])
+fn format(template: string, a: string, b: string, c: string) -> string: _format(template, [a, b, c])
+fn format(template: string, a: string, b: string, c: string, d: string) -> string:
+  _format(template, [a, b, c, d])
+fn format(template: string, a: string, b: string, c: string, d: string, e: string) -> string:
+  _format(template, [a, b, c, d, e])
+fn format(template: string, a: string, b: string, c: string, d: string, e: string, f: string) -> string:
+  _format(template, [a, b, c, d, e, f])
+
+extern fn _format(template: string, values: Array<string>) -> string
+
+extern fn graphemes(s: string) -> Array<string>
+extern fn utf16Length(s: string) -> int

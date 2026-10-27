@@ -1,0 +1,38 @@
+# The collections module (spec §3.8): `WeakMap<K, V>`, which keeps an entry only while its key is
+# alive (§7).
+#
+# Entries are keyed by the key's one `WeakRef`, which holds nothing and is `==` only to itself, so
+# the map keeps no key alive. Each entry also holds a watch: a call waiting for its key's
+# `disposed()`, which then deletes the entry. Holding the watch is what keeps it running, so deleting
+# or replacing the entry, or dropping the map, stops it at its await (§7). The watch resumes in a
+# segment after the one that disposed the key, so that is when the entry and its value go. Nothing
+# lists or counts the entries, as in JavaScript.
+
+struct _Entry<V>:
+  value: V
+  watch: Future<unit>
+
+shared struct WeakMap<K is Disposable, V>:
+  entries: Map<WeakRef<K>, _Entry<V>> = [:]
+
+fn WeakMap.create<K is Disposable, V>() -> WeakMap<K, V>:
+  new WeakMap<K, V>{}
+
+fn get<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> V?:
+  self->entries.get(WeakRef(key))?.value
+
+fn has<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> bool:
+  self->entries.has(WeakRef(key))
+
+# Setting a key the map holds keeps its watch.
+fn set<K is Disposable, V>(self: WeakMap<K, V>, key: K, value: V):
+  const reference = WeakRef(key)
+  const watch = self->entries.get(reference)?.watch ?? _deleteOnDisposal(self, reference)
+  self->entries[reference] = _Entry{value, watch}
+
+fn delete<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> bool:
+  self->entries.delete(WeakRef(key))
+
+async fn _deleteOnDisposal<K is Disposable, V>(map: WeakMap<K, V>, key: WeakRef<K>) -> Future<unit>:
+  await key.disposed()
+  drop map->entries.delete(key)

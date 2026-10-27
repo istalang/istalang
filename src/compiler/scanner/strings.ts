@@ -10,8 +10,9 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { codePointWidth } from '../../text/code-points.ts';
 import { lineBreakLength } from '../../text/line-map.ts';
-import { codePointWidth, isHexDigit } from './characters.ts';
+import { isHexDigit } from './characters.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import type { ScannedLexeme } from './lexeme.ts';
 

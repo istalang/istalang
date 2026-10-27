@@ -1,5 +1,6 @@
 /**
  * The prelude's natives for arrays (§3.8, §3.9, §3.10): reading, `&self` methods and indexing.
+ * Methods taking a function are the prelude's code (prelude.ista), since only code calls one.
  *
  * An array is an immutable value, so a method taking `&self` builds the changed array and writes
  * it back through its context (runtime/natives.ts). Elements compare with the built-in `==`.
@@ -11,8 +12,8 @@ import { elementsOf } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { arrayOf, int, optionalValue, resultOptional, text } from '../native-values.ts';
+import { atPosition, checkedIndex, sliced, spanOf } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
-import { atPosition, checkedIndex, spanOf } from './positions.ts';
 
 const item = parameterKey('T');
 const array = knownTypeKey(wellKnown.array, item);
@@ -37,12 +38,18 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   },
   [keys.of('slice', array, 'int', knownTypeKey(wellKnown.optional, 'int'))]: ([xs, start, end]) => {
     const last = optionalValue(end);
-    return arrayOf(
-      elementsOf(xs).slice(Number(int(start)), last === undefined ? undefined : Number(int(last))),
-    );
+    return arrayOf(sliced(elementsOf(xs), int(start), last === undefined ? undefined : int(last)));
   },
   [keys.of('indexOf', array, item)]: ([xs, element]) =>
     BigInt(elementsOf(xs).findIndex((each) => valuesEqual(each, element ?? null))),
+  [keys.of('lastIndexOf', array, item)]: ([xs, element]) =>
+    BigInt(elementsOf(xs).findLastIndex((each) => valuesEqual(each, element ?? null))),
+  [keys.of('reverse', referenceKey(array))]: ([xs], context) => {
+    context.write(0, arrayOf(elementsOf(xs).toReversed()));
+    return null;
+  },
+  [keys.of('flat', knownTypeKey(wellKnown.array, array))]: ([xss]) =>
+    arrayOf(elementsOf(xss).flatMap((inner) => elementsOf(inner))),
   [keys.of('includes', array, item)]: ([xs, element]) =>
     elementsOf(xs).some((each) => valuesEqual(each, element ?? null)),
   [keys.of('join', knownTypeKey(wellKnown.array, 'string'), 'string')]: ([xs, separator]) =>
