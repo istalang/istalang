@@ -7,6 +7,7 @@
  */
 
 import { type MapOf, ValueSemantics, type ValueView } from '../language/values.ts';
+import { encodeJson } from './codec.ts';
 import {
   type CompositeValue,
   childValues,
@@ -67,7 +68,7 @@ function headKey(value: CompositeValue): string {
     case 'handle':
       return `handle:${value.object}`;
     case 'extern':
-      return `extern:${value.type}`;
+      return `extern:${value.type}:${encodeJson(value.payload)}`;
     case 'struct':
       return `struct${value.type}`;
     case 'variant':
