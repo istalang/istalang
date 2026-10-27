@@ -58,6 +58,7 @@ fn add(a: int, b = 1):             # default parameter, types inferred
 fn log(level: string, ...parts: Array<string>): ...    # rest parameter
 log("info", ...parts)                                  # spread into the rest
 add(1, b: 2)                                           # named argument
+fn call<...A, R>(f: fn(...A) -> R, ...args: A) -> R: ... # a pack: any parameters
 fn push<T>(self: &Stack<T>, item: T): ...             # method, reference receiver
 fn Duration.zero() -> Duration: ...                    # static function
 async fn approve(req: Req) -> Future<string>: ...
@@ -154,7 +155,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
 - **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Seven more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, `any` before a trait's name in a type (§3.10), and `hold` before the variable declaration it holds (§3.4). So `T.from` (§3.10), a field named `type` (§9) and a function named `hold` are valid.
 
-Every expression has a static type; a value whose type is known only when the program runs has a trait's, `any T` (§3.10). There are no implicit conversions, with two exceptions: a `T` is wrapped into `T?` wherever an optional is expected (§3.11), and a value is converted into an `any` type wherever one is expected (§3.10).
+Every expression has a static type; a value whose type is known only when the program runs has a trait's, `any T` (§3.10). There are no implicit conversions, with four exceptions: a `T` is wrapped into `T?` wherever an optional is expected (§3.11), a value is converted into an `any` type wherever one is expected (§3.10), a plain function fits where an async one of its parameters and result is expected (§3.14), and a one-element tuple and its element each fit where the other is expected (§3.15).
 
 | Type | Meaning |
 | --- | --- |
@@ -324,7 +325,7 @@ log(level: "info", parts: more)
 - **Defaults.** Parameters with defaults come after the others. A default is an expression evaluated at every call that leaves its parameter out, and it may use earlier parameters, as in `fn window(start: int, end: int = start + 10)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A struct's fields have defaults the same way (§3.1).
 - **Named arguments.** `f(name: value)` gives the parameter of that name, so a call can leave out a default before one it gives: `retry(backoff: 2s)`. Named arguments follow the positional ones, in any order. A positional argument or a spread after a named one is a compile error, and so is a parameter given twice. A `&` parameter is named with its `&`: `f(target: &x)`. A method's `self` is given before the dot, never by name.
 - **Order.** Arguments are evaluated in the order they are written, then each default left out, in parameter order, so a default sees the parameters before it however they were given. A spawned call's defaults are computed by the new instance, which runs the function (§9).
-- **Rest parameters** are sugar for an array. The last parameter, written `...name: Array<T>`, comes after any parameters with defaults and collects the remaining positional arguments. `...xs` at a call spreads anything iterable into them, as in an array literal (§2), mixed freely with single arguments; a spread anywhere else is a compile error. Named, the rest parameter takes a whole array: `log(level: "info", parts: more)`. An extern function's rest parameter reaches its host as an array (§9).
+- **Rest parameters** are sugar for an array. The last parameter, written `...name: Array<T>`, comes after any parameters with defaults and collects the remaining positional arguments. `...xs` at a call spreads anything iterable into them, as in an array literal (§2), mixed freely with single arguments; a spread anywhere else is a compile error. Named, the rest parameter takes a whole array: `log(level: "info", parts: more)`. An extern function's rest parameter reaches its host as an array (§9). A rest parameter may instead be a pack, `...args: A`, which collects the arguments into a tuple (§3.5).
 - **Function values.** Names and defaults aren't part of a function's type (§3.14), so a function value's call gives every argument by position, with no spread.
 
 ### 3.4 Variables
@@ -377,7 +378,19 @@ fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
 - **When inference has nothing to go on,** give the type arguments or annotate the variable: `let xs: Array<int> = []`.
 - **Constraints.** A type parameter can be constrained by traits (§3.10) with `is`: `T is Sendable`. Several traits are joined with `&`: `T is Sendable & Comparable`. Every type argument, written or inferred, is checked against its parameter's constraints wherever it appears: in a call, an annotation or a literal.
 - **Checked once.** A generic body is checked once, not per instantiation: inside it, a value of a type parameter supports only what the parameter's constraints require, plus `==`. Using a generic function therefore never reports an error inside its body.
+- **Packs.** A function's type parameter written `<...A>` stands for a tuple of types, so one declaration takes any number of arguments of any types. It is used as a rest parameter, `...args: A`, as the rest of a function type, `fn(int, ...A) -> R`, and anywhere a tuple type can stand, such as `Array<A>`. Substituting a tuple for it flattens a rest: `fn(...A)` with `A` as `(int, string)` is `fn(int, string)`, and with `()` is `fn()`. A pack is inferred from the arguments its rest parameter collects, as the tuple of their types, or from a function argument's parameters (`logged(area)` binds `A` to `(int, int)`); written, it is a tuple type: `logged<(int, int), int>(area)`. Inside its function a pack is opaque: a value of it can be passed and kept as it is, and spread with `...` only where a rest of the same pack takes it, as `f(...args)` does. The arguments a pack's rest collects are single values by position, or one such spread; nothing names them. A pack takes no constraint and no default, a struct, enum, trait or alias takes none, and a function has one rest, an array or a pack.
 - **Compiled per instantiation.** A generic function or type is compiled once for each set of concrete type arguments it is used with, so every call has a fixed target and the runtime never needs types to make one (§3.10). A generic function that would need endlessly many instantiations, such as `f<T>` calling `f<Array<T>>`, is therefore a compile error.
+
+```python
+fn logged<...A, R>(f: fn(...A) -> R) -> fn(...A) -> R:
+    fn(...args: A) -> R: f(...args)          # wraps a function of any parameters
+
+fn area(width: int, height: int) -> int: width * height
+
+fn measured() -> int:
+    const measure = logged(area)             # A is (int, int): fn(int, int) -> int
+    measure(3, 4)
+```
 
 ### 3.6 Extern declarations
 
@@ -452,10 +465,10 @@ fn scale(self: &Rect, factor: int): ...
 - Calls are resolved statically from the argument types and any explicit type arguments. Return types play no part.
 - A generic function is chosen through inference only when it is the single function that matches. When a concrete function matches as well, the concrete one wins: given `fn show<T>(x: T)` and `fn show(x: int)`, the call `show(5)` uses the concrete one, while `show<int>(5)` uses the generic one.
 - With explicit type arguments, only generic functions that take that many type arguments are considered.
-- When a call fits both a function with a rest parameter and one without, the one without wins, after a concrete function has beaten a generic one (§3.3). After that, a function taking every argument as it is beats one that makes a plain function argument async (§3.14), so `fn mock(target: fn(A) -> R, …)` and `fn mock(target: async fn(A) -> R, …)` each keep their target's own type.
+- When a call fits both a function with a rest parameter and one without, the one without wins, after a concrete function has beaten a generic one (§3.3); a pack is a rest parameter, so a function of fixed arity beats one taking a pack. After that, a function taking every argument as it is beats one that makes a plain function argument async (§3.14) or converts between a one-element tuple and its element (§3.15), so `fn mock(target: fn(...A) -> R, …)` and `fn mock(target: async fn(...A) -> R, …)` each keep their target's own type.
 - A named argument rules out every function without a parameter of that name (§3.3); names tell functions apart in no other way.
 - Any other ambiguity is a compile error, resolved by giving the type arguments explicitly.
-- Two functions of one name clash, a compile error, when some call by position could fit both and no rule above prefers one: for some number of arguments, counting defaults left out and a rest parameter's items, their parameters have the same types, both by value or both by `&`. Generic ones are compared up to the names of their type parameters. A parameter's `T` counts as the same as `T?`, since the implicit wrap (§2) would make every call to the pair ambiguous; `fn(A) -> R` and `async fn(A) -> R` differ, as the rule above tells them apart. This covers the prelude's overloads too.
+- Two functions of one name clash, a compile error, when some call by position could fit both and no rule above prefers one: for some number of arguments, counting defaults left out and a rest parameter's items, their parameters have the same types, both by value or both by `&`. Generic ones are compared up to the names of their type parameters. A pack's items count as the same as any type. A parameter's `T` counts as the same as `T?`, since the implicit wrap (§2) would make every call to the pair ambiguous; `fn(A) -> R` and `async fn(A) -> R` differ, as the rule above tells them apart. This covers the prelude's overloads too.
 - A method can also be called as a plain function: `push(&s, 3)` is the same call as `s.push(3)`.
 - Free functions `g(x: S)` and `g(x: &S)` may coexist, because the `&` at the call site tells them apart.
 - The one forbidden overload is a pair that differs only in whether `self` is a value or a reference, such as `fn f(self: S)` and `fn f(self: &S)`. Method notation (`s.f()`) couldn't choose between them, so declaring both is a compile error.
@@ -788,7 +801,7 @@ fn _normalize(id: string) -> string:     # private to this module
 
 ### 3.14 Function types and closures
 
-A function type is written `fn(int, string) -> bool` or `async fn(string) -> Result<string>`. A value of a function type refers to a named function or a closure, and calling it runs that function.
+A function type is written `fn(int, string) -> bool` or `async fn(string) -> Result<string>`; its last parameter may be a pack, `fn(...A) -> R` (§3.5), but not an array's rest, which a function value takes as one array. A value of a function type refers to a named function or a closure, and calling it runs that function.
 
 ```python
 fn twice(f: fn(int) -> int, x: int) -> int:
@@ -839,7 +852,7 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 
 **What a lambda or local function may be.**
 
-- **One value.** A lambda or a local `fn` can't be generic, or have default values or a rest parameter: a function value is one function, and its call gives every argument by position (§3.3).
+- **One value.** A lambda or a local `fn` can't be generic, or have default values or an array's rest parameter: a function value is one function, and its call gives every argument by position (§3.3). Its rest may be a pack of the function around it, `fn(...args: A)`, since each instantiation flattens it into single parameters (§3.5).
 - **Parameter types.** A lambda's untyped parameter takes its type from the function type the lambda is expected as; with none, it is a compile error. Passed to a generic function, a lambda is checked after the other arguments, so they give its parameter types, and its result then infers the type parameters that remain (§3.5).
 - **Its own function.** `return` in a lambda returns from the lambda, `break` and `continue` can't leave it, and `await` needs an `async fn` lambda.
 - **Captures.** A by-value parameter is immutable (§3.3), so it is captured as a copy, like a `const`.
@@ -874,6 +887,7 @@ for key, verdict in answered.entries():
 - **Tuples are values.** They are copied like structs, sendable when all their elements are, and compared structurally by `==`.
 - **`unit` is the empty tuple** `()`.
 - **Building needs parentheses:** `(5, 7)`, including in `return (5, 7)`. A one-element tuple is written `(x,)`; `(x)` is just a parenthesized expression.
+- **A one-element tuple converts.** A `(T,)` fits where a `T` is expected, giving its element, and a `T` fits where a `(T,)` is, as a one-element tuple, so a pack of one (§3.5) reads as its value. The conversion applies to a whole value, once, before any wrap into `T?` (§2), never inside a collection or a function type: an `Array<(T,)>` is no `Array<T>`.
 - **Elements by position:** `t.0`, `t.1`, as a decimal number after the dot. `t.0 = v` assigns one and `&t.0` passes one by reference. `t.0.1` reads an element of an element.
 - **Destructuring** works in `const` and `let` declarations, in `for` loops, and in plain assignment to existing variables. `_` is an unnamed variable: it holds its value like any other variable (§7), it just can't be referred to.
 - **Declaration targets** are patterns that can't fail (§3.11): names, `_`, tuple patterns and struct patterns, nested at any depth, with `as` to rename. Several targets are a tuple of them: `let (a, b), c = t`, `const Pair{first, second as s} = p`, and `const struct{first} = p`, which takes the type from the value. A pattern that could fail (a literal, a comparison, an enum variant) is a compile error here; it belongs in `match` or `is`. Each level's count must match its tuple's size.
@@ -1341,7 +1355,7 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
 
 `setups(a, b)` combines several environments into one, with overloads for up to six: `setups(withPurchaseEnv, withFakeHost)` is a `Setup<(PurchaseEnv, HostEnv)>`, whose test receives both as a tuple. The first setup is the outermost: it prepares first and tears down last.
 
-**Mocking.** `mock(target, replacement)` replaces any named function (an extern, a standard-library function or one of the program's own) while the `Mock<F>` it returns is held, `F` being the function's type, so a mock follows block lifetimes like every other resource. The language has no variadic generics, so `mock` is one overload per arity up to six, for plain and async functions, such as `mock<A, B, R>(target: fn(A, B) -> R, replacement: fn(A, B) -> R) -> Mock<fn(A, B) -> R>`, and explicit type arguments name the parameter and result types. It applies to everything the test runs, including instances it spawns. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace. A host type's `dispose`, which the runtime calls (§7), may be a mock's target, the one place it may be named. Spawning an instance isn't a call, so an instance runs the function it was spawned with, whatever mocks it. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(string, int)>` for `chargeCard`; a function of one parameter gives its values, as `Array<string>`, and one of none gives a `unit` per call.
+**Mocking.** `mock(target, replacement)` replaces any named function (an extern, a standard-library function or one of the program's own) while the `Mock<F>` it returns is held, `F` being the function's type, so a mock follows block lifetimes like every other resource. `mock` takes a pack (§3.5), one declaration for plain functions and one for async ones: `mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>`, and explicit type arguments name the parameters as a tuple, then the result. It applies to everything the test runs, including instances it spawns. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace. A host type's `dispose`, which the runtime calls (§7), may be a mock's target, the one place it may be named. Spawning an instance isn't a call, so an instance runs the function it was spawned with, whatever mocks it. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(string, int)>` for `chargeCard`, `Array<(string,)>` for a function of one parameter, and a `unit`, the empty tuple, per call of one of none.
 
 - **Mocking twice.** Mocking a target that is already mocked replaces it while the new handle is held; releasing that handle brings back the mock before it.
 - **Across instances.** A mock applies to the instance holding it and to every instance spawned from it. Such an instance calls the replacement in the instance holding the mock, as a host's extern is called (§9): the arguments and the result are copied between the two, so they must be sendable, or the call panics. A future the replacement returns is followed across as well. The instance answering plays the host, so a host value it receives or hands back isn't its to dispose: only the instance that got it from the call owns it (§7).
