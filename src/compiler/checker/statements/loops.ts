@@ -4,13 +4,21 @@
  * of type `unit`; its body runs for its effects, so the body's value is discarded. What a `for`
  * runs over, and how, is the rule of iteration (rules/iteration.ts).
  *
- * A label names one scope of its function: it may not repeat a label around it, nor the
- * function's own name, which `hold(name)` names too, so a name never means two things. A label
- * nothing names is a warning, found when its scope ends.
+ * Each `break`, `continue` and `hold(name)` is resolved here, once, and recorded (flow/labels.ts). A
+ * label names one scope of its function: it may not repeat a label around it, nor the function's
+ * own name, which `hold(name)` names too, so a name never means two things. A label nothing names
+ * is a warning, found when its scope ends.
  */
 
-import type { LabelledScope } from '../../syntax/labels.ts';
-import type { Break, Continue, For, Hold, LabelledBlock, While } from '../../syntax/statements.ts';
+import type {
+  Break,
+  Continue,
+  For,
+  Hold,
+  LabelledBlock,
+  LabelledScope,
+  While,
+} from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
@@ -37,14 +45,16 @@ export function checkLabelledBlock(context: BodyContext, node: LabelledBlock): T
 export function checkLoopExit(context: BodyContext, node: Break | Continue): Type {
   const keyword = node.kind === 'Break' ? 'break' : 'continue';
   const { label } = node;
+  const target =
+    label === undefined ? context.enclosing.innermostLoop : context.enclosing.labelled(label);
+  if (target !== undefined) {
+    context.labels.recordExit(node, target);
+  }
   if (label === undefined) {
-    if (!context.enclosing.inLoop) {
+    if (target === undefined) {
       context.report(checkerDiagnostics.outsideLoop(node.span, keyword));
     }
-    return neverType;
-  }
-  const target = context.enclosing.name(label);
-  if (target === undefined) {
+  } else if (target === undefined) {
     context.report(checkerDiagnostics.unknownLoopLabel(label.span, keyword, label.text));
   } else if (target.kind === 'LabelledBlock') {
     context.report(checkerDiagnostics.blockLabel(label.span, keyword, label.text));
@@ -55,14 +65,15 @@ export function checkLoopExit(context: BodyContext, node: Break | Continue): Typ
 /** `hold(name)`: names a loop or block around it, or the function itself. */
 export function checkHoldScope(context: BodyContext, hold: Hold): void {
   const { label } = hold;
-  if (
-    label === undefined ||
-    context.enclosing.name(label) !== undefined ||
-    context.enclosing.isOwnName(label)
-  ) {
+  if (label === undefined || context.enclosing.isOwnName(label)) {
     return;
   }
-  context.report(checkerDiagnostics.unknownHoldScope(label.span, label.text));
+  const target = context.enclosing.labelled(label);
+  if (target === undefined) {
+    context.report(checkerDiagnostics.unknownHoldScope(label.span, label.text));
+  } else {
+    context.labels.recordHold(hold, target);
+  }
 }
 
 /** Checks `scope`'s label and its body, and warns when nothing in the body named the label. */
@@ -75,8 +86,8 @@ function checkScope(context: BodyContext, scope: LabelledScope): void {
       context.report(checkerDiagnostics.ownNameLabel(label.span, label.text));
     }
   }
-  const { named } = context.enclosing.inside(scope, () => context.effectBlock(scope.body));
-  if (label !== undefined && !named) {
+  context.enclosing.inside(scope, () => context.effectBlock(scope.body));
+  if (label !== undefined && !context.labels.isNamed(scope)) {
     context.report(checkerDiagnostics.unusedLabel(label.span, label.text));
   }
 }

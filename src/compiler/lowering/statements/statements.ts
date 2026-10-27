@@ -52,7 +52,7 @@ const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void
     const guard = context.code.allocate();
     const callback = context.expression(node.action);
     context.code.emit({ kind: 'defer', span: node.span, dst: guard, callback });
-    context.variables.hold(guard);
+    context.variables.declareUnnamed(guard);
   },
   Drop: lowerDrop,
   Invalid: notLowered,

@@ -12,8 +12,8 @@
  * - A lambda or local function runs its body when it is called, not where it is made (syntax
  *   `nestsFunction`); but it captures what it uses where it is made, so its body flows from the
  *   state there, as a flow of its own whose end goes nowhere.
- * - `break` and `continue` leave the innermost loop, or the one their label names
- *   (syntax/labels.ts); a labelled block runs as a block.
+ * - `break` and `continue` leave the loop the checker found for them (labels.ts); a
+ *   labelled block runs as a block.
  * - `and`, `or` and `??` run their right side only sometimes, and so does whatever follows a `?.`
  *   in an optional chain (§4): both paths join after. `e?` may return, which ends that path.
  * - An assignment runs its value first, then assigns its parts left to right (§3.15), a compound
@@ -29,17 +29,19 @@ import {
   type SelectCase,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
-import { scopeLabelled } from '../../syntax/labels.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { binaryOperators } from '../../syntax/operators.ts';
 import {
   type Assignment,
   type Block,
+  type Break,
+  type Continue,
   type Drop,
   type Statement,
   targetParts,
 } from '../../syntax/statements.ts';
 import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import type { LabelResolution } from './labels.ts';
 
 /** What a flow rule decides: its states, where paths meet, and what its own events do. */
 export interface FlowRule<State> {
@@ -55,14 +57,18 @@ export interface FlowRule<State> {
   readonly drop?: (node: Drop, state: State) => State;
 }
 
-/** What reaches the end of `body`, run from `state`; undefined when no path does. */
+/**
+ * What reaches the end of `body`, run from `state`; undefined when no path does. `labels` says
+ * which loop each `break` and `continue` leaves.
+ */
 export function flowThrough<State extends Opaque>(
   rule: FlowRule<State>,
+  labels: LabelResolution,
   body: SyntaxNode,
   state: State,
 ): State | undefined {
   // The walk hands the rule only states the rule made, so it carries them unlooked-into.
-  const walk = new FlowWalk(rule as unknown as FlowRule<Opaque>);
+  const walk = new FlowWalk(rule as unknown as FlowRule<Opaque>, labels);
   return walk.function(body, state) as State | undefined;
 }
 
@@ -72,12 +78,9 @@ type Opaque = NonNullable<unknown>;
 /** What reaches a point: a rule's state, or undefined where no path does. */
 type Flow = Opaque | undefined;
 
-/**
- * What reaches a loop's exits: after its body's `break`s, and its top again after `continue`s; and
- * the label that names it, if any.
- */
+/** What reaches `loop`'s exits: after its body's `break`s, and its top again after `continue`s. */
 interface LoopExits {
-  readonly label: Identifier | undefined;
+  readonly loop: SyntaxNode;
   readonly breaks: Opaque[];
   readonly continues: Opaque[];
 }
@@ -87,10 +90,12 @@ type Construct = Expression | Statement | Block;
 
 class FlowWalk {
   readonly #rule: FlowRule<Opaque>;
+  readonly #labels: LabelResolution;
   #loops: LoopExits[] = [];
 
-  constructor(rule: FlowRule<Opaque>) {
+  constructor(rule: FlowRule<Opaque>, labels: LabelResolution) {
     this.#rule = rule;
+    this.#labels = labels;
   }
 
   /** Runs a function's body from `state`, its loops its own. */
@@ -140,21 +145,19 @@ class FlowWalk {
     return state && (this.#rule.drop?.(node, state) ?? state);
   }
 
-  /** An exit to the innermost loop, or the one `label` names: past its end, or its top again. */
-  exit(kind: 'breaks' | 'continues', label: Identifier | undefined, state: Opaque): undefined {
-    const loop =
-      label === undefined
-        ? this.#loops.at(-1)
-        : scopeLabelled(this.#loops, (each) => each.label, label);
-    loop?.[kind].push(state);
+  /** `exit` to the loop it leaves: past its end, or to its top again. */
+  exit(exit: Break | Continue, state: Opaque): undefined {
+    const target = this.#labels.exitOf(exit);
+    const loop = this.#loops.findLast((each) => each.loop === target);
+    loop?.[exit.kind === 'Break' ? 'breaks' : 'continues'].push(state);
   }
 
   /**
-   * A loop, labelled `label`: `pass` runs one pass from what reaches the top, giving what leaves it
-   * normally and what reaches the end of its body. Passes repeat until the top has settled.
+   * `loop`: `pass` runs one pass from what reaches the top, giving what leaves it normally and what
+   * reaches the end of its body. Passes repeat until what reaches the top has settled.
    */
   loop(
-    label: Identifier | undefined,
+    loop: SyntaxNode,
     state: Flow,
     pass: (top: Opaque) => { readonly exit: Flow; readonly end: Flow },
   ): Flow {
@@ -163,7 +166,7 @@ class FlowWalk {
     }
     let top = state;
     for (;;) {
-      const exits: LoopExits = { label, breaks: [], continues: [] };
+      const exits: LoopExits = { loop, breaks: [], continues: [] };
       this.#loops.push(exits);
       const { exit, end } = pass(top);
       this.#loops.pop();
@@ -293,7 +296,7 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   ArrayLiteral: children,
   MapLiteral: children,
   Comprehension: (walk, node, state) =>
-    walk.loop(undefined, walk.node(node.iterable, state), (top) => ({
+    walk.loop(node, walk.node(node.iterable, state), (top) => ({
       exit: top,
       end: walk.sequence(
         [...node.targets, ...(node.condition === undefined ? [] : [node.condition]), node.body],
@@ -362,15 +365,15 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   Return: (walk, node, state) => {
     walk.sequence(node.value === undefined ? [] : [node.value], state);
   },
-  Break: (walk, node, state) => walk.exit('breaks', node.label, state),
-  Continue: (walk, node, state) => walk.exit('continues', node.label, state),
+  Break: (walk, node, state) => walk.exit(node, state),
+  Continue: (walk, node, state) => walk.exit(node, state),
   For: (walk, node, state) =>
-    walk.loop(node.label, walk.node(node.iterable, state), (top) => ({
+    walk.loop(node, walk.node(node.iterable, state), (top) => ({
       exit: top,
       end: walk.sequence([...node.targets, node.body], top),
     })),
   While: (walk, node, state) =>
-    walk.loop(node.label, state, (top) => {
+    walk.loop(node, state, (top) => {
       const tested = walk.node(node.condition, top);
       return { exit: tested, end: walk.sequence([node.body], tested) };
     }),

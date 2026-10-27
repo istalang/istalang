@@ -27,7 +27,7 @@ export function lowerSelect(context: FunctionContext, node: Select): Register {
     .map((selectCase) => ({ selectCase, code: caseCode(context, selectCase) }));
   for (const { code: written } of cases) {
     for (const register of written.holds) {
-      context.variables.hold(register);
+      context.variables.declareUnnamed(register);
     }
   }
   const otherwise = node.elseClause === undefined ? undefined : code.newLabel();

@@ -79,14 +79,14 @@ export class VariableRegisters {
 
   declare(declaring: Identifier, register: Register, lifetime: Lifetime = 'block'): void {
     this.#registers.set(declaring, register);
-    this.hold(register, lifetime);
+    this.declareUnnamed(register, lifetime);
   }
 
   /**
    * Makes `register` a variable of the innermost block with no name: what `_` keeps, a `defer`
-   * guard, the holdings of a `select`'s winning case (§7, §8).
+   * guard, the holdings of a `select`'s winning case, a hold scope's list (§7, §8).
    */
-  hold(register: Register, lifetime: Lifetime = 'block'): void {
+  declareUnnamed(register: Register, lifetime: Lifetime = 'block'): void {
     this.#variables.add(register);
     const block = this.#blocks.at(-1);
     block?.declared.push(register);
@@ -99,7 +99,7 @@ export class VariableRegisters {
    * Makes `register` a variable of the function's own body, which no block releases and only the
    * function's return does: the list of what lasts until then (holds.ts).
    */
-  holdUntilReturn(register: Register): void {
+  declareFunctionWide(register: Register): void {
     this.#variables.add(register);
   }
 
@@ -176,7 +176,7 @@ export function lowerVariableDeclaration(
 ): void {
   const value = context.expression(node.initializer);
   if (node.targets.some(hasUnnamedPart)) {
-    context.variables.hold(copied(context, value, node.span), lifetimeOf(context, node));
+    context.variables.declareUnnamed(copied(context, value, node.span), lifetimeOf(context, node));
   }
   bindTargets(context, node, value, node.span);
 }
@@ -219,7 +219,7 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
   }
   const value = context.expression(node.value);
   if (node.targets.some(hasUnnamedTarget)) {
-    context.variables.hold(copied(context, value, node.span));
+    context.variables.declareUnnamed(copied(context, value, node.span));
   }
   for (const part of parts) {
     const place = enterAssigned(context, part.target);

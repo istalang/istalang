@@ -214,6 +214,9 @@ export interface LabelledBlock extends NodeOf<'LabelledBlock'>, Annotatable {
   readonly body: Block;
 }
 
+/** A scope a label may name (§3.4, §4): a loop, or a block only `hold` names. */
+export type LabelledScope = For | While | LabelledBlock;
+
 /** `defer f`: runs `f` when the block ends (§7). */
 export interface Defer extends NodeOf<'Defer'>, Annotatable {
   readonly action: Expression;

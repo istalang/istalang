@@ -117,7 +117,7 @@ class FunctionLowering implements FunctionContext {
   readonly frame: Frame;
   readonly code = new CodeWriter();
   readonly variables = new VariableRegisters();
-  readonly holds = new HoldScopes(this.code, this.variables);
+  readonly holds = new HoldScopes(this);
   readonly loops = new LoopStack();
   readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
 

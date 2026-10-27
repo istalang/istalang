@@ -36,6 +36,7 @@ import type { ReturnScope } from './closures/returns.ts';
 import type { CollectionForms } from './expressions/collections.ts';
 import type { StructLiterals } from './expressions/literal-fields.ts';
 import type { OptionalChains } from './expressions/optionals.ts';
+import type { LabelTargets } from './flow/labels.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import type { JsonCodecs } from './json-form.ts';
 import type { CheckedPatterns } from './patterns/matching.ts';
@@ -173,4 +174,6 @@ export interface BodyContext {
   readonly patterns: CheckedPatterns;
   readonly chains: OptionalChains;
   readonly ownCalls: OwnCalls;
+  /** What this body's exits and holds name, recorded as it is checked. */
+  readonly labels: LabelTargets;
 }

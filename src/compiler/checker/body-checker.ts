@@ -42,6 +42,7 @@ import { CollectionForms } from './expressions/collections.ts';
 import { acceptsOf, expressionHandlers } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
 import { OptionalChains } from './expressions/optionals.ts';
+import { LabelTargets } from './flow/labels.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
@@ -85,6 +86,7 @@ export class BodyChecker implements BodyContext {
   readonly patterns = new CheckedPatterns();
   readonly chains = new OptionalChains();
   readonly ownCalls = new OwnCalls();
+  readonly labels = new LabelTargets();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
   readonly #fits = new Map<ValueSite, Fit>();
@@ -276,6 +278,7 @@ export class BodyChecker implements BodyContext {
       chains,
       functions,
       ownCalls,
+      labels,
     } = this;
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
@@ -298,6 +301,7 @@ export class BodyChecker implements BodyContext {
       chainOf: (link) => chains.chainOf(link),
       ownCallReadAt: (name) => ownCalls.readAt(name),
       ownCallOf: (owner) => ownCalls.variableOf(owner),
+      labels,
       result,
     };
   }

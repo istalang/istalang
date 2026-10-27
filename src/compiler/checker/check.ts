@@ -29,6 +29,7 @@ import type { Assignment, Block, For, Return, VariableDeclaration } from '../syn
 import type { AnnotationQueries } from './checked-annotation.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
+import type { LabelResolution } from './flow/labels.ts';
 import type { JsonFormQueries } from './json-form.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type {
@@ -186,6 +187,8 @@ export interface CheckedBody {
    * entry, when its name reads that call (§7).
    */
   readonly ownCallOf: (owner: NestedFunction) => VariableEntity | undefined;
+  /** What each `break`, `continue` and `hold(name)` of the body names (§3.4, §4). */
+  readonly labels: LabelResolution;
   /** What the body produces: `T` for an async function returning `Future<T>`. */
   readonly result: Type;
 }
