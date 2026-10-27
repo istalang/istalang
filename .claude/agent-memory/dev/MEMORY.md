@@ -1,2 +1,3 @@
 - [Coordination](feedback_coordination.md) — minimal fork briefs, forks self-rebase, escalate to human, ≤3 parallel, lean coordinator
 - [Tracker](feedback_tracker.md) — tracker lists open items only; delete resolved rows, keep ids increasing
+- [Defer later fixes](feedback_defer-fixes.md) — fix only what blocks the phase; later-phase issues deferred ("break now, fix later")
