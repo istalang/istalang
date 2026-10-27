@@ -63,13 +63,14 @@ import { StaticFunctions } from './declarations/statics.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
+import { meetsAny } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
 import { Annotations } from './rules/annotations.ts';
 import { checkClashes } from './rules/clashes.ts';
 import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
-import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
+import { type Fit, type Fitting, fitOf, type OptionalEntity } from './types/fit.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
 import {
   type AnonymousStructType,
@@ -234,8 +235,15 @@ export class ProgramChecker implements CheckerContext {
   }
 
   /** An arrow, so the relation can be passed around on its own (rules/agreement.ts). */
-  readonly wrapsToFit = (found: Type, expected: Type): number | undefined =>
-    wrapsToFit(found, expected, this.optionalEntity);
+  readonly fitOf = (found: Type, expected: Type): Fit | undefined =>
+    fitOf(found, expected, this.fitting);
+
+  get fitting(): Fitting {
+    return {
+      optional: this.optionalEntity,
+      meetsAny: (type, target) => meetsAny(this, type, target),
+    };
+  }
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
     return this.#typeParameters.constraintsOf(parameter);

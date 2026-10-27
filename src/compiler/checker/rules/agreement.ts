@@ -14,6 +14,7 @@ import type { Span } from '../../../text/span.ts';
 import type { ValueSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import type { Accepts } from '../resolution/choice.ts';
+import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
 import { widened } from '../types/widening.ts';
 
@@ -40,7 +41,7 @@ export interface Agreement {
  */
 export function agreedType(
   produced: readonly Produced[],
-  fits: (found: Type, decided: Type) => number | undefined,
+  fits: (found: Type, decided: Type) => Fit | undefined,
   expected?: Type,
 ): Agreement {
   const first = produced.find(({ type }) => !isPrimitive(type, 'never'))?.type;
@@ -49,7 +50,7 @@ export function agreedType(
   return {
     decided,
     disagreeing:
-      decided === undefined ? [] : produced.filter(({ type }) => fits(type, decided) !== 0),
+      decided === undefined ? [] : produced.filter(({ type }) => !isExact(fits(type, decided))),
   };
 }
 
@@ -57,9 +58,9 @@ export function agreedType(
 function firstOrWidened(
   first: Type,
   produced: readonly Produced[],
-  fits: (found: Type, decided: Type) => number | undefined,
+  fits: (found: Type, decided: Type) => Fit | undefined,
 ): Type {
-  const fitsAll = (decided: Type) => produced.every(({ type }) => fits(type, decided) === 0);
+  const fitsAll = (decided: Type) => produced.every(({ type }) => isExact(fits(type, decided)));
   if (fitsAll(first)) {
     return first;
   }
@@ -77,13 +78,13 @@ export function settleAgreement(
   expected: Type | undefined,
   mismatch: (span: Span, decided: Type, found: Type) => Diagnostic,
 ): Type | undefined {
-  const { wrapsToFit } = context.checker;
-  const { decided, disagreeing } = agreedType(produced, wrapsToFit, expected);
+  const { fitOf } = context.checker;
+  const { decided, disagreeing } = agreedType(produced, fitOf, expected);
   if (decided === undefined) {
     return undefined;
   }
   for (const each of disagreeing) {
-    if (expected === undefined && wrapsToFit(each.type, decided) === undefined) {
+    if (expected === undefined && fitOf(each.type, decided) === undefined) {
       context.report(mismatch(each.span, decided, each.type));
     } else {
       fitProduced(context, each, decided);
@@ -107,7 +108,7 @@ export function decidedSoFar(
   context: BodyContext,
   produced: readonly Produced[],
 ): Type | undefined {
-  return agreedType(produced, context.checker.wrapsToFit).decided;
+  return agreedType(produced, context.checker.fitOf).decided;
 }
 
 /**

@@ -13,13 +13,13 @@
  * - A compound assignment `x += y` is `x = x + y` (§3.9): the operator's function is resolved for
  *   the place's type and recorded on the assignment, and its result must fit the place.
  * - A value written to an optional place is wrapped into it (§2), whether the whole value, a part
- *   of it or an operator's result, so each part records its own wraps.
+ *   of it or an operator's result, so each part records its own fit.
  * - `*x = v` writes the value behind the handle `x` whole (§3.9; expressions/dereference.ts), as
  *   its one part.
  * - `_` as a target holds the value without a name, so it records no part to write (§3.4).
  * - Taking a value apart writes each place once: no target is another's place, or a part of it,
  *   so the order the parts are written in never decides a value (§3.15).
- * - What lowering needs is recorded: each place written, with its part of the value and its wraps.
+ * - What lowering needs is recorded: each place written, with its part of the value and its fit.
  */
 
 import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
@@ -53,10 +53,10 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
   if (more.length === 0 && !destructures(only)) {
     const place = assignedPlace(context, only);
     const type = context.expression(node.value, place);
-    const wraps = context.fitWritten(type, place, node.value.span);
+    const fit = context.fitWritten(type, place, node.value.span);
     context.variables.recordAssigned(
       node,
-      isUnnamedTarget(only) ? [] : [{ target: only, path: [], type, wraps }],
+      isUnnamedTarget(only) ? [] : [{ target: only, path: [], type, fit }],
     );
     return;
   }
@@ -80,8 +80,8 @@ function checkCompound(
     { node: target, type: place },
     { node: node.value, type: operand },
   ]);
-  const wraps = context.fitWritten(result, place, node.value.span);
-  context.variables.recordAssigned(node, [{ target, path: [], type: result, wraps }]);
+  const fit = context.fitWritten(result, place, node.value.span);
+  context.variables.recordAssigned(node, [{ target, path: [], type: result, fit }]);
 }
 
 /** Taking an assigned value apart (patterns/walk.ts): where the places written are collected. */
@@ -114,9 +114,9 @@ function assignPart(
   }
   const bare = unparenthesized(target);
   const place = assignedPlace(context, bare);
-  const wraps = context.fitWritten(part.type, place, bare.span);
+  const fit = context.fitWritten(part.type, place, bare.span);
   if (!isUnnamedTarget(bare)) {
-    assigning.parts.push({ target: bare, path: part.path, type: part.type, wraps });
+    assigning.parts.push({ target: bare, path: part.path, type: part.type, fit });
   }
   return anyShape;
 }

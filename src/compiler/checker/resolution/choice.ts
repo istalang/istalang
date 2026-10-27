@@ -189,7 +189,7 @@ export function takenBy(
       known.set(parameter, type);
     }
   }
-  const inference = new Inference(takes.typeParameters, checker.optionalEntity, known);
+  const inference = new Inference(takes.typeParameters, checker.fitting, known);
   return argumentsInapplicability(takes, callArguments, inference) ?? { inference };
 }
 

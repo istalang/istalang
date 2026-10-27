@@ -7,7 +7,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { checkProgram } from '../check.ts';
-import { optionalInner, wrapsToFit } from './fit.ts';
+import { fitOf, optionalInner } from './fit.ts';
 import {
   boolType,
   errorType,
@@ -20,6 +20,11 @@ import {
 
 const checker = checkProgram(stdProgramOf({ main: '' }));
 const optional = checker.optionalOf(unitType).entity;
+
+/** How many wraps make `found` fit `expected`; undefined when nothing does. */
+function wrapsToFit(found: Type, expected: Type): number | undefined {
+  return fitOf(found, expected, { optional, meetsAny: () => false })?.wraps;
+}
 
 /** `type` wrapped into an optional `levels` times. */
 function wrapped(type: Type, levels: number): Type {
@@ -51,7 +56,7 @@ describe('fitting by the implicit wrap', () => {
   it('takes one wrap per optional level', () => {
     fc.assert(
       fc.property(types, levelCounts, (type, count) => {
-        expect(wrapsToFit(type, wrapped(type, count), optional)).toBe(count);
+        expect(wrapsToFit(type, wrapped(type, count))).toBe(count);
       }),
     );
   });
@@ -59,7 +64,7 @@ describe('fitting by the implicit wrap', () => {
   it('never unwraps: a more optional type fits no less optional one', () => {
     fc.assert(
       fc.property(types, levelCounts, levelCounts, (type, found, expected) => {
-        const wraps = wrapsToFit(wrapped(type, found), wrapped(type, expected), optional);
+        const wraps = wrapsToFit(wrapped(type, found), wrapped(type, expected));
         expect(wraps).toBe(found <= expected ? expected - found : undefined);
       }),
     );
@@ -68,8 +73,8 @@ describe('fitting by the implicit wrap', () => {
   it('wraps only into optionals of the same type', () => {
     fc.assert(
       fc.property(types, types, levelCounts, (found, inner, count) => {
-        fc.pre(wrapsToFit(found, inner, optional) === undefined);
-        expect(wrapsToFit(found, wrapped(inner, count), optional)).toBeUndefined();
+        fc.pre(wrapsToFit(found, inner) === undefined);
+        expect(wrapsToFit(found, wrapped(inner, count))).toBeUndefined();
       }),
     );
   });
@@ -79,7 +84,7 @@ describe('fitting by the implicit wrap', () => {
     ['the error type fits any type', errorType, stringType],
     ['any type fits the error type', wrapped(boolType, 1), errorType],
   ])('%s as it is', (_, found, expected) => {
-    expect(wrapsToFit(found, expected, optional)).toBe(0);
+    expect(wrapsToFit(found, expected)).toBe(0);
   });
 
   it('reads the inner type of an optional, and of nothing else', () => {

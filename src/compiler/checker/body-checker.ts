@@ -6,8 +6,9 @@
  *   inference), and reports against it only where the spec says a value must fit (`expect`, or
  *   `fit` for a type already checked). Every type mismatch is reported through `fit`.
  * - What lowering needs is recorded as checking goes: every expression's type, every call's
- *   target, and every value's implicit wraps into `T?` (§2), which `fit` finds: on the node giving
- *   the value, or, for a value an assignment writes, on its part (statements/assignments.ts).
+ *   target, and every value's implicit conversions (§2, types/fit.ts), which `fit` finds: on the
+ *   node giving the value, or, for a value an assignment writes, on its part
+ *   (statements/assignments.ts).
  *   Nothing is recomputed later, so lowering sees exactly what was checked.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. A lambda or local
@@ -53,6 +54,7 @@ import { Iterations } from './rules/iteration.ts';
 import { checkTestingCalls } from './rules/testing-calls.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
+import { exactFit, type Fit, isExact } from './types/fit.ts';
 import { errorType, type FunctionType, type Type, unitType } from './types/type.ts';
 import { typeText } from './types/type-text.ts';
 
@@ -83,7 +85,7 @@ export class BodyChecker implements BodyContext {
   readonly ownCalls = new OwnCalls();
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
-  readonly #wraps = new Map<ValueSite, number>();
+  readonly #fits = new Map<ValueSite, Fit>();
 
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
@@ -180,27 +182,27 @@ export class BodyChecker implements BodyContext {
   }
 
   fit(found: Type, expected: Type, site: ValueSite, at = site.span): void {
-    const wraps = this.#wrapsToFit(found, expected, at);
-    if (wraps > 0) {
-      this.#wraps.set(site, wraps);
+    const fit = this.#fitOf(found, expected, at);
+    if (!isExact(fit)) {
+      this.#fits.set(site, fit);
     }
   }
 
-  fitWritten(found: Type, expected: Type, at: Span): number {
-    return this.#wrapsToFit(found, expected, at);
+  fitWritten(found: Type, expected: Type, at: Span): Fit {
+    return this.#fitOf(found, expected, at);
   }
 
-  /** How many times a `found` is wrapped to fit `expected`; none after reporting a mismatch at `at`. */
-  #wrapsToFit(found: Type, expected: Type, at: Span): number {
-    const wraps = this.checker.wrapsToFit(found, expected);
-    if (wraps === undefined) {
+  /** How `found` fits `expected`; as it is after reporting a mismatch at `at`. */
+  #fitOf(found: Type, expected: Type, at: Span): Fit {
+    const fit = this.checker.fitOf(found, expected);
+    if (fit === undefined) {
       this.#mismatch(found, expected, at);
     }
-    return wraps ?? 0;
+    return fit ?? exactFit;
   }
 
   fitUnwrapped(found: Type, expected: Type, at: Span): void {
-    if (this.checker.wrapsToFit(found, expected) !== 0) {
+    if (!isExact(this.checker.fitOf(found, expected))) {
       this.#mismatch(found, expected, at);
     }
   }
@@ -253,7 +255,7 @@ export class BodyChecker implements BodyContext {
   #checked(result: Type): CheckedBody {
     const types = this.#types;
     const calls = this.#calls;
-    const wraps = this.#wraps;
+    const fits = this.#fits;
     const {
       variables,
       literals,
@@ -276,7 +278,7 @@ export class BodyChecker implements BodyContext {
       implicitCallOf: (node, role) => implicit.of(node, role),
       collectionFormOf: (literal) => collections.of(literal),
       iterationOf: (iteration) => iterations.of(iteration),
-      wrapsOf: (site) => wraps.get(site) ?? 0,
+      fitOf: (site) => fits.get(site) ?? exactFit,
       targetsOf: (owner) => variables.targetsOf(owner),
       assignedOf: (assignment) => variables.assignedOf(assignment),
       inCell: (name) => variables.inCell(name),

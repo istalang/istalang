@@ -5,13 +5,13 @@
  * - Matching is exact, except at the top of a match, where a `T` may fill a `T?` (§2): the wrap
  *   applies to a whole value, never inside a collection or a function type.
  * - The types found for a parameter must agree, whatever order the arguments come in: a later
- *   one fits the bound type (a wrap included), or the bound type fits it, which then binds, so
+ *   one fits the bound type (a conversion included), or the bound type fits it, which then binds, so
  *   `same(o, 2)` and `same(2, o)` both bind `T` to `int?` for `o: int?`. Two types neither fits
  *   conflict, and inference fails for that parameter.
  * - The error type and `never` fit anything and bind nothing, so one mistake is reported once.
  */
 
-import { type OptionalEntity, optionalInner, wrapsToFit } from '../types/fit.ts';
+import { type Fitting, fitOf, optionalInner } from '../types/fit.ts';
 import {
   type AnyType,
   type FunctionType,
@@ -26,13 +26,13 @@ import {
 
 export class Inference {
   readonly #unknowns: ReadonlySet<ParameterKey>;
-  readonly #optional: OptionalEntity;
+  readonly #fitting: Fitting;
   readonly #bound = new Map<ParameterKey, Type>();
   readonly #conflicts = new Set<ParameterKey>();
 
-  constructor(unknowns: Iterable<ParameterKey>, optional: OptionalEntity, known?: Substitution) {
+  constructor(unknowns: Iterable<ParameterKey>, fitting: Fitting, known?: Substitution) {
     this.#unknowns = new Set(unknowns);
-    this.#optional = optional;
+    this.#fitting = fitting;
     for (const [parameter, type] of known ?? []) {
       this.#bound.set(parameter, type);
     }
@@ -46,7 +46,7 @@ export class Inference {
     if (this.#matchExact(declared, given)) {
       return true;
     }
-    const inner = optionalInner(declared, this.#optional);
+    const inner = optionalInner(declared, this.#fitting.optional);
     return inner !== undefined && this.match(inner, given);
   }
 
@@ -167,10 +167,10 @@ export class Inference {
       return true;
     }
     const current = substitute(bound, this.#bound);
-    if (wrapsToFit(given, current, this.#optional) !== undefined) {
+    if (fitOf(given, current, this.#fitting) !== undefined) {
       return true;
     }
-    if (wrapsToFit(current, given, this.#optional) !== undefined) {
+    if (fitOf(current, given, this.#fitting) !== undefined) {
       this.#bound.set(parameter, given);
       return true;
     }

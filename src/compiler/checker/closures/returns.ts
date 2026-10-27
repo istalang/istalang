@@ -81,7 +81,7 @@ export class ReturnScope {
       return this.declared;
     }
     const produced = [...this.#returned, tail];
-    const { decided, disagreeing } = agreedType(produced, context.checker.wrapsToFit);
+    const { decided, disagreeing } = agreedType(produced, context.checker.fitOf);
     if (decided === undefined) {
       return tail.type;
     }

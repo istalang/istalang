@@ -120,7 +120,7 @@ export function checkNullish(context: BodyContext, node: Binary, expected: Type 
     return errorType;
   }
   const right = context.expression(node.right, expected ?? inner);
-  if (checker.wrapsToFit(right, inner) === undefined && isAssignable(right, left)) {
+  if (checker.fitOf(right, inner) === undefined && isAssignable(right, left)) {
     return left;
   }
   context.fit(right, inner, node.right);

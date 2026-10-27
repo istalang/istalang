@@ -122,7 +122,7 @@ export function checkLiteralFields(
     spread === undefined ? undefined : (spread.type ?? context.expression(spread.node.expression));
   const parameters = shape.owner === undefined ? [] : typeParametersOf(shape.owner.typeParameters);
   const decided = decidedArguments(shape, parameters);
-  const inference = new Inference(parameters, context.checker.optionalEntity, decided);
+  const inference = new Inference(parameters, context.checker.fitting, decided);
   if (spreadType !== undefined) {
     inference.matchExactly(spreadOf(shape, parameters.map(parameterType)), spreadType);
   }

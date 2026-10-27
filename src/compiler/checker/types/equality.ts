@@ -32,10 +32,7 @@ export function checkEqualSides(
     [right, left],
     [left, right],
   ] as const) {
-    if (
-      side.node !== undefined &&
-      context.checker.wrapsToFit(side.type, other.type) !== undefined
-    ) {
+    if (side.node !== undefined && context.checker.fitOf(side.type, other.type) !== undefined) {
       context.fit(side.type, other.type, side.node);
       return;
     }

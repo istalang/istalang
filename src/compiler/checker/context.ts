@@ -45,7 +45,7 @@ import type { CallSite, ResolvedCall } from './resolved-call.ts';
 import type { Annotations } from './rules/annotations.ts';
 import type { Iterations } from './rules/iteration.ts';
 import type { VariableScope } from './statements/variables.ts';
-import type { OptionalEntity } from './types/fit.ts';
+import type { Fit, Fitting, OptionalEntity } from './types/fit.ts';
 import type {
   Constraint,
   FieldMember,
@@ -74,8 +74,10 @@ export interface CheckerContext extends Checker {
   readonly json: JsonCodecs;
   /** The prelude's `Optional`, which the implicit wrap fills (§2); undefined without a prelude. */
   readonly optionalEntity: OptionalEntity;
-  /** How many wraps into `Some` make `found` fit `expected`; undefined when nothing does (§2). */
-  readonly wrapsToFit: (found: Type, expected: Type) => number | undefined;
+  /** What fitting a value where a type is expected asks of the program (§2). */
+  readonly fitting: Fitting;
+  /** How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2). */
+  readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
   /** The constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
   readonly constraintsOf: (parameter: TypeParameter) => readonly Constraint[];
   /** The static functions declared on `owner` in `module` (§3.7). */
@@ -132,9 +134,9 @@ export interface BodyContext {
   readonly fit: (found: Type, expected: Type, site: ValueSite, at?: Span) => void;
   /**
    * Reports at `at` when `found`, written to a place of `expected` by an assignment, doesn't fit
-   * it; how many times the value is wrapped to fit (§2), which the assignment records on its part.
+   * it; how the value is converted to fit (§2), which the assignment records on its part.
    */
-  readonly fitWritten: (found: Type, expected: Type, at: Span) => number;
+  readonly fitWritten: (found: Type, expected: Type, at: Span) => Fit;
   /**
    * Reports at `at` when the items of a spread, of `found`, don't fit `expected` as they are: the
    * spread gives its items as a whole, so none of them is wrapped (§2).

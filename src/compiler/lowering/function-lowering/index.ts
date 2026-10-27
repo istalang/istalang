@@ -37,6 +37,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { CheckedBody, Checker, SignatureParameter } from '../../checker/check.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/resolved-call.ts';
+import type { Fit } from '../../checker/types/fit.ts';
 import { substitute, type Type } from '../../checker/types/type.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
@@ -215,13 +216,16 @@ class FunctionLowering implements FunctionContext {
       this.body.chainOf(node) === undefined
         ? handlerOf(expressionHandlers, node)(this, node)
         : this.chains.lower(this, node);
-    return this.wrapped(register, this.body.typeOf(node), this.body.wrapsOf(node), node.span);
+    return this.fitted(register, this.body.typeOf(node), this.body.fitOf(node), node.span);
   }
 
-  wrapped(value: Register, type: Type, wraps: number, span: Span): Register {
+  fitted(value: Register, type: Type, fit: Fit, span: Span): Register {
+    if (fit.asAny !== undefined) {
+      unreachable('A conversion into an any type has no lowering before trait objects lower.');
+    }
     let register = value;
     let current = type;
-    for (let left = wraps; left > 0; left -= 1) {
+    for (let left = fit.wraps; left > 0; left -= 1) {
       const optional = this.checker.optionalOf(current);
       const some = { type: optional, name: optionalVariants.some };
       register = buildVariant(this, some, [register], span);

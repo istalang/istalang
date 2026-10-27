@@ -30,7 +30,7 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
     elements: node.elements.map((element, index) => {
       const guide = guides?.[index];
       const type = context.expression(element, guide);
-      if (guide === undefined || context.checker.wrapsToFit(type, guide) === undefined) {
+      if (guide === undefined || context.checker.fitOf(type, guide) === undefined) {
         return type;
       }
       context.fit(type, guide, element);

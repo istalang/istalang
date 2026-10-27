@@ -38,6 +38,7 @@ import type {
   MadeCall,
   ResolvedCall,
 } from './resolved-call.ts';
+import type { Fit } from './types/fit.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -102,13 +103,13 @@ export interface ChainLink {
 
 /**
  * A place an assignment writes, and the part of the assigned value it gets (§3.15): its positions
- * in the value, its type, and how many times it is wrapped into `Some` to fit the place (§2).
+ * in the value, its type, and how it is converted to fit the place (§2).
  */
 export interface AssignedPart {
   readonly target: Expression;
   readonly path: readonly number[];
   readonly type: Type;
-  readonly wraps: number;
+  readonly fit: Fit;
 }
 
 /**
@@ -151,8 +152,8 @@ export interface CheckedBody {
   readonly collectionFormOf: (literal: ArrayLiteral | MapLiteral) => CollectionForm;
   /** How an iteration runs: through its cursor, or copied whole (§3.10). */
   readonly iterationOf: (iteration: Iteration) => IterationForm;
-  /** How many times the value `site` gives is wrapped into `Some` where it is used (§2). */
-  readonly wrapsOf: (site: ValueSite) => number;
+  /** How the value `site` gives is converted to fit where it is used (§2, §3.10). */
+  readonly fitOf: (site: ValueSite) => Fit;
   /** What the targets of a declaration, or of a loop for each item, bind: each name's part of the value. */
   readonly targetsOf: (owner: TargetOwner) => readonly TargetBinding[];
   /** Where an assignment's value goes: each place written, with its part of the value. */

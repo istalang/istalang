@@ -15,6 +15,7 @@ import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CheckedBody, Checker } from '../checker/check.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../checker/resolved-call.ts';
+import type { Fit } from '../checker/types/fit.ts';
 import type { Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
@@ -44,13 +45,13 @@ export interface FunctionContext {
    * local function's own, not its owner's.
    */
   readonly result: Type;
-  /** Lowers `node`; the register holding its value, wrapped as the checker found (§2). */
+  /** Lowers `node`; the register holding its value, converted as the checker found (§2). */
   readonly expression: (node: Expression) => Register;
   /**
-   * `value`, of `type`, wrapped into `Some` `wraps` times (§2): the one place a value the checker
-   * found wrapped is, whether an expression's, an assigned part's or a `unit` with no expression.
+   * `value`, of `type`, converted as `fit` says (§2): the one place a value the checker found
+   * converted is, whether an expression's, an assigned part's or a `unit` with no expression.
    */
-  readonly wrapped: (value: Register, type: Type, wraps: number, span: Span) => Register;
+  readonly fitted: (value: Register, type: Type, fit: Fit, span: Span) => Register;
   /** Lowers a block; the register holding its value (unit when it ends in a statement). */
   readonly block: (node: Block) => Register;
   readonly statement: (node: Statement | Invalid) => void;

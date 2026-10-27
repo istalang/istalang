@@ -223,12 +223,12 @@ function lowerCompound(
   place.write(writtenPart(context, result, part, node.span), node.span);
 }
 
-/** `value`, the part of an assignment's value `part` writes, wrapped to fit its place (§2). */
+/** `value`, the part of an assignment's value `part` writes, converted to fit its place (§2). */
 function writtenPart(
   context: FunctionContext,
   value: Register,
   part: AssignedPart,
   span: Span,
 ): Register {
-  return context.wrapped(value, part.type, part.wraps, span);
+  return context.fitted(value, part.type, part.fit, span);
 }
