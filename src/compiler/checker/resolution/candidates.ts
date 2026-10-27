@@ -5,7 +5,8 @@
  * - argument-dependent lookup: the exported functions of that name in the modules declaring the
  *   arguments' own types, not their type arguments' (a primitive's is the prelude);
  * - the functions the constraints on a type parameter require, for every type parameter the
- *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other.
+ *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other; and so
+ *   for every `any` type they mention, whose value's own type decides the function (§3.10).
  *
  * A static function (`Duration.zero()`, `T.zero()`) is chosen among those declared on its type
  * and visible where it is called: in the calling module, the type's module, the prelude, or a
@@ -21,8 +22,12 @@
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
-import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
-import { parametersIn, type Type } from '../types/type.ts';
+import {
+  anyRequirementsNamed,
+  type Requirement,
+  requirementsNamed,
+} from '../traits/constraints.ts';
+import { anyTypesIn, parametersIn, type Type } from '../types/type.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
 export interface Candidate {
@@ -89,7 +94,7 @@ export function staticCandidates(
 /**
  * The candidates of a witness of `required`, a trait's requirement taking `parameterTypes`, for
  * `type`: the functions declared beside those types or the trait, a static one on `type` (whose
- * own module counts too), and on a type parameter its constraints' requirements.
+ * own module counts too), and on a type parameter or an `any` type its constraints' requirements.
  */
 export function witnessCandidates(
   checker: CheckerContext,
@@ -163,19 +168,26 @@ function declaringModule(checker: CheckerContext, type: Type): ModuleId | undefi
   return target?.kind === 'owner' ? target.module : undefined;
 }
 
+/**
+ * The functions named `name` that constraints require on the type parameters and `any` types the
+ * arguments mention; static ones are called through their type instead.
+ */
 function requirementCandidates(
   checker: CheckerContext,
   name: string,
   argumentTypes: readonly Type[],
 ): readonly Candidate[] {
   const parameters = new Set(argumentTypes.flatMap(parametersIn));
-  return [...parameters].flatMap((parameter) =>
-    parameter.kind === 'TypeParameter'
-      ? requirementsNamed(checker, parameter, name)
-          .filter((requirement) => requirement.declaration.owner === undefined)
-          .map((requirement) => ({ declaration: requirement.declaration, requirement }))
-      : [],
+  const onParameters = [...parameters].flatMap((parameter) =>
+    parameter.kind === 'TypeParameter' ? requirementsNamed(checker, parameter, name) : [],
   );
+  const anyTypes = new Map(
+    argumentTypes.flatMap(anyTypesIn).map((type) => [checker.typeKeys.typeKey(type), type]),
+  );
+  const onAnyTypes = [...anyTypes.values()].flatMap((type) => anyRequirementsNamed(type, name));
+  return [...onParameters, ...onAnyTypes]
+    .filter((requirement) => requirement.declaration.owner === undefined)
+    .map((requirement) => ({ declaration: requirement.declaration, requirement }));
 }
 
 /** What static calls through `type` look at; undefined for a type with no static functions. */

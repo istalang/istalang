@@ -10,18 +10,17 @@ import type { Register } from '../../../definition/operands.ts';
 import type { CodecHelper } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Checker } from '../../checker/check.ts';
-import type { FunctionCall } from '../../checker/resolved-call.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
-import { closeCall, type FunctionInstance, instanceOfCall } from '../instances.ts';
+import { type ClosedCall, closeCall, type FunctionInstance } from '../instances.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** How JSON at `path` becomes a value: the call decoding it, and the call accepting the result. */
 export interface Inbound {
   readonly path: string;
-  readonly decode: FunctionCall;
-  readonly accept: FunctionCall;
+  readonly decode: ClosedCall;
+  readonly accept: ClosedCall;
 }
 
 /**
@@ -48,11 +47,7 @@ export function emitInbound(
   inbound: Inbound,
   span: Span,
 ): Register {
-  const call = (target: FunctionCall, values: readonly Register[]) =>
-    emitCall(context, {
-      span,
-      callee: context.tables.functionIndex(instanceOfCall(target)),
-      arguments: values,
-    });
+  const call = (target: ClosedCall, values: readonly Register[]) =>
+    emitCall(context, { span, callee: context.tables.callIndex(target), arguments: values });
   return call(inbound.accept, [call(inbound.decode, [json, path])]);
 }

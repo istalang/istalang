@@ -31,8 +31,8 @@ import { callMade } from '../resolution/calls-made.ts';
 import { callCandidates } from '../resolution/candidates.ts';
 import { chooseSilently } from '../resolution/silent-choice.ts';
 import type { CallSite, FunctionCall, ResolvedCall } from '../resolved-call.ts';
-import { requiredFunctions } from '../traits/constraints.ts';
-import { type Constraint, type NominalType, sameType, type Type, unitType } from '../types/type.ts';
+import { knownConstraints, requiredFunctions } from '../traits/constraints.ts';
+import { type NominalType, sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { searchSite } from '../use-site.ts';
 
@@ -48,12 +48,10 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
     case 'nominal':
       return checker.disposalOf(type).kind !== 'none';
     case 'parameter':
-      return (
-        type.declaration.kind === 'TypeParameter' &&
-        requiresDispose(checker.constraintsOf(type.declaration))
-      );
     case 'any':
-      return requiresDispose(type.constraints);
+      return knownConstraints(checker, type).some(({ trait }) =>
+        requiredFunctions(trait).some(({ name }) => name.text === disposeFunction),
+      );
     case 'primitive':
     case 'anonymous':
     case 'tuple':
@@ -65,12 +63,6 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
       return unhandled;
     }
   }
-}
-
-function requiresDispose(constraints: readonly Constraint[]): boolean {
-  return constraints.some(({ trait }) =>
-    requiredFunctions(trait).some(({ name }) => name.text === disposeFunction),
-  );
 }
 
 export function disposalOf(checker: CheckerContext, type: NominalType): Disposal {

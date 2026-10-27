@@ -16,7 +16,7 @@ export const genericTemplates = {
   },
   notTrait: {
     code: 5102,
-    message: () => "Only a trait can follow 'is' in a constraint.",
+    message: (keyword: string) => `Only a trait can follow '${keyword}'.`,
   },
   noFunctionNamed: {
     code: 5103,

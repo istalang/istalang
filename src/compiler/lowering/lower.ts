@@ -35,6 +35,7 @@ import {
 } from './instances.ts';
 import { keyOf } from './names.ts';
 import { DefinitionTables, type PendingEntry } from './tables.ts';
+import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './trait-objects/trait-objects.ts';
 
 /**
  * The Definition of everything `main` and the program's startable functions reach (§9): `main` is
@@ -112,6 +113,12 @@ function pendingEntry(
       }
       return startEntry(lowering, startable);
     }
+    case 'dispatch':
+      return dispatchEntry(lowering, pending.dispatch);
+    case 'anyConversion':
+      return anyConversionEntry(lowering, pending.from, pending.to);
+    case 'anyField':
+      return anyFieldEntry(lowering, pending.on, pending.field);
     default: {
       const unhandled: never = pending;
       return unhandled;

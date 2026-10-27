@@ -41,6 +41,7 @@ import type {
 import type { Fit } from './types/fit.ts';
 import type {
   AnonymousStructType,
+  AnyType,
   FieldMember,
   FunctionType,
   NominalType,
@@ -244,6 +245,15 @@ export interface Checker {
   readonly sharedValueOf: (type: Type) => AnonymousStructType | undefined;
   /** Who disposes a value of `type` (rules/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;
+  /**
+   * The calls a value of `member` inside the `any` type `type` is called through (§3.10): what
+   * meets each function its `constraint`-th constraint's trait requires, in the trait's order.
+   */
+  readonly memberWitnesses: (
+    type: AnyType,
+    constraint: number,
+    member: Type,
+  ) => readonly ResolvedCall[];
   /** `T?` for `type`, the type a value of `type` is wrapped into (§2). */
   readonly optionalOf: (type: Type) => NominalType;
   /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§3.7, §3.14). */

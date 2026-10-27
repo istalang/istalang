@@ -39,7 +39,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { namedType } from '../resolution/named.ts';
-import { requiredFields, requiredFieldType } from '../traits/constraints.ts';
+import { knownConstraints, requiredFields, requiredFieldType } from '../traits/constraints.ts';
 import { optionalInner } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import {
@@ -294,10 +294,7 @@ function fieldOf(context: BodyContext, type: Type, name: string): Type | undefin
   if (type.kind === 'nominal' || type.kind === 'anonymous') {
     return checker.fieldsOf(type)?.find((candidate) => candidate.name === name)?.type;
   }
-  if (type.kind !== 'parameter' || type.declaration.kind !== 'TypeParameter') {
-    return undefined;
-  }
-  for (const constraint of checker.constraintsOf(type.declaration)) {
+  for (const constraint of knownConstraints(checker, type)) {
     const field = requiredFields(constraint.trait).find((each) => each.name.text === name);
     if (field !== undefined) {
       return requiredFieldType(checker, constraint, field, type);

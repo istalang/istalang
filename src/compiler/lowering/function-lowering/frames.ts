@@ -18,10 +18,10 @@ import type {
   NestedFunction,
   SignatureParameter,
 } from '../../checker/check.ts';
-import type { FunctionCall } from '../../checker/resolved-call.ts';
 import { instantiatedBody } from '../../checker/types/instantiation.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import type { ClosedCall } from '../instances.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
@@ -45,7 +45,7 @@ export interface LoweredFunction extends Lowering {
 /** A start entry's frame: the name the host enters it by, and the call encoding what it gives. */
 export interface StartFrame {
   readonly header: EntryHeader;
-  readonly outcome: FunctionCall;
+  readonly outcome: ClosedCall;
 }
 
 /**
@@ -64,7 +64,7 @@ export interface Frame {
   /** The name a nested function calls itself by. */
   readonly self: Identifier | undefined;
   /** What a start entry encodes its returns with; undefined for any other entry. */
-  readonly outcome: FunctionCall | undefined;
+  readonly outcome: ClosedCall | undefined;
 }
 
 /** What `instance`'s entry is lowered from; undefined for an instance with no body, an extern. */

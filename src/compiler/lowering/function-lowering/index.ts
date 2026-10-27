@@ -55,7 +55,6 @@ import {
   calleeOf,
   type FunctionInstance,
   fullInstance,
-  instanceOfCall,
   type NestedInstance,
   ownerDeclaration,
   ownerSubstitution,
@@ -65,6 +64,7 @@ import { LoopStack } from '../statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
 import { declareVariable, VariableRegisters } from '../statements/variables.ts';
 import type { DefinitionTables } from '../tables.ts';
+import { convertedIntoAny } from '../trait-objects/trait-objects.ts';
 import {
   type Frame,
   instanceFrame,
@@ -220,11 +220,12 @@ class FunctionLowering implements FunctionContext {
   }
 
   fitted(value: Register, type: Type, fit: Fit, span: Span): Register {
-    if (fit.asAny !== undefined) {
-      unreachable('A conversion into an any type has no lowering before trait objects lower.');
-    }
     let register = value;
-    let current = type;
+    let current: Type = type;
+    if (fit.asAny !== undefined) {
+      register = convertedIntoAny(this, { value: register, from: current, to: fit.asAny }, span);
+      current = fit.asAny;
+    }
     for (let left = fit.wraps; left > 0; left -= 1) {
       const optional = this.checker.optionalOf(current);
       const some = { type: optional, name: optionalVariants.some };
@@ -251,7 +252,7 @@ class FunctionLowering implements FunctionContext {
   }
 
   callIndex(call: ResolvedCall): FunctionId {
-    return this.tables.functionIndex(calleeOf(call, this.owner));
+    return this.tables.callIndex(calleeOf(call, this.owner));
   }
 
   #functionOf(resolved: ResolvedCall | undefined, at: NodeOf<string>): FunctionId {
@@ -345,7 +346,7 @@ class FunctionLowering implements FunctionContext {
         ? value
         : emitCall(this, {
             span,
-            callee: this.tables.functionIndex(instanceOfCall(outcome)),
+            callee: this.tables.callIndex(outcome),
             arguments: [value],
           });
     this.code.emit({ kind: 'return', span, value: given });

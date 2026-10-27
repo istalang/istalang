@@ -63,17 +63,20 @@ import { StaticFunctions } from './declarations/statics.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
-import { meetsAny } from './resolution/trait-objects.ts';
+import { meetsAny, memberWitnesses } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
+import type { ResolvedCall } from './resolved-call.ts';
 import { Annotations } from './rules/annotations.ts';
 import { checkClashes } from './rules/clashes.ts';
 import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
+import { resolveAnyType } from './traits/any-types.ts';
 import { type Fit, type Fitting, fitOf, type OptionalEntity } from './types/fit.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
 import {
   type AnonymousStructType,
+  type AnyType,
   type Constraint,
   errorType,
   type FieldMember,
@@ -199,6 +202,14 @@ export class ProgramChecker implements CheckerContext {
   /** Each type node resolves once: in its own module, it always denotes the same type. */
   resolveType(module: ModuleId, node: TypeNode): Type {
     return memo(this.#resolvedTypes, node, () => resolveTypeNode(this, module, node));
+  }
+
+  memberWitnesses(type: AnyType, constraint: number, member: Type): readonly ResolvedCall[] {
+    return memberWitnesses(this, type, constraint, member);
+  }
+
+  anyTypeOf(module: ModuleId, traits: readonly TypeNode[]): Type {
+    return resolveAnyType(this, module, traits);
   }
 
   parametersOf(declaration: FunctionDeclaration): readonly SignatureParameter[] {

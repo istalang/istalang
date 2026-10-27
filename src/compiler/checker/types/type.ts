@@ -303,13 +303,18 @@ export function substitute(type: Type, substitution: Substitution): Type {
     return substitution.get(type.declaration) ?? type;
   }
   if (type.kind === 'any') {
-    const outer = new Map(substitution);
-    for (const { trait } of type.constraints) {
-      outer.delete(trait);
-    }
-    return mapChildren(type, (child) => substitute(child, outer));
+    return substituteAny(type, substitution);
   }
   return mapChildren(type, (child) => substitute(child, substitution));
+}
+
+/** An `any` type with `substitution` applied, but never to the `Self` it binds. */
+export function substituteAny(type: AnyType, substitution: Substitution): AnyType {
+  const outer = new Map(substitution);
+  for (const { trait } of type.constraints) {
+    outer.delete(trait);
+  }
+  return mapChildren(type, (child) => substitute(child, outer));
 }
 
 /** A function type with `substitution` applied, still a function type. */
@@ -391,6 +396,12 @@ export function parametersIn(type: Type): readonly ParameterKey[] {
     }
   }
   return [...mentioned];
+}
+
+/** The `any` types `type` is or is built from, outermost first. */
+export function anyTypesIn(type: Type): readonly AnyType[] {
+  const inner = typeChildren(type).flatMap(anyTypesIn);
+  return type.kind === 'any' ? [type, ...inner] : inner;
 }
 
 /** Whether `type` is, or is built from, the error type. */

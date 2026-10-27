@@ -21,7 +21,7 @@
  *   writing them (`declaredFields`).
  * - A `{…}` type is an anonymous struct, a type of its own (§3.1), whose fields resolve here, and
  *   whose fields' annotations are checked here, since nothing declares it elsewhere (§3.16).
- * - Traits are constraints, never types (§3.10).
+ * - A trait names no type of its own; after `any` it names the traits of one (§3.10).
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
@@ -88,7 +88,7 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
     checker.annotations.checkFields(fields);
     return { kind: 'anonymous', origin: node, fields };
   },
-  AnyType: ({ checker, module }, node) => checker.unsupported(module, node),
+  AnyType: ({ checker, module }, node) => checker.anyTypeOf(module, node.traits),
   Missing: () => errorType,
   Invalid: () => errorType,
 };

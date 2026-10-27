@@ -17,6 +17,7 @@ import {
   type FunctionType,
   isPrimitive,
   type ParameterKey,
+  parametersIn,
   type Substitution,
   sameType,
   substitute,
@@ -46,8 +47,23 @@ export class Inference {
     if (this.#matchExact(declared, given)) {
       return true;
     }
+    if (declared.kind === 'any') {
+      return this.#convertsInto(declared, given);
+    }
     const inner = optionalInner(declared, this.#fitting.optional);
     return inner !== undefined && this.match(inner, given);
+  }
+
+  /**
+   * Whether `given` converts into `declared`, an `any` type: one whose parameters are all known,
+   * since conversion binds none (§3.10).
+   */
+  #convertsInto(declared: AnyType, given: Type): boolean {
+    const known = substitute(declared, this.#bound);
+    if (known.kind !== 'any' || parametersIn(known).some((each) => this.#unknowns.has(each))) {
+      return false;
+    }
+    return this.#fitting.meetsAny(given, known);
   }
 
   /** Matches `declared` against a type `given` must equal, as an expected result. */

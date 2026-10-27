@@ -1,6 +1,6 @@
 /**
- * Code lowering writes with no syntax behind it (docs/arch/boundary.md): a type's codecs, a host
- * extern's wrapper, a start wrapper. It works through the same CodeContext as code with a body, so
+ * Code lowering writes with no syntax behind it: a type's codecs, a host extern's wrapper and a
+ * start wrapper (docs/arch/boundary.md), a dispatch on an `any` value's own type (§3.10). It works through the same CodeContext as code with a body, so
  * the helpers both share build its variants and calls, and every instruction carries the span of
  * the declaration it stands for, which is where a trace through it points.
  *
@@ -8,28 +8,22 @@
  * cells, since it never takes a value by `&`.
  */
 
-import type { CodeFunction } from '../../../definition/functions.ts';
-import type { FunctionId, Register } from '../../../definition/operands.ts';
-import type { Value } from '../../../definition/values.ts';
-import { resultVariants } from '../../../language/well-known.ts';
-import type { Span } from '../../../text/span.ts';
-import type { Checker } from '../../checker/check.ts';
-import type { FunctionCall } from '../../checker/resolved-call.ts';
-import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
-import { CodeWriter } from '../code-writer.ts';
-import type { CodeContext } from '../context.ts';
-import { emitCall } from '../emit-call.ts';
-import {
-  branchOnVariant,
-  buildVariant,
-  payloadOf,
-  variantTestOf,
-} from '../expressions/variants.ts';
-import { instanceOfCall } from '../instances.ts';
-import type { DefinitionTables, EntryHeader } from '../tables.ts';
+import type { CodeFunction } from '../../definition/functions.ts';
+import type { FunctionId, Register } from '../../definition/operands.ts';
+import type { Value } from '../../definition/values.ts';
+import { resultVariants } from '../../language/well-known.ts';
+import type { Span } from '../../text/span.ts';
+import type { Checker } from '../checker/check.ts';
+import type { AnonymousStructType, NominalType } from '../checker/types/type.ts';
+import { CodeWriter } from './code-writer.ts';
+import type { CodeContext } from './context.ts';
+import { emitCall } from './emit-call.ts';
+import { branchOnVariant, buildVariant, payloadOf, variantTestOf } from './expressions/variants.ts';
+import type { ClosedCall } from './instances.ts';
+import type { DefinitionTables, EntryHeader } from './tables.ts';
 
 /** What a call names: an entry already numbered, or a closed call to number. */
-export type Callee = FunctionId | FunctionCall;
+export type Callee = FunctionId | ClosedCall;
 
 export class SynthesizedCode implements CodeContext {
   readonly checker: Checker;
@@ -155,6 +149,6 @@ export class SynthesizedCode implements CodeContext {
   }
 
   #indexOf(callee: Callee): FunctionId {
-    return typeof callee === 'number' ? callee : this.tables.functionIndex(instanceOfCall(callee));
+    return typeof callee === 'number' ? callee : this.tables.callIndex(callee);
   }
 }

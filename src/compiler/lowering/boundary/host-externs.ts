@@ -24,10 +24,10 @@ import { futureArgument } from '../../checker/types/well-known.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { FunctionInstance } from '../instances.ts';
 import { keyOf, qualifiedNameOf, spelledType } from '../names.ts';
+import { SynthesizedCode } from '../synthesized-code.ts';
 import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../tables.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, type Inbound, inboundOf } from './inbound.ts';
-import { SynthesizedCode } from './synthesized-code.ts';
 
 /** What writing an entry here reads. */
 interface Lowering {

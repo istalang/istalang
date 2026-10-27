@@ -13,9 +13,9 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { FunctionCall } from '../../checker/resolved-call.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
-import { closeCall } from '../instances.ts';
+import { type ClosedCall, closeCall } from '../instances.ts';
+import type { SynthesizedCode } from '../synthesized-code.ts';
 import { codecCall } from './codec-calls.ts';
-import type { SynthesizedCode } from './synthesized-code.ts';
 
 /** The body of `_fromJson<T>`, written into `code`. */
 export class Decoder {
@@ -73,7 +73,7 @@ export class Decoder {
   }
 
   /** The codec reading `type`. */
-  #codec(type: Type): FunctionCall {
+  #codec(type: Type): ClosedCall {
     return codecCall(this.#code.checker, undefined, type, 'read');
   }
 

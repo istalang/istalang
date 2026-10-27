@@ -21,9 +21,11 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { FunctionCall, ResolvedCall, Witnesses } from '../checker/resolved-call.ts';
 import {
+  type AnyType,
   type ParameterKey,
   type Substitution,
   substitute,
+  substituteAny,
   substitutionFor,
   type Type,
 } from '../checker/types/type.ts';
@@ -77,11 +79,9 @@ export function substitutionOf(instance: FunctionInstance): Substitution {
   return substitutionFor(instance.declaration.typeParameters, instance.typeArguments);
 }
 
-/** The instance a call resolved inside the body of `within` targets. */
-export function calleeOf(resolved: ResolvedCall, within: BodyOwner): FunctionInstance {
-  return instanceOfCall(
-    closeCall(resolved, within.kind === 'function' ? within.instance : undefined),
-  );
+/** A call resolved inside the body of `within`, closed there. */
+export function calleeOf(resolved: ResolvedCall, within: BodyOwner): ClosedCall {
+  return closeCall(resolved, within.kind === 'function' ? within.instance : undefined);
 }
 
 /** The instance a closed call targets: its function, every type concrete. */
@@ -142,33 +142,59 @@ export function instanceName(checker: Checker, instance: FunctionInstance): stri
 }
 
 /**
- * `resolved`, closed inside `within`: type arguments substituted, requirements their witnesses.
- * A constant's value is within no instance, so nothing in it names a type parameter.
+ * A call closed inside an instance, every type in it concrete: a function's, or one dispatched on
+ * the own type of the `any` value it is called with (§3.10), a requirement on an `any` type.
+ */
+export type ClosedCall = ResolvedCall;
+
+/**
+ * A call dispatched on an `any` value's own type: the `member`-th function of the trait of the
+ * `constraint`-th constraint of `on`, with its own type arguments, every type concrete.
+ */
+export interface Dispatch {
+  readonly on: AnyType;
+  readonly constraint: number;
+  readonly member: number;
+  readonly required: FunctionDeclaration;
+  readonly typeArguments: readonly Type[];
+}
+
+/** The dispatch a closed call that isn't a function's makes. */
+export function dispatchOf(call: Exclude<ClosedCall, FunctionCall>): Dispatch {
+  const { on, constraint, member } = call.requirement;
+  if (on.kind !== 'any') {
+    unreachable(`A call on '${on.name.text}' was left open by closing.`);
+  }
+  return { on, constraint, member, required: call.function, typeArguments: call.typeArguments };
+}
+
+/**
+ * `resolved`, closed inside `within`: type arguments substituted, requirements on type parameters
+ * their witnesses. A constant's value is within no instance, so nothing in it names a type
+ * parameter.
  */
 export function closeCall(
   resolved: ResolvedCall,
   within: FunctionInstance | undefined,
-): FunctionCall {
+): ClosedCall {
   const substitution =
     within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
+  const typeArguments = resolved.typeArguments.map((type) => substitute(type, substitution));
   if (resolved.kind === 'function') {
-    return {
-      ...resolved,
-      typeArguments: resolved.typeArguments.map((type) => substitute(type, substitution)),
-      witnesses: closeWitnesses(resolved.witnesses, within),
-    };
+    return { ...resolved, typeArguments, witnesses: closeWitnesses(resolved.witnesses, within) };
   }
-  const { parameter, constraint, member } = resolved.requirement;
-  const witness = within?.witnesses.get(parameter)?.[constraint]?.[member];
-  if (witness?.kind !== 'function') {
-    unreachable(`No witness for '${parameter.name.text}'; checking should have found one.`);
+  const { on, constraint, member } = resolved.requirement;
+  if (on.kind === 'any') {
+    const closed = { on: substituteAny(on, substitution), constraint, member };
+    return { ...resolved, requirement: closed, typeArguments };
+  }
+  const witness = within?.witnesses.get(on)?.[constraint]?.[member];
+  if (witness === undefined) {
+    unreachable(`No witness for '${on.name.text}'; checking should have found one.`);
   }
   const own = new Map<ParameterKey, Type>([
     ...substitution,
-    ...substitutionFor(
-      resolved.function.typeParameters,
-      resolved.typeArguments.map((type) => substitute(type, substitution)),
-    ),
+    ...substitutionFor(resolved.function.typeParameters, typeArguments),
   ]);
   return {
     ...witness,

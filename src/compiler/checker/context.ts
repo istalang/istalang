@@ -66,6 +66,8 @@ export interface CheckerContext extends Checker {
   ) => Type;
   /** The type `node` denotes in `module`. */
   readonly resolveType: (module: ModuleId, node: TypeNode) => Type;
+  /** The type `any` followed by `traits` denotes in `module` (§3.10). */
+  readonly anyTypeOf: (module: ModuleId, traits: readonly TypeNode[]) => Type;
   /** A struct declaration's fields, types as declared (not substituted). */
   readonly declaredFieldsOf: (declaration: StructDeclaration) => readonly FieldMember[];
   /** An enum declaration's variants, types as declared (not substituted). */

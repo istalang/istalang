@@ -20,6 +20,7 @@ import { genericTemplates } from './generics.ts';
 import { lifetimeTemplates } from './lifetimes.ts';
 import { patternTemplates } from './patterns.ts';
 import { testingTemplates } from './testing.ts';
+import { traitObjectTemplates } from './trait-objects.ts';
 import { valueTemplates } from './values.ts';
 import { weakSideTemplates } from './weak-side.ts';
 
@@ -154,6 +155,7 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
       "This value's field defaults build a value needing those defaults again, so it would never be finished.",
   },
   ...genericTemplates,
+  ...traitObjectTemplates,
   ...valueTemplates,
   ...collectionTemplates,
   ...patternTemplates,

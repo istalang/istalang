@@ -7,16 +7,14 @@
  * conversion records no witnesses: lowering finds them again for each type a value converts from.
  */
 
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { CheckerContext } from '../context.ts';
-import {
-  type AnyType,
-  type Constraint,
-  sameConstraint,
-  substitute,
-  type Type,
-} from '../types/type.ts';
-import { searchSite } from '../use-site.ts';
-import { meets } from './conformance.ts';
+import type { ResolvedCall } from '../resolved-call.ts';
+import { constraintOn } from '../traits/constraints.ts';
+import { type AnyType, sameConstraint, type Type } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
+import { searchSite, type UseSite } from '../use-site.ts';
+import { meets, witnessesFor } from './conformance.ts';
 
 /** Whether a value of `found` converts into `target` (§3.10). */
 export function meetsAny(checker: CheckerContext, found: Type, target: AnyType): boolean {
@@ -31,11 +29,33 @@ export function meetsAny(checker: CheckerContext, found: Type, target: AnyType):
   );
 }
 
-/** `constraint` of an `any` type as met by `type`: its `Self` replaced by `type` (§3.10). */
-export function constraintOn(constraint: Constraint, type: Type): Constraint {
-  const self = new Map([[constraint.trait, type]]);
-  return {
-    trait: constraint.trait,
-    arguments: constraint.arguments.map((argument) => substitute(argument, self)),
-  };
+/**
+ * Reports at `site` the first constraint of `target` that `found`, not an `any` type, doesn't meet;
+ * whether there was one.
+ */
+export function reportUnmet(site: UseSite, found: Type, target: AnyType): boolean {
+  if (found.kind === 'any') {
+    return false;
+  }
+  return target.constraints.some(
+    (constraint) => !meets(site, found, constraintOn(constraint, found)),
+  );
+}
+
+/** What a value of `member` inside `type` is called through for its `constraint`-th constraint. */
+export function memberWitnesses(
+  checker: CheckerContext,
+  type: AnyType,
+  constraint: number,
+  member: Type,
+): readonly ResolvedCall[] {
+  const own = type.constraints[constraint];
+  const witnesses =
+    own === undefined
+      ? undefined
+      : witnessesFor(searchSite(checker), member, constraintOn(own, member));
+  if (witnesses === undefined) {
+    unreachable(`${typeText(member)} was converted into ${typeText(type)} without meeting it.`);
+  }
+  return witnesses;
 }

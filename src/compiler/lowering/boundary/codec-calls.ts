@@ -9,9 +9,8 @@
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { JsonDirection } from '../../checker/json-form.ts';
-import type { FunctionCall } from '../../checker/resolved-call.ts';
 import type { Type } from '../../checker/types/type.ts';
-import { closeCall, type FunctionInstance } from '../instances.ts';
+import { type ClosedCall, closeCall, type FunctionInstance } from '../instances.ts';
 
 /**
  * The codec writing or reading `type`, which checking let through, closed `within` the instance
@@ -22,7 +21,7 @@ export function codecCall(
   within: FunctionInstance | undefined,
   type: Type,
   direction: JsonDirection,
-): FunctionCall {
+): ClosedCall {
   const codec = checker.json.codecOf(type, direction);
   if (codec === undefined) {
     unreachable(`A type crossing has no codec to ${direction}; checking should have said so.`);

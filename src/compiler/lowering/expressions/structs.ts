@@ -113,6 +113,11 @@ export function lowerFieldRead(
   link: Expression = node,
 ): Register {
   const src = context.chains.target(context, link);
+  const base = context.body.chainOf(link)?.base ?? context.body.typeOf(node.target);
+  if (base.kind === 'any') {
+    const callee = context.tables.anyFieldIndex(base, node.member.text);
+    return emitCall(context, { span: node.span, callee, arguments: [src] });
+  }
   const dst = context.code.allocate();
   const index = fieldIndexOf(context, node, link);
   context.code.emit({ kind: 'field', span: node.span, dst, src, index });

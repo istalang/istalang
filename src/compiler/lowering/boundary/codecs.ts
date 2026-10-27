@@ -13,10 +13,10 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import { substitute } from '../../checker/types/type.ts';
 import { type FunctionInstance, substitutionOf } from '../instances.ts';
+import { SynthesizedCode } from '../synthesized-code.ts';
 import type { DefinitionTables } from '../tables.ts';
 import { Decoder } from './decoder.ts';
 import { Encoder } from './encoder.ts';
-import { SynthesizedCode } from './synthesized-code.ts';
 
 /** What writing a codec reads: the checker, the tables, and the instance whose body it is. */
 export interface CodecLowering {

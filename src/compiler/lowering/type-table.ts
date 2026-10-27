@@ -9,6 +9,10 @@
  *   (checker/rules/disposal.ts).
  * - An anonymous struct is a struct entry without a name, one per type, so two never share an
  *   entry (§3.1).
+ * - An `any` type (§3.10) is an enum the program closes: one variant per type a value of it is
+ *   converted from, each holding that value as its one field. A variant is added the first time
+ *   lowering converts from its type, so a variant's index never changes once code names it;
+ *   what switches over every variant is written once lowering has reached them all (tables.ts).
  *
  * What an entry refers to outside types, its disposal's function and its annotations' values,
  * comes through `TypeTableSeams`, which the function and constant tables implement.
@@ -27,10 +31,17 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
-import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
+import {
+  type AnonymousStructType,
+  type AnyType,
+  type FieldMember,
+  type NominalType,
+  sameType,
+  type Type,
+} from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { type FunctionInstance, instanceOfCall } from './instances.ts';
-import { qualifiedNameOf } from './names.ts';
+import { qualifiedNameOf, spelledType } from './names.ts';
 
 /** What a type entry refers to outside the type table. */
 export interface TypeTableSeams {
@@ -44,6 +55,14 @@ export interface TypeTableSeams {
 
 /** A type with an entry of its own: a declared struct, enum or extern type, or an anonymous struct. */
 type EntryType = NominalType | AnonymousStructType;
+
+/** The name of the one field of an `any` type's variant: the value converted into it. */
+const anyValueField = 'value';
+
+/** The enum entry of an `any` type named `name`, with `variants`. */
+function anyEntry(name: string, variants: Extract<TypeDefinition, { kind: 'enum' }>['variants']) {
+  return { kind: 'enum', name, arguments: [], variants } as const satisfies TypeDefinition;
+}
 
 /**
  * The std type each role of an extern type entry is (definition/types.ts). A shared struct's entry
@@ -65,6 +84,8 @@ export class TypeTable {
   readonly #seams: TypeTableSeams;
   readonly #entries: TypeDefinition[] = [];
   readonly #indexes = new Map<string, TypeId>();
+  /** The types each `any` type's variants hold, by its entry's index. */
+  readonly #anyMembers = new Map<TypeId, Type[]>();
 
   constructor(checker: Checker, seams: TypeTableSeams) {
     this.#checker = checker;
@@ -100,7 +121,7 @@ export class TypeTable {
       case 'error':
         return unreachable(`A ${type.kind} type can't reach lowering.`);
       case 'any':
-        return unreachable('An any type has no entry before trait objects lower.');
+        return { kind: 'named', type: this.anyIndex(type) };
       default: {
         const unhandled: never = type;
         return unhandled;
@@ -111,6 +132,49 @@ export class TypeTable {
   /** The index of the type entry for `type`. */
   index(type: EntryType): TypeId {
     return this.#typeEntry(type);
+  }
+
+  /** The index of the enum standing for the `any` type `type`, with the variants it has so far. */
+  anyIndex(type: AnyType): TypeId {
+    const key = this.#checker.typeKeys.typeKey(type);
+    const known = this.#indexes.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const index = this.#entries.push(anyEntry(spelledType(this.#checker, type), [])) - 1;
+    this.#indexes.set(key, index);
+    this.#anyMembers.set(index, []);
+    return index;
+  }
+
+  /** The variant of `type`'s enum holding a value of `member`, a type meeting it; added when new. */
+  anyVariant(type: AnyType, member: Type): number {
+    const index = this.anyIndex(type);
+    const members = this.#membersAt(index);
+    const found = members.findIndex((each) => sameType(each, member));
+    if (found >= 0) {
+      return found;
+    }
+    members.push(member);
+    const field = { name: anyValueField, type: this.reference(member), annotations: [] };
+    const variant = { name: spelledType(this.#checker, member), fields: [field] };
+    const entry = this.#entries[index];
+    const variants = entry?.kind === 'enum' ? entry.variants : [];
+    this.#entries[index] = anyEntry(spelledType(this.#checker, type), [...variants, variant]);
+    return members.length - 1;
+  }
+
+  /** The types `type`'s variants hold so far, in variant order. */
+  anyMembers(type: AnyType): readonly Type[] {
+    return this.#membersAt(this.anyIndex(type));
+  }
+
+  #membersAt(index: TypeId): Type[] {
+    const members = this.#anyMembers.get(index);
+    if (members === undefined) {
+      unreachable(`Type ${index} is no any type's enum.`);
+    }
+    return members;
   }
   /**
    * Not `memo`: the index is recorded before the layout is computed, because a recursive type's

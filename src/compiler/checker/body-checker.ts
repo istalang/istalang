@@ -46,6 +46,7 @@ import type { FrontierConstruct } from './frontier.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
+import { reportUnmet } from './resolution/trait-objects.ts';
 import type { CallSite, ResolvedCall } from './resolved-call.ts';
 import { statementPlace } from './rules/annotations.ts';
 import { checkDisposeUses } from './rules/disposal.ts';
@@ -57,6 +58,7 @@ import { VariableScope } from './statements/variables.ts';
 import { exactFit, type Fit, isExact } from './types/fit.ts';
 import { errorType, type FunctionType, type Type, unitType } from './types/type.ts';
 import { typeText } from './types/type-text.ts';
+import { useSite } from './use-site.ts';
 
 /**
  * What a body is checked as, and what it must produce, if declared: a function's, async or not,
@@ -207,7 +209,14 @@ export class BodyChecker implements BodyContext {
     }
   }
 
+  /** Reports why `found` doesn't fit: a trait it doesn't meet, when an `any` type is expected. */
   #mismatch(found: Type, expected: Type, at: Span): void {
+    if (
+      expected.kind === 'any' &&
+      reportUnmet(useSite(this.checker, this.module, at), found, expected)
+    ) {
+      return;
+    }
     this.report(checkerDiagnostics.typeMismatch(at, typeText(expected), typeText(found)));
   }
 

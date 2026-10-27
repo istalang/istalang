@@ -1,8 +1,10 @@
 /**
- * Constraints (§3.5, §3.10): the traits after `is` on a type parameter, and what each requires.
+ * Constraints (§3.5, §3.10): the traits after `is` on a type parameter or after `any`, and what each
+ * requires.
  *
  * - A constraint names a trait, with its type arguments resolved and defaults filled, where `Self`
- *   stands for the constrained parameter: `T is Addable` is `Addable<T>`.
+ *   stands for the constrained parameter: `T is Addable` is `Addable<T>`. After `any`, `Self` stays
+ *   the trait's own, standing for each value's type: `any Iterable<int>` is `Iterable<int, Self>`.
  * - A requirement is one function of a constraint's trait, with the trait's parameters and its
  *   `Self` mapped for that constraint. Requirements are numbered by constraint and by the trait's
  *   order of functions (`RequirementOrigin`), which is how a call to one and the witness that
@@ -24,6 +26,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
 import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import {
+  type AnyType,
   type Constraint,
   type ParameterKey,
   type Substitution,
@@ -57,21 +60,42 @@ export function resolveConstraints(
   module: ModuleId,
   parameter: TypeParameter,
 ): readonly Constraint[] {
+  const self = parameterType(parameter);
   return parameter.constraints.flatMap((node) => {
-    const constraint = resolveConstraint(checker, module, node, parameterType(parameter));
+    const constraint = resolveConstraint(checker, module, node, {
+      keyword: 'is',
+      selfOf: () => self,
+    });
     return constraint === undefined ? [] : [constraint];
   });
 }
 
-/** The trait `node` names, with its arguments for a constrained type `self`; undefined after a report. */
+/** The constraints after `any`, each trait's `Self` its own (§3.10); undefined for one reported. */
+export function resolveAnyConstraints(
+  checker: CheckerContext,
+  module: ModuleId,
+  nodes: readonly TypeNode[],
+): readonly (Constraint | undefined)[] {
+  return nodes.map((node) =>
+    resolveConstraint(checker, module, node, { keyword: 'any', selfOf: parameterType }),
+  );
+}
+
+/** Where a constraint is written: after which keyword, and what its trait's `Self` stands for. */
+interface ConstraintSite {
+  readonly keyword: 'is' | 'any';
+  readonly selfOf: (trait: TraitDeclaration) => Type;
+}
+
+/** The trait `node` names, with its arguments for `Self`; undefined after a report. */
 function resolveConstraint(
   checker: CheckerContext,
   module: ModuleId,
   node: TypeNode,
-  self: Type,
+  { keyword, selfOf }: ConstraintSite,
 ): Constraint | undefined {
   if (node.kind !== 'NamedType') {
-    checker.report(module, checkerDiagnostics.notTrait(node.span));
+    checker.report(module, checkerDiagnostics.notTrait(node.span, keyword));
     return undefined;
   }
   const entity = checker.bindings.entityOf(module, lastName(node.path));
@@ -79,10 +103,11 @@ function resolveConstraint(
     return undefined;
   }
   if (entity.kind !== 'type' || entity.declaration.kind !== 'TraitDeclaration') {
-    checker.report(module, checkerDiagnostics.notTrait(node.span));
+    checker.report(module, checkerDiagnostics.notTrait(node.span, keyword));
     return undefined;
   }
   const trait = entity.declaration;
+  const self = selfOf(trait);
   const written = node.typeArguments.map((argument) => checker.resolveType(module, argument));
   const typeArguments = typeArgumentsFor(checker, module, {
     at: node.span,
@@ -125,12 +150,49 @@ export function requirementsNamed(
             {
               declaration,
               substitution,
-              origin: { parameter, constraint: constraintIndex, member },
+              origin: { on: parameter, constraint: constraintIndex, member },
             },
           ]
         : [],
     );
   });
+}
+
+/**
+ * Every function the constraints of the `any` type `type` require, named `name`: called on a value
+ * of `type`, each is the function its value's own type meets it with (§3.10).
+ */
+export function anyRequirementsNamed(type: AnyType, name: string): readonly Requirement[] {
+  return type.constraints.flatMap((constraint, constraintIndex) => {
+    const substitution = constraintSubstitution(constraintOn(constraint, type), type);
+    return requiredFunctions(constraint.trait).flatMap((declaration, member) =>
+      declaration.name.text === name
+        ? [{ declaration, substitution, origin: { on: type, constraint: constraintIndex, member } }]
+        : [],
+    );
+  });
+}
+
+/**
+ * The constraints `type` meets by what it is (§3.5, §3.10): a type parameter's, or an `any` type's,
+ * each with `Self` the type itself; none for any other type.
+ */
+export function knownConstraints(checker: CheckerContext, type: Type): readonly Constraint[] {
+  if (type.kind === 'any') {
+    return type.constraints.map((constraint) => constraintOn(constraint, type));
+  }
+  return type.kind === 'parameter' && type.declaration.kind === 'TypeParameter'
+    ? checker.constraintsOf(type.declaration)
+    : [];
+}
+
+/** `constraint` of an `any` type as met by `type`: its trait's own `Self` replaced by `type`. */
+export function constraintOn(constraint: Constraint, type: Type): Constraint {
+  const self = new Map([[constraint.trait, type]]);
+  return {
+    trait: constraint.trait,
+    arguments: constraint.arguments.map((argument) => substitute(argument, self)),
+  };
 }
 
 /** The type `constraint` requires its trait's `field` to have, for the type `constrained`. */

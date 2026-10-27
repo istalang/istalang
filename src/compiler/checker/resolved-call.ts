@@ -7,7 +7,7 @@
 import type { FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
 import type { NodeOf } from '../syntax/node.ts';
-import type { Type } from './types/type.ts';
+import type { AnyType, Type } from './types/type.ts';
 
 /**
  * What a call resolved to (§3.5, §3.7, §3.10). Generics are compiled per instantiation, so a call
@@ -17,9 +17,10 @@ import type { Type } from './types/type.ts';
  * - `function`: a declared function, with its type arguments, the function each requirement of
  *   its type parameters' constraints calls (`witnesses`), and how many arguments the call gives,
  *   fewer than its parameters when defaults fill the rest (§3.3).
- * - `requirement`: a function a constraint on one of the calling function's own type parameters
- *   requires, such as `add` under `T is Addable`. Which function it is depends on the caller's
- *   instantiation: the `witnesses` of the call that made it.
+ * - `requirement`: a function a constraint requires, on one of the calling function's own type
+ *   parameters, such as `add` under `T is Addable`, or on an `any` type. Which function it is
+ *   depends, for a type parameter, on the caller's instantiation: the `witnesses` of the call that
+ *   made it; for an `any` type, on the type of the value it is called with (§3.10).
  */
 export type ResolvedCall = FunctionCall | RequirementCall;
 
@@ -46,9 +47,12 @@ interface RequirementCall extends WrittenAs {
   readonly typeArguments: readonly Type[];
 }
 
-/** Which required function: the `member`-th function of the trait of the `constraint`-th constraint on `parameter`. */
+/**
+ * Which required function: the `member`-th function of the trait of the `constraint`-th constraint
+ * on `on`, a type parameter or an `any` type.
+ */
 export interface RequirementOrigin {
-  readonly parameter: TypeParameter;
+  readonly on: TypeParameter | AnyType;
   readonly constraint: number;
   readonly member: number;
 }

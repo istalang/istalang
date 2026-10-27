@@ -11,8 +11,8 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { variantIndexOf } from '../expressions/variants.ts';
+import type { SynthesizedCode } from '../synthesized-code.ts';
 import { codecCall } from './codec-calls.ts';
-import type { SynthesizedCode } from './synthesized-code.ts';
 
 /** The body of `_toJson<T>`, written into `code`. */
 export class Encoder {

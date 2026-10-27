@@ -8,11 +8,14 @@
  */
 
 import type { CheckedBody } from '../check.ts';
-import { type Substitution, substitute, substituteFunction } from './type.ts';
+import type { Fit } from './fit.ts';
+import { type Substitution, substitute, substituteAny, substituteFunction } from './type.ts';
 
 /** `body` as one instantiation sees it: every type it records substituted by `substitution`. */
 export function instantiatedBody(body: CheckedBody, substitution: Substitution): CheckedBody {
   const concrete = (type: Parameters<typeof substitute>[0]) => substitute(type, substitution);
+  const concreteFit = (fit: Fit): Fit =>
+    fit.asAny === undefined ? fit : { ...fit, asAny: substituteAny(fit.asAny, substitution) };
   return {
     ...body,
     typeOf: (expression) => concrete(body.typeOf(expression)),
@@ -32,7 +35,10 @@ export function instantiatedBody(body: CheckedBody, substitution: Substitution):
     targetsOf: (declaration) =>
       body.targetsOf(declaration).map((binding) => ({ ...binding, type: concrete(binding.type) })),
     assignedOf: (assignment) =>
-      body.assignedOf(assignment).map((part) => ({ ...part, type: concrete(part.type) })),
+      body
+        .assignedOf(assignment)
+        .map((part) => ({ ...part, type: concrete(part.type), fit: concreteFit(part.fit) })),
+    fitOf: (site) => concreteFit(body.fitOf(site)),
     iterationOf: (iteration) => {
       const form = body.iterationOf(iteration);
       return form.kind === 'cursor' ? { ...form, item: concrete(form.item) } : form;

@@ -1,0 +1,46 @@
+# outcome: [["email a","sms 1","email w"],"sms 9/sms 9",true,false,1,"42","n=42",7]
+# Values of any type meeting a trait, called through it (§3.10): each call runs the function its
+# value's own type meets the trait with, across a wait, through a generic function, a widening,
+# a map key, `string(x)` and an async requirement.
+import * as time from 'time'
+
+trait Named:
+  fn name(self: Self) -> string
+
+trait Fetcher:
+  async fn fetch(self: Self) -> Future<int>
+
+struct Email { to: string }
+struct Sms { number: string }
+
+fn name(self: Email) -> string:
+  "email " + self.to
+
+fn name(self: Sms) -> string:
+  "sms " + self.number
+
+async fn fetch(self: Sms) -> Future<int>:
+  await time.delay(10ms)
+  7
+
+fn wrap<X is Named>(x: X) -> any Named:
+  x
+
+fn twice<X is Named>(x: X) -> string:
+  x.name() + "/" + x.name()
+
+fn widen(x: any Named & Sendable) -> any Named:
+  x
+
+async fn main():
+  const items: Array<any Named> = [Email{to: "a"}, Sms{number: "1"}, wrap(Email{to: "w"})]
+  await time.delay(10ms)
+  const names = [for item in items: item.name()]
+  const sms: any Named & Sendable = Sms{number: "9"}
+  const wide = widen(sms)
+  const counts: Map<any Named, int> = [wide: 1]
+  const first: any Named = Email{to: "a"}
+  const answer: any Stringable = 42
+  const fetcher: any Fetcher = Sms{number: "2"}
+  const fetched = await fetcher.fetch()
+  (names, twice(wide), first == items[0], items[1] == items[0], counts[Sms{number: "9"}], string(answer), "n=" + answer, fetched)

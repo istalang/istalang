@@ -19,7 +19,7 @@ import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker } from '../checker/check.ts';
-import type { Type } from '../checker/types/type.ts';
+import type { AnyType, Type } from '../checker/types/type.ts';
 
 import { type ModuleId, programModule } from '../program/program.ts';
 import type {
@@ -29,9 +29,13 @@ import type {
 } from '../syntax/declarations.ts';
 import { annotationValues } from './constants.ts';
 import {
+  type ClosedCall,
+  type Dispatch,
+  dispatchOf,
   type FunctionInstance,
   instanceKey,
   instanceName,
+  instanceOfCall,
   type NestedInstance,
   nestedKey,
   nestedName,
@@ -60,7 +64,19 @@ export type PendingEntry =
       readonly declaration: ExternConstantDeclaration;
       readonly type: Type;
     }
-  | { readonly kind: 'start'; readonly target: StartTarget };
+  | { readonly kind: 'start'; readonly target: StartTarget }
+  | ClosingEntry;
+
+/**
+ * An entry switching over every variant of an `any` type's enum (§3.10): a dispatch on a value's
+ * own type, a conversion into another `any` type, or the read of a field a trait requires. It is written once the worklist is empty,
+ * when lowering has reached every type converted into its `any` type so far, and written again
+ * whenever a later entry converts another.
+ */
+type ClosingEntry =
+  | { readonly kind: 'dispatch'; readonly dispatch: Dispatch }
+  | { readonly kind: 'anyConversion'; readonly from: AnyType; readonly to: AnyType }
+  | { readonly kind: 'anyField'; readonly on: AnyType; readonly field: string };
 
 /** An extern a host implements: a function, or a constant. */
 export type HostExternDeclaration = FunctionDeclaration | ExternConstantDeclaration;
@@ -81,6 +97,9 @@ export class DefinitionTables {
   readonly #functions: (FunctionDefinition | undefined)[] = [];
   readonly #functionIndexes = new Map<string, FunctionId>();
   readonly #pending: (PendingEntry & { readonly index: FunctionId })[] = [];
+  readonly #closing: (ClosingEntry & { readonly index: FunctionId })[] = [];
+  /** How many variants its `any` type had when each closing entry was last written. */
+  readonly #writtenFor = new Map<FunctionId, number>();
   readonly #starts: { readonly key: string; readonly function: FunctionId }[] = [];
 
   constructor(checker: Checker) {
@@ -148,6 +167,34 @@ export class DefinitionTables {
     return { name, module: this.moduleIndex(module), span, annotations: [] };
   }
 
+  /** The index a closed call calls: its instance's, or its dispatch's (§3.10). */
+  callIndex(call: ClosedCall): FunctionId {
+    return call.kind === 'function'
+      ? this.functionIndex(instanceOfCall(call))
+      : this.dispatchIndex(dispatchOf(call));
+  }
+
+  /** The index of the entry calling `dispatch`'s function for each type its value may have. */
+  dispatchIndex(dispatch: Dispatch): FunctionId {
+    const { typeKeys } = this.#checker;
+    const typeArguments = dispatch.typeArguments.map((type) => typeKeys.typeKey(type));
+    const key = `dispatch:${typeKeys.typeKey(dispatch.on)}.${dispatch.constraint}.${dispatch.member}<${typeArguments.join(',')}>`;
+    return this.#entryIndex(key, { kind: 'dispatch', dispatch });
+  }
+
+  /** The index of the entry converting a value of the `any` type `from` into `to` (§3.10). */
+  anyConversionIndex(from: AnyType, to: AnyType): FunctionId {
+    const { typeKeys } = this.#checker;
+    const key = `convert:${typeKeys.typeKey(from)}->${typeKeys.typeKey(to)}`;
+    return this.#entryIndex(key, { kind: 'anyConversion', from, to });
+  }
+
+  /** The index of the entry reading `field`, which a trait of `on` requires, from an `on` value. */
+  anyFieldIndex(on: AnyType, field: string): FunctionId {
+    const key = `field:${this.#checker.typeKeys.typeKey(on)}.${field}`;
+    return this.#entryIndex(key, { kind: 'anyField', on, field });
+  }
+
   /** The index `instance` is called by; it is lowered later, from the worklist. */
   functionIndex(instance: FunctionInstance): FunctionId {
     const key = instanceKey(this.#checker.typeKeys, instance);
@@ -192,15 +239,33 @@ export class DefinitionTables {
     return index;
   }
 
-  /** The next referenced entry still to be lowered, with its index. */
+  /**
+   * The next referenced entry still to be lowered, with its index: one lowering reached, then,
+   * once none is left, a closing entry not yet written for every variant its `any` type has.
+   */
   nextPending(): (PendingEntry & { readonly index: FunctionId }) | undefined {
-    return this.#pending.shift();
+    return this.#pending.shift() ?? this.#nextStale();
+  }
+
+  #nextStale(): (ClosingEntry & { readonly index: FunctionId }) | undefined {
+    for (const entry of this.#closing) {
+      const variants = this.types.anyMembers(closedOver(entry)).length;
+      if (this.#writtenFor.get(entry.index) !== variants) {
+        this.#writtenFor.set(entry.index, variants);
+        return entry;
+      }
+    }
+    return undefined;
   }
 
   #entryIndex(key: string, entry: PendingEntry): FunctionId {
     return memo(this.#functionIndexes, key, () => {
       const index = this.#functions.push(undefined) - 1;
-      this.#pending.push({ ...entry, index });
+      if (isClosing(entry)) {
+        this.#closing.push({ ...entry, index });
+      } else {
+        this.#pending.push({ ...entry, index });
+      }
       return index;
     });
   }
@@ -226,5 +291,31 @@ export class DefinitionTables {
       starts: this.#starts,
       ...withMain,
     };
+  }
+}
+
+const closingKinds: ReadonlySet<PendingEntry['kind']> = new Set<ClosingEntry['kind']>([
+  'dispatch',
+  'anyConversion',
+  'anyField',
+]);
+
+function isClosing(entry: PendingEntry): entry is ClosingEntry {
+  return closingKinds.has(entry.kind);
+}
+
+/** The `any` type whose variants a closing entry switches over. */
+function closedOver(entry: ClosingEntry): AnyType {
+  switch (entry.kind) {
+    case 'dispatch':
+      return entry.dispatch.on;
+    case 'anyConversion':
+      return entry.from;
+    case 'anyField':
+      return entry.on;
+    default: {
+      const unhandled: never = entry;
+      return unhandled;
+    }
   }
 }

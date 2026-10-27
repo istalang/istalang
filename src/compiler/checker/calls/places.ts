@@ -3,8 +3,9 @@
  * taking `&self` may change, and the variables each change counts against.
  *
  * - A place is a variable, or a field, tuple element or indexed element of one, at any depth
- *   (syntax `isPlace`, by which the parser reports a target or `&` argument that is none). Its
- *   root decides: a `let` may change, and so may a reference parameter, which changes the caller's
+ *   (syntax `isPlace`, by which the parser reports a target or `&` argument that is none). A field
+ *   a trait requires, read through an `any` value, is no place: its value's own type, which holds
+ *   the field, is known only when the program runs (§3.10). Its root decides: a `let` may change, and so may a reference parameter, which changes the caller's
  *   place. A by-value parameter is as if declared `const` (§3.3), and a `const`, top-level or
  *   local, is deeply immutable, so no part of either may change; neither may a pattern's or loop's
  *   binding or an extern constant (§3.6).
@@ -62,7 +63,16 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
  * way once the method is known.
  */
 function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
-  const { root } = placePath(node);
+  const { root, steps } = placePath(node);
+  const throughAny = steps.find(
+    (step) => step.kind === 'MemberAccess' && context.typeOf(step.target).kind === 'any',
+  );
+  if (throughAny?.kind === 'MemberAccess') {
+    context.report(
+      checkerDiagnostics.anyFieldChanged(throughAny.member.span, throughAny.member.text),
+    );
+    return false;
+  }
   if (root.kind === 'Dereference') {
     return writesAccessors(context, node);
   }

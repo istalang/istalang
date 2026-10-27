@@ -1,0 +1,33 @@
+# error: 5605 at 28:15
+# error: 5101 at 30:42
+# error: 5101 at 31:3
+# error: 5101 at 33:3
+# An `any` type is sendable only when its traits make it so, and has no JSON form (§3.10, §9).
+import * as json from 'json'
+
+trait Named:
+  fn name(self: Self) -> string
+
+struct Email { to: string }
+struct Callback { run: fn() -> unit }
+
+fn name(self: Email) -> string:
+  "email " + self.to
+
+fn name(self: Callback) -> string:
+  "callback"
+
+async fn greet(x: any Named):
+  ()
+
+async fn greetSendable(x: any Named & Sendable):
+  ()
+
+async fn main():
+  const email: any Named = Email{to: "a"}
+  spawn greet(email)
+  spawn greetSendable(Email{to: "b"})
+  const callback: any Named & Sendable = Callback{run: fn(): ()}
+  json.encode(email)
+  const sendable: any Named & Sendable = Email{to: "c"}
+  json.encode(sendable)
