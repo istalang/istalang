@@ -49,6 +49,7 @@
     "lossless-json": "4.3.3",
     "lru-cache": "11.5.3",
     "re2js": "2.9.0",
+    "temporal-polyfill": "1.0.6",
     "zod": "4.6.7"
   }
 }

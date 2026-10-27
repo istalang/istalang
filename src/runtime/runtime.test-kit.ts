@@ -58,6 +58,9 @@ export function recordingStore(inner: InstanceStore = memoryStore()): RecordingS
   };
 }
 
+/** The seed of every instance a test runtime starts, so its random values repeat (§3.8). */
+export const testSeed = '0'.repeat(64);
+
 export interface TestRuntimeOptions {
   readonly natives?: Natives;
   readonly store?: RecordingStore;
@@ -79,7 +82,7 @@ export function testRuntime({
   host = {},
 }: TestRuntimeOptions = {}): TestRuntime {
   return {
-    runtime: createRuntime({ natives, store, now: clock.now, host }),
+    runtime: createRuntime({ natives, store, now: clock.now, seed: () => testSeed, host }),
     store,
     clock,
   };

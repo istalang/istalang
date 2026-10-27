@@ -3,4 +3,10 @@
 # `commit` returns an already-resolved future, so `await runtime.commit()` commits without
 # waiting (§5).
 
+# The instance's name, as its host gave it or as its parent's spawn made it (§9).
+extern fn id() -> string
+
+# The content hash of the program the instance runs, fixed for its life (§5).
+extern fn version() -> string
+
 extern fn commit() -> Future<unit>

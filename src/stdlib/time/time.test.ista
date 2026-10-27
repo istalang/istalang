@@ -1,0 +1,84 @@
+# The time module (spec §3.8): the ordering of times and durations, and zones: readings in a zone,
+# the instants a wall clock names across changes of offset, and their text; the rest of the module
+# is the corpus's. Berlin moves from +01:00 to +02:00 at 02:00 on 2026-03-29,
+# and back at 03:00 on 2026-10-25.
+
+import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
+import * as time from 'time'
+import Time, Duration, Zone, DateTime, utc from 'time'
+
+const berlin = Zone{id: "Europe/Berlin"}
+
+# 2026-10-25T12:00:00.000Z
+const noon = Time{value: 1_792_929_600_000}
+
+fn instant(text: string) -> Time:
+  match Time.parse(text):
+    case Ok{value}: value
+    case Err{error}: panic(error.message)
+
+fn nowhere() -> DateTime: noon.inZone(Zone{id: "Mars/Olympus"})
+
+fn february30() -> Time: Time.of(DateTime{year: 2026, month: 2, day: 30}, utc)
+
+@Suite{"time"}
+fn suite() -> Array<Test>: [
+  test("times and durations are ordered as their milliseconds", fn(): {
+    assert(Time{value: 1} < Time{value: 2})
+    assert(Duration{value: -1} < Duration{value: 0})
+    assertEq(compare(noon, noon), 0)
+  }),
+  group("Zone", [
+    test("parses IANA names in any case, as their canonical id", fn(): {
+      assertEq(Zone.parse("europe/berlin"), Ok{value: berlin})
+      assertEq(string(berlin), "Europe/Berlin")
+    }),
+    test("refuses a name no zone has", fn(): {
+      assert(Zone.parse("Mars/Olympus") is Err{})
+    }),
+  ]),
+  group("DateTime", [
+    test("is written and read as ISO 8601 without a zone", fn(): {
+      const dateTime = DateTime{year: 2026, month: 10, day: 25, hour: 13}
+      assertEq(string(dateTime), "2026-10-25T13:00:00")
+      assertEq(DateTime.parse("2026-10-25T13:00:00.5"), Ok{value: DateTime{...dateTime, millisecond: 500}})
+      assert(DateTime.parse("2026-10-25T13:00:00Z") is Err{})
+      assert(DateTime.parse("2026-02-30T00:00:00") is Err{})
+      assert(DateTime.parse("2026-10-25T13:00:00.0001") is Err{})
+    }),
+    test("gives its weekday, 1 for Monday", fn(): {
+      assertEq(DateTime{year: 2026, month: 10, day: 25}.weekday(), 7)
+      assertEq(DateTime{year: 2026, month: 10, day: 26}.weekday(), 1)
+    }),
+    test("adds calendar days at the same wall-clock time", fn(): {
+      const evening = DateTime{year: 2026, month: 10, day: 24, hour: 21}
+      assertEq(evening.addDays(8), DateTime{year: 2026, month: 11, day: 1, hour: 21})
+      const before = Time.of(evening, berlin)
+      const after = Time.of(evening.addDays(1), berlin)
+      assertEq(after.value - before.value, 25 * 3_600_000)
+    }),
+  ]),
+  group("Time in a zone", [
+    test("reads the zone's wall clock", fn(): {
+      assertEq(noon.inZone(berlin), DateTime{year: 2026, month: 10, day: 25, hour: 13})
+      assertEq(noon.inZone(utc), DateTime{year: 2026, month: 10, day: 25, hour: 12})
+    }),
+    test("formats with the zone's offset, which Time.parse reads back", fn(): {
+      assertEq(noon.format(berlin), "2026-10-25T13:00:00.000+01:00")
+      assertEq(instant(noon.format(berlin)), noon)
+    }),
+    test("of a skipped wall-clock time moves forward by the gap", fn(): {
+      const skipped = DateTime{year: 2026, month: 3, day: 29, hour: 2, minute: 30}
+      assertEq(Time.of(skipped, berlin), instant("2026-03-29T01:30:00.000Z"))
+    }),
+    test("of a repeated wall-clock time is the earlier", fn(): {
+      const repeated = DateTime{year: 2026, month: 10, day: 25, hour: 2, minute: 30}
+      assertEq(Time.of(repeated, berlin), instant("2026-10-25T00:30:00.000Z"))
+    }),
+    test("panics on a zone or a date that doesn't exist", async fn(): {
+      assertEq(await expectPanic(nowhere), "'Mars/Olympus' is no IANA time zone.")
+      const refused = "The date and time 2026-2-30 0:0:0.0 doesn't exist"
+      assertEq((await expectPanic(february30))[0..refused.length()], refused)
+    }),
+  ]),
+]

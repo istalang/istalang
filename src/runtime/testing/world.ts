@@ -27,6 +27,7 @@ import type { Value } from '../../definition/values.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { InstanceGroup } from '../instance-group.ts';
+import type { LogRecord } from '../instance-state.ts';
 import { type Native, type Natives, Panic } from '../natives.ts';
 import type { Answered, Watch } from '../scheduler/futures.ts';
 import { type Inspection, inspection } from '../scheduler/inspect.ts';
@@ -43,18 +44,29 @@ import {
 import { type InstanceCall, type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 import { memoryStore } from '../store.ts';
 
-/** How a test's instance ended: finished with its outcome, or failed. */
-export type Ended =
-  | { readonly kind: 'finished'; readonly outcome: Value }
-  | { readonly kind: 'failed'; readonly message: string; readonly trace: string };
+/** A failed test: why, where, and the log records its instances committed, in order (§10). */
+export interface Failed {
+  readonly kind: 'failed';
+  readonly message: string;
+  readonly trace: string;
+  readonly logs: readonly LogRecord[];
+}
 
-/** What a world is given: the program, the runtime's natives, its clock and how long it may run. */
+/** How a test's instance ended: finished with its outcome, or failed. */
+export type Ended = { readonly kind: 'finished'; readonly outcome: Value } | Failed;
+
+/**
+ * What a world is given: the program, the runtime's natives, its clock, the seed of its test's
+ * random source and how long it may run.
+ */
 export interface WorldSeams {
   readonly definition: Definition;
   readonly hash: string;
   readonly natives: Natives;
   /** Milliseconds since the Unix epoch. */
   readonly now: () => bigint;
+  /** The seed of the test's instance's random source (§3.8 `random`), 64 lowercase hex digits. */
+  readonly seed: string;
   /** When the test must have ended, in milliseconds since the Unix epoch. */
   readonly deadline: bigint;
 }
@@ -66,8 +78,11 @@ export class World implements TestWorld {
   readonly #seams: SchedulerSeams;
   readonly #loaded: LoadedDefinition;
   readonly #deadline: bigint;
+  readonly #seed: string;
   readonly #group = new InstanceGroup();
   readonly #arrivals: Answered[] = [];
+  /** The log records every instance of the world committed, in the order they did. */
+  readonly #logs: LogRecord[] = [];
   readonly #read = new Map<string, { readonly text: string; readonly snapshot: Snapshot }>();
   readonly #mocks = new WeakMap<Snapshot, ReadonlyMap<FunctionId, number>>();
   /** The instances in a segment that waits on a mock another instance is answering. */
@@ -76,9 +91,10 @@ export class World implements TestWorld {
   readonly #expectedPanics = new Set<string>();
   #handles = 0;
 
-  constructor({ definition, hash, natives, now, deadline }: WorldSeams) {
+  constructor({ definition, hash, natives, now, seed, deadline }: WorldSeams) {
     this.#seams = { store: memoryStore(), now };
     this.#deadline = deadline;
+    this.#seed = seed;
     this.#loaded = loadDefinition(
       definition,
       hash,
@@ -94,7 +110,11 @@ export class World implements TestWorld {
   *run(call: InstanceCall): Generator<bigint, Ended, undefined> {
     this.#record(
       testInstance,
-      advance(this.#seams, this.#loaded, unstarted(this.#loaded, testInstance, call, {})),
+      advance(
+        this.#seams,
+        this.#loaded,
+        unstarted(this.#loaded, testInstance, call, { seed: this.#seed }),
+      ),
     );
     for (let ended = this.#ended(); ended === undefined; ended = this.#ended()) {
       if (!this.#step()) {
@@ -222,6 +242,7 @@ export class World implements TestWorld {
   #record(instance: string, advanced: Advance): void {
     this.#group.record(instance, advanced);
     this.#arrivals.push(...advanced.answered);
+    this.#logs.push(...advanced.logs);
     this.#withdrawAnswersTo(instance);
     if (advanced.state.kind === 'panicked' && this.#waitsForPanicOf(instance)) {
       this.#expectedPanics.add(instance);
@@ -276,7 +297,7 @@ export class World implements TestWorld {
           instance === testInstance
             ? state.message
             : `Instance ${instance} panicked: ${state.message}`;
-        return { kind: 'failed', message, trace: state.trace };
+        return { kind: 'failed', message, trace: state.trace, logs: this.#logs };
       }
     }
     const own = this.#group.states.get(testInstance);
@@ -291,7 +312,7 @@ export class World implements TestWorld {
           `${instance} at ${waypoint === undefined ? location : `${waypoint} (${location})`}`,
       ),
     );
-    return { kind: 'failed', message: `${why}: ${waits.join(', ')}.`, trace: '' };
+    return { kind: 'failed', message: `${why}: ${waits.join(', ')}.`, trace: '', logs: this.#logs };
   }
 
   /** Whether `instance` waits, with a watch whose condition now holds. */

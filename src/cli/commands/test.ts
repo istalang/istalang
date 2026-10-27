@@ -4,8 +4,8 @@
  * function in a fresh instance on a fresh runtime (runtime/testing/). Nothing runs unless the
  * whole program checks clean; diagnostics go to the error stream as `check` renders them.
  *
- * The output is one line per test, its mark and full title, a failure followed by its message and
- * trace, then a count. A test waiting on a timer waits on real time, unless it mocked time.
+ * The output is one line per test, its mark and full title, a failure followed by its message,
+ * trace and the log records its instances committed, then a count. A test waiting on a timer waits on real time, unless it mocked time.
  * Exit codes: 0 when every test that ran passed; 1 when a module has errors, a test fails or no
  * test was found; 2 when a path can't be read or the options don't fit.
  */
@@ -25,6 +25,7 @@ import {
   type ExitCode,
   exitCodes,
 } from '../command.ts';
+import { logLine } from '../log-lines.ts';
 import { findSources, loadProject } from '../project.ts';
 import { reportDiagnostics } from '../report.ts';
 
@@ -112,13 +113,20 @@ async function test(
     : exitCodes.clean;
 }
 
-/** A test's lines: its mark and title, then a failure's message and trace, indented. */
+/**
+ * A test's lines: its mark and title, then a failure's message, trace and the log records its
+ * instances committed, indented.
+ */
 function reportOf({ title, outcome }: TestReport): string {
   const line = `${marks[outcome.kind]} ${title}\n`;
   if (outcome.kind !== 'failed') {
     return line;
   }
-  const detail = [outcome.message, ...outcome.trace.split('\n')].filter((each) => each !== '');
+  const detail = [
+    outcome.message,
+    ...outcome.trace.split('\n'),
+    ...outcome.logs.map(logLine),
+  ].filter((each) => each !== '');
   return `${line}${detail.map((each) => `    ${each}\n`).join('')}`;
 }
 

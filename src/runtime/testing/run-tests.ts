@@ -9,16 +9,19 @@
  * - When any listed test is focused with `only`, the others are skipped; a filter leaves out every
  *   test whose full title lacks its text, without reporting it.
  * - A suite whose listing fails is reported as one failed test, titled by the suite.
+ * - Each test's random values come from a seed made from its full title, so a run repeats them
+ *   (§10).
  * - Each test may wait on timers; the generator yields every such wait, as `World.run` does, for
  *   the caller to make, and reports each test as it ends.
  */
 
+import { contentHash } from '../../definition/codec.ts';
 import { type Definition, definitionFormat } from '../../definition/definition.ts';
 import { elementsOf, isComposite, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Natives } from '../natives.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
-import { type Ended, World } from './world.ts';
+import { type Ended, type Failed, World } from './world.ts';
 
 export interface TestRunOptions {
   readonly natives: Natives;
@@ -31,10 +34,7 @@ export interface TestRunOptions {
 }
 
 /** How one test went. */
-type TestOutcome =
-  | { readonly kind: 'passed' }
-  | { readonly kind: 'skipped' }
-  | { readonly kind: 'failed'; readonly message: string; readonly trace: string };
+type TestOutcome = { readonly kind: 'passed' } | { readonly kind: 'skipped' } | Failed;
 
 export interface TestReport {
   /** The suite's, the groups' and the test's titles, joined with ` › `. */
@@ -56,8 +56,11 @@ interface Listing {
   readonly listed: readonly Listed[];
 }
 
-/** Runs `call` as a test's instance, in a world of its own: yields each wait, returns its end. */
-type RunInWorld = (call: InstanceCall) => Generator<bigint, Ended, undefined>;
+/**
+ * Runs `call` as the instance of the test or listing titled `title`, in a world of its own: yields
+ * each wait, returns its end.
+ */
+type RunInWorld = (call: InstanceCall, title: string) => Generator<bigint, Ended, undefined>;
 
 /**
  * Runs the tests of the Definition `text`, yielding each wait until a time and each report; the
@@ -70,13 +73,14 @@ export function* runTests(
   const definition = definitionFormat.read(text);
   const { hash } = definitionFormat.write(definition);
   const tests = definition.tests ?? unreachable('This Definition was not built to run tests.');
-  const run: RunInWorld = function* (call) {
+  const run: RunInWorld = function* (call, title) {
     const deadline = options.now() + options.timeout;
-    return yield* new World({ ...options, definition, hash, deadline }).run(call);
+    const seed = contentHash(title);
+    return yield* new World({ ...options, definition, hash, seed, deadline }).run(call);
   };
   const listings: Listing[] = [];
   for (const { title, function: suite } of tests.suites) {
-    const listing = yield* run(callOf(tests.list, [suiteValue(suite), title]));
+    const listing = yield* run(callOf(tests.list, [suiteValue(suite), title]), title);
     if (listing.kind === 'failed') {
       yield { title, outcome: listing };
     } else {
@@ -111,6 +115,7 @@ function* runListed(
       } else {
         const ended = yield* run(
           callOf(runner, [suiteValue(suite), title, BigInt(position), test.title]),
+          test.title,
         );
         yield { title: test.title, outcome: ended.kind === 'failed' ? ended : { kind: 'passed' } };
       }

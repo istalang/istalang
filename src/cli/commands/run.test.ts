@@ -14,6 +14,9 @@ import { corpusDirectory as corpus, runPrograms } from '../../../test/corpus/pro
 import { subsetOutcome, subsetSource } from '../../../test/definitions/subset.ts';
 import { builtCli, ista, tempProject as project } from '../cli.test-kit.ts';
 
+/** The start of an ISO 8601 time, as a log record's is written (§9). */
+const isoTime = /^\d{4}-\d{2}-\d{2}T/u;
+
 describe('ista run', () => {
   it.each(runPrograms.filter(({ expects }) => expects === 'outcome'))(
     'prints the outcome of $name',
@@ -49,6 +52,24 @@ describe('ista run', () => {
     const text = 'async fn main(): 1e308 * 10.0\n';
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({ code: 0, out: 'null\n', err: '' });
+  });
+
+  it('writes each committed log record to the error stream as a line of JSON', async () => {
+    const text = [
+      "import * as log from 'log'",
+      'async fn main() -> Future<int>:',
+      '  log.warn("careful", struct{n: 2})',
+      '  1',
+    ].join('\n');
+    const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
+    expect(run.out).toBe('1\n');
+    expect(JSON.parse(run.err) as unknown).toEqual({
+      fields: { n: 2 },
+      instance: expect.any(String) as unknown,
+      level: 'warn',
+      message: 'careful',
+      time: expect.stringMatching(isoTime) as unknown,
+    });
   });
 
   it('reports warnings on the error stream and still runs', async () => {

@@ -1,0 +1,19 @@
+# The random module (spec §3.8): values drawn from the instance's random source, which its snapshot
+# keeps, so a segment that runs again draws what it drew before (§5).
+#
+# `integer` and `uuid` are the runtime's; `fraction` is code over `integer`, so mocking those two
+# fixes every value a test draws (§10). No function is named after a type, which it would hide in
+# this module (§3.13).
+
+# A uniform integer from the range's start up to its end; panics on an empty range or an open one.
+extern fn integer(range: Range) -> int
+
+# A version 4 UUID (RFC 9562), in lowercase.
+extern fn uuid() -> string
+
+# 2^53: every multiple of 1 / 2^53 below 1 is a float exactly, so each is equally likely.
+const floatSteps = 9_007_199_254_740_992
+
+# A uniform float from 0 up to 1.
+fn fraction() -> float:
+  float(integer(0..floatSteps)) / float(floatSteps)

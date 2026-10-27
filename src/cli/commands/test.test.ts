@@ -130,6 +130,33 @@ describe('ista test', () => {
     expect(lines[3]?.startsWith('    at a.test.fails ')).toBe(true);
   });
 
+  it('follows a failure with the log records its instances committed, one JSON line each', async () => {
+    const root = project({
+      'a.test.ista': [
+        "import Suite, Test, test from 'testing'",
+        "import * as log from 'log'",
+        "import * as runtime from 'runtime'",
+        'async fn fails() -> Future<unit>:',
+        '  log.info("kept", struct{n: 1})',
+        '  await runtime.commit()',
+        '  log.info("lost")',
+        '  panic("stop")',
+        '@Suite{"s"}',
+        'fn suite() -> Array<Test>: [test("t", fails)]',
+      ].join('\n'),
+    });
+    const run = await ista(root, 'test');
+    const logs = run.out.split('\n').filter((line) => line.startsWith('    {'));
+    expect(logs.map((line) => JSON.parse(line) as unknown)).toEqual([
+      expect.objectContaining({
+        instance: 'test',
+        level: 'info',
+        message: 'kept',
+        fields: { n: 1 },
+      }),
+    ]);
+  });
+
   it('refuses a non-test module that imports a test module, running nothing', async () => {
     const root = project({
       'a.test.ista': passingModule('a'),

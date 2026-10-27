@@ -1,0 +1,20 @@
+# The runtime module's `id` and `version` (spec §3.8); `commit` is the corpus's.
+
+import Suite, Test, test, assertEq, start from 'testing'
+import * as runtime from 'runtime'
+
+fn ownId() -> string: runtime.id()
+
+fn ownVersion() -> string: runtime.version()
+
+@Suite{"runtime"}
+fn suite() -> Array<Test>: [
+  test("id is the instance's name, a started one's after its parent's", async fn(): {
+    assertEq(runtime.id(), "test")
+    assertEq(await start(ownId).result(), "test/1")
+  }),
+  test("version is the program's content hash, the same in every instance of it", async fn(): {
+    assertEq(runtime.version().length(), 64)
+    assertEq(await start(ownVersion).result(), runtime.version())
+  }),
+]

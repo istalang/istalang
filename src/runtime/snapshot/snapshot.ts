@@ -5,6 +5,8 @@
  * Definition, so a snapshot is meaningless without it. Besides the heap it keeps:
  * - the order in which executions became ready
  * - how many instances it has spawned, which names the next one (`<instance>/<n>`, §9)
+ * - its random source, a seed and how many draws were made from it, so a segment that runs again
+ *   draws the same values (§3.8 `random`, scheduler/random-source.ts)
  * - whether every segment runs twice before it commits (`crashEveryAwait`, §10), an option of the
  *   instance, so a runtime that wakes it after a restart honours it too
  * - for a panicked instance, when the failed segment started. `now()` returns its segment's
@@ -27,6 +29,7 @@ import { contentHashText } from '../../definition/codec.ts';
 import { defineFormat } from '../../definition/format.ts';
 import { count, functionId, objectId } from '../../definition/operands.ts';
 import { integer, value } from '../../definition/values.ts';
+import { randomSeed } from '../scheduler/random-source.ts';
 import { referencedObjects } from './holdings.ts';
 import { heapObject } from './objects.ts';
 
@@ -78,6 +81,8 @@ const snapshotContents = z.strictObject({
   crashEveryAwait: z.boolean(),
   /** How many instances this one has spawned (§9). */
   spawned: count,
+  /** Its random source: the seed, and how many draws its committed segments made (§3.8). */
+  random: z.strictObject({ seed: randomSeed, draws: count }),
   /** What each extern constant read so far gave, by key: read once, kept for life (§3.6). */
   pinned: z.array(z.strictObject({ key: z.string(), value })),
   /** In ascending id order. */

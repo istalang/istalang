@@ -21,6 +21,8 @@ import type {
   Native,
   NativeCapabilities,
   NativeFutures,
+  NativeLogs,
+  NativeRandom,
   NativeResources,
   NativeSlots,
   NativeTesting,
@@ -45,9 +47,10 @@ export class NativeCalls {
     this.#segment = {
       types: instance.loaded.definition.types,
       instance: instance.name,
+      version: instance.loaded.hash,
       segmentStartedAt: startedAt,
       trace,
-      ...capabilitiesOf(instance),
+      ...capabilitiesOf(instance, startedAt),
     };
   }
 
@@ -97,13 +100,15 @@ function referenceAt(contents: readonly RegisterContents[], position: number): R
   return argument;
 }
 
-/** Every capability of `instance`, as natives reach it. */
-function capabilitiesOf(instance: Instance): NativeCapabilities {
+/** Every capability of `instance`, in a segment started at `startedAt`, as natives reach it. */
+function capabilitiesOf(instance: Instance, startedAt: bigint): NativeCapabilities {
   return {
     futures: nativeFuturesOf(instance.futures),
     slots: nativeSlotsOf(instance.slots),
     weak: nativeWeakSideOf(instance.weak),
     resources: nativeResourcesOf(instance.heap),
+    random: nativeRandomOf(instance),
+    logs: nativeLogsOf(instance, startedAt),
     testing: nativeTestingOf(instance),
   };
 }
@@ -154,6 +159,20 @@ function nativeResourcesOf(heap: Heap): NativeResources {
         unreachable('A value of a disposable host type holds no resource.');
       }
       return heap.of(id, 'resource').payload;
+    },
+  };
+}
+
+/** The instance's random source as natives draw from it (§3.8 `random`). */
+function nativeRandomOf(instance: Instance): NativeRandom {
+  return { draw: () => instance.draw() };
+}
+
+/** The instance's log as natives write to it, each record stamped with its segment (§3.8 `log`). */
+function nativeLogsOf(instance: Instance, startedAt: bigint): NativeLogs {
+  return {
+    write: (entry) => {
+      instance.log({ instance: instance.name, time: startedAt, ...entry });
     },
   };
 }

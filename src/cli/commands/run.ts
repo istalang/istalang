@@ -12,13 +12,14 @@
  * until all of them have settled; `main`'s outcome is printed, and a spawned instance that panics
  * or can never wake is reported on the error stream and fails the run. Nothing runs unless the
  * whole program checks clean. Diagnostics, warnings included, go to the error stream as `check`
- * renders them, so the output holds only the outcome.
+ * renders them, and so does each log record its instances commit, as a line of JSON (§9), so the
+ * output holds only the outcome.
  * Exit codes: 0 when `main` finishes; 1 when the program has errors, declares no `main`, panics,
  * the runtime refuses it, or an instance waits on nothing that can wake it; 2 when the entry
  * can't be read, the options don't fit together, or the host module can't implement externs.
  */
 
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { compileProgram, diagnose } from '../../compiler/compile.ts';
@@ -27,6 +28,7 @@ import { FormatError } from '../../definition/format.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
 import { Refusal } from '../../runtime/refusal.ts';
+import { drawBytes, seedOf } from '../../runtime/scheduler/random-source.ts';
 import { type Settled, settle } from '../../runtime/settle.ts';
 import { memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
@@ -39,6 +41,7 @@ import {
 } from '../command.ts';
 import { directoryStore } from '../directory-store.ts';
 import { type HostModule, loadHostModule } from '../host-module.ts';
+import { logLine } from '../log-lines.ts';
 import { loadProject } from '../project.ts';
 import { reportDiagnostics } from '../report.ts';
 
@@ -90,6 +93,7 @@ async function run(
         ? memoryStore()
         : directoryStore(resolve(environment.cwd, options.store)),
     now: clock,
+    seed: () => seedOf(randomBytes(drawBytes)),
     ...(host === undefined ? {} : { host: host.externs }),
   });
   const session: Session = { runtime, host, environment };
@@ -165,11 +169,24 @@ async function finish(
   { program, name }: RunningInstance,
   initial: Advanced,
 ): Promise<ExitCode> {
-  const steps = settle((instance) => runtime.wake(instance), { instance: name, advanced: initial });
+  const logged = (advanced: Advanced): Advanced => {
+    for (const record of advanced.logs) {
+      environment.writeError(`${logLine(record)}\n`);
+    }
+    return advanced;
+  };
+  const steps = settle((instance) => logged(runtime.wake(instance)), {
+    instance: name,
+    advanced: logged(initial),
+  });
   let step = steps.next();
   while (!step.done) {
     // biome-ignore lint/performance/noAwaitInLoops: each wake depends on what the last one returned.
-    step = steps.next(await arrivalsBy(step.value, { runtime, host, environment }));
+    const arrived = await arrivalsBy(step.value, { runtime, host, environment });
+    for (const { advanced } of arrived) {
+      logged(advanced);
+    }
+    step = steps.next(arrived);
   }
   const unfinished = [...step.value].flatMap(([instance, ending]) =>
     ending.kind === 'finished'

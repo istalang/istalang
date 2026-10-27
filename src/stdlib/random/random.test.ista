@@ -1,0 +1,66 @@
+# The random module (spec §3.8): draws within their bounds, UUIDs in their layout, values a mock
+# fixes, and the draws a segment makes again when it runs again (§5).
+
+import Suite, Test, test, assert, assertEq, expectPanic, mock, calls, startCrashingEveryAwait from 'testing'
+import * as random from 'random'
+import * as runtime from 'runtime'
+
+# 2^64: a draw from a range this wide needs more than one draw's worth of a 64-bit source.
+const twoTo64 = 18_446_744_073_709_551_616
+
+extern fn seen(value: int)
+
+fn ignored(value: int): ()
+
+fn zero(range: Range) -> int: 0
+
+async fn drawsThenCommits():
+  seen(random.integer(0..1_000_000_000_000))
+  await runtime.commit()
+
+fn emptyRange() -> int: random.integer(3..3)
+
+fn openRange() -> int: random.integer(3..)
+
+@Suite{"random"}
+fn suite() -> Array<Test>: [
+  test("integer draws every value of its range, and only those", fn(): {
+    const draws = [for _ in 0..200: random.integer(1..=6)]
+    for value in 1..=6:
+      assert(draws.includes(value), "never drew " + value)
+    assertEq([for each in draws if each < 1 or each > 6: each], [])
+  }),
+  test("integer of a one-value range gives that value", fn(): {
+    assertEq(random.integer(7..8), 7)
+  }),
+  test("integer draws beyond 64 bits", fn(): {
+    const draws = [for _ in 0..8: random.integer(0..twoTo64 * twoTo64)]
+    assert([for each in draws if each >= twoTo64: each].length() > 0)
+  }),
+  test("integer panics on an empty or an open range", async fn(): {
+    assertEq(await expectPanic(emptyRange), "random.integer has nothing to draw from the empty range 3..3.")
+    assertEq(await expectPanic(openRange), "random.integer needs a range with both ends.")
+  }),
+  test("fraction lies from 0 up to 1", fn(): {
+    const draws = [for _ in 0..100: random.fraction()]
+    assertEq([for each in draws if each < 0.0 or each >= 1.0: each], [])
+  }),
+  test("a mocked integer fixes fraction too", fn(): {
+    fn _ = mock(random.integer, zero)
+    assertEq(random.fraction(), 0.0)
+  }),
+  test("uuid is a version 4 UUID in lowercase, different each time", fn(): {
+    const id = random.uuid()
+    assertEq(id.length(), 36)
+    assertEq([id[8], id[13], id[14], id[18], id[23]], ["-", "-", "4", "-", "-"])
+    assert(["8", "9", "a", "b"].includes(id[19]))
+    assert(random.uuid() != id)
+  }),
+  test("a segment that runs again draws the same values", async fn(): {
+    const recorded = mock(seen, ignored)
+    await startCrashingEveryAwait(drawsThenCommits).result()
+    const values = calls(recorded)
+    assertEq(values.length(), 2)
+    assertEq(values[0], values[1])
+  }),
+]

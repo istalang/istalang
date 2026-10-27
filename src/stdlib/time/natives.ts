@@ -1,6 +1,6 @@
 /**
  * The `time` module's natives (time.ista): the runtime's one clock and one time primitive, and the
- * ISO 8601 text of times and durations (iso.ts).
+ * ISO 8601 text of times and durations (iso.ts), and their readings in time zones (zones.ts).
  *
  * `now()` is the time the segment started (§5), so every read in a segment agrees and a re-run
  * segment sees the same time. `at(t)` is a future the runtime resolves once `t` is due, in the
@@ -19,6 +19,7 @@ import {
 import { fieldOf, int, okStruct, parseResult, resultStruct, text } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { durationText, readDuration, readTime, timeText } from './iso.ts';
+import { zoneNatives } from './zones.ts';
 
 const timeType = knownTypeKey(wellKnown.time);
 const durationType = knownTypeKey(wellKnown.duration);
@@ -44,6 +45,7 @@ export const timeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutur
     'an ISO 8601 duration',
     readDuration,
   ),
+  ...zoneNatives(keys),
 });
 
 /** A `parse` reading a struct of one int field, `value`, its milliseconds, with `read` (§3.10). */

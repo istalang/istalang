@@ -1,0 +1,29 @@
+# The log module (spec §3.8): every record goes through `write`, which a test mocks to read them.
+# That a discarded segment logs nothing is the runtime's to show (runtime/scheduler/logs.test.ts).
+
+import Suite, Test, test, assertEq, mock, calls from 'testing'
+import * as log from 'log'
+import Level from 'log'
+import * as json from 'json'
+
+fn ignored(level: Level, message: string, fields: json.Json): ()
+
+@Suite{"log"}
+fn suite() -> Array<Test>: [
+  test("each level writes its records, without fields as an empty object", fn(): {
+    const written = mock(log.write, ignored)
+    log.debug("d")
+    log.info("i")
+    log.warn("w")
+    log.error("e")
+    const empty = json.Json.Object{fields: [:]}
+    assertEq(calls(written), [(Level.Debug, "d", empty), (Level.Info, "i", empty), (Level.Warn, "w", empty), (Level.Error, "e", empty)])
+  }),
+  test("fields arrive as their JSON", fn(): {
+    const written = mock(log.write, ignored)
+    log.info("charged", struct{amount: 5, card: "visa"})
+    log.error("refused", ["late"])
+    const texts = [for (_, _, fields) in calls(written): json.stringify(fields)]
+    assertEq(texts, ["{\"amount\":5,\"card\":\"visa\"}", "[\"late\"]"])
+  }),
+]

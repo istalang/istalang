@@ -93,7 +93,11 @@ describe('a disposable host type', () => {
     test.runtime.deploy(terminated).start('t');
     expect(test.runtime.fill('t', 'approval', false).state).toMatchObject({ kind: 'panicked' });
     expect(released).toEqual([]);
-    expect(test.runtime.terminate('t')).toEqual({ state: { kind: 'terminated' }, spawned: [] });
+    expect(test.runtime.terminate('t')).toEqual({
+      state: { kind: 'terminated' },
+      spawned: [],
+      logs: [],
+    });
     expect(released).toEqual([{ id: 'refusing' }, { id: 'plain' }]);
   });
 

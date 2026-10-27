@@ -71,6 +71,16 @@ export function arrayOf(elements: readonly Value[]): Value {
   return { kind: 'array', elements: [...elements] };
 }
 
+/** The declared name of the variant an enum argument holds. */
+export function variantName(context: NativeContext, value: Value | undefined): string {
+  if (value === undefined || !isComposite(value) || value.kind !== 'variant') {
+    unreachable('Expected an enum.');
+  }
+  const declared = context.types[value.type];
+  const variant = declared?.kind === 'enum' ? declared.variants[value.variant] : undefined;
+  return variant?.name ?? unreachable(`Type ${value.type} has no variant ${value.variant}.`);
+}
+
 /** The value inside an optional argument, or undefined for `none`. */
 export function optionalValue(value: Value | undefined): Value | undefined {
   if (value === undefined || !isComposite(value) || value.kind !== 'variant') {
@@ -104,7 +114,7 @@ export function resultErr(context: NativeContext, error: Value): Value {
  * `Err` of an `Error` with `message` and `code`, of the extern's declared `Result` type; its trace
  * is the frames running the native, as an `Error` literal without one gets (§3.12).
  */
-function resultError(context: NativeContext, message: string, code: string): Value {
+export function resultError(context: NativeContext, message: string, code: string): Value {
   const error = namedType(resultVariantShape(context, resultVariants.err).fields[0]?.type);
   return resultErr(
     context,

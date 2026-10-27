@@ -14,11 +14,12 @@
  *   two finds the child there already and doesn't write it again (§9).
  * - With `crashEveryAwait` (§10), an option the instance keeps in its snapshot, every segment
  *   runs, is discarded and runs again from the same snapshot and start time before the second run
- *   commits. A second run that ends differently, or spawns differently, panics the instance, so
+ *   commits. A second run that ends, spawns or logs differently panics the instance, so
  *   extern calls that aren't idempotent, and code that differs between runs, show. Instances it
  *   spawns run with the option too.
  * - A panic commits nothing (§3.12): the instance stays at its last commit, marked panicked, with
- *   when the failed segment started, so a retry sees the same time.
+ *   when the failed segment started, so a retry sees the same time. Its log records are lost with
+ *   it, as a discarded run's are: only a commit reports a segment's logs (§3.8 `log`).
  * - Under a test (§10), a segment also starts by resolving the watches whose condition the test
  *   world says holds, and an advance may start by answering another instance's call to one of
  *   this instance's mocks. The answers a segment gives are, like its spawns, effects of its
@@ -28,8 +29,9 @@
  *   a host's view of an instance comes from.
  */
 
+import { encodeJson } from '../../definition/codec.ts';
 import type { Value } from '../../definition/values.ts';
-import type { Advanced, InstanceState } from '../instance-state.ts';
+import type { Advanced, InstanceState, LogRecord } from '../instance-state.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
 import {
   type InstanceCall,
@@ -51,12 +53,17 @@ export interface SchedulerSeams {
   readonly now: () => bigint;
 }
 
+/** How a new instance begins: the options it keeps for life, and its random source's seed. */
+export interface Beginning extends StartOptions {
+  readonly seed: string;
+}
+
 /** The snapshot of a new instance named `name` of `loaded`, about to run `call` (§9). */
 export function unstarted(
   loaded: LoadedDefinition,
   name: string,
   call: InstanceCall,
-  { crashEveryAwait = false }: StartOptions,
+  { crashEveryAwait = false, seed }: Beginning,
 ): Snapshot {
   return {
     definition: loaded.hash,
@@ -64,6 +71,7 @@ export function unstarted(
     status: { kind: 'unstarted', call },
     crashEveryAwait,
     spawned: 0,
+    random: { seed, draws: 0 },
     pinned: [],
     objects: [],
     ready: [],
@@ -108,8 +116,9 @@ export function advance(
   let committed = snapshot;
   let pending: AdvanceFirst = first;
   const spawned: string[] = [];
+  const logs: LogRecord[] = [];
   const answered: Answered[] = [];
-  const advanced = (state: InstanceState): Advance => ({ state, spawned, answered });
+  const advanced = (state: InstanceState): Advance => ({ state, spawned, logs, answered });
   for (;;) {
     const { startedAt = seams.now(), ...firstly } = pending;
     pending = {};
@@ -127,6 +136,7 @@ export function advance(
     }
     spawned.push(...commitChildren(seams.store, instance));
     committed = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
+    logs.push(...instance.logs());
     const given = instance.answered();
     answered.push(...given);
     if (end.kind === 'finished' || given.length > 0) {
@@ -148,7 +158,7 @@ export function terminate(
   endInstance(instance, seams.now());
   const spawned = commitChildren(seams.store, instance);
   const ended = commit(seams.store, instance.snapshot({ kind: 'terminated' }, []));
-  return { state: stateOf(ended), spawned };
+  return { state: stateOf(ended), spawned, logs: instance.logs() };
 }
 
 /** What a retry runs again after a segment from `status`, filling `arrival` first, panicked. */
@@ -221,14 +231,20 @@ function rerun(first: SegmentRun, second: SegmentRun | undefined): SegmentRun {
   return { instance: first.instance, end: { kind: 'panicked', message, trace } };
 }
 
-/** What a run left, as text: the snapshot it would commit and what it spawned, or its panic. */
+/**
+ * What a run left, as text: the snapshot it would commit, what it spawned and what it logged, or
+ * its panic.
+ */
 function runText({ instance, end }: SegmentRun): string {
   if (end.kind === 'panicked') {
     return `panic: ${end.message}`;
   }
-  return [instance.snapshot(statusOf(end), objectsOf(end)), ...childrenOf(instance)]
-    .map((snapshot) => snapshotFormat.write(snapshot).text)
-    .join('\n');
+  return [
+    ...[instance.snapshot(statusOf(end), objectsOf(end)), ...childrenOf(instance)].map(
+      (snapshot) => snapshotFormat.write(snapshot).text,
+    ),
+    encodeJson(instance.logs()),
+  ].join('\n');
 }
 
 /**
@@ -255,8 +271,8 @@ function commitChildren(store: InstanceStore, instance: Instance): readonly stri
 function childrenOf(instance: Instance): readonly Snapshot[] {
   return instance
     .spawns()
-    .map(({ name, call, crashEveryAwait }) =>
-      unstarted(instance.loaded, name, call, { crashEveryAwait }),
+    .map(({ name, call, crashEveryAwait, seed }) =>
+      unstarted(instance.loaded, name, call, { crashEveryAwait, seed }),
     );
 }
 

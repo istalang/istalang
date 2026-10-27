@@ -177,7 +177,8 @@ export default {
     { from: { path: '^src/' }, to: { dependencyTypes: ['npm'] } },
     { from: { path: layerPath(nodeLayers) }, to: { dependencyTypes: ['core'] } },
     {
-      from: { path: layerPath(['definition']) },
+      // Hashing is computation, not I/O: content hashes, random draws and the `crypto` module.
+      from: { path: layerPath(['definition', 'runtime', 'stdlib']) },
       to: { dependencyTypes: ['core'], path: '^(node:)?crypto$' },
     },
   ],

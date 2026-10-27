@@ -15,7 +15,11 @@
  * - Stopping an execution (§7: its call future disposed) lets go of everything its frames hold.
  * - What a segment spawns becomes instances only when the segment commits (wake.ts), so a segment
  *   that is discarded spawned nothing. So do the answers it gave other instances' calls to its
- *   mocks (§10): each fills its caller's future once the segment commits.
+ *   mocks (§10): each fills its caller's future once the segment commits. The log records it wrote
+ *   reach the host only then too (§3.8 `log`).
+ * - Its random values are draws from the source its snapshot keeps (random-source.ts), counted
+ *   from the draws committed before the segment, so a segment that runs again draws the same ones.
+ *   Each instance it spawns is seeded with a draw.
  * - A mock this instance holds replaces its target for the calls it makes itself (`mockOf`); one an
  *   instance it descends from holds replaces it too, through the runtime running the test.
  * - The instance is its frames' heap (interpreter/machine.ts): a variable passed by `&` is a cell
@@ -27,6 +31,7 @@ import type { FunctionId } from '../../definition/operands.ts';
 import { handlesIn, type Value } from '../../definition/values.ts';
 import { pushAll } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
+import type { LogRecord } from '../instance-state.ts';
 import {
   type ActiveFrame,
   type FrameHeap,
@@ -48,17 +53,19 @@ import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './
 import { spawnedName } from './instance-names.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import { leaving, reachingMock } from './mocks.ts';
+import { drawOf, seedOf } from './random-source.ts';
 import { Slots } from './slots.ts';
 import { WeakSide } from './weak-side.ts';
 
 /**
  * A call this segment spawned (§9), or started as a test does (§10): the new instance's name, what
- * it calls, and its own option.
+ * it calls, its own option, and the seed of its random source, drawn from this instance's.
  */
 export interface Spawn {
   readonly name: string;
   readonly call: InstanceCall;
   readonly crashEveryAwait: boolean;
+  readonly seed: string;
 }
 
 export type InstanceStatus = Snapshot['status'];
@@ -92,6 +99,9 @@ export class Instance {
   readonly #from: Snapshot;
   readonly #spawns: Spawn[] = [];
   readonly #answered: Answered[] = [];
+  readonly #logs: LogRecord[] = [];
+  /** How many random draws this segment made. */
+  #draws = 0;
   readonly #ready: number[];
   /** The extern constants read before this segment, and those it read itself (§3.6). */
   readonly #pinned: Map<string, Value>;
@@ -174,6 +184,7 @@ export class Instance {
       ...this.#from,
       status,
       spawned: this.#from.spawned + this.#spawns.length,
+      random: { ...this.#from.random, draws: this.#from.random.draws + this.#draws },
       pinned: [...this.#pinned].map(([key, value]) => ({ key, value })),
       objects: active ? [...objects] : [],
       ready: active ? [...this.#ready] : [],
@@ -220,8 +231,31 @@ export class Instance {
    */
   spawn(call: InstanceCall, crashEveryAwait = false): string {
     const name = spawnedName(this.name, this.spawnedBefore + this.#spawns.length + 1);
-    this.#spawns.push({ name, call, crashEveryAwait: this.crashEveryAwait || crashEveryAwait });
+    this.#spawns.push({
+      name,
+      call,
+      crashEveryAwait: this.crashEveryAwait || crashEveryAwait,
+      seed: seedOf(this.draw()),
+    });
     return name;
+  }
+
+  /** The next draw from this instance's random source (§3.8 `random`). */
+  draw(): Uint8Array {
+    const { seed, draws } = this.#from.random;
+    const index = draws + this.#draws;
+    this.#draws += 1;
+    return drawOf(seed, index);
+  }
+
+  /** Records `record`, which reaches the host once this segment commits (§3.8 `log`). */
+  log(record: LogRecord): void {
+    this.#logs.push(record);
+  }
+
+  /** The log records this segment wrote, in order. */
+  logs(): readonly LogRecord[] {
+    return this.#logs;
   }
 
   /** The answers still to give, which are roots, as executions are: what they wait on is held. */

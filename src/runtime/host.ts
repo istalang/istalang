@@ -57,6 +57,11 @@ export interface RuntimeSeams {
   /** Milliseconds since the Unix epoch: when each segment starts (§5). */
   readonly now: () => bigint;
   /**
+   * A new secret seed, 64 lowercase hex digits, for each instance a host starts: the source of its
+   * random values (§3.8 `random`). An instance it spawns is seeded from it in turn.
+   */
+  readonly seed: () => string;
+  /**
    * The externs the host implements, against JSON, by key (§9); a Refusal for a key `natives`
    * has, such as `time.now()`, which would replace the runtime's own.
    */
@@ -141,7 +146,7 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       const { kind } = snapshot.status;
       return kind === 'active' || kind === 'unstarted'
         ? program.resume(snapshot)
-        : { state: stateOf(snapshot), spawned: [] };
+        : { state: stateOf(snapshot), spawned: [], logs: [] };
     },
     programOf: (instance) => stored(instance).program,
     inspect: (instance) => {
@@ -160,7 +165,7 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       const arrival = { token, value: jsonIn(program.definition, json) };
       return kind === 'active'
         ? program.resume(snapshot, { arrival })
-        : { state: stateOf(snapshot), spawned: [] };
+        : { state: stateOf(snapshot), spawned: [], logs: [] };
     },
     retry: (instance) => {
       const { snapshot, program } = stored(instance);
@@ -203,7 +208,7 @@ interface Binding {
 }
 
 /** Reads and binds Definition texts, once per hash; it writes nothing. */
-function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'host'>) {
+function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'host' | 'seed'>) {
   const bound = new Map<string, BoundProgram>();
   return (text: string): Binding => {
     const definition = definitionFormat.read(text);
@@ -215,7 +220,7 @@ function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'h
 
 /** `definition`, bound to its natives and able to start and resume its instances. */
 function boundProgram(
-  seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'host'>,
+  seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'host' | 'seed'>,
   definition: Definition,
   hash: string,
 ): BoundProgram {
@@ -241,7 +246,8 @@ function boundProgram(
       const entry = startFunctionOf(definition, key, given.length);
       const values = given.map((json) => jsonIn(definition, json));
       const call = { function: entry, captures: [], arguments: values };
-      return advance(seams, loaded, unstarted(loaded, instance, call, options));
+      const beginning = { ...options, seed: seams.seed() };
+      return advance(seams, loaded, unstarted(loaded, instance, call, beginning));
     },
     resume: (snapshot, first) => advance(seams, loaded, snapshot, first),
     terminate: (snapshot) => terminate(seams, loaded, snapshot),

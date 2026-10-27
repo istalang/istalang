@@ -14,14 +14,15 @@
  * building typed values), the time the segment started, which is what `now()` means (§5), and
  * capabilities, one per part of the instance a native reaches: the futures the runtime creates
  * for an extern that returns one (§3.6), its slots (§6), its weak references and its resources
- * (§7), and what a test reaches (§10). Every capability has one shape, a member of the context, and the runtime builds them once
- * per segment. A native states the capabilities it uses and never holds the context beyond its
- * call.
+ * (§7), its random source and its log (§3.8), and what a test reaches (§10). Every capability has
+ * one shape, a member of the context, and the runtime builds them once per segment. A native
+ * states the capabilities it uses and never holds the context beyond its call.
  */
 
 import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/types.ts';
 import type { Value } from '../definition/values.ts';
+import type { LogRecord } from './instance-state.ts';
 import type { Watch } from './scheduler/futures.ts';
 import type { Inspection } from './scheduler/inspect.ts';
 
@@ -40,6 +41,8 @@ export interface NativeContext {
   readonly types: readonly TypeDefinition[];
   /** The instance whose code called the native, as its host names it (§9). */
   readonly instance: string;
+  /** The content hash of the Definition the instance runs, fixed for its life (§5). */
+  readonly version: string;
   /** Milliseconds since the Unix epoch at which the current segment started. */
   readonly segmentStartedAt: bigint;
   /**
@@ -129,6 +132,20 @@ export interface NativeTesting {
   readonly handle: (type: TypeId) => Value;
 }
 
+/** The running instance's random source (§3.8 `random`, scheduler/random-source.ts). */
+export interface NativeRandom {
+  /** The next draw, 32 bytes; a segment that runs again draws the same ones (§5). */
+  readonly draw: () => Uint8Array;
+}
+
+/**
+ * The running instance's log (§3.8 `log`): a record joins its segment's, stamped with the instance
+ * and the segment's start time, and reaches the host only once the segment commits.
+ */
+export interface NativeLogs {
+  readonly write: (entry: Omit<LogRecord, 'instance' | 'time'>) => void;
+}
+
 export interface WithFutures {
   readonly futures: NativeFutures;
 }
@@ -141,6 +158,12 @@ export interface WithWeakSide {
 export interface WithResources {
   readonly resources: NativeResources;
 }
+export interface WithRandom {
+  readonly random: NativeRandom;
+}
+export interface WithLogs {
+  readonly logs: NativeLogs;
+}
 export interface WithTesting {
   readonly testing: NativeTesting;
 }
@@ -150,6 +173,8 @@ export type NativeCapabilities = WithFutures &
   WithSlots &
   WithWeakSide &
   WithResources &
+  WithRandom &
+  WithLogs &
   WithTesting;
 
 export type FullNativeContext = NativeContext & NativeCapabilities;

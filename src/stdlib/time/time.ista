@@ -26,6 +26,13 @@ fn add(left: Duration, right: Duration) -> Duration:
 fn delay(duration: Duration) -> Future<unit>:
   at(now() + duration)
 
+# Times and durations are ordered as the milliseconds they hold (§3.10 `Comparable`).
+fn compare(left: Time, right: Time) -> int:
+  compare(left.value, right.value)
+
+fn compare(left: Duration, right: Duration) -> int:
+  compare(left.value, right.value)
+
 # ISO 8601 text (§3.8, §9): a time as JavaScript's Date.toJSON writes it, a duration as
 # Temporal.Duration does. Both are Stringable and Parsable, and cross as JSON as that text.
 extern fn toString(self: Time) -> string
@@ -47,3 +54,58 @@ fn Time.fromJson(value: json.Json, path: string) -> Result<Time>:
 
 fn Duration.fromJson(value: json.Json, path: string) -> Result<Duration>:
   json.decodeText(value, path)
+
+# Time zones (§3.8). A zone is an IANA name, a DateTime what a wall clock reads, with no zone. The
+# zone rules are the host's time-zone data, so two hosts with different data can disagree.
+struct Zone:
+  id: string
+
+const utc = Zone{id: "UTC"}
+
+struct DateTime:
+  year: int
+  month: int
+  day: int
+  hour: int = 0
+  minute: int = 0
+  second: int = 0
+  millisecond: int = 0
+
+extern fn Zone.parse(id: string) -> Result<Zone>
+
+fn toString(self: Zone) -> string:
+  self.id
+
+fn toJson(self: Zone) -> json.Json:
+  json.encodeText(self)
+
+fn Zone.fromJson(value: json.Json, path: string) -> Result<Zone>:
+  json.decodeText(value, path)
+
+# As Temporal.PlainDateTime writes it: `2026-10-25T13:00:00`, a fraction of a second only when
+# there is one.
+extern fn toString(self: DateTime) -> string
+
+extern fn DateTime.parse(text: string) -> Result<DateTime>
+
+fn toJson(self: DateTime) -> json.Json:
+  json.encodeText(self)
+
+fn DateTime.fromJson(value: json.Json, path: string) -> Result<DateTime>:
+  json.decodeText(value, path)
+
+# 1 for Monday up to 7 for Sunday (ISO 8601).
+extern fn weekday(self: DateTime) -> int
+
+# `days` calendar days later, at the same wall-clock time, so it survives a change of offset.
+extern fn addDays(self: DateTime, days: int) -> DateTime
+
+# What a wall clock in `zone` reads at this time.
+extern fn inZone(self: Time, zone: Zone) -> DateTime
+
+# The time a wall clock in `zone` reads `dateTime`: the earlier of two where a change of offset
+# repeats it, and moved forward by the gap where one skips it. Panics on a date that doesn't exist.
+extern fn Time.of(dateTime: DateTime, zone: Zone) -> Time
+
+# ISO 8601 with `zone`'s offset, `2026-10-25T13:00:00.000+01:00`, which `Time.parse` reads.
+extern fn format(self: Time, zone: Zone) -> string
