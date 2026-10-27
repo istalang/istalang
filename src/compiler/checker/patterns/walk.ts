@@ -32,8 +32,9 @@ import type {
 import type { Destructuring, FieldTarget } from '../../syntax/statements.ts';
 import type { PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { FieldMember, Type } from '../types/type.ts';
+import type { AnyType, FieldMember, Type } from '../types/type.ts';
 import { notSupported } from '../unsupported.ts';
+import type { Downcast } from './downcasts.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import {
   elementParts,
@@ -71,6 +72,11 @@ export interface PatternTests {
     naming: VariantNaming,
     part: ValuePart,
   ) => VariantPart | undefined;
+  /** The downcast a struct pattern or referring name makes of an `any` part; undefined after a report. */
+  readonly downcast: (
+    node: StructPattern | NamePattern,
+    part: ValuePart & { readonly type: AnyType },
+  ) => Downcast | undefined;
 }
 
 /** A pattern as walked. */
@@ -154,6 +160,8 @@ interface Walk extends Taking<Pattern | PatternPart> {
   readonly tests: PatternTests | undefined;
   readonly found: PatternTest[];
   readonly bindings: TargetBinding[];
+  /** The part each downcasting pattern matched its value of the named type at, for its `as`. */
+  readonly downcasts: Map<Pattern | PatternPart, ValuePart>;
 }
 
 function newWalk(scope: PatternScope, tests: PatternTests | undefined): Walk {
@@ -162,6 +170,7 @@ function newWalk(scope: PatternScope, tests: PatternTests | undefined): Walk {
     tests,
     found: [],
     bindings: [],
+    downcasts: new Map(),
     take: (node, part) => takePattern(walk, node, part),
   };
   return walk;
@@ -197,7 +206,10 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   ParenthesizedPattern: (walk, node, part) => walk.take(node.pattern, part),
   AsPattern: (walk, node, part) => {
     const shape = walk.take(node.pattern, part);
-    walk.bindings.push({ name: node.name, ...part });
+    walk.bindings.push({
+      name: node.name,
+      ...(walk.downcasts.get(unparenthesized(node.pattern)) ?? part),
+    });
     return shape;
   },
   TuplePattern: (walk, node, part) =>
@@ -215,8 +227,49 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 
 /** A part already in error was reported where it arose; it takes anything, for exhaustiveness. */
 function takePattern(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shape | undefined {
+  if (part.type.kind === 'any' && isDowncasting(walk, node)) {
+    return takeDowncast(walk, node, { ...part, type: part.type });
+  }
   const shape = handlerOf(patternHandlers, node)(walk, node, part);
   return part.type.kind === 'error' ? anyShape : shape;
+}
+
+/** Whether `node`, against an `any` part, names a type to downcast to (downcasts.ts). */
+function isDowncasting(
+  walk: Walk,
+  node: Pattern | PatternPart,
+): node is StructPattern | NamePattern {
+  if (walk.tests === undefined) {
+    return false;
+  }
+  if (node.kind === 'StructPattern') {
+    return true;
+  }
+  const [name, ...rest] = node.kind === 'NamePattern' ? node.path : [];
+  return name !== undefined && (rest.length > 0 || walk.scope.entityOf(name)?.kind !== 'variable');
+}
+
+/**
+ * A downcast, then the rest of the pattern against the value of the type it names. The types
+ * inside an `any` type are an open set, so it acts as a guard for exhaustiveness.
+ */
+function takeDowncast(
+  walk: Walk,
+  node: StructPattern | NamePattern,
+  part: ValuePart & { readonly type: AnyType },
+): undefined {
+  const downcast = walk.tests?.downcast(node, part);
+  if (downcast === undefined) {
+    return;
+  }
+  walk.found.push(downcast.test);
+  walk.downcasts.set(node, downcast.part);
+  handlerOf(patternHandlers, node)(walk, node, downcast.part);
+}
+
+/** `node` without the parentheses around it. */
+function unparenthesized(node: Pattern): Pattern {
+  return node.kind === 'ParenthesizedPattern' ? unparenthesized(node.pattern) : node;
 }
 
 /**

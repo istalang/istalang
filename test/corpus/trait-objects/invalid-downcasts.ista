@@ -1,0 +1,35 @@
+# error: 5400 at 21:9
+# error: 5153 at 26:8
+# error: 5154 at 29:8
+# error: 5001 at 32:8
+# error: 5155 at 35:8
+# Matching an `any` value against what its value can't be (§3.10): a type not meeting its traits,
+# a generic one, which a pattern can't give type arguments, a literal or an anonymous struct; and
+# a `match` that covers only some of its types, an open set, without `case _`.
+
+trait Named:
+  fn name(self: Self) -> string
+
+struct Email { to: string }
+struct Plain { text: string }
+struct Box<T> { value: T }
+
+fn name(self: Email) -> string: self.to
+fn name<T>(self: Box<T>) -> string: "box"
+
+fn describe(x: any Named) -> string:
+  match x:
+    case Email{to}:
+      to
+
+fn never(x: any Named) -> bool:
+  x is Plain{}
+
+fn generic(x: any Named) -> bool:
+  x is Box{}
+
+fn literal(x: any Named) -> bool:
+  x is "a"
+
+fn anonymous(x: any Named) -> bool:
+  x is struct{to}

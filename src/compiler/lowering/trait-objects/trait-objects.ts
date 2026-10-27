@@ -13,6 +13,7 @@
  */
 
 import type { FunctionDefinition } from '../../../definition/functions.ts';
+import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
@@ -64,18 +65,30 @@ export function convertedIntoAny(
   return dst;
 }
 
-/** The entry calling `dispatch`'s function for each type the value it is called on may have. */
+/**
+ * The entry calling `dispatch`'s function for each type the value it is called on may have; a
+ * receiver taken by `&` is passed on by `&` into the variant's value, which the call changes there.
+ */
 export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionDefinition {
   const { checker, tables } = lowering;
   const { on, constraint, member, required } = dispatch;
-  const code = new SynthesizedCode(
-    lowering,
-    required.name.span,
-    checker.parametersOf(required).length,
-  );
+  const references = checker.parametersOf(required).map((parameter) => parameter.reference);
+  const code = new SynthesizedCode(lowering, required.name.span, references.length);
   const [receiver, ...others] = code.parameters;
+  if (receiver === undefined) {
+    unreachable(`'${required.name.text}' is called through any without its receiver.`);
+  }
+  const passed = (
+    register: Register,
+    path: readonly number[],
+    index: number,
+  ): Register | Argument =>
+    references[index] === true
+      ? { kind: 'reference', place: { register, path: [...path] } }
+      : register;
+  const rest = others.map((register, index) => passed(register, [], index + 1));
   const own = substitutionFor(required.typeParameters, dispatch.typeArguments);
-  switchOverMembers(code, on, receiver, (type, value) => {
+  switchOverMembers(code, on, receiver, (type) => {
     const witness = checker.memberWitnesses(on, constraint, type)[member];
     if (witness === undefined) {
       unreachable(
@@ -83,16 +96,15 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
       );
     }
     const typeArguments = witness.typeArguments.map((each) => substitute(each, own));
-    const result = code.call(closeCall({ ...witness, typeArguments }, undefined), [
-      value,
-      ...others,
-    ]);
+    const self = references[0] === true ? passed(receiver, [0], 0) : code.field(receiver, 0);
+    const result = code.call(closeCall({ ...witness, typeArguments }, undefined), [self, ...rest]);
     code.return(required.isAsync ? code.await(result) : result);
   });
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));
   const name = `${spelledType(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
   const module = tables.moduleIndex(checker.moduleOf(required));
-  return code.entry({ name, module, span: required.name.span, annotations: [] }, required.isAsync);
+  const header = { name, module, span: required.name.span, annotations: [] };
+  return code.entry(header, required.isAsync, references);
 }
 
 /** The entry converting a value of the `any` type `from` into `to`, whose constraints it has. */
@@ -108,8 +120,12 @@ export function anyConversionEntry(
   }
   const { span } = first.trait.name;
   const code = new SynthesizedCode(lowering, span, 1);
-  switchOverMembers(code, from, code.parameters[0], (type, value) => {
-    code.return(convertedIntoAny(code, { value, from: type, to }, span));
+  const [value] = code.parameters;
+  if (value === undefined) {
+    unreachable('A conversion takes the value it converts.');
+  }
+  switchOverMembers(code, from, value, (type) => {
+    code.return(convertedIntoAny(code, { value: code.field(value, 0), from: type, to }, span));
   });
   const name = `${spelledType(checker, from)} as ${spelledType(checker, to)}`;
   const module = tables.moduleIndex(checker.moduleOf(first.trait));
@@ -127,9 +143,13 @@ export function anyFieldEntry(lowering: Lowering, on: AnyType, field: string): F
     unreachable(`${spelledType(checker, on)} requires no field '${field}'.`);
   }
   const code = new SynthesizedCode(lowering, required.name.span, 1);
-  switchOverMembers(code, on, code.parameters[0], (type, value) => {
+  const [value] = code.parameters;
+  if (value === undefined) {
+    unreachable('A field read takes the value it reads.');
+  }
+  switchOverMembers(code, on, value, (type) => {
     const index = (checker.fieldsOf(type) ?? []).findIndex((each) => each.name === field);
-    code.return(code.field(value, index));
+    code.return(code.field(code.field(value, 0), index));
   });
   const name = `${spelledType(checker, on)}.${field}`;
   const module = tables.moduleIndex(checker.moduleOf(trait));
@@ -137,18 +157,15 @@ export function anyFieldEntry(lowering: Lowering, on: AnyType, field: string): F
 }
 
 /**
- * Switches on the variant of `on`'s enum in `value`, writing what each does with the value of
- * its member type it holds.
+ * Switches on the variant of `on`'s enum in `value`, writing what each does with the value of its
+ * member type, field 0 of the variant.
  */
 function switchOverMembers(
   code: SynthesizedCode,
   on: AnyType,
-  value: Register | undefined,
-  write: (type: Type, value: Register) => void,
+  value: Register,
+  write: (type: Type) => void,
 ): void {
-  if (value === undefined) {
-    unreachable('What switches over an any value takes it first.');
-  }
   const cases = code.tables.types
     .anyMembers(on)
     .map((type) => ({ type, label: code.code.newLabel() }));
@@ -159,6 +176,6 @@ function switchOverMembers(
   );
   for (const { type, label } of cases) {
     code.code.place(label);
-    write(type, code.field(value, 0));
+    write(type);
   }
 }

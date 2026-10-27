@@ -1,0 +1,32 @@
+# outcome: [[2,11],1]
+# A method taking `&self`, called through an `any` value, changes the value inside it (§3.7, §3.10).
+
+trait Counter:
+  fn bump(self: &Self)
+  fn count(self: Self) -> int
+
+struct Ones { n: int }
+struct Tens { n: int }
+
+fn bump(self: &Ones):
+  self.n += 1
+
+fn bump(self: &Tens):
+  self.n += 10
+
+fn count(self: Ones) -> int:
+  self.n
+
+fn count(self: Tens) -> int:
+  self.n
+
+fn bumped(counter: &any Counter):
+  counter.bump()
+
+async fn main():
+  let counters: Array<any Counter> = [Ones{n: 1}, Tens{n: 1}]
+  for i in 0..2:
+    bumped(&counters[i])
+  let one: any Counter = Ones{n: 0}
+  one.bump()
+  ([for counter in counters: counter.count()], one.count())

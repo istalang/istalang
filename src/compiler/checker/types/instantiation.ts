@@ -50,7 +50,11 @@ export function instantiatedBody(body: CheckedBody, substitution: Substitution):
     patternOf: (pattern) => {
       const checked = body.patternOf(pattern);
       return {
-        ...checked,
+        tests: checked.tests.map((test) =>
+          test.kind === 'downcast'
+            ? { ...test, from: substituteAny(test.from, substitution), to: concrete(test.to) }
+            : test,
+        ),
         bindings: checked.bindings.map((binding) => ({ ...binding, type: concrete(binding.type) })),
       };
     },

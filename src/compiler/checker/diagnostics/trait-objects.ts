@@ -14,6 +14,21 @@ export const traitObjectTemplates = {
     code: 5151,
     message: (trait: string) => `${trait} is already among this 'any' type's traits.`,
   },
+  downcastNever: {
+    code: 5153,
+    message: (type: string, any: string) =>
+      `This never matches: ${type} doesn't meet ${any}, so no value of it is ever inside one.`,
+  },
+  genericDowncast: {
+    code: 5154,
+    message: (name: string) =>
+      `'${name}' is generic, and a pattern gives no type arguments, so an 'any' value can't be matched against it.`,
+  },
+  notDowncast: {
+    code: 5155,
+    message: () =>
+      "An 'any' value is matched by a pattern naming its own type: a struct, a variant qualified by its enum, or '_'.",
+  },
   anyFieldChanged: {
     code: 5152,
     message: (field: string) =>

@@ -40,9 +40,17 @@ export function lowerTests(
   for (const test of pattern.tests) {
     const part = readPart(context, subject, test.path, span);
     const pass = context.code.newLabel();
-    if (test.kind === 'variant') {
-      const isVariant = { register: part, variant: test.variant };
-      branchOnVariant(context, isVariant, { matched: pass, otherwise: fail }, span);
+    if (test.kind === 'variant' || test.kind === 'downcast') {
+      const variant =
+        test.kind === 'variant'
+          ? test.variant
+          : context.tables.types.anyVariant(test.from, test.to);
+      branchOnVariant(
+        context,
+        { register: part, variant },
+        { matched: pass, otherwise: fail },
+        span,
+      );
     } else {
       context.code.branch(passed(context, test, part, span), pass, fail, span);
     }
@@ -66,7 +74,7 @@ export function lowerBindings(
 /** A register holding whether `part` passes a comparing test. */
 function passed(
   context: FunctionContext,
-  test: Exclude<PatternTest, { kind: 'variant' }>,
+  test: Exclude<PatternTest, { kind: 'variant' | 'downcast' }>,
   part: Register,
   span: Span,
 ): Register {

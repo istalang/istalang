@@ -5,10 +5,12 @@
  * the declaration it stands for, which is where a trace through it points.
  *
  * Its registers are its parameters, in order, then temporaries; it captures nothing, and holds no
- * cells, since it never takes a value by `&`.
+ * cells. A parameter it takes by `&`, as a dispatch does for a method's `&self` (§3.10), holds a
+ * reference already, which it passes on by `&` as it is or into a part of it.
  */
 
 import type { CodeFunction } from '../../definition/functions.ts';
+import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import { resultVariants } from '../../language/well-known.ts';
@@ -51,7 +53,7 @@ export class SynthesizedCode implements CodeContext {
     return dst;
   }
 
-  call(callee: Callee, values: readonly Register[]): Register {
+  call(callee: Callee, values: readonly (Register | Argument)[]): Register {
     return emitCall(this, { span: this.span, callee: this.#indexOf(callee), arguments: values });
   }
 
@@ -133,14 +135,14 @@ export class SynthesizedCode implements CodeContext {
     this.code.emit({ kind: 'return', span: this.span, value });
   }
 
-  /** The finished entry, named and placed by `header`. */
-  entry(header: EntryHeader, isAsync: boolean): CodeFunction {
+  /** The finished entry, named and placed by `header`; `references` says which parameters are `&`. */
+  entry(header: EntryHeader, isAsync: boolean, references: readonly boolean[] = []): CodeFunction {
     const { registers, instructions } = this.code.finish();
     return {
       kind: 'code',
       ...header,
       async: isAsync,
-      parameters: this.parameters.map(() => ({ reference: false })),
+      parameters: this.parameters.map((_, index) => ({ reference: references[index] === true })),
       captures: 0,
       registers,
       cells: [],

@@ -37,6 +37,7 @@ import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/name
 import { checkEqualSides } from '../types/equality.ts';
 import { comparable, errorType, type NominalDeclaration, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { downcastOf } from './downcasts.ts';
 import { bodyScope, type ValuePart } from './parts.ts';
 import { literalShape, nullaryShape, structKey } from './shapes.ts';
 import {
@@ -85,6 +86,7 @@ function testsIn(context: BodyContext): PatternTests {
     reference: (node, part) => reference(context, node, part),
     variant: (node, naming, part) =>
       node.type === undefined ? undefined : namedVariant(context, node.type, naming, part),
+    downcast: (node, part) => downcastOf(context, node, part),
   };
 }
 

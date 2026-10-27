@@ -8,7 +8,7 @@ import type { Comprehension, Expression, SelectCase } from '../syntax/expression
 import type { Identifier } from '../syntax/node.ts';
 import type { CompareFieldPattern } from '../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../syntax/statements.ts';
-import type { Type } from './types/type.ts';
+import type { AnyType, Type } from './types/type.ts';
 
 /**
  * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, or a select
@@ -30,6 +30,8 @@ export interface TargetBinding {
  * variant's fields are read only after its variant was tested.
  *
  * - `variant`: the part is its enum's `variant`-th variant.
+ * - `downcast`: the part, of the `any` type `from`, holds a value of the type `to` (§3.10), which
+ *   the tests after it reach at the part's field 0.
  * - `equal`: the part `==` a value: a literal or comparison's expression, or a top-level
  *   constant's name; `negated` for `!=`.
  * - `compare`: `compare(part, value)` called at `site`, in the relation its operator names.
@@ -39,6 +41,12 @@ export type PatternTest =
       readonly kind: 'variant';
       readonly path: readonly number[];
       readonly variant: number;
+    }
+  | {
+      readonly kind: 'downcast';
+      readonly path: readonly number[];
+      readonly from: AnyType;
+      readonly to: Type;
     }
   | {
       readonly kind: 'equal';
