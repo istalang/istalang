@@ -30,6 +30,8 @@ export interface WellKnownDeclaration {
 export const wellKnown = {
   /** What an async call returns and `await` waits on (§3.3, §6). */
   future: { module: 'prelude', name: 'Future' },
+  /** What `spawn` gives: a handle to the new instance, whose end `result()` waits for (§9). */
+  instance: { module: 'prelude', name: 'Instance' },
   /** What `T?` stands for (§3.11). */
   optional: { module: 'prelude', name: 'Optional' },
   /** The runtime's one primitive for sharing values between executions, run by natives (§6). */

@@ -21,6 +21,7 @@ import type {
   Native,
   NativeCapabilities,
   NativeFutures,
+  NativeInstances,
   NativeLogs,
   NativeRandom,
   NativeResources,
@@ -109,6 +110,7 @@ function capabilitiesOf(instance: Instance, startedAt: bigint): NativeCapabiliti
     resources: nativeResourcesOf(instance.heap),
     random: nativeRandomOf(instance),
     logs: nativeLogsOf(instance, startedAt),
+    instances: nativeInstancesOf(instance),
     testing: nativeTestingOf(instance),
   };
 }
@@ -177,6 +179,27 @@ function nativeLogsOf(instance: Instance, startedAt: bigint): NativeLogs {
   };
 }
 
+/** The instances `instance` spawns and waits for, as natives reach them (§9). */
+function nativeInstancesOf(instance: Instance): NativeInstances {
+  return {
+    spawn: (entry, options) => {
+      if (!isComposite(entry) || entry.kind !== 'closure') {
+        unreachable('An instance is spawned with no function; the checker forbids it.');
+      }
+      return instance.spawn(
+        { function: entry.function, captures: entry.captures, arguments: [] },
+        options,
+      );
+    },
+    ended: (name, result) =>
+      instance.futures.createHandle({
+        kind: 'watch',
+        instance: name,
+        until: { kind: 'ended', result },
+      }),
+  };
+}
+
 /** What a test reaches of `instance` and of the world it runs in (§10). */
 function nativeTestingOf(instance: Instance): NativeTesting {
   const world = (): TestWorld => {
@@ -198,19 +221,11 @@ function nativeTestingOf(instance: Instance): NativeTesting {
       return { kind: 'handle', object: mock.id };
     },
     calls: (handle) => instance.heap.of(handleObject(handle), 'mock').calls,
-    start: (entry, arguments_, crashEveryAwait) => {
-      if (!isComposite(entry) || entry.kind !== 'closure') {
-        unreachable('An instance starts with no function; the checker forbids it.');
-      }
-      const call = {
-        function: entry.function,
-        captures: entry.captures,
-        arguments: [...arguments_],
-      };
-      return instance.spawn(call, crashEveryAwait);
-    },
     inspect: (name) => world().inspect(name),
-    watch: (name, until) => instance.futures.createHandle({ kind: 'watch', instance: name, until }),
+    watch: (name, until) => {
+      world();
+      return instance.futures.createHandle({ kind: 'watch', instance: name, until });
+    },
     handle: (type) => ({ kind: 'extern', type, payload: world().handlePayload() }),
   };
 }

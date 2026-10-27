@@ -167,12 +167,12 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   },
   spawn: (machine, instruction, frame) => {
     const { function: entry, captures } = calledFunction(frame, instruction.callee);
-    machine.spawn({
+    const name = machine.spawn({
       function: entry,
       captures: [...captures],
       arguments: instruction.arguments.map((register) => readRegister(frame, register)),
     });
-    frame.pc += 1;
+    next(frame, instruction.dst, { kind: 'extern', type: instruction.type, payload: name });
   },
   currentCall: (machine, instruction, frame) => {
     next(frame, instruction.dst, machine.currentCall());

@@ -184,11 +184,10 @@ async function finish(
     // biome-ignore lint/performance/noAwaitInLoops: each wake depends on what the last one returned.
     step = steps.next(await arrivalsBy(step.value, { runtime, host, environment }));
   }
-  const unfinished = [...step.value].flatMap(([instance, ending]) =>
-    ending.kind === 'finished'
-      ? []
-      : [unfinishedText(runtime, instance, ending, instance === name ? 'main' : 'spawned')],
-  );
+  const unfinished = [...step.value].flatMap(([instance, ending]) => {
+    const role = instance === name ? 'main' : 'spawned';
+    return failsRun(ending, role) ? [unfinishedText(runtime, instance, ending, role)] : [];
+  });
   for (const text of unfinished) {
     environment.writeError(text);
   }
@@ -215,6 +214,9 @@ async function arrivalsBy(due: bigint | undefined, session: Session) {
     }
   }
 }
+
+/** Whether an instance is the run's `main` or one it spawned. */
+type Role = 'main' | 'spawned';
 
 /** What ended a wait: a timer came due or a host's promise settled, or the process went idle. */
 type Wake = 'woke' | 'idle';
@@ -246,12 +248,21 @@ async function nextWake(due: bigint | undefined, { host, environment }: Session)
   return woke;
 }
 
+/**
+ * Whether an instance that settled as `settled` fails the run: one that didn't finish, except a
+ * spawned one that was terminated, which only `runtime.isolate` does in a run, once its caller has
+ * the panic as an `Err` (§9).
+ */
+function failsRun(settled: Settled, role: Role): settled is Exclude<Settled, { kind: 'finished' }> {
+  return settled.kind !== 'finished' && !(settled.kind === 'terminated' && role === 'spawned');
+}
+
 /** What the error stream says of an instance that didn't finish: `main`'s, or one it spawned. */
 function unfinishedText(
   runtime: Runtime,
   instance: string,
   settled: Exclude<Settled, { kind: 'finished' }>,
-  role: 'main' | 'spawned',
+  role: Role,
 ): string {
   if (settled.kind === 'stuck') {
     const where = runtime

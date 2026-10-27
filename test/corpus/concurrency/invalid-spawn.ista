@@ -4,7 +4,7 @@
 # error: 5604 at 37:9
 # error: 5604 at 39:9
 # error: 5605 at 40:18
-# error: 5605 at 41:9
+# error: 5605 at 41:13
 # error: 5604 at 44:9
 # spawn (§9) starts a call as a new instance: an extern, a function taking a reference, a value of
 # a plain function type, a call through `?.` and a function a constraint requires can't be spawned,
@@ -38,7 +38,7 @@ async fn main():
   const maybe: Id? = none
   spawn maybe?.show()
   spawn takesBox(Inbox.create<int>())
-  spawn Job{box: Inbox.create<int>()}.run()
+  _ = spawn Job{box: Inbox.create<int>()}.run()
 
 fn doubled<T is Addable & Sendable>(x: T):
   spawn add(x, x)

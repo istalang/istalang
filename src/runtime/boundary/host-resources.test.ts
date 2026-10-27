@@ -73,7 +73,7 @@ describe('a disposable host type', () => {
     const { host, released } = leasingHost();
     const test = testRuntime({ host });
     const started = test.runtime.deploy(leasing).start('l');
-    expect(started.state).toEqual({ kind: 'waiting', until: undefined });
+    expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
     expect(released).toEqual([]);
     const filled = test.runtime.fill('l', 'approval', 'leased ');
     expect(runToEnd(test, 'l', filled)).toEqual({ kind: 'finished', outcome: '"leased a"' });
@@ -94,7 +94,7 @@ describe('a disposable host type', () => {
     expect(test.runtime.fill('t', 'approval', false).state).toMatchObject({ kind: 'panicked' });
     expect(released).toEqual([]);
     expect(test.runtime.terminate('t')).toEqual({
-      state: { kind: 'terminated' },
+      state: { kind: 'terminated', message: 'refused', trace: expect.any(String) },
       spawned: [],
       logs: [],
     });

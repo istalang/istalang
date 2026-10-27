@@ -1,7 +1,7 @@
 # The random module (spec §3.8): draws within their bounds, UUIDs in their layout, values a mock
 # fixes, and the draws a segment makes again when it runs again (§5).
 
-import Suite, Test, test, assert, assertEq, expectPanic, mock, calls, start, startCrashingEveryAwait from 'testing'
+import Suite, Test, test, assert, assertEq, expectPanic, mock, calls, spawnCrashingEveryAwait from 'testing'
 import * as random from 'random'
 import * as runtime from 'runtime'
 
@@ -22,12 +22,18 @@ async fn drawsThenCommits():
   seen(random.integer(0..1_000_000_000_000))
   await runtime.commit()
 
+# What an instance that finished gave; a panic when it didn't.
+fn finishedWith(outcome: Result<string>) -> string:
+  match outcome:
+    case Ok{value}: value
+    case Err{error}: panic(error.message)
+
 async fn spawnsThenDraws():
-  const first = start(drawsUuid)
-  const second = start(drawsUuid)
+  const first = spawn drawsUuid()
+  const second = spawn drawsUuid()
   seenText(random.uuid())
   await runtime.commit()
-  seenText(await first.result() + " " + await second.result())
+  seenText(finishedWith(await first.result()) + " " + finishedWith(await second.result()))
   await runtime.commit()
 
 async fn drawsUuid() -> Future<string>:
@@ -73,14 +79,14 @@ fn suite() -> Array<Test>: [
   }),
   test("a segment that runs again draws the same values", async fn(): {
     const recorded = mock(seen, ignored)
-    await startCrashingEveryAwait(drawsThenCommits).result()
+    assertEq(await spawnCrashingEveryAwait(drawsThenCommits).result(), Ok{()})
     const values = calls(recorded)
     assertEq(values.length(), 2)
     assertEq(values[0], values[1])
   }),
   test("a spawned instance draws from a seed of its own, the same one when its parent's segment runs again", async fn(): {
     const recorded = mock(seenText, ignoredText)
-    await startCrashingEveryAwait(spawnsThenDraws).result()
+    assertEq(await spawnCrashingEveryAwait(spawnsThenDraws).result(), Ok{()})
     const values = calls(recorded)
     assertEq(values.length(), 4)
     assertEq(values[0], values[1])

@@ -1,0 +1,16 @@
+# error: 5101 at 7:18
+# error: 5101 at 15:14
+# error: 5001 at 16:18
+# An Instance<T> is what spawn gives (§9): its result() copies the outcome out, so T must be
+# sendable, and as a handle it never crosses to the host.
+
+extern fn report(instance: Instance<int>)
+
+fn slot() -> Slot<int>: Slot.create<int>()
+
+fn twice(n: int) -> int: n * 2
+
+async fn main():
+  const s = spawn slot()
+  drop await s.result()
+  const n: int = spawn twice(1)

@@ -84,8 +84,8 @@ export interface Machine {
   readonly wait: (frame: ActiveFrame) => void;
   /** The value of the future `handle` names, once it has resolved. */
   readonly settled: (handle: Value) => { readonly value: Value } | undefined;
-  /** Starts `call` as a new instance once the running segment commits (§9). */
-  readonly spawn: (call: InstanceCall) => void;
+  /** Starts `call` as a new instance once the running segment commits (§9); its name. */
+  readonly spawn: (call: InstanceCall) => string;
   /** A handle to a new guard that calls the function value `callback` when disposed (§7). */
   readonly guard: (callback: Value) => Value;
   /** A handle to the weak reference to the running async call, for `worker.disposing()` (§7). */

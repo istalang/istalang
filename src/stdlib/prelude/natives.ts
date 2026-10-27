@@ -19,6 +19,7 @@ import {
   type NativeContext,
   type Natives,
   Panic,
+  type WithInstances,
   type WithSlots,
   type WithWeakSide,
 } from '../../runtime/natives.ts';
@@ -26,6 +27,7 @@ import { float, int, text } from '../native-values.ts';
 import { divisionByZero, numeric } from '../numeric.ts';
 import type { NativeKeys } from '../std-module.ts';
 import { arrayNatives } from './arrays.ts';
+import { instanceNatives } from './instance-natives.ts';
 import { mapNatives } from './maps.ts';
 import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
@@ -34,8 +36,9 @@ import { weakNatives } from './weak-natives.ts';
 
 export const preludeNatives = (
   keys: NativeKeys,
-): Natives<NativeContext & WithSlots & WithWeakSide> => ({
+): Natives<NativeContext & WithSlots & WithWeakSide & WithInstances> => ({
   ...arrayNatives(keys),
+  ...instanceNatives(keys),
   ...slotNatives(keys),
   ...mapNatives(keys),
   ...stringNatives(keys),

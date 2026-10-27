@@ -3,7 +3,7 @@
 # twice: in the test's own instance, and in one that discards and re-runs every segment before
 # committing it (§10).
 
-import Suite, Test, test, assertEq, expectPanic, FakeClock, Started, mock, startCrashingEveryAwait from 'testing'
+import Suite, Test, test, assertEq, expectPanic, FakeClock, mock, spawnCrashingEveryAwait, idle from 'testing'
 import * as testing from 'testing'
 import runAndReRun from '../testing/re-runs.test'
 import * as futures from 'futures'
@@ -164,12 +164,12 @@ async fn succeedingThirdTime() -> Future<(Outcome, Array<int>)>:
   (await futures.retry(attempt, 3, 1s), startedAt)
 
 # Moves `clock` through the backoffs of `retrying`, an instance running `succeedingThirdTime`.
-async fn backingOff(clock: FakeClock, retrying: Started<(Outcome, Array<int>)>):
+async fn backingOff(clock: FakeClock, retrying: Instance<(Outcome, Array<int>)>):
   await retrying.idle()
   clock.advance(1s)
   await retrying.idle()
   clock.advance(2s)
-  assertEq(await retrying.result(), (Ok{(3)}, [0, 1000, 3000]))
+  assertEq(await retrying.result(), Ok{(Ok{(3)}, [0, 1000, 3000])})
 
 # Retries, twice a second apart, a plain attempt that always fails.
 async fn failingTwice() -> Future<Outcome>:
@@ -182,16 +182,16 @@ async fn succeedingFirstTime() -> Future<Outcome>:
 @Suite{"futures › retry"}
 fn retrySuite() -> Array<Test>: [
   test("waits backoff before the first retry and twice as long before the next", withClock, async fn(clock): {
-    await backingOff(clock, testing.start(succeedingThirdTime))
+    await backingOff(clock, spawn succeedingThirdTime())
   }),
   test("waits backoff before the first retry and twice as long before the next, with every segment re-run", withClock, async fn(clock): {
-    await backingOff(clock, startCrashingEveryAwait(succeedingThirdTime))
+    await backingOff(clock, spawnCrashingEveryAwait(succeedingThirdTime))
   }),
   test("gives the last Err once every attempt failed", withClock, async fn(clock): {
-    const retrying = testing.start(failingTwice)
+    const retrying = spawn failingTwice()
     await retrying.idle()
     clock.advance(1s)
-    assertEq(await retrying.result(), Err{("attempt 2")})
+    assertEq(await retrying.result(), Ok{Err{("attempt 2")}})
   }),
   ...runAndReRun("gives the first Ok without waiting", succeedingFirstTime, Ok{(1)}),
   test("panics with no attempt to make", async fn(): {

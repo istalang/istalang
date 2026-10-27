@@ -7,8 +7,9 @@
  * - how many instances it has spawned, which names the next one (`<instance>/<n>`, §9)
  * - its random source, a seed and how many draws were made from it, so a segment that runs again
  *   draws the same values (§3.8 `random`, random-seed.ts, scheduler/random-source.ts)
- * - whether every segment runs twice before it commits (`crashEveryAwait`, §10), an option of the
- *   instance, so a runtime that wakes it after a restart honours it too
+ * - its options, which a runtime that wakes it after a restart honours too: whether every segment
+ *   runs twice before it commits (`crashEveryAwait`, §10), and whether a panic terminates it at
+ *   once (`terminatesOnPanic`, as `runtime.isolate` starts it, §9)
  * - for a panicked instance, when the failed segment started. `now()` returns its segment's
  *   start time, so an operator's retry sees the same time (docs/arch/definition.md, "Time").
  *
@@ -68,8 +69,11 @@ const status = z.discriminatedUnion('kind', [
     replay: replay.optional(),
   }),
   z.strictObject({ kind: z.literal('finished'), outcome: value }),
-  /** Ended by its operator after a panic (§3.12). */
-  z.strictObject({ kind: z.literal('terminated') }),
+  /**
+   * Ended after a panic, by its operator or at once for an instance `runtime.isolate` started
+   * (§3.12, §9), keeping that panic.
+   */
+  z.strictObject({ kind: z.literal('terminated'), message: z.string(), trace: z.string() }),
 ]);
 
 const snapshotContents = z.strictObject({
@@ -79,6 +83,8 @@ const snapshotContents = z.strictObject({
   status,
   /** Every segment runs twice, the first run discarded, before it commits (§10). */
   crashEveryAwait: z.boolean(),
+  /** A panic terminates the instance at once, as `runtime.isolate` asks (§9). */
+  terminatesOnPanic: z.boolean(),
   /** How many instances this one has spawned (§9). */
   spawned: count,
   /** Its random source: the seed, and how many draws its committed segments made (§3.8). */
@@ -96,6 +102,11 @@ type Contents = z.output<typeof snapshotContents>;
 const snapshot = snapshotContents.superRefine(checkObjectReferences);
 
 export type Snapshot = z.output<typeof snapshot>;
+
+/** A snapshot of an instance that has panicked (§3.12). */
+export type PanickedSnapshot = Snapshot & {
+  readonly status: Extract<Snapshot['status'], { kind: 'panicked' }>;
+};
 
 export const snapshotFormat = defineFormat('istalang-snapshot', 1, snapshot);
 

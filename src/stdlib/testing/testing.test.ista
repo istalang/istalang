@@ -4,7 +4,7 @@
 # constructors give is read from the tests they build; the runner's own tests run focused tests.
 
 import Suite, Test, test, group, skip, only, Setup, setups, assert, assertEq, expectPanic from 'testing'
-import FakeClock, FakeQueue, mock, handle from 'testing'
+import FakeClock, FakeQueue, mock, handle, idle, state from 'testing'
 import * as testing from 'testing'
 import * as time from 'time'
 import Time, Duration from 'time'
@@ -128,28 +128,26 @@ fn clocks() -> Array<Test>: [
     const clock = FakeClock{start: Time{value: 0}}
     fn _ = mock(time.now, clock.now)
     fn _ = mock(time.at, clock.at)
-    const started = testing.start(waitsAday)
+    const started = spawn waitsAday()
     await started.idle()
     clock.advance(Duration{value: 86_399_999})
     await started.idle()
     assert(started.state() is Waiting)
     clock.advance(Duration{value: 1})
-    assertEq(await started.result(), 86_400_000)
+    assertEq(await started.result(), Ok{86_400_000})
   }),
   test("fills deadlines earliest first, ties in the order they were set", async fn(): {
     const clock = FakeClock{start: Time{value: 0}}
     fn _ = mock(time.at, clock.at)
     const records = mock(record, fn(name: string): ())
-    const late = testing.start(waitsThenRecords, "late", 2)
+    const late = spawn waitsThenRecords("late", 2)
     await late.idle()
-    const first = testing.start(waitsThenRecords, "first", 1)
+    const first = spawn waitsThenRecords("first", 1)
     await first.idle()
-    const second = testing.start(waitsThenRecords, "second", 1)
+    const second = spawn waitsThenRecords("second", 1)
     await second.idle()
     clock.advance(Duration{value: 2})
-    await late.result()
-    await first.result()
-    await second.result()
+    assertEq([await late.result(), await first.result(), await second.result()], [Ok{()}, Ok{()}, Ok{()}])
     assertEq(records.calls(), ["first", "second", "late"])
   }),
   test("resolves a deadline already reached at once", async fn(): {
@@ -172,11 +170,11 @@ fn queues() -> Array<Test>: [
     fn _ = mock(send, fake.send)
     fn _ = mock(receive, fake.receive)
     assert(queueOf("in") == queueOf("in") and queueOf("in") != queueOf("out"))
-    const started = testing.start(relays, "in")
+    const started = spawn relays("in")
     await started.idle()
     assertEq(fake.pending("in"), [])
     fake.post("in", 41)
-    assertEq(await started.result(), 41)
+    assertEq(await started.result(), Ok{41})
     assertEq(fake.pending("out"), [42])
   }),
   test("retracts a revertible send once its holder lets go", fn(): {

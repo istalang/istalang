@@ -10,6 +10,11 @@ extern struct Slot<T>
 extern struct WeakRef<T is Disposable>
 extern struct Future<T>
 
+# What `spawn` gives (§9): a handle to the new instance, compared by identity, which holds nothing.
+# `result()` resolves with its first end: `Ok` of its outcome, or `Err` of its panic.
+extern sendable struct Instance<T>
+extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>>
+
 extern fn Slot.create<T>() -> Slot<T>
 extern fn put<T>(self: Slot<T>, value: T) -> Future<unit>
 extern fn take<T>(self: Slot<T>) -> Future<T>

@@ -10,7 +10,7 @@
  */
 
 import { z } from 'zod';
-import { functionId, register } from '../operands.ts';
+import { functionId, register, typeId } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
 import { argument } from './places.ts';
 
@@ -31,8 +31,14 @@ const call = defineInstruction('call', {
 /**
  * `spawn f(args)`: a new instance on this Definition, running a named function or a closure of a
  * sendable function type, whose captures go along; the arguments are sendable copies (spec §9).
+ * `dst` gets its `Instance<T>`, of extern type entry `type`, whose payload is the instance's name.
  */
-const spawn = defineInstruction('spawn', { callee, arguments: z.array(register) });
+const spawn = defineInstruction('spawn', {
+  dst: register,
+  type: typeId,
+  callee,
+  arguments: z.array(register),
+});
 
 /**
  * A handle to the async call this frame belongs to, taken once at a function's entry so that

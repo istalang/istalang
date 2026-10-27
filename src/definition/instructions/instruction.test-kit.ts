@@ -177,20 +177,28 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
     });
     return direct === undefined ? throughValue : fc.oneof(direct, throughValue);
   },
-  spawn: (s) =>
-    pick(
+  spawn: (s) => {
+    const instance = pick(s.types, (type) => type.kind === 'extern' && type.role === 'instance');
+    const spawned = pick(
       s.signatures,
       (fn) =>
         fn.kind === 'code' &&
         fn.captures === 0 &&
         fn.parameters.every((_, at) => !takesReference(fn, at)),
-    )?.chain((fn) => {
+    );
+    if (instance === undefined || spawned === undefined) {
+      return;
+    }
+    return fc.tuple(instance, spawned).chain(([type, fn]) => {
       const arity = s.signatures[fn]?.parameters.length ?? 0;
       return fc.record({
+        dst: index(s.registers),
+        type: fc.constant(type),
         callee: fc.constant({ kind: 'function' as const, function: fn }),
         arguments: fc.array(index(s.registers), { minLength: arity, maxLength: arity }),
       });
-    }),
+    });
+  },
   currentCall: (s) => (s.async ? fc.record({ dst: index(s.registers) }) : undefined),
   await: (s) =>
     s.async

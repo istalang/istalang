@@ -126,10 +126,11 @@ const disposal = z.discriminatedUnion('kind', [
 /**
  * What the runtime makes of an extern type's values: a `cell` type is every shared struct's (spec
  * §3.18), and `_Cell<T>`, the one variables live in (§3.7, §3.14); a `future` type is every
- * `Future<T>`, which a host's extern returning one gives back pending (§9). Any other extern type
- * has none.
+ * `Future<T>`, which a host's extern returning one gives back pending (§9); an `instance` type is
+ * every `Instance<T>`, which `spawn` gives, holding the new instance's name (§9). Any other extern
+ * type has none.
  */
-const externRole = z.enum(['cell', 'future']);
+const externRole = z.enum(['cell', 'future', 'instance']);
 
 /** A type the runtime or host implements, such as `prelude.Array<int>` or a host `Queue<T>`. */
 const external = z.strictObject({

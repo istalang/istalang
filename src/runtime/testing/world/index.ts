@@ -14,8 +14,9 @@
  *   the test mocked it (§10), and that wait is the caller's to make, as `settle` leaves it
  *   (runtime/settle.ts), so the runtime never sleeps. A wait past the deadline ends the test.
  * - The test ends when its own instance finishes, or when any instance panics, which fails it at
- *   once with that panic (§10), unless an instance waits for that panic (`expectPanic`). Such a
- *   wait ends once it is answered, so the world remembers each panic waited for as it records it.
+ *   once with that panic (§10), unless an instance waits for its end (`result()`, as `expectPanic`
+ *   does). Such a wait ends once it is answered, so the world remembers each panic waited for as it
+ *   records it.
  *   One whose instances all wait on nothing left to wake them fails, naming where each waits.
  * - An extern no mock replaces panics the instance calling it: a test's only host is its mocks.
  */
@@ -31,6 +32,7 @@ import type { Natives } from '../../natives.ts';
 import { seedTextOf } from '../../random-seed.ts';
 import type { Answered, Watch } from '../../scheduler/futures.ts';
 import { type Inspection, inspection } from '../../scheduler/inspect.ts';
+import { endOf } from '../../scheduler/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
 import { reachingMock } from '../../scheduler/mocks.ts';
 import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/test-world.ts';
@@ -171,12 +173,10 @@ export class World implements TestWorld {
     // A segment of the instance running on has done more than its last commit says.
     const settled = !this.#calling.has(watch.instance);
     switch (watch.until.kind) {
+      case 'ended':
+        return endOf(this.#loaded.definition.types, snapshot, watch.until.result);
       case 'idle':
         return settled && (status === 'active' || status === 'finished') ? null : undefined;
-      case 'finished':
-        return snapshot?.status.kind === 'finished' ? snapshot.status.outcome : undefined;
-      case 'panicked':
-        return snapshot?.status.kind === 'panicked' ? snapshot.status.message : undefined;
       case 'waypoint': {
         const { label } = watch.until;
         const waits =
@@ -277,16 +277,10 @@ export class World implements TestWorld {
     }
   }
 
-  /** Whether some instance's last commit waits for `instance` to panic. */
+  /** Whether some instance waits for `instance`'s end, so its panic is that wait's to handle. */
   #waitsForPanicOf(instance: string): boolean {
-    return [...this.#group.states.keys()].some((watcher) =>
-      this.#snapshotOf(watcher)?.objects.some(
-        (object) =>
-          object.kind === 'future' &&
-          object.state.kind === 'watch' &&
-          object.state.instance === instance &&
-          object.state.until.kind === 'panicked',
-      ),
+    return [...this.#group.states.values()].some(
+      (state) => state.kind === 'waiting' && state.watching.includes(instance),
     );
   }
 

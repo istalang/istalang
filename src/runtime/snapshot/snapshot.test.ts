@@ -33,6 +33,7 @@ const broadcastWaiting: Snapshot = {
   instance: 'broadcast-1',
   status: { kind: 'active' },
   crashEveryAwait: false,
+  terminatesOnPanic: false,
   spawned: 0,
   random: { seed: seedTextOf(testSeed), draws: 3 },
   pinned: [],
@@ -153,6 +154,11 @@ const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
         }),
         fc.record({ kind: fc.constant('finished' as const), outcome: valueArbitrary() }),
         fc.record({
+          kind: fc.constant('terminated' as const),
+          message: fc.string(),
+          trace: fc.string(),
+        }),
+        fc.record({
           kind: fc.constant('unstarted' as const),
           call: fc.record({
             function: fc.nat({ max: 9 }),
@@ -162,6 +168,7 @@ const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
         }),
       ),
       crashEveryAwait: fc.boolean(),
+      terminatesOnPanic: fc.boolean(),
       spawned: fc.nat({ max: 50 }),
       random: fc.record({
         seed: fc.uint8Array({ minLength: seedBytes, maxLength: seedBytes }).map(seedTextOf),
@@ -252,6 +259,7 @@ function holding(contents: Value): Snapshot {
     instance: 'deep',
     status: { kind: 'active' },
     crashEveryAwait: false,
+    terminatesOnPanic: false,
     spawned: 0,
     random: broadcastWaiting.random,
     pinned: [],

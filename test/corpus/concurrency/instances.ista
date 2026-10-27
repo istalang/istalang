@@ -1,0 +1,20 @@
+# outcome: "21 true false"
+# spawn gives the new instance's Instance<T> (§9): T is what its function returns, an async one's
+# awaited value. A handle compares by identity, may be passed to another instance, and its
+# result() gives that instance's end, here in a third instance.
+
+async fn half(n: int) -> Future<int>:
+  n // 2
+
+async fn relay(other: Instance<int>) -> Future<int>:
+  match await other.result():
+    case Ok{value}: value
+    case Err{error}: 0
+
+async fn main() -> Future<string>:
+  const first = spawn half(42)
+  const second = spawn half(42)
+  const relayed = spawn relay(first)
+  match await relayed.result():
+    case Ok{value}: "" + value + " " + (first == first) + " " + (first == second)
+    case Err{error}: error.message

@@ -1,13 +1,13 @@
-# The testing module (spec §10): suites, mocks, started instances and host handles, and the test
-# library over them.
+# The testing module (spec §10): suites, mocks, waits on spawned instances and host handles, and
+# the test library over them.
 #
 # Only test modules may import it (§10), so production code can never install a mock. The runtime
-# provides mocks, started instances, handles and the wait for a panic through externs; the rest is
+# provides mocks, the inspection of spawned instances and handles through externs; the rest is
 # written here.
 #
 # The language has no variadic generics, so a function over any function type is one overload per
-# arity, up to six, each for plain and async functions: `mock`, `calls`, `start` and `setups` are
-# those overloads, one line each, over one function of their own.
+# arity, up to six, each for plain and async functions: `mock`, `calls` and `setups` are those
+# overloads, one line each, over one function of their own.
 #
 # `ista test` lists and runs a suite's tests through `_list` and `_run`, the one place a suite's
 # tests are flattened, so the listing and each test's own instance (§10) walk the same list.
@@ -107,65 +107,27 @@ fn calls<A, B, C, D, R>(self: Mock<async fn(A, B, C, D) -> R>) -> Array<(A, B, C
 fn calls<A, B, C, D, E, R>(self: Mock<async fn(A, B, C, D, E) -> R>) -> Array<(A, B, C, D, E)>: _calls(self)
 fn calls<A, B, C, D, E, G, R>(self: Mock<async fn(A, B, C, D, E, G) -> R>) -> Array<(A, B, C, D, E, G)>: _calls(self)
 
-# A started instance's handle (§10), which names it.
-extern struct Started<R>
-
-# Where a started instance stands, as its last commit says (§10).
+# Where an instance stands, as its last commit says (§10).
 enum InstanceState:
   Running
   Waiting
   Panicked
   Finished
+  Terminated
 
-# Starts `f`, with its arguments as a tuple, as a new instance once the caller's segment commits
-# (§9, §10): the instance runs `f` itself.
-extern fn _start<F, A, R>(f: F, arguments: A) -> Started<R>
-extern fn _startCrashingEveryAwait<F, A, R>(f: F, arguments: A) -> Started<R>
-
-# Starts `f` with its arguments as a new instance (§10).
-fn start<R is Sendable>(f: sendable fn() -> R) -> Started<R>: _start(f, ())
-fn start<A is Sendable, R is Sendable>(f: sendable fn(A) -> R, a: A) -> Started<R>: _start(f, (a,))
-fn start<A is Sendable, B is Sendable, R is Sendable>(f: sendable fn(A, B) -> R, a: A, b: B) -> Started<R>: _start(f, (a, b))
-fn start<A is Sendable, B is Sendable, C is Sendable, R is Sendable>(f: sendable fn(A, B, C) -> R, a: A, b: B, c: C) -> Started<R>: _start(f, (a, b, c))
-fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, R is Sendable>(f: sendable fn(A, B, C, D) -> R, a: A, b: B, c: C, d: D) -> Started<R>: _start(f, (a, b, c, d))
-fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, R is Sendable>(f: sendable fn(A, B, C, D, E) -> R, a: A, b: B, c: C, d: D, e: E) -> Started<R>: _start(f, (a, b, c, d, e))
-fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, G is Sendable, R is Sendable>(f: sendable fn(A, B, C, D, E, G) -> R, a: A, b: B, c: C, d: D, e: E, g: G) -> Started<R>: _start(f, (a, b, c, d, e, g))
-fn start<R is Sendable>(f: sendable async fn() -> R) -> Started<R>: _start(f, ())
-fn start<A is Sendable, R is Sendable>(f: sendable async fn(A) -> R, a: A) -> Started<R>: _start(f, (a,))
-fn start<A is Sendable, B is Sendable, R is Sendable>(f: sendable async fn(A, B) -> R, a: A, b: B) -> Started<R>: _start(f, (a, b))
-fn start<A is Sendable, B is Sendable, C is Sendable, R is Sendable>(f: sendable async fn(A, B, C) -> R, a: A, b: B, c: C) -> Started<R>: _start(f, (a, b, c))
-fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D) -> R, a: A, b: B, c: C, d: D) -> Started<R>: _start(f, (a, b, c, d))
-fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D, E) -> R, a: A, b: B, c: C, d: D, e: E) -> Started<R>: _start(f, (a, b, c, d, e))
-fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, G is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D, E, G) -> R, a: A, b: B, c: C, d: D, e: E, g: G) -> Started<R>: _start(f, (a, b, c, d, e, g))
-
-# `start`, every segment of the instance run, discarded and run again before it commits (§10).
-fn startCrashingEveryAwait<R is Sendable>(f: sendable fn() -> R) -> Started<R>: _startCrashingEveryAwait(f, ())
-fn startCrashingEveryAwait<A is Sendable, R is Sendable>(f: sendable fn(A) -> R, a: A) -> Started<R>: _startCrashingEveryAwait(f, (a,))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, R is Sendable>(f: sendable fn(A, B) -> R, a: A, b: B) -> Started<R>: _startCrashingEveryAwait(f, (a, b))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, R is Sendable>(f: sendable fn(A, B, C) -> R, a: A, b: B, c: C) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, R is Sendable>(f: sendable fn(A, B, C, D) -> R, a: A, b: B, c: C, d: D) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, R is Sendable>(f: sendable fn(A, B, C, D, E) -> R, a: A, b: B, c: C, d: D, e: E) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d, e))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, G is Sendable, R is Sendable>(f: sendable fn(A, B, C, D, E, G) -> R, a: A, b: B, c: C, d: D, e: E, g: G) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d, e, g))
-fn startCrashingEveryAwait<R is Sendable>(f: sendable async fn() -> R) -> Started<R>: _startCrashingEveryAwait(f, ())
-fn startCrashingEveryAwait<A is Sendable, R is Sendable>(f: sendable async fn(A) -> R, a: A) -> Started<R>: _startCrashingEveryAwait(f, (a,))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, R is Sendable>(f: sendable async fn(A, B) -> R, a: A, b: B) -> Started<R>: _startCrashingEveryAwait(f, (a, b))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, R is Sendable>(f: sendable async fn(A, B, C) -> R, a: A, b: B, c: C) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D) -> R, a: A, b: B, c: C, d: D) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D, E) -> R, a: A, b: B, c: C, d: D, e: E) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d, e))
-fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, G is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D, E, G) -> R, a: A, b: B, c: C, d: D, e: E, g: G) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d, e, g))
+# Spawns `f` as a new instance once the caller's segment commits (§9), with every segment run,
+# discarded and run again before it commits (§10).
+extern fn _spawnCrashingEveryAwait<F, T>(f: F) -> Instance<T>
+fn spawnCrashingEveryAwait<T>(f: sendable fn() -> T) -> Instance<T>: _spawnCrashingEveryAwait(f)
+fn spawnCrashingEveryAwait<T>(f: sendable async fn() -> T) -> Instance<T>: _spawnCrashingEveryAwait(f)
 
 # Resolves once every execution of the instance is waiting, or it has finished.
-extern fn idle<R>(self: Started<R>) -> Future<unit>
+extern fn idle<R>(self: Instance<R>) -> Future<unit>
 # Resolves once an execution of the instance is suspended at waypoint `label`.
-extern fn reaches<R>(self: Started<R>, label: string) -> Future<unit>
+extern fn reaches<R>(self: Instance<R>, label: string) -> Future<unit>
 # The waypoint of every wait of the instance, or its source location where it has none.
-extern fn waitingAt<R>(self: Started<R>) -> Array<string>
-extern fn state<R>(self: Started<R>) -> InstanceState
-# Resolves with the instance's outcome when it finishes.
-extern fn result<R>(self: Started<R>) -> Future<R>
-
-# Resolves with the message the instance panics with. A panic waited for so fails no test.
-extern fn _panicked<R>(self: Started<R>) -> Future<string>
+extern fn waitingAt<R>(self: Instance<R>) -> Array<string>
+extern fn state<R>(self: Instance<R>) -> InstanceState
 
 # A value of extern type `T` equal to no other, for mocks that must return one (§10).
 extern fn handle<T>() -> T
@@ -225,17 +187,15 @@ fn assertEq<T is Encodable>(actual: T, expected: T):
   if actual != expected:
     panic("expected " + json.stringify(expected) + ", found " + json.stringify(actual))
 
-# Runs `f` as an instance of its own, since a panic freezes the instance it happens in (§5): the
-# message it panics with. Panics if `f` returns instead (§10).
-async fn expectPanic<R is Sendable>(f: sendable fn() -> R) -> Future<string>: await _panicOf(start(f))
-async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<string>: await _panicOf(start(f))
+# Spawns `f` as an instance of its own, since a panic freezes the instance it happens in (§5), and
+# waits for its end: the message it panics with. Panics if `f` returns instead (§10).
+async fn expectPanic<R is Sendable>(f: sendable fn() -> R) -> Future<string>: await _panicOf(spawn f())
+async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<string>: await _panicOf(spawn f())
 
-async fn _panicOf<R>(started: Started<R>) -> Future<string>:
-  await select:
-    case _panicked(started) as message:
-      message
-    case started.result():
-      panic("expectPanic expected a panic, but the function returned.")
+async fn _panicOf<R is Sendable>(instance: Instance<R>) -> Future<string>:
+  match await instance.result():
+    case Err{error}: error.message
+    case _: panic("expectPanic expected a panic, but the function returned.")
 
 # A clock standing still at `start` until `advance` moves it (§10): `now` and `at` replace
 # `time.now` and `time.at`.

@@ -52,7 +52,11 @@ function inDeclaredOrder(
   declared: readonly { readonly name: string }[],
   fields: NamedFields,
 ): Value[] {
-  return declared.map(({ name }) => fields[name] ?? unreachable(`No field '${name}' is given.`));
+  return declared.map(({ name }) => {
+    const given = Object.hasOwn(fields, name) ? fields[name] : undefined;
+    // A `unit` field holds `null`, so only a field left out is missing.
+    return given === undefined ? unreachable(`No field '${name}' is given.`) : given;
+  });
 }
 
 /** A struct of type entry `type` with `fields` by name. */

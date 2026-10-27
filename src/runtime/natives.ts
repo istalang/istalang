@@ -23,8 +23,9 @@ import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/types.ts';
 import type { Value } from '../definition/values.ts';
 import type { LogRecord } from './instance-state.ts';
-import type { Watch } from './scheduler/futures.ts';
+import type { TestWatch } from './scheduler/futures.ts';
 import type { Inspection } from './scheduler/inspect.ts';
+import type { SpawnOptions } from './scheduler/instance/index.ts';
 
 /** Base context every native gets: the call, and the segment it runs in. */
 export interface NativeContext {
@@ -107,27 +108,32 @@ export interface NativeResources {
   readonly payloadOf: (handle: Value) => unknown;
 }
 
+/** The instances the running one spawns and waits for (§9). */
+export interface NativeInstances {
+  /**
+   * Spawns the closure `entry`, which takes nothing, as a new instance with `options` once the
+   * segment commits; the instance's name.
+   */
+  readonly spawn: (entry: Value, options: SpawnOptions) => string;
+  /** A future that resolves with a `Result` of type entry `result` once `instance` has ended. */
+  readonly ended: (instance: string, result: TypeId) => Value;
+}
+
 /**
  * What a test reaches through the `testing` module (§10): mocks, which its calls and those of the
- * instances it starts reach, those instances and the watches on them, and host values equal to no
- * other. A read of
- * another instance reads its last commit, which only the runtime running a test can answer
- * (runtime/testing/); anywhere else it panics.
+ * instances it spawns reach, waits on those instances, and host values equal to no other. A read
+ * of another instance's last commit that only the runtime running a test can answer
+ * (runtime/testing/) panics anywhere else.
  */
 export interface NativeTesting {
   /** A mock replacing `target` with `replacement` while it is held; its handle. */
   readonly mock: (target: FunctionId, replacement: Value) => Value;
   /** The calls the mock `mock` names recorded, oldest first. */
   readonly calls: (mock: Value) => readonly Value[];
-  /**
-   * Starts the closure `entry` with `values` as a new instance once the segment commits, with
-   * `crashEveryAwait` (§10); the instance's name.
-   */
-  readonly start: (entry: Value, values: readonly Value[], crashEveryAwait: boolean) => string;
   /** Where `instance` stands and waits, as its last commit says; undefined before its first. */
   readonly inspect: (instance: string) => Inspection | undefined;
-  /** A future that resolves once `instance` meets `until`. */
-  readonly watch: (instance: string, until: Watch['until']) => Value;
+  /** A future that resolves once `instance` is idle, or waits at a waypoint. */
+  readonly watch: (instance: string, until: TestWatch) => Value;
   /** A value of the host type entry `type` equal to no other, held as its host holds one. */
   readonly handle: (type: TypeId) => Value;
 }
@@ -164,6 +170,9 @@ export interface WithRandom {
 export interface WithLogs {
   readonly logs: NativeLogs;
 }
+export interface WithInstances {
+  readonly instances: NativeInstances;
+}
 export interface WithTesting {
   readonly testing: NativeTesting;
 }
@@ -175,6 +184,7 @@ export type NativeCapabilities = WithFutures &
   WithResources &
   WithRandom &
   WithLogs &
+  WithInstances &
   WithTesting;
 
 export type FullNativeContext = NativeContext & NativeCapabilities;

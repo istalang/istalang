@@ -11,8 +11,9 @@
  * - An answer to another instance's call to a mock (§10) waits on a future too. When it resolves
  *   with a future, as the replacement of a function returning one does, the answer waits on that
  *   one instead; when it resolves with anything else, the answer is given (`Answered`).
- * - A watch on an instance a test started (§10) resolves when the runtime running the test says
- *   its condition holds, at the start of a segment, as a timer does when it is due.
+ * - A watch on another instance resolves once its condition holds, at the start of a segment, as a
+ *   timer does when it is due: the instance has ended (§9), or under a test it is idle or waits at
+ *   a waypoint (§10).
  */
 
 import { awaitedRegisters } from '../../definition/instructions/flow.ts';
@@ -36,8 +37,11 @@ export interface Settled {
   readonly value: Value;
 }
 
-/** A pending watch's condition (§10). */
+/** A pending watch's condition (§9, §10). */
 export type Watch = Extract<FutureState, { kind: 'watch' }>;
+
+/** A condition only the runtime running a test can tell (§10). */
+export type TestWatch = Exclude<Watch['until'], { kind: 'ended' }>;
 
 /**
  * An answer given: the value that fills the future `instance` named `token`, and whether it came
@@ -163,14 +167,20 @@ export class Futures {
     }
   }
 
-  /** Resolves every pending watch whose condition `holds` says holds, with what it gives. */
-  resolveWatches(holds: (watch: Watch) => Value | undefined): void {
+  /**
+   * Resolves every pending watch whose condition `holds` says holds, with what it gives; whether
+   * any did.
+   */
+  resolveWatches(holds: (watch: Watch) => Value | undefined): boolean {
+    let resolved = false;
     for (const { id, state } of this.#heap.find('pending', 'watch')) {
       const value = state.kind === 'watch' ? holds(state) : undefined;
       if (value !== undefined) {
         this.resolve(id, value);
+        resolved = true;
       }
     }
+    return resolved;
   }
 
   /** The value of the resolved future `id`. */

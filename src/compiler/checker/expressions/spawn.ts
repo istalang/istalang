@@ -1,6 +1,7 @@
 /**
- * `spawn f(args)` (§9): starts a call as a new, independent instance and goes on at once, so its
- * value is `unit`, in any function.
+ * `spawn f(args)` (§9): starts a call as a new, independent instance and goes on at once, in any
+ * function. Its value is the new instance's `Instance<T>`, `T` being what the function returns, or
+ * what an async one's future gives, since that is the instance's outcome.
  *
  * - The call is checked as any call is, which resolves what it runs. A function with code may be
  *   spawned, a method or a generic instance included, and so may a value of a sendable function
@@ -11,6 +12,7 @@
  *   sendable (§3.1).
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
 import {
   argumentValue,
   type Call,
@@ -21,15 +23,16 @@ import {
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isSendable } from '../traits/sendable.ts';
-import { type Type, unitType } from '../types/type.ts';
+import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { futureArgument, wellKnownOf } from '../types/well-known.ts';
 
 export function checkSpawn(context: BodyContext, node: Spawn): Type {
   const call = unparenthesized(node.call);
   if (call.kind !== 'Call') {
     context.expression(node.call);
     context.report(checkerDiagnostics.spawnNeedsCall(node.call.span));
-    return unitType;
+    return errorType;
   }
   context.expression(call);
   const refusal = refusalOf(context, call);
@@ -42,7 +45,19 @@ export function checkSpawn(context: BodyContext, node: Spawn): Type {
       context.report(checkerDiagnostics.unsendableArgument(argument.span, typeText(type)));
     }
   }
-  return unitType;
+  return wellKnownOf(context.checker, wellKnown.instance, [outcomeOf(context, call)]);
+}
+
+/** What the instance `call` starts ends with: what its function returns, an async one's awaited. */
+function outcomeOf(context: BodyContext, call: Call): Type {
+  const returned = context.typeOf(call);
+  const resolved = context.callAt(call);
+  const callee = context.typeOf(call.callee);
+  const isAsync =
+    resolved === undefined
+      ? callee.kind === 'function' && callee.isAsync
+      : resolved.function.isAsync;
+  return isAsync ? (futureArgument(context.checker, returned) ?? returned) : returned;
 }
 
 /** Why the function `call` runs can't start an instance, naming it; undefined when it can. */

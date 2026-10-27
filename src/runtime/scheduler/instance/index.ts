@@ -53,13 +53,12 @@ import { WeakSide } from '../weak-side.ts';
 import { liveObject, storedObject } from './live-objects.ts';
 
 /**
- * A call this segment spawned (§9), or started as a test does (§10): the new instance's name, what
- * it calls, its own option, and the seed of its random source, drawn from this instance's.
+ * A call this segment spawned (§9): the new instance's name, what it calls, its own options, and
+ * the seed of its random source, drawn from this instance's.
  */
-export interface Spawn {
+export interface Spawn extends Required<SpawnOptions> {
   readonly name: string;
   readonly call: InstanceCall;
-  readonly crashEveryAwait: boolean;
   readonly seed: string;
 }
 
@@ -69,6 +68,12 @@ export type InstanceStatus = Snapshot['status'];
 export interface StartOptions {
   /** Every segment runs twice, the first run discarded, before it commits. */
   readonly crashEveryAwait?: boolean;
+}
+
+/** How an instance an instance spawns runs: a host's options, and those only the runtime sets. */
+export interface SpawnOptions extends StartOptions {
+  /** A panic terminates the instance at once, as `runtime.isolate` starts it (§9). */
+  readonly terminatesOnPanic?: boolean;
 }
 
 export class Instance {
@@ -196,6 +201,11 @@ export class Instance {
     return this.#from.crashEveryAwait;
   }
 
+  /** Whether a panic terminates the instance at once (§9). */
+  get terminatesOnPanic(): boolean {
+    return this.#from.terminatesOnPanic;
+  }
+
   /**
    * What the extern constant `key` gives this instance: what `read` gives the first time any of
    * its segments reads it, and that same value ever after (§3.6).
@@ -221,15 +231,16 @@ export class Instance {
   }
 
   /**
-   * Records `call` as spawned by this segment, running with `crashEveryAwait` when this instance
-   * does or `crashEveryAwait` asks (§9, §10); the name the new instance will have.
+   * Records `call` as spawned by this segment, with `options`, and with `crashEveryAwait` too when
+   * this instance runs with it (§9, §10); the name the new instance will have.
    */
-  spawn(call: InstanceCall, crashEveryAwait = false): string {
+  spawn(call: InstanceCall, options: SpawnOptions = {}): string {
     const name = spawnedName(this.name, this.spawnedBefore + this.#spawns.length + 1);
     this.#spawns.push({
       name,
       call,
-      crashEveryAwait: this.crashEveryAwait || crashEveryAwait,
+      crashEveryAwait: this.crashEveryAwait || options.crashEveryAwait === true,
+      terminatesOnPanic: options.terminatesOnPanic === true,
       seed: seedTextOf(this.draw().subarray(0, seedBytes)),
     });
     return name;

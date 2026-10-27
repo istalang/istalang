@@ -100,7 +100,7 @@ function valueCallee(context: FunctionContext, node: Call): Register {
 /**
  * `spawn f(args)` (§9): what the call would run, the function the checker resolved or the value of
  * a sendable function type, and its arguments, a method's receiver first, all by value; its value
- * is `unit`.
+ * is the new instance's `Instance<T>`.
  */
 export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
   const spawned = unparenthesized(node.call);
@@ -115,9 +115,16 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
   const receiver =
     resolved?.receiver === undefined ? undefined : argumentOf(context, resolved.receiver, false);
   const copied = passedArguments(context, spawned, receiver, () => false);
+  const instance = context.body.typeOf(node);
+  if (instance.kind !== 'nominal') {
+    unreachable('A spawn checked clean is an Instance<T>.');
+  }
+  const dst = context.code.allocate();
   context.code.emit({
     kind: 'spawn',
     span: node.span,
+    dst,
+    type: context.tables.types.index(instance),
     callee,
     arguments: copied.map(({ argument }) => {
       if (argument.kind !== 'value') {
@@ -126,7 +133,7 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
       return argument.register;
     }),
   });
-  return context.constant(null, node.span);
+  return dst;
 }
 
 /** Calls the function the checker resolved for `site` with values; the register of its result. */

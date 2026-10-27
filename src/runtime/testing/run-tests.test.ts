@@ -1,6 +1,6 @@
 /**
- * Running a program's tests (§10): the runner's reports, mocks across instances, started instances
- * and their watches, handles, and how a test fails.
+ * Running a program's tests (§10): the runner's reports, mocks across instances, spawned instances
+ * and the waits on them, handles, and how a test fails.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import { outcomesOf, reportsOf } from './testing.test-kit.ts';
 function testModule(body: string): string {
   return [
     "import Suite, Test, test, group, skip, only, assert, assertEq, FakeClock, FakeQueue, mock, calls, handle from 'testing'",
+    "import idle, reaches, waitingAt, state from 'testing'",
     "import Decodable from 'json'",
     "import * as testing from 'testing'",
     "import * as time from 'time'",
@@ -112,7 +113,7 @@ fn suite() -> Array<Test>: broken()
 });
 
 describe('mocks', () => {
-  it('replace own, std and host functions, in the test and every instance it starts or they spawn', () => {
+  it('replace own, std and host functions, in the test and every instance it spawns or they spawn', () => {
     const source = testModule(`
 extern fn charge(amount: int) -> string
 
@@ -133,7 +134,7 @@ async fn everywhere():
   fn _ = mock(greet, fn(): "hi")
   fn _ = mock(time.now, fn(): Time{value: 42})
   assertEq(await report(), "hi charged 5 42")
-  assertEq(await testing.start(parent).result(), "hi charged 5 42")
+  assertEq(await spawn parent().result(), Ok{"hi charged 5 42"})
   await time.delay(1s)
   assertEq(charged.calls(), [5, 5, 7])
 
@@ -176,7 +177,7 @@ fn holders() -> Array<Test>: [test("released", released), test("recorded", recor
     ]);
   });
 
-  it('answer a started instance with a native replacement, and fail the test when one panics', () => {
+  it('answer a spawned instance with a native replacement, and fail the test when one panics', () => {
     const source = testModule(`
 fn describe(n: int) -> string: "number"
 
@@ -185,11 +186,11 @@ async fn describes() -> Future<string>:
 
 async fn native():
   fn _ = mock(describe, toString)
-  assertEq(await testing.start(describes).result(), "42")
+  assertEq(await spawn describes().result(), Ok{"42"})
 
 async fn breaking():
   fn _ = mock(describe, fn(n: int) -> string: panic("the replacement broke"))
-  drop await testing.start(describes).result()
+  drop await spawn describes().result()
 
 @Suite{"replacements"}
 fn suite() -> Array<Test>: [test("native", native), test("breaking", breaking)]
@@ -218,10 +219,10 @@ async fn posted():
   const fake = FakeQueue<Queue<int>, int>{make: handle}
   fn _ = mock(queueOf, fake.open)
   fn _ = mock(receive, fake.receive)
-  const started = testing.start(pollsThenWaits)
+  const started = spawn pollsThenWaits()
   await started.idle()
   fake.post("q", 5)
-  assertEq(await started.result(), 5)
+  assertEq(await started.result(), Ok{5})
 
 @Suite{"withdrawn"}
 fn suite() -> Array<Test>: [test("posted after a lost select", posted)]
@@ -252,7 +253,7 @@ fn isolated() -> Array<Test>: [test("fails", failsMocked), test("next", unmocked
   });
 });
 
-describe('started instances', () => {
+describe('spawned instances', () => {
   it('are watched through idle, reaches, waitingAt, state and result', () => {
     const source = testModule(`
 async fn sleeper(days: int) -> Future<string>:
@@ -261,13 +262,13 @@ async fn sleeper(days: int) -> Future<string>:
   "woke"
 
 async fn watched():
-  const started = testing.start(sleeper, 2)
+  const started = spawn sleeper(2)
   assert(started.state() is Running)
   await started.idle()
   assert(started.state() is Waiting)
   assertEq(started.waitingAt(), ["sleeping"])
   await started.reaches("sleeping")
-  assertEq(await started.result(), "woke")
+  assertEq(await started.result(), Ok{"woke"})
   assert(started.state() is Finished)
 
 @Suite{"watches"}
@@ -293,7 +294,7 @@ async fn idleAfterCalls():
   fn _ = mock(time.at, clock.at)
   fn _ = mock(first, fn(): 10)
   const seconds = mock(second, fn(): 20)
-  const started = testing.start(wakesAndCalls)
+  const started = spawn wakesAndCalls()
   await started.idle()
   clock.advance(1s)
   await started.idle()
@@ -311,7 +312,7 @@ async fn breaks() -> Future<unit>:
   panic("broken")
 
 async fn starts():
-  drop testing.start(breaks)
+  spawn breaks()
   await time.delay(1s)
 
 @Suite{"panics"}
@@ -322,7 +323,22 @@ fn panics() -> Array<Test>: [test("starts", starts)]
     ]);
   });
 
-  it('run each segment twice before committing it with startCrashingEveryAwait', () => {
+  it('fail no test with a panic some instance waits for, which reads it as an Err', () => {
+    const source = testModule(`
+async fn breaks() -> Future<int>:
+  panic("broken")
+
+async fn awaited():
+  const outcome = await spawn breaks().result()
+  assert(outcome is Err{error} and error.message == "broken" and error.code == "panic")
+
+@Suite{"awaited"}
+fn awaitedPanics() -> Array<Test>: [test("awaited", awaited)]
+`);
+    expect(outcomesOf(reportsOf(source))).toEqual(['awaited › awaited: passed']);
+  });
+
+  it('run each segment twice before committing it with spawnCrashingEveryAwait', () => {
     const source = testModule(`
 extern fn effect(n: int) -> int
 
@@ -333,7 +349,7 @@ async fn twice() -> Future<int>:
 
 async fn crashing():
   const effects = mock(effect, fn(n: int): n)
-  drop await testing.startCrashingEveryAwait(twice).result()
+  drop await testing.spawnCrashingEveryAwait(twice).result()
   assertEq(effects.calls().length(), 2)
 
 @Suite{"crash"}
@@ -344,7 +360,7 @@ fn crash() -> Array<Test>: [test("crashing", crashing)]
 });
 
 describe('handles', () => {
-  it('equal no other, and come back the same through a mock a started instance calls', () => {
+  it('equal no other, and come back the same through a mock a spawned instance calls', () => {
     const source = testModule(`
 extern sendable struct Queue
 extern fn open() -> Queue
@@ -358,7 +374,7 @@ async fn handles():
   assert(queue != handle<Queue>())
   fn _ = mock(open, fn(): queue)
   fn _ = mock(name, fn(given: Queue): if given == queue: "same" else: "other")
-  assertEq(await testing.start(opens).result(), "same")
+  assertEq(await spawn opens().result(), Ok{"same"})
 
 @Suite{"handles"}
 fn suite() -> Array<Test>: [test("handles", handles)]
@@ -380,13 +396,13 @@ async fn opensAndLets() -> Future<unit>:
 async fn unmockedDispose():
   const queue = handle<Queue>()
   fn _ = mock(open, fn(): queue)
-  drop await testing.start(opensAndLets).result()
+  drop await spawn opensAndLets().result()
 
 async fn mockedDispose():
   const queue = handle<Queue>()
   fn _ = mock(open, fn(): queue)
   const disposed = mock(dispose, fn(given: Queue): ())
-  drop await testing.start(opensAndLets).result()
+  drop await spawn opensAndLets().result()
   assert(disposed.calls() == [queue])
 
 @Suite{"disposal"}
@@ -411,7 +427,7 @@ async fn posts() -> Future<unit>:
 async fn handedOut():
   fn _ = mock(post, fn(n: int): handle<Sent>())
   const disposed = mock(dispose, fn(given: Sent): ())
-  drop await testing.start(posts).result()
+  drop await spawn posts().result()
   assertEq(disposed.calls().length(), 2)
 
 @Suite{"ownership"}

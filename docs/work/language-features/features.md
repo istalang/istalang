@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-27
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 tags: [plan, language, syntax, checker, runtime]
 ---
 
@@ -70,12 +70,7 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - **Production watch resolver:** today only the test world resolves `watch` futures (`scheduler/wake.ts`). A child's end (finished or panicked) becomes an arrival the host delivers to watchers, the way it fills any wait.
   - **Testing:** `testing.Started<R>` becomes `Instance<R>`, with the inspection functions (`idle`, `reaches`, `waitingAt`, `state`) left in `testing`. `start`'s 14 overloads give way to `spawn`.
   - **Structural first:** split the over-cap `scheduler/instance.ts`, `segment/index.ts` and `testing/world.ts`.
-- **Gaps:**
-  - the panic's shape (default: `Error{message, code: "panic", trace}`, so there is one error shape);
-  - whether `isolate` terminates a panicked child (default: yes, disposing its holdings; `result()` alone leaves it to an operator);
-  - how a test starts an instance that crashes at every await without `startCrashingEveryAwait`'s 14 overloads (default: `testing.spawnCrashingEveryAwait(fn(): f(a, b))`);
-  - `Instance<T>` sendable (default: yes, compared by identity);
-  - where `isolate` lives (default: `runtime`).
+- **Gaps decided (human, 2026-10-28, all defaults):** the panic is `Err(Error{message, code: "panic", trace})`; `isolate` terminates a panicked child (a start option), while a plain `spawn`'s stays for an operator; `testing.spawnCrashingEveryAwait(fn(): f(a, b))`; `Instance<T>` is a sendable prelude type compared by identity and never `Encodable`; `isolate` lives in `runtime`; `result()` requires `T is Sendable`; `result()` reports the first end, a terminated instance keeping its panic; a waiting instance names the instances it watches (`watching`) so a host wakes it, the runtime reading the end from the store; under `ista test` a panic some instance waits for through `result()` fails no test (`expectPanic` is library code over it); `testing.InstanceState` gains `Terminated`; a child `isolate` terminated fails no `ista run`.
 
 ## F5 `hold`, labels, labelled `break`/`continue`
 

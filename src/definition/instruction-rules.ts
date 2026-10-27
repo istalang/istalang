@@ -1,7 +1,8 @@
 /**
  * What load validation requires of single instructions beyond their indexes, so the interpreter
  * runs any accepted instruction without a guard of its own:
- * - a construction matches the type it names, and a new cell names a cell's type
+ * - a construction matches the type it names, a new cell names a cell's type, and a `spawn` an
+ *   `Instance`'s
  * - a direct call or `spawn` passes the callee's parameters in number and kind (value or `&`), and
  *   a function with captures is called only through its closure value, never directly
  * - a closure carries its function's captures
@@ -85,10 +86,18 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
     i.callee.kind === 'function'
       ? directCallProblem(tables.functions[i.callee.function], i.arguments)
       : undefined,
-  spawn: (tables, i) =>
-    i.callee.kind === 'function'
-      ? spawnProblem(tables.functions[i.callee.function], i.arguments.length)
-      : undefined,
+  spawn: (tables, i) => {
+    const calleeProblem =
+      i.callee.kind === 'function'
+        ? spawnProblem(tables.functions[i.callee.function], i.arguments.length)
+        : undefined;
+    return (
+      calleeProblem ??
+      (hasRole(tables.types, i.type, 'instance')
+        ? undefined
+        : `type ${i.type} is not an Instance's.`)
+    );
+  },
   currentCall: asyncOnly,
   await: waitsOnlyInAsync,
   select: waitsOnlyInAsync,

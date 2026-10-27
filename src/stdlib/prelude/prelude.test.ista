@@ -1,5 +1,5 @@
-# The prelude's array and map methods taking a function, and the array methods beside them
-# (spec §3.8); the rest of the prelude is the corpus's.
+# The prelude's array and map methods taking a function, the array methods beside them, and the
+# wait on a spawned instance's end (spec §3.8, §9); the rest of the prelude is the corpus's.
 
 import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
 
@@ -142,5 +142,24 @@ fn doubledForever() -> string:
 fn limits() -> Array<Test>: [
   test("a string outgrowing what the runtime can hold panics", async fn(): {
     assertEq(await expectPanic(doubledForever), "The string would be longer than the runtime can hold.")
+  }),
+]
+
+fn answers() -> int: 42
+
+fn breaks() -> int: panic("broken")
+
+@Suite{"prelude › instances"}
+fn instances() -> Array<Test>: [
+  test("result gives what a spawned instance's function returned", async fn(): {
+    assertEq(await spawn answers().result(), Ok{42})
+  }),
+  test("result gives a spawned instance's panic as an Err", async fn(): {
+    const outcome = await spawn breaks().result()
+    assert(outcome is Err{error} and error.message == "broken" and error.code == "panic")
+  }),
+  test("an instance's handle compares by identity", fn(): {
+    const first = spawn answers()
+    assert(first == first and first != spawn answers())
   }),
 ]

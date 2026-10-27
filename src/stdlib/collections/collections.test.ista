@@ -1,6 +1,6 @@
 # The collections module's WeakMap (spec §3.8, §7).
 
-import Suite, Test, test, assert, assertEq, startCrashingEveryAwait from 'testing'
+import Suite, Test, test, assert, assertEq, spawnCrashingEveryAwait from 'testing'
 import WeakMap from 'collections'
 import Inbox from 'inbox'
 import * as runtime from 'runtime'
@@ -88,6 +88,6 @@ fn weakMap() -> Array<Test>: [
     await watched.value.disposed()
   }),
   test("lets go of an entry whose key is disposed after a snapshot", async fn(): {
-    assertEq(await startCrashingEveryAwait(evictedAcrossSnapshots).result(), "evicted")
+    assertEq(await spawnCrashingEveryAwait(evictedAcrossSnapshots).result(), Ok{"evicted"})
   }),
 ]

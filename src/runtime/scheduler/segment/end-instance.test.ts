@@ -46,7 +46,7 @@ describe('terminating an instance', () => {
     test.runtime.deploy(program).start('t');
     expect(test.runtime.fill('t', 'approval', false).state).toMatchObject({ kind: 'panicked' });
     expect(notes).toEqual([]);
-    expect(test.runtime.terminate('t').state).toEqual({ kind: 'terminated' });
+    expect(test.runtime.terminate('t').state).toMatchObject({ kind: 'terminated' });
     expect(notes).toEqual(['child cleaned up']);
   });
 });

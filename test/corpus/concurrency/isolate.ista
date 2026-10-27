@@ -1,0 +1,18 @@
+# outcome: "Err panic: no stock; Ok 3"
+# runtime.isolate runs a function as an instance of its own (§9): its panic comes back as an Err
+# and terminates that instance, so the run fails nothing; its result comes back as an Ok.
+
+import * as runtime from 'runtime'
+
+fn stock(item: string) -> int:
+  if item == "":
+    panic("no stock")
+  item.length()
+
+async fn checked(item: string) -> Future<string>:
+  match await runtime.isolate(fn(): stock(item)):
+    case Ok{value}: "Ok " + value
+    case Err{error}: "Err " + error.code + ": " + error.message
+
+async fn main() -> Future<string>:
+  await checked("") + "; " + await checked("pen")

@@ -1,21 +1,30 @@
-# The runtime module's `id` and `version` (spec §3.8); `commit` is the corpus's. No function of the
-# module can fail, so it has no failing case (m4-m5.md, "Acceptance").
+# The runtime module's `id`, `version` and `isolate` (spec §3.8, §9); `commit` is the corpus's.
+# `isolate`'s failing case is a panic it gives back as an `Err`.
 
-import Suite, Test, test, assertEq, start from 'testing'
+import Suite, Test, test, assert, assertEq from 'testing'
 import * as runtime from 'runtime'
 
 fn ownId() -> string: runtime.id()
 
 fn ownVersion() -> string: runtime.version()
 
+fn three() -> int: 3
+
+fn broken() -> int: panic("broken")
+
 @Suite{"runtime"}
 fn suite() -> Array<Test>: [
-  test("id is the instance's name, a started one's after its parent's", async fn(): {
+  test("id is the instance's name, a spawned one's after its parent's", async fn(): {
     assertEq(runtime.id(), "test")
-    assertEq(await start(ownId).result(), "test/1")
+    assertEq(await spawn ownId().result(), Ok{"test/1"})
   }),
   test("version is the program's content hash, the same in every instance of it", async fn(): {
     assertEq(runtime.version().length(), 64)
-    assertEq(await start(ownVersion).result(), runtime.version())
+    assertEq(await spawn ownVersion().result(), Ok{runtime.version()})
+  }),
+  test("isolate gives a function's result, or its panic as an Err", async fn(): {
+    assertEq(await runtime.isolate(fn(): three()), Ok{3})
+    const failed = await runtime.isolate(fn(): broken())
+    assert(failed is Err{error} and error.message == "broken" and error.code == "panic")
   }),
 ]

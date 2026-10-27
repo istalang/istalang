@@ -1,4 +1,5 @@
-# The runtime module (spec §3.8): what an instance can ask of the runtime about itself.
+# The runtime module (spec §3.8): what an instance can ask of the runtime about itself, and
+# `isolate`, which runs a function as an instance of its own.
 #
 # `commit` returns an already-resolved future, so `await runtime.commit()` commits without
 # waiting (§5).
@@ -10,3 +11,16 @@ extern fn id() -> string
 extern fn version() -> string
 
 extern fn commit() -> Future<unit>
+
+# Runs `f` as an instance of its own and waits for its end (§9): `f`'s result, or its panic as an
+# `Err`. The panic also terminates that instance at once, disposing what it holds, so no operator
+# has to.
+fn isolate<T is Sendable>(f: sendable fn() -> T) -> Future<Result<T>>:
+  const instance: Instance<T> = _isolated(f)
+  instance.result()
+fn isolate<T is Sendable>(f: sendable async fn() -> T) -> Future<Result<T>>:
+  const instance: Instance<T> = _isolated(f)
+  instance.result()
+
+# Spawns `f` as an instance a panic terminates at once.
+extern fn _isolated<F, T>(f: F) -> Instance<T>

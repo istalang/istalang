@@ -115,7 +115,7 @@ describe('inspecting an instance', () => {
     const test = testRuntime();
     test.runtime.deploy(compiledText(spawningMain)).start('p');
     const { state, waitingAt } = test.runtime.inspect('p');
-    expect(state).toEqual({ kind: 'waiting', until: 1n });
+    expect(state).toEqual({ kind: 'waiting', until: 1n, watching: [] });
     expect(waitingAt).toEqual([{ waypoint: undefined, location: 'memory:main:7:3' }]);
     expect(test.runtime.inspect('p/1')).toEqual({ state: { kind: 'ready' }, waitingAt: [] });
   });

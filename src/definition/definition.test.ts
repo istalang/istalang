@@ -247,11 +247,29 @@ describe('definition format', () => {
         at(json, 'functions', 4, 'instructions')[12] = {
           kind: 'spawn',
           span,
+          dst: 0,
+          type: 0,
           callee: { kind: 'function', function: 3 },
           arguments: [],
         };
       },
       'spawn: main.fib takes 1 arguments, not 0',
+      'functions[4].instructions[12]',
+    ],
+    [
+      'a spawn giving no Instance',
+      (json) => {
+        const { span } = instructionAt(json, 4, 12);
+        at(json, 'functions', 4, 'instructions')[12] = {
+          kind: 'spawn',
+          span,
+          dst: 0,
+          type: 0,
+          callee: { kind: 'function', function: 3 },
+          arguments: [0],
+        };
+      },
+      "spawn: type 0 is not an Instance's",
       'functions[4].instructions[12]',
     ],
     [
@@ -317,6 +335,8 @@ describe('definition format', () => {
         at(json, 'functions', 4, 'instructions')[12] = {
           kind: 'spawn',
           span,
+          dst: 0,
+          type: 0,
           callee: { kind: 'function', function: 0 },
           arguments: [0, 1],
         };

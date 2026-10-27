@@ -49,7 +49,7 @@ import {
   unstarted,
 } from './scheduler/wake.ts';
 import { checkSnapshot } from './snapshot/check.ts';
-import { type Snapshot, snapshotFormat } from './snapshot/snapshot.ts';
+import { type PanickedSnapshot, type Snapshot, snapshotFormat } from './snapshot/snapshot.ts';
 import type { InstanceStore } from './store.ts';
 
 export interface RuntimeSeams {
@@ -187,9 +187,7 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
 }
 
 /** `snapshot`, an instance that panicked; a Refusal for any other (§3.12). */
-function panicked(
-  snapshot: Snapshot,
-): Snapshot & { readonly status: Extract<Snapshot['status'], { kind: 'panicked' }> } {
+function panicked(snapshot: Snapshot): PanickedSnapshot {
   const { status } = snapshot;
   if (status.kind !== 'panicked') {
     throw new Refusal('notPanicked', `Instance '${snapshot.instance}' hasn't panicked.`);
@@ -200,7 +198,7 @@ function panicked(
 /** A deployed program as the runtime holds it: bound, and able to resume its instances. */
 interface BoundProgram extends DeployedProgram, LoadedDefinition {
   readonly resume: (snapshot: Snapshot, first?: AdvanceFirst) => Advanced;
-  readonly terminate: (snapshot: Snapshot) => Advanced;
+  readonly terminate: (snapshot: PanickedSnapshot) => Advanced;
 }
 
 /** A Definition text bound to its program, and whether this was the first time. */

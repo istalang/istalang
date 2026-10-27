@@ -100,7 +100,7 @@ describe('the host API', () => {
       function: 'main.decide(main.Order)',
       arguments: [{ id: 'o1', amount: 1 }],
     });
-    expect(started.state).toEqual({ kind: 'waiting', until: undefined });
+    expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
     expect(test.runtime.inspect('d').waitingAt.map(({ waypoint }) => waypoint)).toContain(
       'approval',
     );
@@ -163,9 +163,12 @@ describe('the host API', () => {
     expect(() => test.runtime.fill('t', 'any', true)).toThrow(
       expect.objectContaining({ reason: 'panicked' }),
     );
-    expect(test.runtime.terminate('t').state).toEqual({ kind: 'terminated' });
-    expect(test.runtime.wake('t').state).toEqual({ kind: 'terminated' });
-    expect(test.runtime.fill('t', 'any', true).state).toEqual({ kind: 'terminated' });
+    expect(test.runtime.terminate('t').state).toMatchObject({
+      kind: 'terminated',
+      message: 'not ready',
+    });
+    expect(test.runtime.wake('t').state).toMatchObject({ kind: 'terminated' });
+    expect(test.runtime.fill('t', 'any', true).state).toMatchObject({ kind: 'terminated' });
     expect(() => test.runtime.terminate('t')).toThrow(Refusal);
   });
 

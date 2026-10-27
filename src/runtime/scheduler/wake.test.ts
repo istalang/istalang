@@ -132,7 +132,7 @@ describe('advancing an instance', () => {
     const store = recordingStore();
     const clock = manualClock();
     const first = testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
-    expect(first.state).toEqual({ kind: 'waiting', until: 5n });
+    expect(first.state).toEqual({ kind: 'waiting', until: 5n, watching: [] });
     const second = testRuntime({ store, clock });
     expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
     expect(uninterrupted).toEqual({ kind: 'finished', outcome: '5' });
@@ -146,7 +146,7 @@ describe('advancing an instance', () => {
     const store = recordingStore();
     const clock = manualClock();
     const first = testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
-    expect(first.state).toEqual({ kind: 'waiting', until: 5n });
+    expect(first.state).toEqual({ kind: 'waiting', until: 5n, watching: [] });
     const second = testRuntime({ store, clock });
     expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
   });
@@ -207,9 +207,9 @@ describe('advancing an instance', () => {
   it('waits until the earliest timer, and wakes to nothing new before it is due', () => {
     const test = testRuntime();
     const program = test.runtime.deploy(compiledText(childAndMain));
-    expect(program.start('early').state).toEqual({ kind: 'waiting', until: 10n });
+    expect(program.start('early').state).toEqual({ kind: 'waiting', until: 10n, watching: [] });
     test.clock.set(9n);
-    expect(test.runtime.wake('early').state).toEqual({ kind: 'waiting', until: 10n });
+    expect(test.runtime.wake('early').state).toEqual({ kind: 'waiting', until: 10n, watching: [] });
     expect(test.store.commits).toHaveLength(1);
   });
 

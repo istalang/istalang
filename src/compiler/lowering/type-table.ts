@@ -52,6 +52,7 @@ type EntryType = NominalType | AnonymousStructType;
 const externRoles = {
   cell: wellKnown.cell,
   future: wellKnown.future,
+  instance: wellKnown.instance,
 } as const satisfies Record<ExternRole, WellKnownDeclaration>;
 
 /** The std type each role of an enum entry is (definition/types.ts). */
