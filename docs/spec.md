@@ -95,7 +95,7 @@ match decision:
     case _: ...
 if r is Ok{value as y} and y > 0: use(y)
 
-user?.name    name ?? "anonymous"    chargeCard(id)?    # optional chaining, fallback, propagate Err
+user?.name    name ?? "anonymous"    found!    chargeCard(id)?    # optional chaining, fallback, unwrap or panic, propagate Err
 { const t = a * b; t + 1 }                        # block expression
 x = 1; y = 2                                      # two statements on one line
 type UserId = string                              # type alias
@@ -614,7 +614,7 @@ fn multiply(left: Duration, factor: int) -> Duration:
 
 | Precedence, tightest first | Operators |
 | --- | --- |
-| 1 | postfix: calls, indexing, `.`, `?.`, `->`, `?->`, the error-propagating `?` |
+| 1 | postfix: calls, indexing, `.`, `?.`, `->`, `?->`, the error-propagating `?`, the unwrapping `!` |
 | 2 | `**`, grouping to the right |
 | 3 | prefix: `await`, unary `-`, `~`, `*`, `&` |
 | 4 | `*`, `/`, `//`, `%` |
@@ -727,7 +727,7 @@ const text: string = match decision:
 - **Qualified names.** Where an enum type is expected (in a `match`, an annotated variable, an argument, a field or a `return`), bare variant names are enough. Elsewhere they are qualified: `Decision.Expired`. A bare variant with no enum type expected is a compile error.
 - **Generics and defaults.** Enums and structs take type parameters like functions, and may give them defaults (§3.5): `enum Result<T, E = Error>`.
 - **Exhaustive `match`.** A `match` on an enum must cover every variant or end with `case _:`.
-- **Optional.** `T?` is sugar for the prelude enum `Optional<T>`, with the variants `Some { value: T }` and `None`. `none` means `None` and needs an optional type to be expected, a `T` is wrapped in `Some` automatically where a `T?` is expected, and `?.` and `??` (§4) are sugar over `match`.
+- **Optional.** `T?` is sugar for the prelude enum `Optional<T>`, with the variants `Some { value: T }` and `None`. `none` means `None` and needs an optional type to be expected, a `T` is wrapped in `Some` automatically where a `T?` is expected, and `?.`, `??` and `!` (§4) are sugar over `match`.
 
 **Patterns** mirror construction. Inside a pattern's braces, each item is one of:
 
@@ -1019,12 +1019,13 @@ The rules:
 - **Labels.** A label stands before a loop, `outer: for x in xs:`, and `break outer` and `continue outer` leave or go on with that loop from any depth inside it, as in Java or JavaScript. A label also names a block for `hold` (§3.4). A label belongs to its function: a nested function never sees it, and it may not repeat a label around it nor take the function's own name, so a name means one loop or block. A label nothing names is warned about.
 - `return expr` exits the enclosing function; `expr` must have the function's return type.
 
-**Optionals.** Two operators work on `T?` values without a `match`:
+**Optionals.** Three operators work on `T?` values without a `match`:
 
 - `a?.b` reads the field `b`, or the element `a?.0` of a tuple, or calls a method as in `a?.m()`, or a field of a function type as in `a?.f(x)` (§3.14), when `a` isn't `none`, and yields `none` otherwise. The result is optional. `a?->b` does the same for a field behind an optional shared struct (§3.9), `f?.(x)` calls the function inside an optional `f`, as in `hooks.onDone?.(event)`, and `xs?.[i]` indexes an optional container, evaluating the arguments or the index only when there is one.
 - `a ?? b` yields the value inside `a`, or `b` when `a` is `none`; `b` is evaluated only then. `b` may have type `T`, and so does the result, or `T?`, giving a `T?`, so `a ?? b ?? c` reads left to right.
+- `a!` yields the value inside `a`, and panics with "Force-unwrapped none." when `a` is `none` (§3.12). It is postfix, beside `?`, and unwraps a whole optional chain before it: `a?.b!` is `(a?.b)!`. Every use is warned about, since `??`, `is` or `match` handles the `none` it would panic on. `x!=y` scans as `x != y`, so an unwrapped operand of `==` needs a space or parentheses: `x! == y`.
 
-Both work only on optionals; using either on any other value is an error. A `?.` or `?->` starts an **optional chain**: the links after it, such as `.c`, `.0`, `[i]`, `.m()` and `->c` in `a?.b.c`, `a?.b.0`, `a?.b[i]`, `a?.b.m()` and `a?.b->c`, work on the value inside, and when a `?.` or `?->` meets `none` the whole chain is `none`. Each reaches inside the one optional before it, so an optional read further along needs its own: `a?.b?.c` when `b` is optional too. Parentheses end a chain, and so does a prefix `*`. The chain's value is wrapped into `T?` once, at its end, unless it already is optional, so results never nest. A value read through `?.` or `?->` is a copy (§3.1), not a place (§3.7), so a chain can't be assigned to, nor be the receiver of a method taking `&self`.
+All three work only on optionals; using one on any other value is an error. A `?.` or `?->` starts an **optional chain**: the links after it, such as `.c`, `.0`, `[i]`, `.m()` and `->c` in `a?.b.c`, `a?.b.0`, `a?.b[i]`, `a?.b.m()` and `a?.b->c`, work on the value inside, and when a `?.` or `?->` meets `none` the whole chain is `none`. Each reaches inside the one optional before it, so an optional read further along needs its own: `a?.b?.c` when `b` is optional too. Parentheses end a chain, and so does a prefix `*`. The chain's value is wrapped into `T?` once, at its end, unless it already is optional, so results never nest. A value read through `?.` or `?->` is a copy (§3.1), not a place (§3.7), so a chain can't be assigned to, nor be the receiver of a method taking `&self`.
 
 `??` can't be mixed with `and` or `or` without parentheses, as in JavaScript. Neither operator is related to the postfix `?` on `Result`, which propagates errors (§3.12).
 

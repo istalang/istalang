@@ -187,3 +187,6 @@ export const entryFunction = 'main';
 
 /** The end `..=` stores, one past the written end in the step's direction (§3.8). */
 export const inclusiveEndFunction = '_inclusiveEnd';
+
+/** What `x!` calls on none (§4), and what a program calls to panic (§3.12). */
+export const panicFunction = 'panic';

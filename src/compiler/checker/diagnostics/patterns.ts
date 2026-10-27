@@ -47,6 +47,12 @@ export const patternTemplates = {
     message: (operator: string, found: string) =>
       `'${operator}' works on an optional, but this is ${found}.`,
   },
+  forceUnwrap: {
+    code: 5411,
+    severity: 'warning',
+    message: () =>
+      "'!' panics when the optional is none; handle none with '??', 'is' or 'match' instead (§4).",
+  },
   insideOptional: {
     code: 5409,
     message: (found: string, operator: string) =>

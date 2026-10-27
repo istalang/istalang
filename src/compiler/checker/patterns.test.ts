@@ -159,6 +159,32 @@ describe('optional operators', () => {
   });
 
   it.each([
+    ["'!' gives the value inside", 'const v: int = outer!.inner!.code', 'outer!.inner!'],
+    [
+      "'!' unwraps the whole chain before it",
+      'const v: int = (outer?.inner?.zip)!',
+      '(outer?.inner?.zip)!',
+    ],
+    [
+      "'!' after a chain without parentheses",
+      'const v: int = outer?.inner?.code!',
+      'outer?.inner?.code!',
+    ],
+  ])('warns at every %s', (_case, line, spanText) => {
+    const { codes, spanTexts } = reported([...chained, `  ${line}`, '  v'].join('\n'));
+    expect(codes.every((code) => code === reports.forceUnwrap.code)).toBe(true);
+    expect(spanTexts.at(-1)).toBe(spanText);
+  });
+
+  it("refuses '!' on a value that isn't optional", () => {
+    const lines = [...chained, '  const n = 1', '  n!'];
+    expect(reported(lines.join('\n')).codes).toEqual([
+      reports.forceUnwrap.code,
+      reports.needsOptional.code,
+    ]);
+  });
+
+  it.each([
     ['right after the ?.', 'outer?.reset()', 'outer'],
     ['on a later link', 'plain?.inner.reset()', 'plain?.inner'],
   ])("refuses a '&self' method through a chain, %s, as no place", (_case, call, receiver) => {

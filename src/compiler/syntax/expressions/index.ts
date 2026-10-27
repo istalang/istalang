@@ -232,7 +232,7 @@ export interface Propagate extends NodeOf<'Propagate'> {
 }
 
 /** Postfix `!` on an optional: its value, or a panic on `none`. */
-interface Unwrap extends NodeOf<'Unwrap'> {
+export interface Unwrap extends NodeOf<'Unwrap'> {
   readonly operand: Expression;
 }
 

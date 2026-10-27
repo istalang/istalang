@@ -143,6 +143,8 @@ export type ImplicitRole =
   | 'inclusiveEnd'
   /** The `compare` an ordering calls where no operator node stands for it: a chain's link. */
   | 'compare'
+  /** The `panic` `x!` calls when `x` is none (§4). */
+  | 'panic'
   /** Writing an element of a place back, changed or whole, with `setIndex` (§3.9). */
   | 'write'
   /** The `default()` a map literal of a type other than `Map` starts from (§2). */

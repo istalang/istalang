@@ -27,6 +27,7 @@ import { lowerSelect } from './select.ts';
 import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
 import { lowerTemplate } from './templates.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
+import { lowerUnwrap } from './unwrap.ts';
 import { isEnum, lowerNone, lowerVariantLiteral } from './variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -59,7 +60,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Index: lowerIndex,
   Propagate: lowerPropagate,
   Spawn: lowerSpawn,
-  Unwrap: notLowered,
+  Unwrap: lowerUnwrap,
   ChainedComparison: lowerChain,
   TemplateLiteral: lowerTemplate,
   Dereference: lowerDereference,

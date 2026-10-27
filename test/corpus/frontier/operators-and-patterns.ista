@@ -1,11 +1,7 @@
-# error: 5000 at 8:3
-# error: 5000 at 12:10
-# error: 5000 at 13:10
-# error: 5000 at 18:10
-# `!`, and or, range and array patterns parse, and are not checked yet (language features, L5).
-
-fn f(m: int?) -> int:
-  m!
+# error: 5000 at 8:10
+# error: 5000 at 9:10
+# error: 5000 at 14:10
+# Or, range and array patterns parse, and are not checked yet (language features, L5).
 
 fn p(x: int) -> int:
   match x:

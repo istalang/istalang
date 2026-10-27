@@ -35,6 +35,7 @@ import { checkDurationLiteral } from './literals.ts';
 import { checkIs, checkMatch, matchAccepts } from './match.ts';
 import { checkName, nameAccepts } from './names.ts';
 import { checkBinary, checkChain, checkUnary } from './operators.ts';
+import { checkUnwrap } from './optionals.ts';
 import { checkPropagate } from './propagate.ts';
 import { checkSelect, selectAccepts } from './select.ts';
 import { checkSpawn } from './spawn.ts';
@@ -87,7 +88,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Index: checkIndex,
   Propagate: checkPropagate,
   Spawn: checkSpawn,
-  Unwrap: (context, node) => context.unsupported(node),
+  Unwrap: checkUnwrap,
   ChainedComparison: checkChain,
   TemplateLiteral: checkTemplate,
   Dereference: checkDereference,

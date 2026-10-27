@@ -1,5 +1,5 @@
 /**
- * The operators on optionals (§4): `a?.b`, `a?.m()`, `a?->b`, and `a ?? b`.
+ * The operators on optionals (§4): `a?.b`, `a?.m()`, `a?->b`, `a ?? b` and `a!`.
  *
  * - `?.` and `?->` (with `?.[` and `?.(`) start an optional chain. Every link after one (`.c`,
  *   `.0`, `[i]`, `.m()`, `->c`) works on the value inside, and the whole chain yields `none` as soon
@@ -10,18 +10,23 @@
  *   assigned to, and a method taking `&self` isn't called through it.
  * - `a ?? b` is the value inside `a`, else `b`, evaluated only then. `b` may be a `T`, giving a `T`,
  *   or a `T?`, giving a `T?`, so `a ?? b ?? c` reads left to right.
- * - Both take an optional; anything else is reported.
+ * - `a!` is the value inside `a`, and panics on none through the prelude's `panic`. A chain before
+ *   it is unwrapped whole: `a?.b!` is `(a?.b)!`. It is a warning wherever it is written, since
+ *   `??`, `is` or `match` handles the none it would panic on.
+ * - All three take an optional; anything else is reported.
  */
 
+import { panicFunction } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type ChainStep, chainStepOf, isOptionalStep } from '../../syntax/expressions/chains.ts';
-import type { Binary, Expression } from '../../syntax/expressions/index.ts';
+import type { Binary, Expression, Unwrap } from '../../syntax/expressions/index.ts';
 import type { ChainLink } from '../check.ts';
 import { checkOwnCall } from '../closures/own-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { optionalInner } from '../types/fit.ts';
-import { errorType, isAssignable, type Type } from '../types/type.ts';
+import { errorType, isAssignable, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /**
@@ -102,6 +107,31 @@ export class OptionalChains {
     }
     return inner;
   }
+}
+
+/** `a!`: the value inside `a`, which must be an optional. */
+export function checkUnwrap(context: BodyContext, node: Unwrap, expected: Type | undefined): Type {
+  const { checker } = context;
+  const operand = context.expression(
+    node.operand,
+    expected === undefined ? undefined : checker.optionalOf(expected),
+  );
+  context.report(checkerDiagnostics.forceUnwrap(node.span));
+  const inner = optionalInner(operand, checker.optionalEntity);
+  if (inner === undefined) {
+    if (operand.kind !== 'error') {
+      context.report(checkerDiagnostics.needsOptional(node.operand.span, '!', typeText(operand)));
+    }
+    return errorType;
+  }
+  implicitCall(context, {
+    node,
+    role: 'panic',
+    candidates: preludeCandidates(context, panicFunction),
+    arguments: [{ type: stringType, passing: 'value' }],
+    failure: () => checkerDiagnostics.needsOptional(node.span, '!', typeText(operand)),
+  });
+  return inner;
 }
 
 /** `a ?? b`. */
