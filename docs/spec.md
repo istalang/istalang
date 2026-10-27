@@ -67,6 +67,7 @@ g(&value)    float(3)    a[1..3]    m["a"] = 2         # reference, conversion, 
 trait Addable<T = Self>:
     fn add(left: T, right: T) -> T
 fn sum<T is Addable & Monoid>(xs: Array<T>) -> T: ...
+fn notifyAll(notifiers: Array<any Notifier>): ...     # values of any type meeting the trait
 ```
 
 **Control flow and patterns**
@@ -149,7 +150,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 - **Continuation.** A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal, so a call or literal may span lines. Inside braces that list fields or variants, as in `{ sku: string; qty: int }`, a line break separates entries just as `;` does. There is no backslash continuation.
 - **Trailing commas** are allowed in every comma-separated list.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
-- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Five more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, and `sendable` right after `extern` or before a function type's `fn` or `async`. So `T.from` (§3.10) and a field named `type` (§9) are valid.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Six more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, and `any` before a trait's name in a type (§3.10). So `T.from` (§3.10) and a field named `type` (§9) are valid.
 
 Every expression has a static type, and there is no `any` type. There are no implicit conversions, with one exception: a `T` is wrapped into `T?` wherever an optional is expected (§3.11).
 
@@ -559,7 +560,7 @@ Binary operators on the same level associate to the left.
 
 ### 3.10 Traits
 
-A trait is a named set of functions, and optionally fields, that a type must have. Traits are used only as constraints on type parameters (`T is Addable`), never as the type of a variable, field or parameter.
+A trait is a named set of functions, and optionally fields, that a type must have. A trait constrains a type parameter (`T is Addable`), and after `any` it types a value of any type meeting it (`any Notifier`, below).
 
 ```python
 trait Addable<T = Self>:
@@ -586,10 +587,27 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 - **Several traits.** `T is X & Y` requires both. In this position `&` joins traits; it never means a reference.
 - **Structural conformance.** A type satisfies a trait when functions with the required signatures exist for it. There are no `impl` blocks. The required functions must be declared beside the types they take or beside the trait: in the module declaring one of those types (the prelude, for a primitive), for a static function also its own type's, or in the trait's own module. Only the types themselves count, not their type arguments, as in argument-dependent lookup (§3.13). So a module declaring a trait can declare its functions for types it doesn't own, such as primitives, and no caller has to import them.
 - **Coherence.** Where a type meets a constraint, such as a generic call, never decides how: the functions found are the same in every module, and they are the ones every instantiation calls. Two modules therefore can't disagree about one value, as when one sorts an array that another searches, or one writes a value that another parses back. A module owning neither the type nor the trait can't make the one meet the other; it passes a function value instead (§3.14). A function's parameters must take the type as it is: one taking it only wrapped into an optional, such as `fn add<T>(left: T?, right: T?) -> T`, is a function for `T?`, not for `T`.
-- **Constraints only.** Because traits are never value types, there is no dynamic dispatch. The interpreter always knows the concrete type at a call, and snapshots and messages never have to record which type is hiding behind a trait.
 - **Fields.** A trait may require fields, written like struct fields: `value: int`. A struct satisfies one with a field of the same name and type.
 - **Static functions.** A trait may require a static function, declared on `Self`, such as `fn Self.zero() -> Self`. Generic code calls it through the type parameter: `T.zero()` (§3.7).
 - **Generic requirements.** A required function may have type parameters of its own, such as `fn map<U>(self: Self, f: fn(T) -> U) -> Array<U>`. A function satisfies it when it is generic in the same way, up to the names of its type parameters.
+
+**Trait objects.** `any A & B` is the type of a value of any type meeting each of its traits; `any T?` is `(any T)?`. It is how values of different types share a collection, a field or a parameter:
+
+```python fragment
+trait Notifier:
+    fn send(self: Self, text: string)
+
+const notifiers: Array<any Notifier> = [Email{to: "cfo"}, Sms{number: "555"}]
+for notifier in notifiers:
+    notifier.send("approved")
+```
+
+- **Conversion.** A value converts into an `any` type wherever one is expected and its type meets every trait, as a `T` is wrapped into `T?` (§2); an `any` type converts into another whose traits are among its own. The traits are a set: their order doesn't matter, and naming one twice is an error.
+- **Calls.** A function a trait requires is called on an `any` value like any other, `notifier.send(text)`, and runs the one the value's own type meets the trait with. An `any` type meets its own traits, so its values pass where `T is Notifier` is expected, and `string(x)` takes an `any Stringable`. A field a trait requires is read the same way and can't be written through the `any` value; a method taking `&self` changes the value inside it.
+- **Object safety.** A trait can follow `any` only when each function it requires takes `Self` first, as its receiver, by value or `&`, and nowhere else, and none is static; and no field it requires is built from `Self`. So `any Stringable` and `any Iterable<int>` are types, but `any Comparable`, whose `compare` takes a second `Self`, and `any Default`, whose `default` is static, are errors.
+- **Values.** `==` compares the values' types, then the values, so an `any` value can be a map key. An `any` type is sendable only when one of its traits is `Sendable`, or `Encodable` or `Decodable`, which imply it, as in `any Notifier & Sendable`, and a value converted into one must be sendable. JSON derives no form for an `any` type and decodes nothing into one; `any Encodable` writes the JSON of the value inside.
+- **Matching.** A pattern naming a type matches an `any` value holding one: a struct pattern (`case Email{to}`), a struct without fields by its name, or a variant qualified by its enum (`case Decision.Approved{by}`). The rest of the pattern then matches the value inside, and `as` binds that value with its own type. A pattern gives no type arguments, so it can't name a generic type, and it can't name a type that doesn't meet the traits. The types an `any` type holds are an open set, so a `match` on one ends with `case _`.
+- **Running.** A value keeps its own type inside an `any` value, in snapshots and messages too, so the interpreter knows the type at every call through a trait. Which types an `any` type holds is decided over the whole program; an `any` value has no JSON form, so it reaches only instances of the same program, whose code is fixed for their whole lifetime (§5).
 
 **Built-in traits:**
 

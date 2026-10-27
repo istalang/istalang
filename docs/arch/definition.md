@@ -3,7 +3,7 @@ description: the Definition (compiled program) and snapshot formats — instruct
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-26
+last_verified: 2026-10-28
 last_updated: 2026-10-28
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
@@ -22,7 +22,8 @@ Both formats were written for the whole language before any of it compiled, so t
 | --- | --- | --- |
 | How code is shaped | **Linear register code**: each function is a list of instructions over numbered registers. A frame is `(function, pc, registers)`. | A tree with an explicit continuation stack. Every node evaluator would have to resume midway, and the continuation's shape would have to be persisted. |
 | Types in the code | **Untyped instructions.** Operators, indexing, `for` and `T(x)` are calls the checker already resolved. Types are stored only where a value's shape is needed without code: field names and annotations, extern signatures for the host boundary, extern types. | A typed IR, which would mean a second type system for the runtime to keep consistent with the checker's. |
-| Generics | **Compiled per instantiation** (spec §3.5). Every call has one target, and a type table entry is fully concrete. | Passing type descriptors at runtime. That needs runtime dispatch for trait calls, which spec §3.10 rules out. |
+| Generics | **Compiled per instantiation** (spec §3.5). Every call has one target, and a type table entry is fully concrete. | Passing type descriptors at runtime, which needs runtime dispatch for every trait call. |
+| Trait objects | **An enum per `any` type**, closed over the program: one variant per type converted into it, holding the value, and every call through a trait a `switch` to that type's own function (spec §3.10). A variant's index is fixed when lowering first converts its type, so code naming it never changes; what switches over every variant is written once lowering has reached them all, and again when it reaches another (lowering/tables.ts). | A table of function values carried with each value (a vtable): it persists code references in every value, and calls go through closures instead of one `switch`. |
 | Calls | **One function table.** An extern is a table entry whose body names a native, so there is one call path, where a mock the calling instance reaches replaces a function whatever it is (spec §10), and one place extern results are seen. | Separate extern tables, which would mean two call paths and two mock points. |
 | JSON | **lossless-json** (exact integers at any size) **with sorted keys**, read and written through **zod** codecs. In memory an `int` is a `bigint` and a float a `number`; on disk a float is tagged. | Native `JSON` with `rawJSON` and the reviver's source access: TypeScript 7 has no types for them. A hand-rolled canonicalizer. |
 | What a snapshot stores | Only what can't be derived. Nothing about holders is stored or counted: whether a value is still held is decided by reachability where something lets go of it (Holders). Creation order is id order, and what an execution waits on is read from its pc. | Reference counts, persisted or kept in memory: every copy and overwrite would have to update them, they could disagree with the values they count, and disposables holding each other in a cycle would never reach zero. |
@@ -152,6 +153,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable`, `disposal` (§7) and, for `Future`, its `role` |
 | `shared struct X` (§3.18) | an `extern` type entry per instantiation, never sendable, with its `disposal` and the `cell` role; the value behind it is an anonymous struct entry of its fields |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
+| `any A & B` (§3.10) | an `enum` entry named after the type, one variant per type converted into it, each with the one field `value`; a conversion is `variant`, or, from another `any` type, a call to an entry converting variant by variant; a call through a trait, or a required field's read, is a call to an entry that `switch`es over every variant and calls that type's function or reads its field, passing a `&self` receiver on by `&` into the variant; a downcast pattern is a `switch` on the type's variant, with `otherwise` for the rest |
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
 | `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; derived codecs are compiled from the checker's derived forms, which read them |
 | Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` an `Optional` variant |
