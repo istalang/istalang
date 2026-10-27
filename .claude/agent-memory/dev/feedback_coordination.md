@@ -14,3 +14,4 @@ metadata:
 **Why:** the user's instruction at M1 start (2026-10-24). Every fork inherits the coordinator's context, so it must stay small, and the user wants to approve each phase personally.
 
 **How to apply:** every time a fork is spawned or a report is consumed in this project.
+- Reviewers are cold Claude `reviewer` agents (never `--model fable` unless asked; not pi: on 2026-10-27 a pi review approved with no findings where a Claude reviewer found real bugs). Brief: diff range plus docs, focus on DRY, simplification, double standards, non-robust/hacky code. The same reviewer re-reviews the fixes.
