@@ -8,6 +8,12 @@ import { describe, expect, it } from 'vitest';
 import { specCode } from '../../../test/corpus/spec-examples.ts';
 import { ista, tempProject as project } from '../cli.test-kit.ts';
 
+/**
+ * How long a run of §10's whole suite may take: each of its tests commits every segment of a whole
+ * program through the snapshot codec, seconds in all (D44), more than a unit test's default.
+ */
+const wholeSuiteTimeout = 20_000;
+
 /** A line reporting one test: its mark, then its title. */
 const testLine = /^[✓✗-] /u;
 
@@ -134,17 +140,21 @@ describe('ista test', () => {
     expect(run.err + run.out).toContain('error 4015');
   });
 
-  it("runs spec §10's suite against spec §12.1's purchase approval", async () => {
-    const suite = new URL('../../../test/spec-suites/purchase.test.ista', import.meta.url);
-    const root = project({
-      'purchase.ista': [...specCode('12.1 Purchase approval'), ''].join('\n'),
-      'purchase.test.ista': readFileSync(suite, 'utf8'),
-    });
-    const run = await ista(root, 'test');
-    expect(run.err).toBe('');
-    expect(
-      run.out.split('\n').filter((line) => testLine.test(line) && !line.startsWith('✓ ')),
-    ).toEqual([]);
-    expect(run.code).toBe(0);
-  });
+  it(
+    "runs spec §10's suite against spec §12.1's purchase approval",
+    async () => {
+      const suite = new URL('../../../test/spec-suites/purchase.test.ista', import.meta.url);
+      const root = project({
+        'purchase.ista': [...specCode('12.1 Purchase approval'), ''].join('\n'),
+        'purchase.test.ista': readFileSync(suite, 'utf8'),
+      });
+      const run = await ista(root, 'test');
+      expect(run.err).toBe('');
+      expect(
+        run.out.split('\n').filter((line) => testLine.test(line) && !line.startsWith('✓ ')),
+      ).toEqual([]);
+      expect(run.code).toBe(0);
+    },
+    wholeSuiteTimeout,
+  );
 });

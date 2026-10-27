@@ -239,7 +239,9 @@ export class World implements TestWorld {
         object.kind === 'future' && object.state.kind === 'host' ? [object.state.token] : [],
       ),
     );
-    for (const holder of this.#group.states.keys()) {
+    // A holder in a segment waiting on an answer has run past its last commit, so is left alone.
+    const holders = [...this.#group.states.keys()].filter((holder) => !this.#calling.has(holder));
+    for (const holder of holders) {
       const snapshot = this.#snapshotOf(holder);
       const withdrawn = (snapshot?.status.kind === 'active' ? snapshot.objects : []).flatMap(
         (object) =>

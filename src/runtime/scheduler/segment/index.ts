@@ -300,11 +300,16 @@ class SegmentRunner implements Machine {
 
   /**
    * Collects what the segment let go of before any execution ran, as answers withdrawn from their
-   * callers let go of what they wait on (§10), running any disposal's call to its end.
+   * callers let go of what they wait on (§10).
    */
   #collectBeforeDriving(): void {
+    this.#collectFully(() => this.#step());
+  }
+
+  /** Collects until no disposal's call is left to run, running each step of one with `step`. */
+  #collectFully(step: () => void): void {
     while (!this.#collected()) {
-      this.#step();
+      step();
     }
   }
 
@@ -339,7 +344,7 @@ class SegmentRunner implements Machine {
 
   /** Collects until no disposal is left to run, while the instance ends: one that panics is let go. */
   #collectEnding(): void {
-    while (!this.#collected()) {
+    this.#collectFully(() => {
       try {
         this.#step();
       } catch (error) {
@@ -348,7 +353,7 @@ class SegmentRunner implements Machine {
         }
         this.#disposals.abandon();
       }
-    }
+    });
   }
 
   /** Runs the instruction the top frame stands at. */
