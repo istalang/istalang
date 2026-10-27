@@ -12,6 +12,25 @@ tags: [plan, language, syntax, checker, runtime]
 
 Plan and process: `plan.md`. Each phase sweeps its features' gaps with the human first (defaults below), then writes the spec.
 
+## Syntax decided in L0 (human, 2026-10-27)
+
+L0 parses all of it; the owning phase gives each form its meaning and its refusals.
+
+- **Precedence, loosest first:** `??`, `or`, `and`, `not`, comparison (`< <= > >= == != is in not in`), range (`..`, `..=`, `by`), `|`, `^`, `&`, shifts, additive, multiplicative, prefix (`-`, `~`, `await`, `*`, `&`), `**`, postfix (`!`, `?`, calls, members).
+- **`**`** groups right; its right operand may be a prefix expression (`2 ** -1`). A prefix operator directly on its left parses and is refused by L5. `**x` in prefix position is two dereferences.
+- **Compound assignments** gain `**=`, `&=`, `|=`, `^=`, `<<=`, `>>=`. `>>` and `>>=` split inside type arguments, as `>=` does.
+- **Chains:** two or more of `< <= > >= == !=` are one chain node; `is`, `in`, `not in` don't chain. Which mixes are legal is L5's.
+- **`not in`** is one operator. The iterable of `for` and of a comprehension stays a full expression: their targets are patterns, so `in` can't be swallowed.
+- **`a..b by c`:** `by` is a contextual word after any range; its operand binds as the range's end.
+- **`spawn`** binds as JS `new`: a callee (names, members, type arguments) and one argument list, then postfix applies to the instance: `spawn w.run(job).result()` is `(spawn w.run(job)).result()`.
+- **Patterns:** `|` anywhere a pattern stands; `A | B as x` is `(A | B) as x`; `x is A | B` takes the whole or-pattern. Arrays `[p, ...rest, q]`, the rest `...name` or `..._`. Range bounds are literals (negative numbers included), either end open.
+- **Types:** `any` is a contextual word before a type name; `any A & B`; `any T?` is `(any T)?`. Packs are declared `<...A>`; function types take a rest, `fn(...A) -> R` and `fn(int, ...Array<string>)`.
+- **Labels** stand before `for` or `while` only (`outer: for …`); `break outer` and `continue outer` name them on the same line.
+- **`hold`:** `hold let|const|_ …` and `hold(name) …`. Unlabelled `hold` is `fn let/const/_` respelled, so it works from L0, and both spellings share one tree field until L4 deletes `fn`'s; `hold(name)` reports 5000 until L4.
+- **Named arguments:** `f(name: value)` in any order in the parser (L1 refuses positional after named); `name: &x` is allowed; no shorthand.
+- **`x!`** is postfix beside `?`.
+- **Templates and docstrings:** L0 declares their node kinds and fields; scanning and parsing them is L6's, which owns multi-line tokens.
+
 ## F1 Rest parameters and spread (D67)
 
 - **Decided:** as §3.3 already specifies: `...xs: Array<T>` last, after defaults; `...xs` spreads at a call; fixed arity beats rest.
