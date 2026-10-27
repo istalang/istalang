@@ -107,7 +107,7 @@ const closure = z.strictObject({
   },
 });
 
-/** A value of an extern type the runtime or host implements; the payload is opaque here. */
+/** A value of an extern type the runtime or host implements; its payload is plain JSON (`samePayload`). */
 const external = z.strictObject({
   kind: z.literal('extern'),
   type: typeId,
@@ -229,6 +229,40 @@ export function mapValueOf(candidate: Value | undefined): MapOf<Value> {
 
 /** A value that contains other values. */
 export type CompositeValue = Exclude<Value, null | boolean | string | bigint | number>;
+
+/**
+ * Whether two extern payloads are one value: plain JSON, compared by content, since a snapshot
+ * round trip rebuilds every object it holds. An object's key order and prototype don't count, as
+ * JSON gives them no meaning.
+ */
+export function samePayload(first: unknown, second: unknown): boolean {
+  if (first === second) {
+    return true;
+  }
+  if (
+    typeof first !== 'object' ||
+    typeof second !== 'object' ||
+    first === null ||
+    second === null
+  ) {
+    return false;
+  }
+  if (Array.isArray(first) || Array.isArray(second)) {
+    return (
+      Array.isArray(first) &&
+      Array.isArray(second) &&
+      first.length === second.length &&
+      first.every((item, index) => samePayload(item, second[index]))
+    );
+  }
+  const firstEntries = Object.entries(first);
+  return (
+    firstEntries.length === Object.keys(second).length &&
+    firstEntries.every(
+      ([key, item]) => Object.hasOwn(second, key) && samePayload(item, Reflect.get(second, key)),
+    )
+  );
+}
 
 /** The heap object a handle names; undefined for any other value. */
 export function handleTarget(candidate: Value | undefined): number | undefined {

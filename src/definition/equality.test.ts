@@ -7,6 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { exactJson } from './codec.test-kit.ts';
 import {
   entryPosition,
   entryValue,
@@ -21,6 +22,9 @@ import type { Value } from './values.ts';
 
 const keys = valueArbitrary({ typed: true });
 const entries = fc.array(fc.tuple(keys, valueArbitrary({ typed: true })), { maxLength: 12 });
+const externs = fc
+  .record({ type: fc.nat({ max: 3 }), payload: exactJson })
+  .map((parts): Value => ({ kind: 'extern', ...parts }));
 
 /** The position of `key` found by scanning with `==`, as a lookup must find it. */
 function scanned(map: MapValue, key: Value): number | undefined {
@@ -102,5 +106,22 @@ describe('maps as values', () => {
     expect(entryValue(map, Number.NaN)).toBeUndefined();
     expect(map.entries.length).toBe(3 - 1);
     expect(entryValue(map, -0)).toBe(3n);
+  });
+});
+
+describe('extern values', () => {
+  it('are equal by their payload JSON, as a snapshot round trip rebuilds it', () => {
+    fc.assert(
+      fc.property(externs, (value) => {
+        const copy = structuredClone(value);
+        expect(valuesEqual(value, copy)).toBe(true);
+        expect(entryValue(mapOf([[value, 1n]]), copy)).toBe(1n);
+      }),
+    );
+  });
+
+  it('differ when their payload JSON does', () => {
+    const queue = (name: string): Value => ({ kind: 'extern', type: 0, payload: { name } });
+    expect(valuesEqual(queue('a'), queue('b'))).toBe(false);
   });
 });

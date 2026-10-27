@@ -1,13 +1,19 @@
 /**
  * The built-in `==` and map keys (§3.8, §3.9) over the runtime's values: the rules are
  * language/values.ts's, shared with compile time's constants; this module shows them the
- * runtime's values. Handles compare by identity (§3.1), an extern value by its type and payload.
- * Everything that compares values or builds maps at run time, the interpreter and the std
- * natives alike, uses these.
+ * runtime's values. Handles compare by identity (§3.1), an extern value by its type and its
+ * payload's JSON. Everything that compares values or builds maps at run time, the interpreter and
+ * the std natives alike, uses these.
  */
 
 import { type MapOf, ValueSemantics, type ValueView } from '../language/values.ts';
-import { type CompositeValue, childValues, isComposite, type Value } from './values.ts';
+import {
+  type CompositeValue,
+  childValues,
+  isComposite,
+  samePayload,
+  type Value,
+} from './values.ts';
 
 export type MapValue = MapOf<Value>;
 
@@ -39,7 +45,11 @@ function sameHead(left: CompositeValue, right: CompositeValue): boolean {
     case 'handle':
       return right.kind === 'handle' && left.object === right.object;
     case 'extern':
-      return right.kind === 'extern' && left.type === right.type && left.payload === right.payload;
+      return (
+        right.kind === 'extern' &&
+        left.type === right.type &&
+        samePayload(left.payload, right.payload)
+      );
     case 'struct':
       return right.kind === 'struct' && left.type === right.type;
     case 'variant':

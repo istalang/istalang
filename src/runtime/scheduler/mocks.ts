@@ -24,6 +24,7 @@ import {
   type CompositeValue,
   childValues,
   isComposite,
+  samePayload,
   type Value,
   withChildValues,
 } from '../../definition/values.ts';
@@ -272,7 +273,7 @@ export function arriving(instance: Instance, value: Value): Value {
   if (value.kind === 'extern' && isResourceType(instance.loaded.definition.types, value.type)) {
     const known = instance.heap
       .objectsOf('resource')
-      .find((each) => each.type === value.type && each.payload === value.payload);
+      .find((each) => each.type === value.type && samePayload(each.payload, value.payload));
     const resource =
       known ??
       instance.heap.add((id) => ({
