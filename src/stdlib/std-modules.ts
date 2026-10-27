@@ -9,6 +9,7 @@
  */
 
 import { languageModules } from '../language/well-known.ts';
+import fanoutSource from './fanout/fanout.ista';
 import futuresSource from './futures/futures.ista';
 import { futuresNatives } from './futures/natives.ts';
 import inboxSource from './inbox/inbox.ista';
@@ -16,6 +17,7 @@ import jsonSource from './json/json.ista';
 import { jsonNatives } from './json/natives.ts';
 import { preludeNatives } from './prelude/natives.ts';
 import preludeSource from './prelude/prelude.ista';
+import rpcSource from './rpc/rpc.ista';
 import { runtimeNatives } from './runtime/natives.ts';
 import runtimeSource from './runtime/runtime.ista';
 import { type StdModule, stdModule } from './std-module.ts';
@@ -30,6 +32,8 @@ export const stdModules: readonly StdModule[] = [
   stdModule(languageModules.json, jsonSource, jsonNatives),
   stdModule('futures', futuresSource, futuresNatives),
   stdModule('inbox', inboxSource),
+  stdModule('rpc', rpcSource),
+  stdModule('fanout', fanoutSource),
   stdModule('runtime', runtimeSource, runtimeNatives),
   stdModule(languageModules.testing, testingSource, testingNatives),
 ];

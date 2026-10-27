@@ -1,0 +1,52 @@
+# The rpc module (spec §3.8): calls, their servers, and calls let go without a reply.
+
+import Suite, Test, test, assert, assertEq from 'testing'
+import * as rpc from 'rpc'
+import * as runtime from 'runtime'
+
+# Whether `reply` is the `Err` of a call let go without a reply.
+fn unanswered<R>(reply: Result<R>) -> bool:
+  reply is Err{error} and error.code == "unanswered"
+
+@Suite{"rpc"}
+fn rpcSuite() -> Array<Test>: [
+  test("replies with what the handler returns", async fn(): {
+    const double = rpc.create<int, int>()
+    fn _ = double.onMessage(fn(n: int): n * 2)
+    assertEq(await double.call(21), Ok{(42)})
+  }),
+  test("serves calls one at a time, in the order they arrived", async fn(): {
+    const method = rpc.create<int, int>()
+    const gate = Slot.create<unit>()
+    let log: Array<string> = []
+    fn _ = method.onMessage(async fn(n: int): { log.push("start " + n); await gate.take(); log.push("end " + n); n })
+    const (first, second) = (method.call(1), method.call(2))
+    await runtime.commit()
+    await gate.put(())
+    assertEq(await first, Ok{(1)})
+    await gate.put(())
+    assertEq(await second, Ok{(2)})
+    assertEq(log, ["start 1", "end 1", "start 2", "end 2"])
+  }),
+  test("shares the calls among its servers, each call going to one", async fn(): {
+    const method = rpc.create<int, string>()
+    fn _ = method.onMessage(fn(n: int): "a" + n)
+    fn _ = method.onMessage(fn(n: int): "b" + n)
+    await runtime.commit()
+    const (first, second) = (method.call(1), method.call(2))
+    assertEq([await first, await second], [Ok{("a1")}, Ok{("b2")}])
+  }),
+  test("fails a call whose server is disposed while handling it", async fn(): {
+    const method = rpc.create<int, int>()
+    const never = Slot.create<int>()
+    const server = method.onMessage(async fn(n: int): await never.take())
+    const reply = method.call(1)
+    await runtime.commit()
+    drop server
+    assert(unanswered(await reply))
+  }),
+  test("fails a call still queued when its method dies", async fn(): {
+    const reply = rpc.create<int, int>().call(1)
+    assert(unanswered(await reply))
+  }),
+]

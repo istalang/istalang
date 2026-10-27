@@ -26,7 +26,7 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D186.
+up, so the next one is D187.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |
@@ -90,3 +90,4 @@ up, so the next one is D186.
 | D183 | FakeQueue fakes a host's plain sends but not its revertible ones, so every test of a program with host revertible sends hand-writes the receipt bookkeeping: test/spec-suites/purchase.test.ista keeps `Receipts` (receipt → `Revertible<T>`, one list per message type), one `_sendRevertible` mock per message type with identical bodies, and a `dispose` mock filtering every list. That knowledge (a host receipt stands for a revertible message; disposing it retracts it) belongs in the library once, e.g. a FakeQueue field replacing a revertible send given a receipt maker, and one `dispose` replacement over all of a test's fakes. | phase review M4 T2 2026-10-27 | open |
 | D184 | runtime/testing/world.ts queries snapshots inline in four places, each with its own status guard: pending watches in `#watchHolds` (watcher active) and `#waitsForPanicOf` (any state, so a frozen instance's dead watch still marks a panic as expected), and in `#withdrawAnswersTo` the caller's host-future tokens (any state) and each holder's answers to it (holder active). Give these queries of an instance's last commit one home, beside `inspection` (scheduler/inspect.ts), with one rule for which states count. | phase review M4 T2 2026-10-27 | open |
 | D185 | `time` declares no ordering on `Time` or `Duration`, so code comparing them unwraps `.value` (testing.ista FakeClock does it four times, `advance` checks `by.value < 0`). Declare the comparisons beside `add` in time.ista (phase D owns `time`) and compare the values themselves. | phase review M4 T2 2026-10-27 | open |
+| D186 | A block spread over several lines (§3.14, §4) inside another such block doesn't parse: in `const g = fn() -> int: {` … `const f = fn() -> int: {` (lines) `}` … `f()` `}`, the lines after the inner `}` leave the outer block (5001 Expected int, found unit), and an inner one written as a call argument, as in `retry(fn() -> R: {` (lines) `}, 2)`, reports 2002 for both its `{` and the call's `(`. One-line blocks with `;` work, which the futures tests use meanwhile. | phase M4 C 2026-10-27 | open |

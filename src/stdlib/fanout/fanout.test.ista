@@ -1,0 +1,79 @@
+# The fanout module (spec §3.8): delivery to every subscriber, order, revertible messages and the
+# end of a subscription. Each subscriber passes what it handles on to an inbox the test reads.
+
+import Suite, Test, test, assertEq from 'testing'
+import * as fanout from 'fanout'
+import * as runtime from 'runtime'
+import Inbox from 'inbox'
+
+# The next `count` messages `seen` receives.
+async fn received(seen: Inbox<int>, count: int) -> Future<Array<int>>:
+  let messages: Array<int> = []
+  for _ in 0..count:
+    messages.push(await seen.receive())
+  messages
+
+@Suite{"fanout"}
+fn fanoutSuite() -> Array<Test>: [
+  test("delivers each message to every subscriber, in the order they were sent", async fn(): {
+    const bus = fanout.create<int>()
+    const (a, b) = (Inbox.create<int>(), Inbox.create<int>())
+    fn _ = bus.subscribe(fn(n: int): a.send(n))
+    fn _ = bus.subscribe(fn(n: int): b.send(n))
+    bus.send(1)
+    bus.send(2)
+    assertEq((await received(a, 2), await received(b, 2)), ([1, 2], [1, 2]))
+  }),
+  test("gives a subscriber only the messages sent after it subscribed", async fn(): {
+    const bus = fanout.create<int>()
+    const seen = Inbox.create<int>()
+    bus.send(1)
+    fn _ = bus.subscribe(fn(n: int): seen.send(n))
+    bus.send(2)
+    assertEq(await received(seen, 1), [2])
+    await runtime.commit()
+    assertEq(seen.pending(), [])
+  }),
+  test("runs an async handler for one message at a time", async fn(): {
+    const bus = fanout.create<int>()
+    const gate = Slot.create<unit>()
+    const seen = Inbox.create<int>()
+    fn _ = bus.subscribe(async fn(n: int): { await gate.take(); seen.send(n) })
+    bus.send(1)
+    bus.send(2)
+    await runtime.commit()
+    assertEq(seen.pending(), [])
+    await gate.put(())
+    assertEq(await received(seen, 1), [1])
+    await runtime.commit()
+    assertEq(seen.pending(), [])
+    await gate.put(())
+    assertEq(await received(seen, 1), [2])
+  }),
+  test("retracts a revertible message from the subscribers that haven't read it", async fn(): {
+    const bus = fanout.create<int>()
+    const gate = Slot.create<unit>()
+    const (quick, slow) = (Inbox.create<int>(), Inbox.create<int>())
+    fn _ = bus.subscribe(fn(n: int): quick.send(n))
+    fn _ = bus.subscribe(async fn(n: int): { await gate.take(); slow.send(n) })
+    bus.send(1)
+    const held = bus.sendRevertible(2)
+    assertEq(await received(quick, 2), [1, 2])
+    drop held
+    bus.send(3)
+    await gate.put(())
+    await gate.put(())
+    assertEq(await received(slow, 2), [1, 3])
+  }),
+  test("stops once its subscription is disposed", async fn(): {
+    const bus = fanout.create<int>()
+    const seen = Inbox.create<int>()
+    const subscription = bus.subscribe(fn(n: int): seen.send(n))
+    bus.send(1)
+    assertEq(await received(seen, 1), [1])
+    drop subscription
+    bus.send(2)
+    await runtime.commit()
+    assertEq(seen.pending(), [])
+  }),
+]
