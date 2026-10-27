@@ -15,8 +15,8 @@
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
  *   `C`'s default, Default's witness, and assigns each entry with `setIndex`, as `c[k] = v` would
  *   (§2). Those are calls the language makes (resolution/implicit.ts), which must run at once
- *   (calls/collection-functions.ts): Default's `default` gives its type, never a future. Keys and values are checked on their own there, since
- *   `setIndex` is chosen by their types.
+ *   (calls/collection-functions.ts): Default's `default` gives its type, never a future. Keys and
+ *   values are checked on their own there, since `setIndex` is chosen by their types.
  * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
  * - Passed to a call, a literal whose first item has no type of its own, or an empty one, has the
  *   type the call decides (§3.5), so it takes what each item without one can take.
