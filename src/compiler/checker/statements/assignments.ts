@@ -38,7 +38,7 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
-import { type Taking, takeApart, takeTargets } from '../patterns/walk.ts';
+import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
