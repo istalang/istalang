@@ -12,8 +12,8 @@ extern fn integer(range: Range) -> int
 extern fn uuid() -> string
 
 # 2^53: every multiple of 1 / 2^53 below 1 is a float exactly, so each is equally likely.
-const floatSteps = 9_007_199_254_740_992
+const _floatSteps = 9_007_199_254_740_992
 
 # A uniform float from 0 up to 1.
 fn fraction() -> float:
-  float(integer(0..floatSteps)) / float(floatSteps)
+  float(integer(0.._floatSteps)) / float(_floatSteps)

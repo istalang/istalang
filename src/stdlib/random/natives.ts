@@ -10,7 +10,8 @@
 
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic, type WithRandom } from '../../runtime/natives.ts';
-import { fieldOf, int, optionalValue } from '../native-values.ts';
+import { given } from '../native-values.ts';
+import { rangeEnds } from '../prelude/positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 const rangeType = knownTypeKey(wellKnown.range);
@@ -34,12 +35,10 @@ const uuid = {
 
 export const randomNatives = (keys: NativeKeys): Natives<NativeContext & WithRandom> => ({
   [keys.of('integer', rangeType)]: ([range], context) => {
-    const start = optionalValue(fieldOf(range, 0));
-    const end = optionalValue(fieldOf(range, 1));
-    if (start === undefined || end === undefined) {
+    const { start: low, end: high } = rangeEnds(given(range));
+    if (low === undefined || high === undefined) {
       throw new Panic('random.integer needs a range with both ends.');
     }
-    const [low, high] = [int(start), int(end)];
     if (high <= low) {
       throw new Panic(`random.integer has nothing to draw from the empty range ${low}..${high}.`);
     }

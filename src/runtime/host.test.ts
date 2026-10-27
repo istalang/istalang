@@ -69,6 +69,13 @@ describe('the runtime', () => {
     expect(() => load().outcomeText(98n)).toThrow(Refusal);
   });
 
+  it('refuses a start whose seed from the host has the wrong length, writing nothing', () => {
+    const { runtime, store } = testRuntime({ seed: () => new Uint8Array(3) });
+    const program = runtime.deploy(subsetText);
+    expect(() => program.start('short')).toThrow(expect.objectContaining({ reason: 'unfitSeed' }));
+    expect(store.readSnapshot('short')).toBeUndefined();
+  });
+
   it('refuses a text that is not a Definition', () => {
     expect(() => testRuntime({ natives: stdNatives }).runtime.deploy('{}')).toThrow(FormatError);
   });

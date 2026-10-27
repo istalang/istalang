@@ -41,6 +41,7 @@ import {
 import { resume } from '../interpreter/suspension.ts';
 import { isDisposable } from '../lifetimes/disposal.ts';
 import { heldFrom } from '../lifetimes/holders.ts';
+import { seedTextOf } from '../random-seed.ts';
 import {
   type Frame,
   type HeapObject,
@@ -53,7 +54,7 @@ import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './
 import { spawnedName } from './instance-names.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import { leaving, reachingMock } from './mocks.ts';
-import { drawOf, seedOf } from './random-source.ts';
+import { drawOf } from './random-source.ts';
 import { Slots } from './slots.ts';
 import { WeakSide } from './weak-side.ts';
 
@@ -235,7 +236,7 @@ export class Instance {
       name,
       call,
       crashEveryAwait: this.crashEveryAwait || crashEveryAwait,
-      seed: seedOf(this.draw()),
+      seed: seedTextOf(this.draw()),
     });
     return name;
   }

@@ -1,0 +1,26 @@
+/**
+ * How the `time` module's natives read and build its structs (time.ista): by the names the fields
+ * are declared with, so a reordered declaration can't swap two of them.
+ */
+
+import type { Value } from '../../definition/values.ts';
+import type { NativeContext } from '../../runtime/natives.ts';
+import { fieldNamed, int, okStruct, resultStruct } from '../native-values.ts';
+
+/** The field of a `Time` or a `Duration` holding its milliseconds. */
+const millisecondsField = 'value';
+
+/** The milliseconds a `Time` or a `Duration` argument holds. */
+export function millisecondsOf(context: NativeContext, value: Value | undefined): bigint {
+  return int(fieldNamed(context, value, millisecondsField));
+}
+
+/** A `Time` or a `Duration` holding `milliseconds`, the type the extern declares it returns. */
+export function resultMilliseconds(context: NativeContext, milliseconds: bigint): Value {
+  return resultStruct(context, { [millisecondsField]: milliseconds });
+}
+
+/** A `Time` or a `Duration` holding `milliseconds`, the type the extern's `Result` holds. */
+export function okMilliseconds(context: NativeContext, milliseconds: bigint): Value {
+  return okStruct(context, { [millisecondsField]: milliseconds });
+}

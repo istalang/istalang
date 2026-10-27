@@ -19,13 +19,15 @@ export type InstanceState =
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string }
   | { readonly kind: 'terminated' };
 
+/** The level of a log record (§3.8 `log`): its `log.Level` variant, as a host reads it. */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
 /** A log record (§3.8 `log`), as a committed segment of `instance` wrote it. */
 export interface LogRecord {
   readonly instance: string;
   /** When its segment started, in milliseconds since the Unix epoch, as `now()` read then (§5). */
   readonly time: bigint;
-  /** The name of its `log.Level` variant, lowercased: `debug`, `info`, `warn` or `error`. */
-  readonly level: string;
+  readonly level: LogLevel;
   readonly message: string;
   /** Its fields as the JSON a host works with (§9). */
   readonly fields: unknown;

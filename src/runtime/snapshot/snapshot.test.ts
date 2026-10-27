@@ -20,8 +20,8 @@ import { type EditableText, editedText, refusalOf } from '../../definition/forma
 import { FormatError } from '../../definition/format.ts';
 import { nested, valueArbitrary } from '../../definition/values.test-kit.ts';
 import { maximumDepth, type Value } from '../../definition/values.ts';
+import { seedBytes, seedTextOf } from '../random-seed.ts';
 import { testSeed } from '../runtime.test-kit.ts';
-import { seedOf } from '../scheduler/random-source.ts';
 import type { HeapObject } from './objects.ts';
 import { type Snapshot, snapshotFormat } from './snapshot.ts';
 
@@ -34,7 +34,7 @@ const broadcastWaiting: Snapshot = {
   status: { kind: 'active' },
   crashEveryAwait: false,
   spawned: 0,
-  random: { seed: testSeed, draws: 3 },
+  random: { seed: seedTextOf(testSeed), draws: 3 },
   pinned: [],
   ready: [],
   objects: [
@@ -164,7 +164,7 @@ const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
       crashEveryAwait: fc.boolean(),
       spawned: fc.nat({ max: 50 }),
       random: fc.record({
-        seed: fc.uint8Array({ minLength: 32, maxLength: 32 }).map(seedOf),
+        seed: fc.uint8Array({ minLength: seedBytes, maxLength: seedBytes }).map(seedTextOf),
         draws: fc.nat(),
       }),
       pinned: fc.constant([]),

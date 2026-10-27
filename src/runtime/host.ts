@@ -34,6 +34,7 @@ import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from './boundary/outbound.ts';
 import type { Advanced } from './instance-state.ts';
 import type { Natives } from './natives.ts';
+import { seedTextOf } from './random-seed.ts';
 import { Refusal } from './refusal.ts';
 import { type Inspection, inspection } from './scheduler/inspect.ts';
 import type { StartOptions } from './scheduler/instance.ts';
@@ -57,10 +58,11 @@ export interface RuntimeSeams {
   /** Milliseconds since the Unix epoch: when each segment starts (§5). */
   readonly now: () => bigint;
   /**
-   * A new secret seed, 64 lowercase hex digits, for each instance a host starts: the source of its
-   * random values (§3.8 `random`). An instance it spawns is seeded from it in turn.
+   * A new secret seed, `seedBytes` random bytes (random-seed.ts), for each instance a host starts:
+   * the source of its random values (§3.8 `random`). An instance it spawns is seeded from it in
+   * turn. A seed of another length refuses the start.
    */
-  readonly seed: () => string;
+  readonly seed: () => Uint8Array;
   /**
    * The externs the host implements, against JSON, by key (§9); a Refusal for a key `natives`
    * has, such as `time.now()`, which would replace the runtime's own.
@@ -246,7 +248,7 @@ function boundProgram(
       const entry = startFunctionOf(definition, key, given.length);
       const values = given.map((json) => jsonIn(definition, json));
       const call = { function: entry, captures: [], arguments: values };
-      const beginning = { ...options, seed: seams.seed() };
+      const beginning = { ...options, seed: seedTextOf(seams.seed()) };
       return advance(seams, loaded, unstarted(loaded, instance, call, beginning));
     },
     resume: (snapshot, first) => advance(seams, loaded, snapshot, first),

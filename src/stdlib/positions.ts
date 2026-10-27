@@ -42,7 +42,7 @@ export function spanOf(range: Value, length: number, what: string): readonly [nu
 }
 
 /** The ends a prelude `Range` holds (§3.8): its `start` and `end` fields, each optional. */
-function rangeEnds(range: Value): { readonly start?: bigint; readonly end?: bigint } {
+export function rangeEnds(range: Value): { readonly start?: bigint; readonly end?: bigint } {
   const [start, end] = [0, 1].map((index) => optionalValue(fieldOf(range, index)));
   return {
     ...(start === undefined ? {} : { start: int(start) }),

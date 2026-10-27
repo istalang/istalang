@@ -5,7 +5,8 @@
  * whole program checks clean; diagnostics go to the error stream as `check` renders them.
  *
  * The output is one line per test, its mark and full title, a failure followed by its message,
- * trace and the log records its instances committed, then a count. A test waiting on a timer waits on real time, unless it mocked time.
+ * trace and the log records its instances committed, then a count. A test waiting on a timer waits
+ * on real time, unless it mocked time.
  * Exit codes: 0 when every test that ran passed; 1 when a module has errors, a test fails or no
  * test was found; 2 when a path can't be read or the options don't fit.
  */

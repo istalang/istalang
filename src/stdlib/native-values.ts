@@ -55,7 +55,7 @@ export function fieldOf(value: Value | undefined, index: number): Value {
 }
 
 /** Fields given by name, as a struct or a variant is built (`structOf`, `resultVariant`). */
-type NamedFields = Readonly<Record<string, Value>>;
+export type NamedFields = Readonly<Record<string, Value>>;
 
 /** The type entry the extern's declared result names: a struct or an enum. */
 function declaredResult(context: NativeContext): TypeId {
@@ -72,7 +72,7 @@ export function arrayOf(elements: readonly Value[]): Value {
 }
 
 /** The declared name of the variant an enum argument holds. */
-export function variantName(context: NativeContext, value: Value | undefined): string {
+function variantName(context: NativeContext, value: Value | undefined): string {
   if (value === undefined || !isComposite(value) || value.kind !== 'variant') {
     unreachable('Expected an enum.');
   }
@@ -167,6 +167,31 @@ function inDeclaredOrder(
   return declared.map(
     ({ name }) => fields[name] ?? unreachable(`A native gives no field '${name}'.`),
   );
+}
+
+/** Field `name` of a struct argument, found by the name its type declares, never by position. */
+export function fieldNamed(context: NativeContext, value: Value | undefined, name: string): Value {
+  if (value === undefined || !isComposite(value) || value.kind !== 'struct') {
+    unreachable('Expected a struct.');
+  }
+  const declared = context.types[value.type];
+  const position =
+    declared?.kind === 'struct' ? declared.fields.findIndex((each) => each.name === name) : -1;
+  return value.fields[position] ?? unreachable(`Type ${value.type} has no field '${name}'.`);
+}
+
+/**
+ * The entry of `table` for the variant an enum argument holds, by its declared name; a variant the
+ * table lacks fails loudly, so a table and its enum can't drift apart unnoticed.
+ */
+export function variantEntry<Entry>(
+  context: NativeContext,
+  value: Value | undefined,
+  table: Readonly<Record<string, Entry>>,
+): Entry {
+  const name = variantName(context, value);
+  const entry = Object.hasOwn(table, name) ? table[name] : undefined;
+  return entry === undefined ? unreachable(`${context.name} has no entry for variant ${name}.`) : entry;
 }
 
 /** A struct of type entry `type` with `fields` by name. */

@@ -1,4 +1,5 @@
-# The runtime module's `id` and `version` (spec §3.8); `commit` is the corpus's.
+# The runtime module's `id` and `version` (spec §3.8); `commit` is the corpus's. No function of the
+# module can fail, so it has no failing case (m4-m5.md, "Acceptance").
 
 import Suite, Test, test, assertEq, start from 'testing'
 import * as runtime from 'runtime'

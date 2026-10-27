@@ -5,7 +5,7 @@
 
 import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
 import * as time from 'time'
-import Time, Duration, Zone, DateTime, utc from 'time'
+import Time, Duration, Zone, DateTime from 'time'
 
 const berlin = Zone{id: "Europe/Berlin"}
 
@@ -19,7 +19,7 @@ fn instant(text: string) -> Time:
 
 fn nowhere() -> DateTime: noon.inZone(Zone{id: "Mars/Olympus"})
 
-fn february30() -> Time: Time.of(DateTime{year: 2026, month: 2, day: 30}, utc)
+fn february30() -> Time: Time.of(DateTime{year: 2026, month: 2, day: 30}, time.utc)
 
 @Suite{"time"}
 fn suite() -> Array<Test>: [
@@ -33,8 +33,9 @@ fn suite() -> Array<Test>: [
       assertEq(Zone.parse("europe/berlin"), Ok{value: berlin})
       assertEq(string(berlin), "Europe/Berlin")
     }),
-    test("refuses a name no zone has", fn(): {
+    test("refuses a name no zone has, and a fixed offset, which no IANA zone is", fn(): {
       assert(Zone.parse("Mars/Olympus") is Err{})
+      assert(Zone.parse("+01:00") is Err{})
     }),
   ]),
   group("DateTime", [
@@ -61,7 +62,7 @@ fn suite() -> Array<Test>: [
   group("Time in a zone", [
     test("reads the zone's wall clock", fn(): {
       assertEq(noon.inZone(berlin), DateTime{year: 2026, month: 10, day: 25, hour: 13})
-      assertEq(noon.inZone(utc), DateTime{year: 2026, month: 10, day: 25, hour: 12})
+      assertEq(noon.inZone(time.utc), DateTime{year: 2026, month: 10, day: 25, hour: 12})
     }),
     test("formats with the zone's offset, which Time.parse reads back", fn(): {
       assertEq(noon.format(berlin), "2026-10-25T13:00:00.000+01:00")
@@ -77,8 +78,7 @@ fn suite() -> Array<Test>: [
     }),
     test("panics on a zone or a date that doesn't exist", async fn(): {
       assertEq(await expectPanic(nowhere), "'Mars/Olympus' is no IANA time zone.")
-      const refused = "The date and time 2026-2-30 0:0:0.0 doesn't exist"
-      assertEq((await expectPanic(february30))[0..refused.length()], refused)
+      assertEq(await expectPanic(february30), "There is no date and time 2026-02-30T00:00:00.000.")
     }),
   ]),
 ]

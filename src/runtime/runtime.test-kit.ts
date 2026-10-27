@@ -9,6 +9,7 @@ import type { HostExterns } from './boundary/host-natives.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';
 import type { Advanced } from './instance-state.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
+import { seedBytes } from './random-seed.ts';
 import { Refusal } from './refusal.ts';
 import type { StartOptions } from './scheduler/instance.ts';
 import { type Settled, settle } from './settle.ts';
@@ -59,13 +60,14 @@ export function recordingStore(inner: InstanceStore = memoryStore()): RecordingS
 }
 
 /** The seed of every instance a test runtime starts, so its random values repeat (§3.8). */
-export const testSeed = '0'.repeat(64);
+export const testSeed = new Uint8Array(seedBytes);
 
 export interface TestRuntimeOptions {
   readonly natives?: Natives;
   readonly store?: RecordingStore;
   readonly clock?: ManualClock;
   readonly host?: HostExterns;
+  readonly seed?: () => Uint8Array;
 }
 
 export interface TestRuntime {
@@ -80,9 +82,10 @@ export function testRuntime({
   store = recordingStore(),
   clock = manualClock(),
   host = {},
+  seed = () => testSeed,
 }: TestRuntimeOptions = {}): TestRuntime {
   return {
-    runtime: createRuntime({ natives, store, now: clock.now, seed: () => testSeed, host }),
+    runtime: createRuntime({ natives, store, now: clock.now, seed, host }),
     store,
     clock,
   };

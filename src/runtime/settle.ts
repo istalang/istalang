@@ -31,17 +31,23 @@ export type Settled =
  * Yields each time the group of instances started by `first`'s advance waits, until its earliest
  * timer or undefined, calling `wake` for every instance that is due once the caller resumes it
  * with what arrived meanwhile; returns how each settled, `first`'s first and the others in the
- * order they were spawned.
+ * order they were spawned. Every advance, `first`'s included, is shown to `seen` as it is recorded,
+ * so a host reads what advances report, such as their log records, in one place.
  */
 export function* settle(
   wake: (instance: string) => Advanced,
   first: { readonly instance: string; readonly advanced: Advanced },
+  seen: (advanced: Advanced) => void = () => undefined,
 ): Generator<bigint | undefined, ReadonlyMap<string, Settled>, readonly Arrived[] | undefined> {
   const group = new InstanceGroup();
-  group.record(first.instance, first.advanced);
+  const record = (instance: string, advanced: Advanced) => {
+    seen(advanced);
+    group.record(instance, advanced);
+  };
+  record(first.instance, first.advanced);
   for (;;) {
     for (let ready = group.ready(); ready !== undefined; ready = group.ready()) {
-      group.record(ready, wake(ready));
+      record(ready, wake(ready));
     }
     if (!group.waits()) {
       return settledAll(group.states);
@@ -49,13 +55,13 @@ export function* settle(
     const due = group.earliestTimer();
     const arrived = (yield due) ?? [];
     for (const { instance, advanced } of arrived) {
-      group.record(instance, advanced);
+      record(instance, advanced);
     }
     if (due === undefined && arrived.length === 0) {
       return settledAll(group.states);
     }
     for (const instance of group.dueBy(due)) {
-      group.record(instance, wake(instance));
+      record(instance, wake(instance));
     }
   }
 }

@@ -27,8 +27,8 @@ import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/format.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
+import { seedBytes } from '../../runtime/random-seed.ts';
 import { Refusal } from '../../runtime/refusal.ts';
-import { drawBytes, seedOf } from '../../runtime/scheduler/random-source.ts';
 import { type Settled, settle } from '../../runtime/settle.ts';
 import { memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
@@ -93,7 +93,7 @@ async function run(
         ? memoryStore()
         : directoryStore(resolve(environment.cwd, options.store)),
     now: clock,
-    seed: () => seedOf(randomBytes(drawBytes)),
+    seed: () => randomBytes(seedBytes),
     ...(host === undefined ? {} : { host: host.externs }),
   });
   const session: Session = { runtime, host, environment };
@@ -169,24 +169,20 @@ async function finish(
   { program, name }: RunningInstance,
   initial: Advanced,
 ): Promise<ExitCode> {
-  const logged = (advanced: Advanced): Advanced => {
-    for (const record of advanced.logs) {
+  const writeLogs = ({ logs }: Advanced) => {
+    for (const record of logs) {
       environment.writeError(`${logLine(record)}\n`);
     }
-    return advanced;
   };
-  const steps = settle((instance) => logged(runtime.wake(instance)), {
-    instance: name,
-    advanced: logged(initial),
-  });
+  const steps = settle(
+    (instance) => runtime.wake(instance),
+    { instance: name, advanced: initial },
+    writeLogs,
+  );
   let step = steps.next();
   while (!step.done) {
     // biome-ignore lint/performance/noAwaitInLoops: each wake depends on what the last one returned.
-    const arrived = await arrivalsBy(step.value, { runtime, host, environment });
-    for (const { advanced } of arrived) {
-      logged(advanced);
-    }
-    step = steps.next(arrived);
+    step = steps.next(await arrivalsBy(step.value, { runtime, host, environment }));
   }
   const unfinished = [...step.value].flatMap(([instance, ending]) =>
     ending.kind === 'finished'

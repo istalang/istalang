@@ -29,6 +29,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import { InstanceGroup } from '../instance-group.ts';
 import type { LogRecord } from '../instance-state.ts';
 import { type Native, type Natives, Panic } from '../natives.ts';
+import { seedTextOf } from '../random-seed.ts';
 import type { Answered, Watch } from '../scheduler/futures.ts';
 import { type Inspection, inspection } from '../scheduler/inspect.ts';
 import { type LoadedDefinition, loadDefinition } from '../scheduler/loaded-definition.ts';
@@ -65,8 +66,8 @@ export interface WorldSeams {
   readonly natives: Natives;
   /** Milliseconds since the Unix epoch. */
   readonly now: () => bigint;
-  /** The seed of the test's instance's random source (§3.8 `random`), 64 lowercase hex digits. */
-  readonly seed: string;
+  /** The seed of the test's instance's random source (§3.8 `random`, random-seed.ts). */
+  readonly seed: Uint8Array;
   /** When the test must have ended, in milliseconds since the Unix epoch. */
   readonly deadline: bigint;
 }
@@ -94,7 +95,7 @@ export class World implements TestWorld {
   constructor({ definition, hash, natives, now, seed, deadline }: WorldSeams) {
     this.#seams = { store: memoryStore(), now };
     this.#deadline = deadline;
-    this.#seed = seed;
+    this.#seed = seedTextOf(seed);
     this.#loaded = loadDefinition(
       definition,
       hash,
