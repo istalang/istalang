@@ -201,7 +201,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     const earlier =
       frame.registers[into] === undefined ? [] : elementsOf(readRegister(frame, into));
     // A new array rather than a push: a committed snapshot may share the old one.
-    frame.registers[into] = { kind: 'array', elements: [...earlier, ...kept] };
+    writeRegister(frame, into, { kind: 'array', elements: [...earlier, ...kept] });
     frame.pc += 1;
   },
   defer: (machine, instruction, frame) => {
