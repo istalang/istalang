@@ -18,7 +18,13 @@
 
 import { unreachable } from '../../structures/unreachable.ts';
 import { isComparisonOperator, operatorLevels, tighterLevel } from '../syntax/operators.ts';
-import type { LiteralPattern, Pattern, RestPattern, StructPattern } from '../syntax/patterns.ts';
+import type {
+  LiteralPattern,
+  Pattern,
+  RestPattern,
+  StructPattern,
+  WildcardPattern,
+} from '../syntax/patterns.ts';
 import type { NamedType } from '../syntax/types.ts';
 import type { CursorKind } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
@@ -113,12 +119,16 @@ function parseArrayPattern(parser: Parser): Pattern {
 /** `...rest` or `..._` in an array pattern. */
 function parseRestPattern(parser: Parser): RestPattern {
   const { start } = parser.cursor.advance().span;
-  const { cursor } = parser;
-  const target =
-    cursor.at('identifier') && parser.textOf(cursor.token) === '_'
-      ? { kind: 'WildcardPattern' as const, span: cursor.advance().span }
-      : parser.identifier('a name for the rest');
+  const target = parseWildcard(parser) ?? parser.identifier('a name for the rest');
   return { kind: 'RestPattern', span: parser.spanFrom(start), target };
+}
+
+/** `_`, binding nothing, when the cursor stands at it. */
+function parseWildcard(parser: Parser): WildcardPattern | undefined {
+  const { cursor } = parser;
+  return cursor.at('identifier') && parser.textOf(cursor.token) === '_'
+    ? { kind: 'WildcardPattern', span: cursor.advance().span }
+    : undefined;
 }
 
 /** `1..5` or `1..=5` after its start, at the operator; `5..` is open at the end. */
@@ -174,8 +184,9 @@ function boundOf(parser: Parser, bound: Pattern): LiteralPattern | undefined {
 
 function parseNamedPattern(parser: Parser): Pattern {
   const { cursor } = parser;
-  if (parser.textOf(cursor.token) === '_') {
-    return { kind: 'WildcardPattern', span: cursor.advance().span };
+  const wildcard = parseWildcard(parser);
+  if (wildcard !== undefined) {
+    return wildcard;
   }
   const path = parseQualifiedName(parser);
   const { start } = path[0].span;

@@ -7,7 +7,12 @@
  */
 
 import { languageModules, testingFunctions } from '../../../language/well-known.ts';
-import { type Call, type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
+import {
+  type Call,
+  type Expression,
+  isPositional,
+  unparenthesized,
+} from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -44,9 +49,7 @@ export function checkTestingCalls(
 function checkTarget(context: BodyContext, site: Call): Expression | undefined {
   const [argument] = site.arguments;
   const target =
-    argument === undefined || argument.kind === 'Spread' || argument.kind === 'NamedArgument'
-      ? undefined
-      : unparenthesized(argument);
+    argument === undefined || !isPositional(argument) ? undefined : unparenthesized(argument);
   const names =
     (target?.kind === 'Identifier' || target?.kind === 'MemberAccess') &&
     context.callAt(target)?.kind === 'function';

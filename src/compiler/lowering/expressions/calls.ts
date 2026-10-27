@@ -23,6 +23,7 @@ import {
   type Call,
   type CallArgument,
   type Expression,
+  isPositional,
   type Spawn,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
@@ -38,13 +39,9 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
   if (resolved === undefined) {
     return lowerValueCall(context, node);
   }
-  const parameters = context.checker.parametersOf(resolved.function);
-  const receiver = receiverOf(context, node, resolved, parameters[0]?.reference === true);
-  const passed = node.arguments.map((argument, index) => {
-    const at = receiver === undefined ? index : index + 1;
-    return argumentOf(context, argument, parameters[at]?.reference === true);
-  });
-  const argumentList = receiver === undefined ? passed : [receiver, ...passed];
+  const byReference = referenceParameters(context, resolved);
+  const receiver = receiverOf(context, node, resolved, byReference(0));
+  const argumentList = passedArguments(context, node, receiver, byReference);
   const dst = emitCall(context, {
     span: node.span,
     callee: context.calleeIndex(node),
@@ -80,7 +77,7 @@ function receiverOf(
  */
 function lowerValueCall(context: FunctionContext, node: Call): Register {
   const callee = valueCallee(context, node);
-  const argumentList = node.arguments.map((argument) => argumentOf(context, argument, false));
+  const argumentList = passedArguments(context, node, undefined, () => false);
   const dst = emitCall(context, {
     span: node.span,
     callee: { kind: 'value', register: callee },
@@ -115,17 +112,19 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
     resolved === undefined
       ? { kind: 'value', register: valueCallee(context, spawned) }
       : { kind: 'function', function: context.calleeIndex(spawned) };
-  const receiver = resolved?.receiver;
-  const copied = receiver === undefined ? spawned.arguments : [receiver, ...spawned.arguments];
+  const receiver =
+    resolved?.receiver === undefined ? undefined : argumentOf(context, resolved.receiver, false);
+  const copied = passedArguments(context, spawned, receiver, () => false);
   context.code.emit({
     kind: 'spawn',
     span: node.span,
     callee,
-    arguments: copied.map((argument) =>
-      argument.kind === 'Spread' || argument.kind === 'NamedArgument'
-        ? notLowered(context, argument)
-        : context.expression(argument),
-    ),
+    arguments: copied.map(({ argument }) => {
+      if (argument.kind !== 'value') {
+        unreachable('A spawned call passes everything by value; the checker refuses references.');
+      }
+      return argument.register;
+    }),
   });
   return context.constant(null, node.span);
 }
@@ -165,13 +164,40 @@ interface PassedArgument {
   readonly leave?: (() => void) | undefined;
 }
 
+/** Whether the `index`-th parameter of the function `resolved` calls takes a reference (§3.7). */
+function referenceParameters(
+  context: FunctionContext,
+  resolved: ResolvedCall,
+): (index: number) => boolean {
+  const parameters = context.checker.parametersOf(resolved.function);
+  return (index) => parameters[index]?.reference === true;
+}
+
+/**
+ * What a call passes, in its callee's parameter order: a method's receiver, already passed, then
+ * each argument written, by reference where `byReference` says its parameter takes one. Every
+ * call is lowered through here, a spawned one included.
+ */
+function passedArguments(
+  context: FunctionContext,
+  node: Call,
+  receiver: PassedArgument | undefined,
+  byReference: (index: number) => boolean,
+): PassedArgument[] {
+  const offset = receiver === undefined ? 0 : 1;
+  const passed = node.arguments.map((argument, index) =>
+    argumentOf(context, argument, byReference(index + offset)),
+  );
+  return receiver === undefined ? passed : [receiver, ...passed];
+}
+
 /** How `argument` is passed: the place `&x` names, the receiver's place for a `&self`, or a value. */
 function argumentOf(
   context: FunctionContext,
   argument: CallArgument,
   byReference: boolean,
 ): PassedArgument {
-  if (argument.kind === 'Spread' || argument.kind === 'NamedArgument') {
+  if (!isPositional(argument)) {
     return { argument: notLowered(context, argument) };
   }
   const place = referencedPlace(argument, byReference);

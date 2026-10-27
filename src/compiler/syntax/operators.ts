@@ -56,7 +56,7 @@ export interface BinaryOperatorEntry {
   readonly associativity?: 'right';
   readonly meaning: BinaryMeaning;
   /** Operators an operand of this one may not use unless parenthesized (§3.9). */
-  readonly refusesUnparenthesized?: readonly string[];
+  readonly refusesUnparenthesized?: readonly TokenKind[];
 }
 
 const call = (name: string) => ({ kind: 'call', function: name }) as const;
@@ -196,12 +196,15 @@ export function tighterLevel(level: PrecedenceLevel): PrecedenceLevel {
 
 /**
  * The level the right operand of `operator` parses at: one tighter than its own for a
- * left-associative operator, so equal levels group to the left; the prefix level for a
- * right-associative one, so its right side may itself be the operator.
+ * left-associative operator, so equal levels group to the left; its own for a right-associative
+ * one, so they group to the right, and no tighter than prefix, so `2 ** -1` reads as written.
  */
 export function rightOperandLevel(operator: BinaryOperator): PrecedenceLevel {
-  const entry: BinaryOperatorEntry = binaryOperators[operator];
-  return entry.associativity === 'right' ? 'prefix' : tighterLevel(entry.level);
+  const { level, associativity }: BinaryOperatorEntry = binaryOperators[operator];
+  if (associativity !== 'right') {
+    return tighterLevel(level);
+  }
+  return bindingPower(level) < bindingPower('prefix') ? level : 'prefix';
 }
 
 /** A level's binding power: higher binds tighter. */

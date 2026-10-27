@@ -119,6 +119,13 @@ const contextualWords = ['type', 'from', 'sendable', 'shared', 'new', 'hold', 'b
 
 export type ContextualWord = (typeof contextualWords)[number];
 
+const contextualWordSet: ReadonlySet<string> = new Set(contextualWords);
+
+/** Whether `word` is one of the words a grammar position may give meaning (§2). */
+export function isContextualWord(word: string): word is ContextualWord {
+  return contextualWordSet.has(word);
+}
+
 export type Keyword = (typeof keywords)[number];
 export type Punctuator = (typeof punctuators)[number];
 

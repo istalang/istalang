@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-25
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 tags: [tracker]
 ---
 
@@ -27,7 +27,7 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D204.
+up, so the next one is D211.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |
@@ -108,3 +108,5 @@ up, so the next one is D204.
 | D206 | Queries: reading a running instance's state from the host without an inbox round trip. | language-features plan 2026-10-27 | open |
 | D207 | Idempotency keys for extern calls, so a host can de-duplicate a call re-issued after a crash between the call and its commit. | language-features plan 2026-10-27 | open |
 | D208 | Compensation-only `defer`: a deferred function that runs only when its block is disposed or panics, not on a normal exit (today a flag checked in `defer`). | language-features plan 2026-10-27 | open |
+| D209 | `parseSpawn` (parser/expressions/expression.ts) keeps a second, partial postfix grammar for a spawned callee: the `calleeSteps` set plus a special case for `<`, beside the infix table it reads from. A postfix form added later (L3's downcasts, a new member operator) must be added in both places, or `spawn` silently stops before it. Derive the callee steps from the infix table, for example by marking each postfix parselet as one a callee may take, instead of listing token kinds a second time. | phase review L0 2026-10-28 | open |
+| D210 | The precedence property (parser/expressions/precedence.test-kit.ts) asks the code under test where a right operand goes: its printer calls `rightOperandLevel` from syntax/operators.ts, the same function the parser uses, so an error in that function is printed and parsed the same way and the property still passes. Only the hand-written `2 ** 3 ** 2` cases check associativity. Give the oracle its own statement of the rule. | phase review L0 2026-10-28 | open |

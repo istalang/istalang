@@ -37,7 +37,12 @@ import {
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import { type Invalid, lastName } from '../../syntax/node.ts';
-import type { FunctionType as FunctionTypeNode, NamedType, TypeNode } from '../../syntax/types.ts';
+import type {
+  FunctionType as FunctionTypeNode,
+  NamedType,
+  RestType,
+  TypeNode,
+} from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
@@ -173,13 +178,17 @@ function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
     kind: 'function',
     isSendable: node.isSendable,
     isAsync: node.isAsync,
-    parameters: node.parameters.flatMap((parameter) =>
-      parameter.kind === 'RestType'
-        ? []
-        : [{ type: resolve(resolution, parameter), reference: parameter.kind === 'ReferenceType' }],
-    ),
+    parameters: node.parameters.filter(isTypeNode).map((parameter) => ({
+      type: resolve(resolution, parameter),
+      reference: parameter.kind === 'ReferenceType',
+    })),
     result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
   };
+}
+
+/** Whether a function type's parameter is a type, rather than a rest. */
+function isTypeNode(parameter: TypeNode | RestType): parameter is TypeNode {
+  return parameter.kind !== 'RestType';
 }
 
 function namedType(resolution: Resolution, node: NamedType): Type {

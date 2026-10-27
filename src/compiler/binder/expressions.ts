@@ -8,6 +8,7 @@
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import {
+  argumentValue,
   type CallArgument,
   casesOf,
   type Expression,
@@ -149,19 +150,15 @@ function bindValueCondition(binder: LocalBinder, node: Expression, scope: Scope)
   underCondition(binder, node, scope, () => undefined);
 }
 
-/** Binds each value given: an expression, a spread's, or a named argument's. */
+/** Binds the value each of `nodes` gives: an expression's own, a spread's, or a named argument's. */
 function bindAll(
   binder: LocalBinder,
   nodes: readonly (CallArgument | undefined)[],
   scope: Scope,
 ): void {
   for (const node of nodes) {
-    if (node?.kind === 'Spread') {
-      bindExpression(binder, node.expression, scope);
-    } else if (node?.kind === 'NamedArgument') {
-      bindExpression(binder, node.value, scope);
-    } else if (node !== undefined) {
-      bindExpression(binder, node, scope);
+    if (node !== undefined) {
+      bindExpression(binder, argumentValue(node), scope);
     }
   }
 }

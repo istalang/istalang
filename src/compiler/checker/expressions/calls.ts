@@ -28,7 +28,12 @@ import { staticName } from '../../../language/static-names.ts';
 import { conversionFunction } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
-import type { Call, Expression, MemberAccess } from '../../syntax/expressions/index.ts';
+import {
+  type Call,
+  type Expression,
+  isPositional,
+  type MemberAccess,
+} from '../../syntax/expressions/index.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
@@ -49,11 +54,10 @@ import { typeText } from '../types/type-text.ts';
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const argumentNodes: Expression[] = [];
   for (const argument of node.arguments) {
-    if (argument.kind === 'Spread') {
-      return context.unsupported(argument, frontier.spreadArgument);
-    }
-    if (argument.kind === 'NamedArgument') {
-      return context.unsupported(argument, frontier.namedArgument);
+    if (!isPositional(argument)) {
+      const construct =
+        argument.kind === 'Spread' ? frontier.spreadArgument : frontier.namedArgument;
+      return context.unsupported(argument, construct);
     }
     argumentNodes.push(argument);
   }

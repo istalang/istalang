@@ -10,9 +10,11 @@
 
 import type { Expression } from '../../syntax/expressions/index.ts';
 import {
+  type BinaryOperator,
   binaryOperators,
   type CallingBinaryOperator,
   type CallingUnaryOperator,
+  type UnaryOperator,
   unaryOperators,
 } from '../../syntax/operators.ts';
 import type { BodyContext } from '../context.ts';
@@ -24,22 +26,30 @@ import { resolveCall } from './resolve.ts';
 
 /** An operator a call site applies: as it is written, and the function it calls (§3.9). */
 export interface AppliedOperator {
-  readonly spelling: string;
+  readonly spelling: BinaryOperator | UnaryOperator;
   readonly function: string;
 }
 
 /** What a binary operator that calls a function applies. */
 export function binaryApplied(operator: CallingBinaryOperator): AppliedOperator {
-  return { spelling: operator, function: binaryOperators[operator].meaning.function };
+  return applied(operator, binaryOperators[operator].meaning);
 }
 
 /** What a prefix operator that calls a function applies. */
 export function unaryApplied(operator: CallingUnaryOperator): AppliedOperator {
-  return { spelling: operator, function: unaryOperators[operator].meaning.function };
+  return applied(operator, unaryOperators[operator].meaning);
+}
+
+/** What `spelling` applies, given the function its meaning calls. */
+export function applied(
+  spelling: AppliedOperator['spelling'],
+  meaning: { readonly function: string },
+): AppliedOperator {
+  return { spelling, function: meaning.function };
 }
 
 /** Operators parsed but not checked yet, each named as the frontier names it (frontier.ts). */
-const notSupportedYet: Readonly<Partial<Record<string, FrontierConstruct>>> = {
+const notSupportedYet: Readonly<Partial<Record<AppliedOperator['spelling'], FrontierConstruct>>> = {
   '|': frontier.bitwiseOperator,
   '^': frontier.bitwiseOperator,
   '&': frontier.bitwiseOperator,

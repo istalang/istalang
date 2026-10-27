@@ -130,7 +130,7 @@ const genericLookalike = /[A-Za-z_]\w* < [A-Za-z_]\w*$/u;
 function printBinary(tree: Extract<OperatorTree, { binary: BinaryOperator }>): string {
   const entry: BinaryOperatorEntry = binaryOperators[tree.binary];
   const refused = (child: OperatorTree) =>
-    'binary' in child && (entry.refusesUnparenthesized ?? []).includes(child.binary);
+    'binary' in child && (entry.refusesUnparenthesized ?? []).some((kind) => kind === child.binary);
   // A comparison right after another would extend it into a chain, so the tree's own needs grouping.
   const chains = (child: OperatorTree) =>
     'binary' in child && isComparisonOperator(tree.binary) && isComparisonOperator(child.binary);

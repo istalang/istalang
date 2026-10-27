@@ -11,6 +11,7 @@
  * `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 
+import { type ContextualWord, isContextualWord } from '../syntax/tokens.ts';
 import type { FunctionType, ReferenceType, RestType, TypeNode } from '../syntax/types.ts';
 import type { CursorKind } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
@@ -41,7 +42,12 @@ const typeParselets: Partial<Record<CursorKind, TypeParselet>> = {
  * (tokens.ts).
  */
 const wordParselets: Readonly<
-  Record<string, { readonly starts: (parser: Parser) => boolean; readonly parse: TypeParselet }>
+  Partial<
+    Record<
+      ContextualWord,
+      { readonly starts: (parser: Parser) => boolean; readonly parse: TypeParselet }
+    >
+  >
 > = {
   sendable: { starts: atFunctionKeyword, parse: parseFunctionType },
   any: { starts: (parser) => parser.cursor.kindAt(1) === 'identifier', parse: parseAnyType },
@@ -72,7 +78,8 @@ export function parseParameterType(parser: Parser): TypeNode {
 
 /** A type a contextual word starts, or else a named type. */
 function parseWordType(parser: Parser): TypeNode {
-  const word = wordParselets[parser.textOf(parser.cursor.token)];
+  const text = parser.textOf(parser.cursor.token);
+  const word = isContextualWord(text) ? wordParselets[text] : undefined;
   return word?.starts(parser) ? word.parse(parser) : parseNamedType(parser);
 }
 

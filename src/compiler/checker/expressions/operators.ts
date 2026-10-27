@@ -12,7 +12,7 @@
 
 import type { Binary, Unary } from '../../syntax/expressions/index.ts';
 import { binaryOperators } from '../../syntax/operators.ts';
-import { type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
+import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { frontier } from '../frontier.ts';
 import { checkEqualSides } from '../types/equality.ts';
@@ -35,8 +35,8 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
       return context.unsupported(node, frontier.membership);
     case 'order':
     case 'call': {
-      const applied = { spelling: operator, function: meaning.function };
-      const result = resolveOperator(context, node, applied, operandsOf(context, node));
+      const operation = applied(operator, meaning);
+      const result = resolveOperator(context, node, operation, operandsOf(context, node));
       return meaning.kind === 'call' || result.kind === 'error' ? result : boolType;
     }
     default: {

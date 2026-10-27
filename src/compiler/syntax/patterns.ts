@@ -14,7 +14,7 @@ import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node
 import type { ComparisonOperator } from './operators.ts';
 import type { NamedType } from './types.ts';
 
-type WildcardPattern = NodeOf<'WildcardPattern'>;
+export type WildcardPattern = NodeOf<'WildcardPattern'>;
 
 export interface NamePattern extends NodeOf<'NamePattern'> {
   readonly path: QualifiedName;
