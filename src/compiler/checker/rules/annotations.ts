@@ -37,6 +37,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { defaultWitness } from '../resolution/default-witness.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { searchSite } from '../use-site.ts';
 import { computeConstant, refusalOf } from './computation.ts';
 
 /** The annotations the toolchain itself reads. */
@@ -169,7 +170,9 @@ export class Annotations implements AnnotationQueries {
     const means = placements[this.knownOf(annotation) ?? 'any'];
     const misplaced = means(
       place,
-      (held) => held.kind === 'error' || defaultWitness(this.#seams.checker, held) !== undefined,
+      (held) =>
+        held.kind === 'error' ||
+        defaultWitness(searchSite(this.#seams.checker), held) !== undefined,
     );
     if (misplaced === 'elsewhere') {
       return checkerDiagnostics.misplacedAnnotation(node.span, name, placeText(place));
@@ -208,7 +211,7 @@ export class Annotations implements AnnotationQueries {
   skippedDefaultOf(field: FieldMember): ResolvedCall | undefined {
     const { declared } = field;
     return declared !== undefined && this.fieldHas(field, 'jsonSkip')
-      ? defaultWitness(this.#seams.checker, field.type)
+      ? defaultWitness(searchSite(this.#seams.checker), field.type)
       : undefined;
   }
 }

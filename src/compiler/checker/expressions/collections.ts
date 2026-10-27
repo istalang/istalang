@@ -48,6 +48,7 @@ import { withoutOptionals } from '../types/fit.ts';
 import { errorType, intType, type NominalType, neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
+import { useSite } from '../use-site.ts';
 
 /** The form of each collection literal of one body, for lowering. */
 export class CollectionForms {
@@ -252,10 +253,8 @@ function checkDeclaredLiteral(
 ): Type {
   context.collections.record(node, 'declared');
   const failure = () => checkerDiagnostics.mapLiteralType(node.span, typeText(type));
-  const made = defaultWitness(context.checker, type);
-  if (made === undefined) {
-    context.report(failure());
-  } else {
+  const made = defaultWitness(useSite(context.checker, context.module, node.span), type);
+  if (made !== undefined) {
     context.implicit.record(node, 'default', made);
   }
   for (const entry of node.kind === 'MapLiteral' ? node.entries : []) {

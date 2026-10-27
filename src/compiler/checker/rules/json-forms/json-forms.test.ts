@@ -6,6 +6,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
@@ -76,5 +78,23 @@ describe('a codec found only by import', () => {
       'fn toJson(self: Point) -> Json: Null',
     ].join('\n');
     expect(reported(main, { 'codecs.ista': codecs }).codes).toEqual([]);
+  });
+});
+
+describe('a codec declared with another result', () => {
+  it('is no codec, and says what it gives', () => {
+    const main = [
+      "import Encodable from 'json'",
+      'struct Point { x: int }',
+      'fn toJson(self: Point) -> string: "point"',
+      'fn writes<T is Encodable>() -> int: 1',
+      'fn main() -> int: writes<Point>()',
+    ].join('\n');
+    const [unmet, ...rest] = diagnosedAt(
+      stdProgramOf({ 'main.ista': main }),
+      'main.ista',
+    ).diagnostics;
+    expect([unmet?.code, rest]).toEqual([checkerDiagnostics.notConforming.code, []]);
+    expect(unmet?.message).toContain("'toJson' giving Json, where the one declared gives string");
   });
 });

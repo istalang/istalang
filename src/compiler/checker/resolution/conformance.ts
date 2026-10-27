@@ -267,6 +267,14 @@ function functionWitnesses(
       case 'failed':
         return 'failed';
       default:
+        if (witness.kind === 'wrongResult') {
+          const name = declaration.name.text;
+          const [wanted, given] = [typeText(witness.required), typeText(witness.given)];
+          return lacks(
+            meeting,
+            `'${name}' giving ${wanted}, where the one declared gives ${given}`,
+          );
+        }
         witnesses.push(witness);
     }
   }
@@ -289,6 +297,16 @@ export function declaresWitness(
   );
 }
 
+/**
+ * A function declared to meet a requirement, taking what it requires, that gives another type than
+ * the requirement does: the reason a type declaring it doesn't meet the trait.
+ */
+interface WrongResult {
+  readonly kind: 'wrongResult';
+  readonly required: Type;
+  readonly given: Type;
+}
+
 /** A function a trait requires, mapped for the type that must meet it. */
 interface RequiredFunction {
   readonly declaration: FunctionDeclaration;
@@ -296,15 +314,16 @@ interface RequiredFunction {
 }
 
 /**
- * The call meeting `required` for `type`: `none` when no single function does; otherwise, when
- * the one that does can't be instantiated or called (calls-made.ts), the failure reported.
+ * The call meeting `required` for `type`: `none` when no single function does, the result the one
+ * declared gives when it isn't the required one; otherwise, when it can't be instantiated or
+ * called (calls-made.ts), the failure reported.
  */
 function witnessOf(
   site: UseSite,
   type: Type,
   required: RequiredFunction,
   depth: number,
-): ResolvedCall | 'none' | Failure {
+): ResolvedCall | WrongResult | 'none' | Failure {
   const { checker } = site;
   const signature = signatureOf(checker, required.declaration, required.substitution);
   const choice = chooseWitness(checker, type, signature);
@@ -318,7 +337,7 @@ function witnessOf(
   }
   const result = substitute(application.signature.result(), instantiation.substitution);
   if (!sameType(result, signature.result())) {
-    return 'none';
+    return { kind: 'wrongResult', required: signature.result(), given: result };
   }
   return callMade(application.candidate, instantiation, signature.parameters.length);
 }
