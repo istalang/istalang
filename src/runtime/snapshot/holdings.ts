@@ -10,16 +10,15 @@
  * - It watches what it names without holding: a slot's queue of waiting operations, what a weak
  *   reference refers to, and an execution's own call future, which its caller holds.
  * - A frame holds the same whether it is live (interpreter/machine.ts) or stored (objects.ts), so
- *   one rule reads both, over what their registers hold and their kept lists.
+ *   one rule reads both, over what their registers hold.
  */
 
 import { handlesIn, type Value } from '../../definition/values.ts';
 import { type Frame, type HeapObject, isReference, type RegisterContents } from './objects.ts';
 
-/** A frame as holding reads it: what its registers hold, an empty one undefined, and its kept list. */
+/** A frame as holding reads it: what its registers hold, an empty one undefined. */
 export interface HoldingFrame {
   readonly registers: readonly (RegisterContents | undefined)[];
-  readonly kept: readonly Value[];
 }
 
 /** How one kind of object holds and watches. */
@@ -93,12 +92,11 @@ export function referencedObjects(object: HeapObject): readonly number[] {
   return [...heldObjects(object), ...entryOf(object).watches(object)];
 }
 
-/** The values `frame` holds: in its registers, references aside, and in its kept list. */
+/** The values `frame` holds in its registers, references aside. */
 export function frameValues(frame: HoldingFrame): readonly Value[] {
-  const inRegisters = frame.registers.filter(
+  return frame.registers.filter(
     (contents): contents is Value => contents !== undefined && !isReference(contents),
   );
-  return [...inRegisters, ...frame.kept];
 }
 
 /** The cells `frame`'s references name, which a reference holds for its call. */
@@ -110,7 +108,7 @@ export function frameCells(frame: HoldingFrame): readonly number[] {
 
 /** A stored frame as holding reads it, which needs what its registers hold but not where. */
 function holdingFrame(frame: Frame): HoldingFrame {
-  return { registers: frame.registers.map(([, contents]) => contents), kept: frame.kept };
+  return { registers: frame.registers.map(([, contents]) => contents) };
 }
 
 /** The entry of `object`'s kind, typed for the object as its union sees it. */

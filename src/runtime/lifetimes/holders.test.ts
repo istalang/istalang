@@ -76,7 +76,7 @@ describe('holding', () => {
       }),
     );
     const held = heldFrom(new Heap(cells), {
-      frames: [{ registers: [handle(0)], kept: [] }],
+      frames: [{ registers: [handle(0)] }],
       objects: [],
     });
     expect(held.objects.size).toBe(length);

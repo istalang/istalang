@@ -88,7 +88,7 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
     labels: [...i.cases.map((c) => c.target), ...(i.otherwise === undefined ? [] : [i.otherwise])],
   }),
   release: (_, i) => ({ registers: i.registers }),
-  keep: (_, i) => ({ registers: i.registers }),
+  keep: (_, i) => ({ registers: [...i.registers, i.into] }),
   defer: (_, i) => ({ registers: [i.dst, i.callback] }),
 };
 

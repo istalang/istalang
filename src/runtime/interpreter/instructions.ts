@@ -193,12 +193,15 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     frame.pc += 1;
   },
   keep: (_machine, instruction, frame) => {
-    for (const register of instruction.registers) {
+    const kept = instruction.registers.flatMap((register) => {
       const contents = frame.registers[register];
-      if (contents !== undefined && !isReference(contents)) {
-        frame.kept.push(contents);
-      }
-    }
+      return contents === undefined || isReference(contents) ? [] : [contents];
+    });
+    const { into } = instruction;
+    const earlier =
+      frame.registers[into] === undefined ? [] : elementsOf(readRegister(frame, into));
+    // A new array rather than a push: a committed snapshot may share the old one.
+    frame.registers[into] = { kind: 'array', elements: [...earlier, ...kept] };
     frame.pc += 1;
   },
   defer: (machine, instruction, frame) => {

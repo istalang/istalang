@@ -230,7 +230,17 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
   release: (s) =>
     fc.record({ registers: fc.array(index(s.registers), { minLength: 1, maxLength: 3 }) }),
   keep: (s) =>
-    fc.record({ registers: fc.array(index(s.registers), { minLength: 1, maxLength: 3 }) }),
+    s.registers < 2
+      ? undefined
+      : index(s.registers).chain((into) =>
+          fc.record({
+            registers: fc.array(
+              index(s.registers - 1).map((each) => (each < into ? each : each + 1)),
+              { minLength: 1, maxLength: 3 },
+            ),
+            into: fc.constant(into),
+          }),
+        ),
   defer: (s) => fc.record({ dst: index(s.registers), callback: index(s.registers) }),
 };
 

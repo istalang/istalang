@@ -5,7 +5,6 @@
  */
 
 import type { Definition } from '../../../definition/definition.ts';
-import { pushAll } from '../../../structures/stack.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type ActiveFrame, type FrameHeap, newFrame } from '../../interpreter/machine.ts';
 import type { Frame, HeapObject, RegisterContents } from '../../snapshot/objects.ts';
@@ -36,7 +35,6 @@ function liveFrame(definition: Definition, frame: Frame, heap: FrameHeap): Activ
   for (const [register, contents] of frame.registers) {
     live.registers[register] = contents;
   }
-  pushAll(live.kept, frame.kept);
   live.pc = frame.pc;
   return live;
 }
@@ -55,7 +53,6 @@ export function storedObject(object: LiveObject): HeapObject {
       registers: frame.registers.flatMap((contents, register) =>
         contents === undefined ? [] : [[register, contents] as [number, RegisterContents]],
       ),
-      kept: [...frame.kept],
     })),
   };
 }

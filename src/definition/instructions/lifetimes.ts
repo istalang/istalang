@@ -8,10 +8,12 @@
  * Releasing empties the registers; whatever lost its last holder is disposed, in reverse
  * creation order. `return` releases every register.
  *
- * `fn let`, `fn const` and `fn _` keep their holdings until the function ends, even from a loop
- * body that runs many times (spec §3.4). A register can't hold one value per iteration, so the
- * block's end moves them into the frame's kept list (`keep`, then `release`), which only `return`
- * empties.
+ * `hold let`, `hold const` and `hold _` keep their holdings until a scope around their block ends:
+ * the function, or the loop or block `hold(name)` names (spec §3.4), even from a loop body that
+ * runs many times. A register can't hold one value per iteration, so the block's end moves them
+ * into a list (`keep`, then `release`): the value of a hidden variable of that scope, released
+ * when the scope ends, as any of its variables is. One mechanism serves every scope, the
+ * function's included, so a frame holds nothing beside its registers.
  */
 
 import { z } from 'zod';
@@ -22,8 +24,11 @@ const registers = z.array(register).min(1);
 
 const release = defineInstruction('release', { registers });
 
-/** Adds the registers' values to the frame's kept list, as holders until the function returns. */
-const keep = defineInstruction('keep', { registers });
+/**
+ * Adds the registers' values to the array in `into`, starting one when `into` is empty: holders
+ * until the scope `into` belongs to releases it. Only `keep` writes `into`, and nothing reads it.
+ */
+const keep = defineInstruction('keep', { registers, into: register });
 
 /**
  * `defer f`: a disposable guard that calls `f` when it is disposed. Held in a register like any

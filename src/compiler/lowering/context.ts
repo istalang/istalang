@@ -5,8 +5,8 @@
  *
  * Code is linear register code (docs/arch/definition.md, "Frames"). Every expression lowers to the
  * register that holds its value; a statement lowers to instructions alone. What lowering one body
- * keeps track of lives in per-concern units (the code written, variables' registers, loops), so a
- * feature adds a unit, not methods here.
+ * keeps track of lives in per-concern units (the code written, variables' registers, hold scopes,
+ * loops), so a feature adds a unit, not methods here.
  */
 
 import type { FunctionId, Register } from '../../definition/operands.ts';
@@ -25,6 +25,7 @@ import type { Block, Statement } from '../syntax/statements.ts';
 import type { CodeWriter } from './code-writer.ts';
 import type { ClosedCall } from './instances.ts';
 import type { OptionalChains } from './optional-chains.ts';
+import type { HoldScopes } from './statements/holds.ts';
 import type { LoopStack } from './statements/loops.ts';
 import type { VariableRegisters } from './statements/variables.ts';
 import type { DefinitionTables } from './tables.ts';
@@ -76,6 +77,7 @@ export interface FunctionContext {
   /** The function's code: registers, instructions and labels. */
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;
+  readonly holds: HoldScopes;
   readonly loops: LoopStack;
   readonly chains: OptionalChains;
 }

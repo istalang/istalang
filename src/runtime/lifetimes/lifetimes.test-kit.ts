@@ -1,7 +1,7 @@
 /**
  * Random heaps for the properties of holding and disposal: objects of every kind that holds or
  * watches others, their values holding handles to any of them, cycles included, and frames whose
- * registers and kept lists hold some of them. Ids are 0 to `size - 1`, and only type entry 0 is
+ * registers hold some of them. Ids are 0 to `size - 1`, and only type entry 0 is
  * disposable by a declared `dispose`, so a cell is disposable or not by its type.
  */
 
@@ -90,11 +90,8 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
       ),
     );
   const frame = fc
-    .record({
-      registers: fc.array(fc.option(contents, { nil: undefined }), { maxLength: 4 }),
-      kept: fc.array(contents, { maxLength: 2 }),
-    })
-    .map(({ registers, kept }): HoldingFrame => ({ registers, kept: [...kept] }));
+    .array(fc.option(contents, { nil: undefined }), { maxLength: 4 })
+    .map((registers): HoldingFrame => ({ registers }));
   return fc
     .record({
       objects: fc.tuple(...ids.map(objectAt)),

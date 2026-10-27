@@ -55,8 +55,6 @@ const frame = z.strictObject({
   pc: label,
   /** Registers that hold something, as [register, contents]; the others are empty. */
   registers: z.array(z.tuple([register, z.union([value, reference])])),
-  /** What `keep` moved here, in order; released when the function returns. */
-  kept: z.array(value),
 });
 
 export type Frame = z.output<typeof frame>;

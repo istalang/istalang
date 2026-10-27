@@ -52,7 +52,7 @@ describe('ready orphans', () => {
     });
     const plain: LiveObject = { kind: 'cell', id: 4, type: 1, value: handle(5) };
     const heap = new Heap([lease(0, 1), lease(1, 0), lease(2, 4), lease(3), plain, lease(5)]);
-    const frames = [{ registers: [handle(3)], kept: [] }];
+    const frames = [{ registers: [handle(3)] }];
     const held = heldFrom(heap, { frames, objects: [] }).objects;
     const from = [0, 2];
     expect(readyOrphans(heap, { held, from, isDisposable: disposableIn(heap) })).toEqual([2, 1, 0]);

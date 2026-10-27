@@ -60,6 +60,7 @@ import {
   ownerSubstitution,
 } from '../instances.ts';
 import { OptionalChains } from '../optional-chains.ts';
+import { HoldScopes } from '../statements/holds.ts';
 import { LoopStack } from '../statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
 import { declareVariable, VariableRegisters } from '../statements/variables.ts';
@@ -116,6 +117,7 @@ class FunctionLowering implements FunctionContext {
   readonly frame: Frame;
   readonly code = new CodeWriter();
   readonly variables = new VariableRegisters();
+  readonly holds = new HoldScopes(this.code, this.variables);
   readonly loops = new LoopStack();
   readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
 

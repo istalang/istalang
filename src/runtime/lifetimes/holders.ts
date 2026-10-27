@@ -5,8 +5,8 @@
  * values it counts, a restore has nothing to rebuild, and disposables holding each other in a
  * cycle are found like any other: they stop being reachable together.
  *
- * - The roots are every live execution's frames (registers, the cells references name, kept
- *   lists), plus the objects the scheduler names: the call futures of executions running on its
+ * - The roots are every live execution's frames (registers, and the cells references name),
+ *   plus the objects the scheduler names: the call futures of executions running on its
  *   run stack, which keep themselves alive until they suspend, and objects waiting in a collection
  *   round (collector.ts).
  * - An object holds what its kind's entry says (snapshot/holdings.ts), and a frame what the one

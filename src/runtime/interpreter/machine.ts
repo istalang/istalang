@@ -58,8 +58,6 @@ export interface ActiveFrame {
   readonly code: CodeFunction;
   pc: number;
   readonly registers: (RegisterContents | undefined)[];
-  /** What `keep` moved here: holdings that last until the function returns (spec §3.4). */
-  readonly kept: Value[];
   readonly heap: FrameHeap;
 }
 
@@ -105,7 +103,7 @@ export function newFrame(
 ): ActiveFrame {
   const { code } = entry;
   const registers: (RegisterContents | undefined)[] = Array.from({ length: code.registers });
-  const frame: ActiveFrame = { function: entry.function, code, pc: 0, registers, kept: [], heap };
+  const frame: ActiveFrame = { function: entry.function, code, pc: 0, registers, heap };
   contents.forEach((each, index) => {
     if (isReference(each)) {
       registers[index] = each;
@@ -212,13 +210,10 @@ export function clearRegister(frame: ActiveFrame, register: Register): void {
   }
 }
 
-/** Lets go of everything `frame` holds, in its registers and kept list, as it ends. */
+/** Lets go of everything `frame`'s registers hold, as it ends. */
 export function releaseFrame(frame: ActiveFrame): void {
   for (const register of frame.registers.keys()) {
     clearRegister(frame, register);
-  }
-  for (const contents of frame.kept.splice(0)) {
-    frame.heap.released(contents);
   }
 }
 

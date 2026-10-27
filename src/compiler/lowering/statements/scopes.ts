@@ -3,8 +3,8 @@
  * of a scope, and the end of a header. Every construct that opens a scope or evaluates a header
  * ends it through here, so the release points are emitted one way.
  *
- * - A scope's end keeps what lasts until the function returns (`fn let`, `fn const`, `fn _`), then
- *   releases every variable it declared.
+ * - A scope's end keeps what its held variables hold (`hold let`, `hold const`, `hold _`) into
+ *   their hold scopes' lists, then releases every variable it declared.
  * - A header, such as a condition or a `match` subject, ends before what it leads to: its
  *   temporaries are released on every path out of it, instead of at its statement's end.
  */
@@ -14,10 +14,16 @@ import type { Span } from '../../../text/span.ts';
 import type { FunctionContext } from '../context.ts';
 import type { BlockScope } from './variables.ts';
 
-/** Ends `scope`: keeps what lasts until the function returns, then releases every variable. */
+/** Ends `scope`: keeps what its held variables hold, then releases every variable. */
 export function endScope(context: FunctionContext, scope: BlockScope, span: Span): void {
-  if (scope.kept.length > 0) {
-    context.code.emit({ kind: 'keep', span, registers: [...scope.kept] });
+  const lists = Map.groupBy(scope.kept, (kept) => kept.into);
+  for (const [into, kept] of lists) {
+    context.code.emit({
+      kind: 'keep',
+      span,
+      registers: kept.map(({ register }) => register),
+      into,
+    });
   }
   release(context, scope.declared, span);
 }

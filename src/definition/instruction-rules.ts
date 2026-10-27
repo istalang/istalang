@@ -7,6 +7,7 @@
  *   a function with captures is called only through its closure value, never directly
  * - a closure carries its function's captures
  * - only async code waits
+ * - `keep` adds to a register other than those it keeps
  *
  * The rules are a typed table with one entry per instruction kind, like `operandsOf`
  * (instructions/instruction.ts): a new kind fails compilation until it has an entry, and a kind
@@ -102,7 +103,8 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
   await: waitsOnlyInAsync,
   select: waitsOnlyInAsync,
   release: none,
-  keep: none,
+  keep: (_, i) =>
+    i.registers.includes(i.into) ? `keeps register ${i.into} into itself.` : undefined,
   defer: none,
 };
 

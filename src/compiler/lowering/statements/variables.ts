@@ -15,8 +15,9 @@
  *   place. A place reached through an element or a shared struct's value is copied in and written
  *   back around the write (places.ts).
  * - A value given to `_` is held until the block ends (§7), so an unnamed target keeps the whole
- *   value in a variable of its own, with no name. A `fn let`, `fn const` or `fn _` variable lasts
- *   until the function returns (§3.4): its block keeps it (`keep`) before releasing its register.
+ *   value in a variable of its own, with no name. A `hold let`, `hold const` or `hold _` variable
+ *   lasts until its hold scope ends (§3.4): its block keeps it (`keep`) into that scope's list
+ *   (holds.ts) before releasing its register.
  */
 
 import type { Register, TypeId } from '../../../definition/operands.ts';
@@ -42,16 +43,25 @@ export interface CellRegister {
   readonly type: TypeId;
 }
 
-/** How long what a variable holds lasts: until its block ends, or until its function returns. */
-export type Lifetime = 'block' | 'function';
+/**
+ * How long what a variable holds lasts: until its block ends, or until the hold scope ends whose
+ * list is `into` (holds.ts).
+ */
+export type Lifetime = 'block' | { readonly into: Register };
+
+/** A held variable's register, and the list its block's end keeps what it holds into. */
+export interface Kept {
+  readonly register: Register;
+  readonly into: Register;
+}
 
 /**
  * What one block declared (§3.4): every register a variable of it lives in, which its end
- * releases, and those of them whose holdings last until the function returns, which it keeps first.
+ * releases, and those of them whose holdings last longer, which it keeps first.
  */
 export interface BlockScope {
   readonly declared: readonly Register[];
-  readonly kept: readonly Register[];
+  readonly kept: readonly Kept[];
 }
 
 /**
@@ -65,7 +75,7 @@ export class VariableRegisters {
   readonly #released = new Set<Register>();
   readonly #cells: CellRegister[] = [];
   /** What each open block declared, outermost first. */
-  readonly #blocks: { readonly declared: Register[]; readonly kept: Register[] }[] = [];
+  readonly #blocks: { readonly declared: Register[]; readonly kept: Kept[] }[] = [];
 
   declare(declaring: Identifier, register: Register, lifetime: Lifetime = 'block'): void {
     this.#registers.set(declaring, register);
@@ -80,9 +90,17 @@ export class VariableRegisters {
     this.#variables.add(register);
     const block = this.#blocks.at(-1);
     block?.declared.push(register);
-    if (lifetime === 'function') {
-      block?.kept.push(register);
+    if (lifetime !== 'block') {
+      block?.kept.push({ register, into: lifetime.into });
     }
+  }
+
+  /**
+   * Makes `register` a variable of the function's own body, which no block releases and only the
+   * function's return does: the list of what lasts until then (holds.ts).
+   */
+  holdUntilReturn(register: Register): void {
+    this.#variables.add(register);
   }
 
   /** Runs `lower` as a block of its own; what it gave, and what it declared. */
@@ -158,14 +176,16 @@ export function lowerVariableDeclaration(
 ): void {
   const value = context.expression(node.initializer);
   if (node.targets.some(hasUnnamedPart)) {
-    context.variables.hold(copied(context, value, node.span), lifetimeOf(node));
+    context.variables.hold(copied(context, value, node.span), lifetimeOf(context, node));
   }
   bindTargets(context, node, value, node.span);
 }
 
-/** How long what `owner`'s targets hold lasts: a `hold`'s, its function's. */
-function lifetimeOf(owner: TargetOwner): Lifetime {
-  return owner.kind === 'VariableDeclaration' && owner.hold !== undefined ? 'function' : 'block';
+/** How long what `owner`'s targets hold lasts: a `hold`'s, until its function returns. */
+function lifetimeOf(context: FunctionContext, owner: TargetOwner): Lifetime {
+  return owner.kind === 'VariableDeclaration' && owner.hold !== undefined
+    ? { into: context.holds.functionList }
+    : 'block';
 }
 
 /** Declares each name `owner`'s targets bind, moving in its part of `value` (§3.15). */
@@ -175,7 +195,7 @@ export function bindTargets(
   value: Register,
   span: Span,
 ): void {
-  const lifetime = lifetimeOf(owner);
+  const lifetime = lifetimeOf(context, owner);
   for (const binding of context.body.targetsOf(owner)) {
     const part = readPart(context, value, binding.path, span);
     const register = declareVariable(context, binding.name, binding.type, lifetime);

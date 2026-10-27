@@ -52,10 +52,16 @@ const broadcastWaiting: Snapshot = {
             [1, { kind: 'array', elements: ['ann', 'bob'] }],
             [2, { kind: 'struct', type: duration, fields: [60_000n] }],
             [13, { kind: 'handle', object: 3 }],
-          ],
-          kept: [
-            { kind: 'handle', object: 1 },
-            { kind: 'handle', object: 2 },
+            [
+              14,
+              {
+                kind: 'array',
+                elements: [
+                  { kind: 'handle', object: 1 },
+                  { kind: 'handle', object: 2 },
+                ],
+              },
+            ],
           ],
         },
       ],
@@ -81,7 +87,6 @@ function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
     registers: fc.array(fc.tuple(fc.nat({ max: 20 }), fc.oneof(value, reference)), {
       maxLength: 4,
     }),
-    kept: fc.array(value, { maxLength: 2 }),
   });
   const futureState = fc.oneof(
     fc.record({ kind: fc.constant('resolved' as const), value }),

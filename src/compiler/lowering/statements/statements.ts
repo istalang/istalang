@@ -4,8 +4,8 @@
  *
  * Release points (docs/arch/definition.md, "Frames"; spec §3.4, §7):
  * - A block's end releases what its variables hold, so a variable declared in a loop's body is
- *   fresh on every iteration; a `fn let`, `fn const` or `fn _` variable is kept first, until the
- *   function returns. A value read from one of them is copied out before.
+ *   fresh on every iteration; a `hold let`, `hold const` or `hold _` variable is kept first, until
+ *   its hold scope ends (holds.ts). A value read from one of them is copied out before.
  * - A statement's end releases its temporaries: the registers it allocated that no variable lives
  *   in, each once. A header's, such as an `if` condition's, end before its body (scopes.ts).
  * - `drop x` releases `x`; `drop e` leaves `e`'s value to its statement's temporaries.
