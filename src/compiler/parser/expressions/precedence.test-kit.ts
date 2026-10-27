@@ -4,7 +4,7 @@
  * Both printers read their levels from syntax/operators.ts, the table the parser uses:
  * - The full printer parenthesizes every operator.
  * - The minimal printer parenthesizes only where the table requires it: levels, associativity and
- *   the operands an operator refuses without parentheses (§3.9). Besides the table, it knows two
+ *   the operands an operator refuses without parentheses, `**`'s refusing a prefix too (§3.9). Besides the table, it knows two
  *   grammar rules: comparisons in a row chain, so a comparison under another is wrapped, and
  *   `name < name > (…)` reads as a generic call (§3.5), so its comparison is wrapped.
  * `shapeOf` turns a parsed expression back into a tree, ignoring parentheses, so the printed text
@@ -143,6 +143,15 @@ function printBinary(tree: Extract<OperatorTree, { binary: BinaryOperator }>): s
   return `${left} ${tree.binary} ${right}`;
 }
 
+/** Whether `child`, the operand of a prefix at `level`, is an operator refusing a prefix before it. */
+function refusesPrefix(child: OperatorTree, level: PrecedenceLevel): boolean {
+  if (!('binary' in child) || level !== 'prefix') {
+    return false;
+  }
+  const entry: BinaryOperatorEntry = binaryOperators[child.binary];
+  return entry.refusesPrefixedLeft === true;
+}
+
 /** Prints with only the parentheses the grammar requires. */
 export function printMinimal(tree: OperatorTree): string {
   if ('atom' in tree) {
@@ -152,7 +161,10 @@ export function printMinimal(tree: OperatorTree): string {
     return printBinary(tree);
   }
   if ('prefix' in tree) {
-    return prefixText(tree.prefix) + operand(tree.operand, levelOf(tree));
+    const level = levelOf(tree);
+    return (
+      prefixText(tree.prefix) + operand(tree.operand, level, refusesPrefix(tree.operand, level))
+    );
   }
   if ('range' in tree) {
     const start = operand(tree.start, operatorLevels.range);

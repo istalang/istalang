@@ -194,7 +194,7 @@ const message = `
     `
 # "Dear Ada,\n  your order 42 has shipped."
 ```
-- **Numbers:** `42`, `1_000_000`, `0x1F` and `0b1010` for `int`; `3.14`, `1e9`, `2E6` and `2.5e-3` for `float`. A `_` stands only between digits, radix prefixes are lowercase, and there are no octal literals. A float has digits on both sides of its `.`, so `2.pow(10)` calls a method on the `int` `2`, and `0..10` is a range.
+- **Numbers:** `42`, `1_000_000`, `0x1F` and `0b1010` for `int`; `3.14`, `1e9`, `2E6` and `2.5e-3` for `float`. A `_` stands only between digits, radix prefixes are lowercase, and there are no octal literals. A float has digits on both sides of its `.`, so `2.toString()` calls a method on the `int` `2`, and `0..10` is a range.
 - **`true`, `false` and `none`.**
 - **Arrays:** `[1, 2, 3]`, and `[]` when empty.
 - **Maps:** `["legal": 1, "cfo": 2]`, and `[:]` when empty. Keys are expressions.
@@ -514,8 +514,8 @@ The **standard library** is a set of modules, imported explicitly, for example `
 | Module | Contents |
 | --- | --- |
 | `time` | `Time`, `Duration`, `now()`, `at(t)` (the runtime's only time primitive) and `delay(d)`, which is `at(now() + d)`; `t + d`, `d + d` and `d * n` for an `int` `n`; both types are `Comparable`, as the milliseconds they hold, and `Stringable` and `Parsable` in ISO 8601, `Time` as JavaScript's `Date.toJSON` writes it (`2026-10-25T12:00:00.000Z`) and `Duration` as `Temporal.Duration` does (`PT1H30M`), and cross as JSON as that text. Time zones: `Zone`, an IANA zone, a type the runtime implements that holds the zone's canonical id, so `==` and map keys compare zones, read by `Zone.parse(id)` in any case, given by `utc()`, and crossing as its id; `DateTime`, a wall-clock reading with no zone, `Stringable` and `Parsable` as `2026-10-25T13:00:00`, with `weekday()` (1 is Monday, 7 Sunday) and `addDays(n)` (calendar days, so a wall-clock time survives a change of offset); `t.inZone(z)`, the reading of `t` in `z`; `Time.of(dt, z)`, the instant `dt` reads in `z`, the earlier of two where a change of offset repeats `dt` and moved forward by the gap where one skips it, which panics on a date that doesn't exist; and `t.format(z)`, ISO 8601 with `z`'s offset (`2026-10-25T13:00:00.000+01:00`), which `Time.parse` reads. Zone rules are the host's time-zone data, so two hosts with different data can disagree |
-| `math` | `abs(x)` of an `int` or a `float`; `floor(x)`, `ceil(x)` and `round(x, mode = Rounding.HalfEven)` of a `float`, which keep its type, so `int(math.floor(x))` is the int at or below `x`; `pow(base, exponent)`, an `int` when both are, panicking on a negative exponent, and a `float` otherwise; `sqrt(x)` of an `int` or a `float`, a `float`, NaN for a negative number as IEEE 754 gives; `min(a, b)`, `max(a, b)` and `clamp(self, low, high)` of any `Comparable` type, each giving the first of equal arguments, and `clamp` panicking when `low > high`; `Rounding`, the rounding modes `math` and `decimal` share: `Floor`, `Ceiling`, `TowardZero`, `AwayFromZero`, `HalfEven` (a tie goes to the even neighbour) and `HalfAwayFromZero`. Each function takes its number as `self`, so one imported by name is also a method: `2.pow(10)`, `x.round()` |
-| `decimal` | `Decimal`, an exact decimal number of any size, for arithmetic such as money. `Decimal(i)` converts an `int`, and `Decimal.parse(s)` reads an optional `-`, digits and an optional fraction, such as `-12.50`, and nothing else. A value has one form, so `==` and map keys compare numbers: `toString` writes it with no exponent, no trailing zeros after the point and no `-0` (`-12.5`), and `toFixed(places, mode = Rounding.HalfEven)` with exactly `places` digits after the point (`-12.50`); it crosses as JSON as its `toString` text (§9). Every function of two numbers takes a `Decimal` or an `int` on either side, never a `float`, whose rounding is what `Decimal` avoids (`==` is built in and compares two values of one type, so `d == Decimal(1)`, §3.9): `+`, `-` and `*` are exact; `/` rounds half to even to 34 significant digits, as IEEE 754's decimal128 does, and `divide(a, b, places, mode = Rounding.HalfEven)` rounds to `places` digits after the point; `//` and `%` are related as on `int`s (§3.9); a division by zero panics, there being no infinite `Decimal`. `int(d)` truncates toward zero and `float(d)` is the nearest float. `abs`, `floor`, `ceil` and `round(places = 0, mode = Rounding.HalfEven)` give a `Decimal`, and `pow(exponent)` is exact for an `int` exponent of at least 0 and divides as `/` does for a negative one. A negative `places` panics |
+| `math` | `abs(x)` of an `int` or a `float`; `floor(x)`, `ceil(x)` and `round(x, mode = Rounding.HalfEven)` of a `float`, which keep its type, so `int(math.floor(x))` is the int at or below `x`; `sqrt(x)` of an `int` or a `float`, a `float`, NaN for a negative number as IEEE 754 gives; `min(a, b)`, `max(a, b)` and `clamp(self, low, high)` of any `Comparable` type, each giving the first of equal arguments, and `clamp` panicking when `low > high`; `Rounding`, the rounding modes `math` and `decimal` share: `Floor`, `Ceiling`, `TowardZero`, `AwayFromZero`, `HalfEven` (a tie goes to the even neighbour) and `HalfAwayFromZero`. Each function takes its number as `self`, so one imported by name is also a method: `x.abs()`, `x.round()`. Powers are the `**` operator (§3.9) |
+| `decimal` | `Decimal`, an exact decimal number of any size, for arithmetic such as money. `Decimal(i)` converts an `int`, and `Decimal.parse(s)` reads an optional `-`, digits and an optional fraction, such as `-12.50`, and nothing else. A value has one form, so `==` and map keys compare numbers: `toString` writes it with no exponent, no trailing zeros after the point and no `-0` (`-12.5`), and `toFixed(places, mode = Rounding.HalfEven)` with exactly `places` digits after the point (`-12.50`); it crosses as JSON as its `toString` text (§9). Every function of two numbers takes a `Decimal` or an `int` on either side, never a `float`, whose rounding is what `Decimal` avoids (`==` is built in and compares two values of one type, so `d == Decimal(1)`, §3.9): `+`, `-` and `*` are exact; `/` rounds half to even to 34 significant digits, as IEEE 754's decimal128 does, and `divide(a, b, places, mode = Rounding.HalfEven)` rounds to `places` digits after the point; `//` and `%` are related as on `int`s (§3.9); a division by zero panics, there being no infinite `Decimal`. `int(d)` truncates toward zero and `float(d)` is the nearest float. `abs`, `floor`, `ceil` and `round(places = 0, mode = Rounding.HalfEven)` give a `Decimal`, and `d ** n` is exact for an `int` exponent of at least 0 and divides as `/` does for a negative one, so a `Decimal` is `Powerable<int>`. A negative `places` panics |
 | `strings` | String methods, with JavaScript's names and counting code points as `s[i]` does: `indexOf(search, from = 0)` (`-1` when absent), `lastIndexOf`, `includes`, `startsWith`, `endsWith`, `slice(start = 0, end = none)` (clamping, a negative index counted from the end), `split(separator)` (an empty one splits into code points), `trim`, `trimStart`, `trimEnd`, `padStart(length, fill = " ")`, `padEnd`, `repeat(n)` (panics on a negative `n`), `replace(search, replacement)` and `replaceAll`, which match plain text; `toUpperCase` and `toLowerCase`, by Unicode's default case mapping and never a locale, so a re-run segment always computes the same; `format(template, ...values)`, where `{}` takes the next value, `{n}` value `n` and `{{` and `}}` write a brace, and a placeholder without a value or a stray brace panics; `graphemes(s)` for user-perceived characters and `utf16Length(s)` for the length JavaScript counts. Called as `strings.trim(s)`, or as `s.trim()` where `trim` is imported |
 | `json` | `Encodable` and `Decodable`, the traits of types that cross as JSON (§3.10, §9), with their `toJson` and `fromJson` for every primitive, `Json`, `Array`, `T?` and `Map`; `stringify(v)` and a typed `parse<T>(s) -> Result<T>`, through them; `Json`, an enum holding JSON of any shape, with `encode(v) -> Json` and `decode<T>(j) -> Result<T>` between it and typed values; `encodeText(v)` and `decodeText<T>(j, path)`, the codecs of a type that crosses as the text its `toString` writes; the `JsonName`, `JsonSkip` and `JsonBigInt` annotations (§3.16) |
 | `regex` | Regular expressions with RE2's linear-time engine and syntax: flags inline (`(?i)`, `(?m)`, `(?s)`), named groups `(?P<name>…)` or `(?<name>…)`, and no backreferences or lookaround. `Regex{pattern}` is a plain struct, so `Regex{"\\d+"}` is a literal one, which panics where it is used if the pattern is invalid; `Regex.parse(text) -> Result<Regex>` checks a pattern from outside. It is `Stringable` and `Parsable` as its pattern, and crosses as JSON as that text. `test(s)` (a match anywhere), `find(s) -> Match?`, `findAll(s) -> Array<Match>`, `replace(s, replacement)` and `replaceAll`, which expand `$1`, `$<name>`, `$&` and `$$` as JavaScript does, `split(s)`, and `escape(s)`, the pattern matching `s` literally. A `Match` has the `text` matched, the `index` it starts at in code points, `captures: Array<string?>` (group `n` is `captures[n - 1]`, `none` when it took no part) and `named: Map<string, string>`, the named groups that took part |
@@ -550,7 +550,7 @@ fn add(left: Time, right: Duration) -> Time:     # Time + Duration
 - An `extern struct` is not sendable unless it says `sendable`.
 - A sendable generic struct is sendable only when its type arguments are sendable: `Array<int>` is sendable, `Array<Future<int>>` is not.
 - Primitives are always sendable. `Time` and `Duration` are plain structs of `int`, so they are sendable by derivation.
-- Methods on primitives are ordinary functions whose `self` is a primitive, such as `"abc".indexOf("b")` or `2.pow(10)`.
+- Methods on primitives are ordinary functions whose `self` is a primitive, such as `"abc".indexOf("b")` or `2.toString()`.
 - **`Shared<T>`** is a shared struct of one mutable value in the instance's own memory (§3.18), created with `new Shared{value: v}`. Copying a `Shared` copies the handle, so every copy sees the same value, which `x->value` reads and writes (§3.9). It is not sendable, and it lives as long as it is reachable (§5).
 - **`WeakRef<T>`** refers to a disposable value without holding it (§7).
 
@@ -566,6 +566,9 @@ An operator is sugar for a named function: `a + b` calls `add(a, b)`. On concret
 | `a / b` | `divide` | `Divisible` |
 | `a // b`, `a % b` | `floorDivide`, `remainder` | `FloorDivisible` |
 | `-a` | `negate` | `Negatable` |
+| `a ** b` | `power` | `Powerable` |
+| `a & b`, `a \| b`, `a ^ b`, `~a` | `bitAnd`, `bitOr`, `bitXor`, `bitNot` | `Bitwise` |
+| `a << n`, `a >> n` | `shiftLeft`, `shiftRight` | `Shiftable` |
 | `<`, `<=`, `>`, `>=` | `compare` | `Comparable` |
 | `x[k]` | `index` | `Indexable` |
 | `x[k] = v` | `setIndex` | `IndexAssignable` |
@@ -598,6 +601,8 @@ fn multiply(left: Duration, factor: int) -> Duration:
 - **Slicing** is indexing with a `Range`, through ordinary `index` and `setIndex` overloads. `a[3..5]` returns a copy, so changing it never affects `a`. `a[3..5] = xs` replaces that span of `a` in place, even with a different length. A range's open start means 0 and its open end the length, so `a[..]` copies `a`; a range outside the bounds, or ending before it starts, panics, and `a.slice(start, end)` clamps instead. Strings slice the same way: `s[1..3]`.
 - **Equality is built in.** `==` and `!=` work on every type and can't be overloaded: values compare structurally, handles by identity (§3.1). This keeps `Map` keys consistent.
 - **Floor division and remainder share a trait,** because they are defined together: `a == (a // b) * b + a % b` always holds. A type can thus offer exact division, floor division, or both.
+- **Powers.** `**` groups to the right, `2 ** 3 ** 2` being `2 ** 9`, and binds tighter than a prefix operator on its right, so `2 ** -1` reads as written. A prefix operator directly on its left (`-x ** 2`) is a syntax error, since languages disagree on whether the sign applies first: write `(-x) ** 2` or `-(x ** 2)`. An `int` to an `int` power is an exact `int`, which a negative exponent can't be, so it panics; any `float` operand makes a `float`. `Powerable<E = Self>` lets the exponent have a type of its own, as a `Decimal`'s `int` does.
+- **Bitwise operators** work on `int` only, as on a two's complement of unbounded width, as in Python: `~x` is `-x - 1`, and `>>` rounds toward negative infinity, so `-9 >> 1` is `-5`. A negative shift count panics. A type of a program's own takes `&`, `|`, `^` and `~` through `Bitwise`, and the shifts through `Shiftable`, which a set of flags has no use for.
 - **Not overloadable:** `and`, `or` and `not` (they short-circuit, and a function call would evaluate both sides), `=`, `.`, `->`, prefix `*` and `&`. `await` and `select` aren't overloaded either; they work on futures (§6).
 - **Compound assignment.** `x += y` is sugar for `x = x + y`.
 - **No implicit conversions.** Mixed-type operators work only through overloads, for primitives as for a program's own types. The prelude declares them for `int` and `float`, such as `add(int, float) -> float`, and `Decimal` declares its own beside it for `int` only: mixing it with `float` would bring back the rounding it exists to avoid. Any `Stringable` value appends to a string, on either side, through `add<T is Stringable>(left: string, right: T)` and its mirror, so `"Total: " + count` and `count + " items"` just work. Anything else converts explicitly with `T(x)` (§3.10).
@@ -605,17 +610,22 @@ fn multiply(left: Duration, factor: int) -> Duration:
 | Precedence, tightest first | Operators |
 | --- | --- |
 | 1 | postfix: calls, indexing, `.`, `?.`, `->`, `?->`, the error-propagating `?` |
-| 2 | prefix: `await`, unary `-`, `*`, `&` |
-| 3 | `*`, `/`, `//`, `%` |
-| 4 | `+`, `-` |
-| 5 | `..`, `..=` |
-| 6 | `<`, `<=`, `>`, `>=`, `==`, `!=`, `is` |
-| 7 | `not` |
-| 8 | `and` |
-| 9 | `or` |
-| 10 | `??`, which can't be mixed with `and` or `or` without parentheses |
+| 2 | `**`, grouping to the right |
+| 3 | prefix: `await`, unary `-`, `~`, `*`, `&` |
+| 4 | `*`, `/`, `//`, `%` |
+| 5 | `+`, `-` |
+| 6 | `<<`, `>>` |
+| 7 | `&` |
+| 8 | `^` |
+| 9 | `\|` |
+| 10 | `..`, `..=` |
+| 11 | `<`, `<=`, `>`, `>=`, `==`, `!=`, `is` |
+| 12 | `not` |
+| 13 | `and` |
+| 14 | `or` |
+| 15 | `??`, which can't be mixed with `and` or `or` without parentheses |
 
-Binary operators on the same level associate to the left.
+Binary operators on the same level associate to the left, but for `**`.
 
 ### 3.10 Traits
 

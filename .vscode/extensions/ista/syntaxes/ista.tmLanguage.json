@@ -193,7 +193,7 @@
         { "name": "constant.numeric.hex.ista", "match": "\\b0x[0-9A-Fa-f](_?[0-9A-Fa-f])*\\b" },
         { "name": "constant.numeric.binary.ista", "match": "\\b0b[01](_?[01])*\\b" },
         {
-          "comment": "A float has digits on both sides of its `.`, so `0..10` and `2.pow` stay ints.",
+          "comment": "A float has digits on both sides of its `.`, so `0..10` and `2.toString` stay ints.",
           "name": "constant.numeric.float.ista",
           "match": "\\b[0-9](_?[0-9])*(\\.[0-9](_?[0-9])*([eE][+-]?[0-9](_?[0-9])*)?|[eE][+-]?[0-9](_?[0-9])*)\\b"
         },

@@ -33,35 +33,59 @@ import type { Parser } from '../parser.ts';
 import { parseSelectFrom } from './branches.ts';
 import type { InfixParselet, PrefixParselet } from './parselet.ts';
 
+/** A prefix operator just consumed: where it starts, and how it is spelled. */
+interface Prefix {
+  readonly start: number;
+  readonly spelling: string;
+}
+
 /** Consumes a prefix operator, reporting it if it binds looser than its position allows. */
-function advancePrefix(parser: Parser, level: PrecedenceLevel, minLevel: PrecedenceLevel): number {
+function advancePrefix(parser: Parser, level: PrecedenceLevel, minLevel: PrecedenceLevel): Prefix {
   const token = parser.cursor.advance();
   if (bindingPower(level) < bindingPower(minLevel)) {
     parser.report(parserDiagnostics.operatorNeedsParentheses(token.span, token.kind));
   }
-  return token.span.start;
+  return { start: token.span.start, spelling: token.kind };
 }
 
-/** A prefix operator building a `Unary` node, its operand parsed at the operator's own level. */
+/**
+ * The operand of `prefix`, at the operator's own level, so `- -a` nests; reported when it is an
+ * operator a prefix may not stand directly before (§3.9). Only the tight prefixes can be read
+ * either way: `not a ** b` can only be `not (a ** b)`.
+ */
+function prefixOperand(parser: Parser, prefix: Prefix, level: PrecedenceLevel): Expression {
+  const operand = parser.expression(level);
+  if (operand.kind === 'Binary' && level === 'prefix') {
+    const entry: BinaryOperatorEntry = binaryOperators[operand.operator];
+    if (entry.refusesPrefixedLeft === true) {
+      parser.report(
+        parserDiagnostics.prefixBeforePower(parser.spanFrom(prefix.start), prefix.spelling),
+      );
+    }
+  }
+  return operand;
+}
+
+/** A prefix operator building a `Unary` node. */
 export function unaryParselet(operator: UnaryOperator): PrefixParselet {
   const { level } = unaryOperators[operator];
   return (parser, minLevel) => {
-    const start = advancePrefix(parser, level, minLevel);
-    const operand = parser.expression(level);
-    return { kind: 'Unary', span: parser.spanFrom(start), operator, operand };
+    const prefix = advancePrefix(parser, level, minLevel);
+    const operand = prefixOperand(parser, prefix, level);
+    return { kind: 'Unary', span: parser.spanFrom(prefix.start), operator, operand };
   };
 }
 
 export const parseDereference: PrefixParselet = (parser, minLevel) => {
-  const start = advancePrefix(parser, operatorLevels.dereference, minLevel);
-  const operand = parser.expression(operatorLevels.dereference);
-  return { kind: 'Dereference', span: parser.spanFrom(start), operator: '*', operand };
+  const prefix = advancePrefix(parser, operatorLevels.dereference, minLevel);
+  const operand = prefixOperand(parser, prefix, operatorLevels.dereference);
+  return { kind: 'Dereference', span: parser.spanFrom(prefix.start), operator: '*', operand };
 };
 
 /** `**x` before an operand: the value behind the value behind `x`, two dereferences in one token. */
 export const parseDoubleDereference: PrefixParselet = (parser, minLevel) => {
-  const start = advancePrefix(parser, operatorLevels.dereference, minLevel);
-  const operand = parser.expression(operatorLevels.dereference);
+  const { start } = advancePrefix(parser, operatorLevels.dereference, minLevel);
+  const operand = prefixOperand(parser, { start, spelling: '*' }, operatorLevels.dereference);
   const inner: Expression = {
     kind: 'Dereference',
     span: { start: start + 1, end: operand.span.end },
@@ -72,12 +96,12 @@ export const parseDoubleDereference: PrefixParselet = (parser, minLevel) => {
 };
 
 export const parseAwait: PrefixParselet = (parser, minLevel) => {
-  const start = advancePrefix(parser, operatorLevels.await, minLevel);
+  const prefix = advancePrefix(parser, operatorLevels.await, minLevel);
   if (parser.cursor.at('select')) {
-    return parseSelectFrom(parser, start, true);
+    return parseSelectFrom(parser, prefix.start, true);
   }
-  const operand = parser.expression(operatorLevels.await);
-  return { kind: 'Await', span: parser.spanFrom(start), operand };
+  const operand = prefixOperand(parser, prefix, operatorLevels.await);
+  return { kind: 'Await', span: parser.spanFrom(prefix.start), operand };
 };
 
 /** `&x`, starting at the `&`. Only a call argument may be one; the caller decides. */
@@ -97,7 +121,7 @@ export const parseMisplacedReference: PrefixParselet = (parser) => {
 /** `..b` and `..=b`, ranges open at the start. */
 export const parseOpenRange: PrefixParselet = (parser, minLevel) => {
   const isInclusive = parser.cursor.at('..=');
-  const start = advancePrefix(parser, operatorLevels.range, minLevel);
+  const { start } = advancePrefix(parser, operatorLevels.range, minLevel);
   return parseRangeRest(parser, start, undefined, isInclusive);
 };
 

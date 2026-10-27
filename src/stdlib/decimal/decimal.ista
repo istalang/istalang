@@ -4,7 +4,7 @@
 # value has one text, which `==` and map keys compare, so they compare numbers. Every function of
 # two numbers takes a Decimal or an int on either side, never a float, whose rounding is what a
 # Decimal exists to avoid (§3.9). The operators are declared here, so argument-dependent lookup
-# finds them wherever a Decimal is used (§3.13); so are `abs`, `floor`, `ceil`, `round` and `pow`,
+# finds them wherever a Decimal is used (§3.13); so are `abs`, `floor`, `ceil` and `round`,
 # which `math` has for floats.
 
 import * as json from 'json'
@@ -70,4 +70,4 @@ fn floor(self: Decimal) -> Decimal: self.round(0, Rounding.Floor)
 fn ceil(self: Decimal) -> Decimal: self.round(0, Rounding.Ceiling)
 
 # Exact for an exponent of at least 0; a negative one divides as `/` does.
-extern fn pow(self: Decimal, exponent: int) -> Decimal
+extern fn power(base: Decimal, exponent: int) -> Decimal

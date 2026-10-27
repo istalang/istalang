@@ -6,7 +6,7 @@
  * `0b102` is one bad binary literal and `5days` one bad duration, rather than a number followed by
  * a stray name. A suffix that names a unit makes a duration.
  *
- * A fraction needs a digit after the dot, so `2.pow(10)` and `0..10` scan as an integer followed by
+ * A fraction needs a digit after the dot, so `2.toString()` and `0..10` scan as an integer followed by
  * `.` or `..`. Radix prefixes are lowercase only (`0x`, `0b`), to keep one spelling. Hex digits may
  * be in either case.
  */

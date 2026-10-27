@@ -134,6 +134,12 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - range patterns on `float` or `string` (default: `int` only);
   - open ranges `..5` (default: allowed).
 
+- **Decided in L5's sweep (human, 2026-10-28):**
+  - Or-patterns are refused in `let`, `for` and assignment targets. Every alternative binds the same names with the same types; `A | B as x` binds the whole value.
+  - Array patterns match an `Array<T>` only, with at most one rest anywhere (`[a, ...mid, z]`); `...rest` binds a new array, `..._` nothing. They are refused in targets, since the length can fail.
+  - Range patterns take int literals only (negative included); `..` excludes the end, `..=` includes it, either end open. An empty one (`5..1`) is an error.
+  - Exhaustiveness: or-patterns are alternatives of one row; arrays are checked by length, a rest covering every length from its fixed count up; a range pattern acts as a guard.
+
 ## F11 Trait objects `any T` (enum dispatch)
 
 - **Decided:**
@@ -159,6 +165,8 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - `a?.b!` (default: `!` applies to the whole chain before it);
   - the message (default: `"force-unwrapped none"` plus the location);
   - `x!=y` scans as `!=` (stated in the spec).
+
+- **Decided in L5's sweep (human, 2026-10-28):** `!` stays, and every use is a warning (prefer `?`, `??` or `match`). `a?.b!` unwraps the whole chain; the panic says "Force-unwrapped none." and its trace gives the place; `!` takes optionals only; `x!=y` scans as `!=`.
 
 ## F14 Variadic generics, level 1 (tuple packs)
 
@@ -204,3 +212,10 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - which comparisons chain (default: only ordering comparisons in one direction; other mixes are an error);
   - what `in` calls (default: `contains(container, item)` with a trait `Container<T>`, for arrays (element), maps (key), strings (substring) and ranges; `not in` included);
   - steps (default: a negative step needs `start > end`; slicing with a step is allowed).
+
+- **Decided in L5's sweep (human, 2026-10-28):**
+  - `power` on ints and floats is the prelude's, beside `add` (four overloads; an int to an int stays an int), so `2 ** 10` needs no import. `decimal`'s is `power(Decimal, int)`. `math.pow` goes. The trait is `Powerable<E = Self, T = Self>` with `power(base: T, exponent: E) -> T`, so `Decimal` is `Powerable<int>`. A negative int exponent panics; `0 ** 0` is 1; floats are IEEE 754. A prefix operator directly on the left of `**` (`-2 ** 2`) is a syntax error.
+  - Bitwise operators have two traits, as the arithmetic ones do: `Bitwise` (`bitAnd`, `bitOr`, `bitXor`, `bitNot`) and `Shiftable` (`shiftLeft`, `shiftRight`), since a flags type has the first and not the second. On `int` only, with Python's semantics; a negative shift count panics.
+  - Every comparison chains, in any mix, with Python's meaning: each neighbouring pair is compared, every operand is evaluated at most once, and evaluation stops at the first false. A typed misreading of `x < y == z` as `(x < y) == z` fails to check.
+  - `in` calls `includes(container, item)` with the trait `Container<T>`, the name arrays and strings already have; maps and weak maps gain `includes` for their keys and keep `has`. `includes(string, string)` moves from `strings` into the prelude. A range includes an int its ends and step reach. `not in` is `not (a in b)`.
+  - `Range` gains `step: int = 1`. Its sign gives the direction, and a range whose end lies the other way is empty; a step of 0 panics; `a..=b by s` includes `b` when a step lands on it. A stepped slice reads every step-th item, its open ends defaulting by the step's direction (`xs[.. by -1]` is reversed); writing a stepped slice needs the same length, or it panics.

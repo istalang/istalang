@@ -1,5 +1,6 @@
-# The prelude's array and map methods taking a function, the array methods beside them, and the
-# wait on a spawned instance's end (spec §3.8, §9); the rest of the prelude is the corpus's.
+# The prelude's array and map methods taking a function, the array methods beside them, powers and
+# bitwise operators, and the wait on a spawned instance's end (spec §3.8, §3.9, §9); the rest of
+# the prelude is the corpus's.
 
 import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
 
@@ -143,6 +144,49 @@ fn limits() -> Array<Test>: [
   test("a string outgrowing what the runtime can hold panics", async fn(): {
     assertEq(await expectPanic(doubledForever), "The string would be longer than the runtime can hold.")
   }),
+]
+
+fn negativePower() -> int: 2 ** -1
+
+fn negativeShift() -> int: 1 << -1
+
+fn cubed<T is Powerable<int>>(x: T) -> T: x ** 3
+
+@Suite{"prelude › numbers"}
+fn numbers() -> Array<Test>: [
+  group("**", [
+    test("of two ints is an exact int, grouping to the right", fn(): {
+      assertEq([2 ** 10, (-3) ** 3, 7 ** 0, 0 ** 0, 2 ** 3 ** 2], [1024, -27, 1, 1, 512])
+      assertEq(10 ** 30, 1000000000000000000000000000000)
+    }),
+    test("with a float is a float, its right operand taking a sign", fn(): {
+      assertEq([2.0 ** 0.5, 2 ** -1.0, 4.0 ** 2], [1.4142135623730951, 0.5, 16.0])
+    }),
+    test("assigns compounded, and works through Powerable", fn(): {
+      let n = 3
+      n **= 2
+      assertEq([n, cubed(2)], [9, 8])
+      assertEq(cubed(1.5), 3.375)
+    }),
+    test("of an int to a negative int power panics", async fn(): {
+      assertEq(await expectPanic(negativePower), "2 to the power -1 is no int; use a float base.")
+    }),
+  ]),
+  group("bitwise", [
+    test("and, or, xor and not act on an unbounded two's complement", fn(): {
+      assertEq([12 & 10, 12 | 10, 12 ^ 10, ~5, -12 & 10, -1 ^ 5], [8, 14, 6, -6, 0, -6])
+    }),
+    test("shifts left without bound and right toward negative infinity", fn(): {
+      assertEq([1 << 70, -9 >> 1, 5 >> 10, 3 << 0], [1180591620717411303424, -5, 0, 3])
+    }),
+    test("bind as Python's: shifts below +, then &, ^ and |, all above comparisons", fn(): {
+      assertEq([1 + 2 << 3, 1 | 2 & 3, 6 ^ 3 & 1], [24, 3, 7])
+      assert(4 & 6 == 4)
+    }),
+    test("a negative shift count panics", async fn(): {
+      assertEq(await expectPanic(negativeShift), "A shift count can't be negative, as -1 is.")
+    }),
+  ]),
 ]
 
 fn answers() -> int: 42

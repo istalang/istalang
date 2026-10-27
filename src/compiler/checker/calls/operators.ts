@@ -18,7 +18,6 @@ import {
   unaryOperators,
 } from '../../syntax/operators.ts';
 import type { BodyContext } from '../context.ts';
-import { type FrontierConstruct, frontier } from '../frontier.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { CallSite } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
@@ -48,17 +47,6 @@ export function applied(
   return { spelling, function: meaning.function };
 }
 
-/** Operators parsed but not checked yet, each named as the frontier names it (frontier.ts). */
-const notSupportedYet: Readonly<Partial<Record<AppliedOperator['spelling'], FrontierConstruct>>> = {
-  '|': frontier.bitwiseOperator,
-  '^': frontier.bitwiseOperator,
-  '&': frontier.bitwiseOperator,
-  '<<': frontier.bitwiseOperator,
-  '>>': frontier.bitwiseOperator,
-  '~': frontier.bitwiseOperator,
-  '**': frontier.powerOperator,
-};
-
 /** An operand: the expression written, and its type. */
 export interface Operand {
   readonly node: Expression;
@@ -75,10 +63,6 @@ export function resolveOperator(
   operator: AppliedOperator,
   operands: readonly Operand[],
 ): Type {
-  const construct = notSupportedYet[operator.spelling];
-  if (construct !== undefined) {
-    return context.unsupported(site, construct);
-  }
   const types = operands.map(({ type }) => type);
   return resolveCall(context, {
     site,

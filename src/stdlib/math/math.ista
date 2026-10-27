@@ -5,7 +5,7 @@
 # `int(x)` converts the result exactly; `floor` and `ceil` are `round` in one mode. `min`, `max` and
 # `clamp` are written once, over `Comparable`, so every ordered type has them: a `Decimal`, a `Time`
 # or a program's own. Each function takes its number as `self`, so once imported by name it is also
-# a method: `2.pow(10)`, `x.round()`.
+# a method: `x.abs()`, `x.round()`. Powers are the `**` operator (§3.9).
 
 enum Rounding:
   Floor
@@ -22,13 +22,6 @@ extern fn round(self: float, mode: Rounding = Rounding.HalfEven) -> float
 
 fn floor(self: float) -> float: self.round(Rounding.Floor)
 fn ceil(self: float) -> float: self.round(Rounding.Ceiling)
-
-# An int to an int power stays an int, which a negative exponent can't; a float operand makes
-# the result a float.
-extern fn pow(self: int, exponent: int) -> int
-extern fn pow(self: float, exponent: float) -> float
-extern fn pow(self: int, exponent: float) -> float
-extern fn pow(self: float, exponent: int) -> float
 
 extern fn sqrt(self: int) -> float
 extern fn sqrt(self: float) -> float

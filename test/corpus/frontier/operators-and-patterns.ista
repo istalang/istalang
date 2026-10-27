@@ -1,25 +1,15 @@
-# error: 5000 at 18:3
-# error: 5000 at 19:3
-# error: 5000 at 20:7
-# error: 5000 at 21:7
-# error: 5000 at 22:7
-# error: 5000 at 23:7
-# error: 5000 at 24:7
-# error: 5000 at 25:16
-# error: 5000 at 26:3
-# error: 5000 at 30:10
-# error: 5000 at 31:10
-# error: 5000 at 36:10
-# Bitwise operators, `**`, `in`, `!`, range steps, chained comparisons, and or, range and array
-# patterns parse, and are not checked yet (language features, L5).
+# error: 5000 at 13:7
+# error: 5000 at 14:7
+# error: 5000 at 15:16
+# error: 5000 at 16:3
+# error: 5000 at 20:10
+# error: 5000 at 21:10
+# error: 5000 at 26:10
+# `in`, `!`, range steps, chained comparisons, and or, range and array patterns parse, and are not
+# checked yet (language features, L5).
 
 fn f(a: int, b: int, xs: Array<int>, m: int?) -> bool:
   let n = a
-  n **= 2
-  n &= 1
-  _ = a | b
-  _ = a ** b
-  _ = ~a
   _ = a in xs
   _ = m!
   _ = 0..10 by 2

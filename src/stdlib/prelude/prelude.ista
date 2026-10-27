@@ -251,6 +251,20 @@ extern fn divide(left: int, right: float) -> float
 extern fn divide(left: float, right: int) -> float
 extern fn floorDivide(left: int, right: int) -> int
 extern fn remainder(left: int, right: int) -> int
+# An int to an int power stays an int, which a negative exponent can't; a float operand makes the
+# result a float.
+extern fn power(base: int, exponent: int) -> int
+extern fn power(base: float, exponent: float) -> float
+extern fn power(base: int, exponent: float) -> float
+extern fn power(base: float, exponent: int) -> float
+# The bitwise operators work on an int's two's complement of unbounded width, as Python's do, so
+# `~x` is `-x - 1` and `>>` rounds toward negative infinity; a negative shift count panics.
+extern fn bitAnd(left: int, right: int) -> int
+extern fn bitOr(left: int, right: int) -> int
+extern fn bitXor(left: int, right: int) -> int
+extern fn bitNot(value: int) -> int
+extern fn shiftLeft(value: int, count: int) -> int
+extern fn shiftRight(value: int, count: int) -> int
 extern fn negate(value: int) -> int
 extern fn negate(value: float) -> float
 extern fn compare(left: int, right: int) -> int
@@ -329,6 +343,21 @@ trait FloorDivisible<T = Self>:
 
 trait Negatable<T = Self>:
   fn negate(value: T) -> T
+
+# The exponent may have a type of its own: a Decimal is `Powerable<int>`.
+trait Powerable<E = Self, T = Self>:
+  fn power(base: T, exponent: E) -> T
+
+# Apart from shifts, which a set of flags has no use for.
+trait Bitwise<T = Self>:
+  fn bitAnd(left: T, right: T) -> T
+  fn bitOr(left: T, right: T) -> T
+  fn bitXor(left: T, right: T) -> T
+  fn bitNot(value: T) -> T
+
+trait Shiftable<T = Self>:
+  fn shiftLeft(value: T, count: int) -> T
+  fn shiftRight(value: T, count: int) -> T
 
 trait Comparable<T = Self>:
   fn compare(left: T, right: T) -> int

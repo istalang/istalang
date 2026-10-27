@@ -92,7 +92,7 @@ export const decimalNatives = (keys: NativeKeys, mathKeys: NativeKeys): Natives<
     [keys.of('abs', decimal)]: ([value], context) => decimalResult(context, operand(value).abs()),
     [keys.of('round', decimal, 'int', rounding)]: ([value, places, mode], context) =>
       decimalResult(context, roundedTo(operand(value), int(places), modeOf(context, mode))),
-    [keys.of('pow', decimal, 'int')]: ([value, exponent], context) =>
+    [keys.of('power', decimal, 'int')]: ([value, exponent], context) =>
       decimalResult(context, power(operand(value), int(exponent))),
   };
 };

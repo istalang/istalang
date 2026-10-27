@@ -7,13 +7,17 @@
  *   converts the int, and `/` always divides as floats.
  * - `//` floors and `%` takes the divisor's sign, so `a == (a // b) * b + a % b` holds (§3.9).
  * - `/` divides as IEEE 754 does, so dividing by zero gives an infinity or NaN (§2); `//` and `%`
- *   by zero have no int to give, which is a bug in the program, so they panic (§3.12).
+ *   by zero have no int to give, which is a bug in the program, so they panic (§3.12). So does an
+ *   int to a negative int power, and a negative shift count, as in Python.
+ * - The bitwise operators are a bigint's, which act on an unbounded two's complement as Python's
+ *   ints do.
  * - `compare` on floats subtracts, so infinities compare as expected; see `sign` for NaN.
  * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
  * - `_trace()` runs as `Error`'s `trace` default, in the entry a literal leaving the field out
  *   calls (§3.1), so it leaves that entry's frame out: an `Error`'s trace starts where it is built.
  */
 
+import type { Value } from '../../definition/values.ts';
 import { conversionFunction } from '../../language/well-known.ts';
 import {
   type NativeContext,
@@ -93,11 +97,25 @@ const arithmeticNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     const by = nonZero(int(right));
     return dividend - floorDivide(dividend, by) * by;
   },
+  ...numeric(keys, 'power', intPower, (base, exponent) => base ** exponent),
+  ...bitwiseNatives(keys),
   [keys.of('negate', 'int')]: ([value]) => -int(value),
   [keys.of('negate', 'float')]: ([value]) => -float(value),
   [keys.ofStatic('float', conversionFunction, 'int')]: ([value]) => Number(int(value)),
   [keys.ofStatic('int', conversionFunction, 'float')]: ([value]) => truncated(float(value)),
 });
+
+// biome-ignore-start lint/suspicious/noBitwiseOperators: these are the language's bitwise operators.
+/** `&`, `|`, `^`, `~` and the shifts on ints (§3.9). */
+const bitwiseNatives = (keys: NativeKeys): Natives<NativeContext> => ({
+  [keys.of('bitAnd', 'int', 'int')]: ([left, right]) => int(left) & int(right),
+  [keys.of('bitOr', 'int', 'int')]: ([left, right]) => int(left) | int(right),
+  [keys.of('bitXor', 'int', 'int')]: ([left, right]) => int(left) ^ int(right),
+  [keys.of('bitNot', 'int')]: ([value]) => ~int(value),
+  [keys.of('shiftLeft', 'int', 'int')]: ([value, count]) => int(value) << shiftCount(count),
+  [keys.of('shiftRight', 'int', 'int')]: ([value, count]) => int(value) >> shiftCount(count),
+});
+// biome-ignore-end lint/suspicious/noBitwiseOperators: these are the language's bitwise operators.
 
 function floorDivide(dividend: bigint, by: bigint): bigint {
   const quotient = dividend / by;
@@ -111,6 +129,22 @@ function nonZero(by: bigint): bigint {
     throw divisionByZero();
   }
   return by;
+}
+
+function intPower(base: bigint, exponent: bigint): bigint {
+  if (exponent < 0n) {
+    throw new Panic(`${base} to the power ${exponent} is no int; use a float base.`);
+  }
+  return base ** exponent;
+}
+
+/** A shift's count; a negative one panics, as Python's does, where a bigint's would shift back. */
+function shiftCount(count: Value | undefined): bigint {
+  const value = int(count);
+  if (value < 0n) {
+    throw new Panic(`A shift count can't be negative, as ${value} is.`);
+  }
+  return value;
 }
 
 function compareOrdered<Ordered extends bigint | string>(left: Ordered, right: Ordered): number {

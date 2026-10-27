@@ -58,7 +58,8 @@ describe('is and ranges', () => {
 });
 
 describe('reports', () => {
-  const { expected, mixedOperators, operatorNeedsParentheses } = parserDiagnostics;
+  const { expected, mixedOperators, operatorNeedsParentheses, prefixBeforePower } =
+    parserDiagnostics;
 
   it.each([
     ['a ?? b or c', mixedOperators.code, 'b or c'],
@@ -66,6 +67,10 @@ describe('reports', () => {
     ['a and b ?? c', mixedOperators.code, 'a and b'],
     ['a == not b', operatorNeedsParentheses.code, 'not'],
     ['a + ..b', operatorNeedsParentheses.code, '..'],
+    ['-2 ** 2', prefixBeforePower.code, '-2 ** 2'],
+    ['~a ** b', prefixBeforePower.code, '~a ** b'],
+    ['await f ** 2', prefixBeforePower.code, 'await f ** 2'],
+    ['-x.y ** 2 ** 3', prefixBeforePower.code, '-x.y ** 2 ** 3'],
     ['0..=', expected.code, ''],
     ['1 +', expected.code, ''],
     ['1 + )', expected.code, ')'],
@@ -86,7 +91,9 @@ describe('bitwise operators, `**`, membership and chains', () => {
     ['a | b..c', '(Range (Binary a | b) c _)'],
     ['2 ** 3 ** 2', '(Binary 2 ** (Binary 3 ** 2))'],
     ['2 ** -1', '(Binary 2 ** (Unary - 1))'],
-    ['-2 ** 2', '(Unary - (Binary 2 ** 2))'],
+    ['-(2 ** 2)', '(Unary - (Parenthesized (Binary 2 ** 2)))'],
+    ['(-2) ** 2', '(Binary (Parenthesized (Unary - 2)) ** 2)'],
+    ['not a ** b', '(Unary not (Binary a ** b))'],
     ['**x', '(Dereference * (Dereference * x))'],
     ['~a & b', '(Binary (Unary ~ a) & b)'],
     ['x in xs', '(Binary x in xs)'],

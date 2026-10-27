@@ -131,6 +131,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2050,
     message: () => 'Named arguments come after the positional ones and spreads (§3.3).',
   },
+  prefixBeforePower: {
+    code: 2070,
+    message: (operator: string) =>
+      `'${operator}' before '**' could apply before or after the power: write '(${operator}x) ** y' or '${operator}(x ** y)' (§3.9).`,
+  },
   emptyTemplateValue: {
     code: 2100,
     message: () => "A template's value holds an expression: write it inside the braces (§2).",

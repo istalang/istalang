@@ -57,6 +57,11 @@ export interface BinaryOperatorEntry {
   readonly meaning: BinaryMeaning;
   /** Operators an operand of this one may not use unless parenthesized (§3.9). */
   readonly refusesUnparenthesized?: readonly TokenKind[];
+  /**
+   * Whether a prefix-level operator directly on the left operand needs parentheses: `-2 ** 2`
+   * could be `(-2) ** 2` or `-(2 ** 2)`, and languages disagree.
+   */
+  readonly refusesPrefixedLeft?: boolean;
 }
 
 const call = (name: string) => ({ kind: 'call', function: name }) as const;
@@ -89,7 +94,12 @@ export const binaryOperators = {
   '/': { level: 'multiplicative', meaning: call('divide') },
   '//': { level: 'multiplicative', meaning: call('floorDivide') },
   '%': { level: 'multiplicative', meaning: call('remainder') },
-  '**': { level: 'power', associativity: 'right', meaning: call('power') },
+  '**': {
+    level: 'power',
+    associativity: 'right',
+    meaning: call('power'),
+    refusesPrefixedLeft: true,
+  },
 } as const satisfies Record<string, BinaryOperatorEntry>;
 
 export type BinaryOperator = keyof typeof binaryOperators;
