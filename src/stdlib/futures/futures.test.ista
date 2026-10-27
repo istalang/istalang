@@ -1,7 +1,8 @@
 # The futures module's combinators (spec §3.8). Every combinator waits across a commit before what
-# it waits on arrives, so it resumes from the snapshot that commit took (§5).
+# it waits on arrives, so it resumes from the snapshot that commit took (§5), and each also runs in
+# an instance that discards and re-runs every segment before committing it (§10).
 
-import Suite, Test, test, assertEq, expectPanic, FakeClock, mock from 'testing'
+import Suite, Test, test, assertEq, expectPanic, FakeClock, mock, startCrashingEveryAwait from 'testing'
 import * as testing from 'testing'
 import * as futures from 'futures'
 import * as runtime from 'runtime'
@@ -188,4 +189,65 @@ fn retrySuite() -> Array<Test>: [
     const message = await expectPanic(async fn(): await futures.retry(fn() -> Outcome: Ok{(1)}, 0))
     assertEq(message, "retry needs at least one attempt, not 0.")
   }),
+]
+
+# Puts `value` into `slot` after a commit, as another execution would.
+async fn later<T>(slot: Slot<T>, value: T) -> Future<unit>:
+  await runtime.commit()
+  await slot.put(value)
+
+async fn allWaiting() -> Future<Result<Array<int>, string>>:
+  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
+  const done = futures.all([a.read(), b.read()])
+  await later(b, Ok{(2)})
+  await later(a, Ok{(1)})
+  await done
+
+async fn anyWaiting() -> Future<Result<int, Array<string>>>:
+  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
+  const done = futures.any([a.read(), b.read()])
+  await later(b, Err{("b")})
+  await later(a, Err{("a")})
+  await done
+
+async fn quorumWaiting() -> Future<Result<Array<int>, Array<string>>>:
+  const (a, b, c) = (Slot.create<Outcome>(), Slot.create<Outcome>(), Slot.create<Outcome>())
+  const done = futures.quorum(2, [a.read(), b.read(), c.read()])
+  await later(c, Ok{(3)})
+  await later(a, Err{("a")})
+  await later(b, Ok{(2)})
+  await done
+
+async fn raceWaiting() -> Future<int>:
+  const (a, b) = (Slot.create<int>(), Slot.create<int>())
+  const done = futures.race([a.read(), b.read()])
+  await later(b, 2)
+  await done
+
+async fn allSettledWaiting() -> Future<Array<int>>:
+  const (a, b) = (Slot.create<int>(), Slot.create<int>())
+  const done = futures.allSettled([a.read(), b.read()])
+  await later(b, 2)
+  await later(a, 1)
+  await done
+
+async fn timeoutWaiting() -> Future<int?>:
+  const a = Slot.create<int>()
+  const done = futures.timeout(a.read(), 5s)
+  await later(a, 7)
+  await done
+
+async fn retryWaiting() -> Future<Outcome>:
+  let n = 0
+  await futures.retry(async fn() -> Future<Outcome>: { n += 1; if n < 3: Err{("x")} else: Ok{(n)} }, 3, 1ms)
+
+@Suite{"futures › with every segment re-run"}
+fn reRunSuite() -> Array<Test>: [
+  test("all", async fn(): assertEq(await startCrashingEveryAwait(allWaiting).result(), Ok{([1, 2])})),
+  test("any", async fn(): assertEq(await startCrashingEveryAwait(anyWaiting).result(), Err{(["a", "b"])})),
+  test("quorum", async fn(): assertEq(await startCrashingEveryAwait(quorumWaiting).result(), Ok{([3, 2])})),
+  test("race", async fn(): assertEq(await startCrashingEveryAwait(raceWaiting).result(), 2)),
+  test("allSettled", async fn(): assertEq(await startCrashingEveryAwait(allSettledWaiting).result(), [1, 2])),
+  test("timeout", async fn(): assertEq(await startCrashingEveryAwait(timeoutWaiting).result(), 7)),
+  test("retry", async fn(): assertEq(await startCrashingEveryAwait(retryWaiting).result(), Ok{(3)})),
 ]

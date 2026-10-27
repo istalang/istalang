@@ -3,8 +3,9 @@
 # The stream is a chain of slots, each holding a message and the slot after it. The bus holds the
 # empty slot at the end, which the next message fills. A subscriber walks the chain with `read`,
 # which leaves each message for the others, so the chain behind the slowest subscriber is let go as
-# it moves on. A subscription starts at the end of the chain and holds only its place in it, never
-# the bus.
+# it moves on. A subscription starts at the end of the chain and watches the bus weakly, so it never
+# keeps the bus alive. Once the bus is disposed it reaches the end of the chain, since nothing can
+# fill it any more, and ends there: it prefers the next message to the bus's disposal.
 #
 # A revertible message carries a flag its holder sets when released (§6). A subscriber skips a
 # message flagged by the time it reaches it, while one that read it before keeps it, since a
@@ -34,12 +35,17 @@ fn sendRevertible<M>(self: Bus<M>, message: M) -> Revertible<M>:
   new Revertible<M>{retract}
 
 # Runs `handler` for each message sent from now on, in the order they were sent, one at a time,
-# until the future it returns is disposed.
+# until the future it returns is disposed, or the bus is and every message sent before is handled.
 fn subscribe<M>(self: Bus<M>, handler: async fn(M) -> unit) -> Future<unit>:
-  _follow(self->_end, handler)
+  _follow(self->_end, WeakRef(self), handler)
 
 fn subscribe<M>(self: Bus<M>, handler: fn(M) -> unit) -> Future<unit>:
-  _follow(self->_end, async fn(message: M): handler(message))
+  subscribe(self, async fn(message: M): handler(message))
+
+# Disposing a bus (§7) lets go of the end of its chain. Declaring `dispose` is what makes a bus
+# disposable, and so something its subscriptions can watch.
+fn dispose<M>(self: Bus<M>):
+  ()
 
 # Appends `message` to the stream: the flag that retracts it.
 fn _publish<M>(bus: Bus<M>, message: M) -> Shared<bool>:
@@ -49,10 +55,14 @@ fn _publish<M>(bus: Bus<M>, message: M) -> Shared<bool>:
   bus->_end = next
   retracted
 
-async fn _follow<M>(start: Slot<_Link<M>>, handler: async fn(M) -> unit) -> Future<unit>:
+async fn _follow<M>(start: Slot<_Link<M>>, bus: WeakRef<Bus<M>>, handler: async fn(M) -> unit) -> Future<unit>:
   let at = start
   while true:
-    const link = await at.read()
+    const link = await select:
+      case at.read() as link:
+        link
+      case bus.disposed():
+        return
     if not link.retracted->value:
       await handler(link.message)
     at = link.next

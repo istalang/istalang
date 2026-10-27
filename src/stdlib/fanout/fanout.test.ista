@@ -1,7 +1,8 @@
 # The fanout module (spec §3.8): delivery to every subscriber, order, revertible messages and the
-# end of a subscription. Each subscriber passes what it handles on to an inbox the test reads.
+# end of a subscription, also in an instance re-running every segment. Each subscriber passes what
+# it handles on to an inbox the test reads.
 
-import Suite, Test, test, assertEq from 'testing'
+import Suite, Test, test, assertEq, startCrashingEveryAwait from 'testing'
 import * as fanout from 'fanout'
 import * as runtime from 'runtime'
 import Inbox from 'inbox'
@@ -12,6 +13,23 @@ async fn received(seen: Inbox<int>, count: int) -> Future<Array<int>>:
   for _ in 0..count:
     messages.push(await seen.receive())
   messages
+
+# A gated subscriber and a quick one, with a revertible message released between: what each
+# handled.
+async fn broadcasting() -> Future<(Array<int>, Array<int>)>:
+  const bus = fanout.create<int>()
+  const gate = Slot.create<unit>()
+  const (slow, quick) = (Inbox.create<int>(), Inbox.create<int>())
+  fn _ = bus.subscribe(async fn(n: int): { await gate.take(); slow.send(n) })
+  fn _ = bus.subscribe(fn(n: int): quick.send(n))
+  bus.send(1)
+  const held = bus.sendRevertible(2)
+  bus.send(3)
+  const seenByQuick = [await quick.receive(), await quick.receive()]
+  drop held
+  await gate.put(())
+  await gate.put(())
+  ([await slow.receive(), await slow.receive()], seenByQuick)
 
 @Suite{"fanout"}
 fn fanoutSuite() -> Array<Test>: [
@@ -75,5 +93,18 @@ fn fanoutSuite() -> Array<Test>: [
     bus.send(2)
     await runtime.commit()
     assertEq(seen.pending(), [])
+  }),
+  test("ends once the bus is disposed and every message sent before is handled", async fn(): {
+    const bus = fanout.create<int>()
+    const seen = Inbox.create<int>()
+    const subscription = bus.subscribe(fn(n: int): seen.send(n))
+    bus.send(1)
+    bus.send(2)
+    drop bus
+    await subscription
+    assertEq(seen.pending(), [1, 2])
+  }),
+  test("delivers and retracts in an instance re-running every segment", async fn(): {
+    assertEq(await startCrashingEveryAwait(broadcasting).result(), ([1, 3], [1, 2]))
   }),
 ]

@@ -1,12 +1,21 @@
-# The rpc module (spec §3.8): calls, their servers, and calls let go without a reply.
+# The rpc module (spec §3.8): calls, their servers, calls let go without a reply and calls their
+# callers let go of.
 
-import Suite, Test, test, assert, assertEq from 'testing'
+import Suite, Test, test, assert, assertEq, startCrashingEveryAwait from 'testing'
 import * as rpc from 'rpc'
 import * as runtime from 'runtime'
 
 # Whether `reply` is the `Err` of a call let go without a reply.
 fn unanswered<R>(reply: Result<R>) -> bool:
   reply is Err{error} and error.code == "unanswered"
+
+# Two calls to a handler that commits while handling each, both answered.
+async fn calling() -> Future<Array<Result<int>>>:
+  const method = rpc.create<int, int>()
+  fn _ = method.onMessage(async fn(n: int): { await runtime.commit(); n * 2 })
+  const (a, b) = (method.call(1), method.call(2))
+  await runtime.commit()
+  [await a, await b]
 
 @Suite{"rpc"}
 fn rpcSuite() -> Array<Test>: [
@@ -48,5 +57,16 @@ fn rpcSuite() -> Array<Test>: [
   test("fails a call still queued when its method dies", async fn(): {
     const reply = rpc.create<int, int>().call(1)
     assert(unanswered(await reply))
+  }),
+  test("withdraws a call its caller lets go of before a server takes it", async fn(): {
+    const method = rpc.create<int, int>()
+    let served: Array<int> = []
+    drop method.call(1)
+    fn _ = method.onMessage(fn(n: int): { served.push(n); n })
+    assertEq(await method.call(2), Ok{(2)})
+    assertEq(served, [2])
+  }),
+  test("answers calls in an instance re-running every segment", async fn(): {
+    assertEq(await startCrashingEveryAwait(calling).result(), [Ok{(2)}, Ok{(4)}])
   }),
 ]

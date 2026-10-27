@@ -26,7 +26,7 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D187.
+up, so the next one is D190.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |
@@ -91,3 +91,6 @@ up, so the next one is D187.
 | D184 | runtime/testing/world.ts queries snapshots inline in four places, each with its own status guard: pending watches in `#watchHolds` (watcher active) and `#waitsForPanicOf` (any state, so a frozen instance's dead watch still marks a panic as expected), and in `#withdrawAnswersTo` the caller's host-future tokens (any state) and each holder's answers to it (holder active). Give these queries of an instance's last commit one home, beside `inspection` (scheduler/inspect.ts), with one rule for which states count. | phase review M4 T2 2026-10-27 | open |
 | D185 | `time` declares no ordering on `Time` or `Duration`, so code comparing them unwraps `.value` (testing.ista FakeClock does it four times, `advance` checks `by.value < 0`). Declare the comparisons beside `add` in time.ista (phase D owns `time`) and compare the values themselves. | phase review M4 T2 2026-10-27 | open |
 | D186 | A block spread over several lines (§3.14, §4) inside another such block doesn't parse: in `const g = fn() -> int: {` … `const f = fn() -> int: {` (lines) `}` … `f()` `}`, the lines after the inner `}` leave the outer block (5001 Expected int, found unit), and an inner one written as a call argument, as in `retry(fn() -> R: {` (lines) `}, 2)`, reports 2002 for both its `{` and the call's `(`. One-line blocks with `;` work, which the futures tests use meanwhile. | phase M4 C 2026-10-27 | open |
+| D187 | `time.Duration` has no scaling, so `futures.retry` doubles its backoff as `time.Duration{value: wait.value * 2}`, building a duration from its milliseconds outside `time` (D185's cause: the module declares only `add`). Declare `mul(Duration, int)` beside `add` (phase D owns `time`) and write `wait * 2`. | phase review M4 C 2026-10-27 | open |
+| D188 | Installing a fake clock is written per suite: `FakeClock{start: Time{value: 0}}` plus `mock(time.now, clock.now)` and `mock(time.at, clock.at)`, in src/stdlib/futures/futures.test.ista `withClock` and test/spec-suites/purchase.test.ista `withPurchaseEnv`. That both must be mocked is `time`'s rule (time.ista: mocking `now` and `at` controls all time); give it one home in `testing`, a `Setup<FakeClock>` holding both mocks for the test, and use it from both suites. | phase review M4 C 2026-10-27 | open |
+| D189 | A plain `fn(A) -> R` doesn't fit an expected `async fn(A) -> R` (§3.14), so every std function taking a callback is an overload pair whose plain half only wraps it in `async fn(x): f(x)`: testing's `test` (twice), `futures.retry` (which spells its defaults `times = 3, backoff = 1s` in both), rpc's `onMessage` and fanout's `subscribe`. Letting a plain function value fit an async function type, run as a call that never suspends, deletes those halves and keeps each next callback API from doubling. A spec decision first (§3.14). | phase review M4 C 2026-10-27 | open |

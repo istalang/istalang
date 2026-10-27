@@ -1,12 +1,17 @@
 # The rpc module (spec §3.8): calls and replies between the executions of one instance.
 #
 # A method's calls queue in an inbox, so its servers share them by the inbox's rules (§6): each
-# call goes to one server, the one that has waited longest. Each call carries its reply's one-shot
-# slot inside a `_Reply`, whose `dispose` answers `unanswered` when the call is let go without a
-# reply: the server handling it was disposed, or the method died with the call still queued.
-# Replying lets go of the slot, so a reply is given once, and that `dispose` then does nothing.
+# call goes to one server, the one that has waited longest. A call is sent revertibly, and its
+# caller's wait holds the holder, so a call its caller lets go of before a server takes it is
+# withdrawn, as a `select`'s losing send is (§8). The wait holds nothing else, so waiting callers
+# don't keep the method alive.
+#
+# Each call carries its reply's one-shot slot inside a `_Reply`, whose `dispose` answers
+# `unanswered` when the call is let go without a reply: the server handling it was disposed, or the
+# method died with the call still queued. Replying lets go of the slot, so a reply is given once,
+# and that `dispose` then does nothing.
 
-import Inbox from 'inbox'
+import Inbox, Revertible from 'inbox'
 
 shared struct Method<P, R>:
   _calls: Inbox<_Call<P, R>> = Inbox.create<_Call<P, R>>()
@@ -24,8 +29,7 @@ fn create<P, R>() -> Method<P, R>:
 # Sends `message` to the method's servers: the reply, or an `Err` when the call is let go without one.
 fn call<P, R>(self: Method<P, R>, message: P) -> Future<Result<R>>:
   const slot = Slot.create<Result<R>>()
-  self->_calls.send(_Call{message, reply: new _Reply<R>{slot}})
-  slot.take()
+  _replyTo(self->_calls.sendRevertible(_Call{message, reply: new _Reply<R>{slot}}), slot)
 
 # Serves the method's calls one at a time, in the order they arrived, until it is disposed.
 async fn onMessage<P, R>(self: Method<P, R>, handler: async fn(P) -> R) -> Future<unit>:
@@ -36,9 +40,13 @@ async fn onMessage<P, R>(self: Method<P, R>, handler: async fn(P) -> R) -> Futur
       drop slot.put(Ok{(reply)})
       call.reply->slot = none
 
-async fn onMessage<P, R>(self: Method<P, R>, handler: fn(P) -> R) -> Future<unit>:
-  await onMessage(self, async fn(message: P): handler(message))
+fn onMessage<P, R>(self: Method<P, R>, handler: fn(P) -> R) -> Future<unit>:
+  onMessage(self, async fn(message: P): handler(message))
 
 fn dispose<R>(self: _Reply<R>):
   if self->slot is Some{value as slot}:
     drop slot.put(Err{Error{message: "The call was let go without a reply.", code: "unanswered"}})
+
+# The reply arriving in `slot`, waited for while holding `sent`, the call's revertible send.
+async fn _replyTo<P, R>(sent: Revertible<_Call<P, R>>, slot: Slot<Result<R>>) -> Future<Result<R>>:
+  await slot.take()
