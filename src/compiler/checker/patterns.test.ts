@@ -51,6 +51,22 @@ describe('exhaustiveness', () => {
       ].join('\n'),
     ],
     ['== against none', 'Box', 'case Box{opt == none}: "none"\ncase Box{opt is Some{}}: "some"'],
+    ['alternatives', 'Color', 'case Red | Green: "warm"\ncase Blue: "cold"'],
+    [
+      'alternatives nested in a tuple',
+      '(bool, bool)',
+      'case (true | false, true): "t"\ncase (_, false): "f"',
+    ],
+    [
+      'arrays by length',
+      'Array<int>',
+      'case []: "none"\ncase [x]: "one"\ncase [x, y, ...rest]: "more"',
+    ],
+    [
+      'a rest at either end',
+      'Array<bool>',
+      'case [..._, true]: "t"\ncase [false, ..._]: "f"\ncase [true, ...middle, false]: "tf"\ncase []: "e"',
+    ],
   ])('is met by %s', (_case, type, cases) => {
     expect(reported(matching(type, cases))).toEqual(reportedNothing);
   });
@@ -61,6 +77,9 @@ describe('exhaustiveness', () => {
     ['a guarded case', 'Color', 'case c if c == Red: "r"\ncase Green: "g"\ncase Blue: "b"'],
     ['a comparison acting as a guard', 'Point', 'case Point{x > 0}: "right"'],
     ['a missing combination', '(bool, bool)', 'case (true, _): "a"\ncase (_, true): "b"'],
+    ['arrays of only some lengths', 'Array<int>', 'case []: "none"\ncase [x]: "one"'],
+    ['an alternative acting as a guard', 'Point', 'case Point{x > 0} | Point{y > 0}: "q"'],
+    ['ranges, which act as guards', 'int', 'case ..0: "n"\ncase 0..: "p"'],
   ])('reports %s', (_case, type, cases) => {
     expect(reported(matching(type, cases))).toEqual(
       reportedOnce(reports.nonExhaustiveMatch.code, 'value'),
@@ -71,6 +90,13 @@ describe('exhaustiveness', () => {
     ['a case after every value', 'Color', 'case _: "any"\ncase Red: "r"', 'Red'],
     ['a variant listed twice', 'Color', 'case Red: "r"\ncase Red: "again"\ncase _: "o"', 'Red'],
     ['a guarded case covered before it', 'bool', 'case _: "any"\ncase b if b: "t"', 'b'],
+    ['an array no length is left for', 'Array<int>', 'case [..._]: "any"\ncase [x]: "one"', '[x]'],
+    [
+      'alternatives covered before them',
+      'Color',
+      'case Red | Blue: "rb"\ncase Green: "g"\ncase Red | Green: "again"',
+      'Red | Green',
+    ],
   ])('warns of %s', (_case, type, cases, spanText) => {
     const { codes, spanTexts } = reported(matching(type, cases));
     expect(codes).toEqual([reports.unreachableCase.code]);

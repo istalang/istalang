@@ -107,12 +107,15 @@ function parseOrPattern(parser: Parser, first: Pattern): Pattern {
   return { kind: 'OrPattern', span: parser.spanFrom(first.span.start), alternatives };
 }
 
-/** `[first, ...rest, last]`. */
+/** `[first, ...rest, last]`; a second rest is reported, since the items between would be ambiguous. */
 function parseArrayPattern(parser: Parser): Pattern {
   const { start } = parser.cursor.token.span;
   const { items } = parseDelimited(parser, '[', () =>
     parser.cursor.at('...') ? parseRestPattern(parser) : parser.pattern(),
   );
+  for (const extra of items.filter((item) => item.kind === 'RestPattern').slice(1)) {
+    parser.report(parserDiagnostics.secondRest(extra.span));
+  }
   return { kind: 'ArrayPattern', span: parser.spanFrom(start), elements: items };
 }
 

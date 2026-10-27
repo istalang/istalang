@@ -190,3 +190,13 @@ export const inclusiveEndFunction = '_inclusiveEnd';
 
 /** What `x!` calls on none (§4), and what a program calls to panic (§3.12). */
 export const panicFunction = 'panic';
+
+/**
+ * What an array pattern calls in the prelude once its length test passed (§3.11): its length, an
+ * item counted from the start or, when negative, from the end, and the items between.
+ */
+export const arrayPatternFunctions = {
+  length: 'length',
+  item: '_patternItem',
+  rest: '_patternRest',
+} as const;

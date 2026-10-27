@@ -16,10 +16,10 @@
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
-import type { VariableOwner } from './entities.ts';
+import type { VariableEntity, VariableOwner } from './entities.ts';
 import { holdsNoNames, type LocalBinder, type PatternBindings } from './local-binder.ts';
 import { bindsInPattern } from './naming.ts';
-import type { Scope } from './scope.ts';
+import { Scope } from './scope.ts';
 
 interface Binding {
   readonly scope: Scope;
@@ -53,17 +53,7 @@ const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
     walk(binder, node.pattern, binding);
     define(binder, binding.bindings, node.name, node);
   },
-  OrPattern: (binder, node, binding) => {
-    // Only the first alternative binds names, which is enough while or-patterns are refused
-    // (checker/frontier.ts); the others still resolve what they refer to.
-    const [first, ...others] = node.alternatives;
-    if (first !== undefined) {
-      walk(binder, first, binding);
-    }
-    for (const other of others) {
-      walk(binder, other, { ...binding, bindings: { ...binding.bindings, into: undefined } });
-    }
-  },
+  OrPattern: (binder, node, binding) => bindAlternatives(binder, node.alternatives, binding),
   ArrayPattern: (binder, node, binding) => {
     for (const element of node.elements) {
       if (element.kind === 'RestPattern') {
@@ -111,6 +101,57 @@ export function bindPattern(
 
 function walk(binder: LocalBinder, node: Pattern, binding: Binding): void {
   handlerOf(patternHandlers, node)(binder, node, binding);
+}
+
+/**
+ * The alternatives of `A | B`, each binding into a scope of its own. The first's names are then
+ * defined where the pattern binds, and a later one's name is the first's variable of that name, so
+ * whichever alternative matched, the body reads one variable. A name only a later alternative
+ * binds is defined too, so it resolves where it is read; the checker reports that the
+ * alternatives differ (§3.11).
+ */
+function bindAlternatives(
+  binder: LocalBinder,
+  alternatives: readonly Pattern[],
+  binding: Binding,
+): void {
+  const { into } = binding.bindings;
+  if (into === undefined) {
+    for (const alternative of alternatives) {
+      walk(binder, alternative, binding);
+    }
+    return;
+  }
+  const first = new Map<string, VariableEntity>();
+  for (const alternative of alternatives) {
+    const own = Scope.nested(into);
+    walk(binder, alternative, { ...binding, bindings: { ...binding.bindings, into: own } });
+    const variables = own.definedSince(into).flatMap((name) => {
+      const entity = own.lookup(name);
+      return entity?.kind === 'variable' ? [entity] : [];
+    });
+    for (const variable of variables) {
+      adopt(binder, into, first, variable);
+    }
+  }
+}
+
+/**
+ * Makes an alternative's `variable` the first alternative's of its name, or, binding a name no
+ * earlier alternative did, defines it in `into`.
+ */
+function adopt(
+  binder: LocalBinder,
+  into: Scope,
+  first: Map<string, VariableEntity>,
+  variable: VariableEntity,
+): void {
+  const earlier = first.get(variable.name.text);
+  if (earlier !== undefined) {
+    binder.record(variable.name, earlier);
+  } else if (binder.declare(into, variable.name, variable)) {
+    first.set(variable.name.text, variable);
+  }
 }
 
 /** Defines `name`, owned by the declaration of a target or else by the pattern node binding it. */

@@ -14,6 +14,7 @@ import type { Entity } from '../../binder/entities.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { Checker } from '../check.ts';
+import type { PartStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -39,10 +40,10 @@ export function bodyScope(context: {
   };
 }
 
-/** A part of a value being taken apart: its type, and its positions in the whole value. */
+/** A part of a value being taken apart: its type, and the steps to it from the whole value. */
 export interface ValuePart {
   readonly type: Type;
-  readonly path: readonly number[];
+  readonly path: readonly PartStep[];
 }
 
 /**

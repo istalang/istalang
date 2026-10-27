@@ -3,27 +3,38 @@
  * shape a literal gives, and how a shape no case matches is written back as a pattern.
  *
  * - An enum is made of its variants, `bool` of `true` and `false`, and a tuple, a struct and
- *   `unit` of one constructor each. Any other type (`int`, `string`, a handle, a type parameter)
- *   has no finite set, so only a pattern taking anything covers it.
+ *   `unit` of one constructor each; an array of its lengths (exhaustiveness.ts). Any other type
+ *   (`int`, `string`, a handle, a type parameter) has no finite set, so only a pattern taking
+ *   anything covers it.
  * - `==` against a literal counts as a pattern, but only a literal of `bool`, `int`, `float` or
  *   `string` has a shape of its own; any other literal acts as a guard.
  * - A witness is written as a pattern would be, with `_` for anything and `{…}` for fields no case
  *   looked into.
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Checker } from '../check.ts';
 import { type FieldMember, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import type { ConstructorOf, Shape, Signature } from './exhaustiveness.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
+import { type ConstructorOf, isLongerKey, type Shape, type Signature } from './exhaustiveness.ts';
+
+/** What shapes read of the checker: a type's fields, variants, and whether it is an `Array`. */
+type ShapeChecker = Pick<Checker, 'fieldsOf' | 'variantsOf' | 'wellKnownType'>;
 
 /** The key of the one constructor of a struct value, and of a tuple. */
 export const structKey = 'struct';
 export const tupleKey = 'tuple';
 
 /** The constructors of the checker's types. */
-export function signatureOf(checker: Pick<Checker, 'fieldsOf' | 'variantsOf'>): Signature<Type> {
+export function signatureOf(checker: ShapeChecker): Signature<Type> {
   return (type) => {
+    const [items] = wellKnownArguments(checker, wellKnown.array, type) ?? [];
+    if (items !== undefined) {
+      return { items };
+    }
     if (isPrimitive(type, 'bool')) {
       return [
         { key: 'true', arguments: [] },
@@ -80,15 +91,19 @@ function literalKey(node: Expression): string | undefined {
 }
 
 /** A shape of a value of `type` written as the pattern that would match it. */
-export function witnessText(
-  checker: Pick<Checker, 'fieldsOf' | 'variantsOf'>,
-  shape: Shape,
-  type: Type,
-): string {
+export function witnessText(checker: ShapeChecker, shape: Shape, type: Type): string {
   if (shape.kind === 'any') {
     return '_';
   }
-  const made = signatureOf(checker)(type)?.find(({ key }) => key === shape.key);
+  if (shape.kind !== 'constructor') {
+    unreachable(`A witness is built of constructors, not of an ${shape.kind} shape.`);
+  }
+  const signed = signatureOf(checker)(type);
+  if (signed !== undefined && 'items' in signed) {
+    const items = shape.arguments.map((argument) => witnessText(checker, argument, signed.items));
+    return `[${[...items, ...(isLongerKey(shape.key) ? ['..._'] : [])].join(', ')}]`;
+  }
+  const made = signed?.find(({ key }) => key === shape.key);
   const parts = shape.arguments.map((argument, index) =>
     witnessText(checker, argument, made?.arguments[index] ?? type),
   );
@@ -107,7 +122,7 @@ export function witnessText(
 }
 
 function fieldsOfConstructor(
-  checker: Pick<Checker, 'fieldsOf' | 'variantsOf'>,
+  checker: ShapeChecker,
   type: Type,
   key: string,
 ): readonly FieldMember[] {

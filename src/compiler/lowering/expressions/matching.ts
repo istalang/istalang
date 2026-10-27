@@ -14,7 +14,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { casesOf, type Is, type Match } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
-import { lowerBindings, lowerTests } from '../patterns.ts';
+import { lowerMatching } from '../patterns.ts';
 import { endScope, headerTemporaries, lowerGuarded, release } from '../statements/scopes.ts';
 
 export function lowerMatch(context: FunctionContext, node: Match): Register {
@@ -27,8 +27,7 @@ export function lowerMatch(context: FunctionContext, node: Match): Register {
     const pattern = context.body.patternOf(matchCase.pattern);
     const matching = { subject: subject.result, pattern };
     const enter = () => {
-      lowerTests(context, matching, next, matchCase.pattern.span);
-      lowerBindings(context, matching, matchCase.pattern.span);
+      lowerMatching(context, matching, next, matchCase.pattern.span);
     };
     const body = () => {
       release(context, subject.temporaries, node.subject.span);
@@ -65,8 +64,7 @@ export function lowerIs(context: FunctionContext, node: Is): Register {
   const result = context.code.allocate();
   const fail = context.code.newLabel();
   const end = context.code.newLabel();
-  lowerTests(context, matching, fail, node.span);
-  lowerBindings(context, matching, node.span);
+  lowerMatching(context, matching, fail, node.span);
   context.code.emit({
     kind: 'move',
     span: node.span,

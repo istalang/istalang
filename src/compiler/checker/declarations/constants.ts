@@ -20,7 +20,7 @@ import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant } from '../check.ts';
-import type { TargetBinding } from '../checked-pattern.ts';
+import { positionsOf, type TargetBinding } from '../checked-pattern.ts';
 import { formAt } from '../constant-form.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -99,7 +99,10 @@ export class ConstantChecks {
     const { form } = checked.whole;
     return binding === undefined
       ? uncomputed
-      : { type: binding.type, form: form === undefined ? undefined : formAt(form, binding.path) };
+      : {
+          type: binding.type,
+          form: form === undefined ? undefined : formAt(form, positionsOf(binding.path)),
+        };
   }
 
   #checked(declaration: VariableDeclaration): CheckedDeclaration | undefined {

@@ -1,0 +1,24 @@
+# outcome: ["empty","one 7","1..4 around 2","[2, 3]",1,2,-1]
+# An array pattern matches an array of its length, or longer with a rest: its items counted from
+# the start before the rest and from the end after it, the rest a new array of those between
+# (§3.11).
+
+fn show(xs: Array<int>) -> string:
+  "[" + [for x in xs: string(x)].join(", ") + "]"
+
+fn describe(xs: Array<int>) -> string:
+  match xs:
+    case []: "empty"
+    case [only]: "one " + only
+    case [first, ...middle, last]: first + ".." + last + " around " + middle.length()
+
+fn heads(xs: Array<int>) -> int:
+  match xs:
+    case [1, ..._]: 1
+    case [_, 2, ...rest]: rest.length()
+    case _: -1
+
+async fn main() -> Future<(string, string, string, string, int, int, int)>:
+  const tail = if [1, 2, 3] is [_, ...rest]: show(rest) else: ""
+  (describe([]), describe([7]), describe([1, 2, 3, 4]), tail, heads([1, 9]), heads([0, 2, 5, 6]),
+    heads([3]))

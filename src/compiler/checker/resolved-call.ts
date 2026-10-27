@@ -141,8 +141,15 @@ export type ImplicitRole =
   | 'iterate'
   /** `..=` storing its end one past the written one, in the step's direction. */
   | 'inclusiveEnd'
-  /** The `compare` an ordering calls where no operator node stands for it: a chain's link. */
+  /**
+   * The `compare` an ordering calls where no operator node stands for it: a chain's link, a range
+   * pattern's bound, or an array pattern's length against its fixed count.
+   */
   | 'compare'
+  /** An array pattern's reads of its array (§3.11): its length, an item, and the items between. */
+  | 'length'
+  | 'item'
+  | 'rest'
   /** The `panic` `x!` calls when `x` is none (§4). */
   | 'panic'
   /** Writing an element of a place back, changed or whole, with `setIndex` (§3.9). */

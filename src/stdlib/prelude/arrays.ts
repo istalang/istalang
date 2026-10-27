@@ -1,5 +1,6 @@
 /**
- * The prelude's natives for arrays (§3.8, §3.9, §3.10): reading, `&self` methods and indexing.
+ * The prelude's natives for arrays (§3.8, §3.9, §3.10, §3.11): reading, `&self` methods, indexing,
+ * and what an array pattern reads.
  * Methods taking a function are the prelude's code (prelude.ista), since only code calls one.
  *
  * An array is an immutable value, so a method taking `&self` builds the changed array and writes
@@ -76,4 +77,18 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     return null;
   },
   [keys.ofStatic(wellKnown.array.name, 'default')]: () => arrayOf([]),
+  ...patternNatives(keys),
+});
+
+/** What an array pattern reads once its length test passed (§3.11). */
+const patternNatives = (keys: NativeKeys): Natives<NativeContext> => ({
+  [keys.of('_patternItem', array, 'int')]: ([xs, offset]) => {
+    const elements = elementsOf(xs);
+    const position = atPosition(int(offset), elements.length);
+    return elements[position ?? checkedIndex(int(offset), elements.length, what)] ?? null;
+  },
+  [keys.of('_patternRest', array, 'int', 'int')]: ([xs, before, after]) => {
+    const elements = elementsOf(xs);
+    return arrayOf(elements.slice(Number(int(before)), elements.length - Number(int(after))));
+  },
 });

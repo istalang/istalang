@@ -204,7 +204,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `if`, `elif`, `else`, `while` (§4) | `branch` and `jump`; a branching expression writes a result register |
 | Block expression (§4) | its statements, then `release` |
 | Comprehension (§4) | the loop `for` runs, appending each kept value with `array`, the last array spread first |
-| `match`, patterns, guards (§3.11, §4) | `switch` on the variant, then `field` and `move` for bindings, `equal` or `compare` for comparisons, `branch` for guards |
+| `match`, patterns, guards (§3.11, §4) | `switch` on the variant, then `field` and `move` for bindings, `equal` or `compare` for comparisons, `branch` for guards; an array pattern `call`s the prelude's `length` (and `compare` against its fixed count, with a rest), then `_patternItem` and `_patternRest` for its items; a range pattern `call`s `compare` at each bound; an or-pattern tries each alternative's tests in turn, `move`s which one matched into a register, and once every test passed binds from that alternative after `equal` and `branch` on it |
 | `x is P` (§3.11) | the same tests, producing a boolean |
 | `?.`, `??` (§4) | `switch` on `Optional` |
 | `e?` on `Result` (§3.12) | `switch` on `Result`; the `Err` path returns a new `Err` of the function's own `Result` type, holding the same error |

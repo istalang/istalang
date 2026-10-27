@@ -1,0 +1,49 @@
+# error: 5203 at 20:7
+# error: 5412 at 25:32
+# error: 5412 at 26:16
+# error: 5413 at 31:10
+# error: 5414 at 32:10
+# error: 2071 at 37:20
+# error: 5415 at 42:10
+# error: 5415 at 43:10
+# error: 5400 at 47:9
+# An or-pattern can fail, so a target refuses it; its alternatives bind the same names, of the same
+# types. An array pattern matches an Array, with one rest at most, and a match on arrays covers
+# every length. A range pattern matches an int, between int literals that leave room (§3.11).
+
+enum Shape:
+  Circle { radius: int }
+  Square { side: string }
+  Dot
+
+fn target(pair: (int, int)) -> int:
+  let (a, 0) | (0, a) = pair
+  a
+
+fn differ(shape: Shape) -> int:
+  match shape:
+    case Circle{radius as n} | Square{side as n}: 1
+    case Dot | Circle{radius}: 2
+    case _: 0
+
+fn notArray(name: string) -> int:
+  match name:
+    case [first]: 1
+    case "a".."z": 2
+    case _: 0
+
+fn rests(xs: Array<int>) -> int:
+  match xs:
+    case [a, ...b, ...c]: a
+    case _: 0
+
+fn empty(n: int) -> int:
+  match n:
+    case 5..1: 1
+    case 3..3: 2
+    case _: 0
+
+fn lengths(xs: Array<int>) -> int:
+  match xs:
+    case []: 0
+    case [x]: x

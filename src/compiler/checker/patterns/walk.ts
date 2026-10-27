@@ -1,38 +1,42 @@
 /**
  * The one walk over a pattern (§3.11, §3.15): what it binds, the tests a value must pass to match
  * it, and its shape for exhaustiveness. Every pattern is walked here: a declaration's or loop's
- * targets, a `match` case's and an `is`'s. A tuple or struct is taken apart as an assignment's
- * target is (taking.ts).
+ * targets, a `match` case's and an `is`'s.
  *
  * - The walk owns the structure every use shares: names and `_`, `as`, tuples, struct field items,
- *   and the parts each reaches (parts.ts). A tuple or struct target is taken apart one way, as
- *   syntax reads it (`Destructuring`), whether a pattern or an assignment's expression wrote it;
- *   only what stands at its leaves differs. What could fail to match (a literal, a comparison, a
- *   referring name, a variant) goes to `PatternTests`, which a `match` case or `is` provides.
- *   A target has none, so each such construct is refused there: a target must always match.
+ *   arrays, or-patterns, and the parts each reaches (parts.ts). A tuple or struct is taken apart
+ *   as an assignment's target is (taking.ts). What could fail to match (a literal, a comparison, a
+ *   referring name, a variant, an array's length, a range) goes to `PatternTests`, which a
+ *   `match` case or `is` provides. A target has none, so each such construct is refused there: a
+ *   target must always match.
  * - A bare name binds when the binder made it a variable, as it does for every bare name of a
  *   target and for a camelCase one in a case (§3.11); otherwise it refers.
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
+ * - An or-pattern walks each alternative on its own, into one `or` test. Its alternatives bind the
+ *   first's variables (binder), so a binding is named by its variable's declaring name, and the
+ *   alternatives must agree on the names and their types.
  * - A shape is undefined when the pattern acts as a guard for exhaustiveness: it compares by more
- *   than `==` against a literal or variant, or tests one field twice (§3.11).
+ *   than `==` against a literal or variant, tests one field twice, or is a range (§3.11).
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { Span } from '../../../text/span.ts';
 import type { VariantNaming } from '../../binder/entities.ts';
-import { lastName } from '../../syntax/node.ts';
+import { type Identifier, lastName } from '../../syntax/node.ts';
 import type {
+  ArrayPattern,
   CompareFieldPattern,
   LiteralPattern,
   NamePattern,
+  OrPattern,
   Pattern,
   PatternPart,
+  RangePattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
 import type { PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { AnyType, FieldMember, Type } from '../types/type.ts';
-import { notSupported } from '../unsupported.ts';
+import { type AnyType, errorType, type FieldMember, sameType, type Type } from '../types/type.ts';
 import type { Downcast } from './downcasts.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
@@ -42,6 +46,12 @@ import { constructed, type Taking, takeApart, takeFields, takeTargets } from './
 export interface Leaf {
   readonly tests: readonly PatternTest[];
   readonly shape: Shape | undefined;
+}
+
+/** What an array pattern tests of its part, an array: its length, and the type of its items. */
+export interface ArrayPart {
+  readonly test: PatternTest;
+  readonly items: Type;
 }
 
 /** The variant a struct pattern names: the test for it, its key among shapes, and its fields. */
@@ -65,6 +75,10 @@ export interface PatternTests {
     naming: VariantNaming,
     part: ValuePart,
   ) => VariantPart | undefined;
+  /** The length test and item type of an array pattern on the part; undefined after a report. */
+  readonly array: (node: ArrayPattern, part: ValuePart) => ArrayPart | undefined;
+  /** `1..=5`, `..0` on an int part. */
+  readonly range: (node: RangePattern, part: ValuePart) => Leaf;
   /** The downcast a struct pattern or referring name makes of an `any` part; undefined after a report. */
   readonly downcast: (
     node: StructPattern | NamePattern,
@@ -126,21 +140,21 @@ function newWalk(scope: PatternScope, tests: PatternTests | undefined): Walk {
   return walk;
 }
 
-/** A pattern form the checker doesn't take yet: reported, and matching anything meanwhile. */
-function notSupportedYet(walk: Walk, node: Pattern | PatternPart): Shape {
-  walk.scope.report(notSupported(node));
-  return anyShape;
-}
-
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape | undefined> = {
   WildcardPattern: () => anyShape,
   Missing: () => anyShape,
   Invalid: () => anyShape,
-  OrPattern: notSupportedYet,
-  ArrayPattern: notSupportedYet,
-  RangePattern: notSupportedYet,
-  RestPattern: notSupportedYet,
+  OrPattern: (walk, node, part) => takeAlternatives(walk, node, part),
+  ArrayPattern: (walk, node, part) => takeArray(walk, node, part),
+  RangePattern: (walk, node, part) =>
+    refutable(walk, node.span, (tests) => tests.range(node, part)),
+  RestPattern: (walk, node, part) => {
+    if (node.target.kind === 'Identifier') {
+      walk.bindings.push({ name: node.target, ...part });
+    }
+    return anyShape;
+  },
   NamePattern: (walk, node, part) => {
     const [name] = node.path;
     if (binds(walk, node)) {
@@ -221,6 +235,115 @@ function takeDowncast(
   walk.found.push(downcast.test);
   walk.downcasts.set(node, downcast.part);
   handlerOf(patternHandlers, node)(walk, node, downcast.part);
+}
+
+/**
+ * `A | B`: each alternative walked on its own, as one alternative of an `or` test. A target refuses
+ * it once, since it can fail; its first alternative's names still bind there, with nothing more
+ * reported of it, so later uses resolve.
+ */
+function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Shape | undefined {
+  if (walk.tests === undefined) {
+    walk.scope.report(checkerDiagnostics.refutableTarget(node.span));
+    const [first] = node.alternatives;
+    const muted = newWalk({ ...walk.scope, report: () => undefined }, undefined);
+    if (first !== undefined) {
+      muted.take(first, part);
+    }
+    walk.bindings.push(...muted.bindings);
+    return anyShape;
+  }
+  const { tests } = walk;
+  const alternatives = node.alternatives.map((alternative) => {
+    const own = newWalk(walk.scope, tests);
+    const shape = own.take(alternative, part);
+    const bindings = own.bindings.map((binding) => ({
+      ...binding,
+      name: declaringName(walk, binding.name),
+    }));
+    return { span: alternative.span, shape, tests: own.found, bindings };
+  });
+  const [first, ...others] = alternatives;
+  for (const other of others) {
+    if (first !== undefined && !sameNames(first.bindings, other.bindings)) {
+      walk.scope.report(checkerDiagnostics.differentAlternatives(other.span));
+    }
+  }
+  walk.found.push({
+    kind: 'or',
+    alternatives: alternatives.map(({ tests: own, bindings }) => ({ tests: own, bindings })),
+  });
+  const shapes = alternatives.flatMap(({ shape }) => (shape === undefined ? [] : [shape]));
+  return shapes.length === alternatives.length ? { kind: 'or', alternatives: shapes } : undefined;
+}
+
+/** The name declaring the variable `name` binds: the first alternative's, for a later one's. */
+function declaringName(walk: Walk, name: Identifier): Identifier {
+  const entity = walk.scope.entityOf(name);
+  return entity?.kind === 'variable' ? entity.name : name;
+}
+
+/** Whether two alternatives bind the same names, each with the same type. */
+function sameNames(first: readonly TargetBinding[], other: readonly TargetBinding[]): boolean {
+  return (
+    first.length === other.length &&
+    first.every((binding) =>
+      other.some((each) => each.name === binding.name && sameType(each.type, binding.type)),
+    )
+  );
+}
+
+/**
+ * `[first, ...rest, last]`: its length tested first, then each item against the item it names,
+ * counted from the start before the rest and from the end after it; the rest is the items between.
+ * A target refuses it, since the length can fail.
+ */
+function takeArray(walk: Walk, node: ArrayPattern, part: ValuePart): Shape | undefined {
+  const array = walk.tests === undefined ? undefined : walk.tests.array(node, part);
+  if (walk.tests === undefined) {
+    walk.scope.report(checkerDiagnostics.refutableTarget(node.span));
+  }
+  const restAt = node.elements.findIndex((element) => element.kind === 'RestPattern');
+  const prefix = restAt < 0 ? node.elements : node.elements.slice(0, restAt);
+  const suffix = restAt < 0 ? [] : node.elements.slice(restAt + 1);
+  const item = (offset: number): ValuePart => ({
+    type: array?.items ?? errorType,
+    path: [...part.path, { kind: 'item', site: node, offset }],
+  });
+  if (array !== undefined) {
+    walk.found.push(array.test);
+  }
+  const shapes = {
+    prefix: prefix.map((element, index) => walk.take(element, item(index))),
+    suffix: suffix.map((element, index) => walk.take(element, item(index - suffix.length))),
+  };
+  const rest = node.elements[restAt];
+  if (rest !== undefined) {
+    const between = {
+      kind: 'rest',
+      site: node,
+      before: prefix.length,
+      after: suffix.length,
+    } as const;
+    walk.take(rest, {
+      type: array === undefined ? errorType : part.type,
+      path: [...part.path, between],
+    });
+  }
+  const known = [...shapes.prefix, ...shapes.suffix];
+  if (array === undefined || known.some((shape) => shape === undefined)) {
+    return array === undefined ? anyShape : undefined;
+  }
+  return {
+    kind: 'array',
+    prefix: shapes.prefix.filter(isShape),
+    suffix: shapes.suffix.filter(isShape),
+    hasRest: restAt >= 0,
+  };
+}
+
+function isShape(shape: Shape | undefined): shape is Shape {
+  return shape !== undefined;
 }
 
 /** `node` without the parentheses around it. */

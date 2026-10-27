@@ -1,0 +1,38 @@
+# outcome: ["small","big","nothing","some",3,4,5,7,2,true]
+# An or-pattern matches what any alternative matches, in a case, nested or under `is`, and every
+# alternative binds the same names, from whichever matched first (§3.11).
+
+enum Shape:
+  Circle { radius: int }
+  Square { side: int }
+  Triangle { base: int }
+
+fn size(n: int) -> string:
+  match n:
+    case 1 | 2: "small"
+    case _: "big"
+
+fn kind(value: int?) -> string:
+  match value:
+    case none | Some{value == 0}: "nothing"
+    case _: "some"
+
+fn measure(shape: Shape) -> int:
+  match shape:
+    case Circle{radius as n} | Square{side as n}: n
+    case Triangle{base}: base + 1
+
+fn other(pair: (int, int)) -> int:
+  match pair:
+    case (x, 0) | (0, x): x
+    case _: -1
+
+fn flagged(pair: (int, bool)) -> int:
+  match pair:
+    case (1 | 2, true): 2
+    case _: 0
+
+async fn main() -> Future<(string, string, string, string, int, int, int, int, int, bool)>:
+  const square: Shape = Square{4}
+  (size(2), size(3), kind(Some{0}), kind(Some{1}), measure(Circle{3}), measure(Triangle{3}),
+    other((5, 0)), other((0, 7)), flagged((1, true)), square is Circle{radius as n} | Square{side as n} and n == 4)

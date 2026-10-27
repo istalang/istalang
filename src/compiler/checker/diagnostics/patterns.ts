@@ -53,6 +53,24 @@ export const patternTemplates = {
     message: () =>
       "'!' panics when the optional is none; handle none with '??', 'is' or 'match' instead (§4).",
   },
+  differentAlternatives: {
+    code: 5412,
+    message: () =>
+      "Every alternative of '|' binds the same names, of the same types, so whichever matched, the body reads them (§3.11).",
+  },
+  notArrayPattern: {
+    code: 5413,
+    message: (found: string) => `An array pattern matches an Array, not ${found}.`,
+  },
+  notIntRangePattern: {
+    code: 5414,
+    message: (found: string) =>
+      `A range pattern matches an int between int literals, not ${found} (§3.11).`,
+  },
+  emptyRangePattern: {
+    code: 5415,
+    message: () => 'This range pattern matches no int: its end is not past its start.',
+  },
   insideOptional: {
     code: 5409,
     message: (found: string, operator: string) =>

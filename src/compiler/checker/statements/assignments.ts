@@ -34,6 +34,7 @@ import {
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import { checkChangedPlace, immutableKind, isChangeable } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
+import { positionsOf } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
@@ -116,7 +117,7 @@ function assignPart(
   const place = assignedPlace(context, bare);
   const fit = context.fitWritten(part.type, place, bare.span);
   if (!isUnnamedTarget(bare)) {
-    assigning.parts.push({ target: bare, path: part.path, type: part.type, fit });
+    assigning.parts.push({ target: bare, path: positionsOf(part.path), type: part.type, fit });
   }
   return anyShape;
 }

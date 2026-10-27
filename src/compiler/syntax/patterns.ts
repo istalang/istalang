@@ -64,12 +64,12 @@ interface NestedFieldPattern extends NodeOf<'NestedFieldPattern'> {
 }
 
 /** `A | B`: matches what any alternative matches (§3.11). */
-interface OrPattern extends NodeOf<'OrPattern'> {
+export interface OrPattern extends NodeOf<'OrPattern'> {
   readonly alternatives: readonly Pattern[];
 }
 
 /** `[first, ...rest, last]`: an array of a length, its elements matched in order (§3.11). */
-interface ArrayPattern extends NodeOf<'ArrayPattern'> {
+export interface ArrayPattern extends NodeOf<'ArrayPattern'> {
   readonly elements: readonly (Pattern | RestPattern)[];
 }
 
@@ -79,7 +79,7 @@ export interface RestPattern extends NodeOf<'RestPattern'> {
 }
 
 /** `1..=5`, `..5`, `5..`: a value in a range of literals (§3.11). */
-interface RangePattern extends NodeOf<'RangePattern'> {
+export interface RangePattern extends NodeOf<'RangePattern'> {
   readonly start: LiteralPattern | undefined;
   readonly isInclusive: boolean;
   readonly end: LiteralPattern | undefined;

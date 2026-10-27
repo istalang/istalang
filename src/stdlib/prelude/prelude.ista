@@ -94,6 +94,11 @@ extern fn setIndex<T>(self: &Array<T>, key: int, value: T)
 extern fn setIndex<T>(self: &Array<T>, key: Range, value: Array<T>)
 extern fn Array.default<T>() -> Array<T>
 
+# What an array pattern reads once its length test passed (§3.11): the item `offset` from the start,
+# or from the end when negative, and the items between the first `before` and the last `after`.
+extern fn _patternItem<T>(self: Array<T>, offset: int) -> T
+extern fn _patternRest<T>(self: Array<T>, before: int, after: int) -> Array<T>
+
 extern fn size<K, V>(self: Map<K, V>) -> int
 extern fn get<K, V>(self: Map<K, V>, key: K) -> V?
 extern fn has<K, V>(self: Map<K, V>, key: K) -> bool

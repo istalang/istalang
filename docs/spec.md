@@ -84,6 +84,7 @@ else:
     approve()
 const size = if n < 10: "small" elif n < 100: "medium" else: "large"   # one-line if expression
 for i in 0..10: ...
+for i in 10..=0 by -2: ...                        # a step; 0 < x <= 10 chains, x in xs tests membership
 while pending: ...
 const small = [for x in xs if x < 20: x * 2]      # array comprehension
 
@@ -92,6 +93,12 @@ match decision:
     case Rejected{reason as why} if why != "": ... # rename, guard
     case Verdict{ok == false}: ...                # compare
     case Some{value is Verdict{ok == false}}: ... # nested
+    case _: ...
+match xs:
+    case [] | [_]: ...                            # alternatives; an array by its length
+    case [first, ...rest]: ...                    # a rest takes the items between
+match score:
+    case 0..=59: ...                              # a range of ints
     case _: ...
 if r is Ok{value as y} and y > 0: use(y)
 
@@ -739,10 +746,14 @@ const text: string = match decision:
 A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns (`case (a, _):`), `_`, or a bare name. A camelCase bare name binds a new variable, as `a` does in `case (a, _):`, while a PascalCase one refers to a variant or a struct without fields, as in `case Expired:` or `case Marker:`; a qualified name (`case Decision.Expired:`, `case limits.max:`) always refers. A constant, being camelCase, is therefore compared through a qualified name or a guard (`case n if n == limit:`). There is no positional binding in struct patterns, not even for a type with a single field: a bare name always binds the field of that name, and `as` renames it, as in `case Ok{value as receipt}`. An anonymous struct is matched with `case struct{…}`.
 
 - **Literals** are compared with `==`, so a literal pattern has the matched value's own type: a pattern is never wrapped into an optional, and against an `int?` you write `case Some{value == 1}`, not `case 1`. `none` is `None`, and a negative number is written `-1`.
+- **Alternatives.** `A | B` matches what either matches, anywhere a pattern stands: `case 1 | 2:`, `case (0, x) | (x, 0):`, `x is Circle{radius as n} | Square{side as n}`. Every alternative binds the same names, of the same types, and the first alternative that matches gives their values. `A | B as x` binds the whole value, as `(A | B) as x`.
+- **Arrays.** `[a, b]` matches an `Array` of exactly two items, and a rest takes any number between the items before and after it: `[first, ...rest]`, `[first, ...middle, last]`, `[..._, last]`. `...rest` binds a new array of those items, and `..._` binds nothing. A pattern has one rest at most.
+- **Ranges.** `1..=5`, `0..10`, `..0` and `90..` match an `int` between their bounds, which are int literals, a negative one included: `..` leaves its end out and `..=` takes it in, and either end may be left open. A range that holds no int, such as `5..1`, is an error.
+- **Targets must always match.** A declaration's or loop's target (§3.15) can't hold an alternative, an array pattern or a range, since each can fail; they belong in `match` and `is`.
 - **Referring names** name a variant or a struct without fields, or a top-level constant through a qualified name. A variant with fields is written with braces, as when it is built; a struct without fields matches every value of its type; a constant is compared with `==`.
 - **`as`** binds the whole matched part with its own type. Variants aren't types, so in `case Approved{by} as d`, `d` is a `Decision`.
 
-**Exhaustiveness.** A `match` covers its subject's type when every value of it matches a case without a guard. A type is made of its constructors: an enum of its variants, `bool` of `true` and `false`, and a tuple or a struct of its one shape, field by field. `int`, `float`, `string` and the other types have no such list, so their literals never cover them; only a pattern taking anything does. `==` against a literal or an enum variant counts as a pattern, while other comparisons, and `==` against a constant, act like guards (§4) and don't count. Nested patterns count by the same rules. A missing case is reported with examples of what isn't handled, and a case no value can reach, given the cases before it, is warned about.
+**Exhaustiveness.** A `match` covers its subject's type when every value of it matches a case without a guard. A type is made of its constructors: an enum of its variants, `bool` of `true` and `false`, a tuple or a struct of its one shape, field by field, and an `Array` of its lengths, so `[]`, `[x]` and `[x, y, ...rest]` cover every array. An alternative covers what any of its alternatives covers, and a range acts like a guard. `int`, `float`, `string` and the other types have no such list, so their literals never cover them; only a pattern taking anything does. `==` against a literal or an enum variant counts as a pattern, while other comparisons, and `==` against a constant, act like guards (§4) and don't count. Nested patterns count by the same rules. A missing case is reported with examples of what isn't handled, and a case no value can reach, given the cases before it, is warned about.
 
 **`is` outside `match`.** `x is Pattern` is a boolean expression. Its bindings exist only where the match is known to have succeeded: in the body of an `if` or `while`, and on the right-hand side of an `and`. `or` can't introduce bindings, because afterwards it isn't known which side matched.
 

@@ -136,6 +136,10 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: (operator: string) =>
       `'${operator}' before '**' could apply before or after the power: write '(${operator}x) ** y' or '${operator}(x ** y)' (§3.9).`,
   },
+  secondRest: {
+    code: 2071,
+    message: () => 'An array pattern has one rest at most: which items would each take? (§3.11)',
+  },
   emptyTemplateValue: {
     code: 2100,
     message: () => "A template's value holds an expression: write it inside the braces (§2).",

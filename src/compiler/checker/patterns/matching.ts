@@ -14,33 +14,49 @@
  *   for exhaustiveness.
  * - A struct pattern naming a variant tests that variant, then takes its fields apart. The part's
  *   enum is the expected type, so a bare variant name is enough (§3.11).
+ * - An array pattern tests its part's length, then reads its items and rest, all through prelude
+ *   calls made here, at the pattern: `length`, `compare` against the fixed count when there is a
+ *   rest, and `_patternItem` and `_patternRest` (the prelude's, so no program's replaces them).
+ * - A range pattern compares its int part with each bound it has, through `compare` made at that
+ *   bound, and acts as a guard for exhaustiveness.
  */
 
-import { optionalVariants } from '../../../language/well-known.ts';
+import {
+  arrayPatternFunctions,
+  optionalVariants,
+  wellKnown,
+} from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { VariantNaming } from '../../binder/entities.ts';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
+import { binaryOperators, type Relation } from '../../syntax/operators.ts';
 import type {
+  ArrayPattern,
   CompareFieldPattern,
   LiteralPattern,
   NamePattern,
   Pattern,
+  RangePattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
-import type { CheckedPattern, PatternTest } from '../checked-pattern.ts';
+import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
+import type { ImplicitRole } from '../resolved-call.ts';
 import { checkEqualSides, comparable } from '../types/equality.ts';
-import { errorType, type NominalDeclaration, type Type } from '../types/type.ts';
+import { errorType, intType, isPrimitive, type NominalDeclaration, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
 import { downcastOf } from './downcasts.ts';
 import { bodyScope, type ValuePart } from './parts.ts';
 import { literalShape, nullaryShape, structKey } from './shapes.ts';
 import {
+  type ArrayPart,
   type Leaf,
   type PatternTests,
   type VariantPart,
@@ -72,7 +88,7 @@ export class CheckedPatterns {
 export function checkPattern(context: BodyContext, pattern: Pattern, subject: Type): WalkedPattern {
   const whole = { type: subject, path: [] };
   const walked = walkPattern(bodyScope(context), testsIn(context), pattern, whole);
-  for (const { name, type } of walked.bindings) {
+  for (const { name, type } of namesBound(walked)) {
     context.variables.declare(name, type);
   }
   context.patterns.record(pattern, walked);
@@ -87,8 +103,98 @@ function testsIn(context: BodyContext): PatternTests {
     variant: (node, naming, part) =>
       node.type === undefined ? undefined : namedVariant(context, node.type, naming, part),
     downcast: (node, part) => downcastOf(context, node, part),
+    array: (node, part) => arrayTest(context, node, part),
+    range: (node, part) => rangeLeaf(context, node, part),
   };
 }
+
+function arrayTest(
+  context: BodyContext,
+  node: ArrayPattern,
+  part: ValuePart,
+): ArrayPart | undefined {
+  if (part.type.kind === 'error') {
+    return undefined;
+  }
+  const [items] = wellKnownArguments(context.checker, wellKnown.array, part.type) ?? [];
+  if (items === undefined) {
+    context.report(checkerDiagnostics.notArrayPattern(node.span, typeText(part.type)));
+    return undefined;
+  }
+  const hasRest = node.elements.some((element) => element.kind === 'RestPattern');
+  const count = node.elements.length - (hasRest ? 1 : 0);
+  const call = (role: ImplicitRole, name: string, types: readonly Type[], expected?: Type) =>
+    implicitCall(context, {
+      node,
+      role,
+      candidates: preludeCandidates(context, name),
+      arguments: types.map((type) => ({ type, passing: 'value' })),
+      ...(expected === undefined ? {} : { expected }),
+      failure: () => checkerDiagnostics.notArrayPattern(node.span, typeText(part.type)),
+    });
+  call('length', arrayPatternFunctions.length, [part.type]);
+  if (count > 0) {
+    call('item', arrayPatternFunctions.item, [part.type, intType], items);
+  }
+  if (hasRest) {
+    call('compare', compareFunction, [intType, intType]);
+    call('rest', arrayPatternFunctions.rest, [part.type, intType, intType], part.type);
+  }
+  return { test: { kind: 'length', path: part.path, site: node, count, orMore: hasRest }, items };
+}
+
+function rangeLeaf(context: BodyContext, node: RangePattern, part: ValuePart): Leaf {
+  const bounds = [node.start, node.end].flatMap((bound) => (bound === undefined ? [] : [bound]));
+  const types = bounds.map((bound) => context.expression(bound.value, intType));
+  if (part.type.kind === 'error' || types.some((type) => type.kind === 'error')) {
+    return failed;
+  }
+  const notInt = [part.type, ...types].find((type) => !isPrimitive(type, 'int'));
+  if (notInt !== undefined) {
+    context.report(checkerDiagnostics.notIntRangePattern(node.span, typeText(notInt)));
+    return failed;
+  }
+  const [start, end] = [node.start, node.end].map((bound) => bound && intValueOf(bound));
+  const empty =
+    start !== undefined && end !== undefined && (node.isInclusive ? start > end : start >= end);
+  if (empty) {
+    context.report(checkerDiagnostics.emptyRangePattern(node.span));
+  }
+  for (const bound of bounds) {
+    implicitCall(context, {
+      node: bound,
+      role: 'compare',
+      candidates: preludeCandidates(context, compareFunction),
+      arguments: [intType, intType].map((type) => ({ type, passing: 'value' })),
+      failure: () => checkerDiagnostics.notIntRangePattern(node.span, 'int'),
+    });
+  }
+  const test = (bound: LiteralPattern, relation: Relation): PatternTest => ({
+    kind: 'bound',
+    path: part.path,
+    bound,
+    relation,
+  });
+  const tests = [
+    ...(node.start === undefined ? [] : [test(node.start, 'greaterOrEqual')]),
+    ...(node.end === undefined ? [] : [test(node.end, node.isInclusive ? 'lessOrEqual' : 'less')]),
+  ];
+  return { tests, shape: undefined };
+}
+
+/** The int a range pattern's bound writes: a literal, negated or not (the parser allows no other). */
+function intValueOf(bound: LiteralPattern): bigint | undefined {
+  const { value } = bound;
+  if (value.kind === 'IntegerLiteral') {
+    return value.value;
+  }
+  return value.kind === 'Unary' && value.operator === '-' && value.operand.kind === 'IntegerLiteral'
+    ? -value.operand.value
+    : undefined;
+}
+
+/** The function every ordering calls (§3.9). */
+const compareFunction = binaryOperators['<'].meaning.function;
 
 /** Nothing to test, after a report; a guard for exhaustiveness. */
 const failed: Leaf = { tests: [], shape: undefined };

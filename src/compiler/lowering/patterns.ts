@@ -3,22 +3,36 @@
  * lowers"): the pattern's tests, each jumping to a failure label, then its bindings.
  *
  * - Tests run in the order the checker gave them, so a variant is tested before its fields are
- *   read. Each reads its part of the subject along its path.
+ *   read, and an array's length before its items. Each reads its part of the subject along its
+ *   path: fields and tuple elements as places, an array's items and rest through the prelude calls
+ *   the checker made at the array pattern.
  * - A variant test is a `switch` whose targets are the failure label but for the variant tested.
  *   `==` is the built-in `equal`; any other comparison calls the `compare` the checker resolved
- *   at the pattern's comparison, then turns it into the relation with `order`, as `<` does.
+ *   at the pattern's comparison, then turns it into the relation with `order`, as `<` does. A
+ *   length test compares the array's `length` with its fixed count, by `equal`, or with a rest by
+ *   the `compare` made for it; a range's bound calls the `compare` made at the bound.
+ * - An `or` test tries each alternative's tests in turn, and writes which one matched into a
+ *   register. Its names are bound from that alternative once every test has passed, so nothing is
+ *   read for a pattern that fails.
  * - A binding reads its part into a fresh variable, a cell when it is referenced.
  */
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
-import type { CheckedPattern, PatternTest, PatternValue } from '../checker/checked-pattern.ts';
+import {
+  type CheckedPattern,
+  namesBound,
+  type PartStep,
+  type PatternTest,
+  type PatternValue,
+} from '../checker/checked-pattern.ts';
+import type { Identifier } from '../syntax/node.ts';
 import { binaryOperators } from '../syntax/operators.ts';
 import type { Label } from './code-writer.ts';
 import { constantValue } from './constants.ts';
 import type { FunctionContext } from './context.ts';
-import { emitCallAt } from './emit-call.ts';
+import { emitCallAt, emitImplicitCall } from './emit-call.ts';
 import { ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
 import { readPart } from './places.ts';
@@ -30,77 +44,219 @@ export interface Matching {
   readonly pattern: CheckedPattern;
 }
 
-/** Runs the pattern's tests on the subject, jumping to `fail` at the first that fails. */
-export function lowerTests(
+/** Where a pattern's tests stand: the subject, where a failing test jumps, and each `or`'s choice. */
+interface Run {
+  readonly subject: Register;
+  readonly span: Span;
+  readonly fail: Label;
+  readonly choices: Map<PatternTest, Register>;
+}
+
+/**
+ * Runs the pattern's tests on the subject, jumping to `fail` at the first that fails, then declares
+ * each name it binds, holding its part of the subject.
+ */
+export function lowerMatching(
   context: FunctionContext,
   { subject, pattern }: Matching,
   fail: Label,
   span: Span,
 ): void {
-  for (const test of pattern.tests) {
-    const part = readPart(context, subject, test.path, span);
-    const pass = context.code.newLabel();
-    if (test.kind === 'variant' || test.kind === 'downcast') {
-      const variant =
-        test.kind === 'variant'
-          ? test.variant
-          : context.tables.types.anyVariant(test.from, test.to);
-      branchOnVariant(
-        context,
-        { register: part, variant },
-        { matched: pass, otherwise: fail },
-        span,
-      );
+  const run: Run = { subject, span, fail, choices: new Map() };
+  lowerTests(context, pattern.tests, run);
+  const variables = new Map<Identifier, Register>();
+  for (const { name, type } of namesBound(pattern)) {
+    variables.set(name, declareVariable(context, name, type));
+  }
+  bind(context, pattern, run, variables);
+}
+
+function lowerTests(context: FunctionContext, tests: readonly PatternTest[], run: Run): void {
+  for (const test of tests) {
+    if (test.kind === 'or') {
+      lowerAlternatives(context, test, run);
     } else {
-      context.code.branch(passed(context, test, part, span), pass, fail, span);
+      const part = readPartAlong(context, run.subject, test.path, run.span);
+      const pass = context.code.newLabel();
+      lowerTest(context, test, part, { matched: pass, otherwise: run.fail, span: run.span });
+      context.code.place(pass);
     }
-    context.code.place(pass);
   }
 }
 
-/** Declares each name the pattern binds, holding its part of the subject. */
-export function lowerBindings(
+/** Each alternative's tests in turn, until one passes, which then is the test's choice. */
+function lowerAlternatives(
   context: FunctionContext,
-  { subject, pattern }: Matching,
-  span: Span,
+  test: Extract<PatternTest, { kind: 'or' }>,
+  run: Run,
 ): void {
-  for (const binding of pattern.bindings) {
-    const part = readPart(context, subject, binding.path, span);
-    const register = declareVariable(context, binding.name, binding.type);
-    context.code.emit({ kind: 'move', span, dst: register, src: part });
+  const { code } = context;
+  const choice = code.allocate();
+  const matched = code.newLabel();
+  for (const [index, alternative] of test.alternatives.entries()) {
+    const next = code.newLabel();
+    lowerTests(context, alternative.tests, { ...run, fail: next });
+    const chosen = context.constant(BigInt(index), run.span);
+    code.emit({ kind: 'move', span: run.span, dst: choice, src: chosen });
+    code.jump(matched, run.span);
+    code.place(next);
   }
+  code.jump(run.fail, run.span);
+  code.place(matched);
+  run.choices.set(test, choice);
+}
+
+/** Where a test jumps: to `matched` when its part passes, else to `otherwise`. */
+interface Branch {
+  readonly matched: Label;
+  readonly otherwise: Label;
+  readonly span: Span;
+}
+
+function lowerTest(
+  context: FunctionContext,
+  test: Exclude<PatternTest, { kind: 'or' }>,
+  part: Register,
+  { matched, otherwise, span }: Branch,
+): void {
+  if (test.kind === 'variant' || test.kind === 'downcast') {
+    const variant =
+      test.kind === 'variant' ? test.variant : context.tables.types.anyVariant(test.from, test.to);
+    branchOnVariant(context, { register: part, variant }, { matched, otherwise }, span);
+    return;
+  }
+  context.code.branch(passed(context, test, part, span), matched, otherwise, span);
 }
 
 /** A register holding whether `part` passes a comparing test. */
 function passed(
   context: FunctionContext,
-  test: Exclude<PatternTest, { kind: 'variant' | 'downcast' }>,
+  test: Exclude<PatternTest, { kind: 'variant' | 'downcast' | 'or' }>,
   part: Register,
   span: Span,
 ): Register {
-  if (test.kind === 'compare') {
-    const value = context.expression(test.site.value);
-    const comparison = emitCallAt(context, test.site, [part, value]);
-    const { meaning } = binaryOperators[test.site.operator];
-    if (meaning.kind !== 'order') {
-      unreachable(`'${test.site.operator}' is an equal test; the checker should have made it one.`);
+  switch (test.kind) {
+    case 'compare': {
+      const value = context.expression(test.site.value);
+      const comparison = emitCallAt(context, test.site, [part, value]);
+      const { meaning } = binaryOperators[test.site.operator];
+      if (meaning.kind !== 'order') {
+        unreachable(
+          `'${test.site.operator}' is an equal test; the checker should have made it one.`,
+        );
+      }
+      return ordered(context, span, comparison, meaning.relation);
     }
-    return ordered(context, span, comparison, meaning.relation);
+    case 'length': {
+      const length = emitImplicitCall(context, test.site, 'length', [part]);
+      const count = context.constant(BigInt(test.count), span);
+      if (!test.orMore) {
+        return equal(context, length, count, span);
+      }
+      const comparison = emitImplicitCall(context, test.site, 'compare', [length, count]);
+      return ordered(context, span, comparison, 'greaterOrEqual');
+    }
+    case 'bound': {
+      const bound = context.expression(test.bound.value);
+      const comparison = emitImplicitCall(context, test.bound, 'compare', [part, bound]);
+      return ordered(context, span, comparison, test.relation);
+    }
+    case 'equal': {
+      const holds = equal(context, part, comparedWith(context, test.value), span);
+      if (!test.negated) {
+        return holds;
+      }
+      const negated = context.code.allocate();
+      context.code.emit({ kind: 'not', span, dst: negated, src: holds });
+      return negated;
+    }
+    default: {
+      const unhandled: never = test;
+      return unhandled;
+    }
   }
+}
+
+/**
+ * Moves each part the pattern binds into its variable: the parts outside its `or` tests, then for
+ * each of those the alternative its choice names.
+ */
+function bind(
+  context: FunctionContext,
+  pattern: CheckedPattern,
+  run: Run,
+  variables: ReadonlyMap<Identifier, Register>,
+): void {
+  for (const binding of pattern.bindings) {
+    const part = readPartAlong(context, run.subject, binding.path, run.span);
+    const variable = variables.get(binding.name);
+    if (variable === undefined) {
+      unreachable(`'${binding.name.text}' binds nothing; the checker should have declared it.`);
+    }
+    context.code.emit({ kind: 'move', span: run.span, dst: variable, src: part });
+  }
+  for (const test of pattern.tests) {
+    if (test.kind === 'or') {
+      bindChosen(context, test, run, variables);
+    }
+  }
+}
+
+function bindChosen(
+  context: FunctionContext,
+  test: Extract<PatternTest, { kind: 'or' }>,
+  run: Run,
+  variables: ReadonlyMap<Identifier, Register>,
+): void {
+  const { code } = context;
+  const choice = run.choices.get(test);
+  if (choice === undefined) {
+    unreachable("An 'or' test was bound before it ran.");
+  }
+  const end = code.newLabel();
+  for (const [index, alternative] of test.alternatives.entries()) {
+    const chosen = code.newLabel();
+    const next = code.newLabel();
+    const isChosen = equal(context, choice, context.constant(BigInt(index), run.span), run.span);
+    code.branch(isChosen, chosen, next, run.span);
+    code.place(chosen);
+    bind(context, alternative, run, variables);
+    code.jump(end, run.span);
+    code.place(next);
+  }
+  code.place(end);
+}
+
+/**
+ * The part of `subject` along `path`: fields and tuple elements read as a place, and an array's
+ * item or rest through the call the checker made at its pattern.
+ */
+function readPartAlong(
+  context: FunctionContext,
+  subject: Register,
+  path: readonly PartStep[],
+  span: Span,
+): Register {
+  let value = subject;
+  let positions: number[] = [];
+  for (const step of path) {
+    if (typeof step === 'number') {
+      positions.push(step);
+    } else {
+      const array = readPart(context, value, positions, span);
+      const offsets = step.kind === 'item' ? [step.offset] : [step.before, step.after];
+      const constants = offsets.map((offset) => context.constant(BigInt(offset), span));
+      value = emitImplicitCall(context, step.site, step.kind, [array, ...constants]);
+      positions = [];
+    }
+  }
+  return readPart(context, value, positions, span);
+}
+
+function equal(context: FunctionContext, left: Register, right: Register, span: Span): Register {
   const dst = context.code.allocate();
-  context.code.emit({
-    kind: 'equal',
-    span,
-    dst,
-    left: part,
-    right: comparedWith(context, test.value),
-  });
-  if (!test.negated) {
-    return dst;
-  }
-  const negated = context.code.allocate();
-  context.code.emit({ kind: 'not', span, dst: negated, src: dst });
-  return negated;
+  context.code.emit({ kind: 'equal', span, dst, left, right });
+  return dst;
 }
 
 /** The value an `equal` test compares the part with. */
