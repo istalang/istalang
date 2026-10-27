@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // dependency-cruiser parses with swc (.dependency-cruiser.mjs `parser`); without it, it cruises
+  // no module at all and reports no violation, so the layer check would pass checking nothing.
+  "ignoreDependencies": ["@swc/core"]
+}
