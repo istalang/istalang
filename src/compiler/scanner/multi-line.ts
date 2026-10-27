@@ -12,7 +12,10 @@
  * values only split its text: a line holding one isn't blank.
  */
 
-/** One piece of a literal's text, before its lines are laid out. */
+/**
+ * One piece of a literal's text, before its lines are laid out. A `text` piece is a whole run of
+ * plain characters, so no two stand next to each other (`PieceReader`).
+ */
 export type LinePiece =
   /** Source characters, with no line break among them. */
   | { readonly kind: 'text'; readonly text: string }
@@ -23,7 +26,7 @@ export type LinePiece =
 
 type Pieces = readonly LinePiece[];
 
-/** A literal's pieces as its scanner reads them: runs of plain characters, and what breaks them. */
+/** A literal's pieces as its scanner reads them: whole runs of plain characters, and what breaks them. */
 export class PieceReader {
   readonly #text: string;
   readonly #pieces: LinePiece[] = [];
@@ -105,41 +108,32 @@ function sharedIndentation(texts: readonly Pieces[]): number {
 }
 
 /**
- * The leading spaces of the line starting at `from`, or undefined for a blank one. A line that
- * runs into a template's value isn't blank; one that ends at the closing delimiter may be.
+ * The leading spaces of the line starting at `from`: those of its first piece, the whole run of
+ * plain characters there; undefined for a blank line. A line running into a template's value isn't
+ * blank; one ending at the closing delimiter may be.
  */
 function lineIndentation(pieces: Pieces, from: number, isLastText: boolean): number | undefined {
-  const end = pieces.findIndex((piece, at) => at >= from && piece.kind === 'break');
-  const line = pieces.slice(from, end < 0 ? pieces.length : end);
-  if (line.every(isBlankText) && (end >= 0 || isLastText)) {
+  const first = pieces[from];
+  const next = first !== undefined && isBlankText(first) ? pieces[from + 1] : first;
+  const isBlank = next === undefined ? isLastText : next.kind === 'break';
+  if (isBlank) {
     return undefined;
   }
-  const leading = line.findIndex((piece) => !isBlankText(piece));
-  const blankRun = line.slice(0, leading < 0 ? line.length : leading);
-  const next = leading < 0 ? undefined : line[leading];
-  const text = blankRun.map((piece) => (piece.kind === 'text' ? piece.text : '')).join('');
-  const run = next?.kind === 'text' ? text + next.text : text;
-  return leadingSpaceCount(run);
+  return first?.kind === 'text' ? leadingSpaceCount(first.text) : 0;
 }
 
-/** The pieces' text, each line after a break losing up to `indentation` leading spaces. */
+/** The pieces' text, the first piece of each line after a break losing up to `indentation` spaces. */
 function decode(pieces: Pieces, indentation: number, startsAfterBreak: boolean): string {
-  let value = '';
-  let toRemove = startsAfterBreak ? indentation : 0;
-  for (const piece of pieces) {
-    if (piece.kind === 'break') {
-      value += '\n';
-      toRemove = indentation;
-    } else if (piece.kind === 'escape') {
-      value += piece.text;
-      toRemove = 0;
-    } else {
-      const removed = Math.min(toRemove, leadingSpaceCount(piece.text));
-      value += piece.text.slice(removed);
-      toRemove = removed === piece.text.length ? toRemove - removed : 0;
-    }
-  }
-  return value;
+  return pieces
+    .map((piece, at) => {
+      if (piece.kind !== 'text') {
+        return piece.kind === 'break' ? '\n' : piece.text;
+      }
+      const startsLine = at === 0 ? startsAfterBreak : pieces[at - 1]?.kind === 'break';
+      const removed = startsLine ? Math.min(indentation, leadingSpaceCount(piece.text)) : 0;
+      return piece.text.slice(removed);
+    })
+    .join('');
 }
 
 function leadingSpaceCount(text: string): number {

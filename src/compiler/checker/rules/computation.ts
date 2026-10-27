@@ -30,6 +30,7 @@ import type {
   Spread,
   StructLiteral,
 } from '../../syntax/expressions/index.ts';
+import { constantTextOf } from '../../syntax/expressions/templates.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant, FieldSource } from '../check.ts';
@@ -105,11 +106,10 @@ class Computation {
       case 'StringLiteral':
       case 'BooleanLiteral':
         return computed({ kind: 'primitive', value: node.value });
-      case 'TemplateLiteral':
-        // Only a template without values or a tag is its text, as a string literal is (§2).
-        return node.tag === undefined && node.values.length === 0
-          ? computed({ kind: 'primitive', value: node.texts[0]?.value ?? '' })
-          : refused(node);
+      case 'TemplateLiteral': {
+        const text = constantTextOf(node);
+        return text === undefined ? refused(node) : computed({ kind: 'primitive', value: text });
+      }
       case 'DurationLiteral': {
         const type = this.#scope.checked.typeOf(node);
         return type.kind === 'nominal' ? computed(durationForm(type, node.value)) : unknown;

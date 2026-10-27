@@ -41,12 +41,13 @@ src/
   diagnostics/          Diagnostic model, per-phase catalog helper, renderer
   compiler/
     syntax/             contract: token kinds, tree node types, where items may stand, generic traversal, node-at-offset,
-                        how targets, places (expressions/places.ts), optional chains (expressions/chains.ts) and struct items read as written, and the function a declaration's
-                        fields with defaults read as (field-defaults.ts)
+                        how targets, places (expressions/places.ts), optional chains (expressions/chains.ts) and struct items read as written, the function a declaration's
+                        fields with defaults read as (field-defaults.ts), and what a template stands for: its text, or the call a tag makes (expressions/templates.ts)
     scanner/            text → tokens + comments + diagnostics
     parser/             tokens → SyntaxTree; parse.ts is the entry
       parser.ts grammar.ts                                       context, category wiring
-      cursor.ts layout.ts recovery.ts nesting.ts annotations.ts  line regions, blocks and bodies, lists, depth limit, annotations
+      cursor.ts layout.ts recovery.ts nesting.ts annotations.ts  line regions, blocks and bodies, lists, depth limit, annotations,
+      docstrings.ts                                              docstrings and where they stand
       parts/                                                     pieces every category may import; imports no category
       expressions/ patterns types statements declarations        by construct (parselet tables by token kind in expressions/, patterns.ts, types.ts)
     program/            Program snapshot, module graph, the ModuleLoader seam; imposes no path syntax
@@ -73,7 +74,7 @@ src/
                                                                  what externs may take, disposal, must-use, `drop`
       declarations/ closures/ expressions/ statements/           per-construct rules; closures/: the functions a body nests (§3.14), their
                                                                  scopes, returns and captures, lambdas and local fns, function values
-    lowering/           checked program → Definition (all desugaring lives here); lower.ts is the entry
+    lowering/           checked program → Definition; lower.ts is the entry. Desugaring the checker and lowering share is derived in syntax/; the rest lives here
       context.ts function-lowering/ code-writer.ts               one function's context, its composition and frames, its code and labels
       tables.ts type-table.ts names.ts constants.ts instances.ts the interned tables (types in type-table.ts), qualified names, compile-time constants,
                                                                  function instances (one entry per instantiation)

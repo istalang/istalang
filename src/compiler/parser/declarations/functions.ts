@@ -8,11 +8,11 @@
  * docstring is the first line of its body, or the line below a function without one (§2).
  */
 
-import type { Docstring, FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Block } from '../../syntax/statements.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { documentedBy } from '../docstrings.ts';
+import { documentedBy, type WithDocstring } from '../docstrings.ts';
 import { parseDocstringBelow } from '../layout.ts';
 import type { Parser } from '../parser.ts';
 import { parseDocumentedStatementBody } from '../parts/blocks.ts';
@@ -35,7 +35,7 @@ export function parseFunction(
   const hasParameters = cursor.at('(');
   const parameters = hasParameters ? parseParameters(parser) : missingParameters(parser);
   const returnType = cursor.eat('->') === undefined ? undefined : parser.type();
-  const { body, doc } = parseFunctionBody(parser, form, {
+  const { value: body, doc } = parseFunctionBody(parser, form, {
     start,
     signatureIsComplete: hasParameters,
   });
@@ -87,15 +87,15 @@ function parseFunctionBody(
   parser: Parser,
   form: FunctionForm,
   { start, signatureIsComplete }: { readonly start: number; readonly signatureIsComplete: boolean },
-): { readonly body: Block | undefined; readonly doc: Docstring | undefined } {
+): WithDocstring<Block | undefined> {
   const required = form === 'defined' && signatureIsComplete;
   const colon = required ? parser.expect(':') : parser.cursor.eat(':');
   if (colon === undefined) {
-    return { body: undefined, doc: parseDocstringBelow(parser, start) };
+    return { value: undefined, doc: parseDocstringBelow(parser, start) };
   }
   const documented = parseDocumentedStatementBody(parser, start);
   if (form === 'extern') {
-    parser.report(parserDiagnostics.externWithBody(documented.body.span));
+    parser.report(parserDiagnostics.externWithBody(documented.value.span));
   }
   return documented;
 }

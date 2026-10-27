@@ -11,6 +11,12 @@ import type { Invalid } from '../syntax/node.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 
+/** What was parsed for a declaration or module, and the docstring that came with it, if any. */
+export interface WithDocstring<Value> {
+  readonly value: Value;
+  readonly doc: Docstring | undefined;
+}
+
 /** The docstring at the cursor, consumed; undefined if none stands there. */
 export function parseDocstring(parser: Parser): Docstring | undefined {
   const token = parser.cursor.eat('docstring');

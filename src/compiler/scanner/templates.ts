@@ -18,7 +18,7 @@ import type { TemplateValue, Token } from '../syntax/tokens.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import type { ScannedLexeme } from './lexeme.ts';
 import { type LinePiece, layOutLines, PieceReader } from './multi-line.ts';
-import { scanEscape } from './strings.ts';
+import { scanEscape, validEscapes } from './strings.ts';
 
 /** A value's tokens, ending with an `end` token at its `}`, and whether that `}` was found. */
 export interface ScannedValue {
@@ -93,9 +93,7 @@ class TemplateScanner {
       return true;
     }
     if (text[offset] === '\\') {
-      const decoded = scanEscape(text, offset, this.#diagnostics);
-      this.#reader.add({ kind: 'escape', text: decoded.value }, offset, decoded.end);
-      this.#offset = decoded.end;
+      this.#offset = this.#scanEscape(offset);
       return true;
     }
     const value = text.startsWith('${', offset) ? this.#scanValue(offset + 2) : undefined;
@@ -104,6 +102,22 @@ class TemplateScanner {
       return true;
     }
     return this.#addValue(value);
+  }
+
+  /**
+   * Adds the escape whose backslash is at `backslash`; where it ends. A backslash ending a line
+   * escapes nothing: it is reported and dropped, and the line break stays.
+   */
+  #scanEscape(backslash: number): number {
+    const decoded = scanEscape(this.#text, backslash, this.#diagnostics);
+    if (decoded === undefined) {
+      const span = { start: backslash, end: backslash + 1 };
+      this.#diagnostics.push(scannerDiagnostics.invalidEscape(span, '\\', validEscapes));
+      this.#reader.add({ kind: 'escape', text: '' }, backslash, backslash + 1);
+      return backslash + 1;
+    }
+    this.#reader.add({ kind: 'escape', text: decoded.value }, backslash, decoded.end);
+    return decoded.end;
   }
 
   /** Adds the value whose `${` stands at the offset; false if no `}` closes it. */

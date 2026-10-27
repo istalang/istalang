@@ -10,7 +10,6 @@
 
 import type {
   DeclaredField,
-  Docstring,
   EnumDeclaration,
   FunctionDeclaration,
   StructDeclaration,
@@ -21,7 +20,7 @@ import type {
 import type { Invalid } from '../../syntax/node.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
-import { documentedBy } from '../docstrings.ts';
+import { documentedBy, type WithDocstring } from '../docstrings.ts';
 import {
   type ItemRules,
   type Items,
@@ -47,7 +46,7 @@ export function parseSharedStruct(parser: Parser): StructDeclaration {
 /** A struct declaration from its `struct`, which starts at `start` with what precedes it. */
 function parseStructFrom(parser: Parser, start: number, isShared: boolean): StructDeclaration {
   const { name, typeParameters } = parseTypeHead(parser);
-  const { items: fields, doc } = parseMembers(parser, declaredFieldRules, start);
+  const { value: fields, doc } = parseMembers(parser, declaredFieldRules, start);
   const span = parser.spanFrom(start);
   return {
     kind: 'StructDeclaration',
@@ -62,14 +61,14 @@ function parseStructFrom(parser: Parser, start: number, isShared: boolean): Stru
 
 export function parseEnum(parser: Parser): EnumDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
-  const { items: variants, doc } = parseMembers(parser, variantRules, start);
+  const { value: variants, doc } = parseMembers(parser, variantRules, start);
   const span = parser.spanFrom(start);
   return { kind: 'EnumDeclaration', span, name, typeParameters, variants, ...documentedBy(doc) };
 }
 
 export function parseTrait(parser: Parser): TraitDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
-  const { items: members, doc } = parseMembers(parser, traitMemberRules, start);
+  const { value: members, doc } = parseMembers(parser, traitMemberRules, start);
   const span = parser.spanFrom(start);
   return { kind: 'TraitDeclaration', span, name, typeParameters, members, ...documentedBy(doc) };
 }
@@ -95,17 +94,14 @@ function parseTypeHead(parser: Parser) {
  */
 function parseMembers<
   Item extends DeclaredField | FieldDeclaration | Variant | FunctionDeclaration,
->(
-  parser: Parser,
-  rules: ItemRules<Item>,
-  headerStart: number,
-): { readonly items: Items<Item>; readonly doc: Docstring | undefined } {
+>(parser: Parser, rules: ItemRules<Item>, headerStart: number): WithDocstring<Items<Item>> {
   const { cursor } = parser;
   if (cursor.eat(':') !== undefined) {
-    return parseDocumentedBody(parser, rules, headerStart);
+    const { value, doc } = parseDocumentedBody(parser, rules, headerStart);
+    return { value: value.items, doc };
   }
   const items = cursor.at('{') ? parseItemEntries(parser, rules).value : [];
-  return { items, doc: parseDocstringBelow(parser, headerStart) };
+  return { value: items, doc: parseDocstringBelow(parser, headerStart) };
 }
 
 /** `Expired`, or `Rejected { by: string; reason: string }`. */

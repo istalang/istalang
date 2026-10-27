@@ -34,7 +34,9 @@ const simpleEscapes: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** The valid escapes, as the invalid-escape diagnostic lists them. */
-const validEscapes = [...simpleEscapes.keys(), 'u{…}'].map((escaped) => `\\${escaped}`).join(', ');
+export const validEscapes = [...simpleEscapes.keys(), 'u{…}']
+  .map((escaped) => `\\${escaped}`)
+  .join(', ');
 
 const maxUnicodeEscapeDigits = 6;
 const maxCodePoint = 0x10_ff_ff;
@@ -51,9 +53,7 @@ export function scanString(text: string, start: number, diagnostics: Diagnostic[
     if (text[offset] === '\\') {
       parts.push(text.slice(chunkStart, offset));
       // A backslash ending the line leaves the string unterminated, which is reported once, below.
-      const decoded = endsLine(text, offset + 1)
-        ? { end: offset + 1, value: '' }
-        : scanEscape(text, offset, diagnostics);
+      const decoded = scanEscape(text, offset, diagnostics) ?? { end: offset + 1, value: '' };
       parts.push(decoded.value);
       offset = decoded.end;
       chunkStart = offset;
@@ -71,10 +71,14 @@ export function scanString(text: string, start: number, diagnostics: Diagnostic[
 }
 
 /**
- * Decodes the escape whose backslash is at `backslash`. A backslash ending a line or the text
- * escapes nothing: it is reported and dropped, and what follows stays as it is.
+ * Decodes the escape whose backslash is at `backslash`; undefined for a backslash ending a line or
+ * the text, which escapes nothing, so its literal decides what that means.
  */
-export function scanEscape(text: string, backslash: number, diagnostics: Diagnostic[]): Decoded {
+export function scanEscape(
+  text: string,
+  backslash: number,
+  diagnostics: Diagnostic[],
+): Decoded | undefined {
   const escaped = text[backslash + 1];
   const simple = escaped === undefined ? undefined : simpleEscapes.get(escaped);
   if (simple !== undefined) {
@@ -84,9 +88,7 @@ export function scanEscape(text: string, backslash: number, diagnostics: Diagnos
     return scanUnicodeEscape(text, backslash, diagnostics);
   }
   if (endsLine(text, backslash + 1)) {
-    const span = { start: backslash, end: backslash + 1 };
-    diagnostics.push(scannerDiagnostics.invalidEscape(span, '\\', validEscapes));
-    return { end: backslash + 1, value: '' };
+    return undefined;
   }
   const end = backslash + 1 + codePointWidth(text, backslash + 1);
   const sequence = text.slice(backslash, end);

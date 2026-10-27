@@ -11,7 +11,7 @@
 
 import { templateFunctions, wellKnown } from '../../../language/well-known.ts';
 import type { Expression, TemplateLiteral } from '../../syntax/expressions/index.ts';
-import { taggedCall } from '../../syntax/expressions/templates.ts';
+import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
@@ -25,27 +25,37 @@ export function checkTemplate(
   node: TemplateLiteral,
   expected: Type | undefined,
 ): Type {
-  if (node.tag !== undefined) {
-    return context.expression(taggedCall(node, node.tag), expected);
+  if (isTagged(node)) {
+    return context.expression(taggedCall(node), expected);
   }
   for (const value of node.values) {
     interpolate(context, value);
   }
-  if (node.values.length > 0) {
-    const strings = wellKnownOf(context.checker, wellKnown.array, [stringType]);
-    implicitCall(context, {
-      node,
-      role: 'join',
-      candidates: preludeCandidates(context, templateFunctions.join),
-      arguments: [
-        { type: strings, passing: 'value' },
-        { type: stringType, passing: 'value' },
-      ],
-      failure: () =>
-        checkerDiagnostics.noMatchingOverload(node.span, 'join', 'Array<string>, string'),
-    });
+  if (constantTextOf(node) === undefined) {
+    join(context, node);
   }
   return stringType;
+}
+
+/** Makes the `join` call writing a template's texts and values as its string. */
+function join(context: BodyContext, node: TemplateLiteral): void {
+  const parts = [
+    { type: wellKnownOf(context.checker, wellKnown.array, [stringType]), passing: 'value' },
+    { type: stringType, passing: 'value' },
+  ] as const;
+  const name = templateFunctions.join;
+  implicitCall(context, {
+    node,
+    role: 'join',
+    candidates: preludeCandidates(context, name),
+    arguments: parts,
+    failure: () =>
+      checkerDiagnostics.noMatchingOverload(
+        node.span,
+        name,
+        parts.map(({ type }) => typeText(type)).join(', '),
+      ),
+  });
 }
 
 /** Checks `value` and makes the `toString` call that writes it as text. */

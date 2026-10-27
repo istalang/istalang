@@ -69,7 +69,7 @@ function topLevelKeyword(parser: Parser): TopLevelKeyword | undefined {
 
 /** A whole source file: declarations at column 0. */
 export function parseModule(parser: Parser): Module {
-  const { items, doc } = parseModuleLines(parser, moduleRules);
+  const { value: items, doc } = parseModuleLines(parser, moduleRules);
   const { end } = parser.cursor.token.span;
   return { kind: 'Module', span: { start: 0, end }, items, ...documentedBy(doc) };
 }

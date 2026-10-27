@@ -5,9 +5,9 @@
  * which may carry annotations.
  */
 
-import type { Docstring } from '../../syntax/declarations.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import { attachAnnotations } from '../annotations.ts';
+import type { WithDocstring } from '../docstrings.ts';
 import { type ItemRules, parseBody, parseDocumentedBody } from '../layout.ts';
 import type { Parser } from '../parser.ts';
 import { parseBlockItem } from './items.ts';
@@ -33,7 +33,7 @@ function parseStatementBody(parser: Parser, headerStart: number): Block {
 export function parseDocumentedStatementBody(
   parser: Parser,
   headerStart: number,
-): { readonly body: Block; readonly doc: Docstring | undefined } {
-  const { items, span, doc } = parseDocumentedBody(parser, statementRules, headerStart);
-  return { body: { kind: 'Block', span, statements: items }, doc };
+): WithDocstring<Block> {
+  const { value, doc } = parseDocumentedBody(parser, statementRules, headerStart);
+  return { value: { kind: 'Block', span: value.span, statements: value.items }, doc };
 }
