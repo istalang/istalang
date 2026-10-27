@@ -136,38 +136,21 @@ export function constraintSubstitution(constraint: Constraint, constrained: Type
   ]);
 }
 
-/** Every function the constraints on `parameter` require, named `name`. */
+/**
+ * Every function the constraints on `on` require, named `name`: on a type parameter, or on an
+ * `any` type, where each is the function its value's own type meets it with (§3.10).
+ */
 export function requirementsNamed(
   checker: CheckerContext,
-  parameter: TypeParameter,
+  on: TypeParameter | AnyType,
   name: string,
 ): readonly Requirement[] {
-  return checker.constraintsOf(parameter).flatMap((constraint, constraintIndex) => {
-    const substitution = constraintSubstitution(constraint, parameterType(parameter));
+  const type = on.kind === 'any' ? on : parameterType(on);
+  return knownConstraints(checker, type).flatMap((constraint, constraintIndex) => {
+    const substitution = constraintSubstitution(constraint, type);
     return requiredFunctions(constraint.trait).flatMap((declaration, member) =>
       declaration.name.text === name
-        ? [
-            {
-              declaration,
-              substitution,
-              origin: { on: parameter, constraint: constraintIndex, member },
-            },
-          ]
-        : [],
-    );
-  });
-}
-
-/**
- * Every function the constraints of the `any` type `type` require, named `name`: called on a value
- * of `type`, each is the function its value's own type meets it with (§3.10).
- */
-export function anyRequirementsNamed(type: AnyType, name: string): readonly Requirement[] {
-  return type.constraints.flatMap((constraint, constraintIndex) => {
-    const substitution = constraintSubstitution(constraintOn(constraint, type), type);
-    return requiredFunctions(constraint.trait).flatMap((declaration, member) =>
-      declaration.name.text === name
-        ? [{ declaration, substitution, origin: { on: type, constraint: constraintIndex, member } }]
+        ? [{ declaration, substitution, origin: { on, constraint: constraintIndex, member } }]
         : [],
     );
   });

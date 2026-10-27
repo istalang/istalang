@@ -34,7 +34,7 @@ import {
   substitutionOf,
 } from './instances.ts';
 import { keyOf } from './names.ts';
-import { DefinitionTables, type PendingEntry } from './tables.ts';
+import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables.ts';
 import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './trait-objects/trait-objects.ts';
 
 /**
@@ -92,7 +92,7 @@ function lowerReached(checker: Checker, tables: DefinitionTables): void {
 function pendingEntry(
   checker: Checker,
   tables: DefinitionTables,
-  pending: PendingEntry,
+  pending: PendingEntry | ClosingEntry,
 ): FunctionDefinition {
   const lowering = { checker, tables };
   switch (pending.kind) {

@@ -11,7 +11,6 @@ import type { Register } from '../../../definition/operands.ts';
 import { type CodecHelper, codecHelpers, resultVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
-import type { FunctionCall } from '../../checker/resolved-call.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { type ClosedCall, closeCall } from '../instances.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
@@ -35,9 +34,7 @@ export class Decoder {
     }
     switch (form.kind) {
       case 'host':
-        code.return(
-          code.call(code.checker.json.callOf(codecHelpers.decodeHandle, [type]), [json, path]),
-        );
+        code.return(code.call(this.#helper(codecHelpers.decodeHandle, [type]), [json, path]));
         return;
       case 'record': {
         const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
@@ -103,9 +100,7 @@ export class Decoder {
       );
       code.code.place(next);
     }
-    code.return(
-      code.call(code.checker.json.callOf(codecHelpers.unknownVariant, [type]), [tag, key, path]),
-    );
+    code.return(code.call(this.#helper(codecHelpers.unknownVariant, [type]), [tag, key, path]));
   }
 
   /**
@@ -126,7 +121,10 @@ export class Decoder {
       const json = field.optional
         ? code.call(this.#helper(codecHelpers.optionalField), [object, key])
         : this.#passed(code.call(this.#helper(codecHelpers.field), [object, key, path]));
-      const decode = field.codec?.read ?? this.#codec(field.type);
+      const decode =
+        field.codec === undefined
+          ? this.#codec(field.type)
+          : closeCall(field.codec.read, undefined);
       return this.#passed(code.call(decode, [json, at]));
     });
   }
@@ -150,7 +148,7 @@ export class Decoder {
     return this.#code.variant(this.#result, resultVariants.ok, [value]);
   }
 
-  #helper(name: CodecHelper): FunctionCall {
-    return this.#code.checker.json.callOf(name, []);
+  #helper(name: CodecHelper, typeArguments: readonly Type[] = []): ClosedCall {
+    return closeCall(this.#code.checker.json.callOf(name, typeArguments), undefined);
   }
 }

@@ -11,6 +11,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { variantIndexOf } from '../expressions/variants.ts';
+import { closeCall } from '../instances.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
 import { codecCall } from './codec-calls.ts';
 
@@ -33,7 +34,10 @@ export class Encoder {
     switch (form.kind) {
       case 'host':
         code.return(
-          code.call(code.checker.json.callOf(codecHelpers.encodeHandle, [type]), [value]),
+          code.call(
+            closeCall(code.checker.json.callOf(codecHelpers.encodeHandle, [type]), undefined),
+            [value],
+          ),
         );
         return;
       case 'record':
@@ -99,7 +103,10 @@ export class Encoder {
         if (field.skipped !== undefined) {
           return [];
         }
-        const encode = field.codec?.write ?? this.#codec(field.type);
+        const encode =
+          field.codec === undefined
+            ? this.#codec(field.type)
+            : closeCall(field.codec.write, undefined);
         return [[code.constant(field.key), code.call(encode, [read(index)])]];
       }),
     ];

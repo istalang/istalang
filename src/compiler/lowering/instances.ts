@@ -19,7 +19,7 @@
 
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import type { FunctionCall, ResolvedCall, Witnesses } from '../checker/resolved-call.ts';
+import type { ResolvedCall, Witnesses } from '../checker/resolved-call.ts';
 import {
   type AnyType,
   type ParameterKey,
@@ -84,16 +84,6 @@ export function calleeOf(resolved: ResolvedCall, within: BodyOwner): ClosedCall 
   return closeCall(resolved, within.kind === 'function' ? within.instance : undefined);
 }
 
-/** The instance a closed call targets: its function, every type concrete. */
-export function instanceOfCall(call: FunctionCall): FunctionInstance {
-  return {
-    declaration: call.function,
-    typeArguments: call.typeArguments,
-    witnesses: call.witnesses,
-    arity: call.arity,
-  };
-}
-
 /** The instance of the same function taking every argument: what a defaults entry calls. */
 export function fullInstance(checker: Checker, instance: FunctionInstance): FunctionInstance {
   return { ...instance, arity: checker.parametersOf(instance.declaration).length };
@@ -142,10 +132,12 @@ export function instanceName(checker: Checker, instance: FunctionInstance): stri
 }
 
 /**
- * A call closed inside an instance, every type in it concrete: a function's, or one dispatched on
- * the own type of the `any` value it is called with (§3.10), a requirement on an `any` type.
+ * What a call closed inside an instance targets, every type in it concrete: a function's instance,
+ * or a dispatch on the own type of the `any` value it is called with (§3.10).
  */
-export type ClosedCall = ResolvedCall;
+export type ClosedCall =
+  | { readonly kind: 'function'; readonly instance: FunctionInstance }
+  | { readonly kind: 'dispatch'; readonly dispatch: Dispatch };
 
 /**
  * A call dispatched on an `any` value's own type: the `member`-th function of the trait of the
@@ -159,24 +151,32 @@ export interface Dispatch {
   readonly typeArguments: readonly Type[];
 }
 
-/** The dispatch a closed call that isn't a function's makes. */
-export function dispatchOf(call: Exclude<ClosedCall, FunctionCall>): Dispatch {
-  const { on, constraint, member } = call.requirement;
-  if (on.kind !== 'any') {
-    unreachable(`A call on '${on.name.text}' was left open by closing.`);
-  }
-  return { on, constraint, member, required: call.function, typeArguments: call.typeArguments };
-}
-
 /**
- * `resolved`, closed inside `within`: type arguments substituted, requirements on type parameters
- * their witnesses. A constant's value is within no instance, so nothing in it names a type
- * parameter.
+ * What `resolved` targets, closed inside `within`. A constant's value is within no instance, so
+ * nothing in it names a type parameter.
  */
 export function closeCall(
   resolved: ResolvedCall,
   within: FunctionInstance | undefined,
 ): ClosedCall {
+  const closed = closedInside(resolved, within);
+  if (closed.kind === 'function') {
+    const { function: declaration, typeArguments, witnesses, arity } = closed;
+    return { kind: 'function', instance: { declaration, typeArguments, witnesses, arity } };
+  }
+  const { on, constraint, member } = closed.requirement;
+  if (on.kind !== 'any') {
+    unreachable(`No witness for '${on.name.text}'; checking should have found one.`);
+  }
+  const { function: required, typeArguments } = closed;
+  return { kind: 'dispatch', dispatch: { on, constraint, member, required, typeArguments } };
+}
+
+/**
+ * `resolved` inside `within`: type arguments substituted, and a requirement on one of the
+ * instance's type parameters the witness the instance was given for it.
+ */
+function closedInside(resolved: ResolvedCall, within: FunctionInstance | undefined): ResolvedCall {
   const substitution =
     within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
   const typeArguments = resolved.typeArguments.map((type) => substitute(type, substitution));
@@ -206,7 +206,7 @@ function closeWitnesses(witnesses: Witnesses, within: FunctionInstance | undefin
   return new Map(
     [...witnesses].map(([parameter, constraints]) => [
       parameter,
-      constraints.map((calls) => calls.map((call) => closeCall(call, within))),
+      constraints.map((calls) => calls.map((call) => closedInside(call, within))),
     ]),
   );
 }

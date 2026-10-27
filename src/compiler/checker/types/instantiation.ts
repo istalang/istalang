@@ -15,7 +15,9 @@ import { type Substitution, substitute, substituteAny, substituteFunction } from
 export function instantiatedBody(body: CheckedBody, substitution: Substitution): CheckedBody {
   const concrete = (type: Parameters<typeof substitute>[0]) => substitute(type, substitution);
   const concreteFit = (fit: Fit): Fit =>
-    fit.asAny === undefined ? fit : { ...fit, asAny: substituteAny(fit.asAny, substitution) };
+    fit.conversion.kind === 'any'
+      ? { ...fit, conversion: { kind: 'any', to: substituteAny(fit.conversion.to, substitution) } }
+      : fit;
   return {
     ...body,
     typeOf: (expression) => concrete(body.typeOf(expression)),
@@ -38,7 +40,7 @@ export function instantiatedBody(body: CheckedBody, substitution: Substitution):
       body
         .assignedOf(assignment)
         .map((part) => ({ ...part, type: concrete(part.type), fit: concreteFit(part.fit) })),
-    fitOf: (site) => concreteFit(body.fitOf(site)),
+    fitAt: (site) => concreteFit(body.fitAt(site)),
     iterationOf: (iteration) => {
       const form = body.iterationOf(iteration);
       return form.kind === 'cursor' ? { ...form, item: concrete(form.item) } : form;

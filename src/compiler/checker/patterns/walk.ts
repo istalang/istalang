@@ -192,10 +192,8 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   RangePattern: notSupportedYet,
   RestPattern: notSupportedYet,
   NamePattern: (walk, node, part) => {
-    const [name, ...rest] = node.path;
-    const entity = walk.scope.entityOf(name);
-    const binds = rest.length === 0 && (walk.tests === undefined || entity?.kind === 'variable');
-    if (binds) {
+    const [name] = node.path;
+    if (binds(walk, node)) {
       walk.bindings.push({ name, ...part });
       return anyShape;
     }
@@ -242,11 +240,19 @@ function isDowncasting(
   if (walk.tests === undefined) {
     return false;
   }
-  if (node.kind === 'StructPattern') {
-    return true;
-  }
-  const [name, ...rest] = node.kind === 'NamePattern' ? node.path : [];
-  return name !== undefined && (rest.length > 0 || walk.scope.entityOf(name)?.kind !== 'variable');
+  return node.kind === 'StructPattern' || (node.kind === 'NamePattern' && !binds(walk, node));
+}
+
+/**
+ * Whether a name pattern binds a new variable, rather than referring: every bare name of a target,
+ * and in a case a bare name the binder made a variable (§3.11).
+ */
+function binds(walk: Walk, node: NamePattern): boolean {
+  const [name, ...rest] = node.path;
+  return (
+    rest.length === 0 &&
+    (walk.tests === undefined || walk.scope.entityOf(name)?.kind === 'variable')
+  );
 }
 
 /**

@@ -204,7 +204,8 @@ export class BodyChecker implements BodyContext {
   }
 
   fitUnwrapped(found: Type, expected: Type, at: Span): void {
-    if (!isExact(this.checker.fitOf(found, expected))) {
+    const fit = this.checker.fitOf(found, expected);
+    if (fit === undefined || !isExact(fit)) {
       this.#mismatch(found, expected, at);
     }
   }
@@ -287,7 +288,7 @@ export class BodyChecker implements BodyContext {
       implicitCallOf: (node, role) => implicit.of(node, role),
       collectionFormOf: (literal) => collections.of(literal),
       iterationOf: (iteration) => iterations.of(iteration),
-      fitOf: (site) => fits.get(site) ?? exactFit,
+      fitAt: (site) => fits.get(site) ?? exactFit,
       targetsOf: (owner) => variables.targetsOf(owner),
       assignedOf: (assignment) => variables.assignedOf(assignment),
       inCell: (name) => variables.inCell(name),

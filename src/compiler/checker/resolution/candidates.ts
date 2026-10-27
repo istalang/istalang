@@ -22,11 +22,7 @@
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
-import {
-  anyRequirementsNamed,
-  type Requirement,
-  requirementsNamed,
-} from '../traits/constraints.ts';
+import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
 import { anyTypesIn, parametersIn, type Type } from '../types/type.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
@@ -184,7 +180,9 @@ function requirementCandidates(
   const anyTypes = new Map(
     argumentTypes.flatMap(anyTypesIn).map((type) => [checker.typeKeys.typeKey(type), type]),
   );
-  const onAnyTypes = [...anyTypes.values()].flatMap((type) => anyRequirementsNamed(type, name));
+  const onAnyTypes = [...anyTypes.values()].flatMap((type) =>
+    requirementsNamed(checker, type, name),
+  );
   return [...onParameters, ...onAnyTypes]
     .filter((requirement) => requirement.declaration.owner === undefined)
     .map((requirement) => ({ declaration: requirement.declaration, requirement }));

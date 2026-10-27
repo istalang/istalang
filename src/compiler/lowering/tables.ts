@@ -31,11 +31,9 @@ import { annotationValues } from './constants.ts';
 import {
   type ClosedCall,
   type Dispatch,
-  dispatchOf,
   type FunctionInstance,
   instanceKey,
   instanceName,
-  instanceOfCall,
   type NestedInstance,
   nestedKey,
   nestedName,
@@ -64,16 +62,15 @@ export type PendingEntry =
       readonly declaration: ExternConstantDeclaration;
       readonly type: Type;
     }
-  | { readonly kind: 'start'; readonly target: StartTarget }
-  | ClosingEntry;
+  | { readonly kind: 'start'; readonly target: StartTarget };
 
 /**
  * An entry switching over every variant of an `any` type's enum (§3.10): a dispatch on a value's
- * own type, a conversion into another `any` type, or the read of a field a trait requires. It is written once the worklist is empty,
- * when lowering has reached every type converted into its `any` type so far, and written again
- * whenever a later entry converts another.
+ * own type, a conversion into another `any` type, or the read of a field a trait requires. It is
+ * written once the worklist is empty, when lowering has reached every type converted into its
+ * `any` type so far, and written again whenever a later entry converts another.
  */
-type ClosingEntry =
+export type ClosingEntry =
   | { readonly kind: 'dispatch'; readonly dispatch: Dispatch }
   | { readonly kind: 'anyConversion'; readonly from: AnyType; readonly to: AnyType }
   | { readonly kind: 'anyField'; readonly on: AnyType; readonly field: string };
@@ -170,8 +167,8 @@ export class DefinitionTables {
   /** The index a closed call calls: its instance's, or its dispatch's (§3.10). */
   callIndex(call: ClosedCall): FunctionId {
     return call.kind === 'function'
-      ? this.functionIndex(instanceOfCall(call))
-      : this.dispatchIndex(dispatchOf(call));
+      ? this.functionIndex(call.instance)
+      : this.dispatchIndex(call.dispatch);
   }
 
   /** The index of the entry calling `dispatch`'s function for each type its value may have. */
@@ -179,20 +176,20 @@ export class DefinitionTables {
     const { typeKeys } = this.#checker;
     const typeArguments = dispatch.typeArguments.map((type) => typeKeys.typeKey(type));
     const key = `dispatch:${typeKeys.typeKey(dispatch.on)}.${dispatch.constraint}.${dispatch.member}<${typeArguments.join(',')}>`;
-    return this.#entryIndex(key, { kind: 'dispatch', dispatch });
+    return this.#closingIndex(key, { kind: 'dispatch', dispatch });
   }
 
   /** The index of the entry converting a value of the `any` type `from` into `to` (§3.10). */
   anyConversionIndex(from: AnyType, to: AnyType): FunctionId {
     const { typeKeys } = this.#checker;
     const key = `convert:${typeKeys.typeKey(from)}->${typeKeys.typeKey(to)}`;
-    return this.#entryIndex(key, { kind: 'anyConversion', from, to });
+    return this.#closingIndex(key, { kind: 'anyConversion', from, to });
   }
 
   /** The index of the entry reading `field`, which a trait of `on` requires, from an `on` value. */
   anyFieldIndex(on: AnyType, field: string): FunctionId {
     const key = `field:${this.#checker.typeKeys.typeKey(on)}.${field}`;
-    return this.#entryIndex(key, { kind: 'anyField', on, field });
+    return this.#closingIndex(key, { kind: 'anyField', on, field });
   }
 
   /** The index `instance` is called by; it is lowered later, from the worklist. */
@@ -243,7 +240,7 @@ export class DefinitionTables {
    * The next referenced entry still to be lowered, with its index: one lowering reached, then,
    * once none is left, a closing entry not yet written for every variant its `any` type has.
    */
-  nextPending(): (PendingEntry & { readonly index: FunctionId }) | undefined {
+  nextPending(): ((PendingEntry | ClosingEntry) & { readonly index: FunctionId }) | undefined {
     return this.#pending.shift() ?? this.#nextStale();
   }
 
@@ -259,13 +256,18 @@ export class DefinitionTables {
   }
 
   #entryIndex(key: string, entry: PendingEntry): FunctionId {
+    return this.#numbered(key, (index) => this.#pending.push({ ...entry, index }));
+  }
+
+  #closingIndex(key: string, entry: ClosingEntry): FunctionId {
+    return this.#numbered(key, (index) => this.#closing.push({ ...entry, index }));
+  }
+
+  /** The index of the entry `key` names, numbered and queued by `queue` the first time. */
+  #numbered(key: string, queue: (index: FunctionId) => void): FunctionId {
     return memo(this.#functionIndexes, key, () => {
       const index = this.#functions.push(undefined) - 1;
-      if (isClosing(entry)) {
-        this.#closing.push({ ...entry, index });
-      } else {
-        this.#pending.push({ ...entry, index });
-      }
+      queue(index);
       return index;
     });
   }
@@ -292,16 +294,6 @@ export class DefinitionTables {
       ...withMain,
     };
   }
-}
-
-const closingKinds: ReadonlySet<PendingEntry['kind']> = new Set<ClosingEntry['kind']>([
-  'dispatch',
-  'anyConversion',
-  'anyField',
-]);
-
-function isClosing(entry: PendingEntry): entry is ClosingEntry {
-  return closingKinds.has(entry.kind);
 }
 
 /** The `any` type whose variants a closing entry switches over. */

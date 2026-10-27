@@ -216,15 +216,16 @@ class FunctionLowering implements FunctionContext {
       this.body.chainOf(node) === undefined
         ? handlerOf(expressionHandlers, node)(this, node)
         : this.chains.lower(this, node);
-    return this.fitted(register, this.body.typeOf(node), this.body.fitOf(node), node.span);
+    return this.fitted(register, this.body.typeOf(node), this.body.fitAt(node), node.span);
   }
 
   fitted(value: Register, type: Type, fit: Fit, span: Span): Register {
     let register = value;
     let current: Type = type;
-    if (fit.asAny !== undefined) {
-      register = convertedIntoAny(this, { value: register, from: current, to: fit.asAny }, span);
-      current = fit.asAny;
+    if (fit.conversion.kind === 'any') {
+      const { to } = fit.conversion;
+      register = convertedIntoAny(this, { value: register, from: current, to }, span);
+      current = to;
     }
     for (let left = fit.wraps; left > 0; left -= 1) {
       const optional = this.checker.optionalOf(current);

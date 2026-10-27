@@ -18,14 +18,17 @@ import { type AnyType, isAssignable, isPrimitive, type NominalEntity, type Type 
 /** The entity of the prelude's `Optional`, or undefined in a program without the prelude. */
 export type OptionalEntity = NominalEntity | undefined;
 
-/** How a value fits: first converted into `asAny`, when given, then wrapped `wraps` times. */
+/** What converts a value itself, before any wrap: nothing, or the conversion into an `any` type. */
+type Conversion = { readonly kind: 'none' } | { readonly kind: 'any'; readonly to: AnyType };
+
+/** How a value fits: converted first, then wrapped into `T?` `wraps` times. */
 export interface Fit {
-  readonly asAny: AnyType | undefined;
+  readonly conversion: Conversion;
   readonly wraps: number;
 }
 
 /** The fit of a value that has the expected type. */
-export const exactFit: Fit = { asAny: undefined, wraps: 0 };
+export const exactFit: Fit = { conversion: { kind: 'none' }, wraps: 0 };
 
 /** What fitting needs of the program: its `Optional`, and whether a type meets an `any` type's constraints. */
 export interface Fitting {
@@ -39,7 +42,9 @@ export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | unde
     return exactFit;
   }
   if (expected.kind === 'any') {
-    return fitting.meetsAny(found, expected) ? { asAny: expected, wraps: 0 } : undefined;
+    return fitting.meetsAny(found, expected)
+      ? { conversion: { kind: 'any', to: expected }, wraps: 0 }
+      : undefined;
   }
   const inner = optionalInner(expected, fitting.optional);
   if (inner === undefined || isPrimitive(found, 'never')) {
@@ -49,9 +54,9 @@ export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | unde
   return fit === undefined ? undefined : { ...fit, wraps: fit.wraps + 1 };
 }
 
-/** Whether `fit` takes no conversion at all: the value has the expected type. */
-export function isExact(fit: Fit | undefined): boolean {
-  return fit !== undefined && fit.asAny === undefined && fit.wraps === 0;
+/** Whether `fit` converts nothing: the value has the expected type. */
+export function isExact(fit: Fit): boolean {
+  return fit.conversion.kind === 'none' && fit.wraps === 0;
 }
 
 /** `T` of an optional type `T?`; undefined for any other type. */

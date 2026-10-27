@@ -50,7 +50,7 @@ export function agreedType(
   return {
     decided,
     disagreeing:
-      decided === undefined ? [] : produced.filter(({ type }) => !isExact(fits(type, decided))),
+      decided === undefined ? [] : produced.filter(({ type }) => !fitsExactly(fits(type, decided))),
   };
 }
 
@@ -60,7 +60,7 @@ function firstOrWidened(
   produced: readonly Produced[],
   fits: (found: Type, decided: Type) => Fit | undefined,
 ): Type {
-  const fitsAll = (decided: Type) => produced.every(({ type }) => isExact(fits(type, decided)));
+  const fitsAll = (decided: Type) => produced.every(({ type }) => fitsExactly(fits(type, decided)));
   if (fitsAll(first)) {
     return first;
   }
@@ -121,4 +121,9 @@ export function agreedAccepts(producers: readonly (Accepts | undefined)[]): Acce
     return undefined;
   }
   return (expected, isOpen) => producers.every((accepts) => accepts?.(expected, isOpen) ?? true);
+}
+
+/** Whether a fit was found, and converts nothing. */
+function fitsExactly(fit: Fit | undefined): boolean {
+  return fit !== undefined && isExact(fit);
 }
