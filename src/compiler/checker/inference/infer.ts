@@ -19,6 +19,7 @@ import {
   type ParameterKey,
   parametersIn,
   type Substitution,
+  sameShape,
   sameType,
   substitute,
   type Type,
@@ -139,16 +140,7 @@ export class Inference {
     return (
       given.isAsync === declared.isAsync &&
       (given.isSendable || !declared.isSendable) &&
-      given.parameters.length === declared.parameters.length &&
-      declared.parameters.every((parameter, index) => {
-        const other = given.parameters[index];
-        return (
-          other !== undefined &&
-          other.reference === parameter.reference &&
-          this.#matchExact(parameter.type, other.type)
-        );
-      }) &&
-      this.#matchExact(declared.result, given.result)
+      sameShape(declared, given, (part, other) => this.#matchExact(part, other))
     );
   }
 

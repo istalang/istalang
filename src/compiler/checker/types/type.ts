@@ -204,16 +204,7 @@ export function sameType(first: Type, second: Type): boolean {
         second.kind === 'function' &&
         first.isSendable === second.isSendable &&
         first.isAsync === second.isAsync &&
-        first.parameters.length === second.parameters.length &&
-        first.parameters.every((parameter, index) => {
-          const other = second.parameters[index];
-          return (
-            other !== undefined &&
-            parameter.reference === other.reference &&
-            sameType(parameter.type, other.type)
-          );
-        }) &&
-        sameType(first.result, second.result)
+        sameShape(first, second, sameType)
       );
     case 'parameter':
       return second.kind === 'parameter' && first.declaration === second.declaration;
@@ -237,6 +228,30 @@ export function sameType(first: Type, second: Type): boolean {
 /** Whether two constraints are one trait with the same arguments. */
 export function sameConstraint(first: Constraint, second: Constraint): boolean {
   return first.trait === second.trait && sameTypes(first.arguments, second.arguments);
+}
+
+/**
+ * Whether two function types take the same parameters, each by value or by `&` alike, and give the
+ * same result, their types compared by `parts`: exactly (`sameType`), or as inference matches a
+ * declared type against a given one. Whether each is sendable or async is the caller's to compare.
+ */
+export function sameShape(
+  declared: FunctionType,
+  given: FunctionType,
+  parts: (declared: Type, given: Type) => boolean,
+): boolean {
+  return (
+    declared.parameters.length === given.parameters.length &&
+    declared.parameters.every((parameter, index) => {
+      const other = given.parameters[index];
+      return (
+        other !== undefined &&
+        parameter.reference === other.reference &&
+        parts(parameter.type, other.type)
+      );
+    }) &&
+    parts(declared.result, given.result)
+  );
 }
 
 function sameTypes(first: readonly Type[], second: readonly Type[]): boolean {
