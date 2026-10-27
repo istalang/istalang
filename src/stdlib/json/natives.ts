@@ -13,7 +13,7 @@
  */
 
 import { mapOf } from '../../definition/equality.ts';
-import { namedKey, nativeKey, parameterKey, primitiveKey } from '../../definition/extern-key.ts';
+import { parameterKey, primitiveKey } from '../../definition/extern-key.ts';
 import {
   JsonError,
   jsonOfPlain,
@@ -24,12 +24,12 @@ import {
 } from '../../definition/json-values.ts';
 import { isResourceType } from '../../definition/types.ts';
 import { elementsOf, type Value } from '../../definition/values.ts';
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { codecHelpers, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { fieldOf, float, given, resultErr, resultOk, text } from '../native-values.ts';
-import { jsonName } from '../stdlib-loader.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */
 function hostPayloadOf(value: Value, context: NativeContext & WithResources): unknown {
@@ -42,13 +42,12 @@ function hostPayloadOf(value: Value, context: NativeContext & WithResources): un
   unreachable('Expected a value of a host type.');
 }
 
-const json = namedKey(qualifiedName(wellKnown.json));
-const string = primitiveKey('string');
+const json = knownTypeKey(wellKnown.json);
 
-export const jsonNatives: Natives<NativeContext & WithResources> = {
-  [nativeKey(jsonName, '_write', json)]: ([value], context) =>
+export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResources> => ({
+  [keys.of('_write', json)]: ([value], context) =>
     jsonText(given(value), jsonTypeOf(context.types)),
-  [nativeKey(jsonName, '_read', string)]: ([source], context) => {
+  [keys.of('_read', 'string')]: ([source], context) => {
     try {
       return resultOk(context, jsonOfText(text(source), jsonTypeOf(context.types)));
     } catch (error) {
@@ -58,15 +57,14 @@ export const jsonNatives: Natives<NativeContext & WithResources> = {
       return resultErr(context, `Not JSON: ${error.message}`);
     }
   },
-  [nativeKey(jsonName, '_refuse', string)]: ([message]) => {
+  [keys.of('_refuse', 'string')]: ([message]) => {
     throw new Refusal('unfitJson', text(message));
   },
-  [nativeKey(jsonName, 'toJson', primitiveKey('float'))]: ([value], context) =>
+  [keys.of('toJson', 'float')]: ([value], context) =>
     jsonOfPlain(Number.isFinite(float(value)) ? float(value) : null, jsonTypeOf(context.types)),
-  [nativeKey(
-    jsonName,
+  [keys.of(
     '_object',
-    namedKey('prelude.Array', { kind: 'tuple', elements: [string, json] }),
+    knownTypeKey(wellKnown.array, { kind: 'tuple', elements: [primitiveKey('string'), json] }),
   )]: ([fields], context) => {
     const shape = jsonTypeOf(context.types);
     const entries = elementsOf(fields).map((pair): [string, Value] => [
@@ -80,9 +78,9 @@ export const jsonNatives: Natives<NativeContext & WithResources> = {
       fields: [mapOf(entries)],
     };
   },
-  [nativeKey(jsonName, '_encodeHandle', parameterKey('T'))]: ([value], context) =>
+  [keys.of(codecHelpers.encodeHandle, parameterKey('T'))]: ([value], context) =>
     jsonOfPlain(hostPayloadOf(given(value), context), jsonTypeOf(context.types)),
-  [nativeKey(jsonName, '_decodeHandle', json, string)]: ([value], context) => {
+  [keys.of(codecHelpers.decodeHandle, json, 'string')]: ([value], context) => {
     const type = context.typeArguments[0] ?? unreachable(`${context.name} reads no host type.`);
     const payload = plainOfJson(given(value), jsonTypeOf(context.types));
     return resultOk(
@@ -92,4 +90,4 @@ export const jsonNatives: Natives<NativeContext & WithResources> = {
         : { kind: 'extern', type, payload },
     );
   },
-};
+});

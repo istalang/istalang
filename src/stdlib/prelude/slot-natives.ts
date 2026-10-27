@@ -4,21 +4,19 @@
  * slot's queue is served are the runtime's (runtime/scheduler/slots.ts).
  */
 
-import { namedKey, nativeKey, parameterKey } from '../../definition/extern-key.ts';
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { parameterKey } from '../../definition/extern-key.ts';
+import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithSlots } from '../../runtime/natives.ts';
 import { given } from '../native-values.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
-const { module, name } = wellKnown.slot;
 const value = parameterKey('T');
-const slot = namedKey(qualifiedName(wellKnown.slot), value);
+const slot = knownTypeKey(wellKnown.slot, value);
 
-export const slotNatives: Natives<NativeContext & WithSlots> = {
-  [nativeKey(module, `${name}.create`)]: (_arguments, context) => context.slots.create(),
-  [nativeKey(module, 'put', slot, value)]: ([target, put], context) =>
-    context.slots.operate(given(target), 'put', given(put)),
-  [nativeKey(module, 'take', slot)]: ([target], context) =>
-    context.slots.operate(given(target), 'take'),
-  [nativeKey(module, 'read', slot)]: ([target], context) =>
-    context.slots.operate(given(target), 'read'),
-};
+export const slotNatives = (keys: NativeKeys): Natives<NativeContext & WithSlots> => ({
+  [keys.ofStatic(wellKnown.slot.name, 'create')]: (_arguments, context) => context.slots.create(),
+  [keys.of('put', slot, value)]: ([target, put], context) =>
+    context.slots.put(given(target), given(put)),
+  [keys.of('take', slot)]: ([target], context) => context.slots.take(given(target)),
+  [keys.of('read', slot)]: ([target], context) => context.slots.read(given(target)),
+});

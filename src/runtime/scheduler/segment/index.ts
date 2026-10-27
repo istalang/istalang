@@ -98,7 +98,7 @@ class SegmentRunner implements Machine {
 
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
-    this.#natives = new NativeCalls(instance, startedAt, () => this.#trace());
+    this.#natives = new NativeCalls(instance, startedAt, (leftOut) => this.#trace(leftOut));
     this.#disposals = new DisposalRuns({
       instance,
       natives: this.#natives,
@@ -353,13 +353,13 @@ class SegmentRunner implements Machine {
   }
 
   /**
-   * Where every running frame is, innermost first (§3.12); once the driver has stopped at its
-   * await, where it stopped.
+   * Where every running frame is, innermost first (§3.12), without the innermost `leftOut`; once
+   * the driver has stopped at its await, where it stopped.
    */
-  #trace(): string {
+  #trace(leftOut = 0): string {
     const stack = this.#runStack.length === 0 && this.#driver ? [this.#driver] : this.#runStack;
     const frames = stack.toReversed().flatMap((execution) => execution.frames.toReversed());
-    return traceOf(this.definition, frames);
+    return traceOf(this.definition, frames.slice(leftOut));
   }
 }
 

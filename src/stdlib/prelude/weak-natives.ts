@@ -5,22 +5,21 @@
  * (runtime/scheduler/weak-side.ts).
  */
 
-import { namedKey, nativeKey, parameterKey } from '../../definition/extern-key.ts';
-import { conversionFunction, qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { parameterKey } from '../../definition/extern-key.ts';
+import { conversionFunction, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithWeakSide } from '../../runtime/natives.ts';
 import { given, resultOptional } from '../native-values.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
-const { module, name } = wellKnown.weakRef;
 const referent = parameterKey('T');
-const weakRef = namedKey(qualifiedName(wellKnown.weakRef), referent);
+const weakRef = knownTypeKey(wellKnown.weakRef, referent);
 
-export const weakNatives: Natives<NativeContext & WithWeakSide> = {
-  [nativeKey(module, `${name}.${conversionFunction}`, referent)]: ([value], context) =>
+export const weakNatives = (keys: NativeKeys): Natives<NativeContext & WithWeakSide> => ({
+  [keys.ofStatic(wellKnown.weakRef.name, conversionFunction, referent)]: ([value], context) =>
     context.weak.reference(given(value)),
-  [nativeKey(module, 'deref', weakRef)]: ([weak], context) =>
+  [keys.of('deref', weakRef)]: ([weak], context) =>
     resultOptional(context, context.weak.target(given(weak))),
-  [nativeKey(module, 'disposed', weakRef)]: ([weak], context) =>
-    context.weak.whenDisposed(given(weak)),
-  [nativeKey(module, 'disposing', namedKey(qualifiedName(wellKnown.call)))]: ([call], context) =>
+  [keys.of('disposed', weakRef)]: ([weak], context) => context.weak.whenDisposed(given(weak)),
+  [keys.of('disposing', knownTypeKey(wellKnown.call))]: ([call], context) =>
     context.weak.watch(given(call)),
-};
+});

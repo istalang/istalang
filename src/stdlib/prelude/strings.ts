@@ -6,36 +6,33 @@
  * point where it starts.
  */
 
-import { namedKey, preludeKey, primitiveKey } from '../../definition/extern-key.ts';
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { int, resultOptional, text } from '../native-values.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { atPosition, checkedIndex, spanOf } from './positions.ts';
 
-const stringKey = primitiveKey('string');
-const intKey = primitiveKey('int');
-const range = namedKey(qualifiedName(wellKnown.range));
+const range = knownTypeKey(wellKnown.range);
 const what = 'a string';
 
-/** A string argument's code points. */
 const codePoints = (value: Parameters<typeof text>[0]): readonly string[] => [...text(value)];
 
-export const stringNatives: Natives<NativeContext> = {
-  [preludeKey('length', stringKey)]: ([s]) => BigInt(codePoints(s).length),
-  [preludeKey('at', stringKey, intKey)]: ([s, index], context) => {
+export const stringNatives = (keys: NativeKeys): Natives<NativeContext> => ({
+  [keys.of('length', 'string')]: ([s]) => BigInt(codePoints(s).length),
+  [keys.of('at', 'string', 'int')]: ([s, index], context) => {
     const points = codePoints(s);
     const position = atPosition(int(index), points.length);
     return resultOptional(context, position === undefined ? undefined : points[position]);
   },
-  [preludeKey('index', stringKey, intKey)]: ([s, index]) => {
+  [keys.of('index', 'string', 'int')]: ([s, index]) => {
     const points = codePoints(s);
     return points[checkedIndex(int(index), points.length, what)] ?? '';
   },
-  [preludeKey('index', stringKey, range)]: ([s, span]) => {
+  [keys.of('index', 'string', range)]: ([s, span]) => {
     const points = codePoints(s);
     return points.slice(...spanOf(span ?? null, points.length, what)).join('');
   },
-  [preludeKey('_characterAt', stringKey, intKey)]: ([s, offset], context) => {
+  [keys.of('_characterAt', 'string', 'int')]: ([s, offset], context) => {
     const whole = text(s);
     const start = Number(int(offset));
     const point = whole.codePointAt(start);
@@ -48,4 +45,4 @@ export const stringNatives: Natives<NativeContext> = {
       elements: [character, BigInt(start + character.length)],
     });
   },
-};
+});

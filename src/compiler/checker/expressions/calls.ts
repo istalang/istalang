@@ -24,6 +24,7 @@
  * adds them.
  */
 
+import { staticName } from '../../../language/static-names.ts';
 import { conversionFunction } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
@@ -208,7 +209,7 @@ function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: 
     }
     return errorType;
   }
-  return resolve(context, call, `${typeText(owner)}.${name}`, candidates);
+  return resolve(context, call, staticName(typeText(owner), name), candidates);
 }
 
 function resolve(

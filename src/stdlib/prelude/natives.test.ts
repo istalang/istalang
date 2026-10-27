@@ -6,14 +6,18 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { preludeKey } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
+import { languageModules } from '../../language/well-known.ts';
 import { Panic } from '../../runtime/natives.ts';
 import { unusedContext } from '../../runtime/runtime.test-kit.ts';
+import { nativeKeysOf } from '../std-module.ts';
 import { preludeNatives } from './natives.ts';
 
+const keys = nativeKeysOf(languageModules.prelude);
+const natives = preludeNatives(keys);
+
 function call(key: string, ...argumentValues: Value[]): Value {
-  const native = preludeNatives[key];
+  const native = natives[key];
   if (native === undefined) {
     throw new Error(`No native ${key}.`);
   }
@@ -27,9 +31,9 @@ describe('prelude natives', () => {
   it('keep integer arithmetic exact at any size', () => {
     fc.assert(
       fc.property(fc.bigInt(), fc.bigInt(), (left, right) => {
-        expect(call(preludeKey('add', 'int', 'int'), left, right)).toBe(left + right);
-        expect(call(preludeKey('subtract', 'int', 'int'), left, right)).toBe(left - right);
-        expect(call(preludeKey('multiply', 'int', 'int'), left, right)).toBe(left * right);
+        expect(call(keys.of('add', 'int', 'int'), left, right)).toBe(left + right);
+        expect(call(keys.of('subtract', 'int', 'int'), left, right)).toBe(left - right);
+        expect(call(keys.of('multiply', 'int', 'int'), left, right)).toBe(left * right);
       }),
     );
   });
@@ -37,8 +41,8 @@ describe('prelude natives', () => {
   it('floor and take the divisor sign, so a == (a // b) * b + a % b', () => {
     fc.assert(
       fc.property(fc.bigInt(), nonZero, (dividend, divisor) => {
-        const quotient = call(preludeKey('floorDivide', 'int', 'int'), dividend, divisor) as bigint;
-        const rest = call(preludeKey('remainder', 'int', 'int'), dividend, divisor) as bigint;
+        const quotient = call(keys.of('floorDivide', 'int', 'int'), dividend, divisor) as bigint;
+        const rest = call(keys.of('remainder', 'int', 'int'), dividend, divisor) as bigint;
         expect(quotient * divisor + rest).toBe(dividend);
         expect(rest === 0n || rest < 0n === divisor < 0n).toBe(true);
         expect(rest < 0n ? -rest : rest).toBeLessThan(divisor < 0n ? -divisor : divisor);
@@ -50,7 +54,7 @@ describe('prelude natives', () => {
     fc.assert(
       fc.property(fc.bigInt(), (dividend) => {
         for (const name of ['floorDivide', 'remainder']) {
-          expect(() => call(preludeKey(name, 'int', 'int'), dividend, 0n)).toThrow(Panic);
+          expect(() => call(keys.of(name, 'int', 'int'), dividend, 0n)).toThrow(Panic);
         }
       }),
     );
@@ -60,10 +64,10 @@ describe('prelude natives', () => {
     fc.assert(
       fc.property(fc.bigInt({ min: -(2n ** 50n), max: 2n ** 50n }), finite, (whole, fraction) => {
         const cases = [
-          [preludeKey('divide', 'int', 'int'), whole, 0n, Number(whole) / 0],
-          [preludeKey('divide', 'int', 'float'), whole, -0, Number(whole) / -0],
-          [preludeKey('divide', 'float', 'int'), fraction, 0n, fraction / 0],
-          [preludeKey('divide', 'float', 'float'), fraction, 0, fraction / 0],
+          [keys.of('divide', 'int', 'int'), whole, 0n, Number(whole) / 0],
+          [keys.of('divide', 'int', 'float'), whole, -0, Number(whole) / -0],
+          [keys.of('divide', 'float', 'int'), fraction, 0n, fraction / 0],
+          [keys.of('divide', 'float', 'float'), fraction, 0, fraction / 0],
         ] as const;
         for (const [key, dividend, zero, quotient] of cases) {
           expect(call(key, dividend, zero)).toBe(quotient);
@@ -75,15 +79,15 @@ describe('prelude natives', () => {
   it('mix ints into floats, and always divide as floats', () => {
     fc.assert(
       fc.property(fc.bigInt({ min: -(2n ** 50n), max: 2n ** 50n }), finite, (whole, fraction) => {
-        expect(call(preludeKey('add', 'int', 'float'), whole, fraction)).toBe(
+        expect(call(keys.of('add', 'int', 'float'), whole, fraction)).toBe(
           Number(whole) + fraction,
         );
-        expect(call(preludeKey('multiply', 'float', 'int'), fraction, whole)).toBe(
+        expect(call(keys.of('multiply', 'float', 'int'), fraction, whole)).toBe(
           fraction * Number(whole),
         );
       }),
     );
-    expect(call(preludeKey('divide', 'int', 'int'), 7n, 2n)).toBe(3.5);
+    expect(call(keys.of('divide', 'int', 'int'), 7n, 2n)).toBe(3.5);
   });
 
   it('compare consistently with the order of the values', () => {
@@ -95,17 +99,17 @@ describe('prelude natives', () => {
     };
     fc.assert(
       fc.property(fc.bigInt(), fc.bigInt(), (left, right) => {
-        consistent(preludeKey('compare', 'int', 'int'), left, right, left < right);
+        consistent(keys.of('compare', 'int', 'int'), left, right, left < right);
       }),
     );
     fc.assert(
       fc.property(finite, finite, (left, right) => {
-        consistent(preludeKey('compare', 'float', 'float'), left, right, left < right);
+        consistent(keys.of('compare', 'float', 'float'), left, right, left < right);
       }),
     );
     fc.assert(
       fc.property(fc.string(), fc.string(), (left, right) => {
-        consistent(preludeKey('compare', 'string', 'string'), left, right, left < right);
+        consistent(keys.of('compare', 'string', 'string'), left, right, left < right);
       }),
     );
   });

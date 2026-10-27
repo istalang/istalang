@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { subsetDefinition, subsetOutcome } from '../../test/definitions/subset.ts';
 import { definitionFormat } from '../definition/definition.ts';
-import { preludeNatives } from '../stdlib/prelude/natives.ts';
+import { stdNatives } from '../stdlib/natives.ts';
 import { recordingStore, testRuntime } from './runtime.test-kit.ts';
 
 const { text } = definitionFormat.write(subsetDefinition);
@@ -14,7 +14,7 @@ const { text } = definitionFormat.write(subsetDefinition);
 describe('deploying a Definition', () => {
   it('writes it to the store once, however often the same runtime deploys it', () => {
     const store = recordingStore();
-    const { runtime } = testRuntime({ natives: preludeNatives, store });
+    const { runtime } = testRuntime({ natives: stdNatives, store });
     const first = runtime.deploy(text);
     const second = runtime.deploy(text);
     expect(store.definitions).toEqual([first.hash]);
@@ -25,8 +25,8 @@ describe('deploying a Definition', () => {
   it('writes it again for a fresh runtime whose store lacks it', () => {
     const one = recordingStore();
     const two = recordingStore();
-    testRuntime({ natives: preludeNatives, store: one }).runtime.deploy(text);
-    testRuntime({ natives: preludeNatives, store: two }).runtime.deploy(text);
+    testRuntime({ natives: stdNatives, store: one }).runtime.deploy(text);
+    testRuntime({ natives: stdNatives, store: two }).runtime.deploy(text);
     expect([one.definitions.length, two.definitions.length]).toEqual([1, 1]);
   });
 });

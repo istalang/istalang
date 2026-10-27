@@ -3,10 +3,9 @@
  * so awaiting it commits without waiting (§5).
  */
 
-import { nativeKey } from '../../definition/extern-key.ts';
-import type { NativeContext, NativeFutures, Natives } from '../../runtime/natives.ts';
-import { runtimeName } from '../stdlib-loader.ts';
+import type { NativeContext, Natives, WithFutures } from '../../runtime/natives.ts';
+import type { NativeKeys } from '../std-module.ts';
 
-export const runtimeNatives: Natives<NativeContext & NativeFutures> = {
-  [nativeKey(runtimeName, 'commit')]: (_arguments, context) => context.resolved(null),
-};
+export const runtimeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutures> => ({
+  [keys.of('commit')]: (_arguments, context) => context.futures.resolved(null),
+});

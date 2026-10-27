@@ -17,8 +17,8 @@ import {
   externKey,
   type KeyType,
   keyTypeText,
-  staticName,
 } from '../../definition/extern-key.ts';
+import { staticName } from '../../language/static-names.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';

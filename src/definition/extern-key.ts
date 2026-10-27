@@ -49,9 +49,12 @@ export function primitiveKey(name: PrimitiveName): KeyType {
   return { kind: 'primitive', name };
 }
 
+/** A type as a natives table writes it: a key type, or a primitive's name. */
+export type WrittenType = KeyType | PrimitiveName;
+
 /** A named type, module-qualified, with its type arguments: `time.Time`, `prelude.Array<T>`. */
-export function namedKey(name: string, ...typeArguments: readonly KeyType[]): KeyType {
-  return { kind: 'named', name, arguments: typeArguments };
+export function namedKey(name: string, ...typeArguments: readonly WrittenType[]): KeyType {
+  return { kind: 'named', name, arguments: typeArguments.map(typeOf) };
 }
 
 /** A type parameter of the extern's own, as declared: the `T` of `prelude.Array<T>`. */
@@ -68,6 +71,9 @@ export function referenceKey(type: KeyType): ReferenceKey {
   return { reference: type };
 }
 
+/** A parameter as a natives table writes it: a type, a primitive's name, or a `referenceKey`. */
+export type NativeParameter = WrittenType | ReferenceKey;
+
 /**
  * The key of extern `name` of `module` taking `parameters`, as a natives table writes it: each a
  * type taken by value, or one `referenceKey` marks as taken by `&`.
@@ -75,17 +81,21 @@ export function referenceKey(type: KeyType): ReferenceKey {
 export function nativeKey(
   module: string,
   name: string,
-  ...parameters: readonly (KeyType | ReferenceKey)[]
+  ...parameters: readonly NativeParameter[]
 ): string {
   return externKey({
     module,
     name,
     parameters: parameters.map((parameter) =>
-      'reference' in parameter
+      typeof parameter !== 'string' && 'reference' in parameter
         ? { type: parameter.reference, reference: true }
-        : { type: parameter, reference: false },
+        : { type: typeOf(parameter), reference: false },
     ),
   });
+}
+
+function typeOf(parameter: WrittenType): KeyType {
+  return typeof parameter === 'string' ? primitiveKey(parameter) : parameter;
 }
 
 export function externKey(signature: ExternSignature): string {
@@ -120,21 +130,4 @@ export function keyTypeText(type: KeyType): string {
       return unhandled;
     }
   }
-}
-
-/** A static function's name, as keys and expressions spell it: `Owner.name`. */
-export function staticName(owner: string, name: string): string {
-  return `${owner}.${name}`;
-}
-
-/** The key of an extern in the prelude. */
-export function preludeKey(
-  name: string,
-  ...parameters: readonly (KeyType | ReferenceKey | PrimitiveName)[]
-): string {
-  return nativeKey(
-    'prelude',
-    name,
-    ...parameters.map((p) => (typeof p === 'string' ? primitiveKey(p) : p)),
-  );
 }

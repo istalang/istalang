@@ -4,18 +4,14 @@
  * the runtime's (runtime/scheduler/futures.ts).
  */
 
-import { namedKey, nativeKey, parameterKey } from '../../definition/extern-key.ts';
+import { parameterKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values.ts';
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
-import type { NativeContext, NativeFutures, Natives } from '../../runtime/natives.ts';
-import { futuresName } from '../stdlib-loader.ts';
+import { wellKnown } from '../../language/well-known.ts';
+import type { NativeContext, Natives, WithFutures } from '../../runtime/natives.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
-const futures = namedKey(
-  qualifiedName(wellKnown.array),
-  namedKey(qualifiedName(wellKnown.future), parameterKey('T')),
-);
+const futures = knownTypeKey(wellKnown.array, knownTypeKey(wellKnown.future, parameterKey('T')));
 
-export const futuresNatives: Natives<NativeContext & NativeFutures> = {
-  [nativeKey(futuresName, 'first', futures)]: ([racing], context) =>
-    context.first(elementsOf(racing)),
-};
+export const futuresNatives = (keys: NativeKeys): Natives<NativeContext & WithFutures> => ({
+  [keys.of('first', futures)]: ([racing], context) => context.futures.first(elementsOf(racing)),
+});

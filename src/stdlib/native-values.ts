@@ -87,13 +87,13 @@ export function resultOk(context: NativeContext, value: Value): Value {
   return resultVariant(context, resultVariants.ok, [value]);
 }
 
-/** `Ok` of a struct of the type the extern's declared `Result` holds, with `fields` in order. */
-export function resultOkStruct(context: NativeContext, fields: Value[]): Value {
+/** A struct of the type the extern's declared `Result` holds when `Ok`, with `fields` in order. */
+export function okStruct(context: NativeContext, fields: Value[]): Value {
   const held = resultVariantShape(context, resultVariants.ok).fields[0]?.type;
   if (held?.kind !== 'named') {
     unreachable(`${context.name} doesn't return a Result of a struct.`);
   }
-  return resultOk(context, { kind: 'struct', type: held.type, fields });
+  return { kind: 'struct', type: held.type, fields };
 }
 
 /** `Err` of `error`, of the extern's declared `Result` type (§3.12). */
@@ -103,15 +103,42 @@ export function resultErr(context: NativeContext, error: Value): Value {
 
 /**
  * `Err` of an `Error` with `message` and `code`, of the extern's declared `Result` type; its trace
- * is the frames running the native, as an `Error` literal without one gets (§3.12).
+ * is the frames running the native, as an `Error` literal without one gets (§3.12). Its fields are
+ * placed by the names `Error` declares, so a field this doesn't give fails loudly here.
  */
-export function resultError(context: NativeContext, message: string, code: string): Value {
+function resultError(context: NativeContext, message: string, code: string): Value {
   const error = resultVariantShape(context, resultVariants.err).fields[0]?.type;
-  if (error?.kind !== 'named' || context.types[error.type]?.kind !== 'struct') {
+  const declared = error?.kind === 'named' ? context.types[error.type] : undefined;
+  if (error?.kind !== 'named' || declared?.kind !== 'struct') {
     unreachable(`${context.name} doesn't return a Result of an Error.`);
   }
-  const fields = [message, code, context.trace()];
+  const supplied = new Map<string, Value>([
+    ['message', message],
+    ['code', code],
+    ['trace', context.trace()],
+  ]);
+  const fields = declared.fields.map(
+    ({ name }) => supplied.get(name) ?? unreachable(`A native gives an Error no '${name}'.`),
+  );
   return resultErr(context, { kind: 'struct', type: error.type, fields });
+}
+
+/** The code of every `Error` a `parse` returns (§3.10). */
+const parseErrorCode = 'parse';
+
+/**
+ * What a `parse` returns (§3.10): `Ok` of `read`, or, when `source` didn't read as `what` (`an
+ * int`), an `Error` saying so.
+ */
+export function parseResult(
+  context: NativeContext,
+  source: string,
+  what: string,
+  read: Value | undefined,
+): Value {
+  return read === undefined
+    ? resultError(context, `'${source}' is not ${what}.`, parseErrorCode)
+    : resultOk(context, read);
 }
 
 /** Variant `name` of the enum the extern declares as its result, holding `fields`. */

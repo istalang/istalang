@@ -15,6 +15,7 @@
  * they join (§3.13); a clash is reported at the later declaration.
  */
 
+import { staticName } from '../../../language/static-names.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import {
   declaredFunctions,
@@ -54,7 +55,7 @@ function groupOf(
   if (declaration.owner === undefined) {
     return declaration.name.text;
   }
-  return `${ownerKeyOf(checker, module, declaration.owner)}.${declaration.name.text}`;
+  return staticName(ownerKeyOf(checker, module, declaration.owner), declaration.name.text);
 }
 
 /** The type a static function's owner names, as a key: its declaration, or the primitive. */

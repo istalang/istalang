@@ -13,6 +13,7 @@
  * - A function's type as a value has the `T` an `await` yields as an async function's result.
  */
 
+import { staticName } from '../../../language/static-names.ts';
 import type { FunctionsEntity } from '../../binder/entities.ts';
 import type { MemberAccess } from '../../syntax/expressions.ts';
 import type { Identifier } from '../../syntax/node.ts';
@@ -75,7 +76,7 @@ export function namedFunctions(
   const candidates = staticCandidates(context.checker, context.module, target, name);
   return candidates.length === 0
     ? undefined
-    : { site: node, name: `${typeText(owner)}.${name}`, candidates: () => candidates };
+    : { site: node, name: staticName(typeText(owner), name), candidates: () => candidates };
 }
 
 /** A top-level function set named at `site`: its overloads, and what ADL finds for a call. */

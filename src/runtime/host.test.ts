@@ -9,7 +9,7 @@ import { subsetDefinition, subsetOutcome } from '../../test/definitions/subset.t
 import { compiledText } from '../compiler/compile.test-kit.ts';
 import { definitionFormat } from '../definition/definition.ts';
 import { FormatError } from '../definition/format.ts';
-import { preludeNatives } from '../stdlib/prelude/natives.ts';
+import { stdNatives } from '../stdlib/natives.ts';
 import { type Natives, Panic } from './natives.ts';
 import { Refusal } from './refusal.ts';
 import { testRuntime } from './runtime.test-kit.ts';
@@ -20,7 +20,7 @@ const missingKeys = /prelude\.compare\(int, int\).*prelude\.add\(int, int\)/u;
 const fib = subsetDefinition.functions.findIndex((entry) => entry.name === 'main.fib');
 
 /** The subset fixture deployed on a fresh runtime, with `run` starting a new instance of it. */
-function load(natives: Natives = preludeNatives) {
+function load(natives: Natives = stdNatives) {
   const program = testRuntime({ natives }).runtime.deploy(subsetText);
   let instances = 0;
   return {
@@ -45,7 +45,7 @@ describe('the runtime', () => {
 
   it('turns a panic into the outcome, with a trace from the innermost frame out', () => {
     const natives = {
-      ...preludeNatives,
+      ...stdNatives,
       'prelude.subtract(int, int)': () => {
         throw new Panic('no subtraction today');
       },
@@ -77,14 +77,12 @@ describe('the runtime', () => {
   });
 
   it('refuses a text that is not a Definition', () => {
-    expect(() => testRuntime({ natives: preludeNatives }).runtime.deploy('{}')).toThrow(
-      FormatError,
-    );
+    expect(() => testRuntime({ natives: stdNatives }).runtime.deploy('{}')).toThrow(FormatError);
   });
 
   it('lets an error a native throws for any other reason propagate', () => {
     const natives = {
-      ...preludeNatives,
+      ...stdNatives,
       'prelude.add(int, int)': () => {
         throw new RangeError('a bug in the native');
       },

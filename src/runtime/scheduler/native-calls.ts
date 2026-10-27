@@ -1,6 +1,7 @@
 /**
  * Calling a native (architecture: the Natives seam) from a running segment: the context each call
- * gets, built here once for both kinds of caller, a `call` instruction and a disposal's call.
+ * gets, built here once for both kinds of caller, a `call` instruction and a disposal's call. The
+ * capabilities are the segment's, built with it; only the call's own members are built per call.
  *
  * A native receives values, never references: an argument passed by `&` is read through its
  * reference, and the native writes a changed value back through the context's `write`, which
@@ -15,26 +16,36 @@ import type { TypeReference } from '../../definition/types.ts';
 import { handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { readThrough, writeReference } from '../interpreter/machine.ts';
-import type { FullNativeContext, Native, NativeResources, NativeWeakSide } from '../natives.ts';
+import type {
+  FullNativeContext,
+  Native,
+  NativeCapabilities,
+  NativeFutures,
+  NativeResources,
+  NativeSlots,
+  NativeWeakSide,
+} from '../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
+import type { Futures } from './futures.ts';
 import { type Heap, handleObject } from './heap.ts';
 import type { Instance } from './instance.ts';
+import type { Slots } from './slots.ts';
 import type { WeakSide } from './weak-side.ts';
 
 export class NativeCalls {
   readonly #instance: Instance;
-  readonly #startedAt: bigint;
-  readonly #trace: () => string;
-  readonly #weak: NativeWeakSide;
-  readonly #resources: NativeResources;
+  readonly #segment: Omit<FullNativeContext, 'name' | 'resultType' | 'typeArguments' | 'write'>;
 
   /** Calls within a segment of `instance` started at `startedAt`; `trace` says where it runs. */
-  constructor(instance: Instance, startedAt: bigint, trace: () => string) {
+  constructor(instance: Instance, startedAt: bigint, trace: (leftOut?: number) => string) {
     this.#instance = instance;
-    this.#startedAt = startedAt;
-    this.#trace = trace;
-    this.#weak = nativeWeakSideOf(instance.weak);
-    this.#resources = nativeResourcesOf(instance.heap);
+    this.#segment = {
+      types: instance.loaded.definition.types,
+      instance: instance.name,
+      segmentStartedAt: startedAt,
+      trace,
+      ...capabilitiesOf(instance),
+    };
   }
 
   /**
@@ -45,10 +56,13 @@ export class NativeCalls {
     const heap = this.#instance.frameHeap;
     const values = contents.map((each) => (isReference(each) ? readThrough(heap, each) : each));
     const entry = this.#entry(callee);
-    const context = this.#context(entry);
+    const declared = entry.kind === 'extern' ? entry : undefined;
     const run = (): Value =>
       native(values, {
-        ...context,
+        ...this.#segment,
+        name: entry.name,
+        resultType: declared === undefined ? undefined : namedType(declared.result),
+        typeArguments: declared?.typeArguments.map(namedType) ?? [],
         write: (position, value) => {
           writeReference(heap, referenceAt(contents, position), value);
         },
@@ -64,31 +78,6 @@ export class NativeCalls {
       unreachable(`No function ${callee}; loading checks every index.`)
     );
   }
-
-  #context(entry: FunctionDefinition): Omit<FullNativeContext, 'write'> {
-    const { futures, slots } = this.#instance;
-    const declared = entry.kind === 'extern' ? entry : undefined;
-    return {
-      name: entry.name,
-      resultType: declared === undefined ? undefined : namedType(declared.result),
-      typeArguments: declared?.typeArguments.map(namedType) ?? [],
-      types: this.#instance.loaded.definition.types,
-      instance: this.#instance.name,
-      segmentStartedAt: this.#startedAt,
-      timer: (at: bigint) => futures.createHandle({ kind: 'timer', at }),
-      resolved: (value: Value) => futures.createHandle({ kind: 'resolved', value }),
-      pending: (token: string) => futures.createHost(token),
-      first: (handles: readonly Value[]) => futures.first(handles),
-      slots: {
-        create: () => slots.create(),
-        operate: (slot: Value, operation: 'put' | 'take' | 'read', value?: Value) =>
-          slots.operate(slot, operation, value),
-      },
-      trace: this.#trace,
-      weak: this.#weak,
-      resources: this.#resources,
-    };
-  }
 }
 
 /** The type entry `type` names, if it is a named type. */
@@ -103,6 +92,36 @@ function referenceAt(contents: readonly RegisterContents[], position: number): R
     unreachable(`A native wrote argument ${position}, which isn't passed by '&'.`);
   }
   return argument;
+}
+
+/** Every capability of `instance`, as natives reach it. */
+function capabilitiesOf(instance: Instance): NativeCapabilities {
+  return {
+    futures: nativeFuturesOf(instance.futures),
+    slots: nativeSlotsOf(instance.slots),
+    weak: nativeWeakSideOf(instance.weak),
+    resources: nativeResourcesOf(instance.heap),
+  };
+}
+
+/** The instance's futures as natives make them (§3.6). */
+function nativeFuturesOf(futures: Futures): NativeFutures {
+  return {
+    resolved: (value) => futures.createHandle({ kind: 'resolved', value }),
+    first: (handles) => futures.first(handles),
+    timer: (at) => futures.createHandle({ kind: 'timer', at }),
+    fromHost: (token) => futures.createHost(token),
+  };
+}
+
+/** The instance's slots as natives reach them (§6). */
+function nativeSlotsOf(slots: Slots): NativeSlots {
+  return {
+    create: () => slots.create(),
+    put: (slot, value) => slots.operate(slot, 'put', value),
+    take: (slot) => slots.operate(slot, 'take'),
+    read: (slot) => slots.operate(slot, 'read'),
+  };
 }
 
 /** The instance's weak references as natives reach them: through handles (§7). */

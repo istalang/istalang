@@ -5,22 +5,17 @@
  */
 
 import { entryPosition, entryValue, withEntry, withoutEntry } from '../../definition/equality.ts';
-import {
-  namedKey,
-  parameterKey,
-  preludeKey,
-  primitiveKey,
-  referenceKey,
-} from '../../definition/extern-key.ts';
+import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import { mapValueOf, type Value } from '../../definition/values.ts';
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { arrayOf, int, resultOptional } from '../native-values.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { checkedIndex } from './positions.ts';
 
 const keyType = parameterKey('K');
 const valueType = parameterKey('V');
-const map = namedKey(qualifiedName(wellKnown.map), keyType, valueType);
+const map = knownTypeKey(wellKnown.map, keyType, valueType);
 
 /** An entry as the `(key, value)` tuple a program sees. */
 const entryTuple = ([key, value]: readonly [Value, Value]): Value => ({
@@ -28,37 +23,36 @@ const entryTuple = ([key, value]: readonly [Value, Value]): Value => ({
   elements: [key, value],
 });
 
-export const mapNatives: Natives<NativeContext> = {
-  [preludeKey('size', map)]: ([m]) => BigInt(mapValueOf(m).entries.length),
-  [preludeKey('get', map, keyType)]: ([m, k], context) =>
+export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
+  [keys.of('size', map)]: ([m]) => BigInt(mapValueOf(m).entries.length),
+  [keys.of('get', map, keyType)]: ([m, k], context) =>
     resultOptional(context, entryValue(mapValueOf(m), k ?? null)),
-  [preludeKey('has', map, keyType)]: ([m, k]) =>
-    entryPosition(mapValueOf(m), k ?? null) !== undefined,
-  [preludeKey('delete', referenceKey(map), keyType)]: ([m, k], context) => {
+  [keys.of('has', map, keyType)]: ([m, k]) => entryPosition(mapValueOf(m), k ?? null) !== undefined,
+  [keys.of('delete', referenceKey(map), keyType)]: ([m, k], context) => {
     const before = mapValueOf(m);
     const after = withoutEntry(before, k ?? null);
     context.write(0, after);
     return after !== before;
   },
-  [preludeKey('keys', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(([k]) => k)),
-  [preludeKey('values', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(([, v]) => v)),
-  [preludeKey('entries', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(entryTuple)),
-  [preludeKey('index', map, keyType)]: ([m, k]) => {
+  [keys.of('keys', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(([k]) => k)),
+  [keys.of('values', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(([, v]) => v)),
+  [keys.of('entries', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(entryTuple)),
+  [keys.of('index', map, keyType)]: ([m, k]) => {
     const found = entryValue(mapValueOf(m), k ?? null);
     if (found === undefined) {
       throw new Panic('The map holds no such key.');
     }
     return found;
   },
-  [preludeKey('setIndex', referenceKey(map), keyType, valueType)]: ([m, k, v], context) => {
+  [keys.of('setIndex', referenceKey(map), keyType, valueType)]: ([m, k, v], context) => {
     context.write(0, withEntry(mapValueOf(m), k ?? null, v ?? null));
     return null;
   },
-  [preludeKey('_entryAt', map, primitiveKey('int'))]: ([m, position]) => {
+  [keys.of('_entryAt', map, 'int')]: ([m, position]) => {
     const { entries } = mapValueOf(m);
     return entryTuple(
       entries[checkedIndex(int(position), entries.length, 'a map')] ?? [null, null],
     );
   },
-  [preludeKey('Map.default')]: () => ({ kind: 'map', entries: [] }),
-};
+  [keys.ofStatic(wellKnown.map.name, 'default')]: () => ({ kind: 'map', entries: [] }),
+});

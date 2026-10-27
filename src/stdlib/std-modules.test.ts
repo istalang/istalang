@@ -4,18 +4,18 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
-import { checkProgram } from '../compiler/checker/check.ts';
-import { stdSources } from './stdlib-loader.ts';
+import { everyStdModule } from './std-modules.test-kit.ts';
+import { stdModules } from './std-modules.ts';
 
 describe('std modules', () => {
+  it('all load into a program importing each', () => {
+    const loaded = everyStdModule().modules.map(([, module]) => module.name);
+    expect(new Set(loaded)).toEqual(new Set(stdModules.map((module) => module.name)));
+  });
+
   it('check without a diagnostic', () => {
-    const imports = Object.keys(stdSources).map((name) => `import * as ${name} from '${name}'`);
-    const program = stdProgramOf({ main: imports.join('\n') });
-    const checker = checkProgram(program);
-    const std = [...program.modules].filter(([, module]) => module.isStd);
-    expect(std.length).toBe(Object.keys(stdSources).length + 1);
-    for (const [id, module] of std) {
+    const { checker, modules } = everyStdModule();
+    for (const [id, module] of modules) {
       const diagnostics = [...module.tree.diagnostics, ...checker.diagnosticsOf(id)];
       expect(
         diagnostics.map(({ code, message }) => `${code} ${message}`),

@@ -1,20 +1,12 @@
 /**
  * Every std module's natives in one table: what an app hands the runtime for the std modules
- * (runtime/natives.ts). Adding a std module with natives is adding its table here, beside its
- * source in stdlib-loader.ts.
+ * (runtime/natives.ts). It derives from the list of std modules (std-modules.ts); each key names
+ * its module, so two modules' tables never share a key.
  */
 
 import type { Natives } from '../runtime/natives.ts';
-import { futuresNatives } from './futures/natives.ts';
-import { jsonNatives } from './json/natives.ts';
-import { preludeNatives } from './prelude/natives.ts';
-import { runtimeNatives } from './runtime/natives.ts';
-import { timeNatives } from './time/natives.ts';
+import { stdModules } from './std-modules.ts';
 
-export const stdNatives: Natives = {
-  ...preludeNatives,
-  ...timeNatives,
-  ...runtimeNatives,
-  ...futuresNatives,
-  ...jsonNatives,
-};
+export const stdNatives: Natives = Object.fromEntries(
+  stdModules.flatMap((module) => Object.entries(module.natives)),
+);

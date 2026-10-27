@@ -6,82 +6,66 @@
  */
 
 import { valuesEqual } from '../../definition/equality.ts';
-import {
-  namedKey,
-  parameterKey,
-  preludeKey,
-  primitiveKey,
-  referenceKey,
-} from '../../definition/extern-key.ts';
+import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values.ts';
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { arrayOf, int, optionalValue, resultOptional, text } from '../native-values.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { atPosition, checkedIndex, spanOf } from './positions.ts';
 
 const item = parameterKey('T');
-const array = namedKey(qualifiedName(wellKnown.array), item);
-const range = namedKey(qualifiedName(wellKnown.range));
-const intKey = primitiveKey('int');
+const array = knownTypeKey(wellKnown.array, item);
+const range = knownTypeKey(wellKnown.range);
 const what = 'an array';
 
-export const arrayNatives: Natives<NativeContext> = {
-  [preludeKey('length', array)]: ([xs]) => BigInt(elementsOf(xs).length),
-  [preludeKey('at', array, intKey)]: ([xs, index], context) => {
+export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
+  [keys.of('length', array)]: ([xs]) => BigInt(elementsOf(xs).length),
+  [keys.of('at', array, 'int')]: ([xs, index], context) => {
     const elements = elementsOf(xs);
     const position = atPosition(int(index), elements.length);
     return resultOptional(context, position === undefined ? undefined : elements[position]);
   },
-  [preludeKey('push', referenceKey(array), item)]: ([xs, element], context) => {
+  [keys.of('push', referenceKey(array), item)]: ([xs, element], context) => {
     context.write(0, arrayOf([...elementsOf(xs), element ?? null]));
     return null;
   },
-  [preludeKey('pop', referenceKey(array))]: ([xs], context) => {
+  [keys.of('pop', referenceKey(array))]: ([xs], context) => {
     const elements = elementsOf(xs);
     context.write(0, arrayOf(elements.slice(0, -1)));
     return resultOptional(context, elements.at(-1));
   },
-  [preludeKey('slice', array, intKey, namedKey(qualifiedName(wellKnown.optional), intKey))]: ([
-    xs,
-    start,
-    end,
-  ]) => {
+  [keys.of('slice', array, 'int', knownTypeKey(wellKnown.optional, 'int'))]: ([xs, start, end]) => {
     const last = optionalValue(end);
     return arrayOf(
       elementsOf(xs).slice(Number(int(start)), last === undefined ? undefined : Number(int(last))),
     );
   },
-  [preludeKey('indexOf', array, item)]: ([xs, element]) =>
+  [keys.of('indexOf', array, item)]: ([xs, element]) =>
     BigInt(elementsOf(xs).findIndex((each) => valuesEqual(each, element ?? null))),
-  [preludeKey('includes', array, item)]: ([xs, element]) =>
+  [keys.of('includes', array, item)]: ([xs, element]) =>
     elementsOf(xs).some((each) => valuesEqual(each, element ?? null)),
-  [preludeKey(
-    'join',
-    namedKey(qualifiedName(wellKnown.array), primitiveKey('string')),
-    primitiveKey('string'),
-  )]: ([xs, separator]) => elementsOf(xs).map(text).join(text(separator)),
-  [preludeKey('index', array, intKey)]: ([xs, index]) => {
+  [keys.of('join', knownTypeKey(wellKnown.array, 'string'), 'string')]: ([xs, separator]) =>
+    elementsOf(xs).map(text).join(text(separator)),
+  [keys.of('index', array, 'int')]: ([xs, index]) => {
     const elements = elementsOf(xs);
     return elements[checkedIndex(int(index), elements.length, what)] ?? null;
   },
-  [preludeKey('index', array, range)]: ([xs, span]) => {
+  [keys.of('index', array, range)]: ([xs, span]) => {
     const elements = elementsOf(xs);
     return arrayOf(elements.slice(...spanOf(span ?? null, elements.length, what)));
   },
-  [preludeKey('setIndex', referenceKey(array), intKey, item)]: ([xs, index, element], context) => {
+  [keys.of('setIndex', referenceKey(array), 'int', item)]: ([xs, index, element], context) => {
     const elements = elementsOf(xs);
     const position = checkedIndex(int(index), elements.length, what);
     context.write(0, arrayOf(elements.with(position, element ?? null)));
     return null;
   },
-  [preludeKey('setIndex', referenceKey(array), range, array)]: (
-    [xs, span, replacement],
-    context,
-  ) => {
+  [keys.of('setIndex', referenceKey(array), range, array)]: ([xs, span, replacement], context) => {
     const elements = elementsOf(xs);
     const [start, end] = spanOf(span ?? null, elements.length, what);
     context.write(0, arrayOf(elements.toSpliced(start, end - start, ...elementsOf(replacement))));
     return null;
   },
-  [preludeKey('Array.default')]: () => arrayOf([]),
-};
+  [keys.ofStatic(wellKnown.array.name, 'default')]: () => arrayOf([]),
+});

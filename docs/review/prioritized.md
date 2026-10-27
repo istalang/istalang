@@ -13,7 +13,7 @@ tags: [review, architecture, refactoring, plan]
 | Priority | Item | Scope | Tracker | Source | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Dead code elimination (frontier.ts, unsupported.ts) | tooling | | by-opus | done (f8f2e91) |
-| 2 | Deduplicate leaf helpers (compareCodeUnits, staticName, preludeKey) | definition, language, stdlib | D79, D128 | by-argon, by-opus | partial (40dca52): `staticName` and the natives' shared keys are D79, D128 |
+| 2 | Deduplicate leaf helpers (compareCodeUnits, staticName, preludeKey) | definition, language, stdlib | D79, D128 | by-argon, by-opus | done |
 | 3 | Split NativeContext into capability interfaces | runtime, stdlib | | by-opus | done (a70160f) |
 | 4 | Unify Context-Dependent / Target-Typed Argument Checking (add `accepts` facet) | checker, overloads | D84, D95, D102 | by-argon, by-opus | done (00b8021, 7d5a712) |
 | 5 | Fix heldType + must-use for declared structs/enums and `T is Disposable` | checker | D108 | by-argon | done (f87c155, 1bd7b35) |

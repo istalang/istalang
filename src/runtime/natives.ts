@@ -11,56 +11,99 @@
  *
  * Natives the runtime backs need the running instance, so each call also receives a context: the
  * extern being called, its declared result and type arguments, and the Definition's types (for
- * building typed values), the time the segment started, which is what `now()` means (§5), the
- * futures the runtime creates for an extern that returns one (§3.6), its slots (§6), its weak
- * references and its resources (§7). A native never holds the context beyond its call.
+ * building typed values), the time the segment started, which is what `now()` means (§5), and
+ * capabilities, one per part of the instance a native reaches: the futures the runtime creates
+ * for an extern that returns one (§3.6), its slots (§6), its weak references and its resources
+ * (§7). Every capability has one shape, a member of the context, and the runtime builds them once
+ * per segment. A native states the capabilities it uses and never holds the context beyond its
+ * call.
  */
 
 import type { TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/types.ts';
 import type { Value } from '../definition/values.ts';
 
-/** The running instance's resources (§7). */
-export interface NativeResources {
-  readonly create: (type: TypeId, payload: unknown) => Value;
-  readonly payloadOf: (handle: Value) => unknown;
+/** Base context every native gets: the call, and the segment it runs in. */
+export interface NativeContext {
+  /** The extern called, by its declared name. */
+  readonly name: string;
+  /**
+   * The type entry the extern's declared result names (a struct, an enum, `Shared` or `Future`);
+   * undefined for any other result, and for a code entry a mock replaced.
+   */
+  readonly resultType: TypeId | undefined;
+  /** The type entry each of the extern's type arguments names, in order (`json.parse<T>`). */
+  readonly typeArguments: readonly (TypeId | undefined)[];
+  /** The Definition's types, which the extern's types index, for building values of them. */
+  readonly types: readonly TypeDefinition[];
+  /** The instance whose code called the native, as its host names it (§9). */
+  readonly instance: string;
+  /** Milliseconds since the Unix epoch at which the current segment started. */
+  readonly segmentStartedAt: bigint;
+  /**
+   * Replaces the value of argument `position`, which the extern takes by `&` (§3.7): the native
+   * receives such an argument's value, and writes the changed one back here.
+   */
+  readonly write: (position: number, value: Value) => void;
+  /**
+   * Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12), without
+   * the innermost `leftOut` frames.
+   */
+  readonly trace: (leftOut?: number) => string;
 }
 
-/** The running instance's slots (§6). */
-interface NativeSlots {
+/** The futures the runtime makes for an extern returning one (§3.6). */
+export interface NativeFutures {
+  /** A future already resolved with `value`. */
+  readonly resolved: (value: Value) => Value;
+  /** A future of the first of `futures` to resolve, with its position (`futures.first`, §3.8). */
+  readonly first: (futures: readonly Value[]) => Value;
+  /** A future that resolves at `at`, in milliseconds since the Unix epoch (`time.at`). */
+  readonly timer: (at: bigint) => Value;
+  /** A future the host fills later, naming it by `token` (§9). */
+  readonly fromHost: (token: string) => Value;
+}
+
+/** The running instance's slots (§6): `put`, `take` and `read` return a handle to its future. */
+export interface NativeSlots {
+  /** A new, empty slot. */
   readonly create: () => Value;
-  readonly operate: (slot: Value, operation: 'put' | 'take' | 'read', value?: Value) => Value;
+  /** The future of putting `value` into `slot`. */
+  readonly put: (slot: Value, value: Value) => Value;
+  /** The future of taking `slot`'s value, which empties it. */
+  readonly take: (slot: Value) => Value;
+  /** The future of reading `slot`'s value, which leaves it full. */
+  readonly read: (slot: Value) => Value;
 }
 
-/** The running instance's weak references (§7). */
+/**
+ * The running instance's weak references (§7). A referent is a handle to a disposable, and each
+ * has one weak reference, which holds nothing.
+ */
 export interface NativeWeakSide {
+  /** The weak reference to `referent`. */
   readonly reference: (referent: Value) => Value;
+  /** A handle to what `weak` refers to, until it is disposed. */
   readonly target: (weak: Value) => Value | undefined;
+  /** A future that resolves when the referent of `weak` is disposed, never if it has none left. */
   readonly watch: (weak: Value) => Value;
+  /** A watch on `weak`, already resolved once its referent is disposed. */
   readonly whenDisposed: (weak: Value) => Value;
 }
 
-/** Base context every native gets. */
-export interface NativeContext {
-  readonly name: string;
-  readonly resultType: TypeId | undefined;
-  readonly typeArguments: readonly (TypeId | undefined)[];
-  readonly types: readonly TypeDefinition[];
-  readonly instance: string;
-  readonly segmentStartedAt: bigint;
-  readonly write: (position: number, value: Value) => void;
-  readonly trace: () => string;
+/**
+ * The running instance's resources (§7): values of a host type a `dispose` makes disposable, each
+ * an object holding its host's JSON, `payload`, made as the value arrives from the host.
+ */
+export interface NativeResources {
+  /** A new resource of the host type entry `type`, holding `payload`; a handle to it. */
+  readonly create: (type: TypeId, payload: unknown) => Value;
+  /** What the resource `handle` points at holds. */
+  readonly payloadOf: (handle: Value) => unknown;
 }
 
-export interface NativeTimers {
-  readonly timer: (at: bigint) => Value;
-}
-export interface NativeFutures {
-  readonly resolved: (value: Value) => Value;
-  readonly first: (futures: readonly Value[]) => Value;
-}
-export interface NativeHostFutures {
-  readonly pending: (token: string) => Value;
+export interface WithFutures {
+  readonly futures: NativeFutures;
 }
 export interface WithSlots {
   readonly slots: NativeSlots;
@@ -72,13 +115,10 @@ export interface WithResources {
   readonly resources: NativeResources;
 }
 
-export type FullNativeContext = NativeContext &
-  NativeTimers &
-  NativeFutures &
-  NativeHostFutures &
-  WithSlots &
-  WithWeakSide &
-  WithResources;
+/** Every capability: what the runtime gives each native. */
+export type NativeCapabilities = WithFutures & WithSlots & WithWeakSide & WithResources;
+
+export type FullNativeContext = NativeContext & NativeCapabilities;
 
 /**
  * A native needing `Context`. The runtime calls every native with the full context, so a native

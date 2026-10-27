@@ -24,9 +24,9 @@ import type { Value } from '../../definition/values.ts';
 import {
   type Native,
   type NativeContext,
-  type NativeHostFutures,
   type Natives,
   Panic,
+  type WithFutures,
   type WithResources,
 } from '../natives.ts';
 
@@ -55,11 +55,11 @@ export type HostExterns = Readonly<Record<string, HostExtern>>;
 /** `host` as natives, by the same keys. */
 export function hostNatives(
   host: HostExterns,
-): Natives<NativeContext & NativeHostFutures & WithResources> {
+): Natives<NativeContext & WithFutures & WithResources> {
   return Object.fromEntries(Object.entries(host).map(([key, extern]) => [key, hostNative(extern)]));
 }
 
-function hostNative(extern: HostExtern): Native<NativeContext & NativeHostFutures & WithResources> {
+function hostNative(extern: HostExtern): Native<NativeContext & WithFutures & WithResources> {
   return (values, context) => {
     const shape = jsonTypeOf(context.types);
     const pendings = new Set<HostPending>();
@@ -89,14 +89,14 @@ function returnsFuture({ resultType, types }: NativeContext): boolean {
 function futureOf(
   given: unknown,
   pendings: ReadonlySet<HostPending>,
-  context: NativeContext & NativeHostFutures,
+  context: NativeContext & WithFutures,
 ): Value {
   if (!pendings.has(given as HostPending)) {
     throw new Panic(
       `The host's ${context.name} gave no pending future, though it returns a Future.`,
     );
   }
-  return context.pending((given as HostPending).token);
+  return context.futures.fromHost((given as HostPending).token);
 }
 
 function resultOf(

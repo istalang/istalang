@@ -4,13 +4,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
-import { checkProgram } from '../compiler/checker/check.ts';
 import { keyOf } from '../compiler/lowering/names.ts';
 import { declaredFunctions } from '../compiler/syntax/declarations.ts';
-import { derivedCodecs } from '../language/well-known.ts';
+import { derivedCodecs, disposeFunction, languageModules } from '../language/well-known.ts';
 import { stdNatives } from './natives.ts';
-import { jsonName, stdSources } from './stdlib-loader.ts';
+import { everyStdModule } from './std-modules.test-kit.ts';
 
 /**
  * Externs without a native, by module and name: the runtime disposes futures and slots itself, so
@@ -18,18 +16,14 @@ import { jsonName, stdSources } from './stdlib-loader.ts';
  * (docs/arch/boundary.md).
  */
 const withoutNative = new Set([
-  'prelude.dispose',
-  ...Object.values(derivedCodecs).map((name) => `${jsonName}.${name}`),
+  `${languageModules.prelude}.${disposeFunction}`,
+  ...Object.values(derivedCodecs).map((name) => `${languageModules.json}.${name}`),
 ]);
 
 describe('std natives', () => {
   it('implement exactly the callable externs the std modules declare, by the keys lowering gives', () => {
-    const imports = Object.keys(stdSources).map((name) => `import * as ${name} from '${name}'`);
-    const program = stdProgramOf({ main: imports.join('\n') });
-    const checker = checkProgram(program);
-    const std = [...program.modules.values()].filter((module) => module.isStd);
-    expect(std.length).toBe(Object.keys(stdSources).length + 1);
-    const callable = std.flatMap((module) =>
+    const { checker, modules } = everyStdModule();
+    const callable = modules.flatMap(([, module]) =>
       declaredFunctions(module.tree.root).flatMap((item) =>
         item.isExtern && !withoutNative.has(`${module.name}.${item.name.text}`)
           ? [keyOf(checker, item, checker.parametersOf(item))]

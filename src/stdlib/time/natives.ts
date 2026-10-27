@@ -8,28 +8,25 @@
  * which only a program's own arithmetic can reach, so writing one panics (§3.12).
  */
 
-import { namedKey, nativeKey, primitiveKey } from '../../definition/extern-key.ts';
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known.ts';
 import {
+  type Native,
   type NativeContext,
   type Natives,
-  type NativeTimers,
   Panic,
+  type WithFutures,
 } from '../../runtime/natives.ts';
-import { fieldOf, int, resultError, resultOkStruct, resultStruct, text } from '../native-values.ts';
-import { parseErrorCode } from '../prelude/text-forms.ts';
-import { timeName } from '../stdlib-loader.ts';
+import { fieldOf, int, okStruct, parseResult, resultStruct, text } from '../native-values.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { durationText, readDuration, readTime, timeText } from './iso.ts';
 
-const timeType = namedKey(qualifiedName(wellKnown.time));
-const durationType = namedKey(qualifiedName(wellKnown.duration));
-const stringType = primitiveKey('string');
+const timeType = knownTypeKey(wellKnown.time);
+const durationType = knownTypeKey(wellKnown.duration);
 
-export const timeNatives: Natives<NativeContext & NativeTimers> = {
-  [nativeKey(timeName, 'now')]: (_arguments, context) =>
-    resultStruct(context, [context.segmentStartedAt]),
-  [nativeKey(timeName, 'at', timeType)]: ([time], context) => context.timer(int(fieldOf(time, 0))),
-  [nativeKey(timeName, 'toString', timeType)]: ([time]) => {
+export const timeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutures> => ({
+  [keys.of('now')]: (_arguments, context) => resultStruct(context, [context.segmentStartedAt]),
+  [keys.of('at', timeType)]: ([time], context) => context.futures.timer(int(fieldOf(time, 0))),
+  [keys.of('toString', timeType)]: ([time]) => {
     const milliseconds = int(fieldOf(time, 0));
     const written = timeText(milliseconds);
     if (written === undefined) {
@@ -37,18 +34,25 @@ export const timeNatives: Natives<NativeContext & NativeTimers> = {
     }
     return written;
   },
-  [nativeKey(timeName, 'toString', durationType)]: ([duration]) =>
-    durationText(int(fieldOf(duration, 0))),
-  [nativeKey(timeName, 'Time.parse', stringType)]: ([source], context) => {
-    const time = readTime(text(source));
-    return time === undefined
-      ? resultError(context, `'${text(source)}' is not an ISO 8601 time.`, parseErrorCode)
-      : resultOkStruct(context, [time]);
-  },
-  [nativeKey(timeName, 'Duration.parse', stringType)]: ([source], context) => {
-    const duration = readDuration(text(source));
-    return duration === undefined
-      ? resultError(context, `'${text(source)}' is not an ISO 8601 duration.`, parseErrorCode)
-      : resultOkStruct(context, [duration]);
-  },
-};
+  [keys.of('toString', durationType)]: ([duration]) => durationText(int(fieldOf(duration, 0))),
+  [keys.ofStatic(wellKnown.time.name, 'parse', 'string')]: parsedStruct(
+    'an ISO 8601 time',
+    readTime,
+  ),
+  [keys.ofStatic(wellKnown.duration.name, 'parse', 'string')]: parsedStruct(
+    'an ISO 8601 duration',
+    readDuration,
+  ),
+});
+
+/** A `parse` reading a struct of one int field, its milliseconds, with `read` (§3.10). */
+function parsedStruct(
+  what: string,
+  read: (source: string) => bigint | undefined,
+): Native<NativeContext> {
+  return ([source], context) => {
+    const milliseconds = read(text(source));
+    const parsed = milliseconds === undefined ? undefined : okStruct(context, [milliseconds]);
+    return parseResult(context, text(source), what, parsed);
+  };
+}
