@@ -6,9 +6,11 @@
  * - A DateTime holds what Temporal's PlainDateTime does, to the millisecond, under the same field
  *   names, read and built by name. Text with a finer fraction is refused rather than rounded, as
  *   `Time.parse` refuses it (iso.ts).
- * - `Zone.parse` and `DateTime.parse` refuse a zone or a date that doesn't exist, so one reaches the
- *   other natives only in a struct the program built itself, which panics (§3.12), as a reading
- *   beyond the years Temporal holds does.
+ * - A Zone holds its canonical id, which only `Zone.parse` and `utc` make, so every zone a native
+ *   is given exists, unless a snapshot moved to a host whose zone data lacks it, which panics.
+ *   `DateTime.parse` refuses a date that doesn't exist, so one reaches the other natives only in a
+ *   struct the program built itself, which panics (§3.12), as a reading beyond the years Temporal
+ *   holds does.
  * - An offset is written to the minute, as ISO 8601 writes one, so a time before a zone's
  *   standard offsets, whose local mean time runs to the second, reads back seconds apart.
  */
@@ -18,13 +20,17 @@ import type { Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import {
+  externOf,
   fieldNamed,
   int,
   type NamedFields,
   okStruct,
   parseResult,
+  resultExtern,
   resultStruct,
+  resultTypeArgument,
   text,
+  textPayloadOf,
 } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { millisecondsOf, resultMilliseconds } from './fields.ts';
@@ -59,18 +65,20 @@ const fieldDigits = {
 /** How Temporal writes the id of a zone that is a fixed UTC offset: `+01:00`. */
 const utcOffset = /^[+-]\d{2}:\d{2}$/u;
 
-/** The field of a `Zone` holding its id (time.ista). */
-const zoneIdField = 'id';
+/** The canonical id of Coordinated Universal Time, as Temporal writes it. */
+const utcId = 'UTC';
 
 export const zoneNatives = (keys: NativeKeys): Natives<NativeContext> => {
   const zoneType = keys.type('Zone');
   const dateTimeType = keys.type('DateTime');
   return {
+    [keys.of('utc')]: (_, context) => resultExtern(context, utcId),
     [keys.ofStatic('Zone', 'parse', 'string')]: ([source], context) => {
       const id = canonicalZone(text(source));
-      const zone = id === undefined ? undefined : okStruct(context, { [zoneIdField]: id });
+      const zone = id === undefined ? undefined : externOf(resultTypeArgument(context, 0), id);
       return parseResult(context, text(source), 'an IANA time zone', zone);
     },
+    [keys.of('toString', zoneType)]: ([zone]) => textPayloadOf(zone),
     [keys.of('toString', dateTimeType)]: ([dateTime], context) =>
       plainOf(context, dateTime).toString(),
     [keys.ofStatic('DateTime', 'parse', 'string')]: ([source], context) => {
@@ -94,7 +102,7 @@ export const zoneNatives = (keys: NativeKeys): Natives<NativeContext> => {
       context,
     ) => {
       const plain = plainOf(context, dateTime);
-      const id = zoneIdOf(context, zone);
+      const id = zoneIdOf(zone);
       const zoned = withinRange(`${plain} in ${id}`, () =>
         plain.toZonedDateTime(id, { disambiguation: 'compatible' }),
       );
@@ -125,14 +133,13 @@ function readPlain(source: string): Temporal.PlainDateTime | undefined {
   return read?.microsecond === 0 && read.nanosecond === 0 ? read : undefined;
 }
 
-/** The zone a `Zone` argument names; a panic when it names none. */
-function zoneIdOf(context: NativeContext, zone: Value | undefined): string {
-  const id = text(fieldNamed(context, zone, zoneIdField));
-  const canonical = canonicalZone(id);
-  if (canonical === undefined) {
-    throw new Panic(`'${id}' is no IANA time zone.`);
+/** The zone a `Zone` argument names; a panic when this host's zone data has none by its id. */
+function zoneIdOf(zone: Value | undefined): string {
+  const id = textPayloadOf(zone);
+  if (canonicalZone(id) === undefined) {
+    throw new Panic(`'${id}' is no IANA time zone on this host.`);
   }
-  return canonical;
+  return id;
 }
 
 /** A `Time` argument read in the zone a `Zone` argument names. */
@@ -142,7 +149,7 @@ function zonedOf(
   zone: Value | undefined,
 ): Temporal.ZonedDateTime {
   const milliseconds = millisecondsOf(context, time);
-  const id = zoneIdOf(context, zone);
+  const id = zoneIdOf(zone);
   return withinRange(`The time ${milliseconds} ms from the epoch`, () =>
     Temporal.Instant.fromEpochMilliseconds(Number(milliseconds)).toZonedDateTimeISO(id),
   );

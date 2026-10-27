@@ -59,11 +59,13 @@ fn Duration.fromJson(value: json.Json, path: string) -> Result<Duration>:
   json.decodeText(value, path)
 
 # Time zones (§3.8). A zone is an IANA name, a DateTime what a wall clock reads, with no zone. The
-# zone rules are the host's time-zone data, so two hosts with different data can disagree.
-struct Zone:
-  id: string
+# zone rules are the host's time-zone data, so two hosts with different data can disagree. A Zone
+# is a type the runtime implements, holding its zone's canonical id, so no code can build one in a
+# form of its own, and `==` and map keys compare zones.
+extern sendable struct Zone
 
-const utc = Zone{id: "UTC"}
+# Coordinated Universal Time.
+extern fn utc() -> Zone
 
 struct DateTime:
   year: int
@@ -74,10 +76,11 @@ struct DateTime:
   second: int = 0
   millisecond: int = 0
 
+# Reads an IANA name in any case; a fixed offset, such as `+01:00`, is no IANA zone.
 extern fn Zone.parse(id: string) -> Result<Zone>
 
-fn toString(self: Zone) -> string:
-  self.id
+# The canonical id: `Europe/Berlin`.
+extern fn toString(self: Zone) -> string
 
 fn toJson(self: Zone) -> json.Json:
   json.encodeText(self)

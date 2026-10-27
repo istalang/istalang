@@ -4,22 +4,23 @@
 # and back at 03:00 on 2026-10-25.
 
 import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
+import * as json from 'json'
 import * as time from 'time'
 import Time, Duration, Zone, DateTime from 'time'
-
-const berlin = Zone{id: "Europe/Berlin"}
 
 # 2026-10-25T12:00:00.000Z
 const noon = Time{value: 1_792_929_600_000}
 
-fn instant(text: string) -> Time:
-  match Time.parse(text):
+fn parsed<T is Parsable>(text: string) -> T:
+  match T.parse(text):
     case Ok{value}: value
     case Err{error}: panic(error.message)
 
-fn nowhere() -> DateTime: noon.inZone(Zone{id: "Mars/Olympus"})
+fn instant(text: string) -> Time: parsed<Time>(text)
 
-fn february30() -> Time: Time.of(DateTime{year: 2026, month: 2, day: 30}, time.utc)
+fn berlin() -> Zone: parsed<Zone>("Europe/Berlin")
+
+fn february30() -> Time: Time.of(DateTime{year: 2026, month: 2, day: 30}, time.utc())
 
 @Suite{"time"}
 fn suite() -> Array<Test>: [
@@ -33,9 +34,16 @@ fn suite() -> Array<Test>: [
     assertEq(compare(noon, noon), 0)
   }),
   group("Zone", [
-    test("parses IANA names in any case, as their canonical id", fn(): {
-      assertEq(Zone.parse("europe/berlin"), Ok{value: berlin})
-      assertEq(string(berlin), "Europe/Berlin")
+    test("parses IANA names in any case, as one zone with its canonical id", fn(): {
+      assertEq(Zone.parse("europe/berlin"), Ok{value: berlin()})
+      assertEq(string(parsed<Zone>("europe/berlin")), "Europe/Berlin")
+      assertEq(Zone.parse("utc"), Ok{value: time.utc()})
+      assertEq(string(time.utc()), "UTC")
+    }),
+    test("crosses as JSON as its canonical id", fn(): {
+      assertEq(json.stringify(berlin()), "\"Europe/Berlin\"")
+      assertEq(json.parse<Zone>("\"europe/berlin\""), Ok{value: berlin()})
+      assert(json.parse<Zone>("\"Mars/Olympus\"") is Err{})
     }),
     test("refuses a name no zone has, and a fixed offset, which no IANA zone is", fn(): {
       assert(Zone.parse("Mars/Olympus") is Err{})
@@ -58,30 +66,29 @@ fn suite() -> Array<Test>: [
     test("adds calendar days at the same wall-clock time", fn(): {
       const evening = DateTime{year: 2026, month: 10, day: 24, hour: 21}
       assertEq(evening.addDays(8), DateTime{year: 2026, month: 11, day: 1, hour: 21})
-      const before = Time.of(evening, berlin)
-      const after = Time.of(evening.addDays(1), berlin)
+      const before = Time.of(evening, berlin())
+      const after = Time.of(evening.addDays(1), berlin())
       assertEq(after.value - before.value, 25 * 3_600_000)
     }),
   ]),
   group("Time in a zone", [
     test("reads the zone's wall clock", fn(): {
-      assertEq(noon.inZone(berlin), DateTime{year: 2026, month: 10, day: 25, hour: 13})
-      assertEq(noon.inZone(time.utc), DateTime{year: 2026, month: 10, day: 25, hour: 12})
+      assertEq(noon.inZone(berlin()), DateTime{year: 2026, month: 10, day: 25, hour: 13})
+      assertEq(noon.inZone(time.utc()), DateTime{year: 2026, month: 10, day: 25, hour: 12})
     }),
     test("formats with the zone's offset, which Time.parse reads back", fn(): {
-      assertEq(noon.format(berlin), "2026-10-25T13:00:00.000+01:00")
-      assertEq(instant(noon.format(berlin)), noon)
+      assertEq(noon.format(berlin()), "2026-10-25T13:00:00.000+01:00")
+      assertEq(instant(noon.format(berlin())), noon)
     }),
     test("of a skipped wall-clock time moves forward by the gap", fn(): {
       const skipped = DateTime{year: 2026, month: 3, day: 29, hour: 2, minute: 30}
-      assertEq(Time.of(skipped, berlin), instant("2026-03-29T01:30:00.000Z"))
+      assertEq(Time.of(skipped, berlin()), instant("2026-03-29T01:30:00.000Z"))
     }),
     test("of a repeated wall-clock time is the earlier", fn(): {
       const repeated = DateTime{year: 2026, month: 10, day: 25, hour: 2, minute: 30}
-      assertEq(Time.of(repeated, berlin), instant("2026-10-25T00:30:00.000Z"))
+      assertEq(Time.of(repeated, berlin()), instant("2026-10-25T00:30:00.000Z"))
     }),
-    test("panics on a zone or a date that doesn't exist", async fn(): {
-      assertEq(await expectPanic(nowhere), "'Mars/Olympus' is no IANA time zone.")
+    test("panics on a date that doesn't exist", async fn(): {
       assertEq(await expectPanic(february30), "There is no date and time 2026-02-30T00:00:00.000.")
     }),
   ]),
