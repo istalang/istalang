@@ -154,7 +154,7 @@ describe('a disposable host type', () => {
         '  Revertible.holding(_sendRevertible(self, msg))',
         '',
         'async fn main() -> Future<int>:',
-        '  fn _ = announcements("ann").sendRevertible("hello")',
+        '  hold _ = announcements("ann").sendRevertible("hello")',
         '  await gate()',
         '  1',
       ].join('\n'),

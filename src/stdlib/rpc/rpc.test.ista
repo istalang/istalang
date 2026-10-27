@@ -16,7 +16,7 @@ async fn servingTwoCalls() -> Future<(Array<Result<int>>, Array<string>)>:
   const method = rpc.create<int, int>()
   const gate = Slot.create<unit>()
   let log: Array<string> = []
-  fn _ = method.onMessage(async fn(n: int): { log.push("start " + n); await gate.take(); log.push("end " + n); n })
+  hold _ = method.onMessage(async fn(n: int): { log.push("start " + n); await gate.take(); log.push("end " + n); n })
   const (first, second) = (method.call(1), method.call(2))
   await runtime.commit()
   await gate.put(())
@@ -28,14 +28,14 @@ async fn servingTwoCalls() -> Future<(Array<Result<int>>, Array<string>)>:
 fn rpcSuite() -> Array<Test>: [
   test("replies with what the handler returns", async fn(): {
     const double = rpc.create<int, int>()
-    fn _ = double.onMessage(fn(n: int): n * 2)
+    hold _ = double.onMessage(fn(n: int): n * 2)
     assertEq(await double.call(21), Ok{(42)})
   }),
   ...runAndReRun("serves calls one at a time, in the order they arrived", servingTwoCalls, ([Ok{(1)}, Ok{(2)}], ["start 1", "end 1", "start 2", "end 2"])),
   test("shares the calls among its servers, each call going to one", async fn(): {
     const method = rpc.create<int, string>()
-    fn _ = method.onMessage(fn(n: int): "a" + n)
-    fn _ = method.onMessage(fn(n: int): "b" + n)
+    hold _ = method.onMessage(fn(n: int): "a" + n)
+    hold _ = method.onMessage(fn(n: int): "b" + n)
     await runtime.commit()
     const (first, second) = (method.call(1), method.call(2))
     assertEq([await first, await second], [Ok{("a1")}, Ok{("b2")}])
@@ -57,7 +57,7 @@ fn rpcSuite() -> Array<Test>: [
     const method = rpc.create<int, int>()
     let served: Array<int> = []
     drop method.call(1)
-    fn _ = method.onMessage(fn(n: int): { served.push(n); n })
+    hold _ = method.onMessage(fn(n: int): { served.push(n); n })
     assertEq(await method.call(2), Ok{(2)})
     assertEq(served, [2])
   }),

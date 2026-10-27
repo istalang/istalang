@@ -178,7 +178,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Top-level `const` (§3) | computed while compiling into a constant; reading one is a `constant` instruction, like a literal; a lambda in one is a closure constant of no captures, its function an entry of its own |
 | Block end, `break`, `continue` (§3.4, §4) | `release` of the block's registers, then `jump` where needed |
 | Statement end, a header's end (§7) | `release` of the temporaries it left; a header's on every path out of it, before the body |
-| `hold let`, `hold const`, `hold _` (§3.4; `fn let` spelled the old way) | `keep` into the hold scope's list, then `release`, at the block's end |
+| `hold let`, `hold const`, `hold _` (§3.4) | `keep` into the hold scope's list, then `release`, at the block's end |
 | `_ = e` (§7) | an unnamed register, released at the block's end |
 | `drop x`, `drop e` (§7) | `release` of `x`; for an expression, its temporaries at the statement's end |
 | Destructuring `a, b = t`, `const Pair{first} = p`, at any depth (§3.15) | the value once, then `field` reads along each target's path, and a `move` or `store` per target |

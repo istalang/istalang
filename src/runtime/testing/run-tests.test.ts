@@ -131,8 +131,8 @@ async fn parent() -> Future<string>:
 
 async fn everywhere():
   const charged = mock(charge, fn(amount: int): "charged " + amount)
-  fn _ = mock(greet, fn(): "hi")
-  fn _ = mock(time.now, fn(): Time{value: 42})
+  hold _ = mock(greet, fn(): "hi")
+  hold _ = mock(time.now, fn(): Time{value: 42})
   assertEq(await report(), "hi charged 5 42")
   assertEq(await spawn parent().result(), Ok{"hi charged 5 42"})
   await time.delay(1s)
@@ -151,7 +151,7 @@ fn one(a: int) -> int: a
 fn two(a: int, b: string) -> int: a
 
 async fn released():
-  fn _ = mock(greet, fn(): "outer")
+  hold _ = mock(greet, fn(): "outer")
   const inner = mock(greet, fn(): "inner")
   assertEq(greet(), "inner")
   drop inner
@@ -185,11 +185,11 @@ async fn describes() -> Future<string>:
   describe(42)
 
 async fn native():
-  fn _ = mock(describe, toString)
+  hold _ = mock(describe, toString)
   assertEq(await spawn describes().result(), Ok{"42"})
 
 async fn breaking():
-  fn _ = mock(describe, fn(n: int) -> string: panic("the replacement broke"))
+  hold _ = mock(describe, fn(n: int) -> string: panic("the replacement broke"))
   drop await spawn describes().result()
 
 @Suite{"replacements"}
@@ -217,8 +217,8 @@ async fn pollsThenWaits() -> Future<int>:
 
 async fn posted():
   const fake = FakeQueue<Queue<int>, int>{make: handle}
-  fn _ = mock(queueOf, fake.open)
-  fn _ = mock(receive, fake.receive)
+  hold _ = mock(queueOf, fake.open)
+  hold _ = mock(receive, fake.receive)
   const started = spawn pollsThenWaits()
   await started.idle()
   fake.post("q", 5)
@@ -237,7 +237,7 @@ fn suite() -> Array<Test>: [test("posted after a lost select", posted)]
 fn greet() -> string: "hello"
 
 async fn failsMocked() -> Future<unit>:
-  fn _ = mock(greet, fn(): "mocked")
+  hold _ = mock(greet, fn(): "mocked")
   panic("failed")
 
 async fn unmocked():
@@ -290,9 +290,9 @@ async fn wakesAndCalls():
 
 async fn idleAfterCalls():
   const clock = FakeClock{start: Time{value: 0}}
-  fn _ = mock(time.now, clock.now)
-  fn _ = mock(time.at, clock.at)
-  fn _ = mock(first, fn(): 10)
+  hold _ = mock(time.now, clock.now)
+  hold _ = mock(time.at, clock.at)
+  hold _ = mock(first, fn(): 10)
   const seconds = mock(second, fn(): 20)
   const started = spawn wakesAndCalls()
   await started.idle()
@@ -372,8 +372,8 @@ async fn opens() -> Future<string>:
 async fn handles():
   const queue = handle<Queue>()
   assert(queue != handle<Queue>())
-  fn _ = mock(open, fn(): queue)
-  fn _ = mock(name, fn(given: Queue): if given == queue: "same" else: "other")
+  hold _ = mock(open, fn(): queue)
+  hold _ = mock(name, fn(given: Queue): if given == queue: "same" else: "other")
   assertEq(await spawn opens().result(), Ok{"same"})
 
 @Suite{"handles"}
@@ -395,12 +395,12 @@ async fn opensAndLets() -> Future<unit>:
 
 async fn unmockedDispose():
   const queue = handle<Queue>()
-  fn _ = mock(open, fn(): queue)
+  hold _ = mock(open, fn(): queue)
   drop await spawn opensAndLets().result()
 
 async fn mockedDispose():
   const queue = handle<Queue>()
-  fn _ = mock(open, fn(): queue)
+  hold _ = mock(open, fn(): queue)
   const disposed = mock(dispose, fn(given: Queue): ())
   drop await spawn opensAndLets().result()
   assert(disposed.calls() == [queue])
@@ -421,11 +421,11 @@ extern fn dispose(self: Sent)
 extern fn post(n: int) -> Sent
 
 async fn posts() -> Future<unit>:
-  fn _ = post(1)
-  fn _ = post(2)
+  hold _ = post(1)
+  hold _ = post(2)
 
 async fn handedOut():
-  fn _ = mock(post, fn(n: int): handle<Sent>())
+  hold _ = mock(post, fn(n: int): handle<Sent>())
   const disposed = mock(dispose, fn(given: Sent): ())
   drop await spawn posts().result()
   assertEq(disposed.calls().length(), 2)

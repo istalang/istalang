@@ -1,6 +1,6 @@
 # outcome: "stopped 1, reassigned, block done, end, stopped 5, stopped 4, stopped 3, stopped 2"
 # `hold let`, `hold const` and `hold _` keep what they hold when their block ends, until the
-# function ends, where everything left is released newest first (§7), as `fn let` does.
+# function ends, where everything left is released newest first (§7).
 
 import * as time from 'time'
 

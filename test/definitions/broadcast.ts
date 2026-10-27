@@ -6,7 +6,7 @@
  * - an async function that awaits
  * - extern calls with host types and type arguments
  * - a loop over an array, reading its `length` and each element by `index`
- * - `fn _` holdings that survive their iteration (`keep` into the list in register 15), released
+ * - `hold _` holdings that survive their iteration (`keep` into the list in register 15), released
  *   only when `announce` returns, which is what retracts the unread copies
  *
  * Its `Revertible` stands in for the real one: an extern type the runtime disposes, whose values
@@ -41,7 +41,7 @@ extern fn announcements(user: string) -> Queue<Announcement>
 
 async fn announce(text: string, users: Array<string>, visibleFor: Duration):
   for user in users:
-    fn _ = announcements(user).sendRevertible(Announcement{text: text})
+    hold _ = announcements(user).sendRevertible(Announcement{text: text})
   await time.delay(visibleFor)
 `;
 
@@ -268,7 +268,7 @@ export const broadcastDefinition: Definition = {
           callee: functionCallee(sendRevertible),
           arguments: [v(9), v(10)],
         },
-        { kind: 'keep', span: at('fn _ ='), registers: [11], into: 15 },
+        { kind: 'keep', span: at('hold _ ='), registers: [11], into: 15 },
         { kind: 'release', span: send, registers: [8, 9, 10, 11] },
         { kind: 'constant', span: loop, dst: 12, constant: one },
         {

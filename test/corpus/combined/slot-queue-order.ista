@@ -13,10 +13,10 @@ async fn reader(log: Inbox<string>, s: Slot<int>, name: string, take: bool):
 async fn main() -> Future<Array<string>>:
     const log = Inbox.create<string>()
     const s = Slot.create<int>()
-    fn _ = reader(log, s, "r1", false)
-    fn _ = reader(log, s, "t1", true)
-    fn _ = reader(log, s, "r2", false)
-    fn _ = reader(log, s, "t2", true)
+    hold _ = reader(log, s, "r1", false)
+    hold _ = reader(log, s, "t1", true)
+    hold _ = reader(log, s, "r2", false)
+    hold _ = reader(log, s, "t2", true)
     const p1 = s.put(10)
     const p2 = s.put(20)
     await p1

@@ -119,7 +119,7 @@ fn assertions() -> Array<Test>: [
 fn clocks() -> Array<Test>: [
   test("stands still at its start until advanced", fn(): {
     const clock = FakeClock{start: Time{value: 7}}
-    fn _ = mock(time.now, clock.now)
+    hold _ = mock(time.now, clock.now)
     assertEq(time.now(), Time{value: 7})
     clock.advance(Duration{value: 3})
     assertEq(time.now(), Time{value: 10})
@@ -131,8 +131,8 @@ fn clocks() -> Array<Test>: [
   }),
   test("fills a deadline once advanced to it, in an instance the test started", async fn(): {
     const clock = FakeClock{start: Time{value: 0}}
-    fn _ = mock(time.now, clock.now)
-    fn _ = mock(time.at, clock.at)
+    hold _ = mock(time.now, clock.now)
+    hold _ = mock(time.at, clock.at)
     const started = spawn waitsAday()
     await started.idle()
     clock.advance(Duration{value: 86_399_999})
@@ -143,7 +143,7 @@ fn clocks() -> Array<Test>: [
   }),
   test("fills deadlines earliest first, ties in the order they were set", async fn(): {
     const clock = FakeClock{start: Time{value: 0}}
-    fn _ = mock(time.at, clock.at)
+    hold _ = mock(time.at, clock.at)
     const records = mock(record, fn(name: string): ())
     const late = spawn waitsThenRecords("late", 2)
     await late.idle()
@@ -157,7 +157,7 @@ fn clocks() -> Array<Test>: [
   }),
   test("resolves a deadline already reached at once", async fn(): {
     const clock = FakeClock{start: Time{value: 5}}
-    fn _ = mock(time.at, clock.at)
+    hold _ = mock(time.at, clock.at)
     await time.at(Time{value: 5})
     await time.at(Time{value: 1})
   }),
@@ -171,9 +171,9 @@ fn clocks() -> Array<Test>: [
 fn queues() -> Array<Test>: [
   test("opens one queue per key, with an inbox behind each", async fn(): {
     const fake = FakeQueue<Queue<int>, int>{make: handle}
-    fn _ = mock(queueOf, fake.open)
-    fn _ = mock(send, fake.send)
-    fn _ = mock(receive, fake.receive)
+    hold _ = mock(queueOf, fake.open)
+    hold _ = mock(send, fake.send)
+    hold _ = mock(receive, fake.receive)
     assert(queueOf("in") == queueOf("in") and queueOf("in") != queueOf("out"))
     const started = spawn relays("in")
     await started.idle()

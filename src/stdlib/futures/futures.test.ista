@@ -21,8 +21,8 @@ async fn later<T>(slot: Slot<T>, value: T) -> Future<unit>:
 # A clock standing still at 0 until the test advances it, for `timeout` and `retry`.
 async fn withClock(body: async fn(FakeClock) -> unit):
   const clock = FakeClock{start: time.Time{value: 0}}
-  fn _ = mock(time.now, clock.now)
-  fn _ = mock(time.at, clock.at)
+  hold _ = mock(time.now, clock.now)
+  hold _ = mock(time.at, clock.at)
   await body(clock)
 
 async fn allArrivingOutOfOrder() -> Future<Result<Array<int>, string>>:

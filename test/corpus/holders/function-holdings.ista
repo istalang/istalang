@@ -1,6 +1,6 @@
 # outcome: "stopped 1, reassigned, block done, end a, stopped 5, stopped 4, stopped 3, stopped 2, stopped 8, body, arr, stopped 11, stopped 10, arr dropped, copy, m set, stopped 12, copy dropped, stopped 13"
-# `fn let` and `fn const` keep what they hold when their block ends, until the function ends, where
-# everything left is released newest first (§3.4, §7); a value a `fn let` lost to an assignment is
+# `hold let` and `hold const` keep what they hold when their block ends, until the function ends, where
+# everything left is released newest first (§3.4, §7); a value a `hold let` lost to an assignment is
 # released at that assignment. A header's temporaries end before the body, dropping an array
 # releases its elements newest first, and a value another holder still reaches (a copy out of a
 # `Shared`) survives being overwritten there until the copy goes.
@@ -15,13 +15,13 @@ async fn sleeper(id: int, log: Shared<Array<string>>):
   await time.delay(1h)
 
 async fn a(log: Shared<Array<string>>):
-  fn let h = sleeper(1, log)
+  hold let h = sleeper(1, log)
   h = sleeper(2, log)
   note(log, "reassigned")
   if true:
-    fn const k = sleeper(3, log)
+    hold const k = sleeper(3, log)
   note(log, "block done")
-  fn _ = sleeper(4, log)
+  hold _ = sleeper(4, log)
   _ = sleeper(5, log)
   note(log, "end a")
 

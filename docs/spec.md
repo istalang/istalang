@@ -13,8 +13,8 @@ const limit: int = 50_000          # immutable, deeply
 let count = 0                      # mutable; type inferred
 let a, b = (1, "x")                # tuple destructuring
 _ = startSomething()               # unnamed variable: held until the block ends
-fn _ = startJob()                  # held until the function ends, even inside a loop
-fn let pending = 0                 # name block scoped, holdings function scoped
+hold _ = startJob()                # held until the function ends, even inside a loop
+hold let pending = 0               # name block scoped, holdings function scoped
 drop audit.record(event)           # discard a must-use value right away
 const u = new Shared{value: user}  # a shared struct: a handle to its fields
 u->value.name = "x"                # read or write behind it with -> and *
@@ -315,11 +315,11 @@ roles.push("cfo")                  # compile error: roles is const
 
 Variables are block scoped: a variable is visible only inside the block that declares it and in blocks nested within it. A variable declared inside an `if` body does not exist after the `if`. A loop variable (`for x in xs`) and every variable declared in a loop body are fresh on each iteration, so closures created in different iterations never share them. Unlike Python, assigning to an undeclared name is a compile error. Declaring a name twice in one block is a compile error too, also for two local functions, which therefore can't be overloaded; a nested block may shadow a name from an enclosing one. Types and values share one namespace per scope.
 
-**Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§7). A loop body is a block, so each iteration releases its own holdings. `fn let` and `fn const` declare a variable whose *name* is still block scoped but whose holdings last until the enclosing function ends, which is how a loop keeps what it starts: what the variable holds when its block ends is kept, while a value it held before and lost to an assignment was released then, as any overwritten value is. The common unnamed case has a short form: `fn _ = expr` means `fn const _ = expr`.
+**Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§7). A loop body is a block, so each iteration releases its own holdings. `hold let` and `hold const` declare a variable whose *name* is still block scoped but whose holdings last until the enclosing function ends, which is how a loop keeps what it starts: what the variable holds when its block ends is kept, while a value it held before and lost to an assignment was released then, as any overwritten value is. The common unnamed case has a short form: `hold _ = expr` means `hold const _ = expr`.
 
 ```python statements
 for role in roles:
-    fn _ = reviewQueue(role).sendRevertible(request)   # revertible until the function returns
+    hold _ = reviewQueue(role).sendRevertible(request) # revertible until the function returns
 ```
 
 ### 3.5 Generics
@@ -1026,7 +1026,7 @@ const next: Verdict = await box.receive()
 - **Capacity.** An inbox is unbounded, so `send` never waits; it returns `unit`.
 - **A receive is a wait on a slot.** `receive()` returns the future of a `take`, not of an async call, so a receive that loses a `select` and is released consumes nothing.
 - **Durable messages** live until they are received, or until the inbox is disposed.
-- **Revertible messages** last as long as the `Revertible<T>` holder that `sendRevertible` returns: kept in `_`, it lasts until the sending block ends, with `fn _` until the sending function ends, and stored elsewhere, as long as it is held there. When the holder is released while the message is still unread, the message is retracted. The holder doesn't keep the inbox alive.
+- **Revertible messages** last as long as the `Revertible<T>` holder that `sendRevertible` returns: kept in `_`, it lasts until the sending block ends, with `hold _` until the sending function ends, and stored elsewhere, as long as it is held there. When the holder is released while the message is still unread, the message is retracted. The holder doesn't keep the inbox alive.
 - **Receiving a revertible message** makes it final, so once received, it can't be retracted. A retracted message is removed, and everything else keeps its order.
 - **`Revertible<T>`** is written in the language too: `shared struct Revertible<T> { retract: fn() -> unit }`, made disposable by the `inbox` module's `dispose`, which calls its `retract`. Whatever queue makes a holder supplies its own retraction, so an inbox, a fan-out and a queue the host provides all hand out the same type. A host's revertible send is a disposable host type (§3.6), and `Revertible.holding(sent)` makes a holder whose retraction lets go of it, which disposes it and so tells the host (§12.1).
 
@@ -1062,7 +1062,7 @@ trait Disposable:
     fn dispose(self: Self)
 ```
 
-**Holders.** A disposable value is held by whatever the running instance can still reach it through: variables (`_` included), struct fields, array and map elements, closure captures and values waiting in a slot, of the executions that are live, and through other values held so. Copying a value that contains a disposable handle adds a holder, overwriting a variable or field releases the old value, and returning a value hands it to the caller. When a block ends, it releases everything its variables hold, except `fn let` and `fn const` variables, which the enclosing function releases when it ends (§3.4); every disposable that has just lost its last holder is disposed. **Temporaries**, such as the result of `parent.deref()` used inside one expression, are released at the end of their statement. The temporaries of a header, such as an `if` or `while` condition or a `match` subject, are released when it has been evaluated, before the body runs.
+**Holders.** A disposable value is held by whatever the running instance can still reach it through: variables (`_` included), struct fields, array and map elements, closure captures and values waiting in a slot, of the executions that are live, and through other values held so. Copying a value that contains a disposable handle adds a holder, overwriting a variable or field releases the old value, and returning a value hands it to the caller. When a block ends, it releases everything its variables hold, except `hold let` and `hold const` variables, which the enclosing function releases when it ends (§3.4); every disposable that has just lost its last holder is disposed. **Temporaries**, such as the result of `parent.deref()` used inside one expression, are released at the end of their statement. The temporaries of a header, such as an `if` or `while` condition or a `match` subject, are released when it has been evaluated, before the body runs.
 
 Some holds are implicit:
 
@@ -1071,7 +1071,7 @@ Some holds are implicit:
 - A `futures.first` holds the futures it races, and a resolved future holds its value.
 - A `WeakRef` and a `disposed()` future watch what they refer to without holding it.
 
-**Unnamed and dropped values.** A value that must be used (a future, a `Result` or a disposable) is a compile error when left as a bare expression. `_ = expr` keeps it in an unnamed variable, so it lasts until the block ends, and `fn _ = expr` until the function ends. `drop expr` says "I don't need this": a disposable is disposed right away if nothing else holds it, and anything else is simply discarded. A typical use is a best-effort call whose failure doesn't matter, such as `drop audit.record(event)`, which ignores its `Result` on purpose. `drop x` releases the variable `x`, which can't be used afterwards: a use that some path reaches from the `drop` is a compile error, unless a `let` is assigned again first, and a variable declared again, as in a loop's next iteration, is a fresh one. Only a variable the function holds itself can be dropped: not one a closure captured from outside it, not a reference parameter, and not a top-level constant. Neither ever makes a disposed value observable.
+**Unnamed and dropped values.** A value that must be used (a future, a `Result` or a disposable) is a compile error when left as a bare expression. `_ = expr` keeps it in an unnamed variable, so it lasts until the block ends, and `hold _ = expr` until the function ends. `drop expr` says "I don't need this": a disposable is disposed right away if nothing else holds it, and anything else is simply discarded. A typical use is a best-effort call whose failure doesn't matter, such as `drop audit.record(event)`, which ignores its `Result` on purpose. `drop x` releases the variable `x`, which can't be used afterwards: a use that some path reaches from the `drop` is a compile error, unless a `let` is assigned again first, and a variable declared again, as in a loop's next iteration, is a fresh one. Only a variable the function holds itself can be dropped: not one a closure captured from outside it, not a reference parameter, and not a top-level constant. Neither ever makes a disposed value observable.
 
 In the common case nothing is stored anywhere else, so a disposable lives exactly as long as the function that created it. That isn't forced, though: storing, returning or sending a disposable keeps it alive, and doing so is the developer's choice.
 
@@ -1139,13 +1139,13 @@ async fn reserveAndShip(item: Item):
     shipped = true
 ```
 
-**Example.** `processAll` keeps every job it starts with `fn _`, and disposes its inbox, and any job still running, as soon as it returns:
+**Example.** `processAll` keeps every job it starts with `hold _`, and disposes its inbox, and any job still running, as soon as it returns:
 
 ```python
 async fn processAll(jobs: Array<Job>) -> Future<Array<Outcome>>:
     const results = Inbox.create<Outcome>()
     for job in jobs:
-        fn _ = runJob(job, results)         # runs concurrently until processAll returns
+        hold _ = runJob(job, results)       # runs concurrently until processAll returns
     let outcomes: Array<Outcome> = []
     while outcomes.length() < jobs.length():
         outcomes.push(await results.receive())
@@ -1297,8 +1297,8 @@ fn approvalSuite() -> Array<Test>: [
 ```python
 async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
     const clock = FakeClock{start: Time{value: 0}}
-    fn _ = mock(time.now, clock.now)
-    fn _ = mock(time.at, clock.at)
+    hold _ = mock(time.now, clock.now)
+    hold _ = mock(time.at, clock.at)
     await test(PurchaseEnv{clock})
 ```
 
@@ -1315,8 +1315,8 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
 
 ```python statements
 const verdictQueues = FakeQueue<Queue<Verdict>, Verdict>{make: handle}
-fn _ = mock(verdicts, verdictQueues.open)
-fn _ = mock(receive, verdictQueues.receive)
+hold _ = mock(verdicts, verdictQueues.open)
+hold _ = mock(receive, verdictQueues.receive)
 verdictQueues.post("p1", Verdict{role: "legal", ok: true, comment: ""})
 ```
 
@@ -1463,12 +1463,12 @@ fn charge(req: PurchaseRequest) -> ChargeResult:
             ChargeResult{ok: false, receipt: error.message}
 ```
 
-**Parallel approval.** Fan-out uses revertible sends into the reviewers' queues, kept with `fn _` so they stay revertible until `approve` returns, although they are sent inside loops. Verdicts come back through the host-provided `verdicts` queue, because the reviewers' side runs in separate instances (§6). The join is a `select` loop that reuses the deadline and reminder futures.
+**Parallel approval.** Fan-out uses revertible sends into the reviewers' queues, kept with `hold _` so they stay revertible until `approve` returns, although they are sent inside loops. Verdicts come back through the host-provided `verdicts` queue, because the reviewers' side runs in separate instances (§6). The join is a `select` loop that reuses the deadline and reminder futures.
 
 ```python
 async fn approve(req: PurchaseRequest, roles: Array<string>) -> Future<string>:
     for role in roles:
-        fn _ = reviewQueue(role).sendRevertible(
+        hold _ = reviewQueue(role).sendRevertible(
                 ReviewRequest{purchaseId: req.id, item: req.item, amount: req.amount})
 
     const deadline: Future<unit> = time.delay(5d)
@@ -1488,7 +1488,7 @@ async fn approve(req: PurchaseRequest, roles: Array<string>) -> Future<string>:
             case reminder:
                 for role in roles:
                     if not answered.has(role):
-                        fn _ = notifications(role).sendRevertible(
+                        hold _ = notifications(role).sendRevertible(
                                 Notice{text: "Purchase " + req.id + " awaits your review"})
                 reminder = time.delay(1d)
     "approved"
@@ -1519,7 +1519,7 @@ extern fn announcements(user: string) -> Queue<Announcement>   # Queue as declar
 
 async fn announce(text: string, users: Array<string>, visibleFor: time.Duration):
     for user in users:
-        fn _ = announcements(user).sendRevertible(Announcement{text: text})
+        hold _ = announcements(user).sendRevertible(Announcement{text: text})
     await time.delay(visibleFor)
     # function ends: every unread copy is retracted
 ```

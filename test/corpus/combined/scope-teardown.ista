@@ -1,5 +1,5 @@
 # outcome: ["job 1","job 2","alive","worker disposing","defer2","defer1","scope 3"]
-# QA M3 (§3.4, §6, §7, §8): a worker held by `fn _` sees `disposing()` when `scope` returns, ahead of the defers (reverse creation order); the watcher held by a `_` of the same block dies with it, so `disposed()` never logs. `scope` waits for the worker to report both jobs, not for a time, so a slow machine can't reorder them.
+# QA M3 (§3.4, §6, §7, §8): a worker held by `hold _` sees `disposing()` when `scope` returns, ahead of the defers (reverse creation order); the watcher held by a `_` of the same block dies with it, so `disposed()` never logs. `scope` waits for the worker to report both jobs, not for a time, so a slow machine can't reorder them.
 import Inbox, Revertible from 'inbox'
 import * as time from 'time'
 
@@ -24,7 +24,7 @@ async fn scope(log: Inbox<string>) -> Future<int>:
     _ = watcher(log, wk)
     defer fn(): log.send("defer1")
     defer fn(): log.send("defer2")
-    fn _ = worker(log, jobs, done)
+    hold _ = worker(log, jobs, done)
     jobs.send(1)
     jobs.send(2)
     _ = await done.receive()

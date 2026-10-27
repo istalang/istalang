@@ -254,7 +254,7 @@ The runtime disposes a resource, such as an unfinished call's future, a slot, an
 
 ```python
 _ = startJob()              # held until this block ends
-fn _ = startJob()           # held until the function ends, even when written in a loop
+hold _ = startJob()         # held until the function ends, even when written in a loop
 drop x                      # release now
 defer fn(): log("exited")   # runs when the block ends, however it ends
 ```
@@ -262,7 +262,7 @@ defer fn(): log("exited")   # runs when the block ends, however it ends
 ```python
 async fn approve(req: Req, roles: Array<string>) -> Future<string>:
     for role in roles:
-        fn _ = reviewQueue(role).sendRevertible(req)   # kept until approve returns
+        hold _ = reviewQueue(role).sendRevertible(req) # kept until approve returns
     …
     # when approve returns by any path, every unread review request is retracted
 ```
@@ -311,7 +311,7 @@ fn suite() -> Array<Test>: [
 ```
 
 - **Isolation.** Each test runs in a fresh instance, and only `*.test.ista` files may import `testing`.
-- **Mocks.** `fn _ = mock(chargeCard, fakeCharge)` replaces a function while the mock is held, and `FakeClock` controls time by mocking `time.now` and `time.at`.
+- **Mocks.** `hold _ = mock(chargeCard, fakeCharge)` replaces a function while the mock is held, and `FakeClock` controls time by mocking `time.now` and `time.at`.
 - **Crash testing.** `testing.start(f, args…, crashEveryAwait = true)` re-runs every segment once before committing it, which catches extern calls that aren't idempotent.
 - **Waypoints.** `@Waypoint{"approval"}` on an `await` names the spot, for `t.reaches("approval")` and for operators.
 
@@ -365,7 +365,7 @@ fn suite() -> Array<Test>: [
 - An `await` inside a `disposing()` case aborts the call; the compiler warns about it.
 
 **Lifetimes**
-- `_ = q.sendRevertible(m)` **inside a loop** retracts the message at the end of each iteration. Use `fn _` to keep it until the function returns.
+- `_ = q.sendRevertible(m)` **inside a loop** retracts the message at the end of each iteration. Use `hold _` to keep it until the function returns.
 - `_ = slowCall()` stops that call when the block ends, unless it has finished by then.
 - Temporaries are released at the end of their statement, and an `if` or `while` condition's temporaries before its body runs.
 - When `main`, or any instance's root function, returns, everything it holds is disposed.

@@ -67,7 +67,7 @@ fn suite() -> Array<Test>: [
     assertEq([for each in draws if each < 0.0 or each >= 1.0: each], [])
   }),
   test("a mocked integer fixes fraction too", fn(): {
-    fn _ = mock(random.integer, zero)
+    hold _ = mock(random.integer, zero)
     assertEq(random.fraction(), 0.0)
   }),
   test("uuid is a version 4 UUID in lowercase, different each time", fn(): {

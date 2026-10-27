@@ -3,7 +3,7 @@
 # loop releases its own: an async call held by `_` in a loop body is disposed at the end of its
 # pass, stopped at the await it waits at, and its defers run. Overwriting a variable releases the
 # old value, `drop x` releases `x` at once, and a temporary ends with its statement. Setting a
-# `Shared` holding the only handle to `none` releases it, as §7 stops a subscription. A `fn _`
+# `Shared` holding the only handle to `none` releases it, as §7 stops a subscription. A `hold _`
 # holding lasts until its function returns, across its awaits, and is disposed newest first then.
 
 import * as time from 'time'
@@ -41,7 +41,7 @@ async fn shared(log: Shared<Array<string>>):
 
 async fn kept(log: Shared<Array<string>>):
   for i in 0..2:
-    fn _ = sleeper(40 + i, log)
+    hold _ = sleeper(40 + i, log)
   await time.delay(1ms)
   note(log, "kept until return")
 

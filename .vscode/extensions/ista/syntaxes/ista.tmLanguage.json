@@ -60,7 +60,7 @@
           }
         },
         {
-          "comment": "Only `fn name(` and `fn name<` declare: `fn x: x > 0` is a lambda, `fn let` a hold.",
+          "comment": "Only `fn name(` and `fn name<` declare: `fn x: x > 0` is a lambda.",
           "match": "\\b(fn)\\s+(?:([A-Za-z_][A-Za-z0-9_]*)(\\.))?([A-Za-z_][A-Za-z0-9_]*)(?=\\s*[(<])",
           "captures": {
             "1": { "name": "storage.type.function.ista" },
