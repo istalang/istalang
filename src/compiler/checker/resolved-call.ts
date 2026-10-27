@@ -45,6 +45,8 @@ interface RequirementCall extends WrittenAs {
   readonly requirement: RequirementOrigin;
   /** The requirement's own type arguments, when the required function is generic. */
   readonly typeArguments: readonly Type[];
+  /** The witnesses of the constraints on those type arguments, as the call meets them. */
+  readonly witnesses: Witnesses;
 }
 
 /**

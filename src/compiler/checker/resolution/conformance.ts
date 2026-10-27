@@ -98,7 +98,7 @@ function instantiateAt(
   depth: number,
 ): Instantiation | Failure {
   const { checker } = site;
-  const { signature, inference, candidate } = application;
+  const { signature, inference } = application;
   const { declaration, typeParameters } = signature;
   if (expected !== undefined && typeParameters.some((each) => !inference.boundOf(each))) {
     inference.matchExactly(signature.result(), expected);
@@ -110,10 +110,7 @@ function instantiateAt(
     return 'failed';
   }
   const { typeArguments, substitution } = completion;
-  const witnesses =
-    candidate.requirement === undefined
-      ? witnessesOf(site, typeParameters, completion, depth)
-      : new Map();
+  const witnesses = witnessesOf(site, typeParameters, completion, depth);
   return isFailure(witnesses) ? witnesses : { typeArguments, substitution, witnesses };
 }
 

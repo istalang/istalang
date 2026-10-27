@@ -17,18 +17,12 @@ import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
-import {
-  type AnyType,
-  sameType,
-  substitute,
-  substitutionFor,
-  type Type,
-} from '../../checker/types/type.ts';
+import { type AnyType, sameType, type Type } from '../../checker/types/type.ts';
 import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
-import { closeCall, type Dispatch } from '../instances.ts';
+import { closeWitness, type Dispatch } from '../instances.ts';
 import { spelledType } from '../names.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
 
@@ -87,7 +81,6 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
       ? { kind: 'reference', place: { register, path: [...path] } }
       : register;
   const rest = others.map((register, index) => passed(register, [], index + 1));
-  const own = substitutionFor(required.typeParameters, dispatch.typeArguments);
   switchOverMembers(code, on, receiver, (type) => {
     const witness = checker.memberWitnesses(on, constraint, type)[member];
     if (witness === undefined) {
@@ -95,9 +88,8 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
         `${spelledType(checker, type)} meets ${spelledType(checker, on)} without '${required.name.text}'.`,
       );
     }
-    const typeArguments = witness.typeArguments.map((each) => substitute(each, own));
     const self = references[0] === true ? passed(receiver, [0], 0) : code.field(receiver, 0);
-    const result = code.call(closeCall({ ...witness, typeArguments }, undefined), [self, ...rest]);
+    const result = code.call(closeWitness(witness, dispatch), [self, ...rest]);
     code.return(required.isAsync ? code.await(result) : result);
   });
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));

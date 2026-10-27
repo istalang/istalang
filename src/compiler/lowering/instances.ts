@@ -75,7 +75,9 @@ export function rootInstance(checker: Checker, declaration: FunctionDeclaration)
 }
 
 /** How the instance maps its declaration's type parameters. */
-export function substitutionOf(instance: FunctionInstance): Substitution {
+export function substitutionOf(
+  instance: Pick<FunctionInstance, 'declaration' | 'typeArguments'>,
+): Substitution {
   return substitutionFor(instance.declaration.typeParameters, instance.typeArguments);
 }
 
@@ -141,7 +143,8 @@ export type ClosedCall =
 
 /**
  * A call dispatched on an `any` value's own type: the `member`-th function of the trait of the
- * `constraint`-th constraint of `on`, with its own type arguments, every type concrete.
+ * `constraint`-th constraint of `on`, with its own type arguments and the witnesses of their
+ * constraints, every type concrete.
  */
 export interface Dispatch {
   readonly on: AnyType;
@@ -149,16 +152,17 @@ export interface Dispatch {
   readonly member: number;
   readonly required: FunctionDeclaration;
   readonly typeArguments: readonly Type[];
+  readonly witnesses: Witnesses;
 }
+
+/** What closing reads of the instance a call is closed inside: how it maps type parameters. */
+type Closing = Pick<FunctionInstance, 'declaration' | 'typeArguments' | 'witnesses'>;
 
 /**
  * What `resolved` targets, closed inside `within`. A constant's value is within no instance, so
  * nothing in it names a type parameter.
  */
-export function closeCall(
-  resolved: ResolvedCall,
-  within: FunctionInstance | undefined,
-): ClosedCall {
+export function closeCall(resolved: ResolvedCall, within: Closing | undefined): ClosedCall {
   const closed = closedInside(resolved, within);
   if (closed.kind === 'function') {
     const { function: declaration, typeArguments, witnesses, arity } = closed;
@@ -168,41 +172,50 @@ export function closeCall(
   if (on.kind !== 'any') {
     unreachable(`No witness for '${on.name.text}'; checking should have found one.`);
   }
-  const { function: required, typeArguments } = closed;
-  return { kind: 'dispatch', dispatch: { on, constraint, member, required, typeArguments } };
+  const { function: required, typeArguments, witnesses } = closed;
+  return {
+    kind: 'dispatch',
+    dispatch: { on, constraint, member, required, typeArguments, witnesses },
+  };
+}
+
+/**
+ * The call a function meeting the requirement `dispatch` names makes when called through it,
+ * closed inside the requirement's own instance, whose type arguments and witnesses `dispatch` has.
+ */
+export function closeWitness(witness: ResolvedCall, dispatch: Dispatch): ClosedCall {
+  const { required: declaration, typeArguments, witnesses } = dispatch;
+  return closeCall(witness, { declaration, typeArguments, witnesses });
 }
 
 /**
  * `resolved` inside `within`: type arguments substituted, and a requirement on one of the
- * instance's type parameters the witness the instance was given for it.
+ * instance's type parameters the witness the instance was given for it, closed inside the
+ * requirement's own instance. A requirement on another function's type parameters, such as one a
+ * generic required function's own constraints make, stays open until that function's call closes
+ * it, so an instance's witnesses may hold one.
  */
-function closedInside(resolved: ResolvedCall, within: FunctionInstance | undefined): ResolvedCall {
+function closedInside(resolved: ResolvedCall, within: Closing | undefined): ResolvedCall {
   const substitution =
     within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
   const typeArguments = resolved.typeArguments.map((type) => substitute(type, substitution));
+  const witnesses = closeWitnesses(resolved.witnesses, within);
   if (resolved.kind === 'function') {
-    return { ...resolved, typeArguments, witnesses: closeWitnesses(resolved.witnesses, within) };
+    return { ...resolved, typeArguments, witnesses };
   }
   const { on, constraint, member } = resolved.requirement;
   if (on.kind === 'any') {
     const closed = { on: substituteAny(on, substitution), constraint, member };
-    return { ...resolved, requirement: closed, typeArguments };
+    return { ...resolved, requirement: closed, typeArguments, witnesses };
   }
   const witness = within?.witnesses.get(on)?.[constraint]?.[member];
   if (witness === undefined) {
-    unreachable(`No witness for '${on.name.text}'; checking should have found one.`);
+    return { ...resolved, typeArguments, witnesses };
   }
-  const own = new Map<ParameterKey, Type>([
-    ...substitution,
-    ...substitutionFor(resolved.function.typeParameters, typeArguments),
-  ]);
-  return {
-    ...witness,
-    typeArguments: witness.typeArguments.map((type) => substitute(type, own)),
-  };
+  return closedInside(witness, { declaration: resolved.function, typeArguments, witnesses });
 }
 
-function closeWitnesses(witnesses: Witnesses, within: FunctionInstance | undefined): Witnesses {
+function closeWitnesses(witnesses: Witnesses, within: Closing | undefined): Witnesses {
   return new Map(
     [...witnesses].map(([parameter, constraints]) => [
       parameter,

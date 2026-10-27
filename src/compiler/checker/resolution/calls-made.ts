@@ -23,6 +23,7 @@ export function callMade(
       function: declaration,
       requirement: requirement.origin,
       typeArguments: instantiation.typeArguments,
+      witnesses: instantiation.witnesses,
     };
   }
   return {
