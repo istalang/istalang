@@ -82,7 +82,7 @@ export function textPayloadOf(value: Value | undefined): string {
 }
 
 /** A value of extern type entry `type`, holding `payload`. */
-export function externOf(type: TypeId, payload: unknown): Value {
+function externOf(type: TypeId, payload: unknown): Value {
   return { kind: 'extern', type, payload };
 }
 
@@ -125,8 +125,17 @@ export function resultOk(context: NativeContext, value: Value): Value {
 
 /** A struct of the type the extern's declared `Result` holds when `Ok`, with `fields` by name. */
 export function okStruct(context: NativeContext, fields: NamedFields): Value {
-  const held = namedType(resultVariantShape(context, resultVariants.ok).fields[0]?.type);
-  return structOf(context.types, held, fields);
+  return structOf(context.types, okType(context), fields);
+}
+
+/** A value of the extern type the extern's declared `Result` holds when `Ok`, holding `payload`. */
+export function okExtern(context: NativeContext, payload: unknown): Value {
+  return externOf(okType(context), payload);
+}
+
+/** The type the extern's declared `Result` holds when `Ok`. */
+function okType(context: NativeContext): TypeId {
+  return namedType(resultVariantShape(context, resultVariants.ok).fields[0]?.type);
 }
 
 /** `Err` of `error`, of the extern's declared `Result` type (§3.12). */

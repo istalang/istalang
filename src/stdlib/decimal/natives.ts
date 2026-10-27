@@ -12,11 +12,10 @@ import { conversionFunction } from '../../language/well-known.ts';
 import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
 import { roundingType } from '../math/rounding.ts';
 import {
-  externOf,
   int,
+  okExtern,
   parseResult,
   resultExtern,
-  resultTypeArgument,
   text,
   textPayloadOf,
   variantEntry,
@@ -65,7 +64,7 @@ export const decimalNatives = (keys: NativeKeys, mathKeys: NativeKeys): Natives<
     [keys.of('toString', decimal)]: ([value]) => textPayloadOf(value),
     [keys.ofStatic(typeName, 'parse', 'string')]: ([source], context) => {
       const read = readDecimal(text(source));
-      const value = read && externOf(resultTypeArgument(context, 0), canonicalText(read));
+      const value = read && okExtern(context, canonicalText(read));
       return parseResult(context, text(source), 'a decimal number', value);
     },
     [keys.of('toFixed', decimal, 'int', rounding)]: ([value, places, mode], context) =>

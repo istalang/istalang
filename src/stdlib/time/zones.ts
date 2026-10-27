@@ -20,15 +20,14 @@ import type { Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import {
-  externOf,
   fieldNamed,
   int,
   type NamedFields,
+  okExtern,
   okStruct,
   parseResult,
   resultExtern,
   resultStruct,
-  resultTypeArgument,
   text,
   textPayloadOf,
 } from '../native-values.ts';
@@ -75,7 +74,7 @@ export const zoneNatives = (keys: NativeKeys): Natives<NativeContext> => {
     [keys.of('utc')]: (_, context) => resultExtern(context, utcId),
     [keys.ofStatic('Zone', 'parse', 'string')]: ([source], context) => {
       const id = canonicalZone(text(source));
-      const zone = id === undefined ? undefined : externOf(resultTypeArgument(context, 0), id);
+      const zone = id === undefined ? undefined : okExtern(context, id);
       return parseResult(context, text(source), 'an IANA time zone', zone);
     },
     [keys.of('toString', zoneType)]: ([zone]) => textPayloadOf(zone),
