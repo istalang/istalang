@@ -56,6 +56,8 @@ userId: int @JsonName{"user_id"}   # annotation on a field
 fn add(a: int, b = 1):             # default parameter, types inferred
     a + b                          # the last expression is the value
 fn log(level: string, ...parts: Array<string>): ...    # rest parameter
+log("info", ...parts)                                  # spread into the rest
+add(1, b: 2)                                           # named argument
 fn push<T>(self: &Stack<T>, item: T): ...             # method, reference receiver
 fn Duration.zero() -> Duration: ...                    # static function
 async fn approve(req: Req) -> Future<string>: ...
@@ -282,15 +284,21 @@ extern fn chargeCard(id: string, amount: int) -> Result<string>  # implemented b
 fn retry(times: int = 3, backoff: Duration = 1s): ...
 retry()                      # retry(3, 1s)
 retry(5)                     # retry(5, 1s)
+retry(backoff: 2s)           # retry(3, 2s)
 
 fn log(level: string, ...parts: Array<string>): ...
 log("info", "a", "b")        # log("info", ["a", "b"])
 log("info", "a", ...more)    # parts is "a" followed by the elements of more
+log(level: "info", parts: more)
 ```
 
-**Default parameters** are sugar for overloads. Parameters with defaults come after the others, and for each shorter call the compiler declares an overload that calls the full function with the missing values. A default is an expression evaluated at every call, and it may use earlier parameters, as in `fn window(start: int, end: int = start + 10)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A generated overload that clashes with a declared one is a compile error. A struct's fields have defaults the same way (§3.1).
+**Arguments.** A call fills its function's parameters as a struct literal fills fields (§3.1): by position, then by name, and each parameter it leaves out takes its default.
 
-**Rest parameters** are sugar for an array. The last parameter, written `...name: Array<T>`, comes after any parameters with defaults and collects the remaining arguments; `...xs` at a call site spreads an existing array into them. When a call matches both a fixed-arity overload and one with a rest parameter, the fixed one wins.
+- **Defaults.** Parameters with defaults come after the others. A default is an expression evaluated at every call that leaves its parameter out, and it may use earlier parameters, as in `fn window(start: int, end: int = start + 10)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A struct's fields have defaults the same way (§3.1).
+- **Named arguments.** `f(name: value)` gives the parameter of that name, so a call can leave out a default before one it gives: `retry(backoff: 2s)`. Named arguments follow the positional ones, in any order. A positional argument or a spread after a named one is a compile error, and so is a parameter given twice. A `&` parameter is named with its `&`: `f(target: &x)`. A method's `self` is given before the dot, never by name.
+- **Order.** Arguments are evaluated in the order they are written, then each default left out, in parameter order, so a default sees the parameters before it however they were given.
+- **Rest parameters** are sugar for an array. The last parameter, written `...name: Array<T>`, comes after any parameters with defaults and collects the remaining positional arguments. `...xs` at a call spreads anything iterable into them, as in an array literal (§2), mixed freely with single arguments; a spread anywhere else is a compile error. Named, the rest parameter takes a whole array: `log(level: "info", parts: more)`. An extern function's rest parameter reaches its host as an array (§9).
+- **Function values.** Names and defaults aren't part of a function's type (§3.14), so a function value's call gives every argument by position, with no spread.
 
 ### 3.4 Variables
 
@@ -408,8 +416,10 @@ fn scale(self: &Rect, factor: int): ...
 - Calls are resolved statically from the argument types and any explicit type arguments. Return types play no part.
 - A generic function is chosen through inference only when it is the single function that matches. When a concrete function matches as well, the concrete one wins: given `fn show<T>(x: T)` and `fn show(x: int)`, the call `show(5)` uses the concrete one, while `show<int>(5)` uses the generic one.
 - With explicit type arguments, only generic functions that take that many type arguments are considered.
+- When a call fits both a function with a rest parameter and one without, the one without wins, after a concrete function has beaten a generic one (§3.3).
+- A named argument rules out every function without a parameter of that name (§3.3); names tell functions apart in no other way.
 - Any other ambiguity is a compile error, resolved by giving the type arguments explicitly.
-- Two functions of one name whose parameters have the same types, both by value or both by `&`, are a compile error. Generic ones are compared up to the names of their type parameters, and a parameter's `T` counts as the same as `T?`, since the wrap (§2) would make every call to the pair ambiguous. This covers the prelude's overloads and those that default parameters generate.
+- Two functions of one name clash, a compile error, when some call by position could fit both and no rule above prefers one: for some number of arguments, counting defaults left out and a rest parameter's items, their parameters have the same types, both by value or both by `&`. Generic ones are compared up to the names of their type parameters. A parameter's `T` counts as the same as `T?`, and `fn(A) -> R` as `async fn(A) -> R`, since the implicit wraps (§2, §3.14) would make every call to the pair ambiguous. This covers the prelude's overloads too.
 - A method can also be called as a plain function: `push(&s, 3)` is the same call as `s.push(3)`.
 - Free functions `g(x: S)` and `g(x: &S)` may coexist, because the `&` at the call site tells them apart.
 - The one forbidden overload is a pair that differs only in whether `self` is a value or a reference, such as `fn f(self: S)` and `fn f(self: &S)`. Method notation (`s.f()`) couldn't choose between them, so declaring both is a compile error.
@@ -792,12 +802,12 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 
 **What a lambda or local function may be.**
 
-- **One value.** A lambda or a local `fn` can't be generic, or have default values or a rest parameter: those stand for several functions (§3.3), and a function value is one.
+- **One value.** A lambda or a local `fn` can't be generic, or have default values or a rest parameter: a function value is one function, and its call gives every argument by position (§3.3).
 - **Parameter types.** A lambda's untyped parameter takes its type from the function type the lambda is expected as; with none, it is a compile error. Passed to a generic function, a lambda is checked after the other arguments, so they give its parameter types, and its result then infers the type parameters that remain (§3.5).
 - **Its own function.** `return` in a lambda returns from the lambda, `break` and `continue` can't leave it, and `await` needs an `async fn` lambda.
 - **Captures.** A by-value parameter is immutable (§3.3), so it is captured as a copy, like a `const`.
-- **Async function types.** Calling an `async fn(A) -> R` yields a `Future<R>`, and `await` gives the `R`. A declared `async fn f(x: A) -> Future<R>` is therefore the value `async fn(A) -> R`.
-- **Functions named as values.** A top-level or static function named as a value, as in `xs.map(inc)` or `Duration.zero`, is a closure that captures nothing. A method is called, never named as a value: `s.push` without a call is a compile error; wrap the call in a lambda.
+- **Async function types.** Calling an `async fn(A) -> R` yields a `Future<R>`, and `await` gives the `R`. A declared `async fn f(x: A) -> Future<R>` is therefore the value `async fn(A) -> R`. A plain function fits where an async one of the same parameters and result is expected, `fn(A) -> R` where `async fn(A) -> R` is and `sendable fn(A) -> R` where `sendable async fn(A) -> R` is: calling it yields a future that is already resolved, and the call never suspends. As with the wrap into `T?` (§2), this fits the value passed or assigned, not one inside another type: an `Array<fn()>` isn't an `Array<async fn()>`.
+- **Functions named as values.** A top-level or static function named as a value, as in `xs.map(inc)` or `Duration.zero`, is a closure that captures nothing. A method is called, never named as a value: `s.push` without a call is a compile error; wrap the call in a lambda. A function with defaults also fits a function type that leaves trailing ones out, and computes them at each call; one with a rest parameter takes it as one array, so `log` is a `fn(string, Array<string>)`.
 - **Fields of function types.** `x.f(…)` calls a field `f` of a function type when `x`'s type has no method `f`. When it has both, the call is ambiguous, which is a compile error; `(x.f)(…)` calls the field.
 - **Equality.** Two function values are equal when they run the same function with equal captures. A captured `let` is a cell, so it compares by identity (§3.1).
 
