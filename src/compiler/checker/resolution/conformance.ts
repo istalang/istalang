@@ -13,9 +13,9 @@
  *   instantiation calls (check.ts).
  * - A required field is met by a struct field of the same name and type, or by a constraint on a
  *   type parameter requiring it too. `Sendable` is derived (traits/sendable.ts). `Encodable` and
- *   `Decodable` each imply it, except where values cross to the host, which a disposable host type
- *   does unsendable; a type declaring no codec of its own is met by the one the compiler derives
- *   (rules/json-forms/).
+ *   `Decodable` each imply it, since JSON written and read back is a copy sent, except where
+ *   values cross to the host, which a disposable host type does unsendable (use-site.ts); a type
+ *   declaring no codec of its own is met by the one the compiler derives (rules/json-forms/).
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument

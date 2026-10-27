@@ -1,8 +1,9 @@
 /**
  * Where something is used, for checks that report there: how they report, at the span the site
  * stands at, and whether values cross to the host there. What a check searches never depends on
- * where it is used (witnesses are coherent, §3.10). A search whose failure its caller reports as a
- * whole, or that can't fail, searches through a site that reports nothing.
+ * where it is used (witnesses are coherent, §3.10); only crossing to the host spares a codec the
+ * Sendable its traits imply (`toHost`). A search whose failure its caller reports as a whole, or
+ * that can't fail, searches through a site that reports nothing.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -15,8 +16,10 @@ export interface UseSite {
   /** Reports the diagnostic `diagnosticAt` makes at the site's span; a silent site reports none. */
   readonly report: (diagnosticAt: (at: Span) => Diagnostic) => void;
   /**
-   * Whether values cross to the host here, as JSON (§3.6, §9): only their codecs matter then, so
-   * a type that isn't sendable, such as a disposable host type, still crosses to its own host.
+   * Whether values cross to the host here, as JSON (§3.6, §9). Encodable and Decodable imply
+   * Sendable because a value that goes through JSON and back is a copy, sent; a disposable host
+   * type isn't sendable, since a copy would be a second handle to the one resource, but its own
+   * host takes it back, so only its codecs matter here.
    */
   readonly toHost: boolean;
 }
