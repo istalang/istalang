@@ -1,22 +1,42 @@
 /**
  * Operator expressions (§3.9).
  *
- * - An operator's meaning (syntax/operators.ts) decides how it is checked. Arithmetic, negation and
- *   the orderings call functions (calls/operators.ts); an ordering is `bool` whatever `compare`
- *   returns, since lowering turns its int into the relation.
+ * - An operator's meaning (syntax/operators.ts) decides how it is checked. Arithmetic, negation,
+ *   the orderings and `in` call functions (calls/operators.ts); an ordering is `bool` whatever
+ *   `compare` returns, since lowering turns its int into the relation. `item in c` calls
+ *   `includes(c, item)`, which must give a `bool`.
+ * - A chain `a < b == c` compares each operand with the next, each operand checked once. Its
+ *   orderings' `compare` calls are implicit, at their right operands, since the chain is one node.
+ *   An operand between two links is compared on both sides, so it is never wrapped into an
+ *   optional for one of them; the first and the last may be, as in a single comparison.
  * - `==` and `!=` are built in for every type and can't be overloaded (types/equality.ts). The
  *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
  * - `and`, `or` and `not` take and give `bool`; they short-circuit, so they are never calls.
  * - `??` works on optionals (optionals.ts).
  */
 
-import type { Binary, Unary } from '../../syntax/expressions/index.ts';
+import {
+  type Binary,
+  type ChainedComparison,
+  type Expression,
+  linksOf,
+  type Unary,
+} from '../../syntax/expressions/index.ts';
 import { binaryOperators } from '../../syntax/operators.ts';
-import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
+import {
+  type AppliedOperator,
+  applied,
+  type Operand,
+  resolveOperator,
+  unaryApplied,
+} from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
-import { frontier } from '../frontier.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { topLevelCandidates } from '../resolution/candidates.ts';
+import { implicitCall } from '../resolution/implicit.ts';
 import { checkEqualSides } from '../types/equality.ts';
-import { boolType, type Type } from '../types/type.ts';
+import { boolType, isPrimitive, type Type } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
 import { checkNullish } from './optionals.ts';
 
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
@@ -32,7 +52,7 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
     case 'coalesce':
       return checkNullish(context, node, expected);
     case 'membership':
-      return context.unsupported(node, frontier.membership);
+      return checkMembership(context, node, applied(operator, meaning));
     case 'order':
     case 'call': {
       const operation = applied(operator, meaning);
@@ -54,6 +74,52 @@ export function checkUnary(context: BodyContext, node: Unary): Type {
   return resolveOperator(context, node, unaryApplied(node.operator), [
     { node: node.operand, type: context.expression(node.operand) },
   ]);
+}
+
+/** `item in container`: `includes(container, item)`, its operands checked as written. */
+function checkMembership(context: BodyContext, node: Binary, operation: AppliedOperator): Type {
+  const [item, container] = operandsOf(context, node);
+  if (item === undefined || container === undefined) {
+    return boolType;
+  }
+  const result = resolveOperator(context, node, operation, [container, item]);
+  if (result.kind !== 'error' && !isPrimitive(result, 'bool')) {
+    context.report(checkerDiagnostics.typeMismatch(node.span, 'bool', typeText(result)));
+  }
+  return boolType;
+}
+
+/** `a < b <= c`: each operand compared with the next (§3.9). */
+export function checkChain(context: BodyContext, node: ChainedComparison): Type {
+  const checked = new Map<Expression, Type>();
+  const operand = (expression: Expression, expected?: Type): Operand => {
+    const type = checked.get(expression) ?? context.expression(expression, expected);
+    checked.set(expression, type);
+    return { node: expression, type };
+  };
+  const [first, last] = [node.operands[0], node.operands.at(-1)];
+  const wrappable = (side: Operand) =>
+    side.node === first || side.node === last ? side : { type: side.type, node: undefined };
+  for (const link of linksOf(node)) {
+    const { meaning } = binaryOperators[link.operator];
+    const left = operand(link.left);
+    const right = operand(link.right, meaning.kind === 'equality' ? left.type : undefined);
+    const at = { span: { start: link.left.span.start, end: link.right.span.end }, ...link };
+    if (meaning.kind === 'equality') {
+      checkEqualSides(context, wrappable(left), wrappable(right), at);
+    } else {
+      const types = [left.type, right.type];
+      implicitCall(context, {
+        node: link.right,
+        role: 'compare',
+        candidates: topLevelCandidates(context.checker, context.module, meaning.function, types),
+        arguments: types.map((type) => ({ type, passing: 'value' }) as const),
+        failure: () =>
+          checkerDiagnostics.operatorTypes(at.span, at.operator, types.map(typeText).join(' and ')),
+      });
+    }
+  }
+  return boolType;
 }
 
 function operandsOf(context: BodyContext, node: Binary): readonly Operand[] {

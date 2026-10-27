@@ -3,7 +3,10 @@
  * syntax/operators.ts.
  *
  * - An operator that calls a function calls the one the checker resolved; an ordering calls
- *   `compare` and turns its int into the relation with `order`.
+ *   `compare` and turns its int into the relation with `order`. `item in c` calls
+ *   `includes(c, item)`, its operands evaluated as written.
+ * - A chain compares each operand with the next, evaluating each once, in order, and stops at the
+ *   first comparison that fails, as `and` would.
  * - `==` and `!=` are the built-in `equal`, `not` its own instruction.
  * - `and` and `or` short-circuit through `branch`, so their right side runs only when needed;
  *   `??` through a `switch` (nullish.ts).
@@ -11,11 +14,17 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Binary, Unary } from '../../syntax/expressions/index.ts';
+import {
+  type Binary,
+  type ChainedComparison,
+  type ChainLink,
+  type Expression,
+  linksOf,
+  type Unary,
+} from '../../syntax/expressions/index.ts';
 import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
 import type { FunctionContext } from '../context.ts';
-import { emitCallAt } from '../emit-call.ts';
-import { notLowered } from '../not-lowered.ts';
+import { emitCallAt, emitImplicitCall } from '../emit-call.ts';
 import { lowerNullish } from './nullish.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
@@ -25,8 +34,11 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
       return shortCircuit(context, node, meaning.rightWhen);
     case 'coalesce':
       return lowerNullish(context, node);
-    case 'membership':
-      return notLowered(context, node);
+    case 'membership': {
+      const [item, container] = operands(context, node);
+      const includes = emitCallAt(context, node, [container, item]);
+      return meaning.negated ? negated(context, includes, node.span) : includes;
+    }
     case 'equality': {
       const dst = context.code.allocate();
       const [left, right] = operands(context, node);
@@ -47,6 +59,46 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
       return unhandled;
     }
   }
+}
+
+export function lowerChain(context: FunctionContext, node: ChainedComparison): Register {
+  const { code } = context;
+  const evaluated = new Map<Expression, Register>();
+  const operand = (expression: Expression): Register => {
+    const register = evaluated.get(expression) ?? context.expression(expression);
+    evaluated.set(expression, register);
+    return register;
+  };
+  const result = code.allocate();
+  const end = code.newLabel();
+  for (const [index, link] of linksOf(node).entries()) {
+    if (index > 0) {
+      const next = code.newLabel();
+      code.branch(result, next, end, node.span);
+      code.place(next);
+    }
+    const holds = compared(context, link, [operand(link.left), operand(link.right)]);
+    code.emit({ kind: 'move', span: node.span, dst: result, src: holds });
+  }
+  code.place(end);
+  return result;
+}
+
+/** Whether a link's comparison holds: the built-in `==`, or the `compare` the checker made at it. */
+function compared(
+  context: FunctionContext,
+  link: ChainLink,
+  [left, right]: readonly [Register, Register],
+): Register {
+  const { meaning } = binaryOperators[link.operator];
+  const { span } = link.right;
+  if (meaning.kind === 'equality') {
+    const dst = context.code.allocate();
+    context.code.emit({ kind: 'equal', span, dst, left, right });
+    return meaning.negated ? negated(context, dst, span) : dst;
+  }
+  const comparison = emitImplicitCall(context, link.right, 'compare', [left, right]);
+  return ordered(context, span, comparison, meaning.relation);
 }
 
 /**

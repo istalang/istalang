@@ -139,8 +139,10 @@ export type CallSite = NodeOf<
 export type ImplicitRole =
   /** `iterate`, which an iteration through a cursor calls on what it runs over (§3.10). */
   | 'iterate'
-  /** `..=` storing its end plus one. */
-  | 'add'
+  /** `..=` storing its end one past the written one, in the step's direction. */
+  | 'inclusiveEnd'
+  /** The `compare` an ordering calls where no operator node stands for it: a chain's link. */
+  | 'compare'
   /** Writing an element of a place back, changed or whole, with `setIndex` (§3.9). */
   | 'write'
   /** The `default()` a map literal of a type other than `Map` starts from (§2). */

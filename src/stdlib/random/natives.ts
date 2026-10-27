@@ -3,7 +3,8 @@
  * source (runtime/scheduler/random-source.ts), so a segment that runs again draws the same values
  * (§5).
  *
- * An integer below `n` reads as many bytes as `n - 1` needs, keeps as many low bits as it has, and
+ * An integer of a range is its start and a whole number of steps, uniform over every one it
+ * reaches (ranges.ts). An integer below `n` reads as many bytes as `n - 1` needs, keeps as many low bits as it has, and
  * draws again whenever it lands at `n` or above, so every value is equally likely; each try is
  * likelier than not to land below `n`.
  */
@@ -11,7 +12,7 @@
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic, type WithRandom } from '../../runtime/natives.ts';
 import { given } from '../native-values.ts';
-import { rangeEnds } from '../positions.ts';
+import { bounded, countOf, rangeOf, textOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 const rangeType = knownTypeKey(wellKnown.range);
@@ -35,14 +36,12 @@ const uuid = {
 
 export const randomNatives = (keys: NativeKeys): Natives<NativeContext & WithRandom> => ({
   [keys.of('integer', rangeType)]: ([range], context) => {
-    const { start: low, end: high } = rangeEnds(given(range));
-    if (low === undefined || high === undefined) {
-      throw new Panic('random.integer needs a range with both ends.');
+    const from = bounded(rangeOf(context, given(range)), 'random.integer');
+    const count = countOf(from);
+    if (count === 0n) {
+      throw new Panic(`random.integer has nothing to draw from the empty range ${textOf(from)}.`);
     }
-    if (high <= low) {
-      throw new Panic(`random.integer has nothing to draw from the empty range ${low}..${high}.`);
-    }
-    return low + uniformBelow(high - low, context.random.draw);
+    return from.start + from.step * uniformBelow(count, context.random.draw);
   },
   [keys.of('uuid')]: (_arguments, context) => uuidOf(context.random.draw()),
 });

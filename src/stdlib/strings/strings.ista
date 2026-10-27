@@ -2,11 +2,11 @@
 #
 # Every position and length counts code points, as a string's own indexing does (§3.8), so none
 # splits a code point. They are called as `strings.trim(s)`, or as `s.trim()` where `trim` is
-# imported, the way any module's functions on a primitive are (§3.13).
+# imported, the way any module's functions on a primitive are (§3.13). `includes` is the prelude's,
+# since `in` calls it (§3.9).
 
 extern fn indexOf(self: string, search: string, from: int = 0) -> int
 extern fn lastIndexOf(self: string, search: string) -> int
-extern fn includes(self: string, search: string) -> bool
 extern fn startsWith(self: string, prefix: string) -> bool
 extern fn endsWith(self: string, suffix: string) -> bool
 

@@ -184,3 +184,6 @@ export const templateFunctions = {
 
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';
+
+/** The end `..=` stores, one past the written end in the step's direction (§3.8). */
+export const inclusiveEndFunction = '_inclusiveEnd';

@@ -136,19 +136,22 @@ export function lowerMapLiteral(context: FunctionContext, node: MapLiteral): Reg
   );
 }
 
+/** A range's operands in the order written, then its stored end: `..=`'s one past it (§3.8). */
 export function lowerRange(context: FunctionContext, node: Range): Register {
   const { span } = node;
-  const start = optionalInt(context, span, node.start, (value) => value);
-  const end = optionalInt(context, span, node.end, (value) =>
-    node.isInclusive
-      ? emitImplicitCall(context, node, 'add', [value, context.constant(1n, span)])
-      : value,
-  );
+  const start = node.start === undefined ? undefined : context.expression(node.start);
+  const written = node.end === undefined ? undefined : context.expression(node.end);
+  const step = node.step === undefined ? context.constant(1n, span) : context.expression(node.step);
+  const end =
+    written !== undefined && node.isInclusive
+      ? emitImplicitCall(context, node, 'inclusiveEnd', [written, step])
+      : written;
   const range = context.body.typeOf(node);
   if (range.kind !== 'nominal') {
     unreachable("A range isn't the prelude's Range; the checker should have said so.");
   }
-  return construct(context, range, [start, end], span);
+  const ends = [start, end].map((value) => optionalInt(context, span, value));
+  return construct(context, range, [...ends, step], span);
 }
 
 export function lowerIndex(context: FunctionContext, node: Index): Register {
@@ -236,23 +239,18 @@ function lowerDeclaredLiteral(
   return result;
 }
 
-/** An `int?` of `end`, `Some` of its value as `adjust` makes it, or `None` when it is left out. */
-function optionalInt(
-  context: FunctionContext,
-  span: Span,
-  end: Expression | undefined,
-  adjust: (value: Register) => Register,
-): Register {
+/** An `int?` of a range's end: `Some` of its value, or `None` when it is left out. */
+function optionalInt(context: FunctionContext, span: Span, value: Register | undefined): Register {
   const optional = context.checker.optionalOf(intType);
   const dst = context.code.allocate();
-  const name = end === undefined ? optionalVariants.none : optionalVariants.some;
+  const name = value === undefined ? optionalVariants.none : optionalVariants.some;
   context.code.emit({
     kind: 'variant',
     span,
     dst,
     type: context.tables.types.index(optional),
     variant: variantIndexOf(context.checker, optional, name),
-    fields: end === undefined ? [] : [adjust(context.expression(end))],
+    fields: value === undefined ? [] : [value],
   });
   return dst;
 }

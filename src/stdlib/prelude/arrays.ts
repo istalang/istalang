@@ -12,7 +12,8 @@ import { elementsOf } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { arrayOf, int, optionalValue, resultOptional, text } from '../native-values.ts';
-import { atPosition, checkedIndex, sliced, spanOf } from '../positions.ts';
+import { atPosition, checkedIndex, replaced, selected, selectionOf, sliced } from '../positions.ts';
+import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 const item = parameterKey('T');
@@ -58,9 +59,9 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     const elements = elementsOf(xs);
     return elements[checkedIndex(int(index), elements.length, what)] ?? null;
   },
-  [keys.of('index', array, range)]: ([xs, span]) => {
+  [keys.of('index', array, range)]: ([xs, span], context) => {
     const elements = elementsOf(xs);
-    return arrayOf(elements.slice(...spanOf(span ?? null, elements.length, what)));
+    return arrayOf(selected(elements, selectionOf(rangeOf(context, span), elements.length, what)));
   },
   [keys.of('setIndex', referenceKey(array), 'int', item)]: ([xs, index, element], context) => {
     const elements = elementsOf(xs);
@@ -70,8 +71,8 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   },
   [keys.of('setIndex', referenceKey(array), range, array)]: ([xs, span, replacement], context) => {
     const elements = elementsOf(xs);
-    const [start, end] = spanOf(span ?? null, elements.length, what);
-    context.write(0, arrayOf(elements.toSpliced(start, end - start, ...elementsOf(replacement))));
+    const selection = selectionOf(rangeOf(context, span), elements.length, what);
+    context.write(0, arrayOf(replaced(elements, selection, elementsOf(replacement))));
     return null;
   },
   [keys.ofStatic(wellKnown.array.name, 'default')]: () => arrayOf([]),

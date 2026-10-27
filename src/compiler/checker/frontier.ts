@@ -6,8 +6,6 @@
 
 /** The constructs, narrower than a node kind, reported as not supported yet. */
 export const frontier = {
-  rangeStep: 'A range step',
-  membership: "Membership with 'in'",
 } as const;
 
 /** A construct `frontier` names. */

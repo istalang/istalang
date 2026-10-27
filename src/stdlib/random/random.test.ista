@@ -51,6 +51,13 @@ fn suite() -> Array<Test>: [
       assert(draws.includes(value), "never drew " + value)
     assertEq([for each in draws if each < 1 or each > 6: each], [])
   }),
+  test("integer draws only the values a stepped range reaches, either way", fn(): {
+    const draws = [for _ in 0..100: random.integer(0..20 by 5)]
+    for value in 0..20 by 5:
+      assert(value in draws, "never drew " + value)
+    assertEq([for each in draws if each not in 0..20 by 5: each], [])
+    assertEq([for _ in 0..20: random.integer(10..0 by -10)], [for _ in 0..20: 10])
+  }),
   test("integer of a one-value range gives that value", fn(): {
     assertEq(random.integer(7..8), 7)
   }),
@@ -60,7 +67,7 @@ fn suite() -> Array<Test>: [
   }),
   test("integer panics on an empty or an open range", async fn(): {
     assertEq(await expectPanic(emptyRange), "random.integer has nothing to draw from the empty range 3..3.")
-    assertEq(await expectPanic(openRange), "random.integer needs a range with both ends.")
+    assertEq(await expectPanic(openRange), "random.integer needs a range with both ends, not 3...")
   }),
   test("fraction lies from 0 up to 1", fn(): {
     const draws = [for _ in 0..100: random.fraction()]

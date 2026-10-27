@@ -64,6 +64,12 @@ struct Error:
 struct Range:
   start: int?
   end: int?
+  step: int = 1
+
+# The end `..=` stores: one past the written end in the step's direction, so every range is
+# half-open (§3.8).
+fn _inclusiveEnd(end: int, step: int) -> int:
+  if step < 0: end - 1 else: end + 1
 
 extern fn panic(message: string) -> never
 
@@ -78,6 +84,7 @@ extern fn slice<T>(self: Array<T>, start: int = 0, end: int? = none) -> Array<T>
 extern fn indexOf<T>(self: Array<T>, item: T) -> int
 extern fn lastIndexOf<T>(self: Array<T>, item: T) -> int
 extern fn includes<T>(self: Array<T>, item: T) -> bool
+extern fn includes(self: Range, value: int) -> bool
 extern fn reverse<T>(self: &Array<T>)
 extern fn flat<T>(self: Array<Array<T>>) -> Array<T>
 extern fn join(self: Array<string>, separator: string) -> string
@@ -90,6 +97,7 @@ extern fn Array.default<T>() -> Array<T>
 extern fn size<K, V>(self: Map<K, V>) -> int
 extern fn get<K, V>(self: Map<K, V>, key: K) -> V?
 extern fn has<K, V>(self: Map<K, V>, key: K) -> bool
+extern fn includes<K, V>(self: Map<K, V>, key: K) -> bool     # as `has`, for `in`
 extern fn delete<K, V>(self: &Map<K, V>, key: K) -> bool
 extern fn keys<K, V>(self: Map<K, V>) -> Array<K>
 extern fn values<K, V>(self: Map<K, V>) -> Array<V>
@@ -100,6 +108,7 @@ extern fn Map.default<K, V>() -> Map<K, V>
 
 extern fn length(self: string) -> int
 extern fn at(self: string, index: int) -> string?
+extern fn includes(self: string, search: string) -> bool
 extern fn index(self: string, key: int) -> string
 extern fn index(self: string, key: Range) -> string
 
@@ -194,9 +203,11 @@ fn iterate<K, V>(self: Map<K, V>) -> fn() -> (K, V)?:
   _cursor(self.size(), fn(position): self._entryAt(position))
 
 fn iterate(self: Range) -> fn() -> int?:
-  if self is Range{start is Some{value as start}, end is Some{value as end}}:
-    return _cursor(if end > start: end - start else: 0, fn(position): start + position)
-  panic("A range without both ends can't be iterated.")
+  const start, step, count = self._steps()
+  _cursor(count, fn(position): start + position * step)
+
+# A range's start, its step and how many ints it reaches; one without both ends panics.
+extern fn _steps(self: Range) -> (int, int, int)
 
 # A string's cursor steps over its code points by where each starts in its UTF-16 text, so reading
 # the next one never counts from the start.
@@ -312,6 +323,10 @@ trait Disposable:
 
 trait Iterable<T, C = Self>:
   fn iterate(self: C) -> fn() -> T?
+
+# What `item in c` asks (§3.9).
+trait Container<T, C = Self>:
+  fn includes(self: C, item: T) -> bool
 
 trait Indexable<K, V, C = Self>:
   fn index(self: C, key: K) -> V

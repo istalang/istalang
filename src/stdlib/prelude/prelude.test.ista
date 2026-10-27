@@ -1,6 +1,6 @@
-# The prelude's array and map methods taking a function, the array methods beside them, powers and
-# bitwise operators, and the wait on a spawned instance's end (spec §3.8, §3.9, §9); the rest of
-# the prelude is the corpus's.
+# The prelude's array and map methods taking a function, the array methods beside them, ranges and
+# their steps, powers and bitwise operators, and the wait on a spawned instance's end (spec §3.8,
+# §3.9, §9); the rest of the prelude is the corpus's.
 
 import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
 
@@ -129,6 +129,39 @@ fn maps() -> Array<Test>: [
   test("Map.groupBy of no items is empty", fn(): {
     const groups = Map.groupBy([], fn(n: int): n)
     assertEq(groups.size(), 0)
+  }),
+  test("includes a key exactly when it has one", fn(): {
+    const ages = ["ada": 36]
+    assert(ages.includes("ada") and ages.has("ada") and not ages.includes("bob"))
+  }),
+]
+
+fn zeroStep() -> bool: 1 in 0..5 by 0
+
+fn openStart() -> bool: 1 in ..5 by 2
+
+fn openEnd() -> int:
+  let total = 0
+  for i in 3..:
+    total += i
+  total
+
+@Suite{"prelude › ranges"}
+fn ranges() -> Array<Test>: [
+  test("iterate every step from the start, before the end, either way", fn(): {
+    assertEq([for i in 0..10 by 3: i], [0, 3, 6, 9])
+    assertEq([for i in 10..=0 by -5: i], [10, 5, 0])
+    assertEq([for i in 0..=6 by 3: i], [0, 3, 6])
+    assertEq([for i in 0..5 by -1: i], [])
+  }),
+  test("include an int they reach, an open end reaching without bound", fn(): {
+    assert(6 in 0..10 by 3 and 7 not in 0..10 by 3 and 10 not in 0..10)
+    assert(1_000_000 in 2.. by 2 and -7 in ..0 and 0 in 5..=0 by -1)
+  }),
+  test("panic on a step of 0, an open start stepping by more than 1, and iterating an open one", async fn(): {
+    assertEq(await expectPanic(zeroStep), "The range 0..5 by 0 has a step of 0.")
+    assertEq(await expectPanic(openStart), "The range ..5 by 2 has no start for its step to count from.")
+    assertEq(await expectPanic(openEnd), "Iterating needs a range with both ends, not 3...")
   }),
 ]
 

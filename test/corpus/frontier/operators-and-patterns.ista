@@ -1,19 +1,11 @@
-# error: 5000 at 13:7
-# error: 5000 at 14:7
-# error: 5000 at 15:16
-# error: 5000 at 16:3
-# error: 5000 at 20:10
-# error: 5000 at 21:10
-# error: 5000 at 26:10
-# `in`, `!`, range steps, chained comparisons, and or, range and array patterns parse, and are not
-# checked yet (language features, L5).
+# error: 5000 at 8:3
+# error: 5000 at 12:10
+# error: 5000 at 13:10
+# error: 5000 at 18:10
+# `!`, and or, range and array patterns parse, and are not checked yet (language features, L5).
 
-fn f(a: int, b: int, xs: Array<int>, m: int?) -> bool:
-  let n = a
-  _ = a in xs
-  _ = m!
-  _ = 0..10 by 2
-  a < b <= n
+fn f(m: int?) -> int:
+  m!
 
 fn p(x: int) -> int:
   match x:

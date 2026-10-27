@@ -271,6 +271,21 @@ export interface ChainedComparison extends NodeOf<'ChainedComparison'> {
   readonly operators: readonly ComparisonOperator[];
 }
 
+/** One comparison of a chain: an operand, the operator after it, and the operand after that. */
+export interface ChainLink {
+  readonly left: Expression;
+  readonly operator: ComparisonOperator;
+  readonly right: Expression;
+}
+
+/** The comparisons a chain makes, in order; neighbouring ones share an operand. */
+export function linksOf(chain: ChainedComparison): readonly ChainLink[] {
+  return chain.operators.flatMap((operator, index) => {
+    const [left, right] = [chain.operands[index], chain.operands[index + 1]];
+    return left === undefined || right === undefined ? [] : [{ left, operator, right }];
+  });
+}
+
 /** `x is Pattern`. */
 export interface Is extends NodeOf<'Is'> {
   readonly subject: Expression;

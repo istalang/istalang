@@ -8,7 +8,7 @@ import { entryPosition, entryValue, withEntry, withoutEntry } from '../../defini
 import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import { mapValueOf, type Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
-import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
+import { type Native, type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { arrayOf, int, resultOptional } from '../native-values.ts';
 import { checkedIndex } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
@@ -23,11 +23,16 @@ const entryTuple = ([key, value]: readonly [Value, Value]): Value => ({
   elements: [key, value],
 });
 
+/** `has`, and `includes` for `in` (§3.9): whether a map has an entry for a key. */
+const hasKey: Native<NativeContext> = ([m, k]) =>
+  entryPosition(mapValueOf(m), k ?? null) !== undefined;
+
 export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('size', map)]: ([m]) => BigInt(mapValueOf(m).entries.length),
   [keys.of('get', map, keyType)]: ([m, k], context) =>
     resultOptional(context, entryValue(mapValueOf(m), k ?? null)),
-  [keys.of('has', map, keyType)]: ([m, k]) => entryPosition(mapValueOf(m), k ?? null) !== undefined,
+  [keys.of('has', map, keyType)]: hasKey,
+  [keys.of('includes', map, keyType)]: hasKey,
   [keys.of('delete', referenceKey(map), keyType)]: ([m, k], context) => {
     const before = mapValueOf(m);
     const after = withoutEntry(before, k ?? null);

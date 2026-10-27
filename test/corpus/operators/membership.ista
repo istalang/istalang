@@ -1,0 +1,17 @@
+# outcome: [true,false,true,true,true,false,true,true]
+# `item in c` calls `includes(c, item)` (§3.9): an array's element, a map's key, a substring, an
+# int a range reaches, and a program's own type through `Container`.
+
+struct Evens:
+  below: int
+
+fn includes(self: Evens, value: int) -> bool:
+  value % 2 == 0 and 0 <= value < self.below
+
+fn holdsOne<C is Container<int>>(container: C) -> bool:
+  1 in container
+
+async fn main() -> Future<(bool, bool, bool, bool, bool, bool, bool, bool)>:
+  const ages = ["ada": 36]
+  (2 in [1, 2, 3], 4 in [1, 2, 3], "bob" not in ages, "ada" in ages, "bc" in "abc", 3 in 0..3,
+    4 in Evens{10}, holdsOne([1]))

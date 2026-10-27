@@ -5,7 +5,8 @@
 # fixes every value a test draws (§10). No function is named after a type, which it would hide in
 # this module (§3.13).
 
-# A uniform integer from the range's start up to its end; panics on an empty range or an open one.
+# A uniform integer among those the range reaches, its step included; panics on an empty range or
+# an open one.
 extern fn integer(range: Range) -> int
 
 # A version 4 UUID (RFC 9562), in lowercase.

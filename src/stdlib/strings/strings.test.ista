@@ -23,8 +23,8 @@ fn suite() -> Array<Test>: [
       assertEq(strings.lastIndexOf("abc", "x"), -1)
     }),
     test("includes, startsWith and endsWith", fn(): {
-      assert(strings.includes("a😀b", "😀"))
-      assert(not strings.includes("ab", "c"))
+      assert("a😀b".includes("😀") and "😀" in "a😀b")
+      assert(not "ab".includes("c") and "c" not in "ab")
       assert(strings.startsWith("😀ab", "😀"))
       assert(not strings.startsWith("ab", "b"))
       assert(strings.endsWith("ab😀", "😀"))

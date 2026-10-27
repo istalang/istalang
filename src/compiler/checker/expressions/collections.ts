@@ -23,7 +23,7 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { wellKnown } from '../../../language/well-known.ts';
+import { inclusiveEndFunction, wellKnown } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
 import type {
   ArrayLiteral,
@@ -34,12 +34,10 @@ import type {
   Spread,
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
-import { binaryOperators } from '../../syntax/operators.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { declaresDefault, defaultWitness } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
@@ -192,21 +190,21 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
   };
 }
 
-/** `a..b`, `a..=b` and the open forms: a prelude `Range` of ints; `..=` stores `end + 1` (§3.8). */
+/**
+ * `a..b`, `a..=b`, the open forms and `by` a step: a prelude `Range` of ints. `..=` stores its end
+ * through `_inclusiveEnd`, one past the written end in the step's direction (§3.8).
+ */
 export function checkRange(context: BodyContext, node: Range): Type {
-  if (node.step !== undefined) {
-    return context.unsupported(node.step, frontier.rangeStep);
-  }
-  for (const end of [node.start, node.end]) {
-    if (end !== undefined) {
-      context.expect(end, intType);
+  for (const operand of [node.start, node.end, node.step]) {
+    if (operand !== undefined) {
+      context.expect(operand, intType);
     }
   }
   if (node.isInclusive && node.end !== undefined) {
     implicitCall(context, {
       node,
-      role: 'add',
-      candidates: preludeCandidates(context, binaryOperators['+'].meaning.function),
+      role: 'inclusiveEnd',
+      candidates: preludeCandidates(context, inclusiveEndFunction),
       arguments: [
         { type: intType, passing: 'value' },
         { type: intType, passing: 'value' },

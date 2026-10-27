@@ -38,9 +38,9 @@ fn weakMap() -> Array<Test>: [
     const other = Inbox.create<int>()
     map.set(key, "a")
     assertEq(map.get(key), "a")
-    assert(map.has(key))
+    assert(map.has(key) and key in map)
     assertEq(map.get(other), none)
-    assert(not map.has(other))
+    assert(not map.has(other) and other not in map)
   }),
   test("setting a key again replaces its value", fn(): {
     const map = WeakMap.create<Inbox<int>, string>()

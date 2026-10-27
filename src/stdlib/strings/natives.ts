@@ -43,7 +43,6 @@ const reading = (keys: NativeKeys): Natives<NativeContext> => ({
     const whole = text(s);
     return position(whole, whole.lastIndexOf(text(search)));
   },
-  [keys.of('includes', 'string', 'string')]: ([s, search]) => text(s).includes(text(search)),
   [keys.of('startsWith', 'string', 'string')]: ([s, prefix]) => text(s).startsWith(text(prefix)),
   [keys.of('endsWith', 'string', 'string')]: ([s, suffix]) => text(s).endsWith(text(suffix)),
   [keys.of('utf16Length', 'string')]: ([s]) => BigInt(text(s).length),

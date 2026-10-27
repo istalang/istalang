@@ -163,7 +163,11 @@ export function resultTypeArgument(context: NativeContext, position: number): Ty
 }
 
 /** Field `name` of a struct argument, found by the name its type declares, never by position. */
-export function fieldNamed(context: NativeContext, value: Value | undefined, name: string): Value {
+export function fieldNamed(
+  context: Pick<NativeContext, 'types'>,
+  value: Value | undefined,
+  name: string,
+): Value {
   if (value === undefined || !isComposite(value) || value.kind !== 'struct') {
     unreachable('Expected a struct.');
   }

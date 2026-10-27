@@ -33,6 +33,7 @@ import type { NativeKeys } from '../std-module.ts';
 import { arrayNatives } from './arrays.ts';
 import { instanceNatives } from './instance-natives.ts';
 import { mapNatives } from './maps.ts';
+import { rangeNatives } from './range-natives.ts';
 import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
 import { textFormNatives } from './text-forms.ts';
@@ -45,6 +46,7 @@ export const preludeNatives = (
   ...instanceNatives(keys),
   ...slotNatives(keys),
   ...mapNatives(keys),
+  ...rangeNatives(keys),
   ...stringNatives(keys),
   ...weakNatives(keys),
   ...textFormNatives(keys),

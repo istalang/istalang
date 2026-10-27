@@ -47,8 +47,8 @@ type BinaryMeaning =
   | { readonly kind: 'logic'; readonly rightWhen: boolean }
   /** `??`: the left side's value inside an optional, else the right side (§4). */
   | { readonly kind: 'coalesce' }
-  /** `in` and `not in`: whether the right side contains the left. */
-  | { readonly kind: 'membership'; readonly negated: boolean };
+  /** `in` and `not in`: whether the right side contains the left, as `function` called on both says. */
+  | { readonly kind: 'membership'; readonly function: 'includes'; readonly negated: boolean };
 
 export interface BinaryOperatorEntry {
   readonly level: PrecedenceLevel;
@@ -66,6 +66,8 @@ export interface BinaryOperatorEntry {
 
 const call = (name: string) => ({ kind: 'call', function: name }) as const;
 const order = (relation: Relation) => ({ kind: 'order', function: 'compare', relation }) as const;
+const membership = (negated: boolean) =>
+  ({ kind: 'membership', function: 'includes', negated }) as const;
 
 /**
  * Every binary operator, by its spelling. Every spelling but `not in` is a token kind; that one is
@@ -81,8 +83,8 @@ export const binaryOperators = {
   '>=': { level: 'comparison', meaning: order('greaterOrEqual') },
   '==': { level: 'comparison', meaning: { kind: 'equality', negated: false } },
   '!=': { level: 'comparison', meaning: { kind: 'equality', negated: true } },
-  in: { level: 'comparison', meaning: { kind: 'membership', negated: false } },
-  'not in': { level: 'comparison', meaning: { kind: 'membership', negated: true } },
+  in: { level: 'comparison', meaning: membership(false) },
+  'not in': { level: 'comparison', meaning: membership(true) },
   '|': { level: 'bitwiseOr', meaning: call('bitOr') },
   '^': { level: 'bitwiseXor', meaning: call('bitXor') },
   '&': { level: 'bitwiseAnd', meaning: call('bitAnd') },
@@ -133,7 +135,7 @@ export const unaryOperators = {
 export type UnaryOperator = keyof typeof unaryOperators;
 
 /** A binary operator that calls a function, which gives it meaning for a type (§3.9). */
-export type CallingBinaryOperator = BinaryOperatorOf<'call' | 'order'>;
+export type CallingBinaryOperator = BinaryOperatorOf<'call' | 'order' | 'membership'>;
 
 /** A prefix operator that calls a function. */
 export type CallingUnaryOperator = {
