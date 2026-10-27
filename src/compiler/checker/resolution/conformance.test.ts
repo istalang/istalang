@@ -1,8 +1,8 @@
 /**
- * Meeting constraints (§3.10): a required field is met by a struct's field of the same name and type, a
- * required function by a function declared beside the type or the trait, with the required
- * result, the same wherever the constraint is met, and Sendable is derived from what a type holds
- * (§3.1).
+ * Meeting constraints (§3.10): a required field is met by a struct's field of the same name and
+ * type, a required function by a function declared beside the type or the trait, with the
+ * required result, the same wherever the constraint is met, and Sendable is derived from what a
+ * type holds (§3.1).
  */
 
 import fc from 'fast-check';
