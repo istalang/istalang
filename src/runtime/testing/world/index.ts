@@ -30,9 +30,8 @@ import { InstanceGroup } from '../../instance-group.ts';
 import type { LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';
 import { seedTextOf } from '../../random-seed.ts';
-import type { Answered, Watch } from '../../scheduler/futures.ts';
+import type { Answered, TestWatch } from '../../scheduler/futures.ts';
 import { type Inspection, inspection } from '../../scheduler/inspect.ts';
-import { endOf } from '../../scheduler/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
 import { reachingMock } from '../../scheduler/mocks.ts';
 import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/test-world.ts';
@@ -167,18 +166,16 @@ export class World implements TestWorld {
     return advanced.state.kind === 'panicked' ? { kind: 'failed' } : { kind: 'pending' };
   }
 
-  readonly watched = (watch: Watch): Value | undefined => {
-    const snapshot = this.#snapshotOf(watch.instance);
+  readonly watched = (instance: string, until: TestWatch): Value | undefined => {
+    const snapshot = this.#snapshotOf(instance);
     const status = snapshot?.status.kind;
     // A segment of the instance running on has done more than its last commit says.
-    const settled = !this.#calling.has(watch.instance);
-    switch (watch.until.kind) {
-      case 'ended':
-        return endOf(this.#loaded.definition.types, snapshot, watch.until.result);
+    const settled = !this.#calling.has(instance);
+    switch (until.kind) {
       case 'idle':
         return settled && (status === 'active' || status === 'finished') ? null : undefined;
       case 'waypoint': {
-        const { label } = watch.until;
+        const { label } = until;
         const waits =
           settled &&
           snapshot !== undefined &&
@@ -189,7 +186,7 @@ export class World implements TestWorld {
         return waits ? null : undefined;
       }
       default: {
-        const unhandled: never = watch.until;
+        const unhandled: never = until;
         return unhandled;
       }
     }
@@ -319,7 +316,8 @@ export class World implements TestWorld {
         (object) =>
           object.kind === 'future' &&
           object.state.kind === 'watch' &&
-          this.watched(object.state) !== undefined,
+          object.state.until.kind !== 'ended' &&
+          this.watched(object.state.instance, object.state.until) !== undefined,
       )
     );
   }

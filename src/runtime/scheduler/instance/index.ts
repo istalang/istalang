@@ -29,7 +29,7 @@
 import type { FunctionId } from '../../../definition/operands.ts';
 import { handlesIn, type Value } from '../../../definition/values.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { LogRecord } from '../../instance-state.ts';
+import type { LogRecord, SpawnOptions } from '../../instance-state.ts';
 import {
   type ActiveFrame,
   type FrameHeap,
@@ -63,18 +63,6 @@ export interface Spawn extends Required<SpawnOptions> {
 }
 
 export type InstanceStatus = Snapshot['status'];
-
-/** How a new instance runs: options it keeps for its whole life (§10). */
-export interface StartOptions {
-  /** Every segment runs twice, the first run discarded, before it commits. */
-  readonly crashEveryAwait?: boolean;
-}
-
-/** How an instance an instance spawns runs: a host's options, and those only the runtime sets. */
-export interface SpawnOptions extends StartOptions {
-  /** A panic terminates the instance at once, as `runtime.isolate` starts it (§9). */
-  readonly terminatesOnPanic?: boolean;
-}
 
 export class Instance {
   readonly loaded: LoadedDefinition;

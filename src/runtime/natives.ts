@@ -22,10 +22,9 @@
 import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/types.ts';
 import type { Value } from '../definition/values.ts';
-import type { LogRecord } from './instance-state.ts';
+import type { LogRecord, SpawnOptions } from './instance-state.ts';
 import type { TestWatch } from './scheduler/futures.ts';
 import type { Inspection } from './scheduler/inspect.ts';
-import type { SpawnOptions } from './scheduler/instance/index.ts';
 
 /** Base context every native gets: the call, and the segment it runs in. */
 export interface NativeContext {

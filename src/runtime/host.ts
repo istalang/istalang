@@ -32,12 +32,11 @@ import { memo } from '../structures/memo.ts';
 import { recordExternSignatures } from './boundary/extern-signatures.ts';
 import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from './boundary/outbound.ts';
-import type { Advanced } from './instance-state.ts';
+import type { Advanced, StartOptions } from './instance-state.ts';
 import type { Natives } from './natives.ts';
 import { seedTextOf } from './random-seed.ts';
 import { Refusal } from './refusal.ts';
 import { type Inspection, inspection } from './scheduler/inspect.ts';
-import type { StartOptions } from './scheduler/instance/index.ts';
 import { spawnedSeparator } from './scheduler/instance-names.ts';
 import { type LoadedDefinition, loadDefinition } from './scheduler/loaded-definition.ts';
 import {

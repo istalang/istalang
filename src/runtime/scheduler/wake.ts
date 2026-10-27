@@ -19,21 +19,22 @@
  *   spawns run with the option too.
  * - A panic commits nothing (§3.12): the instance stays at its last commit, marked panicked, with
  *   when the failed segment started, so a retry sees the same time. One `runtime.isolate` started
- *   is then terminated at once, as an operator would (§9). Its log records are lost with
- *   it, as a discarded run's are: only a commit reports a segment's logs (§3.8 `log`).
+ *   is then terminated at once, as an operator would (§9). Its log records are lost with it, as a
+ *   discarded run's are: only a commit reports a segment's logs (§3.8 `log`).
  * - A segment also starts by resolving the watches whose condition holds: another instance's end,
- *   read from its last commit in the store (instance-ends.ts), or under a test (§10) whatever the
- *   test world says holds. Under a test, an advance may also start by answering another
- *   instance's call to one of this instance's mocks. The answers a segment gives are, like its spawns, effects of its
- *   commit, which the advance reports for the world to deliver; it ends at that commit, so the
- *   answers arrive, and the instances they wake run, before this instance runs on.
+ *   read from its last commit in the store (instance-ends.ts), and under a test (§10) a test's own
+ *   waits, which only the test world can tell. Under a test, an advance may also start by
+ *   answering another instance's call to one of this instance's mocks. The answers a segment
+ *   gives are, like its spawns, effects of its commit, which the advance reports for the world to
+ *   deliver; it ends at that commit, so the answers arrive, and the instances they wake run,
+ *   before this instance runs on.
  * - Where the instance stands afterwards is read from the last commit (`stateOf`), the one place
  *   a host's view of an instance comes from.
  */
 
 import { encodeJson } from '../../definition/codec.ts';
 import type { Value } from '../../definition/values.ts';
-import type { Advanced, InstanceState, LogRecord } from '../instance-state.ts';
+import type { Advanced, InstanceState, LogRecord, SpawnOptions } from '../instance-state.ts';
 import type { HeapObject } from '../snapshot/objects.ts';
 import {
   type InstanceCall,
@@ -44,7 +45,7 @@ import {
 } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
 import type { Answered, Watch } from './futures.ts';
-import { Instance, type SpawnOptions } from './instance/index.ts';
+import { Instance } from './instance/index.ts';
 import { storedEnds } from './instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import { arriving } from './mocks.ts';
@@ -124,9 +125,13 @@ export function advance(
   const logs: LogRecord[] = [];
   const answered: Answered[] = [];
   const advanced = (state: InstanceState): Advance => ({ state, spawned, logs, answered });
+  const ends = storedEnds(seams.store, loaded.definition.types);
   const running: Running = {
     loaded,
-    watched: loaded.world?.watched ?? storedEnds(seams.store, loaded.definition.types),
+    watched: ({ instance, until }) =>
+      until.kind === 'ended'
+        ? ends(instance, until.result)
+        : loaded.world?.watched(instance, until),
   };
   for (;;) {
     const { startedAt = seams.now(), ...firstly } = pending;

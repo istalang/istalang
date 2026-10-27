@@ -5,35 +5,27 @@
  * - The first end counts: a panic, or the termination that followed one, which keeps it. A retry
  *   after it changes nothing for a wait already resolved.
  * - The end is read from the store, where every instance commits, so an outcome is copied from one
- *   snapshot into another and never passes through a host (§9). Under a test, the world reads it the
- *   same way from its own store (runtime/testing/).
+ *   snapshot into another and never passes through a host (§9). A test's runtime resolves it here
+ *   too, from the store its world keeps; the world answers only a test's own waits (§10).
  * - Which instances an instance waits for this way is what a host reads (`watching`, wake.ts) to
  *   know whom to wake once one of them has ended.
  */
 
-import { namedType, structOf, variantOf, variantShape } from '../../definition/declared-values.ts';
+import { errorOf, okOf } from '../../definition/declared-values.ts';
 import type { TypeId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/types.ts';
 import type { Value } from '../../definition/values.ts';
-import { resultVariants } from '../../language/well-known.ts';
-import type { InstanceState } from '../instance-state.ts';
 import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
-import type { Watch } from './futures.ts';
 
 /** The `code` of the `Error` a wait on an instance gets for its panic (§9). */
 const panicCode = 'panic';
-
-/** Whether an instance in `state` has ended, as `endOf` reads its last commit. */
-export function hasEnded({ kind }: InstanceState): boolean {
-  return kind === 'finished' || kind === 'panicked' || kind === 'terminated';
-}
 
 /**
  * The `Result` of type entry `result` a wait on the instance whose last commit is `snapshot` gets;
  * undefined until it has ended.
  */
-export function endOf(
+function endOf(
   types: readonly TypeDefinition[],
   snapshot: Snapshot | undefined,
   result: TypeId,
@@ -41,14 +33,11 @@ export function endOf(
   const status = snapshot?.status;
   switch (status?.kind) {
     case 'finished':
-      return variantOf(types, result, resultVariants.ok, { value: status.outcome });
+      return okOf(types, result, status.outcome);
     case 'panicked':
     case 'terminated': {
-      const error = namedType(variantShape(types, result, resultVariants.err).fields[0]?.type);
       const { message, trace } = status;
-      return variantOf(types, result, resultVariants.err, {
-        error: structOf(types, error, { message, code: panicCode, trace }),
-      });
+      return errorOf(types, result, { message, code: panicCode, trace });
     }
     default:
       return undefined;
@@ -56,19 +45,15 @@ export function endOf(
 }
 
 /**
- * What a pending watch resolves with outside a test: the end of the instance it waits for, read
- * from `store`. A test's own waits (`idle`, `reaches`) never hold here, since only the runtime
- * running the test can tell them (runtime/testing/).
+ * The end of `instance` as a `Result` of type entry `result`, read from its last commit in `store`;
+ * undefined until it has ended. Every runtime resolves a wait on an end this way, a test's too.
  */
 export function storedEnds(
   store: InstanceStore,
   types: readonly TypeDefinition[],
-): (watch: Watch) => Value | undefined {
-  return ({ instance, until }) => {
-    if (until.kind !== 'ended') {
-      return;
-    }
+): (instance: string, result: TypeId) => Value | undefined {
+  return (instance, result) => {
     const text = store.readSnapshot(instance);
-    return endOf(types, text === undefined ? undefined : snapshotFormat.read(text), until.result);
+    return endOf(types, text === undefined ? undefined : snapshotFormat.read(text), result);
   };
 }

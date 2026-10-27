@@ -10,7 +10,7 @@
 
 import type { FunctionId } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
-import type { Watch } from './futures.ts';
+import type { TestWatch } from './futures.ts';
 import type { Inspection } from './inspect.ts';
 
 /** The future a call to another instance's mock fills: its caller, and the token it named it. */
@@ -42,8 +42,11 @@ export interface TestWorld {
   readonly mockOf: (holder: string, target: FunctionId) => number | undefined;
   /** Answers `call` in `holder`, which runs the mock's replacement and commits before this returns. */
   readonly answer: (holder: string, call: MockCall) => MockAnswer;
-  /** What a pending `watch` resolves with, once what it waits for holds; undefined until then. */
-  readonly watched: (watch: Watch) => Value | undefined;
+  /**
+   * What a test's pending wait on `instance` resolves with once `until` holds; undefined until
+   * then. A wait on an instance's end is the scheduler's, as anywhere else (instance-ends.ts).
+   */
+  readonly watched: (instance: string, until: TestWatch) => Value | undefined;
   /** Where `instance` stands and waits, from its last commit; undefined before its first. */
   readonly inspect: (instance: string) => Inspection | undefined;
   /** A host payload no other `testing.handle` gives. */

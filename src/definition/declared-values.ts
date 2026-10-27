@@ -3,10 +3,10 @@
  * variants by name, never by position, so a value and its declaration can't drift apart
  * unnoticed. Std natives build their results this way (stdlib/native-values.ts), and so does the
  * scheduler where it hands an instance a value no instruction made, such as another instance's
- * end (§9).
+ * end (§9). `Result`'s `Ok` and `Err(Error)` are built here once for both (§3.12).
  */
 
-import { optionalVariants } from '../language/well-known.ts';
+import { optionalVariants, resultVariants } from '../language/well-known.ts';
 import { unreachable } from '../structures/unreachable.ts';
 import type { TypeId } from './operands.ts';
 import type { TypeDefinition, TypeReference } from './types.ts';
@@ -83,8 +83,19 @@ export function variantOf(
   return { kind: 'variant', type, variant, fields: inDeclaredOrder(declared, fields) };
 }
 
+/** The declared type of field `field` of variant `variant` of enum entry `type`. */
+function variantFieldType(
+  types: readonly TypeDefinition[],
+  type: TypeId,
+  variant: string,
+  field: string,
+): TypeReference {
+  const declared = variantShape(types, type, variant).fields.find(({ name }) => name === field);
+  return declared?.type ?? unreachable(`Variant ${variant} of type ${type} has no field ${field}.`);
+}
+
 /** Where enum entry `type` has variant `name`, with its declared fields. */
-export function variantShape(types: readonly TypeDefinition[], type: TypeId, name: string) {
+function variantShape(types: readonly TypeDefinition[], type: TypeId, name: string) {
   const declared = types[type];
   const variants = declared?.kind === 'enum' ? declared.variants : [];
   const variant = variants.findIndex((each) => each.name === name);
@@ -104,4 +115,36 @@ export function optionalOf(
   return value === undefined
     ? variantOf(types, type, optionalVariants.none, {})
     : variantOf(types, type, optionalVariants.some, { value });
+}
+
+/** What an `Error` says (§3.12). */
+export interface ErrorFields {
+  readonly message: string;
+  readonly code: string;
+  readonly trace: string;
+}
+
+/** The type `Result` entry `result` holds when `Ok`. */
+export function okTypeOf(types: readonly TypeDefinition[], result: TypeId): TypeId {
+  return namedType(variantFieldType(types, result, resultVariants.ok, 'value'));
+}
+
+/** `Ok` of `value`, of `Result` entry `result` (§3.12). */
+export function okOf(types: readonly TypeDefinition[], result: TypeId, value: Value): Value {
+  return variantOf(types, result, resultVariants.ok, { value });
+}
+
+/** `Err` of `error`, of `Result` entry `result` (§3.12). */
+export function errOf(types: readonly TypeDefinition[], result: TypeId, error: Value): Value {
+  return variantOf(types, result, resultVariants.err, { error });
+}
+
+/** `Err` of an `Error` saying `fields`, of `Result` entry `result` (§3.12). */
+export function errorOf(
+  types: readonly TypeDefinition[],
+  result: TypeId,
+  fields: ErrorFields,
+): Value {
+  const error = namedType(variantFieldType(types, result, resultVariants.err, 'error'));
+  return errOf(types, result, structOf(types, error, { ...fields }));
 }

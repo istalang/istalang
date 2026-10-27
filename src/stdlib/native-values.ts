@@ -9,17 +9,18 @@
  */
 
 import {
+  errOf,
+  errorOf,
   type NamedFields,
-  namedType,
+  okOf,
+  okTypeOf,
   optionalOf,
   structOf,
   typeArgumentOf,
   variantOf,
-  variantShape,
 } from '../definition/declared-values.ts';
 import type { TypeId } from '../definition/operands.ts';
 import { childValues, isComposite, type Value } from '../definition/values.ts';
-import { resultVariants } from '../language/well-known.ts';
 import type { NativeContext } from '../runtime/natives.ts';
 import { unreachable } from '../structures/unreachable.ts';
 
@@ -125,7 +126,7 @@ export function resultOptional(context: NativeContext, value: Value | undefined)
 
 /** `Ok` of `value`, of the extern's declared `Result` type (§3.12). */
 export function resultOk(context: NativeContext, value: Value): Value {
-  return resultVariant(context, resultVariants.ok, { value });
+  return okOf(context.types, declaredResult(context), value);
 }
 
 /** A struct of the type the extern's declared `Result` holds when `Ok`, with `fields` by name. */
@@ -140,12 +141,12 @@ export function okExtern(context: NativeContext, payload: unknown): Value {
 
 /** The type the extern's declared `Result` holds when `Ok`. */
 function okType(context: NativeContext): TypeId {
-  return namedType(resultVariantShape(context, resultVariants.ok).fields[0]?.type);
+  return okTypeOf(context.types, declaredResult(context));
 }
 
 /** `Err` of `error`, of the extern's declared `Result` type (§3.12). */
 export function resultErr(context: NativeContext, error: Value): Value {
-  return resultVariant(context, resultVariants.err, { error });
+  return errOf(context.types, declaredResult(context), error);
 }
 
 /**
@@ -153,11 +154,7 @@ export function resultErr(context: NativeContext, error: Value): Value {
  * is the frames running the native, as an `Error` literal without one gets (§3.12).
  */
 export function resultError(context: NativeContext, message: string, code: string): Value {
-  const error = namedType(resultVariantShape(context, resultVariants.err).fields[0]?.type);
-  return resultErr(
-    context,
-    structOf(context.types, error, { message, code, trace: context.trace() }),
-  );
+  return errorOf(context.types, declaredResult(context), { message, code, trace: context.trace() });
 }
 
 /** Type argument `position` of the extern's declared result: the `T` of an `Array<T>` or a `T?`. */
@@ -218,9 +215,4 @@ export function parseResult(
 /** Variant `name` of the enum the extern declares as its result, holding `fields` by name. */
 export function resultVariant(context: NativeContext, name: string, fields: NamedFields): Value {
   return variantOf(context.types, declaredResult(context), name, fields);
-}
-
-/** Where the extern's declared enum result has variant `name`, with its declared fields. */
-function resultVariantShape(context: NativeContext, name: string) {
-  return variantShape(context.types, declaredResult(context), name);
 }

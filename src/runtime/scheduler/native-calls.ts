@@ -202,12 +202,13 @@ function nativeInstancesOf(instance: Instance): NativeInstances {
 
 /** What a test reaches of `instance` and of the world it runs in (§10). */
 function nativeTestingOf(instance: Instance): NativeTesting {
-  const world = (): TestWorld => {
-    const { world: running } = instance.loaded;
-    if (running === undefined) {
+  /** The world of the test `instance` runs in; a panic outside a test. */
+  const inTest = (): TestWorld => {
+    const { world } = instance.loaded;
+    if (world === undefined) {
       throw new Panic('Only a test run by ista test reaches other instances (§10).');
     }
-    return running;
+    return world;
   };
   return {
     mock: (target, replacement) => {
@@ -221,11 +222,11 @@ function nativeTestingOf(instance: Instance): NativeTesting {
       return { kind: 'handle', object: mock.id };
     },
     calls: (handle) => instance.heap.of(handleObject(handle), 'mock').calls,
-    inspect: (name) => world().inspect(name),
+    inspect: (name) => inTest().inspect(name),
     watch: (name, until) => {
-      world();
+      inTest();
       return instance.futures.createHandle({ kind: 'watch', instance: name, until });
     },
-    handle: (type) => ({ kind: 'extern', type, payload: world().handlePayload() }),
+    handle: (type) => ({ kind: 'extern', type, payload: inTest().handlePayload() }),
   };
 }

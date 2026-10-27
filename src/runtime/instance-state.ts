@@ -38,6 +38,23 @@ export interface LogRecord {
   readonly fields: unknown;
 }
 
+/** How a new instance runs: options it keeps for its whole life (§10). */
+export interface StartOptions {
+  /** Every segment runs twice, the first run discarded, before it commits. */
+  readonly crashEveryAwait?: boolean;
+}
+
+/** How an instance an instance spawns runs: a host's options, and those only the runtime sets. */
+export interface SpawnOptions extends StartOptions {
+  /** A panic terminates the instance at once, as `runtime.isolate` starts it (§9). */
+  readonly terminatesOnPanic?: boolean;
+}
+
+/** Whether an instance in `state` has ended, so a wait on its end resolves (§9). */
+export function hasEnded({ kind }: InstanceState): boolean {
+  return kind === 'finished' || kind === 'panicked' || kind === 'terminated';
+}
+
 /**
  * What advancing an instance did: where it stands now, the instances it spawned and the log
  * records its committed segments wrote, in order (§9).

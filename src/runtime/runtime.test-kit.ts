@@ -7,11 +7,10 @@ import type { Value } from '../definition/values.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import type { HostExterns } from './boundary/host-natives.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';
-import type { Advanced } from './instance-state.ts';
+import type { Advanced, StartOptions } from './instance-state.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
 import { seedBytes } from './random-seed.ts';
 import { Refusal } from './refusal.ts';
-import type { StartOptions } from './scheduler/instance/index.ts';
 import { type Settled, settle } from './settle.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
 
