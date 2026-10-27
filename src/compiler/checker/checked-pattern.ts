@@ -29,7 +29,7 @@ export interface TargetBinding {
  * element positions from the whole value, as for a binding). A pattern's tests run in order, so a
  * variant's fields are read only after its variant was tested.
  *
- * - `variant`: the part is the `variant`-th of its enum's `count` variants.
+ * - `variant`: the part is its enum's `variant`-th variant.
  * - `equal`: the part `==` a value: a literal or comparison's expression, or a top-level
  *   constant's name; `negated` for `!=`.
  * - `compare`: `compare(part, value)` called at `site`, in the relation its operator names.
@@ -39,7 +39,6 @@ export type PatternTest =
       readonly kind: 'variant';
       readonly path: readonly number[];
       readonly variant: number;
-      readonly count: number;
     }
   | {
       readonly kind: 'equal';

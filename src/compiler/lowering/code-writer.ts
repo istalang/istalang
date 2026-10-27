@@ -107,8 +107,11 @@ export class CodeWriter {
     });
   }
 
-  /** Jumps by the variant of the enum value in `value`: to `targets[i]` for variant i. */
-  switch(value: Register, targets: readonly Label[], span: Span): void {
+  /**
+   * Jumps by the variant of the enum value in `value`: to `targets[i]` for variant i, and to
+   * `otherwise` for every variant past them.
+   */
+  switch(value: Register, targets: readonly Label[], span: Span, otherwise?: Label): void {
     const instruction: Extract<Instruction, { kind: 'switch' }> = {
       kind: 'switch',
       span,
@@ -119,6 +122,11 @@ export class CodeWriter {
     for (const [index, target] of targets.entries()) {
       this.#refer(target, (position) => {
         instruction.targets[index] = position;
+      });
+    }
+    if (otherwise !== undefined) {
+      this.#refer(otherwise, (position) => {
+        instruction.otherwise = position;
       });
     }
   }

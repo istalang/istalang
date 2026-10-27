@@ -65,7 +65,10 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   order: (_, i) => ({ registers: [i.dst, i.comparison] }),
   jump: (_, i) => ({ labels: [i.target] }),
   branch: (_, i) => ({ registers: [i.condition], labels: [i.whenTrue, i.whenFalse] }),
-  switch: (_, i) => ({ registers: [i.value], labels: i.targets }),
+  switch: (_, i) => ({
+    registers: [i.value],
+    labels: [...i.targets, ...(i.otherwise === undefined ? [] : [i.otherwise])],
+  }),
   return: (_, i) => ({ registers: [i.value] }),
   call: (_, i) =>
     merge(

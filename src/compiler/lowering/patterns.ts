@@ -41,7 +41,7 @@ export function lowerTests(
     const part = readPart(context, subject, test.path, span);
     const pass = context.code.newLabel();
     if (test.kind === 'variant') {
-      const isVariant = { register: part, variant: test.variant, count: test.count };
+      const isVariant = { register: part, variant: test.variant };
       branchOnVariant(context, isVariant, { matched: pass, otherwise: fail }, span);
     } else {
       context.code.branch(passed(context, test, part, span), pass, fail, span);

@@ -121,7 +121,9 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   },
   switch: (_machine, instruction, frame) => {
     const value = readRegister(frame, instruction.value);
-    const target = isVariant(value) ? instruction.targets[value.variant] : undefined;
+    const target = isVariant(value)
+      ? (instruction.targets[value.variant] ?? instruction.otherwise)
+      : undefined;
     if (target === undefined) {
       unreachable(`'switch' at pc ${frame.pc} found no variant it has a target for.`);
     }

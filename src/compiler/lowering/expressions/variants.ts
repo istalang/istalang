@@ -44,11 +44,10 @@ export function lowerVariantLiteral(context: FunctionContext, node: StructLitera
   return emitVariant(context, node, name, literalFields(context, node));
 }
 
-/** The enum value in `register` tested for one of its variants: the `variant`-th of `count`. */
+/** The enum value in `register` tested for one of its variants, the `variant`-th. */
 export interface VariantTest {
   readonly register: Register;
   readonly variant: number;
-  readonly count: number;
 }
 
 /** The value of the enum `type` in `register`, tested for its variant `name`. */
@@ -58,8 +57,7 @@ export function variantTestOf(
   type: NominalType,
   name: string,
 ): VariantTest {
-  const count = checker.variantsOf(type)?.length ?? 0;
-  return { register, variant: variantIndexOf(checker, type, name), count };
+  return { register, variant: variantIndexOf(checker, type, name) };
 }
 
 /** Jumps to `matched` when the value holds the variant tested, else to `otherwise`: a `switch`. */
@@ -69,10 +67,10 @@ export function branchOnVariant(
   labels: { readonly matched: Label; readonly otherwise: Label },
   span: Span,
 ): void {
-  const targets = Array.from({ length: test.count }, (_, index) =>
+  const targets = Array.from({ length: test.variant + 1 }, (_, index) =>
     index === test.variant ? labels.matched : labels.otherwise,
   );
-  context.code.switch(test.register, targets, span);
+  context.code.switch(test.register, targets, span, labels.otherwise);
 }
 
 /** The value a `Some`, `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */

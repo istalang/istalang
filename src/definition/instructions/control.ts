@@ -19,8 +19,15 @@ const branch = defineInstruction('branch', {
   whenFalse: label,
 });
 
-/** Jumps by the variant index of an enum value: `targets[i]` handles variant i. */
-const switchVariant = defineInstruction('switch', { value: register, targets: z.array(label) });
+/**
+ * Jumps by the variant index of an enum value: `targets[i]` handles variant i, and `otherwise`
+ * every variant past the targets, so a test for one variant needn't know how many there are.
+ */
+const switchVariant = defineInstruction('switch', {
+  value: register,
+  targets: z.array(label),
+  otherwise: label.optional(),
+});
 
 /**
  * Ends the function. Every register still holding something is released, in reverse creation

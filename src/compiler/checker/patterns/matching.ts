@@ -229,7 +229,7 @@ function variantOf(context: BodyContext, part: ValuePart, name: string): Variant
     return undefined;
   }
   return {
-    test: { kind: 'variant', path: part.path, variant: index, count: variants.length },
+    test: { kind: 'variant', path: part.path, variant: index },
     key: name,
     fields: found.fields,
   };

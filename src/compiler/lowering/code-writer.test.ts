@@ -10,12 +10,16 @@ import { CodeWriter, type Label } from './code-writer.ts';
 const span = { start: 0, end: 0 };
 
 /**
- * One step of writing: a jump to label `n`, a switch to labels `ns`, a placement of label `n`, or
- * a filler instruction.
+ * One step of writing: a jump to label `n`, a switch to labels `ns` and maybe an `otherwise`, a
+ * placement of label `n`, or a filler instruction.
  */
 type Step =
   | { readonly kind: 'jump'; readonly label: number }
-  | { readonly kind: 'switch'; readonly labels: readonly number[] }
+  | {
+      readonly kind: 'switch';
+      readonly labels: readonly number[];
+      readonly otherwise: number | undefined;
+    }
   | { readonly kind: 'place'; readonly label: number }
   | { readonly kind: 'filler' };
 
@@ -29,6 +33,7 @@ const steps = fc.array(
     fc.record({
       kind: fc.constant('switch' as const),
       labels: fc.array(fc.nat({ max: labelCount - 1 }), { minLength: 1, maxLength: 3 }),
+      otherwise: fc.option(fc.nat({ max: labelCount - 1 }), { nil: undefined }),
     }),
     fc.record({ kind: fc.constant('place' as const), label: fc.nat({ max: labelCount - 1 }) }),
     fc.constant({ kind: 'filler' as const }),
@@ -42,7 +47,11 @@ function write(script: readonly Step[]) {
   const labels: Label[] = Array.from({ length: labelCount }, () => code.newLabel());
   const positions = new Map<number, number>();
   const jumps: { readonly at: number; readonly label: number }[] = [];
-  const switches: { readonly at: number; readonly labels: readonly number[] }[] = [];
+  const switches: {
+    readonly at: number;
+    readonly labels: readonly number[];
+    readonly otherwise: number | undefined;
+  }[] = [];
   let written = 0;
   const place = (label: number) => {
     const target = labels[label];
@@ -60,11 +69,13 @@ function write(script: readonly Step[]) {
         written += 1;
       }
     } else if (step.kind === 'switch') {
-      switches.push({ at: written, labels: step.labels });
+      switches.push({ at: written, labels: step.labels, otherwise: step.otherwise });
+      const labelOf = (label: number) => labels[label] ?? code.newLabel();
       code.switch(
         code.allocate(),
-        step.labels.map((label) => labels[label] ?? code.newLabel()),
+        step.labels.map(labelOf),
         span,
+        step.otherwise === undefined ? undefined : labelOf(step.otherwise),
       );
       written += 1;
     } else if (step.kind === 'place') {
@@ -95,14 +106,17 @@ describe('CodeWriter', () => {
     );
   });
 
-  it('sends every switch target to where its label was placed', () => {
+  it("sends every switch target and its 'otherwise' to where its label was placed", () => {
     fc.assert(
       fc.property(steps, (script) => {
         const { code, positions, switches } = write(script);
-        for (const { at, labels } of switches) {
-          expect(code.instructions[at]).toMatchObject({
+        for (const { at, labels, otherwise } of switches) {
+          expect(code.instructions[at]).toStrictEqual({
             kind: 'switch',
+            span,
+            value: expect.any(Number),
             targets: labels.map((label) => positions.get(label)),
+            ...(otherwise === undefined ? {} : { otherwise: positions.get(otherwise) }),
           });
         }
       }),
