@@ -53,6 +53,7 @@ import { type Instance, topFrame } from '../instance.ts';
 import { type Caller, callTargetOf, driverOf, type SegmentStart } from '../mocks.ts';
 import { NativeCalls } from '../native-calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
+import { panicOf } from './limits.ts';
 
 export type SegmentEnd =
   /** A driver awaited: commit `objects`, then run the next segment. */
@@ -134,8 +135,9 @@ class SegmentRunner implements Machine {
       const driver = driverOf(this.#instance, this.#natives, first);
       return this.#persistable(this.#runDrivers(driver));
     } catch (error) {
-      if (error instanceof Panic) {
-        return { kind: 'panicked', message: error.message, trace: this.#trace() };
+      const panic = panicOf(error);
+      if (panic !== undefined) {
+        return { kind: 'panicked', message: panic.message, trace: this.#trace() };
       }
       throw error;
     }
@@ -348,7 +350,7 @@ class SegmentRunner implements Machine {
       try {
         this.#step();
       } catch (error) {
-        if (!(error instanceof Panic)) {
+        if (panicOf(error) === undefined) {
           throw error;
         }
         this.#disposals.abandon();

@@ -86,7 +86,7 @@ async fn retry<T, E>(attempt: async fn() -> Result<T, E>, times: int = 3, backof
     if result is Ok{}:
       return result
     await time.delay(wait)
-    wait = time.Duration{value: wait.value * 2}
+    wait = wait * 2
   await attempt()
 
 fn retry<T, E>(attempt: fn() -> Result<T, E>, times: int = 3, backoff: time.Duration = 1s) -> Future<Result<T, E>>:

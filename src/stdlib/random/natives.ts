@@ -11,7 +11,7 @@
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic, type WithRandom } from '../../runtime/natives.ts';
 import { given } from '../native-values.ts';
-import { rangeEnds } from '../prelude/positions.ts';
+import { rangeEnds } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 const rangeType = knownTypeKey(wellKnown.range);

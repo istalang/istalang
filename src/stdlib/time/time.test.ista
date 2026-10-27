@@ -23,6 +23,10 @@ fn february30() -> Time: Time.of(DateTime{year: 2026, month: 2, day: 30}, time.u
 
 @Suite{"time"}
 fn suite() -> Array<Test>: [
+  test("a duration scales by an int", fn(): {
+    assertEq(Duration{value: 1500} * 2, Duration{value: 3000})
+    assertEq(Duration{value: 1500} * -1, Duration{value: -1500})
+  }),
   test("times and durations are ordered as their milliseconds", fn(): {
     assert(Time{value: 1} < Time{value: 2})
     assert(Duration{value: -1} < Duration{value: 0})

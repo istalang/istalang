@@ -9,13 +9,13 @@
  * Case mapping is Unicode's default, never a locale's, and graphemes are segmented by the root
  * locale, so the machine's locale never changes a result; the Unicode tables are the Node build's, so
  * a segment re-run on a newer Node may map a newly assigned code point differently. A string longer
- * than JavaScript can hold is a limit the program ran into, so building one panics (§3.12): every
- * native here is bounded, until one home does it for every native (D191).
+ * than JavaScript can hold is a limit the program ran into, so building one panics (§3.12), as the
+ * segment running a native makes every such limit do (runtime/scheduler/segment/limits.ts).
  */
 
 import { elementsOf } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
-import { type Native, type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
+import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { codePointPositions, codePoints, utf16Offset } from '../../text/code-points.ts';
 import { arrayOf, int, optionalValue, text } from '../native-values.ts';
 import { sliced } from '../positions.ts';
@@ -27,15 +27,11 @@ const strings = knownTypeKey(wellKnown.array, 'string');
 
 const graphemeSegmenter = new Intl.Segmenter('und', { granularity: 'grapheme' });
 
-export const stringsNatives = (keys: NativeKeys): Natives<NativeContext> =>
-  Object.fromEntries(
-    Object.entries({ ...reading(keys), ...splitting(keys), ...building(keys) }).map(
-      ([key, native]): [string, Native<NativeContext>] => [
-        key,
-        (values, context) => bounded(() => native(values, context)),
-      ],
-    ),
-  );
+export const stringsNatives = (keys: NativeKeys): Natives<NativeContext> => ({
+  ...reading(keys),
+  ...splitting(keys),
+  ...building(keys),
+});
 
 const reading = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('indexOf', 'string', 'string', 'int')]: ([s, search, from]) => {
@@ -125,16 +121,4 @@ function padding(s: string, length: bigint, fill: string): string {
     fill.repeat(Math.floor(missing / fillPoints.length)) +
     fillPoints.slice(0, missing % fillPoints.length).join('')
   );
-}
-
-/** What `build` gives; a string longer than JavaScript can hold panics. */
-function bounded<Result>(build: () => Result): Result {
-  try {
-    return build();
-  } catch (error) {
-    if (error instanceof RangeError) {
-      throw new Panic('The string would be longer than the runtime can hold.', { cause: error });
-    }
-    throw error;
-  }
 }

@@ -130,3 +130,17 @@ fn maps() -> Array<Test>: [
     assertEq(groups.size(), 0)
   }),
 ]
+
+# A string doubled until it outgrows what the runtime can hold.
+fn doubledForever() -> string:
+  let doubled = "x"
+  for _ in 0..64:
+    doubled = doubled + doubled
+  doubled
+
+@Suite{"prelude › limits"}
+fn limits() -> Array<Test>: [
+  test("a string outgrowing what the runtime can hold panics", async fn(): {
+    assertEq(await expectPanic(doubledForever), "The string would be longer than the runtime can hold.")
+  }),
+]

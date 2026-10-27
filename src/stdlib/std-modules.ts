@@ -10,9 +10,9 @@
 
 import { languageModules } from '../language/well-known.ts';
 import collectionsSource from './collections/collections.ista';
-import fanoutSource from './fanout/fanout.ista';
 import cryptoSource from './crypto/crypto.ista';
 import { cryptoNatives } from './crypto/natives.ts';
+import fanoutSource from './fanout/fanout.ista';
 import futuresSource from './futures/futures.ista';
 import { futuresNatives } from './futures/natives.ts';
 import inboxSource from './inbox/inbox.ista';
@@ -22,11 +22,11 @@ import logSource from './log/log.ista';
 import { logNatives } from './log/natives.ts';
 import { preludeNatives } from './prelude/natives.ts';
 import preludeSource from './prelude/prelude.ista';
+import { randomNatives } from './random/natives.ts';
+import randomSource from './random/random.ista';
 import { regexNatives } from './regex/natives.ts';
 import regexSource from './regex/regex.ista';
 import rpcSource from './rpc/rpc.ista';
-import { randomNatives } from './random/natives.ts';
-import randomSource from './random/random.ista';
 import { runtimeNatives } from './runtime/natives.ts';
 import runtimeSource from './runtime/runtime.ista';
 import { type StdModule, stdModule } from './std-module.ts';

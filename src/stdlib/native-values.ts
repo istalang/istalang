@@ -191,7 +191,9 @@ export function variantEntry<Entry>(
 ): Entry {
   const name = variantName(context, value);
   const entry = Object.hasOwn(table, name) ? table[name] : undefined;
-  return entry === undefined ? unreachable(`${context.name} has no entry for variant ${name}.`) : entry;
+  return entry === undefined
+    ? unreachable(`${context.name} has no entry for variant ${name}.`)
+    : entry;
 }
 
 /** A struct of type entry `type` with `fields` by name. */

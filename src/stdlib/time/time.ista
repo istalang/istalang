@@ -23,6 +23,9 @@ fn add(left: Time, right: Duration) -> Time:
 fn add(left: Duration, right: Duration) -> Duration:
   Duration{value: left.value + right.value}
 
+fn multiply(left: Duration, right: int) -> Duration:   # Duration * int
+  Duration{value: left.value * right}
+
 fn delay(duration: Duration) -> Future<unit>:
   at(now() + duration)
 
