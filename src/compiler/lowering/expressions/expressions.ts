@@ -20,13 +20,13 @@ import { lowerComprehension } from './comprehensions.ts';
 import { lowerIf } from './control.ts';
 import { lowerDurationLiteral } from './literals.ts';
 import { lowerIs, lowerMatch } from './matching.ts';
-import { lowerName } from './names.ts';
+import { lowerName, lowerNamed } from './names.ts';
 import { lowerBinary, lowerUnary } from './operators.ts';
 import { lowerPropagate } from './propagate.ts';
 import { lowerSelect } from './select.ts';
 import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
-import { isEnum, lowerFieldlessVariant, lowerNone, lowerVariantLiteral } from './variants.ts';
+import { isEnum, lowerNone, lowerVariantLiteral } from './variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {
@@ -69,15 +69,15 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /**
- * `a.b`: a variant qualified by its enum, a function named as a value through a namespace or its
- * type (closures.ts), or a field read.
+ * `a.b`: a function named as a value through a namespace or its type (closures.ts), anything else
+ * a qualified member names, such as a variant or a namespace's constant, read as its name reads
+ * (names.ts), or a field read.
  */
 function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Register {
-  if (context.entityOf(node.member)?.kind === 'variant') {
-    return lowerFieldlessVariant(context, node, node.member.text);
-  }
   if (context.body.calls.has(node)) {
     return lowerFunctionValue(context, node);
   }
-  return lowerFieldRead(context, node);
+  return context.entityOf(node.member) === undefined
+    ? lowerFieldRead(context, node)
+    : lowerNamed(context, node.member, node);
 }

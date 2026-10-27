@@ -223,6 +223,24 @@ describe('ista run --host', () => {
     },
   );
 
+  it('reads an extern constant through a namespace import as its own module reads it', async () => {
+    const root = project({
+      'limits.ista': 'extern ceiling: int\nconst floor = 4\n',
+      'main.ista': [
+        "import * as limits from 'limits'",
+        'async fn main() -> Future<int>:',
+        '  limits.floor + limits.ceiling',
+        '',
+      ].join('\n'),
+      'host.mjs': "export default { 'limits.ceiling': () => 3 };\n",
+    });
+    expect(await ista(root, 'run', 'main.ista', '--host', 'host.mjs')).toEqual({
+      code: 0,
+      out: '7\n',
+      err: '',
+    });
+  });
+
   it("reads a host function's undefined as JSON.stringify writes it", async () => {
     const root = project({
       'main.ista': [

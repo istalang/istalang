@@ -1,0 +1,8 @@
+# outcome: "UTC Europe/Berlin"
+# A top-level constant read through a namespace import (§3.13), alone and as a field's owner.
+
+import * as time from 'time'
+
+async fn main() -> Future<string>:
+  const zone = time.utc
+  zone.id + " " + time.Zone{id: "Europe/Berlin"}.id
