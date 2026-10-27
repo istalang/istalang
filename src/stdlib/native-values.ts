@@ -1,8 +1,8 @@
 /**
  * The values std natives receive and return, as the runtime holds them: an `int` is a bigint, a
  * `float` a number, a `string` a string, a struct its fields in declaration order, an array its
- * elements, and an optional the `Some` or `None` variant of its declared type, told apart by
- * whether it has a field.
+ * elements, an optional the `Some` or `None` variant of its declared type, told apart by whether
+ * it has a field, and a value of an extern type the runtime implements its type and a payload.
  *
  * An argument of another shape is a bug in lowering or loading, never in the program, so reading
  * one throws a TypeError rather than panicking.
@@ -65,6 +65,24 @@ function declaredResult(context: NativeContext): TypeId {
 /** A struct of the extern's declared result type, with `fields` by name. */
 export function resultStruct(context: NativeContext, fields: NamedFields): Value {
   return structOf(context.types, declaredResult(context), fields);
+}
+
+/** The payload of an argument of an extern type the runtime implements (§3.6). */
+export function payloadOf(value: Value | undefined): unknown {
+  if (value === undefined || !isComposite(value) || value.kind !== 'extern') {
+    unreachable('Expected a value of an extern type.');
+  }
+  return value.payload;
+}
+
+/** A value of extern type entry `type`, holding `payload`. */
+export function externOf(type: TypeId, payload: unknown): Value {
+  return { kind: 'extern', type, payload };
+}
+
+/** A value of the extern type the extern declares as its result, holding `payload`. */
+export function resultExtern(context: NativeContext, payload: unknown): Value {
+  return externOf(declaredResult(context), payload);
 }
 
 export function arrayOf(elements: readonly Value[]): Value {

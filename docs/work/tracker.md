@@ -26,7 +26,7 @@ tags: [tracker]
 ## Filed
 
 Open items only: an item is removed once it is resolved; git history keeps it. Ids keep counting
-up, so the next one is D194.
+up, so the next one is D196.
 
 | # | Item | Source | Status |
 | --- | --- | --- | --- |
@@ -94,3 +94,5 @@ up, so the next one is D194.
 | D190 | Explicit type arguments don't give a call's arguments their expected types: with `fn same<T>(a: T, b: T)`, `same<Array<string?>>(xs, ["a", none])` reports 5108 on the `none` and a 5100 asking for the type arguments that were given, so the literal must move into an annotated `const`. | phase M4 B 2026-10-27 | open |
 | D192 | Type-table lookups by name have several homes: a field's or variant's entry by name in native-values.ts (`fieldTypeOf`, `variantShape`), definition/json-values.ts and runtime/testing/run-tests.ts; and `namedType` twice with different contracts (native-values.ts throws, runtime/scheduler/native-calls.ts returns undefined). Give them one home in definition/types.ts. With it, json/natives.ts `_object` builds the `Json` Object variant through its declaration (native-values.ts `resultVariant`), not by position through `jsonTypeOf`. | phase review M4 B 2026-10-27 | open |
 | D193 | `strings.format` is seven overloads, one per count of values (0–6), each wrapping its values in an array for the `_format` extern, because rest parameters aren't implemented (D67). Once they are, it becomes the one declaration §3.8 gives, `extern fn format(template: string, ...values: Array<string>) -> string`, the overloads and `_format` go, and a call may pass any number of values; call sites stay as they are. | phase M4 B 2026-10-27 | open |
+| D194 | `decimal`'s work has no bound short of the string limit, and some of it grows faster than its output: `decimal.divide(Decimal(1), 7, 20_000_000)` runs over 60 s on the host's thread, and a negative `pow` raises the exact power before dividing to 34 digits (`1.0000001` to the power `-3_000_000`, 9 s). A native's time is bounded by no budget, so one instance stalls its host. Decide in §3.8 the largest `places` (and negative exponent) that a call accepts, beyond which it panics, or compute these in time linear in the digits kept. | phase review M4 A 2026-10-27 | open |
+| D195 | A string's `length()` spreads it into an array of code points (text/code-points.ts `codePoints`), several bytes per element, so a string of a few hundred million characters, which strings and a `Decimal`'s text can reach, exhausts the heap and kills the host ("FATAL ERROR: … heap out of memory") instead of panicking as a limit does. Count code points without building the array, and check the other `codePoints` callers the same way. | phase M4 A 2026-10-27 | open |

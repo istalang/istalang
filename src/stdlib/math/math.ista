@@ -1,0 +1,45 @@
+# The math module (spec §3.8): numeric functions on ints and floats, and the rounding modes `math`
+# and `decimal` share.
+#
+# Rounding keeps a float a float, so NaN and the infinities pass through as IEEE 754 has them and
+# `int(x)` converts the result exactly; `floor` and `ceil` are `round` in one mode. `min`, `max` and
+# `clamp` are written once, over `Comparable`, so every ordered type has them: a `Decimal`, a `Time`
+# or a program's own. Each function takes its number as `self`, so once imported by name it is also
+# a method: `2.pow(10)`, `x.round()`.
+
+enum Rounding:
+  Floor
+  Ceiling
+  TowardZero
+  AwayFromZero
+  HalfEven              # a tie goes to the even neighbour
+  HalfAwayFromZero
+
+extern fn abs(self: int) -> int
+extern fn abs(self: float) -> float
+
+extern fn round(self: float, mode: Rounding = Rounding.HalfEven) -> float
+
+fn floor(self: float) -> float: self.round(Rounding.Floor)
+fn ceil(self: float) -> float: self.round(Rounding.Ceiling)
+
+# An int to an int power stays an int, which a negative exponent can't; a float operand makes
+# the result a float.
+extern fn pow(self: int, exponent: int) -> int
+extern fn pow(self: float, exponent: float) -> float
+extern fn pow(self: int, exponent: float) -> float
+extern fn pow(self: float, exponent: int) -> float
+
+extern fn sqrt(self: int) -> float
+extern fn sqrt(self: float) -> float
+
+fn min<T is Comparable>(self: T, other: T) -> T:
+  if other < self: other else: self
+
+fn max<T is Comparable>(self: T, other: T) -> T:
+  if other > self: other else: self
+
+fn clamp<T is Comparable>(self: T, low: T, high: T) -> T:
+  if low > high:
+    panic("clamp's low bound is above its high bound.")
+  if self < low: low elif self > high: high else: self

@@ -1,0 +1,188 @@
+# The decimal module (spec §3.8), as tables of cases: canonical text, exact arithmetic, rounding
+# to places in every mode, the division operators, powers, and the traits a Decimal meets.
+
+import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
+import * as json from 'json'
+import * as math from 'math'
+import Rounding from 'math'
+import Decimal from 'decimal'
+import * as decimal from 'decimal'
+
+struct Invoice:
+  total: Decimal
+
+# The number `text` writes; a test's own text is always one.
+fn d(text: string) -> Decimal:
+  match Decimal.parse(text):
+    case Ok{value}: value
+    case Err{error}: panic(error.message)
+
+fn parsed<T is Parsable>(text: string) -> Result<T>: T.parse(text)
+
+fn textOf(result: Result<Decimal>) -> string:
+  match result:
+    case Ok{value}: string(value)
+    case Err{error}: error.code + ": " + error.message
+
+# Rounding 2.5, -2.5, 1.005, 1.015 and -0.001 to two places, then 2.5 and -2.5 to none, in each mode.
+fn roundings() -> Array<(Rounding, Array<string>)>: [
+  (Rounding.Floor, ["2.5", "-2.5", "1", "1.01", "-0.01", "2", "-3"]),
+  (Rounding.Ceiling, ["2.5", "-2.5", "1.01", "1.02", "0", "3", "-2"]),
+  (Rounding.TowardZero, ["2.5", "-2.5", "1", "1.01", "0", "2", "-2"]),
+  (Rounding.AwayFromZero, ["2.5", "-2.5", "1.01", "1.02", "-0.01", "3", "-3"]),
+  (Rounding.HalfEven, ["2.5", "-2.5", "1", "1.02", "0", "2", "-2"]),
+  (Rounding.HalfAwayFromZero, ["2.5", "-2.5", "1.01", "1.02", "0", "3", "-3"]),
+]
+
+fn rounded(mode: Rounding) -> Array<string>:
+  const twoPlaces = [for x in ["2.5", "-2.5", "1.005", "1.015", "-0.001"]: string(d(x).round(2, mode))]
+  const whole = [for x in ["2.5", "-2.5"]: string(d(x).round(0, mode))]
+  [...twoPlaces, ...whole]
+
+# Dividing a by b to `places` in `mode`.
+fn divisions() -> Array<(string, string, int, Rounding, string)>: [
+  ("1", "3", 2, Rounding.HalfEven, "0.33"),
+  ("2", "3", 2, Rounding.HalfEven, "0.67"),
+  ("1", "8", 2, Rounding.HalfEven, "0.12"),
+  ("3", "8", 2, Rounding.HalfEven, "0.38"),
+  ("1", "8", 2, Rounding.HalfAwayFromZero, "0.13"),
+  ("-1", "8", 2, Rounding.HalfAwayFromZero, "-0.13"),
+  ("-1", "8", 2, Rounding.HalfEven, "-0.12"),
+  ("-1", "3", 2, Rounding.Floor, "-0.34"),
+  ("-1", "3", 2, Rounding.Ceiling, "-0.33"),
+  ("1", "-3", 0, Rounding.AwayFromZero, "-1"),
+  ("-1", "3", 0, Rounding.TowardZero, "0"),
+  ("100", "7", 4, Rounding.HalfEven, "14.2857"),
+  ("10", "4", 3, Rounding.Floor, "2.5"),
+]
+
+fn dividedByZero(): d("1") / 0
+fn floorDividedByZero(): d("1") // d("0")
+fn remainderByZero(): 1 % d("0")
+fn dividedToPlacesByZero(): decimal.divide(d("1"), 0, 2)
+fn negativePlaces(): d("1").round(-1)
+fn negativeFixed(): d("1").toFixed(-2)
+fn zeroToNegativePower(): d("0").pow(-1)
+fn tooManyDigits(): d("0.1").pow(1000000000000)
+fn tooLongText(): d("0.1").pow(600000000)
+fn tooManyPlaces(): d("1").round(2000000000)
+fn tooLongFixed(): d("1").toFixed(600000000)
+fn tooLarge(): d("2").pow(1000000000000)
+
+@Suite{"decimal"}
+fn suite() -> Array<Test>: [
+  group("text", [
+    test("parse reads digits and a fraction, and toString writes its one form", fn(): {
+      for source, written in [
+        ("1.50", "1.5"), ("-12.50", "-12.5"), ("007.250", "7.25"), ("100", "100"), ("-0", "0"),
+        ("-0.000", "0"), ("0.000001", "0.000001"),
+        ("123456789012345678901234567890.123456789", "123456789012345678901234567890.123456789"),
+      ]:
+        assertEq((source, textOf(Decimal.parse(source))), (source, written))
+    }),
+    test("parse refuses anything else", fn(): {
+      for source in ["", "1e5", "+1", ".5", "5.", "1,5", "NaN", "Infinity", "0x10", " 1", "1 ", "--1"]:
+        assertEq(textOf(Decimal.parse(source)), "parse: '" + source + "' is not a decimal number.")
+    }),
+    test("toFixed writes exactly its places, rounding half to even unless told otherwise", fn(): {
+      assertEq([d("5").toFixed(2), d("-12.5").toFixed(2), d("1.005").toFixed(2), d("1.005").toFixed(2, Rounding.HalfAwayFromZero), d("2.5").toFixed(0)], ["5.00", "-12.50", "1.00", "1.01", "2"])
+    }),
+    test("toFixed writes no -0", fn(): {
+      assertEq([d("-0.001").toFixed(2), d("-0.4").toFixed(0)], ["0.00", "0"])
+    }),
+  ]),
+  test("== and map keys compare numbers", fn(): {
+    assert(d("1.50") == d("1.5"))
+    assert(d("1.50") == d("3") / d("2"))
+    assert(d("0.1") + d("0.2") == d("0.3"))
+    const prices = [d("1.0"): "one"]
+    assertEq(prices.get(d("1.00")), "one")
+  }),
+  group("arithmetic", [
+    test("+, - and * are exact, with an int on either side", fn(): {
+      assertEq([string(d("0.1") + d("0.2")), string(d("1.5") + 1), string(1 - d("0.25")), string(d("1.25") * 3), string(-d("2.5"))], ["0.3", "2.5", "0.75", "3.75", "-2.5"])
+      assertEq(string(d("123456789.123456789") * d("987654321.987654321")), "121932631356500531.347203169112635269")
+    }),
+    test("/ rounds half to even to 34 significant digits", fn(): {
+      assertEq([string(d("1") / 3), string(2 / d("3")), string(d("10") / 4), string(d("1") / d("1000000"))], ["0.3333333333333333333333333333333333", "0.6666666666666666666666666666666667", "2.5", "0.000001"])
+    }),
+    test("divide rounds the exact quotient to places in every mode", fn(): {
+      for a, b, places, mode, expected in divisions():
+        assertEq((a, b, places, string(decimal.divide(d(a), d(b), places, mode))), (a, b, places, expected))
+      assertEq(string(decimal.divide(d("1"), 3, 2)), "0.33")
+      assertEq(string(decimal.divide(2, d("3"), 1)), "0.7")
+    }),
+    test("// floors and % takes the divisor's sign, so a == (a // b) * b + a % b", fn(): {
+      for a, b, quotient, remainder in [("-7", "2", "-4", "1"), ("7", "-2", "-4", "-1"), ("7.5", "2", "3", "1.5"), ("-7.5", "2", "-4", "0.5"), ("0.3", "0.1", "3", "0")]:
+        assertEq((a, b, string(d(a) // d(b)), string(d(a) % d(b))), (a, b, quotient, remainder))
+        assert(d(a) == (d(a) // d(b)) * d(b) + d(a) % d(b))
+      assertEq([string(d("7.5") // 2), string(-7 % d("2.5"))], ["3", "0.5"])
+    }),
+    test("compares with an int on either side", fn(): {
+      assert(d("1.5") < 2 and 2 > d("1.5") and d("2.0") <= 2 and d("-0.1") < d("0"))
+      let values = [d("2"), d("-1.5"), d("0.25")]
+      values.sort()
+      assertEq([for x in values: string(x)], ["-1.5", "0.25", "2"])
+    }),
+    test("every division by zero panics", async fn(): {
+      assertEq(await expectPanic(dividedByZero), "Division by zero.")
+      assertEq(await expectPanic(floorDividedByZero), "Division by zero.")
+      assertEq(await expectPanic(remainderByZero), "Division by zero.")
+      assertEq(await expectPanic(dividedToPlacesByZero), "Division by zero.")
+    }),
+  ]),
+  group("rounding", [
+    test("round goes to places in every mode", fn(): {
+      for mode, expected in roundings():
+        assertEq(rounded(mode), expected)
+    }),
+    test("round goes to a whole number, half to even, when given nothing", fn(): {
+      assertEq([string(d("2.5").round()), string(d("3.5").round()), string(d("-2.5").round())], ["2", "4", "-2"])
+    }),
+    test("floor, ceil and abs", fn(): {
+      assertEq([string(d("2.7").floor()), string(d("-2.2").floor()), string(d("2.2").ceil()), string(d("-2.7").ceil()), string(d("-3.5").abs())], ["2", "-3", "3", "-2", "3.5"])
+    }),
+    test("a negative count of places panics", async fn(): {
+      assertEq(await expectPanic(negativePlaces), "A Decimal can't have -1 places after the point.")
+      assertEq(await expectPanic(negativeFixed), "A Decimal can't have -2 places after the point.")
+    }),
+    test("more places than a Decimal or a string can hold panic at once", async fn(): {
+      assertEq(await expectPanic(tooManyPlaces), "A Decimal can't have 2000000000 places after the point.")
+      assertEq(await expectPanic(tooLongFixed), "The string would be longer than the runtime can hold.")
+    }),
+  ]),
+  group("pow", [
+    test("is exact for an exponent of at least 0, and divides as / does below it", fn(): {
+      assertEq([string(d("1.5").pow(3)), string(d("1.5").pow(0)), string(d("-0.1").pow(3)), string(d("10").pow(30))], ["3.375", "1", "-0.001", "1000000000000000000000000000000"])
+      assertEq([string(d("2").pow(-1)), string(d("3").pow(-1)), string(d("0.5").pow(-2))], ["0.5", "0.3333333333333333333333333333333333", "4"])
+    }),
+    test("panics on zero to a negative power, and on a result the runtime can't hold", async fn(): {
+      assertEq(await expectPanic(zeroToNegativePower), "Division by zero.")
+      assertEq(await expectPanic(tooManyDigits), "0.1 to the power 1000000000000 has more digits than a Decimal can hold.")
+      assertEq(await expectPanic(tooLongText), "The string would be longer than the runtime can hold.")
+      assertEq(await expectPanic(tooLarge), "The integer would be larger than the runtime can hold.")
+    }),
+  ]),
+  test("converts from and to ints and floats", fn(): {
+    assertEq([string(Decimal(5)), string(Decimal(-100000000000000000000))], ["5", "-100000000000000000000"])
+    assertEq([int(d("-2.7")), int(d("2.7")), int(d("12345678901234567890.5"))], [-2, 2, 12345678901234567890])
+    assertEq([float(d("0.1")), float(d("-2.5"))], [0.1, -2.5])
+  }),
+  group("traits", [
+    test("is Stringable and Parsable", fn(): {
+      assertEq(["Total: " + d("9.90"), d("1.5") + " each"], ["Total: 9.9", "1.5 each"])
+      assertEq(textOf(parsed<Decimal>("2.50")), "2.5")
+    }),
+    test("crosses as JSON as its text", fn(): {
+      assertEq(json.stringify(Invoice{total: d("19.90")}), "{\"total\":\"19.9\"}")
+      match json.parse<Invoice>("{\"total\":\"0.10\"}"):
+        case Ok{value}: assert(value.total == d("0.1"))
+        case Err{error}: panic(error.message)
+      assert(json.parse<Invoice>("{\"total\":0.1}") is Err{})
+      assert(json.parse<Invoice>("{\"total\":\"1e3\"}") is Err{})
+    }),
+    test("is Comparable, so math orders it", fn(): {
+      assertEq([string(math.min(d("1.5"), d("1.25"))), string(math.max(d("1.5"), d("1.25"))), string(math.clamp(d("7"), d("0"), d("5.5")))], ["1.25", "1.5", "5.5"])
+    }),
+  ]),
+]

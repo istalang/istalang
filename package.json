@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "commander": "15.0.0",
+    "decimal.js": "10.6.0",
     "lossless-json": "4.3.3",
     "lru-cache": "11.5.3",
     "re2js": "2.9.0",
