@@ -195,7 +195,14 @@ export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarge
       return type.declaration.kind === 'TypeParameter'
         ? { kind: 'parameter', parameter: type.declaration }
         : undefined;
-    default:
+    case 'anonymous':
+    case 'tuple':
+    case 'function':
+    case 'error':
       return undefined;
+    default: {
+      const unhandled: never = type;
+      return unhandled;
+    }
   }
 }

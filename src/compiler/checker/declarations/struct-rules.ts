@@ -55,7 +55,14 @@ function holds(
       const fields = checker.fieldsOf(type) ?? [];
       return fields.some((field) => holds(checker, field.type, target, seen));
     }
-    default:
+    case 'primitive':
+    case 'function':
+    case 'parameter':
+    case 'error':
       return false;
+    default: {
+      const unhandled: never = type;
+      return unhandled;
+    }
   }
 }

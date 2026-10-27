@@ -6,11 +6,9 @@
  * - Every type argument must meet its parameter's constraints. A type meets a trait with the same
  *   functions wherever it is met: those the trait requires must be declared beside the types they
  *   take or beside the trait, or be a requirement of a type parameter's own constraints
- *   (resolution/candidates.ts). Each
- *   is found by resolving a call to it with the required parameter types, taken exactly: a
- *   function taking the type only once wrapped into an optional is one for the optional, not
- *   for it. It must give the required result. The calls found are the witnesses the
- *   instantiation calls (check.ts).
+ *   (resolution/candidates.ts). Each is the function declared to meet it (declared-witness.ts),
+ *   which must give the required result. The calls found are the witnesses the instantiation
+ *   calls (check.ts).
  * - A required field is met by a struct field of the same name and type, or by a constraint on a
  *   type parameter requiring it too. `Sendable` is derived (traits/sendable.ts). `Encodable` and
  *   `Decodable` each imply it, since JSON written and read back is a copy sent, except where
@@ -49,15 +47,8 @@ import { errorType, type Substitution, sameType, substitute, type Type } from '.
 import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
-import { witnessCandidates } from './candidates.ts';
-import {
-  type Application,
-  type CallArgument,
-  type Choice,
-  choose,
-  type Signature,
-  signatureOf,
-} from './choice.ts';
+import { type Application, signatureOf } from './choice.ts';
+import { chooseWitness } from './declared-witness.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
@@ -282,22 +273,6 @@ function functionWitnesses(
 }
 
 /**
- * Whether a function declared for `type` meets one that `constraint` requires, whether or not its
- * own constraints are met: a declared witness, which nothing derived may stand beside.
- */
-export function declaresWitness(
-  checker: CheckerContext,
-  type: Type,
-  constraint: Constraint,
-): boolean {
-  const substitution = constraintSubstitution(constraint, type);
-  return requiredFunctions(constraint.trait).some(
-    (declaration) =>
-      chooseWitness(checker, type, signatureOf(checker, declaration, substitution)).kind !== 'none',
-  );
-}
-
-/**
  * A function declared to meet a requirement, taking what it requires, that gives another type than
  * the requirement does: the reason a type declaring it doesn't meet the trait.
  */
@@ -340,26 +315,6 @@ function witnessOf(
     return { kind: 'wrongResult', required: signature.result(), given: result };
   }
   return callMade(application.candidate, instantiation, signature.parameters.length);
-}
-
-/**
- * The function declared to meet `required`, a requirement mapped for `type`: chosen among the
- * witness candidates by the required parameter types, taken exactly.
- */
-function chooseWitness(checker: CheckerContext, type: Type, required: Signature): Choice {
-  const parameterTypes = required.parameters.map((parameter) => parameter.type);
-  const candidates = witnessCandidates(checker, type, {
-    required: required.declaration,
-    parameterTypes,
-  });
-  const callArguments = required.parameters.map(
-    ({ type: each, reference }): CallArgument => ({
-      type: each,
-      passing: reference ? 'reference' : 'value',
-      exact: true,
-    }),
-  );
-  return choose(checker, candidates, callArguments, undefined);
 }
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {

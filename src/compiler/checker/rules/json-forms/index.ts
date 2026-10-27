@@ -40,7 +40,8 @@ import {
   jsonTraits,
   variantTagKey,
 } from '../../json-form.ts';
-import { declaresWitness, witnessesFor } from '../../resolution/conformance.ts';
+import { witnessesFor } from '../../resolution/conformance.ts';
+import { declaresWitness } from '../../resolution/declared-witness.ts';
 import { callWithTypes } from '../../resolution/typed-call.ts';
 import type { FunctionCall, ResolvedCall } from '../../resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';

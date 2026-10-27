@@ -55,8 +55,16 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
             requiredFunctions(trait).some(({ name }) => name.text === disposeFunction),
           )
       );
-    default:
+    case 'primitive':
+    case 'anonymous':
+    case 'tuple':
+    case 'function':
+    case 'error':
       return false;
+    default: {
+      const unhandled: never = type;
+      return unhandled;
+    }
   }
 }
 

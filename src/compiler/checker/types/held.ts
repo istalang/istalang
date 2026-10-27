@@ -58,12 +58,23 @@ export function heldParts(
           const fields = checker.fieldsOf(type) ?? checker.sharedValueOf(type)?.fields ?? [];
           return fields.map((field) => field.type);
         }
-        default:
+        case 'EnumDeclaration':
           return (checker.variantsOf(type) ?? []).flatMap(({ fields }) =>
             fields.map((field) => field.type),
           );
+        default: {
+          const unhandled: never = type.entity.declaration;
+          return unhandled;
+        }
       }
-    default:
+    case 'primitive':
+    case 'function':
+    case 'parameter':
+    case 'error':
       return [];
+    default: {
+      const unhandled: never = type;
+      return unhandled;
+    }
   }
 }
