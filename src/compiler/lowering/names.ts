@@ -23,7 +23,11 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
 import { type ModuleId, programModule } from '../program/program.ts';
-import type { ExternConstantDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
+import type {
+  ExternConstantDeclaration,
+  FunctionDeclaration,
+  TraitDeclaration,
+} from '../syntax/declarations.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 
@@ -42,6 +46,7 @@ function declaredName(declaration: FunctionDeclaration): string {
 type NamedDeclaration =
   | FunctionDeclaration
   | NominalDeclaration
+  | TraitDeclaration
   | VariableDeclaration
   | ExternConstantDeclaration;
 
@@ -95,7 +100,19 @@ function keyType(checker: Checker, type: Type): KeyType {
     case 'primitive':
       return { kind: 'primitive', name: type.name };
     case 'parameter':
-      return { kind: 'parameter', name: type.declaration.name.text };
+      return {
+        kind: 'parameter',
+        name: type.declaration.kind === 'TraitDeclaration' ? 'Self' : type.declaration.name.text,
+      };
+    case 'any':
+      return {
+        kind: 'any',
+        traits: type.constraints.map(({ trait, arguments: typeArguments }) => ({
+          kind: 'named',
+          name: qualifiedNameOf(checker, trait),
+          arguments: typeArguments.map((argument) => keyType(checker, argument)),
+        })),
+      };
     case 'nominal': {
       const { declaration } = type.entity;
       return {

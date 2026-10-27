@@ -7,8 +7,8 @@
 import { wellKnown } from '../../../language/well-known.ts';
 import type { CheckerContext } from '../context.ts';
 import type { ResolvedCall } from '../resolved-call.ts';
-import { type Constraint, wellKnownConstraint } from '../traits/constraints.ts';
-import type { Type } from '../types/type.ts';
+import { wellKnownConstraint } from '../traits/constraints.ts';
+import type { Constraint, Type } from '../types/type.ts';
 import type { UseSite } from '../use-site.ts';
 import { witnessesFor } from './conformance.ts';
 import { declaresWitness } from './declared-witness.ts';

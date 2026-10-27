@@ -32,15 +32,16 @@ import { callCandidates } from '../resolution/candidates.ts';
 import { chooseSilently } from '../resolution/silent-choice.ts';
 import type { CallSite, FunctionCall, ResolvedCall } from '../resolved-call.ts';
 import { requiredFunctions } from '../traits/constraints.ts';
-import { type NominalType, sameType, type Type, unitType } from '../types/type.ts';
+import { type Constraint, type NominalType, sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { searchSite } from '../use-site.ts';
 
 const none: Disposal = { kind: 'none' };
 
 /**
- * Whether values of `type` are disposable: a handle with a `dispose`, or a type parameter whose
- * constraints require one, as `Disposable` does, so every type meeting them has one (§3.10).
+ * Whether values of `type` are disposable: a handle with a `dispose`, or a type parameter or an
+ * `any` type whose constraints require one, as `Disposable` does, so every type meeting them has
+ * one (§3.10).
  */
 export function isDisposable(checker: CheckerContext, type: Type): boolean {
   switch (type.kind) {
@@ -49,12 +50,10 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
     case 'parameter':
       return (
         type.declaration.kind === 'TypeParameter' &&
-        checker
-          .constraintsOf(type.declaration)
-          .some(({ trait }) =>
-            requiredFunctions(trait).some(({ name }) => name.text === disposeFunction),
-          )
+        requiresDispose(checker.constraintsOf(type.declaration))
       );
+    case 'any':
+      return requiresDispose(type.constraints);
     case 'primitive':
     case 'anonymous':
     case 'tuple':
@@ -66,6 +65,12 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
       return unhandled;
     }
   }
+}
+
+function requiresDispose(constraints: readonly Constraint[]): boolean {
+  return constraints.some(({ trait }) =>
+    requiredFunctions(trait).some(({ name }) => name.text === disposeFunction),
+  );
 }
 
 export function disposalOf(checker: CheckerContext, type: NominalType): Disposal {

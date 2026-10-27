@@ -17,7 +17,7 @@ import { isSharedStruct, type TraitDeclaration } from '../../syntax/declarations
 import type { CheckerContext } from '../context.ts';
 import { jsonTraits } from '../json-form.ts';
 import { heldParts } from '../types/held.ts';
-import type { NominalType, Type } from '../types/type.ts';
+import type { Constraint, NominalType, Type } from '../types/type.ts';
 
 /** The traits a type parameter may be constrained by to be sendable. */
 const sendableTraits: readonly WellKnownDeclaration[] = [
@@ -28,6 +28,16 @@ const sendableTraits: readonly WellKnownDeclaration[] = [
 /** Whether values of `type` may leave an instance for another. */
 export function isSendable(checker: CheckerContext, type: Type): boolean {
   return sendable(checker, type, new Set());
+}
+
+/**
+ * Whether `constraints` make every type meeting them sendable: one of them is `Sendable`, or
+ * `Encodable` or `Decodable`, which imply it (§3.10).
+ */
+function requiresSendable(checker: CheckerContext, constraints: readonly Constraint[]): boolean {
+  return constraints.some(({ trait }) =>
+    sendableTraits.some((each) => isWellKnownTrait(checker, trait, each)),
+  );
 }
 
 function sendable(checker: CheckerContext, type: Type, deciding: Set<string>): boolean {
@@ -43,12 +53,10 @@ function sendable(checker: CheckerContext, type: Type, deciding: Set<string>): b
     case 'parameter':
       return (
         type.declaration.kind === 'TypeParameter' &&
-        checker
-          .constraintsOf(type.declaration)
-          .some(({ trait }) =>
-            sendableTraits.some((each) => isWellKnownTrait(checker, trait, each)),
-          )
+        requiresSendable(checker, checker.constraintsOf(type.declaration))
       );
+    case 'any':
+      return requiresSendable(checker, type.constraints);
     case 'nominal':
       return nominalSendable(checker, type, deciding);
     default: {

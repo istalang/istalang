@@ -154,6 +154,8 @@ export class JsonForms implements JsonCodecs {
         return this.#nominal(type);
       case 'function':
         return { kind: 'none', reason: 'a JSON form, which no function has' };
+      case 'any':
+        return { kind: 'none', reason: "a JSON form, which no 'any' type has" };
       case 'primitive':
       case 'parameter':
       case 'error':

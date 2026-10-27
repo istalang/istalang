@@ -3,7 +3,8 @@
  * when `sameType` holds (type.ts).
  *
  * - A nominal type, an anonymous struct or a type parameter is itself by an object's identity: an
- *   entity, or the node that introduced it. A string can carry that identity only as a number.
+ *   entity, or the node that introduced it; an `any` type is its traits' with their arguments,
+ *   sorted, since its constraints are a set. A string can carry that identity only as a number.
  *   The numbers belong to one `TypeKeys`, which belongs to one checker, so no counter outlives
  *   its program. Lowering numbers its own nodes through the same unit, so it keys
  *   function-table entries the same way it keys types.
@@ -47,6 +48,13 @@ export class TypeKeys {
         );
         const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
         return `${prefix}fn(${parameters.join(',')})->${key(type.result)}`;
+      }
+      case 'any': {
+        const constraints = type.constraints.map(
+          ({ trait, arguments: typeArguments }) =>
+            `${this.identityOf(trait)}<${typeArguments.map(key).join(',')}>`,
+        );
+        return `any{${constraints.sort().join('&')}}`;
       }
       default: {
         const unhandled: never = type;

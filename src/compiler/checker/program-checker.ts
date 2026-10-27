@@ -69,11 +69,11 @@ import { checkClashes } from './rules/clashes.ts';
 import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
-import type { Constraint } from './traits/constraints.ts';
 import { type OptionalEntity, wrapsToFit } from './types/fit.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
 import {
   type AnonymousStructType,
+  type Constraint,
   errorType,
   type FieldMember,
   isNominalEntity,

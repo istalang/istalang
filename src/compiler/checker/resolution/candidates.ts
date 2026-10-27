@@ -198,6 +198,7 @@ export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarge
     case 'anonymous':
     case 'tuple':
     case 'function':
+    case 'any':
     case 'error':
       return undefined;
     default: {

@@ -58,6 +58,7 @@ function holds(
     case 'primitive':
     case 'function':
     case 'parameter':
+    case 'any':
     case 'error':
       return false;
     default: {

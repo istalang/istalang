@@ -7,7 +7,7 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
-import type { Type } from './type.ts';
+import type { Constraint, Type } from './type.ts';
 
 /**
  * `type` as source would spell it. Extern keys spell types too (definition/extern-key.ts), but
@@ -32,6 +32,8 @@ export function typeText(type: Type): string {
     }
     case 'parameter':
       return type.declaration.kind === 'TraitDeclaration' ? 'Self' : type.declaration.name.text;
+    case 'any':
+      return `any ${type.constraints.map(constraintText).join(' & ')}`;
     case 'error':
       return '?';
     default: {
@@ -39,6 +41,20 @@ export function typeText(type: Type): string {
       return unhandled;
     }
   }
+}
+
+/**
+ * A constraint of an `any` type as written: its trait's own `Self`, standing for each value's own
+ * type, is the default it came from, so trailing ones are left out (`Iterable<int>`).
+ */
+function constraintText({ trait, arguments: typeArguments }: Constraint): string {
+  const isOwnSelf = (type: Type | undefined) =>
+    type?.kind === 'parameter' && type.declaration === trait;
+  let written = typeArguments.length;
+  while (written > 0 && isOwnSelf(typeArguments[written - 1])) {
+    written -= 1;
+  }
+  return nominalText(trait.name.text, typeArguments.slice(0, written));
 }
 
 /**

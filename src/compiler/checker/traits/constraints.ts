@@ -24,18 +24,13 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
 import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import {
+  type Constraint,
   type ParameterKey,
   type Substitution,
   substitute,
   substitutionFor,
   type Type,
 } from '../types/type.ts';
-
-/** A trait a type must satisfy, with its type arguments; `Self` already the constrained type. */
-export interface Constraint {
-  readonly trait: TraitDeclaration;
-  readonly arguments: readonly Type[];
-}
 
 /** The well-known trait `declaration` names, as a constraint with no type arguments. */
 export function wellKnownConstraint(

@@ -36,14 +36,20 @@ import { type Completion, completeInference } from '../inference/complete.ts';
 import { type JsonDirection, jsonTraits } from '../json-form.ts';
 import type { ResolvedCall, Witnesses } from '../resolved-call.ts';
 import {
-  type Constraint,
   constraintSubstitution,
   requiredFields,
   requiredFieldType,
   requiredFunctions,
 } from '../traits/constraints.ts';
 import { isSendable, isSendableTrait, isWellKnownTrait } from '../traits/sendable.ts';
-import { errorType, type Substitution, sameType, substitute, type Type } from '../types/type.ts';
+import {
+  type Constraint,
+  errorType,
+  type Substitution,
+  sameType,
+  substitute,
+  type Type,
+} from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';

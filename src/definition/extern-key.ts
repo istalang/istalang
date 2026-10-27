@@ -34,7 +34,9 @@ export type KeyType =
       readonly async: boolean;
       readonly parameters: readonly KeyType[];
       readonly result: KeyType;
-    };
+    }
+  /** `any A & B` (§3.10), spelled by its traits, sorted, since they are a set. */
+  | { readonly kind: 'any'; readonly traits: readonly KeyType[] };
 
 export interface ExternSignature {
   /** The declaring module's canonical name, such as `prelude` or `purchase/approve`. */
@@ -125,6 +127,8 @@ export function keyTypeText(type: KeyType): string {
       return `struct { ${type.fields.map((field) => `${field.name}: ${keyTypeText(field.type)}`).join('; ')} }`;
     case 'function':
       return `${type.async ? 'async ' : ''}fn(${type.parameters.map(keyTypeText).join(', ')}) -> ${keyTypeText(type.result)}`;
+    case 'any':
+      return `any ${type.traits.map(keyTypeText).sort().join(' & ')}`;
     default: {
       const unhandled: never = type;
       return unhandled;

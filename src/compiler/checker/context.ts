@@ -45,9 +45,9 @@ import type { CallSite, ResolvedCall } from './resolved-call.ts';
 import type { Annotations } from './rules/annotations.ts';
 import type { Iterations } from './rules/iteration.ts';
 import type { VariableScope } from './statements/variables.ts';
-import type { Constraint } from './traits/constraints.ts';
 import type { OptionalEntity } from './types/fit.ts';
 import type {
+  Constraint,
   FieldMember,
   FunctionType,
   NominalDeclaration,

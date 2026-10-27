@@ -70,6 +70,7 @@ export function heldParts(
     case 'primitive':
     case 'function':
     case 'parameter':
+    case 'any':
     case 'error':
       return [];
     default: {

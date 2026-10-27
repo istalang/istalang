@@ -6,12 +6,8 @@
  */
 
 import type { CheckerContext } from '../context.ts';
-import {
-  type Constraint,
-  constraintSubstitution,
-  requiredFunctions,
-} from '../traits/constraints.ts';
-import type { Type } from '../types/type.ts';
+import { constraintSubstitution, requiredFunctions } from '../traits/constraints.ts';
+import type { Constraint, Type } from '../types/type.ts';
 import { witnessCandidates } from './candidates.ts';
 import { type CallArgument, type Choice, choose, type Signature, signatureOf } from './choice.ts';
 

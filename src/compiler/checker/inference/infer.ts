@@ -13,6 +13,8 @@
 
 import { type OptionalEntity, optionalInner, wrapsToFit } from '../types/fit.ts';
 import {
+  type AnyType,
+  type FunctionType,
   isPrimitive,
   type ParameterKey,
   type Substitution,
@@ -104,21 +106,9 @@ export class Inference {
       case 'tuple':
         return given.kind === 'tuple' && this.#matchAll(declared.elements, given.elements);
       case 'function':
-        return (
-          given.kind === 'function' &&
-          given.isAsync === declared.isAsync &&
-          (given.isSendable || !declared.isSendable) &&
-          given.parameters.length === declared.parameters.length &&
-          declared.parameters.every((parameter, index) => {
-            const other = given.parameters[index];
-            return (
-              other !== undefined &&
-              other.reference === parameter.reference &&
-              this.#matchExact(parameter.type, other.type)
-            );
-          }) &&
-          this.#matchExact(declared.result, given.result)
-        );
+        return given.kind === 'function' && this.#matchFunction(declared, given);
+      case 'any':
+        return given.kind === 'any' && this.#matchConstraints(declared, given);
       case 'primitive':
       case 'error':
         return sameType(declared, given) || declared.kind === 'error';
@@ -127,6 +117,37 @@ export class Inference {
         return unhandled;
       }
     }
+  }
+
+  #matchFunction(declared: FunctionType, given: FunctionType): boolean {
+    return (
+      given.isAsync === declared.isAsync &&
+      (given.isSendable || !declared.isSendable) &&
+      given.parameters.length === declared.parameters.length &&
+      declared.parameters.every((parameter, index) => {
+        const other = given.parameters[index];
+        return (
+          other !== undefined &&
+          other.reference === parameter.reference &&
+          this.#matchExact(parameter.type, other.type)
+        );
+      }) &&
+      this.#matchExact(declared.result, given.result)
+    );
+  }
+
+  /** Each of `declared`'s constraints matched by one of `given`'s, a set like it (§3.10). */
+  #matchConstraints(declared: AnyType, given: AnyType): boolean {
+    return (
+      given.constraints.length === declared.constraints.length &&
+      declared.constraints.every((constraint) =>
+        given.constraints.some(
+          (other) =>
+            other.trait === constraint.trait &&
+            this.#matchAll(constraint.arguments, other.arguments),
+        ),
+      )
+    );
   }
 
   #matchAll(declared: readonly Type[], given: readonly Type[]): boolean {

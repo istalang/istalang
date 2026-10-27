@@ -19,6 +19,11 @@
  * - A type parameter is keyed by its declaration. A trait's `Self` is the trait's own implicit
  *   parameter, keyed by the trait declaration, so substituting the constrained type for it is the
  *   same operation as for any other parameter.
+ * - `any A & B` (§3.10) is a value of any type meeting each of its constraints, a set: their order
+ *   and the way they were written don't make two types. A constraint's arguments may name its
+ *   trait's `Self` (`any Iterable<int>` is `Iterable<int, Self>`), which stands for each value's own
+ *   type. The `any` type binds it, so substituting from outside never replaces it, and no type
+ *   mentioning it is open.
  * - Exact relations live here; fitting with the implicit wrap into `T?` needs to know which type
  *   is `Optional`, so it lives in fit.ts.
  */
@@ -50,6 +55,18 @@ export type NominalDeclaration = StructDeclaration | EnumDeclaration | ExternStr
 
 /** The binder's entity for a declaration a nominal type comes from. */
 export type NominalEntity = TypeEntity & { readonly declaration: NominalDeclaration };
+
+/** A trait a type must meet, with its type arguments; `Self` stands for the type meeting it. */
+export interface Constraint {
+  readonly trait: TraitDeclaration;
+  readonly arguments: readonly Type[];
+}
+
+/** `any A & B`: a value of any type meeting every constraint, a set (§3.10). */
+export interface AnyType {
+  readonly kind: 'any';
+  readonly constraints: readonly Constraint[];
+}
 
 /** A declared struct, shared or not, enum or extern type, with its type arguments. */
 export interface NominalType {
@@ -140,6 +157,7 @@ export type Type =
   | TupleType
   | FunctionType
   | TypeParameterType
+  | AnyType
   | ErrorType;
 
 /** The primitive type named `name`. */
@@ -199,6 +217,14 @@ export function sameType(first: Type, second: Type): boolean {
       );
     case 'parameter':
       return second.kind === 'parameter' && first.declaration === second.declaration;
+    case 'any':
+      return (
+        second.kind === 'any' &&
+        first.constraints.length === second.constraints.length &&
+        first.constraints.every((constraint) =>
+          second.constraints.some((other) => sameConstraint(constraint, other)),
+        )
+      );
     case 'error':
       return second.kind === 'error';
     default: {
@@ -206,6 +232,11 @@ export function sameType(first: Type, second: Type): boolean {
       return unhandled;
     }
   }
+}
+
+/** Whether two constraints are one trait with the same arguments. */
+export function sameConstraint(first: Constraint, second: Constraint): boolean {
+  return first.trait === second.trait && sameTypes(first.arguments, second.arguments);
 }
 
 function sameTypes(first: readonly Type[], second: readonly Type[]): boolean {
@@ -271,6 +302,13 @@ export function substitute(type: Type, substitution: Substitution): Type {
   if (type.kind === 'parameter') {
     return substitution.get(type.declaration) ?? type;
   }
+  if (type.kind === 'any') {
+    const outer = new Map(substitution);
+    for (const { trait } of type.constraints) {
+      outer.delete(trait);
+    }
+    return mapChildren(type, (child) => substitute(child, outer));
+  }
   return mapChildren(type, (child) => substitute(child, substitution));
 }
 
@@ -302,6 +340,14 @@ export function mapChildren(type: Type, map: (child: Type) => Type): Type {
         })),
         result: map(type.result),
       };
+    case 'any':
+      return {
+        ...type,
+        constraints: type.constraints.map((constraint) => ({
+          ...constraint,
+          arguments: constraint.arguments.map(map),
+        })),
+      };
     default: {
       const unhandled: never = type;
       return unhandled;
@@ -320,6 +366,8 @@ export function typeChildren(type: Type): readonly Type[] {
       return type.elements;
     case 'function':
       return [...type.parameters.map((parameter) => parameter.type), type.result];
+    case 'any':
+      return type.constraints.flatMap((constraint) => constraint.arguments);
     case 'primitive':
     case 'parameter':
     case 'error':
@@ -336,7 +384,13 @@ export function parametersIn(type: Type): readonly ParameterKey[] {
   if (type.kind === 'parameter') {
     return [type.declaration];
   }
-  return [...new Set(typeChildren(type).flatMap(parametersIn))];
+  const mentioned = new Set(typeChildren(type).flatMap(parametersIn));
+  if (type.kind === 'any') {
+    for (const { trait } of type.constraints) {
+      mentioned.delete(trait);
+    }
+  }
+  return [...mentioned];
 }
 
 /** Whether `type` is, or is built from, the error type. */

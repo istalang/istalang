@@ -99,6 +99,8 @@ export class TypeTable {
       case 'parameter':
       case 'error':
         return unreachable(`A ${type.kind} type can't reach lowering.`);
+      case 'any':
+        return unreachable('An any type has no entry before trait objects lower.');
       default: {
         const unhandled: never = type;
         return unhandled;
