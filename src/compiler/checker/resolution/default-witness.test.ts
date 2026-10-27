@@ -38,10 +38,10 @@ describe("a type's default()", () => {
     expect(codesOf(reportedWith(declared, ''))).toEqual([]);
   });
 
-  it('declared where it is used, serves neither', () => {
+  it('declared where it is used, serves neither, and a map literal says what it needs', () => {
     expect(codesOf(reportedWith('', declared))).toEqual([
       checkerDiagnostics.skippedWithoutDefault.code,
-      checkerDiagnostics.notConforming.code,
+      checkerDiagnostics.mapLiteralType.code,
     ]);
   });
 

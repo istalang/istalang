@@ -6,13 +6,22 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import type { ResolvedCall } from '../check.ts';
-import { wellKnownConstraint } from '../traits/constraints.ts';
+import type { CheckerContext } from '../context.ts';
+import { type Constraint, wellKnownConstraint } from '../traits/constraints.ts';
 import type { Type } from '../types/type.ts';
 import type { UseSite } from '../use-site.ts';
-import { witnessesFor } from './conformance.ts';
+import { declaresWitness, witnessesFor } from './conformance.ts';
 
 /** The call giving `type`'s default, Default's witness; undefined after `site` reports why not. */
 export function defaultWitness(site: UseSite, type: Type): ResolvedCall | undefined {
-  const constraint = wellKnownConstraint(site.checker, wellKnown.default);
-  return witnessesFor(site, type, constraint)?.[0];
+  return witnessesFor(site, type, defaultConstraint(site.checker))?.[0];
+}
+
+/** Whether a `default()` is declared for `type`, whether or not it meets Default. */
+export function declaresDefault(checker: CheckerContext, type: Type): boolean {
+  return declaresWitness(checker, type, defaultConstraint(checker));
+}
+
+function defaultConstraint(checker: CheckerContext): Constraint {
+  return wellKnownConstraint(checker, wellKnown.default);
 }

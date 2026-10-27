@@ -40,7 +40,7 @@ import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
-import { defaultWitness } from '../resolution/default-witness.ts';
+import { declaresDefault, defaultWitness } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
@@ -48,7 +48,7 @@ import { withoutOptionals } from '../types/fit.ts';
 import { errorType, intType, type NominalType, neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
-import { useSite } from '../use-site.ts';
+import { searchSite, useSite } from '../use-site.ts';
 
 /** The form of each collection literal of one body, for lowering. */
 export class CollectionForms {
@@ -251,11 +251,18 @@ function checkDeclaredLiteral(
   node: ArrayLiteral | MapLiteral,
   type: NominalType,
 ): Type {
+  const { checker } = context;
   context.collections.record(node, 'declared');
   const failure = () => checkerDiagnostics.mapLiteralType(node.span, typeText(type));
-  const made = defaultWitness(useSite(context.checker, context.module, node.span), type);
+  // With no default declared the literal says what it needs; one declared that doesn't meet
+  // Default is reported by conformance, which says why.
+  const declared = declaresDefault(checker, type);
+  const site = declared ? useSite(checker, context.module, node.span) : searchSite(checker);
+  const made = defaultWitness(site, type);
   if (made !== undefined) {
     context.implicit.record(node, 'default', made);
+  } else if (!declared) {
+    context.report(failure());
   }
   for (const entry of node.kind === 'MapLiteral' ? node.entries : []) {
     insertEntry(context, entry, type, made === undefined ? undefined : failure);

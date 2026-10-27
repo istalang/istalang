@@ -27,7 +27,7 @@ export const collectionTemplates = {
   mapLiteralType: {
     code: 5304,
     message: (type: string) =>
-      `A map literal of type ${type} needs a 'setIndex' that takes its entries.`,
+      `A map literal of type ${type} needs a static '${type}.default()' and a 'setIndex' that takes its entries.`,
   },
   mapSpreadItems: {
     code: 5305,
