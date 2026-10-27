@@ -91,7 +91,7 @@ An indexed element is no step of a place, so every call a program makes is a `ca
 | `bigint` (`int`) | a JSON integer |
 | `number` (`float`) | `{kind: 'float', value}`; NaN, ±Infinity and -0 as strings |
 | tuple, struct, variant, array, map, closure | `{kind, …}` with child values; structs and variants by type index, fields in declaration order |
-| extern value | `{kind: 'extern', type, payload}`; the payload is opaque |
+| extern value | `{kind: 'extern', type, payload}`; the payload is plain JSON, which `==` and map keys compare by its canonical text (codec.ts) |
 | handle | `{kind: 'handle', object}`; never in a constant |
 
 Map entries keep the runtime's order, so a restore iterates the same way.
