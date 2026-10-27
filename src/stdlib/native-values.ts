@@ -68,11 +68,17 @@ export function resultStruct(context: NativeContext, fields: NamedFields): Value
 }
 
 /** The payload of an argument of an extern type the runtime implements (§3.6). */
-export function payloadOf(value: Value | undefined): unknown {
+function payloadOf(value: Value | undefined): unknown {
   if (value === undefined || !isComposite(value) || value.kind !== 'extern') {
     unreachable('Expected a value of an extern type.');
   }
   return value.payload;
+}
+
+/** The text an argument of an extern type whose values the runtime keeps as text holds. */
+export function textPayloadOf(value: Value | undefined): string {
+  const payload = payloadOf(value);
+  return typeof payload === 'string' ? payload : unreachable('Expected an extern value of text.');
 }
 
 /** A value of extern type entry `type`, holding `payload`. */

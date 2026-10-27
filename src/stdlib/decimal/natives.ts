@@ -10,16 +10,15 @@ import type { KeyType, NativeParameter } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values.ts';
 import { conversionFunction } from '../../language/well-known.ts';
 import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
-import { unreachable } from '../../structures/unreachable.ts';
 import { roundingType } from '../math/rounding.ts';
 import {
   externOf,
   int,
   parseResult,
-  payloadOf,
   resultExtern,
   resultTypeArgument,
   text,
+  textPayloadOf,
   variantEntry,
 } from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
@@ -63,7 +62,7 @@ export const decimalNatives = (keys: NativeKeys, mathKeys: NativeKeys): Natives<
     [keys.ofStatic('int', conversionFunction, decimal)]: ([value]) => truncatedInt(operand(value)),
     [keys.ofStatic('float', conversionFunction, decimal)]: ([value]) =>
       nearestFloat(operand(value)),
-    [keys.of('toString', decimal)]: ([value]) => textOf(value),
+    [keys.of('toString', decimal)]: ([value]) => textPayloadOf(value),
     [keys.ofStatic(typeName, 'parse', 'string')]: ([source], context) => {
       const read = readDecimal(text(source));
       const value = read && externOf(resultTypeArgument(context, 0), canonicalText(read));
@@ -124,13 +123,7 @@ function mixedOverloads(keys: NativeKeys, decimal: KeyType) {
 
 /** A Decimal or an int argument, as a number. */
 function operand(value: Value | undefined): Decimal {
-  return decimalOf(typeof value === 'bigint' ? value : textOf(value));
-}
-
-/** A Decimal argument's canonical text, which is its payload. */
-function textOf(value: Value | undefined): string {
-  const payload = payloadOf(value);
-  return typeof payload === 'string' ? payload : unreachable('A Decimal holds its text.');
+  return decimalOf(typeof value === 'bigint' ? value : textPayloadOf(value));
 }
 
 /** A Decimal of the extern's declared result type. */

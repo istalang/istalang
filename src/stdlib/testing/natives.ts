@@ -18,7 +18,14 @@ import {
   type WithTesting,
 } from '../../runtime/natives.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { arrayOf, given, resultVariant, text } from '../native-values.ts';
+import {
+  arrayOf,
+  given,
+  resultExtern,
+  resultVariant,
+  text,
+  textPayloadOf,
+} from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
 
 type Context = NativeContext & WithTesting;
@@ -38,11 +45,11 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
     keys.of(name, started, ...rest);
   const start =
     (crashEveryAwait: boolean) =>
-    ([entry, values]: readonly Value[], context: Context): Value => ({
-      kind: 'extern',
-      type: context.resultType ?? unreachable(`${context.name} starts no Started.`),
-      payload: context.testing.start(given(entry), tupleElements(values), crashEveryAwait),
-    });
+    ([entry, values]: readonly Value[], context: Context): Value =>
+      resultExtern(
+        context,
+        context.testing.start(given(entry), tupleElements(values), crashEveryAwait),
+      );
   const startKey = (name: string) => keys.of(name, parameterKey('F'), parameterKey('A'));
   return {
     [keys.of('_mock', parameterKey('F'), parameterKey('F'))]: ([target, replacement], context) =>
@@ -52,21 +59,21 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
     [startKey('_start')]: start(false),
     [startKey('_startCrashingEveryAwait')]: start(true),
     [ofStarted('idle')]: ([handle], context) =>
-      context.testing.watch(instanceOf(handle), { kind: 'idle' }),
+      context.testing.watch(textPayloadOf(handle), { kind: 'idle' }),
     [ofStarted('reaches', 'string')]: ([handle, label], context) =>
-      context.testing.watch(instanceOf(handle), { kind: 'waypoint', label: text(label) }),
+      context.testing.watch(textPayloadOf(handle), { kind: 'waypoint', label: text(label) }),
     [ofStarted('result')]: ([handle], context) =>
-      context.testing.watch(instanceOf(handle), { kind: 'finished' }),
+      context.testing.watch(textPayloadOf(handle), { kind: 'finished' }),
     [ofStarted('_panicked')]: ([handle], context) =>
-      context.testing.watch(instanceOf(handle), { kind: 'panicked' }),
+      context.testing.watch(textPayloadOf(handle), { kind: 'panicked' }),
     [ofStarted('waitingAt')]: ([handle], context) =>
       arrayOf(
-        (context.testing.inspect(instanceOf(handle))?.waitingAt ?? []).map(
+        (context.testing.inspect(textPayloadOf(handle))?.waitingAt ?? []).map(
           ({ waypoint, location }) => waypoint ?? location,
         ),
       ),
     [ofStarted('state')]: ([handle], context) => {
-      const state = context.testing.inspect(instanceOf(handle))?.state.kind ?? 'ready';
+      const state = context.testing.inspect(textPayloadOf(handle))?.state.kind ?? 'ready';
       return resultVariant(context, stateVariants[state], {});
     },
     [keys.of('handle')]: (_, context) =>
@@ -83,15 +90,6 @@ function namedFunction(target: Value | undefined): number {
     throw new Panic("A mock's target must name a function (§10).");
   }
   return value.function;
-}
-
-/** The instance a `Started` handle names. */
-function instanceOf(handle: Value | undefined): string {
-  const value = given(handle);
-  if (!isComposite(value) || value.kind !== 'extern' || typeof value.payload !== 'string') {
-    unreachable('A Started handle holds no instance name.');
-  }
-  return value.payload;
 }
 
 /** The arguments a started function is given: a tuple of them, or `()` for none. */
