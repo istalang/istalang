@@ -1,0 +1,11 @@
+# Tests that run a scenario twice: as it is, and in an instance that discards and re-runs every
+# segment before committing it (§10), so a std module's tests check both with one expectation.
+
+import Test, test, assertEq, startCrashingEveryAwait from 'testing'
+import Encodable from 'json'
+
+# Two tests of `scenario`, run as it is and with every segment re-run, each expecting `expected`.
+fn runAndReRun<R is Encodable & Sendable>(title: string, scenario: sendable async fn() -> R, expected: R) -> Array<Test>: [
+  test(title, async fn(): assertEq(await scenario(), expected)),
+  test(title + ", with every segment re-run", async fn(): assertEq(await startCrashingEveryAwait(scenario).result(), expected)),
+]

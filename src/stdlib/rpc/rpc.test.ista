@@ -1,7 +1,8 @@
 # The rpc module (spec §3.8): calls, their servers, calls let go without a reply and calls their
 # callers let go of.
 
-import Suite, Test, test, assert, assertEq, startCrashingEveryAwait from 'testing'
+import Suite, Test, test, assert, assertEq from 'testing'
+import runAndReRun from '../testing/re-runs.test'
 import * as rpc from 'rpc'
 import * as runtime from 'runtime'
 
@@ -9,13 +10,19 @@ import * as runtime from 'runtime'
 fn unanswered<R>(reply: Result<R>) -> bool:
   reply is Err{error} and error.code == "unanswered"
 
-# Two calls to a handler that commits while handling each, both answered.
-async fn calling() -> Future<Array<Result<int>>>:
+# Two calls to a handler that waits at a gate opened once per call: the replies, and what the
+# handler logged.
+async fn servingTwoCalls() -> Future<(Array<Result<int>>, Array<string>)>:
   const method = rpc.create<int, int>()
-  fn _ = method.onMessage(async fn(n: int): { await runtime.commit(); n * 2 })
-  const (a, b) = (method.call(1), method.call(2))
+  const gate = Slot.create<unit>()
+  let log: Array<string> = []
+  fn _ = method.onMessage(async fn(n: int): { log.push("start " + n); await gate.take(); log.push("end " + n); n })
+  const (first, second) = (method.call(1), method.call(2))
   await runtime.commit()
-  [await a, await b]
+  await gate.put(())
+  const firstReply = await first
+  await gate.put(())
+  ([firstReply, await second], log)
 
 @Suite{"rpc"}
 fn rpcSuite() -> Array<Test>: [
@@ -24,19 +31,7 @@ fn rpcSuite() -> Array<Test>: [
     fn _ = double.onMessage(fn(n: int): n * 2)
     assertEq(await double.call(21), Ok{(42)})
   }),
-  test("serves calls one at a time, in the order they arrived", async fn(): {
-    const method = rpc.create<int, int>()
-    const gate = Slot.create<unit>()
-    let log: Array<string> = []
-    fn _ = method.onMessage(async fn(n: int): { log.push("start " + n); await gate.take(); log.push("end " + n); n })
-    const (first, second) = (method.call(1), method.call(2))
-    await runtime.commit()
-    await gate.put(())
-    assertEq(await first, Ok{(1)})
-    await gate.put(())
-    assertEq(await second, Ok{(2)})
-    assertEq(log, ["start 1", "end 1", "start 2", "end 2"])
-  }),
+  ...runAndReRun("serves calls one at a time, in the order they arrived", servingTwoCalls, ([Ok{(1)}, Ok{(2)}], ["start 1", "end 1", "start 2", "end 2"])),
   test("shares the calls among its servers, each call going to one", async fn(): {
     const method = rpc.create<int, string>()
     fn _ = method.onMessage(fn(n: int): "a" + n)
@@ -65,8 +60,5 @@ fn rpcSuite() -> Array<Test>: [
     fn _ = method.onMessage(fn(n: int): { served.push(n); n })
     assertEq(await method.call(2), Ok{(2)})
     assertEq(served, [2])
-  }),
-  test("answers calls in an instance re-running every segment", async fn(): {
-    assertEq(await startCrashingEveryAwait(calling).result(), [Ok{(2)}, Ok{(4)}])
   }),
 ]

@@ -1,15 +1,22 @@
-# The futures module's combinators (spec §3.8). Every combinator waits across a commit before what
-# it waits on arrives, so it resumes from the snapshot that commit took (§5), and each also runs in
-# an instance that discards and re-runs every segment before committing it (§10).
+# The futures module's combinators (spec §3.8). Each scenario waits across a commit before what it
+# waits on arrives, so the combinator resumes from the snapshot that commit took (§5), and each runs
+# twice: in the test's own instance, and in one that discards and re-runs every segment before
+# committing it (§10).
 
-import Suite, Test, test, assertEq, expectPanic, FakeClock, mock, startCrashingEveryAwait from 'testing'
+import Suite, Test, test, assertEq, expectPanic, FakeClock, Started, mock, startCrashingEveryAwait from 'testing'
 import * as testing from 'testing'
+import runAndReRun from '../testing/re-runs.test'
 import * as futures from 'futures'
 import * as runtime from 'runtime'
 import * as time from 'time'
 
 # What the futures under test give: a value, or the name of what failed.
 type Outcome = Result<int, string>
+
+# Fills `slot` with `value` once a commit has passed, as another execution would.
+async fn later<T>(slot: Slot<T>, value: T) -> Future<unit>:
+  await runtime.commit()
+  await slot.put(value)
 
 # A clock standing still at 0 until the test advances it, for `timeout` and `retry`.
 async fn withClock(body: async fn(FakeClock) -> unit):
@@ -18,118 +25,102 @@ async fn withClock(body: async fn(FakeClock) -> unit):
   fn _ = mock(time.at, clock.at)
   await body(clock)
 
-# Retries, three times a second apart, an attempt that succeeds the third time: the outcome, and
-# when each attempt started.
-async fn succeedingThirdTime() -> Future<(Outcome, Array<int>)>:
-  let startedAt: Array<int> = []
-  const attempt = async fn() -> Future<Outcome>: { startedAt.push(time.now().value); if startedAt.length() < 3: Err{("failed")} else: Ok{(startedAt.length())} }
-  (await futures.retry(attempt, 3, 1s), startedAt)
+async fn allArrivingOutOfOrder() -> Future<Result<Array<int>, string>>:
+  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
+  const all = futures.all([a.read(), b.read()])
+  await later(b, Ok{(2)})
+  await later(a, Ok{(1)})
+  await all
 
-# Retries, twice a second apart, a plain attempt that always fails.
-async fn failingTwice() -> Future<Outcome>:
-  let attempts = 0
-  await futures.retry(fn() -> Outcome: { attempts += 1; Err{("attempt " + attempts)} }, 2, 1s)
+async fn allWithOneFailing() -> Future<Result<Array<int>, string>>:
+  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
+  const all = futures.all([a.read(), b.read()])
+  await later(b, Err{("b")})
+  await all
+
+async fn allOfNone() -> Future<Result<Array<int>, string>>:
+  await futures.all<int, string>([])
 
 @Suite{"futures › all"}
 fn allSuite() -> Array<Test>: [
-  test("gives every Ok value in position order, whatever order they arrive in", async fn(): {
-    const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
-    const both = futures.all([a.read(), b.read()])
-    await runtime.commit()
-    drop b.put(Ok{(2)})
-    await runtime.commit()
-    drop a.put(Ok{(1)})
-    assertEq(await both, Ok{([1, 2])})
-  }),
-  test("gives the first Err as soon as it arrives, while the others still wait", async fn(): {
-    const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
-    const both = futures.all([a.read(), b.read()])
-    await runtime.commit()
-    drop b.put(Err{("b")})
-    assertEq(await both, Err{("b")})
-  }),
-  test("of no futures is Ok and empty", async fn(): {
-    assertEq(await futures.all<int, string>([]), Ok{([])})
-  }),
+  ...runAndReRun("gives every Ok value in position order, whatever order they arrive in", allArrivingOutOfOrder, Ok{([1, 2])}),
+  ...runAndReRun("gives the first Err as soon as it arrives, while the others still wait", allWithOneFailing, Err{("b")}),
+  ...runAndReRun("of no futures is Ok and empty", allOfNone, Ok{([])}),
 ]
+
+async fn allSettledWithAFailure() -> Future<Array<Outcome>>:
+  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
+  const settled = futures.allSettled([a.read(), b.read()])
+  await later(b, Err{("b")})
+  await later(a, Ok{(1)})
+  await settled
 
 @Suite{"futures › allSettled"}
 fn allSettledSuite() -> Array<Test>: [
-  test("gives every value in position order once all arrived, failures included", async fn(): {
-    const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
-    const both = futures.allSettled([a.read(), b.read()])
-    await runtime.commit()
-    drop b.put(Err{("b")})
-    await runtime.commit()
-    drop a.put(Ok{(1)})
-    assertEq(await both, [Ok{(1)}, Err{("b")}])
-  }),
+  ...runAndReRun("gives every value in position order once all arrived, failures included", allSettledWithAFailure, [Ok{(1)}, Err{("b")}]),
 ]
+
+async fn raceOfTwo() -> Future<int>:
+  const (a, b) = (Slot.create<int>(), Slot.create<int>())
+  const first = futures.race([a.read(), b.read()])
+  await later(b, 2)
+  await first
 
 @Suite{"futures › race"}
 fn raceSuite() -> Array<Test>: [
-  test("gives the first value to arrive", async fn(): {
-    const (a, b) = (Slot.create<int>(), Slot.create<int>())
-    const first = futures.race([a.read(), b.read()])
-    await runtime.commit()
-    drop b.put(2)
-    assertEq(await first, 2)
-  }),
+  ...runAndReRun("gives the first value to arrive", raceOfTwo, 2),
   test("panics on no futures", async fn(): {
     assertEq(await expectPanic(async fn(): await futures.race<int>([])), "futures.first was given no futures.")
   }),
 ]
 
+async fn anyAfterAnError() -> Future<Result<int, Array<string>>>:
+  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
+  const either = futures.any([a.read(), b.read()])
+  await later(a, Err{("a")})
+  await later(b, Ok{(2)})
+  await either
+
+async fn anyAllFailing() -> Future<Result<int, Array<string>>>:
+  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
+  const either = futures.any([a.read(), b.read()])
+  await later(b, Err{("b")})
+  await later(a, Err{("a")})
+  await either
+
+async fn anyOfNone() -> Future<Result<int, Array<string>>>:
+  await futures.any<int, string>([])
+
 @Suite{"futures › any"}
 fn anySuite() -> Array<Test>: [
-  test("gives the first Ok to arrive, past the errors before it", async fn(): {
-    const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
-    const either = futures.any([a.read(), b.read()])
-    await runtime.commit()
-    drop a.put(Err{("a")})
-    await runtime.commit()
-    drop b.put(Ok{(2)})
-    assertEq(await either, Ok{(2)})
-  }),
-  test("gives every error in position order once all failed", async fn(): {
-    const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
-    const either = futures.any([a.read(), b.read()])
-    await runtime.commit()
-    drop b.put(Err{("b")})
-    await runtime.commit()
-    drop a.put(Err{("a")})
-    assertEq(await either, Err{(["a", "b"])})
-  }),
-  test("of no futures is an empty Err", async fn(): {
-    assertEq(await futures.any<int, string>([]), Err{([])})
-  }),
+  ...runAndReRun("gives the first Ok to arrive, past the errors before it", anyAfterAnError, Ok{(2)}),
+  ...runAndReRun("gives every error in position order once all failed", anyAllFailing, Err{(["a", "b"])}),
+  ...runAndReRun("of no futures is an empty Err", anyOfNone, Err{([])}),
 ]
+
+async fn quorumReached() -> Future<Result<Array<int>, Array<string>>>:
+  const (a, b, c) = (Slot.create<Outcome>(), Slot.create<Outcome>(), Slot.create<Outcome>())
+  const two = futures.quorum(2, [a.read(), b.read(), c.read()])
+  await later(c, Ok{(3)})
+  await later(a, Err{("a")})
+  await later(b, Ok{(2)})
+  await two
+
+async fn quorumOutOfReach() -> Future<Result<Array<int>, Array<string>>>:
+  const (a, b, c) = (Slot.create<Outcome>(), Slot.create<Outcome>(), Slot.create<Outcome>())
+  const two = futures.quorum(2, [a.read(), b.read(), c.read()])
+  await later(c, Err{("c")})
+  await later(a, Err{("a")})
+  await two
+
+async fn quorumOfZero() -> Future<Result<Array<int>, Array<string>>>:
+  await futures.quorum(0, [Slot.create<Outcome>().read()])
 
 @Suite{"futures › quorum"}
 fn quorumSuite() -> Array<Test>: [
-  test("gives the first n Ok values in the order they arrived", async fn(): {
-    const (a, b, c) = (Slot.create<Outcome>(), Slot.create<Outcome>(), Slot.create<Outcome>())
-    const two = futures.quorum(2, [a.read(), b.read(), c.read()])
-    await runtime.commit()
-    drop c.put(Ok{(3)})
-    await runtime.commit()
-    drop a.put(Err{("a")})
-    await runtime.commit()
-    drop b.put(Ok{(2)})
-    assertEq(await two, Ok{([3, 2])})
-  }),
-  test("fails once n can't be reached, with the errors in position order", async fn(): {
-    const (a, b, c) = (Slot.create<Outcome>(), Slot.create<Outcome>(), Slot.create<Outcome>())
-    const two = futures.quorum(2, [a.read(), b.read(), c.read()])
-    await runtime.commit()
-    drop c.put(Err{("c")})
-    await runtime.commit()
-    drop a.put(Err{("a")})
-    assertEq(await two, Err{(["a", "c"])})
-  }),
-  test("of zero is Ok and empty", async fn(): {
-    assertEq(await futures.quorum(0, [Slot.create<Outcome>().read()]), Ok{([])})
-  }),
+  ...runAndReRun("gives the first n Ok values in the order they arrived", quorumReached, Ok{([3, 2])}),
+  ...runAndReRun("fails once n can't be reached, with the errors in position order", quorumOutOfReach, Err{(["a", "c"])}),
+  ...runAndReRun("of zero is Ok and empty", quorumOfZero, Ok{([])}),
   test("panics when n is more than the futures", async fn(): {
     const message = await expectPanic(async fn(): await futures.quorum<int, string>(1, []))
     assertEq(message, "A quorum of 1 can't be reached among 0 futures.")
@@ -140,16 +131,15 @@ fn quorumSuite() -> Array<Test>: [
   }),
 ]
 
+async fn timeoutInTime() -> Future<int?>:
+  const value = Slot.create<int>()
+  const limited = futures.timeout(value.read(), 5s)
+  await later(value, 1)
+  await limited
+
 @Suite{"futures › timeout"}
 fn timeoutSuite() -> Array<Test>: [
-  test("gives the value when it arrives in time", withClock, async fn(clock): {
-    const value = Slot.create<int>()
-    const limited = futures.timeout(value.read(), 5s)
-    await runtime.commit()
-    clock.advance(4s)
-    drop value.put(1)
-    assertEq(await limited, 1)
-  }),
+  ...runAndReRun("gives the value when it arrives in time", timeoutInTime, 1),
   test("gives none once the limit passes first", withClock, async fn(clock): {
     const limited = futures.timeout(Slot.create<int>().read(), 5s)
     await runtime.commit()
@@ -166,15 +156,36 @@ fn timeoutSuite() -> Array<Test>: [
   }),
 ]
 
+# Retries, three times a second apart, an attempt that succeeds the third time: the outcome, and
+# when each attempt started.
+async fn succeedingThirdTime() -> Future<(Outcome, Array<int>)>:
+  let startedAt: Array<int> = []
+  const attempt = async fn() -> Future<Outcome>: { startedAt.push(time.now().value); if startedAt.length() < 3: Err{("failed")} else: Ok{(startedAt.length())} }
+  (await futures.retry(attempt, 3, 1s), startedAt)
+
+# Moves `clock` through the backoffs of `retrying`, an instance running `succeedingThirdTime`.
+async fn backingOff(clock: FakeClock, retrying: Started<(Outcome, Array<int>)>):
+  await retrying.idle()
+  clock.advance(1s)
+  await retrying.idle()
+  clock.advance(2s)
+  assertEq(await retrying.result(), (Ok{(3)}, [0, 1000, 3000]))
+
+# Retries, twice a second apart, a plain attempt that always fails.
+async fn failingTwice() -> Future<Outcome>:
+  let attempts = 0
+  await futures.retry(fn() -> Outcome: { attempts += 1; Err{("attempt " + attempts)} }, 2, 1s)
+
+async fn succeedingFirstTime() -> Future<Outcome>:
+  await futures.retry(fn() -> Outcome: Ok{(1)})
+
 @Suite{"futures › retry"}
 fn retrySuite() -> Array<Test>: [
   test("waits backoff before the first retry and twice as long before the next", withClock, async fn(clock): {
-    const retrying = testing.start(succeedingThirdTime)
-    await retrying.idle()
-    clock.advance(1s)
-    await retrying.idle()
-    clock.advance(2s)
-    assertEq(await retrying.result(), (Ok{(3)}, [0, 1000, 3000]))
+    await backingOff(clock, testing.start(succeedingThirdTime))
+  }),
+  test("waits backoff before the first retry and twice as long before the next, with every segment re-run", withClock, async fn(clock): {
+    await backingOff(clock, startCrashingEveryAwait(succeedingThirdTime))
   }),
   test("gives the last Err once every attempt failed", withClock, async fn(clock): {
     const retrying = testing.start(failingTwice)
@@ -182,72 +193,9 @@ fn retrySuite() -> Array<Test>: [
     clock.advance(1s)
     assertEq(await retrying.result(), Err{("attempt 2")})
   }),
-  test("gives the first Ok without waiting", async fn(): {
-    assertEq(await futures.retry(fn() -> Outcome: Ok{(1)}), Ok{(1)})
-  }),
+  ...runAndReRun("gives the first Ok without waiting", succeedingFirstTime, Ok{(1)}),
   test("panics with no attempt to make", async fn(): {
     const message = await expectPanic(async fn(): await futures.retry(fn() -> Outcome: Ok{(1)}, 0))
     assertEq(message, "retry needs at least one attempt, not 0.")
   }),
-]
-
-# Puts `value` into `slot` after a commit, as another execution would.
-async fn later<T>(slot: Slot<T>, value: T) -> Future<unit>:
-  await runtime.commit()
-  await slot.put(value)
-
-async fn allWaiting() -> Future<Result<Array<int>, string>>:
-  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
-  const done = futures.all([a.read(), b.read()])
-  await later(b, Ok{(2)})
-  await later(a, Ok{(1)})
-  await done
-
-async fn anyWaiting() -> Future<Result<int, Array<string>>>:
-  const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
-  const done = futures.any([a.read(), b.read()])
-  await later(b, Err{("b")})
-  await later(a, Err{("a")})
-  await done
-
-async fn quorumWaiting() -> Future<Result<Array<int>, Array<string>>>:
-  const (a, b, c) = (Slot.create<Outcome>(), Slot.create<Outcome>(), Slot.create<Outcome>())
-  const done = futures.quorum(2, [a.read(), b.read(), c.read()])
-  await later(c, Ok{(3)})
-  await later(a, Err{("a")})
-  await later(b, Ok{(2)})
-  await done
-
-async fn raceWaiting() -> Future<int>:
-  const (a, b) = (Slot.create<int>(), Slot.create<int>())
-  const done = futures.race([a.read(), b.read()])
-  await later(b, 2)
-  await done
-
-async fn allSettledWaiting() -> Future<Array<int>>:
-  const (a, b) = (Slot.create<int>(), Slot.create<int>())
-  const done = futures.allSettled([a.read(), b.read()])
-  await later(b, 2)
-  await later(a, 1)
-  await done
-
-async fn timeoutWaiting() -> Future<int?>:
-  const a = Slot.create<int>()
-  const done = futures.timeout(a.read(), 5s)
-  await later(a, 7)
-  await done
-
-async fn retryWaiting() -> Future<Outcome>:
-  let n = 0
-  await futures.retry(async fn() -> Future<Outcome>: { n += 1; if n < 3: Err{("x")} else: Ok{(n)} }, 3, 1ms)
-
-@Suite{"futures › with every segment re-run"}
-fn reRunSuite() -> Array<Test>: [
-  test("all", async fn(): assertEq(await startCrashingEveryAwait(allWaiting).result(), Ok{([1, 2])})),
-  test("any", async fn(): assertEq(await startCrashingEveryAwait(anyWaiting).result(), Err{(["a", "b"])})),
-  test("quorum", async fn(): assertEq(await startCrashingEveryAwait(quorumWaiting).result(), Ok{([3, 2])})),
-  test("race", async fn(): assertEq(await startCrashingEveryAwait(raceWaiting).result(), 2)),
-  test("allSettled", async fn(): assertEq(await startCrashingEveryAwait(allSettledWaiting).result(), [1, 2])),
-  test("timeout", async fn(): assertEq(await startCrashingEveryAwait(timeoutWaiting).result(), 7)),
-  test("retry", async fn(): assertEq(await startCrashingEveryAwait(retryWaiting).result(), Ok{(3)})),
 ]
