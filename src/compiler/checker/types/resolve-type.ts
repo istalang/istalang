@@ -57,6 +57,7 @@ import {
   substitute,
   substitutionFor,
   type Type,
+  tupleType,
   unitType,
   withPack,
 } from './type.ts';
@@ -82,10 +83,8 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
     errorType,
   ParenthesizedType: (resolution, node) => resolve(resolution, node.inner),
   ReferenceType: (resolution, node) => resolve(resolution, node.referent),
-  TupleType: (resolution, node) => ({
-    kind: 'tuple',
-    elements: node.elements.map((element) => resolve(resolution, element)),
-  }),
+  TupleType: (resolution, node) =>
+    tupleType(node.elements.map((element) => resolve(resolution, element))),
   FunctionType: (resolution, node) => functionType(resolution, node),
   StructType: ({ checker, module }, node) => {
     const fields = declaredFields(checker, module, node.fields);
@@ -175,7 +174,12 @@ function resolve({ checker, module }: Resolution, node: TypeNode): Type {
 
 function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
   const fixed = node.parameters.filter(isTypeNode);
-  const rest = node.parameters.find((parameter) => parameter.kind === 'RestType');
+  const rests = node.parameters.filter((parameter) => parameter.kind === 'RestType');
+  const last = node.parameters.at(-1);
+  for (const rest of rests.filter((each) => each !== last)) {
+    resolution.checker.report(resolution.module, checkerDiagnostics.packNotLast(rest.span));
+  }
+  const rest = last?.kind === 'RestType' ? last : undefined;
   return withPack(
     {
       kind: 'function',
@@ -187,15 +191,15 @@ function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
       })),
       result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
     },
-    rest === undefined ? undefined : packOf(resolution, rest, rest === node.parameters.at(-1)),
+    rest === undefined ? undefined : packOf(resolution, rest),
   );
 }
 
 /** The pack a function type's rest names (§3.5); the error type, reported, for anything else. */
-function packOf(resolution: Resolution, rest: RestType, isLast: boolean): PackType {
+function packOf(resolution: Resolution, rest: RestType): PackType {
   const { checker, module } = resolution;
   const type = resolve(resolution, rest.type);
-  if (type.kind === 'error' || (isPack(type) && isLast)) {
+  if (type.kind === 'error' || isPack(type)) {
     return type;
   }
   checker.report(module, checkerDiagnostics.restNotPack(rest.span, typeText(type)));

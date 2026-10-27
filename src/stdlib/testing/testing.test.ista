@@ -115,6 +115,27 @@ fn assertions() -> Array<Test>: [
   }),
 ]
 
+fn pair() -> int: 0
+fn many(a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: string) -> string: h
+async fn later(a: int) -> Future<int>: a
+
+@Suite{"testing › mock"}
+fn mocks() -> Array<Test>: [
+  test("records a unit per call of a function of none, and a tuple per call of seven or more", async fn(): {
+    const nullary = mock(pair, fn(): 7)
+    const lots = mock(many, fn(a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: string): "m" + h)
+    assertEq([pair(), pair()], [7, 7])
+    assertEq(many(1, 2, 3, 4, 5, 6, 7, "q"), "mq")
+    assertEq(nullary.calls(), [(), ()])
+    assertEq(lots.calls(), [(1, 2, 3, 4, 5, 6, 7, "q")])
+  }),
+  test("keeps an async target's own type and records its calls", async fn(): {
+    const m = mock(later, async fn(a: int): a * 10)
+    assertEq(await later(9), 90)
+    assertEq(m.calls(), [(9,)])
+  }),
+]
+
 @Suite{"testing › FakeClock"}
 fn clocks() -> Array<Test>: [
   test("stands still at its start until advanced", fn(): {

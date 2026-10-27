@@ -1,16 +1,18 @@
-# error: 5081 at 18:17
-# error: 5082 at 21:19
-# error: 5082 at 23:17
-# error: 5080 at 25:25
-# error: 5086 at 32:5
-# error: 5084 at 35:11
-# error: 5083 at 38:19
-# error: 5084 at 39:22
-# error: 5085 at 40:8
-# error: 5086 at 41:19
-# error: 5500 at 42:24
-# error: 5105 at 45:4
-# error: 5105 at 48:4
+# error: 5081 at 20:17
+# error: 5082 at 23:19
+# error: 5082 at 25:17
+# error: 5080 at 27:25
+# error: 5086 at 34:5
+# error: 5084 at 37:11
+# error: 5083 at 40:19
+# error: 5084 at 41:22
+# error: 5085 at 42:8
+# error: 5086 at 43:19
+# error: 5500 at 44:24
+# error: 5105 at 47:4
+# error: 5105 at 50:4
+# error: 5087 at 52:26
+# error: 5087 at 52:44
 # A pack is a function's, with no constraint or default, and stands only where a tuple of types
 # can (§3.5): a function type's rest is a pack, a pack's arguments come by position or as one
 # spread of its own pack's value, and a written pack is a tuple type. A pack's items are any type
@@ -46,3 +48,5 @@ fn spread<...B>(...ys: B): ()
 
 fn either<T>(...xs: Array<T>): ()
 fn either<...A>(...xs: A): ()
+
+fn misplaced<...A>(f: fn(...A, int), g: fn(...A, ...A)): ()

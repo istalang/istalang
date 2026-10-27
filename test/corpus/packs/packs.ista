@@ -1,4 +1,4 @@
-# outcome: [12,10,42,"ok",3,"7",[[1,"a"]]]
+# outcome: [12,10,42,"ok",3,"7",[[1,"a"]],"ok",null]
 # A pack stands for a tuple of types (§3.5): a function taking one takes any parameters, a
 # function type ending in one flattens once it is a tuple, and a pack's value is passed through by
 # a spread. Each instantiation is a function of single parameters, so the wrapped function is
@@ -19,7 +19,11 @@ fn shown(x: int) -> string: string(x)
 
 fn kept<...A>(...args: A) -> Array<A>: [args]
 
-async fn main() -> Future<(int, int, int, string, int, string, Array<(int, string)>)>:
+fn packed<...A>(...args: A) -> A: args
+
+async fn main() -> Future<(int, int, int, string, int, string, Array<(int, string)>, string, ())>:
   const measure = logged(area)
   const named: fn(int, int) -> int = logged<(int, int), int>(area)
-  (measure(3, 4), named(2, 5), forward(inc, 41), call(ok), apply(area, (1, 3)), apply(shown, (7,)), kept(1, "a"))
+  const empty: () = packed()
+  const nothing = logged<(), string>(ok)
+  (measure(3, 4), named(2, 5), forward(inc, 41), call(ok), apply(area, (1, 3)), apply(shown, (7,)), kept(1, "a"), nothing(), empty)
