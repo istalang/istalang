@@ -40,7 +40,7 @@ import {
   type Type,
 } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { closeCall, type FunctionInstance } from './instances.ts';
+import { closeFunctionCall, type FunctionInstance } from './instances.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
 
 /** What a type entry refers to outside the type table. */
@@ -279,11 +279,7 @@ export class TypeTable {
     if (disposal.kind !== 'function') {
       return disposal;
     }
-    const closed = closeCall(disposal.call, undefined);
-    if (closed.kind !== 'function') {
-      unreachable("A type's dispose was closed into a dispatch.");
-    }
-    const { instance } = closed;
+    const instance = closeFunctionCall(disposal.call, undefined);
     const entry = { kind: 'function', function: this.#seams.functionIndex(instance) } as const;
     return isHostExtern(this.#checker, instance.declaration)
       ? { ...entry, host: this.#seams.hostNativeIndex(instance.declaration) }

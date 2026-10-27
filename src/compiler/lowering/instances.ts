@@ -19,7 +19,7 @@
 
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import type { ResolvedCall, Witnesses } from '../checker/resolved-call.ts';
+import type { FunctionCall, ResolvedCall, Witnesses } from '../checker/resolved-call.ts';
 import {
   type AnyType,
   type ParameterKey,
@@ -165,8 +165,7 @@ type Closing = Pick<FunctionInstance, 'declaration' | 'typeArguments' | 'witness
 export function closeCall(resolved: ResolvedCall, within: Closing | undefined): ClosedCall {
   const closed = closedInside(resolved, within);
   if (closed.kind === 'function') {
-    const { function: declaration, typeArguments, witnesses, arity } = closed;
-    return { kind: 'function', instance: { declaration, typeArguments, witnesses, arity } };
+    return { kind: 'function', instance: instanceOf(closed) };
   }
   const { on, constraint, member } = closed.requirement;
   if (on.kind !== 'any') {
@@ -177,6 +176,24 @@ export function closeCall(resolved: ResolvedCall, within: Closing | undefined): 
     kind: 'dispatch',
     dispatch: { on, constraint, member, required, typeArguments, witnesses },
   };
+}
+
+/** The instance a call to a function targets, closed inside `within`. */
+export function closeFunctionCall(
+  call: FunctionCall,
+  within: Closing | undefined,
+): FunctionInstance {
+  const substitution =
+    within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
+  return instanceOf({
+    ...call,
+    typeArguments: call.typeArguments.map((type) => substitute(type, substitution)),
+    witnesses: closeWitnesses(call.witnesses, within),
+  });
+}
+
+function instanceOf({ function: declaration, typeArguments, witnesses, arity }: FunctionCall) {
+  return { declaration, typeArguments, witnesses, arity };
 }
 
 /**
@@ -198,11 +215,12 @@ export function closeWitness(witness: ResolvedCall, dispatch: Dispatch): ClosedC
 function closedInside(resolved: ResolvedCall, within: Closing | undefined): ResolvedCall {
   const substitution =
     within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
-  const typeArguments = resolved.typeArguments.map((type) => substitute(type, substitution));
-  const witnesses = closeWitnesses(resolved.witnesses, within);
   if (resolved.kind === 'function') {
+    const { typeArguments, witnesses } = closeFunctionCall(resolved, within);
     return { ...resolved, typeArguments, witnesses };
   }
+  const typeArguments = resolved.typeArguments.map((type) => substitute(type, substitution));
+  const witnesses = closeWitnesses(resolved.witnesses, within);
   const { on, constraint, member } = resolved.requirement;
   if (on.kind === 'any') {
     const closed = { on: substituteAny(on, substitution), constraint, member };
