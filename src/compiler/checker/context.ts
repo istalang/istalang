@@ -78,7 +78,7 @@ export interface CheckerContext extends Checker {
   readonly optionalEntity: OptionalEntity;
   /** What fitting a value where a type is expected asks of the program (§2). */
   readonly fitting: Fitting;
-  /** How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2). */
+  /** How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2, §3.14). */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
   /** The constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
   readonly constraintsOf: (parameter: TypeParameter) => readonly Constraint[];
@@ -130,13 +130,13 @@ export interface BodyContext {
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
   /**
    * Reports at `at` (the site's own span when absent) when `found`, the type of what `site` gives,
-   * doesn't fit `expected`. When it fits by the implicit wrap into `T?` (§2), records the wrap for
-   * lowering.
+   * doesn't fit `expected`. When it fits by converting the value, made async or wrapped into `T?`
+   * (§2, §3.14), records the fit for lowering.
    */
   readonly fit: (found: Type, expected: Type, site: ValueSite, at?: Span) => void;
   /**
    * Reports at `at` when `found`, written to a place of `expected` by an assignment, doesn't fit
-   * it; how the value is converted to fit (§2), which the assignment records on its part.
+   * it; how the value is converted to fit (§2, §3.14), which the assignment records on its part.
    */
   readonly fitWritten: (found: Type, expected: Type, at: Span) => Fit;
   /**

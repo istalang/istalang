@@ -27,20 +27,7 @@ extern fn replaceAll(self: string, search: string, replacement: string) -> strin
 extern fn toUpperCase(self: string) -> string
 extern fn toLowerCase(self: string) -> string
 
-# `format(template, ...values)`, one overload per count of values until rest parameters land (D193),
-# so calls are already written as they will be.
-fn format(template: string) -> string: _format(template, [])
-fn format(template: string, a: string) -> string: _format(template, [a])
-fn format(template: string, a: string, b: string) -> string: _format(template, [a, b])
-fn format(template: string, a: string, b: string, c: string) -> string: _format(template, [a, b, c])
-fn format(template: string, a: string, b: string, c: string, d: string) -> string:
-  _format(template, [a, b, c, d])
-fn format(template: string, a: string, b: string, c: string, d: string, e: string) -> string:
-  _format(template, [a, b, c, d, e])
-fn format(template: string, a: string, b: string, c: string, d: string, e: string, f: string) -> string:
-  _format(template, [a, b, c, d, e, f])
-
-extern fn _format(template: string, values: Array<string>) -> string
+extern fn format(template: string, ...values: Array<string>) -> string
 
 extern fn graphemes(s: string) -> Array<string>
 extern fn utf16Length(s: string) -> int

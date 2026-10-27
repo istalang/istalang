@@ -29,10 +29,9 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
-import { referenceTo } from '../emit-call.ts';
+import { emitCallAt, emitImplicitCall, referenceTo } from '../emit-call.ts';
 import { cursorOf, emitLoop } from '../iteration.ts';
 import { cellRegister, readPart } from '../places.ts';
-import { call, implicitCall } from './calls.ts';
 import { construct } from './structs.ts';
 import { variantIndexOf } from './variants.ts';
 
@@ -82,14 +81,25 @@ export function lowerArrayLiteral(context: FunctionContext, node: ArrayLiteral):
     context.code.emit({ kind: 'map', span: node.span, dst, entries: [] });
     return dst;
   }
-  const { span } = node;
+  return arrayOf(context, node.elements, node.span);
+}
+
+/**
+ * The array `elements` build in order, as an array literal's: what an array literal and the
+ * arguments a rest parameter collects (§3.3) both build.
+ */
+export function arrayOf(
+  context: FunctionContext,
+  elements: readonly (Expression | Spread)[],
+  span: Span,
+): Register {
   const parts: LiteralParts<ArrayItem, Expression> = {
     emit: (dst, items) => context.code.emit({ kind: 'array', span, dst, elements: [...items] }),
     written: (element) => ({ kind: 'item', value: context.expression(element) }),
     copied: (value) => ({ kind: 'spread', value }),
     append: (dst, item) => appendElement(context, span, dst, item),
   };
-  return built(context, parts, node.elements);
+  return built(context, parts, elements);
 }
 
 export function lowerMapLiteral(context: FunctionContext, node: MapLiteral): Register {
@@ -131,7 +141,7 @@ export function lowerRange(context: FunctionContext, node: Range): Register {
   const start = optionalInt(context, span, node.start, (value) => value);
   const end = optionalInt(context, span, node.end, (value) =>
     node.isInclusive
-      ? implicitCall(context, node, 'add', [value, context.constant(1n, span)])
+      ? emitImplicitCall(context, node, 'add', [value, context.constant(1n, span)])
       : value,
   );
   const range = context.body.typeOf(node);
@@ -143,7 +153,7 @@ export function lowerRange(context: FunctionContext, node: Range): Register {
 
 export function lowerIndex(context: FunctionContext, node: Index): Register {
   const container = context.chains.target(context, node);
-  return call(context, node, [container, context.expression(node.index)]);
+  return emitCallAt(context, node, [container, context.expression(node.index)]);
 }
 
 /**
@@ -196,18 +206,18 @@ function lowerDeclaredLiteral(
     kind: 'move',
     span: node.span,
     dst: value,
-    src: implicitCall(context, node, 'default', []),
+    src: emitImplicitCall(context, node, 'default', []),
   });
   const container = referenceTo(value);
   for (const entry of entries) {
     if (entry.kind === 'MapEntry') {
       const key = context.expression(entry.key);
-      implicitCall(context, entry, 'insert', [container, key, context.expression(entry.value)]);
+      emitImplicitCall(context, entry, 'insert', [container, key, context.expression(entry.value)]);
     } else if (entry.kind === 'Spread') {
       emitLoop(context, entry, cursorOf(context, entry, entry.expression), (item) => {
         const key = readPart(context, item, [0], entry.span);
         const part = readPart(context, item, [1], entry.span);
-        implicitCall(context, entry, 'insert', [container, key, part]);
+        emitImplicitCall(context, entry, 'insert', [container, key, part]);
       });
     }
   }

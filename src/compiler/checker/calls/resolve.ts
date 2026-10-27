@@ -20,14 +20,18 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
+import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { argumentSlotsOf, type BindingFailure } from '../resolution/binding.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import type { Candidate } from '../resolution/candidates.ts';
 import {
   type Accepts,
   type Application,
+  type CallArgument,
   choose,
   type Inapplicability,
   type Passing,
@@ -42,13 +46,17 @@ import { changeReceiver, checkReferencedPlaces } from './places.ts';
 
 /**
  * An argument as written: its node, how it is passed, and its type, undefined when the chosen
- * function decides it, with which parameter types it can take (resolution/choice.ts).
+ * function decides it, with which parameter types it can take (resolution/choice.ts); its name
+ * when named. A spread's node is what it spreads, its type that of its items, which fit the rest
+ * parameter's element exactly: the items are copied or iterated as they are (§3.3).
  */
 export interface WrittenArgument {
   readonly node: Expression;
   readonly passing: Passing;
   readonly type: Type | undefined;
   readonly accepts?: Accepts | undefined;
+  readonly name?: Identifier | undefined;
+  readonly isSpread?: boolean | undefined;
 }
 
 /** A call to resolve, as written. */
@@ -74,7 +82,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
   if (written.some(({ type }) => type?.kind === 'error')) {
     return errorType;
   }
-  const callArguments = written.map(({ type, passing, accepts }) => ({ type, passing, accepts }));
+  const callArguments = written.map(callArgumentOf);
   const choice = choose(context.checker, request.candidates, callArguments, request.typeArguments);
   switch (choice.kind) {
     case 'chosen':
@@ -100,6 +108,12 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
   }
 }
 
+/** A written argument as choosing sees it. */
+export function callArgumentOf(argument: WrittenArgument): CallArgument {
+  const { type, passing, accepts, name, isSpread } = argument;
+  return { type, passing, accepts, name: name?.text, isSpread, exact: isSpread === true };
+}
+
 /** The types of written arguments, as a call's argument list reads: `&Stack, int`. */
 function typesText(written: readonly WrittenArgument[]): string {
   return written
@@ -122,22 +136,25 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
     return errorType;
   }
   const { signature } = application;
+  const slots = argumentSlotsOf(signature.parameters, application.binding);
   fitArguments(
     context,
     request.arguments,
-    signature.parameters.map((slot) => substitute(slot.type, instantiation.substitution)),
+    request.arguments.map((_, index) => {
+      const slot = slots.get(index);
+      return slot === undefined ? undefined : substitute(slot.type, instantiation.substitution);
+    }),
     lambdas,
   );
   const { receiver } = request;
-  const arity = request.arguments.length;
-  recordChosen(context, { site, application, instantiation, arity, receiver });
+  recordChosen(context, { site, application, instantiation, receiver });
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
     changeReceiver(context, receiver, request.name);
   }
   checkReferencedPlaces(context, request.arguments, {
     name: request.name,
     isAsync: signature.declaration.isAsync,
-    slots: signature.parameters,
+    slots: request.arguments.map((_, index) => slots.get(index) ?? { reference: false }),
   });
   return substitute(signature.result(), instantiation.substitution);
 }
@@ -147,8 +164,6 @@ export interface Chosen {
   readonly site: CallSite;
   readonly application: Application;
   readonly instantiation: Instantiation;
-  /** How many arguments the call gives, or the function value takes. */
-  readonly arity: number;
   readonly receiver?: Expression | undefined;
 }
 
@@ -157,28 +172,62 @@ export interface Chosen {
  * `dispose` (§7), is checked once the body is (rules/disposal.ts).
  */
 export function recordChosen(context: BodyContext, chosen: Chosen): void {
-  const { site, application, instantiation, arity, receiver } = chosen;
-  const call = callMade(application.candidate, instantiation, arity);
+  const { site, application, instantiation, receiver } = chosen;
+  const call = callMade(application, instantiation);
   context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
 }
 
 /**
- * Fits each argument of a call that takes them to its parameter's type, `expected` by position,
- * checking first one the function decides; `decided` holds the types of those already checked.
+ * Fits each argument of a call that takes them to the type it fills, `expected` by argument
+ * number, checking first one the function decides; `decided` holds the types of those already
+ * checked. A spread's items fit as they are, with no wrap.
  */
 export function fitArguments(
   context: BodyContext,
   written: readonly WrittenArgument[],
-  expected: readonly Type[],
+  expected: readonly (Type | undefined)[],
   decided: ReadonlyMap<number, Type> = new Map(),
 ): void {
-  written.forEach(({ node, type }, index) => {
+  written.forEach(({ node, type, isSpread }, index) => {
     const parameter = expected[index];
-    if (parameter !== undefined) {
+    if (parameter !== undefined && isSpread !== true) {
       const checked = type ?? decided.get(index) ?? context.expression(node, parameter);
       context.fit(checked, parameter, node);
     }
   });
+}
+
+/** The report saying why a call's arguments can't fill its one function's parameters (§3.3). */
+function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnostic {
+  const { site, name } = request;
+  switch (reason.kind) {
+    case 'arity': {
+      const count = request.arguments.length;
+      const expected = count > reason.maximum ? reason.maximum : reason.minimum;
+      const atLeast = reason.maximum === Number.POSITIVE_INFINITY;
+      return checkerDiagnostics.argumentCount(site.span, name, expected, count, atLeast);
+    }
+    case 'unnamed':
+      return checkerDiagnostics.noParameterNamed(namedAt(request, reason.name), name, reason.name);
+    case 'twice':
+      return checkerDiagnostics.givenTwice(namedAt(request, reason.name), reason.name);
+    case 'missing':
+      return checkerDiagnostics.missingArgument(site.span, name, reason.name);
+    case 'spread': {
+      const spread = request.arguments.find((argument) => argument.isSpread === true);
+      return checkerDiagnostics.spreadWithoutRest(spread?.node.span ?? site.span, name);
+    }
+    default: {
+      const unhandled: never = reason;
+      return unhandled;
+    }
+  }
+}
+
+/** Where the argument named `name` is written; the call, if none is. */
+function namedAt(request: ExplainedCall, name: string): Span {
+  const named = request.arguments.findLast((argument) => argument.name?.text === name);
+  return named?.name?.span ?? request.site.span;
 }
 
 function explainNone(
@@ -224,12 +273,13 @@ export function explain(
 ): void {
   const { site, name } = request;
   switch (reason.kind) {
-    case 'arity': {
-      const count = request.arguments.length;
-      const expected = count > reason.maximum ? reason.maximum : reason.minimum;
-      context.report(checkerDiagnostics.argumentCount(site.span, name, expected, count));
+    case 'arity':
+    case 'unnamed':
+    case 'twice':
+    case 'missing':
+    case 'spread':
+      context.report(bindingReport(request, reason));
       return;
-    }
     case 'typeArgumentCount': {
       const count = request.typeArguments?.length ?? 0;
       const expected = count > reason.maximum ? reason.maximum : reason.minimum;

@@ -4,13 +4,12 @@
  * taken as a parameter's (§3.3): it sees the fields before it, a field without a written type takes
  * its default's, and a default reaching its own field is a cycle. Its parameters are the fields in
  * order, so a layout's field `i` is its parameter `i`. It is called by no name: a literal leaving
- * field `i` out calls its entry of arity `i`, which gives that field's value from the fields
- * before it.
+ * field `i` out calls its default entry for parameter `i`, given the fields before it, as a call
+ * leaving a parameter out does.
  *
  * Each such function is made once from its declaration's own nodes and is checked and lowered as a
- * written one is, but where it differs (`isFieldsFunction`): its defaults needn't trail
- * (declarations/signatures.ts), and lowering gives each entry its one field
- * (lowering/function-lowering/).
+ * written one is, but where it differs (`isFieldsFunction`): its defaults needn't trail, since a
+ * literal names its fields (declarations/signatures.ts).
  */
 
 import { memo } from '../../structures/memo.ts';

@@ -44,8 +44,8 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   },
   argumentCount: {
     code: 5004,
-    message: (name: string, expected: number, found: number) =>
-      `'${name}' takes ${expected} argument${expected === 1 ? '' : 's'}, found ${found}.`,
+    message: (name: string, expected: number, found: number, atLeast: boolean) =>
+      `'${name}' takes ${atLeast ? 'at least ' : ''}${expected} argument${expected === 1 ? '' : 's'}, found ${found}.`,
   },
   branchTypes: {
     code: 5005,

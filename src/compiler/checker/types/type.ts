@@ -282,6 +282,21 @@ export function isAssignable(source: Type, target: Type): boolean {
 }
 
 /**
+ * Whether a plain function of type `source` fits where `target`, an async function of the same
+ * parameters and result, is expected: calling it gives a future already resolved (§3.14).
+ */
+export function fitsAsync(source: Type, target: Type): boolean {
+  return (
+    source.kind === 'function' &&
+    target.kind === 'function' &&
+    !source.isAsync &&
+    target.isAsync &&
+    (source.isSendable || !target.isSendable) &&
+    sameShape(target, source, sameType)
+  );
+}
+
+/**
  * Whether `==` and `!=` may compare values of these types (§3.9): one type on both sides. The
  * error type compares with anything, so one mistake is reported once, and so does `never`, which a
  * side that doesn't produce a value has.

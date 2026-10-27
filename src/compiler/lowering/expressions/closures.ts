@@ -30,7 +30,10 @@ export function lowerLocalFunction(context: FunctionContext, node: FunctionDecla
   closureOf(context, node, declareVariable(context, node.name, checked.type));
 }
 
-/** A function the checker resolved for the name at `site` as a closure without captures. */
+/**
+ * A function the checker resolved for the name at `site` as a closure without captures, of the
+ * entry taking the value's parameters: a filling one when its type leaves defaults out (§3.14).
+ */
 export function lowerFunctionValue(
   context: FunctionContext,
   site: Identifier | MemberAccess,
@@ -40,7 +43,7 @@ export function lowerFunctionValue(
     kind: 'closure',
     span: site.span,
     dst,
-    function: context.calleeIndex(site),
+    function: context.tables.callIndex(context.callAt(site)),
     captures: [],
   });
   return dst;

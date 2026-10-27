@@ -303,6 +303,11 @@ function insertEntry(
   }
 }
 
+/** The type of the items `spread` gives, as a call's argument to a rest parameter (§3.3). */
+export function spreadItemType(context: BodyContext, spread: Spread): Type {
+  return spreadItems(context, spread, undefined).type;
+}
+
 /** The items `spread` gives, as an array literal's element, its items expected to be `item`s. */
 function spreadItems(context: BodyContext, spread: Spread, item: Type | undefined): Produced {
   const expected =

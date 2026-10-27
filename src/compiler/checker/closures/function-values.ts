@@ -6,7 +6,9 @@
  *
  * - The expected function type chooses among the functions named, as a call with arguments of
  *   its parameter types would (resolution/choice.ts), and infers a generic one's type arguments
- *   from those and its result (§3.5). Its arity picks a shorter form of a function with defaults.
+ *   from those and its result (§3.5). A shorter function type leaves trailing parameters to their
+ *   defaults, which the value computes at each call (§3.3), and a rest parameter is one array
+ *   (resolution/binding.ts).
  *   A top-level name also finds what argument-dependent lookup does from those types (§3.13).
  * - With no expected function type, only a lone non-generic function can be named; any other
  *   name needs one (§3.14), which a call it is passed to gives (`functionsAccepted`).
@@ -29,7 +31,7 @@ import {
 import {
   type Accepts,
   type Application,
-  choose,
+  chooseAsValue,
   type Passing,
   signatureOf,
 } from '../resolution/choice.ts';
@@ -119,8 +121,7 @@ export function checkFunctionValue(
     return errorType;
   }
   const { checker } = context;
-  const { signature } = application;
-  const arity = shape?.parameters.length ?? signature.parameters.length;
+  const { signature, binding } = application;
   const expectedResult =
     shape === undefined || !signature.declaration.isAsync
       ? shape?.result
@@ -133,17 +134,16 @@ export function checkFunctionValue(
   if (instantiation === undefined) {
     return errorType;
   }
-  recordChosen(context, { site, application, instantiation, arity });
+  recordChosen(context, { site, application, instantiation });
   const { substitution } = instantiation;
   const result = substitute(signature.result(), substitution);
   const type: FunctionType = {
     kind: 'function',
     isSendable: true,
     isAsync: signature.declaration.isAsync,
-    parameters: signature.parameters.slice(0, arity).map((slot) => ({
-      type: substitute(slot.type, substitution),
-      reference: slot.reference,
-    })),
+    parameters: signature.parameters
+      .filter((_, index) => binding[index]?.kind === 'argument')
+      .map((slot) => ({ type: substitute(slot.type, substitution), reference: slot.reference })),
     result: signature.declaration.isAsync ? (futureArgument(checker, result) ?? errorType) : result,
   };
   return type;
@@ -182,7 +182,7 @@ function loneFunction(
     type: slot.type,
     passing: passingOf(slot.reference),
   }));
-  const choice = choose(context.checker, [only], arguments_, undefined);
+  const choice = chooseAsValue(context.checker, [only], arguments_);
   return choice.kind === 'chosen' ? choice.application : undefined;
 }
 
@@ -196,7 +196,7 @@ function chosenFor(
     type: slot.type,
     passing: passingOf(slot.reference),
   }));
-  const choice = choose(context.checker, candidates, arguments_, undefined);
+  const choice = chooseAsValue(context.checker, candidates, arguments_);
   return choice.kind === 'chosen' ? choice.application : undefined;
 }
 

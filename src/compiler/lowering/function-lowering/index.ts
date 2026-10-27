@@ -15,10 +15,9 @@
  *   register the cell its closure carries.
  * - A lambda or local function (§3.14) answers to its own name through the closure it runs,
  *   taken once at its entry (`currentClosure`).
- * - A defaults entry takes the arguments its callers give, computes the rest from the defaults
- *   (§3.3), each seeing the parameters before it, and calls the function with all of them, passing
- *   a reference parameter on as the reference it was given. A field default's entry takes the
- *   fields before its field, and gives that field's default (§3.1, syntax/field-defaults.ts).
+ * - A default's entry takes the parameters before its own, and gives its default (§3.1, §3.3);
+ *   a struct's or variant's fields are parameters of a function of their own
+ *   (syntax/field-defaults.ts), so a field's default is one too.
  * - A start entry (boundary/starts.ts) is a function's own body compiled once more with JSON at its
  *   edges: its arguments arrive as `Json` and are decoded into its parameters, and every return
  *   gives its value encoded, so a host-started instance runs as one execution of the function.
@@ -35,26 +34,27 @@ import { handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Entity } from '../../binder/entities.ts';
-import type { CheckedBody, Checker, SignatureParameter } from '../../checker/check.ts';
+import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/resolved-call.ts';
 import type { Fit } from '../../checker/types/fit.ts';
-import { substitute, type Type } from '../../checker/types/type.ts';
+import { type FunctionType, substitute, type Type } from '../../checker/types/type.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
+import { madeAsync } from '../async-fits.ts';
 import { emitInbound, type Inbound } from '../boundary/inbound.ts';
 import { CodeWriter } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
-import { emitCall, referenceTo } from '../emit-call.ts';
+import { emitFunctionCall } from '../emit-call.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
 import { buildVariant } from '../expressions/variants.ts';
 import {
   type BodyOwner,
-  calleeOf,
+  type ClosedCall,
+  closeCallWithin,
   type FunctionInstance,
-  fullInstance,
   type NestedInstance,
   ownerDeclaration,
   ownerSubstitution,
@@ -175,38 +175,14 @@ class FunctionLowering implements FunctionContext {
     return this.#entry();
   }
 
-  /** The defaults entry for `instance`: the given arguments, then the defaults, then the call. */
-  lowerDefaults(instance: FunctionInstance): CodeFunction {
+  /** A default's entry: the parameters before its own, then that parameter's default. */
+  lowerDefault(instance: FunctionInstance): CodeFunction {
     const given = this.#declareFrame();
-    const all = [...given];
-    const { declaration } = instance;
-    const parameters = this.checker.parametersOf(declaration);
-    for (const parameter of parameters.slice(given.length)) {
-      const defaultValue = defaultValueOf(parameter);
-      const value = this.expression(defaultValue);
-      const register = declareVariable(this, parameter.node.name, this.#concrete(parameter.type));
-      this.code.emit({ kind: 'move', span: defaultValue.span, dst: register, src: value });
-      all.push(register);
+    const parameter = this.checker.parametersOf(instance.declaration)[given.length];
+    if (parameter === undefined) {
+      unreachable(`No parameter ${given.length} of ${instance.declaration.name.text}.`);
     }
-    const result = emitCall(this, {
-      span: declaration.name.span,
-      callee: this.tables.functionIndex(fullInstance(this.checker, instance)),
-      arguments: all.map((register, index) =>
-        parameters[index]?.reference === true ? referenceTo(register) : register,
-      ),
-    });
-    this.returnValue(result, declaration.name.span);
-    return this.#entry();
-  }
-
-  /** A field default's entry: the fields before field `arity`, then that field's default. */
-  lowerFieldDefault(instance: FunctionInstance): CodeFunction {
-    const given = this.#declareFrame();
-    const field = this.checker.parametersOf(instance.declaration)[given.length];
-    if (field === undefined) {
-      unreachable(`No field ${given.length} of ${instance.declaration.name.text} has a default.`);
-    }
-    const defaultValue = defaultValueOf(field);
+    const defaultValue = defaultValueOf(parameter);
     this.returnValue(this.expression(defaultValue), defaultValue.span);
     return this.#entry();
   }
@@ -216,17 +192,14 @@ class FunctionLowering implements FunctionContext {
       this.body.chainOf(node) === undefined
         ? handlerOf(expressionHandlers, node)(this, node)
         : this.chains.lower(this, node);
-    return this.fitted(register, this.body.typeOf(node), this.body.fitAt(node), node.span);
+    return this.fitted(register, this.body.typeOf(node), this.body.fitAt(node), node);
   }
 
-  fitted(value: Register, type: Type, fit: Fit, span: Span): Register {
-    let register = value;
-    let current: Type = type;
-    if (fit.conversion.kind === 'any') {
-      const { to } = fit.conversion;
-      register = convertedIntoAny(this, { value: register, from: current, to }, span);
-      current = to;
-    }
+  fitted(value: Register, type: Type, fit: Fit, site: ValueSite): Register {
+    const { span } = site;
+    const converted = this.#converted({ value, type }, fit.conversion, site);
+    let register = converted.value;
+    let current = converted.type;
     for (let left = fit.wraps; left > 0; left -= 1) {
       const optional = this.checker.optionalOf(current);
       const some = { type: optional, name: optionalVariants.some };
@@ -234,6 +207,36 @@ class FunctionLowering implements FunctionContext {
       current = optional;
     }
     return register;
+  }
+
+  /** `typed`, converted by `conversion` at `site`: into an `any` type, or a plain function made async. */
+  #converted(
+    typed: { readonly value: Register; readonly type: Type },
+    conversion: Fit['conversion'],
+    site: ValueSite,
+  ): { readonly value: Register; readonly type: Type } {
+    switch (conversion.kind) {
+      case 'none':
+        return typed;
+      case 'any': {
+        const { to } = conversion;
+        const value = convertedIntoAny(
+          this,
+          { value: typed.value, from: typed.type, to },
+          site.span,
+        );
+        return { value, type: to };
+      }
+      case 'async': {
+        const plain = functionTypeOf(typed.type);
+        const value = madeAsync(this, { owner: this.owner, site, type: plain }, typed.value);
+        return { value, type: { ...plain, isAsync: true } };
+      }
+      default: {
+        const unhandled: never = conversion;
+        return unhandled;
+      }
+    }
   }
 
   get result(): Type {
@@ -244,23 +247,23 @@ class FunctionLowering implements FunctionContext {
     return this.tables.nestedIndex({ owner: this.owner, node });
   }
 
-  calleeIndex(site: CallSite): FunctionId {
-    return this.#functionOf(this.body.calls.get(site), site);
+  callAt(site: CallSite): ClosedCall {
+    return this.#closedAt(this.body.calls.get(site), site);
   }
 
-  implicitCallee(node: NodeOf<string>, role: ImplicitRole): FunctionId {
-    return this.#functionOf(this.body.implicitCallOf(node, role), node);
+  implicitCallAt(node: NodeOf<string>, role: ImplicitRole): ClosedCall {
+    return this.#closedAt(this.body.implicitCallOf(node, role), node);
   }
 
-  callIndex(call: ResolvedCall): FunctionId {
-    return this.tables.callIndex(calleeOf(call, this.owner));
+  closed(call: ResolvedCall): ClosedCall {
+    return closeCallWithin(call, this.owner);
   }
 
-  #functionOf(resolved: ResolvedCall | undefined, at: NodeOf<string>): FunctionId {
+  #closedAt(resolved: ResolvedCall | undefined, at: NodeOf<string>): ClosedCall {
     if (resolved === undefined) {
       unreachable(`No call was made for the ${at.kind} at ${at.span.start}.`);
     }
-    return this.callIndex(resolved);
+    return this.closed(resolved);
   }
 
   block(node: Block): Register {
@@ -345,11 +348,7 @@ class FunctionLowering implements FunctionContext {
     const given =
       outcome === undefined
         ? value
-        : emitCall(this, {
-            span,
-            callee: this.tables.callIndex(outcome),
-            arguments: [value],
-          });
+        : emitFunctionCall(this, { span, call: outcome, arguments: [value] });
     this.code.emit({ kind: 'return', span, value: given });
   }
 
@@ -360,7 +359,15 @@ class FunctionLowering implements FunctionContext {
   }
 }
 
-/** The default of `parameter`, which every parameter a defaults entry computes has. */
+/** `type`, which the checker made async to fit, so a function type. */
+function functionTypeOf(type: Type): FunctionType {
+  if (type.kind !== 'function') {
+    unreachable(`Only a function is made async, not a ${type.kind} type.`);
+  }
+  return type;
+}
+
+/** The default of `parameter`, which a parameter with a default's entry has. */
 function defaultValueOf(parameter: SignatureParameter): Expression {
   const { defaultValue } = parameter.node;
   if (defaultValue === undefined) {

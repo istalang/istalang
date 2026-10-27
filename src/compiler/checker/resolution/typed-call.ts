@@ -40,8 +40,6 @@ export function callWithTypes(
   }
   const instantiation = instantiate(searchSite(checker), choice.application, undefined);
   const call =
-    instantiation === undefined
-      ? undefined
-      : callMade(choice.application.candidate, instantiation, arity);
+    instantiation === undefined ? undefined : callMade(choice.application, instantiation);
   return call?.kind === 'function' ? call : undefined;
 }

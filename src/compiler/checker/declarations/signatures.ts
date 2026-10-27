@@ -10,9 +10,11 @@
  *   its type, which is then the default's. Every parameter after one with a default has one too,
  *   since a call gives its arguments in order; a struct's or a variant's fields, read as
  *   parameters (syntax/field-defaults.ts), are named in a literal, so any of them may have one.
- *   Rest parameters are sugar the checker doesn't expand yet.
+ * - A rest parameter is the last, an `Array<T>` with no default (§3.3): a call it collects nothing
+ *   into gives it an empty array.
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
@@ -20,10 +22,9 @@ import { isFieldsFunction } from '../../syntax/field-defaults.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { futureArgument, futureOf } from '../types/well-known.ts';
+import { futureArgument, futureOf, wellKnownArguments } from '../types/well-known.ts';
 
 /** Where a function's defaults are checked: one body, seeing each parameter once declared. */
 export interface DefaultValues {
@@ -42,14 +43,15 @@ export function declaredParameters(
 ): readonly SignatureParameter[] {
   let afterDefault = false;
   const inOrder = !isFieldsFunction(declaration);
+  const last = declaration.parameters.at(-1);
   return declaration.parameters.flatMap((node) => {
     if (node.kind === 'Invalid') {
       return [];
     }
-    if (node.isRest) {
-      checker.unsupported(module, node, frontier.restParameter);
-    }
     const declared = node.type === undefined ? undefined : checker.resolveType(module, node.type);
+    if (node.isRest) {
+      checkRest(checker, module, { node, declared, isLast: node === last });
+    }
     const { defaultValue } = node;
     if (defaultValue === undefined && afterDefault && inOrder && !node.isRest) {
       checker.report(module, checkerDiagnostics.defaultMissing(node.name.span, node.name.text));
@@ -63,6 +65,30 @@ export function declaredParameters(
     defaults?.declare(node, type);
     return [{ node, type, reference: writtenByReference(node) }];
   });
+}
+
+/** Reports what a rest parameter breaks of its rules: last, an array, no default (§3.3). */
+function checkRest(
+  checker: CheckerContext,
+  module: ModuleId,
+  rest: { readonly node: Parameter; readonly declared: Type | undefined; readonly isLast: boolean },
+): void {
+  const { node, declared, isLast } = rest;
+  const { name } = node;
+  if (!isLast) {
+    checker.report(module, checkerDiagnostics.restNotLast(name.span, name.text));
+  }
+  if (node.defaultValue !== undefined) {
+    checker.report(module, checkerDiagnostics.restDefault(name.span, name.text));
+  }
+  const isArray =
+    declared === undefined ||
+    declared.kind === 'error' ||
+    wellKnownArguments(checker, wellKnown.array, declared) !== undefined;
+  if (!isArray) {
+    const at = node.type?.span ?? name.span;
+    checker.report(module, checkerDiagnostics.restNotArray(at, name.text, typeText(declared)));
+  }
 }
 
 /** Whether `node` is written as taking a reference, `&T` (§3.7). */

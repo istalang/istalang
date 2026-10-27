@@ -1,0 +1,32 @@
+# outcome: [0,1,3,6,0,1,4,2,1,2,3,2,2]
+# A rest parameter collects the positional arguments left after the fixed ones into an array, a
+# spread among them spreading anything iterable (§3.3); named, it takes a whole array. Fixed arity
+# beats a rest parameter (§3.7). A function with a rest parameter, named as a value, takes the
+# array as one argument (§3.14).
+fn sum(...numbers: Array<int>) -> int:
+  let total = 0
+  for each in numbers:
+    total += each
+  total
+
+fn words(first: string = "", ...rest: Array<string>) -> int:
+  rest.length()
+
+fn pick(x: int) -> int: 1
+fn pick(...xs: Array<int>) -> int: 2
+
+fn count<T>(...items: Array<T>) -> int:
+  items.length()
+
+fn apply(f: fn(string, Array<string>) -> int, xs: Array<string>) -> int:
+  f("", xs)
+
+async fn main() -> Future<Array<int>>:
+  const more = ["c", "d"]
+  [
+    sum(), sum(1), sum(1, 2), sum(...[1, 2], 3),
+    words(), words("_", "a"), words("_", "a", "b", ...more), words(first: "_", rest: ["x", "y"]),
+    pick(1), pick(1, 2),
+    count(...0..3), count(..."ab"),
+    apply(words, ["1", "2"]),
+  ]

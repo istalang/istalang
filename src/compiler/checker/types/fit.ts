@@ -1,25 +1,40 @@
 /**
- * Fitting a value where a type is expected (§2, §3.10): the same type, a value converted into an
- * `any` type its type meets, or a `T` wrapped into `T?`. These are the language's implicit
+ * Fitting a value where a type is expected (§2, §3.10, §3.14): the same type, a value converted
+ * into an `any` type its type meets, a plain function made async where an async function of its
+ * parameters and result is expected, or a `T` wrapped into `T?`. These are the language's implicit
  * conversions.
  *
  * - The wrap applies as often as the expected type nests optionals, so an `int` fits an `int??` by
  *   two wraps. A value that is already optional fits its own optional type without one: `int?`
  *   fits `int?`, never `int??` by wrapping `int?` when an exact fit exists.
- * - A value is converted into an `any` type only where that type itself is expected, so the
- *   conversion comes first and at most once: an `Email` fits `(any Notifier)?` by a conversion,
- *   then a wrap. An `any` type converts into another whose constraints are among its own.
+ * - A value is converted into an `any` type, or made async, only where that type itself is
+ *   expected, so the conversion comes first and at most once: an `Email` fits `(any Notifier)?` by
+ *   a conversion, then a wrap, and an `Array<fn()>` is never an `Array<async fn()>`. An `any` type
+ *   converts into another whose constraints are among its own.
  * - Which nominal type is `Optional`, and whether a type meets a constraint, are the program's to
  *   say (`Fitting`).
  */
 
-import { type AnyType, isAssignable, isPrimitive, type NominalEntity, type Type } from './type.ts';
+import {
+  type AnyType,
+  fitsAsync,
+  isAssignable,
+  isPrimitive,
+  type NominalEntity,
+  type Type,
+} from './type.ts';
 
 /** The entity of the prelude's `Optional`, or undefined in a program without the prelude. */
 export type OptionalEntity = NominalEntity | undefined;
 
-/** What converts a value itself, before any wrap: nothing, or the conversion into an `any` type. */
-type Conversion = { readonly kind: 'none' } | { readonly kind: 'any'; readonly to: AnyType };
+/**
+ * What converts a value itself, before any wrap: nothing, the conversion into an `any` type, or a
+ * plain function made async.
+ */
+type Conversion =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'any'; readonly to: AnyType }
+  | { readonly kind: 'async' };
 
 /** How a value fits: converted first, then wrapped into `T?` `wraps` times. */
 export interface Fit {
@@ -40,6 +55,9 @@ export interface Fitting {
 export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | undefined {
   if (isAssignable(found, expected)) {
     return exactFit;
+  }
+  if (fitsAsync(found, expected)) {
+    return { conversion: { kind: 'async' }, wraps: 0 };
   }
   if (expected.kind === 'any') {
     return fitting.meetsAny(found, expected)

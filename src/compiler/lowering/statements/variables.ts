@@ -33,7 +33,7 @@ import {
   type VariableDeclaration,
 } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
-import { call } from '../expressions/calls.ts';
+import { emitCallAt } from '../emit-call.ts';
 import { type AssignedPlace, cellRegister, enterAssigned, readPart } from '../places.ts';
 
 /** A register holding a cell, and the `_Cell<T>` type entry it is created as. */
@@ -204,7 +204,7 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
   for (const part of parts) {
     const place = enterAssigned(context, part.target);
     const read = readPart(context, value, part.path, node.span);
-    place.write(writtenPart(context, read, part, node.span), node.span);
+    place.write(writtenPart(context, read, part), node.span);
   }
 }
 
@@ -219,16 +219,11 @@ function lowerCompound(
   part: AssignedPart,
 ): void {
   const current = place.read(node.span);
-  const result = call(context, node, [current, context.expression(node.value)]);
-  place.write(writtenPart(context, result, part, node.span), node.span);
+  const result = emitCallAt(context, node, [current, context.expression(node.value)]);
+  place.write(writtenPart(context, result, part), node.span);
 }
 
-/** `value`, the part of an assignment's value `part` writes, converted to fit its place (§2). */
-function writtenPart(
-  context: FunctionContext,
-  value: Register,
-  part: AssignedPart,
-  span: Span,
-): Register {
-  return context.fitted(value, part.type, part.fit, span);
+/** `value`, the part of an assignment's value `part` writes, fitted to its place (§2, §3.14). */
+function writtenPart(context: FunctionContext, value: Register, part: AssignedPart): Register {
+  return context.fitted(value, part.type, part.fit, part.target);
 }

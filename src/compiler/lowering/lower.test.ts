@@ -35,8 +35,11 @@ function externKeys(program: Program, key: string): readonly string[] {
   );
 }
 
+/** A name ending in `/` and a number, as entries named for how many arguments they took were. */
+const arityName = /\/\d+$/u;
+
 describe('function-table names', () => {
-  it("spell an instance's type arguments as keys do, and a defaults entry's arity", () => {
+  it("spell an instance's type arguments as keys do, and a default's entry by its parameter", () => {
     const program = stdProgramOf({
       main: [
         "import * as a from 'a'",
@@ -51,17 +54,18 @@ describe('function-table names', () => {
     const names = compiledDefinition(program, 'main').functions.map(({ name }) => name);
     expect(names).toEqual(
       expect.arrayContaining([
-        'main.show<a.Money>/1',
+        'main.show<a.Money>/times',
         'main.show<a.Money>',
         'main.show<b.Money>',
-        'main.show<prelude.Optional<int>>/1',
+        'main.show<prelude.Optional<int>>/times',
       ]),
     );
+    expect(names.filter((name) => arityName.test(name))).toEqual([]);
   });
 });
 
 describe('extern keys', () => {
-  it('spell declared types module-qualified, without sugar, references and parameters kept', () => {
+  it('spell declared types module-qualified, without sugar, references, rest and parameters kept', () => {
     const program = stdProgramOf({
       'shop/main': [
         "import Point from 'geometry'",
@@ -69,6 +73,7 @@ describe('extern keys', () => {
         'extern fn place(at: int?) -> int',
         'extern fn fill<T>(items: &Array<T>, item: T)',
         'extern fn now() -> int',
+        'extern fn log(level: string, ...parts: Array<string>)',
       ].join('\n'),
       geometry: 'struct Point { x: int; y: int }\nextern fn place(at: Point) -> int',
     });
@@ -77,6 +82,7 @@ describe('extern keys', () => {
       'shop/main.place(prelude.Optional<int>)',
       'shop/main.fill(&prelude.Array<T>, T)',
       'shop/main.now()',
+      'shop/main.log(string, ...prelude.Array<string>)',
     ]);
     expect(externKeys(program, 'geometry')).toEqual(['geometry.place(geometry.Point)']);
   });

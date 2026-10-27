@@ -18,6 +18,7 @@ import { type Value, value } from '../../definition/values.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
+import type { Span } from '../../text/span.ts';
 import type { Checker } from '../checker/check.ts';
 import type { AnyType, Type } from '../checker/types/type.ts';
 
@@ -29,6 +30,10 @@ import type {
 } from '../syntax/declarations.ts';
 import { annotationValues } from './constants.ts';
 import {
+  type AsyncFit,
+  asyncFitKey,
+  asyncFitName,
+  type BodyOwner,
   type ClosedCall,
   type Dispatch,
   type FunctionInstance,
@@ -38,6 +43,7 @@ import {
   nestedKey,
   nestedName,
   ownerDeclaration,
+  takingPassed,
 } from './instances.ts';
 import { qualifiedNameOf } from './names.ts';
 import { TypeTable } from './type-table.ts';
@@ -45,7 +51,8 @@ import { TypeTable } from './type-table.ts';
 /**
  * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
  * extern a host implements as its native sees it (boundary/host-externs.ts), the read of an extern
- * constant, or the wrapper a host starts a function through (boundary/starts.ts).
+ * constant, the wrapper a host starts a function through (boundary/starts.ts), or the async entry
+ * of a plain function made async (async-fits.ts).
  */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }
@@ -62,7 +69,8 @@ export type PendingEntry =
       readonly declaration: ExternConstantDeclaration;
       readonly type: Type;
     }
-  | { readonly kind: 'start'; readonly target: StartTarget };
+  | { readonly kind: 'start'; readonly target: StartTarget }
+  | { readonly kind: 'asyncFit'; readonly fit: AsyncFit };
 
 /**
  * An entry switching over every variant of an `any` type's enum (§3.10): a dispatch on a value's
@@ -144,13 +152,27 @@ export class DefinitionTables {
 
   /** The header of a nested function's entry: named after its owner, where its node is. */
   nestedHeader(nested: NestedInstance): EntryHeader {
-    const module = this.#checker.moduleOf(ownerDeclaration(nested.owner));
+    return this.#ownedHeader(nested.owner, nested.node.span, (where) =>
+      nestedName(this.#checker, nested, where),
+    );
+  }
+
+  /** The header of an async fit's entry: named after its owner, where its site is. */
+  asyncFitHeader(fit: AsyncFit): EntryHeader {
+    return this.#ownedHeader(fit.owner, fit.site.span, (where) =>
+      asyncFitName(this.#checker, fit, where),
+    );
+  }
+
+  /** The header of an entry a body owns, at `span`, named by `nameAt` from where it stands. */
+  #ownedHeader(owner: BodyOwner, span: Span, nameAt: (where: string) => string): EntryHeader {
+    const module = this.#checker.moduleOf(ownerDeclaration(owner));
     const { source } = programModule(this.#checker.program, module).tree;
-    const { line, column } = lineMapOf(source).positionAt(nested.node.span.start);
+    const { line, column } = lineMapOf(source).positionAt(span.start);
     return {
-      name: nestedName(this.#checker, nested, `${line + 1}:${column + 1}`),
+      name: nameAt(`${line + 1}:${column + 1}`),
       module: this.moduleIndex(module),
-      span: nested.node.span,
+      span,
       annotations: [],
     };
   }
@@ -164,10 +186,14 @@ export class DefinitionTables {
     return { name, module: this.moduleIndex(module), span, annotations: [] };
   }
 
-  /** The index a closed call calls: its instance's, or its dispatch's (§3.10). */
+  /**
+   * The index of the entry taking a closed call's arguments as it passes them, for a caller that
+   * gets an entry to call later: its function's own or a filling one (instances.ts), or its
+   * dispatch's (§3.10).
+   */
   callIndex(call: ClosedCall): FunctionId {
     return call.kind === 'function'
-      ? this.functionIndex(call.instance)
+      ? this.functionIndex(takingPassed(call))
       : this.dispatchIndex(call.dispatch);
   }
 
@@ -196,6 +222,11 @@ export class DefinitionTables {
   functionIndex(instance: FunctionInstance): FunctionId {
     const key = instanceKey(this.#checker.typeKeys, instance);
     return this.#entryIndex(key, { kind: 'instance', instance });
+  }
+
+  /** The index of the async entry of a plain function made async (§3.14), lowered later too. */
+  asyncFitIndex(fit: AsyncFit): FunctionId {
+    return this.#entryIndex(asyncFitKey(this.#checker.typeKeys, fit), { kind: 'asyncFit', fit });
   }
 
   /** The index of a lambda's or local function's entry (§3.14), lowered later too. */

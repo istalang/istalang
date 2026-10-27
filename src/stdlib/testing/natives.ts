@@ -7,7 +7,7 @@
  * before its first commit, when it hasn't run yet, is `Running`, as it is for one that is ready to.
  */
 
-import { type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
+import { functionKey, type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
 import { isComposite, type Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { InstanceState } from '../../runtime/instance-state.ts';
@@ -48,8 +48,10 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
       context.testing.mock(namedFunction(target), given(replacement)),
     [keys.of('_calls', keys.type('Mock', parameterKey('F')))]: ([mock], context) =>
       arrayOf(context.testing.calls(given(mock))),
-    [keys.of('_spawnCrashingEveryAwait', parameterKey('F'))]: ([entry], context) =>
-      resultExtern(context, context.instances.spawn(given(entry), { crashEveryAwait: true })),
+    [keys.of('spawnCrashingEveryAwait', functionKey(true, [], parameterKey('T')))]: (
+      [entry],
+      context,
+    ) => resultExtern(context, context.instances.spawn(given(entry), { crashEveryAwait: true })),
     [ofInstance('idle')]: ([handle], context) =>
       context.testing.watch(textPayloadOf(handle), { kind: 'idle' }),
     [ofInstance('reaches', 'string')]: ([handle, label], context) =>

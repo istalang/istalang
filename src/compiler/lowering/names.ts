@@ -28,6 +28,7 @@ import type {
   FunctionDeclaration,
   TraitDeclaration,
 } from '../syntax/declarations.ts';
+import type { Parameter } from '../syntax/expressions/index.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 
@@ -69,6 +70,13 @@ function nameOf(declaration: NamedDeclaration): string {
   }
 }
 
+/** A parameter as a key spells it: its type, whether by `&`, and its node when declared. */
+interface KeyedParameter {
+  readonly type: Type;
+  readonly reference: boolean;
+  readonly node?: Pick<Parameter, 'isRest'>;
+}
+
 /**
  * The key binding `declaration`, taking `parameters`, across the host boundary (§9): an extern to
  * its native, or a startable function to what a host starts it by. Both are spelled alike: module,
@@ -77,14 +85,15 @@ function nameOf(declaration: NamedDeclaration): string {
 export function keyOf(
   checker: Checker,
   declaration: FunctionDeclaration | VariableDeclaration,
-  parameters: readonly { readonly type: Type; readonly reference: boolean }[],
+  parameters: readonly KeyedParameter[],
 ): string {
   const signature: ExternSignature = {
     module: moduleName(checker, checker.moduleOf(declaration)),
     name: nameOf(declaration),
-    parameters: parameters.map(({ type, reference }) => ({
+    parameters: parameters.map(({ type, reference, node }) => ({
       type: keyType(checker, type),
       reference,
+      rest: node?.isRest === true,
     })),
   };
   return externKey(signature);

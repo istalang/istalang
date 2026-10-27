@@ -1,10 +1,11 @@
 /**
  * Code lowering writes with no syntax behind it: a type's codecs, a host extern's wrapper and a
- * start wrapper (docs/arch/boundary.md), a dispatch on an `any` value's own type (§3.10). It works through the same CodeContext as code with a body, so
+ * start wrapper (docs/arch/boundary.md), a dispatch on an `any` value's own type (§3.10), a
+ * filling entry (filling-entry.ts) and a plain function made async (async-fits.ts). It works through the same CodeContext as code with a body, so
  * the helpers both share build its variants and calls, and every instruction carries the span of
  * the declaration it stands for, which is where a trace through it points.
  *
- * Its registers are its parameters, in order, then temporaries; it captures nothing, and holds no
+ * Its registers are its parameters, in order, then its captures, then temporaries; it holds no
  * cells. A parameter it takes by `&`, as a dispatch does for a method's `&self` (§3.10), holds a
  * reference already, which it passes on by `&` as it is or into a part of it.
  */
@@ -19,7 +20,7 @@ import type { Checker } from '../checker/check.ts';
 import type { AnonymousStructType, NominalType } from '../checker/types/type.ts';
 import { CodeWriter } from './code-writer.ts';
 import type { CodeContext } from './context.ts';
-import { emitCall } from './emit-call.ts';
+import { emitCall, emitFunctionCall } from './emit-call.ts';
 import { branchOnVariant, buildVariant, payloadOf, variantTestOf } from './expressions/variants.ts';
 import type { ClosedCall } from './instances.ts';
 import type { DefinitionTables, EntryHeader } from './tables.ts';
@@ -32,14 +33,22 @@ export class SynthesizedCode implements CodeContext {
   readonly tables: DefinitionTables;
   readonly code = new CodeWriter();
   readonly parameters: readonly Register[];
+  readonly captures: readonly Register[];
   /** Where every instruction points: the declaration the code stands for. */
   readonly span: Span;
 
-  constructor(context: Pick<CodeContext, 'checker' | 'tables'>, span: Span, parameters: number) {
+  /** Code at `span` taking `parameters` arguments, then `captures` captures, as a closure's entry. */
+  constructor(
+    context: Pick<CodeContext, 'checker' | 'tables'>,
+    span: Span,
+    parameters: number,
+    captures = 0,
+  ) {
     this.checker = context.checker;
     this.tables = context.tables;
     this.span = span;
     this.parameters = Array.from({ length: parameters }, () => this.code.allocate());
+    this.captures = Array.from({ length: captures }, () => this.code.allocate());
   }
 
   constant(value: Value): Register {
@@ -53,8 +62,12 @@ export class SynthesizedCode implements CodeContext {
     return dst;
   }
 
+  /** Calls `callee` with `values`, each a register passed by value or an argument as written. */
   call(callee: Callee, values: readonly (Register | Argument)[]): Register {
-    return emitCall(this, { span: this.span, callee: this.#indexOf(callee), arguments: values });
+    const { span } = this;
+    return typeof callee === 'number'
+      ? emitCall(this, { span, callee, arguments: values })
+      : emitFunctionCall(this, { span, call: callee, arguments: values });
   }
 
   variant(type: NominalType, name: string, fields: readonly Register[]): Register {
@@ -143,14 +156,10 @@ export class SynthesizedCode implements CodeContext {
       ...header,
       async: isAsync,
       parameters: this.parameters.map((_, index) => ({ reference: references[index] === true })),
-      captures: 0,
+      captures: this.captures.length,
       registers,
       cells: [],
       instructions,
     };
-  }
-
-  #indexOf(callee: Callee): FunctionId {
-    return typeof callee === 'number' ? callee : this.tables.callIndex(callee);
   }
 }

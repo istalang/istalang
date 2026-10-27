@@ -117,9 +117,7 @@ enum InstanceState:
 
 # Spawns `f` as a new instance once the caller's segment commits (§9), with every segment run,
 # discarded and run again before it commits (§10).
-extern fn _spawnCrashingEveryAwait<F, T>(f: F) -> Instance<T>
-fn spawnCrashingEveryAwait<T>(f: sendable fn() -> T) -> Instance<T>: _spawnCrashingEveryAwait(f)
-fn spawnCrashingEveryAwait<T>(f: sendable async fn() -> T) -> Instance<T>: _spawnCrashingEveryAwait(f)
+extern fn spawnCrashingEveryAwait<T>(f: sendable async fn() -> T) -> Instance<T>
 
 # Resolves once every execution of the instance is waiting, or it has finished.
 extern fn idle<R>(self: Instance<R>) -> Future<unit>
@@ -134,13 +132,10 @@ extern fn handle<T>() -> T
 
 # A test of `body`, run in an instance of its own (§10).
 fn test(title: string, body: async fn() -> unit) -> Test: Case{title, body}
-fn test(title: string, body: fn() -> unit) -> Test: test(title, async fn(): body())
 
 # A test of `body`, run inside the environment `setup` prepares (§10).
 fn test<E>(title: string, setup: Setup<E>, body: async fn(E) -> unit) -> Test:
   test(title, async fn(): await setup(body))
-fn test<E>(title: string, setup: Setup<E>, body: fn(E) -> unit) -> Test:
-  test(title, setup, async fn(environment: E): body(environment))
 
 fn group(title: string, tests: Array<Test>) -> Test: Group{title, tests}
 
@@ -189,7 +184,6 @@ fn assertEq<T is Encodable>(actual: T, expected: T):
 
 # Spawns `f` as an instance of its own, since a panic freezes the instance it happens in (§5), and
 # waits for its end: the message it panics with. Panics if `f` returns instead (§10).
-async fn expectPanic<R is Sendable>(f: sendable fn() -> R) -> Future<string>: await _panicOf(spawn f())
 async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<string>: await _panicOf(spawn f())
 
 async fn _panicOf<R is Sendable>(instance: Instance<R>) -> Future<string>:

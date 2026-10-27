@@ -36,8 +36,8 @@ export interface Agreement {
 }
 
 /**
- * The type `produced` agree on. `fits` says whether a type fits the agreed one; a producer that
- * fits only by the implicit wrap (§2) still disagrees, so its caller fits it and records the wrap.
+ * The type `produced` agree on. `fits` says how a type fits the agreed one; a producer that fits
+ * only by converting its value (§2, §3.14) still disagrees, so its caller fits it and records it.
  */
 export function agreedType(
   produced: readonly Produced[],

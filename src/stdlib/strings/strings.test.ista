@@ -94,6 +94,11 @@ fn suite() -> Array<Test>: [
     test("{{ and }} write a brace", fn(): {
       assertEq(strings.format("{{{}}}", "x"), "{x}")
     }),
+    test("takes any number of values, written or spread", fn(): {
+      const letters = ["e", "f", "g", "h"]
+      assertEq(strings.format("{}{}{}{}{}{}{}{}", "a", "b", "c", "d", ...letters), "abcdefgh")
+      assertEq(strings.format("{} {}", ...["x", "y"]), "x y")
+    }),
     test("a placeholder without a value panics", async fn(): {
       assertEq(
         await expectPanic(fn(): strings.format("{} and {}", "one")),

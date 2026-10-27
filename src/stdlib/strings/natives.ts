@@ -13,6 +13,7 @@
  * segment running a native makes every such limit do (runtime/scheduler/segment/limits.ts).
  */
 
+import { restKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
@@ -77,7 +78,7 @@ const building = (keys: NativeKeys): Natives<NativeContext> => ({
     replacedAll(text(s), text(search), text(replacement)),
   [keys.of('toUpperCase', 'string')]: ([s]) => text(s).toUpperCase(),
   [keys.of('toLowerCase', 'string')]: ([s]) => text(s).toLowerCase(),
-  [keys.of('_format', 'string', strings)]: ([template, values]) =>
+  [keys.of('format', 'string', restKey(strings))]: ([template, values]) =>
     formatted(text(template), elementsOf(values).map(text)),
 });
 

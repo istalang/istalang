@@ -21,12 +21,13 @@
  * `t.0.1` as one float, so that token is split back into its two elements here.
  */
 
-import type {
-  Call,
-  CallArgument,
-  Dereference,
-  Expression,
-  Index,
+import {
+  type Call,
+  type CallArgument,
+  type Dereference,
+  type Expression,
+  type Index,
+  misplacedArgument,
 } from '../../syntax/expressions/index.ts';
 import { isPlace } from '../../syntax/expressions/places.ts';
 import type { TypeNode } from '../../syntax/types.ts';
@@ -70,6 +71,10 @@ function parseCall(
 ): Call {
   const { items } = parseDelimited(parser, '(', () => parseArgument(parser));
   const span = parser.spanFrom(callee.span.start);
+  const misplaced = misplacedArgument(items);
+  if (misplaced !== undefined && misplaced.kind !== 'Invalid') {
+    parser.report(parserDiagnostics.positionalAfterNamed(misplaced.span));
+  }
   return { kind: 'Call', span, callee, isOptional, typeArguments, arguments: items };
 }
 

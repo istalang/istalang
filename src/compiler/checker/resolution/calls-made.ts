@@ -8,15 +8,14 @@
  */
 
 import type { FunctionCall, ResolvedCall } from '../resolved-call.ts';
-import type { Candidate } from './candidates.ts';
+import type { Application } from './choice.ts';
 
-/** The call `candidate`, instantiated, makes with `arity` arguments. */
+/** The call the application's candidate, instantiated, makes, binding its arguments as chosen. */
 export function callMade(
-  candidate: Candidate,
+  application: Pick<Application, 'candidate' | 'binding'>,
   instantiation: Pick<FunctionCall, 'typeArguments' | 'witnesses'>,
-  arity: number,
 ): ResolvedCall {
-  const { declaration, requirement } = candidate;
+  const { declaration, requirement } = application.candidate;
   if (requirement !== undefined) {
     return {
       kind: 'requirement',
@@ -31,6 +30,6 @@ export function callMade(
     function: declaration,
     typeArguments: instantiation.typeArguments,
     witnesses: instantiation.witnesses,
-    arity,
+    binding: application.binding,
   };
 }

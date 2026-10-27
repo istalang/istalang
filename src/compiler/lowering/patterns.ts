@@ -18,7 +18,7 @@ import { binaryOperators } from '../syntax/operators.ts';
 import type { Label } from './code-writer.ts';
 import { constantValue } from './constants.ts';
 import type { FunctionContext } from './context.ts';
-import { call } from './expressions/calls.ts';
+import { emitCallAt } from './emit-call.ts';
 import { ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
 import { readPart } from './places.ts';
@@ -80,7 +80,7 @@ function passed(
 ): Register {
   if (test.kind === 'compare') {
     const value = context.expression(test.site.value);
-    const comparison = call(context, test.site, [part, value]);
+    const comparison = emitCallAt(context, test.site, [part, value]);
     const { meaning } = binaryOperators[test.site.operator];
     if (meaning.kind !== 'order') {
       unreachable(`'${test.site.operator}' is an equal test; the checker should have made it one.`);

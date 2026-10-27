@@ -89,9 +89,6 @@ async fn retry<T, E>(attempt: async fn() -> Result<T, E>, times: int = 3, backof
     wait = wait * 2
   await attempt()
 
-fn retry<T, E>(attempt: fn() -> Result<T, E>, times: int = 3, backoff: time.Duration = 1s) -> Future<Result<T, E>>:
-  retry(async fn(): attempt(), times, backoff)
-
 # A list of futures raced until each has arrived: the positions of those that haven't.
 shared struct _Race<T>:
   futures: Array<Future<T>>

@@ -14,6 +14,7 @@
 import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
+import { argumentSlotsOf } from '../resolution/binding.ts';
 import type { Application } from '../resolution/choice.ts';
 import { parametersIn, substitute, type Type } from '../types/type.ts';
 
@@ -32,10 +33,11 @@ export function checkDecidedLambdas(
   written: readonly Argument[],
   application: Application,
 ): ReadonlyMap<number, Type> {
-  const { signature, inference } = application;
+  const { signature, inference, binding } = application;
+  const slots = argumentSlotsOf(signature.parameters, binding);
   const types = new Map<number, Type>();
   written.forEach(({ node, type }, index) => {
-    const slot = signature.parameters[index];
+    const slot = slots.get(index);
     if (type !== undefined || slot === undefined || unparenthesized(node).kind !== 'Lambda') {
       return;
     }

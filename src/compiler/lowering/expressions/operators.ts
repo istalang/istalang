@@ -14,8 +14,8 @@ import type { Span } from '../../../text/span.ts';
 import type { Binary, Unary } from '../../syntax/expressions/index.ts';
 import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
 import type { FunctionContext } from '../context.ts';
+import { emitCallAt } from '../emit-call.ts';
 import { notLowered } from '../not-lowered.ts';
-import { call } from './calls.ts';
 import { lowerNullish } from './nullish.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
@@ -37,11 +37,11 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
       return ordered(
         context,
         node.span,
-        call(context, node, operands(context, node)),
+        emitCallAt(context, node, operands(context, node)),
         meaning.relation,
       );
     case 'call':
-      return call(context, node, operands(context, node));
+      return emitCallAt(context, node, operands(context, node));
     default: {
       const unhandled: never = meaning;
       return unhandled;
@@ -68,7 +68,7 @@ export function lowerUnary(context: FunctionContext, node: Unary): Register {
   const operand = context.expression(node.operand);
   return unaryOperators[node.operator].meaning.kind === 'negation'
     ? negated(context, operand, node.span)
-    : call(context, node, [operand]);
+    : emitCallAt(context, node, [operand]);
 }
 
 function operands(context: FunctionContext, node: Binary): [Register, Register] {

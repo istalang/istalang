@@ -20,8 +20,9 @@
  *   (closures/own-calls.ts).
  *
  * An argument written `&x` passes the place `x` by reference, which must be a place that may
- * change (calls/places.ts). Spread arguments are reported as not supported until the feature that
- * adds them.
+ * change (calls/places.ts). A named argument fills the parameter of its name, and a spread a rest
+ * parameter (§3.3, resolution/binding.ts). A call giving one by position after a named one was
+ * reported by the parser, so it is left unchecked.
  */
 
 import { staticName } from '../../../language/static-names.ts';
@@ -30,16 +31,16 @@ import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
 import {
   type Call,
+  type CallArgument,
   type Expression,
-  isPositional,
   type MemberAccess,
+  misplacedArgument,
 } from '../../syntax/expressions/index.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { frontier } from '../frontier.ts';
 import {
   callCandidates,
   staticCandidates,
@@ -50,16 +51,11 @@ import { namedType } from '../resolution/named.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { spreadItemType } from './collections.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
-  const argumentNodes: Expression[] = [];
-  for (const argument of node.arguments) {
-    if (!isPositional(argument)) {
-      const construct =
-        argument.kind === 'Spread' ? frontier.spreadArgument : frontier.namedArgument;
-      return context.unsupported(argument, construct);
-    }
-    argumentNodes.push(argument);
+  if (misplacedArgument(node.arguments) !== undefined) {
+    return errorType;
   }
   const call: WrittenCall = {
     node,
@@ -68,7 +64,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
       node.typeArguments.length === 0
         ? undefined
         : node.typeArguments.map((argument) => context.resolveType(argument)),
-    written: argumentNodes.map((argument) => writtenArgument(context, argument)),
+    written: node.arguments.map((argument) => writtenArgument(context, argument)),
   };
   const { callee } = node;
   if (node.isOptional) {
@@ -93,10 +89,27 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
 }
 
 /**
- * An argument as written: `&x` passes the place `x`, checked as a place that may change; any
- * other is a value, checked now unless the chosen function decides its type.
+ * An argument as written: `&x` passes the place `x`, checked as a place that may change; a spread,
+ * its items, as an array literal's spread gives them (§2); any other is a value, checked now
+ * unless the chosen function decides its type. A named argument is its value, named.
  */
-function writtenArgument(context: BodyContext, argument: Expression): WrittenArgument {
+function writtenArgument(context: BodyContext, argument: CallArgument): WrittenArgument {
+  switch (argument.kind) {
+    case 'Spread':
+      return {
+        node: argument.expression,
+        passing: 'value',
+        type: spreadItemType(context, argument),
+        isSpread: true,
+      };
+    case 'NamedArgument':
+      return { ...valueArgument(context, argument.value), name: argument.name };
+    default:
+      return valueArgument(context, argument);
+  }
+}
+
+function valueArgument(context: BodyContext, argument: Expression): WrittenArgument {
   if (argument.kind === 'Reference') {
     const type = checkChangedPlace(context, argument.expression, 'referenced');
     return { node: argument, passing: 'reference', type };

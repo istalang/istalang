@@ -127,4 +127,8 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2026,
     message: () => "A range pattern's bounds are literals.",
   },
+  positionalAfterNamed: {
+    code: 2050,
+    message: () => 'Named arguments come after the positional ones and spreads (§3.3).',
+  },
 });

@@ -12,6 +12,8 @@
  * - Lowering builds keys from declarations, and natives from their own tables, both through
  *   `externKey`, so the two can't drift apart. A natives table spells its types with the builders
  *   below.
+ * - A rest parameter is spelled with its `...`, `strings.format(string, ...prelude.Array<string>)`:
+ *   its native takes the array the call collects (§3.3).
  * - An extern constant has no parameters to tell overloads apart, so its key is its qualified
  *   name alone: `purchase.approvalDeadline` (§9).
  */
@@ -43,7 +45,14 @@ export interface ExternSignature {
   readonly module: string;
   /** The declared name, with its owner type for a static function: `Slot.create`. */
   readonly name: string;
-  readonly parameters: readonly { readonly type: KeyType; readonly reference: boolean }[];
+  readonly parameters: readonly KeyParameter[];
+}
+
+/** A parameter as a key spells it: its type, and whether it takes a reference or is the rest. */
+interface KeyParameter {
+  readonly type: KeyType;
+  readonly reference: boolean;
+  readonly rest?: boolean;
 }
 
 /** A primitive type, as a key spells it. */
@@ -57,6 +66,20 @@ export type WrittenType = KeyType | PrimitiveName;
 /** A named type, module-qualified, with its type arguments: `time.Time`, `prelude.Array<T>`. */
 export function namedKey(name: string, ...typeArguments: readonly WrittenType[]): KeyType {
   return { kind: 'named', name, arguments: typeArguments.map(typeOf) };
+}
+
+/** A function type, as a key spells it: `async fn() -> T`; a key doesn't tell sendable apart. */
+export function functionKey(
+  isAsync: boolean,
+  parameters: readonly WrittenType[],
+  result: WrittenType,
+): KeyType {
+  return {
+    kind: 'function',
+    async: isAsync,
+    parameters: parameters.map(typeOf),
+    result: typeOf(result),
+  };
 }
 
 /** A type parameter of the extern's own, as declared: the `T` of `prelude.Array<T>`. */
@@ -73,8 +96,20 @@ export function referenceKey(type: KeyType): ReferenceKey {
   return { reference: type };
 }
 
-/** A parameter as a natives table writes it: a type, a primitive's name, or a `referenceKey`. */
-export type NativeParameter = WrittenType | ReferenceKey;
+/** A rest parameter, as a natives table writes it (§3.3). */
+export interface RestKey {
+  readonly rest: KeyType;
+}
+
+export function restKey(type: KeyType): RestKey {
+  return { rest: type };
+}
+
+/**
+ * A parameter as a natives table writes it: a type, a primitive's name, a `referenceKey` or a
+ * `restKey`.
+ */
+export type NativeParameter = WrittenType | ReferenceKey | RestKey;
 
 /**
  * The key of extern `name` of `module` taking `parameters`, as a natives table writes it: each a
@@ -88,12 +123,18 @@ export function nativeKey(
   return externKey({
     module,
     name,
-    parameters: parameters.map((parameter) =>
-      typeof parameter !== 'string' && 'reference' in parameter
-        ? { type: parameter.reference, reference: true }
-        : { type: typeOf(parameter), reference: false },
-    ),
+    parameters: parameters.map(keyParameterOf),
   });
+}
+
+function keyParameterOf(parameter: NativeParameter): KeyParameter {
+  if (typeof parameter !== 'string' && 'reference' in parameter) {
+    return { type: parameter.reference, reference: true };
+  }
+  if (typeof parameter !== 'string' && 'rest' in parameter) {
+    return { type: parameter.rest, reference: false, rest: true };
+  }
+  return { type: typeOf(parameter), reference: false };
 }
 
 function typeOf(parameter: WrittenType): KeyType {
@@ -102,9 +143,17 @@ function typeOf(parameter: WrittenType): KeyType {
 
 export function externKey(signature: ExternSignature): string {
   const parameters = signature.parameters.map(
-    (parameter) => `${parameter.reference ? '&' : ''}${keyTypeText(parameter.type)}`,
+    (parameter) => `${markerOf(parameter)}${keyTypeText(parameter.type)}`,
   );
   return `${signature.module}.${signature.name}(${parameters.join(', ')})`;
+}
+
+/** What a key writes before a parameter's type: `&` for a reference, `...` for the rest. */
+function markerOf(parameter: KeyParameter): string {
+  if (parameter.reference) {
+    return '&';
+  }
+  return parameter.rest === true ? '...' : '';
 }
 
 /**

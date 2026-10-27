@@ -15,8 +15,8 @@ import type { AnyType, Type } from './types/type.ts';
  * type parameters, which each of the caller's instantiations substitutes.
  *
  * - `function`: a declared function, with its type arguments, the function each requirement of
- *   its type parameters' constraints calls (`witnesses`), and how many arguments the call gives,
- *   fewer than its parameters when defaults fill the rest (§3.3).
+ *   its type parameters' constraints calls (`witnesses`), and where each of its parameters takes
+ *   its value from at the call (`binding`, §3.3).
  * - `requirement`: a function a constraint requires, on one of the calling function's own type
  *   parameters, such as `add` under `T is Addable`, or on an `any` type. Which function it is
  *   depends, for a type parameter, on the caller's instantiation: the `witnesses` of the call that
@@ -35,7 +35,40 @@ export interface FunctionCall extends WrittenAs {
   readonly function: FunctionDeclaration;
   readonly typeArguments: readonly Type[];
   readonly witnesses: Witnesses;
-  readonly arity: number;
+  readonly binding: Binding;
+}
+
+/**
+ * Where each parameter of a called function takes its value from, in parameter order (§3.3): an
+ * argument the call passes, numbered as passed (a method's receiver first, then the others as
+ * written); for a rest parameter, the arguments it collects into an array, spreads included; or
+ * its default, computed from the parameters before it.
+ */
+export type Binding = readonly ParameterSource[];
+
+type ParameterSource =
+  | { readonly kind: 'argument'; readonly index: number }
+  | { readonly kind: 'rest'; readonly items: readonly number[] }
+  | { readonly kind: 'default' };
+
+/** By argument number, the parameter `binding` passes it to, a rest parameter's items included. */
+export function parameterOfArgument(binding: Binding): ReadonlyMap<number, number> {
+  const parameters = new Map<number, number>();
+  for (const [parameter, source] of binding.entries()) {
+    if (source.kind === 'argument') {
+      parameters.set(source.index, parameter);
+    } else if (source.kind === 'rest') {
+      for (const item of source.items) {
+        parameters.set(item, parameter);
+      }
+    }
+  }
+  return parameters;
+}
+
+/** Whether `binding` passes every parameter the argument of its own number, so no default runs. */
+export function passesAll(binding: Binding): boolean {
+  return binding.every((source, index) => source.kind === 'argument' && source.index === index);
 }
 
 interface RequirementCall extends WrittenAs {

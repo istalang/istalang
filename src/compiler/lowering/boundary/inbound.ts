@@ -12,7 +12,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { CodeContext } from '../context.ts';
-import { emitCall } from '../emit-call.ts';
+import { emitFunctionCall } from '../emit-call.ts';
 import { type ClosedCall, closeCall, type FunctionInstance } from '../instances.ts';
 import { codecCall } from './codec-calls.ts';
 
@@ -48,6 +48,6 @@ export function emitInbound(
   span: Span,
 ): Register {
   const call = (target: ClosedCall, values: readonly Register[]) =>
-    emitCall(context, { span, callee: context.tables.callIndex(target), arguments: values });
+    emitFunctionCall(context, { span, call: target, arguments: values });
   return call(inbound.accept, [call(inbound.decode, [json, path])]);
 }

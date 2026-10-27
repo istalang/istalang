@@ -111,7 +111,7 @@ An extern a host implements is called through a code entry, its wrapper, which e
 
 ## Names
 
-A function entry's `name` is for traces to read; entries are identified by index, and names may repeat. It is the declaration's name qualified by its module's canonical name (`time.delay`, `prelude.Slot.create`). An instance of a generic function spells its type arguments the way extern keys spell types, module-qualified and without sugar (`main.show<main.Money>`, `main.first<prelude.Optional<int>>`). An entry that computes the defaults a call leaves out (spec §3.3) appends `/` and how many arguments it takes (`main.retry/1`), and calls the entry taking them all. The entry giving a field its default (spec §3.1) is named after the struct or variant declaring the field, with `/` and how many fields before it it takes (`main.Retry/1`, `main.Circle/0`), and gives that field's value. A lambda or local function (spec §3.14) is an entry per instance of the top-level function holding it, named after that instance and its own name, or where a lambda stands: `main.makeCounter.next`, `main.run.lambda@12:9`.
+A function entry's `name` is for traces to read; entries are identified by index, and names may repeat. It is the declaration's name qualified by its module's canonical name (`time.delay`, `prelude.Slot.create`). An instance of a generic function spells its type arguments the way extern keys spell types, module-qualified and without sugar (`main.show<main.Money>`, `main.first<prelude.Optional<int>>`). The entry giving a parameter its default (spec §3.3) appends `/` and the parameter's name (`main.retry/backoff`). A struct's or variant's fields are the parameters of a function of their own, so the entry giving a field its default is named after the struct or variant and the field (`main.Retry/backoff`, `main.Circle/radius`). A default's entry takes the parameters before its own and gives its value. A filling entry, which takes a call's arguments as the call passes them and computes the parameters it leaves out before calling the function's own entry, is named as its function. A lambda or local function (spec §3.14) is an entry per instance of the top-level function holding it, named after that instance and its own name, or where a lambda stands: `main.makeCounter.next`, `main.run.lambda@12:9`.
 
 ## Types and locations
 
@@ -168,9 +168,10 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Implicit wrap of `T` into `T?` (§2) | `variant` `Some` |
 | `fn`, `async fn`, methods, static functions (§3.3, §3.7) | function-table entries; a method's `self` is its first parameter |
 | Overloads (§3.7) | distinct entries; calls name one |
-| Default parameters (§3.3) | generated entries that evaluate the defaults and call the full function |
-| Field defaults (§3.1) | a generated entry per field left to its default and instantiation, taking the fields before it and giving the default |
-| Rest parameter (§3.3) | the caller builds an `array` |
+| Default parameters (§3.3) | the caller computes each parameter it leaves out, in parameter order, with a `call` to that parameter's default entry given the parameters before it, then calls the function's own entry; a function named as a value of a shorter type, a spawned call and a call the runtime makes target a filling entry instead, whose code does the same, and which for an async function is async and awaits it |
+| Field defaults (§3.1) | the default entry of the field's parameter in the function the fields read as (one per instantiation), called as a parameter's default is |
+| Rest parameter, spread argument (§3.3) | the caller builds the rest parameter's `array` from the arguments it collects, as an array literal of them, spreads included, where the first of them stands; an extern's native takes that array |
+| Named arguments (§3.3) | the arguments are evaluated in the order written, then each call takes its parameters in their order; names don't reach the Definition |
 | `return`, last expression (§3.3) | `return` |
 | `extern fn`, extern constant (§3.6) | `extern` function entries; reading a constant is a `call`; a host's is called through its wrapper, which converts to and from `Json` (Externs) |
 | `let`, `const`, assignment (§3.4) | registers; `move` or a write through a cell |
@@ -208,6 +209,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Lambdas, local `fn`, closures (§3.14) | `closure` with captures; a captured `let` is a cell, a `const` a copy |
 | Named lambda calling itself (§3.14) | `currentClosure` |
 | Calling a function value (§3.14) | `call` with a value callee |
+| A plain function made async (§3.14) | `closure` capturing the plain value, of an async entry per site that calls it with its arguments and returns its result |
 | Annotations (§3.16) | `annotations` on functions and fields; `@Waypoint` becomes the `waypoint` of an `await` or `select` |
 | `await` (§5) | `await`, which commits first |
 | `runtime.commit()` (§3.8) | a call to an already-resolved future, then `await` |

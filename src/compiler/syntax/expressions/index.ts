@@ -158,9 +158,17 @@ interface NamedArgument extends NodeOf<'NamedArgument'> {
 /** What a call's parentheses hold: values by position, spreads, and values by name. */
 export type CallArgument = Expression | Spread | NamedArgument;
 
-/** Whether `argument` is a value given by its position: not a spread, and not named. */
-export function isPositional(argument: CallArgument): argument is Expression {
-  return argument.kind !== 'Spread' && argument.kind !== 'NamedArgument';
+/**
+ * The first argument a call gives by position, or spreads, after a named one: out of the order
+ * named arguments keep (§3.3), which the parser reports and the checker leaves alone.
+ */
+export function misplacedArgument(
+  callArguments: readonly CallArgument[],
+): CallArgument | undefined {
+  const named = callArguments.findIndex((argument) => argument.kind === 'NamedArgument');
+  return named === -1
+    ? undefined
+    : callArguments.slice(named + 1).find((argument) => argument.kind !== 'NamedArgument');
 }
 
 /** The expression an argument gives: itself, what it spreads, or the value it names. */

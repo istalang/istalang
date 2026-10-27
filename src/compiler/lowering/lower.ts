@@ -17,7 +17,7 @@ import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
 import { substitute } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { isFieldsFunction } from '../syntax/field-defaults.ts';
+import { asyncFitEntry } from './async-fits.ts';
 import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';
 import {
   constantNativeEntry,
@@ -26,6 +26,7 @@ import {
   hostNativeEntry,
 } from './boundary/host-externs.ts';
 import { startableOf, startables, startEntry } from './boundary/starts.ts';
+import { fillingEntry } from './filling-entry.ts';
 import { instanceLowering, nestedLowering } from './function-lowering/index.ts';
 import {
   type FunctionInstance,
@@ -68,7 +69,7 @@ export interface Suite {
 export function lowerTests(checker: Checker, suites: readonly Suite[]): Definition {
   const tables = new DefinitionTables(checker);
   const indexOf = (declaration: FunctionDeclaration) =>
-    tables.functionIndex(rootInstance(checker, declaration));
+    tables.functionIndex(rootInstance(declaration));
   const runner = (name: string) =>
     checker.languageFunctions(languageModules.testing, name)[0] ??
     unreachable(`The testing module declares no '${name}'.`);
@@ -119,6 +120,8 @@ function pendingEntry(
       return anyConversionEntry(lowering, pending.from, pending.to);
     case 'anyField':
       return anyFieldEntry(lowering, pending.on, pending.field);
+    case 'asyncFit':
+      return asyncFitEntry(lowering, pending.fit);
     default: {
       const unhandled: never = pending;
       return unhandled;
@@ -127,15 +130,22 @@ function pendingEntry(
 }
 
 /**
- * The entry for `instance`: a defaults entry when its callers leave parameters to their defaults
- * (§3.3), code for a function with a body, or an extern bound to its native.
+ * The entry for `instance`: a filling entry, or one giving a parameter its default (instances.ts,
+ * §3.3); else its function's own: code for a function with a body, or an extern bound to its
+ * native.
  */
 function entryOf(
   checker: Checker,
   tables: DefinitionTables,
   instance: FunctionInstance,
 ): FunctionDefinition {
-  const { declaration } = instance;
+  const { declaration, entry } = instance;
+  if (entry.kind === 'filling') {
+    return fillingEntry({ checker, tables }, instance, entry.binding);
+  }
+  if (entry.kind === 'default') {
+    return defaultEntry(checker, tables, instance);
+  }
   if (isDerivedCodec(checker, instance)) {
     return derivedCodecEntry({ checker, tables, instance });
   }
@@ -144,16 +154,8 @@ function entryOf(
   }
   const parameters = checker.parametersOf(declaration);
   const lowering = instanceLowering({ checker, tables }, instance);
-  if (lowering !== undefined) {
-    if (isFieldsFunction(declaration)) {
-      return lowering.lowerFieldDefault(instance);
-    }
-    if (instance.arity < parameters.length) {
-      return lowering.lowerDefaults(instance);
-    }
-    if (declaration.body !== undefined) {
-      return lowering.lower(declaration.body);
-    }
+  if (lowering !== undefined && declaration.body !== undefined) {
+    return lowering.lower(declaration.body);
   }
   const substitution = substitutionOf(instance);
   return {
@@ -168,6 +170,19 @@ function entryOf(
     result: tables.types.reference(substitute(checker.resultOf(declaration), substitution)),
     typeArguments: instance.typeArguments.map((type) => tables.types.reference(type)),
   };
+}
+
+/** The entry giving one parameter of `instance`'s function its default (§3.1, §3.3). */
+function defaultEntry(
+  checker: Checker,
+  tables: DefinitionTables,
+  instance: FunctionInstance,
+): FunctionDefinition {
+  const lowering = instanceLowering({ checker, tables }, instance);
+  if (lowering === undefined) {
+    unreachable(`${instance.declaration.name.text} has no defaults to compute.`);
+  }
+  return lowering.lowerDefault(instance);
 }
 
 /** The code entry of a lambda or local function, read through its owner's body (§3.14). */

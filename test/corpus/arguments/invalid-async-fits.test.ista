@@ -1,0 +1,21 @@
+# error: 5105 at 14:4
+# error: 5001 at 17:31
+# error: 5001 at 19:42
+# error: 5123 at 21:8
+# An async function never fits a plain function type, and a plain one fits an async type only as
+# the value passed or assigned, never inside another type (§3.14); a mock never makes its target
+# async (§10). A rest overload clashes with another one when a call fits both alike (§3.7).
+import * as testing from 'testing'
+
+fn plain() -> int: 1
+async fn later() -> Future<int>: 1
+
+fn sum(first: int, ...more: Array<int>) -> int: first
+fn sum(...all: Array<int>) -> int: 0
+
+fn main():
+  const wanted: fn() -> int = later
+  const plains: Array<fn() -> int> = [plain]
+  const many: Array<async fn() -> int> = plains
+  drop(many)
+  drop(testing.mock(plain, later))

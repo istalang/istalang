@@ -6,9 +6,6 @@
 
 /** The constructs, narrower than a node kind, reported as not supported yet. */
 export const frontier = {
-  spreadArgument: 'A spread argument',
-  restParameter: 'Rest parameter',
-  namedArgument: 'A named argument',
   loopLabel: 'A loop label',
   holdUntil: 'Holding until a named loop or function ends',
   rangeStep: 'A range step',

@@ -1,0 +1,24 @@
+# error: 5118 at 19:13
+# error: 5119 at 20:13
+# error: 5120 at 21:8
+# error: 5119 at 22:16
+# error: 5118 at 23:14
+# error: 5122 at 24:13
+# A named argument must name a parameter, once, and every parameter without a default must be
+# given; a method's self is given before the dot, and a function value takes no names (§3.3).
+fn f(a: int, b: int = 2) -> int:
+  a + b
+
+struct S { n: int }
+
+fn total(self: S, extra: int = 0) -> int:
+  self.n + extra
+
+fn main():
+  const g = f
+  drop(f(1, c: 3))
+  drop(f(1, a: 3))
+  drop(f(b: 3))
+  drop(f(a: 1, a: 2))
+  drop(total(self: S{n: 1}))
+  drop(g(a: 1, b: 2))

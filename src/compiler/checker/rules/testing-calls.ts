@@ -1,24 +1,25 @@
 /**
  * The testing module's calls whose arguments its signatures can't constrain (§10): a mock's target
- * must name a function, since a lambda or a variable has no identity to replace, and the type
- * `handle` makes a value of must be a host type. Each is checked where the call is written, over
+ * must name a function, since a lambda or a variable has no identity to replace, and is never made
+ * async to fit (§3.14), since the function made async would be another; and the type `handle`
+ * makes a value of must be a host type. Each is checked where the call is written, over
  * the calls a body resolved. A mock's target is also the one place a `dispose` may be named
  * (rules/disposal.ts), so the targets are what checking gives back.
  */
 
 import { languageModules, testingFunctions } from '../../../language/well-known.ts';
 import {
+  argumentValue,
   type Call,
   type Expression,
-  isPositional,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostType } from '../host-externs.ts';
-import type { CallSite, ResolvedCall } from '../resolved-call.ts';
-import type { Type } from '../types/type.ts';
+import type { CallSite, FunctionCall, ResolvedCall } from '../resolved-call.ts';
+import { substitute, substitutionFor, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** Checks each of `calls`, a body's, that calls `mock` or `handle`; the mocks' targets. */
@@ -33,7 +34,7 @@ export function checkTestingCalls(
   for (const [site, call] of calls) {
     if (isWrittenCall(site) && call.kind === 'function') {
       if (mocks.includes(call.function)) {
-        const target = checkTarget(context, site);
+        const target = checkTarget(context, site, call);
         if (target !== undefined) {
           targets.add(target);
         }
@@ -45,18 +46,31 @@ export function checkTestingCalls(
   return targets;
 }
 
-/** The target of the mock `site` makes, if it names a function; else reports that it doesn't. */
-function checkTarget(context: BodyContext, site: Call): Expression | undefined {
-  const [argument] = site.arguments;
-  const target =
-    argument === undefined || !isPositional(argument) ? undefined : unparenthesized(argument);
+/**
+ * The target of the mock `site` makes, `mock`'s first parameter as its binding passes it, if it
+ * names a function the mock keeps as it is; else reports why it doesn't.
+ */
+function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expression | undefined {
+  const [source] = mock.binding;
+  const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
+  const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
   const names =
     (target?.kind === 'Identifier' || target?.kind === 'MemberAccess') &&
     context.callAt(target)?.kind === 'function';
-  if (!names) {
+  if (target === undefined || !names) {
     context.report(checkerDiagnostics.mockTarget((argument ?? site).span));
+    return undefined;
   }
-  return names ? target : undefined;
+  const [taken] = context.checker.parametersOf(mock.function);
+  const substitution = substitutionFor(mock.function.typeParameters, mock.typeArguments);
+  const expected = taken === undefined ? undefined : substitute(taken.type, substitution);
+  const fit =
+    expected === undefined ? undefined : context.checker.fitOf(context.typeOf(target), expected);
+  if (fit?.conversion.kind === 'async') {
+    context.report(checkerDiagnostics.mockMadeAsync(site.span));
+    return undefined;
+  }
+  return target;
 }
 
 /** `handle` makes a value of `made`, which must be a host type. */

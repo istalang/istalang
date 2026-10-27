@@ -200,24 +200,28 @@ class Computation {
     }
   }
 
-  /** The default `call` gives a field, from the fields before it, `earlier`. */
+  /**
+   * The default `call` gives a field, from the fields before it, `earlier`: the field after them,
+   * since a literal gives its fields in order (syntax/field-defaults.ts).
+   */
   #default(call: FunctionCall, earlier: readonly ConstantForm[]): Outcome {
     const { checker } = this.#scope;
     const declaration = call.function;
     const parameters = checker.parametersOf(declaration);
-    const value = parameters[call.arity]?.node.defaultValue;
+    const field = earlier.length;
+    const value = parameters[field]?.node.defaultValue;
     const checked = checker.defaultsOf(declaration);
     if (value === undefined || checked === undefined) {
       return unknown;
     }
     const computing = this.#computing.get(declaration) ?? new Set<number>();
-    if (computing.has(call.arity)) {
+    if (computing.has(field)) {
       return { kind: 'refused', part: value, why: 'endless' };
     }
-    computing.add(call.arity);
+    computing.add(field);
     this.#computing.set(declaration, computing);
     const outcome = this.#defaultValue(call, value, checked, earlier);
-    computing.delete(call.arity);
+    computing.delete(field);
     return outcome;
   }
 
@@ -236,7 +240,7 @@ class Computation {
     const substitution = substitutionFor(declaration.typeParameters, typeArguments);
     const fields = new Map<VariableOwner, CheckedConstant>(
       parameters
-        .slice(0, call.arity)
+        .slice(0, earlier.length)
         .map((parameter, index) => [
           parameter.node,
           { type: substitute(parameter.type, substitution), form: earlier[index] },

@@ -108,7 +108,7 @@ export function lowerBody(context: FunctionContext, block: Block): Register {
 /** The `unit` a bare `return`, or a block with no tail expression, gives, fitted as checked (§2). */
 function unitOf(context: FunctionContext, site: Return | Block): Register {
   const unit = context.constant(null, site.span);
-  return context.fitted(unit, unitType, context.body.fitAt(site), site.span);
+  return context.fitted(unit, unitType, context.body.fitAt(site), site);
 }
 
 /** `drop x` releases the variable `x` (§7); `drop e` only computes `e`, a temporary. */

@@ -95,6 +95,44 @@ const cases: readonly ChoiceCase[] = [
     call: 'f(1)',
     chosen: 'bool',
   },
+  {
+    rule: 'a function without a rest parameter beats one with',
+    overloads: ['fn f(a: int) -> bool: true', 'fn f(...xs: Array<int>) -> string: "c"'],
+    call: 'f(1)',
+    chosen: 'bool',
+  },
+  {
+    rule: 'arguments past the fixed parameters take the function with a rest parameter',
+    overloads: ['fn f(a: int) -> bool: true', 'fn f(...xs: Array<int>) -> string: "c"'],
+    call: 'f(1, 2)',
+    chosen: 'string',
+  },
+  {
+    rule: 'a spread takes only the function with a rest parameter',
+    overloads: ['fn f(a: int) -> bool: true', 'fn f(...xs: Array<int>) -> string: "c"'],
+    call: 'f(...[1])',
+    chosen: 'string',
+  },
+  {
+    rule: 'a named argument rules out a function without a parameter of that name',
+    overloads: ['fn f(a: int) -> bool: true', 'fn f(c: int, d: string) -> string: "c"'],
+    call: 'f(d: "x", c: 1)',
+    chosen: 'string',
+  },
+  {
+    rule: 'a plain function takes the plain parameter over the async one',
+    overloads: ['fn f(g: fn() -> int) -> bool: true', 'fn f(g: async fn() -> int) -> string: "c"'],
+    setup: 'const g = fn() -> int: 1',
+    call: 'f(g)',
+    chosen: 'bool',
+  },
+  {
+    rule: 'an async function takes only the async parameter',
+    overloads: ['fn f(g: fn() -> int) -> bool: true', 'fn f(g: async fn() -> int) -> string: "c"'],
+    setup: 'const g = async fn() -> Future<int>: 1',
+    call: 'f(g)',
+    chosen: 'string',
+  },
 ];
 
 /** The codes reported for `choice` with its overloads declared in `order`. */

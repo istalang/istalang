@@ -1,0 +1,35 @@
+# outcome: ["3/2000","5/1000","b","a","c","13","10","20","30"]
+# Named arguments fill the parameters of their names, in any order, so a call can leave a default
+# before one it gives (§3.3). Arguments run in the order written, then each default left out, which
+# sees the parameters before it however they were given.
+import Duration from 'time'
+
+fn retry(times = 3, backoff: Duration = 1s) -> string:
+  string(times) + "/" + backoff.value
+
+fn trace(log: &Array<string>, label: string) -> int:
+  log.push(label)
+  label.length()
+
+fn ordered(log: &Array<string>, first: int, second: int, third: int = trace(&log, "c")) -> int:
+  first + second + third
+
+fn window(start: int, end: int = start + 10) -> int:
+  end
+
+struct Bag { items: Array<int> }
+
+fn add(self: &Bag, item: int, times: int = 1):
+  for _ in 0..times:
+    self.items.push(item)
+
+fn Bag.of(first: int, second: int = 20) -> Bag:
+  Bag{items: [first]}
+
+async fn main() -> Future<Array<string>>:
+  let log: Array<string> = []
+  ordered(&log, second: trace(&log, "b"), first: trace(&log, "a"))
+  let bag = Bag.of(second: 20, first: 10)
+  bag.add(item: 20)
+  bag.add(times: 1, item: 30)
+  [retry(backoff: 2s), retry(times: 5), ...log, string(window(end: 13, start: 1)), ...[for each in bag.items: string(each)]]

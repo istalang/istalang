@@ -73,4 +73,46 @@ export const genericTemplates = {
     message: (type: string, trait: string) =>
       `Finding how ${type} satisfies ${trait} doesn't end: what meets it needs ${trait} again, of a type as large or larger.`,
   },
+  restNotLast: {
+    code: 5115,
+    message: (name: string) => `The rest parameter '${name}' must be the last parameter.`,
+  },
+  restNotArray: {
+    code: 5116,
+    message: (name: string, found: string) =>
+      `The rest parameter '${name}' collects arguments into an array, so its type is an Array<T>, not ${found}.`,
+  },
+  restDefault: {
+    code: 5117,
+    message: (name: string) =>
+      `The rest parameter '${name}' can't have a default: it is empty when no argument fills it.`,
+  },
+  noParameterNamed: {
+    code: 5118,
+    message: (name: string, parameter: string) =>
+      `'${name}' has no parameter named '${parameter}' to name in a call.`,
+  },
+  givenTwice: {
+    code: 5119,
+    message: (parameter: string) => `The parameter '${parameter}' is given twice.`,
+  },
+  missingArgument: {
+    code: 5120,
+    message: (name: string, parameter: string) =>
+      `The call gives no '${parameter}', and '${name}' has no default for it.`,
+  },
+  spreadWithoutRest: {
+    code: 5121,
+    message: (name: string) => `'${name}' has no rest parameter for a spread to fill.`,
+  },
+  mockMadeAsync: {
+    code: 5123,
+    message: () =>
+      "An async replacement can't mock a plain function: the target would be made async, which is another function.",
+  },
+  valueCallArgument: {
+    code: 5122,
+    message: (form: string) =>
+      `A function value takes its arguments by position, so it takes no ${form}.`,
+  },
 } as const;

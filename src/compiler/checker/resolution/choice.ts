@@ -2,16 +2,19 @@
  * Choosing the function a call means among its candidates (§3.7): calls are resolved from the
  * arguments alone, never from the result.
  *
- * - A candidate applies when it takes as many arguments as given, counting parameters with
- *   defaults as optional (§3.3), each argument passed by value or by `&` as its parameter is
+ * - A candidate applies when its parameters can take the arguments given (binding.ts), each
+ *   argument passed by value or by `&` as its parameter is
  *   declared, and every argument fits its parameter. A method's receiver takes its `&` implicitly,
  *   so it is passed either way, whichever its `self` asks for. A reference names the caller's own
  *   variable, so its type must be the parameter's exactly, with no implicit wrap (§3.7). A generic candidate's type parameters are
  *   inferred from the arguments meanwhile (inference/infer.ts); written type arguments are taken
  *   as given (§3.5).
  * - When concrete candidates apply, only they are chosen among: a concrete function beats a
- *   generic one (§3.7). Written type arguments consider only generic candidates. Any other tie is
- *   ambiguous.
+ *   generic one (§3.7); then a function without a rest parameter beats one with (§3.3); then one
+ *   taking every argument as it is beats one making a plain function async (§3.14), so a pair
+ *   taking `fn(A)` and `async fn(A)` keeps each function its own type. Written type arguments
+ *   consider only generic candidates. Any other tie is ambiguous.
+ * - A rest parameter's items, and a spread's items, are matched against its array's element type.
  * - An argument whose type the chosen function decides (`none`, a bare variant, a literal holding
  *   one) takes part with no type: it fits a parameter of a type it can take (an optional, an enum
  *   with that variant), any part of which may be a type parameter still to be inferred.
@@ -20,6 +23,8 @@
  * report about a failed call explains the reason it found.
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
@@ -27,13 +32,25 @@ import {
 } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { Inference } from '../inference/infer.ts';
+import type { Binding } from '../resolved-call.ts';
 import {
+  errorType,
   type ParameterKey,
   type Substitution,
   sameType,
   substitute,
   type Type,
 } from '../types/type.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
+import {
+  type ArgumentSlot,
+  argumentSlotsOf,
+  type Binder,
+  type BindingFailure,
+  bindArguments,
+  bindValue,
+  isBinding,
+} from './binding.ts';
 import type { Candidate } from './candidates.ts';
 
 /**
@@ -48,10 +65,15 @@ export interface Signature {
   readonly result: () => Type;
 }
 
-interface SignatureSlot {
-  readonly type: Type;
-  readonly reference: boolean;
+/**
+ * A parameter as choosing sees it: its type and passing, its name, unless a method's `self`, which
+ * no call names (§3.3), whether it has a default, and for a rest parameter its array's element type.
+ */
+interface SignatureSlot extends ArgumentSlot {
+  readonly name: string | undefined;
   readonly hasDefault: boolean;
+  readonly isRest: boolean;
+  readonly item: Type | undefined;
 }
 
 /**
@@ -68,26 +90,38 @@ export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boole
 
 /**
  * An argument as choosing sees it: its type, or, when the chosen function decides it, which
- * parameter types it can take; and how it is passed.
+ * parameter types it can take; how it is passed; its name when named; and for a spread, the type
+ * of its items.
  */
 export interface CallArgument {
   readonly type: Type | undefined;
   readonly passing: Passing;
   readonly accepts?: Accepts | undefined;
-  /** Whether it fits only a parameter of its type exactly, with no wrap: a witness's (§3.10). */
+  /**
+   * Whether it fits only a parameter of its type exactly, with no conversion: a witness's (§3.10),
+   * or a spread's items, which are copied or iterated as they are (§3.3).
+   */
   readonly exact?: boolean;
+  readonly name?: string | undefined;
+  readonly isSpread?: boolean | undefined;
 }
 
-/** A candidate that applies, with what inference has found for its type parameters so far. */
+/**
+ * A candidate that applies: which parameter each argument fills, and what inference has found for
+ * its type parameters so far.
+ */
 export interface Application {
   readonly candidate: Candidate;
   readonly signature: Signature;
   readonly inference: Inference;
+  readonly binding: Binding;
+  /** Whether it takes a plain function argument only made async (§3.14). */
+  readonly makesAsync: boolean;
 }
 
 /** Why a candidate can't take a call's arguments. */
 export type Inapplicability =
-  | { readonly kind: 'arity'; readonly minimum: number; readonly maximum: number }
+  | BindingFailure
   | { readonly kind: 'typeArgumentCount'; readonly minimum: number; readonly maximum: number }
   /** The argument at `index` is passed by value where its parameter takes `&` (`reference`), or the reverse. */
   | { readonly kind: 'reference'; readonly index: number; readonly reference: boolean }
@@ -113,11 +147,20 @@ export function signatureOf(
   return {
     declaration,
     typeParameters: typeParametersOf(declaration.typeParameters),
-    parameters: checker.parametersOf(declaration).map((parameter) => ({
-      type: substitute(parameter.type, substitution),
-      reference: parameter.reference,
-      hasDefault: parameter.node.defaultValue !== undefined,
-    })),
+    parameters: checker.parametersOf(declaration).map(({ node, type, reference }, index) => {
+      const substituted = substitute(type, substitution);
+      const isSelf = index === 0 && node.name.text === 'self';
+      return {
+        type: substituted,
+        reference,
+        name: isSelf ? undefined : node.name.text,
+        hasDefault: node.defaultValue !== undefined,
+        isRest: node.isRest,
+        item: node.isRest
+          ? (wellKnownArguments(checker, wellKnown.array, substituted)?.[0] ?? errorType)
+          : undefined,
+      };
+    }),
     result: () => substitute(checker.resultOf(declaration), substitution),
   };
 }
@@ -129,18 +172,41 @@ export function choose(
   callArguments: readonly CallArgument[],
   written: readonly Type[] | undefined,
 ): Choice {
+  return chosenAmong(checker, candidates, { callArguments, written, binder: bindArguments });
+}
+
+/** Chooses among `candidates` for a function value taking `callArguments` (resolution/binding.ts). */
+export function chooseAsValue(
+  checker: CheckerContext,
+  candidates: readonly Candidate[],
+  callArguments: readonly CallArgument[],
+): Choice {
+  return chosenAmong(checker, candidates, { callArguments, written: undefined, binder: bindValue });
+}
+
+function chosenAmong(
+  checker: CheckerContext,
+  candidates: readonly Candidate[],
+  given: Given,
+): Choice {
   const applications: Application[] = [];
   const reasons: Inapplicability[] = [];
   for (const candidate of candidates) {
-    const outcome = applicationOf(checker, candidate, callArguments, written);
+    const outcome = applicationOf(checker, candidate, given);
     if ('inference' in outcome) {
       applications.push(outcome);
     } else {
       reasons.push(outcome);
     }
   }
-  const concrete = applications.filter(({ signature }) => signature.typeParameters.length === 0);
-  const preferred = concrete.length > 0 ? concrete : applications;
+  const preferred = [
+    ({ signature }: Application) => signature.typeParameters.length === 0,
+    ({ signature }: Application) => !signature.parameters.some((slot) => slot.isRest),
+    ({ makesAsync }: Application) => !makesAsync,
+  ].reduce((chosen, isPreferred) => {
+    const kept = chosen.filter(isPreferred);
+    return kept.length > 0 ? kept : chosen;
+  }, applications);
   const [only] = preferred;
   if (preferred.length === 1 && only !== undefined) {
     return { kind: 'chosen', application: only };
@@ -148,39 +214,49 @@ export function choose(
   return preferred.length === 0 ? { kind: 'none', reasons } : { kind: 'several' };
 }
 
-/** Why `candidate` can't take `callArguments`, or how it takes them. */
+/** A call's arguments as choosing takes them: as passed, with any type arguments, bound by `binder`. */
+interface Given {
+  readonly callArguments: readonly CallArgument[];
+  readonly written: readonly Type[] | undefined;
+  readonly binder: Binder;
+}
+
+/** Why `candidate` can't take the arguments `given`, or how it takes them. */
 function applicationOf(
   checker: CheckerContext,
   candidate: Candidate,
-  callArguments: readonly CallArgument[],
-  written: readonly Type[] | undefined,
+  given: Given,
 ): Application | Inapplicability {
   const signature = signatureOf(
     checker,
     candidate.declaration,
     candidate.requirement?.substitution,
   );
-  const taken = takenBy(checker, signature, callArguments, written);
-  return 'inference' in taken ? { candidate, signature, inference: taken.inference } : taken;
+  const taken = takenBy(checker, signature, given);
+  return 'inference' in taken ? { candidate, signature, ...taken } : taken;
 }
 
 /** What `takenBy` matches: a signature's type parameters and parameters. */
 export type Takes = Pick<Signature, 'typeParameters' | 'parameters'>;
 
 /**
- * How a function taking `takes` takes `callArguments` and any written type arguments: what
- * inference found matching them, or why it can't. A function value's call (closures/
- * closures/value-calls.ts) is judged here too, as a signature with no type parameters.
+ * How a function taking `takes` takes `callArguments` and any written type arguments: which
+ * parameter each argument fills and what inference found matching them, or why it can't. A
+ * function value's call (closures/value-calls.ts) is judged here too, as a signature with no type
+ * parameters.
  */
 export function takenBy(
   checker: CheckerContext,
   takes: Takes,
-  callArguments: readonly CallArgument[],
-  written: readonly Type[] | undefined,
-): { readonly inference: Inference } | Inapplicability {
-  const counted = countInapplicability(takes, callArguments, written);
+  { callArguments, written, binder }: Given,
+): Taken | Inapplicability {
+  const counted = typeArgumentsInapplicability(takes, written);
   if (counted !== undefined) {
     return counted;
+  }
+  const binding = binder(takes.parameters, callArguments);
+  if (!isBinding(binding)) {
+    return binding;
   }
   const known = new Map<ParameterKey, Type>();
   for (const [index, type] of (written ?? []).entries()) {
@@ -190,27 +266,37 @@ export function takenBy(
     }
   }
   const inference = new Inference(takes.typeParameters, checker.fitting, known);
-  return argumentsInapplicability(takes, callArguments, inference) ?? { inference };
+  const slots = argumentSlotsOf(takes.parameters, binding);
+  const misfit = argumentsInapplicability(callArguments, slots, inference);
+  if (misfit !== undefined) {
+    return misfit;
+  }
+  const makesAsync = callArguments.some((argument, index) => {
+    const slot = slots.get(index);
+    if (argument.type === undefined || slot === undefined) {
+      return false;
+    }
+    const expected = substitute(slot.type, inference.substitution());
+    return checker.fitOf(argument.type, expected)?.conversion.kind === 'async';
+  });
+  return { inference, binding, makesAsync };
 }
 
-/** Why the counts of written type arguments or of arguments don't suit `signature`, if they don't. */
-function countInapplicability(
-  { typeParameters, parameters }: Takes,
-  callArguments: readonly CallArgument[],
+/** How a function takes a call's arguments: what inference found, the binding, any made async. */
+type Taken = Pick<Application, 'inference' | 'binding' | 'makesAsync'>;
+
+/** Why the count of written type arguments doesn't suit `typeParameters`, if it doesn't. */
+function typeArgumentsInapplicability(
+  { typeParameters }: Takes,
   written: readonly Type[] | undefined,
 ): Inapplicability | undefined {
-  if (written !== undefined) {
-    const minimum = typeParameters.filter(
-      (parameter) => parameter.defaultType === undefined,
-    ).length;
-    const maximum = typeParameters.length;
-    if (maximum === 0 || written.length < minimum || written.length > maximum) {
-      return { kind: 'typeArgumentCount', minimum, maximum };
-    }
+  if (written === undefined) {
+    return undefined;
   }
-  const minimum = parameters.filter((parameter) => !parameter.hasDefault).length;
-  return callArguments.length < minimum || callArguments.length > parameters.length
-    ? { kind: 'arity', minimum, maximum: parameters.length }
+  const minimum = typeParameters.filter((parameter) => parameter.defaultType === undefined).length;
+  const maximum = typeParameters.length;
+  return maximum === 0 || written.length < minimum || written.length > maximum
+    ? { kind: 'typeArgumentCount', minimum, maximum }
     : undefined;
 }
 
@@ -220,8 +306,8 @@ function countInapplicability(
  * where an argument the chosen function decides stands; those are judged against what was found.
  */
 function argumentsInapplicability(
-  { parameters }: Takes,
   callArguments: readonly CallArgument[],
+  slots: ReadonlyMap<number, ArgumentSlot>,
   inference: Inference,
 ): Inapplicability | undefined {
   const indexed = [...callArguments.entries()];
@@ -231,8 +317,10 @@ function argumentsInapplicability(
   ];
   const misfits: { index: number; expected: Type }[] = [];
   for (const [index, argument] of typedFirst) {
-    // The arity was checked first, so every argument has its parameter.
-    const slot = parameters[index] as SignatureSlot;
+    const slot = slots.get(index);
+    if (slot === undefined) {
+      unreachable(`Argument ${index} was bound to no parameter.`);
+    }
     if (argument.passing !== 'receiver' && slot.reference !== (argument.passing === 'reference')) {
       return { kind: 'reference', index, reference: slot.reference };
     }
@@ -254,7 +342,7 @@ function argumentsInapplicability(
 
 /** Whether an argument with a type fits `slot`, matching it for inference. */
 function typedFits(
-  slot: SignatureSlot,
+  slot: ArgumentSlot,
   argument: CallArgument & { readonly type: Type },
   inference: Inference,
 ): boolean {
@@ -268,7 +356,7 @@ function typedFits(
 
 /** A reference's type is its parameter's exactly: no wrap into `T?` reaches the caller's place. */
 function exactWhenReferenced(
-  slot: SignatureSlot,
+  slot: ArgumentSlot,
   argument: CallArgument,
   inference: Inference,
 ): boolean {
@@ -279,7 +367,7 @@ function exactWhenReferenced(
 }
 
 /** Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7). */
-function isByReference(slot: SignatureSlot, argument: CallArgument): boolean {
+function isByReference(slot: ArgumentSlot, argument: CallArgument): boolean {
   return argument.passing === 'reference' || (argument.passing === 'receiver' && slot.reference);
 }
 

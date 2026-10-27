@@ -2,15 +2,20 @@
  * Instances (§3.5: generics are compiled per instantiation): what one function-table entry is.
  *
  * - An instance is a declaration with concrete type arguments, the concrete witnesses of its
- *   constraints (§3.10), and how many arguments its callers give: a call leaving parameters to
- *   their defaults targets a generated entry of its own (§3.3).
+ *   constraints (§3.10), and which of its entries it is (`InstanceEntry`): its own code, the code
+ *   giving one parameter its default (§3.1, §3.3), or code filling a call's left-out parameters.
  * - A body is checked once, generically (checker), so lowering one instance reads the body
  *   through its substitution (checker/types/instantiation.ts), and closes every call it makes:
  *   type arguments naming the instance's own parameters are substituted, and a call to a
  *   requirement becomes the witness the instance was given for it.
- * - Two instances are one entry when their key is: the declaration, its arguments' types, and its
- *   arity. Witnesses are coherent (§3.10), the same for the same types wherever they are found, so
+ * - Two instances are one entry when their key is: the declaration, its arguments' types, and which
+ *   entry. Witnesses are coherent (§3.10), the same for the same types wherever they are found, so
  *   the types decide them.
+ * - A call written in code fills the parameters it leaves out itself, through their defaults'
+ *   entries (emit-call.ts), and runs the function's own entry. An entry handed out to be called
+ *   later, a function named as a shorter value (§3.14), a spawned call (§9) or one the runtime
+ *   makes, takes the arguments as passed (`takingPassed`): a filling entry when the call leaves
+ *   parameters out or passes them out of order, whose code does the same.
  * - A lambda or local function (§3.14) is an entry of its own per instance of the top-level
  *   function holding it: it is checked within that body, so it reads the body through the same
  *   substitution, and its key is the instance's plus its node. A lambda in a top-level constant's
@@ -18,10 +23,17 @@
  */
 
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Checker } from '../checker/check.ts';
-import type { FunctionCall, ResolvedCall, Witnesses } from '../checker/resolved-call.ts';
+import type { Checker, ValueSite } from '../checker/check.ts';
+import {
+  type Binding,
+  type FunctionCall,
+  passesAll,
+  type ResolvedCall,
+  type Witnesses,
+} from '../checker/resolved-call.ts';
 import {
   type AnyType,
+  type FunctionType,
   type ParameterKey,
   type Substitution,
   substitute,
@@ -40,8 +52,21 @@ export interface FunctionInstance {
   readonly declaration: FunctionDeclaration;
   readonly typeArguments: readonly Type[];
   readonly witnesses: Witnesses;
-  readonly arity: number;
+  readonly entry: InstanceEntry;
 }
+
+/**
+ * Which entry of its function an instance is: its own code, or extern, taking every parameter; the
+ * code giving parameter `parameter` its default from the parameters before it (§3.1, §3.3); or
+ * code taking a call's arguments as passed, filling the parameters as `binding` says, then running
+ * the function's own entry.
+ */
+type InstanceEntry =
+  | { readonly kind: 'own' }
+  | { readonly kind: 'default'; readonly parameter: number }
+  | { readonly kind: 'filling'; readonly binding: Binding };
+
+const ownEntry: InstanceEntry = { kind: 'own' };
 
 /** A lambda or local function inside one instance of the top-level function holding it. */
 export interface NestedInstance {
@@ -64,14 +89,9 @@ export function ownerSubstitution(owner: BodyOwner): Substitution {
   return owner.kind === 'function' ? substitutionOf(owner.instance) : new Map();
 }
 
-/** The instance `main` is: no type arguments, every argument given. */
-export function rootInstance(checker: Checker, declaration: FunctionDeclaration): FunctionInstance {
-  return {
-    declaration,
-    typeArguments: [],
-    witnesses: new Map(),
-    arity: checker.parametersOf(declaration).length,
-  };
+/** The instance `main` is: no type arguments, its own entry. */
+export function rootInstance(declaration: FunctionDeclaration): FunctionInstance {
+  return { declaration, typeArguments: [], witnesses: new Map(), entry: ownEntry };
 }
 
 /** How the instance maps its declaration's type parameters. */
@@ -81,65 +101,143 @@ export function substitutionOf(
   return substitutionFor(instance.declaration.typeParameters, instance.typeArguments);
 }
 
-/** A call resolved inside the body of `within`, closed there. */
-export function calleeOf(resolved: ResolvedCall, within: BodyOwner): ClosedCall {
+/** `resolved`, a call made inside the body `within` owns, closed there. */
+export function closeCallWithin(resolved: ResolvedCall, within: BodyOwner): ClosedCall {
   return closeCall(resolved, within.kind === 'function' ? within.instance : undefined);
 }
 
-/** The instance of the same function taking every argument: what a defaults entry calls. */
-export function fullInstance(checker: Checker, instance: FunctionInstance): FunctionInstance {
-  return { ...instance, arity: checker.parametersOf(instance.declaration).length };
+/**
+ * The instance taking a closed call's arguments as it passes them, for a caller that only gets
+ * an entry to call later: the function's own, or a filling one when the call leaves parameters to
+ * their defaults or passes them out of order.
+ */
+export function takingPassed(call: ClosedFunctionCall): FunctionInstance {
+  const { instance, binding } = call;
+  return passesAll(binding) ? instance : { ...instance, entry: { kind: 'filling', binding } };
+}
+
+/** The entry of a closed call's function giving parameter `parameter` its default. */
+export function defaultEntryOf(call: ClosedFunctionCall, parameter: number): FunctionInstance {
+  return { ...call.instance, entry: { kind: 'default', parameter } };
+}
+
+/** The call a filling entry makes: its function's own entry, filled as `binding` says. */
+export function callOfFilling(instance: FunctionInstance, binding: Binding): ClosedFunctionCall {
+  return { kind: 'function', instance: { ...instance, entry: ownEntry }, binding };
+}
+
+/**
+ * A plain function value made async at `site`, in the body `owner` lowers, where an async function
+ * is expected (§3.14): its entry calls the value of the plain function type `type`.
+ */
+export interface AsyncFit {
+  readonly owner: BodyOwner;
+  readonly site: ValueSite;
+  readonly type: FunctionType;
 }
 
 /** The key of a nested function's entry: its owner's, then its node's identity. */
 export function nestedKey(keys: TypeKeys, nested: NestedInstance): string {
-  const { owner, node } = nested;
-  const ownerKey =
-    owner.kind === 'function'
-      ? instanceKey(keys, owner.instance)
-      : `const ${keys.identityOf(owner.declaration)}`;
-  return `${ownerKey}#${keys.identityOf(node)}`;
+  return `${ownerKey(keys, nested.owner)}#${keys.identityOf(nested.node)}`;
+}
+
+/** The key of an async fit's entry: its owner's, then its site's identity. */
+export function asyncFitKey(keys: TypeKeys, fit: AsyncFit): string {
+  return `${ownerKey(keys, fit.owner)}#async${keys.identityOf(fit.site)}`;
+}
+
+function ownerKey(keys: TypeKeys, owner: BodyOwner): string {
+  return owner.kind === 'function'
+    ? instanceKey(keys, owner.instance)
+    : `const ${keys.identityOf(owner.declaration)}`;
 }
 
 /** A nested function's name: its owner's, then its own name, or where a lambda stands. */
 export function nestedName(checker: Checker, nested: NestedInstance, where: string): string {
-  const { owner, node } = nested;
+  const { node } = nested;
   const own = node.name === undefined ? `lambda@${where}` : node.name.text;
-  const outer =
-    owner.kind === 'function'
-      ? instanceName(checker, owner.instance)
-      : qualifiedNameOf(checker, owner.declaration);
-  return `${outer}.${own}`;
+  return `${ownerName(checker, nested.owner)}.${own}`;
+}
+
+/** An async fit's name: its owner's, then where its site stands. */
+export function asyncFitName(checker: Checker, fit: AsyncFit, where: string): string {
+  return `${ownerName(checker, fit.owner)}.async@${where}`;
+}
+
+function ownerName(checker: Checker, owner: BodyOwner): string {
+  return owner.kind === 'function'
+    ? instanceName(checker, owner.instance)
+    : qualifiedNameOf(checker, owner.declaration);
 }
 
 /** The key two instances share exactly when they are one entry. */
 export function instanceKey(keys: TypeKeys, instance: FunctionInstance): string {
   const typeArguments = instance.typeArguments.map((type) => keys.typeKey(type));
-  return `${keys.identityOf(instance.declaration)}<${typeArguments.join(',')}>/${instance.arity}`;
+  return `${keys.identityOf(instance.declaration)}<${typeArguments.join(',')}>${entryKey(instance.entry)}`;
+}
+
+function entryKey(entry: InstanceEntry): string {
+  switch (entry.kind) {
+    case 'own':
+      return '';
+    case 'default':
+      return `=${entry.parameter}`;
+    case 'filling':
+      return `(${entry.binding.map(sourceKey).join(',')})`;
+    default: {
+      const unhandled: never = entry;
+      return unhandled;
+    }
+  }
+}
+
+/** A parameter's source as a filling entry's key spells it, so two different fillings never share one. */
+function sourceKey(source: Binding[number]): string {
+  switch (source.kind) {
+    case 'argument':
+      return String(source.index);
+    case 'rest':
+      return `r${source.items.join('.')}`;
+    case 'default':
+      return 'd';
+    default: {
+      const unhandled: never = source;
+      return unhandled;
+    }
+  }
 }
 
 /**
  * An instance's name in the Definition (definition.md, "Names"): the declaration's, with its type
- * arguments spelled as keys spell them, and a defaults entry's arity after a `/`.
+ * arguments spelled as keys spell them, and for a default's entry, `/` and the parameter's name.
  */
 export function instanceName(checker: Checker, instance: FunctionInstance): string {
-  const { declaration, typeArguments, arity } = instance;
+  const { declaration, typeArguments, entry } = instance;
   const name = qualifiedNameOf(checker, declaration);
   const generic =
     typeArguments.length === 0
       ? ''
       : `<${typeArguments.map((type) => spelledType(checker, type)).join(', ')}>`;
-  const defaults = arity < checker.parametersOf(declaration).length ? `/${arity}` : '';
-  return `${name}${generic}${defaults}`;
+  const parameter =
+    entry.kind === 'default' ? checker.parametersOf(declaration)[entry.parameter] : undefined;
+  return `${name}${generic}${parameter === undefined ? '' : `/${parameter.node.name.text}`}`;
 }
 
 /**
- * What a call closed inside an instance targets, every type in it concrete: a function's instance,
- * or a dispatch on the own type of the `any` value it is called with (§3.10).
+ * What a call closed inside an instance targets, every type in it concrete: a function's own
+ * entry, with which argument each of its parameters takes (§3.3), or a dispatch on the own type of
+ * the `any` value it is called with, which passes every argument by position (§3.10).
  */
 export type ClosedCall =
-  | { readonly kind: 'function'; readonly instance: FunctionInstance }
+  | ClosedFunctionCall
   | { readonly kind: 'dispatch'; readonly dispatch: Dispatch };
+
+/** A closed call of a function: its own entry's instance, and the call's binding. */
+export interface ClosedFunctionCall {
+  readonly kind: 'function';
+  readonly instance: FunctionInstance;
+  readonly binding: Binding;
+}
 
 /**
  * A call dispatched on an `any` value's own type: the `member`-th function of the trait of the
@@ -165,7 +263,7 @@ type Closing = Pick<FunctionInstance, 'declaration' | 'typeArguments' | 'witness
 export function closeCall(resolved: ResolvedCall, within: Closing | undefined): ClosedCall {
   const closed = closedInside(resolved, within);
   if (closed.kind === 'function') {
-    return { kind: 'function', instance: instanceOf(closed) };
+    return { kind: 'function', instance: instanceOf(closed), binding: closed.binding };
   }
   const { on, constraint, member } = closed.requirement;
   if (on.kind !== 'any') {
@@ -192,8 +290,8 @@ export function closeFunctionCall(
   });
 }
 
-function instanceOf({ function: declaration, typeArguments, witnesses, arity }: FunctionCall) {
-  return { declaration, typeArguments, witnesses, arity };
+function instanceOf({ function: declaration, typeArguments, witnesses }: FunctionCall) {
+  return { declaration, typeArguments, witnesses, entry: ownEntry };
 }
 
 /**

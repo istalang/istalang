@@ -45,7 +45,7 @@ export class Inference {
     if (given.kind === 'error' || isPrimitive(given, 'never')) {
       return true;
     }
-    if (this.#matchExact(declared, given)) {
+    if (this.#matchExact(declared, given) || this.#matchMadeAsync(declared, given)) {
       return true;
     }
     if (declared.kind === 'any') {
@@ -65,6 +65,17 @@ export class Inference {
       return false;
     }
     return this.#fitting.meetsAny(given, known);
+  }
+
+  /** Matches a plain function `given` where `declared` is an async one it fits made async (§3.14). */
+  #matchMadeAsync(declared: Type, given: Type): boolean {
+    return (
+      declared.kind === 'function' &&
+      given.kind === 'function' &&
+      declared.isAsync &&
+      !given.isAsync &&
+      this.#matchExact(declared, { ...given, isAsync: true })
+    );
   }
 
   /** Matches `declared` against a type `given` must equal, as an expected result. */

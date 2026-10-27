@@ -41,7 +41,8 @@ import { blockTail, ReturnScope } from './returns.ts';
 
 /**
  * For a lambda with a parameter to infer, which parameter types it can take, as an argument the
- * chosen function decides (§3.5); undefined for one whose parameters are all typed.
+ * chosen function decides (§3.5); undefined for one whose parameters are all typed. A plain lambda
+ * takes an async function type too, which it fits made async (§3.14).
  */
 export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | undefined {
   const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
@@ -52,7 +53,7 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | und
     const shape = expectedFunction(context, expected);
     return (
       shape !== undefined &&
-      shape.isAsync === node.isAsync &&
+      (shape.isAsync || !node.isAsync) &&
       shape.parameters.length === parameters.length
     );
   };

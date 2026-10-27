@@ -1,0 +1,30 @@
+# error: 5115 at 10:13
+# error: 5116 at 13:17
+# error: 5117 at 16:17
+# error: 5121 at 27:17
+# error: 5122 at 28:13
+# error: 5001 at 29:15
+# error: 5001 at 30:15
+# A rest parameter is the last, an Array<T> with no default; a spread fills only a rest parameter,
+# and a function value takes none (§3.3).
+fn first(...xs: Array<int>, y: int) -> int:
+  y
+
+fn wrong(...xs: int) -> int:
+  xs
+
+fn defaulted(...xs: Array<int> = [1]) -> int:
+  xs.length()
+
+fn fixed(a: int) -> int:
+  a
+
+fn sum(...xs: Array<int>) -> int:
+  xs.length()
+
+fn main():
+  const g = fixed
+  drop(fixed(...[1]))
+  drop(g(...[1]))
+  drop(sum(...["a"]))
+  drop(sum(1, "b"))

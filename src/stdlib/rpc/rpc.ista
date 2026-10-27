@@ -40,9 +40,6 @@ async fn onMessage<P, R>(self: Method<P, R>, handler: async fn(P) -> R) -> Futur
       drop slot.put(Ok{(reply)})
       call.reply->slot = none
 
-fn onMessage<P, R>(self: Method<P, R>, handler: fn(P) -> R) -> Future<unit>:
-  onMessage(self, async fn(message: P): handler(message))
-
 fn dispose<R>(self: _Reply<R>):
   if self->slot is Some{value as slot}:
     drop slot.put(Err{Error{message: "The call was let go without a reply.", code: "unanswered"}})

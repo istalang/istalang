@@ -13,8 +13,7 @@ import type { Iteration } from '../checker/check.ts';
 import type { Comprehension, Expression } from '../syntax/expressions/index.ts';
 import type { For } from '../syntax/statements.ts';
 import type { FunctionContext } from './context.ts';
-import { emitCall } from './emit-call.ts';
-import { implicitCall } from './expressions/calls.ts';
+import { emitCall, emitImplicitCall } from './emit-call.ts';
 import { branchOnVariant, payloadOf, variantTestOf } from './expressions/variants.ts';
 import type { LoopTargets } from './statements/loops.ts';
 import { endScope } from './statements/scopes.ts';
@@ -26,7 +25,7 @@ export function cursorOf(
   node: Iteration,
   iterable: Expression,
 ): Register {
-  return implicitCall(context, node, 'iterate', [context.expression(iterable)]);
+  return emitImplicitCall(context, node, 'iterate', [context.expression(iterable)]);
 }
 
 /**

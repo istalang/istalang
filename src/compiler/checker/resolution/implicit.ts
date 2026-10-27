@@ -83,7 +83,7 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
     return undefined;
   }
   const { application, instantiation, result } = chosen;
-  const call = callMade(application.candidate, instantiation, request.arguments.length);
+  const call = callMade(application, instantiation);
   context.implicit.record(request.node, request.role, call);
   return result;
 }

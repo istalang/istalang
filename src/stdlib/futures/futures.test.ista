@@ -156,12 +156,12 @@ fn timeoutSuite() -> Array<Test>: [
   }),
 ]
 
-# Retries, three times a second apart, an attempt that succeeds the third time: the outcome, and
-# when each attempt started.
+# Retries, its default three times, a second apart as named past the default it leaves out, an
+# attempt that succeeds the third time: the outcome, and when each attempt started.
 async fn succeedingThirdTime() -> Future<(Outcome, Array<int>)>:
   let startedAt: Array<int> = []
   const attempt = async fn() -> Future<Outcome>: { startedAt.push(time.now().value); if startedAt.length() < 3: Err{("failed")} else: Ok{(startedAt.length())} }
-  (await futures.retry(attempt, 3, 1s), startedAt)
+  (await futures.retry(attempt, backoff: 1s), startedAt)
 
 # Moves `clock` through the backoffs of `retrying`, an instance running `succeedingThirdTime`.
 async fn backingOff(clock: FakeClock, retrying: Instance<(Outcome, Array<int>)>):

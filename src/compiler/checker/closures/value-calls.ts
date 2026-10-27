@@ -7,13 +7,16 @@
  * - Calling an async function value starts it and yields its future, `Future<R>` for an
  *   `async fn(…) -> R`, as calling a declared async function does (§3.3).
  * - Type arguments can't be given: a function value is one instance, never generic.
+ * - Its type names no parameters and has no rest parameter, so its call gives every argument by
+ *   position, with no name and no spread (§3.3).
  */
 
 import type { Call, Expression } from '../../syntax/expressions/index.ts';
 import { checkReferencedPlaces } from '../calls/places.ts';
-import { explain, fitArguments, type WrittenArgument } from '../calls/resolve.ts';
+import { callArgumentOf, explain, fitArguments, type WrittenArgument } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { bindArguments } from '../resolution/binding.ts';
 import { takenBy } from '../resolution/choice.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
@@ -48,12 +51,28 @@ export function checkValueCall(
   if (written.some(({ type }) => type?.kind === 'error')) {
     return errorType;
   }
+  const unpositional = written.find(
+    ({ name, isSpread }) => name !== undefined || isSpread === true,
+  );
+  if (unpositional !== undefined) {
+    const form = unpositional.isSpread === true ? 'spread' : 'named argument';
+    context.report(checkerDiagnostics.valueCallArgument(unpositional.node.span, form));
+    return errorType;
+  }
   const { parameters } = calleeType;
   const takes = {
     typeParameters: [],
-    parameters: parameters.map((slot) => ({ ...slot, hasDefault: false })),
+    parameters: parameters.map((slot) => ({
+      ...slot,
+      name: undefined,
+      hasDefault: false,
+      isRest: false,
+      item: undefined,
+    })),
   };
-  const taken = takenBy(context.checker, takes, written, typeArguments);
+  const callArguments = written.map(callArgumentOf);
+  const binder = bindArguments;
+  const taken = takenBy(context.checker, takes, { callArguments, written: typeArguments, binder });
   if (!('inference' in taken)) {
     const name = callee.kind === 'Identifier' ? callee.text : typeText(calleeType);
     explain(context, { site: node, name, arguments: written, typeArguments }, taken);

@@ -33,7 +33,7 @@ import type { Dereference, Expression, Index, MemberAccess } from '../syntax/exp
 import { type PlaceStep, placePath } from '../syntax/expressions/places.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
-import { emitCall } from './emit-call.ts';
+import { emitFunctionCall } from './emit-call.ts';
 
 /**
  * A part of a place reached through a read and a write (§3.7, §3.9). An element is read with its
@@ -217,14 +217,14 @@ function elementAccessor(
     node,
     read: (span, dst) => {
       const value = readAt(context, container, span);
-      const callee = context.calleeIndex(node);
-      return emitCall(context, { span, callee, arguments: [value, key] }, dst);
+      const call = context.callAt(node);
+      return emitFunctionCall(context, { span, call, arguments: [value, key] }, dst);
     },
     write: (value) => {
       changeAt(context, container, true, (place) => {
-        emitCall(context, {
+        emitFunctionCall(context, {
           span: node.span,
-          callee: context.implicitCallee(node, 'write'),
+          call: context.implicitCallAt(node, 'write'),
           arguments: [{ kind: 'reference', place }, key, value],
         });
       });

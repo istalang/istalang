@@ -147,7 +147,7 @@ export function startEntry(
     outcome: codecCall(checker, undefined, outcome, 'write'),
   };
   if (target.kind === 'FunctionDeclaration') {
-    const entry = instanceLowering(lowering, rootInstance(checker, target), start);
+    const entry = instanceLowering(lowering, rootInstance(target), start);
     if (entry === undefined || target.body === undefined) {
       unreachable('A startable function has no body.');
     }

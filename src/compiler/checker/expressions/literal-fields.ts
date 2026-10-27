@@ -16,9 +16,9 @@
  * - What each field's value comes from is recorded per literal, in declaration order, so lowering
  *   and compile time read it rather than reading the items again. A literal with a mistake in its
  *   items has no record: nothing compiles it.
- * - A field left out with names alone takes its default (§3.1), from the entry of arity `index` of
- *   the function the declaration's fields read as (syntax/field-defaults.ts), instantiated with
- *   the literal's type arguments, its constraints met where the literal is. A spread gives every
+ * - A field left out with names alone takes its default (§3.1), from that field's default of the
+ *   function the declaration's fields read as (syntax/field-defaults.ts), instantiated with the
+ *   literal's type arguments, its constraints met where the literal is. A spread gives every
  *   field, so a literal with one runs no default.
  */
 
@@ -362,9 +362,9 @@ function sourceOf(
 }
 
 /**
- * By field position, the call giving each field the literal leaves out its default: the entry of
- * arity `index` of `shape`'s defaults, with the literal's `typeArguments`. Its parameters are the
- * fields in order, so they are numbered as the shape's fields are (syntax/field-defaults.ts).
+ * By field position, for each field the literal leaves out, the call of `shape`'s defaults with the
+ * literal's `typeArguments`, whose default for that field gives it. Its parameters are the fields
+ * in order, so they are numbered as the shape's fields are (syntax/field-defaults.ts).
  */
 function defaultCalls(
   context: BodyContext,
@@ -379,9 +379,7 @@ function defaultCalls(
   }
   const candidates = [{ declaration: defaults }];
   const call = callWithTypes(context.checker, candidates, typeArguments);
-  return fields.map((_, index) =>
-    isLeftOut(index) && call !== undefined ? { ...call, arity: index } : undefined,
-  );
+  return fields.map((_, index) => (isLeftOut(index) ? call : undefined));
 }
 
 function literalName(node: StructLiteral): string {

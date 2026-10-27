@@ -39,9 +39,6 @@ fn sendRevertible<M>(self: Bus<M>, message: M) -> Revertible<M>:
 fn subscribe<M>(self: Bus<M>, handler: async fn(M) -> unit) -> Future<unit>:
   _follow(self->_end, WeakRef(self), handler)
 
-fn subscribe<M>(self: Bus<M>, handler: fn(M) -> unit) -> Future<unit>:
-  subscribe(self, async fn(message: M): handler(message))
-
 # Disposing a bus (§7) lets go of the end of its chain. Declaring `dispose` is what makes a bus
 # disposable, and so something its subscriptions can watch.
 fn dispose<M>(self: Bus<M>):

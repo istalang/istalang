@@ -318,7 +318,7 @@ function witnessOf(
   if (!sameType(result, signature.result())) {
     return { kind: 'wrongResult', required: signature.result(), given: result };
   }
-  return callMade(application.candidate, instantiation, signature.parameters.length);
+  return callMade(application, instantiation);
 }
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {

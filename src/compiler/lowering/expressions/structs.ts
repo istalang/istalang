@@ -21,6 +21,7 @@ import {
 } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
+import { defaultEntryOf } from '../instances.ts';
 import { fieldIndexOf } from '../places.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
@@ -85,12 +86,17 @@ function fieldOf(
       context.code.emit({ kind: 'field', span: node.span, dst, src, index: source.index });
       return dst;
     }
-    case 'default':
+    case 'default': {
+      const fields = context.closed(source.call);
+      if (fields.kind !== 'function') {
+        unreachable('A field default is computed by its fields function, never a dispatch.');
+      }
       return emitCall(context, {
         span: node.span,
-        callee: context.callIndex(source.call),
+        callee: context.tables.functionIndex(defaultEntryOf(fields, earlier.length)),
         arguments: [...earlier],
       });
+    }
     default: {
       const unhandled: never = source;
       return unhandled;

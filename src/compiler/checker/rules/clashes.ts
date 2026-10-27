@@ -9,7 +9,15 @@
  *   call to the pair ambiguous;
  * - generic functions compare up to the names of their type parameters, so two with different
  *   numbers of them never clash: written type arguments tell them apart (§3.7);
- * - a function with defaults stands for every shorter overload it generates (§3.3).
+ * - a function with defaults is compared for every number of arguments a call by position may give
+ *   it, a rest parameter taking its element's type at every position past the fixed ones (§3.3,
+ *   resolution/binding.ts); a function with a rest parameter never clashes with one without, since
+ *   the one without wins a call both take (§3.7);
+ * - a parameter's `fn(A) -> R` and `async fn(A) -> R` differ: a call fitting both takes the one that
+ *   needs no plain function made async (§3.7, §3.14).
+ *
+ * Two functions agreeing at some number of arguments agree at every smaller one both take, so the
+ * smallest number both take decides.
  *
  * A module's functions are compared with each other and with the prelude's of the same name, which
  * they join (§3.13); a clash is reported at the later declaration.
@@ -25,8 +33,10 @@ import {
 import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { positionalCounts } from '../resolution/binding.ts';
+import { signatureOf } from '../resolution/choice.ts';
 import { withoutOptionals } from '../types/fit.ts';
-import { mentionsError, type ParameterKey } from '../types/type.ts';
+import { mentionsError, type ParameterKey, type Type } from '../types/type.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
@@ -35,9 +45,9 @@ export function checkClashes(checker: CheckerContext, module: ModuleId): void {
   for (const item of declaredFunctions(root)) {
     const group = groupOf(checker, module, item);
     const earlier = groups.get(group) ?? [];
-    const shapes = new Set(shapesOf(checker, item));
+    const shape = shapeOf(checker, item);
     const clashing = [...earlier, ...preludeOverloads(checker, module, item)].some((other) =>
-      shapesOf(checker, other).some((shape) => shapes.has(shape)),
+      clash(shape, shapeOf(checker, other)),
     );
     if (clashing) {
       checker.report(module, checkerDiagnostics.overloadClash(item.name.span, item.name.text));
@@ -80,31 +90,58 @@ function preludeOverloads(
 }
 
 /**
- * The parameter lists a call could match `declaration` by: one per number of arguments it takes.
- * A parameter type that didn't resolve was reported already, so it clashes with nothing.
+ * What a call by position meets in a function: how many type parameters it has, the key of each
+ * fixed parameter's type, its rest parameter's element's, and how many arguments it needs.
  */
-function shapesOf(checker: CheckerContext, declaration: FunctionDeclaration): readonly string[] {
+interface Shape {
+  readonly generic: number;
+  readonly fixed: readonly string[];
+  readonly rest: string | undefined;
+  readonly minimum: number;
+}
+
+/** Whether some call by position fits both functions and no rule prefers one. */
+function clash(first: Shape | undefined, second: Shape | undefined): boolean {
+  if (first === undefined || second === undefined) {
+    return false;
+  }
+  if (
+    first.generic !== second.generic ||
+    (first.rest === undefined) !== (second.rest === undefined)
+  ) {
+    return false;
+  }
+  const count = Math.max(first.minimum, second.minimum);
+  const keysAt = (shape: Shape) =>
+    Array.from({ length: count }, (_, index) => shape.fixed[index] ?? shape.rest);
+  const [firstKeys, secondKeys] = [keysAt(first), keysAt(second)];
+  return firstKeys.every((key, index) => key !== undefined && key === secondKeys[index]);
+}
+
+/**
+ * The shape of `declaration`; undefined when a parameter type didn't resolve, which was reported
+ * already, so it clashes with nothing.
+ */
+function shapeOf(checker: CheckerContext, declaration: FunctionDeclaration): Shape | undefined {
   const parameters = checker.parametersOf(declaration);
   if (parameters.some((parameter) => mentionsError(parameter.type))) {
-    return [];
+    return undefined;
   }
   const positions = new Map<ParameterKey, number>(
     typeParametersOf(declaration.typeParameters).map((parameter, index) => [parameter, index]),
   );
-  const slots = parameters.map((parameter, index) => {
-    const isSelf = index === 0 && parameter.node.name.text === 'self';
-    const reference = parameter.reference && !isSelf ? '&' : '';
-    return (
-      reference +
-      checker.typeKeys.typeKey(withoutOptionals(parameter.type, checker.optionalEntity), positions)
-    );
-  });
-  const required = parameters.filter(
-    (parameter) => parameter.node.defaultValue === undefined,
-  ).length;
-  const generic = `<${positions.size}>`;
-  return slots
-    .slice(required)
-    .map((_, index) => generic + slots.slice(0, required + index).join(','))
-    .concat([generic + slots.join(',')]);
+  const keyOf = (type: Type, reference: boolean) =>
+    (reference ? '&' : '') +
+    checker.typeKeys.typeKey(withoutOptionals(type, checker.optionalEntity), positions);
+  const slots = signatureOf(checker, declaration).parameters;
+  const fixed = slots.filter((slot) => !slot.isRest);
+  const rest = slots.find((slot) => slot.isRest)?.item;
+  // A method's `self` has no name to give (choice.ts), and is passed either way, so it is keyed
+  // as by value.
+  return {
+    generic: positions.size,
+    fixed: fixed.map((slot) => keyOf(slot.type, slot.reference && slot.name !== undefined)),
+    rest: rest === undefined ? undefined : keyOf(rest, false),
+    minimum: positionalCounts(slots).minimum,
+  };
 }

@@ -124,6 +124,11 @@ fn clocks() -> Array<Test>: [
     clock.advance(Duration{value: 3})
     assertEq(time.now(), Time{value: 10})
   }),
+  test("replaces a target its mock names", fn(): {
+    const clock = FakeClock{start: Time{value: 5}}
+    fn _ = mock(replacement: clock.now, target: time.now)
+    assertEq(time.now(), Time{value: 5})
+  }),
   test("fills a deadline once advanced to it, in an instance the test started", async fn(): {
     const clock = FakeClock{start: Time{value: 0}}
     fn _ = mock(time.now, clock.now)

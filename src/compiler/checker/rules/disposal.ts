@@ -129,9 +129,7 @@ function declaredDispose(checker: CheckerContext, type: NominalType): FunctionCa
   );
   const chosen = chooseSilently(searchSite(checker), candidates, [{ type, passing: 'value' }]);
   const call =
-    chosen === undefined
-      ? undefined
-      : callMade(chosen.application.candidate, chosen.instantiation, 1);
+    chosen === undefined ? undefined : callMade(chosen.application, chosen.instantiation);
   return call?.kind === 'function' ? call : undefined;
 }
 

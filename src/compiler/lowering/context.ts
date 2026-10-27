@@ -13,7 +13,7 @@ import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
-import type { CheckedBody, Checker } from '../checker/check.ts';
+import type { CheckedBody, Checker, ValueSite } from '../checker/check.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../checker/resolved-call.ts';
 import type { Fit } from '../checker/types/fit.ts';
 import type { Type } from '../checker/types/type.ts';
@@ -23,6 +23,7 @@ import type { Expression, Lambda } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { CodeWriter } from './code-writer.ts';
+import type { ClosedCall } from './instances.ts';
 import type { OptionalChains } from './optional-chains.ts';
 import type { LoopStack } from './statements/loops.ts';
 import type { VariableRegisters } from './statements/variables.ts';
@@ -48,20 +49,21 @@ export interface FunctionContext {
   /** Lowers `node`; the register holding its value, converted as the checker found (§2). */
   readonly expression: (node: Expression) => Register;
   /**
-   * `value`, of `type`, converted as `fit` says (§2): the one place a value the checker found
-   * converted is, whether an expression's, an assigned part's or a `unit` with no expression.
+   * `value`, of `type`, given at `site`, converted as `fit` says (§2, §3.10, §3.14): the one place a
+   * value the checker found converted is, whether an expression's, an assigned part's or a `unit`
+   * with no expression.
    */
-  readonly fitted: (value: Register, type: Type, fit: Fit, span: Span) => Register;
+  readonly fitted: (value: Register, type: Type, fit: Fit, site: ValueSite) => Register;
   /** Lowers a block; the register holding its value (unit when it ends in a statement). */
   readonly block: (node: Block) => Register;
   readonly statement: (node: Statement | Invalid) => void;
   readonly entityOf: (name: Identifier) => Entity | undefined;
-  /** The function-table entry the call at `site` targets. */
-  readonly calleeIndex: (site: CallSite) => FunctionId;
-  /** The function-table entry `call`, one the checker recorded with no site, targets from here. */
-  readonly callIndex: (call: ResolvedCall) => FunctionId;
-  /** The function-table entry of the call the checker made for `node` in `role`. */
-  readonly implicitCallee: (node: NodeOf<string>, role: ImplicitRole) => FunctionId;
+  /** The call the checker resolved at `site`, closed here (instances.ts). */
+  readonly callAt: (site: CallSite) => ClosedCall;
+  /** `call`, one the checker recorded with no site, closed here. */
+  readonly closed: (call: ResolvedCall) => ClosedCall;
+  /** The call the checker made for `node` in `role`, closed here. */
+  readonly implicitCallAt: (node: NodeOf<string>, role: ImplicitRole) => ClosedCall;
   /** The function-table entry of a lambda or local function in this body (§3.14). */
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
   /** A fresh register holding the constant `value`. */
