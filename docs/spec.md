@@ -1311,9 +1311,9 @@ For the test, `pending(key)` gives the messages waiting in a key's queue, oldest
 
 - **The host.** Time is real unless a test mocks it. Random values (§3.8) come from a seed made from the test's full title, so every run draws the same ones; a test fixes them by mocking `random.integer` or `random.uuid`. An extern that no mock replaces panics the instance that calls it, except a host type's `dispose`, which then does nothing: a test has nothing of its host's to release.
 - **Stuck tests.** A test whose instances all wait on nothing that can wake them fails, naming where each waits; so does one still running after `--timeout <ms>` of real time, 5000 by default.
-- **Selection.** `--filter <text>` runs only the tests whose full title contains `text`. A full title joins the suite's, the groups' and the test's titles with ` › `.
+- **Selection.** `--filter <text>` runs only the tests whose full title contains `text`. A full title joins the suite's, the groups' and the test's titles with ` › `. The filter narrows what `only` selects, never widens it: a test runs only if both select it, and every other test is reported skipped.
 - **Output.** One line per test, `✓`, `✗` or `-` (skipped) before its full title; a failure is followed by its message and trace, then the log records its instances committed, and a last line counts the tests that passed, failed and were skipped.
-- **Exit codes.** 0 when every test that ran passed; 1 when a module has errors, a test fails or no test was found; 2 when a path can't be read or the options don't fit together.
+- **Exit codes.** 0 when every test that ran passed; 1 when a module has errors, a test fails or no test ran; 2 when a path can't be read or the options don't fit together.
 
 ## 11. Packages
 
