@@ -152,7 +152,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
 - **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Six more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, and `any` before a trait's name in a type (§3.10). So `T.from` (§3.10) and a field named `type` (§9) are valid.
 
-Every expression has a static type, and there is no `any` type. There are no implicit conversions, with one exception: a `T` is wrapped into `T?` wherever an optional is expected (§3.11).
+Every expression has a static type; a value whose type is known only when the program runs has a trait's, `any T` (§3.10). There are no implicit conversions, with two exceptions: a `T` is wrapped into `T?` wherever an optional is expected (§3.11), and a value is converted into an `any` type wherever one is expected (§3.10).
 
 | Type | Meaning |
 | --- | --- |
