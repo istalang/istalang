@@ -21,9 +21,23 @@ export function preludeProgramOf(files: Files, previous?: Program): Program {
   return programOf(files, { previous, roles: { prelude: preludeModule() } });
 }
 
-/** The program rooted at the first of `files` as an app loads it: with every std module. */
-export function stdProgramOf(files: Files, previous?: Program): Program {
+/**
+ * The program rooted at the first of `files` as an app loads it: with every std module. Without a
+ * `previous`, the std modules every program loads are parsed once per test file, not per program.
+ */
+export function stdProgramOf(files: Files, previous: Program = stdOnly()): Program {
   return programOf(files, { previous, roles: stdRoles(), loaders: [stdlibLoader()] });
+}
+
+let stdOnlyProgram: Program | undefined;
+
+/** A program of nothing but the std modules every program loads, whose trees others reuse. */
+function stdOnly(): Program {
+  stdOnlyProgram ??= programOf(
+    { 'std-only.ista': '' },
+    { roles: stdRoles(), loaders: [stdlibLoader()] },
+  );
+  return stdOnlyProgram;
 }
 
 /** What the binder reported in module `key` (default: the first file). */

@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { specExamples } from '../../../test/corpus/spec-examples.ts';
+import { specCode } from '../../../test/corpus/spec-examples.ts';
 import { ista, tempProject as project } from '../cli.test-kit.ts';
 
 const wrongResult =
@@ -56,17 +56,6 @@ function host(order: string, charge: string): string {
     '};',
     '',
   ].join('\n');
-}
-
-/** The code of every spec example in `section` that `wanted` picks. */
-function specCode(section: string, wanted: (code: string) => boolean): string[] {
-  const found = specExamples
-    .filter((example) => example.section === section && wanted(example.code))
-    .map(({ code }) => code);
-  if (found.length === 0) {
-    throw new Error(`No example in "${section}" is the one wanted.`);
-  }
-  return found;
 }
 
 /**
@@ -292,8 +281,8 @@ describe('ista run --host', () => {
 
   it('runs spec §12.1 and §12.2: a purchase spawned for each request, until requests fail', async () => {
     const { run, ...logged } = await runSpec([
-      ...specCode('12.1 Purchase approval', () => true),
-      ...specCode('12.2 Approver side', () => true),
+      ...specCode('12.1 Purchase approval'),
+      ...specCode('12.2 Approver side'),
     ]);
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
@@ -317,7 +306,7 @@ describe('ista run --host', () => {
       ...specCode('12.1 Purchase approval', (code) =>
         code.includes('extern sendable struct Queue'),
       ),
-      ...specCode('12.3 Broadcast with expiry', () => true).map((code) =>
+      ...specCode('12.3 Broadcast with expiry').map((code) =>
         code.replace("import * as time from 'time'\n", ''),
       ),
       'async fn main() -> Future<string>:',

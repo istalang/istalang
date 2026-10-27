@@ -89,3 +89,17 @@ function extractExamples(markdown: string): SpecExample[] {
 }
 
 export const specExamples: readonly SpecExample[] = extractExamples(readFileSync(specUrl, 'utf8'));
+
+/** The code of every example in `section` that `wanted` picks; throws when it picks none. */
+export function specCode(
+  section: string,
+  wanted: (code: string) => boolean = () => true,
+): string[] {
+  const found = specExamples
+    .filter((example) => example.section === section && wanted(example.code))
+    .map(({ code }) => code);
+  if (found.length === 0) {
+    throw new Error(`No example in "${section}" is the one wanted.`);
+  }
+  return found;
+}
