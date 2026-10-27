@@ -19,6 +19,7 @@ tags: [tracker]
 | M3 Feature slices | done |
 | M4 Standard library | done |
 | M5 Test runner | done |
+| Language features (`docs/work/language-features/plan.md`) | in progress |
 | M6 Formatter | planned |
 | M7 Language service and LSP | planned |
 | M8 Packages | planned |
@@ -102,3 +103,8 @@ up, so the next one is D204.
 | D201 | Two ways to read a struct argument: by declared name (`fieldNamed`, time's natives) and by position (`fieldOf`), which regex/natives.ts uses for `Regex.pattern` and positions.ts `rangeEnds` for `Range`'s `start` and `end`, against native-values.ts's own rule that a composite is read and built through its declaration. Keep `fieldOf` for tuples (json `_object`'s pairs) and read structs by name. | merge review M4+M5 2026-10-27 | open |
 | D202 | docs/guide.md restates the language with 16 `python` examples no test compiles, while test/corpus/spec-examples.ts holds that the spec is the only home of examples so they can't drift; the guide's will at the next spec change. Read the guide's fences in spec-examples.ts too (same info-string forms), and give it `last_verified`. | merge review M4+M5 2026-10-27 | open |
 | D203 | Two derivations of a seed from a hash with different coupling to `seedBytes`: a spawn's is `draw().subarray(0, seedBytes)` (scheduler/instance.ts), a test's is a bare SHA-256 digest of its title (runtime/testing/run-tests.ts), right only while a seed is 32 bytes; changing `seedBytes` refuses every test. Make the test's through one `seedFrom(bytes)` in random-seed.ts, and list run-tests.ts in architecture.md's `crypto` exception (Layers), which names only random-source.ts for runtime/. | merge review M4+M5 2026-10-27 | open |
+| D204 | Mapped variadic generics (level 2): a pack mapped through a type constructor, so `setups` and similar per-arity overloads become one declaration. Out of the language-features plan, which lands level 1 (tuple packs) only. | language-features plan 2026-10-27 | open |
+| D205 | Upgrading a running instance to a new program version: its frames and snapshot carry the old Definition's ids. Decide a migration story (per-function version pins, drain-and-switch, or explicit migrations). | language-features plan 2026-10-27 | open |
+| D206 | Queries: reading a running instance's state from the host without an inbox round trip. | language-features plan 2026-10-27 | open |
+| D207 | Idempotency keys for extern calls, so a host can de-duplicate a call re-issued after a crash between the call and its commit. | language-features plan 2026-10-27 | open |
+| D208 | Compensation-only `defer`: a deferred function that runs only when its block is disposed or panics, not on a normal exit (today a flag checked in `defer`). | language-features plan 2026-10-27 | open |

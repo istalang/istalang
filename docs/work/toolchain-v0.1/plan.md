@@ -66,6 +66,8 @@ D. Two ∥ structural debt forks before 6: runtime and IR (D80, D78, D81), check
 
 *MVP boundary: M1–M5 compile, run and test programs end to end.*
 
+**Language features** (details: `../language-features/plan.md`). The features agreed after M5 (rest and named arguments, `**`, `isolate` and `Instance<T>`, `hold` and labels, templates, docstrings, patterns, `any T`, `!`, bitwise operators, variadic tuple packs), before M6, because the formatter and the LSP must cover them.
+
 **M6 — Formatter.** `ista fmt` and the formatting API. *Done when:* output over the corpus is idempotent and preserves both the tree and the comments.
 
 **M7 — Language service and LSP.** *Done when:* every provider answers correctly on corpus fixtures, and the VSCode extension starts the server.
