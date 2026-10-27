@@ -1,0 +1,8 @@
+# error: 4015 at 5:18
+#
+# Only a test module may import the testing module (§10), so production code never installs a mock.
+
+import mock from 'testing'
+
+async fn main():
+  ()

@@ -21,8 +21,13 @@ const excludedDirectories = ['**/node_modules', 'vendor'];
 
 /** Every source file under the project root, sorted. */
 export function findProjectSources(cwd: string): readonly string[] {
-  return globSync(`**/*${sourceExtension}`, { cwd, exclude: excludedDirectories })
-    .map((path) => resolve(cwd, path))
+  return findSources(cwd, sourceExtension);
+}
+
+/** Every file under `directory` whose name ends in `suffix`, skipping what is never a source, sorted. */
+export function findSources(directory: string, suffix: string): readonly string[] {
+  return globSync(`**/*${suffix}`, { cwd: directory, exclude: excludedDirectories })
+    .map((path) => resolve(directory, path))
     .sort();
 }
 

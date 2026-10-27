@@ -86,6 +86,20 @@ const futureState = z.discriminatedUnion('kind', [
    * reference `weakRef` is disposed; with no referent left, never.
    */
   z.strictObject({ kind: z.literal('disposed'), weakRef: objectId }),
+  /**
+   * `t.idle()`, `t.reaches(label)` and `t.result()` (spec §10): resolves once the instance `t`
+   * started, `instance`, is idle, waits at waypoint `label`, or has finished, as its last commit
+   * says. Only a test runs one, and the runtime running the test resolves it (runtime/testing/).
+   */
+  z.strictObject({
+    kind: z.literal('watch'),
+    instance: z.string(),
+    until: z.discriminatedUnion('kind', [
+      z.strictObject({ kind: z.literal('idle') }),
+      z.strictObject({ kind: z.literal('waypoint'), label: z.string() }),
+      z.strictObject({ kind: z.literal('finished') }),
+    ]),
+  }),
 ]);
 
 /** A heap object schema: `kind` and `id`, plus its own fields. */
@@ -119,6 +133,18 @@ export const heapObject = z.discriminatedUnion('kind', [
    * each call's arguments as a tuple, for `m.calls()` (spec §10).
    */
   defineObject('mock', { target: functionId, replacement: value, calls: z.array(value) }),
+  /**
+   * A call another instance made to one of this instance's mocks (spec §10), answered here: when
+   * `future` resolves, its value fills the future `instance` named `token`, or, when it is itself
+   * a future, the answer waits on that one instead, and is then `followed`. An answer is a root,
+   * held until it is given.
+   */
+  defineObject('answer', {
+    future: objectId,
+    instance: z.string(),
+    token: z.string(),
+    followed: z.boolean(),
+  }),
   /**
    * An execution: a call stack, innermost frame last. An async call's execution names the future
    * its return resolves (spec §3.3); the root, the instance's own, names none.

@@ -25,7 +25,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { LanguageModule } from '../../language/well-known.ts';
+import { type LanguageModule, testModuleSuffix } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { parse } from '../parser/parse.ts';
@@ -93,6 +93,11 @@ export function programModule(program: Program, module: ModuleId): ProgramModule
     unreachable(`Module ${module} is not in the program.`);
   }
   return loaded;
+}
+
+/** Whether `module` is a test module (§10): its file's name ends in `.test.ista`. */
+export function isTestModule(module: ModuleId): boolean {
+  return module.endsWith(testModuleSuffix);
 }
 
 /** Whether the toolchain ships `module` (`LocatedModule.isStd`); false for one `program` lacks. */

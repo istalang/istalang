@@ -112,7 +112,15 @@ export type EnumRole = z.output<typeof enumRole>;
 const disposal = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('none') }),
   z.strictObject({ kind: z.literal('runtime') }),
-  z.strictObject({ kind: z.literal('function'), function: functionId }),
+  z.strictObject({
+    kind: z.literal('function'),
+    function: functionId,
+    /**
+     * For a `dispose` a host implements, the native entry its wrapper calls, so whatever stands in
+     * for the host, as a test does (spec §10), knows which native releases a host value.
+     */
+    host: functionId.optional(),
+  }),
 ]);
 
 /**

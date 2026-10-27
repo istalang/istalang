@@ -12,7 +12,8 @@
  *   and so does `main`, whose outcome its host reads (§9).
  * - A `dispose` a program declares makes its type disposable, on its rules (rules/disposal.ts).
  * - Every item's annotations are checked where it stands (rules/annotations.ts): a function's, a
- *   field's and, of the rest, each declaration's, which none may carry.
+ *   field's and, of the rest, each declaration's, which none may carry. A function marked
+ *   `@Suite` is held to what a suite function may be (rules/suites.ts).
  * - Imports declare nothing else to check.
  */
 
@@ -30,6 +31,7 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
+import { checkSuite } from '../rules/suites.ts';
 import type { GenericDeclaration } from '../types/resolve-type.ts';
 import { futureArgument } from '../types/well-known.ts';
 import { checkFiniteFields } from './struct-rules.ts';
@@ -57,6 +59,9 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   checker.bodyOf(node);
   if (node.isExtern) {
     checkHostBoundary(checker, module, node);
+  }
+  if (checker.annotations.suiteTitleOf(module, node) !== undefined) {
+    checkSuite(checker, module, node);
   }
 }
 

@@ -65,10 +65,14 @@ const indexes = {
   watches: index('future', ({ state }) => (state.kind === 'disposed' ? [state.weakRef] : [])),
   /** Each pending future its host fills, by its token. */
   hostFutures: index('future', ({ state }) => (state.kind === 'host' ? [state.token] : [])),
-  /** Each pending timer and `first`, by its state's kind. */
+  /** Each pending timer, `first` and watch, by its state's kind. */
   pending: index('future', ({ state }) =>
-    state.kind === 'timer' || state.kind === 'first' ? [state.kind] : [],
+    state.kind === 'timer' || state.kind === 'first' || state.kind === 'watch' ? [state.kind] : [],
   ),
+  /** Each held mock, by the function it replaces. */
+  mocks: index('mock', (mock) => [mock.target]),
+  /** Each answer to another instance's call, by the future it waits on. */
+  answers: index('answer', (answer) => [answer.future]),
 };
 
 type Indexes = typeof indexes;

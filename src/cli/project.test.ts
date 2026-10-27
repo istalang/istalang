@@ -30,19 +30,26 @@ describe('loadProject', () => {
       'std:prelude',
       'std:time',
       'std:json',
+      'std:testing',
     ]);
   });
 
-  it('loads the prelude, time and json with every program, by their roles', () => {
+  it('loads the prelude, time, json and testing with every program, by their roles', () => {
     const root = tempProject({ 'main.ista': '' });
     const { program } = loadProject(root, ['main.ista']);
-    expect(program.roles).toEqual({ prelude: 'std:prelude', time: 'std:time', json: 'std:json' });
+    expect(program.roles).toEqual({
+      prelude: 'std:prelude',
+      time: 'std:time',
+      json: 'std:json',
+      testing: 'std:testing',
+    });
     const shipped = [...program.modules.values()].map((module) => [module.name, module.isStd]);
     expect(shipped).toEqual([
       ['main', false],
       ['prelude', true],
       ['time', true],
       ['json', true],
+      ['testing', true],
     ]);
   });
 

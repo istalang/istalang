@@ -35,6 +35,18 @@ export const tables = z.strictObject({
    * arguments as JSON, runs the function and gives its outcome as JSON (docs/arch/boundary.md).
    */
   starts: z.array(z.strictObject({ key: z.string(), function: functionId })),
+  /**
+   * In a Definition built to run tests (§10): every `@Suite` function with its title, and the
+   * testing module's code that lists a suite's tests and runs one of them, which `ista test` starts
+   * each test's instance with.
+   */
+  tests: z
+    .strictObject({
+      list: functionId,
+      run: functionId,
+      suites: z.array(z.strictObject({ title: z.string(), function: functionId })),
+    })
+    .optional(),
 });
 
 export type Tables = z.output<typeof tables>;

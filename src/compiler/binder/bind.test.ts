@@ -156,8 +156,23 @@ describe('binding reports, once and at the name', () => {
       d.preludeClash,
       'Error',
     ],
+    [
+      "a test module's import by one that isn't",
+      { main: "import x from 'helper.test.ista'", 'helper.test.ista': 'fn x(): 1' },
+      d.testImport,
+      "'helper.test.ista'",
+    ],
   ])('%s', (_, files, rule, name) => {
     expect(boundReport(files)).toEqual(reportedOnce(rule.code, name));
+  });
+
+  it("lets a test module import another, and the program's other modules", () => {
+    const files = {
+      'main.test.ista': "import x from 'helper.test.ista'\nimport y from 'lib'",
+      'helper.test.ista': 'fn x(): 1',
+      lib: 'fn y(): 2',
+    };
+    expect(boundReport(files)).toEqual(reportedNothing);
   });
 });
 

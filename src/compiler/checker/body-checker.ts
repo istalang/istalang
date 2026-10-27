@@ -52,8 +52,10 @@ import { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { statementPlace } from './rules/annotations.ts';
+import { checkDisposeUses } from './rules/disposal.ts';
 import { checkDropped } from './rules/dropped.ts';
 import { Iterations } from './rules/iteration.ts';
+import { checkTestingCalls } from './rules/testing-calls.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
 import { errorType, type FunctionType, type Type, unitType } from './types/type.ts';
@@ -138,6 +140,7 @@ export class BodyChecker implements BodyContext {
     for (const root of roots) {
       checkDropped(this, root);
     }
+    checkDisposeUses(this, this.#calls, checkTestingCalls(this, this.#calls));
     return this.#checked(result);
   }
 

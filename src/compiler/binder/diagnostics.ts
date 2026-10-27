@@ -1,5 +1,5 @@
 /**
- * Diagnostics of binding names, codes 4000–4999 (§2, §3.1, §3.4, §3.11, §3.13).
+ * Diagnostics of binding names, codes 4000–4999 (§2, §3.1, §3.4, §3.11, §3.13, §10).
  *
  * A name that resolves to nothing gets the most specific explanation the binder can give: it was
  * declared later in its block, in a block that has ended, or on one side of an `or`. Only when none
@@ -70,5 +70,10 @@ export const binderDiagnostics = defineDiagnostics('binder', {
   unnamedRead: {
     code: 4014,
     message: () => `'_' holds a value without a name, so it can't be read.`,
+  },
+  testImport: {
+    code: 4015,
+    message: (module: string) =>
+      `Only a test module, a file ending in '.test.ista', may import '${module}'.`,
   },
 });

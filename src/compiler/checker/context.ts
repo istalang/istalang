@@ -14,7 +14,6 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
-import type { LanguageModule } from '../../language/well-known.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
@@ -70,11 +69,6 @@ export interface CheckerContext extends Checker {
   readonly declaredFieldsOf: (declaration: StructDeclaration) => readonly FieldMember[];
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
-  /** The functions of `name` a language module declares, private ones included (§3.13). */
-  readonly languageFunctions: (
-    module: LanguageModule,
-    name: string,
-  ) => readonly FunctionDeclaration[];
   /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§9). */
   readonly json: JsonCodecs;
   /** The prelude's `Optional`, which the implicit wrap fills (§2); undefined without a prelude. */

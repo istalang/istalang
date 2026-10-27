@@ -8,6 +8,11 @@
  * - `futures.first(fs)` is the one future that waits on others: it resolves with the position and
  *   value of the first of them to resolve, the lowest position among those resolved together.
  *   Which `first`s wait on a future is read from their lists, the same way.
+ * - An answer to another instance's call to a mock (§10) waits on a future too. When it resolves
+ *   with a future, as the replacement of a function returning one does, the answer waits on that
+ *   one instead; when it resolves with anything else, the answer is given (`Answered`).
+ * - A watch on an instance a test started (§10) resolves when the runtime running the test says
+ *   its condition holds, at the start of a segment, as a timer does when it is due.
  */
 
 import { awaitedRegisters } from '../../definition/instructions/flow.ts';
@@ -30,14 +35,36 @@ export interface Settled {
   readonly value: Value;
 }
 
+/** A pending watch's condition (§10). */
+export type Watch = Extract<FutureState, { kind: 'watch' }>;
+
+/**
+ * An answer given: the value that fills the future `instance` named `token`, and whether it came
+ * from a future the replacement returned rather than from the replacement itself.
+ */
+export interface Answered {
+  readonly instance: string;
+  readonly token: string;
+  readonly value: Value;
+  readonly followed: boolean;
+}
+
+/** What futures tell the instance they belong to. */
+export interface FutureEvents {
+  /** `execution` waits on a future that resolved. */
+  readonly ready: (execution: LiveExecution) => void;
+  /** An answer to another instance's call was given. */
+  readonly answered: (answered: Answered) => void;
+}
+
 export class Futures {
   readonly #heap: Heap;
-  readonly #ready: (execution: LiveExecution) => void;
+  readonly #events: FutureEvents;
 
-  /** Futures on `heap`, readying a waiting execution through `ready` when its future resolves. */
-  constructor(heap: Heap, ready: (execution: LiveExecution) => void) {
+  /** Futures on `heap`, telling `events` what their resolving readies and answers. */
+  constructor(heap: Heap, events: FutureEvents) {
     this.#heap = heap;
-    this.#ready = ready;
+    this.#events = events;
   }
 
   /** A new future in `state`; its id. */
@@ -75,7 +102,56 @@ export class Futures {
     }
     for (const execution of this.#heap.objectsOf('execution')) {
       if (waitedOn(execution).some((future) => together.has(future))) {
-        this.#ready(execution);
+        this.#events.ready(execution);
+      }
+    }
+    for (const future of together) {
+      for (const answer of this.#heap.find('answers', future)) {
+        this.#answer(answer);
+      }
+    }
+  }
+
+  /** Gives `answer` the value its future resolved with, or has it wait on the future that value is. */
+  #answer(answer: LiveObjectOf<'answer'>): void {
+    const value = this.#valueOf(answer.future);
+    const next = handleTarget(value);
+    if (next !== undefined && this.#heap.objectOf(next).kind === 'future') {
+      const following = { ...answer, future: next, followed: true };
+      this.#heap.replace(following);
+      if (this.settled(value) !== undefined) {
+        this.#answer(following);
+      }
+      return;
+    }
+    this.#heap.remove(answer.id);
+    const { instance, token, followed } = answer;
+    this.#events.answered({ instance, token, value, followed });
+  }
+
+  /** An answer to the call another instance named `token`, given once `future` resolves (§10). */
+  answer(future: number, instance: string, token: string): void {
+    const answer = this.#heap.add(
+      (id): LiveObjectOf<'answer'> => ({
+        kind: 'answer',
+        id,
+        future,
+        instance,
+        token,
+        followed: false,
+      }),
+    );
+    if (this.#heap.of(future, 'future').state.kind === 'resolved') {
+      this.#answer(answer);
+    }
+  }
+
+  /** Resolves every pending watch whose condition `holds` says holds, with what it gives. */
+  resolveWatches(holds: (watch: Watch) => Value | undefined): void {
+    for (const { id, state } of this.#heap.find('pending', 'watch')) {
+      const value = state.kind === 'watch' ? holds(state) : undefined;
+      if (value !== undefined) {
+        this.resolve(id, value);
       }
     }
   }
@@ -119,6 +195,19 @@ export class Futures {
       throw new Panic(`The host named a future '${token}', as one it has yet to fill.`);
     }
     return this.createHandle({ kind: 'host', token });
+  }
+
+  /**
+   * A future another instance fills, as a host does, its token named by `tokenOf` from the
+   * future's own id: its id and the token.
+   */
+  createFilled(tokenOf: (id: number) => string): { readonly id: number; readonly token: string } {
+    const future = this.#heap.add((id) => ({
+      kind: 'future',
+      id,
+      state: { kind: 'host', token: tokenOf(id) },
+    }));
+    return { id: future.id, token: tokenOf(future.id) };
   }
 
   #hostFuture(token: string): LiveObjectOf<'future'> | undefined {

@@ -1,0 +1,161 @@
+# The testing module (spec §10): suites, mocks, started instances and host handles.
+#
+# Only test modules may import it (§10), so production code can never install a mock. The runtime
+# provides mocks, started instances and handles through externs; the rest is written here.
+#
+# The language has no variadic generics, so a function over any function type is one overload per
+# arity, up to six, each for plain and async functions: `mock`, `calls` and `start` are those
+# overloads, one line each, over one extern of their own.
+#
+# `ista test` lists and runs a suite's tests through `_list` and `_run`, the one place a suite's
+# tests are flattened, so the listing and each test's own instance (§10) walk the same list.
+
+# Marks a function returning a suite's tests: `@Suite{"purchase approval"}`.
+struct Suite:
+  title: string
+
+# How a run treats a test or every test of a group (§10).
+enum Focus:
+  Plain
+  Skipped
+  Only
+
+# A test, or a group of tests, as the library builds them (§10).
+enum Test:
+  Case { title: string; body: async fn() -> unit; focus: Focus }
+  Group { title: string; tests: Array<Test>; focus: Focus }
+
+# A test as the runner lists it: its full title, and whether the run skips or focuses it.
+struct Listed:
+  title: string
+  skipped: bool
+  only: bool
+
+# A listed test with its body.
+struct _Entry:
+  listed: Listed
+  body: async fn() -> unit
+
+# Every test of `suite`, depth first, titled under `title`, the suite's.
+fn _list(suite: fn() -> Array<Test>, title: string) -> Array<Listed>:
+  [for entry in _entries(title, suite(), false, false): entry.listed]
+
+# Runs test `position` of `suite`, once sure its listing still puts `expected` there (§10).
+async fn _run(suite: fn() -> Array<Test>, title: string, position: int, expected: string):
+  const entry = _entries(title, suite(), false, false).at(position)
+  if entry is Some{value as found} and found.listed.title == expected:
+    await found.body()
+  else:
+    panic("The suite listed other tests when it was called again, so test '" + expected + "' can't be found.")
+
+# The tests of `tests`, depth first, titled under `title` and inheriting a group's focus.
+fn _entries(title: string, tests: Array<Test>, skipped: bool, only: bool) -> Array<_Entry>:
+  let entries: Array<_Entry> = []
+  for each in tests:
+    match each:
+      case Case{title as own, body, focus}:
+        const listed = Listed{title: title + " › " + own, skipped: skipped or focus is Skipped, only: only or focus is Only}
+        entries.push(_Entry{listed, body})
+      case Group{title as own, tests as inner, focus}:
+        entries = [...entries, ..._entries(title + " › " + own, inner, skipped or focus is Skipped, only or focus is Only)]
+  entries
+
+# A mock's handle (§10): while it is held, calls to its target run its replacement, and the
+# arguments of each are recorded. The runtime disposes it.
+extern struct Mock<F>
+extern fn dispose<F>(self: Mock<F>)
+
+extern fn _mock<F>(target: F, replacement: F) -> Mock<F>
+extern fn _calls<F, A>(self: Mock<F>) -> Array<A>
+
+fn mock<R>(target: fn() -> R, replacement: fn() -> R) -> Mock<fn() -> R>: _mock(target, replacement)
+fn mock<A, R>(target: fn(A) -> R, replacement: fn(A) -> R) -> Mock<fn(A) -> R>: _mock(target, replacement)
+fn mock<A, B, R>(target: fn(A, B) -> R, replacement: fn(A, B) -> R) -> Mock<fn(A, B) -> R>: _mock(target, replacement)
+fn mock<A, B, C, R>(target: fn(A, B, C) -> R, replacement: fn(A, B, C) -> R) -> Mock<fn(A, B, C) -> R>: _mock(target, replacement)
+fn mock<A, B, C, D, R>(target: fn(A, B, C, D) -> R, replacement: fn(A, B, C, D) -> R) -> Mock<fn(A, B, C, D) -> R>: _mock(target, replacement)
+fn mock<A, B, C, D, E, R>(target: fn(A, B, C, D, E) -> R, replacement: fn(A, B, C, D, E) -> R) -> Mock<fn(A, B, C, D, E) -> R>: _mock(target, replacement)
+fn mock<A, B, C, D, E, G, R>(target: fn(A, B, C, D, E, G) -> R, replacement: fn(A, B, C, D, E, G) -> R) -> Mock<fn(A, B, C, D, E, G) -> R>: _mock(target, replacement)
+fn mock<R>(target: async fn() -> R, replacement: async fn() -> R) -> Mock<async fn() -> R>: _mock(target, replacement)
+fn mock<A, R>(target: async fn(A) -> R, replacement: async fn(A) -> R) -> Mock<async fn(A) -> R>: _mock(target, replacement)
+fn mock<A, B, R>(target: async fn(A, B) -> R, replacement: async fn(A, B) -> R) -> Mock<async fn(A, B) -> R>: _mock(target, replacement)
+fn mock<A, B, C, R>(target: async fn(A, B, C) -> R, replacement: async fn(A, B, C) -> R) -> Mock<async fn(A, B, C) -> R>: _mock(target, replacement)
+fn mock<A, B, C, D, R>(target: async fn(A, B, C, D) -> R, replacement: async fn(A, B, C, D) -> R) -> Mock<async fn(A, B, C, D) -> R>: _mock(target, replacement)
+fn mock<A, B, C, D, E, R>(target: async fn(A, B, C, D, E) -> R, replacement: async fn(A, B, C, D, E) -> R) -> Mock<async fn(A, B, C, D, E) -> R>: _mock(target, replacement)
+fn mock<A, B, C, D, E, G, R>(target: async fn(A, B, C, D, E, G) -> R, replacement: async fn(A, B, C, D, E, G) -> R) -> Mock<async fn(A, B, C, D, E, G) -> R>: _mock(target, replacement)
+
+# The arguments of every call so far, oldest first: a function of one parameter gives its values,
+# one of none a `unit` per call, and any other a tuple per call.
+fn calls<R>(self: Mock<fn() -> R>) -> Array<unit>: _calls(self)
+fn calls<A, R>(self: Mock<fn(A) -> R>) -> Array<A>: _calls(self)
+fn calls<A, B, R>(self: Mock<fn(A, B) -> R>) -> Array<(A, B)>: _calls(self)
+fn calls<A, B, C, R>(self: Mock<fn(A, B, C) -> R>) -> Array<(A, B, C)>: _calls(self)
+fn calls<A, B, C, D, R>(self: Mock<fn(A, B, C, D) -> R>) -> Array<(A, B, C, D)>: _calls(self)
+fn calls<A, B, C, D, E, R>(self: Mock<fn(A, B, C, D, E) -> R>) -> Array<(A, B, C, D, E)>: _calls(self)
+fn calls<A, B, C, D, E, G, R>(self: Mock<fn(A, B, C, D, E, G) -> R>) -> Array<(A, B, C, D, E, G)>: _calls(self)
+fn calls<R>(self: Mock<async fn() -> R>) -> Array<unit>: _calls(self)
+fn calls<A, R>(self: Mock<async fn(A) -> R>) -> Array<A>: _calls(self)
+fn calls<A, B, R>(self: Mock<async fn(A, B) -> R>) -> Array<(A, B)>: _calls(self)
+fn calls<A, B, C, R>(self: Mock<async fn(A, B, C) -> R>) -> Array<(A, B, C)>: _calls(self)
+fn calls<A, B, C, D, R>(self: Mock<async fn(A, B, C, D) -> R>) -> Array<(A, B, C, D)>: _calls(self)
+fn calls<A, B, C, D, E, R>(self: Mock<async fn(A, B, C, D, E) -> R>) -> Array<(A, B, C, D, E)>: _calls(self)
+fn calls<A, B, C, D, E, G, R>(self: Mock<async fn(A, B, C, D, E, G) -> R>) -> Array<(A, B, C, D, E, G)>: _calls(self)
+
+# A started instance's handle (§10), which names it.
+extern struct Started<R>
+
+# Where a started instance stands, as its last commit says (§10).
+enum InstanceState:
+  Running
+  Waiting
+  Panicked
+  Finished
+
+# Starts `f`, with its arguments as a tuple, as a new instance once the caller's segment commits
+# (§9, §10): the instance runs `f` itself.
+extern fn _start<F, A, R>(f: F, arguments: A) -> Started<R>
+extern fn _startCrashingEveryAwait<F, A, R>(f: F, arguments: A) -> Started<R>
+
+# Starts `f` with its arguments as a new instance (§10).
+fn start<R is Sendable>(f: sendable fn() -> R) -> Started<R>: _start(f, ())
+fn start<A is Sendable, R is Sendable>(f: sendable fn(A) -> R, a: A) -> Started<R>: _start(f, (a,))
+fn start<A is Sendable, B is Sendable, R is Sendable>(f: sendable fn(A, B) -> R, a: A, b: B) -> Started<R>: _start(f, (a, b))
+fn start<A is Sendable, B is Sendable, C is Sendable, R is Sendable>(f: sendable fn(A, B, C) -> R, a: A, b: B, c: C) -> Started<R>: _start(f, (a, b, c))
+fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, R is Sendable>(f: sendable fn(A, B, C, D) -> R, a: A, b: B, c: C, d: D) -> Started<R>: _start(f, (a, b, c, d))
+fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, R is Sendable>(f: sendable fn(A, B, C, D, E) -> R, a: A, b: B, c: C, d: D, e: E) -> Started<R>: _start(f, (a, b, c, d, e))
+fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, G is Sendable, R is Sendable>(f: sendable fn(A, B, C, D, E, G) -> R, a: A, b: B, c: C, d: D, e: E, g: G) -> Started<R>: _start(f, (a, b, c, d, e, g))
+fn start<R is Sendable>(f: sendable async fn() -> R) -> Started<R>: _start(f, ())
+fn start<A is Sendable, R is Sendable>(f: sendable async fn(A) -> R, a: A) -> Started<R>: _start(f, (a,))
+fn start<A is Sendable, B is Sendable, R is Sendable>(f: sendable async fn(A, B) -> R, a: A, b: B) -> Started<R>: _start(f, (a, b))
+fn start<A is Sendable, B is Sendable, C is Sendable, R is Sendable>(f: sendable async fn(A, B, C) -> R, a: A, b: B, c: C) -> Started<R>: _start(f, (a, b, c))
+fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D) -> R, a: A, b: B, c: C, d: D) -> Started<R>: _start(f, (a, b, c, d))
+fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D, E) -> R, a: A, b: B, c: C, d: D, e: E) -> Started<R>: _start(f, (a, b, c, d, e))
+fn start<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, G is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D, E, G) -> R, a: A, b: B, c: C, d: D, e: E, g: G) -> Started<R>: _start(f, (a, b, c, d, e, g))
+
+# `start`, every segment of the instance run, discarded and run again before it commits (§10).
+fn startCrashingEveryAwait<R is Sendable>(f: sendable fn() -> R) -> Started<R>: _startCrashingEveryAwait(f, ())
+fn startCrashingEveryAwait<A is Sendable, R is Sendable>(f: sendable fn(A) -> R, a: A) -> Started<R>: _startCrashingEveryAwait(f, (a,))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, R is Sendable>(f: sendable fn(A, B) -> R, a: A, b: B) -> Started<R>: _startCrashingEveryAwait(f, (a, b))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, R is Sendable>(f: sendable fn(A, B, C) -> R, a: A, b: B, c: C) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, R is Sendable>(f: sendable fn(A, B, C, D) -> R, a: A, b: B, c: C, d: D) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, R is Sendable>(f: sendable fn(A, B, C, D, E) -> R, a: A, b: B, c: C, d: D, e: E) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d, e))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, G is Sendable, R is Sendable>(f: sendable fn(A, B, C, D, E, G) -> R, a: A, b: B, c: C, d: D, e: E, g: G) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d, e, g))
+fn startCrashingEveryAwait<R is Sendable>(f: sendable async fn() -> R) -> Started<R>: _startCrashingEveryAwait(f, ())
+fn startCrashingEveryAwait<A is Sendable, R is Sendable>(f: sendable async fn(A) -> R, a: A) -> Started<R>: _startCrashingEveryAwait(f, (a,))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, R is Sendable>(f: sendable async fn(A, B) -> R, a: A, b: B) -> Started<R>: _startCrashingEveryAwait(f, (a, b))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, R is Sendable>(f: sendable async fn(A, B, C) -> R, a: A, b: B, c: C) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D) -> R, a: A, b: B, c: C, d: D) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D, E) -> R, a: A, b: B, c: C, d: D, e: E) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d, e))
+fn startCrashingEveryAwait<A is Sendable, B is Sendable, C is Sendable, D is Sendable, E is Sendable, G is Sendable, R is Sendable>(f: sendable async fn(A, B, C, D, E, G) -> R, a: A, b: B, c: C, d: D, e: E, g: G) -> Started<R>: _startCrashingEveryAwait(f, (a, b, c, d, e, g))
+
+# Resolves once every execution of the instance is waiting, or it has finished.
+extern fn idle<R>(self: Started<R>) -> Future<unit>
+# Resolves once an execution of the instance is suspended at waypoint `label`.
+extern fn reaches<R>(self: Started<R>, label: string) -> Future<unit>
+# The waypoint of every wait of the instance, or its source location where it has none.
+extern fn waitingAt<R>(self: Started<R>) -> Array<string>
+extern fn state<R>(self: Started<R>) -> InstanceState
+# Resolves with the instance's outcome when it finishes.
+extern fn result<R>(self: Started<R>) -> Future<R>
+
+# A value of extern type `T` equal to no other, for mocks that must return one (§10).
+extern fn handle<T>() -> T

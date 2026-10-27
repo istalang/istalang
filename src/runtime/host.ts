@@ -17,8 +17,6 @@
  *   executions waits (§9, §10).
  * - Waking reads the instance's snapshot and the Definition it names from the store, so a fresh
  *   runtime on the same store continues where an earlier one committed (§5).
- * - A deployed program's function table is exposed, so a test or the `testing` module can replace
- *   an entry (§10); it applies to every instance this runtime runs on that Definition.
  * - Values cross as JSON (§9), so a host never reads the runtime's value shapes: the externs it
  *   implements take and give JSON (boundary/host-natives.ts), it starts a function by its key with
  *   JSON arguments and reads the outcome as JSON (`outcome`) or its text (`outcomeText`), and it
@@ -35,16 +33,16 @@ import { recordExternSignatures } from './boundary/extern-signatures.ts';
 import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from './boundary/outbound.ts';
 import type { Advanced } from './instance-state.ts';
-import { FunctionTable } from './interpreter/function-table.ts';
 import type { Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
 import { type Inspection, inspection } from './scheduler/inspect.ts';
-import type { LoadedDefinition, StartOptions } from './scheduler/instance.ts';
+import type { StartOptions } from './scheduler/instance.ts';
+import { spawnedSeparator } from './scheduler/instance-names.ts';
+import { type LoadedDefinition, loadDefinition } from './scheduler/loaded-definition.ts';
 import {
   type AdvanceFirst,
   advance,
   type SchedulerSeams,
-  spawnedSeparator,
   stateOf,
   terminate,
   unstarted,
@@ -73,7 +71,6 @@ export interface StartRequest extends StartOptions {
 
 export interface DeployedProgram {
   readonly hash: string;
-  readonly functions: FunctionTable;
   /** The keys of the functions a host may start (§9). */
   readonly starts: readonly string[];
   /** An outcome a start entry encoded, as JSON a host works with; a Refusal for any other. */
@@ -222,14 +219,10 @@ function boundProgram(
   definition: Definition,
   hash: string,
 ): BoundProgram {
-  const loaded: LoadedDefinition = {
-    definition,
-    hash,
-    functions: new FunctionTable(definition, {
-      ...seams.natives,
-      ...hostNatives(seams.host ?? {}),
-    }),
-  };
+  const loaded = loadDefinition(definition, hash, {
+    ...seams.natives,
+    ...hostNatives(seams.host ?? {}),
+  });
   return {
     ...loaded,
     starts: definition.starts.map(({ key }) => key),

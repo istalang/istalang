@@ -465,7 +465,7 @@ The **standard library** is a set of modules, imported explicitly, for example `
 | `futures` | `all`, `any`, `race`, `allSettled`, `quorum(n, fs)`, `timeout(f, d)`, `retry`; built on one runtime primitive, `first<T>(fs: Array<Future<T>>) -> Future<(int, T)>`, that races a list of futures: it resolves with the position and value of the first to resolve, the lowest position among futures that resolved together, panics on an empty list, and disposes none of them |
 | `rpc` | `create<P, R>()` makes a method. `onMessage(handler)` serves calls, the handler's return value being the reply, and `await method.call(msg)` calls it, returning `Result<R>`. Each reply travels in a one-shot slot. |
 | `fanout` | `create<M>()` makes a fan-out. `subscribe(handler)` returns a future that runs the handler for each message until it is disposed. `bus.send(msg)` delivers a message to every subscriber, and `bus.sendRevertible(msg)` lets it be retracted. Messages form one stream of slots that every subscriber reads. |
-| `testing` | Test modules only: `mock`, `start`, `handle<T>()`, and the test library (§10) |
+| `testing` | Test modules only (§10): the `Suite` annotation and `Test`; `mock` and `Mock<F>`; `start`, `startCrashingEveryAwait`, `Started<R>` and `InstanceState`; `handle<T>()`; and the test library: `test`, `group`, `skip`, `only`, `Setup`, `setups`, `FakeClock`, `FakeQueue`, `assert`, `assertEq` and `expectPanic` |
 
 ```python
 # from the time module
@@ -1021,7 +1021,7 @@ The owner keeps its inbox and gives the child only the weak side, starting it wi
 
 ## 7. Lifetimes and disposal
 
-Pending futures, slots and inboxes, and revertible messages are **disposable**: they satisfy the built-in `Disposable` trait, and the runtime calls `dispose` when nothing holds them anymore. Only a value with an identity of its own can be disposable, so only a shared struct (§3.18) or an extern type may be. That is how user code gets a disposable resource: `fn dispose(self: Lease)` makes the shared struct `Lease` disposable, and a `dispose` declared for an extern type a host provides makes it disposable too. A plain struct that declares `dispose` is a compile error, because copies of a value have no single identity to dispose.
+Pending futures, slots and inboxes, and revertible messages are **disposable**: they satisfy the built-in `Disposable` trait, and the runtime calls `dispose` when nothing holds them anymore. Code never calls `dispose`, or names it as a value except as a test's mock target (§10); it releases a value with `drop`. Only a value with an identity of its own can be disposable, so only a shared struct (§3.18) or an extern type may be. That is how user code gets a disposable resource: `fn dispose(self: Lease)` makes the shared struct `Lease` disposable, and a `dispose` declared for an extern type a host provides makes it disposable too. A plain struct that declares `dispose` is a compile error, because copies of a value have no single identity to dispose.
 
 A program's `dispose` is found the way an operator's function is (§3.9), beside the type it disposes: in the module declaring that type. It is plain code: it takes the value as its one parameter, returns unit, and can't be `async`. The value can't outlive its disposal, so inside `dispose` it is used only as `*self` (or `self->field`) or passed to an extern function; storing it, copying it into a variable, capturing it or passing it to any other function is a compile error.
 
@@ -1230,7 +1230,7 @@ Every object's keys are emitted sorted, in UTF-16 order as JavaScript sorts stri
 
 ## 10. Testing
 
-Tests are ordinary code. The runtime adds a few primitives, in the `testing` module, and everything else is a library written in the language. Only test modules (by convention, files ending in `.test.ista`) may import `testing`, so production code can never install a mock.
+Tests are ordinary code. The runtime adds a few primitives, in the `testing` module, and everything else is a library written in the language, in the same module. A test module is a file whose name ends in `.test.ista`. Only a test module may import `testing`, and only a test module may import another test module, so production code can never install a mock; either import elsewhere is a compile error.
 
 **Suites.** `@Suite{"title"}` marks a function that returns the suite's tests as an `Array<Test>`. Tests are values, built by library functions:
 
@@ -1252,8 +1252,9 @@ fn approvalSuite() -> Array<Test>: [
 ```
 
 - **Each test runs in a fresh instance.** Function values aren't sendable, so the runner calls the suite function again inside each new instance and runs the entry at that test's position.
-- **Suite functions only build their list,** which the compiler enforces: a suite function is a plain `fn` (not `async`) that doesn't call externs or touch shared structs, slots or inboxes, so it builds the same list every time it is called.
+- **Suite functions only build their list,** which the compiler enforces: a suite function is a plain `fn` (not `async`) that doesn't call externs or touch shared structs, slots or inboxes, so it builds the same list every time it is called. The rule is checked on the suite function's own body, not on the functions it calls or the tests it builds; in each test's instance the runner also checks that the list still holds that test's title at its position, and fails the test when it doesn't.
 - **The library** provides `test(title, body)`, `test(title, setup, body)`, `group(title, tests)`, `skip(test)` and `only(test)`. Table-driven tests are comprehensions, as above.
+- **Skipping and focusing.** `skip` and `only` take a test or a group. A skipped test is reported but not run. When any test of a run is marked `only`, directly or through its group, only those tests run, and the rest are reported as skipped.
 
 **Environments.** A setup is an "around" function of type `Setup<E> = async fn(async fn(E))`: it prepares an environment, runs the test inside it, and tears it down afterwards. Teardown is ordinary code, so it may `await`, and holdings such as mocks are released when the function ends, even if the test fails:
 
@@ -1267,29 +1268,40 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
 
 `setups(a, b)` combines several environments into one, with overloads for up to six: `setups(withPurchaseEnv, withFakeHost)` is a `Setup<(PurchaseEnv, HostEnv)>`.
 
-**Mocking.** `mock<F>(target: F, replacement: F) -> Mock<F>` replaces any named function (an extern, a standard-library function or one of the program's own) while the returned handle is held, so a mock follows block lifetimes like every other resource. It applies to everything the test runs, including instances it starts. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(string, int)>` for `chargeCard`.
+**Mocking.** `mock(target, replacement)` replaces any named function (an extern, a standard-library function or one of the program's own) while the `Mock<F>` it returns is held, `F` being the function's type, so a mock follows block lifetimes like every other resource. The language has no variadic generics, so `mock` is one overload per arity up to six, for plain and async functions, such as `mock<A, B, R>(target: fn(A, B) -> R, replacement: fn(A, B) -> R) -> Mock<fn(A, B) -> R>`, and explicit type arguments name the parameter and result types. It applies to everything the test runs, including instances it starts. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace. A host type's `dispose`, which the runtime calls (§7), may be a mock's target, the one place it may be named. Starting or spawning an instance isn't a call, so an instance runs the function it starts with, whatever mocks it. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(string, int)>` for `chargeCard`; a function of one parameter gives its values, as `Array<string>`, and one of none gives a `unit` per call.
+
+- **Mocking twice.** Mocking a target that is already mocked replaces it while the new handle is held; releasing that handle brings back the mock before it.
+- **Across instances.** A mock applies to the instance holding it and to every instance started or spawned from it. Such an instance calls the replacement in the instance holding the mock, as a host's extern is called (§9): the arguments and the result are copied between the two, so they must be sendable, or the call panics. A future the replacement returns is followed across as well.
 
 **Time.** `time.at(t)` is the runtime's only time primitive, and `delay(d)` is library code for `at(now() + d)`. Mocking `time.now` and `time.at` therefore controls all time. The library's `FakeClock` does exactly that, with slots it fills as `clock.advance(d)` passes each deadline.
 
-**Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one. The library's `FakeQueue<T>` uses it: it mocks a queue factory such as `reviewQueue` to return such handles, and mocks `send` and `receive` to use an ordinary inbox behind each handle, with `pending()` and `post(msg)` for the test.
+**Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one: each call gives a value equal to no other, and a `T` that isn't an extern type is a compile error. The library's `FakeQueue<T>` uses it: it mocks a queue factory such as `reviewQueue` to return such handles, and mocks `send` and `receive` to use an ordinary inbox behind each handle, with `pending()` and `post(msg)` for the test.
 
-**Driving an instance.** `testing.start(f, args…)` starts `f` as an instance and returns a handle:
+**Driving an instance.** `testing.start(f, args…)` starts `f` as a new instance and returns a `Started<R>`, `R` being what `f` returns, or the `T` of an async `f`'s `Future<T>`. `f` and its arguments follow `spawn`'s rules (§9): `f` is any value of a sendable function type, and the arguments, up to six, are copied into the new instance, which exists once the test's segment commits.
 
 | Member | Meaning |
 | --- | --- |
-| `idle()` | a future that resolves once every execution of the instance is waiting, so everything so far has committed |
-| `reaches(label)` | a future that resolves once the instance is suspended at that waypoint |
-| `waitingAt()` | the waypoints, or source locations, of every `await` the instance is suspended at |
-| `state()` | running, waiting, panicked or finished |
-| `result()` | a future of the instance's outcome |
+| `idle() -> Future<unit>` | resolves once every execution of the instance is waiting, or it has finished, so everything so far has committed |
+| `reaches(label: string) -> Future<unit>` | resolves once an execution of the instance is suspended at that waypoint |
+| `waitingAt() -> Array<string>` | the waypoint of every `await` or `select` the instance is suspended at, or its source location (`module:line:column`) where it has none |
+| `state() -> InstanceState` | `Running`, `Waiting`, `Panicked` or `Finished`, as its last commit says |
+| `result() -> Future<R>` | resolves with the instance's outcome when it finishes |
 
-`testing.start(f, args…, crashEveryAwait = true)` discards and re-runs every segment once before committing it, which catches extern calls that aren't idempotent and anything that differs between two runs of the same segment.
+`testing.startCrashingEveryAwait(f, args…)` starts it the same way, but discards and re-runs every segment once before committing it, which catches extern calls that aren't idempotent and anything that differs between two runs of the same segment.
 
 **Waypoints.** `@Waypoint{"approval"}` on a statement that awaits gives that suspension point a name, for `reaches` and `waitingAt`, and for the host's operator view, which can show an instance as waiting at `approval`.
 
-**Failures.** The library's `assert` and `assertEq` panic on failure, and a panic in the test or in an instance it started fails the test with its trace. `expectPanic(f)` passes only if `f` panics.
+**Failures.** The library's `assert` and `assertEq` panic on failure, and a panic in the test or in an instance it started fails the test at once, with that instance's message and trace. `expectPanic(f)` passes only if `f` panics.
 
-**Built in versus library.** The runtime provides the `@Suite` runner with a fresh instance per test, `mock` and `Mock<F>`, `time.at`, `testing.handle<T>()`, `testing.start` and its members, `crashEveryAwait`, and the panic capture behind failures. Everything else is written in the language: `test`, `group`, `skip`, `only`, `Setup` and `setups`, `FakeClock`, `FakeQueue`, the assertions and `delay`.
+**Built in versus library.** The runtime provides the `@Suite` runner with a fresh instance per test, `mock` and `Mock<F>`, `time.at`, `testing.handle<T>()`, `testing.start`, `testing.startCrashingEveryAwait` and their members, and the panic capture behind failures. Everything else is written in the language: `test`, `group`, `skip`, `only`, `Setup` and `setups`, `FakeClock`, `FakeQueue`, the assertions and `delay`.
+
+**Running tests.** `ista test [paths…]` compiles every test module under the given files and directories, or under the project root without any (found as `ista check` finds sources, §3.13), into one program, and runs nothing if any module has errors. It then runs each test of every `@Suite` function, one at a time, in a fresh instance on a fresh runtime, so nothing a test leaves behind reaches the next. Instances a test starts or spawns run alongside it. A test passes when its function returns; instances it started that still wait are dropped.
+
+- **The host.** Time is real unless a test mocks it. An extern that no mock replaces panics the instance that calls it, except a host type's `dispose`, which then does nothing: a test has nothing of its host's to release.
+- **Stuck tests.** A test whose instances all wait on nothing that can wake them fails, naming where each waits; so does one still running after `--timeout <ms>` of real time, 5000 by default.
+- **Selection.** `--filter <text>` runs only the tests whose full title contains `text`. A full title joins the suite's, the groups' and the test's titles with ` › `.
+- **Output.** One line per test, `✓`, `✗` or `-` (skipped) before its full title; a failure is followed by its message and trace, and a last line counts the tests that passed, failed and were skipped.
+- **Exit codes.** 0 when every test that ran passed; 1 when a module has errors, a test fails or no test was found; 2 when a path can't be read or the options don't fit together.
 
 ## 11. Packages
 

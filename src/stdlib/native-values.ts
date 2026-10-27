@@ -142,7 +142,7 @@ export function parseResult(
 }
 
 /** Variant `name` of the enum the extern declares as its result, holding `fields`. */
-function resultVariant(context: NativeContext, name: string, fields: Value[]): Value {
+export function resultVariant(context: NativeContext, name: string, fields: Value[]): Value {
   const { type, variant } = resultVariantShape(context, name);
   return { kind: 'variant', type, variant, fields };
 }

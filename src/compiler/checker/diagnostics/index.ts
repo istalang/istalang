@@ -19,6 +19,7 @@ import { concurrencyTemplates } from './concurrency.ts';
 import { genericTemplates } from './generics.ts';
 import { lifetimeTemplates } from './lifetimes.ts';
 import { patternTemplates } from './patterns.ts';
+import { testingTemplates } from './testing.ts';
 import { valueTemplates } from './values.ts';
 import { weakSideTemplates } from './weak-side.ts';
 
@@ -161,4 +162,5 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   ...lifetimeTemplates,
   ...weakSideTemplates,
   ...boundaryTemplates,
+  ...testingTemplates,
 });

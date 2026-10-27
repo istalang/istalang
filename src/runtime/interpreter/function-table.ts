@@ -3,8 +3,8 @@
  *
  * A code entry runs its instructions; an extern entry runs the native its key names, bound once
  * at load, so a Definition whose natives are missing is refused, naming them, before anything
- * runs. Every call goes through `callee`, so replacing an entry changes what every call to it
- * runs: the one place `mock` replaces a function (§10).
+ * runs. The table never changes: a mock (§10) is an object of the instance holding it, which the
+ * scheduler consults before the table (scheduler/mocks.ts).
  */
 
 import type { Definition } from '../../definition/definition.ts';
@@ -20,7 +20,7 @@ export type Callable =
   | { readonly kind: 'native'; readonly native: Native };
 
 export class FunctionTable {
-  readonly #entries: Callable[];
+  readonly #entries: readonly Callable[];
 
   constructor(definition: Definition, natives: Natives) {
     const missing: string[] = [];
@@ -47,11 +47,5 @@ export class FunctionTable {
       unreachable(`No function ${index}; loading checks every index.`);
     }
     return callable;
-  }
-
-  /** Makes every later call to entry `index` run `replacement` instead. */
-  replace(index: FunctionId, replacement: Callable): void {
-    this.callee(index);
-    this.#entries[index] = replacement;
   }
 }

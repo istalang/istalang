@@ -9,6 +9,7 @@
  *   that case winning whatever else has resolved. Its next await or return stops the call there.
  * - While an instance ends (§3.12), a disposal that panics is abandoned with whatever it started,
  *   so it counts as done and the rest still run and tell their hosts.
+ * - A disposal's call is a call like any other to a mock that replaces it (§10).
  */
 
 import { handleTarget } from '../../../definition/values.ts';
@@ -17,10 +18,13 @@ import { resume } from '../../interpreter/suspension.ts';
 import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposal.ts';
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance.ts';
+import { type Caller, callTargetOf } from '../mocks.ts';
 import type { NativeCalls } from '../native-calls.ts';
 
 export interface DisposalRunSeams {
   readonly instance: Instance;
+  /** Who the segment's calls are made by, which a call to another instance's mock carries. */
+  readonly caller: Caller;
   readonly natives: NativeCalls;
   /** The segment's run stack, shared with it: what runs is its top. */
   readonly runStack: LiveExecution[];
@@ -97,13 +101,17 @@ export class DisposalRuns {
   }
 
   #call(call: DisposalCall): boolean {
-    const { instance, natives, runStack } = this.#seams;
-    const callable = instance.loaded.functions.callee(call.function);
-    if (callable.kind === 'native') {
-      natives.call(call.function, callable.native, call.arguments);
+    const { instance, caller, natives, runStack } = this.#seams;
+    const target = callTargetOf(caller, call.function, call.arguments, call.captures);
+    if (target.kind === 'answered') {
       return true;
     }
-    const frame = newFrame(callable, call.arguments, instance.frameHeap, call.captures);
+    const { callable } = target;
+    if (callable.kind === 'native') {
+      natives.call(target.function, callable.native, call.arguments);
+      return true;
+    }
+    const frame = newFrame(callable, call.arguments, instance.frameHeap, target.captures);
     this.#frames.add(frame);
     let running = runStack.at(-1);
     if (running === undefined) {

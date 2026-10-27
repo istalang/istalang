@@ -1,0 +1,43 @@
+# error: 5950 at 20:10
+# error: 5950 at 23:4
+# error: 5950 at 26:4
+# error: 5951 at 30:8
+# error: 5951 at 34:40
+# error: 5951 at 37:36
+#
+# A suite function only builds its list (§10): a plain fn taking nothing and returning
+# Array<Test>, whose own body calls no extern and makes no shared struct or slot. What the tests
+# it builds do runs later, so a test's body may do any of it.
+
+import Suite, Test from 'testing'
+
+extern fn fetch() -> int
+
+shared struct Box:
+  n: int
+
+@Suite{"async"}
+async fn asyncSuite() -> Future<Array<Test>>: []
+
+@Suite{"takes"}
+fn takes(n: int) -> Array<Test>: []
+
+@Suite{"gives"}
+fn gives() -> Array<int>: []
+
+@Suite{"calls an extern"}
+fn callsExtern() -> Array<Test>:
+  drop fetch()
+  []
+
+@Suite{"makes a shared struct"}
+fn makesShared() -> Array<Test>: _with(new Box{n: 1})
+
+@Suite{"makes a slot"}
+fn makesSlot() -> Array<Test>: _of(Slot.create<int>())
+
+@Suite{"a test may do anything"}
+fn fine() -> Array<Test>: [Case{title: "t", body: async fn(): { drop fetch(); () }, focus: Plain}]
+
+fn _with(box: Box) -> Array<Test>: []
+fn _of(slot: Slot<int>) -> Array<Test>: []

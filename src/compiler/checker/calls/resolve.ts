@@ -19,7 +19,6 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { disposeFunction } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { CallSite } from '../check.ts';
@@ -131,9 +130,7 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
   );
   const { receiver } = request;
   const arity = request.arguments.length;
-  if (!recordChosen(context, { site, application, instantiation, arity, receiver })) {
-    return errorType;
-  }
+  recordChosen(context, { site, application, instantiation, arity, receiver });
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
     changeReceiver(context, receiver, request.name);
   }
@@ -156,18 +153,13 @@ export interface Chosen {
 }
 
 /**
- * Records the call `chosen` makes, under the rules every written call obeys: `dispose` is the
- * runtime's to call (§7). False after a report.
+ * Records the call `chosen` makes. That it may make it at all, since only the runtime calls a
+ * `dispose` (§7), is checked once the body is (rules/disposal.ts).
  */
-export function recordChosen(context: BodyContext, chosen: Chosen): boolean {
+export function recordChosen(context: BodyContext, chosen: Chosen): void {
   const { site, application, instantiation, arity, receiver } = chosen;
-  if (application.signature.declaration.name.text === disposeFunction) {
-    context.report(checkerDiagnostics.disposeCall(site.span));
-    return false;
-  }
   const call = callMade(application.candidate, instantiation, arity);
   context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
-  return true;
 }
 
 /**

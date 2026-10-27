@@ -9,11 +9,12 @@ import { describe, expect, it } from 'vitest';
 import type { Value } from '../../definition/values.ts';
 import { Unreachable } from '../../structures/unreachable.ts';
 import { Panic } from '../natives.ts';
+import { ignoredEvents } from './futures.test-kit.ts';
 import { Futures } from './futures.ts';
 import { Heap, handleObject } from './heap.ts';
 
 function freshFutures() {
-  return new Futures(new Heap([]), () => undefined);
+  return new Futures(new Heap([]), ignoredEvents);
 }
 
 /** The position and value a `first` resolved with. */

@@ -18,9 +18,14 @@ import {
 } from './command.ts';
 import { defineCheckCommand } from './commands/check.ts';
 import { defineRunCommand } from './commands/run.ts';
+import { defineTestCommand } from './commands/test.ts';
 import { isSystemError } from './errno.ts';
 
-const commands: readonly CommandDefinition[] = [defineCheckCommand, defineRunCommand];
+const commands: readonly CommandDefinition[] = [
+  defineCheckCommand,
+  defineRunCommand,
+  defineTestCommand,
+];
 
 /** Runs `ista` with `args` (without the node and script paths); resolves to the exit code. */
 export async function runCli(

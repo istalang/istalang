@@ -17,7 +17,7 @@ import { memo } from '../structures/memo.ts';
 import type { SourceText } from '../text/source-text.ts';
 import { bindProgram } from './binder/bind.ts';
 import { checkProgram } from './checker/check.ts';
-import { lower } from './lowering/lower.ts';
+import { lower, lowerTests } from './lowering/lower.ts';
 import type { ModuleId, Program } from './program/program.ts';
 import type { FunctionDeclaration } from './syntax/declarations.ts';
 
@@ -72,10 +72,7 @@ export function compileProgram(program: Program, entry: ModuleId): Compilation {
 }
 
 function compile(program: Program, entry: ModuleId): Compilation {
-  const hasErrors = [...diagnose(program).values()].some(({ diagnostics }) =>
-    diagnostics.some(isError),
-  );
-  if (hasErrors) {
+  if (hasErrors(program)) {
     return { kind: 'failed' };
   }
   const main = mainOf(program, entry);
@@ -83,6 +80,47 @@ function compile(program: Program, entry: ModuleId): Compilation {
     return { kind: 'noMain' };
   }
   return { kind: 'compiled', definition: lower(checkProgram(program), main) };
+}
+
+/** A program's tests compiled for running (§10), or why they couldn't be. */
+export type TestCompilation =
+  | { readonly kind: 'compiled'; readonly definition: Definition }
+  /** Some module has errors; `diagnose` lists them. */
+  | { readonly kind: 'failed' }
+  /** No module of the program's own declares a `@Suite` function. */
+  | { readonly kind: 'noTests' };
+
+const compiledTests = new WeakMap<Program, TestCompilation>();
+
+/** The Definition that runs every `@Suite` function of `program`'s own modules (§10). */
+export function compileTests(program: Program): TestCompilation {
+  return memo(compiledTests, program, () => {
+    if (hasErrors(program)) {
+      return { kind: 'failed' };
+    }
+    const checker = checkProgram(program);
+    const suites = [...program.modules].flatMap(([id, { tree, isStd }]) =>
+      isStd
+        ? []
+        : tree.root.items.flatMap((item) => {
+            const title =
+              item.kind === 'FunctionDeclaration'
+                ? checker.annotations.suiteTitleOf(id, item)
+                : undefined;
+            return item.kind === 'FunctionDeclaration' && title !== undefined
+              ? [{ title, declaration: item }]
+              : [];
+          }),
+    );
+    return suites.length === 0
+      ? { kind: 'noTests' }
+      : { kind: 'compiled', definition: lowerTests(checker, suites) };
+  });
+}
+
+/** Whether any module of `program` has an error. */
+function hasErrors(program: Program): boolean {
+  return [...diagnose(program).values()].some(({ diagnostics }) => diagnostics.some(isError));
 }
 
 /** The `async fn main()` that `entry` declares (§9). */

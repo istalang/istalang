@@ -19,6 +19,10 @@
  *   spawns run with the option too.
  * - A panic commits nothing (§3.12): the instance stays at its last commit, marked panicked, with
  *   when the failed segment started, so a retry sees the same time.
+ * - Under a test (§10), a segment also starts by resolving the watches whose condition the test
+ *   world says holds, and an advance may start by answering another instance's call to one of
+ *   this instance's mocks. The answers a segment gives are, like its spawns, effects of its
+ *   commit, which the advance reports for the world to deliver.
  * - Where the instance stands afterwards is read from the last commit (`stateOf`), the one place
  *   a host's view of an instance comes from.
  */
@@ -33,8 +37,12 @@ import {
   snapshotFormat,
 } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
-import { Instance, type LoadedDefinition, type StartOptions } from './instance.ts';
+import type { Answered } from './futures.ts';
+import { Instance, type StartOptions } from './instance.ts';
+import type { LoadedDefinition } from './loaded-definition.ts';
+import { arriving } from './mocks.ts';
 import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
+import type { MockCall } from './test-world.ts';
 
 export interface SchedulerSeams {
   readonly store: InstanceStore;
@@ -67,11 +75,20 @@ interface Arrival {
   readonly value: Value;
 }
 
-/** What an advance does before its first segment: fill a future, or start at a given time. */
+/**
+ * What an advance does before its first segment: fill a future, answer a call to a mock (§10), or
+ * start at a given time.
+ */
 export interface AdvanceFirst {
   readonly arrival?: Arrival;
+  readonly answering?: MockCall;
   /** When the first segment counts as started, for a retry of one that panicked (§3.12, §5). */
   readonly startedAt?: bigint;
+}
+
+/** What an advance did, and the answers its segments gave other instances' calls (§10). */
+export interface Advance extends Advanced {
+  readonly answered: readonly Answered[];
 }
 
 /**
@@ -85,28 +102,30 @@ export function advance(
   loaded: LoadedDefinition,
   snapshot: Snapshot,
   first: AdvanceFirst = {},
-): Advanced {
+): Advance {
   let committed = snapshot;
   let pending: AdvanceFirst = first;
   const spawned: string[] = [];
-  const advanced = (state: InstanceState): Advanced => ({ state, spawned });
+  const answered: Answered[] = [];
+  const advanced = (state: InstanceState): Advance => ({ state, spawned, answered });
   for (;;) {
-    const { arrival, startedAt = seams.now() } = pending;
+    const { startedAt = seams.now(), ...firstly } = pending;
     pending = {};
-    const run = runFrom(loaded, committed, startedAt, arrival);
+    const run = runFrom(loaded, committed, startedAt, firstly);
     if (run === undefined) {
       return advanced(stateOf(committed));
     }
     const { instance, end } = run.instance.crashEveryAwait
-      ? rerun(run, runFrom(loaded, committed, startedAt, arrival))
+      ? rerun(run, runFrom(loaded, committed, startedAt, firstly))
       : run;
     if (end.kind === 'panicked') {
-      const replay = replayOf(committed.status, arrival);
+      const replay = replayOf(committed.status, firstly.arrival);
       const status = { ...end, segmentStartedAt: startedAt, ...(replay && { replay }) };
       return advanced(stateOf(commit(seams.store, { ...committed, status })));
     }
     spawned.push(...commitChildren(seams.store, instance));
     committed = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
+    answered.push(...instance.answered());
     if (end.kind === 'finished') {
       return advanced(stateOf(committed));
     }
@@ -144,29 +163,41 @@ interface SegmentRun {
 }
 
 /**
- * Runs one segment from `committed`, the future `arrival` names filled first; undefined when
- * nothing can run and nothing arrived, or when `arrival` names no future the instance waits on:
- * one it disposed, whose later fill changes nothing (§7), or one it never had.
+ * Runs one segment from `committed`: the future `arrival` names filled first, or the answer to
+ * `answering` started first. Undefined when nothing can run and nothing arrived, or when
+ * `arrival` names no future the instance waits on: one it disposed, whose later fill changes
+ * nothing (§7), or one it never had.
  */
 function runFrom(
   loaded: LoadedDefinition,
   committed: Snapshot,
   startedAt: bigint,
-  arrival: Arrival | undefined,
+  { arrival, answering }: Omit<AdvanceFirst, 'startedAt'>,
 ): SegmentRun | undefined {
   if (committed.status.kind === 'unstarted') {
     const instance = Instance.start(loaded, committed);
-    return { instance, end: runSegment(instance, startedAt, instance.root()) };
+    const root = instance.root();
+    const first = root === undefined ? undefined : ({ kind: 'driver', execution: root } as const);
+    return { instance, end: runSegment(instance, startedAt, first) };
   }
   const instance = Instance.restore(loaded, committed);
-  if (arrival !== undefined && !instance.futures.resolveHost(arrival.token, arrival.value)) {
+  if (
+    arrival !== undefined &&
+    !instance.futures.resolveHost(arrival.token, arriving(instance, arrival.value))
+  ) {
     return undefined;
   }
   instance.futures.resolveDueTimers(startedAt);
-  if (instance.idle && arrival === undefined) {
+  const { world } = loaded;
+  if (world !== undefined) {
+    instance.futures.resolveWatches(world.watched);
+  }
+  if (instance.idle && arrival === undefined && answering === undefined) {
     return undefined;
   }
-  return { instance, end: runSegment(instance, startedAt) };
+  const first =
+    answering === undefined ? undefined : ({ kind: 'answer', call: answering } as const);
+  return { instance, end: runSegment(instance, startedAt, first) };
 }
 
 /** The re-run of a segment, or a panic when it ended differently from the first run (§10). */
@@ -209,24 +240,13 @@ function commitChildren(store: InstanceStore, instance: Instance): readonly stri
   });
 }
 
-/**
- * What a spawned instance's name puts between its parent's and its count, `<parent>/<n>` (§9): only
- * the runtime names instances so, and a host's names never contain it.
- */
-export const spawnedSeparator = '/';
-
 /** The instances `instance`'s segment spawned, as their `unstarted` snapshots, in spawn order. */
 function childrenOf(instance: Instance): readonly Snapshot[] {
-  return instance.spawns().map((call, index) =>
-    unstarted(
-      instance.loaded,
-      `${instance.name}${spawnedSeparator}${instance.spawnedBefore + index + 1}`,
-      call,
-      {
-        crashEveryAwait: instance.crashEveryAwait,
-      },
-    ),
-  );
+  return instance
+    .spawns()
+    .map(({ name, call, crashEveryAwait }) =>
+      unstarted(instance.loaded, name, call, { crashEveryAwait }),
+    );
 }
 
 /** Writes `snapshot` through the store; the snapshot as it reads back, which the next segment restores. */

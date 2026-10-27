@@ -1,5 +1,5 @@
 /**
- * The checker's diagnostics of the host boundary, codes 5900–5999 (§3.6, §3.16, §9): externs a
+ * The checker's diagnostics of the host boundary, codes 5900–5949 (§3.6, §3.16, §9): externs a
  * host implements and annotations; a type that can't cross as JSON is a constraint not met
  * (generics.ts). A part of the checker's one catalog (index.ts).
  */

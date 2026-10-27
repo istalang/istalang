@@ -7,10 +7,11 @@
  * (§3.13). Every module it loads is marked as shipped with the toolchain, so its externs need no
  * host.
  *
- * Three std modules the language itself refers to are handed to a program by role: the prelude,
+ * Four std modules the language itself refers to are handed to a program by role: the prelude,
  * which every module sees without importing it and no import names; `time`, whose `Duration`
- * types every duration literal (§2); and `json`, whose codecs every value crossing to a host goes
- * through (§9). The last two are loaded with every program but visible only where imported.
+ * types every duration literal (§2); `json`, whose codecs every value crossing to a host goes
+ * through (§9); and `testing`, which only test modules may import (§10). The last three are loaded
+ * with every program but visible only where imported.
  */
 
 import type { LocatedModule, ModuleLoader } from '../compiler/program/program.ts';
@@ -37,6 +38,7 @@ export function stdRoles(): Readonly<Record<LanguageModule, LocatedModule>> {
     prelude: preludeModule(),
     time: roleModule(languageModules.time),
     json: roleModule(languageModules.json),
+    testing: roleModule(languageModules.testing),
   };
 }
 

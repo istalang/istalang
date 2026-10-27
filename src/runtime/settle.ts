@@ -8,9 +8,12 @@
  * group waits: until its earliest timer, or `undefined` when only its host can wake it. The caller
  * waits however it does, then resumes it with what its host filled meanwhile (`Runtime.fill`),
  * and every instance due by then is woken. Resumed with nothing while no timer waits, the loop
- * ends: nothing can wake the group any more. The loop, and that case, live here once.
+ * ends: nothing can wake the group any more. A test's world runs a loop of its own, which also
+ * delivers answers, resolves watches and ends at a panic or a deadline (runtime/testing/world.ts);
+ * what both ask of the group is instance-group.ts's.
  */
 
+import { InstanceGroup } from './instance-group.ts';
 import type { Advanced, InstanceState } from './instance-state.ts';
 
 /** An instance its host advanced while the group waited, by filling a future it waits on (§9). */
@@ -34,65 +37,32 @@ export function* settle(
   wake: (instance: string) => Advanced,
   first: { readonly instance: string; readonly advanced: Advanced },
 ): Generator<bigint | undefined, ReadonlyMap<string, Settled>, readonly Arrived[] | undefined> {
-  const states = new Map<string, InstanceState>();
-  const record = (instance: string, { state, spawned }: Advanced) => {
-    states.set(instance, state);
-    for (const child of spawned) {
-      if (!states.has(child)) {
-        states.set(child, { kind: 'ready' });
-      }
-    }
-  };
-  record(first.instance, first.advanced);
+  const group = new InstanceGroup();
+  group.record(first.instance, first.advanced);
   for (;;) {
-    for (let ready = readyIn(states); ready !== undefined; ready = readyIn(states)) {
-      record(ready, wake(ready));
+    for (let ready = group.ready(); ready !== undefined; ready = group.ready()) {
+      group.record(ready, wake(ready));
     }
-    if (![...states.values()].some((state) => state.kind === 'waiting')) {
-      return settledAll(states);
+    if (!group.waits()) {
+      return settledAll(group.states);
     }
-    const due = earliestTimer(states);
+    const due = group.earliestTimer();
     const arrived = (yield due) ?? [];
     for (const { instance, advanced } of arrived) {
-      record(instance, advanced);
+      group.record(instance, advanced);
     }
     if (due === undefined && arrived.length === 0) {
-      return settledAll(states);
+      return settledAll(group.states);
     }
-    for (const instance of dueBy(states, due)) {
-      record(instance, wake(instance));
+    for (const instance of group.dueBy(due)) {
+      group.record(instance, wake(instance));
     }
   }
-}
-
-/** The instances of the group whose next timer is due by `due`; none when no time was waited. */
-function dueBy(states: ReadonlyMap<string, InstanceState>, due: bigint | undefined): string[] {
-  return [...states].flatMap(([instance, state]) =>
-    due !== undefined && state.kind === 'waiting' && state.until !== undefined && state.until <= due
-      ? [instance]
-      : [],
-  );
 }
 
 /** How each instance of the group ended, with nothing left to wake it. */
 function settledAll(states: ReadonlyMap<string, InstanceState>): ReadonlyMap<string, Settled> {
   return new Map([...states].map(([instance, state]) => [instance, settledOf(state)]));
-}
-
-/** An instance of the group that is ready to run now. */
-function readyIn(states: ReadonlyMap<string, InstanceState>): string | undefined {
-  return [...states].find(([, state]) => state.kind === 'ready')?.[0];
-}
-
-/** The earliest time an instance of the group waits until; undefined when none waits on a timer. */
-function earliestTimer(states: ReadonlyMap<string, InstanceState>): bigint | undefined {
-  let earliest: bigint | undefined;
-  for (const state of states.values()) {
-    if (state.kind === 'waiting' && state.until !== undefined) {
-      earliest = earliest === undefined || state.until < earliest ? state.until : earliest;
-    }
-  }
-  return earliest;
 }
 
 /** How an instance that nothing will wake again ended. */

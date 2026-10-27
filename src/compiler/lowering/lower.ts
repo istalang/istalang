@@ -1,15 +1,17 @@
 /**
  * Lowering's entry: a checked program, compiled into a Definition (docs/arch/definition.md).
  *
- * Lowering starts from `main` and compiles every function instance it reaches, through a worklist
- * (tables.ts, instances.ts): a function with a body becomes code, an extern an entry bound to its
- * native by key, and a call leaving parameters to their defaults an entry computing them.
+ * Lowering starts from `main`, or from a test program's suites (§10), and compiles every function
+ * instance it reaches, through a worklist (tables.ts, instances.ts): a function with a body
+ * becomes code, an extern an entry bound to its native by key, and a call leaving parameters to
+ * their defaults an entry computing them.
  * Lowering runs only on a program the checker accepted, so it reports nothing; anything it can't
  * lower is a bug in an earlier phase and throws.
  */
 
 import type { Definition } from '../../definition/definition.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
+import { languageModules, testingFunctions } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
@@ -25,7 +27,12 @@ import {
 } from './boundary/host-externs.ts';
 import { startableOf, startables, startEntry } from './boundary/starts.ts';
 import { instanceLowering, nestedLowering } from './function-lowering/index.ts';
-import { type FunctionInstance, type NestedInstance, substitutionOf } from './instances.ts';
+import {
+  type FunctionInstance,
+  type NestedInstance,
+  rootInstance,
+  substitutionOf,
+} from './instances.ts';
 import { keyOf } from './names.ts';
 import { DefinitionTables, type PendingEntry } from './tables.ts';
 
@@ -43,10 +50,41 @@ export function lower(checker: Checker, main: FunctionDeclaration): Definition {
   for (const startable of startables(checker)) {
     tables.startIndex(startable.target, startable.key);
   }
+  lowerReached(checker, tables);
+  return tables.finish(mainIndex);
+}
+
+/** A `@Suite` function (§10), with the title its annotation gives. */
+export interface Suite {
+  readonly title: string;
+  readonly declaration: FunctionDeclaration;
+}
+
+/**
+ * The Definition of a program's tests (§10): everything its `suites` and the testing module's
+ * listing and running of their tests reach, which every test's instance starts from.
+ */
+export function lowerTests(checker: Checker, suites: readonly Suite[]): Definition {
+  const tables = new DefinitionTables(checker);
+  const indexOf = (declaration: FunctionDeclaration) =>
+    tables.functionIndex(rootInstance(checker, declaration));
+  const runner = (name: string) =>
+    checker.languageFunctions(languageModules.testing, name)[0] ??
+    unreachable(`The testing module declares no '${name}'.`);
+  const tests = {
+    list: indexOf(runner(testingFunctions.list)),
+    run: indexOf(runner(testingFunctions.run)),
+    suites: suites.map(({ title, declaration }) => ({ title, function: indexOf(declaration) })),
+  };
+  lowerReached(checker, tables);
+  return { ...tables.finish(undefined), tests };
+}
+
+/** Lowers every entry referenced so far, and every entry those reference. */
+function lowerReached(checker: Checker, tables: DefinitionTables): void {
   for (let next = tables.nextPending(); next !== undefined; next = tables.nextPending()) {
     tables.define(next.index, pendingEntry(checker, tables, next));
   }
-  return tables.finish(mainIndex);
 }
 
 /** The entry `pending` stands for. */

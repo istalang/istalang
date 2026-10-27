@@ -38,6 +38,7 @@ export function checkReferences(tables: Tables, refinement: z.RefinementCtx): vo
   };
   checkMain(context);
   checkStarts(context);
+  checkTests(context);
   tables.modules.forEach((module, index) => {
     const ascending = module.lineStarts.every((start, line) =>
       line === 0 ? start === 0 : start > (module.lineStarts[line - 1] ?? 0),
@@ -92,12 +93,49 @@ function checkStarts(context: Context): void {
   });
 }
 
+/**
+ * How many arguments the testing module's runner functions take (testing.ista): listing a suite
+ * takes it and its title, and running a test takes those, its position and its title.
+ */
+const runnerArity = { list: 2, run: 4 } as const;
+
+/** A test Definition's suites and runner (§10): code entries, a suite's taking nothing. */
+function checkTests(context: Context): void {
+  const { tests } = context.tables;
+  if (tests === undefined) {
+    return;
+  }
+  const { list, run, suites } = tests;
+  const named = (path: Path, function_: number, parameters: number) => {
+    if (!inRange(context, { functions: [function_] }, path)) {
+      return;
+    }
+    const entry = context.tables.functions[function_];
+    if (entry?.kind !== 'code' || entry.parameters.length !== parameters) {
+      context.report(path, `This names no code taking ${parameters} arguments.`);
+    }
+  };
+  named(['tests', 'list'], list, runnerArity.list);
+  named(['tests', 'run'], run, runnerArity.run);
+  suites.forEach((suite, index) => {
+    named(['tests', 'suites', index, 'function'], suite.function, 0);
+  });
+}
+
 function checkType(context: Context, type: TypeDefinition, path: Path): void {
   inRange(context, { types: type.arguments.flatMap(typesIn) }, [...path, 'arguments']);
   if (type.kind === 'extern') {
     const { disposal } = type;
     if (disposal.kind === 'function') {
       inRange(context, { functions: [disposal.function] }, [...path, 'disposal']);
+      const { host } = disposal;
+      if (
+        host !== undefined &&
+        inRange(context, { functions: [host] }, [...path, 'disposal', 'host']) &&
+        context.tables.functions[host]?.kind !== 'extern'
+      ) {
+        context.report([...path, 'disposal', 'host'], "A host's dispose is an extern entry.");
+      }
     }
     return;
   }

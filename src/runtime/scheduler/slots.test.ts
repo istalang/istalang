@@ -8,6 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../definition/values.ts';
+import { ignoredEvents } from './futures.test-kit.ts';
 import { Futures } from './futures.ts';
 import { Heap, handleObject } from './heap.ts';
 import { type SlotOperation, Slots } from './slots.ts';
@@ -15,7 +16,7 @@ import { type SlotOperation, Slots } from './slots.ts';
 /** One slot and what each operation on it returned, in the order they were made. */
 function operateAll(sequence: readonly SlotOperation[]) {
   const heap = new Heap([]);
-  const futures = new Futures(heap, () => undefined);
+  const futures = new Futures(heap, ignoredEvents);
   const slots = new Slots(heap, futures);
   const slot = slots.create();
   const made = sequence.map((operation, position) => {

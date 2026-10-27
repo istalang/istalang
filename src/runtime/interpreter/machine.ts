@@ -148,6 +148,15 @@ export function resumeAt(frame: ActiveFrame, dst: Register | undefined, value: V
   frame.pc += 1;
 }
 
+/** Writes a call's result into the `call` that `frame` stopped at, and moves past it. */
+export function resumeAfterCall(frame: ActiveFrame, value: Value): void {
+  const instruction = frame.code.instructions[frame.pc];
+  if (instruction?.kind !== 'call') {
+    unreachable(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a call.`);
+  }
+  resumeAt(frame, instruction.dst, value);
+}
+
 /** The value in `register` of `frame`; loading checks indexes, so an empty one is a bug. */
 export function readRegister(frame: ActiveFrame, register: Register): Value {
   const contents = frame.registers[register];
@@ -241,8 +250,13 @@ export function argumentContents(frame: ActiveFrame, argument: Argument): Regist
 }
 
 /** The value at the place a reference names. */
-export function readThrough(heap: FrameHeap, reference: Reference): Value {
+function readThrough(heap: FrameHeap, reference: Reference): Value {
   return partAt(heap.read(reference.cell), reference.path);
+}
+
+/** What `contents`, a call's arguments, pass: each value, read through any reference. */
+export function passedValues(heap: FrameHeap, contents: readonly RegisterContents[]): Value[] {
+  return contents.map((each) => (isReference(each) ? readThrough(heap, each) : each));
 }
 
 /** Writes `value` to the place a reference names. */

@@ -3,6 +3,7 @@
  *
  * - An import names an export of the module its path loaded. A private name (`_x`) is reported as
  *   private, anything else missing as not exported.
+ * - Only a test module may import `testing`, or another test module (§10).
  * - The prelude is every module's outer scope. Reusing one of its names at the top level is an
  *   error, except for a function, declared or imported, which joins the prelude's overloads of its
  *   name, as a module's `fn add(left: Time, right: Duration)` joins the prelude's `add(int, float)`
@@ -29,7 +30,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { memo } from '../../structures/memo.ts';
-import type { ModuleId, Program } from '../program/program.ts';
+import { isTestModule, type ModuleId, type Program } from '../program/program.ts';
 import type { EnumDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { bindModule, type ModuleBindings } from './bind-module.ts';
@@ -153,6 +154,26 @@ class Linker {
       }
     }
     this.#meetPrelude(id, links);
+    this.#checkTestImports(id, links);
+  }
+
+  /**
+   * Only a test module may import `testing`, or another test module, so production code can
+   * never install a mock (§10).
+   */
+  #checkTestImports(id: ModuleId, links: ModuleLinks): void {
+    const module = this.#program.modules.get(id);
+    if (module === undefined || isTestModule(id)) {
+      return;
+    }
+    for (const [declaration, imported] of module.imports) {
+      if (imported === this.#program.roles.testing || isTestModule(imported)) {
+        const target = this.#program.modules.get(imported);
+        links.diagnostics.push(
+          binderDiagnostics.testImport(declaration.path.span, target?.name ?? imported),
+        );
+      }
+    }
   }
 
   /** Resolves a module's free names, then the later parts of its qualified names. */

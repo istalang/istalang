@@ -12,10 +12,10 @@
 
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
-import type { TypeReference } from '../../definition/types.ts';
-import { handleTarget, type Value } from '../../definition/values.ts';
+import { isResourceType, type TypeReference } from '../../definition/types.ts';
+import { handleTarget, isComposite, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { readThrough, writeReference } from '../interpreter/machine.ts';
+import { passedValues, writeReference } from '../interpreter/machine.ts';
 import type {
   FullNativeContext,
   Native,
@@ -23,13 +23,16 @@ import type {
   NativeFutures,
   NativeResources,
   NativeSlots,
+  NativeTesting,
   NativeWeakSide,
 } from '../natives.ts';
+import { Panic } from '../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { Futures } from './futures.ts';
 import { type Heap, handleObject } from './heap.ts';
 import type { Instance } from './instance.ts';
 import type { Slots } from './slots.ts';
+import type { TestWorld } from './test-world.ts';
 import type { WeakSide } from './weak-side.ts';
 
 export class NativeCalls {
@@ -54,7 +57,7 @@ export class NativeCalls {
    */
   call(callee: FunctionId, native: Native, contents: readonly RegisterContents[]): Value {
     const heap = this.#instance.frameHeap;
-    const values = contents.map((each) => (isReference(each) ? readThrough(heap, each) : each));
+    const values = passedValues(heap, contents);
     const entry = this.#entry(callee);
     const declared = entry.kind === 'extern' ? entry : undefined;
     const run = (): Value =>
@@ -101,6 +104,7 @@ function capabilitiesOf(instance: Instance): NativeCapabilities {
     slots: nativeSlotsOf(instance.slots),
     weak: nativeWeakSideOf(instance.weak),
     resources: nativeResourcesOf(instance.heap),
+    testing: nativeTestingOf(instance),
   };
 }
 
@@ -150,6 +154,51 @@ function nativeResourcesOf(heap: Heap): NativeResources {
         unreachable('A value of a disposable host type holds no resource.');
       }
       return heap.of(id, 'resource').payload;
+    },
+  };
+}
+
+/** What a test reaches of `instance` and of the world it runs in (§10). */
+function nativeTestingOf(instance: Instance): NativeTesting {
+  const world = (): TestWorld => {
+    const { world: running } = instance.loaded;
+    if (running === undefined) {
+      throw new Panic('Only a test run by ista test reaches other instances (§10).');
+    }
+    return running;
+  };
+  return {
+    mock: (target, replacement) => {
+      const mock = instance.heap.add((id) => ({
+        kind: 'mock',
+        id,
+        target,
+        replacement,
+        calls: [],
+      }));
+      return { kind: 'handle', object: mock.id };
+    },
+    calls: (handle) => instance.heap.of(handleObject(handle), 'mock').calls,
+    start: (entry, arguments_, crashEveryAwait) => {
+      if (!isComposite(entry) || entry.kind !== 'closure') {
+        unreachable('An instance starts with no function; the checker forbids it.');
+      }
+      const call = {
+        function: entry.function,
+        captures: entry.captures,
+        arguments: [...arguments_],
+      };
+      return instance.spawn(call, crashEveryAwait);
+    },
+    inspect: (name) => world().inspect(name),
+    watch: (name, until) => instance.futures.createHandle({ kind: 'watch', instance: name, until }),
+    handle: (type) => {
+      const payload = world().handlePayload();
+      if (!isResourceType(instance.loaded.definition.types, type)) {
+        return { kind: 'extern', type, payload };
+      }
+      const resource = instance.heap.add((id) => ({ kind: 'resource', id, type, payload }));
+      return { kind: 'handle', object: resource.id };
     },
   };
 }

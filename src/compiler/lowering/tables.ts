@@ -33,6 +33,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
+import { isHostExtern } from '../checker/host-externs.ts';
 import type { AnonymousStructType, FieldMember, NominalType, Type } from '../checker/types/type.ts';
 
 import { type ModuleId, programModule } from '../program/program.ts';
@@ -373,11 +374,19 @@ export class DefinitionTables {
     );
   }
 
-  /** A type entry's disposal: a declared `dispose` is the entry of its instance (§7). */
+  /**
+   * A type entry's disposal: a declared `dispose` is the entry of its instance (§7), and one a host
+   * implements names its native too (boundary/host-externs.ts).
+   */
   #disposal(disposal: Disposal): Extract<TypeDefinition, { kind: 'extern' }>['disposal'] {
-    return disposal.kind === 'function'
-      ? { kind: 'function', function: this.functionIndex(instanceOfCall(disposal.call)) }
-      : disposal;
+    if (disposal.kind !== 'function') {
+      return disposal;
+    }
+    const instance = instanceOfCall(disposal.call);
+    const entry = { kind: 'function', function: this.functionIndex(instance) } as const;
+    return isHostExtern(this.#checker, instance.declaration)
+      ? { ...entry, host: this.hostNativeIndex(instance.declaration) }
+      : entry;
   }
 
   #fields(fields: readonly FieldMember[]) {

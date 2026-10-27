@@ -8,7 +8,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { WellKnownDeclaration } from '../../language/well-known.ts';
+import type { LanguageModule, WellKnownDeclaration } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
 import type { Bindings, Entity, VariableEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
@@ -386,6 +386,11 @@ export interface Checker {
   readonly cellOf: (type: Type) => NominalType;
   /** What a well-known name (language/well-known.ts) denotes; undefined without its module. */
   readonly wellKnownEntity: (declaration: WellKnownDeclaration) => Entity | undefined;
+  /** The functions of `name` a language module declares, private ones included (§3.13). */
+  readonly languageFunctions: (
+    module: LanguageModule,
+    name: string,
+  ) => readonly FunctionDeclaration[];
   /**
    * A well-known type, such as `Future`, with its type arguments; undefined when the program
    * lacks its module.

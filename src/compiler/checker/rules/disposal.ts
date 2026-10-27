@@ -13,17 +13,20 @@
  * - A `dispose` that runs as code is plain code that can't wait, and `self` can't escape it: it is
  *   used only as `*self` (or `self->f`) or passed to an extern, so a disposed value never becomes
  *   observable again (§7).
+ * - Only the runtime calls a `dispose`: code calls none and names none as a value, except as a
+ *   test's mock target (§10), checked over a body's calls once it is checked.
  */
 
 import { disposeFunction } from '../../../language/well-known.ts';
 import { isStdModule } from '../../program/program.ts';
 import { type FunctionDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
 import type { Parameter } from '../../syntax/expressions.ts';
+import type { NodeOf } from '../../syntax/node.ts';
 import { childrenOf, nestsFunction, type SyntaxNode } from '../../syntax/tree.ts';
-import type { Disposal, FunctionCall } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CallSite, Disposal, FunctionCall, ResolvedCall } from '../check.ts';
+import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isHostExtern } from '../host-externs.ts';
+import { isHostExtern, isHostType } from '../host-externs.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import { callCandidates } from '../resolution/candidates.ts';
 import { chooseSilently } from '../resolution/silent-choice.ts';
@@ -87,11 +90,7 @@ function isRuntimeDispose(checker: CheckerContext, declaration: FunctionDeclarat
  * disposed by the runtime already.
  */
 function isOwnedHandle(checker: CheckerContext, type: NominalType): boolean {
-  const { declaration } = type.entity;
-  return (
-    isSharedStruct(declaration) ||
-    (declaration.kind === 'ExternStructDeclaration' && !isStdType(checker, type))
-  );
+  return isSharedStruct(type.entity.declaration) || isHostType(checker, type);
 }
 
 function isStdType(checker: CheckerContext, type: NominalType): boolean {
@@ -195,5 +194,21 @@ function checkSelfStays(
   };
   if (declaration.body !== undefined) {
     visit(declaration.body, [], false);
+  }
+}
+
+/**
+ * Reports each of `calls`, a checked body's, that calls `dispose` or names it as a value, except
+ * as one of `mockTargets`, the targets of the body's mocks (§7, §10).
+ */
+export function checkDisposeUses(
+  context: BodyContext,
+  calls: ReadonlyMap<CallSite, ResolvedCall>,
+  mockTargets: ReadonlySet<NodeOf<string>>,
+): void {
+  for (const [site, call] of calls) {
+    if (call.function.name.text === disposeFunction && !mockTargets.has(site)) {
+      context.report(checkerDiagnostics.disposeCall(site.span));
+    }
   }
 }

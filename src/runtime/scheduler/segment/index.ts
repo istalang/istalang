@@ -22,8 +22,9 @@
  *
  * After every instruction that let go of something, the segment collects (runtime/lifetimes/):
  * what lost its last holder is disposed right there (§7). A disposal that runs code runs on the
- * run stack as any call does (disposal-runs.ts). A drive ends only once collecting has. An execution running on the run stack holds its own call future, so code that
- * lets go of the last holder of its own call runs on until it suspends, and is stopped there.
+ * run stack as any call does (disposal-runs.ts). A drive ends only once collecting has. An
+ * execution running on the run stack holds its own call future, so code that lets go of the last
+ * holder of its own call runs on until it suspends, and is stopped there.
  */
 
 import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
@@ -39,7 +40,7 @@ import {
   newFrame,
   readRegister,
   releaseFrame,
-  resumeAt,
+  resumeAfterCall,
 } from '../../interpreter/machine.ts';
 import { traceOf } from '../../interpreter/trace.ts';
 import { Collector } from '../../lifetimes/collector.ts';
@@ -49,6 +50,7 @@ import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance.ts';
+import { type Caller, callTargetOf, driverOf, type SegmentStart } from '../mocks.ts';
 import { NativeCalls } from '../native-calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
 
@@ -61,15 +63,16 @@ export type SegmentEnd =
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
 
 /**
- * Runs one segment of `instance`, which started at `startedAt`. `driver` is an execution about to
- * run from its start; without one, the segment begins with the next ready execution.
+ * Runs one segment of `instance`, which started at `startedAt`. It begins with `first`: an
+ * execution about to run from its start, or the answer to a call to one of the instance's mocks
+ * (§10); without one, with the next ready execution.
  */
 export function runSegment(
   instance: Instance,
   startedAt: bigint,
-  driver?: LiveExecution,
+  first?: SegmentStart,
 ): SegmentEnd {
-  return new SegmentRunner(instance, startedAt).run(driver);
+  return new SegmentRunner(instance, startedAt).run(first);
 }
 
 /**
@@ -89,6 +92,7 @@ type RunEnd = { readonly kind: 'awaited' | 'idle' } | Extract<SegmentEnd, { kind
 
 class SegmentRunner implements Machine {
   readonly #instance: Instance;
+  readonly #caller: Caller;
   readonly #natives: NativeCalls;
   readonly #runStack: LiveExecution[] = [];
   readonly #collector: Collector;
@@ -98,9 +102,11 @@ class SegmentRunner implements Machine {
 
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
+    this.#caller = { instance, startedAt };
     this.#natives = new NativeCalls(instance, startedAt, (leftOut) => this.#trace(leftOut));
     this.#disposals = new DisposalRuns({
       instance,
+      caller: this.#caller,
       natives: this.#natives,
       runStack: this.#runStack,
       returned: () => {
@@ -123,9 +129,10 @@ class SegmentRunner implements Machine {
     return this.#instance.loaded.definition;
   }
 
-  run(first: LiveExecution | undefined): SegmentEnd {
+  run(first: SegmentStart | undefined): SegmentEnd {
     try {
-      return this.#persistable(this.#runDrivers(first));
+      const driver = driverOf(this.#instance, this.#natives, first);
+      return this.#persistable(this.#runDrivers(driver));
     } catch (error) {
       if (error instanceof Panic) {
         return { kind: 'panicked', message: error.message, trace: this.#trace() };
@@ -146,6 +153,10 @@ class SegmentRunner implements Machine {
     this.#collectEnding();
   }
 
+  /**
+   * Calls `callee`, or the replacement of a mock replacing it (§10), never itself mocked, so it may
+   * call what it replaces; a call another instance's mock answers resumes with the answer.
+   */
   call(
     frame: ActiveFrame,
     callee: FunctionId,
@@ -153,19 +164,24 @@ class SegmentRunner implements Machine {
     captures: readonly Value[] = [],
   ): void {
     const contents = argumentList.map((argument) => argumentContents(frame, argument));
-    const callable = this.#instance.loaded.functions.callee(callee);
+    const target = callTargetOf(this.#caller, callee, contents, captures);
+    if (target.kind === 'answered') {
+      resumeAfterCall(frame, target.value);
+      return;
+    }
+    const { callable } = target;
     if (callable.kind === 'native') {
-      resumeAfterCall(frame, this.#natives.call(callee, callable.native, contents));
+      resumeAfterCall(frame, this.#natives.call(target.function, callable.native, contents));
       return;
     }
     if (callable.code.async) {
       const future = this.#instance.futures.create({ kind: 'call' });
       this.#runStack.push(
-        this.#instance.startExecution(callable.function, contents, captures, future),
+        this.#instance.startExecution(callable.function, contents, target.captures, future),
       );
       return;
     }
-    const calleeFrame = newFrame(callable, contents, frame.heap, captures);
+    const calleeFrame = newFrame(callable, contents, frame.heap, target.captures);
     this.#current().frames.push(calleeFrame);
   }
 
@@ -291,9 +307,10 @@ class SegmentRunner implements Machine {
   }
 
   /**
-   * What holds things besides the collector's own rounds: every execution's frames, the carrier's,
-   * and the call futures of the executions running on the run stack (lifetimes/holders.ts). The
-   * frames running now come first, innermost first, as what code lets go of is mostly held there.
+   * What holds things besides the collector's own rounds (lifetimes/holders.ts): every execution's
+   * frames, the carrier's, the call futures of the executions running on the run stack, and the
+   * answers still to give (§10). The frames running now come first, innermost first, as what code
+   * lets go of is mostly held there.
    */
   #roots(): Roots {
     const running = this.#runStack.toReversed();
@@ -302,7 +319,10 @@ class SegmentRunner implements Machine {
       .filter((execution) => !running.includes(execution));
     return {
       frames: [...running, ...waiting].flatMap((execution) => execution.frames.toReversed()),
-      objects: this.#runStack.flatMap(({ resolves }) => (resolves === undefined ? [] : [resolves])),
+      objects: [
+        ...this.#runStack.flatMap(({ resolves }) => resolves ?? []),
+        ...this.#instance.answers(),
+      ],
     };
   }
 
@@ -370,13 +390,4 @@ function requireDepth(depth: number): void {
       `A value nests ${depth} levels deep, deeper than the ${maximumDepth} an instance can persist.`,
     );
   }
-}
-
-/** Writes a call's result into the `call` that `frame` stopped at, and moves past it. */
-function resumeAfterCall(frame: ActiveFrame, value: Value): void {
-  const instruction = frame.code.instructions[frame.pc];
-  if (instruction?.kind !== 'call') {
-    unreachable(`Resumed at a ${instruction?.kind ?? 'missing'} instruction, not a call.`);
-  }
-  resumeAt(frame, instruction.dst, value);
 }

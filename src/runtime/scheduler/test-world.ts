@@ -1,0 +1,48 @@
+/**
+ * The world a test runs in (§10), as the scheduler sees it: the seam through which an instance a
+ * test started reaches the test's mocks, a watch learns how the watched instance stands, and the
+ * `testing` natives read what only the runtime running the test knows. Only that runtime gives
+ * one (runtime/testing/), so a program running anywhere else meets none of it.
+ *
+ * Every answer is read from the last commit of the instance asked about, as a host's view is: an
+ * instance a test started runs between the test's segments, never inside one.
+ */
+
+import type { FunctionId } from '../../definition/operands.ts';
+import type { Value } from '../../definition/values.ts';
+import type { Watch } from './futures.ts';
+import type { Inspection } from './inspect.ts';
+
+/** A call one instance makes to a mock another holds (§10), and the future that waits for it. */
+export interface MockCall {
+  /** The mock object, in the holder's heap. */
+  readonly mock: number;
+  /** The call's arguments, as values that can leave an instance (mocks.ts). */
+  readonly arguments: readonly Value[];
+  /** The calling instance, and the token of the future it fills with the answer. */
+  readonly instance: string;
+  readonly token: string;
+}
+
+/**
+ * The answer to a `MockCall`: given at once, with whether it came from a future the replacement
+ * returned; pending, to fill the caller's future once the holder gives it; or failed, when the
+ * holder panicked answering it or no longer runs.
+ */
+export type MockAnswer =
+  | { readonly kind: 'given'; readonly value: Value; readonly followed: boolean }
+  | { readonly kind: 'pending' }
+  | { readonly kind: 'failed' };
+
+export interface TestWorld {
+  /** The mock `holder` holds for `target`, as its last commit has it: the newest; none without. */
+  readonly mockOf: (holder: string, target: FunctionId) => number | undefined;
+  /** Answers `call` in `holder`, which runs the mock's replacement and commits before this returns. */
+  readonly answer: (holder: string, call: MockCall) => MockAnswer;
+  /** What a pending `watch` resolves with, once what it waits for holds; undefined until then. */
+  readonly watched: (watch: Watch) => Value | undefined;
+  /** Where `instance` stands and waits, from its last commit; undefined before its first. */
+  readonly inspect: (instance: string) => Inspection | undefined;
+  /** A host payload no other `testing.handle` gives. */
+  readonly handlePayload: () => string;
+}

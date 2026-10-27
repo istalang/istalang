@@ -28,10 +28,10 @@ import {
 } from '../../../../language/well-known.ts';
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
-import { isStdModule, type ModuleId } from '../../../program/program.ts';
 import { isSharedStruct } from '../../../syntax/declarations.ts';
 import type { FunctionCall, ResolvedCall } from '../../check.ts';
 import type { CheckerContext } from '../../context.ts';
+import { isHostType } from '../../host-externs.ts';
 import {
   type DerivedCodec,
   type DerivedForm,
@@ -171,7 +171,7 @@ export class JsonForms implements JsonCodecs {
       return { kind: 'none', reason: undefined };
     }
     if (declaration.kind === 'ExternStructDeclaration') {
-      return this.#host(type, declaration.isSendable, checker.moduleOf(declaration));
+      return this.#extern(type, declaration.isSendable);
     }
     if (isSharedStruct(declaration)) {
       return { kind: 'none', reason: handleHasNoForm };
@@ -189,9 +189,9 @@ export class JsonForms implements JsonCodecs {
    * An extern type: a host type is its host's JSON when it is declared sendable, or kept in a
    * resource when a `dispose` makes it disposable (§7); anything else has nothing to derive from.
    */
-  #host(type: NominalType, isSendable: boolean, module: ModuleId): DerivedForm {
+  #extern(type: NominalType, isSendable: boolean): DerivedForm {
     const { checker } = this.#seams;
-    const isHost = !isStdModule(checker.program, module);
+    const isHost = isHostType(checker, type);
     if (isHost && (isSendable || checker.disposalOf(type).kind === 'function')) {
       return { kind: 'host' };
     }

@@ -71,6 +71,7 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
     mock.target < definition.functions.length
       ? []
       : [`mock ${mock.id} replaces function ${mock.target}, which doesn't exist`],
+  answer: () => [],
   slot: () => [],
   future: () => [],
   weakRef: () => [],

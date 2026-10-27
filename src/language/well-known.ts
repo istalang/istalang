@@ -7,10 +7,16 @@
 
 /**
  * The std modules a program is handed by role: the prelude every module sees without importing it
- * (§3.13), `time`, whose `Duration` types every duration literal (§2), and `json`, whose codecs
- * every value crossing to a host goes through (§9).
+ * (§3.13), `time`, whose `Duration` types every duration literal (§2), `json`, whose codecs every
+ * value crossing to a host goes through (§9), and `testing`, which only test modules may import
+ * and whose suites `ista test` runs (§10).
  */
-export const languageModules = { prelude: 'prelude', time: 'time', json: 'json' } as const;
+export const languageModules = {
+  prelude: 'prelude',
+  time: 'time',
+  json: 'json',
+  testing: 'testing',
+} as const;
 
 /** A role, which is also the name of the std module that plays it. */
 export type LanguageModule = keyof typeof languageModules;
@@ -66,7 +72,26 @@ export const wellKnown = {
   jsonName: { module: 'json', name: 'JsonName' },
   jsonSkip: { module: 'json', name: 'JsonSkip' },
   jsonBigInt: { module: 'json', name: 'JsonBigInt' },
+  /** The annotation of a function returning a suite's tests (§10). */
+  suite: { module: 'testing', name: 'Suite' },
+  /** What a suite function returns a list of (§10). */
+  test: { module: 'testing', name: 'Test' },
 } as const satisfies Record<string, WellKnownDeclaration>;
+
+/**
+ * The testing module's functions the toolchain calls or checks (§10): the runner's listing and
+ * running of a suite's tests, `mock`, whose target must name a function, and `handle`, whose type
+ * must be an extern type.
+ */
+export const testingFunctions = {
+  list: '_list',
+  run: '_run',
+  mock: 'mock',
+  handle: 'handle',
+} as const;
+
+/** What a test module's file name ends with (§10). */
+export const testModuleSuffix = '.test.ista';
 
 /** The functions `Encodable` and `Decodable` require (§3.10): a type's codecs, by direction. */
 export const codecFunctions = { write: 'toJson', read: 'fromJson' } as const;

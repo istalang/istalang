@@ -1,0 +1,30 @@
+# error: 5952 at 19:15
+# error: 5952 at 20:15
+# error: 5953 at 21:18
+# error: 5953 at 24:31
+# error: 5110 at 26:39
+#
+# A mock's target names a function, which has an identity to replace, and `handle` makes values
+# of host types only (§10). A mock's target is the one place `dispose` may be named (§7).
+
+import mock, handle from 'testing'
+
+extern struct Queue
+extern fn dispose(self: Queue)
+
+fn greet(name: string) -> string: name
+
+async fn targets():
+  const named = greet
+  fn _ = mock(named, fn(name: string): name)
+  fn _ = mock(fn(name: string): name, fn(name: string): name)
+  const n: int = handle<int>()
+  fn _ = mock(greet, fn(name: string): name)
+  const q: Queue = handle<Queue>()
+  const future: Future<int> = handle<Future<int>>()
+  fn _ = mock(dispose, fn(queue: Queue): ())
+  const disposer: fn(Queue) -> unit = dispose
+  drop n
+  drop q
+  drop disposer
+  drop future

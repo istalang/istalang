@@ -130,12 +130,10 @@ export function checkFunctionValue(
     application,
     expectedResult,
   );
-  if (
-    instantiation === undefined ||
-    !recordChosen(context, { site, application, instantiation, arity })
-  ) {
+  if (instantiation === undefined) {
     return errorType;
   }
+  recordChosen(context, { site, application, instantiation, arity });
   const { substitution } = instantiation;
   const result = substitute(signature.result(), substitution);
   const type: FunctionType = {

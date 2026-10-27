@@ -87,6 +87,7 @@ const futureStates: { readonly [Kind in FutureState['kind']]: boolean } = {
   timer: false,
   first: false,
   disposed: false,
+  watch: false,
 };
 
 /** A kind disposed through its type entry's `disposal`: a cell, or a resource. */
@@ -116,6 +117,7 @@ const kinds: { readonly [Kind in LiveKind]: KindDisposal<LiveObjectOf<Kind>> } =
   cell: declared,
   resource: declared,
   weakRef: { disposable: never, dispose: nothing },
+  answer: { disposable: never, dispose: nothing },
   execution: { disposable: never, dispose: nothing },
 };
 

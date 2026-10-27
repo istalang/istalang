@@ -10,8 +10,8 @@
  * - What an annotation means decides where it may stand: the json module's on fields
  *   (`@JsonSkip` only on a field whose type is `Default`, which it reads back as, as found where
  *   the field is declared; `@JsonBigInt` only on an `int`),
- *   `@Waypoint` on a statement that waits, and any other struct on fields and functions, kept for
- *   tools. The same annotation twice on one item says nothing new, so it is an error.
+ *   `@Waypoint` on a statement that waits, `@Suite` on a function (rules/suites.ts says which),
+ *   and any other struct on fields and functions, kept for tools. The same annotation twice on one item says nothing new, so it is an error.
  * - Fields of one struct or variant that end up with the same JSON name are reported where they
  *   are declared, since the clash is in the declaration whether or not the type ever crosses.
  */
@@ -22,6 +22,7 @@ import { memo } from '../../../structures/memo.ts';
 import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
@@ -46,6 +47,7 @@ const known = {
   jsonSkip: wellKnown.jsonSkip,
   jsonBigInt: wellKnown.jsonBigInt,
   waypoint: wellKnown.waypoint,
+  suite: wellKnown.suite,
 } as const satisfies Record<string, WellKnownDeclaration>;
 
 type Known = keyof typeof known;
@@ -101,11 +103,19 @@ export class Annotations implements AnnotationQueries {
 
   /** The name `statement`'s `@Waypoint` gives where it waits (§10); undefined without one. */
   waypointOf(module: ModuleId, statement: Statement): string | undefined {
-    const waypoint = this.of(module, statement, statementPlace(statement)).find(
-      (annotation) => this.knownOf(annotation) === 'waypoint',
-    );
-    const label = waypoint?.form.kind === 'struct' ? waypoint.form.fields[0] : undefined;
-    return label?.kind === 'primitive' && typeof label.value === 'string' ? label.value : undefined;
+    return this.#textOf(this.of(module, statement, statementPlace(statement)), 'waypoint');
+  }
+
+  /** The title `declaration`'s `@Suite` gives its suite (§10); undefined without one. */
+  suiteTitleOf(module: ModuleId, declaration: FunctionDeclaration): string | undefined {
+    return this.#textOf(this.of(module, declaration, { kind: 'function' }), 'suite');
+  }
+
+  /** The one string field of the annotation `name` among `annotations`, if it is there. */
+  #textOf(annotations: readonly CheckedAnnotation[], name: Known): string | undefined {
+    const found = annotations.find((annotation) => this.knownOf(annotation) === name);
+    const text = found?.form.kind === 'struct' ? found.form.fields[0] : undefined;
+    return text?.kind === 'primitive' && typeof text.value === 'string' ? text.value : undefined;
   }
 
   /** Whether a field carries the toolchain's annotation `name`. */
@@ -251,6 +261,7 @@ const placements: Record<
     }
     return place.waits ? undefined : (at) => checkerDiagnostics.waypointWithoutWait(at);
   },
+  suite: (place) => (place.kind === 'function' ? undefined : 'elsewhere'),
   any: (place) => (place.kind === 'field' || place.kind === 'function' ? undefined : 'elsewhere'),
 };
 

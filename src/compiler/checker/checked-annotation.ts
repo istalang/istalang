@@ -6,6 +6,7 @@
 
 import type { ModuleId } from '../program/program.ts';
 import type { Annotatable, Annotation } from '../syntax/annotations.ts';
+import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { Statement } from '../syntax/statements.ts';
 import type { ConstantForm } from './constant-form.ts';
@@ -38,4 +39,6 @@ export interface AnnotationQueries {
   readonly ofField: (field: FieldMember) => readonly CheckedAnnotation[];
   /** The name a statement's `@Waypoint` gives where it waits (§10); undefined without one. */
   readonly waypointOf: (module: ModuleId, statement: Statement) => string | undefined;
+  /** The title a function's `@Suite` gives its suite (§10); undefined without one. */
+  readonly suiteTitleOf: (module: ModuleId, declaration: FunctionDeclaration) => string | undefined;
 }

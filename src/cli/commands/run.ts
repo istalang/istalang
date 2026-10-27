@@ -30,6 +30,7 @@ import { Refusal } from '../../runtime/refusal.ts';
 import { type Settled, settle } from '../../runtime/settle.ts';
 import { memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
+import { clock } from '../clock.ts';
 import {
   type CliEnvironment,
   type CommandDefinition,
@@ -146,11 +147,6 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
 function resume(session: Session, name: string): Promise<ExitCode> {
   const { runtime } = session;
   return finish(session, { program: runtime.programOf(name), name }, runtime.wake(name));
-}
-
-/** The command's one clock: segment start times, and how long to sleep until a timer is due. */
-function clock(): bigint {
-  return BigInt(Date.now());
 }
 
 /** An instance the command runs: its name, and its program. */

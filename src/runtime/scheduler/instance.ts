@@ -14,7 +14,10 @@
  *   only what no one can observe any more.
  * - Stopping an execution (§7: its call future disposed) lets go of everything its frames hold.
  * - What a segment spawns becomes instances only when the segment commits (wake.ts), so a segment
- *   that is discarded spawned nothing.
+ *   that is discarded spawned nothing. So do the answers it gave other instances' calls to its
+ *   mocks (§10): each fills its caller's future once the segment commits.
+ * - A mock this instance holds replaces its target for the calls it makes itself (`mockOf`); one an
+ *   instance it descends from holds replaces it too, through the runtime running the test.
  * - The instance is its frames' heap (interpreter/machine.ts): a variable passed by `&` is a cell
  *   object here, a reference names one, and what a frame lets go of is noted on the heap.
  */
@@ -24,7 +27,6 @@ import type { FunctionId } from '../../definition/operands.ts';
 import { handlesIn, type Value } from '../../definition/values.ts';
 import { pushAll } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { FunctionTable } from '../interpreter/function-table.ts';
 import {
   type ActiveFrame,
   type FrameHeap,
@@ -41,16 +43,22 @@ import {
   type RegisterContents,
 } from '../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../snapshot/snapshot.ts';
-import { Futures } from './futures.ts';
-import { Heap, type LiveExecution, type LiveObject } from './heap.ts';
+import { type Answered, Futures } from './futures.ts';
+import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './heap.ts';
+import { spawnedName } from './instance-names.ts';
+import type { LoadedDefinition } from './loaded-definition.ts';
+import { leaving, reachingMock } from './mocks.ts';
 import { Slots } from './slots.ts';
 import { WeakSide } from './weak-side.ts';
 
-/** A Definition as the runtime runs it: loaded, bound to its natives, and named by its hash. */
-export interface LoadedDefinition {
-  readonly definition: Definition;
-  readonly hash: string;
-  readonly functions: FunctionTable;
+/**
+ * A call this segment spawned (§9), or started as a test does (§10): the new instance's name, what
+ * it calls, and its own option.
+ */
+export interface Spawn {
+  readonly name: string;
+  readonly call: InstanceCall;
+  readonly crashEveryAwait: boolean;
 }
 
 export type InstanceStatus = Snapshot['status'];
@@ -82,7 +90,8 @@ export class Instance {
   };
   /** The snapshot this instance was made from, which its commit changes only where it ran. */
   readonly #from: Snapshot;
-  readonly #spawns: InstanceCall[] = [];
+  readonly #spawns: Spawn[] = [];
+  readonly #answered: Answered[] = [];
   readonly #ready: number[];
   /** The extern constants read before this segment, and those it read itself (§3.6). */
   readonly #pinned: Map<string, Value>;
@@ -95,8 +104,13 @@ export class Instance {
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
-    this.futures = new Futures(this.heap, (execution) => {
-      this.markReady(execution);
+    this.futures = new Futures(this.heap, {
+      ready: (execution) => {
+        this.markReady(execution);
+      },
+      answered: (answered) => {
+        this.#answered.push({ ...answered, value: leaving(this, answered.value) });
+      },
     });
     this.slots = new Slots(this.heap, this.futures);
     this.weak = new WeakSide(this.heap, this.futures);
@@ -129,11 +143,11 @@ export class Instance {
     const executions = this.heap.objectsOf('execution');
     const held = heldFrom(this.heap, {
       frames: executions.flatMap((execution) => execution.frames),
-      objects: [],
+      objects: this.answers(),
     });
     const persisted = this.heap
       .objects()
-      .filter((object) => object.kind === 'execution' || held.objects.has(object.id));
+      .filter((object) => isRoot(object) || held.objects.has(object.id));
     const lost = this.heap
       .objects()
       .find(
@@ -191,7 +205,7 @@ export class Instance {
   }
 
   /** The calls this segment spawned, each a new instance once the segment commits (§9). */
-  spawns(): readonly InstanceCall[] {
+  spawns(): readonly Spawn[] {
     return this.#spawns;
   }
 
@@ -200,9 +214,29 @@ export class Instance {
     return this.#from.spawned;
   }
 
-  /** Records `call` as spawned by this segment. */
-  spawn(call: InstanceCall): void {
-    this.#spawns.push(call);
+  /**
+   * Records `call` as spawned by this segment, running with `crashEveryAwait` when this instance
+   * does or `crashEveryAwait` asks (§9, §10); the name the new instance will have.
+   */
+  spawn(call: InstanceCall, crashEveryAwait = false): string {
+    const name = spawnedName(this.name, this.spawnedBefore + this.#spawns.length + 1);
+    this.#spawns.push({ name, call, crashEveryAwait: this.crashEveryAwait || crashEveryAwait });
+    return name;
+  }
+
+  /** The answers still to give, which are roots, as executions are: what they wait on is held. */
+  answers(): readonly number[] {
+    return this.heap.objectsOf('answer').map(({ id }) => id);
+  }
+
+  /** The answers this segment gave other instances' calls, each filled once it commits (§10). */
+  answered(): readonly Answered[] {
+    return this.#answered;
+  }
+
+  /** The mock this instance holds for `target`: the newest, the one a call reaches (§10). */
+  mockOf(target: FunctionId): LiveObjectOf<'mock'> | undefined {
+    return reachingMock(this.heap.find('mocks', target));
   }
 
   /**
@@ -292,6 +326,11 @@ export class Instance {
 export interface Persisted {
   readonly objects: readonly HeapObject[];
   readonly depth: number;
+}
+
+/** Whether `object` is kept for its own sake, not for what holds it: an execution or an answer. */
+function isRoot(object: LiveObject): boolean {
+  return object.kind === 'execution' || object.kind === 'answer';
 }
 
 /** The innermost frame of `execution`, which always has one. */

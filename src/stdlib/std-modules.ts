@@ -19,6 +19,8 @@ import preludeSource from './prelude/prelude.ista';
 import { runtimeNatives } from './runtime/natives.ts';
 import runtimeSource from './runtime/runtime.ista';
 import { type StdModule, stdModule } from './std-module.ts';
+import { testingNatives } from './testing/natives.ts';
+import testingSource from './testing/testing.ista';
 import { timeNatives } from './time/natives.ts';
 import timeSource from './time/time.ista';
 
@@ -29,4 +31,5 @@ export const stdModules: readonly StdModule[] = [
   stdModule('futures', futuresSource, futuresNatives),
   stdModule('inbox', inboxSource),
   stdModule('runtime', runtimeSource, runtimeNatives),
+  stdModule(languageModules.testing, testingSource, testingNatives),
 ];

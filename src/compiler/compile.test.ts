@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { invalidPrograms } from '../../test/corpus/programs.ts';
 import { reportedIn } from '../diagnostics/diagnostic.test-kit.ts';
+import { testModuleSuffix } from '../language/well-known.ts';
 import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { lineMapOf } from '../text/line-map.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
@@ -59,17 +60,21 @@ describe('diagnose', () => {
 });
 
 describe('the corpus', () => {
-  it.each(invalidPrograms)('$name reports exactly the errors it states', ({ text, errors }) => {
-    const { source, diagnostics } = diagnosedAt(stdProgramOf({ main: text }), 'main');
-    const lines = lineMapOf(source);
-    const reported = diagnostics
-      .filter((diagnostic) => diagnostic.severity === 'error')
-      .map((diagnostic) => {
-        const { line, column } = lines.positionAt(diagnostic.span.start);
-        return { code: diagnostic.code, line: line + 1, column: column + 1 };
-      });
-    expect(reported).toEqual(errors);
-  });
+  it.each(invalidPrograms)(
+    '$name reports exactly the errors it states',
+    ({ name, text, errors }) => {
+      const main = name.endsWith(testModuleSuffix) ? `main${testModuleSuffix}` : 'main';
+      const { source, diagnostics } = diagnosedAt(stdProgramOf({ [main]: text }), main);
+      const lines = lineMapOf(source);
+      const reported = diagnostics
+        .filter((diagnostic) => diagnostic.severity === 'error')
+        .map((diagnostic) => {
+          const { line, column } = lines.positionAt(diagnostic.span.start);
+          return { code: diagnostic.code, line: line + 1, column: column + 1 };
+        });
+      expect(reported).toEqual(errors);
+    },
+  );
 });
 
 describe('diagnostics, whatever order modules are asked in', () => {

@@ -51,6 +51,7 @@ const futureStates: {
   host: { values: nothing, holds: nothing },
   first: { values: nothing, holds: (state) => state.futures },
   disposed: { values: nothing, holds: (state) => [state.weakRef] },
+  watch: { values: nothing, holds: nothing },
 };
 
 const kinds: { readonly [Kind in HeapObject['kind']]: KindHoldings<ObjectOf<Kind>> } = {
@@ -65,6 +66,7 @@ const kinds: { readonly [Kind in HeapObject['kind']]: KindHoldings<ObjectOf<Kind
   guard: { values: (guard) => [guard.callback], holds: nothing, watches: nothing },
   resource: { values: nothing, holds: nothing, watches: nothing },
   mock: { values: (mock) => [mock.replacement, ...mock.calls], holds: nothing, watches: nothing },
+  answer: { values: nothing, holds: (answer) => [answer.future], watches: nothing },
   execution: {
     values: ({ frames }) => frames.flatMap((frame) => frameValues(holdingFrame(frame))),
     holds: ({ frames }) => frames.flatMap((frame) => frameCells(holdingFrame(frame))),

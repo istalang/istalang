@@ -17,7 +17,6 @@ import { testRuntime } from './runtime.test-kit.ts';
 const subsetText = definitionFormat.write(subsetDefinition).text;
 const innermostLocation = /\(main:6:\d+\)$/u;
 const missingKeys = /prelude\.compare\(int, int\).*prelude\.add\(int, int\)/u;
-const fib = subsetDefinition.functions.findIndex((entry) => entry.name === 'main.fib');
 
 /** The subset fixture deployed on a fresh runtime, with `run` starting a new instance of it. */
 function load(natives: Natives = stdNatives) {
@@ -35,12 +34,6 @@ function load(natives: Natives = stdNatives) {
 describe('the runtime', () => {
   it('runs the subset fixture to its outcome', () => {
     expect(load().run()).toEqual({ kind: 'finished', outcome: subsetOutcome });
-  });
-
-  it('calls whatever replaced a function-table entry', () => {
-    const program = load();
-    program.functions.replace(fib, { kind: 'native', native: () => 0n });
-    expect(program.run()).toEqual({ kind: 'finished', outcome: 10n });
   });
 
   it('turns a panic into the outcome, with a trace from the innermost frame out', () => {
