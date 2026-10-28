@@ -12,12 +12,20 @@
  */
 
 import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
+import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from './agreement.ts';
+import {
+  type AcceptedPart,
+  agreedAccepts,
+  decidedSoFar,
+  type Produced,
+  settleAgreement,
+  takePrechecked,
+} from './agreement.ts';
 
 export class Branches {
   readonly #context: BodyContext;
@@ -38,10 +46,12 @@ export class Branches {
   add(body: Block): void {
     const context = this.#context;
     const expected = this.#expected ?? decidedSoFar(context, this.#produced);
+    const tail = tailExpressionOf(body);
+    const prechecked = tail === undefined ? undefined : takePrechecked(tail);
     this.#produced.push({
-      type: context.block(body, expected),
+      type: prechecked ?? context.block(body, expected),
       span: tailNodeOf(body).span,
-      site: tailExpressionOf(body) ?? body,
+      site: tail ?? body,
     });
   }
 
@@ -63,11 +73,51 @@ export function branchesAccepts(
   context: BodyContext,
   bodies: readonly Block[],
 ): Accepts | undefined {
-  return agreedAccepts(bodies.map((body) => blockAccepts(context, body)));
+  return agreedAccepts(
+    context,
+    bodies.map((body) => blockPart(context, body)),
+  );
 }
 
 /** Which types `block` can take when the call it is passed to decides it: its tail's (§4). */
 export function blockAccepts(context: BodyContext, block: Block): Accepts | undefined {
   const tail = tailExpressionOf(block);
   return tail === undefined ? undefined : context.accepts(tail);
+}
+
+/** How `block` takes part in a branching expression's `Accepts` check. */
+function blockPart(context: BodyContext, block: Block): AcceptedPart {
+  const tail = tailExpressionOf(block);
+  if (tail === undefined) {
+    return { kind: 'own' };
+  }
+  const accepts = context.accepts(tail);
+  if (accepts !== undefined) {
+    return { kind: 'decided', accepts };
+  }
+  const [only] = block.statements;
+  const plainSingle =
+    block.statements.length === 1 &&
+    only?.kind === 'ExpressionStatement' &&
+    only.annotations === undefined;
+  return plainSingle && !mentionsUnbound(context, tail)
+    ? { kind: 'own', node: tail }
+    : { kind: 'own' };
+}
+
+/** Whether `node` names a local variable whose binding (a pattern's or a block's) isn't checked yet. */
+function mentionsUnbound(context: BodyContext, node: SyntaxNode): boolean {
+  if (node.kind === 'Identifier') {
+    const entity = context.checker.bindings.entityOf(context.module, node);
+    if (
+      entity?.kind === 'variable' &&
+      context.checker.bindings.moduleOf(entity) === undefined &&
+      entity.owner.kind !== 'FunctionDeclaration' &&
+      entity.owner.kind !== 'Lambda' &&
+      context.variables.typeOf(entity).kind === 'error'
+    ) {
+      return true;
+    }
+  }
+  return childrenOf(node).some((child) => mentionsUnbound(context, child));
 }

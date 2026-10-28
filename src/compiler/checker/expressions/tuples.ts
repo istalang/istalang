@@ -13,6 +13,7 @@ import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
+import { acceptedPart, partsAccept, takePrechecked } from '../rules/agreement.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -29,7 +30,7 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
     kind: 'tuple',
     elements: node.elements.map((element, index) => {
       const guide = guides?.[index];
-      const type = context.expression(element, guide);
+      const type = takePrechecked(element) ?? context.expression(element, guide);
       if (guide === undefined || context.checker.fitOf(type, guide) === undefined) {
         return type;
       }
@@ -61,8 +62,11 @@ export function checkTupleElement(context: BodyContext, node: TupleElement): Typ
 
 /** Which tuple types `node` can take: its size, each element taking its own, if one has none. */
 export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undefined {
-  const elements = node.elements.map((element) => context.accepts(element));
-  if (elements.every((accepts) => accepts === undefined)) {
+  const elements = partsAccept(
+    context,
+    node.elements.map((element) => acceptedPart(context, element)),
+  );
+  if (elements === undefined) {
     return undefined;
   }
   return (expected, isOpen) =>

@@ -11,6 +11,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { ValueSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import type { Accepts } from '../resolution/choice.ts';
@@ -112,15 +113,136 @@ export function decidedSoFar(
 }
 
 /**
- * Which types producers of one value can agree on when the call they are passed to decides it
- * (§3.5), from what each can take, undefined for one with a type of its own: none when the first
- * has a type of its own, since it decides for the rest, else any every other one can take.
+ * What one part of a composite argument has before the call is chosen: the parameter types it can
+ * take when the call decides its type, or its own expression when it has a type of its own.
  */
-export function agreedAccepts(producers: readonly (Accepts | undefined)[]): Accepts | undefined {
-  if (producers[0] === undefined) {
+export type AcceptedPart =
+  | { readonly kind: 'decided'; readonly accepts: Accepts }
+  | { readonly kind: 'own'; readonly node?: Expression | undefined };
+
+/** A part of a composite argument once any sibling needing the call's type triggered prechecking. */
+type CheckedPart =
+  | { readonly kind: 'decided'; readonly accepts: Accepts }
+  | { readonly kind: 'typed'; readonly type: Type | undefined };
+
+const prechecked = new WeakMap<Expression, Type>();
+
+/**
+ * The type already found for `node` while checking what a composite argument accepts (`precheck`),
+ * consumed once; undefined when `node` wasn't prechecked.
+ */
+export function takePrechecked(node: Expression): Type | undefined {
+  const cached = prechecked.get(node);
+  if (cached !== undefined) {
+    prechecked.delete(node);
+  }
+  return cached;
+}
+
+/** Checks `node` once during `accepts`, keeping its type for the enclosing expression's check. */
+function precheck(context: BodyContext, node: Expression): Type {
+  const type = context.expression(node);
+  prechecked.set(node, type);
+  return type;
+}
+
+/** How `node` takes part in a composite argument's `Accepts` check. */
+export function acceptedPart(context: BodyContext, node: Expression | undefined): AcceptedPart {
+  if (node === undefined) {
+    return { kind: 'own' };
+  }
+  const accepts = context.accepts(node);
+  return accepts === undefined ? { kind: 'own', node } : { kind: 'decided', accepts };
+}
+
+/** Checks the typed parts among `parts`, once a sibling needs the call to decide its type. */
+function checkParts(context: BodyContext, parts: readonly AcceptedPart[]): readonly CheckedPart[] {
+  return parts.map((part) =>
+    part.kind === 'decided'
+      ? part
+      : { kind: 'typed', type: part.node === undefined ? undefined : precheck(context, part.node) },
+  );
+}
+
+/** Whether `part` can take a parameter of `expected`. */
+function partAccepts(
+  context: BodyContext,
+  part: CheckedPart,
+  expected: Type,
+  isOpen: (part: Type) => boolean,
+): boolean {
+  if (part.kind === 'decided') {
+    return part.accepts(expected, isOpen);
+  }
+  return (
+    part.type === undefined ||
+    isOpen(expected) ||
+    context.checker.fitOf(part.type, expected) !== undefined
+  );
+}
+
+/**
+ * Which parameter types `parts`, each at its own position, can take when at least one needs the
+ * call to decide its type; undefined when every part has a type of its own.
+ */
+export function partsAccept(
+  context: BodyContext,
+  parts: readonly AcceptedPart[],
+): readonly ((expected: Type, isOpen: (part: Type) => boolean) => boolean)[] | undefined {
+  if (!parts.some((part) => part.kind === 'decided')) {
     return undefined;
   }
-  return (expected, isOpen) => producers.every((accepts) => accepts?.(expected, isOpen) ?? true);
+  const checked = checkParts(context, parts);
+  return checked.map(
+    (part) => (expected: Type, isOpen: (part: Type) => boolean) =>
+      partAccepts(context, part, expected, isOpen),
+  );
+}
+
+/**
+ * Whether `checked` producers need the call they are passed to to decide their agreed type (§3.5):
+ * the first producer's own type doesn't already take them all.
+ */
+function needsAgreedType(context: BodyContext, checked: readonly CheckedPart[]): boolean {
+  const [first] = checked;
+  if (first?.kind !== 'typed' || first.type === undefined) {
+    return true;
+  }
+  const firstType = first.type;
+  return !checked.every((part) =>
+    part.kind === 'decided'
+      ? part.accepts(firstType, () => false)
+      : part.type !== undefined && context.checker.fitOf(part.type, firstType) !== undefined,
+  );
+}
+
+/**
+ * Which types `producers` of one value can agree on when the call they are passed to decides it
+ * (§3.5); undefined when their own types already decide it.
+ */
+export function agreedAccepts(
+  context: BodyContext,
+  producers: readonly AcceptedPart[],
+): Accepts | undefined {
+  if (!producers.some((producer) => producer.kind === 'decided')) {
+    return undefined;
+  }
+  const checked = checkParts(context, producers);
+  if (!needsAgreedType(context, checked)) {
+    return undefined;
+  }
+  return (expected, isOpen) =>
+    checked.every((producer) => partAccepts(context, producer, expected, isOpen));
+}
+
+/** Which types `producers` of one value can all take, once their literal needs an expected type. */
+export function allProducersAccept(
+  context: BodyContext,
+  producers: readonly AcceptedPart[],
+): Accepts {
+  const checked = checkParts(context, producers);
+  return (expected, isOpen) =>
+    checked.every((producer) => partAccepts(context, producer, expected, isOpen));
 }
 
 /** Whether a fit was found, and converts nothing. */

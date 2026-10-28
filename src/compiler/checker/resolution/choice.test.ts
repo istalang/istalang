@@ -75,6 +75,39 @@ const cases: readonly ChoiceCase[] = [
     chosen: 'bool',
   },
   {
+    rule: 'a tuple holding none keeps the types of its other elements',
+    overloads: ['fn f(a: (int, int?)) -> bool: true', 'fn f(a: (string, int?)) -> string: "c"'],
+    call: 'f((1, none))',
+    chosen: 'bool',
+  },
+  {
+    rule: 'an array literal holding none in any position keeps the types of its other elements',
+    overloads: ['fn f(a: Array<int?>) -> bool: true', 'fn f(a: Array<string?>) -> string: "c"'],
+    call: 'f(["a", none])',
+    chosen: 'string',
+  },
+  {
+    rule: 'an array literal starting with none keeps the types of its later elements',
+    overloads: ['fn f(a: Array<int?>) -> bool: true', 'fn f(a: Array<string?>) -> string: "c"'],
+    call: 'f([none, "a"])',
+    chosen: 'string',
+  },
+  {
+    rule: 'a map literal holding none keeps the types of its keys',
+    overloads: [
+      'fn f(a: Map<int, int?>) -> bool: true',
+      'fn f(a: Map<string, int?>) -> string: "c"',
+    ],
+    call: 'f(["a": none])',
+    chosen: 'string',
+  },
+  {
+    rule: 'an if expression holding none in any branch keeps the types of its other branches',
+    overloads: ['fn f(a: int?) -> bool: true', 'fn f(a: string?) -> string: "c"'],
+    call: 'f(if true: "a" else: none)',
+    chosen: 'string',
+  },
+  {
     rule: 'a lambda in an array takes only an array of functions of its arity',
     overloads: [
       'fn f(a: Array<fn(int) -> int>) -> bool: true',

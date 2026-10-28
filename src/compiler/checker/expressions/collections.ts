@@ -18,8 +18,8 @@
  *   (calls/collection-functions.ts): Default's `default` gives its type, never a future. Keys and
  *   values are checked on their own there, since `setIndex` is chosen by their types.
  * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
- * - Passed to a call, a literal whose first item has no type of its own, or an empty one, has the
- *   type the call decides (§3.5), so it takes what each item without one can take.
+ * - Passed to a call, a literal whose own items don't decide its type, or an empty one, has the
+ *   type the call decides (§3.5), so it takes what each item can take.
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
@@ -41,7 +41,15 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { declaresDefault, defaultWitness } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
-import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
+import {
+  acceptedPart,
+  agreedAccepts,
+  allProducersAccept,
+  decidedSoFar,
+  type Produced,
+  settleAgreement,
+  takePrechecked,
+} from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
 import { withoutOptionals } from '../types/fit.ts';
 import {
@@ -150,8 +158,9 @@ export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts 
     return (expected) => literalTarget(context, expected) !== undefined;
   }
   const items = agreedAccepts(
+    context,
     node.elements.map((element) =>
-      element.kind === 'Spread' ? undefined : context.accepts(element),
+      acceptedPart(context, element.kind === 'Spread' ? undefined : element),
     ),
   );
   if (items === undefined) {
@@ -172,11 +181,15 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
     };
   }
   const entries = node.entries.map((entry) => (entry.kind === 'MapEntry' ? entry : undefined));
-  const keys = agreedAccepts(entries.map((entry) => entry && context.accepts(entry.key)));
-  const values = agreedAccepts(entries.map((entry) => entry && context.accepts(entry.value)));
-  if (keys === undefined && values === undefined) {
+  const keyParts = entries.map((entry) => acceptedPart(context, entry?.key));
+  const valueParts = entries.map((entry) => acceptedPart(context, entry?.value));
+  const keysNeed = agreedAccepts(context, keyParts);
+  const valuesNeed = agreedAccepts(context, valueParts);
+  if (keysNeed === undefined && valuesNeed === undefined) {
     return undefined;
   }
+  const keys = keysNeed ?? allProducersAccept(context, keyParts);
+  const values = valuesNeed ?? allProducersAccept(context, valueParts);
   return (expected, isOpen) => {
     const target = literalTarget(context, expected);
     if (target?.kind !== 'map') {
@@ -184,8 +197,7 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
     }
     const [key, value] = target.arguments;
     return (
-      (key === undefined || (keys?.(key, isOpen) ?? true)) &&
-      (value === undefined || (values?.(value, isOpen) ?? true))
+      (key === undefined || keys(key, isOpen)) && (value === undefined || values(value, isOpen))
     );
   };
 }
@@ -374,7 +386,11 @@ function producedValue(
   node: Expression,
   expected: Type | undefined,
 ): Produced {
-  return { type: context.expression(node, expected), span: node.span, site: node };
+  return {
+    type: takePrechecked(node) ?? context.expression(node, expected),
+    span: node.span,
+    site: node,
+  };
 }
 
 /** What a literal's `part`s agree on, reporting those that don't fit it. */
