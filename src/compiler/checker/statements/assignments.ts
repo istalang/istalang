@@ -28,12 +28,7 @@ import { type Expression, unparenthesized } from '../../syntax/expressions/index
 import { type CompoundAssignment, compoundOperator } from '../../syntax/operators.ts';
 import { type Assignment, destructuringOf, isUnnamedTarget } from '../../syntax/statements.ts';
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
-import {
-  checkChangedPlace,
-  checkDistinctPlaces,
-  immutableKind,
-  isChangeable,
-} from '../calls/places.ts';
+import { checkChangedPlace, checkDistinctPlaces, immutableKind } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -195,7 +190,7 @@ function assignedPlace(context: BodyContext, written: Expression): Type {
     context.report(checkerDiagnostics.notAssignable(target.span));
     return errorType;
   }
-  if (!isChangeable(context, entity)) {
+  if (!context.variables.isChangeable(entity)) {
     context.report(
       checkerDiagnostics.constReassigned(target.span, target.text, immutableKind(entity.owner)),
     );

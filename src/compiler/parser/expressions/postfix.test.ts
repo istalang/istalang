@@ -113,13 +113,13 @@ describe('indexing, members and postfix operators', () => {
     ['u->name.first', '(MemberAccess (MemberAccess (Dereference -> u) name) first)'],
     ['users[0]->name', '(MemberAccess (Dereference -> (Index users 0)) name)'],
     ['t->0', '(TupleElement (Dereference -> t) 0)'],
-    ['n?->value', '(MemberAccess (Dereference ?-> n) value)'],
+    ['n?->value', '(MemberAccess (Dereference -> n isOptional) value)'],
     ['n? -> value', '(MemberAccess (Dereference -> (Propagate n)) value)'],
     [
       'head->next?->value',
-      '(MemberAccess (Dereference ?-> (MemberAccess (Dereference -> head) next)) value)',
+      '(MemberAccess (Dereference -> (MemberAccess (Dereference -> head) next) isOptional) value)',
     ],
-    ['n?->0', '(TupleElement (Dereference ?-> n) 0)'],
+    ['n?->0', '(TupleElement (Dereference -> n isOptional) 0)'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });

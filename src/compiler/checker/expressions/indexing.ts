@@ -30,6 +30,6 @@ export function checkIndex(context: BodyContext, node: Index, expected: Type | u
     typeArguments: undefined,
     expected,
     form: 'operator',
-    hint: () => insideOptional(context.checker, node.target.span, container, '?.['),
+    hint: () => insideOptional(context.checker, node.target.span, container, '['),
   });
 }

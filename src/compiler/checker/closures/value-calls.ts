@@ -44,7 +44,7 @@ export function checkValueCall(
   }
   if (calleeType.kind !== 'function') {
     context.report(
-      insideOptional(context.checker, callee.span, calleeType, '?.(') ??
+      insideOptional(context.checker, callee.span, calleeType, '(') ??
         checkerDiagnostics.notFunction(callee.span, typeText(calleeType)),
     );
     return errorType;

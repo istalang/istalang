@@ -228,12 +228,14 @@ export interface Unwrap extends NodeOf<'Unwrap'> {
 
 /**
  * `*x`: the value behind the shared struct `x` (§3.9). `x->f` is `(*x).f`, so the parser reads it
- * as a field of a `Dereference` spanning `x->`, written with the operator `->`, or `?->` when it
- * reads through an optional, as a link of an optional chain (§4).
+ * as a field of a `Dereference` spanning `x->`, written with the operator `->`; `?->` is the same
+ * link reading through an optional (§4), so it `isOptional`, as `?.` makes a member access. A
+ * prefix `*` is no link, so it never is.
  */
 export interface Dereference extends NodeOf<'Dereference'> {
-  readonly operator: '*' | '->' | '?->';
+  readonly operator: '*' | '->';
   readonly operand: Expression;
+  readonly isOptional: boolean;
 }
 
 export interface Unary extends NodeOf<'Unary'> {

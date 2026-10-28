@@ -244,6 +244,8 @@ export interface Variables {
   ) => void;
   /** Whether `variable` is a parameter taking a reference (§3.7). */
   readonly isReference: (variable: VariableEntity) => boolean;
+  /** Whether `variable` may change: a `let`, or a parameter taking a reference. */
+  readonly isChangeable: (variable: VariableEntity) => boolean;
   readonly typeOf: (variable: VariableEntity) => Type;
   /** Notes that `variable` was reassigned, or changed in part. */
   readonly noteChanged: (variable: VariableEntity) => void;

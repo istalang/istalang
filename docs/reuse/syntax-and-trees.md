@@ -28,7 +28,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - read the value or field name of a struct literal's `FieldItem` → `itemValue`, `itemName` (`src/compiler/syntax/expressions/index.ts`)
 - list valid `MatchCase`s of a `Match` expression → `casesOf` (`src/compiler/syntax/expressions/index.ts`)
 - unwrap a `CallArgument`'s expression or find an out-of-order argument → `argumentValue`, `misplacedArgument` (`src/compiler/syntax/expressions/arguments.ts`)
-- inspect an optional chain step → `chainStepOf`, `isOptionalStep` (`src/compiler/syntax/expressions/chains.ts`)
+- inspect an optional chain step, or spell a link form's operator, optional or not → `chainStepOf`, `isOptionalStep`, `linkOperator`, `optionalOperatorOf` (`src/compiler/syntax/expressions/chains.ts`)
 - test whether an expression is inside an optional chain → `isOptionallyChained` (`src/compiler/syntax/expressions/chains.ts`)
 - read a comparison as `ComparisonLink`s, a chain's (`a < b <= c`) or a single binary's, and a link's span → `comparisonLinksOf`, `comparisonLinkOf`, `linkSpan` (`src/compiler/syntax/expressions/comparisons.ts`)
 - check whether an expression is a place or decompose it into `{ root, steps }` → `isPlace`, `placePath` (`src/compiler/syntax/expressions/places.ts`)
@@ -46,6 +46,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 ## One-way rules
 
 - Shared desugaring (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`, `placePath`, `destructuringOf`) lives in `src/compiler/syntax/`.
+- A link reads through an optional when its node `isOptional` (member access, tuple element, index, call, `->`); its operator is spelled by `linkOperator`/`optionalOperatorOf` (`chains.ts`), never as a literal.
 - Node fields hold only nodes, node arrays, optional nodes/arrays, `Span` or primitives, so `childrenOf` (`tree.ts`) derives traversal automatically.
 - In `src/compiler/parser/`, bracketed lists use `parseEnclosed` / `parseDelimited` (`recovery.ts`) and recursive entries use `nested` (`nesting.ts`).
 

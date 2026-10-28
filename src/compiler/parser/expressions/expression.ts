@@ -106,8 +106,8 @@ const spawnCalleeSteps: Partial<Record<CursorKind, InfixParselet>> = {
   '[': indexParselet,
   '.': memberParselet,
   '?.': optionalParselet,
-  '->': arrowParselet('->'),
-  '?->': arrowParselet('?->'),
+  '->': arrowParselet(false),
+  '?->': arrowParselet(true),
   '{': structLiteralParselet,
 };
 

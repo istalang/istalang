@@ -38,7 +38,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - combine `Accepts` predicates across composite parts or producers → `partsAccept`, `agreedAccepts` (`src/compiler/checker/rules/agreement.ts`)
 - collect and agree on branch bodies (`if`, `match`, `select`) → `Branches`, `branchesAccepts`, `blockAccepts` (`src/compiler/checker/rules/branches.ts`)
 - check `==` / `!=` operands with optional wrapping on either side → `comparable`, `checkEqualSides` (`src/compiler/checker/types/equality.ts`)
-- hint `?.`, `?[`, `?.(` or `?->` when a step fails on `T?` → `insideOptional` (`src/compiler/checker/types/inside-optional.ts`)
+- hint `?.`, `?.[`, `?.(` or `?->` when a step of a link's form fails on `T?` → `insideOptional` (`src/compiler/checker/types/inside-optional.ts`)
 - search whether a type holds a matching part at any depth (`Future`, `Result`, disposable) → `heldType`, `heldParts` (`src/compiler/checker/types/held.ts`)
 - check whether a declaration or type is host-provided (non-std `extern`) → `isHostExtern`, `isHostType` (`src/compiler/checker/host-externs.ts`)
 - check whether an extern's types cross the host JSON boundary → `checkHostBoundary`, `crossesToHost` (`src/compiler/checker/rules/host-boundary.ts`)

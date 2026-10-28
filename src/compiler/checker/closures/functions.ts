@@ -21,7 +21,6 @@ import { encloses } from '../../../text/span.ts';
 import type { VariableEntity } from '../../binder/entities.ts';
 import { localFunctionOf } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import { isChangeable } from '../calls/places.ts';
 import type { CheckedFunction, NestedFunction } from '../check.ts';
 import type { BodyContext, FunctionFrame, Functions } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -102,7 +101,7 @@ export class FunctionScopes implements Functions {
 function capture(context: BodyContext, name: Identifier, entity: VariableEntity): void {
   if (context.variables.isReference(entity)) {
     context.report(checkerDiagnostics.capturedReference(name.span, name.text));
-  } else if (isChangeable(context, entity)) {
+  } else if (context.variables.isChangeable(entity)) {
     context.variables.noteCaptured(entity);
   }
 }

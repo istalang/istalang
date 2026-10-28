@@ -146,8 +146,8 @@ export const optionalParselet: InfixParselet = {
   },
 };
 
-/** `x->f`, or `x?->f`: a member of the value behind `x`. */
-export function arrowParselet(operator: '->' | '?->'): InfixParselet {
+/** `x->f`, or `x?->f` when `isOptional`: a member of the value behind `x`. */
+export function arrowParselet(isOptional: boolean): InfixParselet {
   return {
     level: 'postfix',
     parse(parser, left) {
@@ -155,8 +155,9 @@ export function arrowParselet(operator: '->' | '?->'): InfixParselet {
       const operand: Dereference = {
         kind: 'Dereference',
         span: parser.spanFrom(left.span.start),
-        operator,
+        operator: '->',
         operand: left,
+        isOptional,
       };
       return parseMember(parser, operand, false);
     },

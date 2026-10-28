@@ -21,6 +21,7 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod as isMethodDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
+import { linkOperator } from '../../syntax/expressions/chains.ts';
 import {
   itemValue,
   type MemberAccess,
@@ -273,11 +274,11 @@ function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnost
     return sharedValue !== undefined && fieldOf(checker, sharedValue, name) !== undefined;
   };
   if (behind(type)) {
-    const operator = node.isOptional ? '?->' : '->';
+    const operator = linkOperator('->', node.isOptional);
     return checkerDiagnostics.fieldBehindShared(span, typeText(type), name, operator);
   }
   const inner = optionalInner(type, checker.optionalEntity);
-  const reach = inner !== undefined && checker.sharedValueOf(inner) !== undefined ? '?->' : '?.';
+  const reach = inner !== undefined && checker.sharedValueOf(inner) !== undefined ? '->' : '.';
   const inside = insideOptional(checker, span, type, reach);
   if (inside !== undefined) {
     return inside;

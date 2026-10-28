@@ -177,7 +177,7 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     expected: call.expected,
     form: 'call',
     receiver,
-    hint: () => insideOptional(checker, receiver.span, receiverType, '?.'),
+    hint: () => insideOptional(checker, receiver.span, receiverType, '.'),
   });
 }
 

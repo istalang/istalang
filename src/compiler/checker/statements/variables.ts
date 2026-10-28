@@ -55,6 +55,22 @@ export class VariableScope implements Variables {
     return this.#references.has(variable.name);
   }
 
+  /**
+   * Whether `variable` may change: a `let`, or a parameter taking a reference. Top-level constants
+   * are `const`, so the declaration's own keyword decides for them too.
+   */
+  isChangeable(variable: VariableEntity): boolean {
+    const { owner } = variable;
+    switch (owner.kind) {
+      case 'Parameter':
+        return this.isReference(variable);
+      case 'VariableDeclaration':
+        return owner.isMutable;
+      default:
+        return false;
+    }
+  }
+
   typeOf(variable: VariableEntity): Type {
     return this.#types.get(variable.name) ?? errorType;
   }

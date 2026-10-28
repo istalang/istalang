@@ -258,22 +258,6 @@ export function changeReceiver(context: BodyContext, receiver: Expression): void
   changePlace(context, receiver, 'referenced');
 }
 
-/**
- * Whether `variable` may change: a `let`, or a parameter taking a reference. Top-level constants
- * are `const`, so the declaration's own keyword decides for them too.
- */
-export function isChangeable(context: BodyContext, variable: VariableEntity): boolean {
-  const { owner } = variable;
-  switch (owner.kind) {
-    case 'Parameter':
-      return context.variables.isReference(variable);
-    case 'VariableDeclaration':
-      return owner.isMutable;
-    default:
-      return false;
-  }
-}
-
 /** How a message names a variable that may not change: a parameter, or a `const` (§3.3, §3.4). */
 export function immutableKind(owner: VariableOwner): string {
   return owner.kind === 'Parameter' ? 'a parameter' : 'a const';
@@ -292,7 +276,7 @@ function requireChangeable(
   if (entity?.kind !== 'variable') {
     return false;
   }
-  if (!isChangeable(context, entity)) {
+  if (!context.variables.isChangeable(entity)) {
     context.report(
       checkerDiagnostics.constantChanged(root.span, root.text, immutableKind(entity.owner)),
     );

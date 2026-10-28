@@ -79,7 +79,13 @@ export function unaryParselet(operator: UnaryOperator): PrefixParselet {
 export const parseDereference: PrefixParselet = (parser, minLevel) => {
   const prefix = advancePrefix(parser, operatorLevels.dereference, minLevel);
   const operand = prefixOperand(parser, prefix, operatorLevels.dereference);
-  return { kind: 'Dereference', span: parser.spanFrom(prefix.start), operator: '*', operand };
+  return {
+    kind: 'Dereference',
+    span: parser.spanFrom(prefix.start),
+    operator: '*',
+    operand,
+    isOptional: false,
+  };
 };
 
 /** `**x` before an operand: the value behind the value behind `x`, two dereferences in one token. */
@@ -91,8 +97,15 @@ export const parseDoubleDereference: PrefixParselet = (parser, minLevel) => {
     span: { start: start + 1, end: operand.span.end },
     operator: '*',
     operand,
+    isOptional: false,
   };
-  return { kind: 'Dereference', span: parser.spanFrom(start), operator: '*', operand: inner };
+  return {
+    kind: 'Dereference',
+    span: parser.spanFrom(start),
+    operator: '*',
+    operand: inner,
+    isOptional: false,
+  };
 };
 
 export const parseAwait: PrefixParselet = (parser, minLevel) => {

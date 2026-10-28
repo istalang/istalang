@@ -27,7 +27,6 @@
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
-import { isChangeable } from '../calls/places.ts';
 import type { NestedFunction, SignatureParameter } from '../check.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
@@ -181,7 +180,8 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     result,
     captures.every(
       (capture) =>
-        !isChangeable(context, capture.entity) && isSendable(context.checker, capture.type),
+        !context.variables.isChangeable(capture.entity) &&
+        isSendable(context.checker, capture.type),
     ),
   );
   if (name !== undefined) {

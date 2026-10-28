@@ -7,11 +7,30 @@
 import type { Call, Expression } from './index.ts';
 
 /**
- * The operator a link of an optional chain takes its step with (§4): `.` (a field, a tuple
- * element or a method), `->` or `[` on its target's value, or `?.`, `?->`, `?.[` and `?.(` (a call
- * of the function) on the value inside an optional.
+ * The forms of a link of an optional chain (§4), each with its operator taking the step on the
+ * value inside an optional: `.` (a field, a tuple element or a method), `->` (the value behind a
+ * handle), `[` (an element) and `(` (a call of the function, a link only through an optional).
  */
-export type ChainOperator = '.' | '->' | '[' | '?.' | '?->' | '?.[' | '?.(';
+const optionalOperators = { '.': '?.', '->': '?->', '[': '?.[', '(': '?.(' } as const;
+
+/** A form of link, as `optionalOperators` lists them. */
+export type LinkForm = keyof typeof optionalOperators;
+
+/** An operator taking a link's step on the value inside an optional. */
+export type OptionalOperator = (typeof optionalOperators)[LinkForm];
+
+/** The operator a link of an optional chain takes its step with (§4). */
+export type ChainOperator = Exclude<LinkForm, '('> | OptionalOperator;
+
+/** The operator taking a step of `form` on the value inside an optional: `?.[` for `[`. */
+export function optionalOperatorOf(form: LinkForm): OptionalOperator {
+  return optionalOperators[form];
+}
+
+/** The operator a link of `form` is written with, `?`-prefixed when it `isOptional`. */
+export function linkOperator(form: Exclude<LinkForm, '('>, isOptional: boolean): ChainOperator {
+  return isOptional ? optionalOperatorOf(form) : form;
+}
 
 /** The step a link of an optional chain takes (§4): what it works on, and with which operator. */
 export interface ChainStep {
@@ -35,13 +54,15 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
   switch (node.kind) {
     case 'MemberAccess':
     case 'TupleElement':
-      return { target: node.target, operator: node.isOptional ? '?.' : '.' };
+      return { target: node.target, operator: linkOperator('.', node.isOptional) };
     case 'Index':
-      return { target: node.target, operator: node.isOptional ? '?.[' : '[' };
+      return { target: node.target, operator: linkOperator('[', node.isOptional) };
     case 'Call':
       return callStepOf(node);
     case 'Dereference':
-      return node.operator === '*' ? undefined : { target: node.operand, operator: node.operator };
+      return node.operator === '*'
+        ? undefined
+        : { target: node.operand, operator: linkOperator('->', node.isOptional) };
     default:
       return undefined;
   }
@@ -50,10 +71,10 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
 /** A call's step: through the optional function it calls, or a method's to its receiver. */
 function callStepOf(node: Call): ChainStep | undefined {
   if (node.isOptional) {
-    return { target: node.callee, operator: '?.(' };
+    return { target: node.callee, operator: optionalOperatorOf('(') };
   }
   return node.callee.kind === 'MemberAccess'
-    ? { target: node.callee.target, operator: node.callee.isOptional ? '?.' : '.' }
+    ? { target: node.callee.target, operator: linkOperator('.', node.callee.isOptional) }
     : undefined;
 }
 

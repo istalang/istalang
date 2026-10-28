@@ -31,7 +31,7 @@ function valueBehind(context: BodyContext, node: Dereference): Type | undefined 
   if (sharedValue !== undefined) {
     return sharedValue;
   }
-  const inside = isLink ? insideOptional(checker, node.span, handle, '?->') : undefined;
+  const inside = isLink ? insideOptional(checker, node.span, handle, '->') : undefined;
   context.report(inside ?? checkerDiagnostics.notShared(node.span, typeText(handle)));
   return undefined;
 }
