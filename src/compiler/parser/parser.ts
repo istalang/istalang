@@ -66,8 +66,6 @@ export const nestingLimit = 200;
 
 export class Parser {
   #cursor: Cursor;
-  /** The `end` token's reading in a message: the input's end, or a template value's `}`. */
-  #endReading = 'the end of the input';
   readonly #source: SourceText;
   readonly #grammar: Grammar;
   readonly #diagnostics: Diagnostic[] = [];
@@ -90,12 +88,9 @@ export class Parser {
    */
   withinTemplateValue<Result>(value: TemplateValue, parse: () => Result): Result {
     const outer = this.#cursor;
-    const outerReading = this.#endReading;
-    this.#cursor = new Cursor(value.tokens, value.span.start + 2);
-    this.#endReading = "'}'";
+    this.#cursor = new Cursor(value.tokens, value);
     const result = this.#cursor.ignoringLineBreaks(parse);
     this.#cursor = outer;
-    this.#endReading = outerReading;
     return result;
   }
 
@@ -263,7 +258,7 @@ export class Parser {
       case 'lineBreak':
         return 'the end of the line';
       case 'end':
-        return this.#endReading;
+        return this.cursor.inTemplateValue ? "'}'" : 'the end of the input';
       case 'template':
         return 'a template';
       case 'docstring':

@@ -29,7 +29,7 @@
  */
 
 import type { Span } from '../../text/span.ts';
-import type { Token, TokenKind } from '../syntax/tokens.ts';
+import type { TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
 
 /** What stands in for the next token where a line break ends the current construct. */
 interface LineBreak {
@@ -102,16 +102,14 @@ export class Cursor {
   #index = 0;
   /** The `=` left of a `>=` whose `>` closed type arguments; it stands at `#index`. */
   #remainder: Token | undefined;
-
   readonly #origin: number;
+  readonly inTemplateValue: boolean;
 
-  /**
-   * `tokens` must end with the `end` token, as a ScanResult's do. `origin` is where they start in
-   * the source: 0 for a file, after the `${` for a template's value.
-   */
-  constructor(tokens: readonly Token[], origin = 0) {
+  /** `tokens` must end with the `end` token, as a ScanResult's or `templateValue`'s do. */
+  constructor(tokens: readonly Token[], templateValue?: TemplateValue) {
     this.#tokens = tokens;
-    this.#origin = origin;
+    this.#origin = templateValue === undefined ? 0 : templateValue.span.start + 2;
+    this.inTemplateValue = templateValue !== undefined;
   }
 
   get index(): number {
