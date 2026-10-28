@@ -14,7 +14,7 @@
  *   units of their own, beside those rules; this class only composes them. A lambda or local
  *   function is checked in this same body, in a function scope of its own (closures/), so its
  *   result, loops and asyncness are the innermost scope's, and a name used in it is captured
- *   where it is looked up (`entityOf`).
+ *   where it is used (`useEntity`).
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';

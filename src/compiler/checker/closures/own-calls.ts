@@ -69,7 +69,7 @@ export function checkOwnCall(context: BodyContext, target: Expression): Type | u
   if (target.kind !== 'Identifier') {
     return undefined;
   }
-  const entity = context.checker.bindings.entityOf(context.module, target);
+  const entity = context.entityOf(target);
   const functions = functionsNamed(entity);
   if (functions === undefined) {
     return undefined;

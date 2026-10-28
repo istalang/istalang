@@ -236,7 +236,7 @@ function blockKnownType(context: BodyContext, block: Block): Type | undefined {
 }
 
 function identifierKnownType(context: BodyContext, node: Identifier): Type | undefined {
-  const entity = context.checker.bindings.entityOf(context.module, node);
+  const entity = context.entityOf(node);
   if (entity?.kind !== 'variable' || localFunctionOf(entity) !== undefined) {
     return undefined;
   }

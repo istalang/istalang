@@ -263,7 +263,7 @@ function valueShape(context: BodyContext, value: Expression) {
 
 function reference(context: BodyContext, node: NamePattern, part: ValuePart): Leaf {
   const name = lastName(node.path);
-  const entity = context.useEntity(name);
+  const entity = context.entityOf(name);
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
     const chosen = namedVariant(context, node, entity, part);
     if (chosen !== undefined && chosen.fields.length > 0) {
