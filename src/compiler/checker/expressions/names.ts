@@ -6,7 +6,7 @@
  * without fields, written bare (§3.1), which takes its type arguments from the expected type.
  */
 
-import type { Entity } from '../../binder/entities.ts';
+import { type Entity, localFunctionOf, type VariableEntity } from '../../binder/entities.ts';
 import { typeParametersOf } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import {
@@ -50,23 +50,9 @@ export function entityValueType(
     case undefined:
       return errorType;
     case 'variable':
-      switch (entity.owner.kind) {
-        case 'FunctionDeclaration':
-        case 'Lambda':
-          return context.functions.typeOfFunction(context, node, entity);
-        case 'ExternConstantDeclaration':
-          return context.checker.resolveType(
-            context.checker.moduleOf(entity.owner),
-            entity.owner.type,
-          );
-        case 'VariableDeclaration':
-          return (
-            context.checker.constantNamed(context.module, node)?.type ??
-            context.variables.typeOf(entity)
-          );
-        default:
-          return context.variables.typeOf(entity);
-      }
+      return localFunctionOf(entity) === undefined
+        ? variableType(context, node, entity)
+        : context.functions.typeOfFunction(context, node, entity);
     case 'functions': {
       const functions = namedFunctions(context, node);
       return functions === undefined ? errorType : checkFunctionValue(context, functions, expected);
@@ -82,6 +68,26 @@ export function entityValueType(
       }
       return bare ?? errorType;
     }
+  }
+}
+
+/** The type of `variable`, which isn't a local function, where `node` names it. */
+export function variableType(
+  context: BodyContext,
+  node: Identifier,
+  variable: VariableEntity,
+): Type {
+  const { owner } = variable;
+  switch (owner.kind) {
+    case 'ExternConstantDeclaration':
+      return context.checker.resolveType(context.checker.moduleOf(owner), owner.type);
+    case 'VariableDeclaration':
+      return (
+        context.checker.constantNamed(context.module, node)?.type ??
+        context.variables.typeOf(variable)
+      );
+    default:
+      return context.variables.typeOf(variable);
   }
 }
 

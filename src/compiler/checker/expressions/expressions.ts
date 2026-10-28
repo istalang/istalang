@@ -47,7 +47,7 @@ import { checkDereference } from './dereference.ts';
 import { checkIndex } from './indexing.ts';
 import { checkDurationLiteral } from './literals.ts';
 import { checkIs, checkMatch, matchAccepts } from './match.ts';
-import { checkName, nameAccepts } from './names.ts';
+import { checkName, nameAccepts, variableType } from './names.ts';
 import { checkBinary, checkChainedComparison, checkUnary } from './operators.ts';
 import { checkUnwrap } from './optionals.ts';
 import { checkPropagate } from './propagate.ts';
@@ -240,11 +240,7 @@ function identifierKnownType(context: BodyContext, node: Identifier): Type | und
   if (entity?.kind !== 'variable' || localFunctionOf(entity) !== undefined) {
     return undefined;
   }
-  if (entity.owner.kind === 'ExternConstantDeclaration') {
-    return context.checker.resolveType(context.checker.moduleOf(entity.owner), entity.owner.type);
-  }
-  const type =
-    context.checker.constantNamed(context.module, node)?.type ?? context.variables.typeOf(entity);
+  const type = variableType(context, node, entity);
   return type.kind === 'error' ? undefined : type;
 }
 
