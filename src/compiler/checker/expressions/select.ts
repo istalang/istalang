@@ -22,6 +22,7 @@ import {
   type SelectCase,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
+import { ownCallerOf } from '../closures/own-calls.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
@@ -61,7 +62,7 @@ function watchesOwnDisposal(context: BodyContext, future: Expression): boolean {
   return (
     call?.kind === 'function' &&
     context.checker.languageFunctions(module, name).includes(call.function) &&
-    context.ownCalls.readAt(bare.callee.target)?.owner === context.functions.current.function
+    ownCallerOf(context, bare.callee.target) === context.functions.current.function
   );
 }
 

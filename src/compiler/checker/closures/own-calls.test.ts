@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { reportedNothing, reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { bindProgram } from '../../binder/bind.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
@@ -70,8 +71,8 @@ describe('the call disposing() watches', () => {
     const body = checker.bodyOf(worker);
     const between = nestedIn(worker);
     expect(checker.diagnosticsOf(idOf('main.ista'))).toEqual([]);
-    const call = body?.ownCallOf(worker);
-    expect(call?.owner).toBe(worker);
+    const call = bindProgram(program).ownCallOf(idOf('main.ista'), worker);
+    expect(call?.owner).toEqual({ kind: 'OwnCall', function: worker });
     expect(between.map((node) => node.kind)).toEqual(['FunctionDeclaration', 'Lambda']);
     for (const node of between) {
       const captured = body?.functionOf(node)?.captures.map((capture) => capture.entity);
@@ -93,8 +94,10 @@ describe('the call disposing() watches', () => {
     const receiver = resolved?.receiver;
     expect(receiver?.kind === 'Identifier' && receiver.text).toBe('worker');
     expect(site?.kind).toBe('Call');
-    expect(receiver === undefined ? undefined : body?.ownCallReadAt(receiver)).toBe(
-      body?.ownCallOf(worker),
+    const bindings = bindProgram(program);
+    const read = receiver?.kind === 'Identifier' ? receiver : undefined;
+    expect(read === undefined ? undefined : bindings.entityOf(idOf('main.ista'), read)).toBe(
+      bindings.ownCallOf(idOf('main.ista'), worker),
     );
   });
 });

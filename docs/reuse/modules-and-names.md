@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -36,6 +36,7 @@ tags: [reuse, language, modules, program, binder, names]
 - resolve a name a body uses where it is written, noting closure captures → `BodyContext.useEntity`; only ask → `BodyContext.entityOf` (`src/compiler/checker/context.ts`)
 - find an entity's declaring module or join prelude overloads → `Bindings.moduleOf`, `Bindings.overloadsOf` (`src/compiler/binder/entities.ts`)
 - list bare variant candidates or look up a top-level/prelude name → `Bindings.candidatesOf`, `Bindings.topLevelNamed` (`src/compiler/binder/entities.ts`)
+- find the hidden variable an async function holds its own call in, which its name before a `.` reads (§7) → `Bindings.ownCallOf` (`src/compiler/binder/entities.ts`)
 - check whether a `VariableEntity` is the own name of a local `fn` or named `Lambda` → `localFunctionOf` (`src/compiler/binder/entities.ts`)
 - collect all phase diagnostics or compile a program or its tests to a `Definition` → `diagnose`, `compileProgram`, `compileTests` (`src/compiler/compile.ts`)
 

@@ -1,6 +1,6 @@
-# error: 5800 at 13:7
-# error: 5800 at 16:8
-# error: 5801 at 20:7
+# error: 4016 at 13:7
+# error: 4016 at 16:8
+# error: 4017 at 20:7
 # error: 5101 at 21:13
 # `worker.disposing()` watches the call of an enclosing async fn named `worker` (§7): not another
 # function's, not a plain fn's, and never `main`'s, which nothing holds. A weak reference refers

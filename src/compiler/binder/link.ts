@@ -63,6 +63,7 @@ export function link(program: Program): Bindings {
     moduleOf: (entity) => linker.moduleOf(entity),
     overloadsOf: (functions) => linker.overloadsOf(functions),
     candidatesOf: ({ name }) => linker.variantsNamed(name),
+    ownCallOf: (module, node) => linker.local(module)?.ownCalls.get(node),
     topLevelNamed: (module, name) => linker.topLevelNamed(module, name),
     diagnosticsOf: (module) => linker.diagnosticsOf(module),
   };

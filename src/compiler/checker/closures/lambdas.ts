@@ -45,6 +45,7 @@ import {
   withPack,
 } from '../types/type.ts';
 import { FunctionScope } from './function-scope.ts';
+import { declareOwnCall } from './own-calls.ts';
 import { blockTail, ReturnScope } from './returns.ts';
 
 /**
@@ -170,6 +171,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     for (const parameter of parameters) {
       context.variables.declareParameter(parameter);
     }
+    declareOwnCall(context);
     return scope.returns.result(context, header.tail(declaredResult));
   });
   const captures = [...scope.captures.values()].map((entity) => ({

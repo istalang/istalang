@@ -1,110 +1,38 @@
 /**
- * An async function's own name before a `.` (§7): the handle of the enclosing call of that
- * function, a `_Call`, whose members are the prelude's like any type's, so `worker.disposing()` is
- * an ordinary method call on it.
+ * An async function's own call (§7): the function's name before a `.` denotes the handle of the
+ * enclosing call of that function, a `_Call`, whose members are the prelude's like any type's, so
+ * `worker.disposing()` is an ordinary method call on it.
  *
- * - A function's name has no members of its own, so a link's target that names functions is read
- *   this way (optionals.ts, the one place a link's target is checked). It denotes the enclosing
- *   function it names: a top-level `fn` of the body's own overloads, or a local `fn` or named
- *   lambda the body nests.
- * - `main` is refused: nothing holds its call, so it is never disposed.
- * - The handle is a hidden variable of the function, which lowering fills at its entry
- *   (`currentCall`). It is declared where the function's name is, so a function nested in it
- *   captures it like any variable (functions.ts), and a closure watches the call it was made in,
- *   wherever it runs.
+ * - Which name denotes a call, and where none does, is the binder's (`useBeforeMember`): it binds
+ *   the name to a hidden variable of the function, so a function nested in it captures it like
+ *   any variable (functions.ts), and a closure watches the call it was made in, wherever it runs.
+ * - The function's entry declares the variable beside its parameters, and lowering fills it there
+ *   (`currentCall`).
  */
 
-import { entryFunction, wellKnown } from '../../../language/well-known.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Entity, VariableEntity } from '../../binder/entities.ts';
-import { localFunctionOf } from '../../binder/entities.ts';
+import { wellKnown } from '../../../language/well-known.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
-import type { Identifier } from '../../syntax/node.ts';
 import type { NestedFunction } from '../check.ts';
-import type { BodyContext, OwnCallRecord } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { errorType, type Type } from '../types/type.ts';
-
-/** The hidden variables holding the calls a body reads, and the variable each read names. */
-export class OwnCalls implements OwnCallRecord {
-  readonly #variables = new Map<NestedFunction, VariableEntity>();
-  readonly #reads = new Map<Expression, VariableEntity>();
-
-  readAt(node: Expression): VariableEntity | undefined {
-    return this.#reads.get(node);
-  }
-
-  /** The variable `owner`'s entry takes its call's handle into, when anything reads it. */
-  variableOf(owner: NestedFunction): VariableEntity | undefined {
-    return this.#variables.get(owner);
-  }
-
-  record(
-    context: BodyContext,
-    name: Identifier,
-    owner: NestedFunction,
-    type: Type,
-  ): VariableEntity {
-    let variable = this.#variables.get(owner);
-    if (variable === undefined) {
-      const declared = owner.name;
-      if (declared === undefined) {
-        unreachable('Only a named function has a call its name reads.');
-      }
-      const hidden: Identifier = { kind: 'Identifier', span: declared.span, text: declared.text };
-      variable = { kind: 'variable', name: hidden, owner };
-      context.variables.declare(hidden, type);
-      this.#variables.set(owner, variable);
-    }
-    this.#reads.set(name, variable);
-    return variable;
-  }
-}
+import type { BodyContext } from '../context.ts';
 
 /**
- * The type of the link target `target` when it names functions: the enclosing call's handle, or
- * the error type after a report; undefined for any other target, which is checked as a value.
+ * Declares the variable the function being entered holds its own call in, when its name reads
+ * that call; asked at the entry of each function, after its parameters.
  */
-export function checkOwnCall(context: BodyContext, target: Expression): Type | undefined {
-  if (target.kind !== 'Identifier') {
-    return undefined;
-  }
-  const entity = context.entityOf(target);
-  const functions = functionsNamed(entity);
-  if (functions === undefined) {
-    return undefined;
-  }
-  if (entity?.kind === 'functions' && target.text === entryFunction) {
-    context.report(checkerDiagnostics.mainNeverDisposed(target.span));
-    return errorType;
-  }
-  const scope = context.functions.enclosing(functions);
-  if (scope?.function === undefined || !scope.isAsync) {
-    context.report(checkerDiagnostics.notOwnCall(target.span, target.text));
-    return errorType;
-  }
+export function declareOwnCall(context: BodyContext): void {
+  const owner = context.functions.current.function;
+  const variable =
+    owner === undefined ? undefined : context.checker.bindings.ownCallOf(context.module, owner);
   const handle = context.checker.wellKnownType(wellKnown.call);
-  if (handle === undefined) {
-    return errorType;
+  if (variable !== undefined && handle !== undefined) {
+    context.variables.declare(variable.name, handle);
   }
-  const variable = context.ownCalls.record(context, target, scope.function, handle);
-  context.functions.noteUse(context, variable.name, variable);
-  return handle;
 }
 
-/**
- * The functions `entity` names, if it names functions: a top-level overload set, or a local `fn`
- * or named lambda by its own name.
- */
-function functionsNamed(entity: Entity | undefined): readonly NestedFunction[] | undefined {
-  switch (entity?.kind) {
-    case 'functions':
-      return entity.overloads;
-    case 'variable': {
-      const local = localFunctionOf(entity);
-      return local === undefined ? undefined : [local];
-    }
-    default:
-      return undefined;
-  }
+/** The function whose own call `node` reads; undefined when it reads anything else. */
+export function ownCallerOf(context: BodyContext, node: Expression): NestedFunction | undefined {
+  const entity = node.kind === 'Identifier' ? context.entityOf(node) : undefined;
+  return entity?.kind === 'variable' && entity.owner.kind === 'OwnCall'
+    ? entity.owner.function
+    : undefined;
 }

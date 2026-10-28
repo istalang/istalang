@@ -247,9 +247,9 @@ class FunctionLowering implements FunctionContext {
     });
   }
 
-  /** What `name` denotes: the binder's answer, unless it reads an async function's own call (§7). */
+  /** What `name` denotes: the binder's answer. */
   entityOf(name: Identifier): Entity | undefined {
-    return this.body.ownCallReadAt(name) ?? this.checker.bindings.entityOf(this.module, name);
+    return this.checker.bindings.entityOf(this.module, name);
   }
 
   /**
@@ -301,8 +301,8 @@ class FunctionLowering implements FunctionContext {
 
   /** Declares the variable an async function reads its own call through (§7), when it reads it. */
   #declareOwnCall(): void {
-    const { isAsync, function: owner } = this.frame;
-    const call = isAsync ? this.body.ownCallOf(owner) : undefined;
+    const owner = this.frame.function;
+    const call = this.checker.bindings.ownCallOf(this.module, owner);
     if (call !== undefined) {
       this.#declareFilled(call.name, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
     }

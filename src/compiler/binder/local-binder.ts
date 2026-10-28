@@ -17,7 +17,9 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { entryFunction } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
@@ -27,7 +29,12 @@ import type { Pattern } from '../syntax/patterns.ts';
 import type { Block, For, VariableDeclaration } from '../syntax/statements.ts';
 import type { NamedType, TypeNode } from '../syntax/types.ts';
 import { binderDiagnostics } from './diagnostics.ts';
-import type { VariableOwner, VariantsEntity } from './entities.ts';
+import {
+  localFunctionOf,
+  type VariableEntity,
+  type VariableOwner,
+  type VariantsEntity,
+} from './entities.ts';
 import { type Convention, conventionViolation } from './naming.ts';
 import type { LocalEntity, Miss, Scope } from './scope.ts';
 
@@ -59,6 +66,8 @@ export interface QualifiedPath {
 /** What binding one tree produced. */
 export interface LocalResult {
   readonly entities: ReadonlyMap<Identifier, LocalEntity>;
+  /** The variable each async function holds its own call in, when its name before a `.` reads it. */
+  readonly ownCalls: ReadonlyMap<FunctionDeclaration | Lambda, VariableEntity>;
   readonly free: readonly FreeName[];
   readonly paths: readonly QualifiedPath[];
   readonly diagnostics: readonly Diagnostic[];
@@ -107,6 +116,7 @@ export class LocalBinder {
   readonly #paths: QualifiedPath[] = [];
   readonly #diagnostics: Diagnostic[] = [];
   readonly #variants = new Map<string, VariantsEntity>();
+  readonly #ownCalls = new Map<FunctionDeclaration | Lambda, VariableEntity>();
 
   constructor(walk: Walk) {
     this.walk = walk;
@@ -115,6 +125,7 @@ export class LocalBinder {
   result(): LocalResult {
     return {
       entities: this.#entities,
+      ownCalls: this.#ownCalls,
       free: this.#free,
       paths: this.#paths,
       diagnostics: this.#diagnostics,
@@ -153,12 +164,37 @@ export class LocalBinder {
    * head that can't qualify (a variable, a struct) are members, which the checker resolves.
    */
   path(parts: QualifiedName, scope: Scope, role: Role): void {
-    this.#qualify(parts, scope, role, false);
+    this.use(parts[0], scope, role);
+    this.#qualifyLater(parts, false);
   }
 
   /** `a.b.c` in an expression, where a part after an enum may be a static function. */
   memberPath(parts: QualifiedName, scope: Scope): void {
-    this.#qualify(parts, scope, 'value', true);
+    this.useBeforeMember(parts[0], scope);
+    this.#qualifyLater(parts, true);
+  }
+
+  /**
+   * Resolves `name` written before a `.`. A function's name has no members, so there it denotes the
+   * call of the enclosing async function of that name (§7), held in a variable of that function.
+   */
+  useBeforeMember(name: Identifier, scope: Scope): void {
+    const entity = scope.lookup(name.text);
+    const functions = functionsNamed(entity);
+    if (functions === undefined) {
+      this.use(name, scope, 'value');
+      return;
+    }
+    if (entity?.kind === 'functions' && name.text === entryFunction) {
+      this.report(binderDiagnostics.mainNeverDisposed(name.span));
+      return;
+    }
+    const enclosing = scope.enclosingOf(functions);
+    if (enclosing === undefined || !enclosing.isAsync) {
+      this.report(binderDiagnostics.notOwnCall(name.span, name.text));
+      return;
+    }
+    this.record(name, this.#ownCallOf(enclosing));
   }
 
   /**
@@ -232,12 +268,27 @@ export class LocalBinder {
     }
   }
 
-  #qualify(parts: QualifiedName, scope: Scope, role: Role, inExpression: boolean): void {
-    this.use(parts[0], scope, role);
+  /** Leaves the later parts of `parts` for linking, when its head may qualify them. */
+  #qualifyLater(parts: QualifiedName, inExpression: boolean): void {
     const complete = !parts.some(isMissingName);
     if (parts.length > 1 && complete && mayQualify(this.#entities.get(parts[0]))) {
       this.#paths.push({ parts, inExpression });
     }
+  }
+
+  /**
+   * One variable per function per tree, named like the function where it declares its name, so
+   * it survives every snapshot that keeps the tree.
+   */
+  #ownCallOf(node: FunctionDeclaration | Lambda): VariableEntity {
+    return memo(this.#ownCalls, node, () => {
+      const declared = node.name;
+      if (declared === undefined) {
+        unreachable('Only a named function has a call its name reads.');
+      }
+      const name: Identifier = { kind: 'Identifier', span: declared.span, text: declared.text };
+      return { kind: 'variable', name, owner: { kind: 'OwnCall', function: node } };
+    });
   }
 
   /** One entity per bare name per tree, so it survives every snapshot that keeps the tree. */
@@ -254,6 +305,22 @@ interface DeclarationRules {
    * none when `false`, for a name whose repeat its declaration reported already.
    */
   readonly clash?: ((span: Span, name: string) => Diagnostic) | false;
+}
+
+/** The functions `entity` names: a top-level set of this tree's, or a local `fn` or named lambda. */
+function functionsNamed(
+  entity: LocalEntity | undefined,
+): readonly (FunctionDeclaration | Lambda)[] | undefined {
+  switch (entity?.kind) {
+    case 'functions':
+      return entity.overloads;
+    case 'variable': {
+      const local = localFunctionOf(entity);
+      return local === undefined ? undefined : [local];
+    }
+    default:
+      return undefined;
+  }
 }
 
 /** Whether a name's later parts can be resolved by name: through a module or an enum. */

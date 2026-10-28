@@ -3,7 +3,8 @@
  * comprehension are visible is flow.ts's rule.
  *
  * `a.b.c` is bound as a qualified name only when its head may be a module namespace or an enum:
- * otherwise every part after the head is a member, which the checker resolves by type.
+ * otherwise every part after the head is a member, which the checker resolves by type. A head
+ * naming a function denotes its call instead (§7, local-binder.ts `useBeforeMember`).
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
@@ -67,10 +68,12 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   TupleElement: (binder, node, scope) => bindExpression(binder, node.target, scope),
   MemberAccess: (binder, node, scope) => {
     const path = qualifiedPath(node);
-    if (path === undefined) {
-      bindExpression(binder, node.target, scope);
-    } else {
+    if (path !== undefined) {
       binder.memberPath(path, scope);
+    } else if (node.target.kind === 'Identifier') {
+      binder.useBeforeMember(node.target, scope);
+    } else {
+      bindExpression(binder, node.target, scope);
     }
   },
   Binary: bindValueCondition,

@@ -1,10 +1,12 @@
 /**
- * What names resolve to (§3.3, §3.4, §3.5, §3.10, §3.11, §3.13, §3.14): each case names a use and
+ * What names resolve to (§3.3, §3.4, §3.5, §3.7, §3.10, §3.11, §3.13, §3.14): each case names a use and
  * the declaration it must reach, both by their text and occurrence, so the case reads as its source.
  */
 
 import { describe, expect, it } from 'vitest';
-import { type Files, idOf } from '../program/program.test-kit.ts';
+import { type Files, idOf, moduleAt } from '../program/program.test-kit.ts';
+import type { Program } from '../program/program.ts';
+import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { declaringName, entityOfName, namesIn, preludeProgramOf } from './bind.test-kit.ts';
 import { bindProgram } from './bind.ts';
 import type { Entity } from './entities.ts';
@@ -264,3 +266,39 @@ describe('what a name denotes', () => {
     expect(kindOf(source, 'x', 1)).toBeUndefined();
   });
 });
+
+describe("a function's name before a '.'", () => {
+  const worker = [
+    'async fn worker() -> Future<unit>:',
+    '  await worker.disposing()',
+    '  const later = fn(): worker.disposing()',
+  ].join('\n');
+
+  it('denotes the call of the enclosing async fn, from a function nested in it too', () => {
+    const program = preludeProgramOf({ main: `${worker}\nasync fn idle(): 1` });
+    const [declaration, idle] = functionsOf(program);
+    const bindings = bindProgram(program);
+    const own =
+      declaration === undefined ? undefined : bindings.ownCallOf(idOf('main'), declaration);
+    expect(own?.owner).toEqual({ kind: 'OwnCall', function: declaration });
+    expect(own?.name.span).toEqual(declaration?.name.span);
+    expect(entityOfName(program, 'main', 'worker', 1)).toBe(own);
+    expect(entityOfName(program, 'main', 'worker', 2)).toBe(own);
+    expect(idle === undefined ? idle : bindings.ownCallOf(idOf('main'), idle)).toBeUndefined();
+  });
+
+  it('denotes a variable that shadows the function', () => {
+    const source = 'async fn worker():\n  const worker = 1\n  drop worker.bits';
+    const program = preludeProgramOf({ main: source });
+    expect(declaringName(entityOfName(program, 'main', 'worker', 2))).toBe(
+      namesIn(program, 'main', 'worker')[1],
+    );
+  });
+});
+
+/** The top-level functions of module `main`. */
+function functionsOf(program: Program): readonly FunctionDeclaration[] {
+  return moduleAt(program, 'main').tree.root.items.filter(
+    (item): item is FunctionDeclaration => item.kind === 'FunctionDeclaration',
+  );
+}

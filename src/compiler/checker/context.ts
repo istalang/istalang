@@ -206,7 +206,6 @@ export interface BodyContext {
   readonly patterns: PatternRecord;
   readonly chains: Chains;
   readonly fieldReads: FieldReadRecord;
-  readonly ownCalls: OwnCallRecord;
   /** What this body's exits and holds name, recorded as it is checked. */
   readonly labels: LabelRecord;
 }
@@ -350,22 +349,6 @@ export interface Chains {
    */
   readonly target: (context: BodyContext, link: Expression) => Type;
   readonly chainOf: (link: Expression) => ChainLink | undefined;
-}
-
-/**
- * The hidden variables holding the calls a body reads, and the variable each read names
- * (closures/own-calls.ts).
- */
-export interface OwnCallRecord {
-  /** The variable holding the call's handle the name `node` reads; undefined for any other node. */
-  readonly readAt: (node: Expression) => VariableEntity | undefined;
-  /** Records that `name` reads `owner`'s call, typed `type`; that call's variable. */
-  readonly record: (
-    context: BodyContext,
-    name: Identifier,
-    owner: NestedFunction,
-    type: Type,
-  ) => VariableEntity;
 }
 
 /** What each exit and hold names, recorded as statements/loops.ts resolves it. */

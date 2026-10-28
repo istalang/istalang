@@ -39,7 +39,7 @@ export function bindFunction(
   node: FunctionDeclaration | Lambda,
   scope: Scope,
 ): void {
-  const inner = Scope.nested(scope);
+  const inner = Scope.ofFunction(scope, node);
   if (node.kind === 'FunctionDeclaration') {
     if (node.owner !== undefined) {
       binder.use(node.owner, scope, 'type');

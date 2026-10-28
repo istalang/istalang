@@ -37,8 +37,21 @@ import type { Identifier } from '../syntax/node.ts';
 import type { AsPattern, BindFieldPattern, NamePattern, RestPattern } from '../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../syntax/statements.ts';
 
-/** The node that declares a variable's name; the checker reads its type and mutability there. */
+/**
+ * The call of an async function, which the function's name denotes before a `.` inside it (§7):
+ * the owner of a hidden variable that the function's entry fills with its call's handle.
+ */
+interface OwnCall {
+  readonly kind: 'OwnCall';
+  readonly function: FunctionDeclaration | Lambda;
+}
+
+/**
+ * What declares a variable's name, where the checker reads its type and mutability: a node, or an
+ * async function's own call.
+ */
 export type VariableOwner =
+  | OwnCall
   | VariableDeclaration
   | ExternConstantDeclaration
   | Parameter
@@ -152,6 +165,14 @@ export interface Bindings {
   readonly overloadsOf: (functions: FunctionsEntity) => readonly FunctionDeclaration[];
   /** The variants a bare name may denote; the expected type picks one (§3.11). */
   readonly candidatesOf: (variants: VariantsEntity) => readonly VariantEntity[];
+  /**
+   * The variable the async function `node` of `module` holds its own call in (§7); undefined
+   * unless its name before a `.` reads it.
+   */
+  readonly ownCallOf: (
+    module: ModuleId,
+    node: FunctionDeclaration | Lambda,
+  ) => VariableEntity | undefined;
   /**
    * What `name` denotes at the top level of `module`: a declaration or import of its own, or the
    * prelude's. Operators and method calls look up their function's name this way (§3.7, §3.9),

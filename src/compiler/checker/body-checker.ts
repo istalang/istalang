@@ -33,7 +33,7 @@ import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
 import { inferLambda } from './closures/lambdas.ts';
-import { OwnCalls } from './closures/own-calls.ts';
+import { declareOwnCall } from './closures/own-calls.ts';
 import { blockTail, ReturnScope } from './closures/returns.ts';
 import type { Accepts, BodyContext, CheckerContext, Enclosing, Returns } from './context.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
@@ -84,7 +84,6 @@ export class BodyChecker implements BodyContext {
   readonly patterns = new CheckedPatterns();
   readonly chains = new OptionalChains();
   readonly fieldReads = new FieldReads();
-  readonly ownCalls = new OwnCalls();
   readonly labels = new LabelTargets();
   readonly #types = new Map<Expression, Type>();
   readonly #resolved = new Map<ResolvedSite, ResolvedCall>();
@@ -121,6 +120,7 @@ export class BodyChecker implements BodyContext {
     for (const parameter of parameters) {
       this.variables.declareParameter(parameter);
     }
+    declareOwnCall(this);
     const tail = this.block(body, this.#result.declared);
     return this.#finished([body], this.#result.result(this, blockTail(body, tail)));
   }
@@ -288,7 +288,6 @@ export class BodyChecker implements BodyContext {
       chains,
       fieldReads,
       functions,
-      ownCalls,
       labels,
     } = this;
     return {
@@ -312,8 +311,6 @@ export class BodyChecker implements BodyContext {
       patternOf: (pattern) => patterns.patternOf(pattern),
       chainOf: (link) => chains.chainOf(link),
       fieldReadOf: (access) => fieldReads.of(access),
-      ownCallReadAt: (name) => ownCalls.readAt(name),
-      ownCallOf: (owner) => ownCalls.variableOf(owner),
       labels,
       result,
     };

@@ -21,7 +21,6 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type ChainStep, chainStepOf, isOptionalStep } from '../../syntax/expressions/chains.ts';
 import type { Binary, Expression, Unwrap } from '../../syntax/expressions/index.ts';
 import type { ChainLink } from '../check.ts';
-import { checkOwnCall } from '../closures/own-calls.ts';
 import type { BodyContext, Chains } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { preludeCall } from '../resolution/implicit.ts';
@@ -54,11 +53,7 @@ export class OptionalChains implements Chains {
     if (step === undefined) {
       unreachable(`A ${link.kind} is no link; the checker asked the wrong node.`);
     }
-    const ownCall =
-      step.operator === '.' || step.operator === '?.'
-        ? checkOwnCall(context, step.target)
-        : undefined;
-    const targetType = ownCall ?? context.expression(step.target);
+    const targetType = context.expression(step.target);
     if (!this.continues(link)) {
       return targetType;
     }

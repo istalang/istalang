@@ -14,10 +14,14 @@
  *
  * During local binding, a named import is a placeholder: which entity it names is known only once
  * the program is linked.
+ *
+ * A function's scope knows its function, so a name before a `.` can find the enclosing function it
+ * names, whose call it denotes (§7).
  */
 
 import { primitiveNames } from '../../language/primitives.ts';
-import type { NamedImport } from '../syntax/declarations.ts';
+import type { FunctionDeclaration, NamedImport } from '../syntax/declarations.ts';
+import type { Lambda } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { Entity, PrimitiveEntity } from './entities.ts';
 
@@ -32,16 +36,21 @@ export type LocalEntity = Entity | ImportPlaceholder;
 
 export type Miss = 'pending' | 'ended' | 'underOr';
 
+type ScopedFunction = FunctionDeclaration | Lambda;
+
 export class Scope {
   readonly #defined = new Map<string, LocalEntity>();
   readonly #misses = new Map<string, Miss>();
   readonly #parent: Scope | undefined;
   /** A block, the module or the universe receives the names of nested scopes that end. */
   readonly #isBlock: boolean;
+  /** The function whose parameters and body this scope holds. */
+  readonly #function: ScopedFunction | undefined;
 
-  private constructor(parent: Scope | undefined, isBlock: boolean) {
+  private constructor(parent: Scope | undefined, isBlock: boolean, node?: ScopedFunction) {
     this.#parent = parent;
     this.#isBlock = isBlock;
+    this.#function = node;
   }
 
   /** The outermost scope, which has no parent. */
@@ -57,6 +66,19 @@ export class Scope {
   /** A scope for bindings nested in a block: parameters, pattern bindings, loop variables. */
   static nested(parent: Scope): Scope {
     return new Scope(parent, false);
+  }
+
+  /** A scope for a function's parameters, and through them its body. */
+  static ofFunction(parent: Scope, node: ScopedFunction): Scope {
+    return new Scope(parent, false, node);
+  }
+
+  /** The innermost function this scope is inside that is one of `functions`. */
+  enclosingOf(functions: readonly ScopedFunction[]): ScopedFunction | undefined {
+    const own = this.#function;
+    return own !== undefined && functions.includes(own)
+      ? own
+      : this.#parent?.enclosingOf(functions);
   }
 
   lookup(name: string): LocalEntity | undefined {

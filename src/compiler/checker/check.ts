@@ -206,17 +206,6 @@ export interface CheckedBody {
   readonly chainOf: (link: Expression) => ChainLink | undefined;
   /** How the field read `access` reaches its field; asked only of a program checked clean. */
   readonly fieldReadOf: (access: MemberAccess) => FieldRead;
-  /**
-   * The hidden variable holding the handle of the call an async function's own name reads where
-   * it stands before a `.` (§7), such as `worker` in `worker.disposing()`; undefined for any other
-   * expression.
-   */
-  readonly ownCallReadAt: (name: Expression) => VariableEntity | undefined;
-  /**
-   * The hidden variable `owner`, a function of this body, takes its own call's handle into at its
-   * entry, when its name reads that call (§7).
-   */
-  readonly ownCallOf: (owner: NestedFunction) => VariableEntity | undefined;
   /** What each `break`, `continue` and `hold(name)` of the body names (§3.4, §4). */
   readonly labels: LabelResolution;
   /** What the body produces: `T` for an async function returning `Future<T>`. */

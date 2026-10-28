@@ -1,5 +1,5 @@
 /**
- * Diagnostics of binding names, codes 4000–4999 (§2, §3.1, §3.4, §3.11, §3.13, §10).
+ * Diagnostics of binding names, codes 4000–4999 (§2, §3.1, §3.4, §3.11, §3.13, §7, §10).
  *
  * A name that resolves to nothing gets the most specific explanation the binder can give: it was
  * declared later in its block, in a block that has ended, or on one side of an `or`. Only when none
@@ -76,5 +76,14 @@ export const binderDiagnostics = defineDiagnostics('binder', {
     code: 4015,
     message: (module: string) =>
       `Only a test module, a file ending in '${testModuleSuffix}', may import '${module}'.`,
+  },
+  notOwnCall: {
+    code: 4016,
+    message: (name: string) =>
+      `Before a '.', '${name}' is the call of an enclosing async fn named '${name}', and there is none.`,
+  },
+  mainNeverDisposed: {
+    code: 4017,
+    message: () => "Nothing holds the call of 'main', so 'main.disposing()' would never resolve.",
   },
 });
