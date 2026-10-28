@@ -14,7 +14,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { brokenText } from '../../../test/broken.ts';
 import { runPrograms } from '../../../test/corpus/programs.ts';
-import { specCode, specExamples } from '../../../test/corpus/spec-examples.ts';
+import { type SpecExample, specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import {
   reportedIn,
@@ -278,70 +278,108 @@ describe('top-level constants defined through themselves', () => {
   });
 });
 
-/** The doc section whose module examples make one program. */
+/** The spec section whose module examples make one program. */
 const programSection = '12.1 Purchase approval';
 
-/** Doc module examples that don't check clean yet, as `document › section #n`. */
-const uncheckedExamples = new Set([
-  'docs/spec.md › 3.1 Structs #1',
-  'docs/spec.md › 3.3 Functions #1',
-  'docs/spec.md › 3.6 Extern declarations #1',
-  'docs/spec.md › 3.7 Methods and references #2',
-  'docs/spec.md › 3.7 Methods and references #3',
-  'docs/spec.md › 3.7 Methods and references #4',
-  'docs/spec.md › 3.8 Prelude and standard library #1',
-  'docs/spec.md › 3.9 Operator overloading #1',
-  'docs/spec.md › 3.10 Traits #1',
-  'docs/spec.md › 3.13 Modules #1',
-  'docs/spec.md › 3.14 Function types and closures #2',
-  'docs/spec.md › 5. Persistence #1',
-  'docs/spec.md › 6. Slots and inboxes #1',
-  'docs/spec.md › 7. Lifetimes and disposal #1',
-  'docs/spec.md › 7. Lifetimes and disposal #2',
-  'docs/spec.md › 7. Lifetimes and disposal #3',
-  'docs/spec.md › 7. Lifetimes and disposal #4',
-  'docs/spec.md › 9. Program structure #1',
-  'docs/spec.md › 10. Testing #1',
-  'docs/spec.md › 12.2 Approver side #1',
-  'docs/spec.md › 12.3 Broadcast with expiry #1',
-  'docs/guide.md › Level 0: what it is #1',
-  'docs/guide.md › 2.1 A whole program #1',
-  'docs/guide.md › 2.5 Generics, traits, operators (§3.5, §3.9, §3.10) #1',
-  'docs/guide.md › 2.7 Errors (§3.12) #1',
-  'docs/guide.md › 2.9 Concurrency (§6, §8, §9) #1',
-  'docs/guide.md › 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11) #1',
-  'docs/guide.md › 2.12 Testing (§10) #1',
+/**
+ * Doc module examples that don't check clean yet, keyed by `document › section #n`, which survives
+ * edits above them, each with the codes it reports, so a new kind of report fails the test as a
+ * report in a clean example does.
+ */
+const uncheckedExamples = new Map<string, readonly number[]>([
+  ['docs/spec.md › 3.1 Structs #1', [4000]],
+  ['docs/spec.md › 3.3 Functions #1', [2001, 4000, 5001]],
+  ['docs/spec.md › 3.6 Extern declarations #1', [4000]],
+  ['docs/spec.md › 3.7 Methods and references #2', [4000, 5103]],
+  ['docs/spec.md › 3.7 Methods and references #3', [2001, 4000]],
+  ['docs/spec.md › 3.7 Methods and references #4', [4000, 5026]],
+  ['docs/spec.md › 3.8 Prelude and standard library #1', [4008, 5101]],
+  ['docs/spec.md › 3.9 Operator overloading #1', [4000]],
+  ['docs/spec.md › 3.10 Traits #1', [2001, 4008, 5001]],
+  ['docs/spec.md › 3.13 Modules #1', [2001, 3000, 5001]],
+  ['docs/spec.md › 3.14 Function types and closures #2', [5105]],
+  ['docs/spec.md › 5. Persistence #1', [4000, 5103]],
+  ['docs/spec.md › 6. Slots and inboxes #1', [4000, 5100]],
+  ['docs/spec.md › 7. Lifetimes and disposal #1', [4008]],
+  ['docs/spec.md › 7. Lifetimes and disposal #2', [4000, 5103]],
+  ['docs/spec.md › 7. Lifetimes and disposal #3', [4000]],
+  ['docs/spec.md › 7. Lifetimes and disposal #4', [4000, 5009, 5100]],
+  ['docs/spec.md › 9. Program structure #1', [4000]],
+  ['docs/spec.md › 10. Testing #1', [4000]],
+  ['docs/spec.md › 12.2 Approver side #1', [4000]],
+  ['docs/spec.md › 12.3 Broadcast with expiry #1', [4000]],
+  ['docs/guide.md › Level 0: what it is #1', [4000, 5103]],
+  ['docs/guide.md › 2.1 A whole program #1', [4000]],
+  ['docs/guide.md › 2.5 Generics, traits, operators (§3.5, §3.9, §3.10) #1', [4000]],
+  ['docs/guide.md › 2.7 Errors (§3.12) #1', [4000]],
+  ['docs/guide.md › 2.9 Concurrency (§6, §8, §9) #1', [5022, 5026, 5103]],
+  ['docs/guide.md › 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11) #1', [3000]],
+  ['docs/guide.md › 2.12 Testing (§10) #1', [4000]],
 ]);
 
-/** Each doc module example to check, named by its section and place, and §12.1's joined. */
-function checkedExamples(): readonly { readonly key: string; readonly text: string }[] {
+/** A doc module example to check, the line its code starts on, and its key in `uncheckedExamples`. */
+interface CheckedExample {
+  readonly key: string;
+  readonly document: string;
+  readonly line: number;
+  readonly text: string;
+}
+
+function isProgramExample(example: SpecExample): boolean {
+  return example.document === 'docs/spec.md' && example.section === programSection;
+}
+
+/** Each doc module example to check, and §12.1's joined as one program. */
+function checkedExamples(): readonly CheckedExample[] {
   const modules = specExamples.filter(
-    (example) => example.form === 'module' && !example.elided && example.section !== programSection,
+    (example) => example.form === 'module' && !example.elided && !isProgramExample(example),
   );
   const bySection = Map.groupBy(modules, (example) => `${example.document} › ${example.section}`);
+  const program = specExamples.filter(isProgramExample);
   return [
     ...[...bySection].flatMap(([section, examples]) =>
-      examples.map((example, index) => ({ key: `${section} #${index + 1}`, text: example.code })),
+      examples.map((example, index) => ({
+        key: `${section} #${index + 1}`,
+        document: example.document,
+        line: example.line,
+        text: example.code,
+      })),
     ),
-    { key: `docs/spec.md › ${programSection}`, text: specCode(programSection).join('\n') },
+    {
+      key: `docs/spec.md › ${programSection}`,
+      document: 'docs/spec.md',
+      line: program[0]?.line ?? 0,
+      text: program.map(({ code }) => code).join('\n'),
+    },
   ];
+}
+
+/** The codes `text` reports, each once, in order. */
+function reportedCodes(text: string): readonly number[] {
+  return [...new Set(reported(text).codes)].sort((left, right) => left - right);
 }
 
 describe('doc examples', () => {
   const examples = checkedExamples();
-  const isUnchecked = ({ key }: { readonly key: string }) => uncheckedExamples.has(key);
-
-  it.each(examples.filter((example) => !isUnchecked(example)))('check clean: $key', ({ text }) => {
-    expect(reported(text)).toEqual(reportedNothing);
+  const unchecked = examples.flatMap((example) => {
+    const codes = uncheckedExamples.get(example.key);
+    return codes === undefined ? [] : [{ ...example, codes }];
   });
 
-  it.each(examples.filter(isUnchecked))('still report something, as listed: $key', ({ text }) => {
-    expect(reported(text)).not.toEqual(reportedNothing);
+  it.each(examples.filter(({ key }) => !uncheckedExamples.has(key)))(
+    'check clean: $document:$line',
+    ({ text }) => {
+      expect(reported(text)).toEqual(reportedNothing);
+    },
+  );
+
+  it.each(unchecked)('report only the codes listed: $document:$line', ({ text, codes }) => {
+    expect(reportedCodes(text)).toEqual(codes);
   });
 
   it('list only examples that exist', () => {
     const keys = new Set(examples.map(({ key }) => key));
-    expect([...uncheckedExamples].filter((key) => !keys.has(key))).toEqual([]);
+    expect([...uncheckedExamples.keys()].filter((key) => !keys.has(key))).toEqual([]);
   });
 });
 
