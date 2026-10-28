@@ -27,14 +27,12 @@ import type { Disposal } from '../check.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostExtern, isHostType } from '../host-externs.ts';
-import { callMade } from '../resolution/calls-made.ts';
 import { callCandidates, namedInModule } from '../resolution/candidates.ts';
-import { chooseSilently } from '../resolution/silent-choice.ts';
+import { silentCall } from '../resolution/silent-choice.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../resolved-call.ts';
 import { knownConstraints, requiredFunctions } from '../traits/constraints.ts';
 import { type NominalType, sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { searchSite } from '../use-site.ts';
 
 const none: Disposal = { kind: 'none' };
 
@@ -123,10 +121,7 @@ function declaredDispose(checker: CheckerContext, type: NominalType): FunctionCa
     (candidate) =>
       candidate.requirement === undefined && isDisposeFunction(checker, candidate.declaration),
   );
-  const chosen = chooseSilently(searchSite(checker), candidates, [{ type, passing: 'value' }]);
-  const call =
-    chosen === undefined ? undefined : callMade(chosen.application, chosen.instantiation);
-  return call?.kind === 'function' ? call : undefined;
+  return silentCall(checker, candidates, [{ type, passing: 'value' }]);
 }
 
 /**

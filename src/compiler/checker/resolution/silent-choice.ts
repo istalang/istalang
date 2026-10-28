@@ -1,46 +1,89 @@
 /**
- * Choosing a call no written call stands for (§3.9, §3.10): one function among candidates, for the
- * arguments' types, instantiated, with nothing reported, since there is no call written to point
- * at. Each caller says what failing means: a call the language makes for a construct reports the
- * construct (implicit.ts), while finding a type's `dispose` simply finds nothing.
+ * Calls the toolchain makes on its own to plain functions it knows (§3.9, §3.10), with no written
+ * call to report at: a type's `dispose` (rules/disposal.ts), a json-module helper a codec calls
+ * (rules/json-forms/), or the defaults a struct literal leaves fields to
+ * (expressions/literal-fields.ts). Each is chosen, instantiated and made as a written call is
+ * (choice.ts, conformance.ts, calls-made.ts), its constraints' witnesses found as anywhere, but
+ * nothing is reported: failing gives undefined, and each caller says what that means.
+ *
+ * - The candidates are plain functions, never a type parameter's requirement, so the call made is
+ *   always a function call.
+ * - A call given its type arguments leaves every argument for the chosen function to decide, so
+ *   candidates are chosen per arity, each with as many arguments as it takes.
  */
 
-import { substitute } from '../types/substitution.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { CheckerContext } from '../context.ts';
+import type { FunctionCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
-import { silent, type UseSite } from '../use-site.ts';
+import { searchSite } from '../use-site.ts';
 import type { CallArgument } from './call-arguments.ts';
+import { callMade } from './calls-made.ts';
 import type { Candidate } from './candidates.ts';
 import { type Application, choose } from './choice.ts';
-import { type Instantiation, instantiate } from './conformance.ts';
+import { instantiate } from './conformance.ts';
 
-/** A call chosen and instantiated: the candidate it applies, how, and the type it gives. */
-export interface SilentChoice {
-  readonly application: Application;
-  readonly instantiation: Instantiation;
-  readonly result: Type;
+/**
+ * The call to the one function of `candidates` taking `callArguments`; undefined when none or
+ * several do, or a constraint isn't met.
+ */
+export function silentCall(
+  checker: CheckerContext,
+  candidates: readonly Candidate[],
+  callArguments: readonly CallArgument[],
+): FunctionCall | undefined {
+  const choice = choose(checker, candidates, callArguments, undefined);
+  return choice.kind === 'chosen' ? functionCallOf(checker, choice.application) : undefined;
 }
 
 /**
- * The one function of `candidates` taking `callArguments`, instantiated at `site` for `expected`;
- * undefined when none or several do, or its instantiation fails.
+ * The call to one of `candidates` with `typeArguments`; undefined when none takes them, several
+ * do, or a constraint isn't met.
  */
-export function chooseSilently(
-  site: UseSite,
+export function callWithTypes(
+  checker: CheckerContext,
   candidates: readonly Candidate[],
-  callArguments: readonly CallArgument[],
-  expected?: Type,
-): SilentChoice | undefined {
-  const choice = choose(site.checker, candidates, callArguments, undefined);
-  if (choice.kind !== 'chosen') {
+  typeArguments: readonly Type[],
+): FunctionCall | undefined {
+  const written = typeArguments.length === 0 ? undefined : typeArguments;
+  const byArity = new Map<number, Candidate[]>();
+  for (const candidate of candidates) {
+    const arity = checker.parametersOf(candidate.declaration).length;
+    const group = byArity.get(arity) ?? [];
+    group.push(candidate);
+    byArity.set(arity, group);
+  }
+  const applications: Application[] = [];
+  for (const [arity, group] of byArity) {
+    const decided = Array.from({ length: arity }, () => ({
+      type: undefined,
+      passing: 'value' as const,
+    }));
+    const choice = choose(checker, group, decided, written);
+    if (choice.kind === 'several') {
+      return undefined;
+    }
+    if (choice.kind === 'chosen') {
+      applications.push(choice.application);
+    }
+  }
+  const [only] = applications;
+  return applications.length === 1 && only !== undefined
+    ? functionCallOf(checker, only)
+    : undefined;
+}
+
+/** The call `application` makes, instantiated; undefined when a constraint isn't met. */
+function functionCallOf(
+  checker: CheckerContext,
+  application: Application,
+): FunctionCall | undefined {
+  const instantiation = instantiate(searchSite(checker), application, undefined);
+  if (instantiation === undefined) {
     return undefined;
   }
-  const { application } = choice;
-  const instantiation = instantiate(silent(site), application, expected);
-  return instantiation === undefined
-    ? undefined
-    : {
-        application,
-        instantiation,
-        result: substitute(application.signature.result(), instantiation.substitution),
-      };
+  const call = callMade(application, instantiation);
+  return call.kind === 'function'
+    ? call
+    : unreachable(`The toolchain called '${call.function.name.text}', a requirement, on its own.`);
 }

@@ -27,7 +27,6 @@ import {
   fillsPack,
   type ParameterKey,
   type ParameterSlot,
-  sameType,
   type Type,
 } from '../types/type.ts';
 import { argumentSlotsOf, type Binder, isBinding } from './binding.ts';
@@ -190,30 +189,18 @@ function judgedArgument(
   return fits ? 'fits' : { index, expected: substitute(slot.type, inference.substitution()) };
 }
 
-/** Whether an argument with a type fits `slot`, matching it for inference. */
+/**
+ * Whether an argument with a type fits `slot`, matching it for inference. A reference's type is
+ * its parameter's exactly, as an exact argument's is: no wrap into `T?` reaches the caller's place.
+ */
 function typedFits(
   slot: ParameterSlot,
   argument: CallArgument & { readonly type: Type },
   inference: Inference,
 ): boolean {
-  if (argument.exact === true) {
-    return inference.matchExactly(slot.type, argument.type);
-  }
-  return (
-    inference.match(slot.type, argument.type) && exactWhenReferenced(slot, argument, inference)
-  );
-}
-
-/** A reference's type is its parameter's exactly: no wrap into `T?` reaches the caller's place. */
-function exactWhenReferenced(
-  slot: ParameterSlot,
-  argument: CallArgument,
-  inference: Inference,
-): boolean {
-  if (!isByReference(slot, argument) || argument.type === undefined) {
-    return true;
-  }
-  return sameType(substitute(slot.type, inference.substitution()), argument.type);
+  return argument.exact === true || isByReference(slot, argument)
+    ? inference.matchExactly(slot.type, argument.type)
+    : inference.match(slot.type, argument.type);
 }
 
 /** Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7). */

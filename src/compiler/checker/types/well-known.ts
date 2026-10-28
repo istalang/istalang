@@ -6,6 +6,7 @@
  */
 
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
+import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { errorType, type Type } from './type.ts';
@@ -59,4 +60,14 @@ export function arrayElement(
   type: Type,
 ): Type | undefined {
   return wellKnownArguments(checker, wellKnown.array, type)?.[0];
+}
+
+/** Whether `trait` is the well-known trait `declaration` names. */
+export function isWellKnownTrait(
+  checker: CheckerContext,
+  trait: TraitDeclaration,
+  declaration: WellKnownDeclaration,
+): boolean {
+  const entity = checker.wellKnownEntity(declaration);
+  return entity?.kind === 'type' && entity.declaration === trait;
 }

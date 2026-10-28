@@ -45,7 +45,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
 import { itemField } from '../patterns/struct-items.ts';
-import { callWithTypes } from '../resolution/typed-call.ts';
+import { callWithTypes } from '../resolution/silent-choice.ts';
 import type { FunctionCall, MadeCall } from '../resolved-call.ts';
 import { constrainArguments, parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';

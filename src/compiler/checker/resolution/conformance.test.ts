@@ -14,7 +14,7 @@ import { checkProgram } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { intType, stringType } from '../types/type.ts';
-import { callWithTypes } from './typed-call.ts';
+import { callWithTypes } from './silent-choice.ts';
 
 const { notConforming } = checkerDiagnostics;
 

@@ -42,7 +42,7 @@ import {
 import { witnessesFor } from '../../resolution/conformance.ts';
 import { declaresWitness } from '../../resolution/declared-witness.ts';
 import { defaultWitness } from '../../resolution/default-witness.ts';
-import { callWithTypes } from '../../resolution/typed-call.ts';
+import { callWithTypes } from '../../resolution/silent-choice.ts';
 import type { FunctionCall, ResolvedCall } from '../../resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { optionalInner } from '../../types/fit.ts';

@@ -28,8 +28,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - check for or choose a declared witness for a trait requirement → `declaresWitness`, `chooseWitness` (`src/compiler/checker/resolution/declared-witness.ts`)
 - resolve a type's `Default` witness (`default()`) → `defaultWitness`, `resolveDefault` (`src/compiler/checker/resolution/default-witness.ts`)
 - build a `ResolvedCall` (`function` or `requirement`) from an `Application` and `Instantiation` → `callMade` (`src/compiler/checker/resolution/calls-made.ts`)
-- choose and instantiate a call silently (no written call site) → `chooseSilently` (`src/compiler/checker/resolution/silent-choice.ts`)
-- resolve a toolchain-known generic call by explicit `typeArguments` → `callWithTypes` (`src/compiler/checker/resolution/typed-call.ts`)
+- make a call the toolchain makes on its own to a plain function (no written call site), by its arguments or by explicit `typeArguments` → `silentCall`, `callWithTypes` (`src/compiler/checker/resolution/silent-choice.ts`)
 - resolve and record an implicit construct call → `implicitCall` (`src/compiler/checker/resolution/implicit.ts`)
 - resolve an implicit `compare` or `includes` operator call → `implicitOperatorCall` (`src/compiler/checker/resolution/implicit.ts`)
 - resolve and record a prelude-owned helper call (panics if absent) → `preludeCall`, `preludeCandidates` (`src/compiler/checker/resolution/implicit.ts`)
@@ -49,7 +48,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 
 - Every resolved call is built through `callMade` (`src/compiler/checker/resolution/calls-made.ts`).
 - Extensible protocol calls (`iterate`, `setIndex`, `compare`, `includes`, `toString`) use `implicitCall`; prelude-owned helpers use `preludeCall`.
-- Silent resolution without a written call site uses `chooseSilently` (`silent-choice.ts`), or `callWithTypes` (`typed-call.ts`) when type arguments are given.
+- Silent resolution without a written call site uses `silentCall`, or `callWithTypes` when type arguments are given (`silent-choice.ts`).
 
 ## Recipes
 

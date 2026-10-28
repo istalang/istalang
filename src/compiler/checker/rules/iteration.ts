@@ -13,7 +13,7 @@
  *   `(key, value)`, so `for key, value in m:` works directly.
  */
 
-import { collectionFunctions, wellKnown } from '../../../language/well-known.ts';
+import { collectionFunctions } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Comprehension, Expression } from '../../syntax/expressions/index.ts';
 import type { For } from '../../syntax/statements.ts';
@@ -24,9 +24,9 @@ import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall } from '../resolution/implicit.ts';
+import { optionalInner } from '../types/fit.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
 
 /** How each iteration in one body runs. */
 export class Iterations implements IterationRecord {
@@ -98,7 +98,7 @@ export function checkLoopOver(context: BodyContext, node: For | Comprehension): 
 /** The item a cursor of `type` gives: `T` of `fn() -> T?`; undefined for any other type. */
 function cursorItem(checker: CheckerContext, type: Type): Type | undefined {
   return type.kind === 'function' && type.parameters.length === 0 && !type.isAsync
-    ? wellKnownArguments(checker, wellKnown.optional, type.result)?.[0]
+    ? optionalInner(type.result, checker.optionalEntity)
     : undefined;
 }
 

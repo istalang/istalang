@@ -42,10 +42,11 @@ import {
   requiredFieldType,
   requiredFunctions,
 } from '../traits/constraints.ts';
-import { isSendable, isSendableTrait, isWellKnownTrait } from '../traits/sendable.ts';
+import { isSendable, isSendableTrait } from '../traits/sendable.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { type Constraint, errorType, sameType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { isWellKnownTrait } from '../types/well-known.ts';
 import type { UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import { type Application, signatureOf } from './choice.ts';

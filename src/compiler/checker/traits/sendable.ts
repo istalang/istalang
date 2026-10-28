@@ -19,6 +19,7 @@ import { jsonTraits } from '../json-form.ts';
 import { heldParts } from '../types/held.ts';
 import type { NominalType, Type } from '../types/type.ts';
 import { TypeCycle } from '../types/type-cycle.ts';
+import { isWellKnownTrait } from '../types/well-known.ts';
 import { knownConstraints } from './constraints.ts';
 
 /** The traits a type parameter may be constrained by to be sendable. */
@@ -71,14 +72,4 @@ function nominalSendable(checker: CheckerContext, type: NominalType, deciding: T
 /** Whether `trait` is the prelude's Sendable. */
 export function isSendableTrait(checker: CheckerContext, trait: TraitDeclaration): boolean {
   return isWellKnownTrait(checker, trait, wellKnown.sendable);
-}
-
-/** Whether `trait` is the well-known trait `declaration` names. */
-export function isWellKnownTrait(
-  checker: CheckerContext,
-  trait: TraitDeclaration,
-  declaration: WellKnownDeclaration,
-): boolean {
-  const entity = checker.wellKnownEntity(declaration);
-  return entity?.kind === 'type' && entity.declaration === trait;
 }
