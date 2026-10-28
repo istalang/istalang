@@ -18,33 +18,39 @@
 
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
-import { type ComparisonLink, comparisonLinksOf } from '../../syntax/expressions/comparisons.ts';
+import {
+  type ComparisonLink,
+  comparisonLinkOf,
+  comparisonLinksOf,
+  linkSpan,
+} from '../../syntax/expressions/comparisons.ts';
 import type {
   Binary,
   ChainedComparison,
   Expression,
   Unary,
 } from '../../syntax/expressions/index.ts';
-import { type BinaryMeaning, binaryOperators, isChainingOperator } from '../../syntax/operators.ts';
+import {
+  type BinaryMeaning,
+  binaryOperators,
+  type ImplicitOperator,
+  isImplicitOperator,
+} from '../../syntax/operators.ts';
 import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import {
-  type ImplicitOperand,
-  type ImplicitOperator,
-  implicitOperatorCall,
-  isImplicitOperator,
-} from '../resolution/implicit.ts';
+import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
 import { checkEqualSides } from '../types/equality.ts';
 import { boolType, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { checkNullish } from './optionals.ts';
 
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
-  const { operator } = node;
-  if (isChainingOperator(operator)) {
-    return checkComparisons(context, [{ left: node.left, operator, right: node.right }]);
+  const link = comparisonLinkOf(node);
+  if (link !== undefined) {
+    return checkComparisons(context, [link]);
   }
+  const { operator } = node;
   const { meaning }: { readonly meaning: BinaryMeaning } = binaryOperators[operator];
   if (meaning.kind === 'logic') {
     context.expect(node.left, boolType);
@@ -55,7 +61,7 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
     return checkNullish(context, node, expected);
   }
   if (meaning.kind !== 'call') {
-    unreachable(`'${operator}' is a comparison; isChainingOperator should have matched it.`);
+    unreachable(`'${operator}' is a comparison; comparisonLinkOf should have matched it.`);
   }
   return resolveOperator(context, node, applied(operator, meaning), operandsOf(context, node));
 }
@@ -94,18 +100,13 @@ function checkComparisons(context: BodyContext, links: readonly ComparisonLink[]
       checkLinkCall(context, link, operator, [wrappable(left), wrappable(right)]);
     } else {
       const right = operand(link.right, left.type);
-      checkEqualSides(context, wrappable(left), wrappable(right), linkAt(link));
+      checkEqualSides(context, wrappable(left), wrappable(right), {
+        span: linkSpan(link),
+        operator,
+      });
     }
   }
   return boolType;
-}
-
-/** Where a link stands, for its reports: from its left operand to its right one. */
-function linkAt(link: ComparisonLink): { readonly span: Span; readonly operator: string } {
-  return {
-    span: { start: link.left.span.start, end: link.right.span.end },
-    operator: link.operator,
-  };
 }
 
 /** A link's call, made at its right operand: an ordering's `compare`, or `in`'s `includes`. */
@@ -116,15 +117,15 @@ function checkLinkCall(
   [left, right]: readonly [ImplicitOperand, ImplicitOperand],
 ): void {
   const membership = binaryOperators[operator].meaning.kind === 'membership';
-  const at = linkAt(link);
+  const span = linkSpan(link);
   const result = implicitOperatorCall(context, {
     node: link.right,
-    span: at.span,
+    span,
     operator,
     arguments: membership ? [right, left] : [left, right],
   });
   if (membership && result !== undefined) {
-    expectBool(context, result, at.span);
+    expectBool(context, result, span);
   }
 }
 

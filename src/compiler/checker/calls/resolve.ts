@@ -25,6 +25,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { argumentListText, filledTypes, fitArguments } from '../resolution/argument-fit.ts';
 import { argumentSlotsOf, type BindingFailure } from '../resolution/binding.ts';
 import type { CallArgument, Inapplicability, Passing } from '../resolution/call-arguments.ts';
 import { callMade } from '../resolution/calls-made.ts';
@@ -84,7 +85,11 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
       return complete(context, request, choice.application);
     case 'several':
       context.report(
-        checkerDiagnostics.ambiguousCall(request.site.span, request.name, typesText(written)),
+        checkerDiagnostics.ambiguousCall(
+          request.site.span,
+          request.name,
+          argumentListText(written),
+        ),
       );
       return errorType;
     case 'none': {
@@ -109,16 +114,6 @@ export function callArgumentOf(argument: WrittenArgument): CallArgument {
   return { type, passing, accepts, name: name?.text, isSpread, exact: isSpread === true };
 }
 
-/** The types of written arguments, as a call's argument list reads: `&Stack, int`. */
-function typesText(written: readonly WrittenArgument[]): string {
-  return written
-    .map(({ type, passing }) => {
-      const text = type === undefined ? '_' : typeText(type);
-      return passing === 'reference' ? `&${text}` : text;
-    })
-    .join(', ');
-}
-
 function complete(context: BodyContext, request: CallRequest, application: Application): Type {
   const { site } = request;
   checkDecidedLambdas(context, request.arguments, application);
@@ -135,10 +130,7 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
   fitArguments(
     context,
     request.arguments,
-    request.arguments.map((_, index) => {
-      const slot = slots.get(index);
-      return slot === undefined ? undefined : substitute(slot.type, instantiation.substitution);
-    }),
+    filledTypes(application, instantiation, request.arguments.length),
   );
   const { receiver } = request;
   recordChosen(context, { site, application, instantiation, receiver });
@@ -169,24 +161,6 @@ export function recordChosen(context: BodyContext, chosen: Chosen): void {
   const { site, application, instantiation, receiver } = chosen;
   const call = callMade(application, instantiation);
   context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
-}
-
-/**
- * Fits each argument of a call that takes them to the type it fills, `expected` by argument
- * number, checking first one the function decides. A spread's items fit as they are, with no wrap.
- */
-export function fitArguments(
-  context: BodyContext,
-  written: readonly WrittenArgument[],
-  expected: readonly (Type | undefined)[],
-): void {
-  written.forEach(({ node, type, isSpread }, index) => {
-    const parameter = expected[index];
-    if (parameter !== undefined && isSpread !== true) {
-      const checked = type ?? context.expression(node, parameter);
-      context.fit(checked, parameter, node);
-    }
-  });
 }
 
 /** The report saying why a call's arguments can't fill its one function's parameters (§3.3). */
@@ -264,7 +238,7 @@ function explainNone(
     );
   } else {
     context.report(
-      checkerDiagnostics.noMatchingOverload(site.span, name, typesText(request.arguments)),
+      checkerDiagnostics.noMatchingOverload(site.span, name, argumentListText(request.arguments)),
     );
   }
 }
@@ -325,7 +299,11 @@ export function explain(
       }
       if (context.checker.diagnosticCount(context.module) === before) {
         context.report(
-          checkerDiagnostics.noMatchingOverload(site.span, name, typesText(request.arguments)),
+          checkerDiagnostics.noMatchingOverload(
+            site.span,
+            name,
+            argumentListText(request.arguments),
+          ),
         );
       }
       return;

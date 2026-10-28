@@ -13,10 +13,11 @@
 
 import type { Call, Expression } from '../../syntax/expressions/index.ts';
 import { checkReferencedPlaces } from '../calls/places.ts';
-import { callArgumentOf, explain, fitArguments, type WrittenArgument } from '../calls/resolve.ts';
+import { callArgumentOf, explain, type WrittenArgument } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { takenBy } from '../resolution/applicability.ts';
+import { fitArguments } from '../resolution/argument-fit.ts';
 import { bindArguments } from '../resolution/binding.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, packRestSlot, type Type } from '../types/type.ts';

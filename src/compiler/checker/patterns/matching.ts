@@ -27,7 +27,7 @@ import type { VariantNaming } from '../../binder/entities.ts';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
-import { binaryOperators, type Relation } from '../../syntax/operators.ts';
+import { binaryOperators, isImplicitOperator, type Relation } from '../../syntax/operators.ts';
 import type {
   ArrayPattern,
   CompareFieldPattern,
@@ -40,7 +40,7 @@ import type {
 import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
 import type { BodyContext, PatternRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { implicitOperatorCall, isImplicitOperator, preludeCall } from '../resolution/implicit.ts';
+import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
 import { checkEqualSides, comparable } from '../types/equality.ts';

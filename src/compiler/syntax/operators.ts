@@ -122,6 +122,9 @@ export type ComparisonOperator = BinaryOperatorOf<'order' | 'equality'>;
 /** The operators two or more of which in a row are one chain, as in Python: comparisons and `in`. */
 export type ChainingOperator = BinaryOperatorOf<'order' | 'equality' | 'membership'>;
 
+/** The chaining operators that call a function, `compare` or `includes`, rather than `==`. */
+export type ImplicitOperator = BinaryOperatorOf<'order' | 'membership'>;
+
 /** What a prefix operator that builds a `Unary` node does: calls `function`, or negates a bool. */
 type UnaryMeaning = ReturnType<typeof call> | { readonly kind: 'negation' };
 
@@ -203,6 +206,11 @@ export function isComparisonOperator(kind: string): kind is ComparisonOperator {
 /** Whether an operator joins a chain (`ChainingOperator`). */
 export function isChainingOperator(kind: string): kind is ChainingOperator {
   return isComparisonOperator(kind) || meaningOf(kind) === 'membership';
+}
+
+/** Whether an operator calls `compare` or `includes` (`ImplicitOperator`). */
+export function isImplicitOperator(kind: string): kind is ImplicitOperator {
+  return meaningOf(kind) === 'order' || meaningOf(kind) === 'membership';
 }
 
 function meaningOf(kind: string): BinaryMeaning['kind'] | undefined {

@@ -14,33 +14,29 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Span } from '../../../text/span.ts';
-import { type ComparisonLink, comparisonLinksOf } from '../../syntax/expressions/comparisons.ts';
+import {
+  type ComparisonLink,
+  comparisonLinkOf,
+  comparisonLinksOf,
+  linkSpan,
+} from '../../syntax/expressions/comparisons.ts';
 import type {
   Binary,
   ChainedComparison,
   Expression,
   Unary,
 } from '../../syntax/expressions/index.ts';
-import {
-  binaryOperators,
-  isChainingOperator,
-  type Relation,
-  unaryOperators,
-} from '../../syntax/operators.ts';
+import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCallAt, emitFunctionCall } from '../emit-call.ts';
 import { lowerNullish } from './nullish.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
-  const { operator } = node;
-  if (isChainingOperator(operator)) {
-    return compared(
-      context,
-      { left: node.left, operator, right: node.right },
-      operands(context, node),
-    );
+  const link = comparisonLinkOf(node);
+  if (link !== undefined) {
+    return compared(context, link, operands(context, node));
   }
-  const { meaning } = binaryOperators[operator];
+  const { meaning } = binaryOperators[node.operator];
   if (meaning.kind === 'logic') {
     return shortCircuit(context, node, meaning.rightWhen);
   }
@@ -86,7 +82,7 @@ function compared(
   [left, right]: readonly [Register, Register],
 ): Register {
   const { meaning } = binaryOperators[link.operator];
-  const span = { start: link.left.span.start, end: link.right.span.end };
+  const span = linkSpan(link);
   if (meaning.kind === 'equality') {
     return equal(context, span, [left, right], meaning.negated);
   }

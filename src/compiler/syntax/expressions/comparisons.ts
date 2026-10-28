@@ -1,10 +1,12 @@
 /**
- * A chained comparison read as its links (§4): `a < b <= c` compares `a` with `b`, then `b` with
- * `c`. The checker and lowering both walk these, so the pairing has one home.
+ * A comparison read as its links (§4): `a < b <= c` compares `a` with `b`, then `b` with `c`, and
+ * a single `a < b` is one link. The checker and lowering both walk these, so the pairing has one
+ * home.
  */
 
-import type { ChainingOperator } from '../operators.ts';
-import type { ChainedComparison, Expression } from './index.ts';
+import type { Span } from '../../../text/span.ts';
+import { type ChainingOperator, isChainingOperator } from '../operators.ts';
+import type { Binary, ChainedComparison, Expression } from './index.ts';
 
 /** One comparison of a chain: an operand, the operator after it, and the operand after that. */
 export interface ComparisonLink {
@@ -19,4 +21,15 @@ export function comparisonLinksOf(chain: ChainedComparison): readonly Comparison
     const [left, right] = [chain.operands[index], chain.operands[index + 1]];
     return left === undefined || right === undefined ? [] : [{ left, operator, right }];
   });
+}
+
+/** A binary's one comparison when its operator chains (`a < b`, `x in c`); undefined otherwise. */
+export function comparisonLinkOf(node: Binary): ComparisonLink | undefined {
+  const { left, operator, right } = node;
+  return isChainingOperator(operator) ? { left, operator, right } : undefined;
+}
+
+/** Where a link stands: from its left operand to its right one. */
+export function linkSpan(link: ComparisonLink): Span {
+  return { start: link.left.span.start, end: link.right.span.end };
 }

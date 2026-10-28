@@ -24,7 +24,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import { binaryOperators, type ChainingOperator } from '../../syntax/operators.ts';
+import { binaryOperators, type ImplicitOperator } from '../../syntax/operators.ts';
 import type { BodyContext, ImplicitRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
@@ -32,7 +32,7 @@ import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
-import { argumentSlotsOf } from './binding.ts';
+import { argumentListText, filledTypes, fitArguments } from './argument-fit.ts';
 import type { CallArgument } from './call-arguments.ts';
 import { callMade } from './calls-made.ts';
 import { type Candidate, topLevelCandidates } from './candidates.ts';
@@ -79,18 +79,6 @@ export interface ImplicitRequest {
 export interface ImplicitOperand {
   readonly type: Type;
   readonly node: Expression | undefined;
-}
-
-/** A comparison or membership operator that calls a function (`compare` or `includes`). */
-export type ImplicitOperator = {
-  [Operator in ChainingOperator]: (typeof binaryOperators)[Operator]['meaning']['kind'] extends 'equality'
-    ? never
-    : Operator;
-}[ChainingOperator];
-
-/** Whether `operator` calls an implicit function (`compare` or `includes`) rather than `==`. */
-export function isImplicitOperator(operator: ChainingOperator): operator is ImplicitOperator {
-  return binaryOperators[operator].meaning.kind !== 'equality';
 }
 
 /** An operator call (`compare` or `includes`) recorded as an implicit call at `node`. */
@@ -169,10 +157,9 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
       request.operator ??
       request.candidates[0]?.declaration.name.text ??
       unreachable('An ambiguous implicit call has at least two candidates.');
-    const types = request.arguments
-      .map(({ type }) => (type === undefined ? '_' : typeText(type)))
-      .join(', ');
-    context.report(checkerDiagnostics.ambiguousCall(span, name, types));
+    context.report(
+      checkerDiagnostics.ambiguousCall(span, name, argumentListText(request.arguments)),
+    );
     return undefined;
   }
   if (choice.kind === 'none') {
@@ -185,13 +172,11 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
   if (instantiation === undefined) {
     return undefined;
   }
-  const slots = argumentSlotsOf(application.signature.parameters, application.binding);
-  for (const [index, argument] of request.arguments.entries()) {
-    const slot = slots.get(index);
-    if (argument.node !== undefined && argument.type !== undefined && slot !== undefined) {
-      context.fit(argument.type, substitute(slot.type, instantiation.substitution), argument.node);
-    }
-  }
+  fitArguments(
+    context,
+    request.arguments,
+    filledTypes(application, instantiation, request.arguments.length),
+  );
   const call = callMade(application, instantiation);
   context.implicit.record(request.node, request.role, call);
   return substitute(application.signature.result(), instantiation.substitution);
