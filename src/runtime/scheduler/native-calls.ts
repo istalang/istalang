@@ -10,9 +10,9 @@
  * resources through the instance's heap (§7).
  */
 
+import { namedTypeOf } from '../../definition/declared-values.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
-import type { FunctionId, TypeId } from '../../definition/operands.ts';
-import type { TypeReference } from '../../definition/types.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import { closureOf, handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { passedValues, writeReference } from '../interpreter/machine.ts';
@@ -66,8 +66,8 @@ export class NativeCalls {
       native(values, {
         ...this.#segment,
         name: entry.name,
-        resultType: declared === undefined ? undefined : namedType(declared.result),
-        typeArguments: declared?.typeArguments.map(namedType) ?? [],
+        resultType: declared === undefined ? undefined : namedTypeOf(declared.result),
+        typeArguments: declared?.typeArguments.map(namedTypeOf) ?? [],
         write: (position, value) => {
           writeReference(heap, referenceAt(contents, position), value);
         },
@@ -83,11 +83,6 @@ export class NativeCalls {
       unreachable(`No function ${callee}; loading checks every index.`)
     );
   }
-}
-
-/** The type entry `type` names, if it is a named type. */
-function namedType(type: TypeReference): TypeId | undefined {
-  return type.kind === 'named' ? type.type : undefined;
 }
 
 /** The reference a native's argument `position` was passed by `&`. */

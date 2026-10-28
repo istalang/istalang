@@ -15,12 +15,14 @@ import { isComposite, type Value } from './values.ts';
 /** Fields given by name, as a struct or a variant is built. */
 export type NamedFields = Readonly<Record<string, Value>>;
 
-/** The type entry `reference` names. */
+/** The type entry `reference` names; undefined when it names none, as a primitive doesn't. */
+export function namedTypeOf(reference: TypeReference | undefined): TypeId | undefined {
+  return reference?.kind === 'named' ? reference.type : undefined;
+}
+
+/** The type entry `reference` names, which it must. */
 export function namedType(reference: TypeReference | undefined): TypeId {
-  if (reference?.kind !== 'named') {
-    unreachable('Expected a named type.');
-  }
-  return reference.type;
+  return namedTypeOf(reference) ?? unreachable('Expected a named type.');
 }
 
 /** The declared type of field `name` of struct entry `type`. */
