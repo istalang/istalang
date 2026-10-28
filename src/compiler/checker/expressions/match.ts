@@ -18,7 +18,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';
 import { checkPattern } from '../patterns/matching.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
-import type { Accepts } from '../resolution/choice.ts';
+import type { Accepts } from '../resolution/call-arguments.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { boolType, type Type } from '../types/type.ts';
 

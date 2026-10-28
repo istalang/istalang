@@ -8,8 +8,9 @@
 import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { silent, type UseSite } from '../use-site.ts';
+import type { CallArgument } from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
-import { type Application, type CallArgument, choose } from './choice.ts';
+import { type Application, choose } from './choice.ts';
 import { type Instantiation, instantiate } from './conformance.ts';
 
 /** A call chosen and instantiated: the candidate it applies, how, and the type it gives. */

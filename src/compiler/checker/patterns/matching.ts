@@ -21,11 +21,7 @@
  *   bound, and acts as a guard for exhaustiveness.
  */
 
-import {
-  arrayPatternFunctions,
-  optionalVariants,
-  wellKnown,
-} from '../../../language/well-known.ts';
+import { arrayPatternFunctions, optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { VariantNaming } from '../../binder/entities.ts';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
@@ -56,7 +52,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
+import { arrayElement } from '../types/well-known.ts';
 import { downcastOf } from './downcasts.ts';
 import { bodyScope, type ValuePart } from './parts.ts';
 import type { ArrayPart, Leaf, PatternTests, VariantPart } from './pattern-tests.ts';
@@ -115,7 +111,7 @@ function arrayTest(
   if (part.type.kind === 'error') {
     return undefined;
   }
-  const [items] = wellKnownArguments(context.checker, wellKnown.array, part.type) ?? [];
+  const items = arrayElement(context.checker, part.type);
   if (items === undefined) {
     context.report(checkerDiagnostics.notArrayPattern(node.span, typeText(part.type)));
     return undefined;

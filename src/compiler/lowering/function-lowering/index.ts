@@ -296,7 +296,7 @@ class FunctionLowering implements FunctionContext {
     this.#layout ??= this.frame.parameters.map((parameter) => ({
       parameter,
       elements:
-        parameter.rest === 'pack' ? packElements(this.#concrete(parameter.type)) : undefined,
+        parameter.rest?.kind === 'pack' ? packElements(this.#concrete(parameter.type)) : undefined,
     }));
     return this.#layout;
   }

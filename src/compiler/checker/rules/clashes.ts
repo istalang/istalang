@@ -31,9 +31,10 @@ import {
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import type { RestSlot } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { positionalCounts, type RestSlot } from '../resolution/binding.ts';
+import { positionalCounts } from '../resolution/binding.ts';
 import { signatureOf } from '../resolution/choice.ts';
 import { withoutOptionals } from '../types/fit.ts';
 import type { ParameterKey, Type } from '../types/type.ts';

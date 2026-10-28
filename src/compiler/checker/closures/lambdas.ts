@@ -28,10 +28,11 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
 import { isChangeable } from '../calls/places.ts';
-import type { NestedFunction, SignatureParameter } from '../check.ts';
+import type { NestedFunction, RestSlot, SignatureParameter } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { packRestSlot } from '../resolution/binding.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
@@ -224,8 +225,8 @@ function nestedParameters(
 }
 
 /** What a nested function's parameter collects into: a rest parameter, a pack's tuple (§3.14). */
-function restOf(node: Parameter): 'pack' | undefined {
-  return node.isRest ? 'pack' : undefined;
+function restOf(node: Parameter): RestSlot | undefined {
+  return node.isRest ? packRestSlot : undefined;
 }
 
 /** Whether a nested function's rest may be of type `type`: a pack, or a mistake reported. */

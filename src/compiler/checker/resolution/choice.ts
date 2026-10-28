@@ -19,28 +19,15 @@ import {
   type TypeParameter,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
-import type { RestKind } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
-import { errorType, type Type } from '../types/type.ts';
-import { arrayElement } from '../types/well-known.ts';
+import type { Type } from '../types/type.ts';
 import { type Given, takenBy } from './applicability.ts';
-import { bindArguments, bindValue, packRestSlot, type RestSlot } from './binding.ts';
-import type {
-  Accepts as ArgumentAccepts,
-  CallArgument as ArgumentGiven,
-  Inapplicability,
-  SignatureSlot,
-} from './call-arguments.ts';
+import { bindArguments, bindValue } from './binding.ts';
+import type { CallArgument, Inapplicability, SignatureSlot } from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
-
-// Bounded aliases for `call-arguments.ts` while Wave 1 leaves unowned importers untouched
-// (`context.ts`, `body-checker.ts`, `expressions/{control,names,match,structs,select}.ts`,
-// `resolution/{silent-choice,implicit}.ts`); Wave 2 (`D172`, `D230`) migrates them and deletes these.
-export type Accepts = ArgumentAccepts;
-export type CallArgument = ArgumentGiven;
 
 /**
  * What a candidate takes and gives, with a requirement's trait mapped (traits/constraints.ts).
@@ -93,18 +80,14 @@ export function signatureOf(
         name: isReceiver ? undefined : node.name.text,
         isReceiver,
         hasDefault: node.defaultValue !== undefined,
-        rest: rest === undefined ? undefined : restSlotOf(checker, rest, substituted),
+        rest:
+          rest?.kind === 'array'
+            ? { kind: 'array', item: substitute(rest.item, substitution) }
+            : rest,
       };
     }),
     result: () => substitute(checker.resultOf(declaration), substitution),
   };
-}
-
-/** A rest parameter of `kind` and type `type` as choosing sees it: an array's has its items' type. */
-function restSlotOf(checker: CheckerContext, kind: RestKind, type: Type): RestSlot {
-  return kind === 'pack'
-    ? packRestSlot
-    : { kind: 'array', item: arrayElement(checker, type) ?? errorType };
 }
 
 /** Chooses among `candidates` for `callArguments` and any written type arguments. */

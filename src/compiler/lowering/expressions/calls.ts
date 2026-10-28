@@ -188,7 +188,7 @@ function restKindAt(
   parameterAt: (index: number) => SignatureParameter | undefined,
   index: number,
 ): RestKind {
-  return parameterAt(index)?.rest ?? unreachable(`Spread ${index} fills no rest parameter.`);
+  return parameterAt(index)?.rest?.kind ?? unreachable(`Spread ${index} fills no rest parameter.`);
 }
 
 /**

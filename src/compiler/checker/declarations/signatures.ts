@@ -18,9 +18,10 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
 import { isFieldsFunction } from '../../syntax/field-defaults.ts';
-import type { RestKind, SignatureParameter } from '../check.ts';
+import type { RestSlot, SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { packRestSlot } from '../resolution/binding.ts';
 import { errorType, isPack, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, futureArgument, futureOf } from '../types/well-known.ts';
@@ -62,16 +63,20 @@ export function declaredParameters(
         : defaults.check(defaultValue, declared);
     const type = declared ?? valueType ?? errorType;
     defaults?.declare(node, type);
-    return [{ node, type, reference: writtenByReference(node), rest: restKindOf(node, type) }];
+    return [
+      { node, type, reference: writtenByReference(node), rest: restSlotOf(checker, node, type) },
+    ];
   });
 }
 
-/** What a rest parameter of type `type` collects into: a pack's tuple, or an array. */
-function restKindOf(node: Parameter, type: Type): RestKind | undefined {
+/** What a rest parameter of type `type` collects into: a pack's tuple, or an array of its items. */
+function restSlotOf(checker: CheckerContext, node: Parameter, type: Type): RestSlot | undefined {
   if (!node.isRest) {
     return undefined;
   }
-  return isPack(type) ? 'pack' : 'array';
+  return isPack(type)
+    ? packRestSlot
+    : { kind: 'array', item: arrayElement(checker, type) ?? errorType };
 }
 
 /** Reports what a rest parameter breaks of its rules: last, an array or a pack, no default (§3.3). */

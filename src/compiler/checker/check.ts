@@ -55,12 +55,15 @@ export interface SignatureParameter {
   readonly node: Parameter;
   readonly type: Type;
   readonly reference: boolean;
-  /** For a rest parameter, what it collects into: an array (§3.3), or a pack's tuple (§3.5). */
-  readonly rest: RestKind | undefined;
+  /** For a rest parameter, what it collects into: an array of `item` (§3.3), or a pack's tuple (§3.5). */
+  readonly rest: RestSlot | undefined;
 }
 
+/** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
+export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
+
 /** What a rest parameter collects its arguments into. */
-export type RestKind = 'array' | 'pack';
+export type RestKind = RestSlot['kind'];
 
 /**
  * A lambda or local function as checked (§3.14): its type, its parameters as checked, in order,

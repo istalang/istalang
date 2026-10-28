@@ -5,12 +5,11 @@
  * have; `is` bindings in `c` reach `e` as the binder arranged.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
 import type { Comprehension } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, type Type } from '../types/type.ts';
-import { wellKnownOf } from '../types/well-known.ts';
+import { arrayOf } from '../types/well-known.ts';
 import { expectedArrayItem } from './collections.ts';
 
 export function checkComprehension(
@@ -25,5 +24,5 @@ export function checkComprehension(
   }
   const expectedElement = expectedArrayItem(context, expected);
   const element = context.expect(node.body, expectedElement);
-  return wellKnownOf(checker, wellKnown.array, [expectedElement ?? element]);
+  return arrayOf(checker, expectedElement ?? element);
 }

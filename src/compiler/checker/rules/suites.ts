@@ -16,7 +16,7 @@ import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Type } from '../types/type.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
+import { arrayElement, wellKnownArguments } from '../types/well-known.ts';
 
 /** Checks the suite function `declaration` of `module`. */
 export function checkSuite(
@@ -24,8 +24,7 @@ export function checkSuite(
   module: ModuleId,
   declaration: FunctionDeclaration,
 ): void {
-  const [element] =
-    wellKnownArguments(checker, wellKnown.array, checker.resultOf(declaration)) ?? [];
+  const element = arrayElement(checker, checker.resultOf(declaration));
   const isSuiteResult =
     element?.kind === 'nominal' && element.entity === checker.wellKnownEntity(wellKnown.test);
   const plain =

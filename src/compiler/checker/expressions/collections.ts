@@ -42,7 +42,6 @@ import type { Accepts } from '../resolution/call-arguments.ts';
 import { resolveDefault } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import {
-  acceptedPart,
   agreedAccepts,
   allProducersAccept,
   decidedSoFar,
@@ -159,7 +158,7 @@ export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts 
   const items = agreedAccepts(
     context,
     node.elements.map((element) =>
-      acceptedPart(context, element.kind === 'Spread' ? undefined : element),
+      context.acceptedPart(element.kind === 'Spread' ? undefined : element),
     ),
   );
   if (items === undefined) {
@@ -180,8 +179,8 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
     };
   }
   const entries = node.entries.map((entry) => (entry.kind === 'MapEntry' ? entry : undefined));
-  const keyParts = entries.map((entry) => acceptedPart(context, entry?.key));
-  const valueParts = entries.map((entry) => acceptedPart(context, entry?.value));
+  const keyParts = entries.map((entry) => context.acceptedPart(entry?.key));
+  const valueParts = entries.map((entry) => context.acceptedPart(entry?.value));
   const keysNeed = agreedAccepts(context, keyParts);
   const valuesNeed = agreedAccepts(context, valueParts);
   if (keysNeed === undefined && valuesNeed === undefined) {

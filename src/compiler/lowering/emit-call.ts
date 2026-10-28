@@ -151,7 +151,7 @@ function restParameters(
   items: readonly CollectedItem[],
 ): readonly Register[] {
   const { call, span, declared } = rest;
-  if (declared.rest === 'pack') {
+  if (declared.rest?.kind === 'pack') {
     const type = substitute(declared.type, substitutionOfCall(call));
     return items.flatMap(({ value, isSpread }) =>
       isSpread ? packElementsOf(context, value, { type, span }) : [value],

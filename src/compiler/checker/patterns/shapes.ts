@@ -12,13 +12,12 @@
  *   looked into.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Checker } from '../check.ts';
 import { type FieldMember, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
+import { arrayElement } from '../types/well-known.ts';
 import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 
 /** What shapes read of the checker: a type's fields, variants, and whether it is an `Array`. */
@@ -31,7 +30,7 @@ export const tupleKey = 'tuple';
 /** The constructors of the checker's types. */
 export function signatureOf(checker: ShapeChecker): Signature<Type> {
   return (type) => {
-    const [items] = wellKnownArguments(checker, wellKnown.array, type) ?? [];
+    const items = arrayElement(checker, type);
     if (items !== undefined) {
       return { items };
     }

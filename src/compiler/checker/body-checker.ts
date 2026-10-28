@@ -39,12 +39,12 @@ import { blockTail, ReturnScope } from './closures/returns.ts';
 import type { BodyContext, CheckerContext } from './context.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import { CollectionForms } from './expressions/collections.ts';
-import { acceptsOf, expressionHandlers } from './expressions/expressions.ts';
+import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
 import { OptionalChains } from './expressions/optionals.ts';
 import { LabelTargets } from './flow/labels.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
-import type { Accepts } from './resolution/choice.ts';
+import type { Accepts } from './resolution/call-arguments.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { reportUnmet } from './resolution/trait-objects.ts';
 import type { CallSite, ResolvedCall } from './resolved-call.ts';
@@ -150,6 +150,10 @@ export class BodyChecker implements BodyContext {
 
   accepts(node: Expression): Accepts | undefined {
     return acceptsOf(this, node);
+  }
+
+  acceptedPart(node: Expression | undefined) {
+    return acceptedPartOf(this, node);
   }
 
   inferLambda(node: Expression, parameters: Pick<FunctionType, 'parameters' | 'pack'>): Type {

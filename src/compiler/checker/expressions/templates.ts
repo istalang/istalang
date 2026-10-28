@@ -9,7 +9,7 @@
  *   written call is, so the tag's parameters decide what its values must be.
  */
 
-import { templateFunctions, wellKnown } from '../../../language/well-known.ts';
+import { templateFunctions } from '../../../language/well-known.ts';
 import type { Expression, TemplateLiteral } from '../../syntax/expressions/index.ts';
 import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
 import type { BodyContext } from '../context.ts';
@@ -18,7 +18,7 @@ import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall, preludeCall } from '../resolution/implicit.ts';
 import { sameType, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownOf } from '../types/well-known.ts';
+import { arrayOf } from '../types/well-known.ts';
 
 export function checkTemplate(
   context: BodyContext,
@@ -43,7 +43,7 @@ function join(context: BodyContext, node: TemplateLiteral): void {
     node,
     role: 'join',
     name: templateFunctions.join,
-    arguments: [wellKnownOf(context.checker, wellKnown.array, [stringType]), stringType],
+    arguments: [arrayOf(context.checker, stringType), stringType],
   });
 }
 

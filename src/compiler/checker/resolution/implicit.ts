@@ -33,9 +33,10 @@ import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
 import { argumentSlotsOf } from './binding.ts';
+import type { CallArgument } from './call-arguments.ts';
 import { callMade } from './calls-made.ts';
 import { type Candidate, topLevelCandidates } from './candidates.ts';
-import { type CallArgument, choose } from './choice.ts';
+import { choose } from './choice.ts';
 import { instantiate } from './conformance.ts';
 
 /** The implicit calls of one body, by construct and role. */

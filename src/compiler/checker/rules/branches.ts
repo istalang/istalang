@@ -19,7 +19,6 @@ import { neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import {
   type AcceptedPart,
-  acceptedPart,
   agreedAccepts,
   decidedSoFar,
   type Produced,
@@ -93,6 +92,6 @@ function blockPart(context: BodyContext, block: Block): AcceptedPart {
     return { kind: 'decided', accepts };
   }
   return block.statements.length === 1
-    ? acceptedPart(context, tail)
+    ? context.acceptedPart(tail)
     : { kind: 'typed', type: undefined };
 }

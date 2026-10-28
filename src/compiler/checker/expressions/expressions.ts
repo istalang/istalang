@@ -11,13 +11,27 @@
  *   a type of its own. A part still to be inferred can be anything.
  */
 
+import { wellKnown } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { localFunctionOf } from '../../binder/entities.ts';
 import type { Expression, Reference } from '../../syntax/expressions/index.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import type { BodyContext } from '../context.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
+import type { AcceptedPart } from '../rules/agreement.ts';
 import { blockAccepts } from '../rules/branches.ts';
-import { boolType, errorType, floatType, intType, stringType, type Type } from '../types/type.ts';
+import {
+  boolType,
+  errorType,
+  floatType,
+  intType,
+  stringType,
+  type Type,
+  unitType,
+} from '../types/type.ts';
+import { wellKnownOf } from '../types/well-known.ts';
 import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';
 import {
@@ -153,4 +167,98 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
 export function acceptsOf(context: BodyContext, node: Expression): Accepts | undefined {
   const accepts = handlerOf(acceptsHandlers, node)(context, node);
   return accepts && ((expected, isOpen) => isOpen(expected) || accepts(expected, isOpen));
+}
+
+/** A kind whose value depends on checking or on the expected type. */
+const unknownType = (): undefined => undefined;
+
+// biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
+const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined> = {
+  Identifier: identifierKnownType,
+  IntegerLiteral: () => intType,
+  FloatLiteral: () => floatType,
+  StringLiteral: () => stringType,
+  BooleanLiteral: () => boolType,
+  Parenthesized: (context, node) => knownTypeOf(context, node.expression),
+  Binary: unknownType,
+  Unary: unknownType,
+  Call: unknownType,
+  StructLiteral: unknownType,
+  MemberAccess: unknownType,
+  TupleElement: unknownType,
+  BlockExpression: (context, node) => blockKnownType(context, node.block),
+  If: unknownType,
+  DurationLiteral: (context) => wellKnownOf(context.checker, wellKnown.duration),
+  NoneLiteral: unknownType,
+  ArrayLiteral: unknownType,
+  MapLiteral: unknownType,
+  Comprehension: unknownType,
+  Tuple: (context, node) => tupleKnownType(context, node.elements),
+  Lambda: unknownType,
+  Reference: unknownType,
+  Index: unknownType,
+  Propagate: unknownType,
+  Spawn: unknownType,
+  Unwrap: unknownType,
+  ChainedComparison: unknownType,
+  TemplateLiteral: (_context, node) => (node.tag === undefined ? stringType : undefined),
+  Dereference: unknownType,
+  Await: unknownType,
+  Is: () => boolType,
+  Range: (context) => wellKnownOf(context.checker, wellKnown.range),
+  Match: unknownType,
+  Select: unknownType,
+  Missing: unknownType,
+  Invalid: unknownType,
+};
+// biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/** How `node` takes part in a composite argument's `Accepts` check. */
+export function acceptedPartOf(context: BodyContext, node: Expression | undefined): AcceptedPart {
+  if (node === undefined) {
+    return { kind: 'typed', type: undefined };
+  }
+  const accepts = context.accepts(node);
+  return accepts === undefined
+    ? { kind: 'typed', type: knownTypeOf(context, node) }
+    : { kind: 'decided', accepts };
+}
+
+function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
+  return handlerOf(knownTypeHandlers, node)(context, node);
+}
+
+function blockKnownType(context: BodyContext, block: Block): Type | undefined {
+  const tail = tailExpressionOf(block);
+  return tail !== undefined && block.statements.length === 1
+    ? knownTypeOf(context, tail)
+    : undefined;
+}
+
+function identifierKnownType(context: BodyContext, node: Identifier): Type | undefined {
+  const entity = context.checker.bindings.entityOf(context.module, node);
+  if (entity?.kind !== 'variable' || localFunctionOf(entity) !== undefined) {
+    return undefined;
+  }
+  if (entity.owner.kind === 'ExternConstantDeclaration') {
+    return context.checker.resolveType(context.checker.moduleOf(entity.owner), entity.owner.type);
+  }
+  const type =
+    context.checker.constantNamed(context.module, node)?.type ?? context.variables.typeOf(entity);
+  return type.kind === 'error' ? undefined : type;
+}
+
+function tupleKnownType(context: BodyContext, elements: readonly Expression[]): Type | undefined {
+  if (elements.length === 0) {
+    return unitType;
+  }
+  const types: Type[] = [];
+  for (const element of elements) {
+    const type = knownTypeOf(context, element);
+    if (type === undefined) {
+      return undefined;
+    }
+    types.push(type);
+  }
+  return { kind: 'tuple', elements: types };
 }

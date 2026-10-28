@@ -7,8 +7,9 @@
  */
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { RestSlot } from '../check.ts';
 import type { ParameterSlot, Type } from '../types/type.ts';
-import type { BindingFailure, RestSlot } from './binding.ts';
+import type { BindingFailure } from './binding.ts';
 
 /**
  * A parameter as choosing sees it: its type and passing, its name unless a method's `self`, which
