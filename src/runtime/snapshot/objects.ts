@@ -104,6 +104,12 @@ const futureState = z.discriminatedUnion('kind', [
 
 export type FutureState = z.output<typeof futureState>;
 
+/** A pending watch's condition (§9, §10). */
+export type Watch = Extract<FutureState, { kind: 'watch' }>;
+
+/** A condition only the runtime running a test can tell (§10). */
+export type TestWatch = Exclude<Watch['until'], { kind: 'ended' }>;
+
 /** A heap object schema: `kind` and `id`, plus its own fields. */
 function defineObject<const Kind extends string, Shape extends z.ZodRawShape>(
   kind: Kind,

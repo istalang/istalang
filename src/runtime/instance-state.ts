@@ -64,3 +64,17 @@ export interface Advanced {
   readonly spawned: readonly string[];
   readonly logs: readonly LogRecord[];
 }
+
+/** Where one execution waits: its waypoint, if the program named it, and its source location. */
+export interface WaitingPoint {
+  readonly waypoint: string | undefined;
+  /** `module:line:column`, as a trace names it. */
+  readonly location: string;
+}
+
+/** Where a committed instance stands and where each of its executions waits (§9, §10). */
+export interface Inspection {
+  readonly state: InstanceState;
+  /** Every execution's wait, in the order the executions were created. */
+  readonly waitingAt: readonly WaitingPoint[];
+}

@@ -8,26 +8,12 @@
 
 import type { Definition } from '../../definition/definition.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { InstanceState } from '../instance-state.ts';
+import type { Inspection, WaitingPoint } from '../instance-state.ts';
 import { locationOf } from '../interpreter/trace.ts';
-import type { Frame, HeapObject } from '../snapshot/objects.ts';
+import type { Frame, HeapObject, TestWatch } from '../snapshot/objects.ts';
 import type { Snapshot } from '../snapshot/snapshot.ts';
-import type { TestWatch } from './futures.ts';
 import type { CallerFuture } from './test-world.ts';
 import { stateOf } from './wake.ts';
-
-/** Where one execution waits: its waypoint, if the program named it, and its source location. */
-interface WaitingPoint {
-  readonly waypoint: string | undefined;
-  /** `module:line:column`, as a trace names it. */
-  readonly location: string;
-}
-
-export interface Inspection {
-  readonly state: InstanceState;
-  /** Every execution's wait, in the order the executions were created. */
-  readonly waitingAt: readonly WaitingPoint[];
-}
 
 /** What `snapshot`, an instance of `definition`, says about where it stands and waits. */
 export function inspection(definition: Definition, snapshot: Snapshot): Inspection {

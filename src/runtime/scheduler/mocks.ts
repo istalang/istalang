@@ -171,12 +171,8 @@ interface HeldMock {
 
 /** The mock another instance holds that a call to `target` from `instance` reaches. */
 function relayedMockOf(instance: Instance, target: FunctionId): HeldMock | undefined {
-  const { world } = instance.loaded;
-  if (world === undefined) {
-    return undefined;
-  }
   for (const holder of ancestorsOf(instance.name)) {
-    const mock = world.mockOf(holder, target);
+    const mock = instance.loaded.world.mockOf(holder, target);
     if (mock !== undefined) {
       return { holder, mock };
     }
@@ -187,9 +183,8 @@ function relayedMockOf(instance: Instance, target: FunctionId): HeldMock | undef
 /** Makes `call` to `held`, which another instance answers: its result, a future while it waits. */
 function relayCall(call: CallToMock, held: HeldMock): Value {
   const { instance, startedAt, target } = call;
-  const world = instance.loaded.world ?? unreachable('Only a test world relays calls to mocks.');
   const future = instance.futures.createFilled((id) => `mock:${startedAt}:${id}`);
-  const given = world.answer(held.holder, {
+  const given = instance.loaded.world.answer(held.holder, {
     mock: held.mock,
     arguments: call.values().map((each) => leaving(instance, each)),
     instance: instance.name,

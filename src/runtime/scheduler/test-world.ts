@@ -10,8 +10,10 @@
 
 import type { FunctionId } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
-import type { TestWatch } from './futures.ts';
-import type { Inspection } from './inspect.ts';
+import { unreachable } from '../../structures/unreachable.ts';
+import type { Inspection } from '../instance-state.ts';
+import { Panic } from '../natives.ts';
+import type { TestWatch } from '../snapshot/objects.ts';
 
 /** The future a call to another instance's mock fills: its caller, and the token it named it. */
 export interface CallerFuture {
@@ -52,3 +54,16 @@ export interface TestWorld {
   /** A host payload no other `testing.handle` gives. */
   readonly handlePayload: () => string;
 }
+
+function outsideTest(): never {
+  throw new Panic('Only a test run by ista test reaches other instances (§10).');
+}
+
+/** The world every runtime outside `ista test` runs in: no mocks held elsewhere, no test watches. */
+export const noTestWorld: TestWorld = {
+  mockOf: () => undefined,
+  answer: () => unreachable('No mock is held outside a test world.'),
+  watched: () => undefined,
+  inspect: outsideTest,
+  handlePayload: outsideTest,
+};

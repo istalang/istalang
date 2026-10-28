@@ -29,13 +29,11 @@ import type {
   NativeTesting,
   NativeWeakSide,
 } from '../natives.ts';
-import { Panic } from '../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { Futures } from './futures.ts';
 import { type Heap, handleObject } from './heap.ts';
 import type { Instance } from './instance/index.ts';
 import type { Slots } from './slots.ts';
-import type { TestWorld } from './test-world.ts';
 import type { WeakSide } from './weak-side.ts';
 
 export class NativeCalls {
@@ -199,14 +197,7 @@ function nativeInstancesOf(instance: Instance): NativeInstances {
 
 /** What a test reaches of `instance` and of the world it runs in (§10). */
 function nativeTestingOf(instance: Instance): NativeTesting {
-  /** The world of the test `instance` runs in; a panic outside a test. */
-  const inTest = (): TestWorld => {
-    const { world } = instance.loaded;
-    if (world === undefined) {
-      throw new Panic('Only a test run by ista test reaches other instances (§10).');
-    }
-    return world;
-  };
+  const { world } = instance.loaded;
   return {
     mock: (target, replacement) => {
       const mock = instance.heap.add((id) => ({
@@ -219,11 +210,8 @@ function nativeTestingOf(instance: Instance): NativeTesting {
       return { kind: 'handle', object: mock.id };
     },
     calls: (handle) => instance.heap.of(handleObject(handle), 'mock').calls,
-    inspect: (name) => inTest().inspect(name),
-    watch: (name, until) => {
-      inTest();
-      return instance.futures.createHandle({ kind: 'watch', instance: name, until });
-    },
-    handle: (type) => ({ kind: 'extern', type, payload: inTest().handlePayload() }),
+    inspect: (name) => world.inspect(name),
+    watch: (name, until) => instance.futures.createHandle({ kind: 'watch', instance: name, until }),
+    handle: (type) => ({ kind: 'extern', type, payload: world.handlePayload() }),
   };
 }

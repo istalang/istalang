@@ -8,13 +8,13 @@
 import type { Definition } from '../../definition/definition.ts';
 import { FunctionTable } from '../interpreter/function-table.ts';
 import type { Natives } from '../natives.ts';
-import type { TestWorld } from './test-world.ts';
+import { noTestWorld, type TestWorld } from './test-world.ts';
 
 export interface LoadedDefinition {
   readonly definition: Definition;
   readonly hash: string;
   readonly functions: FunctionTable;
-  readonly world?: TestWorld;
+  readonly world: TestWorld;
 }
 
 /**
@@ -25,10 +25,7 @@ export function loadDefinition(
   definition: Definition,
   hash: string,
   natives: Natives,
-  world?: TestWorld,
+  world: TestWorld = noTestWorld,
 ): LoadedDefinition {
-  const functions = new FunctionTable(definition, natives);
-  return world === undefined
-    ? { definition, hash, functions }
-    : { definition, hash, functions, world };
+  return { definition, hash, functions: new FunctionTable(definition, natives), world };
 }

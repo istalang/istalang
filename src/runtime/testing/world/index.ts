@@ -27,16 +27,11 @@ import type { Value } from '../../../definition/values.ts';
 import { memo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { InstanceGroup } from '../../instance-group.ts';
-import type { LogRecord } from '../../instance-state.ts';
+import type { Inspection, LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';
 import { seedTextOf } from '../../random-seed.ts';
-import type { Answered, TestWatch } from '../../scheduler/futures.ts';
-import {
-  type Inspection,
-  inspection,
-  pendingTestWatches,
-  withdrawnAnswers,
-} from '../../scheduler/inspect.ts';
+import type { Answered } from '../../scheduler/futures.ts';
+import { inspection, pendingTestWatches, withdrawnAnswers } from '../../scheduler/inspect.ts';
 import { storedSnapshot } from '../../scheduler/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
 import { reachingMock } from '../../scheduler/mocks.ts';
@@ -48,6 +43,7 @@ import {
   type SchedulerSeams,
   unstarted,
 } from '../../scheduler/wake.ts';
+import type { TestWatch } from '../../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import { memoryStore } from '../../store.ts';
 import { unmockedExterns } from './test-host.ts';

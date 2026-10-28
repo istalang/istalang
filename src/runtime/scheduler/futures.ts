@@ -21,7 +21,7 @@ import { handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { readRegister } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
-import type { FutureState } from '../snapshot/objects.ts';
+import type { FutureState, Watch } from '../snapshot/objects.ts';
 import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
 import type { CallerFuture } from './test-world.ts';
 
@@ -34,12 +34,6 @@ type FirstFuture = LiveObjectOf<'future'> & {
 export interface Settled {
   readonly value: Value;
 }
-
-/** A pending watch's condition (§9, §10). */
-export type Watch = Extract<FutureState, { kind: 'watch' }>;
-
-/** A condition only the runtime running a test can tell (§10). */
-export type TestWatch = Exclude<Watch['until'], { kind: 'ended' }>;
 
 /**
  * An answer given: the value that fills the future `instance` named `token`, and whether it came

@@ -35,7 +35,7 @@
 import { encodeJson } from '../../definition/codec.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Advanced, InstanceState, LogRecord, SpawnOptions } from '../instance-state.ts';
-import type { HeapObject } from '../snapshot/objects.ts';
+import type { HeapObject, Watch } from '../snapshot/objects.ts';
 import {
   type InstanceCall,
   type PanickedSnapshot,
@@ -44,7 +44,7 @@ import {
   snapshotFormat,
 } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
-import type { Answered, Watch } from './futures.ts';
+import type { Answered } from './futures.ts';
 import { Instance } from './instance/index.ts';
 import { storedEnds } from './instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
@@ -135,9 +135,7 @@ export function advance(
   const running: Running = {
     loaded,
     watched: ({ instance, until }) =>
-      until.kind === 'ended'
-        ? ends(instance, until.result)
-        : loaded.world?.watched(instance, until),
+      until.kind === 'ended' ? ends(instance, until.result) : loaded.world.watched(instance, until),
   };
   for (;;) {
     const { startedAt = seams.now(), ...step } = pending;
