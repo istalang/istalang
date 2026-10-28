@@ -15,7 +15,6 @@ import type { NodeOf } from '../../syntax/node.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { ResolvedCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 
@@ -39,34 +38,36 @@ export function checkSuite(
     return;
   }
   const body = checker.bodyOf(declaration);
-  const offending =
-    declaration.body === undefined || body === undefined
-      ? undefined
-      : firstEffect(checker, body.calls, declaration.body);
+  if (declaration.body === undefined || body === undefined) {
+    return;
+  }
+  const effectSites = new Set(
+    body
+      .madeCalls()
+      .filter(
+        ({ call }) => call.function.isExtern || isHandle(checker, checker.resultOf(call.function)),
+      )
+      .map(({ site }) => site),
+  );
+  const offending = firstEffect(effectSites, declaration.body);
   if (offending !== undefined) {
     checker.report(module, checkerDiagnostics.suiteEffect(offending.span));
   }
 }
 
 /**
- * The first node of `node`'s own code that calls an extern, makes a shared struct, or calls a
- * function giving a shared struct or a slot; the calls are those `calls` resolved.
+ * The first node of `node`'s own code that makes a shared struct or is one of `effectSites`, the
+ * calls of the body that call an extern or give a shared struct or a slot.
  */
 function firstEffect(
-  checker: CheckerContext,
-  calls: ReadonlyMap<NodeOf<string>, ResolvedCall>,
+  effectSites: ReadonlySet<NodeOf<string>>,
   node: SyntaxNode,
 ): SyntaxNode | undefined {
-  const called = calls.get(node)?.function;
-  if (
-    called?.isExtern === true ||
-    (called !== undefined && isHandle(checker, checker.resultOf(called))) ||
-    (node.kind === 'StructLiteral' && node.isNew)
-  ) {
+  if (effectSites.has(node) || (node.kind === 'StructLiteral' && node.isNew)) {
     return node;
   }
   for (const child of bodyChildrenOf(node)) {
-    const found = firstEffect(checker, calls, child);
+    const found = firstEffect(effectSites, child);
     if (found !== undefined) {
       return found;
     }

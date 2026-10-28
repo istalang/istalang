@@ -17,7 +17,7 @@ export const lifetimeTemplates = {
   disposeSelfEscapes: {
     code: 5702,
     message: (name: string) =>
-      `In 'dispose', '${name}' can only be used as '${name}$' or passed to an extern function, so the value can't outlive its disposal.`,
+      `In 'dispose', '${name}' can only be used as '*${name}', '${name}->field' or passed to an extern function, so the value can't outlive its disposal.`,
   },
   disposeNotFound: {
     code: 5703,

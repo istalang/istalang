@@ -1,9 +1,10 @@
-# error: 5950 at 20:10
-# error: 5950 at 23:4
-# error: 5950 at 26:4
-# error: 5951 at 30:8
-# error: 5951 at 34:40
-# error: 5951 at 37:36
+# error: 5950 at 21:10
+# error: 5950 at 24:4
+# error: 5950 at 27:4
+# error: 5951 at 31:8
+# error: 5951 at 35:40
+# error: 5951 at 38:36
+# error: 5951 at 45:18
 #
 # A suite function only builds its list (§10): a plain fn taking nothing and returning
 # Array<Test>, whose own body calls no extern and makes no shared struct or slot. What the tests
@@ -35,6 +36,14 @@ fn makesShared() -> Array<Test>: _with(new Box{n: 1})
 
 @Suite{"makes a slot"}
 fn makesSlot() -> Array<Test>: _of(Slot.create<int>())
+
+struct Bag {}
+extern fn Bag.default() -> Bag
+
+@Suite{"calls an extern implicitly"}
+fn callsImplicitExtern() -> Array<Test>:
+  const b: Bag = []
+  []
 
 @Suite{"a test may do anything"}
 fn fine() -> Array<Test>: [Case{title: "t", body: async fn(): { drop fetch(); () }}]
