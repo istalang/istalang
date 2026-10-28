@@ -3,10 +3,10 @@
  *
  * Both printers read their levels from syntax/operators.ts, the table the parser uses:
  * - The full printer parenthesizes every operator.
- * - The minimal printer parenthesizes only where the table requires it: levels, associativity and
- *   the operands an operator refuses without parentheses, `**`'s refusing a prefix too (§3.9). Besides the table, it knows two
- *   grammar rules: comparisons in a row chain, so a comparison under another is wrapped, and
- *   `name < name > (…)` reads as a generic call (§3.5), so its comparison is wrapped.
+ * - The minimal printer parenthesizes only where the grammar requires it: levels, the operands an
+ *   operator refuses without parentheses, `**`'s right-associativity and its refusal of a prefix
+ *   before it (§3.9), comparisons in a row chaining so a comparison under another is wrapped, and
+ *   `name < name > (…)` reading as a generic call (§3.5) so its comparison is wrapped.
  * `shapeOf` turns a parsed expression back into a tree, ignoring parentheses, so the printed text
  * can be compared with the tree it came from.
  */
@@ -21,7 +21,6 @@ import {
   isChainingOperator,
   operatorLevels,
   type PrecedenceLevel,
-  rightOperandLevel,
   tighterLevel,
   type UnaryOperator,
   unaryOperators,
@@ -134,22 +133,21 @@ function printBinary(tree: Extract<OperatorTree, { binary: BinaryOperator }>): s
   // A comparison right after another would extend it into a chain, so the tree's own needs grouping.
   const chains = (child: OperatorTree) =>
     'binary' in child && isChainingOperator(tree.binary) && isChainingOperator(child.binary);
-  const leftLevel = entry.associativity === 'right' ? tighterLevel(entry.level) : entry.level;
+  const isRightAssociative = tree.binary === '**';
+  const leftLevel = isRightAssociative ? tighterLevel(entry.level) : entry.level;
+  // `**` groups to the right and accepts a prefix on its right (`2 ** -1`, §3.9).
+  const rightLevel = isRightAssociative ? 'prefix' : tighterLevel(entry.level);
   let left = operand(tree.left, leftLevel, refused(tree.left) || chains(tree.left));
-  const right = operand(tree.right, rightOperandLevel(tree.binary), refused(tree.right));
+  const right = operand(tree.right, rightLevel, refused(tree.right));
   if (tree.binary === '>' && right.startsWith('(') && genericLookalike.test(left)) {
     left = `(${left})`;
   }
   return `${left} ${tree.binary} ${right}`;
 }
 
-/** Whether `child`, the operand of a prefix at `level`, is an operator refusing a prefix before it. */
+/** Whether `child`, the operand of a prefix at `level`, is `**`, which refuses a prefix before it (§3.9). */
 function refusesPrefix(child: OperatorTree, level: PrecedenceLevel): boolean {
-  if (!('binary' in child) || level !== 'prefix') {
-    return false;
-  }
-  const entry: BinaryOperatorEntry = binaryOperators[child.binary];
-  return entry.refusesPrefixedLeft === true;
+  return 'binary' in child && child.binary === '**' && level === 'prefix';
 }
 
 /** Prints with only the parentheses the grammar requires. */
