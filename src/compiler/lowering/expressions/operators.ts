@@ -17,9 +17,9 @@ import type { Span } from '../../../text/span.ts';
 import {
   type Binary,
   type ChainedComparison,
-  type ChainLink,
+  type ComparisonLink,
+  comparisonLinksOf,
   type Expression,
-  linksOf,
   type Unary,
 } from '../../syntax/expressions/index.ts';
 import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
@@ -61,7 +61,10 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
   }
 }
 
-export function lowerChain(context: FunctionContext, node: ChainedComparison): Register {
+export function lowerChainedComparison(
+  context: FunctionContext,
+  node: ChainedComparison,
+): Register {
   const { code } = context;
   const evaluated = new Map<Expression, Register>();
   const operand = (expression: Expression): Register => {
@@ -71,7 +74,7 @@ export function lowerChain(context: FunctionContext, node: ChainedComparison): R
   };
   const result = code.allocate();
   const end = code.newLabel();
-  for (const [index, link] of linksOf(node).entries()) {
+  for (const [index, link] of comparisonLinksOf(node).entries()) {
     if (index > 0) {
       const next = code.newLabel();
       code.branch(result, next, end, node.span);
@@ -90,7 +93,7 @@ export function lowerChain(context: FunctionContext, node: ChainedComparison): R
  */
 function compared(
   context: FunctionContext,
-  link: ChainLink,
+  link: ComparisonLink,
   [left, right]: readonly [Register, Register],
 ): Register {
   const { meaning } = binaryOperators[link.operator];

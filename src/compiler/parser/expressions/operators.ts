@@ -20,7 +20,7 @@ import {
   type BinaryOperatorEntry,
   binaryOperators,
   bindingPower,
-  isChainOperator,
+  isChainingOperator,
   operatorLevels,
   type PrecedenceLevel,
   rightOperandLevel,
@@ -199,8 +199,8 @@ function parseBinaryRest(parser: Parser, left: Expression, operator: BinaryOpera
   const right = parser.expression(rightOperandLevel(operator));
   reportMixed(parser, operator, entry.refusesUnparenthesized ?? [], [left, right]);
   const span = parser.spanFrom(left.span.start);
-  const chain = isChainOperator(operator) ? comparisonsOf(left) : undefined;
-  if (chain !== undefined && isChainOperator(operator)) {
+  const chain = isChainingOperator(operator) ? comparisonsOf(left) : undefined;
+  if (chain !== undefined && isChainingOperator(operator)) {
     return {
       kind: 'ChainedComparison',
       span,
@@ -218,7 +218,7 @@ function comparisonsOf(
   if (node.kind === 'ChainedComparison') {
     return node;
   }
-  return node.kind === 'Binary' && isChainOperator(node.operator)
+  return node.kind === 'Binary' && isChainingOperator(node.operator)
     ? { operands: [node.left, node.right], operators: [node.operator] }
     : undefined;
 }

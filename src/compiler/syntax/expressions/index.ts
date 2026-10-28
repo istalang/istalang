@@ -19,7 +19,7 @@
  */
 
 import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
-import type { BinaryOperator, ChainOperator, UnaryOperator } from '../operators.ts';
+import type { BinaryOperator, ChainingOperator, UnaryOperator } from '../operators.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements.ts';
 import type { NamedType, TypeNode } from '../types.ts';
@@ -268,18 +268,18 @@ export interface Binary extends NodeOf<'Binary'> {
 export interface ChainedComparison extends NodeOf<'ChainedComparison'> {
   readonly operands: readonly Expression[];
   /** One fewer than the operands: `operators[i]` compares `operands[i]` with `operands[i + 1]`. */
-  readonly operators: readonly ChainOperator[];
+  readonly operators: readonly ChainingOperator[];
 }
 
 /** One comparison of a chain: an operand, the operator after it, and the operand after that. */
-export interface ChainLink {
+export interface ComparisonLink {
   readonly left: Expression;
-  readonly operator: ChainOperator;
+  readonly operator: ChainingOperator;
   readonly right: Expression;
 }
 
 /** The comparisons a chain makes, in order; neighbouring ones share an operand. */
-export function linksOf(chain: ChainedComparison): readonly ChainLink[] {
+export function comparisonLinksOf(chain: ChainedComparison): readonly ComparisonLink[] {
   return chain.operators.flatMap((operator, index) => {
     const [left, right] = [chain.operands[index], chain.operands[index + 1]];
     return left === undefined || right === undefined ? [] : [{ left, operator, right }];

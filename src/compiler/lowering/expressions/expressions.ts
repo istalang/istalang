@@ -21,7 +21,7 @@ import { lowerIf } from './control.ts';
 import { lowerDurationLiteral } from './literals.ts';
 import { lowerIs, lowerMatch } from './matching.ts';
 import { lowerName, lowerNamed } from './names.ts';
-import { lowerBinary, lowerChain, lowerUnary } from './operators.ts';
+import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts';
 import { lowerPropagate } from './propagate.ts';
 import { lowerSelect } from './select.ts';
 import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
@@ -61,7 +61,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Propagate: lowerPropagate,
   Spawn: lowerSpawn,
   Unwrap: lowerUnwrap,
-  ChainedComparison: lowerChain,
+  ChainedComparison: lowerChainedComparison,
   TemplateLiteral: lowerTemplate,
   Dereference: lowerDereference,
   Await: lowerAwait,

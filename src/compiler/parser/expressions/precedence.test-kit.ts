@@ -18,7 +18,7 @@ import {
   type BinaryOperatorEntry,
   binaryOperators,
   bindingPower,
-  isChainOperator,
+  isChainingOperator,
   operatorLevels,
   type PrecedenceLevel,
   rightOperandLevel,
@@ -133,7 +133,7 @@ function printBinary(tree: Extract<OperatorTree, { binary: BinaryOperator }>): s
     'binary' in child && (entry.refusesUnparenthesized ?? []).some((kind) => kind === child.binary);
   // A comparison right after another would extend it into a chain, so the tree's own needs grouping.
   const chains = (child: OperatorTree) =>
-    'binary' in child && isChainOperator(tree.binary) && isChainOperator(child.binary);
+    'binary' in child && isChainingOperator(tree.binary) && isChainingOperator(child.binary);
   const leftLevel = entry.associativity === 'right' ? tighterLevel(entry.level) : entry.level;
   let left = operand(tree.left, leftLevel, refused(tree.left) || chains(tree.left));
   const right = operand(tree.right, rightOperandLevel(tree.binary), refused(tree.right));

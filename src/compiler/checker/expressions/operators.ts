@@ -20,9 +20,9 @@ import type { Span } from '../../../text/span.ts';
 import {
   type Binary,
   type ChainedComparison,
-  type ChainLink,
+  type ComparisonLink,
+  comparisonLinksOf,
   type Expression,
-  linksOf,
   type Unary,
 } from '../../syntax/expressions/index.ts';
 import { type BinaryMeaning, binaryOperators } from '../../syntax/operators.ts';
@@ -90,7 +90,7 @@ function checkMembership(context: BodyContext, node: Binary, operation: AppliedO
 }
 
 /** `a < b <= c`: each operand compared with the next (§3.9). */
-export function checkChain(context: BodyContext, node: ChainedComparison): Type {
+export function checkChainedComparison(context: BodyContext, node: ChainedComparison): Type {
   const checked = new Map<Expression, Type>();
   const operand = (expression: Expression, expected?: Type): Operand => {
     const type = checked.get(expression) ?? context.expression(expression, expected);
@@ -100,7 +100,7 @@ export function checkChain(context: BodyContext, node: ChainedComparison): Type 
   const [first, last] = [node.operands[0], node.operands.at(-1)];
   const wrappable = (side: Operand) =>
     side.node === first || side.node === last ? side : { type: side.type, node: undefined };
-  for (const link of linksOf(node)) {
+  for (const link of comparisonLinksOf(node)) {
     const { meaning } = binaryOperators[link.operator];
     const left = operand(link.left);
     const right = operand(link.right, meaning.kind === 'equality' ? left.type : undefined);
@@ -114,7 +114,7 @@ export function checkChain(context: BodyContext, node: ChainedComparison): Type 
 }
 
 /** Where a link stands, for its reports: from its left operand to its right one. */
-function linkAt(link: ChainLink): { readonly span: Span; readonly operator: string } {
+function linkAt(link: ComparisonLink): { readonly span: Span; readonly operator: string } {
   return {
     span: { start: link.left.span.start, end: link.right.span.end },
     operator: link.operator,
@@ -124,7 +124,7 @@ function linkAt(link: ChainLink): { readonly span: Span; readonly operator: stri
 /** A link's call, made at its right operand: an ordering's `compare`, or `in`'s `includes`. */
 function checkLinkCall(
   context: BodyContext,
-  link: ChainLink,
+  link: ComparisonLink,
   meaning: Extract<BinaryMeaning, { kind: 'order' | 'membership' }>,
   [left, right]: readonly [Type, Type],
 ): void {
