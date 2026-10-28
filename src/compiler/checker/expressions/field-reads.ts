@@ -2,8 +2,7 @@
  * Which field `x.f` reads, and how the read reaches it (§3.1, §3.10), found once as it is checked
  * (structs.ts) and recorded for lowering (checked-field.ts): a struct's field, declared or
  * anonymous, at its position, or, through a type parameter or an `any` type, a field a
- * constraint's trait requires. A field called, `x.f(…)`, is a struct's only (calls.ts), recorded
- * the same way.
+ * constraint's trait requires. A field called, `x.f(…)`, is found the same way (calls.ts).
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';

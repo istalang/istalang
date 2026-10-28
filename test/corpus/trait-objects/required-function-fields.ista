@@ -1,0 +1,16 @@
+# outcome: [3,5,7]
+# A field of a function type a trait requires is called as `x.f(…)` through a type parameter or an
+# `any` value, as a struct's own is (§3.10, §3.14).
+
+trait Runs:
+  run: fn(int) -> int
+
+struct Step { run: fn(int) -> int }
+
+fn apply<T is Runs>(value: T, n: int) -> int:
+  value.run(n)
+
+async fn main():
+  const one = Step{run: fn(n: int): n + 1}
+  const two: any Runs = Step{run: fn(n: int): n + 2}
+  (apply(one, 2), two.run(3), apply(two, 5))

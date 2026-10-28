@@ -39,7 +39,6 @@ import type {
 import { isPlace } from '../../syntax/expressions/places.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
-import { structFieldOf } from '../checked-field.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -54,6 +53,7 @@ import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { spreadArgumentType } from './collections.ts';
+import { fieldOf } from './field-reads.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   if (misplacedArgument(node.arguments) !== undefined) {
@@ -138,7 +138,7 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     return errorType;
   }
   const name = callee.member.text;
-  const field = structFieldOf(checker, receiverType, name);
+  const field = fieldOf(checker, receiverType, name);
   const written = [
     { node: receiver, passing: 'receiver', type: receiverType } as const,
     ...call.written,
