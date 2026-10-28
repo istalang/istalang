@@ -229,6 +229,7 @@ function namedType(resolution: Resolution, node: NamedType): Type {
         case 'TypeParameter':
           return parameterType(declaration);
         case 'StructDeclaration':
+        case 'SharedStructDeclaration':
         case 'EnumDeclaration':
         case 'ExternStructDeclaration': {
           const typeArguments = argumentsOf(resolution, node, declaration);

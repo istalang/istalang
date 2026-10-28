@@ -15,7 +15,7 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { EnumDeclaration, StructDeclaration } from '../../syntax/declarations.ts';
+import type { DeclaredStruct, EnumDeclaration } from '../../syntax/declarations.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
@@ -25,7 +25,7 @@ import type { AnonymousStructType, FieldMember, NominalType, Type } from '../typ
 
 export class Layouts {
   readonly #checker: CheckerContext;
-  readonly #fields = new Map<StructDeclaration, readonly FieldMember[]>();
+  readonly #fields = new Map<DeclaredStruct, readonly FieldMember[]>();
   readonly #variants = new Map<EnumDeclaration, readonly VariantMember[]>();
 
   constructor(checker: CheckerContext) {
@@ -44,7 +44,7 @@ export class Layouts {
       return undefined;
     }
     const { declaration } = type.entity;
-    return declaration.kind === 'StructDeclaration' && !declaration.isShared
+    return declaration.kind === 'StructDeclaration'
       ? instantiated(this.declaredFieldsOf(declaration), substitutionOf(type))
       : undefined;
   }
@@ -58,7 +58,7 @@ export class Layouts {
       return undefined;
     }
     const { declaration } = type.entity;
-    if (declaration.kind !== 'StructDeclaration' || !declaration.isShared) {
+    if (declaration.kind !== 'SharedStructDeclaration') {
       return undefined;
     }
     const fields = instantiated(this.declaredFieldsOf(declaration), substitutionOf(type));
@@ -78,7 +78,7 @@ export class Layouts {
     }));
   }
 
-  declaredFieldsOf(declaration: StructDeclaration): readonly FieldMember[] {
+  declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
     return memo(this.#fields, declaration, () =>
       declaredFields(
         this.#checker,

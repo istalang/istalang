@@ -4,7 +4,8 @@
  * The tree keeps each declaration form apart where the forms hold different things, so a consumer
  * never meets a combination the syntax can't produce:
  * - An extern struct has no fields, and may say `sendable`, so it has its own kind instead of a
- *   flag on StructDeclaration.
+ *   flag on StructDeclaration. A shared struct has its own kind too: its type is a handle, not
+ *   its fields.
  * - An extern constant has a type and no value, unlike a `const`.
  * - The two import forms bind different things.
  *
@@ -70,15 +71,30 @@ export function isMethod(declaration: FunctionDeclaration): boolean {
   return first?.kind === 'Parameter' && first.name.text === 'self';
 }
 
-/**
- * `struct Pair: …`, or `shared struct Inbox<T>: …`, whose values are handles to a cell holding its
- * fields, built with `new` and read through with `*` and `->` (§3.18).
- */
-export interface StructDeclaration extends NodeOf<'StructDeclaration'>, Annotatable, Documented {
-  readonly isShared: boolean;
+/** What a struct's declaration holds, shared or not: its name, type parameters and fields (§3.1). */
+interface StructOf<Kind extends string> extends NodeOf<Kind>, Annotatable, Documented {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
   readonly fields: readonly (DeclaredField | Invalid)[];
+}
+
+/** `struct Pair: …`: a value type made of its fields (§3.1). */
+export type StructDeclaration = StructOf<'StructDeclaration'>;
+
+/**
+ * `shared struct Inbox<T>: …`: its values are handles to a cell holding its fields, built with
+ * `new` and read through with `*` and `->` (§3.18), so its type has no fields of its own.
+ */
+export type SharedStructDeclaration = StructOf<'SharedStructDeclaration'>;
+
+/** A struct a program declares with its fields, shared or not. */
+export type DeclaredStruct = StructDeclaration | SharedStructDeclaration;
+
+/** Whether `declaration` declares a struct with its fields, shared or not. */
+export function isDeclaredStruct(
+  declaration: Declaration | DeclarationPart,
+): declaration is DeclaredStruct {
+  return declaration.kind === 'StructDeclaration' || declaration.kind === 'SharedStructDeclaration';
 }
 
 /**
@@ -167,6 +183,7 @@ export type ConstantDeclaration = VariableDeclaration & {
 export type Declaration =
   | ImportDeclaration
   | StructDeclaration
+  | SharedStructDeclaration
   | ExternStructDeclaration
   | ExternConstantDeclaration
   | EnumDeclaration
@@ -187,8 +204,3 @@ export function declaredFunctions(module: Module): readonly FunctionDeclaration[
 
 /** Nodes that occur only as parts of a declaration. */
 export type DeclarationPart = TypeParameter | Variant | DeclaredField | Docstring;
-
-/** Whether `declaration` declares a shared struct (§3.18). */
-export function isSharedStruct(declaration: Declaration | DeclarationPart): boolean {
-  return declaration.kind === 'StructDeclaration' && declaration.isShared;
-}

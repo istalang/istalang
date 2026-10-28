@@ -10,8 +10,10 @@
 
 import type {
   DeclaredField,
+  DeclaredStruct,
   EnumDeclaration,
   FunctionDeclaration,
+  SharedStructDeclaration,
   StructDeclaration,
   TraitDeclaration,
   TypeAliasDeclaration,
@@ -34,24 +36,22 @@ import { parseFunction } from './functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
 export function parseStruct(parser: Parser): StructDeclaration {
-  return parseStructFrom(parser, parser.cursor.token.span.start, false);
+  return { kind: 'StructDeclaration', ...parseStructFrom(parser, parser.cursor.token.span.start) };
 }
 
 /** `shared struct Name<T>: …`, from `shared`, a keyword only before `struct` (§2, §3.18). */
-export function parseSharedStruct(parser: Parser): StructDeclaration {
+export function parseSharedStruct(parser: Parser): SharedStructDeclaration {
   const { start } = parser.cursor.advance().span;
-  return parseStructFrom(parser, start, true);
+  return { kind: 'SharedStructDeclaration', ...parseStructFrom(parser, start) };
 }
 
-/** A struct declaration from its `struct`, which starts at `start` with what precedes it. */
-function parseStructFrom(parser: Parser, start: number, isShared: boolean): StructDeclaration {
+/** A struct declaration but its kind, from its `struct`, which starts at `start` with what precedes it. */
+function parseStructFrom(parser: Parser, start: number): Omit<DeclaredStruct, 'kind'> {
   const { name, typeParameters } = parseTypeHead(parser);
   const { value: fields, doc } = parseMembers(parser, declaredFieldRules, start);
   const span = parser.spanFrom(start);
   return {
-    kind: 'StructDeclaration',
     span,
-    isShared,
     name,
     typeParameters,
     fields,

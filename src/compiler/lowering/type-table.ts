@@ -213,17 +213,16 @@ export class TypeTable {
     const name = qualifiedNameOf(this.#checker, declaration);
     const typeArguments = type.arguments.map((argument) => this.reference(argument));
     switch (declaration.kind) {
+      case 'SharedStructDeclaration':
+        return {
+          kind: 'extern',
+          name,
+          arguments: typeArguments,
+          sendable: false,
+          disposal: this.#disposal(this.#checker.disposalOf(type)),
+          role: 'cell',
+        };
       case 'StructDeclaration':
-        if (declaration.isShared) {
-          return {
-            kind: 'extern',
-            name,
-            arguments: typeArguments,
-            sendable: false,
-            disposal: this.#disposal(this.#checker.disposalOf(type)),
-            role: 'cell',
-          };
-        }
         return {
           kind: 'struct',
           name,

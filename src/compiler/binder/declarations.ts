@@ -20,6 +20,7 @@
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import {
   type Declaration,
+  type DeclaredStruct,
   type EnumDeclaration,
   type FunctionDeclaration,
   type TraitDeclaration,
@@ -111,6 +112,12 @@ function bindDefaults(
   }
 }
 
+function bindStruct(binder: LocalBinder, node: DeclaredStruct, scope: Scope): void {
+  const inner = typeParameterScope(binder, node.typeParameters, scope);
+  bindFields(binder, node.fields, inner);
+  bindFieldDefaults(binder, fieldsFunctionOf(node), inner);
+}
+
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
   FunctionDeclaration: bindFunction,
@@ -119,11 +126,8 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
     bindTargets(binder, node, scope, undefined);
   },
   ExternConstantDeclaration: (binder, node, scope) => binder.walk.type(binder, node.type, scope),
-  StructDeclaration: (binder, node, scope) => {
-    const inner = typeParameterScope(binder, node.typeParameters, scope);
-    bindFields(binder, node.fields, inner);
-    bindFieldDefaults(binder, fieldsFunctionOf(node), inner);
-  },
+  StructDeclaration: bindStruct,
+  SharedStructDeclaration: bindStruct,
   ExternStructDeclaration: (binder, node, scope) => {
     typeParameterScope(binder, node.typeParameters, scope);
   },

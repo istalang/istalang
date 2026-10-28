@@ -13,9 +13,6 @@ import type { Type } from '../types/type.ts';
 
 /** Reports each field of `declaration` that makes its values hold themselves. */
 export function checkFiniteFields(checker: CheckerContext, declaration: StructDeclaration): void {
-  if (declaration.isShared) {
-    return;
-  }
   const module = checker.moduleOf(declaration);
   const written = declaration.fields.filter((field) => field.kind === 'DeclaredField');
   checker.declaredFieldsOf(declaration).forEach((field, index) => {
@@ -44,11 +41,7 @@ function holds(
       if (declaration === target) {
         return true;
       }
-      if (
-        declaration.kind !== 'StructDeclaration' ||
-        declaration.isShared ||
-        seen.has(declaration)
-      ) {
+      if (declaration.kind !== 'StructDeclaration' || seen.has(declaration)) {
         return false;
       }
       seen.add(declaration);

@@ -38,10 +38,11 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {
+  DeclaredStruct,
   EnumDeclaration,
   ExternStructDeclaration,
   Field,
-  StructDeclaration,
+  SharedStructDeclaration,
   TraitDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
@@ -66,7 +67,7 @@ export interface PrimitiveType extends WrittenThrough {
 }
 
 /** The declarations a nominal type can come from. */
-export type NominalDeclaration = StructDeclaration | EnumDeclaration | ExternStructDeclaration;
+export type NominalDeclaration = DeclaredStruct | EnumDeclaration | ExternStructDeclaration;
 
 /** The binder's entity for a declaration a nominal type comes from. */
 export type NominalEntity = TypeEntity & { readonly declaration: NominalDeclaration };
@@ -94,7 +95,10 @@ export interface NominalType extends WrittenThrough {
 export function isNominalEntity(entity: TypeEntity): entity is NominalEntity {
   const { kind } = entity.declaration;
   return (
-    kind === 'StructDeclaration' || kind === 'EnumDeclaration' || kind === 'ExternStructDeclaration'
+    kind === 'StructDeclaration' ||
+    kind === 'SharedStructDeclaration' ||
+    kind === 'EnumDeclaration' ||
+    kind === 'ExternStructDeclaration'
   );
 }
 
@@ -138,7 +142,7 @@ export type AnonymousStructType = WrittenThrough &
       }
     | {
         readonly kind: 'anonymous';
-        readonly origin: StructDeclaration;
+        readonly origin: SharedStructDeclaration;
         readonly arguments: readonly Type[];
         readonly fields: readonly FieldMember[];
       }
@@ -147,8 +151,8 @@ export type AnonymousStructType = WrittenThrough &
 /** Whether `type` is the anonymous struct value behind a shared struct (`*x`, §3.18). */
 export function isSharedValueType(
   type: AnonymousStructType,
-): type is Extract<AnonymousStructType, { readonly origin: StructDeclaration }> {
-  return type.origin.kind === 'StructDeclaration';
+): type is Extract<AnonymousStructType, { readonly origin: SharedStructDeclaration }> {
+  return type.origin.kind === 'SharedStructDeclaration';
 }
 
 /** A parameter of a function type: its type, and whether it takes a reference (§3.7). */

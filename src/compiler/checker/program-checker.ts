@@ -33,9 +33,9 @@ import type { Bindings, Entity } from '../binder/entities.ts';
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import {
   type Declaration,
+  type DeclaredStruct,
   type EnumDeclaration,
   type FunctionDeclaration,
-  type StructDeclaration,
   type TypeAliasDeclaration,
   type TypeParameter,
   typeParametersOf,
@@ -336,7 +336,7 @@ export class ProgramChecker implements CheckerContext {
     return memo(this.#disposals, this.typeKeys.typeKey(type), () => disposalOf(this, type));
   }
 
-  declaredFieldsOf(declaration: StructDeclaration): readonly FieldMember[] {
+  declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
     return this.#layouts.declaredFieldsOf(declaration);
   }
 

@@ -22,7 +22,7 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
-import { isMethod as isMethodDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
+import { isDeclaredStruct, isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { linkOperator } from '../../syntax/expressions/chains.ts';
 import {
   itemValue,
@@ -83,17 +83,13 @@ export function checkStructLiteral(
   if (entity === undefined) {
     return errorType;
   }
-  if (
-    entity.kind !== 'type' ||
-    !isNominalEntity(entity) ||
-    entity.declaration.kind !== 'StructDeclaration'
-  ) {
+  if (entity.kind !== 'type' || !isNominalEntity(entity) || !isDeclaredStruct(entity.declaration)) {
     context.report(checkerDiagnostics.notStruct(typeNode.span, name.text));
     return errorType;
   }
   const known = knownArguments(context, typeNode, entity.declaration, expected);
   const shape = declaredShape(context, entity, known);
-  if (shape.fields.length === 0 && !entity.declaration.isShared) {
+  if (shape.fields.length === 0 && entity.declaration.kind === 'StructDeclaration') {
     context.report(checkerDiagnostics.bareStruct(node.span, name.text));
     checkValuesAlone(context, node);
     return shape.typeOf([]);
@@ -109,7 +105,7 @@ function checkNew(context: BodyContext, node: StructLiteral, entity: Entity | un
   if (entity === undefined || node.type === undefined) {
     return;
   }
-  const isShared = entity.kind === 'type' && isSharedStruct(entity.declaration);
+  const isShared = entity.kind === 'type' && entity.declaration.kind === 'SharedStructDeclaration';
   const name = lastName(node.type.path).text;
   if (isShared && !node.isNew) {
     context.report(checkerDiagnostics.sharedNeedsNew(node.type.span, name));
@@ -167,7 +163,7 @@ function declaredShape(
   known: readonly Type[] | undefined,
 ): LiteralShape {
   const { declaration } = entity;
-  const struct = declaration.kind === 'StructDeclaration' ? declaration : undefined;
+  const struct = isDeclaredStruct(declaration) ? declaration : undefined;
   const typeOf = (typeArguments: readonly Type[]): NominalType => ({
     kind: 'nominal',
     entity,

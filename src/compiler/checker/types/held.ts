@@ -55,10 +55,10 @@ export function heldParts(
       switch (type.entity.declaration.kind) {
         case 'ExternStructDeclaration':
           return type.arguments;
-        case 'StructDeclaration': {
-          const fields = checker.fieldsOf(type) ?? checker.sharedValueOf(type)?.fields ?? [];
-          return fields.map((field) => field.type);
-        }
+        case 'StructDeclaration':
+          return (checker.fieldsOf(type) ?? []).map((field) => field.type);
+        case 'SharedStructDeclaration':
+          return (checker.sharedValueOf(type)?.fields ?? []).map((field) => field.type);
         case 'EnumDeclaration':
           return (checker.variantsOf(type) ?? []).flatMap(({ fields }) =>
             fields.map((field) => field.type),

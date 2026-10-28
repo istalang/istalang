@@ -19,7 +19,7 @@
 
 import { disposeFunction } from '../../../language/well-known.ts';
 import { isStdModule } from '../../program/program.ts';
-import { type FunctionDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Parameter } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { childrenOf, nestsFunction, type SyntaxNode } from '../../syntax/tree.ts';
@@ -94,7 +94,7 @@ function isRuntimeDispose(checker: CheckerContext, declaration: FunctionDeclarat
  * disposed by the runtime already.
  */
 function isOwnedHandle(checker: CheckerContext, type: NominalType): boolean {
-  return isSharedStruct(type.entity.declaration) || isHostType(checker, type);
+  return type.entity.declaration.kind === 'SharedStructDeclaration' || isHostType(checker, type);
 }
 
 function isStdType(checker: CheckerContext, type: NominalType): boolean {

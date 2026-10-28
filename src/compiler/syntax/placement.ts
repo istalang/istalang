@@ -28,6 +28,7 @@ function placeOf(item: Item): 'module' | 'block' | 'both' {
     case 'NamedImport':
     case 'NamespaceImport':
     case 'StructDeclaration':
+    case 'SharedStructDeclaration':
     case 'ExternStructDeclaration':
     case 'ExternConstantDeclaration':
     case 'EnumDeclaration':

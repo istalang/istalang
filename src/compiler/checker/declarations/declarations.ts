@@ -23,6 +23,7 @@ import { isStdModule, type ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import {
   type Declaration,
+  type DeclaredStruct,
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
@@ -117,6 +118,14 @@ function annotatedNowhere(description: string) {
   };
 }
 
+/** What every struct declaration must keep, shared or not; a shared struct's values are handles, so they are finite. */
+function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: ModuleId): void {
+  annotatedNowhere('a struct declaration')(checker, node, module);
+  checkTypeParameters(checker, node);
+  checker.annotations.checkFields(checker.declaredFieldsOf(node));
+  checkFieldDefaults(checker, fieldsFunctionOf(node));
+}
+
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], void> = {
   NamedImport: annotatedNowhere('an import'),
@@ -144,12 +153,10 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
     checker.aliasedType(node);
   },
   StructDeclaration: (checker, node, module) => {
-    annotatedNowhere('a struct declaration')(checker, node, module);
-    checkTypeParameters(checker, node);
-    checker.annotations.checkFields(checker.declaredFieldsOf(node));
+    checkStruct(checker, node, module);
     checkFiniteFields(checker, node);
-    checkFieldDefaults(checker, fieldsFunctionOf(node));
   },
+  SharedStructDeclaration: checkStruct,
   EnumDeclaration: (checker, node, module) => {
     annotatedNowhere('an enum declaration')(checker, node, module);
     checkTypeParameters(checker, node);

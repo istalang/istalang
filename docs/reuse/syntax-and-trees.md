@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -35,7 +35,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - get a constant template's text → `constantTextOf` (`src/compiler/syntax/expressions/templates.ts`)
 - get the memoized `Call` node of a tagged template → `isTagged`, `taggedCall` (`src/compiler/syntax/expressions/templates.ts`)
 - list valid `TypeParameter`s or declared `fn`s in a module → `typeParametersOf`, `declaredFunctions` (`src/compiler/syntax/declarations.ts`)
-- check for a `self` method, a field default, or a `shared struct` → `isMethod`, `hasDefault`, `isSharedStruct` (`src/compiler/syntax/declarations.ts`)
+- check for a `self` method, a field default, or a struct declared with fields, shared or not → `isMethod`, `hasDefault`, `isDeclaredStruct` (`src/compiler/syntax/declarations.ts`); a shared struct is its own kind, `SharedStructDeclaration`, never a flag
 - get the synthesized default function for a struct's or variant's fields → `fieldsFunctionOf`, `fieldsFunctionsOf` (`src/compiler/syntax/field-defaults.ts`)
 - list all functions in a module or test for a fields function → `functionsOf`, `isFieldsFunction` (`src/compiler/syntax/field-defaults.ts`)
 - list identifiers bound by a target pattern or check whether it contains `_` → `targetNames`, `hasUnnamedPart` (`src/compiler/syntax/patterns.ts`)

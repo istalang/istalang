@@ -10,7 +10,7 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import type { ModuleId } from '../../program/program.ts';
-import { type FunctionDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckerContext } from '../context.ts';
@@ -78,7 +78,7 @@ function firstEffect(
 function isHandle(checker: CheckerContext, type: Type): boolean {
   return (
     type.kind === 'nominal' &&
-    (isSharedStruct(type.entity.declaration) ||
+    (type.entity.declaration.kind === 'SharedStructDeclaration' ||
       wellKnownArguments(checker, wellKnown.slot, type) !== undefined)
   );
 }

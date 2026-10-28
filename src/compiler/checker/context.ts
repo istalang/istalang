@@ -22,9 +22,9 @@ import type { Span } from '../../text/span.ts';
 import type { Entity, VariableEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
+  DeclaredStruct,
   EnumDeclaration,
   FunctionDeclaration,
-  StructDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
@@ -91,7 +91,7 @@ export interface CheckerContext extends Checker {
   /** The type `any` followed by `traits` denotes in `module` (§3.10). */
   readonly anyTypeOf: (module: ModuleId, traits: readonly TypeNode[]) => Type;
   /** A struct declaration's fields, types as declared (not substituted). */
-  readonly declaredFieldsOf: (declaration: StructDeclaration) => readonly FieldMember[];
+  readonly declaredFieldsOf: (declaration: DeclaredStruct) => readonly FieldMember[];
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
   /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§9). */

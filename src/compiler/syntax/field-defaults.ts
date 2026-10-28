@@ -16,19 +16,19 @@ import { memo } from '../../structures/memo.ts';
 import {
   type Declaration,
   type DeclaredField,
+  type DeclaredStruct,
   declaredFunctions,
   type EnumDeclaration,
   type FunctionDeclaration,
   hasDefault,
   type Module,
-  type StructDeclaration,
   type Variant,
 } from './declarations.ts';
 import type { Parameter } from './expressions/index.ts';
 import type { Invalid } from './node.ts';
 
 /** A declaration whose fields may have defaults: a struct, or one variant of an enum. */
-type FieldsOwner = StructDeclaration | Variant;
+type FieldsOwner = DeclaredStruct | Variant;
 
 const fieldsFunctions = new WeakMap<FieldsOwner, FunctionDeclaration | undefined>();
 
@@ -43,6 +43,7 @@ export function functionsOf(module: Module): readonly FunctionDeclaration[] {
 export function fieldsFunctionsOf(item: Declaration | Invalid): readonly FunctionDeclaration[] {
   switch (item.kind) {
     case 'StructDeclaration':
+    case 'SharedStructDeclaration':
       return present(fieldsFunctionOf(item));
     case 'EnumDeclaration':
       return item.variants.flatMap((variant) =>
@@ -62,16 +63,16 @@ export function isFieldsFunction(declaration: FunctionDeclaration): boolean {
  * The function whose parameters are the fields of a struct, or of an enum's `variant` (§3.1);
  * undefined when none of them has a default.
  */
-export function fieldsFunctionOf(declaration: StructDeclaration): FunctionDeclaration | undefined;
+export function fieldsFunctionOf(declaration: DeclaredStruct): FunctionDeclaration | undefined;
 export function fieldsFunctionOf(
   declaration: EnumDeclaration,
   variant: Variant,
 ): FunctionDeclaration | undefined;
 export function fieldsFunctionOf(
-  declaration: StructDeclaration | EnumDeclaration,
+  declaration: DeclaredStruct | EnumDeclaration,
   variant?: Variant,
 ): FunctionDeclaration | undefined {
-  const owner = declaration.kind === 'StructDeclaration' ? declaration : variant;
+  const owner = declaration.kind === 'EnumDeclaration' ? variant : declaration;
   if (owner === undefined) {
     return undefined;
   }

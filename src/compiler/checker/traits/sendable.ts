@@ -13,7 +13,7 @@
  */
 
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
-import { isSharedStruct, type TraitDeclaration } from '../../syntax/declarations.ts';
+import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { jsonTraits } from '../json-form.ts';
 import { heldParts } from '../types/held.ts';
@@ -63,7 +63,7 @@ function nominalSendable(checker: CheckerContext, type: NominalType, deciding: T
   if (declaration.kind === 'ExternStructDeclaration') {
     return declaration.isSendable && parts();
   }
-  if (isSharedStruct(declaration)) {
+  if (declaration.kind === 'SharedStructDeclaration') {
     return false;
   }
   return deciding.enter(type, true, parts);

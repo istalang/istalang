@@ -91,9 +91,9 @@ describe('type declarations', () => {
     ],
     [
       lines('shared struct Inbox<T>:', '    backlog: Array<T>', '    queued: int = 0'),
-      `(StructDeclaration isShared Inbox [${typeParameter('T')}] [${declaredField('backlog', `(NamedType [Array] [${named('T')}])`)} ${declaredField('queued', int, '0')}])`,
+      `(SharedStructDeclaration Inbox [${typeParameter('T')}] [${declaredField('backlog', `(NamedType [Array] [${named('T')}])`)} ${declaredField('queued', int, '0')}])`,
     ],
-    ['shared struct Token', '(StructDeclaration isShared Token [] [])'],
+    ['shared struct Token', '(SharedStructDeclaration Token [] [])'],
     [
       lines('struct Retry:', '    times: int = 3', '    backoff = times * 2'),
       `(StructDeclaration Retry [] [${declaredField('times', int, '3')} ${declaredField('backoff', '_', '(Binary times * 2)')}])`,

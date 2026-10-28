@@ -26,6 +26,7 @@ import type {
   ExternStructDeclaration,
   FunctionDeclaration,
   NamespaceImport,
+  SharedStructDeclaration,
   StructDeclaration,
   TraitDeclaration,
   TypeAliasDeclaration,
@@ -95,6 +96,7 @@ export interface FunctionsEntity {
 
 type TypeDeclaration =
   | StructDeclaration
+  | SharedStructDeclaration
   | ExternStructDeclaration
   | EnumDeclaration
   | TraitDeclaration

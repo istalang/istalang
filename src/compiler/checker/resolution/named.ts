@@ -106,11 +106,7 @@ export function fieldlessStructOf(
   checker: Pick<CheckerContext, 'declaredFieldsOf'>,
   entity: Entity,
 ): StructDeclaration | undefined {
-  if (
-    entity.kind !== 'type' ||
-    entity.declaration.kind !== 'StructDeclaration' ||
-    entity.declaration.isShared
-  ) {
+  if (entity.kind !== 'type' || entity.declaration.kind !== 'StructDeclaration') {
     return undefined;
   }
   return checker.declaredFieldsOf(entity.declaration).length > 0 ? undefined : entity.declaration;

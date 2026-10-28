@@ -23,10 +23,10 @@
  */
 
 import {
+  type DeclaredStruct,
   type EnumDeclaration,
   type FunctionDeclaration,
   hasDefault,
-  type StructDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import {
@@ -58,7 +58,7 @@ import { typeText } from '../types/type-text.ts';
  * the generic declaration they belong to, absent for an anonymous struct.
  */
 export interface LiteralShape {
-  readonly owner: StructDeclaration | EnumDeclaration | undefined;
+  readonly owner: DeclaredStruct | EnumDeclaration | undefined;
   /** The function the declaration's fields read as when one has a default (§3.1). */
   readonly defaults?: FunctionDeclaration | undefined;
   /** The type arguments already decided, written or expected. */
@@ -152,7 +152,7 @@ export function checkLiteralFields(
 export function knownArguments(
   context: BodyContext,
   typeNode: NamedType,
-  owner: StructDeclaration | EnumDeclaration,
+  owner: DeclaredStruct | EnumDeclaration,
   expected: Type | undefined,
 ): readonly Type[] | undefined {
   if (typeNode.typeArguments.length === 0) {

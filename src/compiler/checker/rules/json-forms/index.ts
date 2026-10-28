@@ -27,7 +27,6 @@ import {
 } from '../../../../language/well-known.ts';
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
-import { isSharedStruct } from '../../../syntax/declarations.ts';
 import type { CheckerContext } from '../../context.ts';
 import { isHostType } from '../../host-externs.ts';
 import {
@@ -173,7 +172,7 @@ export class JsonForms implements JsonCodecs {
     if (declaration.kind === 'ExternStructDeclaration') {
       return this.#extern(type, declaration.isSendable);
     }
-    if (isSharedStruct(declaration)) {
+    if (declaration.kind === 'SharedStructDeclaration') {
       return { kind: 'none', reason: handleHasNoForm };
     }
     if (declaration.kind === 'StructDeclaration') {
