@@ -11,11 +11,12 @@
  *   exact: no text the runtime holds has that many digits. A count of places or digits past it
  *   could only be rounded, so it panics. `/` and a negative power round half to even to 34
  *   significant digits, decimal128's precision.
- * - decimal.js rounds a quotient to significant digits, not to places, so `dividedTo` rounds once
- *   from the integer quotient and its remainder, through a stand-in fraction that every mode rounds
- *   as it would the exact one.
+ * - decimal.js rounds a quotient to significant digits, not to places, so `dividedTo` divides the
+ *   scaled dividend at the integer quotient's significant digits in the caller's rounding mode,
+ *   or through a stand-in fraction when the integer quotient is zero.
  * - decimal.js checks no size before raising to a power, and a large exponent would run for hours,
- *   so `power` raises the digits as a bigint, whose `**` refuses an oversized result at once.
+ *   so a non-negative `power` raises the digits as a bigint, whose `**` refuses an oversized
+ *   result at once, while a negative one computes at 34 significant digits.
  * - decimal.js reads more than the language does (exponents, `Infinity`, hex), so `readDecimal`
  *   checks the text against the language's grammar first, which also bounds a value's size by its
  *   text's.
@@ -142,20 +143,27 @@ export function dividedTo(
   places: bigint,
   mode: DecimalRounding,
 ): Decimal {
+  const divisor = nonZero(right);
   const shift = placesOf(places);
-  const scaled = left.times(`1e${shift}`);
-  const whole = scaled.divToInt(nonZero(right));
-  const remainder = scaled.minus(whole.times(right));
-  if (remainder.isZero()) {
-    return whole.times(`1e-${shift}`);
+  if (left.isZero()) {
+    return decimalOf(0n);
   }
-  const fraction =
-    standIns.get(remainder.abs().times(2).cmp(right.abs())) ?? unreachable('cmp gives a sign.');
-  const negative = left.isNeg() !== right.isNeg();
-  return whole
-    .plus(negative ? `-${fraction}` : fraction)
-    .toDecimalPlaces(0, mode)
-    .times(`1e-${shift}`);
+  const scaled = left.times(`1e${shift}`);
+  if (scaled.abs().lt(divisor.abs())) {
+    const fraction =
+      standIns.get(scaled.abs().times(2).cmp(divisor.abs())) ?? unreachable('cmp gives a sign.');
+    const negative = left.isNeg() !== divisor.isNeg();
+    return decimalOf(negative ? `-${fraction}` : fraction)
+      .toDecimalPlaces(0, mode)
+      .times(`1e-${shift}`);
+  }
+  const reachesNextPlace = scaled
+    .abs()
+    .times(`1e${-scaled.e}`)
+    .gte(divisor.abs().times(`1e${-divisor.e}`));
+  const precision = placesOf(BigInt(scaled.e - divisor.e + (reachesNextPlace ? 1 : 0)));
+  const rounded = exact.clone({ precision, rounding: mode });
+  return new rounded(scaled).div(divisor).times(`1e-${shift}`);
 }
 
 /** `left // right`: the floor of the quotient. */
@@ -170,17 +178,35 @@ export function remainderOf(left: Decimal, right: Decimal): Decimal {
 
 /** `base` to the power `exponent`, through its digits as a bigint. */
 export function power(base: Decimal, exponent: bigint): Decimal {
+  if (exponent < 0n) {
+    return negativePower(base, exponent);
+  }
   const [whole = unreachable('A number has digits.'), fraction = ''] =
     canonicalText(base).split('.');
-  const magnitude = exponent < 0n ? -exponent : exponent;
-  const placesAfterPoint = BigInt(fraction.length) * magnitude;
+  const placesAfterPoint = BigInt(fraction.length) * exponent;
   if (placesAfterPoint > maximumDigits) {
     throw new Panic(
       `${canonicalText(base)} to the power ${exponent} has more digits than a Decimal can hold.`,
     );
   }
-  const raised = new exact(`${BigInt(whole + fraction) ** magnitude}e-${placesAfterPoint}`);
-  return exponent < 0n ? divided(decimalOf(1n), raised) : raised;
+  return new exact(`${BigInt(whole + fraction) ** exponent}e-${placesAfterPoint}`);
+}
+
+function negativePower(base: Decimal, exponent: bigint): Decimal {
+  const divisor = nonZero(base);
+  if (divisor.abs().eq(1)) {
+    return divisor.isNeg() && exponent % 2n !== 0n ? divisor : decimalOf(1n);
+  }
+  const value =
+    -exponent <= BigInt(Number.MAX_SAFE_INTEGER)
+      ? new quotient(divisor).pow(Number(exponent))
+      : undefined;
+  if (value === undefined || !value.isFinite() || value.isZero()) {
+    throw new Panic(
+      `${canonicalText(base)} to the power ${exponent} has more digits than a Decimal can hold.`,
+    );
+  }
+  return value;
 }
 
 /**

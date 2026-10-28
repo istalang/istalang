@@ -115,6 +115,13 @@ describe('dividedTo', () => {
       ),
     );
   });
+
+  it('divides to many places in linear time', () => {
+    const start = Date.now();
+    const divided = dividedTo(decimalOf(1n), decimalOf(7n), 5_000_000n, decimalRoundings.HalfEven);
+    expect(Date.now() - start).toBeLessThan(1000);
+    expect(divided.decimalPlaces()).toBe(5_000_000);
+  });
 });
 
 describe('floorDivided and remainderOf', () => {
@@ -161,5 +168,12 @@ describe('power', () => {
         },
       ),
     );
+  });
+
+  it('raises to a large negative power in time bounded by its 34 digits', () => {
+    const start = Date.now();
+    const result = power(decimalOf('1.0000001'), -3_000_000n);
+    expect(Date.now() - start).toBeLessThan(500);
+    expect(canonicalText(result)).toBe('0.7408182317939905188165157810964846');
   });
 });
