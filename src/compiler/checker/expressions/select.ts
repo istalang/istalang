@@ -22,9 +22,8 @@ import {
   type SelectCase,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { checkDiscarded } from '../rules/must-use.ts';
 import { errorType, type Type } from '../types/type.ts';

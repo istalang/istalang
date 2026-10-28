@@ -18,7 +18,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Comprehension, Expression } from '../../syntax/expressions/index.ts';
 import type { For } from '../../syntax/statements.ts';
 import type { Iteration, IterationForm } from '../check.ts';
-import type { BodyContext, CheckerContext } from '../context.ts';
+import type { BodyContext, CheckerContext, IterationRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
@@ -29,7 +29,7 @@ import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 
 /** How each iteration in one body runs. */
-export class Iterations {
+export class Iterations implements IterationRecord {
   readonly #forms = new Map<Iteration, IterationForm>();
 
   record(iteration: Iteration, form: IterationForm): void {

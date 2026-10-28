@@ -22,7 +22,7 @@ import { type ChainStep, chainStepOf, isOptionalStep } from '../../syntax/expres
 import type { Binary, Expression, Unwrap } from '../../syntax/expressions/index.ts';
 import type { ChainLink } from '../check.ts';
 import { checkOwnCall } from '../closures/own-calls.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, Chains } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { preludeCall } from '../resolution/implicit.ts';
 import { optionalInner } from '../types/fit.ts';
@@ -37,7 +37,7 @@ import { typeText } from '../types/type-text.ts';
  * A link's handler reads its target through `target` and nothing else: every expression's type
  * passes through `linked` (BodyChecker.expression), so no link kind can leave its chain unrecorded.
  */
-export class OptionalChains {
+export class OptionalChains implements Chains {
   /** The type each link's step works on, recorded when its handler reads its target. */
   readonly #bases = new Map<Expression, Type>();
   readonly #carried = new Map<Expression, Type>();
@@ -49,11 +49,6 @@ export class OptionalChains {
     return step !== undefined && (isOptionalStep(step) || this.#carried.has(step.target));
   }
 
-  /**
-   * Checks the target of `link`'s step; the type the step works on: the value a chained target
-   * carries, the value inside an optional after `?.`, or the error type after a report. A target
-   * naming functions before a `.` or `?.` is the call of one (closures/own-calls.ts).
-   */
   target(context: BodyContext, link: Expression): Type {
     const step = chainStepOf(link);
     if (step === undefined) {

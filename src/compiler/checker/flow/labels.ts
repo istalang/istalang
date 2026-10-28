@@ -6,19 +6,10 @@
  */
 
 import type { Break, Continue, Hold, LabelledScope } from '../../syntax/statements.ts';
-
-/** What one body's exits and holds name, as lowering and the flow model read it. */
-export interface LabelResolution {
-  /** The scope `exit` leaves or goes on with; undefined where the checker found none. */
-  readonly exitOf: (exit: Break | Continue) => LabelledScope | undefined;
-  /** The labelled loop or block what `hold` holds lasts until; undefined for the function. */
-  readonly heldUntil: (hold: Hold) => LabelledScope | undefined;
-  /** Whether some `hold` names `scope`, which then keeps a list of what it holds. */
-  readonly isHoldScope: (scope: LabelledScope) => boolean;
-}
+import type { LabelRecord } from '../context.ts';
 
 /** The exits and holds of one body, recorded as the checker resolves them. */
-export class LabelTargets implements LabelResolution {
+export class LabelTargets implements LabelRecord {
   readonly #exits = new Map<Break | Continue, LabelledScope>();
   readonly #holds = new Map<Hold, LabelledScope>();
   readonly #named = new Set<LabelledScope>();
@@ -37,7 +28,6 @@ export class LabelTargets implements LabelResolution {
     this.#holdScopes.add(target);
   }
 
-  /** Whether some exit or hold names `scope` by its label. */
   isNamed(scope: LabelledScope): boolean {
     return this.#named.has(scope);
   }

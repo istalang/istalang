@@ -20,9 +20,7 @@ import type { Expression, Reference } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
-import type { BodyContext } from '../context.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
-import type { AcceptedPart } from '../rules/agreement.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../context.ts';
 import { blockAccepts } from '../rules/branches.ts';
 import {
   boolType,

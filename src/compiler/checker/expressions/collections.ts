@@ -36,9 +36,8 @@ import type {
 import type { Invalid } from '../../syntax/node.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import type { CollectionForm } from '../check.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext, CollectionRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
 import { resolveDefault } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import {
@@ -63,7 +62,7 @@ import { arrayElement, arrayOf, wellKnownArguments, wellKnownOf } from '../types
 import { useSite } from '../use-site.ts';
 
 /** The form of each collection literal of one body, for lowering. */
-export class CollectionForms {
+export class CollectionForms implements CollectionRecord {
   readonly #forms = new Map<ArrayLiteral | MapLiteral, CollectionForm>();
 
   record(literal: ArrayLiteral | MapLiteral, form: CollectionForm): void {

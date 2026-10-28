@@ -20,7 +20,7 @@ import { targetNames } from '../../syntax/patterns.ts';
 import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
 import type { AssignedPart, SignatureParameter } from '../check.ts';
 import type { TargetBinding, TargetOwner } from '../checked-pattern.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, Variables } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { bodyScope } from '../patterns/parts.ts';
 import { walkTargets } from '../patterns/walk.ts';
@@ -32,7 +32,7 @@ import { checkHoldScope } from './loops.ts';
  * The variables of one body: each one's type by its declaring name, which were changed, and what
  * lowering reads of the declarations and assignments.
  */
-export class VariableScope {
+export class VariableScope implements Variables {
   readonly #types = new Map<Identifier, Type>();
   readonly #changed = new Set<Identifier>();
   readonly #inCell = new Set<Identifier>();
@@ -51,7 +51,6 @@ export class VariableScope {
     }
   }
 
-  /** Whether `variable` is a parameter taking a reference (§3.7). */
   isReference(variable: VariableEntity): boolean {
     return this.#references.has(variable.name);
   }
@@ -60,17 +59,14 @@ export class VariableScope {
     return this.#types.get(variable.name) ?? errorType;
   }
 
-  /** Notes that `variable` was reassigned, or changed in part. */
   noteChanged(variable: VariableEntity): void {
     this.#changed.add(variable.name);
   }
 
-  /** Notes that `variable` is passed by `&`, so it needs storage a reference can reach. */
   noteReferenced(variable: VariableEntity): void {
     this.#inCell.add(variable.name);
   }
 
-  /** Notes that a closure captures `variable`, a `let`, so both share its storage (§3.14). */
   noteCaptured(variable: VariableEntity): void {
     this.#inCell.add(variable.name);
   }

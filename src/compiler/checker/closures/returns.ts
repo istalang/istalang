@@ -15,7 +15,7 @@
 import { wellKnown } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
 import { type Block, type Return, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, Returns } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { agreedType, fitProduced, type Produced } from '../rules/agreement.ts';
 import { sameType, type Type, unitType } from '../types/type.ts';
@@ -29,7 +29,7 @@ interface Propagation {
 }
 
 /** The result of one body: declared, or gathered from its `return`s as they are checked. */
-export class ReturnScope {
+export class ReturnScope implements Returns {
   readonly declared: Type | undefined;
   readonly #isFunction: boolean;
   readonly #returned: Produced[] = [];
@@ -41,7 +41,6 @@ export class ReturnScope {
     this.#isFunction = isFunction;
   }
 
-  /** Checks a `return` and what it returns: its value, or `unit` for a bare one. */
   check(context: BodyContext, node: Return): void {
     const expected = this.declared;
     const { value } = node;
@@ -63,7 +62,6 @@ export class ReturnScope {
     this.#returned.push({ type, span: value.span, site: value });
   }
 
-  /** Notes a `?` at `span` that would return an `Err` of `error` (§3.12). */
   propagate(context: BodyContext, error: Type, span: Span): void {
     if (!this.#isFunction) {
       context.report(checkerDiagnostics.propagateOutsideFunction(span));

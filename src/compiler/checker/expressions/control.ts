@@ -4,9 +4,8 @@
  */
 
 import type { If } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { boolType, isAssignable, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

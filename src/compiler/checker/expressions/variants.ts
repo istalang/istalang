@@ -17,9 +17,8 @@ import { type EnumDeclaration, typeParametersOf } from '../../syntax/declaration
 import type { MemberAccess, NoneLiteral, StructLiteral } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
 import { chooseVariant, sameEnum } from '../resolution/named.ts';
 import { optionalInner } from '../types/fit.ts';
 import { typeArgumentsFor } from '../types/resolve-type.ts';

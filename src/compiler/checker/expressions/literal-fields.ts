@@ -40,7 +40,7 @@ import {
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, LiteralSources } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
@@ -76,7 +76,7 @@ export interface LiteralSpread {
 }
 
 /** The struct literals of one body, each with where its fields' values come from. */
-export class StructLiterals {
+export class StructLiterals implements LiteralSources {
   readonly #sources = new Map<StructLiteral, readonly FieldSource[]>();
 
   record(literal: StructLiteral, sources: readonly FieldSource[]): void {

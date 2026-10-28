@@ -41,7 +41,7 @@ import {
   targetParts,
 } from '../../syntax/statements.ts';
 import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { LabelResolution } from './labels.ts';
+import type { LabelResolution } from '../checked-labels.ts';
 
 /** What a flow rule decides: its states, where paths meet, and what its own events do. */
 export interface FlowRule<State> {

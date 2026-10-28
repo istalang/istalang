@@ -85,7 +85,9 @@ const layers = {
 /**
  * The checker's folders, lowest first: each may import the folders before it, never one after, and
  * a folder not listed may import none. Its root modules are its entry, contexts and contracts,
- * which any folder may import, except the classes wiring a body and a program together.
+ * which any folder may import, except the classes wiring a body and a program together; so they
+ * import no folder above the type model, or every folder would reach every other through them.
+ * Type-only imports count (`tsPreCompilationDeps`): a cycle of types is a cycle of knowledge.
  */
 const checkerLayers = [
   'diagnostics',
@@ -121,6 +123,9 @@ const checkerSurface = [
 ];
 
 const checkerFolder = (names) => `^src/compiler/checker/(${names.join('|')})/`;
+
+/** The checker folders its contracts may name: diagnostics and the type model beneath everything. */
+const checkerModel = ['diagnostics', 'types'];
 
 /** Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams. */
 const nodeLayers = ['cli'];
@@ -158,6 +163,15 @@ export default {
       to: { path: '^src/compiler/checker/' },
     },
     {
+      name: 'checker-contract-imports-above-model',
+      severity: 'error',
+      from: {
+        path: '^src/compiler/checker/[^/]+\\.ts$',
+        pathNot: '^src/compiler/checker/(body-checker|program-checker)\\.ts$',
+      },
+      to: { path: checkerFolder(checkerLayers.filter((layer) => !checkerModel.includes(layer))) },
+    },
+    {
       name: 'checker-folder-imports-wiring',
       severity: 'error',
       from: { path: '^src/compiler/checker/[^/]+/' },
@@ -189,6 +203,7 @@ export default {
   allowedSeverity: 'error',
   options: {
     parser: 'swc',
+    tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
     exclude: { path: '\\.(test|test-kit|bench)\\.ts$' },
     doNotFollow: { path: 'node_modules' },

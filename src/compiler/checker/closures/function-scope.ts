@@ -7,18 +7,17 @@
 import type { VariableEntity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { NestedFunction } from '../check.ts';
+import type { FunctionFrame } from '../context.ts';
 import { EnclosingScopes } from './enclosing-scopes.ts';
 import type { ReturnScope } from './returns.ts';
 
 /** One function being checked: the body's own, or a nested one. */
-export class FunctionScope {
-  /** The function checked: the body's own declaration, or a nested one; none for a value's body. */
+export class FunctionScope implements FunctionFrame {
   readonly function: NestedFunction | undefined;
   readonly isAsync: boolean;
   readonly returns: ReturnScope;
   readonly enclosing: EnclosingScopes;
-  /** What the function captures, in the order first used. */
-  readonly captures = new Map<Identifier, VariableEntity>();
+  readonly #captures = new Map<Identifier, VariableEntity>();
   #cleanups = 0;
 
   constructor(checked: NestedFunction | undefined, isAsync: boolean, returns: ReturnScope) {
@@ -28,12 +27,18 @@ export class FunctionScope {
     this.enclosing = new EnclosingScopes(checked?.name);
   }
 
-  /** Whether a `select` case watching this function's own call encloses what is checked (§7). */
+  get captures(): ReadonlyMap<Identifier, VariableEntity> {
+    return this.#captures;
+  }
+
+  capture(entity: VariableEntity): void {
+    this.#captures.set(entity.name, entity);
+  }
+
   get inCleanup(): boolean {
     return this.#cleanups > 0;
   }
 
-  /** Runs `check` inside a case that cleans up after this function's call is disposed. */
   cleanup<Result>(check: () => Result): Result {
     this.#cleanups += 1;
     try {

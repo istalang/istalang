@@ -23,15 +23,10 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { argumentSlotsOf, type BindingFailure } from '../resolution/binding.ts';
-import type {
-  Accepts,
-  CallArgument,
-  Inapplicability,
-  Passing,
-} from '../resolution/call-arguments.ts';
+import type { CallArgument, Inapplicability, Passing } from '../resolution/call-arguments.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import type { Candidate } from '../resolution/candidates.ts';
 import { type Application, choose } from '../resolution/choice.ts';

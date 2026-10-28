@@ -23,27 +23,25 @@ import { localFunctionOf } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { isChangeable } from '../calls/places.ts';
 import type { CheckedFunction, NestedFunction } from '../check.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, FunctionFrame, Functions } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type } from '../types/type.ts';
-import type { FunctionScope } from './function-scope.ts';
 
-export class FunctionScopes {
-  readonly #stack: FunctionScope[];
+export class FunctionScopes implements Functions {
+  readonly #stack: FunctionFrame[];
   /** Nested functions being checked with no declared result, whose type isn't known yet. */
   readonly #untyped = new Set<NestedFunction>();
   readonly #checked = new Map<NestedFunction, CheckedFunction>();
 
-  constructor(root: FunctionScope) {
+  constructor(root: FunctionFrame) {
     this.#stack = [root];
   }
 
-  get current(): FunctionScope {
-    return this.#stack.at(-1) as FunctionScope;
+  get current(): FunctionFrame {
+    return this.#stack.at(-1) as FunctionFrame;
   }
 
-  /** Runs `check` inside `scope`; while its type isn't known, using its own name is reported. */
-  inside<Result>(scope: FunctionScope, check: () => Result): Result {
+  inside<Result>(scope: FunctionFrame, check: () => Result): Result {
     const untyped = scope.returns.declared === undefined ? scope.function : undefined;
     if (untyped !== undefined) {
       this.#untyped.add(untyped);
@@ -59,7 +57,6 @@ export class FunctionScopes {
     }
   }
 
-  /** Notes that `entity` is used where `name` is written, capturing it where it must be. */
   noteUse(context: BodyContext, name: Identifier, entity: VariableEntity): void {
     if (context.checker.bindings.moduleOf(entity) !== undefined) {
       return;
@@ -69,22 +66,20 @@ export class FunctionScopes {
       ({ function: checked, captures }) =>
         checked !== undefined && !encloses(checked.span, declared) && !captures.has(entity.name),
     );
-    for (const { captures } of capturing) {
-      captures.set(entity.name, entity);
+    for (const scope of capturing) {
+      scope.capture(entity);
     }
     if (capturing.length > 0) {
       capture(context, name, entity);
     }
   }
 
-  /** The innermost scope of an enclosing function among `functions`. */
-  enclosing(functions: readonly NestedFunction[]): FunctionScope | undefined {
+  enclosing(functions: readonly NestedFunction[]): FunctionFrame | undefined {
     return this.#stack.findLast(
       (scope) => scope.function !== undefined && functions.includes(scope.function),
     );
   }
 
-  /** The type of a local function or named lambda used by `name`, or the error after a report. */
   typeOfFunction(context: BodyContext, name: Identifier, entity: VariableEntity): Type {
     const owner = localFunctionOf(entity);
     if (owner !== undefined && this.#untyped.has(owner)) {

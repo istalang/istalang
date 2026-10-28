@@ -7,6 +7,7 @@
  */
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { Accepts } from '../context.ts';
 import type { ParameterSlot, RestSlot, Type } from '../types/type.ts';
 import type { BindingFailure } from './binding.ts';
 
@@ -33,12 +34,6 @@ export interface Takes {
  * takes either way (§3.7).
  */
 export type Passing = 'value' | 'reference' | 'receiver';
-
-/**
- * Whether an argument the chosen function decides can take a parameter of type `expected`, where
- * a part `isOpen` says inference hasn't found yet can be anything.
- */
-export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boolean;
 
 /**
  * An argument as choosing sees it: its type, or, when the chosen function decides it, which

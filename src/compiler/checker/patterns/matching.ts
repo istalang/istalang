@@ -38,7 +38,7 @@ import type {
   StructPattern,
 } from '../../syntax/patterns.ts';
 import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, PatternRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { implicitOperatorCall, isImplicitOperator, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
@@ -60,7 +60,7 @@ import { literalShape, nullaryShape, structKey } from './shapes.ts';
 import { type WalkedPattern, walkPattern } from './walk.ts';
 
 /** The patterns of one body as checked, for lowering. */
-export class CheckedPatterns {
+export class CheckedPatterns implements PatternRecord {
   readonly #patterns = new Map<Pattern, CheckedPattern>();
 
   record(pattern: Pattern, checked: CheckedPattern): void {

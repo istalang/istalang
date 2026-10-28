@@ -25,7 +25,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { binaryOperators, type ChainingOperator } from '../../syntax/operators.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, ImplicitRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
 import { substitute } from '../types/substitution.ts';
@@ -40,7 +40,7 @@ import { choose } from './choice.ts';
 import { instantiate } from './conformance.ts';
 
 /** The implicit calls of one body, by construct and role. */
-export class ImplicitCalls {
+export class ImplicitCalls implements ImplicitRecord {
   readonly #calls = new Map<NodeOf<string>, Map<ImplicitRole, ResolvedCall>>();
 
   record(node: NodeOf<string>, role: ImplicitRole, call: ResolvedCall): void {

@@ -34,9 +34,8 @@ import {
   functionsAccepted,
   namedFunctions,
 } from '../closures/function-values.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType } from '../resolution/named.ts';
 import { knownConstraints, requiredFields, requiredFieldType } from '../traits/constraints.ts';

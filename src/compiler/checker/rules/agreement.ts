@@ -12,8 +12,7 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
 import type { ValueSite } from '../check.ts';
-import type { BodyContext } from '../context.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../context.ts';
 import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
 import { widened } from '../types/widening.ts';
@@ -116,14 +115,6 @@ export function decidedSoFar(
 ): Type | undefined {
   return agreedType(produced, context.checker.fitOf).decided;
 }
-
-/**
- * What one part of a composite argument has before the call is chosen: the parameter types it can
- * take when the call decides its type, or its own type when known without side effects.
- */
-export type AcceptedPart =
-  | { readonly kind: 'decided'; readonly accepts: Accepts }
-  | { readonly kind: 'typed'; readonly type: Type | undefined };
 
 /** Whether `part` can take a parameter of `expected`. */
 function partAccepts(

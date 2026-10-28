@@ -12,18 +12,11 @@
  */
 
 import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
-import type { BodyContext } from '../context.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
 import { neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import {
-  type AcceptedPart,
-  agreedAccepts,
-  decidedSoFar,
-  type Produced,
-  settleAgreement,
-} from './agreement.ts';
+import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from './agreement.ts';
 
 export class Branches {
   readonly #context: BodyContext;

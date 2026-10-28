@@ -10,12 +10,16 @@
  *   target for lowering (CheckedBody). The facts a body's own rules gather live in per-concern
  *   units beside those rules (variables, returns, loops), so a feature adds a unit, not methods
  *   here.
+ *
+ * Each unit is declared here as the narrow interface construct modules use, which the class
+ * beside its rules implements, so this contract names nothing above the type model and no folder
+ * reaches another through it (.dependency-cruiser.mjs).
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
 import type { Span } from '../../text/span.ts';
-import type { Entity } from '../binder/entities.ts';
+import type { Entity, VariableEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
   EnumDeclaration,
@@ -24,28 +28,46 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
-import type { Expression } from '../syntax/expressions/index.ts';
-import type { Identifier, Invalid } from '../syntax/node.ts';
-import type { Block, Statement } from '../syntax/statements.ts';
+import type {
+  ArrayLiteral,
+  Expression,
+  MapLiteral,
+  StructLiteral,
+} from '../syntax/expressions/index.ts';
+import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
+import type { Pattern } from '../syntax/patterns.ts';
+import type {
+  Assignment,
+  Block,
+  Break,
+  Continue,
+  For,
+  Hold,
+  LabelledScope,
+  Return,
+  Statement,
+  While,
+} from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { Checker, ValueSite, VariantMember } from './check.ts';
-import type { EnclosingScopes } from './closures/enclosing-scopes.ts';
-import type { FunctionScopes } from './closures/functions.ts';
-import type { OwnCalls } from './closures/own-calls.ts';
-import type { ReturnScope } from './closures/returns.ts';
-import type { CollectionForms } from './expressions/collections.ts';
-import type { StructLiterals } from './expressions/literal-fields.ts';
-import type { OptionalChains } from './expressions/optionals.ts';
-import type { LabelTargets } from './flow/labels.ts';
+import type {
+  AssignedPart,
+  ChainLink,
+  CheckedFunction,
+  Checker,
+  CollectionForm,
+  FieldSource,
+  Iteration,
+  IterationForm,
+  NestedFunction,
+  SignatureParameter,
+  ValueSite,
+  VariantMember,
+} from './check.ts';
+import type { AnnotationQueries } from './checked-annotation.ts';
+import type { LabelResolution } from './checked-labels.ts';
+import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { JsonCodecs } from './json-form.ts';
-import type { CheckedPatterns } from './patterns/matching.ts';
-import type { Accepts } from './resolution/call-arguments.ts';
-import type { ImplicitCalls } from './resolution/implicit.ts';
-import type { CallSite, ResolvedCall } from './resolved-call.ts';
-import type { AcceptedPart } from './rules/agreement.ts';
-import type { Annotations } from './rules/annotations.ts';
-import type { Iterations } from './rules/iteration.ts';
-import type { VariableScope } from './statements/variables.ts';
+import type { CallSite, ImplicitRole, ResolvedCall } from './resolved-call.ts';
 import type { Fit, Fitting, OptionalEntity } from './types/fit.ts';
 import type { Substitution } from './types/substitution.ts';
 import type {
@@ -85,7 +107,7 @@ export interface CheckerContext extends Checker {
     owner: StaticOwner,
   ) => readonly FunctionDeclaration[];
   /** Annotations, as later phases read them and as declarations check them (§3.16). */
-  readonly annotations: Annotations;
+  readonly annotations: AnnotationChecks;
   /** The type an alias stands for, its own type parameters left open (§3.17). */
   readonly aliasedType: (alias: TypeAliasDeclaration) => Type;
   /**
@@ -159,20 +181,178 @@ export interface BodyContext {
   readonly recordCall: (site: CallSite, call: ResolvedCall) => void;
   /** Whether the innermost function is async, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
-  readonly variables: VariableScope;
-  readonly literals: StructLiterals;
+  readonly variables: Variables;
+  readonly literals: LiteralSources;
   /** The functions being checked, the body's own and nested ones (§3.14), innermost current. */
-  readonly functions: FunctionScopes;
+  readonly functions: Functions;
   /** The innermost function's result. */
-  readonly returns: ReturnScope;
+  readonly returns: Returns;
   /** The innermost function's loops and labelled blocks. */
-  readonly enclosing: EnclosingScopes;
-  readonly implicit: ImplicitCalls;
-  readonly collections: CollectionForms;
-  readonly iterations: Iterations;
-  readonly patterns: CheckedPatterns;
-  readonly chains: OptionalChains;
-  readonly ownCalls: OwnCalls;
+  readonly enclosing: Enclosing;
+  readonly implicit: ImplicitRecord;
+  readonly collections: CollectionRecord;
+  readonly iterations: IterationRecord;
+  readonly patterns: PatternRecord;
+  readonly chains: Chains;
+  readonly ownCalls: OwnCallRecord;
   /** What this body's exits and holds name, recorded as it is checked. */
-  readonly labels: LabelTargets;
+  readonly labels: LabelRecord;
+}
+
+/**
+ * Whether an argument the chosen function decides can take a parameter of type `expected`, where
+ * a part `isOpen` says inference hasn't found yet can be anything.
+ */
+export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boolean;
+
+/**
+ * What one part of a composite argument has before the call is chosen: the parameter types it can
+ * take when the call decides its type, or its own type when known without side effects.
+ */
+export type AcceptedPart =
+  | { readonly kind: 'decided'; readonly accepts: Accepts }
+  | { readonly kind: 'typed'; readonly type: Type | undefined };
+
+/** What declarations ask of annotations beyond later phases' queries (rules/annotations.ts). */
+export interface AnnotationChecks extends AnnotationQueries {
+  /** The title `declaration`'s `@Suite` gives its suite (§10); undefined without one. */
+  readonly suiteTitleOf: (module: ModuleId, declaration: FunctionDeclaration) => string | undefined;
+  /**
+   * Checks the annotations of each of `fields`, declared together, and reports each field whose
+   * JSON name an earlier one already has.
+   */
+  readonly checkFields: (fields: readonly FieldMember[]) => void;
+}
+
+/** A body's variables: types, uses, and what targets take (statements/variables.ts). */
+export interface Variables {
+  readonly declare: (name: Identifier, type: Type) => void;
+  readonly declareParameter: (
+    parameter: Pick<SignatureParameter, 'node' | 'type' | 'reference'>,
+  ) => void;
+  /** Whether `variable` is a parameter taking a reference (§3.7). */
+  readonly isReference: (variable: VariableEntity) => boolean;
+  readonly typeOf: (variable: VariableEntity) => Type;
+  /** Notes that `variable` was reassigned, or changed in part. */
+  readonly noteChanged: (variable: VariableEntity) => void;
+  /** Notes that `variable` is passed by `&`, so it needs storage a reference can reach. */
+  readonly noteReferenced: (variable: VariableEntity) => void;
+  /** Notes that a closure captures `variable`, a `let`, so both share its storage (§3.14). */
+  readonly noteCaptured: (variable: VariableEntity) => void;
+  readonly recordTargets: (owner: TargetOwner, bindings: readonly TargetBinding[]) => void;
+  readonly recordAssigned: (assignment: Assignment, parts: readonly AssignedPart[]) => void;
+}
+
+/** Where each struct or variant literal's fields get values (expressions/literal-fields.ts). */
+export interface LiteralSources {
+  readonly record: (literal: StructLiteral, sources: readonly FieldSource[]) => void;
+}
+
+/** The functions a body is checked in, innermost current (closures/functions.ts). */
+export interface Functions {
+  readonly current: FunctionFrame;
+  /** Runs `check` inside `scope`; while its type isn't known, using its own name is reported. */
+  readonly inside: <Result>(scope: FunctionFrame, check: () => Result) => Result;
+  /** Notes that `entity` is used where `name` is written, capturing it where it must be. */
+  readonly noteUse: (context: BodyContext, name: Identifier, entity: VariableEntity) => void;
+  /** The innermost scope of an enclosing function among `functions`. */
+  readonly enclosing: (functions: readonly NestedFunction[]) => FunctionFrame | undefined;
+  /** The type of a local function or named lambda used by `name`, or the error after a report. */
+  readonly typeOfFunction: (context: BodyContext, name: Identifier, entity: VariableEntity) => Type;
+  readonly record: (node: NestedFunction, checked: CheckedFunction) => void;
+  readonly checkedOf: (node: NestedFunction) => CheckedFunction | undefined;
+}
+
+/** One function being checked: the body's own, or a nested one (closures/function-scope.ts). */
+export interface FunctionFrame {
+  /** The function checked: the body's own declaration, or a nested one; none for a value's body. */
+  readonly function: NestedFunction | undefined;
+  readonly isAsync: boolean;
+  readonly returns: Returns;
+  readonly enclosing: Enclosing;
+  /** What the function captures, in the order first used. */
+  readonly captures: ReadonlyMap<Identifier, VariableEntity>;
+  /** Notes that the function captures `entity`. */
+  readonly capture: (entity: VariableEntity) => void;
+  /** Whether a `select` case watching this function's own call encloses what is checked (§7). */
+  readonly inCleanup: boolean;
+  /** Runs `check` inside a case that cleans up after this function's call is disposed. */
+  readonly cleanup: <Result>(check: () => Result) => Result;
+}
+
+/** One function's result: declared, or gathered from its `return`s (closures/returns.ts). */
+export interface Returns {
+  readonly declared: Type | undefined;
+  /** Checks a `return` and what it returns: its value, or `unit` for a bare one. */
+  readonly check: (context: BodyContext, node: Return) => void;
+  /** Notes a `?` at `span` that would return an `Err` of `error` (§3.12). */
+  readonly propagate: (context: BodyContext, error: Type, span: Span) => void;
+}
+
+/** The loops and labelled blocks around what one function checks (closures/enclosing-scopes.ts). */
+export interface Enclosing {
+  /** Runs `check` inside the body of `scope`. */
+  readonly inside: <Result>(scope: LabelledScope, check: () => Result) => Result;
+  /** The innermost loop around: what a `break` or `continue` with no label leaves. */
+  readonly innermostLoop: For | While | undefined;
+  /** The innermost scope around labelled `name`. */
+  readonly labelled: (name: Identifier) => LabelledScope | undefined;
+  /** Whether `name` is the function's own, which `hold(name)` also names. */
+  readonly isOwnName: (name: Identifier) => boolean;
+}
+
+/** The calls the language makes for constructs with no call written (resolution/implicit.ts). */
+export interface ImplicitRecord {
+  readonly record: (node: NodeOf<string>, role: ImplicitRole, call: ResolvedCall) => void;
+  readonly of: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
+}
+
+/** What each collection literal builds (expressions/collections.ts). */
+export interface CollectionRecord {
+  readonly record: (literal: ArrayLiteral | MapLiteral, form: CollectionForm) => void;
+}
+
+/** How each iteration runs (rules/iteration.ts). */
+export interface IterationRecord {
+  readonly record: (iteration: Iteration, form: IterationForm) => void;
+}
+
+/** Each pattern's tests and bindings (patterns/matching.ts). */
+export interface PatternRecord {
+  readonly record: (pattern: Pattern, checked: CheckedPattern) => void;
+}
+
+/** The links of optional chains (expressions/optionals.ts). */
+export interface Chains {
+  /**
+   * Checks the target of `link`'s step; the type the step works on: the value a chained target
+   * carries, the value inside an optional after `?.`, or the error type after a report. A target
+   * naming functions before a `.` or `?.` is the call of one (closures/own-calls.ts).
+   */
+  readonly target: (context: BodyContext, link: Expression) => Type;
+  readonly chainOf: (link: Expression) => ChainLink | undefined;
+}
+
+/**
+ * The hidden variables holding the calls a body reads, and the variable each read names
+ * (closures/own-calls.ts).
+ */
+export interface OwnCallRecord {
+  /** The variable holding the call's handle the name `node` reads; undefined for any other node. */
+  readonly readAt: (node: Expression) => VariableEntity | undefined;
+  /** Records that `name` reads `owner`'s call, typed `type`; that call's variable. */
+  readonly record: (
+    context: BodyContext,
+    name: Identifier,
+    owner: NestedFunction,
+    type: Type,
+  ) => VariableEntity;
+}
+
+/** What each exit and hold names, recorded as statements/loops.ts resolves it (flow/labels.ts). */
+export interface LabelRecord extends LabelResolution {
+  readonly recordExit: (exit: Break | Continue, target: LabelledScope) => void;
+  readonly recordHold: (hold: Hold, target: LabelledScope) => void;
+  /** Whether some exit or hold names `scope` by its label. */
+  readonly isNamed: (scope: LabelledScope) => boolean;
 }

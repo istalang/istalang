@@ -21,16 +21,15 @@ import { localFunctionOf } from '../../binder/entities.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { NestedFunction } from '../check.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, OwnCallRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 /** The hidden variables holding the calls a body reads, and the variable each read names. */
-export class OwnCalls {
+export class OwnCalls implements OwnCallRecord {
   readonly #variables = new Map<NestedFunction, VariableEntity>();
   readonly #reads = new Map<Expression, VariableEntity>();
 
-  /** The variable holding the handle of the call the name `node` reads; undefined for any other node. */
   readAt(node: Expression): VariableEntity | undefined {
     return this.#reads.get(node);
   }
@@ -40,7 +39,6 @@ export class OwnCalls {
     return this.#variables.get(owner);
   }
 
-  /** Records that `name` reads `owner`'s call, typed `type`; that call's variable. */
   record(
     context: BodyContext,
     name: Identifier,

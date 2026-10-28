@@ -28,12 +28,8 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
-import type {
-  AnnotationPlace,
-  AnnotationQueries,
-  CheckedAnnotation,
-} from '../checked-annotation.ts';
-import type { CheckerContext } from '../context.ts';
+import type { AnnotationPlace, CheckedAnnotation } from '../checked-annotation.ts';
+import type { AnnotationChecks, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { defaultWitness } from '../resolution/default-witness.ts';
 import type { FieldMember, Type } from '../types/type.ts';
@@ -58,7 +54,7 @@ export interface AnnotationSeams {
   readonly checkValue: (module: ModuleId, value: Expression) => CheckedBody;
 }
 
-export class Annotations implements AnnotationQueries {
+export class Annotations implements AnnotationChecks {
   readonly #seams: AnnotationSeams;
   readonly #checked = new Map<NodeOf<string>, readonly CheckedAnnotation[]>();
 
@@ -106,7 +102,6 @@ export class Annotations implements AnnotationQueries {
     return this.#textOf(this.of(module, statement, statementPlace(statement)), 'waypoint');
   }
 
-  /** The title `declaration`'s `@Suite` gives its suite (§10); undefined without one. */
   suiteTitleOf(module: ModuleId, declaration: FunctionDeclaration): string | undefined {
     return this.#textOf(this.of(module, declaration, { kind: 'function' }), 'suite');
   }
@@ -123,10 +118,6 @@ export class Annotations implements AnnotationQueries {
     return this.#knownOn(field, name) !== undefined;
   }
 
-  /**
-   * Checks the annotations of each of `fields`, declared together, and reports each field whose
-   * JSON name an earlier one already has.
-   */
   checkFields(fields: readonly FieldMember[]): void {
     const names = new Set<string>();
     for (const field of fields) {

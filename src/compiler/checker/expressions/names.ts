@@ -14,9 +14,8 @@ import {
   functionsAccepted,
   namedFunctions,
 } from '../closures/function-values.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
 import { fieldlessStructOf } from '../resolution/named.ts';
 import { errorType, nominalType, type Type } from '../types/type.ts';
 import { checkVariantName, variantsAccepted } from './variants.ts';

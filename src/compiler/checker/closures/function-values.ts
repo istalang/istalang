@@ -20,9 +20,9 @@ import type { FunctionsEntity } from '../../binder/entities.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { recordChosen } from '../calls/resolve.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts, Passing } from '../resolution/call-arguments.ts';
+import type { Passing } from '../resolution/call-arguments.ts';
 import {
   type Candidate,
   callCandidates,

@@ -27,9 +27,9 @@ import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { Assignment, Block, For, Return, VariableDeclaration } from '../syntax/statements.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
+import type { LabelResolution } from './checked-labels.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
-import type { LabelResolution } from './flow/labels.ts';
 import type { JsonFormQueries } from './json-form.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type {

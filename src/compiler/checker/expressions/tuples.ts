@@ -10,9 +10,8 @@
  */
 
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/call-arguments.ts';
 import { partsAccept } from '../rules/agreement.ts';
 import { withoutOptionals } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';

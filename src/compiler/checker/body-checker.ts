@@ -30,13 +30,12 @@ import type { Block, Statement } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
-import type { EnclosingScopes } from './closures/enclosing-scopes.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
 import { inferLambda } from './closures/lambdas.ts';
 import { OwnCalls } from './closures/own-calls.ts';
 import { blockTail, ReturnScope } from './closures/returns.ts';
-import type { BodyContext, CheckerContext } from './context.ts';
+import type { Accepts, BodyContext, CheckerContext, Enclosing, Returns } from './context.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import { CollectionForms } from './expressions/collections.ts';
 import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/expressions.ts';
@@ -44,7 +43,6 @@ import { StructLiterals } from './expressions/literal-fields.ts';
 import { OptionalChains } from './expressions/optionals.ts';
 import { LabelTargets } from './flow/labels.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
-import type { Accepts } from './resolution/call-arguments.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { reportUnmet } from './resolution/trait-objects.ts';
 import type { CallSite, ResolvedCall } from './resolved-call.ts';
@@ -89,15 +87,17 @@ export class BodyChecker implements BodyContext {
   readonly #types = new Map<Expression, Type>();
   readonly #calls = new Map<CallSite, ResolvedCall>();
   readonly #fits = new Map<ValueSite, Fit>();
+  /** The body's own result, which only the body's own function returns into. */
+  readonly #result: ReturnScope;
 
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
     this.module = module;
     const isFunction = kind.kind === 'function';
-    const returns = new ReturnScope(kind.declaredResult, isFunction);
+    this.#result = new ReturnScope(kind.declaredResult, isFunction);
     const root = isFunction
-      ? new FunctionScope(kind.declaration, kind.isAsync, returns)
-      : new FunctionScope(undefined, false, returns);
+      ? new FunctionScope(kind.declaration, kind.isAsync, this.#result)
+      : new FunctionScope(undefined, false, this.#result);
     this.functions = new FunctionScopes(root);
   }
 
@@ -105,11 +105,11 @@ export class BodyChecker implements BodyContext {
     return this.functions.current.isAsync;
   }
 
-  get returns(): ReturnScope {
+  get returns(): Returns {
     return this.functions.current.returns;
   }
 
-  get enclosing(): EnclosingScopes {
+  get enclosing(): Enclosing {
     return this.functions.current.enclosing;
   }
 
@@ -118,8 +118,8 @@ export class BodyChecker implements BodyContext {
     for (const parameter of parameters) {
       this.variables.declareParameter(parameter);
     }
-    const tail = this.block(body, this.returns.declared);
-    return this.#finished([body], this.returns.result(this, blockTail(body, tail)));
+    const tail = this.block(body, this.#result.declared);
+    return this.#finished([body], this.#result.result(this, blockTail(body, tail)));
   }
 
   /** What checking a function's default `values` found (signatures.ts), once they are all checked. */
@@ -129,7 +129,7 @@ export class BodyChecker implements BodyContext {
 
   /** Checks a value of its own, such as a constant's initializer, against the declared result. */
   checkValue(node: Expression): CheckedBody {
-    const { declared } = this.returns;
+    const { declared } = this.#result;
     const type = this.expect(node, declared);
     return this.#finished([node], declared ?? type);
   }
