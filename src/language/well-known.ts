@@ -95,6 +95,11 @@ export const testingFunctions = {
 /** What a test module's file name ends with (§10). */
 export const testModuleSuffix = '.test.ista';
 
+/** Whether the file at `path` holds a test module (§10), by its name. */
+export function isTestModulePath(path: string): boolean {
+  return path.endsWith(testModuleSuffix);
+}
+
 /** The functions `Encodable` and `Decodable` require (§3.10): a type's codecs, by direction. */
 export const codecFunctions = { write: 'toJson', read: 'fromJson' } as const;
 

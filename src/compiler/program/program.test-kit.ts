@@ -6,7 +6,7 @@
  * labelled with its key, so diagnostics and assertions read as the files they come from.
  */
 
-import { testModuleSuffix } from '../../language/well-known.ts';
+import { isTestModulePath } from '../../language/well-known.ts';
 import {
   buildProgram,
   type LocatedModule,
@@ -34,7 +34,7 @@ export function memoryLoader(files: Files): ModuleLoader {
         id: idOf(key),
         name: key,
         label: key,
-        isTest: key.endsWith(testModuleSuffix),
+        isTest: isTestModulePath(key),
         read: () => text,
       },
     ]),

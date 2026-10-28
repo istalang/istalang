@@ -22,7 +22,7 @@ tags: [reuse, language, modules, program, binder, names]
 - look up a language-role module (`prelude`, `time`, `json`, `testing`) or declaration → `languageModules`, `wellKnown` (`src/language/well-known.ts`)
 - look up well-known variant names (`Optional`, `Result`, `Json`) → `optionalVariants`, `resultVariants`, `jsonVariants` (`src/language/well-known.ts`)
 - look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/language/well-known.ts`)
-- look up well-known testing function names and test file suffix → `testingFunctions`, `testModuleSuffix` (`src/language/well-known.ts`)
+- look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/language/well-known.ts`)
 - look up collection, template or pattern function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions` (`src/language/well-known.ts`)
 - look up `dispose`, `from` or `main` function names → `disposeFunction`, `conversionFunction`, `entryFunction` (`src/language/well-known.ts`)
 - look up `_inclusiveEnd` or `panic` function names → `inclusiveEndFunction`, `panicFunction` (`src/language/well-known.ts`)

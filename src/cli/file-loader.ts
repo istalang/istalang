@@ -24,7 +24,7 @@ import {
   type ModuleLoader,
   moduleIdOf,
 } from '../compiler/program/program.ts';
-import { testModuleSuffix } from '../language/well-known.ts';
+import { isTestModulePath } from '../language/well-known.ts';
 import { isSystemError } from './errno.ts';
 
 export const sourceExtension = '.ista';
@@ -54,7 +54,7 @@ export function locateFile(file: string, places: ProjectPlaces): LocatedModule |
     id: moduleIdOf(pathToFileURL(file)),
     name: withoutExtension(relative(places.projectRoot, file).split(sep).join('/')),
     label: relative(places.cwd, file),
-    isTest: file.endsWith(testModuleSuffix),
+    isTest: isTestModulePath(file),
     read: () => readFileSync(file, 'utf8'),
   };
 }
