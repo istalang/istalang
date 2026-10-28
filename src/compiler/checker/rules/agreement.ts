@@ -15,7 +15,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import { recordPrechecked } from '../calls/lambda-arguments.ts';
 import type { ValueSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
-import type { Accepts } from '../resolution/choice.ts';
+import type { Accepts } from '../resolution/call-arguments.ts';
 import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
 import { widened } from '../types/widening.ts';

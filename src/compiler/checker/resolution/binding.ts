@@ -18,11 +18,39 @@
  *   collects into it too. Which arguments a pack takes is choosing's to judge (choice.ts).
  */
 
+import type { SignatureParameter } from '../check.ts';
 import { type Binding, parameterOfArgument } from '../resolved-call.ts';
-import type { Type } from '../types/type.ts';
+import { type Substitution, substitute } from '../types/substitution.ts';
+import { errorType, type ParameterSlot, type Type } from '../types/type.ts';
 
 /** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
 export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
+
+/** The rest slot of a parameter or function type ending in a pack (§3.5). */
+export const packRestSlot: RestSlot = { kind: 'pack' };
+
+const restSlots = new WeakMap<SignatureParameter, RestSlot>();
+
+/** Records the `RestSlot` of `parameter` when its signature is checked (declarations/signatures.ts). */
+export function recordRestSlot(parameter: SignatureParameter, slot: RestSlot): void {
+  restSlots.set(parameter, slot);
+}
+
+/** The `RestSlot` of `parameter`, with its array item type mapped by `substitution`. */
+export function restSlotOf(
+  parameter: SignatureParameter,
+  substitution: Substitution,
+): RestSlot | undefined {
+  if (parameter.rest === undefined) {
+    return undefined;
+  }
+  if (parameter.rest === 'pack') {
+    return packRestSlot;
+  }
+  const recorded = restSlots.get(parameter);
+  const item = recorded?.kind === 'array' ? recorded.item : errorType;
+  return { kind: 'array', item: substitute(item, substitution) };
+}
 
 /** What binding needs to know of a parameter: its name, if it can be named, and its kind. */
 export interface BoundSlot {
@@ -78,17 +106,12 @@ export const bindArguments: Binder = (slots, callArguments) => {
     argument.name === undefined ? [] : [{ name: argument.name, index }],
   );
   const byPosition = bindByPosition(slots, positional);
-  if (isFailure(byPosition)) {
+  if (!isBinding(byPosition)) {
     return byPosition;
   }
   const byName = bindByName(slots, byPosition, named);
-  return isFailure(byName) ? byName : filled(slots, byName, named.length > 0);
+  return isBinding(byName) ? filled(slots, byName, named.length > 0) : byName;
 };
-
-/** Whether `bound` is why binding failed, rather than what it found. */
-function isFailure(bound: Sources | BindingFailure): bound is BindingFailure {
-  return !Array.isArray(bound);
-}
 
 /**
  * The binding of a function value's arguments, all by position, an array's rest parameter one
@@ -202,20 +225,14 @@ function arityOf(slots: readonly BoundSlot[]): BindingFailure {
   return { kind: 'arity', ...positionalCounts(slots) };
 }
 
-/** What an argument fills: a parameter's type and passing, or, as a rest parameter's item, its array's element, by value. */
-export interface ArgumentSlot {
-  readonly type: Type;
-  readonly reference: boolean;
-}
-
 /**
  * By argument number, the slot `binding` passes each argument to; a pack's arguments have none of
  * their own, since together they fill it (choice.ts).
  */
 export function argumentSlotsOf(
-  slots: readonly (ArgumentSlot & { readonly rest?: RestSlot | undefined })[],
+  slots: readonly (ParameterSlot & { readonly rest?: RestSlot | undefined })[],
   binding: Binding,
-): ReadonlyMap<number, ArgumentSlot> {
+): ReadonlyMap<number, ParameterSlot> {
   return new Map(
     [...parameterOfArgument(binding)].flatMap(([argument, parameter]) => {
       const slot = slots[parameter];
@@ -230,6 +247,6 @@ export function argumentSlotsOf(
 }
 
 /** Whether `bound` is a binding, not why one failed. */
-export function isBinding(bound: Binding | BindingFailure): bound is Binding {
+export function isBinding<Item>(bound: readonly Item[] | BindingFailure): bound is readonly Item[] {
   return Array.isArray(bound);
 }

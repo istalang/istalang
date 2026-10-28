@@ -15,7 +15,7 @@ import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statement
 import { mentionsUnbound, takePrechecked } from '../calls/lambda-arguments.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/choice.ts';
+import type { Accepts } from '../resolution/call-arguments.ts';
 import { neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import {

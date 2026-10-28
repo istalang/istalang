@@ -22,19 +22,14 @@ import type { Identifier } from '../../syntax/node.ts';
 import { recordChosen } from '../calls/resolve.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Accepts, Passing } from '../resolution/call-arguments.ts';
 import {
   type Candidate,
   callCandidates,
   staticCandidates,
   staticTargetOf,
 } from '../resolution/candidates.ts';
-import {
-  type Accepts,
-  type Application,
-  chooseAsValue,
-  type Passing,
-  signatureOf,
-} from '../resolution/choice.ts';
+import { type Application, chooseAsValue, signatureOf } from '../resolution/choice.ts';
 import { instantiate } from '../resolution/conformance.ts';
 import { namedType } from '../resolution/named.ts';
 import { substitute } from '../types/substitution.ts';

@@ -17,14 +17,11 @@ import { callArgumentOf, explain, fitArguments, type WrittenArgument } from '../
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { takenBy } from '../resolution/applicability.ts';
-import { bindArguments } from '../resolution/binding.ts';
+import { bindArguments, packRestSlot } from '../resolution/binding.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureOf } from '../types/well-known.ts';
-
-/** The rest of a function value's type ending in a pack (§3.5). */
-const packRest = { kind: 'pack' } as const;
 
 /** A call as written: where it stands, with its arguments and any type arguments. */
 export interface ValueCall {
@@ -67,7 +64,7 @@ export function checkValueCall(
   const unnamed = { name: undefined, hasDefault: false };
   const fixed = parameters.map((slot) => ({ ...slot, ...unnamed, rest: undefined }));
   const packed =
-    pack === undefined ? [] : [{ type: pack, reference: false, ...unnamed, rest: packRest }];
+    pack === undefined ? [] : [{ type: pack, reference: false, ...unnamed, rest: packRestSlot }];
   const takes = { typeParameters: [], parameters: [...fixed, ...packed] };
   const callArguments = written.map(callArgumentOf);
   const binder = bindArguments;

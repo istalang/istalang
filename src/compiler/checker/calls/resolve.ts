@@ -26,16 +26,15 @@ import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { argumentSlotsOf, type BindingFailure } from '../resolution/binding.ts';
+import type {
+  Accepts,
+  CallArgument,
+  Inapplicability,
+  Passing,
+} from '../resolution/call-arguments.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import type { Candidate } from '../resolution/candidates.ts';
-import {
-  type Accepts,
-  type Application,
-  type CallArgument,
-  choose,
-  type Inapplicability,
-  type Passing,
-} from '../resolution/choice.ts';
+import { type Application, choose } from '../resolution/choice.ts';
 import { type Instantiation, instantiate } from '../resolution/conformance.ts';
 import type { CallSite } from '../resolved-call.ts';
 import { substitute } from '../types/substitution.ts';

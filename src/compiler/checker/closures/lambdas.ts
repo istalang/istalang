@@ -33,7 +33,7 @@ import type { NestedFunction, SignatureParameter } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/choice.ts';
+import type { Accepts } from '../resolution/call-arguments.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { withoutOptionals } from '../types/fit.ts';

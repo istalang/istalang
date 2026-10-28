@@ -91,13 +91,21 @@ function preludeOverloads(
 }
 
 /**
+ * A parameter position as overload clash checking sees it: a pack's items taking any type by
+ * value (§3.5), or a parameter's type key with whether a call must pass it by `&`.
+ */
+type SlotKey =
+  | { readonly kind: 'any' }
+  | { readonly kind: 'type'; readonly key: string; readonly reference: boolean };
+
+/**
  * What a call by position meets in a function: how many type parameters it has, the key of each
  * fixed parameter's type, its rest parameter's element's, and how many arguments it needs.
  */
 interface Shape {
   readonly generic: number;
-  readonly fixed: readonly string[];
-  readonly rest: string | undefined;
+  readonly fixed: readonly SlotKey[];
+  readonly rest: SlotKey | undefined;
   readonly minimum: number;
 }
 
@@ -123,12 +131,16 @@ function clash(first: Shape | undefined, second: Shape | undefined): boolean {
 }
 
 /** The key a pack's items have at every position: they take any type by value (§3.5). */
-const packItemKey = '...';
+const packItemKey: SlotKey = { kind: 'any' };
 
 /** Whether a call's argument fits parameters of both keys alike. */
-function sameKey(first: string, second: string): boolean {
-  const takesAny = (key: string, other: string) => key === packItemKey && !other.startsWith('&');
-  return first === second || takesAny(first, second) || takesAny(second, first);
+function sameKey(first: SlotKey, second: SlotKey): boolean {
+  if (first.kind === 'type' && second.kind === 'type') {
+    return first.key === second.key && first.reference === second.reference;
+  }
+  const takesAny = (key: SlotKey, other: SlotKey) =>
+    key.kind === 'any' && (other.kind === 'any' || !other.reference);
+  return takesAny(first, second) || takesAny(second, first);
 }
 
 /**
@@ -143,23 +155,24 @@ function shapeOf(checker: CheckerContext, declaration: FunctionDeclaration): Sha
   const positions = new Map<ParameterKey, number>(
     typeParametersOf(declaration.typeParameters).map((parameter, index) => [parameter, index]),
   );
-  const keyOf = (type: Type, reference: boolean) =>
-    (reference ? '&' : '') +
-    checker.typeKeys.typeKey(withoutOptionals(type, checker.optionalEntity), positions);
+  const keyOf = (type: Type, reference: boolean): SlotKey => ({
+    kind: 'type',
+    key: checker.typeKeys.typeKey(withoutOptionals(type, checker.optionalEntity), positions),
+    reference,
+  });
   const slots = signatureOf(checker, declaration).parameters;
   const fixed = slots.filter((slot) => slot.rest === undefined);
   const rest = slots.find((slot) => slot.rest !== undefined)?.rest;
-  // A method's `self` has no name to give (choice.ts), and is passed either way, so it is keyed
-  // as by value.
+  // A method's `self` is passed either way, so it is keyed as by value.
   return {
     generic: positions.size,
-    fixed: fixed.map((slot) => keyOf(slot.type, slot.reference && slot.name !== undefined)),
+    fixed: fixed.map((slot) => keyOf(slot.type, slot.reference && slot.isReceiver !== true)),
     rest: rest === undefined ? undefined : restKeyOf(rest, keyOf),
     minimum: positionalCounts(slots).minimum,
   };
 }
 
 /** The key of every item a rest parameter takes: an array's element's, or a pack's any type. */
-function restKeyOf(rest: RestSlot, keyOf: (type: Type, reference: boolean) => string): string {
+function restKeyOf(rest: RestSlot, keyOf: (type: Type, reference: boolean) => SlotKey): SlotKey {
   return rest.kind === 'pack' ? packItemKey : keyOf(rest.item, false);
 }

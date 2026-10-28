@@ -19,7 +19,7 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/choice.ts';
+import type { Accepts } from '../resolution/call-arguments.ts';
 import { chooseVariant, sameEnum } from '../resolution/named.ts';
 import { optionalInner, withoutOptionals } from '../types/fit.ts';
 import { typeArgumentsFor } from '../types/resolve-type.ts';

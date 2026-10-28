@@ -8,14 +8,9 @@
 import type { CheckerContext } from '../context.ts';
 import { constraintSubstitution, requiredFunctions } from '../traits/constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
+import type { CallArgument } from './call-arguments.ts';
 import { witnessCandidates } from './candidates.ts';
-import {
-  type CallArgument,
-  type Choice,
-  chooseAsValue,
-  type Signature,
-  signatureOf,
-} from './choice.ts';
+import { type Choice, chooseAsValue, type Signature, signatureOf } from './choice.ts';
 
 /**
  * Whether a function declared for `type` meets one that `constraint` requires, whether or not its

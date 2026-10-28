@@ -19,22 +19,23 @@ import {
   type TypeParameter,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
-import type { RestKind } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
-import { errorType, type Type } from '../types/type.ts';
-import { arrayElement } from '../types/well-known.ts';
-import { type Given, type Misfit, takenBy } from './applicability.ts';
-import {
-  type ArgumentSlot,
-  type BindingFailure,
-  bindArguments,
-  bindValue,
-  type RestSlot,
-} from './binding.ts';
+import type { Type } from '../types/type.ts';
+import { type Given, takenBy } from './applicability.ts';
+import { bindArguments, bindValue, restSlotOf } from './binding.ts';
+import type {
+  Accepts as ArgumentAccepts,
+  CallArgument as ArgumentGiven,
+  Inapplicability,
+  SignatureSlot,
+} from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
+
+export type Accepts = ArgumentAccepts;
+export type CallArgument = ArgumentGiven;
 
 /**
  * What a candidate takes and gives, with a requirement's trait mapped (traits/constraints.ts).
@@ -46,47 +47,6 @@ export interface Signature {
   readonly typeParameters: readonly TypeParameter[];
   readonly parameters: readonly SignatureSlot[];
   readonly result: () => Type;
-}
-
-/**
- * A parameter as choosing sees it: its type and passing, its name, unless a method's `self`, which
- * no call names (§3.3), whether it has a default, and whether it is a rest parameter, an array's
- * or a pack's.
- */
-interface SignatureSlot extends ArgumentSlot {
-  readonly name: string | undefined;
-  readonly hasDefault: boolean;
-  readonly rest: RestSlot | undefined;
-}
-
-/**
- * How an argument is passed: as a value, by `&`, or as a method's receiver, which its `self`
- * takes either way (§3.7).
- */
-export type Passing = 'value' | 'reference' | 'receiver';
-
-/**
- * Whether an argument the chosen function decides can take a parameter of type `expected`, where
- * a part `isOpen` says inference hasn't found yet can be anything.
- */
-export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boolean;
-
-/**
- * An argument as choosing sees it: its type, or, when the chosen function decides it, which
- * parameter types it can take; how it is passed; its name when named; and for a spread, the type
- * of its items.
- */
-export interface CallArgument {
-  readonly type: Type | undefined;
-  readonly passing: Passing;
-  readonly accepts?: Accepts | undefined;
-  /**
-   * Whether it fits only a parameter of its type exactly, with no conversion: a witness's (§3.10),
-   * or a spread's items, which are copied or iterated as they are (§3.3).
-   */
-  readonly exact?: boolean;
-  readonly name?: string | undefined;
-  readonly isSpread?: boolean | undefined;
 }
 
 /**
@@ -105,32 +65,6 @@ export interface Application {
   readonly reshapes: boolean;
 }
 
-/** Why a candidate can't take a call's arguments. */
-export type Inapplicability =
-  | BindingFailure
-  | { readonly kind: 'typeArgumentCount'; readonly minimum: number; readonly maximum: number }
-  /** The argument at `index` is passed by value where its parameter takes `&` (`reference`), or the reverse. */
-  | { readonly kind: 'reference'; readonly index: number; readonly reference: boolean }
-  /** Two arguments gave one type parameter types that don't agree (§3.5). */
-  | { readonly kind: 'conflict'; readonly parameter: TypeParameter }
-  /**
-   * The arguments a pack's rest parameter collects don't fill it (§3.5): `index` is the first, and
-   * `found` the tuple of their types when they are single values, which fill no pack of `expected`.
-   */
-  | {
-      readonly kind: 'pack';
-      readonly index: number;
-      readonly expected: Type;
-      readonly found: Type | undefined;
-    }
-  /** A written type argument for a pack isn't a tuple type (§3.5). */
-  | { readonly kind: 'packTypeArgument'; readonly parameter: TypeParameter; readonly type: Type }
-  /** The arguments that don't fit their parameters, by position, with the parameter's type. */
-  | {
-      readonly kind: 'arguments';
-      readonly misfits: readonly Misfit[];
-    };
-
 export type Choice =
   | { readonly kind: 'chosen'; readonly application: Application }
   | { readonly kind: 'none'; readonly reasons: readonly Inapplicability[] }
@@ -145,28 +79,21 @@ export function signatureOf(
   return {
     declaration,
     typeParameters: typeParametersOf(declaration.typeParameters),
-    parameters: checker.parametersOf(declaration).map(({ node, type, reference, rest }, index) => {
+    parameters: checker.parametersOf(declaration).map((parameter, index) => {
+      const { node, type, reference } = parameter;
       const substituted = substitute(type, substitution);
-      const isSelf = index === 0 && node.name.text === 'self';
+      const isReceiver = index === 0 && node.name.text === 'self';
       return {
         type: substituted,
         reference,
-        name: isSelf ? undefined : node.name.text,
+        name: isReceiver ? undefined : node.name.text,
+        isReceiver,
         hasDefault: node.defaultValue !== undefined,
-        rest: rest === undefined ? undefined : restSlotOf(checker, rest, substituted),
+        rest: restSlotOf(parameter, substitution),
       };
     }),
     result: () => substitute(checker.resultOf(declaration), substitution),
   };
-}
-
-/** A rest parameter of `kind` and type `type` as choosing sees it: an array's has its items' type. */
-function restSlotOf(checker: CheckerContext, kind: RestKind, type: Type): RestSlot {
-  if (kind === 'pack') {
-    return { kind };
-  }
-  const item = arrayElement(checker, type) ?? errorType;
-  return { kind, item };
 }
 
 /** Chooses among `candidates` for `callArguments` and any written type arguments. */

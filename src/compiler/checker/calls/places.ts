@@ -36,7 +36,7 @@ import { isPlace, placePath } from '../../syntax/expressions/places.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Passing } from '../resolution/choice.ts';
+import type { Passing } from '../resolution/call-arguments.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';

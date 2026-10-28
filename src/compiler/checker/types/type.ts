@@ -118,7 +118,7 @@ export interface AnonymousStructType {
 }
 
 /** A parameter of a function type: its type, and whether it takes a reference (§3.7). */
-interface ParameterSlot {
+export interface ParameterSlot {
   readonly type: Type;
   readonly reference: boolean;
 }

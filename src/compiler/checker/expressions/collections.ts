@@ -39,7 +39,7 @@ import { takePrechecked } from '../calls/lambda-arguments.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Accepts } from '../resolution/choice.ts';
+import type { Accepts } from '../resolution/call-arguments.ts';
 import { declaresDefault, defaultWitness } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import {

@@ -19,11 +19,19 @@
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { CheckerContext } from '../context.ts';
 import { Inference } from '../inference/infer.ts';
+import type { Binding } from '../resolved-call.ts';
 import { reshapes } from '../types/fit.ts';
 import { substitute } from '../types/substitution.ts';
-import { errorType, fillsPack, type ParameterKey, sameType, type Type } from '../types/type.ts';
-import { type ArgumentSlot, argumentSlotsOf, type Binder, isBinding } from './binding.ts';
-import type { Application, CallArgument, Inapplicability, Signature } from './choice.ts';
+import {
+  errorType,
+  fillsPack,
+  type ParameterKey,
+  type ParameterSlot,
+  sameType,
+  type Type,
+} from '../types/type.ts';
+import { argumentSlotsOf, type Binder, isBinding } from './binding.ts';
+import type { CallArgument, Inapplicability, Misfit, Takes } from './call-arguments.ts';
 import { packInapplicability, packItems } from './packs.ts';
 
 /** A call's arguments as choosing takes them: as passed, with any type arguments, bound by `binder`. */
@@ -33,8 +41,12 @@ export interface Given {
   readonly binder: Binder;
 }
 
-/** What `takenBy` matches: a signature's type parameters and parameters. */
-export type Takes = Pick<Signature, 'typeParameters' | 'parameters'>;
+/** How a function takes a call's arguments: what inference found, the binding, any reshaped. */
+export interface Taken {
+  readonly inference: Inference;
+  readonly binding: Binding;
+  readonly reshapes: boolean;
+}
 
 /**
  * How a function taking `takes` takes `callArguments` and any written type arguments: which
@@ -82,9 +94,6 @@ export function takenBy(
   return { inference, binding, reshapes: reshaped };
 }
 
-/** How a function takes a call's arguments: what inference found, the binding, any reshaped. */
-type Taken = Pick<Application, 'inference' | 'binding' | 'reshapes'>;
-
 /**
  * Why the written type arguments don't suit `typeParameters`, if they don't: too few or too many,
  * or one for a pack that isn't a tuple type (§3.5).
@@ -115,7 +124,7 @@ function typeArgumentsInapplicability(
  * `matchPacks` matches, saying why they don't fill it.
  */
 interface BoundArguments {
-  readonly slots: ReadonlyMap<number, ArgumentSlot>;
+  readonly slots: ReadonlyMap<number, ParameterSlot>;
   readonly packed: ReadonlySet<number>;
   readonly matchPacks: () => Inapplicability | undefined;
 }
@@ -155,17 +164,11 @@ function argumentsInapplicability(
   return misfits.length === 0 ? undefined : { kind: 'arguments', misfits };
 }
 
-/** An argument that doesn't fit, by position, with its parameter's type as found so far. */
-export interface Misfit {
-  readonly index: number;
-  readonly expected: Type;
-}
-
 /** How the `index`-th argument fits its slot: it fits, it doesn't, or the call can't take it. */
 function judgedArgument(
   index: number,
   argument: CallArgument,
-  slots: ReadonlyMap<number, ArgumentSlot>,
+  slots: ReadonlyMap<number, ParameterSlot>,
   inference: Inference,
 ): 'fits' | Misfit | Inapplicability {
   const slot = slots.get(index);
@@ -189,7 +192,7 @@ function judgedArgument(
 
 /** Whether an argument with a type fits `slot`, matching it for inference. */
 function typedFits(
-  slot: ArgumentSlot,
+  slot: ParameterSlot,
   argument: CallArgument & { readonly type: Type },
   inference: Inference,
 ): boolean {
@@ -203,7 +206,7 @@ function typedFits(
 
 /** A reference's type is its parameter's exactly: no wrap into `T?` reaches the caller's place. */
 function exactWhenReferenced(
-  slot: ArgumentSlot,
+  slot: ParameterSlot,
   argument: CallArgument,
   inference: Inference,
 ): boolean {
@@ -214,7 +217,7 @@ function exactWhenReferenced(
 }
 
 /** Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7). */
-function isByReference(slot: ArgumentSlot, argument: CallArgument): boolean {
+function isByReference(slot: ParameterSlot, argument: CallArgument): boolean {
   return argument.passing === 'reference' || (argument.passing === 'receiver' && slot.reference);
 }
 
