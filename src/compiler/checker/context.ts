@@ -32,9 +32,9 @@ import type {
   ArrayLiteral,
   Call,
   Expression,
+  FieldsLiteral,
   MapLiteral,
   MemberAccess,
-  StructLiteral,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
@@ -258,7 +258,7 @@ export interface Variables {
 
 /** Where each struct or variant literal's fields get values (expressions/literal-fields.ts). */
 export interface LiteralSources {
-  readonly record: (literal: StructLiteral, sources: readonly FieldSource[]) => void;
+  readonly record: (literal: FieldsLiteral, sources: readonly FieldSource[]) => void;
 }
 
 /** The functions a body is checked in, innermost current (closures/functions.ts). */

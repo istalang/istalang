@@ -92,13 +92,25 @@ interface Parenthesized extends NodeOf<'Parenthesized'> {
   readonly expression: Expression;
 }
 
+type LiteralItem = FieldInitializer | PositionalInitializer | Spread | Invalid;
+
 /** `Pair{…}`, `m.Pair<int>{…}`, or `struct{…}` when `type` is undefined. */
 export interface StructLiteral extends NodeOf<'StructLiteral'> {
-  /** Written after `new`, which builds a shared struct and only one (§3.18). */
-  readonly isNew: boolean;
   readonly type: NamedType | undefined;
-  readonly items: readonly (FieldInitializer | PositionalInitializer | Spread | Invalid)[];
+  readonly items: readonly LiteralItem[];
 }
+
+/**
+ * `new Inbox<T>{…}`: a shared struct's literal, whose value is built in a new cell (§3.18). Only a
+ * named struct follows `new`, and nothing takes the literal apart, so it is a kind of its own.
+ */
+export interface NewStructLiteral extends NodeOf<'NewStructLiteral'> {
+  readonly type: NamedType;
+  readonly items: readonly LiteralItem[];
+}
+
+/** A literal giving a struct's fields, after `new` or not. */
+export type FieldsLiteral = StructLiteral | NewStructLiteral;
 
 /** `first: 1`, or the shorthand `first` (meaning `first: first`) when `value` is undefined. */
 interface FieldInitializer extends NodeOf<'FieldInitializer'> {
@@ -356,6 +368,7 @@ export type Expression =
   | Tuple
   | Parenthesized
   | StructLiteral
+  | NewStructLiteral
   | Lambda
   | Call
   | Spawn

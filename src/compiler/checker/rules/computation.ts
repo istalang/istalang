@@ -182,11 +182,8 @@ class Computation {
       : refused(node);
   }
 
-  /** A struct in any literal form, its fields in declaration order; never a cell `new` makes. */
+  /** A struct in any literal form, its fields in declaration order; `new`'s cell is refused. */
   #struct(node: StructLiteral): Outcome {
-    if (node.isNew) {
-      return refused(node);
-    }
     const sources = node.items.some((item) => item.kind === 'Invalid')
       ? undefined
       : this.#scope.checked.sourcesOf(node);

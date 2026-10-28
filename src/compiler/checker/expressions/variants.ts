@@ -14,7 +14,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import { type EnumDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
-import type { MemberAccess, NoneLiteral, StructLiteral } from '../../syntax/expressions/index.ts';
+import type { FieldsLiteral, MemberAccess, NoneLiteral } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../context.ts';
@@ -26,7 +26,7 @@ import { errorType, type NominalType, nominalType, type Type } from '../types/ty
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
 
 /** A node naming a variant: bare, qualified, or as a literal's type. */
-type VariantNode = Identifier | MemberAccess | StructLiteral;
+type VariantNode = Identifier | MemberAccess | FieldsLiteral;
 
 /** The types `none` can take, as an argument a call's chosen function decides: any optional. */
 export function noneAccepted(context: BodyContext): Accepts {
@@ -82,7 +82,7 @@ export function checkVariantName(
 /** The type of a variant built with braces: `Rejected{by: "legal"}`. */
 export function checkVariantLiteral(
   context: BodyContext,
-  node: StructLiteral,
+  node: FieldsLiteral,
   naming: VariantNaming,
   expected: Type | undefined,
 ): Type {

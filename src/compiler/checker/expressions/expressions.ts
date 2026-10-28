@@ -55,6 +55,7 @@ import { checkSelect, selectAccepts } from './select.ts';
 import { checkSpawn } from './spawn.ts';
 import {
   checkMemberAccess,
+  checkNamedLiteral,
   checkStructLiteral,
   memberAccepts,
   structLiteralAccepts,
@@ -87,6 +88,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Unary: checkUnary,
   Call: checkCall,
   StructLiteral: checkStructLiteral,
+  NewStructLiteral: checkNamedLiteral,
   MemberAccess: checkMemberAccess,
   TupleElement: checkTupleElement,
   BlockExpression: (context, node, expected) => context.block(node.block, expected),
@@ -131,6 +133,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   Unary: ownType,
   Call: ownType,
   StructLiteral: structLiteralAccepts,
+  NewStructLiteral: ownType,
   MemberAccess: memberAccepts,
   TupleElement: ownType,
   BlockExpression: (context, node) => blockAccepts(context, node.block),
@@ -184,6 +187,7 @@ const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined>
   Unary: unknownType,
   Call: unknownType,
   StructLiteral: unknownType,
+  NewStructLiteral: unknownType,
   MemberAccess: unknownType,
   TupleElement: unknownType,
   BlockExpression: (context, node) => blockKnownType(context, node.block),

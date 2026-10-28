@@ -18,12 +18,12 @@ import type {
   Call,
   Comprehension,
   Expression,
+  FieldsLiteral,
   Lambda,
   MapLiteral,
   MemberAccess,
   Parameter,
   Spread,
-  StructLiteral,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
@@ -199,7 +199,7 @@ export interface CheckedBody {
    * Where each field of a struct literal gets its value, in declaration order; undefined for a
    * literal the checker found a mistake in.
    */
-  readonly sourcesOf: (literal: StructLiteral) => readonly FieldSource[] | undefined;
+  readonly sourcesOf: (literal: FieldsLiteral) => readonly FieldSource[] | undefined;
   /** A `match` case's or `is`'s pattern as checked (§3.11). */
   readonly patternOf: (pattern: Pattern) => CheckedPattern;
   /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */

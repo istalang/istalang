@@ -100,7 +100,7 @@ describe('the type before the braces', () => {
 });
 
 describe('new (§3.18)', () => {
-  const created = (type: string, items: string) => `(StructLiteral isNew ${type} [${items}])`;
+  const created = (type: string, items: string) => `(NewStructLiteral ${type} [${items}])`;
 
   it.each([
     ['new Inbox{queued: 0}', created(named('Inbox'), '(FieldInitializer queued 0)')],

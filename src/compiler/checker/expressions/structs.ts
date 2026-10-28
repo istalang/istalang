@@ -25,12 +25,14 @@ import type { Entity } from '../../binder/entities.ts';
 import { isDeclaredStruct, isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { linkOperator } from '../../syntax/expressions/chains.ts';
 import {
+  type FieldsLiteral,
   itemValue,
   type MemberAccess,
   type StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
+import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
 import type { FieldRead } from '../checked-field.ts';
 import {
@@ -68,12 +70,30 @@ export function checkStructLiteral(
   node: StructLiteral,
   expected: Type | undefined,
 ): Type {
-  const typeNode = node.type;
+  return namesItsType(node)
+    ? checkNamedLiteral(context, node, expected)
+    : checkAnonymousLiteral(context, node, expected, leadingSpread(node));
+}
+
+/** A literal that names its type: `Pair{…}`, a variant's, or `new Inbox<T>{…}`. */
+type NamedLiteral = FieldsLiteral & { readonly type: NamedType };
+
+function namesItsType(node: FieldsLiteral): node is NamedLiteral {
+  return node.type !== undefined;
+}
+
+function leadingSpread(node: FieldsLiteral): LiteralSpread | undefined {
   const [first] = node.items;
-  const spread = first?.kind === 'Spread' ? { node: first } : undefined;
-  if (typeNode === undefined) {
-    return checkAnonymousLiteral(context, node, expected, spread);
-  }
+  return first?.kind === 'Spread' ? { node: first } : undefined;
+}
+
+/** A literal naming a variant or a declared struct, with `new` or not. */
+export function checkNamedLiteral(
+  context: BodyContext,
+  node: NamedLiteral,
+  expected: Type | undefined,
+): Type {
+  const typeNode = node.type;
   const name = lastName(typeNode.path);
   const entity = context.entityOf(name);
   checkNew(context, node, entity);
@@ -94,22 +114,22 @@ export function checkStructLiteral(
     checkValuesAlone(context, node);
     return shape.typeOf([]);
   }
-  return checkLiteralFields(context, node, shape, spread);
+  return checkLiteralFields(context, node, shape, leadingSpread(node));
 }
 
 /**
- * Reports a literal of a shared struct without `new`, or `new` before another (§3.18); the
+ * Reports a literal of a shared struct without `new`, or `new` before another type (§3.18); the
  * literal is checked as written all the same.
  */
-function checkNew(context: BodyContext, node: StructLiteral, entity: Entity | undefined): void {
-  if (entity === undefined || node.type === undefined) {
+function checkNew(context: BodyContext, node: NamedLiteral, entity: Entity | undefined): void {
+  if (entity === undefined) {
     return;
   }
   const isShared = entity.kind === 'type' && entity.declaration.kind === 'SharedStructDeclaration';
   const name = lastName(node.type.path).text;
-  if (isShared && !node.isNew) {
+  if (isShared && node.kind === 'StructLiteral') {
     context.report(checkerDiagnostics.sharedNeedsNew(node.type.span, name));
-  } else if (!isShared && node.isNew) {
+  } else if (!isShared && node.kind === 'NewStructLiteral') {
     context.report(checkerDiagnostics.newNotShared(node.type.span, name));
   }
 }
@@ -214,7 +234,7 @@ function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
 }
 
 /** Checks every value of a literal whose type is unknown, so each is still recorded. */
-function checkValuesAlone(context: BodyContext, node: StructLiteral): void {
+function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
   for (const item of node.items) {
     if (item.kind === 'Spread') {
       context.expression(item.expression);

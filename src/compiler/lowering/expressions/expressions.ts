@@ -22,7 +22,12 @@ import { lowerName, lowerNamed } from './names.ts';
 import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts';
 import { lowerPropagate } from './propagate.ts';
 import { lowerSelect } from './select.ts';
-import { lowerFieldRead, lowerStructLiteral, readsField } from './structs.ts';
+import {
+  lowerFieldRead,
+  lowerNewStructLiteral,
+  lowerStructLiteral,
+  readsField,
+} from './structs.ts';
 import { lowerTemplate } from './templates.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
 import { lowerUnwrap } from './unwrap.ts';
@@ -44,6 +49,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
     isEnum(context.body.typeOf(node))
       ? lowerVariantLiteral(context, node)
       : lowerStructLiteral(context, node),
+  NewStructLiteral: lowerNewStructLiteral,
   MemberAccess: lowerMemberAccess,
   TupleElement: lowerTupleElement,
   If: lowerIf,

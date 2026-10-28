@@ -9,7 +9,7 @@
  *   is passed positionally.
  */
 
-import type { Expression, StructLiteral } from '../../syntax/expressions/index.ts';
+import type { Expression, FieldsLiteral, StructLiteral } from '../../syntax/expressions/index.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
@@ -17,22 +17,14 @@ import { afterStructKeyword } from '../parts/structs.ts';
 import { parseDelimited } from '../recovery.ts';
 import { parseSpread } from './spread.ts';
 
-/**
- * A struct literal's braced items, starting at the `{`; `type` is undefined for `struct{…}`, and
- * `isNew` says the literal follows `new`.
- */
+/** A struct literal's braced items, starting at the `{`; `type` is undefined for `struct{…}`. */
 export function parseStructLiteralBody(
   parser: Parser,
   type: NamedType | undefined,
   start: number,
-  isNew = false,
 ): StructLiteral {
-  const { items } = parseDelimited(parser, '{', () => parseItem(parser));
-  const positional = items.find((item) => item.kind === 'PositionalInitializer');
-  if (positional !== undefined && items.length > 1) {
-    parser.report(parserDiagnostics.positionalNotAlone(positional.span));
-  }
-  return { kind: 'StructLiteral', span: parser.spanFrom(start), isNew, type, items };
+  const items = parseItems(parser);
+  return { kind: 'StructLiteral', span: parser.spanFrom(start), type, items };
 }
 
 /**
@@ -46,7 +38,8 @@ export function parseNew(parser: Parser): Expression {
     parser.report(parserDiagnostics.newWithoutLiteral(parser.spanFrom(start)));
     return { kind: 'Invalid', span: parser.spanFrom(start) };
   }
-  return parseStructLiteralBody(parser, type, start, true);
+  const items = parseItems(parser);
+  return { kind: 'NewStructLiteral', span: parser.spanFrom(start), type, items };
 }
 
 /** `struct{…}`, whose type comes from context. */
@@ -55,7 +48,17 @@ export function parseAnonymousStructLiteral(parser: Parser): Expression {
   return afterStructKeyword(parser, () => parseStructLiteralBody(parser, undefined, start));
 }
 
-function parseItem(parser: Parser): StructLiteral['items'][number] {
+/** The braced items of a literal, from its `{`; a positional value must be the only one. */
+function parseItems(parser: Parser): FieldsLiteral['items'] {
+  const { items } = parseDelimited(parser, '{', () => parseItem(parser));
+  const positional = items.find((item) => item.kind === 'PositionalInitializer');
+  if (positional !== undefined && items.length > 1) {
+    parser.report(parserDiagnostics.positionalNotAlone(positional.span));
+  }
+  return items;
+}
+
+function parseItem(parser: Parser): FieldsLiteral['items'][number] {
   const { cursor } = parser;
   if (cursor.at('...')) {
     return parseSpread(parser);

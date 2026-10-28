@@ -13,12 +13,27 @@ import {
   type CallArgument,
   casesOf,
   type Expression,
+  type FieldsLiteral,
   qualifiedPath,
 } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { underBindings, underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import type { Scope } from './scope.ts';
+
+function bindLiteral(binder: LocalBinder, node: FieldsLiteral, scope: Scope): void {
+  if (node.type !== undefined) {
+    binder.constructedType(node.type, scope);
+  }
+  for (const item of node.items) {
+    if (item.kind === 'FieldInitializer') {
+      // The shorthand `Pair{first}` reads the variable named like the field.
+      bindFieldValue(binder, item.name, item.value, scope);
+    } else if (item.kind !== 'Invalid') {
+      bindAll(binder, [item.kind === 'Spread' ? item : item.value], scope);
+    }
+  }
+}
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
@@ -78,19 +93,8 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   },
   Binary: bindValueCondition,
   Is: bindValueCondition,
-  StructLiteral: (binder, node, scope) => {
-    if (node.type !== undefined) {
-      binder.constructedType(node.type, scope);
-    }
-    for (const item of node.items) {
-      if (item.kind === 'FieldInitializer') {
-        // The shorthand `Pair{first}` reads the variable named like the field.
-        bindFieldValue(binder, item.name, item.value, scope);
-      } else if (item.kind !== 'Invalid') {
-        bindAll(binder, [item.kind === 'Spread' ? item : item.value], scope);
-      }
-    }
-  },
+  StructLiteral: bindLiteral,
+  NewStructLiteral: bindLiteral,
   Lambda: (binder, node, scope) => binder.walk.function(binder, node, scope),
   BlockExpression: (binder, node, scope) => binder.walk.block(binder, node.block, scope),
   Comprehension: (binder, node, scope) =>

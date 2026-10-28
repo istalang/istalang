@@ -115,17 +115,15 @@ export function destructuringOf(target: Expression): Destructuring<Expression> |
 
 /**
  * What may stand left of `=` (§3.4, §3.15): a place, or a tuple or struct literal made of targets,
- * parenthesized or not; a struct's positional value needs the parentheses (§3.1). `new` makes a
- * shared struct (§3.18), so a literal after it takes nothing apart.
+ * parenthesized or not; a struct's positional value needs the parentheses (§3.1).
  */
 export function isTarget(target: Expression): boolean {
   const bare = unparenthesized(target);
   const itemsOnly =
     bare.kind !== 'StructLiteral' ||
-    (!bare.isNew &&
-      bare.items.every(
-        (item) => item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer',
-      ));
+    bare.items.every(
+      (item) => item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer',
+    );
   if (!itemsOnly) {
     return false;
   }

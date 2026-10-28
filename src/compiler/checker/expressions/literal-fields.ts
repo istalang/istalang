@@ -32,10 +32,10 @@ import {
 import {
   type Expression,
   type FieldItem,
+  type FieldsLiteral,
   itemName,
   itemValue,
   type Spread,
-  type StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
@@ -77,13 +77,13 @@ export interface LiteralSpread {
 
 /** The struct literals of one body, each with where its fields' values come from. */
 export class StructLiterals implements LiteralSources {
-  readonly #sources = new Map<StructLiteral, readonly FieldSource[]>();
+  readonly #sources = new Map<FieldsLiteral, readonly FieldSource[]>();
 
-  record(literal: StructLiteral, sources: readonly FieldSource[]): void {
+  record(literal: FieldsLiteral, sources: readonly FieldSource[]): void {
     this.#sources.set(literal, sources);
   }
 
-  sourcesOf(literal: StructLiteral): readonly FieldSource[] | undefined {
+  sourcesOf(literal: FieldsLiteral): readonly FieldSource[] | undefined {
     return this.#sources.get(literal);
   }
 
@@ -108,7 +108,7 @@ interface GivenField {
  */
 export function checkLiteralFields(
   context: BodyContext,
-  node: StructLiteral,
+  node: FieldsLiteral,
   shape: LiteralShape,
   spread?: LiteralSpread,
 ): Type {
@@ -194,7 +194,7 @@ function spreadOf(shape: LiteralShape, typeArguments: readonly Type[]): Type {
 /** The type arguments inference completed, constrained; undefined after a report. */
 function complete(
   context: BodyContext,
-  node: StructLiteral,
+  node: FieldsLiteral,
   { owner }: LiteralShape,
   inference: Inference,
 ): { typeArguments: readonly Type[]; substitution: Substitution } | undefined {
@@ -219,7 +219,7 @@ function complete(
 
 /** What checking a literal's items keeps track of. */
 interface LiteralItems {
-  readonly node: StructLiteral;
+  readonly node: FieldsLiteral;
   readonly shape: LiteralShape;
   readonly inference: Inference;
   /** The fields given so far, by position in the shape. */
@@ -235,7 +235,7 @@ interface LiteralItems {
 function checkItem(
   context: BodyContext,
   items: LiteralItems,
-  item: StructLiteral['items'][number],
+  item: FieldsLiteral['items'][number],
   spread: Spread | undefined,
 ): void {
   if (item.kind === 'Invalid' || item === spread) {
@@ -376,6 +376,6 @@ function defaultCalls(
   return fields.map((_, index) => (isLeftOut(index) ? call : undefined));
 }
 
-function literalName(node: StructLiteral): string {
+function literalName(node: FieldsLiteral): string {
   return node.type === undefined ? 'struct' : lastName(node.type.path).text;
 }

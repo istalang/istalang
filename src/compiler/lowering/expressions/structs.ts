@@ -11,12 +11,15 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
+import type { Span } from '../../../text/span.ts';
 import type { FieldSource } from '../../checker/check.ts';
 import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
 import {
   type Expression,
+  type FieldsLiteral,
   itemValue,
   type MemberAccess,
+  type NewStructLiteral,
   type StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
@@ -24,13 +27,18 @@ import { emitCall } from '../emit-call.ts';
 import { defaultEntryOf } from '../instances.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
+  return construct(context, structTypeOf(context, node), literalFields(context, node), node.span);
+}
+
+export function lowerNewStructLiteral(context: FunctionContext, node: NewStructLiteral): Register {
   const type = structTypeOf(context, node);
-  const fields = literalFields(context, node);
   const sharedValue = context.checker.sharedValueOf(type);
   if (sharedValue === undefined) {
-    return construct(context, type, fields, node.span);
+    unreachable(
+      `'new' at ${node.span.start} builds no shared struct; the checker should have said so.`,
+    );
   }
-  const value = construct(context, sharedValue, fields, node.span);
+  const value = construct(context, sharedValue, literalFields(context, node), node.span);
   const dst = context.code.allocate();
   const cellType = context.tables.types.index(type);
   context.code.emit({ kind: 'newCell', span: node.span, dst, type: cellType, value });
@@ -42,7 +50,7 @@ export function lowerStructLiteral(context: FunctionContext, node: StructLiteral
  * in source order, then each field taken from its value, read from the spread, or computed by its
  * default.
  */
-export function literalFields(context: FunctionContext, node: StructLiteral): Register[] {
+export function literalFields(context: FunctionContext, node: FieldsLiteral): Register[] {
   const sources = context.body.sourcesOf(node);
   if (sources === undefined) {
     unreachable(
@@ -65,7 +73,7 @@ export function literalFields(context: FunctionContext, node: StructLiteral): Re
 
 /** A literal with its items' values evaluated, which its fields are taken from. */
 interface EvaluatedLiteral {
-  readonly node: StructLiteral;
+  readonly node: FieldsLiteral;
   readonly values: ReadonlyMap<Expression, Register>;
 }
 
@@ -141,7 +149,7 @@ export function construct(
   context: FunctionContext,
   type: NominalType | AnonymousStructType,
   fields: readonly Register[],
-  span: StructLiteral['span'],
+  span: Span,
 ): Register {
   const dst = context.code.allocate();
   const index = context.tables.types.index(type);

@@ -62,7 +62,7 @@ function firstEffect(
   effectSites: ReadonlySet<NodeOf<string>>,
   node: SyntaxNode,
 ): SyntaxNode | undefined {
-  if (effectSites.has(node) || (node.kind === 'StructLiteral' && node.isNew)) {
+  if (effectSites.has(node) || node.kind === 'NewStructLiteral') {
     return node;
   }
   for (const child of bodyChildrenOf(node)) {
