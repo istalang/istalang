@@ -8,10 +8,10 @@
  *   template's interpolated values call `toString`. A program may define these for its own types,
  *   so they are found like a written call's function: in scope, through argument-dependent lookup,
  *   and among the requirements of type parameters (§3.10, §3.13).
- * - Constructs backed by prelude-owned helpers (`..=`'s `_inclusiveEnd`, array patterns' `length`,
- *   `_patternItem`, `_patternRest` and `compare`, range patterns' `compare`, `x!`'s `panic`, and a
- *   template's `join`) go through `preludeCall`: the prelude is a toolchain invariant, so a
- *   missing or inapplicable prelude helper is `unreachable`.
+ * - Constructs backed by prelude-owned helpers (array patterns' `length`, `_patternItem`,
+ *   `_patternRest` and `compare`, range patterns' `compare`, `x!`'s `panic`, and a template's
+ *   `join`) go through `preludeCall`: the prelude is a toolchain invariant, so a missing or
+ *   inapplicable prelude helper is `unreachable`.
  * - Every implicit call chooses, instantiates, fits wrappable operands and records under one rule:
  *   ambiguity (`5003`) and unmet trait constraints (`5101`) are reported as on a written call, and
  *   the construct's `failure` callback reports only when no candidate takes the arguments (`none`).
@@ -164,7 +164,10 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
   const span = request.span ?? request.node.span;
   const choice = choose(context.checker, request.candidates, request.arguments, undefined);
   if (choice.kind === 'several') {
-    const name = request.operator ?? request.candidates[0]?.declaration.name.text ?? '';
+    const name =
+      request.operator ??
+      request.candidates[0]?.declaration.name.text ??
+      unreachable('An ambiguous implicit call has at least two candidates.');
     const types = request.arguments
       .map(({ type }) => (type === undefined ? '_' : typeText(type)))
       .join(', ');

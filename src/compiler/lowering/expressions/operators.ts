@@ -90,20 +90,17 @@ function compared(
   if (meaning.kind === 'equality') {
     return equal(context, span, [left, right], meaning.negated);
   }
-  if (meaning.kind === 'membership') {
-    const includes = emitFunctionCall(context, {
+  const call = (role: 'includes' | 'compare', argumentList: readonly Register[]) =>
+    emitFunctionCall(context, {
       span,
-      call: context.implicitCallAt(link.right, 'includes'),
-      arguments: [right, left],
+      call: context.implicitCallAt(link.right, role),
+      arguments: argumentList,
     });
+  if (meaning.kind === 'membership') {
+    const includes = call('includes', [right, left]);
     return meaning.negated ? negated(context, includes, span) : includes;
   }
-  const comparison = emitFunctionCall(context, {
-    span,
-    call: context.implicitCallAt(link.right, 'compare'),
-    arguments: [left, right],
-  });
-  return ordered(context, span, comparison, meaning.relation);
+  return ordered(context, span, call('compare', [left, right]), meaning.relation);
 }
 
 /** Whether `left` and `right` are `==`, or `!=` when `isNegated`. */
