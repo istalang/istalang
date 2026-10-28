@@ -331,7 +331,7 @@ export interface IterationRecord {
   readonly record: (iteration: Iteration, form: IterationForm) => void;
 }
 
-/** How each field read reaches its field (expressions/field-reads.ts). */
+/** How each field read reaches its field (expressions/structs.ts). */
 export interface FieldReadRecord {
   readonly record: (access: MemberAccess, read: FieldRead) => void;
 }

@@ -9,6 +9,8 @@
  *   `Self` mapped for that constraint. Requirements are numbered by constraint and by the trait's
  *   order of functions (`RequirementOrigin`), which is how a call to one and the witness that
  *   satisfies it find each other per instantiation.
+ * - A field of a type is a struct's, or, on a type parameter or an `any` type, one a constraint's
+ *   trait requires (`fieldOf`): one rule for a field read, a field called and conformance.
  */
 
 import type { WellKnownDeclaration } from '../../../language/well-known.ts';
@@ -21,6 +23,7 @@ import type {
 } from '../../syntax/declarations.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
+import { type FoundField, requiredFieldRead, structFieldOf } from '../checked-field.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
@@ -182,4 +185,21 @@ export function requiredFieldType(
     checker.resolveType(checker.moduleOf(constraint.trait), field.type),
     constraintSubstitution(constraint, constrained),
   );
+}
+
+/** The field `name` of `type`: a struct's, or, through a constraint on it, one its trait requires. */
+export function fieldOf(checker: CheckerContext, type: Type, name: string): FoundField | undefined {
+  if (type.kind === 'nominal' || type.kind === 'anonymous') {
+    return structFieldOf(checker, type, name);
+  }
+  for (const constraint of knownConstraints(checker, type)) {
+    const field = requiredFields(constraint.trait).find((each) => each.name.text === name);
+    if (field !== undefined) {
+      return {
+        type: requiredFieldType(checker, constraint, field, type),
+        read: requiredFieldRead(checker, type, { trait: constraint.trait, field }),
+      };
+    }
+  }
+  return undefined;
 }

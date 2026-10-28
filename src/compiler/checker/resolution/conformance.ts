@@ -37,7 +37,7 @@ import { type JsonDirection, jsonTraits } from '../json-form.ts';
 import type { ResolvedCall, Witnesses } from '../resolved-call.ts';
 import {
   constraintSubstitution,
-  knownConstraints,
+  fieldOf,
   requiredFields,
   requiredFieldType,
   requiredFunctions,
@@ -363,17 +363,8 @@ function witnessOf(
 }
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
-  const fields = checker.fieldsOf(type);
-  if (fields !== undefined) {
-    return fields.some((field) => field.name === name && sameType(field.type, fieldType));
-  }
-  return knownConstraints(checker, type).some((constraint) =>
-    requiredFields(constraint.trait).some(
-      (field) =>
-        field.name.text === name &&
-        sameType(requiredFieldType(checker, constraint, field, type), fieldType),
-    ),
-  );
+  const field = fieldOf(checker, type, name);
+  return field !== undefined && sameType(field.type, fieldType);
 }
 
 function substituteConstraint(constraint: Constraint, substitution: Substitution): Constraint {

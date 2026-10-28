@@ -49,11 +49,11 @@ import {
   topLevelCandidates,
 } from '../resolution/candidates.ts';
 import { namedType } from '../resolution/named.ts';
+import { fieldOf } from '../traits/constraints.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { spreadArgumentType } from './collections.ts';
-import { fieldOf } from './field-reads.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   if (misplacedArgument(node.arguments) !== undefined) {

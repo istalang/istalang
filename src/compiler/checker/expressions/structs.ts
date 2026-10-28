@@ -15,10 +15,12 @@
  * - Reading `s.f` gives the field's type, substituted for the struct's type arguments; through a
  *   type parameter, a field a constraint requires (§3.10). A member that isn't a field is
  *   reported as unknown here, or, when it is a field of the value behind a handle, as to be read
- *   with `->` (§3.9); a call of one is a method call (calls.ts).
+ *   with `->` (§3.9); a call of one is a method call (calls.ts). How each read reaches its field
+ *   is recorded for lowering (`FieldReads`, checked-field.ts).
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod as isMethodDeclaration, isSharedStruct } from '../../syntax/declarations.ts';
 import { linkOperator } from '../../syntax/expressions/chains.ts';
@@ -30,15 +32,17 @@ import {
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { FieldSource } from '../check.ts';
+import type { FieldRead } from '../checked-field.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
   namedFunctions,
 } from '../closures/function-values.ts';
-import type { Accepts, BodyContext } from '../context.ts';
+import type { Accepts, BodyContext, FieldReadRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType } from '../resolution/named.ts';
+import { fieldOf } from '../traits/constraints.ts';
 import { optionalInner, withoutOptionals } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import {
@@ -50,7 +54,6 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { fieldOf } from './field-reads.ts';
 import {
   checkLiteralFields,
   knownArguments,
@@ -259,6 +262,23 @@ export function checkMemberAccess(
   }
   context.fieldReads.record(node, field.read);
   return field.type;
+}
+
+/** The field reads of one body, recorded as each is checked. */
+export class FieldReads implements FieldReadRecord {
+  readonly #reads = new Map<MemberAccess, FieldRead>();
+
+  record(access: MemberAccess, read: FieldRead): void {
+    this.#reads.set(access, read);
+  }
+
+  of(access: MemberAccess): FieldRead {
+    const read = this.#reads.get(access);
+    if (read === undefined) {
+      unreachable(`No field read was recorded at ${access.span.start}.`);
+    }
+    return read;
+  }
 }
 
 /**
