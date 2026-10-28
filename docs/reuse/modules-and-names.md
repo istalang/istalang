@@ -33,6 +33,7 @@ tags: [reuse, language, modules, program, binder, names]
 - find project `.ista` sources or load a project `Program` with stdlib roles → `loadProject`, `findProjectSources`, `findSources` (`src/cli/project.ts`)
 - bind a `Program`'s names (memoized per `Program` and per `SyntaxTree`) → `bindProgram` (`src/compiler/binder/bind.ts`)
 - resolve what an `Identifier` denotes or list a module's exports → `Bindings.entityOf`, `Bindings.exportsOf` (`src/compiler/binder/entities.ts`)
+- resolve a name a body uses where it is written, noting closure captures → `BodyContext.useEntity`; only ask → `BodyContext.entityOf` (`src/compiler/checker/context.ts`)
 - find an entity's declaring module or join prelude overloads → `Bindings.moduleOf`, `Bindings.overloadsOf` (`src/compiler/binder/entities.ts`)
 - list bare variant candidates or look up a top-level/prelude name → `Bindings.candidatesOf`, `Bindings.topLevelNamed` (`src/compiler/binder/entities.ts`)
 - check whether a `VariableEntity` is the own name of a local `fn` or named `Lambda` → `localFunctionOf` (`src/compiler/binder/entities.ts`)

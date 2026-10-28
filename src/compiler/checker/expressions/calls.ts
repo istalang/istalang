@@ -73,7 +73,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
   }
   switch (callee.kind) {
     case 'Identifier':
-      return callEntity(context, call, callee.text, context.entityOf(callee));
+      return callEntity(context, call, callee.text, context.useEntity(callee));
     case 'MemberAccess': {
       const entity = context.entityOf(callee.member);
       if (entity !== undefined) {

@@ -187,7 +187,7 @@ function assignedPlace(context: BodyContext, written: Expression): Type {
   if (target.kind !== 'Identifier') {
     return checkChangedPlace(context, target, 'assigned');
   }
-  const entity = context.entityOf(target);
+  const entity = context.useEntity(target);
   if (entity === undefined) {
     return errorType;
   }

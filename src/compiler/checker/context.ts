@@ -177,7 +177,13 @@ export interface BodyContext {
   readonly report: (diagnostic: Diagnostic) => void;
   /** The type `node` denotes in this body's module. */
   readonly resolveType: (node: TypeNode) => Type;
+  /** What `name` denotes, a query: for a name only asked about, declared, or checked elsewhere. */
   readonly entityOf: (name: Identifier) => Entity | undefined;
+  /**
+   * What `name`, used where it is written, denotes; a local variable used inside a nested function
+   * is captured there (§3.14).
+   */
+  readonly useEntity: (name: Identifier) => Entity | undefined;
   readonly recordCall: (site: CallSite, call: ResolvedCall) => void;
   /** Whether the innermost function is async, the only kind that may `await` (§5). */
   readonly inAsync: boolean;

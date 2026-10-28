@@ -146,7 +146,7 @@ function rootVariable(context: BodyContext, node: Expression): VariableEntity | 
 }
 
 function variableAt(context: BodyContext, name: Identifier): VariableEntity | undefined {
-  const entity = context.entityOf(name);
+  const entity = context.useEntity(name);
   return entity?.kind === 'variable' ? entity : undefined;
 }
 
@@ -288,7 +288,7 @@ function requireChangeable(
   root: Identifier,
   passedByReference: boolean,
 ): boolean {
-  const entity = context.entityOf(root);
+  const entity = context.useEntity(root);
   if (entity?.kind !== 'variable') {
     return false;
   }

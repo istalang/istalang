@@ -249,9 +249,12 @@ export class BodyChecker implements BodyContext {
     return this.checker.resolveType(this.module, node);
   }
 
-  /** What `name` denotes; a variable used inside a closure is captured there (§3.14). */
   entityOf(name: Identifier): Entity | undefined {
-    const entity = this.checker.bindings.entityOf(this.module, name);
+    return this.checker.bindings.entityOf(this.module, name);
+  }
+
+  useEntity(name: Identifier): Entity | undefined {
+    const entity = this.entityOf(name);
     if (entity?.kind === 'variable') {
       this.functions.noteUse(this, name, entity);
     }

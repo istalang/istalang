@@ -25,7 +25,7 @@ export function checkName(
   node: Identifier,
   expected: Type | undefined,
 ): Type {
-  return entityValueType(context, node, context.entityOf(node), expected);
+  return entityValueType(context, node, context.useEntity(node), expected);
 }
 
 /**
