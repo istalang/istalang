@@ -32,20 +32,8 @@ export function instantiatedBody(
     fit.conversion.kind === 'any'
       ? { ...fit, conversion: { kind: 'any', to: substituteAny(fit.conversion.to, substitution) } }
       : fit;
-  const concreteRead = (read: FieldRead): FieldRead => {
-    switch (read.kind) {
-      case 'position':
-        return read;
-      case 'dispatch':
-        return { ...read, on: substituteAny(read.on, substitution) };
-      case 'required':
-        return requiredFieldRead(checker, concrete(read.on), read.required);
-      default: {
-        const unhandled: never = read;
-        return unhandled;
-      }
-    }
-  };
+  const concreteRead = (read: FieldRead): FieldRead =>
+    read.kind === 'position' ? read : requiredFieldRead(checker, concrete(read.on), read.required);
   return {
     ...body,
     typeOf: (expression) => concrete(body.typeOf(expression)),

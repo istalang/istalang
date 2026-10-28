@@ -22,7 +22,6 @@ import {
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { defaultEntryOf } from '../instances.ts';
-import { fieldPositionOf } from '../places.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const type = structTypeOf(context, node);
@@ -116,11 +115,20 @@ export function lowerFieldRead(
 ): Register {
   const src = context.chains.target(context, link);
   const read = context.body.fieldReadOf(node);
-  if (read.kind === 'dispatch') {
-    const callee = context.tables.anyFieldIndex(read.on, read.required);
-    return emitCall(context, { span: node.span, callee, arguments: [src] });
+  switch (read.kind) {
+    case 'position':
+      return context.code.field(src, read.index, node.span);
+    case 'dispatch': {
+      const callee = context.tables.anyFieldIndex(read.on, read.required);
+      return emitCall(context, { span: node.span, callee, arguments: [src] });
+    }
+    case 'required':
+      return unreachable('An instantiated body reads no field through a type parameter.');
+    default: {
+      const unhandled: never = read;
+      return unhandled;
+    }
   }
-  return context.code.field(src, fieldPositionOf(context, node), node.span);
 }
 
 /** Builds a struct of `type` from `fields`, in declaration order. */

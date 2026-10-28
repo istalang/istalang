@@ -39,6 +39,7 @@ import type {
 import { isPlace } from '../../syntax/expressions/places.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
+import { structFieldOf } from '../checked-field.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -53,7 +54,6 @@ import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { spreadArgumentType } from './collections.ts';
-import { structFieldOf } from './field-reads.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   if (misplacedArgument(node.arguments) !== undefined) {

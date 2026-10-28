@@ -29,7 +29,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - enter an assigned or `&`-referenced place → `enterAssigned`, `enterReferenced` (`src/compiler/lowering/places.ts`)
 - read one field of a value, or its part along field and element positions → `CodeWriter.field`, `CodeWriter.readPath` (`src/compiler/lowering/code-writer.ts`)
 - a variable's register → `VariableRegisters.registerOf` (`src/compiler/lowering/statements/variables.ts`); allocate a cell → `cellRegister` (`src/compiler/lowering/places.ts`)
-- read how a field access reaches its field → `CheckedBody.fieldReadOf`; its position for a place → `fieldPositionOf` (`src/compiler/lowering/places.ts`)
+- read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/check.ts`)
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/patterns.ts`)
 - build an enum variant or look up a variant's index → `buildVariant`, `variantIndexOf`, `isEnum` (`src/compiler/lowering/expressions/variants.ts`)
 - test or branch on an enum variant or read variant field 0 → `variantTestOf`, `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`)

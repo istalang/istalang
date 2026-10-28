@@ -9,7 +9,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { TraitDeclaration } from '../syntax/declarations.ts';
 import type { FieldDeclaration } from '../syntax/types.ts';
 import type { Checker } from './check.ts';
-import type { AnyType, Type } from './types/type.ts';
+import type { AnyType, Type, TypeParameterType } from './types/type.ts';
 
 /** A field a trait requires (§3.10): the trait, and its field's declaration. */
 export interface RequiredField {
@@ -25,7 +25,7 @@ export interface RequiredField {
 export type FieldRead =
   | { readonly kind: 'position'; readonly index: number }
   | { readonly kind: 'dispatch'; readonly on: AnyType; readonly required: RequiredField }
-  | { readonly kind: 'required'; readonly on: Type; readonly required: RequiredField };
+  | { readonly kind: 'required'; readonly on: TypeParameterType; readonly required: RequiredField };
 
 /** How a read of `required`'s field reaches it on a value of `type`, which meets the trait. */
 export function requiredFieldRead(
@@ -40,9 +40,27 @@ export function requiredFieldRead(
     return { kind: 'required', on: type, required };
   }
   const name = required.field.name.text;
-  const index = (checker.fieldsOf(type) ?? []).findIndex((field) => field.name === name);
-  if (index < 0) {
+  const found = structFieldOf(checker, type, name);
+  if (found === undefined) {
     unreachable(`A type meeting a trait has no field '${name}' it requires.`);
   }
-  return { kind: 'position', index };
+  return found.read;
+}
+
+/** A field a read finds: its type, and how the read reaches it. */
+export interface FoundField {
+  readonly type: Type;
+  readonly read: FieldRead;
+}
+
+/** The field `name` of `type` when it is a struct, declared or anonymous; else undefined. */
+export function structFieldOf(
+  checker: Pick<Checker, 'fieldsOf'>,
+  type: Type,
+  name: string,
+): FoundField | undefined {
+  const fields = checker.fieldsOf(type) ?? [];
+  const index = fields.findIndex((candidate) => candidate.name === name);
+  const field = fields[index];
+  return field === undefined ? undefined : { type: field.type, read: { kind: 'position', index } };
 }

@@ -108,7 +108,7 @@ export function cellRegister(context: FunctionContext, type: Type): Register {
 }
 
 /** The position, in its struct's declaration order, of the field `node` reads. */
-export function fieldPositionOf(context: FunctionContext, node: MemberAccess): number {
+function fieldPositionOf(context: FunctionContext, node: MemberAccess): number {
   const read = context.body.fieldReadOf(node);
   if (read.kind !== 'position') {
     unreachable(`The field read at ${node.span.start} has no position: it reads no struct.`);
