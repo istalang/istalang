@@ -268,8 +268,6 @@ export interface Functions {
   readonly inside: <Result>(scope: FunctionFrame, check: () => Result) => Result;
   /** Notes that `entity` is used where `name` is written, capturing it where it must be. */
   readonly noteUse: (context: BodyContext, name: Identifier, entity: VariableEntity) => void;
-  /** The innermost scope of an enclosing function among `functions`. */
-  readonly enclosing: (functions: readonly NestedFunction[]) => FunctionFrame | undefined;
   /** The type of a local function or named lambda used by `name`, or the error after a report. */
   readonly typeOfFunction: (context: BodyContext, name: Identifier, entity: VariableEntity) => Type;
   readonly record: (node: NestedFunction, checked: CheckedFunction) => void;
@@ -344,8 +342,7 @@ export interface PatternRecord {
 export interface Chains {
   /**
    * Checks the target of `link`'s step; the type the step works on: the value a chained target
-   * carries, the value inside an optional after `?.`, or the error type after a report. A target
-   * naming functions before a `.` or `?.` is the call of one (closures/own-calls.ts).
+   * carries, the value inside an optional after `?.`, or the error type after a report.
    */
   readonly target: (context: BodyContext, link: Expression) => Type;
   readonly chainOf: (link: Expression) => ChainLink | undefined;

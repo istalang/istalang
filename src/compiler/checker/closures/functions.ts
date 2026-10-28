@@ -73,12 +73,6 @@ export class FunctionScopes implements Functions {
     }
   }
 
-  enclosing(functions: readonly NestedFunction[]): FunctionFrame | undefined {
-    return this.#stack.findLast(
-      (scope) => scope.function !== undefined && functions.includes(scope.function),
-    );
-  }
-
   typeOfFunction(context: BodyContext, name: Identifier, entity: VariableEntity): Type {
     const owner = localFunctionOf(entity);
     if (owner !== undefined && this.#untyped.has(owner)) {
