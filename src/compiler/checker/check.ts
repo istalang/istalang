@@ -27,10 +27,19 @@ import type {
 } from '../syntax/expressions/index.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
-import type { Assignment, Block, For, Return, VariableDeclaration } from '../syntax/statements.ts';
+import type {
+  Assignment,
+  Block,
+  Break,
+  Continue,
+  For,
+  Hold,
+  LabelledScope,
+  Return,
+  VariableDeclaration,
+} from '../syntax/statements.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
 import type { FieldRead } from './checked-field.ts';
-import type { LabelResolution } from './checked-labels.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { JsonFormQueries } from './json-form.ts';
@@ -139,6 +148,16 @@ export type CollectionForm = 'array' | 'map' | 'declared';
 export type IterationForm =
   | { readonly kind: 'cursor'; readonly item: Type }
   | { readonly kind: 'copied' };
+
+/** What one body's exits and holds name, as lowering and the flow model read it. */
+export interface LabelResolution {
+  /** The scope `exit` leaves or goes on with; undefined where the checker found none. */
+  readonly exitOf: (exit: Break | Continue) => LabelledScope | undefined;
+  /** The labelled loop or block what `hold` holds lasts until; undefined for the function. */
+  readonly heldUntil: (hold: Hold) => LabelledScope | undefined;
+  /** Whether some `hold` names `scope`, which then keeps a list of what it holds. */
+  readonly isHoldScope: (scope: LabelledScope) => boolean;
+}
 
 /** What checking a function body found, for lowering (architecture: phase contracts). */
 export interface CheckedBody {

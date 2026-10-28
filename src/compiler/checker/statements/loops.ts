@@ -4,7 +4,7 @@
  * of type `unit`; its body runs for its effects, so the body's value is discarded. What a `for`
  * runs over, and how, is the rule of iteration (rules/iteration.ts).
  *
- * Each `break`, `continue` and `hold(name)` is resolved here, once, and recorded (flow/labels.ts). A
+ * Each `break`, `continue` and `hold(name)` is resolved here, once, and recorded (`LabelTargets`). A
  * label names one scope of its function: it may not repeat a label around it, nor the function's
  * own name, which `hold(name)` names too, so a name never means two things. A label nothing names
  * is a warning, found when its scope ends.
@@ -19,7 +19,7 @@ import type {
   LabelledScope,
   While,
 } from '../../syntax/statements.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, LabelRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, neverType, type Type, unitType } from '../types/type.ts';
@@ -89,5 +89,45 @@ function checkScope(context: BodyContext, scope: LabelledScope): void {
   context.enclosing.inside(scope, () => context.effectBlock(scope.body));
   if (label !== undefined && !context.labels.isNamed(scope)) {
     context.report(checkerDiagnostics.unusedLabel(label.span, label.text));
+  }
+}
+
+/**
+ * The exits and holds of one body, recorded as they are resolved here; the flow model and
+ * lowering read them by node, so no other walk finds a label again.
+ */
+export class LabelTargets implements LabelRecord {
+  readonly #exits = new Map<Break | Continue, LabelledScope>();
+  readonly #holds = new Map<Hold, LabelledScope>();
+  readonly #named = new Set<LabelledScope>();
+  readonly #holdScopes = new Set<LabelledScope>();
+
+  recordExit(exit: Break | Continue, target: LabelledScope): void {
+    this.#exits.set(exit, target);
+    if (exit.label !== undefined) {
+      this.#named.add(target);
+    }
+  }
+
+  recordHold(hold: Hold, target: LabelledScope): void {
+    this.#holds.set(hold, target);
+    this.#named.add(target);
+    this.#holdScopes.add(target);
+  }
+
+  isNamed(scope: LabelledScope): boolean {
+    return this.#named.has(scope);
+  }
+
+  exitOf(exit: Break | Continue): LabelledScope | undefined {
+    return this.#exits.get(exit);
+  }
+
+  heldUntil(hold: Hold): LabelledScope | undefined {
+    return this.#holds.get(hold);
+  }
+
+  isHoldScope(scope: LabelledScope): boolean {
+    return this.#holdScopes.has(scope);
   }
 }

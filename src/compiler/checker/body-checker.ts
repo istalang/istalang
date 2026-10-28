@@ -42,7 +42,6 @@ import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/exp
 import { FieldReads } from './expressions/field-reads.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
 import { OptionalChains } from './expressions/optionals.ts';
-import { LabelTargets } from './flow/labels.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { reportUnmet } from './resolution/trait-objects.ts';
@@ -52,6 +51,7 @@ import { checkDisposeUses } from './rules/disposal.ts';
 import { checkDropped } from './rules/dropped.ts';
 import { Iterations } from './rules/iteration.ts';
 import { checkTestingCalls } from './rules/testing-calls.ts';
+import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
 import { exactFit, type Fit, isExact } from './types/fit.ts';

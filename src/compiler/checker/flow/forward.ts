@@ -12,7 +12,7 @@
  * - A lambda or local function runs its body when it is called, not where it is made (syntax
  *   `nestsFunction`); but it captures what it uses where it is made, so its body flows from the
  *   state there, as a flow of its own whose end goes nowhere.
- * - `break` and `continue` leave the loop the checker found for them (labels.ts); a
+ * - `break` and `continue` leave the loop the checker found for them (`CheckedBody.labels`); a
  *   labelled block runs as a block.
  * - `and`, `or` and `??` run their right side only sometimes, and so does whatever follows a `?.`
  *   in an optional chain (§4): both paths join after. `e?` may return, which ends that path.
@@ -41,7 +41,7 @@ import {
   targetParts,
 } from '../../syntax/statements.ts';
 import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { LabelResolution } from '../checked-labels.ts';
+import type { LabelResolution } from '../check.ts';
 
 /** What a flow rule decides: its states, where paths meet, and what its own events do. */
 export interface FlowRule<State> {

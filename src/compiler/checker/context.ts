@@ -60,6 +60,7 @@ import type {
   FieldSource,
   Iteration,
   IterationForm,
+  LabelResolution,
   NestedFunction,
   SignatureParameter,
   ValueSite,
@@ -67,7 +68,6 @@ import type {
 } from './check.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
 import type { FieldRead } from './checked-field.ts';
-import type { LabelResolution } from './checked-labels.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { JsonCodecs } from './json-form.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
@@ -366,7 +366,7 @@ export interface OwnCallRecord {
   ) => VariableEntity;
 }
 
-/** What each exit and hold names, recorded as statements/loops.ts resolves it (flow/labels.ts). */
+/** What each exit and hold names, recorded as statements/loops.ts resolves it. */
 export interface LabelRecord extends LabelResolution {
   readonly recordExit: (exit: Break | Continue, target: LabelledScope) => void;
   readonly recordHold: (hold: Hold, target: LabelledScope) => void;

@@ -57,7 +57,7 @@ src/
       lazy-checks.ts use-site.ts                                 checking once on demand with cycle reports, where a check reports
       resolved-call.ts checked-pattern.ts                        models the surface names: what calls resolved to, patterns and targets as checked,
       constant-form.ts json-form.ts checked-annotation.ts        computed constants, derived JSON forms, annotations,
-      checked-labels.ts host-externs.ts                          what exits and holds name, the externs a host implements
+      checked-field.ts host-externs.ts                           how field reads reach their fields, the externs a host implements
                                                                  folders, lowest layer first (Layers):
       diagnostics/ types/                                        the catalog; the type model, written types resolved, rules over types and the
                                                                  diagnostics they make, a checked body read through a substitution
