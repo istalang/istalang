@@ -55,7 +55,7 @@ describe("waiting for an instance's end", () => {
     expect(first.runtime.wake('p/1').state).toMatchObject({ kind: 'waiting', until: 10n });
     const restarted = testRuntime({ store, clock });
     clock.set(10n);
-    expect(restarted.runtime.wake('p/1').state).toEqual({ kind: 'finished', outcome: 42n });
+    expect(restarted.runtime.wake('p/1').state).toMatchObject({ kind: 'finished', outcome: 42n });
     expect(runToEnd(restarted, 'p', restarted.runtime.wake('p'))).toEqual({
       kind: 'finished',
       outcome: '"42 panic broken"',
@@ -97,7 +97,7 @@ describe("waiting for an instance's end", () => {
     const started = test.runtime.deploy(text).start('p');
     expect(started.state).toMatchObject({ watching: ['p/1'] });
     const child = test.runtime.wake('p/1');
-    expect(child.state).toEqual({ kind: 'finished', outcome: 7n });
+    expect(child.state).toMatchObject({ kind: 'finished', outcome: 7n });
     expect(test.runtime.wake('p').state).toEqual({ kind: 'waiting', until: 5n, watching: [] });
     expect(runToEnd(test, 'p', test.runtime.wake('p'))).toEqual({ kind: 'finished', outcome: '7' });
   });

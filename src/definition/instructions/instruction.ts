@@ -76,7 +76,11 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
       calleeOperands(i.callee),
       ...i.arguments.map(argumentOperands),
     ),
-  spawn: (_, i) => merge({ registers: i.arguments }, calleeOperands(i.callee)),
+  spawn: (_, i) =>
+    merge(
+      { registers: i.arguments, functions: i.encoder === undefined ? [] : [i.encoder] },
+      calleeOperands(i.callee),
+    ),
   currentCall: (_, i) => ({ registers: [i.dst] }),
   await: (_, i) => ({ registers: [i.dst, i.future] }),
   select: (_, i) => ({

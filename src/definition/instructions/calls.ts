@@ -32,12 +32,15 @@ const call = defineInstruction('call', {
  * `spawn f(args)`: a new instance on this Definition, running a named function or a closure of a
  * sendable function type, whose captures go along; the arguments are sendable copies (spec §9).
  * `dst` gets its `Instance<T>`, of extern type entry `type`, whose payload is the instance's name.
+ * `encoder`, when a codec writes `T`, is that codec's entry, which encodes the new instance's
+ * outcome for its host once it returns.
  */
 const spawn = defineInstruction('spawn', {
   dst: register,
   type: typeId,
   callee,
   arguments: z.array(register),
+  encoder: functionId.optional(),
 });
 
 /**

@@ -280,8 +280,8 @@ class SegmentRunner implements Machine {
   readonly settled = (handle: Value): { readonly value: Value } | undefined =>
     this.#instance.futures.settled(handle);
 
-  spawn(call: InstanceCall): string {
-    return this.#instance.spawn(call);
+  spawn(call: InstanceCall, encoder: FunctionId | undefined): string {
+    return this.#instance.spawn(call, { encoder });
   }
 
   guard(callback: Value): Value {

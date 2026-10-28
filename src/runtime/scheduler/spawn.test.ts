@@ -40,8 +40,8 @@ describe('spawning an instance', () => {
     const settled = settleAll(test, 'p', started);
     expect([...settled.keys()]).toEqual(['p', 'p/1', 'p/2']);
     expect(runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '5' });
-    expect(settled.get('p/1')).toEqual({ kind: 'finished', outcome: 2n });
-    expect(settled.get('p/2')).toEqual({ kind: 'finished', outcome: 4n });
+    expect(settled.get('p/1')).toMatchObject({ kind: 'finished', outcome: 2n });
+    expect(settled.get('p/2')).toMatchObject({ kind: 'finished', outcome: 4n });
   });
 
   it("writes a child before its parent's commit, as a call not yet started", () => {
@@ -106,7 +106,10 @@ describe('spawning an instance', () => {
     );
     const test = testRuntime();
     const started = test.runtime.deploy(text).start('p');
-    expect(settleAll(test, 'p', started).get('p/1')).toEqual({ kind: 'finished', outcome: 42n });
+    expect(settleAll(test, 'p', started).get('p/1')).toMatchObject({
+      kind: 'finished',
+      outcome: 42n,
+    });
   });
 });
 

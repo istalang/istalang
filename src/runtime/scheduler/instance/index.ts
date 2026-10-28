@@ -236,6 +236,7 @@ export class Instance {
       call,
       crashEveryAwait: this.crashEveryAwait || options.crashEveryAwait === true,
       terminatesOnPanic: options.terminatesOnPanic === true,
+      encoder: options.encoder,
       seed: seedFrom(this.draw()),
     });
     return name;

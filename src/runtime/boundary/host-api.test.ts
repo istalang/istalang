@@ -205,7 +205,10 @@ describe('the host API', () => {
     expect(() => first.start('p')).toThrow('crash');
     const test = testRuntime({ store: inner, host });
     const started = test.runtime.deploy(spawning).start('p');
-    expect(settleAll(test, 'p', started).get('p/1')).toEqual({ kind: 'finished', outcome: 2n });
+    expect(settleAll(test, 'p', started).get('p/1')).toMatchObject({
+      kind: 'finished',
+      outcome: 2n,
+    });
   });
 
   it('refuses a deploy that declares an extern its host already provides with another type', () => {

@@ -126,5 +126,6 @@ declarations, which the definition layer's schemas aren't.
 
 ## Open with other slices
 
-- A spawned instance's outcome is the value its function gave, not JSON: a host reads only what a
-  start entry encoded.
+- An instance `runtime.isolate` or `testing.spawnCrashingEveryAwait` spawns has no encoder: their
+  natives are given the function to spawn, not the codec of what it gives, so a host can't read
+  its outcome as JSON. A `spawn` names its encoder (`lowering/expressions/calls.ts`).

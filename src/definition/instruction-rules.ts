@@ -21,6 +21,7 @@ import { type Handlers, handlerOf } from '../structures/kind-table.ts';
 import {
   type CodeFunction,
   capturesOf,
+  encoderProblem,
   type FunctionDefinition,
   takesReference,
 } from './functions.ts';
@@ -92,8 +93,10 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
       i.callee.kind === 'function'
         ? spawnProblem(tables.functions[i.callee.function], i.arguments.length)
         : undefined;
+    const encoder = i.encoder === undefined ? undefined : tables.functions[i.encoder];
     return (
       calleeProblem ??
+      (encoder === undefined ? undefined : encoderProblem(encoder)) ??
       (hasRole(tables.types, i.type, 'instance')
         ? undefined
         : `type ${i.type} is not an Instance's.`)

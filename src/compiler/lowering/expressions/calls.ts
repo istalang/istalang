@@ -22,10 +22,12 @@
 import type { Callee } from '../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
+import { wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
 import { parameterOfArgument } from '../../checker/resolved-call.ts';
 import type { RestSlot } from '../../checker/types/type.ts';
+import { wellKnownArguments } from '../../checker/types/well-known.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import {
   type Call,
@@ -33,6 +35,7 @@ import {
   type Spawn,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
+import { outcomeEncoderIndex } from '../boundary/codec-calls.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall, emitFunctionCall } from '../emit-call.ts';
 import { type ClosedCall, calledParameters } from '../instances.ts';
@@ -117,7 +120,8 @@ function valueCallee(context: FunctionContext, node: Call): Register {
  * `spawn f(args)` (§9): what the call would run, the function the checker resolved, taking its
  * arguments as passed so the new instance computes any defaults, or the value of a sendable
  * function type; and its arguments, a method's receiver first, all by value; its value is the new
- * instance's `Instance<T>`.
+ * instance's `Instance<T>`. When a codec writes `T`, the spawn names it, so the new instance's
+ * outcome reaches its host as JSON.
  */
 export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
   const spawned = unparenthesized(node.call);
@@ -148,9 +152,11 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
       ? valueArguments(context, spawned, copied)
       : copied.map(({ argument }) => argument);
   const instance = context.body.typeOf(node);
-  if (instance.kind !== 'nominal') {
+  const [outcome] = wellKnownArguments(context.checker, wellKnown.instance, instance) ?? [];
+  if (instance.kind !== 'nominal' || outcome === undefined) {
     unreachable('A spawn checked clean is an Instance<T>.');
   }
+  const encoder = outcomeEncoderIndex(context, outcome);
   const dst = context.code.allocate();
   context.code.emit({
     kind: 'spawn',
@@ -164,6 +170,7 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
       }
       return argument.register;
     }),
+    ...(encoder !== undefined && { encoder }),
   });
   return dst;
 }

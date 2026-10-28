@@ -10,6 +10,7 @@ import { compiledText } from '../compiler/compile.test-kit.ts';
 import { definitionFormat } from '../definition/definition.ts';
 import { FormatError } from '../definition/format.ts';
 import { stdNatives } from '../stdlib/natives.ts';
+import type { Finished, InstanceState } from './instance-state.ts';
 import { type Natives, Panic } from './natives.ts';
 import { Refusal } from './refusal.ts';
 import { testRuntime } from './runtime.test-kit.ts';
@@ -17,6 +18,14 @@ import { testRuntime } from './runtime.test-kit.ts';
 const subsetText = definitionFormat.write(subsetDefinition).text;
 const innermostLocation = /\(main:6:\d+\)$/u;
 const missingKeys = /prelude\.compare\(int, int\).*prelude\.add\(int, int\)/u;
+
+/** `state`, which must be a finished instance's. */
+function finished(state: InstanceState): Finished {
+  if (state.kind !== 'finished') {
+    throw new Error(`The instance ended ${state.kind}.`);
+  }
+  return state;
+}
 
 /** The subset fixture deployed on a fresh runtime, with `run` starting a new instance of it. */
 function load(natives: Natives = stdNatives) {
@@ -61,15 +70,33 @@ describe('the runtime', () => {
     const program = test.runtime.deploy(
       compiledText('async fn main() -> Future<(float, int)>: (0.0 / 0.0, 12345678901234567890)'),
     );
-    const { state } = program.start('i');
-    if (state.kind !== 'finished') {
-      throw new Error(`main ended ${state.kind}`);
-    }
+    const state = finished(program.start('i').state);
     expect(program.outcome(state)).toEqual([null, 12345678901234567890n]);
     expect(program.outcomeText(state)).toBe('[null,12345678901234567890]');
     const unencoded = { kind: 'finished', outcome: 98n } as const;
     expect(() => program.outcome(unencoded)).toThrow(Refusal);
     expect(() => load().outcomeText(unencoded)).toThrow(Refusal);
+  });
+
+  it("gives a spawned instance's outcome as JSON when a codec writes its type, refusing one none writes", () => {
+    const test = testRuntime();
+    const program = test.runtime.deploy(
+      compiledText(
+        [
+          'fn answer() -> int: 42',
+          'fn handle() -> Instance<int>: spawn answer()',
+          'async fn main():',
+          '  spawn answer()',
+          '  spawn handle()',
+          '  0',
+        ].join('\n'),
+      ),
+    );
+    const [encoded, unencoded] = program
+      .start('i')
+      .spawned.map((name) => finished(test.runtime.wake(name).state));
+    expect(encoded && program.outcomeText(encoded)).toBe('42');
+    expect(() => unencoded && program.outcome(unencoded)).toThrow(Refusal);
   });
 
   it('refuses a start whose seed from the host has the wrong length, writing nothing', () => {
