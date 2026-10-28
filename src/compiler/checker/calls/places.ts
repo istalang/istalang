@@ -4,8 +4,9 @@
  *
  * - A place is a variable, or a field, tuple element or indexed element of one, at any depth
  *   (syntax `isPlace`, by which the parser reports a target or `&` argument that is none). A field
- *   a trait requires, read through an `any` value, is no place: its value's own type, which holds
- *   the field, is known only when the program runs (§3.10). Its root decides: a `let` may change, and so may a reference parameter, which changes the caller's
+ *   a trait requires, read through an `any` value or a type parameter, which may be an `any` type,
+ *   is no place: its value's own type, which holds the field, is known only when the program runs
+ *   (§3.14). Its root decides: a `let` may change, and so may a reference parameter, which changes the caller's
  *   place. A by-value parameter is as if declared `const` (§3.3), and a `const`, top-level or
  *   local, is deeply immutable, so no part of either may change; neither may a pattern's or loop's
  *   binding or an extern constant (§3.6).
@@ -65,12 +66,12 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
  */
 function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
   const { root, steps } = placePath(node);
-  const throughAny = steps.find(
-    (step) => step.kind === 'MemberAccess' && context.typeOf(step.target).kind === 'any',
+  const throughTrait = steps.find(
+    (step) => step.kind === 'MemberAccess' && holdsFieldsByTrait(context.typeOf(step.target)),
   );
-  if (throughAny?.kind === 'MemberAccess') {
+  if (throughTrait?.kind === 'MemberAccess') {
     context.report(
-      checkerDiagnostics.anyFieldChanged(throughAny.member.span, throughAny.member.text),
+      checkerDiagnostics.requiredFieldChanged(throughTrait.member.span, throughTrait.member.text),
     );
     return false;
   }
@@ -82,6 +83,11 @@ function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boo
   }
   const passedByReference = use === 'referenced' || reachesAccessor(node);
   return requireChangeable(context, root, passedByReference) && writesAccessors(context, node);
+}
+
+/** Whether a value of `type` has fields only as its traits require them: an `any` type or a type parameter. */
+function holdsFieldsByTrait(type: Type): boolean {
+  return type.kind === 'any' || type.kind === 'parameter';
 }
 
 /** What the places a call passes by `&` are checked against: the callee's parameters and kind. */

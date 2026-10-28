@@ -29,9 +29,9 @@ export const traitObjectTemplates = {
     message: () =>
       "An 'any' value is matched by a pattern naming its own type: a struct, a variant qualified by its enum, or '_'.",
   },
-  anyFieldChanged: {
+  requiredFieldChanged: {
     code: 5152,
     message: (field: string) =>
-      `'${field}' is read through an 'any' value, so it can't change: only the value's own type has the field.`,
+      `'${field}' is a field a trait requires, read through an 'any' value or a type parameter, so it can't change: only the value's own type has the field.`,
   },
 } as const;
