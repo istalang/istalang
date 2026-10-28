@@ -52,9 +52,8 @@ class Scanner {
   readonly #comments: Comment[] = [];
   readonly #diagnostics: Diagnostic[] = [];
   #offset = 0;
-  #lineHasToken = false;
-  /** Offset of the first tab in the current line's leading whitespace (§2). */
-  #indentationTab: number | undefined;
+  /** Current line's state: whether it has a token yet, and its first leading tab (§2). */
+  #line: { hasToken: boolean; indentationTab?: number } = { hasToken: false };
   /** How many template values enclose the token being scanned. */
   #valueDepth = 0;
 
@@ -77,14 +76,14 @@ class Scanner {
     this.#skipTrivia();
     while (this.#offset < this.#text.length) {
       if (isValue && depth === 0 && this.#text[this.#offset] === '}') {
-        return { tokens: [...tokens, this.#endToken()], closed: true };
+        return { tokens: [...tokens, this.#endToken()], end: this.#offset, closed: true };
       }
       const token = this.#scanToken();
       depth += braceChange[token.kind] ?? 0;
       tokens.push(token);
       this.#skipTrivia();
     }
-    return { tokens: [...tokens, this.#endToken()], closed: false };
+    return { tokens: [...tokens, this.#endToken()], end: this.#offset, closed: false };
   }
 
   #endToken(): Token {
@@ -102,10 +101,12 @@ class Scanner {
       this.#diagnostics.push(scannerDiagnostics.templateNestingTooDeep(span, templateNestingLimit));
       return undefined;
     }
+    const outerLine = { ...this.#line };
     this.#offset = from;
     this.#valueDepth += 1;
     const value = this.#scanTokens(true);
     this.#valueDepth -= 1;
+    this.#line = outerLine;
     return value;
   }
 
@@ -115,13 +116,12 @@ class Scanner {
       const breakLength = lineBreakLength(this.#text, this.#offset);
       if (breakLength > 0) {
         this.#offset += breakLength;
-        this.#lineHasToken = false;
-        this.#indentationTab = undefined;
+        this.#line = { hasToken: false };
       } else if (this.#text[this.#offset] === '#') {
         this.#skipComment();
       } else {
-        if (this.#text[this.#offset] === '\t' && !this.#lineHasToken) {
-          this.#indentationTab ??= this.#offset;
+        if (this.#text[this.#offset] === '\t' && !this.#line.hasToken) {
+          this.#line.indentationTab ??= this.#offset;
         }
         this.#offset += 1;
       }
@@ -143,16 +143,14 @@ class Scanner {
 
   #scanToken(): Token {
     const start = this.#offset;
-    const firstOnLine = !this.#lineHasToken;
-    if (firstOnLine && this.#indentationTab !== undefined) {
-      const tab = this.#indentationTab;
+    const firstOnLine = !this.#line.hasToken;
+    if (firstOnLine && this.#line.indentationTab !== undefined) {
+      const tab = this.#line.indentationTab;
       this.#diagnostics.push(scannerDiagnostics.tabIndentation({ start: tab, end: tab + 1 }));
     }
-    this.#lineHasToken = true;
+    this.#line.hasToken = true;
     const scanLexeme = this.#lexemeScannerAt(start);
     const lexeme = scanLexeme === undefined ? this.#scanUnknownRun(start) : scanLexeme();
-    // A template's values pass line breaks; the template still stands on the line it ends on.
-    this.#lineHasToken = true;
     this.#offset = lexeme.end;
     return { ...lexeme.token, span: { start, end: lexeme.end }, firstOnLine };
   }

@@ -20,9 +20,13 @@ import type { ScannedLexeme } from './lexeme.ts';
 import { type LinePiece, layOutLines, PieceReader } from './multi-line.ts';
 import { scanEscape, validEscapes } from './strings.ts';
 
-/** A value's tokens, ending with an `end` token at its `}`, and whether that `}` was found. */
+/**
+ * A value's tokens, ending with an `end` token at its `}`, where scanning it stopped, and whether
+ * that `}` was found.
+ */
 export interface ScannedValue {
   readonly tokens: readonly Token[];
+  readonly end: number;
   readonly closed: boolean;
 }
 
@@ -124,8 +128,7 @@ class TemplateScanner {
   #addValue(value: ScannedValue): boolean {
     const opening = this.#offset;
     this.#endText(opening);
-    const closing = value.tokens.at(-1)?.span.start ?? this.#text.length;
-    const next = value.closed ? closing + 1 : closing;
+    const next = value.closed ? value.end + 1 : value.end;
     this.#values.push({ span: { start: opening, end: next }, tokens: value.tokens });
     this.#offset = next;
     this.#textStart = next;
