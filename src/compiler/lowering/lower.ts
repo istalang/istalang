@@ -119,7 +119,7 @@ function pendingEntry(
     case 'anyConversion':
       return anyConversionEntry(lowering, pending.from, pending.to);
     case 'anyField':
-      return anyFieldEntry(lowering, pending.on, pending.field);
+      return anyFieldEntry(lowering, pending.on, pending.required);
     case 'asyncFit':
       return asyncFitEntry(lowering, pending.fit);
     default: {

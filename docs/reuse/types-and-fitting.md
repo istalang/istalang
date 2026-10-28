@@ -45,6 +45,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - check whether a type is `Sendable` or a trait is well-known → `isSendable`, `isSendableTrait`, `isWellKnownTrait` (`src/compiler/checker/traits/sendable.ts`)
 - check whether a type is `Disposable` or a function is `dispose` → `isDisposable`, `disposalOf`, `isDisposeFunction` (`src/compiler/checker/rules/disposal.ts`)
 - get a well-known constraint or a trait's members → `wellKnownConstraint`, `requiredFunctions`, `requiredFields` (`src/compiler/checker/traits/constraints.ts`)
+- find the field `x.f` reads and how → `fieldOf`, `structFieldOf` (`src/compiler/checker/expressions/field-reads.ts`); a required field on a concrete type → `requiredFieldRead` (`src/compiler/checker/checked-field.ts`)
 - map or list constraints on a parameter or `any` → `constraintSubstitution`, `knownConstraints`, `constraintOn` (`src/compiler/checker/traits/constraints.ts`)
 - look up required functions or field types on a constrained type → `requirementsNamed`, `requiredFieldType` (`src/compiler/checker/traits/constraints.ts`)
 - check or resolve `any` conformance and witnesses → `meetsAny`, `reportUnmet`, `memberWitnesses` (`src/compiler/checker/resolution/trait-objects.ts`)

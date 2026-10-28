@@ -277,7 +277,7 @@ class Computation {
     const scope: ComputationScope = {
       checker,
       constant: undefined,
-      checked: instantiatedBody(checked, substitution),
+      checked: instantiatedBody(checked, substitution, checker),
       valueNamed: (name) => {
         const entity = checker.bindings.entityOf(module, name);
         const field = entity?.kind === 'variable' ? fields.get(entity.owner) : undefined;

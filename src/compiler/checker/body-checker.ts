@@ -39,6 +39,7 @@ import type { Accepts, BodyContext, CheckerContext, Enclosing, Returns } from '.
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import { CollectionForms } from './expressions/collections.ts';
 import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/expressions.ts';
+import { FieldReads } from './expressions/field-reads.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
 import { OptionalChains } from './expressions/optionals.ts';
 import { LabelTargets } from './flow/labels.ts';
@@ -82,6 +83,7 @@ export class BodyChecker implements BodyContext {
   readonly iterations = new Iterations();
   readonly patterns = new CheckedPatterns();
   readonly chains = new OptionalChains();
+  readonly fieldReads = new FieldReads();
   readonly ownCalls = new OwnCalls();
   readonly labels = new LabelTargets();
   readonly #types = new Map<Expression, Type>();
@@ -284,6 +286,7 @@ export class BodyChecker implements BodyContext {
       iterations,
       patterns,
       chains,
+      fieldReads,
       functions,
       ownCalls,
       labels,
@@ -308,6 +311,7 @@ export class BodyChecker implements BodyContext {
       sourcesOf: (literal) => literals.sourcesOf(literal),
       patternOf: (pattern) => patterns.patternOf(pattern),
       chainOf: (link) => chains.chainOf(link),
+      fieldReadOf: (access) => fieldReads.of(access),
       ownCallReadAt: (name) => ownCalls.readAt(name),
       ownCallOf: (owner) => ownCalls.variableOf(owner),
       labels,

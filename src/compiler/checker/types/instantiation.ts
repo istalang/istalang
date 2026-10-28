@@ -7,7 +7,8 @@
  * literal running it.
  */
 
-import type { CheckedBody } from '../check.ts';
+import type { CheckedBody, Checker } from '../check.ts';
+import { type FieldRead, requiredFieldRead } from '../checked-field.ts';
 import type { CheckedPattern, PatternTest } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
 import {
@@ -17,13 +18,34 @@ import {
   substituteFunction,
 } from './substitution.ts';
 
-/** `body` as one instantiation sees it: every type it records substituted by `substitution`. */
-export function instantiatedBody(body: CheckedBody, substitution: Substitution): CheckedBody {
+/**
+ * `body` as one instantiation sees it: every type it records substituted by `substitution`, and
+ * each field read through a type parameter resolved for the type it stands for.
+ */
+export function instantiatedBody(
+  body: CheckedBody,
+  substitution: Substitution,
+  checker: Pick<Checker, 'fieldsOf'>,
+): CheckedBody {
   const concrete = (type: Parameters<typeof substitute>[0]) => substitute(type, substitution);
   const concreteFit = (fit: Fit): Fit =>
     fit.conversion.kind === 'any'
       ? { ...fit, conversion: { kind: 'any', to: substituteAny(fit.conversion.to, substitution) } }
       : fit;
+  const concreteRead = (read: FieldRead): FieldRead => {
+    switch (read.kind) {
+      case 'position':
+        return read;
+      case 'dispatch':
+        return { ...read, on: substituteAny(read.on, substitution) };
+      case 'required':
+        return requiredFieldRead(checker, concrete(read.on), read.required);
+      default: {
+        const unhandled: never = read;
+        return unhandled;
+      }
+    }
+  };
   return {
     ...body,
     typeOf: (expression) => concrete(body.typeOf(expression)),
@@ -60,6 +82,7 @@ export function instantiatedBody(body: CheckedBody, substitution: Substitution):
       return chained === undefined ? undefined : { ...chained, base: concrete(chained.base) };
     },
     patternOf: (pattern) => instantiatedPattern(body.patternOf(pattern), substitution),
+    fieldReadOf: (access) => concreteRead(body.fieldReadOf(access)),
     result: concrete(body.result),
   };
 }

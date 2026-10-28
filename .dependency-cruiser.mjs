@@ -110,6 +110,7 @@ const checkerSurface = [
   'check.ts',
   'resolved-call.ts',
   'checked-pattern.ts',
+  'checked-field.ts',
   'constant-form.ts',
   'json-form.ts',
   'checked-annotation.ts',

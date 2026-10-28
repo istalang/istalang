@@ -17,14 +17,12 @@ import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
+import { type RequiredField, requiredFieldRead } from '../../checker/checked-field.ts';
 import { type AnyType, sameType, type Type } from '../../checker/types/type.ts';
-import type { TraitDeclaration } from '../../syntax/declarations.ts';
-import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { closeWitness, type Dispatch } from '../instances.ts';
 import { spelledType } from '../names.ts';
-import { structFieldIndex } from '../places.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
 
 /** What writing an entry takes: the checker and the tables. */
@@ -125,43 +123,29 @@ export function anyConversionEntry(
   return code.entry({ name, module, span, annotations: [] }, false);
 }
 
-/** The entry reading `field`, which a trait of `on` requires, from a value of `on`. */
-export function anyFieldEntry(lowering: Lowering, on: AnyType, field: string): FunctionDefinition {
+/** The entry reading `required`'s field, which a trait of `on` requires, from a value of `on`. */
+export function anyFieldEntry(
+  lowering: Lowering,
+  on: AnyType,
+  required: RequiredField,
+): FunctionDefinition {
   const { checker, tables } = lowering;
-  const required = requiredFieldOf(on, field);
-  if (required === undefined) {
-    unreachable(`${spelledType(checker, on)} requires no field '${field}'.`);
-  }
-  const { trait, member } = required;
-  const code = new SynthesizedCode(lowering, member.name.span, 1);
+  const { trait, field } = required;
+  const code = new SynthesizedCode(lowering, field.name.span, 1);
   const [value] = code.parameters;
   if (value === undefined) {
     unreachable('A field read takes the value it reads.');
   }
   switchOverMembers(code, on, value, (type) => {
-    const index = structFieldIndex(checker, type, field);
-    code.return(code.field(code.field(value, 0), index));
-  });
-  const name = `${spelledType(checker, on)}.${field}`;
-  const module = tables.moduleIndex(checker.moduleOf(trait));
-  return code.entry({ name, module, span: member.name.span, annotations: [] }, false);
-}
-
-/** The first trait of `on` that requires `field`, with its field declaration. */
-function requiredFieldOf(
-  on: AnyType,
-  field: string,
-): { readonly trait: TraitDeclaration; readonly member: FieldDeclaration } | undefined {
-  for (const { trait } of on.constraints) {
-    const member = trait.members.find(
-      (each): each is FieldDeclaration =>
-        each.kind === 'FieldDeclaration' && each.name.text === field,
-    );
-    if (member !== undefined) {
-      return { trait, member };
+    const read = requiredFieldRead(checker, type, required);
+    if (read.kind !== 'position') {
+      unreachable(`A member of ${spelledType(checker, on)} is no struct.`);
     }
-  }
-  return undefined;
+    code.return(code.field(code.field(value, 0), read.index));
+  });
+  const name = `${spelledType(checker, on)}.${field.name.text}`;
+  const module = tables.moduleIndex(checker.moduleOf(trait));
+  return code.entry({ name, module, span: field.name.span, annotations: [] }, false);
 }
 
 /**

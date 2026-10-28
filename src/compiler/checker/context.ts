@@ -33,6 +33,7 @@ import type {
   Call,
   Expression,
   MapLiteral,
+  MemberAccess,
   StructLiteral,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
@@ -65,6 +66,7 @@ import type {
   VariantMember,
 } from './check.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
+import type { FieldRead } from './checked-field.ts';
 import type { LabelResolution } from './checked-labels.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { JsonCodecs } from './json-form.ts';
@@ -203,6 +205,7 @@ export interface BodyContext {
   readonly iterations: IterationRecord;
   readonly patterns: PatternRecord;
   readonly chains: Chains;
+  readonly fieldReads: FieldReadRecord;
   readonly ownCalls: OwnCallRecord;
   /** What this body's exits and holds name, recorded as it is checked. */
   readonly labels: LabelRecord;
@@ -324,6 +327,11 @@ export interface CollectionRecord {
 /** How each iteration runs (rules/iteration.ts). */
 export interface IterationRecord {
   readonly record: (iteration: Iteration, form: IterationForm) => void;
+}
+
+/** How each field read reaches its field (expressions/field-reads.ts). */
+export interface FieldReadRecord {
+  readonly record: (access: MemberAccess, read: FieldRead) => void;
 }
 
 /** Each pattern's tests and bindings (patterns/matching.ts). */

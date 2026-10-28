@@ -22,7 +22,7 @@ import {
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { defaultEntryOf } from '../instances.ts';
-import { fieldIndexOf } from '../places.ts';
+import { fieldPositionOf } from '../places.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const type = structTypeOf(context, node);
@@ -119,13 +119,13 @@ export function lowerFieldRead(
   link: Expression = node,
 ): Register {
   const src = context.chains.target(context, link);
-  const base = context.body.chainOf(link)?.base ?? context.body.typeOf(node.target);
-  if (base.kind === 'any') {
-    const callee = context.tables.anyFieldIndex(base, node.member.text);
+  const read = context.body.fieldReadOf(node);
+  if (read.kind === 'dispatch') {
+    const callee = context.tables.anyFieldIndex(read.on, read.required);
     return emitCall(context, { span: node.span, callee, arguments: [src] });
   }
   const dst = context.code.allocate();
-  const index = fieldIndexOf(context, node, link);
+  const index = fieldPositionOf(context, node);
   context.code.emit({ kind: 'field', span: node.span, dst, src, index });
   return dst;
 }

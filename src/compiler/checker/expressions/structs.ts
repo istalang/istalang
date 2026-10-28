@@ -38,7 +38,6 @@ import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType } from '../resolution/named.ts';
-import { knownConstraints, requiredFields, requiredFieldType } from '../traits/constraints.ts';
 import { optionalInner, withoutOptionals } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import {
@@ -50,6 +49,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { fieldOf } from './field-reads.ts';
 import {
   checkLiteralFields,
   knownArguments,
@@ -251,12 +251,13 @@ export function checkMemberAccess(
   if (type.kind === 'error') {
     return errorType;
   }
-  const field = fieldOf(context, type, node.member.text);
+  const field = fieldOf(context.checker, type, node.member.text);
   if (field === undefined) {
     context.report(noField(context, node, type));
     return errorType;
   }
-  return field;
+  context.fieldReads.record(node, field.read);
+  return field.type;
 }
 
 /**
@@ -269,7 +270,7 @@ function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnost
   const { span, text: name } = node.member;
   const behind = (owner: Type) => {
     const sharedValue = checker.sharedValueOf(owner);
-    return sharedValue !== undefined && fieldOf(context, sharedValue, name) !== undefined;
+    return sharedValue !== undefined && fieldOf(checker, sharedValue, name) !== undefined;
   };
   if (behind(type)) {
     const operator = node.isOptional ? '?->' : '->';
@@ -287,21 +288,6 @@ function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnost
   return isMethod
     ? checkerDiagnostics.methodValue(span, name)
     : checkerDiagnostics.unknownField(span, typeText(type), name);
-}
-
-/** The type of the field `name` of `type`, through a constraint for a type parameter. */
-function fieldOf(context: BodyContext, type: Type, name: string): Type | undefined {
-  const { checker } = context;
-  if (type.kind === 'nominal' || type.kind === 'anonymous') {
-    return checker.fieldsOf(type)?.find((candidate) => candidate.name === name)?.type;
-  }
-  for (const constraint of knownConstraints(checker, type)) {
-    const field = requiredFields(constraint.trait).find((each) => each.name.text === name);
-    if (field !== undefined) {
-      return requiredFieldType(checker, constraint, field, type);
-    }
-  }
-  return undefined;
 }
 
 /** Which types a member passed to a call can take when the call decides it: a function's (names.ts). */

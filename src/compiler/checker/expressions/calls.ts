@@ -53,6 +53,7 @@ import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { spreadArgumentType } from './collections.ts';
+import { structFieldOf } from './field-reads.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   if (misplacedArgument(node.arguments) !== undefined) {
@@ -137,7 +138,7 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     return errorType;
   }
   const name = callee.member.text;
-  const field = checker.fieldsOf(receiverType)?.find((each) => each.name === name);
+  const field = structFieldOf(checker, receiverType, name);
   const written = [
     { node: receiver, passing: 'receiver', type: receiverType } as const,
     ...call.written,
@@ -153,6 +154,7 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     return errorType;
   }
   if (field !== undefined) {
+    context.fieldReads.record(callee, field.read);
     return checkValueCall(context, call, callee, field.type);
   }
   const candidates = isPlace(callee)

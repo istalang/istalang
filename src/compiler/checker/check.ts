@@ -20,6 +20,7 @@ import type {
   Expression,
   Lambda,
   MapLiteral,
+  MemberAccess,
   Parameter,
   Spread,
   StructLiteral,
@@ -28,6 +29,7 @@ import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { Assignment, Block, For, Return, VariableDeclaration } from '../syntax/statements.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
+import type { FieldRead } from './checked-field.ts';
 import type { LabelResolution } from './checked-labels.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
@@ -182,6 +184,8 @@ export interface CheckedBody {
   readonly patternOf: (pattern: Pattern) => CheckedPattern;
   /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
   readonly chainOf: (link: Expression) => ChainLink | undefined;
+  /** How the field read `access` reaches its field; asked only of a program checked clean. */
+  readonly fieldReadOf: (access: MemberAccess) => FieldRead;
   /**
    * The hidden variable holding the handle of the call an async function's own name reads where
    * it stands before a `.` (§7), such as `worker` in `worker.disposing()`; undefined for any other

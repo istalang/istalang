@@ -28,7 +28,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - emit the cursor loop of a `for`, comprehension or non-copied spread → `cursorOf`, `emitLoop`, `emitLoopOver` (`src/compiler/lowering/iteration.ts`)
 - enter an assigned or `&`-referenced place → `enterAssigned`, `enterReferenced` (`src/compiler/lowering/places.ts`)
 - look up a variable's register, allocate a cell, or read a part → `variableRegister`, `cellRegister`, `readPart` (`src/compiler/lowering/places.ts`)
-- look up a struct field's index by name or member node → `structFieldIndex`, `fieldIndexOf` (`src/compiler/lowering/places.ts`)
+- read how a field access reaches its field → `CheckedBody.fieldReadOf`; its position for a place → `fieldPositionOf` (`src/compiler/lowering/places.ts`)
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/patterns.ts`)
 - build an enum variant or look up a variant's index → `buildVariant`, `variantIndexOf`, `isEnum` (`src/compiler/lowering/expressions/variants.ts`)
 - test or branch on an enum variant or read variant field 0 → `variantTestOf`, `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`)

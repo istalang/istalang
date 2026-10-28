@@ -1,0 +1,16 @@
+# outcome: [1,2,5]
+# A field a type parameter's trait requires is read from whatever each instantiation gives it,
+# a struct's at its own position or an `any` value's through its value's own type (§3.5, §3.10).
+
+trait Sized:
+  size: int
+
+struct Box { label: string; size: int }
+struct Pair { size: int; first: string }
+
+fn sizeOf<T is Sized>(value: T) -> int:
+  value.size
+
+async fn main():
+  const sized: any Sized = Pair{size: 2, first: "b"}
+  (sizeOf(Box{label: "a", size: 1}), sizeOf(sized), sizeOf(Pair{size: 5, first: "c"}))

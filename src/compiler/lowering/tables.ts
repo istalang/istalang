@@ -20,6 +20,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Span } from '../../text/span.ts';
 import type { Checker } from '../checker/check.ts';
+import type { RequiredField } from '../checker/checked-field.ts';
 import { passesAll } from '../checker/resolved-call.ts';
 import type { AnyType, Type } from '../checker/types/type.ts';
 
@@ -82,7 +83,7 @@ export type PendingEntry =
 export type ClosingEntry =
   | { readonly kind: 'dispatch'; readonly dispatch: Dispatch }
   | { readonly kind: 'anyConversion'; readonly from: AnyType; readonly to: AnyType }
-  | { readonly kind: 'anyField'; readonly on: AnyType; readonly field: string };
+  | { readonly kind: 'anyField'; readonly on: AnyType; readonly required: RequiredField };
 
 /** An extern a host implements: a function, or a constant. */
 export type HostExternDeclaration = FunctionDeclaration | ExternConstantDeclaration;
@@ -219,10 +220,10 @@ export class DefinitionTables {
     return this.#closingIndex(key, { kind: 'anyConversion', from, to });
   }
 
-  /** The index of the entry reading `field`, which a trait of `on` requires, from an `on` value. */
-  anyFieldIndex(on: AnyType, field: string): FunctionId {
-    const key = `field:${this.#checker.typeKeys.typeKey(on)}.${field}`;
-    return this.#closingIndex(key, { kind: 'anyField', on, field });
+  /** The index of the entry reading a field a trait of `on` requires from an `on` value. */
+  anyFieldIndex(on: AnyType, required: RequiredField): FunctionId {
+    const key = `field:${this.#checker.typeKeys.typeKey(on)}.${required.field.name.text}`;
+    return this.#closingIndex(key, { kind: 'anyField', on, required });
   }
 
   /** The index `instance` is called by; it is lowered later, from the worklist. */

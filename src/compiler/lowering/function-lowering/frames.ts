@@ -95,7 +95,7 @@ export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunc
  */
 function ownBodyOf(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {
   const body = bodyOfEntry(checker, instance);
-  return body === undefined ? undefined : instantiatedBody(body, substitutionOf(instance));
+  return body === undefined ? undefined : instantiatedBody(body, substitutionOf(instance), checker);
 }
 
 function bodyOfEntry(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {
