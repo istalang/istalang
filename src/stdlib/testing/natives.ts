@@ -3,8 +3,8 @@
  * instances, and host handles, each a thin reading of the runtime's capabilities
  * (runtime/natives.ts), which own what they mean.
  *
- * An `Instance<R>` (prelude) holds the name of the instance it is a handle to. An instance's state
- * before its first commit, when it hasn't run yet, is `Running`, as it is for one that is ready to.
+ * An instance's state before its first commit, when it hasn't run yet, is `Running`, as it is for
+ * one that is ready to.
  */
 
 import { functionKey, type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
