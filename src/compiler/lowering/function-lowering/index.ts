@@ -299,10 +299,13 @@ class FunctionLowering implements FunctionContext {
     return this.#layout;
   }
 
-  /** Declares the variable an async function reads its own call through (§7), when it reads it. */
+  /**
+   * Declares the variable an async function reads its own call through (§7), when it reads it, in
+   * the entry running its body: its call is no default's, which runs before the call starts.
+   */
   #declareOwnCall(): void {
-    const owner = this.frame.function;
-    const call = this.checker.bindings.ownCallOf(this.module, owner);
+    const { isAsync, function: owner } = this.frame;
+    const call = isAsync ? this.checker.bindings.ownCallOf(this.module, owner) : undefined;
     if (call !== undefined) {
       this.#declareFilled(call.name, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
     }
