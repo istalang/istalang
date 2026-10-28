@@ -5,18 +5,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
-import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
+import { mainGives } from './prelude.test-kit.ts';
 
-const program = [
+/** Declarations whose lines `main`, which `mainGives` puts after them, continues at line 7. */
+const declarations = [
   'fn failure() -> Error:',
   '  Error{message: "m", code: "c"}',
   '',
   'fn traced() -> string:',
   '  failure().trace',
   '',
-  'async fn main() -> Future<string>:',
-  '  traced()',
 ].join('\n');
 
 /** Each frame's line: `at`, the function (module-qualified), and `module:line:column`. */
@@ -31,9 +29,8 @@ const noFrame = /^$.^/u;
 
 describe("an Error's trace", () => {
   it('names each frame, innermost first, at the line and column it stands at', () => {
-    const state = startToEnd(testRuntime(), compiledText(program));
-    expect(state.kind).toBe('finished');
-    const trace: unknown = state.kind === 'finished' ? JSON.parse(String(state.outcome)) : '';
+    const trace = mainGives('string', 'traced()', declarations);
+    expect(trace).toBeTypeOf('string');
     const lines = String(trace).split('\n');
     expect(lines).toHaveLength(frameLines.length);
     for (const [index, line] of lines.entries()) {
