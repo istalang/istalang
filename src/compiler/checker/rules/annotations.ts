@@ -36,7 +36,6 @@ import type {
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { defaultWitness } from '../resolution/default-witness.ts';
-import type { ResolvedCall } from '../resolved-call.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { searchSite } from '../use-site.ts';
@@ -213,17 +212,6 @@ export class Annotations implements AnnotationQueries {
       checker.report(module, refusalOf(outcome));
     }
     return outcome.kind === 'computed' ? { node, type, form: outcome.form } : undefined;
-  }
-
-  /**
-   * The call giving what `field` reads back as when `@JsonSkip` leaves it out of JSON, its type's
-   * `default()`; undefined when it isn't skipped.
-   */
-  skippedDefaultOf(field: FieldMember): ResolvedCall | undefined {
-    const { declared } = field;
-    return declared !== undefined && this.fieldHas(field, 'jsonSkip')
-      ? defaultWitness(searchSite(this.#seams.checker), field.type)
-      : undefined;
   }
 }
 

@@ -24,7 +24,6 @@ import {
   codecFunctions,
   codecHelpers,
   derivedCodecs,
-  wellKnown,
 } from '../../../../language/well-known.ts';
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
@@ -42,11 +41,13 @@ import {
 } from '../../json-form.ts';
 import { witnessesFor } from '../../resolution/conformance.ts';
 import { declaresWitness } from '../../resolution/declared-witness.ts';
+import { defaultWitness } from '../../resolution/default-witness.ts';
 import { callWithTypes } from '../../resolution/typed-call.ts';
 import type { FunctionCall, ResolvedCall } from '../../resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
+import { optionalInner } from '../../types/fit.ts';
 import type { FieldMember, NominalType, Type } from '../../types/type.ts';
-import { wellKnownArguments } from '../../types/well-known.ts';
+import { TypeCycle } from '../../types/type-cycle.ts';
 import { hostSite, searchSite, silent, type UseSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
@@ -71,11 +72,13 @@ interface Part {
 export class JsonForms implements JsonCodecs {
   readonly #seams: JsonFormSeams;
   readonly #forms = new Map<string, DerivedForm>();
-  /** The derived codecs being decided, by direction and type key, which count as found meanwhile. */
-  readonly #deciding = new Set<string>();
+  /** The derived codecs being decided, by direction, which count as found meanwhile. */
+  readonly #deciding: Readonly<Record<JsonDirection, TypeCycle>>;
 
   constructor(seams: JsonFormSeams) {
     this.#seams = seams;
+    const { typeKeys } = seams.checker;
+    this.#deciding = { write: new TypeCycle(typeKeys), read: new TypeCycle(typeKeys) };
   }
 
   formOf(type: Type): DerivedForm {
@@ -83,9 +86,9 @@ export class JsonForms implements JsonCodecs {
   }
 
   refusalOf(type: Type): string | undefined {
-    const { checker } = this.#seams;
-    const [inner] = wellKnownArguments(checker, wellKnown.optional, type) ?? [];
-    return inner !== undefined && wellKnownArguments(checker, wellKnown.optional, inner)
+    const { optionalEntity } = this.#seams.checker;
+    const inner = optionalInner(type, optionalEntity);
+    return inner !== undefined && optionalInner(inner, optionalEntity) !== undefined
       ? 'no optional directly inside it, since JSON has one null for both its nones'
       : undefined;
   }
@@ -97,17 +100,11 @@ export class JsonForms implements JsonCodecs {
       const required = `'${codecFunctions[direction]}' as ${trait}`;
       return { kind: 'lacking', missing: form.reason ?? `${required} declares it` };
     }
-    const key = `${direction} ${this.#seams.checker.typeKeys.typeKey(type)}`;
-    if (!this.#deciding.has(key)) {
-      this.#deciding.add(key);
-      try {
-        const missing = this.#partMissing(site, form, direction);
-        if (missing !== undefined) {
-          return { kind: 'lacking', missing };
-        }
-      } finally {
-        this.#deciding.delete(key);
-      }
+    const missing = this.#deciding[direction].enter(type, undefined, () =>
+      this.#partMissing(site, form, direction),
+    );
+    if (missing !== undefined) {
+      return { kind: 'lacking', missing };
     }
     return { kind: 'derived', call: this.#jsonCall(derivedCodecs[direction], [type]) };
   }
@@ -235,14 +232,17 @@ export class JsonForms implements JsonCodecs {
   }
 
   #field(field: FieldMember): JsonField {
-    const { annotations } = this.#seams;
+    const { checker, annotations } = this.#seams;
+    const skipped =
+      field.declared !== undefined && annotations.fieldHas(field, 'jsonSkip')
+        ? defaultWitness(searchSite(checker), field.type)
+        : undefined;
     return {
       name: field.name,
       key: annotations.jsonNameOf(field),
       type: field.type,
-      skipped: annotations.skippedDefaultOf(field),
-      optional:
-        wellKnownArguments(this.#seams.checker, wellKnown.optional, field.type) !== undefined,
+      skipped,
+      optional: optionalInner(field.type, checker.optionalEntity) !== undefined,
       codec: annotations.fieldHas(field, 'jsonBigInt')
         ? {
             write: this.callOf(codecHelpers.encodeBigInt, []),

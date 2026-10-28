@@ -1,8 +1,9 @@
-# error: 5105 at 12:4
-# error: 5211 at 14:15
+# error: 5105 at 13:4
 # error: 5211 at 15:15
-# error: 5211 at 16:12
+# error: 5211 at 16:15
 # error: 5211 at 17:12
+# error: 5211 at 18:12
+# error: 5211 at 19:23
 # A method taking `self` by value clashes with one taking it by reference, as `x.f()` couldn't
 # choose (§3.7). A struct never holds itself, directly, through a tuple, or through another
 # struct (§3.1).
@@ -15,3 +16,5 @@ struct Node { next: Node }
 struct Cell { pair: (int, Cell) }
 struct A { b: B }
 struct B { a: A }
+struct Expanding<T> { next: Expanding<(T,)> }
+struct HoldsExpanding { item: Expanding<int> }

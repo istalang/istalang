@@ -18,6 +18,7 @@ import type { CheckerContext } from '../context.ts';
 import { jsonTraits } from '../json-form.ts';
 import { heldParts } from '../types/held.ts';
 import type { NominalType, Type } from '../types/type.ts';
+import { TypeCycle } from '../types/type-cycle.ts';
 import { knownConstraints } from './constraints.ts';
 
 /** The traits a type parameter may be constrained by to be sendable. */
@@ -28,10 +29,10 @@ const sendableTraits: readonly WellKnownDeclaration[] = [
 
 /** Whether values of `type` may leave an instance for another. */
 export function isSendable(checker: CheckerContext, type: Type): boolean {
-  return sendable(checker, type, new Set());
+  return sendable(checker, type, new TypeCycle(checker.typeKeys));
 }
 
-function sendable(checker: CheckerContext, type: Type, deciding: Set<string>): boolean {
+function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boolean {
   switch (type.kind) {
     case 'primitive':
     case 'error':
@@ -55,11 +56,7 @@ function sendable(checker: CheckerContext, type: Type, deciding: Set<string>): b
   }
 }
 
-function nominalSendable(
-  checker: CheckerContext,
-  type: NominalType,
-  deciding: Set<string>,
-): boolean {
+function nominalSendable(checker: CheckerContext, type: NominalType, deciding: TypeCycle): boolean {
   const { declaration } = type.entity;
   const parts = () => heldParts(checker, type).every((part) => sendable(checker, part, deciding));
   if (declaration.kind === 'ExternStructDeclaration') {
@@ -68,14 +65,7 @@ function nominalSendable(
   if (isSharedStruct(declaration)) {
     return false;
   }
-  const key = checker.typeKeys.typeKey(type);
-  if (deciding.has(key)) {
-    return true;
-  }
-  deciding.add(key);
-  const result = parts();
-  deciding.delete(key);
-  return result;
+  return deciding.enter(type, true, parts);
 }
 
 /** Whether `trait` is the prelude's Sendable. */
