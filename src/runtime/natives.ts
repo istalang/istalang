@@ -49,11 +49,13 @@ export interface NativeContext {
    * receives such an argument's value, and writes the changed one back here.
    */
   readonly write: (position: number, value: Value) => void;
+  /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
+  readonly trace: () => string;
   /**
-   * Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12), without
-   * the innermost `leftOut` frames.
+   * The trace of the code a default gives its value to (§3.1): `trace` without the innermost
+   * frame when its entry gives a default.
    */
-  readonly trace: (leftOut?: number) => string;
+  readonly callerTrace: () => string;
 }
 
 /** The futures the runtime makes for an extern returning one (§3.6). */

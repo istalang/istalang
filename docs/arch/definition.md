@@ -33,6 +33,7 @@ Both formats were written for the whole language before any of it compiled, so t
 An execution is a stack of frames. A frame's registers are laid out as parameters, then a closure's captures, then locals and temporaries.
 
 - **`cells`** lists registers that hold a shared cell, a variable passed by `&` or a `let` a closure captured (spec §3.14), each with the `_Cell<T>` type entry the cell is created as, so its disposability is known (a `_Cell` never is: only the prelude could declare its `dispose`). Reads and writes go through the cell, and a cell outlives its block while a call or closure still holds it (spec §3.7).
+- **`givesDefault`** marks the entry giving a parameter or a field its default (spec §3.1, §3.3). The trace a default asks for, `Error`'s `trace` (§3.12), leaves out the innermost frame only when it is so marked, so it counts no frames: a default whose code is inlined into its caller leaves none out.
 - **A reference parameter's register** holds a reference: a cell plus a path. References exist only in registers.
 - **A hold scope's list.** What `hold let`, `hold const` and `hold _` variables hold lasts until their hold scope ends, even from a loop body that ends many times: the function, or the labelled loop or block `hold(name)` names. A list in a register of that scope collects it: `keep` adds the registers' values to the array in its `into`, starting one when `into` is empty. The register is released as the scope's other variables are: the function's by `return`, a labelled scope's as a variable of a block around the scope, so every way out of the scope releases it but `continue`. A labelled scope gets a list only when some `hold` names it, and a frame holds nothing beside its registers.
 - **A stopped execution's pc** is always its `await` or `select`: the only instructions that wait, and the commit points (spec §5). A non-blocking `select` never waits.
@@ -211,7 +212,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `x!` (§4) | `switch` on `Optional`: `Some` gives its payload, `None` calls the prelude's `panic`, which never returns |
 | `e?` on `Result` (§3.12) | `switch` on `Result`; the `Err` path returns a new `Err` of the function's own `Result` type, holding the same error |
 | `panic(m)` (§3.12) | a call to prelude `panic` |
-| Building an `Error` (§3.12) | `struct`, with `trace` from its default's entry, which calls a prelude extern that formats the frames' spans through the modules' line starts, leaving out the entry's own |
+| Building an `Error` (§3.12) | `struct`, with `trace` from its default's entry, which calls a prelude extern that formats the frames' spans through the modules' line starts, leaving out the entry's own, marked `givesDefault` |
 | Imports, type aliases (§3.13, §3.17) | nothing at runtime; `modules` lists module ids for spans |
 | Lambdas, local `fn`, closures (§3.14) | `closure` with captures; a captured `let` is a cell, a `const` a copy |
 | Named lambda calling itself (§3.14) | `currentClosure` |

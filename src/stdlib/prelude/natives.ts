@@ -14,7 +14,8 @@
  * - `compare` on floats subtracts, so infinities compare as expected; see `sign` for NaN.
  * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
  * - `_trace()` runs as `Error`'s `trace` default, in the entry a literal leaving the field out
- *   calls (§3.1), so it leaves that entry's frame out: an `Error`'s trace starts where it is built.
+ *   calls (§3.1), so it takes its caller's trace, without that entry's frame: an `Error`'s trace
+ *   starts where it is built.
  */
 
 import type { Value } from '../../definition/values.ts';
@@ -58,7 +59,7 @@ export const preludeNatives = (
   [keys.of('panic', 'string')]: ([message]) => {
     throw new Panic(text(message));
   },
-  [keys.of('_trace')]: (_, context) => context.trace(1),
+  [keys.of('_trace')]: (_, context) => context.callerTrace(),
 });
 
 /** The operators and conversions over `int` and `float` (§2, §3.9, §3.10). */

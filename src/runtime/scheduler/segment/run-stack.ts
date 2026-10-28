@@ -10,7 +10,7 @@
 import type { Definition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/machine.ts';
-import { traceOf } from '../../interpreter/trace.ts';
+import { callerTraceOf, traceOf } from '../../interpreter/trace.ts';
 import type { LiveExecution } from '../heap.ts';
 import { requireFrameDepth } from './limits.ts';
 
@@ -94,13 +94,19 @@ export class RunStack {
     return this.#executions.flatMap(({ resolves }) => resolves ?? []);
   }
 
-  /**
-   * Where every running frame is, innermost first (§3.12), without the innermost `leftOut`; once
-   * the driver has stopped at its await, where it stopped.
-   */
-  trace(definition: Definition, leftOut = 0): string {
+  /** Where every running frame is, innermost first (§3.12). */
+  trace(definition: Definition): string {
+    return traceOf(definition, this.#framesInnermostFirst());
+  }
+
+  /** The trace of the code the running default gives its value to (`callerTraceOf`). */
+  callerTrace(definition: Definition): string {
+    return callerTraceOf(definition, this.#framesInnermostFirst());
+  }
+
+  /** The running frames, innermost first; once the driver has stopped at its await, its own. */
+  #framesInnermostFirst(): readonly ActiveFrame[] {
     const stack = this.#executions.length === 0 && this.#driver ? [this.#driver] : this.#executions;
-    const frames = stack.toReversed().flatMap((execution) => execution.frames.toReversed());
-    return traceOf(definition, frames.slice(leftOut));
+    return stack.toReversed().flatMap((execution) => execution.frames.toReversed());
   }
 }

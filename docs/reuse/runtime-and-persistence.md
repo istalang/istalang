@@ -27,7 +27,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - convert between stored `HeapObject`s and live `Instance` objects/frames → `liveObject`, `storedObject` (`src/runtime/scheduler/instance/live-objects.ts`)
 - start, restore or persist a running instance in memory → `Instance` (`src/runtime/scheduler/instance/index.ts`)
 - manage indexed heap objects or unwrap a handle's object id → `Heap`, `handleObject` (`src/runtime/scheduler/heap.ts`)
-- format stack traces or `module:line:column` locations from a `Definition`'s `lineStarts` → `traceOf`, `locationOf` (`src/runtime/interpreter/trace.ts`)
+- format stack traces or `module:line:column` locations from a `Definition`'s `lineStarts` → `traceOf`, `locationOf`; the trace a default asks for, its own frame left out → `callerTraceOf` (`src/runtime/interpreter/trace.ts`)
 - convert V8 limit `RangeError`s to `Panic` or guard depth → `panicOf`, `requireDepth`, `requireFrameDepth` (`src/runtime/scheduler/segment/limits.ts`)
 - encode/decode 32-byte instance random seeds → `seedBytes`, `seedTextOf`, `seedFrom`, `seedBytesOf` (`src/runtime/random-seed.ts`)
 - draw deterministic HMAC-SHA-256 random bytes for a segment → `drawOf` (`src/runtime/scheduler/random-source.ts`)

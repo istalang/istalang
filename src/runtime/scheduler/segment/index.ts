@@ -107,9 +107,10 @@ class SegmentRunner implements Machine {
 
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
-    this.#natives = new NativeCalls(instance, startedAt, (leftOut) =>
-      this.#runStack.trace(this.definition, leftOut),
-    );
+    this.#natives = new NativeCalls(instance, startedAt, {
+      trace: () => this.#runStack.trace(this.definition),
+      callerTrace: () => this.#runStack.callerTrace(this.definition),
+    });
     this.#caller = { instance, natives: this.#natives, startedAt };
     this.#disposals = new DisposalRuns({
       instance,

@@ -24,17 +24,56 @@ const frameLines = [
   /^at \S*main \(\S+:8:3\)$/u,
 ];
 
-/** What no line matches, for a line past the frames expected. */
-const noFrame = /^$.^/u;
+/**
+ * Declarations whose `made` leaves out a default that builds an `Error`, by a literal or by a
+ * native; `main` continues at line 7.
+ */
+const builtInDefaults = [
+  'struct Job:',
+  '  failure: Error = Error{message: "m", code: "c"}',
+  '  number: Result<int> = int.parse("x")',
+  'fn made() -> Job:',
+  '  Job{}',
+  '',
+].join('\n');
+
+/** The default's frames, where each builds its `Error`: by a literal, and by a native. */
+const failureLine = /^at \S*Job\/failure \(\S+:2:20\)$/u;
+const numberLine = /^at \S*Job\/number \(\S+:3:25\)$/u;
+
+/** `made`'s frame, at the literal leaving the defaults out. */
+const madeLine = /^at \S*made \(\S+:5:3\)$/u;
+
+/** `main`'s frame, at `made()` as the body's first expression, then within a `match`. */
+const mainLine = /^at \S*main \(\S+:8:3\)$/u;
+const mainMatchLine = /^at \S*main \(\S+:8:9\)$/u;
+
+/** What `main` gave, one trace line per item; a non-string outcome as its own single item. */
+function linesOf(outcome: unknown): readonly unknown[] {
+  return typeof outcome === 'string' ? outcome.split('\n') : [outcome];
+}
 
 describe("an Error's trace", () => {
   it('names each frame, innermost first, at the line and column it stands at', () => {
-    const trace = mainGives('string', 'traced()', declarations);
-    expect(trace).toBeTypeOf('string');
-    const lines = String(trace).split('\n');
-    expect(lines).toHaveLength(frameLines.length);
-    for (const [index, line] of lines.entries()) {
-      expect(line).toMatch(frameLines[index] ?? noFrame);
-    }
+    expect(linesOf(mainGives('string', 'traced()', declarations))).toEqual(
+      frameLines.map((line) => expect.stringMatching(line)),
+    );
+  });
+
+  it("built in a default, starts at the default's line, as a panic there would", () => {
+    expect(linesOf(mainGives('string', 'made().failure.trace', builtInDefaults))).toEqual([
+      expect.stringMatching(failureLine),
+      expect.stringMatching(madeLine),
+      expect.stringMatching(mainLine),
+    ]);
+  });
+
+  it("built by a native in a default, starts at the default's line, as a panic there would", () => {
+    const read = 'match made().number:\n    case Ok{value}: ""\n    case Err{error}: error.trace';
+    expect(linesOf(mainGives('string', read, builtInDefaults))).toEqual([
+      expect.stringMatching(numberLine),
+      expect.stringMatching(madeLine),
+      expect.stringMatching(mainMatchLine),
+    ]);
   });
 });

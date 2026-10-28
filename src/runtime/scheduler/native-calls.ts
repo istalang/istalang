@@ -39,15 +39,19 @@ export class NativeCalls {
   readonly #instance: Instance;
   readonly #segment: Omit<FullNativeContext, 'name' | 'resultType' | 'typeArguments' | 'write'>;
 
-  /** Calls within a segment of `instance` started at `startedAt`; `trace` says where it runs. */
-  constructor(instance: Instance, startedAt: bigint, trace: (leftOut?: number) => string) {
+  /** Calls within a segment of `instance` started at `startedAt`; `traces` say where it runs. */
+  constructor(
+    instance: Instance,
+    startedAt: bigint,
+    traces: Pick<FullNativeContext, 'trace' | 'callerTrace'>,
+  ) {
     this.#instance = instance;
     this.#segment = {
       types: instance.loaded.definition.types,
       instance: instance.name,
       version: instance.loaded.hash,
       segmentStartedAt: startedAt,
-      trace,
+      ...traces,
       ...capabilitiesOf(instance, startedAt),
     };
   }
