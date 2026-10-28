@@ -1,6 +1,6 @@
 /**
- * The language's fixed time-unit ratios, in milliseconds (§2, §3.8, §9): shared by duration
- * literals (compiler/scanner/numbers.ts) and ISO 8601 duration and time text (stdlib/time/iso.ts).
+ * The language's fixed time-unit ratios, in milliseconds (§2, §3.8, §9): one home for duration
+ * literals and ISO 8601 duration and time text (stdlib/time/iso.ts).
  */
 
 export const millisecondsPerSecond = 1000n;

@@ -15,8 +15,9 @@
  *   scaled dividend at the integer quotient's significant digits in the caller's rounding mode,
  *   or through a stand-in fraction when the integer quotient is zero.
  * - decimal.js checks no size before raising to a power, and a large exponent would run for hours,
- *   so a non-negative `power` raises the digits as a bigint, whose `**` refuses an oversized
- *   result at once, while a negative one computes at 34 significant digits.
+ *   so `power` raises the digits as a bigint, whose `**` refuses an oversized result at once; a
+ *   negative exponent raises the exact divisor up to 10,000 digits, or at 100 digits (66 guard
+ *   digits past 34, so double rounding can't move a half-even boundary) before dividing to 34.
  * - decimal.js reads more than the language does (exponents, `Infinity`, hex), so `readDecimal`
  *   checks the text against the language's grammar first, which also bounds a value's size by its
  *   text's.
@@ -58,7 +59,7 @@ const exact = DecimalJs.clone({
 });
 
 const quotient = exact.clone({ precision: 34 });
-const negativePower = exact.clone({ precision: 100 });
+const wideQuotient = exact.clone({ precision: 100 });
 const exactNegativePowerDigits = 10_000n;
 
 /** The digits in each of decimal.js's base-1e7 words after the first. */
@@ -208,7 +209,7 @@ function powerBelowZero(base: Decimal, magnitude: bigint): Decimal {
   }
   const raised =
     magnitude <= BigInt(Number.MAX_SAFE_INTEGER)
-      ? new negativePower(divisor).pow(Number(magnitude))
+      ? new wideQuotient(divisor).pow(Number(magnitude))
       : undefined;
   if (raised === undefined || !raised.isFinite() || raised.isZero()) {
     throw new Panic(
