@@ -15,7 +15,7 @@
 import { createHash } from 'node:crypto';
 import { parse, stringify } from 'lossless-json';
 import { z } from 'zod';
-import { compareCodeUnits } from '../language/values.ts';
+import { compareOrdered } from '../language/values.ts';
 import { unreachable } from '../structures/unreachable.ts';
 
 const integerSyntax = /^-?\d+$/u;
@@ -62,7 +62,7 @@ function sortKeys(_key: string, value: unknown): unknown {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     return value;
   }
-  const entries = Object.entries(value).sort(([left], [right]) => compareCodeUnits(left, right));
+  const entries = Object.entries(value).sort(([left], [right]) => compareOrdered(left, right));
   return Object.fromEntries(entries);
 }
 

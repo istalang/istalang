@@ -317,15 +317,17 @@ function entryTexts(texts: readonly string[]): string {
   for (let at = 0; at < texts.length; at += 2) {
     entries.push(`${texts[at]}=${texts[at + 1]}`);
   }
-  return entries.toSorted(compareCodeUnits).join(',');
+  return entries.toSorted(compareOrdered).join(',');
 }
 
 /**
- * Orders texts by their code units, so the order is the same for any two equal texts and differs
- * for any two different ones; a locale's order may call different texts equal.
+ * The order of two ints, or of two strings by UTF-16 code unit, as the language and its canonical
+ * formats order them: the same for any two equal values and different for any two different ones.
  */
-/** The order of two strings by UTF-16 code unit, as JavaScript sorts strings. */
-export function compareCodeUnits(left: string, right: string): number {
+export function compareOrdered<Ordered extends bigint | string>(
+  left: Ordered,
+  right: Ordered,
+): number {
   if (left === right) {
     return 0;
   }

@@ -18,6 +18,7 @@
  */
 
 import type { Value } from '../../definition/values.ts';
+import { compareOrdered } from '../../language/values.ts';
 import { conversionFunction } from '../../language/well-known.ts';
 import {
   type NativeContext,
@@ -147,13 +148,6 @@ function shiftCount(count: Value | undefined): bigint {
     throw new Panic(`A shift count can't be negative, as ${value} is.`);
   }
   return value;
-}
-
-function compareOrdered<Ordered extends bigint | string>(left: Ordered, right: Ordered): number {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
 }
 
 /**

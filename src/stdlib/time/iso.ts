@@ -14,13 +14,16 @@
  *   both are refused rather than rounded.
  */
 
-const millisecondsPerSecond = 1000n;
-const secondsPerMinute = 60n;
-const minutesPerHour = 60n;
-const hoursPerDay = 24n;
-const millisecondsPerMinute = secondsPerMinute * millisecondsPerSecond;
-const millisecondsPerHour = minutesPerHour * millisecondsPerMinute;
-const millisecondsPerDay = hoursPerDay * millisecondsPerHour;
+import {
+  hoursPerDay,
+  millisecondsPerDay,
+  millisecondsPerHour,
+  millisecondsPerMinute,
+  millisecondsPerSecond,
+  minutesPerHour,
+  secondsPerMinute,
+} from '../../language/well-known.ts';
+
 /** The furthest a JavaScript `Date` reaches from the epoch, either way. */
 const maximumTime = 8_640_000_000_000_000n;
 /** How many digits a millisecond count has as a fraction of a second. */

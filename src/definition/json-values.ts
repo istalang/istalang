@@ -19,7 +19,7 @@
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
 
-import { compareCodeUnits } from '../language/values.ts';
+import { compareOrdered } from '../language/values.ts';
 import { jsonVariants } from '../language/well-known.ts';
 import { memo } from '../structures/memo.ts';
 import { unreachable } from '../structures/unreachable.ts';
@@ -231,7 +231,7 @@ function objectEntries(field: Value | undefined): readonly (readonly [string, Va
   }
   return field.entries
     .map(([key, item]): [string, Value] => [String(key), item])
-    .sort(([left], [right]) => compareCodeUnits(left, right));
+    .sort(([left], [right]) => compareOrdered(left, right));
 }
 
 /** How deeply JSON text nests, counting brackets outside strings, without parsing it. */
