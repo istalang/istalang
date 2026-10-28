@@ -10,14 +10,12 @@ import { describe, expect, it } from 'vitest';
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
 import { isDisposable } from './disposal.ts';
 import { heldFrom, holdsOf } from './holders.ts';
-import { heapArbitrary, reachedFrom, testTypes } from './lifetimes.test-kit.ts';
+import { handle, heapArbitrary, reachedFrom, testTypes } from './lifetimes.test-kit.ts';
 import { readyOrphans } from './orphans.ts';
 
 /** Whether `object` of `heap` is disposed when nothing holds it. */
 const disposableIn = (heap: Heap) => (object: LiveObject) =>
   isDisposable({ heap, types: testTypes }, object);
-
-const handle = (object: number) => ({ kind: 'handle', object }) as const;
 
 describe('ready orphans', () => {
   it('are the disposable orphans no other disposable orphan reaches from outside their cycle', () => {

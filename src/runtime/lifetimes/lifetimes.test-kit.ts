@@ -8,8 +8,12 @@
 import fc from 'fast-check';
 import type { TypeDefinition } from '../../definition/types.ts';
 import { valueArbitrary } from '../../definition/values.test-kit.ts';
+import type { Value } from '../../definition/values.ts';
+
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
 import type { HoldingFrame } from '../snapshot/holdings.ts';
+
+export const handle = (object: number): Value => ({ kind: 'handle', object });
 
 /** Type entry 0 disposes by function 0; type entry 1 disposes nothing. */
 export const testTypes: readonly TypeDefinition[] = [

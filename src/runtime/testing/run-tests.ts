@@ -20,6 +20,7 @@ import { type Definition, definitionFormat } from '../../definition/definition.t
 import { elementsOf, isComposite, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Natives } from '../natives.ts';
+import { seedFrom } from '../random-seed.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import { type Ended, type Failed, World } from './world/index.ts';
 
@@ -75,7 +76,7 @@ export function* runTests(
   const tests = definition.tests ?? unreachable('This Definition was not built to run tests.');
   const run: RunInWorld = function* (call, title) {
     const deadline = options.now() + options.timeout;
-    const seed = createHash('sha256').update(title).digest();
+    const seed = seedFrom(createHash('sha256').update(title).digest());
     return yield* new World({ ...options, definition, hash, seed, deadline }).run(call);
   };
   const listings: Listing[] = [];

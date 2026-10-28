@@ -11,9 +11,7 @@ import { depthOf, handlesIn } from '../../definition/values.ts';
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
 import { frameValues, isRoot, valuesIn } from '../snapshot/holdings.ts';
 import { heldFrom, holdsOf } from './holders.ts';
-import { heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
-
-const handle = (object: number) => ({ kind: 'handle', object }) as const;
+import { handle, heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
 
 describe('holding', () => {
   it('holds exactly what the roots reach', () => {

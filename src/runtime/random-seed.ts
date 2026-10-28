@@ -26,6 +26,11 @@ export function seedTextOf(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString('hex');
 }
 
+/** A seed made from the first `seedBytes` of `bytes`, as a snapshot keeps it. */
+export function seedFrom(bytes: Uint8Array): string {
+  return seedTextOf(bytes.subarray(0, seedBytes));
+}
+
 /** The bytes a seed's text holds. */
 export function seedBytesOf(text: string): Uint8Array {
   return Buffer.from(text, 'hex');

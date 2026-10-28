@@ -39,7 +39,7 @@ import {
 import { resume } from '../../interpreter/suspension.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
-import { seedBytes, seedTextOf } from '../../random-seed.ts';
+import { seedFrom } from '../../random-seed.ts';
 import { heldObjects, isRoot } from '../../snapshot/holdings.ts';
 import { type HeapObject, isReference, type RegisterContents } from '../../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
@@ -230,7 +230,7 @@ export class Instance {
       call,
       crashEveryAwait: this.crashEveryAwait || options.crashEveryAwait === true,
       terminatesOnPanic: options.terminatesOnPanic === true,
-      seed: seedTextOf(this.draw().subarray(0, seedBytes)),
+      seed: seedFrom(this.draw()),
     });
     return name;
   }

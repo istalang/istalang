@@ -73,7 +73,7 @@ const broadcastWaiting: Snapshot = {
 };
 
 /** Heap objects with ids `ids`, whose handles and references point only among those ids. */
-function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
+function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
   const value = valueArbitrary({ typed: true, handles: ids });
   const id = fc.constantFrom(...ids);
   const reference = fc.record({
@@ -143,7 +143,7 @@ function heapArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
 const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
   .uniqueArray(fc.nat({ max: 1000 }), { minLength: 1, maxLength: 6 })
   .map((ids) => ids.toSorted((left, right) => left - right))
-  .chain((ids) => heapArbitrary(ids))
+  .chain((ids) => objectsArbitrary(ids))
   .chain((objects) => {
     const executions = objects.filter((object) => object.kind === 'execution');
     return fc.record({
