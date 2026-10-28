@@ -258,3 +258,15 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
 10. **`rules/iteration.ts`:** `iteratedItem`'s implicit call passes `span: iterable.span`, so 5101/5003 fall on the iterable.
 11. **Weak side:** remove `NativeWeakSide.whenDisposed`, switch `stdlib/prelude/weak-natives.ts` to `watch`, delete `nativeWeakSideOf`; a production `handleTo(id)` in `definition/values.ts` replaces the inline `{kind: 'handle', object}` literals.
 12. **Test modules:** one test-suffix predicate in `language/well-known.ts`, used by `cli/file-loader.ts` and `program.test-kit.ts`; `parse.test.ts` titles become `$document:$line`, and `section` drops its `${path} › ` prefix.
+
+### Wave 2 groups
+
+Three agents in parallel, one worktree each. Wave 2 crosses contracts, so ownership is primary rather than strictly disjoint: the listed cross-edits are allowed, and the branch that merges later rebases. Item 5 is the orchestrator's. Easy code-quality items from the tracker join the group owning their files.
+
+| Group | Items | Owns |
+| --- | --- | --- |
+| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/places.ts` part | `checker/check.ts`, `checker/context.ts`, `checker/body-checker.ts`, `checker/expressions/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
+| H — checker expressions, operators, resolution | 6 (B8), 7 (B11), 9, 10; Q8, Q11 (but `lowering/places.ts`), Q24 | `compiler/syntax/`, the rest of `checker/`; additive edits to `check.ts`'s `ValueSite`/`IterationForm` for B8 |
+| I — cross-phase wiring, test modules | 3 (Q15–Q18, Q25), 4 (B2), 11 (Q26), 12; Q20, Q22, Q23, Q27 | `runtime/`, `stdlib/`, `definition/`, `language/`, `cli/`, `compiler/scanner/`, `program.test-kit.ts`, parse and check tests |
+
+Agents don't edit `docs/work/tracker.md` or `docs/audit/*`; each reports the ids it closed, narrowed or filed, and the orchestrator updates the tracker.
