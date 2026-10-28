@@ -38,6 +38,7 @@ import type { Advanced, InstanceState, LogRecord, SpawnOptions } from '../instan
 import type { HeapObject, Watch } from '../snapshot/objects.ts';
 import {
   type InstanceCall,
+  type MockCall,
   type PanickedSnapshot,
   type Replay,
   type Snapshot,
@@ -88,6 +89,7 @@ export function unstarted(
 type FirstStep =
   | { readonly kind: 'none' }
   | Exclude<Replay, { readonly kind: 'call' }>
+  | { readonly kind: 'answer'; readonly call: MockCall }
   | { readonly kind: 'withdraw'; readonly withdrawn: readonly CallerFuture[] };
 
 /**
@@ -186,7 +188,7 @@ function replayOf(status: Snapshot['status'], step: FirstStep): Replay | undefin
   if (status.kind === 'unstarted') {
     return { kind: 'call', call: status.call };
   }
-  return step.kind === 'arrival' || step.kind === 'answer' ? step : undefined;
+  return step.kind === 'arrival' ? step : undefined;
 }
 
 /** One segment's run: the instance as it left it, and how it ended. */

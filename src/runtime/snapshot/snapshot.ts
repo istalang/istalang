@@ -58,13 +58,13 @@ export type MockCall = z.output<typeof mockCall>;
 
 /**
  * What a retry of a panicked instance runs again (§3.12): the call it was starting, when it
- * panicked before its first commit; what its host filled, when it panicked in the segment the
- * fill ran; or the call to one of its mocks it was answering (§10).
+ * panicked before its first commit; or what its host filled, when it panicked in the segment the
+ * fill ran. A segment answering a call to one of its mocks has nothing to replay: mocks live only
+ * in a test's world, which never retries (§10).
  */
 const replay = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('call'), call: instanceCall }),
   z.strictObject({ kind: z.literal('arrival'), arrival }),
-  z.strictObject({ kind: z.literal('answer'), call: mockCall }),
 ]);
 
 export type Replay = z.output<typeof replay>;
