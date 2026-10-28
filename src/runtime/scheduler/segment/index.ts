@@ -47,11 +47,18 @@ import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
-import { type Caller, driverOf, returnedValue, type SegmentStart, startCall } from '../mocks.ts';
+import { startAnswer } from '../mocks.ts';
 import { NativeCalls } from '../native-calls.ts';
+import type { MockCall } from '../test-world.ts';
+import { type Caller, returnedValue, startCall } from './calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
 import { panicOf, requireDepth } from './limits.ts';
 import { RunStack } from './run-stack.ts';
+
+/** What a segment begins with: an execution about to run from its start, or answering a call. */
+export type SegmentStart =
+  | { readonly kind: 'driver'; readonly execution: LiveExecution }
+  | { readonly kind: 'answer'; readonly call: MockCall };
 
 export type SegmentEnd =
   /** A driver awaited: commit `objects`, then run the next segment. */
@@ -130,7 +137,10 @@ class SegmentRunner implements Machine {
 
   run(first: SegmentStart | undefined): SegmentEnd {
     try {
-      const driver = driverOf(this.#instance, this.#natives, first);
+      const driver =
+        first?.kind === 'answer'
+          ? startAnswer(this.#instance, this.#natives, first.call)
+          : first?.execution;
       return this.#persistable(this.#runDrivers(driver));
     } catch (error) {
       const panic = panicOf(error);

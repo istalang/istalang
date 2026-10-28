@@ -5,8 +5,9 @@
  * - A call reaches the newest mock held for its target: its instance's own, or else the one of
  *   the nearest instance it descends from that holds one (instance-names.ts), which only a test
  *   world has (test-world.ts). Releasing a mock therefore brings back the one before it. Every
- *   call path goes through `startCall`: a written call, a function value's, a disposal's. Starting
- *   an instance isn't a call, so an instance started or spawned with a mocked function runs it.
+ *   call path asks `mockedCall` (segment/calls.ts): a written call, a function value's, a
+ *   disposal's. Starting an instance isn't a call, so an instance started or spawned with a mocked
+ *   function runs it.
  * - A call to another instance's mock is answered there, as a host answers an extern (§9): the
  *   arguments and the result are copied across, the caller's future is filled once the answer is
  *   given, and the holder records the call. A segment that runs again calls it again, as it calls
@@ -32,9 +33,7 @@ import {
   withChildValues,
 } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { type ActiveFrame, type FrameEntry, passedValues } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
-import type { RegisterContents } from '../snapshot/objects.ts';
 import type { LiveExecution, LiveObjectOf } from './heap.ts';
 import type { Instance } from './instance/index.ts';
 import { ancestorsOf } from './instance-names.ts';
@@ -66,7 +65,7 @@ function recordCall(
 }
 
 /** A replacement a call runs instead of its target, or the answer another instance gave it. */
-type MockedCall =
+export type MockedCall =
   | {
       readonly kind: 'replaced';
       readonly replacement: Extract<CompositeValue, { kind: 'closure' }>;
@@ -74,89 +73,12 @@ type MockedCall =
     }
   | { readonly kind: 'answered'; readonly value: Value };
 
-/**
- * What a call does: resumes at once with `value` when a native or another instance's mock answered
- * it, or runs `entry` with `contents` and `captures`.
- */
-export type CallTarget =
-  | { readonly kind: 'answered'; readonly value: Value }
-  | {
-      readonly kind: 'code';
-      readonly entry: FrameEntry;
-      readonly contents: readonly RegisterContents[];
-      readonly captures: readonly Value[];
-    };
-
-/** Who makes calls: an instance, its segment's natives, and when the segment started. */
-export interface Caller {
+/** A call a mock may replace: who makes it, what it calls, and with what, read once a mock does. */
+export interface CallToMock {
   readonly instance: Instance;
-  readonly natives: NativeCalls;
   readonly startedAt: bigint;
-}
-
-/** A call a mock may replace: its caller, what it calls, and with what, read once a mock does. */
-interface CallToMock extends Caller {
   readonly target: FunctionId;
   readonly values: () => readonly Value[];
-}
-
-/**
- * Starts a call from `caller` to `target` with `contents` and `captures`, every call path's one
- * entry (§10): records and runs any mock replacing `target`, calls a native at once, and otherwise
- * gives the code entry to push.
- */
-export function startCall(
-  caller: Caller,
-  target: FunctionId,
-  contents: readonly RegisterContents[],
-  captures: readonly Value[],
-): CallTarget {
-  const values = () => passedValues(caller.instance.frameHeap, contents);
-  const mocked = mockedCall({ ...caller, target, values });
-  if (mocked?.kind === 'answered') {
-    return mocked;
-  }
-  const run = mocked?.replacement ?? { function: target, captures };
-  const passed = mocked === undefined ? contents : mocked.values;
-  const callable = caller.instance.loaded.functions.callee(run.function);
-  if (callable.kind === 'native') {
-    const value = caller.natives.call(run.function, callable.native, passed);
-    return {
-      kind: 'answered',
-      value: mocked === undefined ? value : arriving(caller.instance, value),
-    };
-  }
-  return {
-    kind: 'code',
-    entry: mocked === undefined ? callable : { ...callable, arrives: true },
-    contents: passed,
-    captures: run.captures,
-  };
-}
-
-/** What `frame` returning `value` in `instance` hands back: arrived when it ran a mock. */
-export function returnedValue(instance: Instance, frame: ActiveFrame, value: Value): Value {
-  return frame.arrives ? arriving(instance, value) : value;
-}
-
-/** What a segment begins with: an execution about to run from its start, or answering a call. */
-export type SegmentStart =
-  | { readonly kind: 'driver'; readonly execution: LiveExecution }
-  | { readonly kind: 'answer'; readonly call: MockCall };
-
-/**
- * The execution a segment of `instance` beginning with `first` drives first: `first`'s own, or
- * the one answering a call to one of its mocks, through the segment's `natives`.
- */
-export function driverOf(
-  instance: Instance,
-  natives: NativeCalls,
-  first: SegmentStart | undefined,
-): LiveExecution | undefined {
-  if (first?.kind === 'answer') {
-    return startAnswer(instance, natives, first.call);
-  }
-  return first?.execution;
 }
 
 /** The function a mock runs in place of its target. */
@@ -167,7 +89,7 @@ function replacementOf(mock: LiveObjectOf<'mock'>): Extract<CompositeValue, { ki
 }
 
 /** How `call` is mocked; undefined when no mock replaces its target. */
-function mockedCall(call: CallToMock): MockedCall | undefined {
+export function mockedCall(call: CallToMock): MockedCall | undefined {
   const own = call.instance.mockOf(call.target);
   if (own !== undefined) {
     const values = call.values().map((each) => asHostValue(call.instance, each));
@@ -230,7 +152,7 @@ function relayCall(call: CallToMock, held: HeldMock): Value {
  * function with a body in an execution whose return the answer waits on, which it gives back to
  * drive first.
  */
-function startAnswer(
+export function startAnswer(
   instance: Instance,
   natives: NativeCalls,
   call: MockCall,
@@ -249,10 +171,6 @@ function startAnswer(
   return undefined;
 }
 
-/**
- * `value` as it leaves `instance` for another, as an argument of a call to a mock or its answer; a
- * panic for a handle that can't leave.
- */
 /** `value` as a mock in `instance` sees it: any resource handle turned into its host value. */
 function asHostValue(instance: Instance, value: Value): Value {
   if (!isComposite(value)) {

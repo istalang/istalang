@@ -18,7 +18,7 @@ import { resume } from '../../interpreter/suspension.ts';
 import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposal.ts';
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
-import { type Caller, startCall } from '../mocks.ts';
+import { type Caller, startCall } from './calls.ts';
 import type { RunStack } from './run-stack.ts';
 
 export interface DisposalRunSeams {
