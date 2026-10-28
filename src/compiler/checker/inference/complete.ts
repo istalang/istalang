@@ -1,7 +1,8 @@
 /**
  * Finishing inference (§3.5): what the arguments, the expected type or written type arguments
- * left open is filled from the declaration's defaults. The first parameter still open, or one two
- * different types were found for, can't be inferred; calls and literals report it alike.
+ * left open is filled from the declaration's defaults, and then by `never` where only it was met.
+ * The first parameter still open, or one two different types were found for, can't be inferred;
+ * calls and literals report it alike.
  */
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
@@ -34,6 +35,7 @@ export function completeInference(
       );
     }
   }
+  inference.bindNeverWhereOpen();
   const open = parameters.find(
     (parameter) => inference.boundOf(parameter) === undefined || inference.conflicts.has(parameter),
   );

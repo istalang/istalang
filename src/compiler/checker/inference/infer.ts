@@ -15,7 +15,10 @@
  *   type exactly (a reference, a spread's items, a witness), the type found is the parameter's
  *   own: a bound type there must be the same, and once found there it never widens, so
  *   `set(o, &n)` and `set(&n, o)` conflict for `n: int`, as a wrapped `n` couldn't be its place.
- * - The error type and `never` fit anything and bind nothing, so one mistake is reported once.
+ * - The error type fits anything and binds nothing, so one mistake is reported once. `never` fits
+ *   anything too and binds nothing while matching; a parameter it alone met where a value must
+ *   have its type exactly is `never` only once the expected result and defaults have had their say
+ *   (complete.ts, `bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
  */
 
 import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
@@ -25,6 +28,7 @@ import {
   type FunctionType,
   fillsPack,
   isPrimitive,
+  neverType,
   type ParameterKey,
   sameShape,
   sameType,
@@ -39,6 +43,8 @@ export class Inference {
   /** The parameters a type was found for where it must be theirs exactly, which never widen. */
   readonly #pinned = new Set<ParameterKey>();
   readonly #conflicts = new Set<ParameterKey>();
+  /** The parameters `never` met where a value must have its type exactly. */
+  readonly #metNever = new Set<ParameterKey>();
 
   constructor(unknowns: Iterable<ParameterKey>, fitting: Fitting, known?: Substitution) {
     this.#unknowns = new Set(unknowns);
@@ -90,6 +96,13 @@ export class Inference {
   bindIfOpen(parameter: ParameterKey, type: Type): void {
     if (!this.#bound.has(parameter)) {
       this.#bound.set(parameter, type);
+    }
+  }
+
+  /** Binds `never` to each parameter only `never` met, once nothing else is left to bind it. */
+  bindNeverWhereOpen(): void {
+    for (const parameter of this.#metNever) {
+      this.bindIfOpen(parameter, neverType);
     }
   }
 
@@ -195,13 +208,16 @@ export class Inference {
     );
   }
 
-  /** Binds `parameter` where `given` is its type exactly, pinning it: the type bound is the same. */
+  /**
+   * Binds `parameter` where `given` is its type exactly, pinning it: the type bound is the same.
+   * `never` fits whatever is bound, so it binds nothing, but is noted for completion.
+   */
   #bindExactly(parameter: ParameterKey, given: Type): boolean {
-    const isBound = this.#bind(
-      parameter,
-      given,
-      (bound) => sameType(given, bound) || isPrimitive(given, 'never'),
-    );
+    if (isPrimitive(given, 'never') && !isPack(parameter)) {
+      this.#metNever.add(parameter);
+      return true;
+    }
+    const isBound = this.#bind(parameter, given, (bound) => sameType(given, bound));
     if (isBound) {
       this.#pinned.add(parameter);
     }
@@ -213,7 +229,7 @@ export class Inference {
    * a bound type `given` widens takes its place unless pinned. Two types neither takes conflict.
    */
   #bind(parameter: ParameterKey, given: Type, agrees: (bound: Type) => boolean): boolean {
-    if (parameter.kind === 'TypeParameter' && parameter.isPack && !fillsPack(given)) {
+    if (isPack(parameter) && !fillsPack(given)) {
       return false;
     }
     const bound = this.#bound.get(parameter);
@@ -232,4 +248,8 @@ export class Inference {
     this.#conflicts.add(parameter);
     return false;
   }
+}
+
+function isPack(parameter: ParameterKey): boolean {
+  return parameter.kind === 'TypeParameter' && parameter.isPack;
 }

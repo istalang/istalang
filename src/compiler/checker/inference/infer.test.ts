@@ -71,3 +71,43 @@ describe('a type found where a value must have it exactly', () => {
     expect(reportedErrors(main)).toEqual([checkerDiagnostics.cannotInfer.code]);
   });
 });
+
+describe('never where a value must have its type exactly', () => {
+  it.each([
+    ["a spread's items before a value", 'gather(...empty, 1)'],
+    ["a spread's items after a value", 'gather(1, ...empty)'],
+    ["a function's result before a value", 'runFirst(failing, 1)'],
+    ["a function's result after a value", 'runLast(1, failing)'],
+    ["a function's result alone", 'runAlone(failing)'],
+  ])('binds only what nothing else does, for %s', (_case, call) => {
+    const main = [
+      'fn gather<T>(...items: Array<T>) -> int: items.length()',
+      'fn runFirst<T>(f: fn() -> T, fallback: T) -> T: fallback',
+      'fn runLast<T>(fallback: T, f: fn() -> T) -> T: fallback',
+      'fn runAlone<T>(f: fn() -> T) -> int: 0',
+      'fn fail() -> never: panic("x")',
+      'async fn main():',
+      '  const empty: Array<never> = []',
+      '  const failing = fail',
+      `  drop ${call}`,
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual([]);
+  });
+});
+
+describe('a parameter only never gives', () => {
+  it.each([
+    ['takes the type the result is expected to have', 'const xs: Array<int> = wrapped(failing)'],
+    ['takes it before its constraints are checked', 'const x: int = shown(failing)'],
+  ])('%s', (_case, statement) => {
+    const main = [
+      'fn wrapped<T>(f: fn() -> T) -> Array<T>: [f()]',
+      'fn shown<T is Stringable>(f: fn() -> T) -> T: f()',
+      'fn fail() -> never: panic("x")',
+      'async fn main():',
+      '  const failing = fail',
+      `  ${statement}`,
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual([]);
+  });
+});
