@@ -259,20 +259,54 @@ export interface ValueProblem {
  * Every way `value`, at any depth, doesn't fit `tables`: an index out of range, or a construction
  * that disagrees with the type it names. A snapshot's values are checked the same way.
  */
+type ValueStep =
+  | { readonly kind: 'visit'; readonly value: Value }
+  | { readonly kind: 'enter'; readonly index: number }
+  | { readonly kind: 'leave' };
+
+/**
+ * Every way `value`, at any depth, doesn't fit `tables`: an index out of range, or a construction
+ * that disagrees with the type it names. A snapshot's values are checked the same way.
+ */
 export function valueProblems(tables: Tables, value: Value): readonly ValueProblem[] {
-  if (!isComposite(value)) {
-    return [];
+  const found: ValueProblem[] = [];
+  const path: number[] = [];
+  const pending: ValueStep[] = [{ kind: 'visit', value }];
+  for (let step = pending.pop(); step !== undefined; step = pending.pop()) {
+    if (step.kind === 'enter') {
+      path.push(step.index);
+    } else if (step.kind === 'leave') {
+      path.pop();
+    } else if (isComposite(step.value)) {
+      found.push(...ownValueProblems(tables, step.value, path));
+      pushChildren(step.value, pending);
+    }
   }
+  return found;
+}
+
+function ownValueProblems(
+  tables: Tables,
+  value: CompositeValue,
+  path: readonly number[],
+): readonly ValueProblem[] {
   const problems = outOfRange(tables, indexesOf(value));
   const rule = problems.length === 0 ? valueProblem(tables, value) : undefined;
-  const own = (rule === undefined ? problems : [rule]).map((problem) => ({
-    path: [],
+  return (rule === undefined ? problems : [rule]).map((problem) => ({
+    path: [...path],
     message: `${value.kind}: ${problem}`,
   }));
-  const children = childValues(value).flatMap((child, index) =>
-    valueProblems(tables, child).map((problem) => ({ ...problem, path: [index, ...problem.path] })),
-  );
-  return [...own, ...children];
+}
+
+function pushChildren(value: CompositeValue, pending: ValueStep[]): void {
+  const children = childValues(value);
+  for (let index = children.length - 1; index >= 0; index -= 1) {
+    pending.push(
+      { kind: 'leave' },
+      { kind: 'visit', value: children[index] as Value },
+      { kind: 'enter', index },
+    );
+  }
 }
 
 /** The table indexes a value refers to itself, not through its children. */

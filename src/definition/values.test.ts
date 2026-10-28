@@ -7,7 +7,9 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { subsetDefinition } from '../../test/definitions/subset.ts';
 import { decodeJson, encodeJson } from './codec.ts';
+import { valueProblems } from './references.ts';
 import { nested, valueArbitrary } from './values.test-kit.ts';
 import {
   childValues,
@@ -125,6 +127,7 @@ describe('deep values', () => {
     const deep = nested(100_000, { kind: 'handle', object: 4 });
     expect(depthOf(deep)).toBe(100_001);
     expect(handlesIn(deep)).toEqual([4]);
+    expect(valueProblems(subsetDefinition, deep)).toEqual([]);
   });
 });
 

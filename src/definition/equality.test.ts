@@ -101,13 +101,22 @@ describe('maps as values', () => {
     );
   });
 
-  it('compare and find keys of any depth', () => {
+  it('compare and find keys of any depth, maps keyed by maps included', () => {
     const deep = nested(100_000, 1n);
     const map = mapOf([[deep, 'found']]);
     expect(valuesEqual(deep, nested(100_000, 1n))).toBe(true);
     expect(valuesEqual(deep, nested(100_000, 2n))).toBe(false);
     expect(entryValue(map, nested(100_000, 1n))).toBe('found');
     expect(entryValue(map, nested(99_999, 1n))).toBeUndefined();
+    const nestedMaps = (depth: number, leaf: Value): Value => {
+      let current = leaf;
+      for (let level = 0; level < depth; level += 1) {
+        current = mapOf([[current, null]]);
+      }
+      return current;
+    };
+    expect(valuesEqual(nestedMaps(2000, 1n), nestedMaps(2000, 1n))).toBe(true);
+    expect(valuesEqual(nestedMaps(2000, 1n), nestedMaps(2000, 2n))).toBe(false);
   });
 
   it('never find a NaN key, and treat -0 and 0 as one key', () => {
