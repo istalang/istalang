@@ -48,12 +48,20 @@ export type InstanceCall = z.output<typeof instanceCall>;
  * panicked before its first commit, or what its host filled, when it panicked in the segment the
  * fill ran. The two exclude each other, since only an instance that has started waits on its host.
  */
+const mockCall = z.strictObject({
+  mock: objectId,
+  arguments: z.array(value),
+  instance: z.string(),
+  token: z.string(),
+});
+
 const replay = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('call'), call: instanceCall }),
   z.strictObject({
     kind: z.literal('arrival'),
     arrival: z.strictObject({ token: z.string(), value }),
   }),
+  z.strictObject({ kind: z.literal('answer'), call: mockCall }),
 ]);
 
 export type Replay = z.output<typeof replay>;

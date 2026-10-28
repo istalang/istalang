@@ -149,7 +149,7 @@ export class World implements TestWorld {
     this.#calling.add(call.instance);
     let advanced: Advance;
     try {
-      advanced = advance(this.#seams, this.#loaded, snapshot, { answering: call });
+      advanced = advance(this.#seams, this.#loaded, snapshot, { kind: 'answer', call });
     } finally {
       this.#calling.delete(call.instance);
     }
@@ -206,24 +206,24 @@ export class World implements TestWorld {
   #step(): boolean {
     const arrival = this.#arrivals.shift();
     if (arrival !== undefined) {
-      this.#advance(arrival.instance, { arrival });
+      this.#advance(arrival.instance, { kind: 'arrival', arrival });
       return true;
     }
     const ready = this.#group.ready();
     if (ready !== undefined) {
-      this.#advance(ready, {});
+      this.#advance(ready);
       return true;
     }
     const watching = [...this.#group.states.keys()].find((instance) => this.#watchHolds(instance));
     if (watching !== undefined) {
-      this.#advance(watching, {});
+      this.#advance(watching);
       return true;
     }
     return false;
   }
 
-  /** Advances `instance` from its last commit, filling `arrival` first. */
-  #advance(instance: string, first: AdvanceFirst): void {
+  /** Advances `instance` from its last commit, starting with `first`. */
+  #advance(instance: string, first?: AdvanceFirst): void {
     const snapshot = this.#snapshotOf(instance);
     if (snapshot !== undefined) {
       this.#record(instance, advance(this.#seams, this.#loaded, snapshot, first));
@@ -233,7 +233,7 @@ export class World implements TestWorld {
   /** Wakes every instance whose next timer is due now. */
   #wakeDue(): void {
     for (const instance of this.#group.dueBy(this.#seams.now())) {
-      this.#advance(instance, {});
+      this.#advance(instance);
     }
   }
 
@@ -269,7 +269,7 @@ export class World implements TestWorld {
             : [],
       );
       if (withdrawn.length > 0) {
-        this.#advance(holder, { withdrawn });
+        this.#advance(holder, { kind: 'withdraw', withdrawn });
       }
     }
   }

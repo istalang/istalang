@@ -48,7 +48,12 @@ import {
   unstarted,
 } from './scheduler/wake.ts';
 import { checkSnapshot } from './snapshot/check.ts';
-import { type PanickedSnapshot, type Snapshot, snapshotFormat } from './snapshot/snapshot.ts';
+import {
+  type PanickedSnapshot,
+  type Replay,
+  type Snapshot,
+  snapshotFormat,
+} from './snapshot/snapshot.ts';
 import type { InstanceStore } from './store.ts';
 
 export interface RuntimeSeams {
@@ -165,7 +170,7 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       }
       const arrival = { token, value: jsonIn(program.definition, json) };
       return kind === 'active'
-        ? program.resume(snapshot, { arrival })
+        ? program.resume(snapshot, { kind: 'arrival', arrival })
         : { state: stateOf(snapshot), spawned: [], logs: [] };
     },
     retry: (instance) => {
@@ -173,10 +178,7 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       const { replay, segmentStartedAt: startedAt } = panicked(snapshot).status;
       const status: Snapshot['status'] =
         replay?.kind === 'call' ? { kind: 'unstarted', call: replay.call } : { kind: 'active' };
-      return program.resume(
-        { ...snapshot, status },
-        replay?.kind === 'arrival' ? { startedAt, arrival: replay.arrival } : { startedAt },
-      );
+      return program.resume({ ...snapshot, status }, retryFirst(replay, startedAt));
     },
     terminate: (instance) => {
       const { snapshot, program } = stored(instance);
@@ -186,6 +188,16 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
 }
 
 /** `snapshot`, an instance that panicked; a Refusal for any other (§3.12). */
+function retryFirst(replay: Replay | undefined, startedAt: bigint): AdvanceFirst {
+  if (replay?.kind === 'arrival') {
+    return { kind: 'arrival', arrival: replay.arrival, startedAt };
+  }
+  if (replay?.kind === 'answer') {
+    return { kind: 'answer', call: replay.call, startedAt };
+  }
+  return { kind: 'none', startedAt };
+}
+
 function panicked(snapshot: Snapshot): PanickedSnapshot {
   const { status } = snapshot;
   if (status.kind !== 'panicked') {

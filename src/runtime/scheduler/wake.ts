@@ -90,17 +90,23 @@ interface Arrival {
   readonly value: Value;
 }
 
+/** What an advance's first segment begins with before timers and watches. */
+type FirstStep =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'arrival'; readonly arrival: Arrival }
+  | { readonly kind: 'answer'; readonly call: MockCall }
+  | { readonly kind: 'withdraw'; readonly withdrawn: readonly CallerFuture[] };
+
 /**
  * What an advance does before its first segment: fill a future, answer a call to a mock or drop
  * the answers to calls whose callers let go of their futures (§10), or start at a given time.
  */
-export interface AdvanceFirst {
-  readonly arrival?: Arrival;
-  readonly answering?: MockCall;
-  readonly withdrawn?: readonly CallerFuture[];
+export type AdvanceFirst = FirstStep & {
   /** When the first segment counts as started, for a retry of one that panicked (§3.12, §5). */
   readonly startedAt?: bigint;
-}
+};
+
+const noneFirst: FirstStep = { kind: 'none' };
 
 /** What an advance did, and the answers its segments gave other instances' calls (§10). */
 export interface Advance extends Advanced {
@@ -117,7 +123,7 @@ export function advance(
   seams: SchedulerSeams,
   loaded: LoadedDefinition,
   snapshot: Snapshot,
-  first: AdvanceFirst = {},
+  first: AdvanceFirst = noneFirst,
 ): Advance {
   let committed = snapshot;
   let pending: AdvanceFirst = first;
@@ -134,17 +140,17 @@ export function advance(
         : loaded.world?.watched(instance, until),
   };
   for (;;) {
-    const { startedAt = seams.now(), ...firstly } = pending;
-    pending = {};
-    const run = runFrom(running, committed, startedAt, firstly);
+    const { startedAt = seams.now(), ...step } = pending;
+    pending = noneFirst;
+    const run = runFrom(running, committed, startedAt, step);
     if (run === undefined) {
       return advanced(stateOf(committed));
     }
     const { instance, end } = run.instance.crashEveryAwait
-      ? rerun(run, runFrom(running, committed, startedAt, firstly))
+      ? rerun(run, runFrom(running, committed, startedAt, step))
       : run;
     if (end.kind === 'panicked') {
-      const replay = replayOf(committed.status, firstly.arrival);
+      const replay = replayOf(committed.status, step);
       const status = { ...end, segmentStartedAt: startedAt, ...(replay && { replay }) };
       const frozen = commit(seams.store, { ...committed, status });
       if (!frozen.terminatesOnPanic) {
@@ -184,12 +190,24 @@ export function terminate(
   return { state: stateOf(ended), spawned, logs: instance.logs() };
 }
 
-/** What a retry runs again after a segment from `status`, filling `arrival` first, panicked. */
-function replayOf(status: Snapshot['status'], arrival: Arrival | undefined): Replay | undefined {
+/** What a retry runs again after a segment from `status`, starting with `step`, panicked. */
+function replayOf(status: Snapshot['status'], step: FirstStep): Replay | undefined {
   if (status.kind === 'unstarted') {
     return { kind: 'call', call: status.call };
   }
-  return arrival === undefined ? undefined : { kind: 'arrival', arrival };
+  switch (step.kind) {
+    case 'arrival':
+      return { kind: 'arrival', arrival: step.arrival };
+    case 'answer':
+      return { kind: 'answer', call: { ...step.call, arguments: [...step.call.arguments] } };
+    case 'withdraw':
+    case 'none':
+      return undefined;
+    default: {
+      const unhandled: never = step;
+      return unhandled;
+    }
+  }
 }
 
 /** One segment's run: the instance as it left it, and how it ended. */
@@ -215,7 +233,7 @@ function runFrom(
   { loaded, watched }: Running,
   committed: Snapshot,
   startedAt: bigint,
-  { arrival, answering, withdrawn }: Omit<AdvanceFirst, 'startedAt'>,
+  step: FirstStep,
 ): SegmentRun | undefined {
   if (committed.status.kind === 'unstarted') {
     const instance = Instance.start(loaded, committed);
@@ -225,28 +243,21 @@ function runFrom(
   }
   const instance = Instance.restore(loaded, committed);
   if (
-    arrival !== undefined &&
-    !instance.futures.resolveHost(arrival.token, arriving(instance, arrival.value))
+    step.kind === 'arrival' &&
+    !instance.futures.resolveHost(step.arrival.token, arriving(instance, step.arrival.value))
   ) {
     return undefined;
   }
-  if (withdrawn !== undefined) {
-    instance.futures.withdraw(withdrawn);
+  if (step.kind === 'withdraw') {
+    instance.futures.withdraw(step.withdrawn);
   }
   instance.futures.resolveDueTimers(startedAt);
   // A resolved watch commits even when nothing waits on it, so a host stops waking its instance.
   const watchResolved = instance.futures.resolveWatches(watched);
-  if (
-    instance.idle &&
-    !watchResolved &&
-    arrival === undefined &&
-    answering === undefined &&
-    withdrawn === undefined
-  ) {
+  if (instance.idle && !watchResolved && step.kind === 'none') {
     return undefined;
   }
-  const first =
-    answering === undefined ? undefined : ({ kind: 'answer', call: answering } as const);
+  const first = step.kind === 'answer' ? ({ kind: 'answer', call: step.call } as const) : undefined;
   return { instance, end: runSegment(instance, startedAt, first) };
 }
 
