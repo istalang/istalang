@@ -11,6 +11,7 @@ import {
   codePointPositions,
   codePointSlice,
   codePoints,
+  codePointsAt,
   utf16Offset,
 } from './code-points.ts';
 
@@ -55,7 +56,12 @@ describe('code points', () => {
           const points = codePoints(s);
           expect(codePointCount(s)).toBe(points.length);
           expect(codePointAtPosition(s, position)).toBe(
-            position < 0 ? undefined : points[position],
+            position < 0 ? '' : (points[position] ?? ''),
+          );
+          const read = codePointsAt(s);
+          expect(points.map((_, index) => read(index))).toEqual(points);
+          expect(points.map((_, index) => read(points.length - 1 - index)).toReversed()).toEqual(
+            points,
           );
           const from = Math.max(position, 0);
           expect(codePointSlice(s, from, end)).toBe(points.slice(from, end).join(''));

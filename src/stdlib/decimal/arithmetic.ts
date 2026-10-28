@@ -58,6 +58,8 @@ const exact = DecimalJs.clone({
 });
 
 const quotient = exact.clone({ precision: 34 });
+const negativePower = exact.clone({ precision: 100 });
+const exactNegativePowerDigits = 10_000n;
 
 /** The digits in each of decimal.js's base-1e7 words after the first. */
 const digitsPerWord = 7;
@@ -179,8 +181,12 @@ export function remainderOf(left: Decimal, right: Decimal): Decimal {
 /** `base` to the power `exponent`, through its digits as a bigint. */
 export function power(base: Decimal, exponent: bigint): Decimal {
   if (exponent < 0n) {
-    return negativePower(base, exponent);
+    return powerBelowZero(base, -exponent);
   }
+  return exactPower(base, exponent);
+}
+
+function exactPower(base: Decimal, exponent: bigint): Decimal {
   const [whole = unreachable('A number has digits.'), fraction = ''] =
     canonicalText(base).split('.');
   const placesAfterPoint = BigInt(fraction.length) * exponent;
@@ -192,21 +198,24 @@ export function power(base: Decimal, exponent: bigint): Decimal {
   return new exact(`${BigInt(whole + fraction) ** exponent}e-${placesAfterPoint}`);
 }
 
-function negativePower(base: Decimal, exponent: bigint): Decimal {
+function powerBelowZero(base: Decimal, magnitude: bigint): Decimal {
   const divisor = nonZero(base);
   if (divisor.abs().eq(1)) {
-    return divisor.isNeg() && exponent % 2n !== 0n ? divisor : decimalOf(1n);
+    return divisor.isNeg() && magnitude % 2n !== 0n ? divisor : decimalOf(1n);
   }
-  const value =
-    -exponent <= BigInt(Number.MAX_SAFE_INTEGER)
-      ? new quotient(divisor).pow(Number(exponent))
+  if (BigInt(canonicalText(divisor).length) * magnitude <= exactNegativePowerDigits) {
+    return divided(decimalOf(1n), exactPower(divisor, magnitude));
+  }
+  const raised =
+    magnitude <= BigInt(Number.MAX_SAFE_INTEGER)
+      ? new negativePower(divisor).pow(Number(magnitude))
       : undefined;
-  if (value === undefined || !value.isFinite() || value.isZero()) {
+  if (raised === undefined || !raised.isFinite() || raised.isZero()) {
     throw new Panic(
-      `${canonicalText(base)} to the power ${exponent} has more digits than a Decimal can hold.`,
+      `${canonicalText(base)} to the power -${magnitude} has more digits than a Decimal can hold.`,
     );
   }
-  return value;
+  return divided(decimalOf(1n), raised);
 }
 
 /**

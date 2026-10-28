@@ -30,13 +30,33 @@ export function codePointCount(s: string): number {
   return codePointPositions(s)(s.length);
 }
 
-/** The code point at `position` of `s`, in code points; undefined outside `s`. */
-export function codePointAtPosition(s: string, position: number): string | undefined {
-  if (position < 0 || position >= s.length) {
-    return undefined;
-  }
-  const offset = utf16Offset(s, position);
-  return offset < s.length ? s.slice(offset, offset + codePointWidth(s, offset)) : undefined;
+/** The code point at `position` of `s`, in code points; `''` outside `s`. */
+export function codePointAtPosition(s: string, position: number): string {
+  return codePointsAt(s)(position);
+}
+
+/**
+ * The code point at each `position` of `s` it is asked for, in code points; `''` outside `s`.
+ * Asked in monotonic order, forward or backward, as a slice steps, it visits each code point once.
+ */
+export function codePointsAt(s: string): (position: number) => string {
+  let counted = { offset: 0, position: 0 };
+  return (position) => {
+    if (position < 0 || position >= s.length) {
+      return '';
+    }
+    let { offset, position: at } = counted;
+    while (at < position && offset < s.length) {
+      offset += codePointWidth(s, offset);
+      at += 1;
+    }
+    while (at > position && offset > 0) {
+      offset -= offset >= 2 && codePointWidth(s, offset - 2) === 2 ? 2 : 1;
+      at -= 1;
+    }
+    counted = { offset, position: at };
+    return offset < s.length ? s.slice(offset, offset + codePointWidth(s, offset)) : '';
+  };
 }
 
 /** The substring of `s` from code point `start` to `end`, both non-negative. */

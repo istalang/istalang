@@ -7,11 +7,11 @@
  * - Primitives compare as JavaScript's `===` does, so a float NaN equals nothing (IEEE 754) and
  *   `0.0 == -0.0`. A composite compares its head (kind, type, variant, function or object), then
  *   its parts in order; a map compares by its entries, whose order is no part of its value.
- * - A map finds a key through a hash of the key's structure (`structuralKey`), confirmed with
- *   `==`, so a lookup agrees with `==` exactly: a key holding a NaN is stored but never found
- *   again. A map's hash table is derived from it once and kept beside it, keyed by the map itself,
- *   which never changes; a map built from another by setting one key takes the other's table over,
- *   so building a map key by key never hashes a key twice.
+ * - A map finds a key through a 32-bit hash of the key's structure, confirmed with `==`, so a
+ *   lookup agrees with `==` exactly: a key holding a NaN is stored but never found again. Values
+ *   never mutate once built, so each composite or map's hash and each map's hash table are derived
+ *   once and kept in WeakMaps keyed by the object itself; a map built from another by setting one
+ *   key takes the other's table over, so building a map key by key never hashes a key twice.
  * - Setting a key a map holds keeps its place; a new key goes last. So a map literal's later entry
  *   for an equal key replaces the earlier one's value, where the earlier one stood.
  * - Every walk keeps its own stack, so a value of any depth compares and hashes without exhausting
@@ -47,8 +47,8 @@ export interface ValueView<Value> {
  */
 export class ValueSemantics<Value> {
   readonly #view: ValueView<Value>;
-  readonly #tables = new WeakMap<MapOf<Value>, ReadonlyMap<string, readonly number[]>>();
-  readonly #keys = new WeakMap<object, string>();
+  readonly #tables = new WeakMap<MapOf<Value>, ReadonlyMap<number, readonly number[]>>();
+  readonly #hashes = new WeakMap<object, number>();
 
   constructor(view: ValueView<Value>) {
     this.#view = view;
@@ -61,12 +61,13 @@ export class ValueSemantics<Value> {
       if (step === undefined) {
         frames.pop();
         const parent = frames.at(-1);
+        const { candidates } = frame;
         const matched =
-          frame.candidates === undefined
+          candidates === undefined
             ? undefined
-            : frame.candidates.map.entries[frame.candidates.current];
-        if (parent !== undefined && frame.candidates !== undefined && matched !== undefined) {
-          parent.steps.push({ kind: 'pair', left: frame.candidates.value, right: matched[1] });
+            : candidates.map.entries[candidates.positions[candidates.at] ?? -1];
+        if (parent !== undefined && candidates !== undefined && matched !== undefined) {
+          parent.steps.push({ kind: 'pair', left: candidates.value, right: matched[1] });
         }
       } else if (!(this.#step(step, frame.steps, frames) || backtrack(frames))) {
         return false;
@@ -80,7 +81,7 @@ export class ValueSemantics<Value> {
     if (map.entries.length === 0) {
       return undefined;
     }
-    const candidates = this.#tableOf(map).get(this.#keyOf(key)) ?? [];
+    const candidates = this.#tableOf(map).get(this.#hashOf(key)) ?? [];
     return candidates.find((position) => {
       const entry = map.entries[position];
       return entry !== undefined && this.equal(entry[0], key);
@@ -125,15 +126,18 @@ export class ValueSemantics<Value> {
     if (step.kind === 'pair') {
       return this.#agreeAtTop(step.left, step.right, steps);
     }
-    const [first, ...rest] = this.#tableOf(step.map).get(this.#keyOf(step.key)) ?? [];
-    const entry = first === undefined ? undefined : step.map.entries[first];
-    if (first === undefined || entry === undefined) {
+    const positions = this.#tableOf(step.map).get(this.#hashOf(step.key)) ?? [];
+    const next = candidateFrame({
+      map: step.map,
+      key: step.key,
+      value: step.value,
+      positions,
+      at: 0,
+    });
+    if (next === undefined) {
       return false;
     }
-    frames.push({
-      steps: [{ kind: 'pair', left: entry[0], right: step.key }],
-      candidates: { map: step.map, key: step.key, value: step.value, current: first, rest },
-    });
+    frames.push(next);
     return true;
   }
 
@@ -165,35 +169,36 @@ export class ValueSemantics<Value> {
     return true;
   }
 
-  #keyOf(value: Value): string {
-    const texts: string[] = [];
-    const steps: KeyStep<Value>[] = [{ kind: 'visit', value }];
+  #hashOf(value: Value): number {
+    const hashes: number[] = [];
+    const steps: HashStep<Value>[] = [{ kind: 'visit', value }];
     for (let step = steps.pop(); step !== undefined; step = steps.pop()) {
       if (step.kind === 'join') {
-        const text = `${step.head}(${texts.splice(texts.length - step.parts, step.parts).join(',')})`;
-        rememberKey(this.#keys, step.value, text);
-        texts.push(text);
+        const partHashes = hashes.splice(hashes.length - step.parts, step.parts);
+        const hash = partHashes.reduce(mix, mix(hashText(step.head), step.parts));
+        rememberHash(this.#hashes, step.value, hash);
+        hashes.push(hash);
       } else if (step.kind === 'joinMap') {
         const count = 2 * step.entries;
-        const text = `map(${entryTexts(texts.splice(texts.length - count, count))})`;
-        rememberKey(this.#keys, step.value, text);
-        texts.push(text);
+        const hash = mapHash(hashes.splice(hashes.length - count, count));
+        rememberHash(this.#hashes, step.value, hash);
+        hashes.push(hash);
       } else {
-        this.#visitKeyValue(step.value, texts, steps);
+        this.#visitHashValue(step.value, hashes, steps);
       }
     }
-    return texts.pop() ?? '';
+    return hashes.pop() ?? 0;
   }
 
-  #visitKeyValue(value: Value, texts: string[], steps: KeyStep<Value>[]): void {
-    const known = typeof value === 'object' && value !== null ? this.#keys.get(value) : undefined;
+  #visitHashValue(value: Value, hashes: number[], steps: HashStep<Value>[]): void {
+    const known = typeof value === 'object' && value !== null ? this.#hashes.get(value) : undefined;
     if (known !== undefined) {
-      texts.push(known);
+      hashes.push(known);
       return;
     }
     const shape = this.#view.shapeOf(value);
     if (shape.kind === 'primitive') {
-      texts.push(primitiveKey(shape.value));
+      hashes.push(primitiveHash(shape.value));
       return;
     }
     for (const next of partSteps(this.#view, value, shape)) {
@@ -201,16 +206,16 @@ export class ValueSemantics<Value> {
     }
   }
 
-  /** The positions of `map`'s entries by their key's structural key. */
-  #tableOf(map: MapOf<Value>): ReadonlyMap<string, readonly number[]> {
+  /** The positions of `map`'s entries by their key's structural hash. */
+  #tableOf(map: MapOf<Value>): ReadonlyMap<number, readonly number[]> {
     const known = this.#tables.get(map);
     if (known !== undefined) {
       return known;
     }
-    const table = new Map<string, number[]>();
+    const table = new Map<number, number[]>();
     map.entries.forEach(([key], position) => {
-      const text = this.#keyOf(key);
-      table.set(text, [...(table.get(text) ?? []), position]);
+      const hash = this.#hashOf(key);
+      table.set(hash, [...(table.get(hash) ?? []), position]);
     });
     this.#tables.set(map, table);
     return table;
@@ -229,9 +234,9 @@ export class ValueSemantics<Value> {
       this.#tables.set(next, table);
       return;
     }
-    const text = this.#keyOf(key);
+    const hash = this.#hashOf(key);
     const extended = new Map(table);
-    extended.set(text, [...(table.get(text) ?? []), next.entries.length - 1]);
+    extended.set(hash, [...(table.get(hash) ?? []), next.entries.length - 1]);
     this.#tables.set(next, extended);
   }
 }
@@ -246,47 +251,59 @@ type EqualStep<Value> =
       readonly value: Value;
     };
 
+interface CandidateSearch<Value> {
+  readonly map: MapOf<Value>;
+  readonly key: Value;
+  readonly value: Value;
+  readonly positions: readonly number[];
+  readonly at: number;
+}
+
 /**
  * One level of `==`: the steps still to check, and, when this level is testing a candidate key in
- * a map, the remaining candidate positions and the value to compare once the key matches.
+ * a map, the candidate positions and the value to compare once the key matches.
  */
 interface EqualFrame<Value> {
   readonly steps: EqualStep<Value>[];
-  readonly candidates?: {
-    readonly map: MapOf<Value>;
-    readonly key: Value;
-    readonly value: Value;
-    readonly current: number;
-    readonly rest: readonly number[];
+  readonly candidates?: CandidateSearch<Value>;
+}
+
+function candidateFrame<Value>(candidates: CandidateSearch<Value>): EqualFrame<Value> | undefined {
+  const position = candidates.positions[candidates.at];
+  const entry = position === undefined ? undefined : candidates.map.entries[position];
+  if (entry === undefined) {
+    return undefined;
+  }
+  return {
+    steps: [{ kind: 'pair', left: entry[0], right: candidates.key }],
+    candidates,
   };
 }
 
 /** Advances the nearest candidate search with remaining positions; false when none remains. */
 function backtrack<Value>(frames: EqualFrame<Value>[]): boolean {
   for (let top = frames.pop(); top !== undefined; top = frames.pop()) {
-    const { candidates } = top;
-    const [next, ...rest] = candidates?.rest ?? [];
-    const entry = next === undefined ? undefined : candidates?.map.entries[next];
-    if (candidates !== undefined && next !== undefined && entry !== undefined) {
-      frames.push({
-        steps: [{ kind: 'pair', left: entry[0], right: candidates.key }],
-        candidates: { ...candidates, current: next, rest },
-      });
+    const next =
+      top.candidates === undefined
+        ? undefined
+        : candidateFrame({ ...top.candidates, at: top.candidates.at + 1 });
+    if (next !== undefined) {
+      frames.push(next);
       return true;
     }
   }
   return false;
 }
 
-/** One step of hashing a value: visit a value, or join the texts of its parts once they're made. */
-type KeyStep<Value> =
+/** One step of hashing a value: visit a value, or combine the hashes of its parts once made. */
+type HashStep<Value> =
   | { readonly kind: 'visit'; readonly value: Value }
   | { readonly kind: 'join'; readonly value: Value; readonly head: string; readonly parts: number }
   | { readonly kind: 'joinMap'; readonly value: Value; readonly entries: number };
 
-function rememberKey<Value>(keys: WeakMap<object, string>, value: Value, text: string): void {
+function rememberHash<Value>(hashes: WeakMap<object, number>, value: Value, hash: number): void {
   if (typeof value === 'object' && value !== null) {
-    keys.set(value, text);
+    hashes.set(value, hash);
   }
 }
 
@@ -295,8 +312,8 @@ function partSteps<Value>(
   view: ValueView<Value>,
   value: Value,
   shape: Exclude<Shape<Value>, { kind: 'primitive' }>,
-): readonly KeyStep<Value>[] {
-  const [join, parts]: [KeyStep<Value>, readonly Value[]] =
+): readonly HashStep<Value>[] {
+  const [join, parts]: [HashStep<Value>, readonly Value[]] =
     shape.kind === 'map'
       ? [{ kind: 'joinMap', value, entries: shape.map.entries.length }, shape.map.entries.flat()]
       : [
@@ -306,18 +323,34 @@ function partSteps<Value>(
   return [join, ...parts.toReversed().map((part) => ({ kind: 'visit', value: part }) as const)];
 }
 
-/** A primitive's text; `-0 == 0`, and `String(-0)` is `'0'`, while a NaN's `'NaN'` `==` refuses. */
-function primitiveKey(value: Primitive): string {
-  return `${typeof value}:${typeof value === 'string' ? JSON.stringify(value) : String(value)}`;
+const fnvPrime = 0x01_00_01_93;
+const fnvOffsetBasis = -0x7e_e3_62_3b;
+
+/** Mixes a 32-bit hash with `next` (FNV-1a prime, wrapped in 32-bit signed arithmetic). */
+function mix(hash: number, next: number): number {
+  return Math.imul(Math.imul(hash, fnvPrime) + next, 1);
 }
 
-/** A map's entries as text, `key=value`, in an order every equal map shares. */
-function entryTexts(texts: readonly string[]): string {
-  const entries: string[] = [];
-  for (let at = 0; at < texts.length; at += 2) {
-    entries.push(`${texts[at]}=${texts[at + 1]}`);
+function hashText(text: string): number {
+  let hash = fnvOffsetBasis;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = mix(hash, text.charCodeAt(index));
   }
-  return entries.toSorted(compareOrdered).join(',');
+  return hash;
+}
+
+/** A primitive's hash; `-0 == 0`, and `String(-0)` is `'0'`. */
+function primitiveHash(value: Primitive): number {
+  return hashText(`${typeof value}:${String(value)}`);
+}
+
+/** A map's hash: the 32-bit sum of its entry hashes, independent of entry order. */
+function mapHash(hashes: readonly number[]): number {
+  let sum = 0;
+  for (let at = 0; at < hashes.length; at += 2) {
+    sum = Math.imul(sum + mix(hashes[at] ?? 0, hashes[at + 1] ?? 0), 1);
+  }
+  return mix(sum, hashes.length);
 }
 
 /**

@@ -115,8 +115,8 @@ describe('maps as values', () => {
       }
       return current;
     };
-    expect(valuesEqual(nestedMaps(2000, 1n), nestedMaps(2000, 1n))).toBe(true);
-    expect(valuesEqual(nestedMaps(2000, 1n), nestedMaps(2000, 2n))).toBe(false);
+    expect(valuesEqual(nestedMaps(100_000, 1n), nestedMaps(100_000, 1n))).toBe(true);
+    expect(valuesEqual(nestedMaps(100_000, 1n), nestedMaps(100_000, 2n))).toBe(false);
   });
 
   it('never find a NaN key, and treat -0 and 0 as one key', () => {
