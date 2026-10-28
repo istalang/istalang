@@ -11,6 +11,10 @@
  *   one fits the bound type (a conversion included), or the bound type fits it, which then binds, so
  *   `same(o, 2)` and `same(2, o)` both bind `T` to `int?` for `o: int?`. Two types neither fits
  *   conflict, and inference fails for that parameter.
+ * - Only the top of a match converts. Anywhere else, inside a type or where a value must have its
+ *   type exactly (a reference, a spread's items, a witness), the type found is the parameter's
+ *   own: a bound type there must be the same, and once found there it never widens, so
+ *   `set(o, &n)` and `set(&n, o)` conflict for `n: int`, as a wrapped `n` couldn't be its place.
  * - The error type and `never` fit anything and bind nothing, so one mistake is reported once.
  */
 
@@ -32,6 +36,8 @@ export class Inference {
   readonly #unknowns: ReadonlySet<ParameterKey>;
   readonly #fitting: Fitting;
   readonly #bound = new Map<ParameterKey, Type>();
+  /** The parameters a type was found for where it must be theirs exactly, which never widen. */
+  readonly #pinned = new Set<ParameterKey>();
   readonly #conflicts = new Set<ParameterKey>();
 
   constructor(unknowns: Iterable<ParameterKey>, fitting: Fitting, known?: Substitution) {
@@ -47,7 +53,7 @@ export class Inference {
     return (
       matchConversion(given, declared, {
         optional: this.#fitting.optional,
-        exact: (target, source) => this.#matchExact(target, source),
+        exact: (target, source) => this.#matchAtTop(target, source),
         meetsAny: (source, target) => this.#convertsInto(target, source),
       }) !== undefined
     );
@@ -97,6 +103,15 @@ export class Inference {
     return this.#bound;
   }
 
+  /** Matches at the top of a match, where a parameter's type converts and may widen. */
+  #matchAtTop(declared: Type, given: Type): boolean {
+    return declared.kind === 'parameter' &&
+      this.#unknowns.has(declared.declaration) &&
+      given.kind !== 'error'
+      ? this.#bindLoosely(declared.declaration, given)
+      : this.#matchExact(declared, given);
+  }
+
   #matchExact(declared: Type, given: Type): boolean {
     if (given.kind === 'error') {
       return true;
@@ -104,7 +119,7 @@ export class Inference {
     switch (declared.kind) {
       case 'parameter':
         return this.#unknowns.has(declared.declaration)
-          ? this.#bind(declared.declaration, given)
+          ? this.#bindExactly(declared.declaration, given)
           : sameType(declared, given);
       case 'nominal':
         return (
@@ -171,7 +186,33 @@ export class Inference {
     );
   }
 
-  #bind(parameter: ParameterKey, given: Type): boolean {
+  /** Binds `parameter` where `given` converts into it: it fits the type bound, a conversion included. */
+  #bindLoosely(parameter: ParameterKey, given: Type): boolean {
+    return this.#bind(
+      parameter,
+      given,
+      (bound) => fitOf(given, bound, this.#fitting) !== undefined,
+    );
+  }
+
+  /** Binds `parameter` where `given` is its type exactly, pinning it: the type bound is the same. */
+  #bindExactly(parameter: ParameterKey, given: Type): boolean {
+    const isBound = this.#bind(
+      parameter,
+      given,
+      (bound) => sameType(given, bound) || isPrimitive(given, 'never'),
+    );
+    if (isBound) {
+      this.#pinned.add(parameter);
+    }
+    return isBound;
+  }
+
+  /**
+   * Binds `parameter` to `given` unless a type is bound already that `given` agrees with (`agrees`);
+   * a bound type `given` widens takes its place unless pinned. Two types neither takes conflict.
+   */
+  #bind(parameter: ParameterKey, given: Type, agrees: (bound: Type) => boolean): boolean {
     if (parameter.kind === 'TypeParameter' && parameter.isPack && !fillsPack(given)) {
       return false;
     }
@@ -181,10 +222,10 @@ export class Inference {
       return true;
     }
     const current = substitute(bound, this.#bound);
-    if (fitOf(given, current, this.#fitting) !== undefined) {
+    if (agrees(current)) {
       return true;
     }
-    if (fitOf(current, given, this.#fitting) !== undefined) {
+    if (!this.#pinned.has(parameter) && fitOf(current, given, this.#fitting) !== undefined) {
       this.#bound.set(parameter, given);
       return true;
     }

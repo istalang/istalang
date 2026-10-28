@@ -20,7 +20,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - map bound arguments to slots or test for a valid binding → `argumentSlotsOf`, `isBinding` (`src/compiler/checker/resolution/binding.ts`)
 - map argument indices to parameter indices or test if all parameters are passed → `parameterOfArgument`, `passesAll` (`src/compiler/checker/resolved-call.ts`)
 - test whether one candidate takes given arguments → `takenBy` (`src/compiler/checker/resolution/applicability.ts`)
-- infer type arguments by matching declared and given types → `Inference` (`src/compiler/checker/inference/infer.ts`)
+- infer type arguments by matching declared and given types, `match` where the value may convert, `matchExactly` where it must have its type (a reference, a spread's items, a witness) → `Inference` (`src/compiler/checker/inference/infer.ts`)
 - fill uninferred type parameters from declared defaults → `completeInference` (`src/compiler/checker/inference/complete.ts`)
 - choose the best candidate among overloads → `choose`, `chooseAsValue`, `signatureOf` (`src/compiler/checker/resolution/choice.ts`)
 - instantiate a chosen candidate and resolve its witnesses → `instantiate` (`src/compiler/checker/resolution/conformance.ts`)
