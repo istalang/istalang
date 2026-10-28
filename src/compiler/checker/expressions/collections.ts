@@ -40,7 +40,7 @@ import type {
 import type { Invalid } from '../../syntax/node.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import type { CollectionForm } from '../check.ts';
-import type { Accepts, BodyContext, CollectionRecord } from '../context.ts';
+import type { AcceptedPart, Accepts, BodyContext, CollectionRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { resolveDefault } from '../resolution/default-witness.ts';
 import { preludeCall } from '../resolution/implicit.ts';
@@ -153,6 +153,19 @@ function entriesOf(
   return { keys, values };
 }
 
+/**
+ * What a spread's items have before the call is chosen: an array's elements when its type is known;
+ * any other spread's are left open, its items known only once it is checked.
+ */
+function spreadAcceptedPart(context: BodyContext, spread: Spread): AcceptedPart {
+  const part = context.acceptedPart(spread.expression);
+  const type = part.kind === 'typed' ? part.type : undefined;
+  return {
+    kind: 'typed',
+    type: type === undefined ? undefined : arrayElement(context.checker, type),
+  };
+}
+
 /** Which types an array literal the call decides can take: what `[]` builds, or an array. */
 export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts | undefined {
   if (node.elements.length === 0) {
@@ -161,7 +174,9 @@ export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts 
   const items = agreedAccepts(
     context,
     node.elements.map((element) =>
-      context.acceptedPart(element.kind === 'Spread' ? undefined : element),
+      element.kind === 'Spread'
+        ? spreadAcceptedPart(context, element)
+        : context.acceptedPart(element),
     ),
   );
   if (items === undefined) {

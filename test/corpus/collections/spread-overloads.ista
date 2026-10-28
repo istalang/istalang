@@ -1,0 +1,13 @@
+# outcome: [3,3]
+# A spread's items take part in choosing the overload an array literal is passed to, as its
+# elements do (§3.5): `int` items with `none` fit only `Array<int?>`.
+
+fn take(ys: Array<int?>) -> int:
+  ys.length()
+
+fn take(ys: Array<string?>) -> int:
+  0 - ys.length()
+
+async fn main():
+  const xs = [1, 2]
+  (take([...xs, none]), take([none, ...xs]))
