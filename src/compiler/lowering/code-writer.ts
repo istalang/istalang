@@ -67,15 +67,16 @@ export class CodeWriter {
     this.#instructions.push(instruction);
   }
 
+  /** Reads field `index` of the struct, variant or tuple in `src`; its register. */
+  field(src: Register, index: number, span: Span): Register {
+    const dst = this.allocate();
+    this.emit({ kind: 'field', span, dst, src, index });
+    return dst;
+  }
+
   /** Reads the part of the value in `src` at `path`, field and element positions; its register. */
   readPath(src: Register, path: readonly number[], span: Span): Register {
-    let current = src;
-    for (const index of path) {
-      const dst = this.allocate();
-      this.emit({ kind: 'field', span, dst, src: current, index });
-      current = dst;
-    }
-    return current;
+    return path.reduce((current, index) => this.field(current, index, span), src);
   }
 
   newLabel(): Label {

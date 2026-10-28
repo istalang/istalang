@@ -108,9 +108,7 @@ export class SynthesizedCode implements CodeContext {
 
   /** Field `index` of the struct, variant or tuple in `value`. */
   field(value: Register, index: number): Register {
-    const dst = this.code.allocate();
-    this.code.emit({ kind: 'field', span: this.span, dst, src: value, index });
-    return dst;
+    return this.code.field(value, index, this.span);
   }
 
   /**

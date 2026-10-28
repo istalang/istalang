@@ -116,8 +116,8 @@ export function lowerMapLiteral(context: FunctionContext, node: MapLiteral): Reg
     }),
     copied: (value) => ({ kind: 'spread', value }),
     append: (dst, item, spread) => {
-      const key = context.code.readPath(item, [0], spread.span);
-      const value = context.code.readPath(item, [1], spread.span);
+      const key = context.code.field(item, 0, spread.span);
+      const value = context.code.field(item, 1, spread.span);
       context.code.emit({
         kind: 'map',
         span,
@@ -228,8 +228,8 @@ function lowerDeclaredLiteral(
       emitImplicitCall(context, entry, 'insert', [container, key, context.expression(entry.value)]);
     } else if (entry.kind === 'Spread') {
       emitLoop(context, entry, cursorOf(context, entry, entry.expression), (item) => {
-        const key = context.code.readPath(item, [0], entry.span);
-        const part = context.code.readPath(item, [1], entry.span);
+        const key = context.code.field(item, 0, entry.span);
+        const part = context.code.field(item, 1, entry.span);
         emitImplicitCall(context, entry, 'insert', [container, key, part]);
       });
     }

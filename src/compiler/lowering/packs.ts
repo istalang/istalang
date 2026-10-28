@@ -30,9 +30,5 @@ export function packElementsOf(
   tuple: Register,
   { type, span }: { readonly type: Type; readonly span: Span },
 ): readonly Register[] {
-  return packElements(type).map((_, index) => {
-    const dst = context.code.allocate();
-    context.code.emit({ kind: 'field', span, dst, src: tuple, index });
-    return dst;
-  });
+  return packElements(type).map((_, index) => context.code.field(tuple, index, span));
 }

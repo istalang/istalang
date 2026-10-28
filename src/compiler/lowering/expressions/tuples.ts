@@ -29,5 +29,5 @@ export function tupleOf(
 
 export function lowerTupleElement(context: FunctionContext, node: TupleElement): Register {
   const target = context.chains.target(context, node);
-  return context.code.readPath(target, [node.element], node.span);
+  return context.code.field(target, node.element, node.span);
 }

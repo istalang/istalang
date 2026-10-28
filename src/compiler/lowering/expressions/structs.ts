@@ -80,12 +80,8 @@ function fieldOf(
   switch (source.kind) {
     case 'value':
       return registerOf(values, source.value);
-    case 'spread': {
-      const dst = context.code.allocate();
-      const src = registerOf(values, source.from);
-      context.code.emit({ kind: 'field', span: node.span, dst, src, index: source.index });
-      return dst;
-    }
+    case 'spread':
+      return context.code.field(registerOf(values, source.from), source.index, node.span);
     case 'default': {
       const fields = context.closed(source.call);
       if (fields.kind !== 'function') {
@@ -124,10 +120,7 @@ export function lowerFieldRead(
     const callee = context.tables.anyFieldIndex(read.on, read.required);
     return emitCall(context, { span: node.span, callee, arguments: [src] });
   }
-  const dst = context.code.allocate();
-  const index = fieldPositionOf(context, node);
-  context.code.emit({ kind: 'field', span: node.span, dst, src, index });
-  return dst;
+  return context.code.field(src, fieldPositionOf(context, node), node.span);
 }
 
 /** Builds a struct of `type` from `fields`, in declaration order. */

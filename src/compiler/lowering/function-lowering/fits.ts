@@ -83,7 +83,7 @@ function convertedValue(
       if (element === undefined) {
         unreachable('Only a one-element tuple is untupled.');
       }
-      return { value: context.code.readPath(typed.value, [0], site.span), type: element };
+      return { value: context.code.field(typed.value, 0, site.span), type: element };
     }
     default: {
       const unhandled: never = conversion;
