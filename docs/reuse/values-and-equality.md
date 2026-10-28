@@ -20,6 +20,8 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - read primitive, tuple or extern native arguments → `given`, `int`, `float`, `text`, `elementOf`, `textPayloadOf` (`src/stdlib/native-values.ts`)
 - read an optional native argument or map an enum argument by variant name → `optionalValue`, `variantEntry` (`src/stdlib/native-values.ts`)
 - build array, struct, variant or extern results → `arrayOf`, `resultStruct`, `resultVariant`, `resultExtern`, `resultOptional` (`src/stdlib/native-values.ts`)
+- the type entry a native's declared result names → `declaredResult` (`src/stdlib/native-values.ts`)
+- make or read an `Instance<T>` handle (the instance's name) → `instanceHandle`, `instanceNameOf` (`src/definition/instance-handles.ts`)
 - read a result's type argument or build `Ok` native results → `resultTypeArgument`, `resultOk`, `okStruct`, `okExtern` (`src/stdlib/native-values.ts`)
 - build `Err` or `parse` native return values → `resultErr`, `resultError`, `parseFailure`, `parseResult` (`src/stdlib/native-values.ts`)
 - read or build `time.Time` and `time.Duration` millisecond values → `millisecondsOf`, `resultMilliseconds`, `okMilliseconds` (`src/stdlib/time/fields.ts`)

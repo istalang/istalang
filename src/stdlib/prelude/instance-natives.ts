@@ -5,12 +5,13 @@
  */
 
 import { parameterKey } from '../../definition/extern-key.ts';
+import { instanceNameOf } from '../../definition/instance-handles.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithInstances } from '../../runtime/natives.ts';
-import { resultTypeArgument, textPayloadOf } from '../native-values.ts';
+import { resultTypeArgument } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 export const instanceNatives = (keys: NativeKeys): Natives<NativeContext & WithInstances> => ({
   [keys.of('result', knownTypeKey(wellKnown.instance, parameterKey('T')))]: ([handle], context) =>
-    context.instances.ended(textPayloadOf(handle), resultTypeArgument(context, 0)),
+    context.instances.ended(instanceNameOf(handle), resultTypeArgument(context, 0)),
 });

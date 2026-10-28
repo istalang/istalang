@@ -113,9 +113,9 @@ export interface NativeResources {
 export interface NativeInstances {
   /**
    * Spawns the closure `entry`, which takes nothing, as a new instance with `options` once the
-   * segment commits; the instance's name.
+   * segment commits; a handle to it of `Instance<T>` type entry `type`.
    */
-  readonly spawn: (entry: Value, options: SpawnOptions) => string;
+  readonly spawn: (entry: Value, type: TypeId, options: SpawnOptions) => Value;
   /** A future that resolves with a `Result` of type entry `result` once `instance` has ended. */
   readonly ended: (instance: string, result: TypeId) => Value;
 }

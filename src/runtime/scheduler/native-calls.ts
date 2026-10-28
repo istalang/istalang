@@ -12,6 +12,7 @@
 
 import { namedTypeOf } from '../../definition/declared-values.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
+import { instanceHandle } from '../../definition/instance-handles.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { closureOf, handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
@@ -172,14 +173,15 @@ function nativeLogsOf(instance: Instance, startedAt: bigint): NativeLogs {
 /** The instances `instance` spawns and waits for, as natives reach them (§9). */
 function nativeInstancesOf(instance: Instance): NativeInstances {
   return {
-    spawn: (entry, options) => {
+    spawn: (entry, type, options) => {
       const closure =
         closureOf(entry) ??
         unreachable('An instance is spawned with no function; the checker forbids it.');
-      return instance.spawn(
+      const name = instance.spawn(
         { function: closure.function, captures: closure.captures, arguments: [] },
         options,
       );
+      return instanceHandle(type, name);
     },
     ended: (name, result) =>
       instance.futures.createHandle({

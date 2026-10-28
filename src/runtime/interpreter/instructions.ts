@@ -8,6 +8,7 @@
  */
 
 import { mapOf, valuesEqual } from '../../definition/equality.ts';
+import { instanceHandle } from '../../definition/instance-handles.ts';
 import type { Callee } from '../../definition/instructions/calls.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
@@ -175,7 +176,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
       captures: [...captures],
       arguments: instruction.arguments.map((register) => readRegister(frame, register)),
     });
-    next(frame, instruction.dst, { kind: 'extern', type: instruction.type, payload: name });
+    next(frame, instruction.dst, instanceHandle(instruction.type, name));
   },
   currentCall: (machine, instruction, frame) => {
     next(frame, instruction.dst, machine.currentCall());

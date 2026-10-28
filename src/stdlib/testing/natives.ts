@@ -8,6 +8,7 @@
  */
 
 import { functionKey, type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
+import { instanceNameOf } from '../../definition/instance-handles.ts';
 import { closureOf, type Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { InstanceState } from '../../runtime/instance-state.ts';
@@ -19,14 +20,7 @@ import {
   type WithTesting,
 } from '../../runtime/natives.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import {
-  arrayOf,
-  given,
-  resultExtern,
-  resultVariant,
-  text,
-  textPayloadOf,
-} from '../native-values.ts';
+import { arrayOf, declaredResult, given, resultVariant, text } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 type Context = NativeContext & WithInstances & WithTesting;
@@ -51,19 +45,19 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
     [keys.of('spawnCrashingEveryAwait', functionKey(true, [], parameterKey('T')))]: (
       [entry],
       context,
-    ) => resultExtern(context, context.instances.spawn(given(entry), { crashEveryAwait: true })),
+    ) => context.instances.spawn(given(entry), declaredResult(context), { crashEveryAwait: true }),
     [ofInstance('idle')]: ([handle], context) =>
-      context.testing.watch(textPayloadOf(handle), { kind: 'idle' }),
+      context.testing.watch(instanceNameOf(handle), { kind: 'idle' }),
     [ofInstance('reaches', 'string')]: ([handle, label], context) =>
-      context.testing.watch(textPayloadOf(handle), { kind: 'waypoint', label: text(label) }),
+      context.testing.watch(instanceNameOf(handle), { kind: 'waypoint', label: text(label) }),
     [ofInstance('waitingAt')]: ([handle], context) =>
       arrayOf(
-        (context.testing.inspect(textPayloadOf(handle))?.waitingAt ?? []).map(
+        (context.testing.inspect(instanceNameOf(handle))?.waitingAt ?? []).map(
           ({ waypoint, location }) => waypoint ?? location,
         ),
       ),
     [ofInstance('state')]: ([handle], context) => {
-      const state = context.testing.inspect(textPayloadOf(handle))?.state.kind ?? 'ready';
+      const state = context.testing.inspect(instanceNameOf(handle))?.state.kind ?? 'ready';
       return resultVariant(context, stateVariants[state], {});
     },
     [keys.of('handle')]: (_, context) =>

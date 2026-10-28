@@ -6,7 +6,7 @@
 
 import { functionKey, parameterKey } from '../../definition/extern-key.ts';
 import type { NativeContext, Natives, WithFutures, WithInstances } from '../../runtime/natives.ts';
-import { given, resultExtern } from '../native-values.ts';
+import { declaredResult, given } from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
 
 export const runtimeNatives = (
@@ -16,5 +16,5 @@ export const runtimeNatives = (
   [keys.of('version')]: (_arguments, context) => context.version,
   [keys.of('commit')]: (_arguments, context) => context.futures.resolved(null),
   [keys.of('_isolated', functionKey(true, [], parameterKey('T')))]: ([entry], context) =>
-    resultExtern(context, context.instances.spawn(given(entry), { terminatesOnPanic: true })),
+    context.instances.spawn(given(entry), declaredResult(context), { terminatesOnPanic: true }),
 });
