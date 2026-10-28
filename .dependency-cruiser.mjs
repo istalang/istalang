@@ -87,7 +87,7 @@ const layers = {
  * a folder not listed may import none. Its root modules are its entry, contexts and contracts,
  * which any folder may import, except the classes wiring a body and a program together; so they
  * import no folder above the type model, or every folder would reach every other through them.
- * Type-only imports count (`tsPreCompilationDeps`): a cycle of types is a cycle of knowledge.
+ * Type-only imports count, as the swc parser reports them: a cycle of types is a cycle of knowledge.
  */
 const checkerLayers = [
   'diagnostics',
@@ -204,7 +204,6 @@ export default {
   allowedSeverity: 'error',
   options: {
     parser: 'swc',
-    tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
     exclude: { path: '\\.(test|test-kit|bench)\\.ts$' },
     doNotFollow: { path: 'node_modules' },
