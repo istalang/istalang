@@ -4,7 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { compiledText } from '../../../compiler/compile.test-kit.ts';
 import { Panic } from '../../natives.ts';
+import { startToEnd, testRuntime } from '../../runtime.test-kit.ts';
 import { panicOf } from './limits.ts';
 
 /** What `build` throws. */
@@ -39,5 +41,15 @@ describe('panicOf', () => {
     expect(panicOf(panic)).toBe(panic);
     expect(panicOf(new RangeError('Invalid time value'))).toBeUndefined();
     expect(panicOf(new TypeError('a bug'))).toBeUndefined();
+  });
+
+  it('panics an instance that recurses past the frame depth limit', () => {
+    const text = compiledText(
+      ['fn loop(n: int) -> int: loop(n + 1)', 'async fn main() -> Future<int>: loop(0)'].join('\n'),
+    );
+    expect(startToEnd(testRuntime(), text)).toMatchObject({
+      kind: 'panicked',
+      message: expect.stringContaining('frames'),
+    });
   });
 });

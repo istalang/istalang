@@ -50,7 +50,7 @@ import { type Instance, topFrame } from '../instance/index.ts';
 import { arriving, type Caller, callTargetOf, driverOf, type SegmentStart } from '../mocks.ts';
 import { NativeCalls } from '../native-calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
-import { panicOf, requireDepth } from './limits.ts';
+import { panicOf, requireDepth, requireFrameDepth } from './limits.ts';
 import { RunStack } from './run-stack.ts';
 
 export type SegmentEnd =
@@ -182,6 +182,7 @@ class SegmentRunner implements Machine {
       return;
     }
     if (callable.code.async) {
+      requireFrameDepth(this.#runStack.depth + 1);
       const future = this.#instance.futures.create({ kind: 'call' });
       const execution = this.#instance.startExecution(
         callable.function,
@@ -195,11 +196,13 @@ class SegmentRunner implements Machine {
       this.#runStack.push(execution);
       return;
     }
+    const { frames } = this.#runStack.current();
+    requireFrameDepth(frames.length + 1);
     const calleeFrame = newFrame(callable, target.contents, frame.heap, target.captures);
     if (target.mocked) {
       this.#mockFrames.add(calleeFrame);
     }
-    this.#runStack.current().frames.push(calleeFrame);
+    frames.push(calleeFrame);
   }
 
   return(frame: ActiveFrame, value: Value): void {

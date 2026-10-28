@@ -51,6 +51,11 @@ export class RunStack {
     return this.#executions.length === 1;
   }
 
+  /** How many executions are running on the stack. */
+  get depth(): number {
+    return this.#executions.length;
+  }
+
   /** The running executions, innermost first. */
   innermostFirst(): readonly LiveExecution[] {
     return this.#executions.toReversed();
