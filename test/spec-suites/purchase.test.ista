@@ -36,8 +36,8 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
     hold _ = mock(app.receive, env.verdicts.receive)
     hold _ = mock(app.receive, env.cancels.receive)
     const receipts = FakeReceipts<Sent>{make: handle}
-    hold _ = mock(app._sendRevertible, receipts.send(env.reviews))
-    hold _ = mock(app._sendRevertible, receipts.send(env.notices))
+    hold _ = mock(app._sendRevertible, receipts.revertibleSender(env.reviews))
+    hold _ = mock(app._sendRevertible, receipts.revertibleSender(env.notices))
     hold _ = mock(app.dispose, receipts.dispose)
     await test(env)
   })

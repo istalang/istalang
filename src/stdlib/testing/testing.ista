@@ -265,9 +265,9 @@ fn _inboxOf<Q, T, K>(queues: _Queues<Q, T, K>, queue: Q) -> Inbox<T>:
       return each.inbox
   panic("This FakeQueue didn't open the queue it was given.")
 
-# The receipts of a host's revertible sends, of extern type `R` (§3.6, §10): `send(queues)` replaces
-# a revertible send into `queues`, and `dispose` replaces `R`'s `dispose`, retracting the message the
-# receipt stood for.
+# The receipts of a host's revertible sends, of extern type `R` (§3.6, §10): `revertibleSender(queues)`
+# replaces a revertible send into `queues`, and `dispose` replaces `R`'s `dispose`, retracting the
+# message the receipt stood for.
 struct FakeReceipts<R>:
   make: fn() -> R
   _entries: _Receipts<R> = new _Receipts<R>{}
@@ -281,7 +281,7 @@ struct _Receipt<R>:
   retract: fn() -> unit
 
 # A replacement for a host's revertible send into `queues`, returning a receipt `self.make` builds.
-fn send<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> fn(Q, T) -> R:
+fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> fn(Q, T) -> R:
   fn sendInto(queue: Q, message: T) -> R:
     const receipt = (self.make)()
     const held = new Shared<Revertible<T>?>{value: queues.sendRevertible(queue, message)}

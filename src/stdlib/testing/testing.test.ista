@@ -205,7 +205,7 @@ fn queues() -> Array<Test>: [
     const fake = FakeQueue<Queue<int>, int>{make: handle}
     const receipts = FakeReceipts<Sent>{make: handle}
     const queue = fake.open("a")
-    const sent = receipts.send(fake)(queue, 1)
+    const sent = receipts.revertibleSender(fake)(queue, 1)
     const held = fake.sendRevertible(queue, 2)
     fake.post("a", 3)
     assertEq(fake.pending("a"), [1, 2, 3])

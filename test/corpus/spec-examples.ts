@@ -21,16 +21,20 @@ import { readFileSync } from 'node:fs';
 /** A whole module, statements shown outside any function, or a sample that is neither. */
 type ExampleForm = 'module' | 'statements' | 'fragment';
 
+const documentPaths = ['docs/spec.md', 'docs/guide.md'] as const;
+
+type DocumentPath = (typeof documentPaths)[number];
+
 export interface SpecExample {
+  readonly document: DocumentPath;
   readonly section: string;
-  /** One-based line of the example's first code line. */
+  /** One-based line of the example's first code line in `document`. */
   readonly line: number;
   readonly code: string;
   readonly elided: boolean;
   readonly form: ExampleForm;
 }
 
-const documentPaths = ['docs/spec.md', 'docs/guide.md'] as const;
 const headingPattern = /^#{1,6}\s+(?<title>.+)$/u;
 const fence = '```';
 const elisionMark = '…';
@@ -60,7 +64,7 @@ export function isPlaceholder(text: string): boolean {
   return rest !== text && rest.replaceAll(/[{}\s]/gu, '') === '';
 }
 
-function extractExamples(path: string, markdown: string): SpecExample[] {
+function extractExamples(path: DocumentPath, markdown: string): SpecExample[] {
   const examples: SpecExample[] = [];
   let section = '';
   let open: { line: number; indent: number; form: ExampleForm; lines: string[] } | undefined;
@@ -73,7 +77,8 @@ function extractExamples(path: string, markdown: string): SpecExample[] {
       } else {
         const code = open.lines.join('\n');
         examples.push({
-          section,
+          document: path,
+          section: path === 'docs/spec.md' ? section : `${path} › ${section}`,
           line: open.line,
           code,
           elided: code.includes(elisionMark),
@@ -94,13 +99,16 @@ export const specExamples: readonly SpecExample[] = documentPaths.flatMap((path)
   extractExamples(path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')),
 );
 
-/** The code of every example in `section` that `wanted` picks; throws when it picks none. */
+/** The code of every spec example in `section` that `wanted` picks; throws when it picks none. */
 export function specCode(
   section: string,
   wanted: (code: string) => boolean = () => true,
 ): string[] {
   const found = specExamples
-    .filter((example) => example.section === section && wanted(example.code))
+    .filter(
+      (example) =>
+        example.document === 'docs/spec.md' && example.section === section && wanted(example.code),
+    )
     .map(({ code }) => code);
   if (found.length === 0) {
     throw new Error(`No example in "${section}" is the one wanted.`);
