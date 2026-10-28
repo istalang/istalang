@@ -22,7 +22,7 @@ import { lowerName, lowerNamed } from './names.ts';
 import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts';
 import { lowerPropagate } from './propagate.ts';
 import { lowerSelect } from './select.ts';
-import { lowerFieldRead, lowerStructLiteral } from './structs.ts';
+import { lowerFieldRead, lowerStructLiteral, readsField } from './structs.ts';
 import { lowerTemplate } from './templates.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
 import { lowerUnwrap } from './unwrap.ts';
@@ -81,7 +81,7 @@ function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Regist
   if (context.body.resolved.has(node)) {
     return lowerFunctionValue(context, node);
   }
-  return context.entityOf(node.member) === undefined
+  return readsField(context, node)
     ? lowerFieldRead(context, node)
     : lowerNamed(context, node.member, node);
 }

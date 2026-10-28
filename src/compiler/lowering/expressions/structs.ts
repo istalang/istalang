@@ -104,6 +104,11 @@ export function lowerBareStruct(context: FunctionContext, node: Expression): Reg
   return construct(context, structTypeOf(context, node), [], node.span);
 }
 
+/** Whether `a.b` reads a field, rather than naming a namespace's or a type's member (names.ts). */
+export function readsField(context: FunctionContext, access: MemberAccess): boolean {
+  return context.entityOf(access.member) === undefined;
+}
+
 /**
  * `x.f`, read from the value its chain link works on: the access itself, or the call `x.f(…)` of
  * a function-typed field, which is the link instead (calls.ts).

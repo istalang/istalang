@@ -198,6 +198,24 @@ describe('lowering', () => {
     expect(structs).toEqual([{ kind: 'struct', type: limits, fields: [7n] }]);
   });
 
+  it("calls a namespace's function-typed constant, and spawns one", () => {
+    const program = stdProgramOf({
+      main: [
+        "import * as lib from 'lib'",
+        'async fn main() -> Future<int>:',
+        '  match await spawn lib.twice(1).result():',
+        '    case Ok{value}: lib.twice(20) + value',
+        '    case Err{error}: 0',
+      ].join('\n'),
+      lib: 'const twice = fn(x: int) -> int: x * 2',
+    });
+    const test = testRuntime();
+    const deployed = test.runtime.deploy(
+      definitionFormat.write(compiledDefinition(program, 'main')).text,
+    );
+    expect(runToEnd(test, 'i', deployed.start('i'))).toEqual({ kind: 'finished', outcome: '42' });
+  });
+
   it('gives a variable passed by & a cell, typed as the _Cell<T> it is created as', () => {
     const program = stdProgramOf({
       main: [

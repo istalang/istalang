@@ -39,7 +39,7 @@ import { type ClosedCall, calledParameters } from '../instances.ts';
 import { packElementsOf } from '../packs.ts';
 import { enterReferenced } from '../places.ts';
 import { spreadArray } from './collections.ts';
-import { lowerFieldRead } from './structs.ts';
+import { lowerFieldRead, readsField } from './structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
   if (context.body.valueCalls.has(node)) {
@@ -103,14 +103,18 @@ function lowerValueCall(context: FunctionContext, node: Call): Register {
   return dst;
 }
 
-/** The function value a value call calls; `f?.()` calls the one inside `f`. */
+/**
+ * The function value a value call calls; `f?.()` calls the one inside `f`, and `x.f(…)` the field
+ * read from `x` (a namespace's constant `ns.f(…)` is read as a name).
+ */
 function valueCallee(context: FunctionContext, node: Call): Register {
   if (node.isOptional) {
     return context.chains.target(context, node);
   }
-  return node.callee.kind === 'MemberAccess'
-    ? lowerFieldRead(context, node.callee, node)
-    : context.expression(node.callee);
+  const { callee } = node;
+  return callee.kind === 'MemberAccess' && readsField(context, callee)
+    ? lowerFieldRead(context, callee, node)
+    : context.expression(callee);
 }
 
 /**
