@@ -32,7 +32,7 @@ import { memo } from '../structures/memo.ts';
 import { recordExternSignatures } from './boundary/extern-signatures.ts';
 import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from './boundary/outbound.ts';
-import type { Advanced, Inspection, StartOptions } from './instance-state.ts';
+import type { Advanced, Finished, Inspection, StartOptions } from './instance-state.ts';
 import type { Natives } from './natives.ts';
 import { seedTextOf } from './random-seed.ts';
 import { Refusal } from './refusal.ts';
@@ -79,10 +79,13 @@ export interface DeployedProgram {
   readonly hash: string;
   /** The keys of the functions a host may start (§9). */
   readonly starts: readonly string[];
-  /** An outcome a start entry encoded, as JSON a host works with; a Refusal for any other. */
-  readonly outcome: (value: Value) => unknown;
+  /**
+   * A finished instance's outcome as JSON a host works with; a Refusal when no codec writes its
+   * type, so it has none (§9).
+   */
+  readonly outcome: (finished: Finished) => unknown;
   /** The same outcome as its JSON text (§9). */
-  readonly outcomeText: (value: Value) => string;
+  readonly outcomeText: (finished: Finished) => string;
   /**
    * Starts what `request` names as a new instance named `instance`: a Refusal if the store already
    * has one, if no function has the key, or if the arguments don't fit it.
@@ -229,8 +232,8 @@ function boundProgram(
   return {
     ...loaded,
     starts: definition.starts.map(({ key }) => key),
-    outcome: (value) => outcomeJson(value, definition),
-    outcomeText: (value) => outcomeText(value, definition),
+    outcome: (finished) => outcomeJson(finished, definition),
+    outcomeText: (finished) => outcomeText(finished, definition),
     start: (instance, { function: key, arguments: given = [], ...options } = {}) => {
       if (instance.includes(spawnedSeparator)) {
         throw new Refusal(
@@ -241,10 +244,10 @@ function boundProgram(
       if (seams.store.readSnapshot(instance) !== undefined) {
         throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
       }
-      const entry = startFunctionOf(definition, key, given.length);
+      const { entry, encoder } = startOf(definition, key, given.length);
       const values = given.map((json) => jsonIn(definition, json));
       const call = { function: entry, captures: [], arguments: values };
-      const beginning = { ...options, seed: seedTextOf(seams.seed()) };
+      const beginning = { ...options, seed: seedTextOf(seams.seed()), encoder };
       return advance(seams, loaded, unstarted(loaded, instance, call, beginning));
     },
     resume: (snapshot, first) => advance(seams, loaded, snapshot, first),
@@ -252,12 +255,11 @@ function boundProgram(
   };
 }
 
-/** The start entry `key` names, `main`'s without one; a Refusal unless it takes `count` arguments. */
-function startFunctionOf(
-  definition: Definition,
-  key: string | undefined,
-  count: number,
-): FunctionId {
+/**
+ * The entry `key` names, `main`'s without one, with the encoder its listing in `starts` gives its
+ * outcome; a Refusal unless it takes `count` arguments.
+ */
+function startOf(definition: Definition, key: string | undefined, count: number): StartCall {
   const entry =
     key === undefined
       ? definition.main
@@ -272,7 +274,14 @@ function startFunctionOf(
         : `${what} takes ${takes} arguments, not ${count}.`,
     );
   }
-  return entry;
+  const encoder = definition.starts.find((start) => start.function === entry)?.encoder;
+  return { entry, encoder };
+}
+
+/** What a host starts: the entry, and the encoder of its outcome when it has one. */
+interface StartCall {
+  readonly entry: FunctionId;
+  readonly encoder: FunctionId | undefined;
 }
 
 /** JSON a host gave, as the `Json` value it holds; a Refusal for what JSON can't hold. */

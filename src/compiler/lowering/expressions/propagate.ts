@@ -26,7 +26,8 @@ export function lowerPropagate(context: FunctionContext, node: Propagate): Regis
   code.place(err);
   const error = payloadOf(context, operand, node.span);
   const passed = { type: returned, name: resultVariants.err };
-  context.returnValue(buildVariant(context, passed, [error], node.span), node.span);
+  const value = buildVariant(context, passed, [error], node.span);
+  code.emit({ kind: 'return', span: node.span, value });
   code.place(ok);
   return payloadOf(context, operand, node.span);
 }

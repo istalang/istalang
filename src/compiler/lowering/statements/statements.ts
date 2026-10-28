@@ -40,7 +40,7 @@ const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void
   Assignment: lowerAssignment,
   Return: (context, node) => {
     const value = node.value === undefined ? unitOf(context, node) : context.expression(node.value);
-    context.returnValue(value, node.span);
+    context.code.emit({ kind: 'return', span: node.span, value });
   },
   While: lowerWhile,
   Break: lowerLoopExit,

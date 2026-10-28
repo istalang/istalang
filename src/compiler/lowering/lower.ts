@@ -25,7 +25,7 @@ import {
   hostFunctionEntry,
   hostNativeEntry,
 } from './boundary/host-externs.ts';
-import { startableOf, startables, startEntry } from './boundary/starts.ts';
+import { listStart, startableOf, startables, startEntry } from './boundary/starts.ts';
 import { fillingEntry } from './filling-entry.ts';
 import { instanceLowering, nestedLowering } from './function-lowering/index.ts';
 import {
@@ -48,9 +48,10 @@ export function lower(checker: Checker, main: FunctionDeclaration): Definition {
   if (started === undefined) {
     unreachable("'main' can't be started; the checker should have said why.");
   }
-  const mainIndex = tables.startIndex(main, started.key);
+  const lowering = { checker, tables };
+  const mainIndex = listStart(lowering, started);
   for (const startable of startables(checker)) {
-    tables.startIndex(startable.target, startable.key);
+    listStart(lowering, startable);
   }
   lowerReached(checker, tables);
   return tables.finish(mainIndex);

@@ -196,6 +196,11 @@ export class Instance {
     return this.#from.terminatesOnPanic;
   }
 
+  /** The entry encoding the instance's outcome for its host (§9); undefined when none writes it. */
+  get encoder(): FunctionId | undefined {
+    return this.#from.encoder;
+  }
+
   /**
    * What the extern constant `key` gives this instance: what `read` gives the first time any of
    * its segments reads it, and that same value ever after (§3.6).

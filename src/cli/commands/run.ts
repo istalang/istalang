@@ -193,7 +193,7 @@ async function finish(
   }
   const settled = step.value.get(name);
   if (settled?.kind === 'finished') {
-    environment.write(`${program.outcomeText(settled.outcome)}\n`);
+    environment.write(`${program.outcomeText(settled)}\n`);
   }
   return unfinished.length === 0 ? exitCodes.clean : exitCodes.problems;
 }

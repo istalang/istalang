@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-26
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
 
@@ -97,10 +97,13 @@ its instance is numbered by, so its native sees only JSON:
 A startable function (top-level, not generic or extern, or a constant holding a sendable lambda;
 by-value parameters that can be read, an outcome that can be written) gets a start entry, listed in
 the Definition's `starts` under its key. A start entry is the function's own body compiled once
-more with JSON at its edges (`lowering/boundary/starts.ts`, `FunctionLowering.lowerStart`): it
-decodes each argument, a mismatch failing the host's start, and encodes whatever it returns, so the
-instance is one execution of the function and its traces and waits are the function's own. `main`
-is started through its own; what a host reads of an outcome is JSON by the declared result,
+more with its arguments as JSON (`lowering/boundary/starts.ts`, `FunctionLowering.lowerStart`): it
+decodes each argument, a mismatch failing the host's start, so the instance is one execution of the
+function and its traces and waits are the function's own. `starts` lists it with its outcome's
+encoder, the entry of the codec writing the declared result (`boundary/codec-calls.ts`), which the
+instance keeps for life and its segment calls with the outcome once the root returns
+(`scheduler/segment/`): a finished instance keeps both, the outcome for `result()` and its JSON for
+the host. `main` is started through its own; what a host reads of an outcome is JSON by the declared result,
 as JavaScript values (`outcome`) like everything else it exchanges, or as text (`outcomeText`),
 which `ista run` prints (`runtime/boundary/outbound.ts`).
 

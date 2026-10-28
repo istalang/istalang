@@ -130,7 +130,7 @@ export function runToEnd(test: TestRuntime, instance: string, initial: Advanced)
   try {
     return {
       kind: 'finished',
-      outcome: test.runtime.programOf(instance).outcomeText(settled.outcome),
+      outcome: test.runtime.programOf(instance).outcomeText(settled),
     };
   } catch (error) {
     if (error instanceof Refusal) {

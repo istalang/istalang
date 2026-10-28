@@ -321,6 +321,14 @@ describe('definition format', () => {
       'types[1].disposal',
     ],
     [
+      "a start whose encoder can't encode an outcome",
+      (json) => {
+        json.body.starts = [{ key: 'main.fib(int)', function: 3, encoder: 4 }];
+      },
+      "main.main can't encode an outcome",
+      'starts[0].encoder',
+    ],
+    [
       'a direct call to a function with captures',
       (json) => {
         at(json, 'functions', 3).captures = 1;

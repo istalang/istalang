@@ -47,6 +47,12 @@ const mismatch = expect.objectContaining({ reason: 'snapshotMismatch' });
 const executionIds = (snapshot: Snapshot) =>
   snapshot.objects.flatMap((object) => (object.kind === 'execution' ? [object.id] : []));
 
+/** The entry of a frame `snapshot` holds: an async function's, which can't encode an outcome. */
+const frameEntry = (snapshot: Snapshot) =>
+  snapshot.objects.flatMap((object) =>
+    object.kind === 'execution' ? object.frames.map((frame) => frame.function) : [],
+  )[0] ?? 0;
+
 const withVersion = (text: string, version: number) =>
   text.replace(versionAtEnd, `"version":${version}}`);
 
@@ -185,6 +191,11 @@ describe('reading an instance back', () => {
             : object,
         ),
       }),
+    ],
+    ['an outcome encoder that is no function', (snapshot) => ({ ...snapshot, encoder: 10_000 })],
+    [
+      "an outcome encoder that can't encode",
+      (snapshot) => ({ ...snapshot, encoder: frameEntry(snapshot) }),
     ],
   ])('refuses a snapshot with %s', (_case, change) => {
     const test = waitingInstance();

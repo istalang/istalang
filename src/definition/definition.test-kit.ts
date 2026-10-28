@@ -11,7 +11,7 @@ import { subsetDefinition } from '../../test/definitions/subset.ts';
 import { primitiveNames } from '../language/primitives.ts';
 import { type Definition, definitionFormat } from './definition.ts';
 import { type EditableText, editedText } from './format.test-kit.ts';
-import type { FunctionDefinition } from './functions.ts';
+import { encoderProblem, type FunctionDefinition } from './functions.ts';
 import {
   index,
   instruction,
@@ -212,24 +212,33 @@ export const definitionArbitrary: fc.Arbitrary<Definition> = fc
           const mains = functions.flatMap((entry, id) =>
             entry.kind === 'code' && entry.async && entry.parameters.length === 0 ? [id] : [],
           );
+          const encoders = functions.flatMap((entry, id) =>
+            encoderProblem(entry) === undefined ? [id] : [],
+          );
           const startable = functions.flatMap((entry, id) =>
             entry.kind === 'code' && entry.parameters.every((parameter) => !parameter.reference)
               ? [id]
               : [],
           );
+          const start = (id: number) =>
+            fc
+              .constantFrom(...encoders)
+              .map((encoder) => ({ key: `main.start${id}()`, function: id, encoder }));
           return fc
             .tuple(
               fc.option(mains.length === 0 ? fc.constant(undefined) : fc.constantFrom(...mains), {
                 nil: undefined,
               }),
-              fc.subarray(startable),
+              encoders.length === 0
+                ? fc.constant([])
+                : fc.subarray(startable).chain((ids) => fc.tuple(...ids.map(start))),
             )
             .map(([main, starts]) => ({
               modules,
               types,
               functions,
               constants,
-              starts: starts.map((id) => ({ key: `main.start${id}()`, function: id })),
+              starts: [...starts],
               ...(main === undefined ? {} : { main }),
             }));
         });

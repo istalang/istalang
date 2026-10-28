@@ -37,7 +37,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - read another instance's last committed snapshot or end `Result` from the store → `storedSnapshot`, `storedEnds` (`src/runtime/scheduler/instance-ends.ts`)
 - adapt host extern functions to runtime natives → `hostNatives` (`src/runtime/boundary/host-natives.ts`)
 - check host extern signatures across deploys → `recordExternSignatures` (`src/runtime/boundary/extern-signatures.ts`)
-- format a start entry's outcome as host JSON or JSON text → `outcomeJson`, `outcomeText` (`src/runtime/boundary/outbound.ts`)
+- format a finished instance's encoded outcome as host JSON or JSON text → `outcomeJson`, `outcomeText` (`src/runtime/boundary/outbound.ts`)
 - create a `Runtime` or catch a host refusal → `createRuntime` (`src/runtime/host.ts`), `Refusal` (`src/runtime/refusal.ts`)
 - drive a group of instances and their spawns until settled → `settle` (`src/runtime/settle.ts`), `InstanceGroup` (`src/runtime/instance-group.ts`)
 - store Definitions and snapshots in memory → `memoryStore`, `InstanceStore` (`src/runtime/store.ts`)

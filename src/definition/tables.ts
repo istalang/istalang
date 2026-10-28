@@ -32,9 +32,10 @@ export const tables = z.strictObject({
   main: functionId.optional(),
   /**
    * What a host may start (§9), by the key it names each by: the code entry that takes the
-   * arguments as JSON, runs the function and gives its outcome as JSON (docs/arch/boundary.md).
+   * arguments as JSON and runs the function, and the entry encoding its outcome as JSON, which the
+   * runtime calls once it returns (docs/arch/boundary.md).
    */
-  starts: z.array(z.strictObject({ key: z.string(), function: functionId })),
+  starts: z.array(z.strictObject({ key: z.string(), function: functionId, encoder: functionId })),
   /**
    * In a Definition built to run tests (§10): every `@Suite` function with its title, and the
    * testing module's code that lists a suite's tests and runs one of them, which `ista test` starts

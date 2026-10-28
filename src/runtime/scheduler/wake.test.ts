@@ -97,9 +97,9 @@ describe('advancing an instance', () => {
     const kinds = waiting?.objects.map((object) => object.kind).sort();
     expect(kinds).toEqual(['execution', 'execution', 'future', 'future']);
     const status = finished?.status;
-    expect(
-      status?.kind === 'finished' && test.runtime.programOf('test').outcomeText(status.outcome),
-    ).toBe('42');
+    expect(status?.kind === 'finished' && test.runtime.programOf('test').outcomeText(status)).toBe(
+      '42',
+    );
   });
 
   it('rolls an eager callee back with its caller when the caller panics in the same segment', () => {

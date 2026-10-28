@@ -6,8 +6,8 @@
  * - A default's entry reads its function's defaults' body (§3.1, §3.3), its own entry its own body,
  *   through the instance's substitution; a nested function reads its owner's, or a constant's.
  *   These are the only rules of which body an entry reads.
- * - A start entry is one of these, entered by the host's name for it and encoding what it returns
- *   (boundary/starts.ts), which its frame says from the start.
+ * - A start entry is one of these, entered by the host's name for it (boundary/starts.ts), which
+ *   its frame's header says from the start.
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
@@ -21,7 +21,6 @@ import type {
 import { instantiatedBody } from '../../checker/types/instantiation.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { ClosedCall } from '../instances.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
@@ -42,12 +41,6 @@ export interface LoweredFunction extends Lowering {
   readonly body: CheckedBody;
 }
 
-/** A start entry's frame: the name the host enters it by, and the call encoding what it gives. */
-export interface StartFrame {
-  readonly header: EntryHeader;
-  readonly outcome: ClosedCall;
-}
-
 /**
  * The frame an entry's code runs in: what it is called, what it takes, what it captures and what
  * it produces.
@@ -65,8 +58,6 @@ export interface Frame {
   readonly result: Type;
   /** The name a nested function calls itself by. */
   readonly self: Identifier | undefined;
-  /** What a start entry encodes its returns with; undefined for any other entry. */
-  readonly outcome: ClosedCall | undefined;
 }
 
 /** What `instance`'s entry is lowered from; undefined for an instance with no body, an extern. */
@@ -123,13 +114,13 @@ function bodyOfEntry(checker: Checker, instance: FunctionInstance): CheckedBody 
 export function instanceFrame(
   lowered: LoweredFunction,
   instance: FunctionInstance,
-  start?: StartFrame,
+  startHeader?: EntryHeader,
 ): Frame {
   const { checker, tables, body } = lowered;
   const { declaration, entry } = instance;
   const parameters = checker.parametersOf(declaration);
   return {
-    header: start?.header ?? tables.entryHeader(instance),
+    header: startHeader ?? tables.entryHeader(instance),
     isAsync: declaration.isAsync && entry.kind === 'own',
     givesDefault: entry.kind === 'default',
     parameters: entry.kind === 'default' ? parameters.slice(0, entry.parameter) : parameters,
@@ -137,7 +128,6 @@ export function instanceFrame(
     function: declaration,
     result: body.result,
     self: undefined,
-    outcome: start?.outcome,
   };
 }
 
@@ -145,7 +135,7 @@ export function instanceFrame(
 export function nestedFrame(
   lowered: LoweredFunction,
   nested: NestedInstance,
-  start?: StartFrame,
+  startHeader?: EntryHeader,
 ): Frame {
   const { node } = nested;
   const checked = lowered.body.functionOf(node);
@@ -154,7 +144,7 @@ export function nestedFrame(
   }
   const { type, parameters, captures } = checked;
   return {
-    header: start?.header ?? lowered.tables.nestedHeader(nested),
+    header: startHeader ?? lowered.tables.nestedHeader(nested),
     isAsync: type.isAsync,
     givesDefault: false,
     parameters,
@@ -162,6 +152,5 @@ export function nestedFrame(
     function: node,
     result: type.result,
     self: node.name,
-    outcome: start?.outcome,
   };
 }

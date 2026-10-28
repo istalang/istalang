@@ -107,7 +107,7 @@ export class DefinitionTables {
   readonly #closing: (ClosingEntry & { readonly index: FunctionId })[] = [];
   /** How many variants its `any` type had when each closing entry was last written. */
   readonly #writtenFor = new Map<FunctionId, number>();
-  readonly #starts: { readonly key: string; readonly function: FunctionId }[] = [];
+  readonly #starts: Tables['starts'][number][] = [];
 
   constructor(checker: Checker) {
     this.#checker = checker;
@@ -263,14 +263,17 @@ export class DefinitionTables {
     return this.#entryIndex(key, { kind: 'externConstant', declaration, type });
   }
 
-  /** The index of the wrapper a host starts `target` through, listed under `key` (§9). */
-  startIndex(target: StartTarget, key: string): FunctionId {
+  /**
+   * The index of the entry a host starts `target` through, listed under `key` with the `encoder` of
+   * its outcome (§9).
+   */
+  startIndex(target: StartTarget, key: string, encoder: FunctionId): FunctionId {
     const index = this.#entryIndex(`start:${this.#checker.typeKeys.identityOf(target)}`, {
       kind: 'start',
       target,
     });
     if (!this.#starts.some((start) => start.function === index)) {
-      this.#starts.push({ key, function: index });
+      this.#starts.push({ key, function: index, encoder });
     }
     return index;
   }

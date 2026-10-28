@@ -12,7 +12,7 @@
  */
 
 import type { z } from 'zod';
-import type { CodeFunction, FunctionDefinition } from './functions.ts';
+import { type CodeFunction, encoderProblem, type FunctionDefinition } from './functions.ts';
 import { closureProblem, constructionProblem, instructionProblem } from './instruction-rules.ts';
 import { terminates } from './instructions/flow.ts';
 import { type Operands, operandsOf } from './instructions/instruction.ts';
@@ -75,7 +75,10 @@ function checkMain(context: Context): void {
   }
 }
 
-/** The entries a host may start: code taking every argument by value, each key named once. */
+/**
+ * The entries a host may start: code taking every argument by value, each key named once, each with
+ * an entry that can encode its outcome.
+ */
 function checkStarts(context: Context): void {
   const keys = new Set<string>();
   context.tables.starts.forEach((start, index) => {
@@ -90,6 +93,16 @@ function checkStarts(context: Context): void {
     const entry = context.tables.functions[start.function];
     if (entry?.kind !== 'code' || entry.parameters.some((parameter) => parameter.reference)) {
       context.report(path, 'A host starts code that takes every argument by value.');
+    }
+    const encoderPath = [...path, 'encoder'];
+    const encoder = context.tables.functions[start.encoder];
+    if (encoder === undefined) {
+      inRange(context, { functions: [start.encoder] }, encoderPath);
+      return;
+    }
+    const problem = encoderProblem(encoder);
+    if (problem !== undefined) {
+      context.report(encoderPath, `${problem}.`);
     }
   });
 }

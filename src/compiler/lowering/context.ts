@@ -69,11 +69,6 @@ export interface FunctionContext {
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
   /** A fresh register holding the constant `value`. */
   readonly constant: (value: Value, span: Span) => Register;
-  /**
-   * Returns `value` from the entry: the one place its code returns, so a start entry gives what it
-   * returns encoded as JSON (boundary/starts.ts).
-   */
-  readonly returnValue: (value: Register, span: Span) => void;
   /** The function's code: registers, instructions and labels. */
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;

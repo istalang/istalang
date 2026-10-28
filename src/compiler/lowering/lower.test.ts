@@ -10,6 +10,7 @@ import { runPrograms } from '../../../test/corpus/programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import { definitionFormat } from '../../definition/definition.ts';
+import { typesIn } from '../../definition/types.ts';
 import { isError } from '../../diagnostics/diagnostic.ts';
 import { runToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
@@ -139,7 +140,13 @@ describe('lowering', () => {
         'async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });
-    const boxTypes = compiledDefinition(program, 'main').types.slice(0, 4);
+    const { types } = compiledDefinition(program, 'main');
+    const box = types.find((type) => type.name === 'main.Box');
+    const fieldTypes =
+      box?.kind === 'struct' ? box.fields.flatMap(({ type }) => typesIn(type)) : [];
+    const boxTypes = [box, ...fieldTypes.map((id) => types[id])].filter(
+      (type) => type !== undefined,
+    );
     expect(boxTypes.map((type) => [type.kind, type.name])).toEqual([
       ['struct', 'main.Box'],
       ['enum', 'prelude.Optional'],
@@ -187,7 +194,8 @@ describe('lowering', () => {
     const structs = definition.constants.filter(
       (constant) => typeof constant === 'object' && constant?.kind === 'struct',
     );
-    expect(structs).toEqual([{ kind: 'struct', type: 0, fields: [7n] }]);
+    const limits = definition.types.findIndex((type) => type.name === 'lib.Limits');
+    expect(structs).toEqual([{ kind: 'struct', type: limits, fields: [7n] }]);
   });
 
   it('gives a variable passed by & a cell, typed as the _Cell<T> it is created as', () => {

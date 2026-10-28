@@ -19,6 +19,9 @@
  * What a segment leaves is persisted when it commits, so it must nest no deeper than a snapshot
  * may (limits.ts).
  *
+ * When the root returns, the instance's encoder, if it has one, is called with the outcome on the
+ * root's execution, so its JSON for the host (§9) is written in the segment that finishes it.
+ *
  * After every instruction that let go of something, the segment collects (runtime/lifetimes/):
  * what lost its last holder is disposed right there (§7). A disposal that runs code runs on the
  * run stack as any call does (disposal-runs.ts). A drive ends only once collecting has. An
@@ -65,8 +68,15 @@ export type SegmentEnd =
   | { readonly kind: 'awaited'; readonly objects: readonly HeapObject[] }
   /** Nothing is ready: commit `objects`, then wait. */
   | { readonly kind: 'idle'; readonly objects: readonly HeapObject[] }
-  | { readonly kind: 'finished'; readonly outcome: Value }
+  /** The root returned: commit its outcome, encoded too when the instance has an encoder. */
+  | ({ readonly kind: 'finished' } & Outcome)
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
+
+/** What an instance's root gave, and that as `Json` when the instance has an encoder (§9). */
+interface Outcome {
+  readonly outcome: Value;
+  readonly encoded?: Value;
+}
 
 /**
  * Runs one segment of `instance`, which started at `startedAt`. It begins with `first`: an
@@ -91,7 +101,7 @@ export function endInstance(instance: Instance, startedAt: bigint): void {
 }
 
 /** How driving one execution ended. */
-type DriveEnd = 'awaited' | 'returned' | { readonly finished: Value };
+type DriveEnd = 'awaited' | 'returned' | { readonly finished: Outcome };
 
 /** How a segment ended before what it leaves is checked for persisting. */
 type RunEnd = { readonly kind: 'awaited' | 'idle' } | Extract<SegmentEnd, { kind: 'finished' }>;
@@ -104,6 +114,8 @@ class SegmentRunner implements Machine {
   readonly #collector: Collector;
   readonly #disposals: DisposalRuns;
   #end: DriveEnd | undefined;
+  /** The root's outcome while the instance's encoder, running on the root, encodes it. */
+  #encoding: Value | undefined;
 
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
@@ -212,12 +224,33 @@ class SegmentRunner implements Machine {
     }
     const future = execution.resolves;
     if (future === undefined) {
-      this.#end = { finished: returned };
+      this.#rootReturned(returned);
       return;
     }
     this.#instance.remove(execution);
     this.#instance.futures.resolve(future, returned);
     this.#leave(future, 'returned');
+  }
+
+  /**
+   * The root returned `returned`: the outcome, which the instance's encoder is called with first
+   * when it has one; the encoder's own return then gives its JSON.
+   */
+  #rootReturned(returned: Value): void {
+    if (this.#encoding !== undefined) {
+      this.#end = { finished: { outcome: this.#encoding, encoded: returned } };
+      return;
+    }
+    const { encoder } = this.#instance;
+    const target =
+      encoder === undefined ? undefined : startCall(this.#caller, encoder, [returned], []);
+    if (target?.kind === 'code') {
+      this.#encoding = returned;
+      const { entry, contents, captures } = target;
+      this.#runStack.pushFrame(newFrame(entry, contents, this.#instance.frameHeap, captures));
+      return;
+    }
+    this.#end = { finished: { outcome: returned, ...(target && { encoded: target.value }) } };
   }
 
   wait(frame: ActiveFrame): void {
@@ -273,7 +306,7 @@ class SegmentRunner implements Machine {
         return { kind: 'awaited' };
       }
       if (end !== 'returned') {
-        return { kind: 'finished', outcome: end.finished };
+        return { kind: 'finished', ...end.finished };
       }
     }
     return { kind: 'idle' };
@@ -286,6 +319,9 @@ class SegmentRunner implements Machine {
   #persistable(end: RunEnd): Exclude<SegmentEnd, { kind: 'panicked' }> {
     if (end.kind === 'finished') {
       requireDepth(depthOf(end.outcome));
+      if (end.encoded !== undefined) {
+        requireDepth(depthOf(end.encoded));
+      }
       return end;
     }
     const { objects, depth } = this.#instance.persisted();

@@ -33,6 +33,7 @@
  */
 
 import { encodeJson } from '../../definition/codec.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Advanced, InstanceState, LogRecord, SpawnOptions } from '../instance-state.ts';
 import type { HeapObject, Watch } from '../snapshot/objects.ts';
@@ -58,9 +59,13 @@ export interface SchedulerSeams {
   readonly now: () => bigint;
 }
 
-/** How a new instance begins: the options it keeps for life, and its random source's seed. */
+/**
+ * How a new instance begins: the options it keeps for life, its random source's seed, and the
+ * entry encoding its outcome for its host when the outcome's type has a codec writing it (§9).
+ */
 export interface Beginning extends SpawnOptions {
   readonly seed: string;
+  readonly encoder?: FunctionId | undefined;
 }
 
 /** The snapshot of a new instance named `name` of `loaded`, about to run `call` (§9). */
@@ -68,7 +73,7 @@ export function unstarted(
   loaded: LoadedDefinition,
   name: string,
   call: InstanceCall,
-  { crashEveryAwait = false, terminatesOnPanic = false, seed }: Beginning,
+  { crashEveryAwait = false, terminatesOnPanic = false, seed, encoder }: Beginning,
 ): Snapshot {
   return {
     definition: loaded.hash,
@@ -76,6 +81,7 @@ export function unstarted(
     status: { kind: 'unstarted', call },
     crashEveryAwait,
     terminatesOnPanic,
+    ...(encoder !== undefined && { encoder }),
     spawned: 0,
     random: { seed, draws: 0 },
     pinned: [],

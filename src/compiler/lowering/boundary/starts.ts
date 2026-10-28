@@ -1,19 +1,20 @@
 /**
  * What a host may start, and how (§9; docs/arch/boundary.md). Every startable function of the
  * program's own modules gets a start entry, listed in the Definition under the key a host names
- * it by; `main` is started through its own, so what a host reads of any outcome is JSON by the
- * function's declared result.
+ * it by with the codec encoding its outcome; `main` is started through its own, so what a host
+ * reads of any outcome is JSON by the function's declared result.
  *
  * - Startable: a top-level function that isn't generic or extern, or a top-level constant holding
  *   a sendable lambda (§3.14), whose parameters are all taken by value and can be read from JSON,
  *   and whose outcome can be written as JSON. Anything else simply isn't startable.
- * - A start entry is the function's own body with JSON at its edges: it takes each argument as
- *   `Json` and decodes it, so JSON that doesn't fit fails the host's start and nothing runs, and
- *   it encodes whatever it returns. The instance is therefore one execution of the function, as
- *   any other is, and its traces and waits are the function's own.
+ * - A start entry is the function's own body taking each argument as `Json` and decoding it, so
+ *   JSON that doesn't fit fails the host's start and nothing runs. The instance is therefore one
+ *   execution of the function, as any other is, and its traces and waits are the function's own.
+ *   What it returns is encoded as every instance's outcome is, by the runtime once it returns.
  */
 
 import type { CodeFunction } from '../../../definition/functions.ts';
+import type { FunctionId } from '../../../definition/operands.ts';
 import { codecHelpers } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
@@ -30,7 +31,7 @@ import { instanceLowering, nestedLowering, type StartEdges } from '../function-l
 import { rootInstance } from '../instances.ts';
 import { keyOf } from '../names.ts';
 import type { DefinitionTables, StartTarget } from '../tables.ts';
-import { codecCall } from './codec-calls.ts';
+import { outcomeEncoderIndex } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
 
 /** A function a host may start: what it is, the key it goes by, and its signature. */
@@ -126,13 +127,27 @@ function crossing(checker: Checker, startable: Startable): Startable | undefined
     : undefined;
 }
 
-/** The start entry of `startable`: its own body, with JSON at its edges (function-lowering/). */
+/**
+ * Lists `startable` among what a host may start, with the codec encoding its outcome; the index of
+ * its start entry.
+ */
+export function listStart(
+  lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
+  startable: Startable,
+): FunctionId {
+  const encoder =
+    outcomeEncoderIndex(lowering, startable.outcome) ??
+    unreachable('A startable outcome has no codec writing it.');
+  return lowering.tables.startIndex(startable.target, startable.key, encoder);
+}
+
+/** The start entry of `startable`: its own body, taking its arguments as JSON (function-lowering/). */
 export function startEntry(
   lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
   startable: Startable,
 ): CodeFunction {
   const { checker, tables } = lowering;
-  const { target, parameters, outcome, key } = startable;
+  const { target, parameters, key } = startable;
   const edges: StartEdges = {
     parameters: parameters.map((type, index) => {
       const inbound = inboundOf(checker, undefined, type, {
@@ -143,12 +158,9 @@ export function startEntry(
     }),
     self: undefined,
   };
-  const start = {
-    header: tables.declarationHeader(target),
-    outcome: codecCall(checker, undefined, outcome, 'write'),
-  };
+  const header = tables.declarationHeader(target);
   if (target.kind === 'FunctionDeclaration') {
-    const entry = instanceLowering(lowering, rootInstance(target), start);
+    const entry = instanceLowering(lowering, rootInstance(target), header);
     if (entry === undefined || target.body === undefined) {
       unreachable('A startable function has no body.');
     }
@@ -160,7 +172,7 @@ export function startEntry(
   }
   const owner = { kind: 'constant', declaration: target } as const;
   const self = constantValue(tables, form);
-  return nestedLowering(lowering, { owner, node: form.lambda }, start).lowerStart(
+  return nestedLowering(lowering, { owner, node: form.lambda }, header).lowerStart(
     { ...edges, self },
     form.lambda.body,
   );

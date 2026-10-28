@@ -3,7 +3,8 @@
  * names when its earliest timer is due, so the host knows when to wake it, an instance waiting on
  * nothing the runtime can time naming no time, and the instances whose end it waits for, so the
  * host wakes it once one of them has ended. A ready instance was spawned and hasn't run yet, so
- * the host wakes it now. A finished instance has its outcome, the value its function returned.
+ * the host wakes it now. A finished instance has its outcome, the value its function returned, and
+ * that outcome as `Json` when its type has a codec writing it, which is what a host reads (§9).
  *
  * It is derived from the committed snapshot alone (scheduler/wake.ts `stateOf`), so what a host is
  * told is always what a restarted runtime would tell it. Advancing an instance also says what a
@@ -20,9 +21,12 @@ export type InstanceState =
       readonly until: bigint | undefined;
       readonly watching: readonly string[];
     }
-  | { readonly kind: 'finished'; readonly outcome: Value }
+  | { readonly kind: 'finished'; readonly outcome: Value; readonly encoded?: Value | undefined }
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string }
   | { readonly kind: 'terminated'; readonly message: string; readonly trace: string };
+
+/** A finished instance's state: its outcome, and that outcome's JSON when a codec writes it. */
+export type Finished = Extract<InstanceState, { kind: 'finished' }>;
 
 /** The level of a log record (§3.8 `log`): its `log.Level` variant, as a host reads it. */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';

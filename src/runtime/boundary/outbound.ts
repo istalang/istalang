@@ -1,9 +1,9 @@
 /**
- * Values leaving an instance as JSON (§9): what a host sees of an outcome. An instance a host
- * starts, `main`'s included, runs through its start wrapper, which encodes the function's outcome
- * by its declared type (docs/arch/boundary.md), so the outcome is already a `Json` value, given to
- * a host as JSON values, as everything a host exchanges is, or as its text. Any other value, such
- * as the outcome of a spawned instance, has no JSON the program wrote, so it is refused.
+ * Values leaving an instance as JSON (§9): what a host sees of an outcome. Every instance whose
+ * outcome's type has a codec writing it, a started one's (`main`'s included) or a spawned one's,
+ * finishes with that outcome encoded too (docs/arch/boundary.md), given to a host as JSON values,
+ * as everything a host exchanges is, or as its text. An outcome no codec writes, such as an
+ * `Instance`, has no JSON, so it is refused.
  */
 
 import type { Definition } from '../../definition/definition.ts';
@@ -15,26 +15,29 @@ import {
   plainOfJson,
 } from '../../definition/json-values.ts';
 import type { Value } from '../../definition/values.ts';
+import type { Finished } from '../instance-state.ts';
 import { Refusal } from '../refusal.ts';
 
-/** `value`, a `Json` the program built, as the JavaScript JSON a host works with (bigint integers). */
-export function outcomeJson(value: Value, definition: Definition): unknown {
-  return plainOfJson(value, encodedShape(value, definition));
+/** A finished instance's encoded outcome as the JavaScript JSON a host works with (bigint integers). */
+export function outcomeJson(finished: Finished, definition: Definition): unknown {
+  const { encoded, shape } = encodedOf(finished, definition);
+  return plainOfJson(encoded, shape);
 }
 
-/** `value`, a `Json` the program built, as the JSON text §9 writes. */
-export function outcomeText(value: Value, definition: Definition): string {
-  return jsonText(value, encodedShape(value, definition));
+/** A finished instance's encoded outcome as the JSON text §9 writes. */
+export function outcomeText(finished: Finished, definition: Definition): string {
+  const { encoded, shape } = encodedOf(finished, definition);
+  return jsonText(encoded, shape);
 }
 
-/** The shape of the `Json` `value` is; a Refusal when it isn't one. */
-function encodedShape(value: Value, definition: Definition): JsonType {
+/** The `Json` a finished instance's encoder gave, with its shape; a Refusal when it has none. */
+function encodedOf(
+  { encoded }: Finished,
+  definition: Definition,
+): { readonly encoded: Value; readonly shape: JsonType } {
   const shape = jsonTypeIn(definition.types);
-  if (shape === undefined || !isJsonValue(value, shape)) {
-    throw new Refusal(
-      'noJsonForm',
-      'Only what a start wrapper encoded crosses to the host as JSON.',
-    );
+  if (encoded === undefined || shape === undefined || !isJsonValue(encoded, shape)) {
+    throw new Refusal('noJsonForm', 'This outcome has no JSON: no codec writes its type.');
   }
-  return shape;
+  return { encoded, shape };
 }

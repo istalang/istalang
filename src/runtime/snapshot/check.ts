@@ -12,15 +12,17 @@
  *   names none
  * - a new instance's call starts a function with code, given its captures and its arguments by
  *   value, with values the Definition agrees with
+ * - its outcome's encoder, when it has one, is an entry that can encode one (§9)
  * - a cell is a type entry of role `cell` and a resource of an extern type
  * - every value held anywhere names types and functions the Definition has, and agrees with them,
  *   by the same check the Definition's own constants pass (definition/references.ts)
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { takesReference } from '../../definition/functions.ts';
+import { encoderProblem, takesReference } from '../../definition/functions.ts';
 import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import { valueProblems } from '../../definition/references.ts';
 import { hasRole } from '../../definition/types.ts';
 import { handleTarget } from '../../definition/values.ts';
@@ -37,6 +39,7 @@ export function checkSnapshot(definition: Definition, snapshot: Snapshot): void 
     ...waitProblems(definition, snapshot),
     ...callFutureProblems(snapshot),
     ...startingCallProblems(definition, snapshot.status),
+    ...encoderProblems(definition, snapshot.encoder),
   ];
   if (problems.length > 0) {
     throw new Refusal(
@@ -160,6 +163,20 @@ function startingCallProblems(
   return status.kind === 'panicked' && status.replay?.kind === 'call'
     ? callProblems(definition, status.replay.call)
     : [];
+}
+
+/** What is wrong with the entry encoding the instance's outcome, if it has one. */
+function encoderProblems(
+  definition: Definition,
+  encoder: FunctionId | undefined,
+): readonly string[] {
+  if (encoder === undefined) {
+    return [];
+  }
+  const entry = definition.functions[encoder];
+  const problem =
+    entry === undefined ? `the outcome's encoder ${encoder} is no function` : encoderProblem(entry);
+  return problem === undefined ? [] : [problem];
 }
 
 /** What is wrong with the call a new instance starts with, if anything. */

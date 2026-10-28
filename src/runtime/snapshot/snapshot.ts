@@ -12,6 +12,8 @@
  *   once (`terminatesOnPanic`, as `runtime.isolate` starts it, §9)
  * - for a panicked instance, when the failed segment started. `now()` returns its segment's
  *   start time, so an operator's retry sees the same time (docs/arch/definition.md, "Time").
+ * - the entry encoding its outcome as JSON for its host (§9), when the outcome's type has a codec
+ *   writing it; a finished instance keeps that JSON beside the outcome, which `result()` copies
  *
  * Extern constant reads, which spec §3.6 pins for the instance's life, join the snapshot with the
  * host externs that need them.
@@ -69,7 +71,8 @@ const status = z.discriminatedUnion('kind', [
     segmentStartedAt: integer,
     replay: replay.optional(),
   }),
-  z.strictObject({ kind: z.literal('finished'), outcome: value }),
+  /** Its function's outcome, and that outcome as the `Json` its encoder gave, when it has one. */
+  z.strictObject({ kind: z.literal('finished'), outcome: value, encoded: value.optional() }),
   /**
    * Ended after a panic, by its operator or at once for an instance `runtime.isolate` started
    * (§3.12, §9), keeping that panic.
@@ -86,6 +89,8 @@ const snapshotContents = z.strictObject({
   crashEveryAwait: z.boolean(),
   /** A panic terminates the instance at once, as `runtime.isolate` asks (§9). */
   terminatesOnPanic: z.boolean(),
+  /** The entry encoding its outcome as JSON for its host (§9); none when no codec writes it. */
+  encoder: functionId.optional(),
   /** How many instances this one has spawned (§9). */
   spawned: count,
   /** Its random source: the seed, and how many draws its committed segments made (§3.8). */

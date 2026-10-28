@@ -56,17 +56,20 @@ describe('the runtime', () => {
     expect(() => load({})).toThrow(Refusal);
   });
 
-  it("gives an outcome its start entry encoded as JSON or its text, refusing a value it didn't encode", () => {
+  it('gives an encoded outcome as JSON or its text, refusing one with no JSON', () => {
     const test = testRuntime();
     const program = test.runtime.deploy(
       compiledText('async fn main() -> Future<(float, int)>: (0.0 / 0.0, 12345678901234567890)'),
     );
     const { state } = program.start('i');
-    const outcome = state.kind === 'finished' ? state.outcome : null;
-    expect(program.outcome(outcome)).toEqual([null, 12345678901234567890n]);
-    expect(program.outcomeText(outcome)).toBe('[null,12345678901234567890]');
-    expect(() => program.outcome(98n)).toThrow(Refusal);
-    expect(() => load().outcomeText(98n)).toThrow(Refusal);
+    if (state.kind !== 'finished') {
+      throw new Error(`main ended ${state.kind}`);
+    }
+    expect(program.outcome(state)).toEqual([null, 12345678901234567890n]);
+    expect(program.outcomeText(state)).toBe('[null,12345678901234567890]');
+    const unencoded = { kind: 'finished', outcome: 98n } as const;
+    expect(() => program.outcome(unencoded)).toThrow(Refusal);
+    expect(() => load().outcomeText(unencoded)).toThrow(Refusal);
   });
 
   it('refuses a start whose seed from the host has the wrong length, writing nothing', () => {

@@ -18,9 +18,9 @@
  * - A default's entry takes the parameters before its own, and gives its default (§3.1, §3.3);
  *   a struct's or variant's fields are parameters of a function of their own
  *   (syntax/field-defaults.ts), so a field's default is one too.
- * - A start entry (boundary/starts.ts) is a function's own body compiled once more with JSON at its
- *   edges: its arguments arrive as `Json` and are decoded into its parameters, and every return
- *   gives its value encoded, so a host-started instance runs as one execution of the function.
+ * - A start entry (boundary/starts.ts) is a function's own body compiled once more with its
+ *   arguments arriving as `Json`, each decoded into its parameter, so a host-started instance runs
+ *   as one execution of the function.
  * - Which body an entry reads, and its frame, are frames.ts's; an entry is lowered only through
  *   `instanceLowering` and `nestedLowering`, which put the two together.
  */
@@ -46,7 +46,6 @@ import type { Block, Statement } from '../../syntax/statements.ts';
 import { CodeWriter } from '../code-writer.ts';
 import { emitConstant } from '../constants.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
-import { emitFunctionCall } from '../emit-call.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
 import { tupleOf } from '../expressions/tuples.ts';
 import {
@@ -64,7 +63,7 @@ import { HoldScopes } from '../statements/holds.ts';
 import { LoopStack } from '../statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
 import { declareVariable, VariableRegisters } from '../statements/variables.ts';
-import type { DefinitionTables } from '../tables.ts';
+import type { DefinitionTables, EntryHeader } from '../tables.ts';
 import { fittedValue } from './fits.ts';
 import {
   type Frame,
@@ -74,7 +73,6 @@ import {
   loweredInstance,
   loweredNested,
   nestedFrame,
-  type StartFrame,
 } from './frames.ts';
 
 /** Decodes a start entry's JSON argument into its parameter's value. */
@@ -93,22 +91,22 @@ export interface StartEdges {
 export function instanceLowering(
   lowering: Lowering,
   instance: FunctionInstance,
-  start?: StartFrame,
+  startHeader?: EntryHeader,
 ): FunctionLowering | undefined {
   const lowered = loweredInstance(lowering, instance);
   return lowered === undefined
     ? undefined
-    : new FunctionLowering(lowered, instanceFrame(lowered, instance, start));
+    : new FunctionLowering(lowered, instanceFrame(lowered, instance, startHeader));
 }
 
 /** The lowering of a nested function's entry, read through its owner's body (§3.14). */
 export function nestedLowering(
   lowering: Lowering,
   nested: NestedInstance,
-  start?: StartFrame,
+  startHeader?: EntryHeader,
 ): FunctionLowering {
   const lowered = loweredNested(lowering, nested.owner);
-  return new FunctionLowering(lowered, nestedFrame(lowered, nested, start));
+  return new FunctionLowering(lowered, nestedFrame(lowered, nested, startHeader));
 }
 
 /** A parameter of a frame, with the element types it takes as parameters when it is a pack's. */
@@ -144,7 +142,7 @@ class FunctionLowering implements FunctionContext {
   /** The code entry for a function instance, whose body is `block`. */
   lower(block: Block): CodeFunction {
     this.#declareFrame();
-    this.returnValue(lowerBody(this, block), block.span);
+    this.code.emit({ kind: 'return', span: block.span, value: lowerBody(this, block) });
     return this.#entry();
   }
 
@@ -155,10 +153,8 @@ class FunctionLowering implements FunctionContext {
     if (body === undefined) {
       unreachable(`The local function at ${node.span.start} has no body.`);
     }
-    this.returnValue(
-      body.kind === 'Block' ? lowerBody(this, body) : this.expression(body),
-      body.span,
-    );
+    const value = body.kind === 'Block' ? lowerBody(this, body) : this.expression(body);
+    this.code.emit({ kind: 'return', span: body.span, value });
     return this.#entry();
   }
 
@@ -182,7 +178,8 @@ class FunctionLowering implements FunctionContext {
       this.#declareFilled(self, (dst) => ({ kind: 'move', span: self.span, dst, src }));
     }
     this.#declareOwnCall();
-    this.returnValue(body.kind === 'Block' ? lowerBody(this, body) : this.expression(body), span);
+    const value = body.kind === 'Block' ? lowerBody(this, body) : this.expression(body);
+    this.code.emit({ kind: 'return', span, value });
     return this.#entry();
   }
 
@@ -194,7 +191,8 @@ class FunctionLowering implements FunctionContext {
       unreachable(`No parameter ${given.length} of ${instance.declaration.name.text}.`);
     }
     const defaultValue = defaultValueOf(parameter);
-    this.returnValue(this.expression(defaultValue), defaultValue.span);
+    const value = this.expression(defaultValue);
+    this.code.emit({ kind: 'return', span: defaultValue.span, value });
     return this.#entry();
   }
 
@@ -340,15 +338,6 @@ class FunctionLowering implements FunctionContext {
       cells: [...this.variables.cells],
       instructions,
     };
-  }
-
-  returnValue(value: Register, span: Span): void {
-    const { outcome } = this.frame;
-    const given =
-      outcome === undefined
-        ? value
-        : emitFunctionCall(this, { span, call: outcome, arguments: [value] });
-    this.code.emit({ kind: 'return', span, value: given });
   }
 
   constant(value: Value, span: Span): Register {

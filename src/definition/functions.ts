@@ -89,3 +89,15 @@ export function takesReference(entry: FunctionDefinition, index: number): boolea
 export function capturesOf(entry: FunctionDefinition): number {
   return entry.kind === 'code' ? entry.captures : 0;
 }
+
+/**
+ * Why `entry` can't encode an instance's outcome as JSON for its host (§9), which the runtime calls
+ * once the instance's root returns; undefined when it can.
+ */
+export function encoderProblem(entry: FunctionDefinition): string | undefined {
+  const takesOneValue = entry.parameters.length === 1 && !takesReference(entry, 0);
+  const waits = entry.kind === 'code' && entry.async;
+  return takesOneValue && !waits && capturesOf(entry) === 0
+    ? undefined
+    : `${entry.name} can't encode an outcome: an encoder takes one value and gives its JSON at once`;
+}
