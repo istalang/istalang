@@ -596,7 +596,7 @@ const next = head->next?->value   # int?: none when head->next is none
 
 All four comparisons go through a single `compare(left, right) -> int` (negative, zero or positive), so they can never contradict each other.
 
-**Chains.** Comparisons in a row chain as in Python: `a < b <= c` is `a < b and b <= c`, and any mix of `<`, `<=`, `>`, `>=`, `==` and `!=` chains the same way, each operand compared with the next. Every operand is evaluated at most once, in order, and evaluation stops at the first comparison that fails. An operand between two comparisons is compared on both sides, so it is never wrapped into an optional for one of them. A misreading of `x < y == flag` as `(x < y) == flag` fails to check, since it compares `y` with a `bool`; parenthesize to mean that. `is`, `in` and `not in` don't chain.
+**Chains.** Comparisons in a row chain as in Python: `a < b <= c` is `a < b and b <= c`, and any mix of `<`, `<=`, `>`, `>=`, `==`, `!=`, `in` and `not in` chains the same way, each operand compared with the next, so `0 < x in xs` is `0 < x and x in xs`. Every operand is evaluated at most once, in order, and evaluation stops at the first comparison that fails. An operand between two comparisons is compared on both sides, so it is never wrapped into an optional for one of them. A misreading of `x < y == flag` as `(x < y) == flag` fails to check, since it compares `y` with a `bool`; parenthesize to mean that. `is` doesn't chain, since a pattern follows it.
 
 **Membership.** `x in c` calls `includes(c, x)`, and `x not in c` is `not (x in c)`. An `Array` includes its elements, compared by `==`; a `Map` its keys, as `has` says; a `string` its substrings; and a `Range` the ints it reaches (§3.8).
 
@@ -631,7 +631,7 @@ fn multiply(left: Duration, factor: int) -> Duration:
 | 8 | `^` |
 | 9 | `\|` |
 | 10 | `..`, `..=`, and `by` |
-| 11 | `<`, `<=`, `>`, `>=`, `==`, `!=`, which chain; `is`, `in`, `not in` |
+| 11 | `<`, `<=`, `>`, `>=`, `==`, `!=`, `in`, `not in`, which chain; `is` |
 | 12 | `not` |
 | 13 | `and` |
 | 14 | `or` |

@@ -1,11 +1,12 @@
-# outcome: [true,false,true,false,true,1]
-# A chain compares each operand with the next, as Python's does, evaluating each operand once and
-# stopping at the first comparison that fails (§3.9); a generic one goes through `Comparable`.
+# outcome: [true,false,true,false,true,true,false,1]
+# A chain compares each operand with the next, as Python's does, `in` and `not in` included,
+# evaluating each operand once and stopping at the first comparison that fails (§3.9); a generic one
+# goes through `Comparable`.
 
 fn ordered<T is Comparable>(low: T, middle: T, high: T) -> bool:
   low <= middle < high
 
-async fn main() -> Future<(bool, bool, bool, bool, bool, int)>:
+async fn main() -> Future<(bool, bool, bool, bool, bool, bool, bool, int)>:
   let calls = 0
   fn counted(value: int) -> int:
     calls += 1
@@ -14,4 +15,6 @@ async fn main() -> Future<(bool, bool, bool, bool, bool, int)>:
   const falling = 3 > 2 > 2
   const mixed = 1 < 3 == 3 != 4
   const stopped = 5 < counted(1) < counted(9)
-  (rising, falling, mixed, stopped, ordered("a", "b", "c"), calls)
+  const member = 0 < 2 in [2, 3]
+  const absent = 0 < 5 not in [5]
+  (rising, falling, mixed, stopped, ordered("a", "b", "c"), member, absent, calls)

@@ -19,7 +19,7 @@
  */
 
 import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
-import type { BinaryOperator, ComparisonOperator, UnaryOperator } from '../operators.ts';
+import type { BinaryOperator, ChainOperator, UnaryOperator } from '../operators.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements.ts';
 import type { NamedType, TypeNode } from '../types.ts';
@@ -262,19 +262,19 @@ export interface Binary extends NodeOf<'Binary'> {
 }
 
 /**
- * Two or more comparisons in a row, `a < b <= c`: each operand compared with the next, `b` read
+ * Two or more comparisons in a row, `in` and `not in` included, `a < b <= c`: each operand compared with the next, `b` read
  * once. A single comparison is a `Binary`.
  */
 export interface ChainedComparison extends NodeOf<'ChainedComparison'> {
   readonly operands: readonly Expression[];
   /** One fewer than the operands: `operators[i]` compares `operands[i]` with `operands[i + 1]`. */
-  readonly operators: readonly ComparisonOperator[];
+  readonly operators: readonly ChainOperator[];
 }
 
 /** One comparison of a chain: an operand, the operator after it, and the operand after that. */
 export interface ChainLink {
   readonly left: Expression;
-  readonly operator: ComparisonOperator;
+  readonly operator: ChainOperator;
   readonly right: Expression;
 }
 

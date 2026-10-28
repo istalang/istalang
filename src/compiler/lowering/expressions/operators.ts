@@ -84,7 +84,10 @@ export function lowerChain(context: FunctionContext, node: ChainedComparison): R
   return result;
 }
 
-/** Whether a link's comparison holds: the built-in `==`, or the `compare` the checker made at it. */
+/**
+ * Whether a link holds: the built-in `==`, or the `compare` or `includes` the checker made at its
+ * right operand.
+ */
 function compared(
   context: FunctionContext,
   link: ChainLink,
@@ -96,6 +99,10 @@ function compared(
     const dst = context.code.allocate();
     context.code.emit({ kind: 'equal', span, dst, left, right });
     return meaning.negated ? negated(context, dst, span) : dst;
+  }
+  if (meaning.kind === 'membership') {
+    const includes = emitImplicitCall(context, link.right, 'includes', [right, left]);
+    return meaning.negated ? negated(context, includes, span) : includes;
   }
   const comparison = emitImplicitCall(context, link.right, 'compare', [left, right]);
   return ordered(context, span, comparison, meaning.relation);

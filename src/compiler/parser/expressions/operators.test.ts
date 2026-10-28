@@ -100,6 +100,8 @@ describe('bitwise operators, `**`, membership and chains', () => {
     ['x not in xs and y', '(Binary (Binary x not in xs) and y)'],
     ['a < b <= c', '(ChainedComparison [a b c] [< <=])'],
     ['(a < b) <= c', '(Binary (Parenthesized (Binary a < b)) <= c)'],
+    ['a < b in c', '(ChainedComparison [a b c] [< in])'],
+    ['a in b not in c', '(ChainedComparison [a b c] [in not in])'],
     ['0..10 by 2', '(Range 0 10 2)'],
     ['..10 by 2', '(Range _ 10 2)'],
     ['0.. by 2', '(Range 0 _ 2)'],

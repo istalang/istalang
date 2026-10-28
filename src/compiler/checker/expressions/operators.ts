@@ -5,8 +5,9 @@
  *   the orderings and `in` call functions (calls/operators.ts); an ordering is `bool` whatever
  *   `compare` returns, since lowering turns its int into the relation. `item in c` calls
  *   `includes(c, item)`, which must give a `bool`.
- * - A chain `a < b == c` compares each operand with the next, each operand checked once. Its
- *   orderings' `compare` calls are implicit, at their right operands, since the chain is one node.
+ * - A chain `a < b == c`, `in` and `not in` included, compares each operand with the next, each
+ *   operand checked once. Its orderings' `compare` and its memberships' `includes` calls are
+ *   implicit, at their right operands, since the chain is one node.
  *   An operand between two links is compared on both sides, so it is never wrapped into an
  *   optional for one of them; the first and the last may be, as in a single comparison.
  * - `==` and `!=` are built in for every type and can't be overloaded (types/equality.ts). The
@@ -15,9 +16,11 @@
  * - `??` works on optionals (optionals.ts).
  */
 
+import type { Span } from '../../../text/span.ts';
 import {
   type Binary,
   type ChainedComparison,
+  type ChainLink,
   type Expression,
   linksOf,
   type Unary,
@@ -82,10 +85,7 @@ function checkMembership(context: BodyContext, node: Binary, operation: AppliedO
   if (item === undefined || container === undefined) {
     return boolType;
   }
-  const result = resolveOperator(context, node, operation, [container, item]);
-  if (result.kind !== 'error' && !isPrimitive(result, 'bool')) {
-    context.report(checkerDiagnostics.typeMismatch(node.span, 'bool', typeText(result)));
-  }
+  expectBool(context, resolveOperator(context, node, operation, [container, item]), node.span);
   return boolType;
 }
 
@@ -104,22 +104,54 @@ export function checkChain(context: BodyContext, node: ChainedComparison): Type 
     const { meaning } = binaryOperators[link.operator];
     const left = operand(link.left);
     const right = operand(link.right, meaning.kind === 'equality' ? left.type : undefined);
-    const at = { span: { start: link.left.span.start, end: link.right.span.end }, ...link };
     if (meaning.kind === 'equality') {
-      checkEqualSides(context, wrappable(left), wrappable(right), at);
+      checkEqualSides(context, wrappable(left), wrappable(right), linkAt(link));
     } else {
-      const types = [left.type, right.type];
-      implicitCall(context, {
-        node: link.right,
-        role: 'compare',
-        candidates: topLevelCandidates(context.checker, context.module, meaning.function, types),
-        arguments: types.map((type) => ({ type, passing: 'value' }) as const),
-        failure: () =>
-          checkerDiagnostics.operatorTypes(at.span, at.operator, types.map(typeText).join(' and ')),
-      });
+      checkLinkCall(context, link, [left.type, right.type]);
     }
   }
   return boolType;
+}
+
+/** Where a link stands, for its reports: from its left operand to its right one. */
+function linkAt(link: ChainLink): { readonly span: Span; readonly operator: string } {
+  return {
+    span: { start: link.left.span.start, end: link.right.span.end },
+    operator: link.operator,
+  };
+}
+
+/** A link's call, made at its right operand: an ordering's `compare`, or `in`'s `includes`. */
+function checkLinkCall(
+  context: BodyContext,
+  link: ChainLink,
+  [left, right]: readonly [Type, Type],
+): void {
+  const { meaning } = binaryOperators[link.operator];
+  if (meaning.kind === 'equality') {
+    return;
+  }
+  const membership = meaning.kind === 'membership';
+  const types = membership ? [right, left] : [left, right];
+  const at = linkAt(link);
+  const result = implicitCall(context, {
+    node: link.right,
+    role: membership ? 'includes' : 'compare',
+    candidates: topLevelCandidates(context.checker, context.module, meaning.function, types),
+    arguments: types.map((type) => ({ type, passing: 'value' }) as const),
+    failure: () =>
+      checkerDiagnostics.operatorTypes(at.span, at.operator, types.map(typeText).join(' and ')),
+  });
+  if (membership && result !== undefined) {
+    expectBool(context, result, at.span);
+  }
+}
+
+/** `includes` must give a `bool`, since `in` is one. */
+function expectBool(context: BodyContext, result: Type, span: Span): void {
+  if (result.kind !== 'error' && !isPrimitive(result, 'bool')) {
+    context.report(checkerDiagnostics.typeMismatch(span, 'bool', typeText(result)));
+  }
 }
 
 function operandsOf(context: BodyContext, node: Binary): readonly Operand[] {

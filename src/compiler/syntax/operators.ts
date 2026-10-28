@@ -113,11 +113,11 @@ type BinaryOperatorOf<Kind extends BinaryMeaning['kind']> = {
     : never;
 }[BinaryOperator];
 
-/**
- * The operators that compare two values: the orderings and equality. A struct pattern tests a
- * field with one (§3.11), and two or more of them in a row are one chain.
- */
+/** The operators that compare two values: the orderings and equality. A struct pattern tests a field with one (§3.11). */
 export type ComparisonOperator = BinaryOperatorOf<'order' | 'equality'>;
+
+/** The operators two or more of which in a row are one chain, as in Python: comparisons and `in`. */
+export type ChainOperator = BinaryOperatorOf<'order' | 'equality' | 'membership'>;
 
 /** What a prefix operator that builds a `Unary` node does: calls `function`, or negates a bool. */
 type UnaryMeaning = ReturnType<typeof call> | { readonly kind: 'negation' };
@@ -194,11 +194,18 @@ type CompoundOf<Assignment> = Assignment extends `${infer Operator}=`
 
 /** Whether a token kind is one of the operators comparing two values. */
 export function isComparisonOperator(kind: string): kind is ComparisonOperator {
-  if (!Object.hasOwn(binaryOperators, kind)) {
-    return false;
-  }
-  const { meaning } = binaryOperators[kind as BinaryOperator];
-  return meaning.kind === 'order' || meaning.kind === 'equality';
+  return meaningOf(kind) === 'order' || meaningOf(kind) === 'equality';
+}
+
+/** Whether an operator joins a chain (`ChainOperator`). */
+export function isChainOperator(kind: string): kind is ChainOperator {
+  return isComparisonOperator(kind) || meaningOf(kind) === 'membership';
+}
+
+function meaningOf(kind: string): BinaryMeaning['kind'] | undefined {
+  return Object.hasOwn(binaryOperators, kind)
+    ? binaryOperators[kind as BinaryOperator].meaning.kind
+    : undefined;
 }
 
 /** The level just above `level`. */

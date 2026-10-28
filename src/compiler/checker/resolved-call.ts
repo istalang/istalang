@@ -146,6 +146,8 @@ export type ImplicitRole =
    * pattern's bound, or an array pattern's length against its fixed count.
    */
   | 'compare'
+  /** The `includes` a chain's `in` or `not in` calls, at its right operand (§3.9). */
+  | 'includes'
   /** An array pattern's reads of its array (§3.11): its length, an item, and the items between. */
   | 'length'
   | 'item'
