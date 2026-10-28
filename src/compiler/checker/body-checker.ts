@@ -45,7 +45,7 @@ import { LabelTargets } from './flow/labels.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { reportUnmet } from './resolution/trait-objects.ts';
-import type { CallSite, ResolvedCall } from './resolved-call.ts';
+import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
 import { statementPlace } from './rules/annotations.ts';
 import { checkDisposeUses } from './rules/disposal.ts';
 import { checkDropped } from './rules/dropped.ts';
@@ -85,7 +85,7 @@ export class BodyChecker implements BodyContext {
   readonly ownCalls = new OwnCalls();
   readonly labels = new LabelTargets();
   readonly #types = new Map<Expression, Type>();
-  readonly #calls = new Map<CallSite, ResolvedCall>();
+  readonly #resolved = new Map<ResolvedSite, ResolvedCall>();
   readonly #fits = new Map<ValueSite, Fit>();
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
@@ -140,7 +140,7 @@ export class BodyChecker implements BodyContext {
     for (const root of roots) {
       checkDropped(this, root);
     }
-    checkDisposeUses(this, this.#calls, checkTestingCalls(this, this.#calls));
+    checkDisposeUses(this, this.#resolved, checkTestingCalls(this, this.#resolved));
     return this.#checked(result);
   }
 
@@ -176,8 +176,8 @@ export class BodyChecker implements BodyContext {
     return this.#types.get(node) ?? errorType;
   }
 
-  callAt(site: CallSite): ResolvedCall | undefined {
-    return this.#calls.get(site);
+  callAt(site: ResolvedSite): ResolvedCall | undefined {
+    return this.#resolved.get(site);
   }
 
   expect(node: Expression, expected: Type | undefined): Type {
@@ -261,14 +261,14 @@ export class BodyChecker implements BodyContext {
     return entity;
   }
 
-  recordCall(site: CallSite, call: ResolvedCall): void {
-    this.#calls.set(site, call);
+  recordCall(site: ResolvedSite, call: ResolvedCall): void {
+    this.#resolved.set(site, call);
   }
 
   /** The CheckedBody of what was checked, producing `result`. */
   #checked(result: Type): CheckedBody {
     const types = this.#types;
-    const calls = this.#calls;
+    const resolved = this.#resolved;
     const fits = this.#fits;
     const {
       variables,
@@ -284,9 +284,9 @@ export class BodyChecker implements BodyContext {
     } = this;
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
-      calls,
+      resolved,
       madeCalls: () => [
-        ...[...calls].map(([site, call]) => ({ site, call })),
+        ...[...resolved].map(([site, call]) => ({ site, call })),
         ...implicit.made(),
         ...literals.made(),
       ],

@@ -34,7 +34,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
-import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/resolved-call.ts';
+import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../../checker/resolved-call.ts';
 import type { Fit } from '../../checker/types/fit.ts';
 import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type.ts';
@@ -218,8 +218,8 @@ class FunctionLowering implements FunctionContext {
     return this.tables.nestedIndex({ owner: this.owner, node });
   }
 
-  callAt(site: CallSite): ClosedCall {
-    return this.#closedAt(this.body.calls.get(site), site);
+  callAt(site: ResolvedSite): ClosedCall {
+    return this.#closedAt(this.body.resolved.get(site), site);
   }
 
   implicitCallAt(node: NodeOf<string>, role: ImplicitRole): ClosedCall {

@@ -31,7 +31,7 @@ import { callMade } from '../resolution/calls-made.ts';
 import type { Candidate } from '../resolution/candidates.ts';
 import { type Application, choose } from '../resolution/choice.ts';
 import { type Instantiation, instantiate } from '../resolution/conformance.ts';
-import type { CallSite } from '../resolved-call.ts';
+import type { ResolvedSite } from '../resolved-call.ts';
 import { substitute } from '../types/substitution.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -56,7 +56,7 @@ export interface WrittenArgument {
 
 /** A call to resolve, as written. */
 export interface CallRequest {
-  readonly site: CallSite;
+  readonly site: ResolvedSite;
   /** The function's name, or the operator, as messages name the call. */
   readonly name: string;
   readonly candidates: readonly Candidate[];
@@ -155,7 +155,7 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
 
 /** A chosen function, instantiated, at the site calling it or naming it as a value. */
 export interface Chosen {
-  readonly site: CallSite;
+  readonly site: ResolvedSite;
   readonly application: Application;
   readonly instantiation: Instantiation;
   readonly receiver?: Expression | undefined;

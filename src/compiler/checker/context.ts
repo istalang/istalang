@@ -67,7 +67,7 @@ import type { AnnotationQueries } from './checked-annotation.ts';
 import type { LabelResolution } from './checked-labels.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { JsonCodecs } from './json-form.ts';
-import type { CallSite, ImplicitRole, ResolvedCall } from './resolved-call.ts';
+import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
 import type { Fit, Fitting, OptionalEntity } from './types/fit.ts';
 import type { Substitution } from './types/substitution.ts';
 import type {
@@ -149,7 +149,7 @@ export interface BodyContext {
   /** The type `node` was checked to have; the error type for a node not checked yet. */
   readonly typeOf: (node: Expression) => Type;
   /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */
-  readonly callAt: (site: CallSite) => ResolvedCall | undefined;
+  readonly callAt: (site: ResolvedSite) => ResolvedCall | undefined;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
   /**
@@ -184,7 +184,7 @@ export interface BodyContext {
    * is captured there (§3.14).
    */
   readonly useEntity: (name: Identifier) => Entity | undefined;
-  readonly recordCall: (site: CallSite, call: ResolvedCall) => void;
+  readonly recordCall: (site: ResolvedSite, call: ResolvedCall) => void;
   /** Whether the innermost function is async, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
   readonly variables: Variables;

@@ -87,7 +87,7 @@ describe('the call disposing() watches', () => {
     const worker = program.modules.get(idOf('main.ista'))?.tree.root
       .items[0] as FunctionDeclaration;
     const body = checker.bodyOf(worker);
-    const [site, resolved] = [...(body?.calls ?? [])][0] ?? [];
+    const [site, resolved] = [...(body?.resolved ?? [])][0] ?? [];
     expect(checker.diagnosticsOf(idOf('main.ista'))).toEqual([]);
     expect(resolved?.function.name?.text).toBe('disposing');
     const receiver = resolved?.receiver;

@@ -14,7 +14,7 @@ import type { Value } from '../../definition/values.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CheckedBody, Checker, ValueSite } from '../checker/check.ts';
-import type { CallSite, ImplicitRole, ResolvedCall } from '../checker/resolved-call.ts';
+import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../checker/resolved-call.ts';
 import type { Fit } from '../checker/types/fit.ts';
 import type { Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
@@ -60,7 +60,7 @@ export interface FunctionContext {
   readonly statement: (node: Statement | Invalid) => void;
   readonly entityOf: (name: Identifier) => Entity | undefined;
   /** The call the checker resolved at `site`, closed here (instances.ts). */
-  readonly callAt: (site: CallSite) => ClosedCall;
+  readonly callAt: (site: ResolvedSite) => ClosedCall;
   /** `call`, one the checker recorded with no site, closed here. */
   readonly closed: (call: ResolvedCall) => ClosedCall;
   /** The call the checker made for `node` in `role`, closed here. */

@@ -19,7 +19,7 @@ import {
 } from '../../syntax/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
-import type { CallSite } from '../resolved-call.ts';
+import type { ResolvedSite } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { resolveCall } from './resolve.ts';
 
@@ -59,7 +59,7 @@ export interface Operand {
  */
 export function resolveOperator(
   context: BodyContext,
-  site: CallSite,
+  site: ResolvedSite,
   operator: AppliedOperator,
   operands: readonly Operand[],
 ): Type {

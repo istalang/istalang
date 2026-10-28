@@ -30,7 +30,7 @@ import { isHostExtern, isHostType } from '../host-externs.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import { callCandidates, namedInModule } from '../resolution/candidates.ts';
 import { chooseSilently } from '../resolution/silent-choice.ts';
-import type { CallSite, FunctionCall, ResolvedCall } from '../resolved-call.ts';
+import type { FunctionCall, ResolvedCall, ResolvedSite } from '../resolved-call.ts';
 import { knownConstraints, requiredFunctions } from '../traits/constraints.ts';
 import { type NominalType, sameType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -174,7 +174,7 @@ function checkSelfStays(
   const module = checker.moduleOf(declaration);
   const body = checker.bodyOf(declaration);
   const isExternCall = (node: SyntaxNode | undefined): boolean =>
-    node?.kind === 'Call' && body?.calls.get(node)?.function.isExtern === true;
+    node?.kind === 'Call' && body?.resolved.get(node)?.function.isExtern === true;
   const visit = (node: SyntaxNode, outer: readonly SyntaxNode[], nested: boolean): void => {
     const entity = node.kind === 'Identifier' ? checker.bindings.entityOf(module, node) : undefined;
     if (entity?.kind === 'variable' && entity.owner === self) {
@@ -203,7 +203,7 @@ function checkSelfStays(
  */
 export function checkDisposeUses(
   context: BodyContext,
-  calls: ReadonlyMap<CallSite, ResolvedCall>,
+  calls: ReadonlyMap<ResolvedSite, ResolvedCall>,
   mockTargets: ReadonlySet<NodeOf<string>>,
 ): void {
   for (const [site, call] of calls) {

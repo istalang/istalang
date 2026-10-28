@@ -78,7 +78,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
  * (names.ts), or a field read.
  */
 function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Register {
-  if (context.body.calls.has(node)) {
+  if (context.body.resolved.has(node)) {
     return lowerFunctionValue(context, node);
   }
   return context.entityOf(node.member) === undefined

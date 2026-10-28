@@ -20,7 +20,7 @@ import type { FunctionId, Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import type { SignatureParameter } from '../checker/check.ts';
-import type { CallSite, ImplicitRole } from '../checker/resolved-call.ts';
+import type { ImplicitRole, ResolvedSite } from '../checker/resolved-call.ts';
 import { substitute } from '../checker/types/substitution.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
@@ -184,7 +184,7 @@ export function referenceTo(register: Register): Argument {
 /** Calls the function the checker resolved for `site` with values; the register of its result. */
 export function emitCallAt(
   context: FunctionContext,
-  site: CallSite,
+  site: ResolvedSite,
   argumentRegisters: readonly Register[],
   dst: Register = context.code.allocate(),
 ): Register {

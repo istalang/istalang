@@ -42,7 +42,7 @@ import { spreadArray } from './collections.ts';
 import { lowerFieldRead } from './structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
-  const resolved = context.body.calls.get(node);
+  const resolved = context.body.resolved.get(node);
   if (resolved === undefined) {
     return lowerValueCall(context, node);
   }
@@ -120,7 +120,7 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
   if (spawned.kind !== 'Call') {
     unreachable('A spawn of no call checked clean.');
   }
-  const resolved = context.body.calls.get(spawned);
+  const resolved = context.body.resolved.get(spawned);
   const called = resolved === undefined ? undefined : context.callAt(spawned);
   const value: Callee | undefined =
     called === undefined ? { kind: 'value', register: valueCallee(context, spawned) } : undefined;

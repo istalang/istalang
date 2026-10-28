@@ -33,11 +33,11 @@ import type { ConstantForm } from './constant-form.ts';
 import type { JsonFormQueries } from './json-form.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type {
-  CallSite,
   FunctionCall,
   ImplicitRole,
   MadeCall,
   ResolvedCall,
+  ResolvedSite,
 } from './resolved-call.ts';
 import type { Fit } from './types/fit.ts';
 import type {
@@ -142,7 +142,7 @@ export interface CheckedBody {
   /** The type of an expression of this body; the error type for one never checked. */
   readonly typeOf: (expression: Expression) => Type;
   /** The function each call site of this body calls, or each function value names. */
-  readonly calls: ReadonlyMap<CallSite, ResolvedCall>;
+  readonly resolved: ReadonlyMap<ResolvedSite, ResolvedCall>;
   /**
    * Every call the body makes, where it makes it: its call sites', the language's for constructs
    * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to.

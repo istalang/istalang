@@ -14,7 +14,7 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostType } from '../host-externs.ts';
-import type { CallSite, FunctionCall, ResolvedCall } from '../resolved-call.ts';
+import type { FunctionCall, ResolvedCall, ResolvedSite } from '../resolved-call.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -22,7 +22,7 @@ import { typeText } from '../types/type-text.ts';
 /** Checks each of `calls`, a body's, that calls `mock` or `handle`; the mocks' targets. */
 export function checkTestingCalls(
   context: BodyContext,
-  calls: ReadonlyMap<CallSite, ResolvedCall>,
+  calls: ReadonlyMap<ResolvedSite, ResolvedCall>,
 ): ReadonlySet<NodeOf<string>> {
   const { checker } = context;
   const mocks = checker.languageFunctions(languageModules.testing, testingFunctions.mock);
@@ -78,6 +78,6 @@ function checkHandle(context: BodyContext, site: Call, made: Type | undefined): 
 }
 
 /** Whether `site` is a call written as one, `f(…)`, rather than an operator's or a name's. */
-function isWrittenCall(site: CallSite): site is Call {
+function isWrittenCall(site: ResolvedSite): site is Call {
   return site.kind === 'Call';
 }
