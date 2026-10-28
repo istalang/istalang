@@ -2,8 +2,8 @@
  * Longest-match lookup of punctuators.
  *
  * The lookup table is derived from the punctuator list in syntax/tokens.ts, so adding a punctuator
- * there is enough. There is deliberately no `>>` (the language has no shift operators), so
- * `Array<Array<int>>` closes two type-argument lists without the parser splitting a token.
+ * there is enough. A glued `>=`, `>>` or `>>=` is scanned as one token and split by the parser's
+ * cursor where `>` closes type arguments.
  */
 
 import { type Punctuator, punctuators } from '../syntax/tokens.ts';
