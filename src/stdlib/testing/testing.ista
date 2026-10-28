@@ -19,6 +19,7 @@
 import * as json from 'json'
 import Encodable from 'json'
 import Inbox, Revertible from 'inbox'
+import * as time from 'time'
 import Time, Duration from 'time'
 
 # Marks a function returning a suite's tests: `@Suite{"purchase approval"}`.
@@ -200,6 +201,13 @@ fn advance(self: FakeClock, by: Duration):
   clock->now = clock->now + by
   _fillDue(clock)
 
+# A setup installing a `FakeClock` starting at 0 as `time.now` and `time.at` (§10).
+async fn withClock(body: async fn(FakeClock) -> unit):
+  const clock = FakeClock{start: Time{value: 0}}
+  hold _ = mock(time.now, clock.now)
+  hold _ = mock(time.at, clock.at)
+  await body(clock)
+
 # Fills every wait whose deadline the clock has reached, in order, and lets go of them.
 fn _fillDue(clock: _Clock):
   const (due, later) = _splitDue(clock->waits, clock->now)
@@ -256,3 +264,38 @@ fn _inboxOf<Q, T, K>(queues: _Queues<Q, T, K>, queue: Q) -> Inbox<T>:
     if each.queue == queue:
       return each.inbox
   panic("This FakeQueue didn't open the queue it was given.")
+
+# The receipts of a host's revertible sends, of extern type `R` (§3.6, §10): `send(queues)` replaces
+# a revertible send into `queues`, and `dispose` replaces `R`'s `dispose`, retracting the message the
+# receipt stood for.
+struct FakeReceipts<R>:
+  make: fn() -> R
+  _entries: _Receipts<R> = new _Receipts<R>{}
+  dispose: fn(R) -> unit = fn(receipt: R): _disposeReceipt(_entries, receipt)
+
+shared struct _Receipts<R>:
+  held: Array<_Receipt<R>> = []
+
+struct _Receipt<R>:
+  receipt: R
+  retract: fn() -> unit
+
+# A replacement for a host's revertible send into `queues`, returning a receipt `self.make` builds.
+fn send<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> fn(Q, T) -> R:
+  fn sendInto(queue: Q, message: T) -> R:
+    const receipt = (self.make)()
+    const held = new Shared<Revertible<T>?>{value: queues.sendRevertible(queue, message)}
+    fn retract():
+      held->value = none
+    self._entries->held.push(_Receipt{receipt, retract})
+    receipt
+  sendInto
+
+fn _disposeReceipt<R>(entries: _Receipts<R>, receipt: R):
+  let remaining: Array<_Receipt<R>> = []
+  for each in entries->held:
+    if each.receipt == receipt:
+      (each.retract)()
+    else:
+      remaining.push(each)
+  entries->held = remaining

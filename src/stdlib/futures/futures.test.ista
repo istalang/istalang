@@ -3,7 +3,7 @@
 # twice: in the test's own instance, and in one that discards and re-runs every segment before
 # committing it (§10).
 
-import Suite, Test, test, assertEq, expectPanic, FakeClock, mock, spawnCrashingEveryAwait, idle from 'testing'
+import Suite, Test, test, assertEq, expectPanic, FakeClock, withClock, mock, spawnCrashingEveryAwait, idle from 'testing'
 import * as testing from 'testing'
 import runAndReRun from '../testing/re-runs.test'
 import * as futures from 'futures'
@@ -17,13 +17,6 @@ type Outcome = Result<int, string>
 async fn later<T>(slot: Slot<T>, value: T) -> Future<unit>:
   await runtime.commit()
   await slot.put(value)
-
-# A clock standing still at 0 until the test advances it, for `timeout` and `retry`.
-async fn withClock(body: async fn(FakeClock) -> unit):
-  const clock = FakeClock{start: time.Time{value: 0}}
-  hold _ = mock(time.now, clock.now)
-  hold _ = mock(time.at, clock.at)
-  await body(clock)
 
 async fn allArrivingOutOfOrder() -> Future<Result<Array<int>, string>>:
   const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())

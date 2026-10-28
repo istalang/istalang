@@ -6,11 +6,8 @@
 # program's revertible sends, each kept with the message it stands for, so the program's disposing
 # of a receipt retracts that message (§3.6).
 
-import Suite, Test, test, group, assertEq, FakeClock, FakeQueue, Mock, mock, calls, handle, idle from 'testing'
+import Suite, Test, test, group, assertEq, FakeClock, FakeQueue, FakeReceipts, withClock, Mock, mock, calls, handle, idle from 'testing'
 import * as testing from 'testing'
-import * as time from 'time'
-import Time from 'time'
-import Revertible from 'inbox'
 import * as app from './purchase'
 import PurchaseRequest, ReviewRequest, Verdict, Notice, Cancel, ChargeResult, Queue, Sent from './purchase'
 
@@ -22,44 +19,28 @@ struct PurchaseEnv:
   notices: FakeQueue<Queue<Notice>, Notice>
   charges: Mock<fn(string, int) -> Result<string>>
 
-shared struct Receipts:
-  reviews: Array<(Sent, Revertible<ReviewRequest>)> = []
-  notices: Array<(Sent, Revertible<Notice>)> = []
-
 async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
-  const clock = FakeClock{start: Time{value: 0}}
-  hold _ = mock(time.now, clock.now)
-  hold _ = mock(time.at, clock.at)
-  const env = PurchaseEnv{
-    clock,
-    reviews: FakeQueue<Queue<ReviewRequest>, ReviewRequest>{make: handle},
-    verdicts: FakeQueue<Queue<Verdict>, Verdict>{make: handle},
-    cancels: FakeQueue<Queue<Cancel>, Cancel>{make: handle},
-    notices: FakeQueue<Queue<Notice>, Notice>{make: handle},
-    charges: mock(app.chargeCard, fn(id: string, amount: int) -> Result<string>: Ok{value: "r-" + id + "-" + amount}),
-  }
-  hold _ = mock(app.reviewQueue, env.reviews.open)
-  hold _ = mock(app.verdicts, env.verdicts.open)
-  hold _ = mock(app.cancels, env.cancels.open)
-  hold _ = mock(app.notifications, env.notices.open)
-  hold _ = mock(app.receive, env.verdicts.receive)
-  hold _ = mock(app.receive, env.cancels.receive)
-  const receipts = new Receipts{}
-  hold _ = mock(app._sendRevertible, fn(queue: Queue<ReviewRequest>, message: ReviewRequest): {
-    const receipt = handle<Sent>()
-    receipts->reviews.push((receipt, env.reviews.sendRevertible(queue, message)))
-    receipt
+  await withClock(async fn(clock): {
+    const env = PurchaseEnv{
+      clock,
+      reviews: FakeQueue<Queue<ReviewRequest>, ReviewRequest>{make: handle},
+      verdicts: FakeQueue<Queue<Verdict>, Verdict>{make: handle},
+      cancels: FakeQueue<Queue<Cancel>, Cancel>{make: handle},
+      notices: FakeQueue<Queue<Notice>, Notice>{make: handle},
+      charges: mock(app.chargeCard, fn(id: string, amount: int) -> Result<string>: Ok{value: "r-" + id + "-" + amount}),
+    }
+    hold _ = mock(app.reviewQueue, env.reviews.open)
+    hold _ = mock(app.verdicts, env.verdicts.open)
+    hold _ = mock(app.cancels, env.cancels.open)
+    hold _ = mock(app.notifications, env.notices.open)
+    hold _ = mock(app.receive, env.verdicts.receive)
+    hold _ = mock(app.receive, env.cancels.receive)
+    const receipts = FakeReceipts<Sent>{make: handle}
+    hold _ = mock(app._sendRevertible, receipts.send(env.reviews))
+    hold _ = mock(app._sendRevertible, receipts.send(env.notices))
+    hold _ = mock(app.dispose, receipts.dispose)
+    await test(env)
   })
-  hold _ = mock(app._sendRevertible, fn(queue: Queue<Notice>, message: Notice): {
-    const receipt = handle<Sent>()
-    receipts->notices.push((receipt, env.notices.sendRevertible(queue, message)))
-    receipt
-  })
-  hold _ = mock(app.dispose, fn(receipt: Sent): {
-    receipts->reviews = [for (each, held) in receipts->reviews if each != receipt: (each, held)]
-    receipts->notices = [for (each, held) in receipts->notices if each != receipt: (each, held)]
-  })
-  await test(env)
 
 const laptop = PurchaseRequest{id: "p1", item: "laptop", amount: 900}
 

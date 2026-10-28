@@ -4,13 +4,14 @@
 # constructors give is read from the tests they build; the runner's own tests run focused tests.
 
 import Suite, Test, test, group, skip, only, Setup, setups, assert, assertEq, expectPanic from 'testing'
-import FakeClock, FakeQueue, mock, handle, idle, state from 'testing'
+import FakeClock, FakeQueue, FakeReceipts, withClock, mock, handle, idle, state from 'testing'
 import * as testing from 'testing'
 import * as time from 'time'
 import Time, Duration from 'time'
 import Encodable, Decodable from 'json'
 
 extern sendable struct Queue<T is Sendable>
+extern struct Sent
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
 extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>
 extern fn queueOf(name: string) -> Queue<int>
@@ -150,10 +151,7 @@ fn clocks() -> Array<Test>: [
     hold _ = mock(replacement: clock.now, target: time.now)
     assertEq(time.now(), Time{value: 5})
   }),
-  test("fills a deadline once advanced to it, in an instance the test started", async fn(): {
-    const clock = FakeClock{start: Time{value: 0}}
-    hold _ = mock(time.now, clock.now)
-    hold _ = mock(time.at, clock.at)
+  test("fills a deadline once advanced to it, in an instance the test started", withClock, async fn(clock): {
     const started = spawn waitsAday()
     await started.idle()
     clock.advance(Duration{value: 86_399_999})
@@ -205,11 +203,16 @@ fn queues() -> Array<Test>: [
   }),
   test("retracts a revertible send once its holder lets go", fn(): {
     const fake = FakeQueue<Queue<int>, int>{make: handle}
-    const held = fake.sendRevertible(fake.open("a"), 1)
-    fake.post("a", 2)
-    assertEq(fake.pending("a"), [1, 2])
+    const receipts = FakeReceipts<Sent>{make: handle}
+    const queue = fake.open("a")
+    const sent = receipts.send(fake)(queue, 1)
+    const held = fake.sendRevertible(queue, 2)
+    fake.post("a", 3)
+    assertEq(fake.pending("a"), [1, 2, 3])
+    (receipts.dispose)(sent)
+    assertEq(fake.pending("a"), [2, 3])
     drop held
-    assertEq(fake.pending("a"), [2])
+    assertEq(fake.pending("a"), [3])
   }),
   test("panics given a queue it didn't open", async fn(): {
     const message = await expectPanic(sendsToAnother)
