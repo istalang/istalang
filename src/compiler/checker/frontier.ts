@@ -4,9 +4,8 @@
  * its key, and the compiler then finds every place that reported it.
  */
 
-/** The constructs, narrower than a node kind, reported as not supported yet. */
-export const frontier = {
-} as const;
+/** The constructs, narrower than a node kind, reported as not supported yet: none, today. */
+const frontier = {} as const;
 
 /** A construct `frontier` names. */
 export type FrontierConstruct = (typeof frontier)[keyof typeof frontier];

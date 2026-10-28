@@ -49,7 +49,13 @@ import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
 import { checkEqualSides, comparable } from '../types/equality.ts';
-import { errorType, intType, isPrimitive, type NominalDeclaration, type Type } from '../types/type.ts';
+import {
+  errorType,
+  intType,
+  isPrimitive,
+  type NominalDeclaration,
+  type Type,
+} from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 import { downcastOf } from './downcasts.ts';
