@@ -17,6 +17,7 @@ import { closureProblem, constructionProblem, instructionProblem } from './instr
 import { terminates } from './instructions/flow.ts';
 import { type Operands, operandsOf } from './instructions/instruction.ts';
 import type { Tables } from './tables.ts';
+import { runnerArity } from './test-runner.ts';
 import { hasRole, type TypeDefinition, typesIn } from './types.ts';
 import { type CompositeValue, childValues, handlesIn, isComposite, type Value } from './values.ts';
 
@@ -92,12 +93,6 @@ function checkStarts(context: Context): void {
     }
   });
 }
-
-/**
- * How many arguments the testing module's runner functions take (testing.ista): listing a suite
- * takes it and its title, and running a test takes those, its position and its title.
- */
-const runnerArity = { list: 2, run: 4 } as const;
 
 /** A test Definition's suites and runner (§10): code entries, a suite's taking nothing. */
 function checkTests(context: Context): void {

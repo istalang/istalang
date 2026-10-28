@@ -16,8 +16,10 @@
  */
 
 import { createHash } from 'node:crypto';
+import { fieldValueOf } from '../../definition/declared-values.ts';
 import { type Definition, definitionFormat } from '../../definition/definition.ts';
-import { elementsOf, isComposite, type Value } from '../../definition/values.ts';
+import { listingArguments, runningArguments } from '../../definition/test-runner.ts';
+import { elementsOf, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Natives } from '../natives.ts';
 import { seedFrom } from '../random-seed.ts';
@@ -81,7 +83,7 @@ export function* runTests(
   };
   const listings: Listing[] = [];
   for (const { title, function: suite } of tests.suites) {
-    const listing = yield* run(callOf(tests.list, [suiteValue(suite), title]), title);
+    const listing = yield* run(callOf(tests.list, listingArguments(suite, title)), title);
     if (listing.kind === 'failed') {
       yield { title, outcome: listing };
     } else {
@@ -115,7 +117,7 @@ function* runListed(
         yield { title: test.title, outcome: { kind: 'skipped' } };
       } else {
         const ended = yield* run(
-          callOf(runner, [suiteValue(suite), title, BigInt(position), test.title]),
+          callOf(runner, runningArguments({ suite, title, position, expected: test.title })),
           test.title,
         );
         yield { title: test.title, outcome: ended.kind === 'failed' ? ended : { kind: 'passed' } };
@@ -129,22 +131,10 @@ function callOf(function_: number, arguments_: readonly Value[]): InstanceCall {
   return { function: function_, captures: [], arguments: [...arguments_] };
 }
 
-/** A suite function as a value: a closure capturing nothing. */
-function suiteValue(suite: number): Value {
-  return { kind: 'closure', function: suite, captures: [] };
-}
-
 /** The tests a listing gave, each a `Listed` struct read by its field names. */
 function listedOf(definition: Definition, outcome: Value): readonly Listed[] {
   return elementsOf(outcome).map((element) => {
-    if (!isComposite(element) || element.kind !== 'struct') {
-      unreachable('A listing gives structs.');
-    }
-    const entry = definition.types[element.type];
-    const field = (name: string) =>
-      element.fields[
-        entry?.kind === 'struct' ? entry.fields.findIndex((each) => each.name === name) : -1
-      ];
+    const field = (name: string) => fieldValueOf(definition.types, element, name);
     const title = field('title');
     const skipped = field('skipped');
     const only = field('only');
