@@ -109,12 +109,27 @@ export interface FieldMember {
 
 /**
  * A struct without a name (§3.1): introduced by a `{…}` type, by a `struct{…}` literal with
- * nothing to take a type from, or by a shared struct as the value behind it (§3.18).
+ * nothing to take a type from, or by a shared struct as the value behind it (§3.18), carrying that
+ * shared struct's type arguments.
  */
-export interface AnonymousStructType {
-  readonly kind: 'anonymous';
-  readonly origin: StructType | StructLiteral | StructDeclaration;
-  readonly fields: readonly FieldMember[];
+export type AnonymousStructType =
+  | {
+      readonly kind: 'anonymous';
+      readonly origin: StructType | StructLiteral;
+      readonly fields: readonly FieldMember[];
+    }
+  | {
+      readonly kind: 'anonymous';
+      readonly origin: StructDeclaration;
+      readonly arguments: readonly Type[];
+      readonly fields: readonly FieldMember[];
+    };
+
+/** Whether `type` is the anonymous struct value behind a shared struct (`*x`, §3.18). */
+export function isSharedValueType(
+  type: AnonymousStructType,
+): type is Extract<AnonymousStructType, { readonly origin: StructDeclaration }> {
+  return type.origin.kind === 'StructDeclaration';
 }
 
 /** A parameter of a function type: its type, and whether it takes a reference (§3.7). */

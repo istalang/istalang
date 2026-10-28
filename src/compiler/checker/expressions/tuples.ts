@@ -9,26 +9,62 @@
  * decides (§3.5) is decided with it.
  */
 
-import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
+import {
+  type Expression,
+  type Tuple,
+  type TupleElement,
+  unparenthesized,
+} from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
-import { acceptedPart, partsAccept } from '../rules/agreement.ts';
+import { partsAccept } from '../rules/agreement.ts';
 import { withoutOptionals } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+
+/** Per-element guides for a tuple value whose target tuple contains `_` gaps (`statements/assignments.ts`). */
+export interface TupleGuide {
+  readonly elements: readonly (Type | undefined | TupleGuide)[];
+}
+
+const activeGuides = new WeakMap<Expression, TupleGuide>();
+
+/** Checks `compute` with `guide` guiding `value` when `value` is a tuple literal. */
+export function withTupleGuide(
+  value: Expression,
+  guide: TupleGuide | undefined,
+  compute: () => Type,
+): Type {
+  const bare = unparenthesized(value);
+  if (guide === undefined) {
+    return compute();
+  }
+  activeGuides.set(bare, guide);
+  try {
+    return compute();
+  } finally {
+    activeGuides.delete(bare);
+  }
+}
 
 export function checkTuple(context: BodyContext, node: Tuple, expected: Type | undefined): Type {
   if (node.elements.length === 0) {
     return unitType;
   }
   const guides = expectedTuple(context, expected, node.elements.length);
+  const partial =
+    guides === undefined && expected === undefined ? activeGuides.get(node) : undefined;
+  const partialElements =
+    partial?.elements.length === node.elements.length ? partial.elements : undefined;
   return {
     kind: 'tuple',
     elements: node.elements.map((element, index) => {
-      const guide = guides?.[index];
-      const type = context.expression(element, guide);
+      const slot = guides?.[index] ?? partialElements?.[index];
+      const guide = slot !== undefined && 'kind' in slot ? slot : undefined;
+      const nestedGuide = slot !== undefined && !('kind' in slot) ? slot : undefined;
+      const type = withTupleGuide(element, nestedGuide, () => context.expression(element, guide));
       if (guide === undefined || context.checker.fitOf(type, guide) === undefined) {
         return type;
       }
@@ -75,7 +111,7 @@ export function checkTupleElement(context: BodyContext, node: TupleElement): Typ
 export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undefined {
   const elements = partsAccept(
     context,
-    node.elements.map((element) => acceptedPart(context, element)),
+    node.elements.map((element) => context.acceptedPart(element)),
   );
   if (elements === undefined) {
     return undefined;

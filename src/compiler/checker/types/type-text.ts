@@ -7,7 +7,13 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
-import type { AnonymousStructType, Constraint, NominalType, Type } from './type.ts';
+import {
+  type AnonymousStructType,
+  type Constraint,
+  isSharedValueType,
+  type NominalType,
+  type Type,
+} from './type.ts';
 
 /**
  * `type` as source would spell it. Extern keys spell types too (definition/extern-key.ts), but
@@ -79,12 +85,12 @@ function nominalTypeText(type: NominalType): string {
 }
 
 /**
- * An anonymous struct as written: `*Name` for the value behind a non-generic shared struct (§3.18),
+ * An anonymous struct as written: `*Name<Arguments>` for the value behind a shared struct (§3.18),
  * or `struct { … }` for any other.
  */
 function anonymousText(type: AnonymousStructType): string {
-  if (type.origin.kind === 'StructDeclaration' && type.origin.typeParameters.length === 0) {
-    return `*${type.origin.name.text}`;
+  if (isSharedValueType(type)) {
+    return `*${parameterizedText(type.origin.name.text, type.arguments)}`;
   }
   return `struct { ${type.fields.map((field) => `${field.name}: ${typeText(field.type)}`).join('; ')} }`;
 }

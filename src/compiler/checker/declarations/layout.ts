@@ -62,7 +62,7 @@ export class Layouts {
       return undefined;
     }
     const fields = instantiated(this.declaredFieldsOf(declaration), substitutionOf(type));
-    return { kind: 'anonymous', origin: declaration, fields };
+    return { kind: 'anonymous', origin: declaration, arguments: type.arguments, fields };
   }
 
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */

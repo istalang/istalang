@@ -37,6 +37,7 @@ import {
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { type TupleGuide, withTupleGuide } from '../expressions/tuples.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
@@ -51,36 +52,52 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
     checkCompound(context, node, only, node.operator);
     return;
   }
-  const { expected, places } = prepareTargets(context, node.targets);
-  const whole = { type: context.expression(node.value, expected), path: [] };
+  const { expected, guide, places } = prepareTargets(context, node.targets);
+  const valueType = withTupleGuide(node.value, guide, () =>
+    context.expression(node.value, expected),
+  );
   const assigning = assigningIn(context, places, node.value.span);
-  takeTargets(assigning, node.targets, whole, node.span);
+  takeTargets(assigning, node.targets, { type: valueType, path: [] }, node.span);
   checkDistinctPlaces(context, assigning.parts);
   context.variables.recordAssigned(node, assigning.parts);
 }
 
+type TargetExpectation = Type | TupleGuide | undefined;
+
+function isCompleteType(expectation: TargetExpectation): expectation is Type {
+  return expectation !== undefined && 'kind' in expectation;
+}
+
 /**
- * Checks the leaf places of `targets` in source order and builds the type `targets` expect of the
- * assigned value; undefined when no target gives a type (as for `_`).
+ * Checks the leaf places of `targets` in source order and builds the type (or partial tuple guide
+ * when `_` leaves gaps) that `targets` expect of the assigned value.
  */
 function prepareTargets(
   context: BodyContext,
   targets: readonly Expression[],
-): { readonly expected: Type | undefined; readonly places: ReadonlyMap<Expression, Type> } {
+): {
+  readonly expected: Type | undefined;
+  readonly guide: TupleGuide | undefined;
+  readonly places: ReadonlyMap<Expression, Type>;
+} {
   const places = new Map<Expression, Type>();
   const [only] = targets;
-  const expected =
+  const expectation =
     targets.length === 1 && only !== undefined
       ? prepareTarget(context, only, places)
       : prepareTupleTargets(context, targets, places);
-  return { expected, places };
+  return {
+    expected: isCompleteType(expectation) ? expectation : undefined,
+    guide: expectation !== undefined && !isCompleteType(expectation) ? expectation : undefined,
+    places,
+  };
 }
 
 function prepareTarget(
   context: BodyContext,
   target: Expression,
   places: Map<Expression, Type>,
-): Type | undefined {
+): TargetExpectation {
   const destructuring = destructuringOf(target);
   if (destructuring !== undefined) {
     if (destructuring.kind === 'tuple') {
@@ -104,10 +121,12 @@ function prepareTupleTargets(
   context: BodyContext,
   elements: readonly Expression[],
   places: Map<Expression, Type>,
-): Type | undefined {
-  const types = elements.map((element) => prepareTarget(context, element, places));
-  const known = types.filter((type): type is Type => type !== undefined);
-  return known.length === elements.length ? tupleType(known) : undefined;
+): TargetExpectation {
+  const items = elements.map((element) => prepareTarget(context, element, places));
+  if (items.every(isCompleteType)) {
+    return tupleType(items);
+  }
+  return items.some((item) => item !== undefined) ? { elements: items } : undefined;
 }
 
 /** `x op= v`: one place, read and written. */

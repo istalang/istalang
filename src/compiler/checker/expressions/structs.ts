@@ -36,11 +36,11 @@ import {
 } from '../closures/function-values.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Accepts } from '../resolution/call-arguments.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
-import type { Accepts } from '../resolution/choice.ts';
 import { namedType } from '../resolution/named.ts';
 import { knownConstraints, requiredFields, requiredFieldType } from '../traits/constraints.ts';
-import { optionalInner } from '../types/fit.ts';
+import { optionalInner, withoutOptionals } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import {
   errorType,
@@ -122,7 +122,9 @@ function checkAnonymousLiteral(
   expected: Type | undefined,
   spread: LiteralSpread | undefined,
 ): Type {
-  const fromExpected = expected === undefined ? undefined : shapeOf(context, expected);
+  const target =
+    expected === undefined ? undefined : withoutOptionals(expected, context.checker.optionalEntity);
+  const fromExpected = target === undefined ? undefined : shapeOf(context, target);
   if (fromExpected !== undefined) {
     return checkLiteralFields(context, node, fromExpected, spread);
   }

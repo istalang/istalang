@@ -184,6 +184,10 @@ export class ProgramChecker implements CheckerContext {
     this.#diagnostics.set(module, diagnostics);
   }
 
+  diagnosticCount(module: ModuleId): number {
+    return (this.#diagnostics.get(module) ?? []).length;
+  }
+
   moduleOf(declaration: Declaration | VariableDeclaration): ModuleId {
     const module = this.#modules.get(declaration);
     if (module === undefined) {

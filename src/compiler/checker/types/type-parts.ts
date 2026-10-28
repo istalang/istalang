@@ -4,7 +4,7 @@
  * the error type.
  */
 
-import { type AnyType, type ParameterKey, type Type, withPack } from './type.ts';
+import { type AnyType, isSharedValueType, type ParameterKey, type Type, withPack } from './type.ts';
 
 /** The types `type` is built from, one level down. */
 export function typeChildren(type: Type): readonly Type[] {
@@ -12,7 +12,9 @@ export function typeChildren(type: Type): readonly Type[] {
     case 'nominal':
       return type.arguments;
     case 'anonymous':
-      return type.fields.map((field) => field.type);
+      return isSharedValueType(type)
+        ? [...type.arguments, ...type.fields.map((field) => field.type)]
+        : type.fields.map((field) => field.type);
     case 'tuple':
       return type.elements;
     case 'function':
@@ -69,8 +71,12 @@ export function mapChildren(type: Type, map: (child: Type) => Type): Type {
       return type;
     case 'nominal':
       return { ...type, arguments: type.arguments.map(map) };
-    case 'anonymous':
-      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
+    case 'anonymous': {
+      const fields = type.fields.map((field) => ({ ...field, type: map(field.type) }));
+      return isSharedValueType(type)
+        ? { ...type, arguments: type.arguments.map(map), fields }
+        : { ...type, fields };
+    }
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':

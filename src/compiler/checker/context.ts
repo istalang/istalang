@@ -39,9 +39,10 @@ import type { OptionalChains } from './expressions/optionals.ts';
 import type { LabelTargets } from './flow/labels.ts';
 import type { JsonCodecs } from './json-form.ts';
 import type { CheckedPatterns } from './patterns/matching.ts';
-import type { Accepts } from './resolution/choice.ts';
+import type { Accepts } from './resolution/call-arguments.ts';
 import type { ImplicitCalls } from './resolution/implicit.ts';
 import type { CallSite, ResolvedCall } from './resolved-call.ts';
+import type { AcceptedPart } from './rules/agreement.ts';
 import type { Annotations } from './rules/annotations.ts';
 import type { Iterations } from './rules/iteration.ts';
 import type { VariableScope } from './statements/variables.ts';
@@ -58,6 +59,8 @@ import type {
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
   readonly report: (module: ModuleId, diagnostic: Diagnostic) => void;
+  /** How many diagnostics have been reported in `module` so far. */
+  readonly diagnosticCount: (module: ModuleId) => number;
   /** The type `node` denotes in `module`. */
   readonly resolveType: (module: ModuleId, node: TypeNode) => Type;
   /** The type `any` followed by `traits` denotes in `module` (§3.10). */
@@ -111,6 +114,8 @@ export interface BodyContext {
    * undefined when it has a type of its own, which takes part in choosing the function.
    */
   readonly accepts: (node: Expression) => Accepts | undefined;
+  /** How `node` takes part in a composite argument's `Accepts` check (expressions.ts). */
+  readonly acceptedPart: (node: Expression | undefined) => AcceptedPart;
   /**
    * Checks `node`, a lambda, maybe parenthesized, recording its type, where its parameters' types
    * are known and its result is left for its body to decide (§3.5).

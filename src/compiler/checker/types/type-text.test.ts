@@ -33,20 +33,23 @@ describe('typeText', () => {
     expect(spelled(written)).toBe(written);
   });
 
-  it('spells the value behind a non-generic shared struct as *Name', () => {
+  it('spells the value behind a shared struct as *Name with its type arguments', () => {
     const program = stdProgramOf({
       'main.ista': [
         'shared struct Counter { count: int }',
-        'fn f(c: Counter):',
+        'shared struct Box<K, V> { key: K }',
+        'fn f(c: Counter, b: Box<int, string>):',
         '  const a = *c',
+        '  const d = *b',
       ].join('\n'),
     });
     const checker = checkProgram(program);
     const items = program.modules.get(idOf('main.ista'))?.tree.root.items ?? [];
-    const f = items[1] as FunctionDeclaration;
+    const f = items[2] as FunctionDeclaration;
     const body = f.body === undefined ? undefined : checker.bodyOf(f);
-    const [a] = (f.body?.statements ?? []) as VariableDeclaration[];
+    const [a, d] = (f.body?.statements ?? []) as VariableDeclaration[];
     expect(a && body && typeText(body.typeOf(a.initializer))).toBe('*Counter');
+    expect(d && body && typeText(body.typeOf(d.initializer))).toBe('*Box<int, string>');
   });
 
   it('spells a non-prelude Optional declaration as Optional<T>, not T?', () => {
