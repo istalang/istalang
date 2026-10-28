@@ -139,8 +139,7 @@ export function startEntry(
         accept: codecHelpers.hostInput,
         path: `${key} argument ${index + 1}`,
       });
-      return (context, json, span) =>
-        emitInbound(context, { json, path: context.constant(inbound.path, span) }, inbound, span);
+      return (context, json, span) => emitInbound(context, json, inbound, span);
     }),
     self: undefined,
   };

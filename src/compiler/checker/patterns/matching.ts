@@ -218,13 +218,10 @@ function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): L
 
 function comparison(context: BodyContext, item: CompareFieldPattern, part: ValuePart): Leaf {
   const { operator, value } = item;
-  const { meaning } = binaryOperators[operator];
-  if (meaning.kind === 'order') {
+  if (operator !== '==' && operator !== '!=') {
     implicitOperatorCall(context, {
       node: item,
       operator,
-      function: meaning.function,
-      role: 'compare',
       arguments: [
         { type: part.type, node: undefined },
         { type: context.expression(value), node: value },
@@ -237,7 +234,7 @@ function comparison(context: BodyContext, item: CompareFieldPattern, part: Value
           path: part.path,
           site: item,
           value: { kind: 'expression', node: value },
-          relation: meaning.relation,
+          relation: binaryOperators[operator].meaning.relation,
         },
       ],
       shape: undefined,
@@ -247,7 +244,7 @@ function comparison(context: BodyContext, item: CompareFieldPattern, part: Value
   checkEqualSides(context, { type: part.type, node: undefined }, { type, node: value }, item);
   const counts = operator === '==' && comparable(type, part.type);
   return {
-    tests: [equalTest(part, value, meaning.negated)],
+    tests: [equalTest(part, value, operator === '!=')],
     shape: counts ? valueShape(context, value) : undefined,
   };
 }

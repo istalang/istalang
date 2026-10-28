@@ -40,13 +40,20 @@ export function inboundOf(
   };
 }
 
-/** The value the JSON in `json` holds, read as `inbound` says; `path` holds its path's text. */
+/** The value the JSON in `json` holds, read as `inbound` says. */
 export function emitInbound(
   context: CodeContext,
-  { json, path }: { readonly json: Register; readonly path: Register },
+  json: Register,
   inbound: Inbound,
   span: Span,
 ): Register {
+  const path = context.code.allocate();
+  context.code.emit({
+    kind: 'constant',
+    span,
+    dst: path,
+    constant: context.tables.constant(inbound.path),
+  });
   const call = (target: ClosedCall, values: readonly Register[]) =>
     emitFunctionCall(context, { span, call: target, arguments: values });
   return call(inbound.accept, [call(inbound.decode, [json, path])]);

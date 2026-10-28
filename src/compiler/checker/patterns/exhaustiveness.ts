@@ -18,13 +18,16 @@
  */
 
 /** A pattern as written, before array patterns are laid out as length constructors. */
-export type Shape = AnyShape | ConstructorShape<Shape> | OrShape<Shape> | ArrayShape;
+export type Shape = AnyShape | ConstructorShape<Shape, string> | OrShape<Shape> | ArrayShape;
 
 /** A pattern after array shapes are laid out as the length constructors they match. */
-type LaidOutShape = AnyShape | ConstructorShape<LaidOutShape> | OrShape<LaidOutShape>;
+type LaidOutShape =
+  | AnyShape
+  | ConstructorShape<LaidOutShape, ConstructorKey>
+  | OrShape<LaidOutShape>;
 
 /** A missing-value witness: anything, or a constructor of witnesses. */
-export type WitnessShape = AnyShape | ConstructorShape<WitnessShape>;
+export type WitnessShape = AnyShape | ConstructorShape<WitnessShape, ConstructorKey>;
 
 export interface AnyShape {
   readonly kind: 'any';
@@ -40,9 +43,9 @@ interface LengthKey {
 export type ConstructorKey = string | LengthKey;
 
 /** A value built by one constructor, with a shape for each of its arguments. */
-interface ConstructorShape<Child = Shape> {
+interface ConstructorShape<Child = Shape, Key extends ConstructorKey = string> {
   readonly kind: 'constructor';
-  readonly key: ConstructorKey;
+  readonly key: Key;
   readonly arguments: readonly Child[];
 }
 
@@ -76,8 +79,8 @@ export function sameConstructorKey(left: ConstructorKey, right: ConstructorKey):
 }
 
 /** One constructor of a type, with its arguments' types. */
-export interface ConstructorOf<T> {
-  readonly key: ConstructorKey;
+export interface ConstructorOf<T, Key extends ConstructorKey = string> {
+  readonly key: Key;
   readonly arguments: readonly T[];
 }
 
@@ -212,7 +215,7 @@ function withLengths(shape: Shape, longer: number): LaidOutShape {
 
 /** A non-empty row whose first shape is already split across any leading `or` alternatives. */
 interface SpecializedRow {
-  readonly head: AnyShape | ConstructorShape<LaidOutShape>;
+  readonly head: AnyShape | ConstructorShape<LaidOutShape, ConstructorKey>;
   readonly rest: readonly LaidOutShape[];
 }
 
@@ -292,7 +295,7 @@ class Matrix<T> {
         ...restTypes,
       ]);
       for (const vector of below) {
-        const built: ConstructorShape<WitnessShape> = {
+        const built: ConstructorShape<WitnessShape, ConstructorKey> = {
           kind: 'constructor',
           key: option.key,
           arguments: vector.slice(0, arity),
@@ -313,7 +316,7 @@ class Matrix<T> {
   #completeSignature(
     rows: readonly SpecializedRow[],
     type: T,
-  ): readonly ConstructorOf<T>[] | undefined {
+  ): readonly ConstructorOf<T, ConstructorKey>[] | undefined {
     const all = this.#constructors(type);
     if (all === undefined) {
       return undefined;
@@ -335,13 +338,13 @@ class Matrix<T> {
   }
 
   /** The constructor `key` of `type`; for a type with no finite signature, one of `arity` unknowns. */
-  #constructorOf(type: T, key: ConstructorKey, arity: number): ConstructorOf<T> {
+  #constructorOf(type: T, key: ConstructorKey, arity: number): ConstructorOf<T, ConstructorKey> {
     const found = this.#constructors(type)?.find((option) => sameConstructorKey(option.key, key));
     return found ?? { key, arguments: Array.from({ length: arity }, () => type) };
   }
 
   /** The constructors of `type`: an array's are its lengths, up to the ones no pattern tells apart. */
-  #constructors(type: T): readonly ConstructorOf<T>[] | undefined {
+  #constructors(type: T): readonly ConstructorOf<T, ConstructorKey>[] | undefined {
     const signed = this.#signature(type);
     if (signed === undefined || !('items' in signed)) {
       return signed;

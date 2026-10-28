@@ -130,7 +130,7 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
     refutable(walk, node, part, (tests) => tests.literal(node, part)),
   ParenthesizedPattern: (walk, node, part) => walk.take(node.pattern, part),
   AsPattern: (walk, node, part) => {
-    const matched = takeMatched(walk, unparenthesizedPattern(node.pattern), part);
+    const matched = takeMatched(walk, node.pattern, part);
     walk.bindings.push({ name: node.name, ...matched.part });
     return matched.shape;
   },
@@ -148,7 +148,9 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /** A part already in error was reported where it arose; it takes anything, for exhaustiveness. */
-function takeMatched(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Matched {
+function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
+  const node =
+    written.kind === 'ParenthesizedPattern' ? unparenthesizedPattern(written.pattern) : written;
   if (part.type.kind === 'any' && isDowncasting(walk, node)) {
     return takeDowncast(walk, node, { ...part, type: part.type });
   }

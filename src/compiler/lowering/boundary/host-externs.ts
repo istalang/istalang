@@ -181,7 +181,7 @@ function encoded(
 
 /** What the JSON in `json` holds, read as `inbound` says. */
 function received(code: SynthesizedCode, json: Register, inbound: Inbound): Register {
-  return emitInbound(code, { json, path: code.constant(inbound.path) }, inbound, code.span);
+  return emitInbound(code, json, inbound, code.span);
 }
 
 function registerAt(registers: readonly Register[], index: number): Register {

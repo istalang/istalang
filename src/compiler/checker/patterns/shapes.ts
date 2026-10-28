@@ -95,23 +95,21 @@ export function witnessText(checker: ShapeChecker, shape: WitnessShape, type: Ty
     return '_';
   }
   const signed = signatureOf(checker)(type);
-  if (typeof shape.key !== 'string') {
-    const itemType = signed !== undefined && 'items' in signed ? signed.items : type;
-    const items = shape.arguments.map((argument) => witnessText(checker, argument, itemType));
-    return `[${[...items, ...(shape.key.orMore ? ['..._'] : [])].join(', ')}]`;
+  if (signed !== undefined && 'items' in signed) {
+    const orMore = typeof shape.key !== 'string' && shape.key.orMore;
+    const items = shape.arguments.map((argument) => witnessText(checker, argument, signed.items));
+    return `[${[...items, ...(orMore ? ['..._'] : [])].join(', ')}]`;
   }
-  const made =
-    signed !== undefined && !('items' in signed)
-      ? signed.find(({ key }) => key === shape.key)
-      : undefined;
+  const key = typeof shape.key === 'string' ? shape.key : '';
+  const made = signed?.find((option) => option.key === key);
   const parts = shape.arguments.map((argument, index) =>
     witnessText(checker, argument, made?.arguments[index] ?? type),
   );
-  if (shape.key === tupleKey) {
+  if (key === tupleKey) {
     return `(${parts.join(', ')})`;
   }
-  const fields = fieldsOfConstructor(checker, type, shape.key);
-  const name = shape.key === structKey ? typeText(type) : shape.key;
+  const fields = fieldsOfConstructor(checker, type, key);
+  const name = key === structKey ? typeText(type) : key;
   const looked = fields.flatMap((field, index) =>
     parts[index] === '_' ? [] : [`${field.name} is ${parts[index]}`],
   );

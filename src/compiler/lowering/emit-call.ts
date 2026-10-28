@@ -202,10 +202,11 @@ export function emitCallAt(
  */
 export function emitImplicitCall(
   context: FunctionContext,
-  node: NodeOf<string>,
+  where: NodeOf<string> | { readonly node: NodeOf<string>; readonly span: Span },
   role: ImplicitRole,
   argumentList: readonly (Register | Argument)[],
 ): Register {
+  const { node, span } = 'kind' in where ? { node: where, span: where.span } : where;
   const made = context.implicitCallAt(node, role);
-  return emitFunctionCall(context, { span: node.span, call: made, arguments: argumentList });
+  return emitFunctionCall(context, { span, call: made, arguments: argumentList });
 }

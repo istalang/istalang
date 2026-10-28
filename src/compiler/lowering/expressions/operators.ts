@@ -86,15 +86,16 @@ function compared(
   [left, right]: readonly [Register, Register],
 ): Register {
   const { meaning } = binaryOperators[link.operator];
-  const { span } = link.right;
+  const span = { start: link.left.span.start, end: link.right.span.end };
   if (meaning.kind === 'equality') {
     return equal(context, span, [left, right], meaning.negated);
   }
+  const where = { node: link.right, span };
   if (meaning.kind === 'membership') {
-    const includes = emitImplicitCall(context, link.right, 'includes', [right, left]);
+    const includes = emitImplicitCall(context, where, 'includes', [right, left]);
     return meaning.negated ? negated(context, includes, span) : includes;
   }
-  const comparison = emitImplicitCall(context, link.right, 'compare', [left, right]);
+  const comparison = emitImplicitCall(context, where, 'compare', [left, right]);
   return ordered(context, span, comparison, meaning.relation);
 }
 

@@ -44,7 +44,7 @@ import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import { CodeWriter } from '../code-writer.ts';
-import type { FunctionContext } from '../context.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitFunctionCall } from '../emit-call.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
 import { tupleOf } from '../expressions/tuples.ts';
@@ -76,16 +76,15 @@ import {
   type StartFrame,
 } from './frames.ts';
 
+/** Decodes a start entry's JSON argument into its parameter's value. */
+type StartParameterDecoder = (context: CodeContext, json: Register, span: Span) => Register;
+
 /**
  * The JSON at a start entry's edges: how each argument is read from `Json`, a mismatch failing the
  * host's start, and the value a named lambda's own name stands for there.
  */
 export interface StartEdges {
-  readonly parameters: readonly ((
-    context: FunctionContext,
-    json: Register,
-    span: Span,
-  ) => Register)[];
+  readonly parameters: readonly StartParameterDecoder[];
   readonly self: Value | undefined;
 }
 

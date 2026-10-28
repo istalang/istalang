@@ -28,7 +28,11 @@ import { type BinaryMeaning, binaryOperators, isChainingOperator } from '../../s
 import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
+import {
+  type ImplicitOperand,
+  type ImplicitOperator,
+  implicitOperatorCall,
+} from '../resolution/implicit.ts';
 import { checkEqualSides } from '../types/equality.ts';
 import { boolType, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -39,7 +43,7 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
   if (isChainingOperator(operator)) {
     return checkComparisons(context, [{ left: node.left, operator, right: node.right }]);
   }
-  const { meaning } = binaryOperators[operator];
+  const { meaning }: { readonly meaning: BinaryMeaning } = binaryOperators[operator];
   if (meaning.kind === 'logic') {
     context.expect(node.left, boolType);
     context.expect(node.right, boolType);
@@ -48,7 +52,9 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
   if (meaning.kind === 'coalesce') {
     return checkNullish(context, node, expected);
   }
-  return resolveOperator(context, node, applied(operator, meaning), operandsOf(context, node));
+  return meaning.kind === 'call'
+    ? resolveOperator(context, node, applied(operator, meaning), operandsOf(context, node))
+    : boolType;
 }
 
 export function checkUnary(context: BodyContext, node: Unary): Type {
@@ -78,13 +84,16 @@ function checkComparisons(context: BodyContext, links: readonly ComparisonLink[]
   const wrappable = (side: Operand): ImplicitOperand =>
     side.node === first || side.node === last ? side : { type: side.type, node: undefined };
   for (const link of links) {
-    const { meaning } = binaryOperators[link.operator];
+    const { operator } = link;
     const left = operand(link.left);
-    const right = operand(link.right, meaning.kind === 'equality' ? left.type : undefined);
-    if (meaning.kind === 'equality') {
+    const right = operand(
+      link.right,
+      operator === '==' || operator === '!=' ? left.type : undefined,
+    );
+    if (operator === '==' || operator === '!=') {
       checkEqualSides(context, wrappable(left), wrappable(right), linkAt(link));
     } else {
-      checkLinkCall(context, link, meaning, [wrappable(left), wrappable(right)]);
+      checkLinkCall(context, link, operator, [wrappable(left), wrappable(right)]);
     }
   }
   return boolType;
@@ -102,17 +111,15 @@ function linkAt(link: ComparisonLink): { readonly span: Span; readonly operator:
 function checkLinkCall(
   context: BodyContext,
   link: ComparisonLink,
-  meaning: Extract<BinaryMeaning, { kind: 'order' | 'membership' }>,
+  operator: ImplicitOperator,
   [left, right]: readonly [ImplicitOperand, ImplicitOperand],
 ): void {
-  const membership = meaning.kind === 'membership';
+  const membership = binaryOperators[operator].meaning.kind === 'membership';
   const at = linkAt(link);
   const result = implicitOperatorCall(context, {
     node: link.right,
     span: at.span,
-    operator: link.operator,
-    function: meaning.function,
-    role: membership ? 'includes' : 'compare',
+    operator,
     arguments: membership ? [right, left] : [left, right],
   });
   if (membership && result !== undefined) {

@@ -221,6 +221,44 @@ describe('optional operators', () => {
   });
 });
 
+describe('comparison and membership resolution', () => {
+  const ambiguous = [
+    'struct P { x: int }',
+    'fn compare<T>(a: P, b: T) -> int: 0',
+    'fn compare<T>(a: T, b: P) -> int: 0',
+    'struct Holder { item: P }',
+    'fn f(p: P, h: Holder) -> bool:',
+  ];
+
+  it.each([
+    ['a binary comparison', '  p < p', 'p < p'],
+    ['a chained comparison link', '  p < p < p', 'p < p'],
+    ['a pattern field ordering', '  h is Holder{item < p}', 'item < p'],
+  ])('reports an ambiguous compare on %s', (_case, line, spanText) => {
+    const { codes, spanTexts } = reported([...ambiguous, line].join('\n'));
+    expect(codes[0]).toBe(reports.ambiguousCall.code);
+    expect(spanTexts[0]).toBe(spanText);
+  });
+
+  const unmetConstraint = [
+    'struct P { x: int }',
+    'struct Wrap<T> { inner: T }',
+    'fn compare<T is Comparable>(a: Wrap<T>, b: Wrap<T>) -> int: compare(a.inner, b.inner)',
+    'struct Holder { item: Wrap<P> }',
+    'fn f(w: Wrap<P>, h: Holder) -> bool:',
+  ];
+
+  it.each([
+    ['a binary comparison', '  w < w', 'w < w'],
+    ['a chained comparison link', '  w < w < w', 'w < w'],
+    ['a pattern field ordering', '  h is Holder{item < w}', 'item < w'],
+  ])('reports an unmet constraint on %s', (_case, line, spanText) => {
+    const { codes, spanTexts } = reported([...unmetConstraint, line].join('\n'));
+    expect(codes[0]).toBe(reports.notConforming.code);
+    expect(spanTexts[0]).toBe(spanText);
+  });
+});
+
 describe("an Error's trace", () => {
   it('may be left out of an Error only', () => {
     const text = [

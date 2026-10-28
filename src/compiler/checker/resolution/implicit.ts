@@ -23,17 +23,19 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
+import { binaryOperators, type ChainingOperator } from '../../syntax/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
 import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { useSite } from '../use-site.ts';
+import { silent, useSite } from '../use-site.ts';
+import { argumentSlotsOf } from './binding.ts';
 import { callMade } from './calls-made.ts';
 import { type Candidate, topLevelCandidates } from './candidates.ts';
-import type { CallArgument } from './choice.ts';
-import { chooseSilently } from './silent-choice.ts';
+import { type CallArgument, choose } from './choice.ts';
+import { instantiate } from './conformance.ts';
 
 /** The implicit calls of one body, by construct and role. */
 export class ImplicitCalls {
@@ -62,8 +64,9 @@ export interface ImplicitRequest {
   readonly node: NodeOf<string>;
   readonly span?: Span;
   readonly role: ImplicitRole;
+  readonly operator?: string;
   readonly candidates: readonly Candidate[];
-  readonly arguments: readonly CallArgument[];
+  readonly arguments: readonly (CallArgument & { readonly node?: Expression | undefined })[];
   /** The type the call is to give, which may decide its type arguments. */
   readonly expected?: Type;
   /** What to report when no single function takes the arguments. */
@@ -76,13 +79,14 @@ export interface ImplicitOperand {
   readonly node: Expression | undefined;
 }
 
+/** A comparison or membership operator that calls a function (`compare` or `includes`). */
+export type ImplicitOperator = Exclude<ChainingOperator, '==' | '!='>;
+
 /** An operator call (`compare` or `includes`) recorded as an implicit call at `node`. */
 export interface ImplicitOperatorRequest {
   readonly node: NodeOf<string>;
   readonly span?: Span;
-  readonly operator: string;
-  readonly function: string;
-  readonly role: 'compare' | 'includes';
+  readonly operator: ImplicitOperator;
   readonly arguments: readonly [ImplicitOperand, ImplicitOperand];
 }
 
@@ -108,49 +112,35 @@ export function preludeCall(context: BodyContext, request: PreludeRequest): Type
     candidates: preludeCandidates(context, request.name),
     arguments: request.arguments.map((type) => ({ type, passing: 'value' })),
     ...(request.expected === undefined ? {} : { expected: request.expected }),
-    failure: () => unreachable(`The prelude declares no '${request.name}' for ${request.role}.`),
+    failure: () =>
+      unreachable(
+        `The prelude's '${request.name}' failed for ${request.role} (${request.arguments.map(typeText).join(', ')}).`,
+      ),
   });
 }
 
 /**
- * Makes an operator's `compare` or `includes` call and records it under `request.node` and
- * `request.role`, fitting any wrappable operand to its parameter.
+ * Makes an operator's `compare` or `includes` call and records it under `request.node`, fitting
+ * any wrappable operand to its parameter.
  */
 export function implicitOperatorCall(
   context: BodyContext,
   request: ImplicitOperatorRequest,
 ): Type | undefined {
-  const operands = request.arguments;
-  if (operands.some(({ type }) => type.kind === 'error')) {
-    return undefined;
-  }
+  const { operator, arguments: operands } = request;
+  const { meaning } = binaryOperators[operator];
   const types = operands.map(({ type }) => type);
   const span = request.span ?? request.node.span;
-  const site = useSite(context.checker, context.module, span);
-  const chosen = chooseSilently(
-    site,
-    topLevelCandidates(context.checker, context.module, request.function, types),
-    types.map((type) => ({ type, passing: 'value' })),
-  );
-  if (chosen === undefined) {
-    context.report(
-      checkerDiagnostics.operatorTypes(span, request.operator, types.map(typeText).join(' and ')),
-    );
-    return undefined;
-  }
-  const { application, instantiation, result } = chosen;
-  for (const [index, operand] of operands.entries()) {
-    const parameter = application.signature.parameters[index];
-    if (operand.node !== undefined && parameter !== undefined) {
-      context.fit(
-        operand.type,
-        substitute(parameter.type, instantiation.substitution),
-        operand.node,
-      );
-    }
-  }
-  context.implicit.record(request.node, request.role, callMade(application, instantiation));
-  return result;
+  return implicitCall(context, {
+    node: request.node,
+    span,
+    role: meaning.kind === 'membership' ? 'includes' : 'compare',
+    operator,
+    candidates: topLevelCandidates(context.checker, context.module, meaning.function, types),
+    arguments: operands.map((operand) => ({ ...operand, passing: 'value' })),
+    failure: () =>
+      checkerDiagnostics.operatorTypes(span, operator, types.map(typeText).join(' and ')),
+  });
 }
 
 /**
@@ -161,14 +151,37 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
   if (request.arguments.some(({ type }) => type?.kind === 'error')) {
     return undefined;
   }
-  const site = useSite(context.checker, context.module, request.span ?? request.node.span);
-  const chosen = chooseSilently(site, request.candidates, request.arguments, request.expected);
-  if (chosen === undefined) {
+  const span = request.span ?? request.node.span;
+  const choice = choose(context.checker, request.candidates, request.arguments, undefined);
+  if (choice.kind === 'several' && request.operator !== undefined) {
+    const types = request.arguments
+      .map(({ type }) => (type === undefined ? '_' : typeText(type)))
+      .join(', ');
+    context.report(checkerDiagnostics.ambiguousCall(span, request.operator, types));
+    return undefined;
+  }
+  if (choice.kind !== 'chosen') {
     context.report(request.failure());
     return undefined;
   }
-  const { application, instantiation, result } = chosen;
+  const { application } = choice;
+  const baseSite = useSite(context.checker, context.module, span);
+  const site = request.operator === undefined ? silent(baseSite) : baseSite;
+  const instantiation = instantiate(site, application, request.expected);
+  if (instantiation === undefined) {
+    if (request.operator === undefined) {
+      context.report(request.failure());
+    }
+    return undefined;
+  }
+  const slots = argumentSlotsOf(application.signature.parameters, application.binding);
+  for (const [index, argument] of request.arguments.entries()) {
+    const slot = slots.get(index);
+    if (argument.node !== undefined && argument.type !== undefined && slot !== undefined) {
+      context.fit(argument.type, substitute(slot.type, instantiation.substitution), argument.node);
+    }
+  }
   const call = callMade(application, instantiation);
   context.implicit.record(request.node, request.role, call);
-  return result;
+  return substitute(application.signature.result(), instantiation.substitution);
 }

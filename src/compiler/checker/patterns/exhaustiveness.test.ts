@@ -11,6 +11,7 @@ import {
   type Shape,
   type Signature,
   sameConstructorKey,
+  type WitnessShape,
 } from './exhaustiveness.ts';
 
 /**
@@ -74,12 +75,12 @@ const typeArbitrary: fc.Arbitrary<TestType> = fc.letrec<{ type: TestType }>((tie
 })).type;
 
 /** Every value of `type`, as a shape with no `any` in it, arrays from `longer` items on as one. */
-function valuesOf(type: TestType, longer: number): readonly Shape[] {
+function valuesOf(type: TestType, longer: number): readonly WitnessShape[] {
   const signed = signature(type);
   if (signed === undefined) {
-    return [...literals, unnamedLiteral].map((key) => constructed(key, []));
+    return [...literals, unnamedLiteral].map((key) => constructedValue(key, []));
   }
-  const constructors =
+  const constructors: readonly ConstructorOf<TestType, ConstructorKey>[] =
     'items' in signed
       ? [
           ...Array.from({ length: longer }, (_, length) => ({
@@ -94,19 +95,25 @@ function valuesOf(type: TestType, longer: number): readonly Shape[] {
       : signed;
   return constructors.flatMap(({ key, arguments: argumentTypes }) =>
     combinations(argumentTypes.map((each) => valuesOf(each, longer))).map((values) =>
-      constructed(key, values),
+      constructedValue(key, values),
     ),
   );
 }
 
-function combinations(lists: readonly (readonly Shape[])[]): readonly (readonly Shape[])[] {
-  return lists.reduce<readonly (readonly Shape[])[]>(
+function combinations(
+  lists: readonly (readonly WitnessShape[])[],
+): readonly (readonly WitnessShape[])[] {
+  return lists.reduce<readonly (readonly WitnessShape[])[]>(
     (done, list) => done.flatMap((prefix) => list.map((value) => [...prefix, value])),
     [[]],
   );
 }
 
-function constructed(key: ConstructorKey, values: readonly Shape[]): Shape {
+function constructedValue(key: ConstructorKey, values: readonly WitnessShape[]): WitnessShape {
+  return { kind: 'constructor', key, arguments: values };
+}
+
+function constructed(key: string, values: readonly Shape[]): Shape {
   return { kind: 'constructor', key, arguments: values };
 }
 
@@ -155,7 +162,7 @@ function arrayPatterns(): fc.Arbitrary<Shape> {
  * then its last ones, so an array pattern reads its prefix from its start and its suffix from its
  * end (exhaustiveness.ts).
  */
-function matches(pattern: Shape, value: Shape): boolean {
+function matches(pattern: Shape | WitnessShape, value: WitnessShape): boolean {
   switch (pattern.kind) {
     case 'any':
       return true;
@@ -176,7 +183,7 @@ function matches(pattern: Shape, value: Shape): boolean {
   }
 }
 
-function matchesArray(pattern: Extract<Shape, { kind: 'array' }>, value: Shape): boolean {
+function matchesArray(pattern: Extract<Shape, { kind: 'array' }>, value: WitnessShape): boolean {
   if (value.kind !== 'constructor') {
     return false;
   }
@@ -192,7 +199,10 @@ function matchesArray(pattern: Extract<Shape, { kind: 'array' }>, value: Shape):
   );
 }
 
-function allMatch(patterns: readonly Shape[], values: readonly Shape[]): boolean {
+function allMatch(
+  patterns: readonly (Shape | WitnessShape)[],
+  values: readonly WitnessShape[],
+): boolean {
   return patterns.every((pattern, index) => {
     const value = values[index];
     return value !== undefined && matches(pattern, value);
