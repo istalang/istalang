@@ -83,7 +83,8 @@ function nominalTypeText(type: NominalType): string {
     type.arguments.length === 1 &&
     only !== undefined
   ) {
-    return only.kind === 'function' ? `(${typeText(only)})?` : `${typeText(only)}?`;
+    const needsParentheses = only.kind === 'function' && only.alias === undefined;
+    return needsParentheses ? `(${typeText(only)})?` : `${typeText(only)}?`;
   }
   return parameterizedText(declaration.name.text, type.arguments);
 }

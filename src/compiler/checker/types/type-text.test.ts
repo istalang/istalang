@@ -71,7 +71,7 @@ describe('typeText', () => {
       '  Pair{first: "x", second: value}',
     ];
 
-    it.each(['Cents', 'Labeled<int>', 'Labeled<Cents>?', 'Array<Labeled<Cents>>', 'Job'])(
+    it.each(['Cents', 'Labeled<int>', 'Labeled<Cents>?', 'Array<Labeled<Cents>>', 'Job', 'Job?'])(
       'spells %s as written',
       (written) => {
         expect(spelled(written, aliases)).toBe(written);
@@ -92,6 +92,14 @@ describe('typeText', () => {
         '  const n: int = tagged',
       ];
       expect(messagesOf([...aliases, ...body])).toEqual(['Expected int, found Labeled<int>.']);
+    });
+
+    it('spells an alias named as a value by its name, with no arguments', () => {
+      const body = ['fn g():', '  Cents.missing()', '  Labeled.missing()'];
+      expect(messagesOf([...aliases, ...body])).toEqual([
+        "Cents has no static function 'missing'.",
+        "Labeled has no static function 'missing'.",
+      ]);
     });
 
     it('drops the alias where widening changes the type it wrote', () => {

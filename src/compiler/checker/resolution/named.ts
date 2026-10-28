@@ -14,7 +14,13 @@ import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from '../types/fit.ts';
 import { parameterType } from '../types/resolve-type.ts';
-import { type NominalType, nominalType, primitiveType, type Type } from '../types/type.ts';
+import {
+  aliasedAs,
+  type NominalType,
+  nominalType,
+  primitiveType,
+  type Type,
+} from '../types/type.ts';
 
 /**
  * The type a type named in value position denotes, as the owner of a static call or the target
@@ -34,7 +40,7 @@ export function namedType(context: BodyContext, node: Expression): Type | undefi
     case 'TypeParameter':
       return parameterType(declaration);
     case 'TypeAliasDeclaration':
-      return context.checker.aliasedType(declaration);
+      return aliasedAs(context.checker.aliasedType(declaration), { declaration, arguments: [] });
     case 'TraitDeclaration':
       return undefined;
     default:
