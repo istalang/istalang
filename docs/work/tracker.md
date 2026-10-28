@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-25
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [tracker]
 ---
 
@@ -94,6 +94,7 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B10 | A function a module declares for a type and a trait it owns neither of is never a witness (§3.10, coherence), and nothing says so: a `toJson(Point)` beside a caller of `queue.send(point)` is silently passed over for `Point`'s own or derived codec. A warning where such a function's signature matches a requirement of a trait in scope would name the surprise. | easy | none; can be done now | review group F 2026-10-27 |
 | B12 | Expanding generic recursion (`struct W<T> { v: T; w: W<(T,)>? }`) checks clean but crashes `ista run` with a RangeError, and overflows must-use's `heldType` when such a value is dropped. Reject the declaration beside `checkFiniteFields` (struct-rules.ts), stated in spec §3.1, so every type walk can assume finitely many instantiations. | easy | your spec §3.1 wording; urgent (crash) | audit Wave 1 review 2026-10-28 |
 | B13 | Spec §3 doesn't say what top-level constants refuse and convert: optional-typed values and enum variant literals are refused (5026), and one-element tuple conversions apply (D216's fix). Needs the human's wording. | easy | your spec §3 wording | audit Wave 1 review 2026-10-28 |
-| B14 | 27 module fences in docs/spec.md and docs/guide.md don't check clean; `check.test.ts` lists them in `uncheckedExamples`, a list that may only shrink. Most use declarations their document leaves out (`Inbox`, `PurchaseRequest`, `Duration` with no import) or `...` placeholders not marked elided; some go deeper: spec §3.14 #2 (5105 on `main`), guide 2.9 (5103/5026/5022 on `fetchA()`/`await a`), spec §6 and §7 (5100). | medium | spec.md/guide.md edits (human approval) | audit Wave 2 group I 2026-10-28 |
+| B14 | 28 module fences in docs/spec.md and docs/guide.md don't check clean; `check.test.ts` lists them in `uncheckedExamples`, a list that may only shrink. Most use declarations their document leaves out (`Inbox`, `PurchaseRequest`, `Duration` with no import) or `...` placeholders not marked elided; some go deeper: spec §3.14 #2 (5105 on `main`), guide 2.9 (5103/5026/5022 on `fetchA()`/`await a`), spec §6 and §7 (5100). | medium | spec.md/guide.md edits (human approval) | audit Wave 2 group I 2026-10-28 |
 | B15 | Written type arguments can be widened by a convertible argument: `f<int>(y)` with `y: int?` rebinds `T` to `int?`. Inference pins a parameter found at an exact site (audit Wave 2); a written type argument likely needs the same pin, which changes diagnostics. | easy | none; can be done now | audit Wave 2 group H 2026-10-28 |
 | B16 | A call through a filling entry (a function named as a value of a shorter type, a spawned call, a call the runtime makes) shows the filling entry's frame, named as its function at the declaration, in every trace, where a direct call computes the defaults in the caller's frame. Mark filling entries and leave their frames out of traces, or give them the caller's span. | medium | none; can be done now | B9 review 2026-10-28 |
+| B17 | A bare `never` argument binds nothing and has no fallback: `fn f<T>(x: T)` with `f(panic("x"))` alone reports 5100, while `g(fn(): panic("x"))` infers `never` (`bindNeverWhereOpen`, inference/complete.ts). One rule for both changes diagnostics. | easy | none; can be done now | Wave 2 merge-review fixes 2026-10-29 |
