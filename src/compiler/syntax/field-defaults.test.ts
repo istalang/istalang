@@ -9,6 +9,7 @@ import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { compiledDefinition } from '../compile.test-kit.ts';
 import { parseAs } from '../parser/parse.test-kit.ts';
 import { fieldsFunctionsOf, isFieldsFunction } from './field-defaults.ts';
+import { childrenOf } from './tree.ts';
 
 describe('fieldsFunctionOf', () => {
   it('qualifies enum variant field-default functions with their enum name', () => {
@@ -58,5 +59,18 @@ describe('fieldsFunctionOf', () => {
     expect(made.map((declaration) => declaration.owner)).toEqual([undefined, undefined]);
     const written = root.items.filter((item) => item.kind === 'FunctionDeclaration');
     expect(written.map((declaration) => isFieldsFunction(declaration))).toEqual([false]);
+  });
+
+  it('walks as a node whose children are its parameters, never its owner', () => {
+    const { node: root } = parseAs(
+      'module',
+      ['struct Retry:', '  times: int = 3', 'enum Shape:', '  Circle { r: int = 1 }'].join('\n'),
+    );
+    if (root.kind !== 'Module') {
+      throw new Error('Expected a module.');
+    }
+    for (const made of root.items.flatMap(fieldsFunctionsOf)) {
+      expect(childrenOf(made).map((child) => child.kind)).toEqual(['Identifier', 'Parameter']);
+    }
   });
 });

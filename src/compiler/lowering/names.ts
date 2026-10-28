@@ -46,9 +46,9 @@ function moduleName(checker: Checker, module: ModuleId): string {
 function declaredName(declaration: FunctionDeclaration): string {
   if (isFieldsFunction(declaration)) {
     const { fieldsOwner } = declaration;
-    return fieldsOwner.kind === 'struct'
-      ? fieldsOwner.declaration.name.text
-      : staticName(fieldsOwner.declaration.name.text, fieldsOwner.variant.name.text);
+    return 'struct' in fieldsOwner
+      ? fieldsOwner.struct.name.text
+      : staticName(fieldsOwner.enumeration.name.text, fieldsOwner.variant.name.text);
   }
   const { owner, name } = declaration;
   return owner === undefined ? name.text : staticName(owner.text, name.text);

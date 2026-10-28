@@ -28,10 +28,14 @@ import {
 import type { Parameter } from './expressions/index.ts';
 import type { Invalid } from './node.ts';
 
-/** Whose fields a fields function's parameters are: a struct's, or one variant's of an enum. */
+/**
+ * Whose fields a fields function's parameters are: a struct's, or one variant's of an enum. It is
+ * plain data with no `kind`, so a walk over the function's fields never takes it, or the owner it
+ * holds, for a child node (tree.ts).
+ */
 type FieldsOwner =
-  | { readonly kind: 'struct'; readonly declaration: DeclaredStruct }
-  | { readonly kind: 'variant'; readonly declaration: EnumDeclaration; readonly variant: Variant };
+  | { readonly struct: DeclaredStruct }
+  | { readonly enumeration: EnumDeclaration; readonly variant: Variant };
 
 /** The function a declaration's fields read as: made from them, never written. */
 export interface FieldsFunction extends FunctionDeclaration {
@@ -82,7 +86,7 @@ export function fieldsFunctionOf(
   if (fieldsOwner === undefined) {
     return undefined;
   }
-  const owner = fieldsOwner.kind === 'struct' ? fieldsOwner.declaration : fieldsOwner.variant;
+  const owner = 'struct' in fieldsOwner ? fieldsOwner.struct : fieldsOwner.variant;
   return memo(fieldsFunctions, owner, () =>
     owner.fields.some(hasDefault)
       ? {
@@ -108,9 +112,9 @@ function fieldsOwnerOf(
   variant: Variant | undefined,
 ): FieldsOwner | undefined {
   if (declaration.kind !== 'EnumDeclaration') {
-    return { kind: 'struct', declaration };
+    return { struct: declaration };
   }
-  return variant === undefined ? undefined : { kind: 'variant', declaration, variant };
+  return variant === undefined ? undefined : { enumeration: declaration, variant };
 }
 
 /** The parameter a field reads as. */
