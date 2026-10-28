@@ -46,6 +46,7 @@ import type {
   FieldMember,
   FunctionType,
   NominalType,
+  RestSlot,
   Type,
 } from './types/type.ts';
 import type { TypeKeys } from './types/type-keys.ts';
@@ -58,12 +59,6 @@ export interface SignatureParameter {
   /** For a rest parameter, what it collects into: an array of `item` (§3.3), or a pack's tuple (§3.5). */
   readonly rest: RestSlot | undefined;
 }
-
-/** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
-export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
-
-/** What a rest parameter collects its arguments into. */
-export type RestKind = RestSlot['kind'];
 
 /**
  * A lambda or local function as checked (§3.14): its type, its parameters as checked, in order,

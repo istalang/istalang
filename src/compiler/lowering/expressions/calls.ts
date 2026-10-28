@@ -23,8 +23,9 @@ import type { Callee } from '../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { RestKind, SignatureParameter } from '../../checker/check.ts';
+import type { SignatureParameter } from '../../checker/check.ts';
 import { parameterOfArgument } from '../../checker/resolved-call.ts';
+import type { RestSlot } from '../../checker/types/type.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import {
   type Call,
@@ -187,7 +188,7 @@ function parametersByArgument(
 function restKindAt(
   parameterAt: (index: number) => SignatureParameter | undefined,
   index: number,
-): RestKind {
+): RestSlot['kind'] {
   return parameterAt(index)?.rest?.kind ?? unreachable(`Spread ${index} fills no rest parameter.`);
 }
 
@@ -198,7 +199,7 @@ function restKindAt(
 interface Passing {
   readonly receiver?: PassedArgument | undefined;
   readonly byReference: (index: number) => boolean;
-  readonly spreadFills: (index: number) => RestKind;
+  readonly spreadFills: (index: number) => RestSlot['kind'];
 }
 
 /** How a function value's call passes its arguments: by value, a spread only of a pack (§3.14). */

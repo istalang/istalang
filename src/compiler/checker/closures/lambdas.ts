@@ -28,11 +28,10 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
 import { isChangeable } from '../calls/places.ts';
-import type { NestedFunction, RestSlot, SignatureParameter } from '../check.ts';
+import type { NestedFunction, SignatureParameter } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { packRestSlot } from '../resolution/binding.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
@@ -41,6 +40,8 @@ import {
   errorType,
   type FunctionType,
   isPack,
+  packRestSlot,
+  type RestSlot,
   type Type,
   unitType,
   withPack,

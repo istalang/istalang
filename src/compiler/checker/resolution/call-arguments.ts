@@ -7,8 +7,7 @@
  */
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
-import type { RestSlot } from '../check.ts';
-import type { ParameterSlot, Type } from '../types/type.ts';
+import type { ParameterSlot, RestSlot, Type } from '../types/type.ts';
 import type { BindingFailure } from './binding.ts';
 
 /**

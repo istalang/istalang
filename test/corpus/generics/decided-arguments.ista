@@ -51,7 +51,6 @@ async fn main() -> Future<string>:
   let assignedOption: int? = 5
   let assignedCount = 0
   (assignedItems, assignedCount) = ([], 1)
-  (_, assignedOption) = (1, none)
   assignedOption, assignedCount = (none, 2)
   const parts = [
     string(count([])),

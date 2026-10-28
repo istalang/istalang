@@ -138,6 +138,12 @@ export interface ParameterSlot {
   readonly reference: boolean;
 }
 
+/** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
+export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
+
+/** The rest slot of a parameter or function type ending in a pack (§3.5). */
+export const packRestSlot: RestSlot = { kind: 'pack' };
+
 /**
  * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters
  * may end in a pack (`fn(int, ...A) -> R`, §3.5), which stands for the parameters a tuple
@@ -260,6 +266,10 @@ export function sameType(first: Type, second: Type): boolean {
       return (
         second.kind === 'anonymous' &&
         first.origin === second.origin &&
+        sameTypes(
+          isSharedValueType(first) ? first.arguments : [],
+          isSharedValueType(second) ? second.arguments : [],
+        ) &&
         sameTypes(
           first.fields.map((field) => field.type),
           second.fields.map((field) => field.type),

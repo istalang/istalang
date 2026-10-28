@@ -31,13 +31,12 @@ import {
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { RestSlot } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { positionalCounts } from '../resolution/binding.ts';
 import { signatureOf } from '../resolution/choice.ts';
 import { withoutOptionals } from '../types/fit.ts';
-import type { ParameterKey, Type } from '../types/type.ts';
+import type { ParameterKey, RestSlot, Type } from '../types/type.ts';
 import { mentionsError } from '../types/type-parts.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */

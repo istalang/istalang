@@ -18,12 +18,8 @@
  *   collects into it too. Which arguments a pack takes is choosing's to judge (choice.ts).
  */
 
-import type { RestSlot } from '../check.ts';
 import { type Binding, parameterOfArgument } from '../resolved-call.ts';
-import type { ParameterSlot } from '../types/type.ts';
-
-/** The rest slot of a parameter or function type ending in a pack (§3.5). */
-export const packRestSlot: RestSlot = { kind: 'pack' };
+import type { ParameterSlot, RestSlot } from '../types/type.ts';
 
 /** What binding needs to know of a parameter: its name, if it can be named, and its kind. */
 export interface BoundSlot {

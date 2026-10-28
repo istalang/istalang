@@ -14,7 +14,7 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { ParameterKey, Type } from './type.ts';
+import { isSharedValueType, type ParameterKey, type Type } from './type.ts';
 
 export class TypeKeys {
   readonly #identities = new Map<object, number>();
@@ -38,8 +38,12 @@ export class TypeKeys {
       }
       case 'nominal':
         return `#${this.identityOf(type.entity)}<${type.arguments.map(key).join(',')}>`;
-      case 'anonymous':
-        return `{${this.identityOf(type.origin)}:${type.fields.map((field) => key(field.type)).join(',')}}`;
+      case 'anonymous': {
+        const typeArguments = isSharedValueType(type)
+          ? `<${type.arguments.map(key).join(',')}>`
+          : '';
+        return `{${this.identityOf(type.origin)}${typeArguments}:${type.fields.map((field) => key(field.type)).join(',')}}`;
+      }
       case 'tuple':
         return `(${type.elements.map(key).join(',')})`;
       case 'function': {

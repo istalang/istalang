@@ -18,11 +18,10 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
 import { isFieldsFunction } from '../../syntax/field-defaults.ts';
-import type { RestSlot, SignatureParameter } from '../check.ts';
+import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { packRestSlot } from '../resolution/binding.ts';
-import { errorType, isPack, type Type } from '../types/type.ts';
+import { errorType, isPack, packRestSlot, type RestSlot, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, futureArgument, futureOf } from '../types/well-known.ts';
 

@@ -9,6 +9,8 @@
  *   named by a name of several or a generic one, and an empty `[]` or `[:]`; a tuple, collection
  *   literal or branching expression holding one, unless what it agrees on is decided by a part with
  *   a type of its own. A part still to be inferred can be anything.
+ * - Own type (`knownTypeHandlers`): for a sibling inside a composite argument, the type it has on
+ *   its own without running expression checking or reporting (`acceptedPartOf`).
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
