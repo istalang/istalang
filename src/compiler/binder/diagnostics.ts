@@ -7,6 +7,7 @@
  */
 
 import { defineDiagnostics } from '../../diagnostics/catalog.ts';
+import { testModuleSuffix } from '../../language/well-known.ts';
 
 export const binderDiagnostics = defineDiagnostics('binder', {
   undeclared: {
@@ -74,6 +75,6 @@ export const binderDiagnostics = defineDiagnostics('binder', {
   testImport: {
     code: 4015,
     message: (module: string) =>
-      `Only a test module, a file ending in '.test.ista', may import '${module}'.`,
+      `Only a test module, a file ending in '${testModuleSuffix}', may import '${module}'.`,
   },
 });

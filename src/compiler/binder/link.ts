@@ -171,11 +171,11 @@ class Linker {
    */
   #checkTestImports(id: ModuleId, links: ModuleLinks): void {
     const module = this.#program.modules.get(id);
-    if (module === undefined || isTestModule(id)) {
+    if (module === undefined || isTestModule(this.#program, id)) {
       return;
     }
     for (const [declaration, imported] of module.imports) {
-      if (imported === this.#program.roles.testing || isTestModule(imported)) {
+      if (imported === this.#program.roles.testing || isTestModule(this.#program, imported)) {
         const target = this.#program.modules.get(imported);
         links.diagnostics.push(
           binderDiagnostics.testImport(declaration.path.span, target?.name ?? imported),
@@ -222,7 +222,7 @@ class Linker {
     const target = this.#locals.get(module);
     const entity =
       target?.exports.get(name.text) ??
-      (isTestModule(links.module) ? target?.privates.get(name.text) : undefined);
+      (isTestModule(this.#program, links.module) ? target?.privates.get(name.text) : undefined);
     if (entity === undefined && target !== undefined) {
       const label = this.#program.modules.get(module)?.tree.source.path ?? module;
       links.diagnostics.push(

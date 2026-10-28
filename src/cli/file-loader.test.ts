@@ -15,6 +15,7 @@ import { fileLoader, locateFile } from './file-loader.ts';
 
 const files = {
   'a.ista': 'fn a(): 1',
+  'a.test.ista': 'fn t(): 1',
   'deep/x.ista': 'fn x(): 2',
   'deep/inner/m.ista': '',
   'deep/inner/sib.ista': '',
@@ -42,6 +43,8 @@ describe('fileLoader', () => {
     const loaded = load('a', idOfFile(root, 'deep/x.ista'));
     expect(loaded?.read()).toBe('fn a(): 1');
     expect(loaded?.label).toBe(join('..', 'a.ista'));
+    expect(loaded?.isTest).toBe(false);
+    expect(load('a.test', idOfFile(root, 'deep/x.ista'))?.isTest).toBe(true);
   });
 
   it('names a module by its path from the project root, wherever the toolchain runs', () => {

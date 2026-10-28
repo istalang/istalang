@@ -25,7 +25,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { type LanguageModule, testModuleSuffix } from '../../language/well-known.ts';
+import type { LanguageModule } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { parse } from '../parser/parse.ts';
@@ -58,6 +58,8 @@ export interface LocatedModule {
   readonly label: string;
   /** Whether the toolchain ships the module (§3.8): its externs are the runtime's, not a host's. */
   readonly isStd?: boolean;
+  /** Whether the module is a test module (§10): a file ending in `.test.ista`. */
+  readonly isTest?: boolean;
   /** The module's text. The core calls it once, when it loads the module; if it throws, so does the build. */
   readonly read: () => string;
 }
@@ -71,6 +73,8 @@ export interface ProgramModule {
   readonly name: string;
   /** Whether the toolchain ships the module (`LocatedModule.isStd`). */
   readonly isStd: boolean;
+  /** Whether the module is a test module (`LocatedModule.isTest`). */
+  readonly isTest: boolean;
   readonly tree: SyntaxTree;
   /** The module each import names, for every import that names exactly one. */
   readonly imports: ReadonlyMap<ImportDeclaration, ModuleId>;
@@ -95,9 +99,9 @@ export function programModule(program: Program, module: ModuleId): ProgramModule
   return loaded;
 }
 
-/** Whether `module` is a test module (§10): its file's name ends in `.test.ista`. */
-export function isTestModule(module: ModuleId): boolean {
-  return module.endsWith(testModuleSuffix);
+/** Whether `module` is a test module (`LocatedModule.isTest`); false for one `program` lacks. */
+export function isTestModule(program: Program, module: ModuleId): boolean {
+  return program.modules.get(module)?.isTest === true;
 }
 
 /** Whether the toolchain ships `module` (`LocatedModule.isStd`); false for one `program` lacks. */
@@ -116,8 +120,8 @@ export interface ProgramOptions {
   readonly loaders: readonly ModuleLoader[];
   /**
    * The std modules the language refers to, loaded like roots: the prelude, whose exports binding
-   * makes visible everywhere, and `time`, which types duration literals but is visible only where
-   * imported.
+   * makes visible everywhere; `time`, which types duration literals; `json`, whose codecs values
+   * crossing to a host go through; and `testing`, which only test modules may import.
    */
   readonly roles?: Readonly<Partial<Record<LanguageModule, LocatedModule>>>;
 }
@@ -128,12 +132,12 @@ export function buildProgram(options: ProgramOptions, previous?: Program): Progr
   const roles = Object.entries(options.roles ?? {});
   const queue = [...options.roots, ...roles.map(([, module]) => module)];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-    const { id, name, label, read, isStd = false } = next;
+    const { id, name, label, read, isStd = false, isTest = false } = next;
     if (!modules.has(id)) {
       const source = createSourceText(label, read());
       const tree = reusableTree(previous?.modules.get(id)?.tree, source) ?? parseSource(source);
       const { imports, diagnostics, found } = resolveImports(tree, id, options.loaders);
-      modules.set(id, { id, name, isStd, tree, imports, diagnostics });
+      modules.set(id, { id, name, isStd, isTest, tree, imports, diagnostics });
       queue.push(...found);
     }
   }
