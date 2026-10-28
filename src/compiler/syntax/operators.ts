@@ -36,7 +36,7 @@ export type PrecedenceLevel = (typeof precedenceLevels)[number];
 export type Relation = 'less' | 'lessOrEqual' | 'greater' | 'greaterOrEqual';
 
 /** What a binary operator does (§3.9). */
-type BinaryMeaning =
+export type BinaryMeaning =
   /** Calls `function` with both operands, so a type gives it meaning through the function's trait. */
   | { readonly kind: 'call'; readonly function: string }
   /** Calls `function`, `compare`, and is whether its int is in `relation`. */
@@ -113,7 +113,10 @@ type BinaryOperatorOf<Kind extends BinaryMeaning['kind']> = {
     : never;
 }[BinaryOperator];
 
-/** The operators that compare two values: the orderings and equality. A struct pattern tests a field with one (§3.11). */
+/**
+ * The operators that compare two values: the orderings and equality. A struct pattern tests a
+ * field with one (§3.11).
+ */
 export type ComparisonOperator = BinaryOperatorOf<'order' | 'equality'>;
 
 /** The operators two or more of which in a row are one chain, as in Python: comparisons and `in`. */

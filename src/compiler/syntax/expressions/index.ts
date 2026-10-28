@@ -262,8 +262,8 @@ export interface Binary extends NodeOf<'Binary'> {
 }
 
 /**
- * Two or more comparisons in a row, `in` and `not in` included, `a < b <= c`: each operand compared with the next, `b` read
- * once. A single comparison is a `Binary`.
+ * Two or more comparisons in a row, `in` and `not in` included, `a < b <= c`: each operand
+ * compared with the next, `b` read once. A single comparison is a `Binary`.
  */
 export interface ChainedComparison extends NodeOf<'ChainedComparison'> {
   readonly operands: readonly Expression[];

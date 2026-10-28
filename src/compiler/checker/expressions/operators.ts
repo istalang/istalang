@@ -25,7 +25,7 @@ import {
   linksOf,
   type Unary,
 } from '../../syntax/expressions/index.ts';
-import { binaryOperators } from '../../syntax/operators.ts';
+import { type BinaryMeaning, binaryOperators } from '../../syntax/operators.ts';
 import {
   type AppliedOperator,
   applied,
@@ -107,7 +107,7 @@ export function checkChain(context: BodyContext, node: ChainedComparison): Type 
     if (meaning.kind === 'equality') {
       checkEqualSides(context, wrappable(left), wrappable(right), linkAt(link));
     } else {
-      checkLinkCall(context, link, [left.type, right.type]);
+      checkLinkCall(context, link, meaning, [left.type, right.type]);
     }
   }
   return boolType;
@@ -125,12 +125,9 @@ function linkAt(link: ChainLink): { readonly span: Span; readonly operator: stri
 function checkLinkCall(
   context: BodyContext,
   link: ChainLink,
+  meaning: Extract<BinaryMeaning, { kind: 'order' | 'membership' }>,
   [left, right]: readonly [Type, Type],
 ): void {
-  const { meaning } = binaryOperators[link.operator];
-  if (meaning.kind === 'equality') {
-    return;
-  }
   const membership = meaning.kind === 'membership';
   const types = membership ? [right, left] : [left, right];
   const at = linkAt(link);
