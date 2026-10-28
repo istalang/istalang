@@ -33,7 +33,7 @@ import { emitCallAt, emitImplicitCall, referenceTo } from '../emit-call.ts';
 import { cursorOf, emitLoop } from '../iteration.ts';
 import { cellRegister, readPart } from '../places.ts';
 import { construct } from './structs.ts';
-import { variantIndexOf } from './variants.ts';
+import { buildVariant } from './variants.ts';
 
 /** An element of an `array` instruction. */
 type ArrayItem = Extract<Instruction, { kind: 'array' }>['elements'][number];
@@ -241,16 +241,7 @@ function lowerDeclaredLiteral(
 
 /** An `int?` of a range's end: `Some` of its value, or `None` when it is left out. */
 function optionalInt(context: FunctionContext, span: Span, value: Register | undefined): Register {
-  const optional = context.checker.optionalOf(intType);
-  const dst = context.code.allocate();
+  const type = context.checker.optionalOf(intType);
   const name = value === undefined ? optionalVariants.none : optionalVariants.some;
-  context.code.emit({
-    kind: 'variant',
-    span,
-    dst,
-    type: context.tables.types.index(optional),
-    variant: variantIndexOf(context.checker, optional, name),
-    fields: value === undefined ? [] : [value],
-  });
-  return dst;
+  return buildVariant(context, { type, name }, value === undefined ? [] : [value], span);
 }
