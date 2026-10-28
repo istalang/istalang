@@ -47,3 +47,16 @@ export function futureArgument(
 ): Type | undefined {
   return wellKnownArguments(checker, wellKnown.future, type)?.[0];
 }
+
+/** `Array<T>`, what an array literal or comprehension builds; the error type without a prelude. */
+export function arrayOf(checker: CheckerContext, element: Type): Type {
+  return wellKnownOf(checker, wellKnown.array, [element]);
+}
+
+/** `T` when `type` is `Array<T>`; undefined for any other type. */
+export function arrayElement(
+  checker: Pick<Checker, 'wellKnownType'>,
+  type: Type,
+): Type | undefined {
+  return wellKnownArguments(checker, wellKnown.array, type)?.[0];
+}

@@ -29,7 +29,7 @@ import { withoutOptionals } from '../types/fit.ts';
 import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
+import { arrayElement, wellKnownArguments } from '../types/well-known.ts';
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */
 interface Argument {
@@ -224,7 +224,7 @@ function inferArrayLambdas(
   unwrapped: Type,
   inference: Inference,
 ): void {
-  const item = wellKnownArguments(context.checker, wellKnown.array, unwrapped)?.[0];
+  const item = arrayElement(context.checker, unwrapped);
   if (item === undefined) {
     return;
   }

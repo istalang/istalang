@@ -61,7 +61,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
+import { arrayElement, arrayOf, wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
 import { searchSite, useSite } from '../use-site.ts';
 
 /** The form of each collection literal of one body, for lowering. */
@@ -105,7 +105,7 @@ export function checkArrayLiteral(
     return errorType;
   }
   const item = agreeOn(context, produced, expectedItem, 'element') ?? expectedItem ?? neverType;
-  return wellKnownOf(context.checker, wellKnown.array, [item]);
+  return arrayOf(context.checker, item);
 }
 
 export function checkMapLiteral(
@@ -255,7 +255,7 @@ function literalTarget(
   if (type === undefined || type.kind !== 'nominal') {
     return undefined;
   }
-  const item = wellKnownArguments(checker, wellKnown.array, type)?.[0];
+  const item = arrayElement(checker, type);
   if (item !== undefined) {
     return { kind: 'array', item };
   }
@@ -331,20 +331,18 @@ export function spreadArgumentType(context: BodyContext, spread: Spread): Type {
 
 /** The items `spread` gives, as an array literal's element, its items expected to be `item`s. */
 function spreadItems(context: BodyContext, spread: Spread, item: Type | undefined): Produced {
-  const expected =
-    item === undefined ? undefined : wellKnownOf(context.checker, wellKnown.array, [item]);
+  const expected = item === undefined ? undefined : arrayOf(context.checker, item);
   return itemsOf(context, spread, context.expression(spread.expression, expected));
 }
 
 /** The items a spread of a value of `type` gives: an array's elements, or what iterating gives. */
 function itemsOf(context: BodyContext, spread: Spread, type: Type): Produced {
-  const own = wellKnownArguments(context.checker, wellKnown.array, type);
-  if (own === undefined) {
+  const element = arrayElement(context.checker, type);
+  if (element === undefined) {
     const iterated = iteratedItem(context, spread, spread.expression, type);
     return { type: iterated ?? errorType, span: spread.span, site: undefined };
   }
   context.iterations.record(spread, { kind: 'copied' });
-  const [element = errorType] = own;
   return { type: element, span: spread.span, site: undefined };
 }
 

@@ -14,7 +14,6 @@
  *   into gives it an empty array.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
@@ -24,7 +23,7 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, isPack, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { futureArgument, futureOf, wellKnownArguments } from '../types/well-known.ts';
+import { arrayElement, futureArgument, futureOf } from '../types/well-known.ts';
 
 /** Where a function's defaults are checked: one body, seeing each parameter once declared. */
 export interface DefaultValues {
@@ -93,7 +92,7 @@ function checkRest(
     declared === undefined ||
     declared.kind === 'error' ||
     isPack(declared) ||
-    wellKnownArguments(checker, wellKnown.array, declared) !== undefined;
+    arrayElement(checker, declared) !== undefined;
   if (!collects) {
     const at = node.type?.span ?? name.span;
     checker.report(module, checkerDiagnostics.restNotArray(at, name.text, typeText(declared)));

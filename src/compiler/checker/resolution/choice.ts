@@ -14,7 +14,6 @@
  * report about a failed call explains the reason it found.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
@@ -26,7 +25,7 @@ import type { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { errorType, type Type } from '../types/type.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
+import { arrayElement } from '../types/well-known.ts';
 import { type Given, type Misfit, takenBy } from './applicability.ts';
 import {
   type ArgumentSlot,
@@ -166,7 +165,7 @@ function restSlotOf(checker: CheckerContext, kind: RestKind, type: Type): RestSl
   if (kind === 'pack') {
     return { kind };
   }
-  const item = wellKnownArguments(checker, wellKnown.array, type)?.[0] ?? errorType;
+  const item = arrayElement(checker, type) ?? errorType;
   return { kind, item };
 }
 
