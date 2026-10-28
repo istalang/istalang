@@ -8,8 +8,9 @@
  * leaving a parameter out does.
  *
  * Each such function is made once from its declaration's own nodes and is checked and lowered as a
- * written one is, but where it differs (`isFieldsFunction`): its defaults needn't trail, since a
- * literal names its fields (declarations/signatures.ts).
+ * written one is, but where it differs it says whose fields it reads (`fieldsOwner`): its defaults
+ * needn't trail, since a literal names its fields (declarations/signatures.ts), and its entries are
+ * named after the struct or variant, not a static function's owner type.
  */
 
 import { memo } from '../../structures/memo.ts';
@@ -27,12 +28,17 @@ import {
 import type { Parameter } from './expressions/index.ts';
 import type { Invalid } from './node.ts';
 
-/** A declaration whose fields may have defaults: a struct, or one variant of an enum. */
-type FieldsOwner = DeclaredStruct | Variant;
+/** Whose fields a fields function's parameters are: a struct's, or one variant's of an enum. */
+type FieldsOwner =
+  | { readonly kind: 'struct'; readonly declaration: DeclaredStruct }
+  | { readonly kind: 'variant'; readonly declaration: EnumDeclaration; readonly variant: Variant };
 
-const fieldsFunctions = new WeakMap<FieldsOwner, FunctionDeclaration | undefined>();
+/** The function a declaration's fields read as: made from them, never written. */
+export interface FieldsFunction extends FunctionDeclaration {
+  readonly fieldsOwner: FieldsOwner;
+}
 
-const made = new WeakSet<FunctionDeclaration>();
+const fieldsFunctions = new WeakMap<DeclaredStruct | Variant, FieldsFunction | undefined>();
 
 /** The functions `module` runs code in: its top-level `fn`s, then those its fields read as. */
 export function functionsOf(module: Module): readonly FunctionDeclaration[] {
@@ -55,47 +61,56 @@ export function fieldsFunctionsOf(item: Declaration | Invalid): readonly Functio
 }
 
 /** Whether `declaration` is the function a declaration's fields read as, not a written one. */
-export function isFieldsFunction(declaration: FunctionDeclaration): boolean {
-  return made.has(declaration);
+export function isFieldsFunction(declaration: FunctionDeclaration): declaration is FieldsFunction {
+  return 'fieldsOwner' in declaration;
 }
 
 /**
  * The function whose parameters are the fields of a struct, or of an enum's `variant` (§3.1);
  * undefined when none of them has a default.
  */
-export function fieldsFunctionOf(declaration: DeclaredStruct): FunctionDeclaration | undefined;
+export function fieldsFunctionOf(declaration: DeclaredStruct): FieldsFunction | undefined;
 export function fieldsFunctionOf(
   declaration: EnumDeclaration,
   variant: Variant,
-): FunctionDeclaration | undefined;
+): FieldsFunction | undefined;
 export function fieldsFunctionOf(
   declaration: DeclaredStruct | EnumDeclaration,
   variant?: Variant,
-): FunctionDeclaration | undefined {
-  const owner = declaration.kind === 'EnumDeclaration' ? variant : declaration;
-  if (owner === undefined) {
+): FieldsFunction | undefined {
+  const fieldsOwner = fieldsOwnerOf(declaration, variant);
+  if (fieldsOwner === undefined) {
     return undefined;
   }
-  return memo(fieldsFunctions, owner, () => {
-    if (!owner.fields.some(hasDefault)) {
-      return;
-    }
-    const fields: FunctionDeclaration = {
-      kind: 'FunctionDeclaration',
-      span: owner.span,
-      annotations: [],
-      isExtern: false,
-      isAsync: false,
-      owner: declaration.kind === 'EnumDeclaration' ? declaration.name : undefined,
-      name: owner.name,
-      typeParameters: declaration.typeParameters,
-      parameters: owner.fields.map(fieldParameter),
-      returnType: undefined,
-      body: undefined,
-    };
-    made.add(fields);
-    return fields;
-  });
+  const owner = fieldsOwner.kind === 'struct' ? fieldsOwner.declaration : fieldsOwner.variant;
+  return memo(fieldsFunctions, owner, () =>
+    owner.fields.some(hasDefault)
+      ? {
+          kind: 'FunctionDeclaration',
+          span: owner.span,
+          annotations: [],
+          isExtern: false,
+          isAsync: false,
+          owner: undefined,
+          name: owner.name,
+          typeParameters: declaration.typeParameters,
+          parameters: owner.fields.map(fieldParameter),
+          returnType: undefined,
+          body: undefined,
+          fieldsOwner,
+        }
+      : undefined,
+  );
+}
+
+function fieldsOwnerOf(
+  declaration: DeclaredStruct | EnumDeclaration,
+  variant: Variant | undefined,
+): FieldsOwner | undefined {
+  if (declaration.kind !== 'EnumDeclaration') {
+    return { kind: 'struct', declaration };
+  }
+  return variant === undefined ? undefined : { kind: 'variant', declaration, variant };
 }
 
 /** The parameter a field reads as. */

@@ -30,6 +30,7 @@ import type {
   TraitDeclaration,
 } from '../syntax/declarations.ts';
 import type { Parameter } from '../syntax/expressions/index.ts';
+import { isFieldsFunction } from '../syntax/field-defaults.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 
@@ -38,8 +39,17 @@ function moduleName(checker: Checker, module: ModuleId): string {
   return programModule(checker.program, module).name;
 }
 
-/** A function's name as declared, with its owner type for a static function: `Slot.create`. */
+/**
+ * A function's name as declared, with its owner type for a static function (`Slot.create`); a
+ * fields function's is its struct's or variant's, the variant's with its enum (`Shape.Circle`).
+ */
 function declaredName(declaration: FunctionDeclaration): string {
+  if (isFieldsFunction(declaration)) {
+    const { fieldsOwner } = declaration;
+    return fieldsOwner.kind === 'struct'
+      ? fieldsOwner.declaration.name.text
+      : staticName(fieldsOwner.declaration.name.text, fieldsOwner.variant.name.text);
+  }
   const { owner, name } = declaration;
   return owner === undefined ? name.text : staticName(owner.text, name.text);
 }
