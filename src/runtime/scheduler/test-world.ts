@@ -14,12 +14,17 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Inspection } from '../instance-state.ts';
 import { Panic } from '../natives.ts';
 import type { TestWatch } from '../snapshot/objects.ts';
-import type { MockCall } from '../snapshot/snapshot.ts';
 
 /** The future a call to another instance's mock fills: its caller, and the token it named it. */
 export interface CallerFuture {
   readonly instance: string;
   readonly token: string;
+}
+
+/** A call another instance made to one of a holder's mocks, as the holder answers it (§10). */
+export interface MockCall extends CallerFuture {
+  readonly mock: number;
+  readonly arguments: readonly Value[];
 }
 
 /**

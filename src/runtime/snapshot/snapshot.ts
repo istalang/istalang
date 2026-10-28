@@ -47,15 +47,6 @@ export type InstanceCall = z.output<typeof instanceCall>;
 const arrival = z.strictObject({ token: z.string(), value });
 
 /** A call one instance makes to a mock another holds (§10), and the future that waits for it. */
-const mockCall = z.strictObject({
-  mock: objectId,
-  arguments: z.array(value),
-  instance: z.string(),
-  token: z.string(),
-});
-
-export type MockCall = z.output<typeof mockCall>;
-
 /**
  * What a retry of a panicked instance runs again (§3.12): the call it was starting, when it
  * panicked before its first commit; or what its host filled, when it panicked in the segment the

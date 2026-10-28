@@ -38,7 +38,6 @@ import type { Advanced, InstanceState, LogRecord, SpawnOptions } from '../instan
 import type { HeapObject, Watch } from '../snapshot/objects.ts';
 import {
   type InstanceCall,
-  type MockCall,
   type PanickedSnapshot,
   type Replay,
   type Snapshot,
@@ -51,7 +50,7 @@ import { storedEnds } from './instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import { arriving } from './mocks.ts';
 import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
-import type { CallerFuture } from './test-world.ts';
+import type { CallerFuture, MockCall } from './test-world.ts';
 
 export interface SchedulerSeams {
   readonly store: InstanceStore;

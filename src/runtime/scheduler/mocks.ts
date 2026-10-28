@@ -35,11 +35,11 @@ import { unreachable } from '../../structures/unreachable.ts';
 import { type ActiveFrame, type FrameEntry, passedValues } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
 import type { RegisterContents } from '../snapshot/objects.ts';
-import type { MockCall } from '../snapshot/snapshot.ts';
 import type { LiveExecution, LiveObjectOf } from './heap.ts';
 import type { Instance } from './instance/index.ts';
 import { ancestorsOf } from './instance-names.ts';
 import type { NativeCalls } from './native-calls.ts';
+import type { MockCall } from './test-world.ts';
 
 /** Of the mocks held for one target, the one a call reaches: the newest. */
 export function reachingMock<Mock extends { readonly id: number }>(
