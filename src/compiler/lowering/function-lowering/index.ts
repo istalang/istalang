@@ -43,7 +43,6 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
-import { emitInbound, type Inbound } from '../boundary/inbound.ts';
 import { CodeWriter } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitFunctionCall } from '../emit-call.ts';
@@ -82,7 +81,11 @@ import {
  * host's start, and the value a named lambda's own name stands for there.
  */
 export interface StartEdges {
-  readonly parameters: readonly Inbound[];
+  readonly parameters: readonly ((
+    context: FunctionContext,
+    json: Register,
+    span: Span,
+  ) => Register)[];
   readonly self: Value | undefined;
 }
 
@@ -164,13 +167,12 @@ class FunctionLowering implements FunctionContext {
     const { span } = body;
     const arguments_ = this.frame.parameters.map(() => this.code.allocate());
     for (const [index, parameter] of this.frame.parameters.entries()) {
-      const edge = edges.parameters[index];
+      const decode = edges.parameters[index];
       const json = arguments_[index];
-      if (edge === undefined || json === undefined) {
+      if (decode === undefined || json === undefined) {
         unreachable(`No edge for argument ${index} of a start entry.`);
       }
-      const path = this.constant(edge.path, span);
-      const value = emitInbound(this, { json, path }, edge, span);
+      const value = decode(this, json, span);
       const register = declareVariable(this, parameter.node.name, this.#concrete(parameter.type));
       this.code.emit({ kind: 'move', span, dst: register, src: value });
     }

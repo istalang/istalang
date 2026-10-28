@@ -27,6 +27,7 @@ import type { Place } from '../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
+import type { Checker } from '../checker/check.ts';
 import type { Type } from '../checker/types/type.ts';
 import { chainStepOf } from '../syntax/expressions/chains.ts';
 import type { Dereference, Expression, Index, MemberAccess } from '../syntax/expressions/index.ts';
@@ -117,6 +118,15 @@ export function readPart(
   return readPlace(context, { register, path: [...path] }, span);
 }
 
+/** The position, in its struct's declaration order, of the field `name` of `type`. */
+export function structFieldIndex(checker: Checker, type: Type, name: string): number {
+  const index = (checker.fieldsOf(type) ?? []).findIndex((field) => field.name === name);
+  if (index < 0) {
+    unreachable(`No field '${name}'; the checker should have said so.`);
+  }
+  return index;
+}
+
 /** The position, in its struct's declaration order, of the field `node` reads. */
 export function fieldIndexOf(
   context: FunctionContext,
@@ -124,13 +134,7 @@ export function fieldIndexOf(
   link: Expression = node,
 ): number {
   const type = context.body.chainOf(link)?.base ?? context.body.typeOf(node.target);
-  const index = (context.checker.fieldsOf(type) ?? []).findIndex(
-    (field) => field.name === node.member.text,
-  );
-  if (index < 0) {
-    unreachable(`No field '${node.member.text}'; the checker should have said so.`);
-  }
-  return index;
+  return structFieldIndex(context.checker, type, node.member.text);
 }
 
 /** Locates the place `node` names: its root, then each step, computing handle and keys in order. */

@@ -31,7 +31,7 @@ import { rootInstance } from '../instances.ts';
 import { keyOf } from '../names.ts';
 import type { DefinitionTables, StartTarget } from '../tables.ts';
 import { codecCall } from './codec-calls.ts';
-import { inboundOf } from './inbound.ts';
+import { emitInbound, inboundOf } from './inbound.ts';
 
 /** A function a host may start: what it is, the key it goes by, and its signature. */
 export interface Startable {
@@ -134,12 +134,14 @@ export function startEntry(
   const { checker, tables } = lowering;
   const { target, parameters, outcome, key } = startable;
   const edges: StartEdges = {
-    parameters: parameters.map((type, index) =>
-      inboundOf(checker, undefined, type, {
+    parameters: parameters.map((type, index) => {
+      const inbound = inboundOf(checker, undefined, type, {
         accept: codecHelpers.hostInput,
         path: `${key} argument ${index + 1}`,
-      }),
-    ),
+      });
+      return (context, json, span) =>
+        emitInbound(context, { json, path: context.constant(inbound.path, span) }, inbound, span);
+    }),
     self: undefined,
   };
   const start = {

@@ -24,6 +24,7 @@ import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { closeWitness, type Dispatch } from '../instances.ts';
 import { spelledType } from '../names.ts';
+import { structFieldIndex } from '../places.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
 
 /** What writing an entry takes: the checker and the tables. */
@@ -127,25 +128,40 @@ export function anyConversionEntry(
 /** The entry reading `field`, which a trait of `on` requires, from a value of `on`. */
 export function anyFieldEntry(lowering: Lowering, on: AnyType, field: string): FunctionDefinition {
   const { checker, tables } = lowering;
-  const isField = (member: TraitDeclaration['members'][number]): member is FieldDeclaration =>
-    member.kind === 'FieldDeclaration' && member.name.text === field;
-  const trait = on.constraints.map((each) => each.trait).find((each) => each.members.some(isField));
-  const required = trait?.members.find(isField);
-  if (trait === undefined || required === undefined) {
+  const required = requiredFieldOf(on, field);
+  if (required === undefined) {
     unreachable(`${spelledType(checker, on)} requires no field '${field}'.`);
   }
-  const code = new SynthesizedCode(lowering, required.name.span, 1);
+  const { trait, member } = required;
+  const code = new SynthesizedCode(lowering, member.name.span, 1);
   const [value] = code.parameters;
   if (value === undefined) {
     unreachable('A field read takes the value it reads.');
   }
   switchOverMembers(code, on, value, (type) => {
-    const index = (checker.fieldsOf(type) ?? []).findIndex((each) => each.name === field);
+    const index = structFieldIndex(checker, type, field);
     code.return(code.field(code.field(value, 0), index));
   });
   const name = `${spelledType(checker, on)}.${field}`;
   const module = tables.moduleIndex(checker.moduleOf(trait));
-  return code.entry({ name, module, span: required.name.span, annotations: [] }, false);
+  return code.entry({ name, module, span: member.name.span, annotations: [] }, false);
+}
+
+/** The first trait of `on` that requires `field`, with its field declaration. */
+function requiredFieldOf(
+  on: AnyType,
+  field: string,
+): { readonly trait: TraitDeclaration; readonly member: FieldDeclaration } | undefined {
+  for (const { trait } of on.constraints) {
+    const member = trait.members.find(
+      (each): each is FieldDeclaration =>
+        each.kind === 'FieldDeclaration' && each.name.text === field,
+    );
+    if (member !== undefined) {
+      return { trait, member };
+    }
+  }
+  return undefined;
 }
 
 /**
