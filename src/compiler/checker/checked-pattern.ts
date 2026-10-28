@@ -4,7 +4,6 @@
  * (patterns/walk.ts).
  */
 
-import { unreachable } from '../../structures/unreachable.ts';
 import type { Comprehension, Expression, SelectCase } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { Relation } from '../syntax/operators.ts';
@@ -22,7 +21,8 @@ export type TargetOwner = VariableDeclaration | For | Comprehension | SelectCase
  * A step from a value to one of its parts (§3.11, §3.15): a field or tuple element by position, or
  * what an array pattern reads of an array, through the prelude calls the checker made at `site`:
  * the item `offset` from its start, or from its end when negative, and the items between the
- * first `before` and the last `after`. A target never reads an array, since its length can fail.
+ * first `before` and the last `after`. A target never reads an array, since its length can fail,
+ * so its parts are positions (`TargetBinding`).
  */
 export type PartStep =
   | number
@@ -34,17 +34,16 @@ export type PartStep =
       readonly after: number;
     };
 
-/** A target's steps, which take fields and tuple elements only (§3.15). */
-export function positionsOf(path: readonly PartStep[]): readonly number[] {
-  return path.map((step) =>
-    typeof step === 'number'
-      ? step
-      : unreachable('A target reads no array item; the checker refused its array pattern.'),
-  );
+/** A name a target binds: its part's type, and the field and tuple element positions to it (§3.15). */
+export interface TargetBinding {
+  readonly name: Identifier;
+  readonly type: Type;
+  /** Field or tuple element positions from the whole value to the part, outermost first. */
+  readonly path: readonly number[];
 }
 
-/** A name a target binds: its part's type, and the steps leading to it (§3.15). */
-export interface TargetBinding {
+/** A name a pattern binds: its part's type, and the steps to it from the whole value (§3.11). */
+export interface PartBinding {
   readonly name: Identifier;
   readonly type: Type;
   /** The steps from the whole value to the part, outermost first. */
@@ -116,11 +115,11 @@ export type PatternValue =
  */
 export interface CheckedPattern {
   readonly tests: readonly PatternTest[];
-  readonly bindings: readonly TargetBinding[];
+  readonly bindings: readonly PartBinding[];
 }
 
 /** Every name `pattern` binds, each once: an or-pattern's by its first alternative's. */
-export function namesBound(pattern: CheckedPattern): readonly TargetBinding[] {
+export function namesBound(pattern: CheckedPattern): readonly PartBinding[] {
   return [
     ...pattern.bindings,
     ...pattern.tests.flatMap((test) => {

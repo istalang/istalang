@@ -162,7 +162,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Array literal and spread (§2) | `array` with item and spread elements; a spread of an array is a spread element, which copies it, and any other spread the loop `for` runs over its operand, each item appended with `array` to what the elements before it built |
 | Map literal (§2) | `map` for a `Map`: a spread of a map is a spread entry, which copies its entries, and any other spread the loop `for` runs, each `(key, value)` item an entry added with `map` to what the entries before it built; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
 | Tuple, `()` (§3.15) | `tuple`; `()` is the unit constant |
-| Range `a..b`, `a..=b`, open ends (§2, §3.8) | `struct` of prelude `Range`; `..=` calls `add` to store `end + 1` |
+| Range `a..b`, `a..=b`, open ends, `by` a step (§2, §3.8) | `struct` of prelude `Range`, its `step` 1 unless `by` gives one; `..=` calls the prelude's `_inclusiveEnd(end, step)` to store the end one past the written one in the step's direction |
 | Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | `struct`, fields in declaration order; a field left to its default from a `call` to its default's entry, given the fields before it |
 | Updated copy `T{...r, f: v}` (§3.1) | the spread value once, `field` for each field not given, then `struct` |
 | Struct without fields, written bare (§3.1) | `struct` with no fields; a constant when it is one |
@@ -192,7 +192,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `&x` argument, reference parameter (§3.7) | a place argument; `parameters[i].reference`; `x` is in `cells`; `&m[k]` copies the element into a cell around the call (Places) |
 | `new X{…}` (§3.18) | the fields' `struct`, then `newCell` with the shared struct's entry |
 | `*x`, `*x = v`, `x->f = v`, `&x->f` (§3.7, §3.9) | `readCell` and `writeCell` on the handle's cell; a part write reads the value when it writes, stores the part and writes it back, and a `&` copies the part into a cell around its call (Places) |
-| Operators (§3.9) | a `call` to the resolved function |
+| Operators (§3.9) | a `call` to the resolved function; `x in c` calls `includes(c, x)`, and `not in` adds `not` |
+| A chain `a < b == c` (§3.9) | each operand evaluated once, in order; per link, `equal` (and `not` for `!=`) or a `call` to the `compare` made at its right operand and `order`, then a `branch` to the chain's end when it fails |
 | `<`, `<=`, `>`, `>=` (§3.9) | a `compare` call, then `order` |
 | `==`, `!=` (§3.9) | `equal`, plus `not` for `!=` |
 | `not`, `and`, `or` (§3.9) | `not`; `branch` (short-circuit) |
@@ -207,6 +208,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `match`, patterns, guards (§3.11, §4) | `switch` on the variant, then `field` and `move` for bindings, `equal` or `compare` for comparisons, `branch` for guards; an array pattern `call`s the prelude's `length` (and `compare` against its fixed count, with a rest), then `_patternItem` and `_patternRest` for its items; a range pattern `call`s `compare` at each bound; an or-pattern tries each alternative's tests in turn, `move`s which one matched into a register, and once every test passed binds from that alternative after `equal` and `branch` on it |
 | `x is P` (§3.11) | the same tests, producing a boolean |
 | `?.`, `??` (§4) | `switch` on `Optional` |
+| `x!` (§4) | `switch` on `Optional`: `Some` gives its payload, `None` calls the prelude's `panic`, which never returns |
 | `e?` on `Result` (§3.12) | `switch` on `Result`; the `Err` path returns a new `Err` of the function's own `Result` type, holding the same error |
 | `panic(m)` (§3.12) | a call to prelude `panic` |
 | Building an `Error` (§3.12) | `struct`, with `trace` from its default's entry, which calls a prelude extern that formats the frames' spans through the modules' line starts, leaving out the entry's own |

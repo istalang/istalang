@@ -54,15 +54,9 @@ import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 import { downcastOf } from './downcasts.ts';
 import { bodyScope, type ValuePart } from './parts.ts';
+import type { ArrayPart, Leaf, PatternTests, VariantPart } from './pattern-tests.ts';
 import { literalShape, nullaryShape, structKey } from './shapes.ts';
-import {
-  type ArrayPart,
-  type Leaf,
-  type PatternTests,
-  type VariantPart,
-  type WalkedPattern,
-  walkPattern,
-} from './walk.ts';
+import { type WalkedPattern, walkPattern } from './walk.ts';
 
 /** The patterns of one body as checked, for lowering. */
 export class CheckedPatterns {

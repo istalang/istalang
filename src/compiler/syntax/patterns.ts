@@ -120,7 +120,9 @@ const targetLeafHandlers: Handlers<undefined, Pattern | PatternPart, [], readonl
   ParenthesizedPattern: (_, node) => targetLeaves(node.pattern),
   TuplePattern: (_, node) => node.elements.flatMap(targetLeaves),
   StructPattern: (_, node) => node.fields.flatMap(targetLeaves),
-  OrPattern: (_, node) => node.alternatives.flatMap(targetLeaves),
+  // Every alternative binds the first's names (§3.11).
+  OrPattern: (_, node) =>
+    node.alternatives[0] === undefined ? [] : targetLeaves(node.alternatives[0]),
   ArrayPattern: (_, node) => node.elements.flatMap(targetLeaves),
   RestPattern: (_, node) => [node.target],
   RangePattern: () => [],

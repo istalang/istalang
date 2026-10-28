@@ -34,7 +34,6 @@ import {
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import { checkChangedPlace, immutableKind, isChangeable } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
-import { positionsOf } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
@@ -85,8 +84,11 @@ function checkCompound(
   context.variables.recordAssigned(node, [{ target, path: [], type: result, fit }]);
 }
 
-/** Taking an assigned value apart (patterns/walk.ts): where the places written are collected. */
-interface Assigning extends Taking<Expression> {
+/**
+ * Taking an assigned value apart (patterns/taking.ts): where the places written are collected. Its
+ * parts are positions, since an assignment's targets read no array's items.
+ */
+interface Assigning extends Taking<Expression, number> {
   readonly parts: AssignedPart[];
 }
 
@@ -107,7 +109,7 @@ function assignPart(
   context: BodyContext,
   assigning: Assigning,
   target: Expression,
-  part: ValuePart,
+  part: ValuePart<number>,
 ): Shape | undefined {
   const destructuring = destructuringOf(target);
   if (destructuring !== undefined) {
@@ -117,7 +119,7 @@ function assignPart(
   const place = assignedPlace(context, bare);
   const fit = context.fitWritten(part.type, place, bare.span);
   if (!isUnnamedTarget(bare)) {
-    assigning.parts.push({ target: bare, path: positionsOf(part.path), type: part.type, fit });
+    assigning.parts.push({ target: bare, path: part.path, type: part.type, fit });
   }
   return anyShape;
 }

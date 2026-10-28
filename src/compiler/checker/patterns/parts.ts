@@ -40,22 +40,25 @@ export function bodyScope(context: {
   };
 }
 
-/** A part of a value being taken apart: its type, and the steps to it from the whole value. */
-export interface ValuePart {
+/**
+ * A part of a value being taken apart: its type, and the steps to it from the whole value; `Step`
+ * narrows them to positions where nothing reads an array's items (taking.ts).
+ */
+export interface ValuePart<Step extends PartStep = PartStep> {
   readonly type: Type;
-  readonly path: readonly PartStep[];
+  readonly path: readonly Step[];
 }
 
 /**
  * The `count` elements of `part`, a tuple of that many, at `span`; each of the error type, after
  * a report, when it is anything else.
  */
-export function elementParts(
+export function elementParts<Step extends PartStep>(
   scope: Pick<PatternScope, 'report'>,
-  part: ValuePart,
+  part: ValuePart<Step | number>,
   count: number,
   span: Span,
-): readonly ValuePart[] {
+): readonly ValuePart<Step | number>[] {
   const { type } = part;
   const fits = type.kind === 'error' || (type.kind === 'tuple' && type.elements.length === count);
   if (!fits) {
@@ -106,12 +109,12 @@ export function structParts(
  * The part of a struct or variant value of `part` that the field `item` gives holds, among
  * `fields` (struct-items.ts); an item giving none is reported, and its part has the error type.
  */
-export function fieldPart(
+export function fieldPart<Step extends PartStep>(
   scope: Pick<PatternScope, 'report'>,
   fields: readonly FieldMember[] | undefined,
   item: { readonly name: Identifier | undefined; readonly span: Span },
-  part: ValuePart,
-): { readonly index: number; readonly part: ValuePart } {
+  part: ValuePart<Step | number>,
+): { readonly index: number; readonly part: ValuePart<Step | number> } {
   const index = fields === undefined ? -1 : itemField(item.name, fields);
   const field = fields?.[index];
   if (fields !== undefined && field === undefined) {

@@ -20,76 +20,30 @@
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
-import type { VariantNaming } from '../../binder/entities.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type {
   ArrayPattern,
-  CompareFieldPattern,
-  LiteralPattern,
   NamePattern,
   OrPattern,
   Pattern,
   PatternPart,
-  RangePattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
-import type { PatternTest, TargetBinding } from '../checked-pattern.ts';
+import { targetNames } from '../../syntax/patterns.ts';
+import type { PartBinding, PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { type AnyType, errorType, type FieldMember, sameType, type Type } from '../types/type.ts';
-import type { Downcast } from './downcasts.ts';
+import { type AnyType, errorType, sameType, type Type } from '../types/type.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
+import type { Leaf, PatternTests } from './pattern-tests.ts';
 import { constructed, type Taking, takeApart, takeFields, takeTargets } from './taking.ts';
-
-/** What a refutable construct gives the walk: its tests, and its shape (undefined: a guard). */
-export interface Leaf {
-  readonly tests: readonly PatternTest[];
-  readonly shape: Shape | undefined;
-}
-
-/** What an array pattern tests of its part, an array: its length, and the type of its items. */
-export interface ArrayPart {
-  readonly test: PatternTest;
-  readonly items: Type;
-}
-
-/** The variant a struct pattern names: the test for it, its key among shapes, and its fields. */
-export interface VariantPart {
-  readonly test: PatternTest;
-  readonly key: string;
-  readonly fields: readonly FieldMember[];
-}
-
-/** How the constructs that could fail to match are checked, where a pattern may fail. */
-export interface PatternTests {
-  /** `case 0:`, `case "cfo":`, `case none:`. */
-  readonly literal: (node: LiteralPattern, part: ValuePart) => Leaf;
-  /** `amount > 1000`, `ok == false`, on the part of the field. */
-  readonly comparison: (item: CompareFieldPattern, part: ValuePart) => Leaf;
-  /** A name that refers: a variant or a struct without fields, or a constant. */
-  readonly reference: (node: NamePattern, part: ValuePart) => Leaf;
-  /** The variant `naming` names in a struct pattern; undefined after a report. */
-  readonly variant: (
-    node: StructPattern,
-    naming: VariantNaming,
-    part: ValuePart,
-  ) => VariantPart | undefined;
-  /** The length test and item type of an array pattern on the part; undefined after a report. */
-  readonly array: (node: ArrayPattern, part: ValuePart) => ArrayPart | undefined;
-  /** `1..=5`, `..0` on an int part. */
-  readonly range: (node: RangePattern, part: ValuePart) => Leaf;
-  /** The downcast a struct pattern or referring name makes of an `any` part; undefined after a report. */
-  readonly downcast: (
-    node: StructPattern | NamePattern,
-    part: ValuePart & { readonly type: AnyType },
-  ) => Downcast | undefined;
-}
 
 /** A pattern as walked. */
 export interface WalkedPattern {
   readonly tests: readonly PatternTest[];
-  readonly bindings: readonly TargetBinding[];
+  readonly bindings: readonly PartBinding[];
   readonly shape: Shape | undefined;
 }
 
@@ -107,7 +61,8 @@ export function walkPattern(
 
 /**
  * The names a declaration's or loop's `targets` bind in a value of `type`, each with its part
- * (§3.15).
+ * (§3.15). A target refuses whatever could fail to match before taking it apart (`refused`), so
+ * its parts are fields and tuple elements only.
  */
 export function walkTargets(
   scope: PatternScope,
@@ -116,14 +71,19 @@ export function walkTargets(
 ): readonly TargetBinding[] {
   const walk = newWalk(scope, undefined);
   takeTargets(walk, targets, { type, path: [] }, spanOf(targets));
-  return walk.bindings;
+  return walk.bindings.map(({ path, ...binding }) => ({
+    ...binding,
+    path: path.map((step) =>
+      typeof step === 'number' ? step : unreachable('A target took an array apart.'),
+    ),
+  }));
 }
 
 /** A pattern's walk: what it found so far. */
 interface Walk extends Taking<Pattern | PatternPart> {
   readonly tests: PatternTests | undefined;
   readonly found: PatternTest[];
-  readonly bindings: TargetBinding[];
+  readonly bindings: PartBinding[];
   /** The part each downcasting pattern matched its value of the named type at, for its `as`. */
   readonly downcasts: Map<Pattern | PatternPart, ValuePart>;
 }
@@ -148,7 +108,7 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   OrPattern: (walk, node, part) => takeAlternatives(walk, node, part),
   ArrayPattern: (walk, node, part) => takeArray(walk, node, part),
   RangePattern: (walk, node, part) =>
-    refutable(walk, node.span, (tests) => tests.range(node, part)),
+    refutable(walk, node, part, (tests) => tests.range(node, part)),
   RestPattern: (walk, node, part) => {
     if (node.target.kind === 'Identifier') {
       walk.bindings.push({ name: node.target, ...part });
@@ -161,10 +121,10 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
       walk.bindings.push({ name, ...part });
       return anyShape;
     }
-    return refutable(walk, node.span, (tests) => tests.reference(node, part));
+    return refutable(walk, node, part, (tests) => tests.reference(node, part));
   },
   LiteralPattern: (walk, node, part) =>
-    refutable(walk, node.span, (tests) => tests.literal(node, part)),
+    refutable(walk, node, part, (tests) => tests.literal(node, part)),
   ParenthesizedPattern: (walk, node, part) => walk.take(node.pattern, part),
   AsPattern: (walk, node, part) => {
     const shape = walk.take(node.pattern, part);
@@ -183,7 +143,7 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   },
   NestedFieldPattern: (walk, item, part) => walk.take(item.pattern, part),
   CompareFieldPattern: (walk, item, part) =>
-    refutable(walk, item.span, (tests) => tests.comparison(item, part)),
+    refutable(walk, item, part, (tests) => tests.comparison(item, part)),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
@@ -237,21 +197,10 @@ function takeDowncast(
   handlerOf(patternHandlers, node)(walk, node, downcast.part);
 }
 
-/**
- * `A | B`: each alternative walked on its own, as one alternative of an `or` test. A target refuses
- * it once, since it can fail; its first alternative's names still bind there, with nothing more
- * reported of it, so later uses resolve.
- */
+/** `A | B`: each alternative walked on its own, as one alternative of an `or` test. */
 function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Shape | undefined {
   if (walk.tests === undefined) {
-    walk.scope.report(checkerDiagnostics.refutableTarget(node.span));
-    const [first] = node.alternatives;
-    const muted = newWalk({ ...walk.scope, report: () => undefined }, undefined);
-    if (first !== undefined) {
-      muted.take(first, part);
-    }
-    walk.bindings.push(...muted.bindings);
-    return anyShape;
+    return refused(walk, node, part);
   }
   const { tests } = walk;
   const alternatives = node.alternatives.map((alternative) => {
@@ -284,7 +233,7 @@ function declaringName(walk: Walk, name: Identifier): Identifier {
 }
 
 /** Whether two alternatives bind the same names, each with the same type. */
-function sameNames(first: readonly TargetBinding[], other: readonly TargetBinding[]): boolean {
+function sameNames(first: readonly PartBinding[], other: readonly PartBinding[]): boolean {
   return (
     first.length === other.length &&
     first.every((binding) =>
@@ -299,10 +248,10 @@ function sameNames(first: readonly TargetBinding[], other: readonly TargetBindin
  * A target refuses it, since the length can fail.
  */
 function takeArray(walk: Walk, node: ArrayPattern, part: ValuePart): Shape | undefined {
-  const array = walk.tests === undefined ? undefined : walk.tests.array(node, part);
   if (walk.tests === undefined) {
-    walk.scope.report(checkerDiagnostics.refutableTarget(node.span));
+    return refused(walk, node, part);
   }
+  const array = walk.tests.array(node, part);
   const restAt = node.elements.findIndex((element) => element.kind === 'RestPattern');
   const prefix = restAt < 0 ? node.elements : node.elements.slice(0, restAt);
   const suffix = restAt < 0 ? [] : node.elements.slice(restAt + 1);
@@ -360,7 +309,11 @@ function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | u
     item.kind === 'Invalid' ? [] : [{ name: item.field, span: item.span, target: item }],
   );
   const named = node.type === undefined ? undefined : walk.scope.entityOf(lastName(node.type.path));
-  if (walk.tests === undefined || (named?.kind !== 'variant' && named?.kind !== 'variants')) {
+  const isVariant = named?.kind === 'variant' || named?.kind === 'variants';
+  if (walk.tests === undefined && isVariant) {
+    return refused(walk, node, part);
+  }
+  if (walk.tests === undefined || !isVariant) {
     const struct = { kind: 'struct', type: node.type, items, span: node.span } as const;
     return takeApart(walk, struct, part);
   }
@@ -376,16 +329,31 @@ function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | u
 /** A construct that could fail to match: tested where tests are given, refused in a target. */
 function refutable(
   walk: Walk,
-  span: Span,
+  node: Pattern | PatternPart,
+  part: ValuePart,
   check: (tests: PatternTests) => Leaf,
 ): Shape | undefined {
   if (walk.tests === undefined) {
-    walk.scope.report(checkerDiagnostics.refutableTarget(span));
-    return anyShape;
+    return refused(walk, node, part);
   }
   const leaf = check(walk.tests);
   walk.found.push(...leaf.tests);
   return leaf.shape;
+}
+
+/**
+ * A construct that could fail to match, standing in a target, which must always match: reported
+ * once, its names bound at the error type to the part it stands at, so each use of them resolves
+ * with nothing more to report. Nothing inside it is taken apart, so a target's parts are fields and
+ * tuple elements only.
+ */
+function refused(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shape {
+  walk.scope.report(checkerDiagnostics.refutableTarget(node.span));
+  const names = new Set(targetNames(node).map((name) => declaringName(walk, name)));
+  for (const name of names) {
+    walk.bindings.push({ name, type: errorType, path: part.path });
+  }
+  return anyShape;
 }
 
 function spanOf(targets: readonly Pattern[]): Span {

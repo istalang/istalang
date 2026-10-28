@@ -24,7 +24,7 @@ import type { Register, TypeId } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { AssignedPart } from '../../checker/check.ts';
-import { positionsOf, type TargetOwner } from '../../checker/checked-pattern.ts';
+import type { TargetOwner } from '../../checker/checked-pattern.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { hasUnnamedPart } from '../../syntax/patterns.ts';
@@ -197,7 +197,7 @@ export function bindTargets(
 ): void {
   const lifetime = lifetimeOf(context, owner);
   for (const binding of context.body.targetsOf(owner)) {
-    const part = readPart(context, value, positionsOf(binding.path), span);
+    const part = readPart(context, value, binding.path, span);
     const register = declareVariable(context, binding.name, binding.type, lifetime);
     context.code.emit({ kind: 'move', span, dst: register, src: part });
   }

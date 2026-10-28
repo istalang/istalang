@@ -7,6 +7,7 @@
 
 import type { Span } from '../../../text/span.ts';
 import type { Destructuring, FieldTarget } from '../../syntax/statements.ts';
+import type { PartStep } from '../checked-pattern.ts';
 import type { FieldMember } from '../types/type.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import {
@@ -18,21 +19,25 @@ import {
 } from './parts.ts';
 import { structKey, tupleKey } from './shapes.ts';
 
-/** How a walk takes the targets a value is taken apart into: where it reports, and each target. */
-export interface Taking<Target> {
+/**
+ * How a walk takes the targets a value is taken apart into: where it reports, and each target.
+ * `Step` is what its parts' paths are made of: a pattern's may read an array's items, an
+ * assignment's never does, so its paths are positions.
+ */
+export interface Taking<Target, Step extends PartStep = PartStep> {
   readonly scope: PatternScope;
   /** Takes `target` over the part of the value it reaches; its shape. */
-  readonly take: (target: Target, part: ValuePart) => Shape | undefined;
+  readonly take: (target: Target, part: ValuePart<Step>) => Shape | undefined;
 }
 
 /**
  * Takes a value of `part` apart into `targets`, at `span`: one takes it whole, and several a tuple
  * of as many, as if parenthesized (§3.15).
  */
-export function takeTargets<Target>(
-  taking: Taking<Target>,
+export function takeTargets<Target, Step extends PartStep>(
+  taking: Taking<Target, Step | number>,
   targets: readonly Target[],
-  part: ValuePart,
+  part: ValuePart<Step | number>,
   span: Span,
 ): Shape | undefined {
   const [only] = targets;
@@ -46,10 +51,10 @@ export function takeTargets<Target>(
  * Takes a value of `part` apart as `destructuring` says, each of its targets taking its part: a
  * tuple of exactly as many elements, or a struct value's fields (parts.ts).
  */
-export function takeApart<Target>(
-  taking: Taking<Target>,
+export function takeApart<Target, Step extends PartStep>(
+  taking: Taking<Target, Step | number>,
   destructuring: Destructuring<Target>,
-  part: ValuePart,
+  part: ValuePart<Step | number>,
 ): Shape | undefined {
   if (destructuring.kind === 'tuple') {
     const { elements, span } = destructuring;
@@ -66,11 +71,11 @@ export function takeApart<Target>(
  * says of its field, anything for a field no item names. A field two items take makes the whole
  * a guard.
  */
-export function takeFields<Target>(
-  taking: Taking<Target>,
+export function takeFields<Target, Step extends PartStep>(
+  taking: Taking<Target, Step | number>,
   items: readonly FieldTarget<Target>[],
   fields: readonly FieldMember[] | undefined,
-  part: ValuePart,
+  part: ValuePart<Step | number>,
 ): readonly (Shape | undefined)[] {
   const shapes: (Shape | undefined)[] = (fields ?? []).map(() => anyShape);
   const taken = new Set<number>();
