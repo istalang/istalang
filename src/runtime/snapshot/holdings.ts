@@ -66,7 +66,10 @@ const kinds: Handlers<undefined, HeapObject, [], Holding> = {
     ...handlerOf(futureStates, state)(undefined, state),
     watches: [],
   }),
-  weakRef: (_context, weak) => ({ ...empty, watches: present(weak.target) }),
+  weakRef: (_context, weak) => ({
+    ...empty,
+    watches: typeof weak.target === 'number' ? [weak.target] : [],
+  }),
   guard: (_context, guard) => ({ ...empty, values: [guard.callback] }),
   resource: () => empty,
   mock: (_context, mock) => ({ ...empty, values: [mock.replacement, ...mock.calls] }),
@@ -94,7 +97,8 @@ export function valuesIn(object: HeapObject): readonly Value[] {
 
 /** The ids of the objects `object` refers to: the ones it holds, and the ones it only watches. */
 export function referencedObjects(object: HeapObject): readonly number[] {
-  return [...heldObjects(object), ...holdingOf(object).watches];
+  const holding = holdingOf(object);
+  return [...holding.holds, ...holding.values.flatMap(handlesIn), ...holding.watches];
 }
 
 /** The values `frame` holds in its registers, references aside. */

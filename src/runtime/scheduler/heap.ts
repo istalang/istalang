@@ -60,7 +60,7 @@ const indexes = {
   /** Every execution, by the call future its return resolves: the root's, which has none, is undefined. */
   executions: index('execution', (execution) => [execution.resolves]),
   /** Each weak reference, by its referent while it has one. */
-  weakRefs: index('weakRef', (weak) => (weak.target === undefined ? [] : [weak.target])),
+  weakRefs: index('weakRef', (weak) => (typeof weak.target === 'number' ? [weak.target] : [])),
   /** Each pending `disposed()` watch, by the weak reference it is on. */
   watches: index('future', ({ state }) => (state.kind === 'disposed' ? [state.weakRef] : [])),
   /** Each pending future its host fills, by its token. */
@@ -209,14 +209,22 @@ export class Heap {
 
   /** Notes what `old`, an object being replaced or removed, held and its replacement doesn't. */
   #noteHoldings(old: LiveObject, replacement?: LiveObject): void {
-    if (old.kind === 'execution') {
+    if (notesOwnReleases(old)) {
       return;
     }
     const kept = new Set(
-      replacement === undefined || replacement.kind === 'execution' ? [] : heldObjects(replacement),
+      replacement === undefined || notesOwnReleases(replacement) ? [] : heldObjects(replacement),
     );
     this.noteReleased(heldObjects(old).filter((id) => !kept.has(id)));
   }
+}
+
+/**
+ * Whether `object` notes its own releases as its registers change (interpreter/machine.ts), rather
+ * than when the heap replaces or removes it, as every other object, an `answer` root included, does.
+ */
+function notesOwnReleases(object: LiveObject): object is LiveExecution {
+  return object.kind === 'execution';
 }
 
 /** Every key `object` has, with the index it has it in. */

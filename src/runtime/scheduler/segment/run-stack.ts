@@ -8,27 +8,59 @@
 
 import type { Definition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
+import type { ActiveFrame } from '../../interpreter/machine.ts';
 import { traceOf } from '../../interpreter/trace.ts';
 import type { LiveExecution } from '../heap.ts';
+import { requireFrameDepth } from './limits.ts';
 
 export class RunStack {
   readonly #executions: LiveExecution[] = [];
   /** The execution the segment drives now, kept once it has left the stack at its await. */
   #driver: LiveExecution | undefined;
+  /** How many frames are running across every execution on the stack. */
+  #frames = 0;
 
   /** Starts driving `driver`: it runs alone. */
   drive(driver: LiveExecution): void {
     this.#driver = driver;
     this.#executions.splice(0, this.#executions.length, driver);
+    this.#frames = driver.frames.length;
   }
 
   push(execution: LiveExecution): void {
+    requireFrameDepth(this.#frames + execution.frames.length);
+    this.#frames += execution.frames.length;
     this.#executions.push(execution);
+  }
+
+  /** Pushes `frame` onto the running execution, guarding the segment's frame limit. */
+  pushFrame(frame: ActiveFrame): void {
+    requireFrameDepth(this.#frames + 1);
+    this.#frames += 1;
+    this.current().frames.push(frame);
+  }
+
+  /** Pops `frame`, the top frame of the running execution; that execution. */
+  popFrame(frame: ActiveFrame): LiveExecution {
+    const execution = this.current();
+    if (execution.frames.pop() !== frame) {
+      unreachable('Only the top frame returns.');
+    }
+    this.#frames -= 1;
+    return execution;
+  }
+
+  /** Removes the frames of `execution` from `at` onward, innermost first. */
+  dropFrames(execution: LiveExecution, at: number): readonly ActiveFrame[] {
+    const dropped = execution.frames.splice(at);
+    this.#frames -= dropped.length;
+    return dropped.toReversed();
   }
 
   /** Takes the top execution off; what runs next is the one under it, if any. */
   pop(): LiveExecution | undefined {
-    this.#executions.pop();
+    const popped = this.#executions.pop();
+    this.#frames -= popped?.frames.length ?? 0;
     return this.top();
   }
 
@@ -49,11 +81,6 @@ export class RunStack {
   /** Whether only the driver runs, so its await ends the segment. */
   get driverOnly(): boolean {
     return this.#executions.length === 1;
-  }
-
-  /** How many executions are running on the stack. */
-  get depth(): number {
-    return this.#executions.length;
   }
 
   /** The running executions, innermost first. */

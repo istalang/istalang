@@ -63,7 +63,7 @@ export function withdrawnAnswers(
   callerSnapshot: Snapshot | undefined,
 ): readonly CallerFuture[] {
   const waiting = new Set(
-    activeObjects(callerSnapshot).flatMap((object) =>
+    (callerSnapshot?.objects ?? []).flatMap((object) =>
       object.kind === 'future' && object.state.kind === 'host' ? [object.state.token] : [],
     ),
   );

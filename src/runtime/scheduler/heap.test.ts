@@ -32,9 +32,9 @@ const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
     (state): Made =>
       (object) => ({ kind: 'future', id: object, state }),
   ),
-  fc.option(id, { nil: undefined }).map(
+  fc.oneof(id, fc.constantFrom('disposed' as const, 'returned' as const)).map(
     (target): Made =>
-      (object) => ({ kind: 'weakRef', id: object, ...(target === undefined ? {} : { target }) }),
+      (object) => ({ kind: 'weakRef', id: object, target }),
   ),
   fc.option(id, { nil: undefined }).map(
     (resolves): Made =>

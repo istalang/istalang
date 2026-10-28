@@ -31,7 +31,11 @@ function liveFrame(definition: Definition, frame: Frame, heap: FrameHeap): Activ
   if (code?.kind !== 'code') {
     unreachable(`Frame function ${frame.function} is not code; loading checks this.`);
   }
-  const live = newFrame({ function: frame.function, code }, [], heap);
+  const live = newFrame(
+    { function: frame.function, code, ...(frame.arrives ? { arrives: frame.arrives } : {}) },
+    [],
+    heap,
+  );
   for (const [register, contents] of frame.registers) {
     live.registers[register] = contents;
   }
@@ -53,6 +57,7 @@ export function storedObject(object: LiveObject): HeapObject {
       registers: frame.registers.flatMap((contents, register) =>
         contents === undefined ? [] : [[register, contents] as [number, RegisterContents]],
       ),
+      ...(frame.arrives ? { arrives: frame.arrives } : {}),
     })),
   };
 }

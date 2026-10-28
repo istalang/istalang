@@ -19,14 +19,12 @@ import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposa
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import { type Caller, callTargetOf } from '../mocks.ts';
-import type { NativeCalls } from '../native-calls.ts';
 import type { RunStack } from './run-stack.ts';
 
 export interface DisposalRunSeams {
   readonly instance: Instance;
   /** Who the segment's calls are made by, which a call to another instance's mock carries. */
   readonly caller: Caller;
-  readonly natives: NativeCalls;
   /** The segment's run stack, shared with it: what runs is its top. */
   readonly runStack: RunStack;
   /** Tells the collector that the disposal its innermost round waits on is done. */
@@ -87,7 +85,7 @@ export class DisposalRuns {
       const { frames } = execution;
       const at = frames.findLastIndex((frame) => this.#frames.has(frame));
       if (at >= 0) {
-        for (const frame of frames.splice(at).toReversed()) {
+        for (const frame of runStack.dropFrames(execution, at)) {
           releaseFrame(frame);
         }
         this.#callDone(execution);
@@ -102,24 +100,17 @@ export class DisposalRuns {
   }
 
   #call(call: DisposalCall): boolean {
-    const { instance, caller, natives, runStack } = this.#seams;
+    const { instance, caller, runStack } = this.#seams;
     const target = callTargetOf(caller, call.function, call.arguments, call.captures);
     if (target.kind === 'answered') {
       return true;
     }
-    const { callable } = target;
-    if (callable.kind === 'native') {
-      natives.call(target.function, callable.native, target.contents);
-      return true;
-    }
-    const frame = newFrame(callable, target.contents, instance.frameHeap, target.captures);
+    const frame = newFrame(target.entry, target.contents, instance.frameHeap, target.captures);
     this.#frames.add(frame);
-    let running = runStack.top();
-    if (running === undefined) {
-      running = this.#carrier;
-      runStack.push(running);
+    if (runStack.top() === undefined) {
+      runStack.push(this.#carrier);
     }
-    running.frames.push(frame);
+    runStack.pushFrame(frame);
     return false;
   }
 

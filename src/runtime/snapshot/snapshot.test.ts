@@ -81,13 +81,17 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
     cell: id,
     path: fc.array(fc.nat({ max: 5 }), { maxLength: 3 }),
   });
-  const frame = fc.record({
-    function: fc.nat({ max: 9 }),
-    pc: fc.nat({ max: 30 }),
-    registers: fc.array(fc.tuple(fc.nat({ max: 20 }), fc.oneof(value, reference)), {
-      maxLength: 4,
-    }),
-  });
+  const frame = fc.record(
+    {
+      function: fc.nat({ max: 9 }),
+      pc: fc.nat({ max: 30 }),
+      registers: fc.array(fc.tuple(fc.nat({ max: 20 }), fc.oneof(value, reference)), {
+        maxLength: 4,
+      }),
+      arrives: fc.constant(true as const),
+    },
+    { requiredKeys: ['function', 'pc', 'registers'] },
+  );
   const futureState = fc.oneof(
     fc.record({ kind: fc.constant('resolved' as const), value }),
     fc.constant({ kind: 'call' as const }),
@@ -114,7 +118,9 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
         .record({ value, waiting: fc.array(id, { maxLength: 3 }) })
         .map((parts) => ({ id: objectId, kind: 'slot' as const, ...parts })),
       futureState.map((state) => ({ id: objectId, kind: 'future' as const, state })),
-      id.map((target) => ({ id: objectId, kind: 'weakRef' as const, target })),
+      fc
+        .oneof(id, fc.constantFrom('disposed' as const, 'returned' as const))
+        .map((target) => ({ id: objectId, kind: 'weakRef' as const, target })),
       value.map((callback) => ({ id: objectId, kind: 'guard' as const, callback })),
       fc
         .record({ type: fc.nat({ max: 9 }), payload: exactJson })

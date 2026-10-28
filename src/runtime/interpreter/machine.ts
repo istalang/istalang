@@ -47,10 +47,11 @@ export interface FrameHeap {
   readonly released: (contents: RegisterContents) => void;
 }
 
-/** A code entry a frame runs: its index, and its code. */
+/** A code entry a frame runs: its index, its code, and whether its result arrives from a mock. */
 export interface FrameEntry {
   readonly function: FunctionId;
   readonly code: CodeFunction;
+  readonly arrives?: true;
 }
 
 export interface ActiveFrame {
@@ -59,6 +60,8 @@ export interface ActiveFrame {
   pc: number;
   readonly registers: (RegisterContents | undefined)[];
   readonly heap: FrameHeap;
+  /** Set when the frame runs a mock's replacement in its own instance, so its result arrives. */
+  readonly arrives?: true;
 }
 
 export interface Machine {
@@ -101,9 +104,16 @@ export function newFrame(
   heap: FrameHeap,
   captures: readonly Value[] = [],
 ): ActiveFrame {
-  const { code } = entry;
+  const { code, arrives } = entry;
   const registers: (RegisterContents | undefined)[] = Array.from({ length: code.registers });
-  const frame: ActiveFrame = { function: entry.function, code, pc: 0, registers, heap };
+  const frame: ActiveFrame = {
+    function: entry.function,
+    code,
+    pc: 0,
+    registers,
+    heap,
+    ...(arrives ? { arrives } : {}),
+  };
   contents.forEach((each, index) => {
     if (isReference(each)) {
       registers[index] = each;

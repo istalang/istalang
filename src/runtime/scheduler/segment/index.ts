@@ -47,10 +47,10 @@ import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
-import { arriving, type Caller, callTargetOf, driverOf, type SegmentStart } from '../mocks.ts';
+import { type Caller, callTargetOf, driverOf, returnedValue, type SegmentStart } from '../mocks.ts';
 import { NativeCalls } from '../native-calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
-import { panicOf, requireDepth, requireFrameDepth } from './limits.ts';
+import { panicOf, requireDepth } from './limits.ts';
 import { RunStack } from './run-stack.ts';
 
 export type SegmentEnd =
@@ -96,19 +96,17 @@ class SegmentRunner implements Machine {
   readonly #runStack = new RunStack();
   readonly #collector: Collector;
   readonly #disposals: DisposalRuns;
-  readonly #mockFrames = new WeakSet<ActiveFrame>();
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
-    this.#caller = { instance, startedAt };
     this.#natives = new NativeCalls(instance, startedAt, (leftOut) =>
       this.#runStack.trace(this.definition, leftOut),
     );
+    this.#caller = { instance, natives: this.#natives, startedAt };
     this.#disposals = new DisposalRuns({
       instance,
       caller: this.#caller,
-      natives: this.#natives,
       runStack: this.#runStack,
       returned: () => {
         this.#collector.returned();
@@ -175,46 +173,24 @@ class SegmentRunner implements Machine {
       resumeAfterCall(frame, target.value);
       return;
     }
-    const { callable } = target;
-    if (callable.kind === 'native') {
-      const value = this.#natives.call(target.function, callable.native, target.contents);
-      resumeAfterCall(frame, target.mocked ? arriving(this.#instance, value) : value);
-      return;
-    }
-    if (callable.code.async) {
-      requireFrameDepth(this.#runStack.depth + 1);
+    const { entry } = target;
+    if (entry.code.async) {
       const future = this.#instance.futures.create({ kind: 'call' });
-      const execution = this.#instance.startExecution(
-        callable.function,
-        target.contents,
-        target.captures,
-        future,
+      this.#runStack.push(
+        this.#instance.startExecution(entry, target.contents, target.captures, future),
       );
-      if (target.mocked) {
-        this.#mockFrames.add(topFrame(execution));
-      }
-      this.#runStack.push(execution);
       return;
     }
-    const { frames } = this.#runStack.current();
-    requireFrameDepth(frames.length + 1);
-    const calleeFrame = newFrame(callable, target.contents, frame.heap, target.captures);
-    if (target.mocked) {
-      this.#mockFrames.add(calleeFrame);
-    }
-    frames.push(calleeFrame);
+    this.#runStack.pushFrame(newFrame(entry, target.contents, frame.heap, target.captures));
   }
 
   return(frame: ActiveFrame, value: Value): void {
-    const execution = this.#runStack.current();
-    if (execution.frames.pop() !== frame) {
-      unreachable('Only the top frame returns.');
-    }
+    const execution = this.#runStack.popFrame(frame);
     releaseFrame(frame);
     if (this.#disposals.returned(execution, frame)) {
       return;
     }
-    const returned = this.#mockFrames.has(frame) ? arriving(this.#instance, value) : value;
+    const returned = returnedValue(this.#instance, frame, value);
     const caller = execution.frames.at(-1);
     if (caller !== undefined) {
       resumeAfterCall(caller, returned);

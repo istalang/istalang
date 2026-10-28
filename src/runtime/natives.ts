@@ -89,9 +89,12 @@ export interface NativeWeakSide {
   readonly reference: (referent: Value) => Value;
   /** A handle to what `weak` refers to, until it is disposed. */
   readonly target: (weak: Value) => Value | undefined;
-  /** A future that resolves when the referent of `weak` is disposed, never if it has none left. */
+  /**
+   * A future that resolves when the referent of `weak` is disposed, already resolved once a
+   * non-call referent was, and never once a call entered cleanup or returned.
+   */
   readonly watch: (weak: Value) => Value;
-  /** A watch on `weak`, already resolved once its referent is disposed. */
+  /** `watch`, under the name the prelude's `disposed` extern calls. */
   readonly whenDisposed: (weak: Value) => Value;
 }
 

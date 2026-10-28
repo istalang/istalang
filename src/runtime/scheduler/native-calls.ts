@@ -211,7 +211,10 @@ function nativeTestingOf(instance: Instance): NativeTesting {
     },
     calls: (handle) => instance.heap.of(handleObject(handle), 'mock').calls,
     inspect: (name) => world.inspect(name),
-    watch: (name, until) => instance.futures.createHandle({ kind: 'watch', instance: name, until }),
+    watch: (name, until) => {
+      world.watched(name, until);
+      return instance.futures.createHandle({ kind: 'watch', instance: name, until });
+    },
     handle: (type) => ({ kind: 'extern', type, payload: world.handlePayload() }),
   };
 }

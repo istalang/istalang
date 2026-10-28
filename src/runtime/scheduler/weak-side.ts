@@ -41,16 +41,17 @@ export class WeakSide {
   /** A handle to what `weak` refers to, until it is disposed. */
   target(weak: Value): Value | undefined {
     const { target } = this.#heap.of(handleObject(weak), 'weakRef');
-    return target === undefined ? undefined : { kind: 'handle', object: target };
+    return typeof target === 'number' ? { kind: 'handle', object: target } : undefined;
   }
 
   /**
    * A watch on `weak` (`w.disposed()`, `worker.disposing()`): a future that resolves when its
-   * referent is disposed, already resolved once it was, and never once its call returned.
+   * referent is disposed, already resolved once a non-call referent was, and never once a call
+   * entered cleanup or returned.
    */
   watch(weak: Value): Value {
     const reference = this.#heap.of(handleObject(weak), 'weakRef');
-    return reference.gone === 'disposed'
+    return reference.target === 'disposed'
       ? this.#futures.createHandle({ kind: 'resolved', value: null })
       : this.#futures.createHandle({ kind: 'disposed', weakRef: reference.id });
   }
@@ -89,7 +90,7 @@ export class WeakSide {
     if (weak === undefined) {
       return [];
     }
-    this.#heap.replace({ kind: 'weakRef', id: weak.id, gone });
+    this.#heap.replace({ kind: 'weakRef', id: weak.id, target: gone });
     return this.#heap.find('watches', weak.id).map(({ id }) => id);
   }
 

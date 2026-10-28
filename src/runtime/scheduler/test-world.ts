@@ -14,19 +14,12 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Inspection } from '../instance-state.ts';
 import { Panic } from '../natives.ts';
 import type { TestWatch } from '../snapshot/objects.ts';
+import type { MockCall } from '../snapshot/snapshot.ts';
 
 /** The future a call to another instance's mock fills: its caller, and the token it named it. */
 export interface CallerFuture {
   readonly instance: string;
   readonly token: string;
-}
-
-/** A call one instance makes to a mock another holds (§10), and the future that waits for it. */
-export interface MockCall extends CallerFuture {
-  /** The mock object, in the holder's heap. */
-  readonly mock: number;
-  /** The call's arguments, as values that can leave an instance (mocks.ts). */
-  readonly arguments: readonly Value[];
 }
 
 /**
@@ -63,7 +56,7 @@ function outsideTest(): never {
 export const noTestWorld: TestWorld = {
   mockOf: () => undefined,
   answer: () => unreachable('No mock is held outside a test world.'),
-  watched: () => undefined,
+  watched: outsideTest,
   inspect: outsideTest,
   handlePayload: outsideTest,
 };

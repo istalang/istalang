@@ -8,14 +8,13 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../definition/values.ts';
+import { handle } from '../lifetimes/lifetimes.test-kit.ts';
 import { ignoredEvents } from './futures.test-kit.ts';
 import { Futures } from './futures.ts';
 import { Heap, type LiveExecution } from './heap.ts';
 import { WeakSide } from './weak-side.ts';
 
 const referents = 3;
-
-const handle = (object: number): Value => ({ kind: 'handle', object });
 
 type Event =
   | { readonly kind: 'watch'; readonly referent: number }

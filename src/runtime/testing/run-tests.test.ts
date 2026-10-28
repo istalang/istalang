@@ -235,6 +235,8 @@ describe("a host type's dispose", () => {
 extern struct Queue
 extern fn dispose(self: Queue)
 extern fn open() -> Queue
+async fn openAsync() -> Future<Queue>:
+  open()
 
 async fn opensAndLets() -> Future<unit>:
   drop open()
@@ -247,10 +249,15 @@ async fn unmockedDispose():
 async fn mockedDispose():
   const queue = handle<Queue>()
   hold _ = mock(open, fn(): queue)
+  hold _ = mock(openAsync, async fn() -> Future<Queue>: {
+    await time.delay(1ms)
+    queue
+  })
   const disposed = mock(dispose, fn(given: Queue): ())
   drop open()
+  drop await openAsync()
   drop await spawn opensAndLets().result()
-  assert(disposed.calls() == [queue, queue])
+  assert(disposed.calls() == [queue, queue, queue])
 
 @Suite{"disposal"}
 fn suite() -> Array<Test>: [test("unmocked", unmockedDispose), test("mocked", mockedDispose)]

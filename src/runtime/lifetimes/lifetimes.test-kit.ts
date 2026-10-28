@@ -85,13 +85,9 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
         }),
       ),
       contents.map((callback): LiveObject => ({ kind: 'guard', id: object, callback })),
-      fc.option(id, { nil: undefined }).map(
-        (target): LiveObject => ({
-          kind: 'weakRef',
-          id: object,
-          ...(target === undefined ? {} : { target }),
-        }),
-      ),
+      fc
+        .oneof(id, fc.constantFrom('disposed' as const, 'returned' as const))
+        .map((target): LiveObject => ({ kind: 'weakRef', id: object, target })),
     );
   const frame = fc
     .array(fc.option(contents, { nil: undefined }), { maxLength: 4 })

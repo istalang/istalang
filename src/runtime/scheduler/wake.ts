@@ -50,7 +50,7 @@ import { storedEnds } from './instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import { arriving } from './mocks.ts';
 import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
-import type { CallerFuture, MockCall } from './test-world.ts';
+import type { CallerFuture } from './test-world.ts';
 
 export interface SchedulerSeams {
   readonly store: InstanceStore;
@@ -84,17 +84,10 @@ export function unstarted(
   };
 }
 
-/** A value the host fills a future it named `token` with (§9). */
-interface Arrival {
-  readonly token: string;
-  readonly value: Value;
-}
-
 /** What an advance's first segment begins with before timers and watches. */
 type FirstStep =
   | { readonly kind: 'none' }
-  | { readonly kind: 'arrival'; readonly arrival: Arrival }
-  | { readonly kind: 'answer'; readonly call: MockCall }
+  | Exclude<Replay, { readonly kind: 'call' }>
   | { readonly kind: 'withdraw'; readonly withdrawn: readonly CallerFuture[] };
 
 /**
@@ -193,19 +186,7 @@ function replayOf(status: Snapshot['status'], step: FirstStep): Replay | undefin
   if (status.kind === 'unstarted') {
     return { kind: 'call', call: status.call };
   }
-  switch (step.kind) {
-    case 'arrival':
-      return { kind: 'arrival', arrival: step.arrival };
-    case 'answer':
-      return { kind: 'answer', call: { ...step.call, arguments: [...step.call.arguments] } };
-    case 'withdraw':
-    case 'none':
-      return undefined;
-    default: {
-      const unhandled: never = step;
-      return unhandled;
-    }
-  }
+  return step.kind === 'arrival' || step.kind === 'answer' ? step : undefined;
 }
 
 /** One segment's run: the instance as it left it, and how it ended. */

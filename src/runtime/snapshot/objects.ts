@@ -55,6 +55,8 @@ const frame = z.strictObject({
   pc: label,
   /** Registers that hold something, as [register, contents]; the others are empty. */
   registers: z.array(z.tuple([register, z.union([value, reference])])),
+  /** Set when the frame runs a mock's replacement in its own instance, so its result arrives. */
+  arrives: z.literal(true).optional(),
 });
 
 export type Frame = z.output<typeof frame>;
@@ -128,12 +130,11 @@ export const heapObject = z.discriminatedUnion('kind', [
   defineObject('slot', { value: value.optional(), waiting: z.array(objectId) }),
   defineObject('future', { state: futureState }),
   /**
-   * A weak reference, the one to its referent (spec §7): `target` is replaced by `gone` once the
-   * referent is disposed or, for a call's own (`currentCall`), once the call has returned.
+   * A weak reference, the one to its referent (spec §7): `target` is the referent's id while it
+   * lives, or why it is gone once it was disposed or its call ended.
    */
   defineObject('weakRef', {
-    target: objectId.optional(),
-    gone: z.enum(['disposed', 'returned']).optional(),
+    target: z.union([objectId, z.enum(['disposed', 'returned'])]),
   }),
   /** A `defer` guard: disposing it calls `callback` (spec §7). */
   defineObject('guard', { callback: value }),

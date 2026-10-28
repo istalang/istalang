@@ -42,12 +42,17 @@ describe('panicOf', () => {
     expect(panicOf(new RangeError('Invalid time value'))).toBeUndefined();
     expect(panicOf(new TypeError('a bug'))).toBeUndefined();
   });
+});
 
-  it('panics an instance that recurses past the frame depth limit', () => {
-    const text = compiledText(
-      ['fn loop(n: int) -> int: loop(n + 1)', 'async fn main() -> Future<int>: loop(0)'].join('\n'),
-    );
-    expect(startToEnd(testRuntime(), text)).toMatchObject({
+describe('requireFrameDepth', () => {
+  it.each([
+    ['synchronous', 'fn loop(n: int) -> int: loop(n + 1)\nasync fn main(): loop(0)'],
+    [
+      'eager async',
+      'async fn loop(n: int) -> Future<int>: await loop(n + 1)\nasync fn main(): await loop(0)',
+    ],
+  ])('panics an instance whose %s recursion exceeds the frame limit', (_, source) => {
+    expect(startToEnd(testRuntime(), compiledText(source))).toMatchObject({
       kind: 'panicked',
       message: expect.stringContaining('frames'),
     });

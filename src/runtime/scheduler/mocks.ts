@@ -11,11 +11,12 @@
  *   arguments and the result are copied across, the caller's future is filled once the answer is
  *   given, and the holder records the call. A segment that runs again calls it again, as it calls
  *   an extern again (§5).
- * - Only values without handles cross, except a host value a `dispose` made a resource: it
- *   crosses as its host's JSON. The instance answering plays the host, so it holds such a value
- *   as that JSON and never disposes it (§7), and `testing.handle` makes one so; the caller gets it
- *   as its resource for that JSON, the one it has already if any, so a handle a mock hands out and
- *   gets back stays the same (§3.6), and the caller alone disposes it.
+ * - Only values without handles cross between instances, except a host value a `dispose` made a
+ *   resource: it crosses as its host's JSON. A mock plays the host, in its own instance or
+ *   another's, so it receives and holds such a value as that JSON and never disposes it (§7), and
+ *   `testing.handle` makes one so; the caller gets it as its resource for that JSON, the one it has
+ *   already if any, so a handle a mock hands out and gets back stays the same (§3.6), and the
+ *   caller alone disposes it.
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
@@ -29,15 +30,14 @@ import {
   withChildValues,
 } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Callable } from '../interpreter/function-table.ts';
-import { passedValues } from '../interpreter/machine.ts';
+import { type ActiveFrame, type FrameEntry, passedValues } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
 import type { RegisterContents } from '../snapshot/objects.ts';
+import type { MockCall } from '../snapshot/snapshot.ts';
 import type { LiveExecution, LiveObjectOf } from './heap.ts';
 import type { Instance } from './instance/index.ts';
 import { ancestorsOf } from './instance-names.ts';
 import type { NativeCalls } from './native-calls.ts';
-import type { MockCall } from './test-world.ts';
 
 /** Of the mocks held for one target, the one a call reaches: the newest. */
 export function reachingMock<Mock extends { readonly id: number }>(
@@ -73,23 +73,22 @@ type MockedCall =
   | { readonly kind: 'answered'; readonly value: Value };
 
 /**
- * What a call runs: a function, its target or a mock's replacement, with the arguments and
- * captures that go with it, or nothing, when another instance's mock answered it.
+ * What a call does: resumes at once with `value` when a native or another instance's mock answered
+ * it, or runs `entry` with `contents` and `captures`.
  */
 export type CallTarget =
   | { readonly kind: 'answered'; readonly value: Value }
   | {
-      readonly kind: 'run';
-      readonly function: FunctionId;
-      readonly callable: Callable;
+      readonly kind: 'code';
+      readonly entry: FrameEntry;
       readonly contents: readonly RegisterContents[];
       readonly captures: readonly Value[];
-      readonly mocked: boolean;
     };
 
-/** Who makes calls: an instance, in a segment started at `startedAt`. */
+/** Who makes calls: an instance, its segment's natives, and when the segment started. */
 export interface Caller {
   readonly instance: Instance;
+  readonly natives: NativeCalls;
   readonly startedAt: bigint;
 }
 
@@ -117,14 +116,26 @@ export function callTargetOf(
     return mocked;
   }
   const run = mocked?.replacement ?? { function: target, captures };
+  const passed = mocked === undefined ? contents : mocked.values;
+  const callable = caller.instance.loaded.functions.callee(run.function);
+  if (callable.kind === 'native') {
+    const value = caller.natives.call(run.function, callable.native, passed);
+    return {
+      kind: 'answered',
+      value: mocked === undefined ? value : arriving(caller.instance, value),
+    };
+  }
   return {
-    kind: 'run',
-    function: run.function,
-    callable: caller.instance.loaded.functions.callee(run.function),
-    contents: mocked?.values ?? contents,
+    kind: 'code',
+    entry: mocked === undefined ? callable : { ...callable, arrives: true },
+    contents: passed,
     captures: run.captures,
-    mocked: mocked !== undefined,
   };
+}
+
+/** What `frame` returning `value` in `instance` hands back: arrived when it ran a mock. */
+export function returnedValue(instance: Instance, frame: ActiveFrame, value: Value): Value {
+  return frame.arrives ? arriving(instance, value) : value;
 }
 
 /** What a segment begins with: an execution about to run from its start, or answering a call. */
@@ -151,7 +162,7 @@ export function driverOf(
 function mockedCall(call: CallToMock): MockedCall | undefined {
   const own = call.instance.mockOf(call.target);
   if (own !== undefined) {
-    const values = call.values().map((each) => leaving(call.instance, each, false));
+    const values = call.values().map((each) => asHostValue(call.instance, each));
     recordCall(call.instance, own, values);
     const { replacement } = own;
     if (!isComposite(replacement) || replacement.kind !== 'closure') {
@@ -241,25 +252,43 @@ function startAnswer(
  * `value` as it leaves `instance` for another, as an argument of a call to a mock or its answer; a
  * panic for a handle that can't leave.
  */
-export function leaving(instance: Instance, value: Value, acrossInstances = true): Value {
+/** `value` as a mock in `instance` sees it: any resource handle turned into its host value. */
+function asHostValue(instance: Instance, value: Value): Value {
   if (!isComposite(value)) {
     return value;
   }
   if (value.kind === 'handle') {
     const object = instance.heap.objectOf(value.object);
-    if (object.kind === 'resource') {
-      return { kind: 'extern', type: object.type, payload: object.payload };
-    }
-    if (acrossInstances) {
+    return object.kind === 'resource'
+      ? { kind: 'extern', type: object.type, payload: object.payload }
+      : value;
+  }
+  return withChildValues(
+    value,
+    childValues(value).map((child) => asHostValue(instance, child)),
+  );
+}
+
+/**
+ * `value` as it leaves `instance` for another, as an argument of a call to a mock or its answer; a
+ * panic for a handle that can't leave.
+ */
+export function leaving(instance: Instance, value: Value): Value {
+  if (!isComposite(value)) {
+    return value;
+  }
+  if (value.kind === 'handle') {
+    const object = instance.heap.objectOf(value.object);
+    if (object.kind !== 'resource') {
       throw new Panic(
         "A call to a mock another instance holds carries a value that isn't sendable (§10).",
       );
     }
-    return value;
+    return { kind: 'extern', type: object.type, payload: object.payload };
   }
   return withChildValues(
     value,
-    childValues(value).map((child) => leaving(instance, child, acrossInstances)),
+    childValues(value).map((child) => leaving(instance, child)),
   );
 }
 

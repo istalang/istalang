@@ -32,6 +32,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { LogRecord, SpawnOptions } from '../../instance-state.ts';
 import {
   type ActiveFrame,
+  type FrameEntry,
   type FrameHeap,
   newFrame,
   releaseFrame,
@@ -273,16 +274,13 @@ export class Instance {
    * closure's `captures` after them; an async call's execution `resolves` its future on return.
    */
   startExecution(
-    entry: FunctionId,
+    entry: FunctionId | FrameEntry,
     contents: readonly RegisterContents[],
     captures: readonly Value[] = [],
     resolves?: number,
   ): LiveExecution {
-    const code = this.loaded.definition.functions[entry];
-    if (code?.kind !== 'code') {
-      unreachable(`Entry ${entry} is not code.`);
-    }
-    const frame = newFrame({ function: entry, code }, contents, this.frameHeap, captures);
+    const frameEntry = typeof entry === 'number' ? this.#frameEntry(entry) : entry;
+    const frame = newFrame(frameEntry, contents, this.frameHeap, captures);
     return this.heap.add((id) => ({
       kind: 'execution',
       id,
@@ -290,6 +288,14 @@ export class Instance {
       frames: [frame],
       disposing: false,
     }));
+  }
+
+  #frameEntry(entry: FunctionId): FrameEntry {
+    const code = this.loaded.definition.functions[entry];
+    if (code?.kind !== 'code') {
+      unreachable(`Entry ${entry} is not code.`);
+    }
+    return { function: entry, code };
   }
 
   /** Whether no execution is ready to run. */

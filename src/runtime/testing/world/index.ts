@@ -34,7 +34,7 @@ import { inspection, pendingTestWatches, withdrawnAnswers } from '../../schedule
 import { storedSnapshot } from '../../scheduler/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
 import { reachingMock } from '../../scheduler/mocks.ts';
-import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/test-world.ts';
+import type { MockAnswer, TestWorld } from '../../scheduler/test-world.ts';
 import {
   type Advance,
   type AdvanceFirst,
@@ -43,7 +43,7 @@ import {
   unstarted,
 } from '../../scheduler/wake.ts';
 import type { TestWatch } from '../../snapshot/objects.ts';
-import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
+import type { InstanceCall, MockCall, Snapshot } from '../../snapshot/snapshot.ts';
 import { memoryStore } from '../../store.ts';
 import { unmockedExterns } from './test-host.ts';
 
