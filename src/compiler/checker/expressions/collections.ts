@@ -39,7 +39,7 @@ import type { CollectionForm } from '../check.ts';
 import type { Accepts, BodyContext, CollectionRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { resolveDefault } from '../resolution/default-witness.ts';
-import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
+import { preludeCall } from '../resolution/implicit.ts';
 import {
   agreedAccepts,
   allProducersAccept,
@@ -210,15 +210,11 @@ export function checkRange(context: BodyContext, node: Range): Type {
     }
   }
   if (node.isInclusive && node.end !== undefined) {
-    implicitCall(context, {
+    preludeCall(context, {
       node,
       role: 'inclusiveEnd',
-      candidates: preludeCandidates(context, inclusiveEndFunction),
-      arguments: [
-        { type: intType, passing: 'value' },
-        { type: intType, passing: 'value' },
-      ],
-      failure: () => checkerDiagnostics.operatorTypes(node.span, '..=', 'int and int'),
+      name: inclusiveEndFunction,
+      arguments: [intType, intType],
     });
   }
   return wellKnownOf(context.checker, wellKnown.range);

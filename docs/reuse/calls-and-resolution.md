@@ -31,7 +31,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - make a call the toolchain makes on its own to a plain function (no written call site), by its arguments or by explicit `typeArguments` → `silentCall`, `callWithTypes` (`src/compiler/checker/resolution/silent-choice.ts`)
 - resolve and record an implicit construct call → `implicitCall` (`src/compiler/checker/resolution/implicit.ts`)
 - resolve an implicit `compare` or `includes` operator call → `implicitOperatorCall` (`src/compiler/checker/resolution/implicit.ts`)
-- resolve and record a prelude-owned helper call (panics if absent) → `preludeCall`, `preludeCandidates` (`src/compiler/checker/resolution/implicit.ts`)
+- resolve and record a prelude-owned helper call (panics if absent) → `preludeCall` (`src/compiler/checker/resolution/implicit.ts`)
 - resolve a written call in a body → `resolveCall`, `recordChosen`, `explain` (`src/compiler/checker/calls/resolve.ts`)
 - fit a chosen call's arguments (written or implicit) to the types they fill, or spell its argument list in a report → `filledTypes`, `fitArguments`, `argumentListText` (`src/compiler/checker/resolution/argument-fit.ts`)
 - infer untyped lambda arguments after overload choice → `checkDecidedLambdas` (`src/compiler/checker/calls/lambda-arguments.ts`)
