@@ -78,10 +78,7 @@ export function localFunctionOf(
   variable: VariableEntity,
 ): FunctionDeclaration | Lambda | undefined {
   const { owner } = variable;
-  return (owner.kind === 'FunctionDeclaration' || owner.kind === 'Lambda') &&
-    owner.name === variable.name
-    ? owner
-    : undefined;
+  return owner.kind === 'FunctionDeclaration' || owner.kind === 'Lambda' ? owner : undefined;
 }
 
 /**
