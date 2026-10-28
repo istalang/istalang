@@ -30,14 +30,20 @@ export function outcomeText(finished: Finished, definition: Definition): string 
   return jsonText(encoded, shape);
 }
 
-/** The `Json` a finished instance's encoder gave, with its shape; a Refusal when it has none. */
+/**
+ * The `Json` a finished instance's encoder gave, with its shape; a Refusal when it has none, or
+ * when it isn't this program's `Json`, the outcome of another program's instance.
+ */
 function encodedOf(
   { encoded }: Finished,
   definition: Definition,
 ): { readonly encoded: Value; readonly shape: JsonType } {
-  const shape = jsonTypeIn(definition.types);
-  if (encoded === undefined || shape === undefined || !isJsonValue(encoded, shape)) {
+  if (encoded === undefined) {
     throw new Refusal('noJsonForm', 'This outcome has no JSON: no codec writes its type.');
+  }
+  const shape = jsonTypeIn(definition.types);
+  if (shape === undefined || !isJsonValue(encoded, shape)) {
+    throw new Refusal('noJsonForm', "This outcome's JSON isn't this program's Json.");
   }
   return { encoded, shape };
 }

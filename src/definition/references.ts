@@ -87,22 +87,20 @@ function checkStarts(context: Context): void {
       context.report(path, `The key '${start.key}' names two entries a host may start.`);
     }
     keys.add(start.key);
-    if (!inRange(context, { functions: [start.function] }, [...path, 'function'])) {
-      return;
-    }
     const entry = context.tables.functions[start.function];
-    if (entry?.kind !== 'code' || entry.parameters.some((parameter) => parameter.reference)) {
+    if (
+      inRange(context, { functions: [start.function] }, [...path, 'function']) &&
+      (entry?.kind !== 'code' || entry.parameters.some((parameter) => parameter.reference))
+    ) {
       context.report(path, 'A host starts code that takes every argument by value.');
     }
-    const encoderPath = [...path, 'encoder'];
     const encoder = context.tables.functions[start.encoder];
-    if (encoder === undefined) {
-      inRange(context, { functions: [start.encoder] }, encoderPath);
-      return;
-    }
-    const problem = encoderProblem(encoder);
-    if (problem !== undefined) {
-      context.report(encoderPath, `${problem}.`);
+    const problem = encoder === undefined ? undefined : encoderProblem(encoder);
+    if (
+      inRange(context, { functions: [start.encoder] }, [...path, 'encoder']) &&
+      problem !== undefined
+    ) {
+      context.report([...path, 'encoder'], `${problem}.`);
     }
   });
 }

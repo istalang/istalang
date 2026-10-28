@@ -12,7 +12,8 @@
  *   names none
  * - a new instance's call starts a function with code, given its captures and its arguments by
  *   value, with values the Definition agrees with
- * - its outcome's encoder, when it has one, is an entry that can encode one (§9)
+ * - its outcome's encoder, when it has one, is an entry that can encode one, and a finished
+ *   instance's JSON of its outcome is a `Json` value (§9)
  * - a cell is a type entry of role `cell` and a resource of an extern type
  * - every value held anywhere names types and functions the Definition has, and agrees with them,
  *   by the same check the Definition's own constants pass (definition/references.ts)
@@ -22,6 +23,7 @@ import type { Definition } from '../../definition/definition.ts';
 import { encoderProblem, takesReference } from '../../definition/functions.ts';
 import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
+import { isJsonValue, jsonTypeIn } from '../../definition/json-values.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { valueProblems } from '../../definition/references.ts';
 import { hasRole } from '../../definition/types.ts';
@@ -40,6 +42,7 @@ export function checkSnapshot(definition: Definition, snapshot: Snapshot): void 
     ...callFutureProblems(snapshot),
     ...startingCallProblems(definition, snapshot.status),
     ...encoderProblems(definition, snapshot.encoder),
+    ...outcomeProblems(definition, snapshot.status),
   ];
   if (problems.length > 0) {
     throw new Refusal(
@@ -177,6 +180,22 @@ function encoderProblems(
   const problem =
     entry === undefined ? `the outcome's encoder ${encoder} is no function` : encoderProblem(entry);
   return problem === undefined ? [] : [problem];
+}
+
+/** What is wrong with a finished instance's outcome and its JSON, if anything. */
+function outcomeProblems(definition: Definition, status: Snapshot['status']): readonly string[] {
+  if (status.kind !== 'finished') {
+    return [];
+  }
+  const { outcome, encoded } = status;
+  const problems = [outcome, ...(encoded === undefined ? [] : [encoded])].flatMap((value) =>
+    valueProblems(definition, value).map(({ message }) => `the outcome: ${message}`),
+  );
+  const shape = jsonTypeIn(definition.types);
+  if (encoded !== undefined && (shape === undefined || !isJsonValue(encoded, shape))) {
+    problems.push("the outcome's JSON is no Json value");
+  }
+  return problems;
 }
 
 /** What is wrong with the call a new instance starts with, if anything. */

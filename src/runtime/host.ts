@@ -260,10 +260,10 @@ function boundProgram(
  * outcome; a Refusal unless it takes `count` arguments.
  */
 function startOf(definition: Definition, key: string | undefined, count: number): StartCall {
-  const entry =
-    key === undefined
-      ? definition.main
-      : definition.starts.find((start) => start.key === key)?.function;
+  const listed = definition.starts.find((start) =>
+    key === undefined ? start.function === definition.main : start.key === key,
+  );
+  const entry = key === undefined ? definition.main : listed?.function;
   const takes = entry === undefined ? undefined : definition.functions[entry]?.parameters.length;
   if (entry === undefined || takes !== count) {
     const what = key === undefined ? "'main'" : `'${key}'`;
@@ -274,8 +274,7 @@ function startOf(definition: Definition, key: string | undefined, count: number)
         : `${what} takes ${takes} arguments, not ${count}.`,
     );
   }
-  const encoder = definition.starts.find((start) => start.function === entry)?.encoder;
-  return { entry, encoder };
+  return { entry, encoder: listed?.encoder };
 }
 
 /** What a host starts: the entry, and the encoder of its outcome when it has one. */

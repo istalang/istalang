@@ -47,6 +47,17 @@ const mismatch = expect.objectContaining({ reason: 'snapshotMismatch' });
 const executionIds = (snapshot: Snapshot) =>
   snapshot.objects.flatMap((object) => (object.kind === 'execution' ? [object.id] : []));
 
+/** `snapshot` finished with `outcome`, holding nothing. */
+const finishedWith = (
+  snapshot: Snapshot,
+  outcome: { readonly outcome: Value; readonly encoded?: Value },
+): Snapshot => ({
+  ...snapshot,
+  status: { kind: 'finished', ...outcome },
+  objects: [],
+  ready: [],
+});
+
 /** The entry of a frame `snapshot` holds: an async function's, which can't encode an outcome. */
 const frameEntry = (snapshot: Snapshot) =>
   snapshot.objects.flatMap((object) =>
@@ -193,6 +204,14 @@ describe('reading an instance back', () => {
       }),
     ],
     ['an outcome encoder that is no function', (snapshot) => ({ ...snapshot, encoder: 10_000 })],
+    [
+      'an outcome of a type the Definition lacks',
+      (snapshot) => finishedWith(snapshot, { outcome: { kind: 'struct', type: 9999, fields: [] } }),
+    ],
+    [
+      "an outcome's JSON that is no Json value",
+      (snapshot) => finishedWith(snapshot, { outcome: 1n, encoded: 42n }),
+    ],
     [
       "an outcome encoder that can't encode",
       (snapshot) => ({ ...snapshot, encoder: frameEntry(snapshot) }),

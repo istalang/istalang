@@ -94,9 +94,10 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
         ? spawnProblem(tables.functions[i.callee.function], i.arguments.length)
         : undefined;
     const encoder = i.encoder === undefined ? undefined : tables.functions[i.encoder];
+    const encoderIssue = encoder === undefined ? undefined : encoderProblem(encoder);
     return (
       calleeProblem ??
-      (encoder === undefined ? undefined : encoderProblem(encoder)) ??
+      (encoderIssue === undefined ? undefined : `${encoderIssue}.`) ??
       (hasRole(tables.types, i.type, 'instance')
         ? undefined
         : `type ${i.type} is not an Instance's.`)
