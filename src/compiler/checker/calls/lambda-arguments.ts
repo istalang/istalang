@@ -12,7 +12,6 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
-import { encloses } from '../../../text/span.ts';
 import {
   casesOf,
   type Expression,
@@ -20,7 +19,6 @@ import {
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { BodyContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import { argumentSlotsOf } from '../resolution/binding.ts';
@@ -37,75 +35,49 @@ interface Argument {
   readonly type: Type | undefined;
 }
 
-const prechecked = new WeakMap<Expression, Type>();
+let activeInferredLambdas: ReadonlyMap<Lambda, Type> | undefined;
 
-/**
- * The type already found for `node` before its enclosing argument is fitted (`recordPrechecked`),
- * consumed once; undefined when `node` wasn't prechecked.
- */
-export function takePrechecked(node: Expression): Type | undefined {
-  const cached = prechecked.get(node);
-  if (cached !== undefined) {
-    prechecked.delete(node);
-  }
-  return cached;
+/** The type `checkDecidedLambdas` already inferred for `node` in the current call; else undefined. */
+export function inferredLambdaOf(node: Lambda): Type | undefined {
+  return activeInferredLambdas?.get(node);
 }
 
-/** Records `type` for `node`, already checked before its enclosing argument is fitted. */
-export function recordPrechecked(node: Expression, type: Type): void {
-  prechecked.set(node, type);
-}
-
-/** Whether `root` names an outer local variable whose binding (a pattern's or a block's) isn't checked yet. */
-export function mentionsUnbound(
-  context: BodyContext,
-  root: SyntaxNode,
-  node: SyntaxNode = root,
-): boolean {
-  if (node.kind === 'Identifier') {
-    const entity = context.checker.bindings.entityOf(context.module, node);
-    if (
-      entity?.kind === 'variable' &&
-      context.checker.bindings.moduleOf(entity) === undefined &&
-      !encloses(root.span, entity.name.span) &&
-      entity.owner.kind !== 'FunctionDeclaration' &&
-      entity.owner.kind !== 'Lambda' &&
-      context.variables.typeOf(entity).kind === 'error'
-    ) {
-      return true;
-    }
+/** Runs `run` with `lambdas` visible to `checkLambda`, so decided lambdas aren't checked twice. */
+export function withInferredLambdas(lambdas: ReadonlyMap<Lambda, Type>, run: () => void): void {
+  const previous = activeInferredLambdas;
+  activeInferredLambdas = lambdas;
+  try {
+    run();
+  } finally {
+    activeInferredLambdas = previous;
   }
-  return childrenOf(node).some((child) => mentionsUnbound(context, root, child));
 }
 
 /**
  * Checks the lambdas among `written` that `application` decides, binding what their results give;
- * their types, by argument position, for top-level lambda arguments.
+ * their inferred types, by lambda node.
  */
 export function checkDecidedLambdas(
   context: BodyContext,
   written: readonly Argument[],
   application: Application,
-): ReadonlyMap<number, Type> {
+): ReadonlyMap<Lambda, Type> {
   const { signature, inference, binding } = application;
   const slots = argumentSlotsOf(signature.parameters, binding);
-  const types = new Map<number, Type>();
+  const inferred = new Map<Lambda, Type>();
   written.forEach(({ node, type }, index) => {
     const slot = slots.get(index);
     if (type !== undefined || slot === undefined) {
       return;
     }
-    const bare = unparenthesized(node);
-    if (bare.kind === 'Lambda') {
-      const checked = inferLambdaAt(context, bare, slot.type, inference);
-      if (checked !== undefined) {
-        types.set(index, checked);
-      }
-      return;
-    }
-    inferNestedLambdas(context, node, slot.type, inference);
+    inferNestedLambdas(context, node, slot.type, { inference, inferred });
   });
-  return types;
+  return inferred;
+}
+
+interface LambdaInference {
+  readonly inference: Inference;
+  readonly inferred: Map<Lambda, Type>;
 }
 
 /** Checks `node`, a lambda, against `expected` when its parameters are known, binding its result. */
@@ -113,8 +85,8 @@ function inferLambdaAt(
   context: BodyContext,
   node: Lambda,
   expected: Type,
-  inference: Inference,
-): Type | undefined {
+  { inference, inferred }: LambdaInference,
+): void {
   const partial = withoutOptionals(
     substitute(expected, inference.substitution()),
     context.checker.optionalEntity,
@@ -122,16 +94,15 @@ function inferLambdaAt(
   if (
     partial.kind !== 'function' ||
     partial.parameters.some((parameter) => isOpen(parameter.type, inference)) ||
-    (partial.pack !== undefined && isOpen(partial.pack, inference)) ||
-    mentionsUnbound(context, node)
+    (partial.pack !== undefined && isOpen(partial.pack, inference))
   ) {
-    return undefined;
+    return;
   }
   const checked = isOpen(partial.result, inference)
     ? context.inferLambda(node, partial)
     : context.expression(node, partial);
   inference.match(partial, checked);
-  return checked;
+  inferred.set(node, checked);
 }
 
 /** Walks `node` and `expected` together, inferring any decided lambdas inside `node`. */
@@ -139,39 +110,33 @@ function inferNestedLambdas(
   context: BodyContext,
   node: Expression,
   expected: Type,
-  inference: Inference,
+  state: LambdaInference,
 ): void {
+  const bare = unparenthesized(node);
   const unwrapped = withoutOptionals(
-    substitute(expected, inference.substitution()),
+    substitute(expected, state.inference.substitution()),
     context.checker.optionalEntity,
   );
-  switch (node.kind) {
-    case 'Lambda': {
-      const checked = inferLambdaAt(context, node, unwrapped, inference);
-      if (checked !== undefined) {
-        recordPrechecked(node, checked);
-      }
-      return;
-    }
-    case 'Parenthesized':
-      inferNestedLambdas(context, node.expression, expected, inference);
+  switch (bare.kind) {
+    case 'Lambda':
+      inferLambdaAt(context, bare, unwrapped, state);
       return;
     case 'BlockExpression':
     case 'If':
     case 'Match':
     case 'Select':
-      for (const body of branchBodiesOf(node)) {
-        inferBlockLambdas(context, body, expected, inference);
+      for (const body of branchBodiesOf(bare)) {
+        inferBlockLambdas(context, body, expected, state);
       }
       return;
     case 'Tuple':
-      inferTupleLambdas(context, node.elements, unwrapped, inference);
+      inferTupleLambdas(context, bare.elements, unwrapped, state);
       return;
     case 'ArrayLiteral':
-      inferArrayLambdas(context, node.elements, unwrapped, inference);
+      inferArrayLambdas(context, bare.elements, unwrapped, state);
       return;
     case 'MapLiteral':
-      inferMapLambdas(context, node.entries, unwrapped, inference);
+      inferMapLambdas(context, bare.entries, unwrapped, state);
       return;
     default:
       return;
@@ -205,7 +170,7 @@ function inferTupleLambdas(
   context: BodyContext,
   elements: readonly Expression[],
   unwrapped: Type,
-  inference: Inference,
+  state: LambdaInference,
 ): void {
   if (unwrapped.kind !== 'tuple' || unwrapped.elements.length !== elements.length) {
     return;
@@ -213,7 +178,7 @@ function inferTupleLambdas(
   elements.forEach((element, index) => {
     const guide = unwrapped.elements[index];
     if (guide !== undefined) {
-      inferNestedLambdas(context, element, guide, inference);
+      inferNestedLambdas(context, element, guide, state);
     }
   });
 }
@@ -222,7 +187,7 @@ function inferArrayLambdas(
   context: BodyContext,
   elements: Extract<Expression, { readonly kind: 'ArrayLiteral' }>['elements'],
   unwrapped: Type,
-  inference: Inference,
+  state: LambdaInference,
 ): void {
   const item = arrayElement(context.checker, unwrapped);
   if (item === undefined) {
@@ -230,7 +195,7 @@ function inferArrayLambdas(
   }
   for (const element of elements) {
     if (element.kind !== 'Spread') {
-      inferNestedLambdas(context, element, item, inference);
+      inferNestedLambdas(context, element, item, state);
     }
   }
 }
@@ -239,16 +204,16 @@ function inferMapLambdas(
   context: BodyContext,
   entries: Extract<Expression, { readonly kind: 'MapLiteral' }>['entries'],
   unwrapped: Type,
-  inference: Inference,
+  state: LambdaInference,
 ): void {
   const [keyType, valueType] = wellKnownArguments(context.checker, wellKnown.map, unwrapped) ?? [];
   for (const entry of entries) {
     if (entry.kind === 'MapEntry') {
       if (keyType !== undefined) {
-        inferNestedLambdas(context, entry.key, keyType, inference);
+        inferNestedLambdas(context, entry.key, keyType, state);
       }
       if (valueType !== undefined) {
-        inferNestedLambdas(context, entry.value, valueType, inference);
+        inferNestedLambdas(context, entry.value, valueType, state);
       }
     }
   }
@@ -258,11 +223,11 @@ function inferBlockLambdas(
   context: BodyContext,
   block: Block,
   expected: Type,
-  inference: Inference,
+  state: LambdaInference,
 ): void {
   const tail = tailExpressionOf(block);
   if (tail !== undefined && block.statements.length === 1) {
-    inferNestedLambdas(context, tail, expected, inference);
+    inferNestedLambdas(context, tail, expected, state);
   }
 }
 

@@ -27,7 +27,7 @@
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
-import { takePrechecked } from '../calls/lambda-arguments.ts';
+import { inferredLambdaOf } from '../calls/lambda-arguments.ts';
 import { isChangeable } from '../calls/places.ts';
 import type { NestedFunction, SignatureParameter } from '../check.ts';
 import type { BodyContext } from '../context.ts';
@@ -72,9 +72,9 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | und
 }
 
 export function checkLambda(context: BodyContext, node: Lambda, expected: Type | undefined): Type {
-  const prechecked = takePrechecked(node);
-  if (prechecked !== undefined) {
-    return prechecked;
+  const inferred = inferredLambdaOf(node);
+  if (inferred !== undefined) {
+    return inferred;
   }
   const shape = expectedFunction(context, expected);
   return checkLambdaAs(context, node, shape, shape?.result);

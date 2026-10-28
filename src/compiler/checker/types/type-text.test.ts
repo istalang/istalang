@@ -37,18 +37,19 @@ describe('typeText', () => {
     const program = stdProgramOf({
       'main.ista': [
         'shared struct Counter { count: int }',
-        'fn f(c: Counter, s: Shared<int>):',
+        'shared struct Box<K, V> { key: K }',
+        'fn f(c: Counter, b: Box<int, string>):',
         '  const a = *c',
-        '  const b = *s',
+        '  const d = *b',
       ].join('\n'),
     });
     const checker = checkProgram(program);
     const items = program.modules.get(idOf('main.ista'))?.tree.root.items ?? [];
-    const f = items[1] as FunctionDeclaration;
+    const f = items[2] as FunctionDeclaration;
     const body = f.body === undefined ? undefined : checker.bodyOf(f);
-    const [a, b] = (f.body?.statements ?? []) as VariableDeclaration[];
+    const [a, d] = (f.body?.statements ?? []) as VariableDeclaration[];
     expect(a && body && typeText(body.typeOf(a.initializer))).toBe('*Counter');
-    expect(b && body && typeText(body.typeOf(b.initializer))).toBe('*Shared<int>');
+    expect(d && body && typeText(body.typeOf(d.initializer))).toBe('*Box<int, string>');
   });
 
   it('spells a non-prelude Optional declaration as Optional<T>, not T?', () => {

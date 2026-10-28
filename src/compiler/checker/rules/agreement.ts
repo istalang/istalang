@@ -10,14 +10,25 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { wellKnown } from '../../../language/well-known.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
-import { recordPrechecked } from '../calls/lambda-arguments.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { ValueSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
 import { type Fit, isExact } from '../types/fit.ts';
-import { isPrimitive, type Type } from '../types/type.ts';
+import {
+  boolType,
+  floatType,
+  intType,
+  isPrimitive,
+  stringType,
+  type Type,
+  unitType,
+} from '../types/type.ts';
+import { wellKnownOf } from '../types/well-known.ts';
 import { widened } from '../types/widening.ts';
 
 /**
@@ -121,46 +132,110 @@ export function decidedSoFar(
 
 /**
  * What one part of a composite argument has before the call is chosen: the parameter types it can
- * take when the call decides its type, or its own expression when it has a type of its own.
+ * take when the call decides its type, or its own type when known without side effects.
  */
 export type AcceptedPart =
   | { readonly kind: 'decided'; readonly accepts: Accepts }
-  | { readonly kind: 'own'; readonly node?: Expression | undefined };
-
-/** A part of a composite argument once any sibling needing the call's type triggered prechecking. */
-type CheckedPart =
-  | { readonly kind: 'decided'; readonly accepts: Accepts }
   | { readonly kind: 'typed'; readonly type: Type | undefined };
-
-/** Checks `node` once during `accepts`, keeping its type for the enclosing expression's check. */
-function precheck(context: BodyContext, node: Expression): Type {
-  const type = context.expression(node);
-  recordPrechecked(node, type);
-  return type;
-}
 
 /** How `node` takes part in a composite argument's `Accepts` check. */
 export function acceptedPart(context: BodyContext, node: Expression | undefined): AcceptedPart {
   if (node === undefined) {
-    return { kind: 'own' };
+    return { kind: 'typed', type: undefined };
   }
   const accepts = context.accepts(node);
-  return accepts === undefined ? { kind: 'own', node } : { kind: 'decided', accepts };
+  return accepts === undefined
+    ? { kind: 'typed', type: knownTypeOf(context, node) }
+    : { kind: 'decided', accepts };
 }
 
-/** Checks the typed parts among `parts`, once a sibling needs the call to decide its type. */
-function checkParts(context: BodyContext, parts: readonly AcceptedPart[]): readonly CheckedPart[] {
-  return parts.map((part) =>
-    part.kind === 'decided'
-      ? part
-      : { kind: 'typed', type: part.node === undefined ? undefined : precheck(context, part.node) },
-  );
+/**
+ * The type `node` has on its own, read without running expression checking or reporting; undefined
+ * for an expression whose type depends on checking or on the expected type.
+ */
+function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
+  switch (node.kind) {
+    case 'IntegerLiteral':
+      return intType;
+    case 'FloatLiteral':
+      return floatType;
+    case 'StringLiteral':
+      return stringType;
+    case 'BooleanLiteral':
+      return boolType;
+    case 'DurationLiteral':
+      return wellKnownOf(context.checker, wellKnown.duration);
+    case 'Range':
+      return wellKnownOf(context.checker, wellKnown.range);
+    case 'TemplateLiteral':
+      return node.tag === undefined ? stringType : undefined;
+    case 'Is':
+      return boolType;
+    case 'Parenthesized':
+      return knownTypeOf(context, node.expression);
+    case 'BlockExpression':
+      return blockKnownType(context, node.block);
+    case 'Identifier':
+      return identifierKnownType(context, node);
+    case 'Tuple':
+      return tupleKnownType(context, node.elements);
+    default:
+      return undefined;
+  }
+}
+
+function blockKnownType(context: BodyContext, block: Block): Type | undefined {
+  const tail = tailExpressionOf(block);
+  return tail !== undefined && block.statements.length === 1
+    ? knownTypeOf(context, tail)
+    : undefined;
+}
+
+function identifierKnownType(context: BodyContext, node: Identifier): Type | undefined {
+  const entity = context.checker.bindings.entityOf(context.module, node);
+  if (entity?.kind !== 'variable') {
+    return undefined;
+  }
+  switch (entity.owner.kind) {
+    case 'ExternConstantDeclaration':
+      return context.checker.resolveType(context.checker.moduleOf(entity.owner), entity.owner.type);
+    case 'VariableDeclaration': {
+      const constant = context.checker.constantNamed(context.module, node)?.type;
+      if (constant !== undefined) {
+        return constant.kind === 'error' ? undefined : constant;
+      }
+      const local = context.variables.typeOf(entity);
+      return local.kind === 'error' ? undefined : local;
+    }
+    case 'FunctionDeclaration':
+    case 'Lambda':
+      return undefined;
+    default: {
+      const local = context.variables.typeOf(entity);
+      return local.kind === 'error' ? undefined : local;
+    }
+  }
+}
+
+function tupleKnownType(context: BodyContext, elements: readonly Expression[]): Type | undefined {
+  if (elements.length === 0) {
+    return unitType;
+  }
+  const types: Type[] = [];
+  for (const element of elements) {
+    const type = knownTypeOf(context, element);
+    if (type === undefined) {
+      return undefined;
+    }
+    types.push(type);
+  }
+  return { kind: 'tuple', elements: types };
 }
 
 /** Whether `part` can take a parameter of `expected`. */
 function partAccepts(
   context: BodyContext,
-  part: CheckedPart,
+  part: AcceptedPart,
   expected: Type,
   isOpen: (part: Type) => boolean,
 ): boolean {
@@ -185,24 +260,23 @@ export function partsAccept(
   if (!parts.some((part) => part.kind === 'decided')) {
     return undefined;
   }
-  const checked = checkParts(context, parts);
-  return checked.map(
+  return parts.map(
     (part) => (expected: Type, isOpen: (part: Type) => boolean) =>
       partAccepts(context, part, expected, isOpen),
   );
 }
 
 /**
- * Whether `checked` producers need the call they are passed to to decide their agreed type (§3.5):
- * the first producer's own type doesn't already take them all.
+ * Whether `producers` need the call they are passed to to decide their agreed type (§3.5): the
+ * first producer's own type doesn't already take them all.
  */
-function needsAgreedType(context: BodyContext, checked: readonly CheckedPart[]): boolean {
-  const [first] = checked;
+function needsAgreedType(context: BodyContext, producers: readonly AcceptedPart[]): boolean {
+  const [first] = producers;
   if (first?.kind !== 'typed' || first.type === undefined) {
     return true;
   }
   const firstType = first.type;
-  return !checked.every((part) =>
+  return !producers.every((part) =>
     part.kind === 'decided'
       ? part.accepts(firstType, () => false)
       : part.type !== undefined && context.checker.fitOf(part.type, firstType) !== undefined,
@@ -220,12 +294,10 @@ export function agreedAccepts(
   if (!producers.some((producer) => producer.kind === 'decided')) {
     return undefined;
   }
-  const checked = checkParts(context, producers);
-  if (!needsAgreedType(context, checked)) {
+  if (!needsAgreedType(context, producers)) {
     return undefined;
   }
-  return (expected, isOpen) =>
-    checked.every((producer) => partAccepts(context, producer, expected, isOpen));
+  return allProducersAccept(context, producers);
 }
 
 /** Which types `producers` of one value can all take, once their literal needs an expected type. */
@@ -233,9 +305,8 @@ export function allProducersAccept(
   context: BodyContext,
   producers: readonly AcceptedPart[],
 ): Accepts {
-  const checked = checkParts(context, producers);
   return (expected, isOpen) =>
-    checked.every((producer) => partAccepts(context, producer, expected, isOpen));
+    producers.every((producer) => partAccepts(context, producer, expected, isOpen));
 }
 
 /** Whether a fit was found, and converts nothing. */

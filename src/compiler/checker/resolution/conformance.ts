@@ -139,27 +139,46 @@ export function meets(site: UseSite, type: Type, constraint: Constraint): boolea
 
 /**
  * The witness of every function `constraint` requires of `type` at the use site; undefined after
- * reporting there why it isn't met (`onNone` when no function is declared).
+ * reporting there why it isn't met.
  */
 export function witnessesFor(
   site: UseSite,
   type: Type,
   constraint: Constraint,
-  onNone?: () => void,
 ): readonly ResolvedCall[] | undefined {
-  const witnesses = conform({ site, type, constraint }, 0, onNone);
+  const witnesses = conform({ site, type, constraint }, 0);
   return isFailure(witnesses) ? undefined : witnesses;
+}
+
+/** What searching for a single required function's witness found for a caller that distinguishes undeclared from failed. */
+export type SingleWitness =
+  | { readonly kind: 'call'; readonly call: ResolvedCall }
+  | { readonly kind: 'none' }
+  | { readonly kind: 'failed' };
+
+/**
+ * The witness of the one function `constraint` requires of `type`: `none` without reporting when
+ * nothing is declared for it, or `failed` after reporting at `site` why a declared one doesn't
+ * meet `constraint`.
+ */
+export function singleWitnessFor(site: UseSite, type: Type, constraint: Constraint): SingleWitness {
+  let undeclared = false;
+  const witnesses = functionWitnesses({ site, type, constraint }, 0, () => {
+    undeclared = true;
+    return 'failed';
+  });
+  const [call] = isFailure(witnesses) ? [] : witnesses;
+  if (call !== undefined) {
+    return { kind: 'call', call };
+  }
+  return undeclared ? { kind: 'none' } : { kind: 'failed' };
 }
 
 /**
  * The witness of every function `constraint` requires of `type`. A type already in error was
  * reported, so it fails silently.
  */
-function conform(
-  meeting: Meeting,
-  depth: number,
-  onNone?: () => void,
-): readonly ResolvedCall[] | Failure {
+function conform(meeting: Meeting, depth: number): readonly ResolvedCall[] | Failure {
   const { site, type, constraint } = meeting;
   const { checker } = site;
   if (type.kind === 'error') {
@@ -178,14 +197,7 @@ function conform(
       return lacks(meeting, `a field '${field.name.text}: ${typeText(fieldType)}'`);
     }
   }
-  const unmet =
-    onNone === undefined
-      ? undefined
-      : (): Failure => {
-          onNone();
-          return 'failed';
-        };
-  return functionWitnesses(meeting, depth, unmet);
+  return functionWitnesses(meeting, depth);
 }
 
 /** A constraint being met by a type at a use site, for reporting why it isn't. */
@@ -265,7 +277,10 @@ function functionWitnesses(
         break;
       }
       case 'ambiguous':
-        return missingFunction(meeting, declaration);
+        return lacks(
+          meeting,
+          `a single '${declaration.name.text}' as ${meeting.constraint.trait.name.text} declares it`,
+        );
       case 'wrongResult': {
         const name = declaration.name.text;
         const [wanted, given] = [typeText(witness.required), typeText(witness.given)];

@@ -35,12 +35,11 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { writeElement } from '../calls/collection-functions.ts';
-import { takePrechecked } from '../calls/lambda-arguments.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
-import { defaultWitness } from '../resolution/default-witness.ts';
+import { resolveDefault } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import {
   acceptedPart,
@@ -277,15 +276,16 @@ function checkDeclaredLiteral(
   const failure = () => checkerDiagnostics.mapLiteralType(node.span, typeText(type));
   // With no default declared the literal says what it needs; one declared that doesn't meet
   // Default is reported by conformance, which says why.
-  const site = useSite(checker, context.module, node.span);
-  const made = defaultWitness(site, type, () => context.report(failure()));
-  if (made !== undefined) {
-    context.implicit.record(node, 'default', made);
+  const outcome = resolveDefault(useSite(checker, context.module, node.span), type);
+  if (outcome.kind === 'call') {
+    context.implicit.record(node, 'default', outcome.call);
+  } else if (outcome.kind === 'none') {
+    context.report(failure());
   }
   for (const entry of node.kind === 'MapLiteral' ? node.entries : []) {
-    insertEntry(context, entry, type, made === undefined ? undefined : failure);
+    insertEntry(context, entry, type, outcome.kind === 'call' ? failure : undefined);
   }
-  return made === undefined ? errorType : type;
+  return outcome.kind === 'call' ? type : errorType;
 }
 
 /**
@@ -381,11 +381,7 @@ function producedValue(
   node: Expression,
   expected: Type | undefined,
 ): Produced {
-  return {
-    type: takePrechecked(node) ?? context.expression(node, expected),
-    span: node.span,
-    site: node,
-  };
+  return { type: context.expression(node, expected), span: node.span, site: node };
 }
 
 /** What a literal's `part`s agree on, reporting those that don't fit it. */

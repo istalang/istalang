@@ -114,6 +114,15 @@ const cases: readonly ChoiceCase[] = [
     chosen: 'bool',
   },
   {
+    rule: 'a tuple holding an anonymous struct literal and none guides the struct literal',
+    overloads: [
+      'fn f(a: ({ a: int }, int?)) -> bool: true',
+      'fn f(a: (int, string)) -> string: "c"',
+    ],
+    call: 'f((struct{a: 1}, none))',
+    chosen: 'bool',
+  },
+  {
     rule: 'a bare variant fits an optional enum parameter',
     overloads: [
       'enum Color { Red; Blue }\nfn f(a: Color?) -> bool: true',

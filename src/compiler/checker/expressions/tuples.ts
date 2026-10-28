@@ -10,7 +10,6 @@
  */
 
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
-import { takePrechecked } from '../calls/lambda-arguments.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
@@ -24,18 +23,12 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
   if (node.elements.length === 0) {
     return unitType;
   }
-  const target =
-    expected === undefined ? undefined : withoutOptionals(expected, context.checker.optionalEntity);
-  const guides =
-    target?.kind === 'tuple' && target.elements.length === node.elements.length
-      ? target.elements
-      : undefined;
+  const guides = expectedTuple(context, expected, node.elements.length);
   return {
     kind: 'tuple',
     elements: node.elements.map((element, index) => {
-      const rawGuide = guides?.[index];
-      const guide = rawGuide?.kind === 'error' ? undefined : rawGuide;
-      const type = takePrechecked(element) ?? context.expression(element, guide);
+      const guide = guides?.[index];
+      const type = context.expression(element, guide);
       if (guide === undefined || context.checker.fitOf(type, guide) === undefined) {
         return type;
       }
@@ -43,6 +36,19 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
       return guide;
     }),
   };
+}
+
+/** The element types `expected` asks a tuple of `length` elements for, through any optionals (§2). */
+function expectedTuple(
+  context: BodyContext,
+  expected: Type | undefined,
+  length: number,
+): readonly Type[] | undefined {
+  const target =
+    expected === undefined ? undefined : withoutOptionals(expected, context.checker.optionalEntity);
+  return target?.kind === 'tuple' && target.elements.length === length
+    ? target.elements
+    : undefined;
 }
 
 export function checkTupleElement(context: BodyContext, node: TupleElement): Type {
@@ -74,12 +80,8 @@ export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undef
   if (elements === undefined) {
     return undefined;
   }
-  return (expected, isOpen) => {
-    const target = withoutOptionals(expected, context.checker.optionalEntity);
-    return (
-      target.kind === 'tuple' &&
-      target.elements.length === elements.length &&
-      target.elements.every((type, index) => elements[index]?.(type, isOpen) ?? true)
-    );
-  };
+  return (expected, isOpen) =>
+    expectedTuple(context, expected, elements.length)?.every(
+      (type, index) => elements[index]?.(type, isOpen) ?? true,
+    ) === true;
 }

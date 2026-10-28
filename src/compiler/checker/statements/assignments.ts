@@ -22,6 +22,7 @@
  * - What lowering needs is recorded: each place written, with its part of the value and its fit.
  */
 
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import { type CompoundAssignment, compoundOperator } from '../../syntax/operators.ts';
@@ -104,8 +105,9 @@ function prepareTupleTargets(
   elements: readonly Expression[],
   places: Map<Expression, Type>,
 ): Type | undefined {
-  const types = elements.map((element) => prepareTarget(context, element, places) ?? errorType);
-  return types.every((type) => type.kind === 'error') ? undefined : tupleType(types);
+  const types = elements.map((element) => prepareTarget(context, element, places));
+  const known = types.filter((type): type is Type => type !== undefined);
+  return known.length === elements.length ? tupleType(known) : undefined;
 }
 
 /** `x op= v`: one place, read and written. */
@@ -168,7 +170,7 @@ function assignPart(
   if (isUnnamedTarget(bare)) {
     return anyShape;
   }
-  const place = assigning.places.get(bare) ?? assignedPlace(context, bare);
+  const place = assigning.places.get(bare) ?? unreachable('An assignment target was not prepared.');
   const at = part.path.length === 0 ? assigning.valueSpan : bare.span;
   const fit = context.fitWritten(part.type, place, at);
   assigning.parts.push({ target: bare, path: part.path, type: part.type, fit });

@@ -61,7 +61,7 @@ export function checkValueCall(
     return errorType;
   }
   const { parameters, pack } = calleeType;
-  const unnamed = { name: undefined, hasDefault: false };
+  const unnamed = { name: undefined, isReceiver: false, hasDefault: false };
   const fixed = parameters.map((slot) => ({ ...slot, ...unnamed, rest: undefined }));
   const packed =
     pack === undefined ? [] : [{ type: pack, reference: false, ...unnamed, rest: packRestSlot }];

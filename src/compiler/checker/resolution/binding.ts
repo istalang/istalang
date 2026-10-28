@@ -18,39 +18,14 @@
  *   collects into it too. Which arguments a pack takes is choosing's to judge (choice.ts).
  */
 
-import type { SignatureParameter } from '../check.ts';
 import { type Binding, parameterOfArgument } from '../resolved-call.ts';
-import { type Substitution, substitute } from '../types/substitution.ts';
-import { errorType, type ParameterSlot, type Type } from '../types/type.ts';
+import type { ParameterSlot, Type } from '../types/type.ts';
 
 /** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
 export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
 
 /** The rest slot of a parameter or function type ending in a pack (§3.5). */
 export const packRestSlot: RestSlot = { kind: 'pack' };
-
-const restSlots = new WeakMap<SignatureParameter, RestSlot>();
-
-/** Records the `RestSlot` of `parameter` when its signature is checked (declarations/signatures.ts). */
-export function recordRestSlot(parameter: SignatureParameter, slot: RestSlot): void {
-  restSlots.set(parameter, slot);
-}
-
-/** The `RestSlot` of `parameter`, with its array item type mapped by `substitution`. */
-export function restSlotOf(
-  parameter: SignatureParameter,
-  substitution: Substitution,
-): RestSlot | undefined {
-  if (parameter.rest === undefined) {
-    return undefined;
-  }
-  if (parameter.rest === 'pack') {
-    return packRestSlot;
-  }
-  const recorded = restSlots.get(parameter);
-  const item = recorded?.kind === 'array' ? recorded.item : errorType;
-  return { kind: 'array', item: substitute(item, substitution) };
-}
 
 /** What binding needs to know of a parameter: its name, if it can be named, and its kind. */
 export interface BoundSlot {

@@ -166,7 +166,7 @@ function shapeOf(checker: CheckerContext, declaration: FunctionDeclaration): Sha
   // A method's `self` is passed either way, so it is keyed as by value.
   return {
     generic: positions.size,
-    fixed: fixed.map((slot) => keyOf(slot.type, slot.reference && slot.isReceiver !== true)),
+    fixed: fixed.map((slot) => keyOf(slot.type, slot.reference && !slot.isReceiver)),
     rest: rest === undefined ? undefined : restKeyOf(rest, keyOf),
     minimum: positionalCounts(slots).minimum,
   };

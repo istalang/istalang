@@ -21,7 +21,7 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
 import { chooseVariant, sameEnum } from '../resolution/named.ts';
-import { optionalInner, withoutOptionals } from '../types/fit.ts';
+import { optionalInner } from '../types/fit.ts';
 import { typeArgumentsFor } from '../types/resolve-type.ts';
 import { errorType, type NominalType, nominalType, type Type } from '../types/type.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
@@ -44,28 +44,9 @@ export function variantsAccepted(
   }
   const candidates = context.checker.bindings.candidatesOf(naming);
   return (expected) =>
-    candidates.some((candidate) => expectedEnum(context, expected, candidate.enum) !== undefined);
-}
-
-/**
- * The enum type `expected` asks a variant for: `expected` itself when it is `Some` of `Optional`,
- * or the enum inside the optionals `expected` wraps it into (§2).
- */
-function expectedEnum(
-  context: BodyContext,
-  expected: Type | undefined,
-  declaration?: EnumDeclaration,
-): Type | undefined {
-  if (expected === undefined) {
-    return undefined;
-  }
-  if (declaration !== undefined) {
-    return (
-      sameEnum(expected, declaration) ??
-      sameEnum(withoutOptionals(expected, context.checker.optionalEntity), declaration)
+    candidates.some(
+      (candidate) => sameEnum(context.checker, expected, candidate.enum) !== undefined,
     );
-  }
-  return expected;
 }
 
 export function checkNone(
@@ -88,7 +69,7 @@ export function checkVariantName(
   naming: VariantNaming,
   expected: Type | undefined,
 ): Type {
-  const chosen = chooseExpectedVariant(context, node, naming, expected);
+  const chosen = chooseVariant(context, writtenAs(node), naming, expected);
   if (chosen === undefined) {
     return errorType;
   }
@@ -96,7 +77,7 @@ export function checkVariantName(
     context.report(checkerDiagnostics.variantFields(node.span, nameOf(node)));
     return errorType;
   }
-  return enumTypeFor(context, node, chosen.enum, expectedEnum(context, expected, chosen.enum));
+  return enumTypeFor(context, node, chosen.enum, expected);
 }
 
 /** The type of a variant built with braces: `Rejected{by: "legal"}`. */
@@ -107,12 +88,12 @@ export function checkVariantLiteral(
   expected: Type | undefined,
 ): Type {
   const typeNode = node.type;
-  const chosen = chooseExpectedVariant(context, node, naming, expected);
+  const chosen = chooseVariant(context, writtenAs(node), naming, expected);
   if (chosen === undefined || typeNode === undefined) {
     return errorType;
   }
-  const target = expectedEnum(context, expected, chosen.enum);
   const { checker } = context;
+  const target = sameEnum(checker, expected, chosen.enum);
   const fields = checker
     .declaredVariantsOf(chosen.enum)
     .find((candidate) => candidate.name === chosen.variant.name.text)?.fields;
@@ -124,23 +105,6 @@ export function checkVariantLiteral(
     typeOf: (typeArguments: readonly Type[]) => enumType(context, chosen.enum, typeArguments),
   };
   return checkLiteralFields(context, node, shape);
-}
-
-function chooseExpectedVariant(
-  context: BodyContext,
-  node: VariantNode,
-  naming: VariantNaming,
-  expected: Type | undefined,
-) {
-  const unwrapped =
-    expected === undefined ||
-    (naming.kind === 'variants' &&
-      context.checker.bindings
-        .candidatesOf(naming)
-        .some((candidate) => sameEnum(expected, candidate.enum) !== undefined))
-      ? expected
-      : withoutOptionals(expected, context.checker.optionalEntity);
-  return chooseVariant(context, writtenAs(node), naming, unwrapped);
 }
 
 function writtenAs(node: VariantNode): { readonly span: Span; readonly name: string } {
@@ -166,7 +130,7 @@ function enumTypeFor(
   declaration: EnumDeclaration,
   expected: Type | undefined,
 ): Type {
-  const same = sameEnum(expected, declaration);
+  const same = sameEnum(context.checker, expected, declaration);
   if (same !== undefined) {
     return same;
   }

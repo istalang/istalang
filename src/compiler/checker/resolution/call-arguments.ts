@@ -17,7 +17,7 @@ import type { BindingFailure, RestSlot } from './binding.ts';
  */
 export interface SignatureSlot extends ParameterSlot {
   readonly name: string | undefined;
-  readonly isReceiver?: boolean | undefined;
+  readonly isReceiver: boolean;
   readonly hasDefault: boolean;
   readonly rest: RestSlot | undefined;
 }

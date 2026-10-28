@@ -12,7 +12,6 @@
  */
 
 import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
-import { mentionsUnbound, takePrechecked } from '../calls/lambda-arguments.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
@@ -20,6 +19,7 @@ import { neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import {
   type AcceptedPart,
+  acceptedPart,
   agreedAccepts,
   decidedSoFar,
   type Produced,
@@ -45,12 +45,10 @@ export class Branches {
   add(body: Block): void {
     const context = this.#context;
     const expected = this.#expected ?? decidedSoFar(context, this.#produced);
-    const tail = tailExpressionOf(body);
-    const prechecked = tail === undefined ? undefined : takePrechecked(tail);
     this.#produced.push({
-      type: prechecked ?? context.block(body, expected),
+      type: context.block(body, expected),
       span: tailNodeOf(body).span,
-      site: tail ?? body,
+      site: tailExpressionOf(body) ?? body,
     });
   }
 
@@ -88,18 +86,13 @@ export function blockAccepts(context: BodyContext, block: Block): Accepts | unde
 function blockPart(context: BodyContext, block: Block): AcceptedPart {
   const tail = tailExpressionOf(block);
   if (tail === undefined) {
-    return { kind: 'own' };
+    return { kind: 'typed', type: undefined };
   }
   const accepts = context.accepts(tail);
   if (accepts !== undefined) {
     return { kind: 'decided', accepts };
   }
-  const [only] = block.statements;
-  const plainSingle =
-    block.statements.length === 1 &&
-    only?.kind === 'ExpressionStatement' &&
-    only.annotations === undefined;
-  return plainSingle && !mentionsUnbound(context, tail)
-    ? { kind: 'own', node: tail }
-    : { kind: 'own' };
+  return block.statements.length === 1
+    ? acceptedPart(context, tail)
+    : { kind: 'typed', type: undefined };
 }
