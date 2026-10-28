@@ -1,7 +1,7 @@
 ---
 description: plan for the debt paid before M6 (formatter) and M7 (language service) — read before working on Q4, Q5, Q10, Q28, B3 or B12
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-10-29
 last_updated: 2026-10-29
