@@ -65,8 +65,8 @@ export function callCandidates(
   ];
 }
 
-/** The functions an operator's name denotes in `module` (§3.9). */
-function namedInModule(
+/** The functions a top-level name denotes in `module`, the prelude's joined (§3.9, §3.13). */
+export function namedInModule(
   checker: CheckerContext,
   module: ModuleId,
   name: string,

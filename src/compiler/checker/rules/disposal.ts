@@ -28,7 +28,7 @@ import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostExtern, isHostType } from '../host-externs.ts';
 import { callMade } from '../resolution/calls-made.ts';
-import { callCandidates } from '../resolution/candidates.ts';
+import { callCandidates, namedInModule } from '../resolution/candidates.ts';
 import { chooseSilently } from '../resolution/silent-choice.ts';
 import type { CallSite, FunctionCall, ResolvedCall } from '../resolved-call.ts';
 import { knownConstraints, requiredFunctions } from '../traits/constraints.ts';
@@ -106,19 +106,15 @@ function isStdType(checker: CheckerContext, type: NominalType): boolean {
 /** Whether `type`'s std module declares an extern `dispose` for it: the runtime's to perform. */
 function runtimeDisposes(checker: CheckerContext, type: NominalType): boolean {
   const module = checker.bindings.moduleOf(type.entity);
-  const declared =
-    module === undefined ? undefined : checker.bindings.exportsOf(module).get(disposeFunction);
-  return (
-    declared?.kind === 'functions' &&
-    declared.overloads.some((candidate) => {
-      const [self] = checker.parametersOf(candidate);
-      return (
-        isRuntimeDispose(checker, candidate) &&
-        self?.type.kind === 'nominal' &&
-        self.type.entity === type.entity
-      );
-    })
-  );
+  const overloads = module === undefined ? [] : namedInModule(checker, module, disposeFunction);
+  return overloads.some((candidate) => {
+    const [self] = checker.parametersOf(candidate);
+    return (
+      isRuntimeDispose(checker, candidate) &&
+      self?.type.kind === 'nominal' &&
+      self.type.entity === type.entity
+    );
+  });
 }
 
 /** The call of the `dispose` a program declares for `type`, found as an operator's function is. */
