@@ -37,6 +37,7 @@ export function checkValueCall(
   callee: Expression,
   calleeType: Type = context.expression(callee),
 ): Type {
+  context.recordValueCall(call.node);
   if (calleeType.kind === 'error') {
     return errorType;
   }

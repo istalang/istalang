@@ -15,6 +15,7 @@ import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
+  Call,
   Comprehension,
   Expression,
   Lambda,
@@ -143,6 +144,8 @@ export interface CheckedBody {
   readonly typeOf: (expression: Expression) => Type;
   /** The function each call site of this body calls, or each function value names. */
   readonly resolved: ReadonlyMap<ResolvedSite, ResolvedCall>;
+  /** The calls of function values, which call whatever their callee gives (§3.14). */
+  readonly valueCalls: ReadonlySet<Call>;
   /**
    * Every call the body makes, where it makes it: its call sites', the language's for constructs
    * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to.

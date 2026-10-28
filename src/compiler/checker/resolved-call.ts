@@ -119,7 +119,7 @@ export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCa
  * operator that calls a function (§3.9), indexing, which calls `index`, an assignment, whose
  * compound operator calls a function, a pattern's comparison such as `amount > 1000`, which calls
  * `compare` (§3.11); and a function named as a value (§3.14), `f`, `ns.f` or `T.f`, for the
- * function its closure runs.
+ * function its closure runs. A call of a function value resolves to none (`CheckedBody.valueCalls`).
  */
 export type ResolvedSite = NodeOf<
   | 'Call'

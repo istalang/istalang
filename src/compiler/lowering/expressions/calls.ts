@@ -42,14 +42,13 @@ import { spreadArray } from './collections.ts';
 import { lowerFieldRead } from './structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
-  const resolved = context.body.resolved.get(node);
-  if (resolved === undefined) {
+  if (context.body.valueCalls.has(node)) {
     return lowerValueCall(context, node);
   }
   const called = context.callAt(node);
   const parameterAt = parametersByArgument(context, called);
   const byReference = (index: number) => parameterAt(index)?.reference === true;
-  const receiver = receiverOf(context, node, resolved.receiver, byReference(0));
+  const receiver = receiverOf(context, node, receiverAt(context, node), byReference(0));
   const passed = passedArguments(context, node, {
     receiver,
     byReference,
@@ -62,6 +61,11 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
   });
   leaveAll(passed);
   return dst;
+}
+
+/** The receiver the method call `node` was written on (§3.7); undefined for any other call. */
+function receiverAt(context: FunctionContext, node: Call): Expression | undefined {
+  return context.body.resolved.get(node)?.receiver;
 }
 
 /**
@@ -120,12 +124,11 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
   if (spawned.kind !== 'Call') {
     unreachable('A spawn of no call checked clean.');
   }
-  const resolved = context.body.resolved.get(spawned);
-  const called = resolved === undefined ? undefined : context.callAt(spawned);
+  const called = context.body.valueCalls.has(spawned) ? undefined : context.callAt(spawned);
   const value: Callee | undefined =
     called === undefined ? { kind: 'value', register: valueCallee(context, spawned) } : undefined;
-  const receiver =
-    resolved?.receiver === undefined ? undefined : argumentOf(context, resolved.receiver, false);
+  const written = receiverAt(context, spawned);
+  const receiver = written === undefined ? undefined : argumentOf(context, written, false);
   const parameterAt = called === undefined ? undefined : parametersByArgument(context, called);
   const passing: Passing =
     parameterAt === undefined

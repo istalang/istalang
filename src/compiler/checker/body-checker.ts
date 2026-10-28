@@ -24,7 +24,7 @@ import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Expression } from '../syntax/expressions/index.ts';
+import type { Call, Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
@@ -86,6 +86,7 @@ export class BodyChecker implements BodyContext {
   readonly labels = new LabelTargets();
   readonly #types = new Map<Expression, Type>();
   readonly #resolved = new Map<ResolvedSite, ResolvedCall>();
+  readonly #valueCalls = new Set<Call>();
   readonly #fits = new Map<ValueSite, Fit>();
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
@@ -265,10 +266,15 @@ export class BodyChecker implements BodyContext {
     this.#resolved.set(site, call);
   }
 
+  recordValueCall(node: Call): void {
+    this.#valueCalls.add(node);
+  }
+
   /** The CheckedBody of what was checked, producing `result`. */
   #checked(result: Type): CheckedBody {
     const types = this.#types;
     const resolved = this.#resolved;
+    const valueCalls = this.#valueCalls;
     const fits = this.#fits;
     const {
       variables,
@@ -285,6 +291,7 @@ export class BodyChecker implements BodyContext {
     return {
       typeOf: (expression) => types.get(expression) ?? errorType,
       resolved,
+      valueCalls,
       madeCalls: () => [
         ...[...resolved].map(([site, call]) => ({ site, call })),
         ...implicit.made(),

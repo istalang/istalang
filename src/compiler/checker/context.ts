@@ -30,6 +30,7 @@ import type {
 } from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
+  Call,
   Expression,
   MapLiteral,
   StructLiteral,
@@ -185,6 +186,8 @@ export interface BodyContext {
    */
   readonly useEntity: (name: Identifier) => Entity | undefined;
   readonly recordCall: (site: ResolvedSite, call: ResolvedCall) => void;
+  /** Records that `node` calls a function value (§3.14). */
+  readonly recordValueCall: (node: Call) => void;
   /** Whether the innermost function is async, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
   readonly variables: Variables;
