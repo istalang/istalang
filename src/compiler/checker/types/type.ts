@@ -27,8 +27,8 @@
  * - An alias names no type of its own (§3.17): a type written through one carries it only so its
  *   text can read as written (`Entries<int>`), which messages and hovers show. Exact relations and
  *   type keys look through it. Only substitution keeps it, substituting its arguments too, since
- *   that rewrites the alias's own parameters alike; any other change of a type's parts leaves a
- *   type the alias didn't write, so it drops it (type-parts.ts).
+ *   that rewrites the alias's own parameters alike; any other change of a type leaves a type the
+ *   alias didn't write, so widening, the one other, drops it.
  * - Exact relations live here; fitting with the implicit wrap into `T?` needs to know which type
  *   is `Optional`, so it lives in fit.ts.
  */
@@ -49,7 +49,18 @@ import type {
 import type { StructLiteral } from '../../syntax/expressions/index.ts';
 import type { StructType } from '../../syntax/types.ts';
 
-export interface PrimitiveType {
+/** The alias a type was written through, with the arguments it was given there (§3.17). */
+export interface AliasUse {
+  readonly declaration: TypeAliasDeclaration;
+  readonly arguments: readonly Type[];
+}
+
+/** What every type carries beside its kind: the alias it was written through, if any. */
+interface WrittenThrough {
+  readonly alias?: AliasUse | undefined;
+}
+
+export interface PrimitiveType extends WrittenThrough {
   readonly kind: 'primitive';
   readonly name: PrimitiveName;
 }
@@ -67,13 +78,13 @@ export interface Constraint {
 }
 
 /** `any A & B`: a value of any type meeting every constraint, a set (§3.10). */
-export interface AnyType {
+export interface AnyType extends WrittenThrough {
   readonly kind: 'any';
   readonly constraints: readonly Constraint[];
 }
 
 /** A declared struct, shared or not, enum or extern type, with its type arguments. */
-export interface NominalType {
+export interface NominalType extends WrittenThrough {
   readonly kind: 'nominal';
   readonly entity: NominalEntity;
   readonly arguments: readonly Type[];
@@ -98,7 +109,7 @@ export function nominalType(entity: TypeEntity, typeArguments: readonly Type[]):
   return { kind: 'nominal', entity, arguments: typeArguments };
 }
 
-interface TupleType {
+interface TupleType extends WrittenThrough {
   readonly kind: 'tuple';
   readonly elements: readonly Type[];
 }
@@ -118,18 +129,20 @@ export interface FieldMember {
  * nothing to take a type from, or by a shared struct as the value behind it (§3.18), carrying that
  * shared struct's type arguments.
  */
-export type AnonymousStructType =
-  | {
-      readonly kind: 'anonymous';
-      readonly origin: StructType | StructLiteral;
-      readonly fields: readonly FieldMember[];
-    }
-  | {
-      readonly kind: 'anonymous';
-      readonly origin: StructDeclaration;
-      readonly arguments: readonly Type[];
-      readonly fields: readonly FieldMember[];
-    };
+export type AnonymousStructType = WrittenThrough &
+  (
+    | {
+        readonly kind: 'anonymous';
+        readonly origin: StructType | StructLiteral;
+        readonly fields: readonly FieldMember[];
+      }
+    | {
+        readonly kind: 'anonymous';
+        readonly origin: StructDeclaration;
+        readonly arguments: readonly Type[];
+        readonly fields: readonly FieldMember[];
+      }
+  );
 
 /** Whether `type` is the anonymous struct value behind a shared struct (`*x`, §3.18). */
 export function isSharedValueType(
@@ -155,7 +168,7 @@ export const packRestSlot: RestSlot = { kind: 'pack' };
  * may end in a pack (`fn(int, ...A) -> R`, §3.5), which stands for the parameters a tuple
  * substituted for it flattens into (`withPack`), so a type with a pack is always generic.
  */
-export interface FunctionType {
+export interface FunctionType extends WrittenThrough {
   readonly kind: 'function';
   readonly isSendable: boolean;
   readonly isAsync: boolean;
@@ -171,25 +184,19 @@ export type PackType = TypeParameterType | ErrorType;
 export type ParameterKey = TypeParameter | TraitDeclaration;
 
 /** A type parameter, opaque inside the declaration that introduces it (§3.5). */
-export interface TypeParameterType {
+export interface TypeParameterType extends WrittenThrough {
   readonly kind: 'parameter';
   readonly declaration: ParameterKey;
 }
 
-export interface ErrorType {
+export interface ErrorType extends WrittenThrough {
   readonly kind: 'error';
 }
 
 /** A type a struct value can have: a declared struct or an anonymous one. */
 export type StructValueType = NominalType | AnonymousStructType;
 
-/** The alias a type was written through, with the arguments it was given there (§3.17). */
-export interface AliasUse {
-  readonly declaration: TypeAliasDeclaration;
-  readonly arguments: readonly Type[];
-}
-
-export type Type = (
+export type Type =
   | PrimitiveType
   | NominalType
   | AnonymousStructType
@@ -197,8 +204,7 @@ export type Type = (
   | FunctionType
   | TypeParameterType
   | AnyType
-  | ErrorType
-) & { readonly alias?: AliasUse | undefined };
+  | ErrorType;
 
 /** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */
 export function aliasedAs<Aliased extends Type>(type: Aliased, alias: AliasUse): Aliased {

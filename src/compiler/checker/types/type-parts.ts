@@ -62,16 +62,11 @@ export function mentionsError(type: Type): boolean {
 }
 
 /**
- * `type` with each type it is built from, one level down, replaced by what `map` gives: a type no
- * alias wrote, so it carries none (type.ts). A type built from no other is itself.
+ * `type` with each type it is built from, one level down, replaced by what `map` gives. The alias
+ * `type` was written through comes along: a caller changing what it wrote drops it (type.ts).
  */
 export function mapChildren<Mapped extends Type>(type: Mapped, map: (child: Type) => Type): Mapped;
 export function mapChildren(type: Type, map: (child: Type) => Type): Type {
-  const mapped = mappedParts(type, map);
-  return mapped === type || mapped.alias === undefined ? mapped : { ...mapped, alias: undefined };
-}
-
-function mappedParts(type: Type, map: (child: Type) => Type): Type {
   switch (type.kind) {
     case 'primitive':
     case 'parameter':

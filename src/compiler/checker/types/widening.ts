@@ -16,11 +16,11 @@ import { sameType, type Type } from './type.ts';
 import { mapChildren } from './type-parts.ts';
 
 /**
- * `type` without its refinements, nor those of any type it is built from; `type` itself when it
- * has none, so it still reads as the alias it was written through (type.ts).
+ * `type` without its refinements, nor those of any type it is built from: `type` itself when it
+ * has none, so it still reads as the alias it was written through; else a type no alias wrote.
  */
 export function widened(type: Type): Type {
   const children = mapChildren(type, widened);
   const wider = children.kind === 'function' ? { ...children, isSendable: false } : children;
-  return sameType(wider, type) ? type : wider;
+  return sameType(wider, type) ? type : { ...wider, alias: undefined };
 }

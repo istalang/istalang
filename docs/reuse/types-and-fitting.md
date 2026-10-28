@@ -23,7 +23,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - list type parameters or `any` types in a `Type` → `parametersIn`, `anyTypesIn`, `mentionsError` (`src/compiler/checker/types/type-parts.ts`)
 - drop refinements (such as `sendable` on function types) at any depth → `widened` (`src/compiler/checker/types/widening.ts`)
 - spell a `Type` as written, through its alias if it has one, for messages → `typeText` (`src/compiler/checker/types/type-text.ts`)
-- give a type the alias it was written through → `aliasedAs` (`src/compiler/checker/types/type.ts`); only `substitute` keeps one, other maps drop it
+- give a type the alias it was written through → `aliasedAs` (`src/compiler/checker/types/type.ts`); `substitute` keeps it, `widened` drops it where it widens
 - get a canonical key for a `Type` or numeric identity for an object → `TypeKeys.typeKey`, `TypeKeys.identityOf` (`src/compiler/checker/types/type-keys.ts`)
 - guard a coinductive recursive type check (`Sendable`, JSON codecs) against cycles → `TypeCycle` (`src/compiler/checker/types/type-cycle.ts`)
 - build or apply a type substitution → `substitutionFor`, `substitute`, `substituteAny`, `substituteFunction` (`src/compiler/checker/types/substitution.ts`)
