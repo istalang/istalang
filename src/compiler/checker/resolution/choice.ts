@@ -2,7 +2,7 @@
  * Choosing the function a call means among its candidates (§3.7): calls are resolved from the
  * arguments alone, never from the result.
  *
- * - A candidate applies when it can take the arguments (taking.ts).
+ * - A candidate applies when it can take the arguments (applicability.ts).
  * - When concrete candidates apply, only they are chosen among: a concrete function beats a
  *   generic one (§3.7); then a function without a rest parameter beats one with (§3.3); then one
  *   taking every argument as it is beats one making a plain function async (§3.14) or converting
@@ -27,6 +27,7 @@ import type { Binding } from '../resolved-call.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
+import { type Given, type Misfit, takenBy } from './applicability.ts';
 import {
   type ArgumentSlot,
   type BindingFailure,
@@ -35,7 +36,6 @@ import {
   type RestSlot,
 } from './binding.ts';
 import type { Candidate } from './candidates.ts';
-import { type Given, type Misfit, takenBy } from './taking.ts';
 
 /**
  * What a candidate takes and gives, with a requirement's trait mapped (traits/constraints.ts).

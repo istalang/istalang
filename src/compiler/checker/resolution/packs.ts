@@ -10,8 +10,8 @@ import type { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
 import { substitute } from '../types/substitution.ts';
 import { isPack, type Type, tupleType } from '../types/type.ts';
+import type { Takes } from './applicability.ts';
 import type { CallArgument, Inapplicability } from './choice.ts';
-import type { Takes } from './taking.ts';
 
 /** The arguments `binding` gives the pack rest parameters of `takes`, by argument number. */
 export function packItems(takes: Takes, binding: Binding): ReadonlySet<number> {

@@ -1,6 +1,6 @@
 /**
- * How a function takes a call's arguments (§3.3, §3.5, §3.7): which parameter each fills, and what
- * inference finds matching them, or why it can't.
+ * Whether a candidate applies to a call (§3.3, §3.5, §3.7): how a function takes the arguments,
+ * which parameter each fills and what inference finds matching them, or why it can't.
  *
  * - The parameters must take the arguments given (binding.ts), each argument passed by value or by
  *   `&` as its parameter is declared, and every argument must fit its parameter. A method's
