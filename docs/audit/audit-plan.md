@@ -248,3 +248,13 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
    - Tighten `src/compiler/checker/check.test.ts` so every non-elided module fence in `docs/spec.md` and `docs/guide.md` is checked for zero unexpected diagnostics.
 5. **Update `docs/work/tracker.md`:**
    - Remove all resolved `D...` entries in one clean commit.
+
+### Wave 2 additions from Wave 1's reports
+
+6. **D146:** wrap a spread's items into `T?` (checker `expressions/collections.ts`, `rules/agreement.ts`, `check.ts` `ValueSite`/`IterationForm`).
+7. **D225's rest:** `..=`'s `_inclusiveEnd` through `preludeCall` (checker `expressions/collections.ts`).
+8. **D170/D215's rest:** record field positions and `any` field dispatches on `CheckedBody` (`check.ts`, `expressions/structs.ts`); `requiredFields` through the checker surface (`.dependency-cruiser.mjs`).
+9. **Operator classification, one home:** export `BinaryOperatorOf` from `syntax/operators.ts`, write `ImplicitOperator = BinaryOperatorOf<'order' | 'membership'>`, move `isImplicitOperator` beside `isChainingOperator`; build a single binary's `ComparisonLink` in `syntax/expressions/comparisons.ts`; share `fitArguments`/`typesText` between `calls/resolve.ts` and `resolution/implicit.ts`.
+10. **`rules/iteration.ts`:** `iteratedItem`'s implicit call passes `span: iterable.span`, so 5101/5003 fall on the iterable.
+11. **Weak side:** remove `NativeWeakSide.whenDisposed`, switch `stdlib/prelude/weak-natives.ts` to `watch`, delete `nativeWeakSideOf`; a production `handleTo(id)` in `definition/values.ts` replaces the inline `{kind: 'handle', object}` literals.
+12. **Test modules:** one test-suffix predicate in `language/well-known.ts`, used by `cli/file-loader.ts` and `program.test-kit.ts`; `parse.test.ts` titles become `$document:$line`, and `section` drops its `${path} › ` prefix.
