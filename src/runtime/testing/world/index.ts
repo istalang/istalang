@@ -31,7 +31,13 @@ import type { LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';
 import { seedTextOf } from '../../random-seed.ts';
 import type { Answered, TestWatch } from '../../scheduler/futures.ts';
-import { type Inspection, inspection } from '../../scheduler/inspect.ts';
+import {
+  type Inspection,
+  inspection,
+  pendingTestWatches,
+  withdrawnAnswers,
+} from '../../scheduler/inspect.ts';
+import { storedSnapshot } from '../../scheduler/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
 import { reachingMock } from '../../scheduler/mocks.ts';
 import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/test-world.ts';
@@ -42,7 +48,7 @@ import {
   type SchedulerSeams,
   unstarted,
 } from '../../scheduler/wake.ts';
-import { type InstanceCall, type Snapshot, snapshotFormat } from '../../snapshot/snapshot.ts';
+import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import { memoryStore } from '../../store.ts';
 import { unmockedExterns } from './test-host.ts';
 
@@ -85,7 +91,6 @@ export class World implements TestWorld {
   readonly #arrivals: Answered[] = [];
   /** The log records every instance of the world committed, in the order they did. */
   readonly #logs: LogRecord[] = [];
-  readonly #read = new Map<string, { readonly text: string; readonly snapshot: Snapshot }>();
   readonly #mocks = new WeakMap<Snapshot, ReadonlyMap<FunctionId, number>>();
   /** The instances in a segment that waits on a mock another instance is answering. */
   readonly #calling = new Set<string>();
@@ -253,21 +258,11 @@ export class World implements TestWorld {
    * takes nothing (§6).
    */
   #withdrawAnswersTo(caller: string): void {
-    const waiting = new Set(
-      this.#snapshotOf(caller)?.objects.flatMap((object) =>
-        object.kind === 'future' && object.state.kind === 'host' ? [object.state.token] : [],
-      ),
-    );
+    const callerSnapshot = this.#snapshotOf(caller);
     // A holder in a segment waiting on an answer has run past its last commit, so is left alone.
     const holders = [...this.#group.states.keys()].filter((holder) => !this.#calling.has(holder));
     for (const holder of holders) {
-      const snapshot = this.#snapshotOf(holder);
-      const withdrawn = (snapshot?.status.kind === 'active' ? snapshot.objects : []).flatMap(
-        (object) =>
-          object.kind === 'answer' && object.instance === caller && !waiting.has(object.token)
-            ? [{ instance: caller, token: object.token }]
-            : [],
-      );
+      const withdrawn = withdrawnAnswers(this.#snapshotOf(holder), caller, callerSnapshot);
       if (withdrawn.length > 0) {
         this.#advance(holder, { kind: 'withdraw', withdrawn });
       }
@@ -309,32 +304,14 @@ export class World implements TestWorld {
 
   /** Whether `instance` waits, with a watch whose condition now holds. */
   #watchHolds(instance: string): boolean {
-    const snapshot = this.#snapshotOf(instance);
-    return (
-      snapshot?.status.kind === 'active' &&
-      snapshot.objects.some(
-        (object) =>
-          object.kind === 'future' &&
-          object.state.kind === 'watch' &&
-          object.state.until.kind !== 'ended' &&
-          this.watched(object.state.instance, object.state.until) !== undefined,
-      )
+    return pendingTestWatches(this.#snapshotOf(instance)).some(
+      ({ instance: target, until }) => this.watched(target, until) !== undefined,
     );
   }
 
   /** `instance`'s last commit; undefined before its first. Read once per commit. */
   #snapshotOf(instance: string): Snapshot | undefined {
-    const text = this.#seams.store.readSnapshot(instance);
-    if (text === undefined) {
-      return undefined;
-    }
-    const known = this.#read.get(instance);
-    if (known?.text === text) {
-      return known.snapshot;
-    }
-    const snapshot = snapshotFormat.read(text);
-    this.#read.set(instance, { text, snapshot });
-    return snapshot;
+    return storedSnapshot(this.#seams.store, instance);
   }
 }
 

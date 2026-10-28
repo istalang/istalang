@@ -10,8 +10,10 @@ import type { Definition } from '../../definition/definition.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { InstanceState } from '../instance-state.ts';
 import { locationOf } from '../interpreter/trace.ts';
-import type { Frame } from '../snapshot/objects.ts';
+import type { Frame, HeapObject } from '../snapshot/objects.ts';
 import type { Snapshot } from '../snapshot/snapshot.ts';
+import type { TestWatch } from './futures.ts';
+import type { CallerFuture } from './test-world.ts';
 import { stateOf } from './wake.ts';
 
 /** Where one execution waits: its waypoint, if the program named it, and its source location. */
@@ -47,4 +49,41 @@ function waitingPointOf(definition: Definition, frame: Frame): WaitingPoint {
     waypoint: instruction.waypoint,
     location: locationOf(definition, code.module, instruction.span.start),
   };
+}
+
+/** The heap objects of `snapshot` while it is active; none once it has ended or before it starts. */
+function activeObjects(snapshot: Snapshot | undefined): readonly HeapObject[] {
+  return snapshot?.status.kind === 'active' ? snapshot.objects : [];
+}
+
+/** The test watches (`idle`, `reaches`) pending in `snapshot`. */
+export function pendingTestWatches(
+  snapshot: Snapshot | undefined,
+): readonly { readonly instance: string; readonly until: TestWatch }[] {
+  return activeObjects(snapshot).flatMap((object) =>
+    object.kind === 'future' && object.state.kind === 'watch' && object.state.until.kind !== 'ended'
+      ? [{ instance: object.state.instance, until: object.state.until }]
+      : [],
+  );
+}
+
+/**
+ * The answers `holder` still holds for calls from `caller` whose futures `callerSnapshot` no
+ * longer waits on (§10).
+ */
+export function withdrawnAnswers(
+  holder: Snapshot | undefined,
+  caller: string,
+  callerSnapshot: Snapshot | undefined,
+): readonly CallerFuture[] {
+  const waiting = new Set(
+    activeObjects(callerSnapshot).flatMap((object) =>
+      object.kind === 'future' && object.state.kind === 'host' ? [object.state.token] : [],
+    ),
+  );
+  return activeObjects(holder).flatMap((object) =>
+    object.kind === 'answer' && object.instance === caller && !waiting.has(object.token)
+      ? [{ instance: caller, token: object.token }]
+      : [],
+  );
 }

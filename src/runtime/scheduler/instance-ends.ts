@@ -15,11 +15,33 @@ import { errorOf, okOf } from '../../definition/declared-values.ts';
 import type { TypeId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/types.ts';
 import type { Value } from '../../definition/values.ts';
+import { memo } from '../../structures/memo.ts';
 import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
 
 /** The `code` of the `Error` a wait on an instance gets for its panic (§9). */
 const panicCode = 'panic';
+
+const decodedByStore = new WeakMap<
+  InstanceStore,
+  Map<string, { readonly text: string; readonly snapshot: Snapshot }>
+>();
+
+/** `instance`'s last committed snapshot in `store`, decoded once per committed text. */
+export function storedSnapshot(store: InstanceStore, instance: string): Snapshot | undefined {
+  const text = store.readSnapshot(instance);
+  if (text === undefined) {
+    return undefined;
+  }
+  const perInstance = memo(decodedByStore, store, () => new Map());
+  const known = perInstance.get(instance);
+  if (known?.text === text) {
+    return known.snapshot;
+  }
+  const snapshot = snapshotFormat.read(text);
+  perInstance.set(instance, { text, snapshot });
+  return snapshot;
+}
 
 /**
  * The `Result` of type entry `result` a wait on the instance whose last commit is `snapshot` gets;
@@ -52,8 +74,5 @@ export function storedEnds(
   store: InstanceStore,
   types: readonly TypeDefinition[],
 ): (instance: string, result: TypeId) => Value | undefined {
-  return (instance, result) => {
-    const text = store.readSnapshot(instance);
-    return endOf(types, text === undefined ? undefined : snapshotFormat.read(text), result);
-  };
+  return (instance, result) => endOf(types, storedSnapshot(store, instance), result);
 }
