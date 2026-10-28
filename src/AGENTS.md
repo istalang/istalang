@@ -14,5 +14,22 @@ Top-level folders are toolchain features. Their layers and contracts are in `doc
 
 Use a phase or feature folder only through its entry module. Upward imports and import cycles fail lint. Layers are an allow-list in `.dependency-cruiser.mjs`: a new folder can import nothing until you list it there.
 
+## Reuse index (`docs/reuse/`)
+
+`docs/reuse/` indexes the reusable units, one-way rules and extension recipes already in this codebase, grouped by the caller's need. Before writing a helper or choosing how to solve a recurring problem, read the matching file; when you add, rename, move or delete a reusable unit or a one-way rule, update its line in the same commit:
+
+- `docs/reuse/structures-and-invariants.md`: caching derived data (`memo`), dispatching over union `kind`s (`Handlers`), walking deep graphs/stacks, or throwing on broken invariants (`unreachable`).
+- `docs/reuse/text-and-positions.md`: working with `SourceText`, `Span`, line/column maps, Unicode code points in UTF-16 text, or time-unit ratios.
+- `docs/reuse/diagnostics.md`: adding, reporting, rendering or testing diagnostics and per-phase catalogs.
+- `docs/reuse/syntax-and-trees.md`: inspecting or adding tokens, syntax nodes, operators, places, optional chains, field defaults, templates, or tree traversal.
+- `docs/reuse/modules-and-names.md`: looking up well-known declarations/functions, spelling static/qualified/extern names, loading modules, or reading bound entities.
+- `docs/reuse/types-and-fitting.md`: building, comparing, substituting, printing or fitting checker `Type`s, well-known types, trait constraints, patterns, or body data flow.
+- `docs/reuse/calls-and-resolution.md`: finding call/witness candidates, resolving overloads, inferring type arguments, or making implicit/prelude calls.
+- `docs/reuse/lowering-and-ir.md`: lowering expressions/statements to Definition IR, interning tables, closing function instances, emitting calls/loops/places, or writing synthesized code.
+- `docs/reuse/values-and-equality.md`: building, narrowing or reading language `Value`s, structs, variants, closures, maps or JSON from TypeScript, or comparing values with `==`.
+- `docs/reuse/stdlib-and-natives.md`: adding or editing a std module, native function, sequence index/slice/range helper, text parser/formatter, or `.ista` test helper.
+- `docs/reuse/runtime-and-persistence.md`: changing persisted formats, canonical JSON codecs, snapshots, heap objects, disposal, scheduler wakes, or the host API.
+- `docs/reuse/testing.md`: writing or editing `*.test.ts` or `*.test-kit.ts` files, fast-check arbitraries, spec-example tests, or Definition fixtures.
+
 Reviews: a reviewer's first focus must be DRY violations, double standards (two ways to solve one problem, two shapes for one concept) and cohesion by feature. Developer or viewer, you need to have clean-dev in your context or instructions. If you don't then read it:
 ~/.claude/skills/clean-dev/SKILL.md

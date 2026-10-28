@@ -91,6 +91,9 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q22 | The persisted `answer` replay variant can't be reached (test worlds never retry) and has no test. Justify it with a case, or delete it. | easy | none; can be done now | audit Wave 1 review 2026-10-28 |
 | Q23 | `compareOrdered` has no use inside language/values.ts, whose subject is `==` and map keys; its callers are codec, json-values and the prelude. Give it its own module. | easy | none; can be done now | audit Wave 1 review 2026-10-28 |
 | Q24 | `prepareTargets` walks a destructuring target a second time beside `takeTargets` (statements/assignments.ts), guarded by `unreachable`. | easy | none; can be done now | audit Wave 1 review 2026-10-28 |
+| Q25 | `language/time-units.ts` is the single home of the language's time-unit ratios in milliseconds (its banner names duration literals and `stdlib/time/iso.ts`), yet `compiler/scanner/numbers.ts` (and `numbers.test.ts`) still re-declares `millisecondsPerSecond`, `secondsPerMinute`, `minutesPerHour`, `hoursPerDay`, `millisecondsPerMinute` and `millisecondsPerHour` locally instead of importing `language/time-units.ts`. | easy | none; can be done now | reuse index 2026-10-28 |
+| Q26 | `NativeWeakSide` (`runtime/natives.ts`) declares both `watch` and `whenDisposed` with the same signature and contract, and `nativeWeakSideOf` (`runtime/scheduler/native-calls.ts`) binds both to `weak.watch(reference)`; `stdlib/prelude/weak-natives.ts` calls `whenDisposed` for `disposed` and `watch` for `disposing`. Keep `watch` alone on `NativeWeakSide`. | easy | none; can be done now | reuse index 2026-10-28 |
+| Q27 | `stdlib/prelude/prelude.test-kit.ts` (`mainGives`) decodes `state.outcome` with `JSON.parse(String(state.outcome))`, a second JSON reader beside `decodeJson` (`definition/codec.ts`) that rounds integers outside the safe-integer range. | easy | none; can be done now | reuse index 2026-10-28 |
 
 ### Behaviour and correctness (B)
 

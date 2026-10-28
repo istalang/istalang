@@ -1,0 +1,36 @@
+---
+description: SourceText, UTF-16 spans, line/column maps, code points and time units — read before working with source text, spans, string indices or durations
+owner: tech-lead
+status: active
+applies_to: istalang
+last_verified: 2026-10-28
+last_updated: 2026-10-28
+tags: [reuse, text, spans, positions, code-points]
+---
+
+# Text, code points and positions
+
+## Units
+
+- create an immutable `SourceText` (strips leading BOM) → `createSourceText`, `SourceText` (`src/text/source-text.ts`)
+- slice the source text under a `Span` → `textOf` (`src/text/span.ts`)
+- test whether one `Span` lies wholly inside another → `encloses` (`src/text/span.ts`)
+- convert between UTF-16 offsets and 0-based `{ line, column }` on a `SourceText` → `lineMapOf`, `LineMap`, `Position` (`src/text/line-map.ts`)
+- convert a UTF-16 offset to 0-based `{ line, column }` from `lineStarts` alone → `positionIn` (`src/text/line-map.ts`)
+- measure a line break (`\r\n`, `\n`, `\r`) at a UTF-16 offset → `lineBreakLength` (`src/text/line-map.ts`)
+- split a string into its Unicode code points → `codePoints` (`src/text/code-points.ts`)
+- count a string's Unicode code points without allocating an array → `codePointCount` (`src/text/code-points.ts`)
+- get the UTF-16 width (1 or 2) of the code point at a UTF-16 offset → `codePointWidth` (`src/text/code-points.ts`)
+- convert a code-point index to a UTF-16 offset → `utf16Offset` (`src/text/code-points.ts`)
+- read the code point at one code-point index (`''` outside the string) → `codePointAtPosition` (`src/text/code-points.ts`)
+- read code points at monotonic code-point indices in O(n) total → `codePointsAt` (`src/text/code-points.ts`)
+- slice a string between two non-negative code-point indices → `codePointSlice` (`src/text/code-points.ts`)
+- map increasing UTF-16 offsets to code-point positions in O(n) total → `codePointPositions` (`src/text/code-points.ts`)
+- convert seconds or minutes to milliseconds (`bigint`) → `millisecondsPerSecond`, `millisecondsPerMinute` (`src/language/time-units.ts`)
+- convert hours or days to milliseconds (`bigint`) → `millisecondsPerHour`, `millisecondsPerDay` (`src/language/time-units.ts`)
+- get time-unit ratios (`60n`, `24n`) → `secondsPerMinute`, `minutesPerHour`, `hoursPerDay` (`src/language/time-units.ts`)
+
+## One-way rules
+
+- Internal offsets and `Position` values are 0-based UTF-16; convert to 1-based lines/columns or code points only at edges (`docs/arch/architecture.md`).
+- `SourceText` is branded and immutable: build it only with `createSourceText` (`src/text/source-text.ts`), and represent an edit as a new `SourceText`.

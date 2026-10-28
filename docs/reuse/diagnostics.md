@@ -1,0 +1,33 @@
+---
+description: diagnostic model, per-phase catalogs, code blocks, rendering and test assertions — read before adding, reporting, rendering or testing diagnostics
+owner: tech-lead
+status: active
+applies_to: istalang
+last_verified: 2026-10-28
+last_updated: 2026-10-28
+tags: [reuse, diagnostics, errors, testing]
+---
+
+# Diagnostics
+
+## Units
+
+- declare a phase's diagnostic catalog with typed message factories and code checks → `defineDiagnostics` (`src/diagnostics/catalog.ts`)
+- look up a phase's 1000-code block → `codeBlocks`, `codeBlockSize`, `DiagnosticPhase` (`src/diagnostics/code-blocks.ts`)
+- test whether a `Diagnostic` is an error (stops compilation) vs a warning → `isError`, `Diagnostic`, `Severity` (`src/diagnostics/diagnostic.ts`)
+- format one `Diagnostic` with `path:line:column` header, source line and caret → `renderDiagnostic` (`src/diagnostics/render.ts`)
+- write all module diagnostics with an error and warning summary count → `reportDiagnostics` (`src/cli/report.ts`)
+
+## One-way rules
+
+- Never build a `Diagnostic` literal by hand; call the typed factory in the phase's `diagnostics.ts` catalog (`src/diagnostics/catalog.ts`).
+- Each phase returns its diagnostics as values with its result; there is no global sink (`docs/arch/architecture.md`, Phase contracts).
+- Tests assert `reportedIn(source, diagnostics)` against codes and span texts, never message wording or raw offsets (`src/diagnostics/diagnostic.test-kit.ts`).
+
+## Recipes
+
+### Add a diagnostic code
+
+1. Pick the next unused code in the phase's block (`src/diagnostics/code-blocks.ts`).
+2. Add `name: { code, severity?, message: (...) => ... }` to the phase's `diagnostics.ts` (or `src/compiler/checker/diagnostics/`).
+3. Call the factory at the offending `Span` (or `UseSite` in the checker) and assert it with `reportedIn` / `reportedOnce`.
