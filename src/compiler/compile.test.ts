@@ -6,7 +6,6 @@
 import { describe, expect, it } from 'vitest';
 import { invalidPrograms } from '../../test/corpus/programs.ts';
 import { reportedIn } from '../diagnostics/diagnostic.test-kit.ts';
-import { testModuleSuffix } from '../language/well-known.ts';
 import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { lineMapOf } from '../text/line-map.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
@@ -63,8 +62,7 @@ describe('the corpus', () => {
   it.each(invalidPrograms)(
     '$name reports exactly the errors it states',
     ({ name, text, errors }) => {
-      const main = name.endsWith(testModuleSuffix) ? `main${testModuleSuffix}` : 'main';
-      const { source, diagnostics } = diagnosedAt(stdProgramOf({ [main]: text }), main);
+      const { source, diagnostics } = diagnosedAt(stdProgramOf({ [name]: text }), name);
       const lines = lineMapOf(source);
       const reported = diagnostics
         .filter((diagnostic) => diagnostic.severity === 'error')
