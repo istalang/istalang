@@ -319,21 +319,40 @@ export function explain(
       context.report(checkerDiagnostics.cannotInfer(site.span, name, reason.parameter.name.text));
       return;
     case 'arguments':
-      for (const { index, expected } of reason.misfits) {
-        const argument = request.arguments[index];
-        if (argument?.type !== undefined) {
-          const { node, type } = argument;
-          context.report(
-            checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(type)),
-          );
-        } else if (argument !== undefined) {
-          context.expect(argument.node, expected);
-        }
-      }
+      explainArguments(context, request, reason.misfits);
       return;
     default: {
       const unexplained: never = reason;
       unreachable(`No explanation for ${JSON.stringify(unexplained)}.`);
     }
+  }
+}
+
+function explainArguments(
+  context: BodyContext,
+  request: ExplainedCall,
+  misfits: Extract<Inapplicability, { kind: 'arguments' }>['misfits'],
+): void {
+  const { site, name } = request;
+  let reported = false;
+  for (const { index, expected } of misfits) {
+    const argument = request.arguments[index];
+    if (argument?.type !== undefined) {
+      const { node, type } = argument;
+      reported = true;
+      context.report(
+        checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(type)),
+      );
+    } else if (argument !== undefined) {
+      const checked = context.expect(argument.node, expected);
+      if (checked.kind === 'error' || context.checker.fitOf(checked, expected) === undefined) {
+        reported = true;
+      }
+    }
+  }
+  if (!reported) {
+    context.report(
+      checkerDiagnostics.noMatchingOverload(site.span, name, typesText(request.arguments)),
+    );
   }
 }

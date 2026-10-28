@@ -46,7 +46,7 @@ import { isSendable, isSendableTrait, isWellKnownTrait } from '../traits/sendabl
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { type Constraint, errorType, sameType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { silent, type UseSite } from '../use-site.ts';
+import type { UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import { type Application, signatureOf } from './choice.ts';
 import { chooseWitness } from './declared-witness.ts';
@@ -121,7 +121,7 @@ function witnessesOf(
     const met: (readonly ResolvedCall[])[] = [];
     for (const constraint of site.checker.constraintsOf(parameter)) {
       const mapped = substituteConstraint(constraint, substitution);
-      const witnessesOfConstraint = conform(site, argument, mapped, depth);
+      const witnessesOfConstraint = conform({ site, type: argument, constraint: mapped }, depth);
       if (isFailure(witnessesOfConstraint)) {
         return witnessesOfConstraint;
       }
@@ -139,14 +139,15 @@ export function meets(site: UseSite, type: Type, constraint: Constraint): boolea
 
 /**
  * The witness of every function `constraint` requires of `type` at the use site; undefined after
- * reporting there why it isn't met.
+ * reporting there why it isn't met (`onNone` when no function is declared).
  */
 export function witnessesFor(
   site: UseSite,
   type: Type,
   constraint: Constraint,
+  onNone?: () => void,
 ): readonly ResolvedCall[] | undefined {
-  const witnesses = conform(site, type, constraint, 0);
+  const witnesses = conform({ site, type, constraint }, 0, onNone);
   return isFailure(witnesses) ? undefined : witnesses;
 }
 
@@ -155,16 +156,15 @@ export function witnessesFor(
  * reported, so it fails silently.
  */
 function conform(
-  site: UseSite,
-  type: Type,
-  constraint: Constraint,
+  meeting: Meeting,
   depth: number,
+  onNone?: () => void,
 ): readonly ResolvedCall[] | Failure {
+  const { site, type, constraint } = meeting;
   const { checker } = site;
   if (type.kind === 'error') {
     return 'failed';
   }
-  const meeting = { site, type, constraint };
   if (isSendableTrait(checker, constraint.trait)) {
     return isSendable(checker, type) ? [] : lacks(meeting, 'every value inside it to be sendable');
   }
@@ -178,7 +178,14 @@ function conform(
       return lacks(meeting, `a field '${field.name.text}: ${typeText(fieldType)}'`);
     }
   }
-  return functionWitnesses(meeting, depth);
+  const unmet =
+    onNone === undefined
+      ? undefined
+      : (): Failure => {
+          onNone();
+          return 'failed';
+        };
+  return functionWitnesses(meeting, depth, unmet);
 }
 
 /** A constraint being met by a type at a use site, for reporting why it isn't. */
@@ -220,26 +227,35 @@ function codecWitness(
   });
 }
 
+/** Reports that `declaration`, a function the trait requires, is missing on `meeting`'s type. */
+function missingFunction(meeting: Meeting, declaration: FunctionDeclaration): Failure {
+  return lacks(
+    meeting,
+    `'${declaration.name.text}' as ${meeting.constraint.trait.name.text} declares it`,
+  );
+}
+
 /**
- * The witness of every function the constraint requires; one no function meets is `unmet`'s,
- * which by default reports it missing.
+ * The witness of every function the constraint requires; one no function is declared for is
+ * `unmet`'s, which by default reports it missing.
  */
 function functionWitnesses(
   meeting: Meeting,
   depth: number,
   unmet: (declaration: FunctionDeclaration) => ResolvedCall | Failure = (declaration) =>
-    lacks(
-      meeting,
-      `'${declaration.name.text}' as ${meeting.constraint.trait.name.text} declares it`,
-    ),
+    missingFunction(meeting, declaration),
 ): readonly ResolvedCall[] | Failure {
   const { site, type, constraint } = meeting;
   const substitution = constraintSubstitution(constraint, type);
   const witnesses: ResolvedCall[] = [];
   for (const declaration of requiredFunctions(constraint.trait)) {
     const required = { declaration, substitution };
-    const witness = depth < maximumDepth ? witnessOf(site, type, required, depth) : 'endless';
-    switch (witness) {
+    const witness: WitnessOutcome =
+      depth < maximumDepth ? witnessOf(site, type, required, depth) : { kind: 'endless' };
+    switch (witness.kind) {
+      case 'call':
+        witnesses.push(witness.call);
+        break;
       case 'none': {
         const met = unmet(declaration);
         if (isFailure(met)) {
@@ -248,37 +264,43 @@ function functionWitnesses(
         witnesses.push(met);
         break;
       }
+      case 'ambiguous':
+        return missingFunction(meeting, declaration);
+      case 'wrongResult': {
+        const name = declaration.name.text;
+        const [wanted, given] = [typeText(witness.required), typeText(witness.given)];
+        return lacks(meeting, `'${name}' giving ${wanted}, where the one declared gives ${given}`);
+      }
       case 'endless': {
-        const trait = constraint.trait.name.text;
-        site.report((at) => checkerDiagnostics.endlessConformance(at, typeText(type), trait));
+        if (depth === 0) {
+          const trait = constraint.trait.name.text;
+          site.report((at) => checkerDiagnostics.endlessConformance(at, typeText(type), trait));
+        }
         return 'endless';
       }
       case 'failed':
         return 'failed';
-      default:
-        if (witness.kind === 'wrongResult') {
-          const name = declaration.name.text;
-          const [wanted, given] = [typeText(witness.required), typeText(witness.given)];
-          return lacks(
-            meeting,
-            `'${name}' giving ${wanted}, where the one declared gives ${given}`,
-          );
-        }
-        witnesses.push(witness);
+      default: {
+        const unhandled: never = witness;
+        return unhandled;
+      }
     }
   }
   return witnesses;
 }
 
 /**
- * A function declared to meet a requirement, taking what it requires, that gives another type than
- * the requirement does: the reason a type declaring it doesn't meet the trait.
+ * What searching for a single required function's witness found: the call, nothing declared
+ * (`none`), several candidates tying (`ambiguous`), a declared function giving another result
+ * (`wrongResult`), or a declared function whose own instantiation failed (`failed` / `endless`).
  */
-interface WrongResult {
-  readonly kind: 'wrongResult';
-  readonly required: Type;
-  readonly given: Type;
-}
+type WitnessOutcome =
+  | { readonly kind: 'call'; readonly call: ResolvedCall }
+  | { readonly kind: 'none' }
+  | { readonly kind: 'ambiguous' }
+  | { readonly kind: 'wrongResult'; readonly required: Type; readonly given: Type }
+  | { readonly kind: 'failed' }
+  | { readonly kind: 'endless' };
 
 /** A function a trait requires, mapped for the type that must meet it. */
 interface RequiredFunction {
@@ -287,32 +309,34 @@ interface RequiredFunction {
 }
 
 /**
- * The call meeting `required` for `type`: `none` when no single function does, the result the one
- * declared gives when it isn't the required one; otherwise, when it can't be instantiated or
- * called (calls-made.ts), the failure reported.
+ * The witness meeting `required` for `type`, or why none does: `none` only when no candidate is
+ * declared, so a declared candidate whose own constraints fail reports them at `site`.
  */
 function witnessOf(
   site: UseSite,
   type: Type,
   required: RequiredFunction,
   depth: number,
-): ResolvedCall | WrongResult | 'none' | Failure {
+): WitnessOutcome {
   const { checker } = site;
   const signature = signatureOf(checker, required.declaration, required.substitution);
   const choice = chooseWitness(checker, type, signature);
-  if (choice.kind !== 'chosen') {
-    return 'none';
+  if (choice.kind === 'none') {
+    return { kind: 'none' };
+  }
+  if (choice.kind === 'several') {
+    return { kind: 'ambiguous' };
   }
   const { application } = choice;
-  const instantiation = instantiateAt(silent(site), application, signature.result(), depth + 1);
+  const instantiation = instantiateAt(site, application, signature.result(), depth + 1);
   if (isFailure(instantiation)) {
-    return instantiation === 'endless' ? 'endless' : 'none';
+    return { kind: instantiation };
   }
   const result = substitute(application.signature.result(), instantiation.substitution);
   if (!sameType(result, signature.result())) {
     return { kind: 'wrongResult', required: signature.result(), given: result };
   }
-  return callMade(application, instantiation);
+  return { kind: 'call', call: callMade(application, instantiation) };
 }
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {

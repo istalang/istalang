@@ -40,7 +40,7 @@ import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/call-arguments.ts';
-import { declaresDefault, defaultWitness } from '../resolution/default-witness.ts';
+import { defaultWitness } from '../resolution/default-witness.ts';
 import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
 import {
   acceptedPart,
@@ -62,7 +62,7 @@ import {
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, arrayOf, wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
-import { searchSite, useSite } from '../use-site.ts';
+import { useSite } from '../use-site.ts';
 
 /** The form of each collection literal of one body, for lowering. */
 export class CollectionForms {
@@ -277,13 +277,10 @@ function checkDeclaredLiteral(
   const failure = () => checkerDiagnostics.mapLiteralType(node.span, typeText(type));
   // With no default declared the literal says what it needs; one declared that doesn't meet
   // Default is reported by conformance, which says why.
-  const declared = declaresDefault(checker, type);
-  const site = declared ? useSite(checker, context.module, node.span) : searchSite(checker);
-  const made = defaultWitness(site, type);
+  const site = useSite(checker, context.module, node.span);
+  const made = defaultWitness(site, type, () => context.report(failure()));
   if (made !== undefined) {
     context.implicit.record(node, 'default', made);
-  } else if (!declared) {
-    context.report(failure());
   }
   for (const entry of node.kind === 'MapLiteral' ? node.entries : []) {
     insertEntry(context, entry, type, made === undefined ? undefined : failure);

@@ -7,8 +7,14 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { idOf } from '../../program/program.test-kit.ts';
 import { reported } from '../check.test-kit.ts';
+import { checkProgram } from '../check.ts';
+import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { intType, stringType } from '../types/type.ts';
+import { callWithTypes } from './typed-call.ts';
 
 const { notConforming } = checkerDiagnostics;
 
@@ -208,5 +214,36 @@ describe('Sendable', () => {
   ])('holds for %s only', (_, parameters, isUnmet) => {
     const text = `${declarations}\nfn wrap${parameters}(value: T) -> Envelope<T>: Envelope{value}`;
     expect(unmet(text)).toBe(isUnmet);
+  });
+});
+
+describe('declared witness constraints and typed calls', () => {
+  it('reports the unmet constraint on a declared witness instead of reporting the witness missing', () => {
+    const text = [
+      'import * as json from "json"',
+      'struct Point { x: int; y: int }',
+      'struct Box<T> { value: T }',
+      'fn toJson<T is Stringable>(self: Box<T>) -> json.Json:',
+      '  json.encodeText(self.value)',
+      'fn main() -> string:',
+      '  json.stringify(Box{value: Point{x: 1, y: 2}})',
+    ].join('\n');
+    const diagnostics = stdProgramOf({ 'main.ista': text });
+    const checked = checkProgram(diagnostics).diagnosticsOf(idOf('main.ista'));
+    expect(checked.map((each) => each.message)).toEqual([
+      expect.stringContaining('Point') && expect.stringContaining('Stringable'),
+    ]);
+  });
+
+  it('callWithTypes sizes arguments per candidate when overloads differ in arity', () => {
+    const program = stdProgramOf({
+      'main.ista': ['fn pick<T>(a: T) -> T: a', 'fn pick<T, U>(a: T, b: U) -> U: b'].join('\n'),
+    });
+    const checker = checkProgram(program) as CheckerContext;
+    const entity = checker.bindings.exportsOf(idOf('main.ista')).get('pick');
+    const overloads = entity?.kind === 'functions' ? entity.overloads : [];
+    const candidates = overloads.map((declaration) => ({ declaration }));
+    const chosen = callWithTypes(checker, candidates, [intType, stringType]);
+    expect(chosen?.function).toBe(overloads[1]);
   });
 });

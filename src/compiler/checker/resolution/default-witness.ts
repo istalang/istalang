@@ -11,16 +11,17 @@ import { wellKnownConstraint } from '../traits/constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import type { UseSite } from '../use-site.ts';
 import { witnessesFor } from './conformance.ts';
-import { declaresWitness } from './declared-witness.ts';
 
-/** The call giving `type`'s default, Default's witness; undefined after `site` reports why not. */
-export function defaultWitness(site: UseSite, type: Type): ResolvedCall | undefined {
-  return witnessesFor(site, type, defaultConstraint(site.checker))?.[0];
-}
-
-/** Whether a `default()` is declared for `type`, whether or not it meets Default. */
-export function declaresDefault(checker: CheckerContext, type: Type): boolean {
-  return declaresWitness(checker, type, defaultConstraint(checker));
+/**
+ * The call giving `type`'s default, Default's witness; undefined after `site` reports why a
+ * declared one doesn't meet Default, or `onNone` reports that none is declared.
+ */
+export function defaultWitness(
+  site: UseSite,
+  type: Type,
+  onNone?: () => void,
+): ResolvedCall | undefined {
+  return witnessesFor(site, type, defaultConstraint(site.checker), onNone)?.[0];
 }
 
 function defaultConstraint(checker: CheckerContext): Constraint {
