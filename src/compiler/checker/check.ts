@@ -130,10 +130,11 @@ export interface AssignedPart {
 }
 
 /**
- * A node giving a value where one is expected (§2): an expression, or the `unit` a bare `return`,
- * or a block with no tail expression, gives.
+ * A node giving a value where one is expected (§2): an expression, the `unit` a bare `return`, or
+ * a block with no tail expression, gives, or an array literal's spread, each of whose items fits
+ * alike.
  */
-export type ValueSite = Expression | Return | Block;
+export type ValueSite = Expression | Return | Block | Spread;
 
 /** A construct that runs over an iterable (§3.10): a `for`, a comprehension, or a spread. */
 export type Iteration = For | Comprehension | Spread;

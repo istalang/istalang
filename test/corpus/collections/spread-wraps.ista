@@ -1,0 +1,21 @@
+# outcome: "4 1 -1 b 1 1"
+# An array literal's spread gives its items where the literal's items are expected, so each is
+# wrapped into `T?` as an element would be (§2): an array's items, which are otherwise copied
+# whole, a string's characters and a range's ints alike, as often as the optionals nest.
+
+async fn main() -> Future<string>:
+  const xs = [1, 2]
+  const ys: Array<int?> = [0, ...xs, none]
+  const letters: Array<string?> = [..."ab"]
+  const range = 0..2
+  const steps: Array<int?> = [...range]
+  const nested: Array<int??> = [...xs]
+  const parts = [
+    string(ys.length()),
+    string(ys[1] ?? -1),
+    string(ys[3] ?? -1),
+    letters[1] ?? "-",
+    string(steps[1] ?? -1),
+    string((nested[0] ?? none) ?? -1),
+  ]
+  parts.join(" ")

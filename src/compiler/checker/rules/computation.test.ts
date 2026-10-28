@@ -140,6 +140,11 @@ describe('computed constants', () => {
     ['an enum variant literal', 'const x: int? = Some{1}', 'Some{1}'],
     ['a plain function made async', 'const f: async fn() -> int = fn(): 1', 'fn(): 1'],
     ['a value converted into an any type', 'trait Named {}\nconst a: any Named = 1', '1'],
+    [
+      'a spread whose items are wrapped',
+      'const xs = [1]\nconst ys: Array<int?> = [...xs]',
+      '...xs',
+    ],
   ])('refuse %s, which compile time does not compute', (_case, text, spanText) => {
     expect(reported(text)).toEqual(reportedOnce(checkerDiagnostics.notConstant.code, spanText));
   });

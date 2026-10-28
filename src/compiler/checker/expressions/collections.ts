@@ -10,6 +10,10 @@
  *   literal builds, an array into an array literal or a map into a map literal of `Map`, is copied
  *   whole, with no `iterate`; any other goes through its cursor, so a string spreads its
  *   characters, and a map into an array literal its entries.
+ * - An array literal's spread gives its items where the literal's items are expected, so each is
+ *   wrapped into `T?` as an element would be (§2), the fit recorded on the spread; a spread whose
+ *   items need it is never copied whole, but goes through its cursor, each item fitted as it is
+ *   added. A map literal's spread gives its keys and values together, so they fit as they are.
  * - A literal is a map literal only with an entry or as `[:]` (the parser decides), so `[...m]`
  *   is an array of `m`'s entries. Where a `Map` is expected, `[]` is an empty map.
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
@@ -48,7 +52,7 @@ import {
   settleAgreement,
 } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
-import { withoutOptionals } from '../types/fit.ts';
+import { isExact, withoutOptionals } from '../types/fit.ts';
 import {
   errorType,
   intType,
@@ -318,24 +322,29 @@ function insertEntry(
  */
 export function spreadArgumentType(context: BodyContext, spread: Spread): Type {
   const type = context.expression(spread.expression);
-  return isPack(type) ? type : itemsOf(context, spread, type).type;
+  return isPack(type) ? type : itemsOf(context, spread, type);
 }
 
 /** The items `spread` gives, as an array literal's element, its items expected to be `item`s. */
 function spreadItems(context: BodyContext, spread: Spread, item: Type | undefined): Produced {
   const expected = item === undefined ? undefined : arrayOf(context.checker, item);
-  return itemsOf(context, spread, context.expression(spread.expression, expected));
+  const type = context.expression(spread.expression, expected);
+  return { type: itemsOf(context, spread, type, item), span: spread.span, site: spread };
 }
 
-/** The items a spread of a value of `type` gives: an array's elements, or what iterating gives. */
-function itemsOf(context: BodyContext, spread: Spread, type: Type): Produced {
+/**
+ * The type of the items a spread of a value of `type` gives: an array's elements, copied whole
+ * unless they need converting to the `item`s expected, or what iterating gives.
+ */
+function itemsOf(context: BodyContext, spread: Spread, type: Type, item?: Type): Type {
   const element = arrayElement(context.checker, type);
-  if (element === undefined) {
-    const iterated = iteratedItem(context, spread, spread.expression, type);
-    return { type: iterated ?? errorType, span: spread.span, site: undefined };
+  const fit =
+    element === undefined || item === undefined ? undefined : context.checker.fitOf(element, item);
+  if (element === undefined || (fit !== undefined && !isExact(fit))) {
+    return iteratedItem(context, spread, spread.expression, type) ?? errorType;
   }
   context.iterations.record(spread, { kind: 'copied' });
-  return { type: element, span: spread.span, site: undefined };
+  return element;
 }
 
 /** The keys and the values of the `(key, value)` items `spread` gives in a map literal of a `Map`. */

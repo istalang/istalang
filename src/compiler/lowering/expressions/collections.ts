@@ -4,7 +4,8 @@
  * - An array literal is `array`, and a map literal of a `Map` is `map`, as the checker decided
  *   (`collectionFormOf`). A spread of the collection the literal builds is copied whole by the
  *   instruction; any other spread runs its cursor in the loop every iterating construct runs,
- *   appending each item, or each `(key, value)` tuple's entry, to what the parts before it built.
+ *   appending each item, fitted as the checker recorded on the spread (wrapped into `T?`, say), or
+ *   each `(key, value)` tuple's entry, to what the parts before it built.
  * - A map literal of another declared type, and `[]` of one, calls its `default()`, then the
  *   `setIndex` of each entry on the value, which lives in a cell so it can be passed by `&`; a
  *   spread's tuples are assigned one by one in the same loop.
@@ -179,7 +180,7 @@ function built<Part, Node extends Expression | MapEntry>(
     } else {
       parts.emit(dst, pending);
       emitLoop(context, node, cursorOf(context, node, node.expression), (item) => {
-        parts.append(dst, item, node);
+        parts.append(dst, fittedItem(context, node, item), node);
       });
       pending = [parts.copied(dst)];
     }
@@ -196,6 +197,15 @@ export function spreadArray(context: FunctionContext, spread: Spread): Register 
   return isCopied(context, spread)
     ? context.expression(spread.expression)
     : arrayOf(context, [spread], spread.span);
+}
+
+/** `item`, one `spread`'s cursor gives, fitted where the literal's items are expected (§2). */
+function fittedItem(context: FunctionContext, spread: Spread, item: Register): Register {
+  const form = context.body.iterationOf(spread);
+  if (form.kind !== 'cursor') {
+    unreachable('A spread copied whole has no cursor to give items.');
+  }
+  return context.fitted(item, form.item, context.body.fitAt(spread), spread);
 }
 
 function isSpread(node: Expression | MapEntry | Spread): node is Spread {

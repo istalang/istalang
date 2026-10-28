@@ -41,6 +41,7 @@ import { type ConstantForm, durationForm, formSemantics } from '../constant-form
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FunctionCall } from '../resolved-call.ts';
+import { isExact } from '../types/fit.ts';
 import { instantiatedBody } from '../types/instantiation.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 
@@ -357,15 +358,18 @@ class Computation {
     return pair.kind === 'computed' ? computed({ kind: 'array', elements: [pair.form] }) : pair;
   }
 
-  /** What a spread spreads: a computed array or map, its items read with `itemsOf`. */
+  /**
+   * What a spread spreads: a computed array or map, its items read with `itemsOf`. Items wrapped as
+   * they are added are refused, as a wrapped element is.
+   */
   #items(spread: Spread): Outcome {
     const spreading = this.of(spread.expression);
     if (spreading.kind !== 'computed') {
       return spreading;
     }
-    return spreading.form.kind === 'array' || spreading.form.kind === 'map'
-      ? spreading
-      : refused(spread);
+    const { kind } = spreading.form;
+    const isExactItems = isExact(this.#scope.checked.fitAt(spread));
+    return (kind === 'array' || kind === 'map') && isExactItems ? spreading : refused(spread);
   }
 
   /** A struct without fields named bare (§3.1); any other name that isn't a constant is refused. */

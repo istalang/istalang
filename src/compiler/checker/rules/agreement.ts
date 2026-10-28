@@ -19,7 +19,8 @@ import { widened } from '../types/widening.ts';
 
 /**
  * A type some part of a construct produced, where, and the node giving it: an expression, a bare
- * `return` or a block with no tail expression; none for a spread's items, given as a whole.
+ * `return`, a block with no tail expression or an array literal's spread; none for a map literal
+ * spread's keys and values, given together.
  */
 export interface Produced {
   readonly type: Type;
