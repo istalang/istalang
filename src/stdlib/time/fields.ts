@@ -3,16 +3,17 @@
  * are declared with, so a reordered declaration can't swap two of them.
  */
 
+import { fieldValueOf } from '../../definition/declared-values.ts';
 import type { Value } from '../../definition/values.ts';
 import type { NativeContext } from '../../runtime/natives.ts';
-import { fieldNamed, int, okStruct, resultStruct } from '../native-values.ts';
+import { int, okStruct, resultStruct } from '../native-values.ts';
 
 /** The field of a `Time` or a `Duration` holding its milliseconds. */
 const millisecondsField = 'value';
 
 /** The milliseconds a `Time` or a `Duration` argument holds. */
 export function millisecondsOf(context: NativeContext, value: Value | undefined): bigint {
-  return int(fieldNamed(context, value, millisecondsField));
+  return int(fieldValueOf(context.types, value, millisecondsField));
 }
 
 /** A `Time` or a `Duration` holding `milliseconds`, the type the extern declares it returns. */

@@ -11,9 +11,10 @@
  *   counted, and only one with a start can step by more than 1.
  */
 
+import { fieldValueOf } from '../definition/declared-values.ts';
 import type { Value } from '../definition/values.ts';
 import { type NativeContext, Panic } from '../runtime/natives.ts';
-import { fieldNamed, int, optionalValue } from './native-values.ts';
+import { int, optionalValue } from './native-values.ts';
 
 /** A range as natives read it: its ends, each undefined when open, and its step, never 0. */
 export interface RangeValue {
@@ -28,13 +29,13 @@ export function rangeOf(
   range: Value | undefined,
 ): RangeValue {
   const end = (name: string) => {
-    const value = optionalValue(fieldNamed(context, range, name));
+    const value = optionalValue(fieldValueOf(context.types, range, name));
     return value === undefined ? undefined : int(value);
   };
   const read = {
     start: end('start'),
     end: end('end'),
-    step: int(fieldNamed(context, range, 'step')),
+    step: int(fieldValueOf(context.types, range, 'step')),
   };
   if (read.step === 0n) {
     throw new Panic(`The range ${textOf(read)} has a step of 0.`);

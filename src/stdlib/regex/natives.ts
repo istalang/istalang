@@ -14,6 +14,7 @@ import { LRUCache } from 'lru-cache';
 import { RE2JS, RE2JSException } from 're2js';
 import {
   fieldTypeOf,
+  fieldValueOf,
   namedType,
   optionalOf,
   structOf,
@@ -28,7 +29,6 @@ import { memo } from '../../structures/memo.ts';
 import { codePointPositions } from '../../text/code-points.ts';
 import {
   arrayOf,
-  fieldNamed,
   okStruct,
   parseFailure,
   resultOk,
@@ -101,7 +101,7 @@ function invalidPattern(pattern: string, reason: string): string {
 
 /** The compiled program of a `Regex` argument, whose pattern must be valid. */
 function programOf(context: Pick<NativeContext, 'types'>, regex: Value | undefined): RE2JS {
-  const pattern = text(fieldNamed(context, regex, 'pattern'));
+  const pattern = text(fieldValueOf(context.types, regex, 'pattern'));
   const program = compile(pattern);
   if (typeof program === 'string') {
     throw new Panic(invalidPattern(pattern, program));

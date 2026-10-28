@@ -255,10 +255,6 @@ export interface ValueProblem {
   readonly message: string;
 }
 
-/**
- * Every way `value`, at any depth, doesn't fit `tables`: an index out of range, or a construction
- * that disagrees with the type it names. A snapshot's values are checked the same way.
- */
 type ValueStep =
   | { readonly kind: 'visit'; readonly value: Value }
   | { readonly kind: 'enter'; readonly index: number }

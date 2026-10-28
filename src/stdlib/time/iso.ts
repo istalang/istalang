@@ -22,7 +22,7 @@ import {
   millisecondsPerSecond,
   minutesPerHour,
   secondsPerMinute,
-} from '../../language/well-known.ts';
+} from '../../language/time-units.ts';
 
 /** The furthest a JavaScript `Date` reaches from the epoch, either way. */
 const maximumTime = 8_640_000_000_000_000n;

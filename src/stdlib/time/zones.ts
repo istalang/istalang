@@ -16,12 +16,11 @@
  */
 
 import { Temporal } from 'temporal-polyfill';
-import type { NamedFields } from '../../definition/declared-values.ts';
+import { fieldValueOf, type NamedFields } from '../../definition/declared-values.ts';
 import type { Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import {
-  fieldNamed,
   int,
   okExtern,
   okStruct,
@@ -156,7 +155,7 @@ function zonedOf(
 
 /** A `DateTime` argument as Temporal holds one; a panic when it is no date and time. */
 function plainOf(context: NativeContext, dateTime: Value | undefined): Temporal.PlainDateTime {
-  const fields = eachField((field) => Number(int(fieldNamed(context, dateTime, field))));
+  const fields = eachField((field) => Number(int(fieldValueOf(context.types, dateTime, field))));
   const read = unlessRefused(() => Temporal.PlainDateTime.from(fields, { overflow: 'reject' }));
   if (read === undefined) {
     throw new Panic(`There is no date and time ${writtenFields(fields)}.`);

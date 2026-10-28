@@ -11,7 +11,6 @@
 import {
   errOf,
   errorOf,
-  fieldValueOf,
   type NamedFields,
   okOf,
   okTypeOf,
@@ -56,7 +55,7 @@ export const float = argumentOf('number');
 export const text = argumentOf('string');
 
 /** Element `index` of a tuple argument. */
-export function fieldOf(value: Value | undefined, index: number): Value {
+export function elementOf(value: Value | undefined, index: number): Value {
   const element =
     value !== undefined && isComposite(value) && value.kind === 'tuple'
       ? value.elements[index]
@@ -164,15 +163,6 @@ export function resultError(context: NativeContext, message: string, code: strin
 /** Type argument `position` of the extern's declared result: the `T` of an `Array<T>` or a `T?`. */
 export function resultTypeArgument(context: NativeContext, position: number): TypeId {
   return typeArgumentOf(context.types, declaredResult(context), position);
-}
-
-/** Field `name` of a struct argument, found by the name its type declares, never by position. */
-export function fieldNamed(
-  context: Pick<NativeContext, 'types'>,
-  value: Value | undefined,
-  name: string,
-): Value {
-  return fieldValueOf(context.types, value, name);
 }
 
 /**

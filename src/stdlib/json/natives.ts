@@ -29,7 +29,7 @@ import type { NativeContext, Natives, WithResources } from '../../runtime/native
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import {
-  fieldOf,
+  elementOf,
   float,
   given,
   resultErr,
@@ -75,8 +75,8 @@ export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResou
     knownTypeKey(wellKnown.array, { kind: 'tuple', elements: [primitiveKey('string'), json] }),
   )]: ([fields], context) => {
     const entries = elementsOf(fields).map((pair): [string, Value] => [
-      text(fieldOf(pair, 0)),
-      fieldOf(pair, 1),
+      text(elementOf(pair, 0)),
+      elementOf(pair, 1),
     ]);
     return resultVariant(context, jsonVariants.object, { fields: mapOf(entries) });
   },
