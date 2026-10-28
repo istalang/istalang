@@ -34,7 +34,6 @@ import type { FunctionContext } from './context.ts';
 import { emitImplicitCall } from './emit-call.ts';
 import { equal, ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
-import { readPart } from './places.ts';
 import { declareVariable } from './statements/variables.ts';
 
 /** A value being matched, in a register, and the pattern it is matched against. */
@@ -208,13 +207,13 @@ function readPartAlong(
     if (typeof step === 'number') {
       positions.push(step);
     } else {
-      const array = readPart(context, value, positions, span);
+      const array = context.code.readPath(value, positions, span);
       const constants = stepOffsets(step).map((offset) => context.constant(BigInt(offset), span));
       value = emitImplicitCall(context, step.site, step.kind, [array, ...constants]);
       positions = [];
     }
   }
-  return readPart(context, value, positions, span);
+  return context.code.readPath(value, positions, span);
 }
 
 function stepOffsets(step: Exclude<PartStep, number>): readonly number[] {

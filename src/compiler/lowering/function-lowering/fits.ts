@@ -16,7 +16,6 @@ import type { FunctionContext } from '../context.ts';
 import { tupleOf } from '../expressions/tuples.ts';
 import { buildVariant } from '../expressions/variants.ts';
 import type { BodyOwner } from '../instances.ts';
-import { readPart } from '../places.ts';
 import { convertedIntoAny } from '../trait-objects/trait-objects.ts';
 
 /** A register and the type of the value it holds. */
@@ -84,7 +83,7 @@ function convertedValue(
       if (element === undefined) {
         unreachable('Only a one-element tuple is untupled.');
       }
-      return { value: readPart(context, typed.value, [0], site.span), type: element };
+      return { value: context.code.readPath(typed.value, [0], site.span), type: element };
     }
     default: {
       const unhandled: never = conversion;

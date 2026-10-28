@@ -35,7 +35,7 @@ import {
 } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCallAt } from '../emit-call.ts';
-import { type AssignedPlace, cellRegister, enterAssigned, readPart } from '../places.ts';
+import { type AssignedPlace, cellRegister, enterAssigned } from '../places.ts';
 
 /** A register holding a cell, and the `_Cell<T>` type entry it is created as. */
 export interface CellRegister {
@@ -197,7 +197,7 @@ export function bindTargets(
 ): void {
   const lifetime = lifetimeOf(context, owner);
   for (const binding of context.body.targetsOf(owner)) {
-    const part = readPart(context, value, binding.path, span);
+    const part = context.code.readPath(value, binding.path, span);
     const register = declareVariable(context, binding.name, binding.type, lifetime);
     context.code.emit({ kind: 'move', span, dst: register, src: part });
   }
@@ -223,7 +223,7 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
   }
   for (const part of parts) {
     const place = enterAssigned(context, part.target);
-    const read = readPart(context, value, part.path, node.span);
+    const read = context.code.readPath(value, part.path, node.span);
     place.write(writtenPart(context, read, part), node.span);
   }
 }

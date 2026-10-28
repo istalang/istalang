@@ -7,7 +7,6 @@ import type { Register } from '../../../definition/operands.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
-import { readPart } from '../places.ts';
 
 export function lowerTuple(context: FunctionContext, node: Tuple): Register {
   const elements = node.elements.map((element) => context.expression(element));
@@ -30,5 +29,5 @@ export function tupleOf(
 
 export function lowerTupleElement(context: FunctionContext, node: TupleElement): Register {
   const target = context.chains.target(context, node);
-  return readPart(context, target, [node.element], node.span);
+  return context.code.readPath(target, [node.element], node.span);
 }

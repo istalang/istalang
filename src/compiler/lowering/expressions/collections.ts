@@ -31,7 +31,7 @@ import type { Invalid } from '../../syntax/node.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitCallAt, emitImplicitCall, referenceTo } from '../emit-call.ts';
 import { cursorOf, emitLoop } from '../iteration.ts';
-import { cellRegister, readPart } from '../places.ts';
+import { cellRegister } from '../places.ts';
 import { construct } from './structs.ts';
 import { buildVariant } from './variants.ts';
 
@@ -116,8 +116,8 @@ export function lowerMapLiteral(context: FunctionContext, node: MapLiteral): Reg
     }),
     copied: (value) => ({ kind: 'spread', value }),
     append: (dst, item, spread) => {
-      const key = readPart(context, item, [0], spread.span);
-      const value = readPart(context, item, [1], spread.span);
+      const key = context.code.readPath(item, [0], spread.span);
+      const value = context.code.readPath(item, [1], spread.span);
       context.code.emit({
         kind: 'map',
         span,
@@ -228,8 +228,8 @@ function lowerDeclaredLiteral(
       emitImplicitCall(context, entry, 'insert', [container, key, context.expression(entry.value)]);
     } else if (entry.kind === 'Spread') {
       emitLoop(context, entry, cursorOf(context, entry, entry.expression), (item) => {
-        const key = readPart(context, item, [0], entry.span);
-        const part = readPart(context, item, [1], entry.span);
+        const key = context.code.readPath(item, [0], entry.span);
+        const part = context.code.readPath(item, [1], entry.span);
         emitImplicitCall(context, entry, 'insert', [container, key, part]);
       });
     }

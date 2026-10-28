@@ -67,6 +67,17 @@ export class CodeWriter {
     this.#instructions.push(instruction);
   }
 
+  /** Reads the part of the value in `src` at `path`, field and element positions; its register. */
+  readPath(src: Register, path: readonly number[], span: Span): Register {
+    let current = src;
+    for (const index of path) {
+      const dst = this.allocate();
+      this.emit({ kind: 'field', span, dst, src: current, index });
+      current = dst;
+    }
+    return current;
+  }
+
   newLabel(): Label {
     this.#labels += 1;
     return { id: this.#labels };

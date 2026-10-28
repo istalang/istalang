@@ -10,12 +10,12 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { constantValue } from '../constants.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
-import { variableRegister } from '../places.ts';
 import { lowerFunctionValue } from './closures.ts';
 import { lowerBareStruct } from './structs.ts';
 import { lowerFieldlessVariant } from './variants.ts';
@@ -47,9 +47,12 @@ export function lowerNamed(
   if (entity?.kind === 'functions') {
     return lowerFunctionValue(context, read);
   }
-  if (entity?.kind === 'variable' && entity.owner.kind === 'ExternConstantDeclaration') {
+  if (entity?.kind !== 'variable') {
+    unreachable(`'${name.text}' names no value; the checker should have said so.`);
+  }
+  if (entity.owner.kind === 'ExternConstantDeclaration') {
     const reader = context.tables.externConstantIndex(entity.owner, context.body.typeOf(read));
     return emitCall(context, { span: read.span, callee: reader, arguments: [] });
   }
-  return variableRegister(context, name);
+  return context.variables.registerOf(entity.name);
 }

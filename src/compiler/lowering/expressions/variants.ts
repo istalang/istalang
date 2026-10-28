@@ -13,7 +13,6 @@ import type { Expression, StructLiteral } from '../../syntax/expressions/index.t
 import { lastName } from '../../syntax/node.ts';
 import type { Label } from '../code-writer.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
-import { readPart } from '../places.ts';
 import { literalFields } from './structs.ts';
 
 /** The index of the variant `name` of the enum `type`. */
@@ -75,7 +74,7 @@ export function branchOnVariant(
 
 /** The value a `Some`, `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */
 export function payloadOf(context: CodeContext, register: Register, span: Span): Register {
-  return readPart(context, register, [0], span);
+  return context.code.readPath(register, [0], span);
 }
 
 /** Whether `type` is an enum's, whose literals are its variants'. */

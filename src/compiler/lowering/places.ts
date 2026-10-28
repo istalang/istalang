@@ -92,7 +92,7 @@ export function enterReferenced(context: FunctionContext, node: Expression): Ref
 }
 
 /** The register the variable `node` names lives in. */
-export function variableRegister(context: FunctionContext, node: Identifier): Register {
+function variableRegister(context: FunctionContext, node: Identifier): Register {
   const entity = context.entityOf(node);
   if (entity?.kind !== 'variable') {
     unreachable(`'${node.text}' is not a variable; the checker should have said so.`);
@@ -105,16 +105,6 @@ export function cellRegister(context: FunctionContext, type: Type): Register {
   const register = context.code.allocate();
   context.variables.addCell({ register, type: cellTypeIndex(context, type) });
   return register;
-}
-
-/** Reads the part of the value in `register` at `path`, field and element positions; its register. */
-export function readPart(
-  context: CodeContext,
-  register: Register,
-  path: readonly number[],
-  span: Span,
-): Register {
-  return readPlace(context, { register, path: [...path] }, span);
 }
 
 /** The position, in its struct's declaration order, of the field `node` reads. */
@@ -256,13 +246,7 @@ function sharedAccessor(context: FunctionContext, node: Expression): Accessor {
 
 /** Reads the value at `place`: its register's value, read along the place's field positions. */
 function readPlace(context: CodeContext, place: Place, span: Span): Register {
-  let current = place.register;
-  for (const index of place.path) {
-    const dst = context.code.allocate();
-    context.code.emit({ kind: 'field', span, dst, src: current, index });
-    current = dst;
-  }
-  return current;
+  return context.code.readPath(place.register, place.path, span);
 }
 
 /** The field position a field or tuple element step reads. */
