@@ -85,7 +85,7 @@ export function fieldsFunctionOf(
       annotations: [],
       isExtern: false,
       isAsync: false,
-      owner: undefined,
+      owner: declaration.kind === 'EnumDeclaration' ? declaration.name : undefined,
       name: owner.name,
       typeParameters: declaration.typeParameters,
       parameters: owner.fields.map(fieldParameter),
