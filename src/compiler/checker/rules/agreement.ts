@@ -12,6 +12,7 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import { recordPrechecked } from '../calls/lambda-arguments.ts';
 import type { ValueSite } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import type { Accepts } from '../resolution/choice.ts';
@@ -125,24 +126,10 @@ type CheckedPart =
   | { readonly kind: 'decided'; readonly accepts: Accepts }
   | { readonly kind: 'typed'; readonly type: Type | undefined };
 
-const prechecked = new WeakMap<Expression, Type>();
-
-/**
- * The type already found for `node` while checking what a composite argument accepts (`precheck`),
- * consumed once; undefined when `node` wasn't prechecked.
- */
-export function takePrechecked(node: Expression): Type | undefined {
-  const cached = prechecked.get(node);
-  if (cached !== undefined) {
-    prechecked.delete(node);
-  }
-  return cached;
-}
-
 /** Checks `node` once during `accepts`, keeping its type for the enclosing expression's check. */
 function precheck(context: BodyContext, node: Expression): Type {
   const type = context.expression(node);
-  prechecked.set(node, type);
+  recordPrechecked(node, type);
   return type;
 }
 

@@ -108,6 +108,30 @@ const cases: readonly ChoiceCase[] = [
     chosen: 'string',
   },
   {
+    rule: 'a tuple holding none fits an optional tuple parameter',
+    overloads: ['fn f(a: (int, int?)?) -> bool: true', 'fn f(a: string?) -> string: "c"'],
+    call: 'f((1, none))',
+    chosen: 'bool',
+  },
+  {
+    rule: 'a bare variant fits an optional enum parameter',
+    overloads: [
+      'enum Color { Red; Blue }\nfn f(a: Color?) -> bool: true',
+      'fn f(a: int?) -> string: "c"',
+    ],
+    call: 'f(Red)',
+    chosen: 'bool',
+  },
+  {
+    rule: 'an overloaded function value fits an optional function parameter',
+    overloads: [
+      'fn g(x: int) -> int: x\nfn g(x: string) -> string: x\nfn f(a: (fn(int) -> int)?) -> bool: true',
+      'fn f(a: int?) -> string: "c"',
+    ],
+    call: 'f(g)',
+    chosen: 'bool',
+  },
+  {
     rule: 'a lambda in an array takes only an array of functions of its arity',
     overloads: [
       'fn f(a: Array<fn(int) -> int>) -> bool: true',

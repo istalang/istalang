@@ -12,7 +12,7 @@
  */
 
 import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { mentionsUnbound, takePrechecked } from '../calls/lambda-arguments.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
@@ -24,7 +24,6 @@ import {
   decidedSoFar,
   type Produced,
   settleAgreement,
-  takePrechecked,
 } from './agreement.ts';
 
 export class Branches {
@@ -103,21 +102,4 @@ function blockPart(context: BodyContext, block: Block): AcceptedPart {
   return plainSingle && !mentionsUnbound(context, tail)
     ? { kind: 'own', node: tail }
     : { kind: 'own' };
-}
-
-/** Whether `node` names a local variable whose binding (a pattern's or a block's) isn't checked yet. */
-function mentionsUnbound(context: BodyContext, node: SyntaxNode): boolean {
-  if (node.kind === 'Identifier') {
-    const entity = context.checker.bindings.entityOf(context.module, node);
-    if (
-      entity?.kind === 'variable' &&
-      context.checker.bindings.moduleOf(entity) === undefined &&
-      entity.owner.kind !== 'FunctionDeclaration' &&
-      entity.owner.kind !== 'Lambda' &&
-      context.variables.typeOf(entity).kind === 'error'
-    ) {
-      return true;
-    }
-  }
-  return childrenOf(node).some((child) => mentionsUnbound(context, child));
 }

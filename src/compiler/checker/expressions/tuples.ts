@@ -10,10 +10,12 @@
  */
 
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
+import { takePrechecked } from '../calls/lambda-arguments.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
-import { acceptedPart, partsAccept, takePrechecked } from '../rules/agreement.ts';
+import { acceptedPart, partsAccept } from '../rules/agreement.ts';
+import { withoutOptionals } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -22,9 +24,11 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
   if (node.elements.length === 0) {
     return unitType;
   }
+  const target =
+    expected === undefined ? undefined : withoutOptionals(expected, context.checker.optionalEntity);
   const guides =
-    expected?.kind === 'tuple' && expected.elements.length === node.elements.length
-      ? expected.elements
+    target?.kind === 'tuple' && target.elements.length === node.elements.length
+      ? target.elements
       : undefined;
   return {
     kind: 'tuple',
@@ -69,8 +73,12 @@ export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undef
   if (elements === undefined) {
     return undefined;
   }
-  return (expected, isOpen) =>
-    expected.kind === 'tuple' &&
-    expected.elements.length === elements.length &&
-    expected.elements.every((type, index) => elements[index]?.(type, isOpen) ?? true);
+  return (expected, isOpen) => {
+    const target = withoutOptionals(expected, context.checker.optionalEntity);
+    return (
+      target.kind === 'tuple' &&
+      target.elements.length === elements.length &&
+      target.elements.every((type, index) => elements[index]?.(type, isOpen) ?? true)
+    );
+  };
 }

@@ -1,4 +1,4 @@
-# outcome: "0 4 6 1 2 3 0 2 array map tuple 0 1 2"
+# outcome: "0 4 6 1 2 3 0 2 array map tuple 0 1 2 6 4 9"
 # An argument with no type of its own has the type its parameter gives (§3.5), as any value has
 # where a type is expected: an empty `[]` or `[:]`, and a tuple, a collection literal or a branch
 # holding `none` or a lambda with an untyped parameter, each element fitting its own type (§2). A
@@ -30,6 +30,13 @@ fn same<T>(value: T) -> T: value
 
 fn samePair<T>(left: T, right: T) -> T: right
 
+fn applyTuple<T, U>(x: T, pair: (int, fn(T) -> U)) -> U: pair.1(x)
+
+fn applyFirst<T, U>(x: T, fs: Array<fn(T) -> U>) -> U: fs[0](x)
+
+fn applyOptional<T, U>(x: T, f: (fn(T) -> U)?) -> U?:
+  f?.(x)
+
 fn picked(n: int) -> int:
   present(match n:
     case _: (none, n))
@@ -55,5 +62,8 @@ async fn main() -> Future<string>:
     string(names->value.length()),
     string(kept.0),
     string(samePair<Array<string?>>([], ["a", none]).length()),
+    string(applyTuple(3, (1, fn x: x * 2))),
+    string(applyFirst(3, [fn x: x + 1, fn x: x * 2])),
+    string(applyOptional(3, if flag: fn x: x * 3 else: fn x: x + 1) ?? 0),
   ]
   parts.join(" ")

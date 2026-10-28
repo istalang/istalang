@@ -42,6 +42,7 @@ import { errorType, type FunctionType, type Type, withPack } from '../types/type
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, futureOf } from '../types/well-known.ts';
 import { useSite } from '../use-site.ts';
+import { expectedFunction } from './lambdas.ts';
 
 /** Functions an expression names as a value: where, by what name in messages, and which. */
 export interface NamedFunctions {
@@ -94,15 +95,17 @@ function topLevelFunctions(
   return {
     site,
     name: name.text,
-    candidates: (expected) =>
-      expected?.kind === 'function'
-        ? callCandidates(
+    candidates: (expected) => {
+      const shape = expectedFunction(context, expected);
+      return shape === undefined
+        ? named.map((declaration) => ({ declaration }))
+        : callCandidates(
             checker,
             named,
             name.text,
-            expected.parameters.map(({ type }) => type),
-          )
-        : named.map((declaration) => ({ declaration })),
+            shape.parameters.map(({ type }) => type),
+          );
+    },
   };
 }
 
@@ -114,7 +117,7 @@ export function checkFunctionValue(
 ): Type {
   const { site, name } = named;
   const candidates = named.candidates(expected);
-  const shape = expected?.kind === 'function' ? expected : undefined;
+  const shape = expectedFunction(context, expected);
   const application =
     shape === undefined ? loneFunction(context, candidates) : chosenFor(context, candidates, shape);
   if (application === undefined) {
@@ -166,9 +169,10 @@ export function functionsAccepted(
   if (loneFunction(context, named.candidates(undefined)) !== undefined) {
     return undefined;
   }
-  return (expected) =>
-    expected.kind === 'function' &&
-    chosenFor(context, named.candidates(expected), expected) !== undefined;
+  return (expected) => {
+    const shape = expectedFunction(context, expected);
+    return shape !== undefined && chosenFor(context, named.candidates(shape), shape) !== undefined;
+  };
 }
 
 /** The application of the one candidate, when there is one and it isn't generic. */

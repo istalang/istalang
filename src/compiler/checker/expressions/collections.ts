@@ -35,6 +35,7 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { writeElement } from '../calls/collection-functions.ts';
+import { takePrechecked } from '../calls/lambda-arguments.ts';
 import type { CollectionForm } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -48,7 +49,6 @@ import {
   decidedSoFar,
   type Produced,
   settleAgreement,
-  takePrechecked,
 } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
 import { withoutOptionals } from '../types/fit.ts';

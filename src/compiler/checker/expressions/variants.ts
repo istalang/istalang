@@ -21,7 +21,7 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Accepts } from '../resolution/choice.ts';
 import { chooseVariant, sameEnum } from '../resolution/named.ts';
-import { optionalInner } from '../types/fit.ts';
+import { optionalInner, withoutOptionals } from '../types/fit.ts';
 import { typeArgumentsFor } from '../types/resolve-type.ts';
 import { errorType, type NominalType, nominalType, type Type } from '../types/type.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
@@ -44,7 +44,28 @@ export function variantsAccepted(
   }
   const candidates = context.checker.bindings.candidatesOf(naming);
   return (expected) =>
-    candidates.some((candidate) => sameEnum(expected, candidate.enum) !== undefined);
+    candidates.some((candidate) => expectedEnum(context, expected, candidate.enum) !== undefined);
+}
+
+/**
+ * The enum type `expected` asks a variant for: `expected` itself when it is `Some` of `Optional`,
+ * or the enum inside the optionals `expected` wraps it into (§2).
+ */
+function expectedEnum(
+  context: BodyContext,
+  expected: Type | undefined,
+  declaration?: EnumDeclaration,
+): Type | undefined {
+  if (expected === undefined) {
+    return undefined;
+  }
+  if (declaration !== undefined) {
+    return (
+      sameEnum(expected, declaration) ??
+      sameEnum(withoutOptionals(expected, context.checker.optionalEntity), declaration)
+    );
+  }
+  return expected;
 }
 
 export function checkNone(
@@ -67,7 +88,7 @@ export function checkVariantName(
   naming: VariantNaming,
   expected: Type | undefined,
 ): Type {
-  const chosen = chooseVariant(context, writtenAs(node), naming, expected);
+  const chosen = chooseExpectedVariant(context, node, naming, expected);
   if (chosen === undefined) {
     return errorType;
   }
@@ -75,7 +96,7 @@ export function checkVariantName(
     context.report(checkerDiagnostics.variantFields(node.span, nameOf(node)));
     return errorType;
   }
-  return enumTypeFor(context, node, chosen.enum, expected);
+  return enumTypeFor(context, node, chosen.enum, expectedEnum(context, expected, chosen.enum));
 }
 
 /** The type of a variant built with braces: `Rejected{by: "legal"}`. */
@@ -86,10 +107,11 @@ export function checkVariantLiteral(
   expected: Type | undefined,
 ): Type {
   const typeNode = node.type;
-  const chosen = chooseVariant(context, writtenAs(node), naming, expected);
+  const chosen = chooseExpectedVariant(context, node, naming, expected);
   if (chosen === undefined || typeNode === undefined) {
     return errorType;
   }
+  const target = expectedEnum(context, expected, chosen.enum);
   const { checker } = context;
   const fields = checker
     .declaredVariantsOf(chosen.enum)
@@ -97,11 +119,28 @@ export function checkVariantLiteral(
   const shape = {
     owner: chosen.enum,
     defaults: fieldsFunctionOf(chosen.enum, chosen.variant),
-    known: knownArguments(context, typeNode, chosen.enum, expected),
+    known: knownArguments(context, typeNode, chosen.enum, target),
     fields: fields ?? [],
     typeOf: (typeArguments: readonly Type[]) => enumType(context, chosen.enum, typeArguments),
   };
   return checkLiteralFields(context, node, shape);
+}
+
+function chooseExpectedVariant(
+  context: BodyContext,
+  node: VariantNode,
+  naming: VariantNaming,
+  expected: Type | undefined,
+) {
+  const unwrapped =
+    expected === undefined ||
+    (naming.kind === 'variants' &&
+      context.checker.bindings
+        .candidatesOf(naming)
+        .some((candidate) => sameEnum(expected, candidate.enum) !== undefined))
+      ? expected
+      : withoutOptionals(expected, context.checker.optionalEntity);
+  return chooseVariant(context, writtenAs(node), naming, unwrapped);
 }
 
 function writtenAs(node: VariantNode): { readonly span: Span; readonly name: string } {
