@@ -25,6 +25,9 @@ export function lowerSelect(context: FunctionContext, node: Select): Register {
   const cases = node.cases
     .filter((each) => each.kind === 'SelectCase')
     .map((selectCase) => ({ selectCase, code: caseCode(context, selectCase) }));
+  if (cases.length === 0 && node.elseClause !== undefined) {
+    return context.block(node.elseClause.body);
+  }
   for (const { code: written } of cases) {
     for (const register of written.holds) {
       context.variables.declareUnnamed(register);

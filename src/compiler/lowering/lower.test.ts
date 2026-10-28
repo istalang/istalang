@@ -226,6 +226,16 @@ describe('lowering', () => {
     expect(anonymous).toHaveLength(3);
   });
 
+  it('lowers a select with only an else to its else body', () => {
+    const program = stdProgramOf({
+      main: ['async fn main() -> Future<int>:', '  select:', '    else: 42'].join('\n'),
+    });
+    const definition = compiledDefinition(program, 'main');
+    const test = testRuntime();
+    const deployed = test.runtime.deploy(definitionFormat.write(definition).text);
+    expect(runToEnd(test, 'i', deployed.start('i'))).toEqual({ kind: 'finished', outcome: '42' });
+  });
+
   it('compiles every program the checker accepts into a Definition the runtime loads', () => {
     const { runtime } = testRuntime();
     fc.assert(
