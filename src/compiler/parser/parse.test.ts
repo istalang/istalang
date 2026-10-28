@@ -45,26 +45,28 @@ const examplesOf = (form: SpecExample['form']): readonly SpecExample[] =>
 const modules = examplesOf('module');
 
 describe('spec examples', () => {
-  it.each(modules)('parse the $section module at spec line $line', (example) => {
+  it.each(modules)('parse the module at $document:$line', (example) => {
     expect(unexplained(example, [])).toEqual([]);
   });
 
   it.each(examplesOf('statements'))(
-    'parse the $section statements at spec line $line, reporting only that they stand outside a function',
+    'parse the statements at $document:$line, reporting only that they stand outside a function',
     (example) => {
       expect(unexplained(example, [parserDiagnostics.topLevelStatement.code])).toEqual([]);
     },
   );
 
   it.each(examplesOf('fragment'))(
-    'parse the $section fragment at spec line $line into a well-nested tree',
+    'parse the fragment at $document:$line into a well-nested tree',
     (example) => {
       expect(spanViolations(parseText(example.code).root)).toEqual([]);
     },
   );
 
   it('count every §12 example as a whole module without placeholders', () => {
-    const sectionTwelve = specExamples.filter((example) => example.section.startsWith('12.'));
+    const sectionTwelve = specExamples.filter(
+      (example) => example.document === 'docs/spec.md' && example.section.startsWith('12.'),
+    );
     expect(sectionTwelve.length).toBeGreaterThan(0);
     expect(sectionTwelve.filter((example) => example.form !== 'module' || example.elided)).toEqual(
       [],

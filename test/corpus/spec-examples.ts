@@ -27,6 +27,7 @@ type DocumentPath = (typeof documentPaths)[number];
 
 export interface SpecExample {
   readonly document: DocumentPath;
+  /** The title of the heading the example sits under in `document`. */
   readonly section: string;
   /** One-based line of the example's first code line in `document`. */
   readonly line: number;
@@ -78,7 +79,7 @@ function extractExamples(path: DocumentPath, markdown: string): SpecExample[] {
         const code = open.lines.join('\n');
         examples.push({
           document: path,
-          section: path === 'docs/spec.md' ? section : `${path} › ${section}`,
+          section,
           line: open.line,
           code,
           elided: code.includes(elisionMark),

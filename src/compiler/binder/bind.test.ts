@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { brokenText } from '../../../test/broken.ts';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
-import { specExamples } from '../../../test/corpus/spec-examples.ts';
+import { specCode, specExamples } from '../../../test/corpus/spec-examples.ts';
 import { reportedNothing, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { preludeModule } from '../../stdlib/stdlib-loader.ts';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
@@ -199,10 +199,7 @@ describe('valid programs bind without diagnostics', () => {
   });
 
   it('§12.1, its examples joined into one module', () => {
-    const purchase = specExamples
-      .filter((example) => example.section === '12.1')
-      .map((example) => example.code)
-      .join('\n');
+    const purchase = specCode('12.1 Purchase approval').join('\n');
     expect(boundReport({ main: purchase })).toEqual(reportedNothing);
   });
 

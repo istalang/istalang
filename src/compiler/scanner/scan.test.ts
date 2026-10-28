@@ -171,12 +171,12 @@ describe('spec examples', () => {
   const complete = specExamples.filter((example) => !example.elided);
   const elided = specExamples.filter((example) => example.elided);
 
-  it.each(complete)('scans the $section example at spec line $line cleanly', ({ code }) => {
+  it.each(complete)('scans the example at $document:$line cleanly', ({ code }) => {
     expect(scanText(code).diagnostics).toEqual([]);
   });
 
   it.each(elided)(
-    'scans the elided $section example at spec line $line, flagging only the elisions',
+    'scans the elided example at $document:$line, flagging only the elisions',
     ({ code }) => {
       const scanned = scanText(code);
       const flagged = scanned.diagnostics.map(
