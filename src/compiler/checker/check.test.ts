@@ -33,6 +33,12 @@ describe('checking reports', () => {
     ['an operator no function takes', 'n - "a"', reports.operatorTypes, 'n - "a"'],
     ['== across types', 'c == n', reports.operatorTypes, 'c == n'],
     ['branches of different types', 'const v = if c: 1 else: "a"', reports.branchTypes, '"a"'],
+    [
+      'branches of different types assigned to _',
+      '_ = if c: 1 else: "a"',
+      reports.branchTypes,
+      '"a"',
+    ],
     ['a value in an if without else', 'if c: 1', reports.ifWithoutElse, '1'],
     ['reassigning a const', 'const k = 1\nk = 2', reports.constReassigned, 'k'],
     ['a let never reassigned', 'let k = 1\nk', reports.letNeverReassigned, 'k'],

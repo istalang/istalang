@@ -1,4 +1,4 @@
-# outcome: "0 4 6 1 2 3 0 2 array map tuple 0 1 2 6 4 9"
+# outcome: "0 4 6 1 2 3 0 2 array map tuple 0 1 2 6 4 9 0 0"
 # An argument with no type of its own has the type its parameter gives (§3.5), as any value has
 # where a type is expected: an empty `[]` or `[:]`, and a tuple, a collection literal or a branch
 # holding `none` or a lambda with an untyped parameter, each element fitting its own type (§2). A
@@ -47,6 +47,11 @@ async fn main() -> Future<string>:
   const maybe: int? = n
   const names = new Shared<Array<string>>{value: []}
   const kept: (int, int?) = same((1, none))
+  let assignedItems: Array<int> = [1]
+  let assignedOption: int? = 5
+  let assignedCount = 0
+  (assignedItems, assignedCount) = ([], 1)
+  assignedOption, assignedCount = (none, 2)
   const parts = [
     string(count([])),
     string(sum([fn(x): x + 1, fn x: x * 2])),
@@ -65,5 +70,7 @@ async fn main() -> Future<string>:
     string(applyTuple(3, (1, fn x: x * 2))),
     string(applyFirst(3, [fn x: x + 1, fn x: x * 2])),
     string(applyOptional(3, if flag: fn x: x * 3 else: fn x: x + 1) ?? 0),
+    string(assignedItems.length()),
+    string((assignedOption ?? 0) * assignedCount),
   ]
   parts.join(" ")

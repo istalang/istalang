@@ -33,7 +33,8 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
   return {
     kind: 'tuple',
     elements: node.elements.map((element, index) => {
-      const guide = guides?.[index];
+      const rawGuide = guides?.[index];
+      const guide = rawGuide?.kind === 'error' ? undefined : rawGuide;
       const type = takePrechecked(element) ?? context.expression(element, guide);
       if (guide === undefined || context.checker.fitOf(type, guide) === undefined) {
         return type;

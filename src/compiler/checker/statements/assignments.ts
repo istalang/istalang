@@ -22,24 +22,24 @@
  * - What lowering needs is recorded: each place written, with its part of the value and its fit.
  */
 
+import type { Span } from '../../../text/span.ts';
 import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
-import { placePath } from '../../syntax/expressions/places.ts';
 import { type CompoundAssignment, compoundOperator } from '../../syntax/operators.ts';
-import {
-  type Assignment,
-  destructures,
-  destructuringOf,
-  isUnnamedTarget,
-} from '../../syntax/statements.ts';
+import { type Assignment, destructuringOf, isUnnamedTarget } from '../../syntax/statements.ts';
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
-import { checkChangedPlace, immutableKind, isChangeable } from '../calls/places.ts';
+import {
+  checkChangedPlace,
+  checkDistinctPlaces,
+  immutableKind,
+  isChangeable,
+} from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType, type Type, tupleType } from '../types/type.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
   const [only, ...more] = node.targets;
@@ -50,21 +50,62 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
     checkCompound(context, node, only, node.operator);
     return;
   }
-  if (more.length === 0 && !destructures(only)) {
-    const place = assignedPlace(context, only);
-    const type = context.expression(node.value, place);
-    const fit = context.fitWritten(type, place, node.value.span);
-    context.variables.recordAssigned(
-      node,
-      isUnnamedTarget(only) ? [] : [{ target: only, path: [], type, fit }],
-    );
-    return;
-  }
-  const whole = { type: context.expression(node.value), path: [] };
-  const assigning = assigningIn(context);
+  const { expected, places } = prepareTargets(context, node.targets);
+  const whole = { type: context.expression(node.value, expected), path: [] };
+  const assigning = assigningIn(context, places, node.value.span);
   takeTargets(assigning, node.targets, whole, node.span);
   checkDistinctPlaces(context, assigning.parts);
   context.variables.recordAssigned(node, assigning.parts);
+}
+
+/**
+ * Checks the leaf places of `targets` in source order and builds the type `targets` expect of the
+ * assigned value; undefined when no target gives a type (as for `_`).
+ */
+function prepareTargets(
+  context: BodyContext,
+  targets: readonly Expression[],
+): { readonly expected: Type | undefined; readonly places: ReadonlyMap<Expression, Type> } {
+  const places = new Map<Expression, Type>();
+  const [only] = targets;
+  const expected =
+    targets.length === 1 && only !== undefined
+      ? prepareTarget(context, only, places)
+      : prepareTupleTargets(context, targets, places);
+  return { expected, places };
+}
+
+function prepareTarget(
+  context: BodyContext,
+  target: Expression,
+  places: Map<Expression, Type>,
+): Type | undefined {
+  const destructuring = destructuringOf(target);
+  if (destructuring !== undefined) {
+    if (destructuring.kind === 'tuple') {
+      return prepareTupleTargets(context, destructuring.elements, places);
+    }
+    for (const item of destructuring.items) {
+      prepareTarget(context, item.target, places);
+    }
+    return undefined;
+  }
+  const bare = unparenthesized(target);
+  if (isUnnamedTarget(bare)) {
+    return undefined;
+  }
+  const place = assignedPlace(context, bare);
+  places.set(bare, place);
+  return place.kind === 'error' ? undefined : place;
+}
+
+function prepareTupleTargets(
+  context: BodyContext,
+  elements: readonly Expression[],
+  places: Map<Expression, Type>,
+): Type | undefined {
+  const types = elements.map((element) => prepareTarget(context, element, places) ?? errorType);
+  return types.every((type) => type.kind === 'error') ? undefined : tupleType(types);
 }
 
 /** `x op= v`: one place, read and written. */
@@ -90,12 +131,20 @@ function checkCompound(
  */
 interface Assigning extends Taking<Expression, number> {
   readonly parts: AssignedPart[];
+  readonly places: ReadonlyMap<Expression, Type>;
+  readonly valueSpan: Span;
 }
 
-function assigningIn(context: BodyContext): Assigning {
+function assigningIn(
+  context: BodyContext,
+  places: ReadonlyMap<Expression, Type>,
+  valueSpan: Span,
+): Assigning {
   const assigning: Assigning = {
     scope: bodyScope(context),
     parts: [],
+    places,
+    valueSpan,
     take: (target, part) => assignPart(context, assigning, target, part),
   };
   return assigning;
@@ -116,11 +165,13 @@ function assignPart(
     return takeApart(assigning, destructuring, part);
   }
   const bare = unparenthesized(target);
-  const place = assignedPlace(context, bare);
-  const fit = context.fitWritten(part.type, place, bare.span);
-  if (!isUnnamedTarget(bare)) {
-    assigning.parts.push({ target: bare, path: part.path, type: part.type, fit });
+  if (isUnnamedTarget(bare)) {
+    return anyShape;
   }
+  const place = assigning.places.get(bare) ?? assignedPlace(context, bare);
+  const at = part.path.length === 0 ? assigning.valueSpan : bare.span;
+  const fit = context.fitWritten(part.type, place, at);
+  assigning.parts.push({ target: bare, path: part.path, type: part.type, fit });
   return anyShape;
 }
 
@@ -150,59 +201,4 @@ function assignedPlace(context: BodyContext, written: Expression): Type {
   }
   context.variables.noteChanged(entity);
   return context.variables.typeOf(entity);
-}
-
-/** Reports a place written twice, or written whole and in part, by one assignment. */
-function checkDistinctPlaces(context: BodyContext, parts: readonly AssignedPart[]): void {
-  const written: PlaceName[] = [];
-  for (const { target } of parts) {
-    const place = placeName(target);
-    const earlier =
-      place === undefined ? undefined : written.find((other) => overlap(other, place));
-    if (place !== undefined && earlier !== undefined) {
-      context.report(checkerDiagnostics.assignedTwice(target.span, place.text, earlier.text));
-    }
-    if (place !== undefined) {
-      written.push(place);
-    }
-  }
-}
-
-/** A place as its parts name it, the variable or the handle's value first, and as it reads. */
-interface PlaceName {
-  readonly parts: readonly string[];
-  readonly text: string;
-}
-
-/**
- * How a place on a variable, `p.first.0`, or behind the handle a variable holds, `x->a` or `*x`,
- * reads; undefined for a place on anything else, and for an indexed element, whose key is known
- * only when running, so its writes simply happen left to right (§3.15). Two variables may hold one
- * handle, which only running tells too.
- */
-function placeName(target: Expression): PlaceName | undefined {
-  const { root, steps } = placePath(target);
-  const names: string[] = [];
-  for (const step of steps) {
-    if (step.kind === 'Index') {
-      return undefined;
-    }
-    names.push(step.kind === 'MemberAccess' ? step.member.text : String(step.element));
-  }
-  if (root.kind === 'Identifier') {
-    return { parts: [root.text, ...names], text: [root.text, ...names].join('.') };
-  }
-  if (root.kind !== 'Dereference' || root.operand.kind !== 'Identifier') {
-    return undefined;
-  }
-  const handle = root.operand.text;
-  const text = names.length === 0 ? `*${handle}` : `${handle}->${names.join('.')}`;
-  return { parts: [`*${handle}`, ...names], text };
-}
-
-/** Whether one of two places is the other or a part of it. */
-function overlap(first: PlaceName, second: PlaceName): boolean {
-  const shorter = first.parts.length <= second.parts.length ? first : second;
-  const longer = shorter === first ? second : first;
-  return shorter.parts.every((part, index) => longer.parts[index] === part);
 }

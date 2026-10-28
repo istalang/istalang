@@ -36,6 +36,7 @@ import type {
   Expression,
   MemberAccess,
 } from '../../syntax/expressions/index.ts';
+import { isPlace } from '../../syntax/expressions/places.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
@@ -132,7 +133,6 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
   const { checker, chains } = context;
   const receiver = callee.target;
   const receiverType = chains.target(context, call.node);
-  const chained = chains.continues(call.node);
   if (receiverType.kind === 'error') {
     return errorType;
   }
@@ -155,9 +155,9 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
   if (field !== undefined) {
     return checkValueCall(context, call, callee, field.type);
   }
-  const candidates = chained
-    ? methods.filter(({ declaration }) => checker.parametersOf(declaration)[0]?.reference !== true)
-    : methods;
+  const candidates = isPlace(callee)
+    ? methods
+    : methods.filter(({ declaration }) => checker.parametersOf(declaration)[0]?.reference !== true);
   if (candidates.length === 0) {
     context.report(
       methods.length > 0

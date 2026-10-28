@@ -32,8 +32,9 @@
 
 import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
 import type { Dereference, Expression, Index } from '../../syntax/expressions/index.ts';
-import { isPlace, placePath } from '../../syntax/expressions/places.ts';
+import { placePath } from '../../syntax/expressions/places.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Passing } from '../resolution/call-arguments.ts';
@@ -141,8 +142,78 @@ function reachesAccessor(node: Expression): boolean {
 /** The variable at the root of the place `node`, if a variable stands there. */
 function rootVariable(context: BodyContext, node: Expression): VariableEntity | undefined {
   const { root } = placePath(node);
-  const entity = root.kind === 'Identifier' ? context.entityOf(root) : undefined;
+  return root.kind === 'Identifier' ? variableAt(context, root) : undefined;
+}
+
+function variableAt(context: BodyContext, name: Identifier): VariableEntity | undefined {
+  const entity = context.entityOf(name);
   return entity?.kind === 'variable' ? entity : undefined;
+}
+
+/** A place's root variable, whether dereferenced (`*x`), its field/tuple steps, and how it reads. */
+interface PlaceIdentity {
+  readonly variable: VariableEntity;
+  readonly dereferenced: boolean;
+  readonly steps: readonly string[];
+  readonly text: string;
+}
+
+/**
+ * The identity of a place on a variable (`p.first.0`) or behind the handle a variable holds
+ * (`x->a` or `*x`); undefined when it reaches through an indexed element, whose key is known only
+ * when running (§3.15), or starts at anything else.
+ */
+function placeIdentity(context: BodyContext, target: Expression): PlaceIdentity | undefined {
+  const { root, steps } = placePath(target);
+  const names: string[] = [];
+  for (const step of steps) {
+    if (step.kind === 'Index') {
+      return undefined;
+    }
+    names.push(step.kind === 'MemberAccess' ? step.member.text : String(step.element));
+  }
+  if (root.kind === 'Identifier') {
+    const variable = variableAt(context, root);
+    return variable === undefined
+      ? undefined
+      : { variable, dereferenced: false, steps: names, text: [root.text, ...names].join('.') };
+  }
+  if (root.kind !== 'Dereference' || root.operand.kind !== 'Identifier') {
+    return undefined;
+  }
+  const variable = variableAt(context, root.operand);
+  if (variable === undefined) {
+    return undefined;
+  }
+  const handle = root.operand.text;
+  const text = names.length === 0 ? `*${handle}` : `${handle}->${names.join('.')}`;
+  return { variable, dereferenced: true, steps: names, text };
+}
+
+/** Whether one of two places is the other or a part of it. */
+function placesOverlap(first: PlaceIdentity, second: PlaceIdentity): boolean {
+  if (first.variable !== second.variable || first.dereferenced !== second.dereferenced) {
+    return false;
+  }
+  const shorter = first.steps.length <= second.steps.length ? first : second;
+  const longer = shorter === first ? second : first;
+  return shorter.steps.every((step, index) => longer.steps[index] === step);
+}
+
+/** Reports a place written twice, or written whole and in part, by one assignment (§3.15). */
+export function checkDistinctPlaces(context: BodyContext, parts: readonly AssignedPart[]): void {
+  const written: PlaceIdentity[] = [];
+  for (const { target } of parts) {
+    const place = placeIdentity(context, target);
+    const earlier =
+      place === undefined ? undefined : written.find((other) => placesOverlap(other, place));
+    if (place !== undefined && earlier !== undefined) {
+      context.report(checkerDiagnostics.assignedTwice(target.span, place.text, earlier.text));
+    }
+    if (place !== undefined) {
+      written.push(place);
+    }
+  }
 }
 
 /**
@@ -180,15 +251,11 @@ function writesElement(context: BodyContext, node: Index): boolean {
 }
 
 /**
- * Checks a method's receiver passed as `&self` (§3.7), already checked as a value: it must be a
- * place that may change, so a call's result, say, is reported as needing one.
+ * Checks a method's receiver passed as `&self` (§3.7), already known to be a place (`isPlace` on
+ * the call's callee, expressions/calls.ts), against the rules of changing places.
  */
-export function changeReceiver(context: BodyContext, receiver: Expression, method: string): void {
-  if (isPlace(receiver)) {
-    changePlace(context, receiver, 'referenced');
-  } else {
-    context.report(checkerDiagnostics.receiverNotPlace(receiver.span, method));
-  }
+export function changeReceiver(context: BodyContext, receiver: Expression): void {
+  changePlace(context, receiver, 'referenced');
 }
 
 /**

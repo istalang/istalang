@@ -149,7 +149,7 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
   const { receiver } = request;
   recordChosen(context, { site, application, instantiation, receiver });
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
-    changeReceiver(context, receiver, request.name);
+    changeReceiver(context, receiver);
   }
   checkReferencedPlaces(context, request.arguments, {
     name: request.name,
