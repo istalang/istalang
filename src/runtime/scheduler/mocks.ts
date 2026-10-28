@@ -24,6 +24,7 @@ import { isResourceType } from '../../definition/types.ts';
 import {
   type CompositeValue,
   childValues,
+  closureOf,
   isComposite,
   samePayload,
   type Value,
@@ -157,17 +158,20 @@ export function driverOf(
   return first?.execution;
 }
 
+/** The function a mock runs in place of its target. */
+function replacementOf(mock: LiveObjectOf<'mock'>): Extract<CompositeValue, { kind: 'closure' }> {
+  return (
+    closureOf(mock.replacement) ?? unreachable('A mock holds no function; the checker forbids it.')
+  );
+}
+
 /** How `call` is mocked; undefined when no mock replaces its target. */
 function mockedCall(call: CallToMock): MockedCall | undefined {
   const own = call.instance.mockOf(call.target);
   if (own !== undefined) {
     const values = call.values().map((each) => asHostValue(call.instance, each));
     recordCall(call.instance, own, values);
-    const { replacement } = own;
-    if (!isComposite(replacement) || replacement.kind !== 'closure') {
-      unreachable('A mock holds no function; the checker forbids it.');
-    }
-    return { kind: 'replaced', replacement, values };
+    return { kind: 'replaced', replacement: replacementOf(own), values };
   }
   const relayed = relayedMockOf(call.instance, call.target);
   return relayed === undefined ? undefined : { kind: 'answered', value: relayCall(call, relayed) };
@@ -233,10 +237,7 @@ function startAnswer(
   const mock = instance.heap.of(call.mock, 'mock');
   const values = call.arguments;
   recordCall(instance, mock, values);
-  const { replacement } = mock;
-  if (!isComposite(replacement) || replacement.kind !== 'closure') {
-    unreachable('A mock holds no function; the checker forbids it.');
-  }
+  const replacement = replacementOf(mock);
   const future = instance.futures.create({ kind: 'call' });
   instance.futures.answer(future, call.instance, call.token);
   const callable = instance.loaded.functions.callee(replacement.function);

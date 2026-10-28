@@ -25,7 +25,7 @@
 
 import type { FunctionId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/types.ts';
-import type { Value } from '../../definition/values.ts';
+import { closureOf, type Value } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/heap.ts';
@@ -174,10 +174,9 @@ function disposeCall(context: DisposalContext, execution: LiveExecution): Cleanu
 
 /** The call a function value makes when called with no arguments. */
 function callOf(callback: Value): DisposalCall {
-  if (callback === null || typeof callback !== 'object' || callback.kind !== 'closure') {
-    unreachable('A defer guard holds no function; the checker forbids it.');
-  }
-  return { kind: 'call', function: callback.function, captures: callback.captures, arguments: [] };
+  const closure =
+    closureOf(callback) ?? unreachable('A defer guard holds no function; the checker forbids it.');
+  return { kind: 'call', function: closure.function, captures: closure.captures, arguments: [] };
 }
 
 function disposalOf(types: readonly TypeDefinition[], type: number) {

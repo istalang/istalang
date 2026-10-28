@@ -13,6 +13,7 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import {
   childValues,
+  closureOf,
   elementsOf,
   isComposite,
   mapValueOf,
@@ -217,10 +218,9 @@ function calledFunction(
   if (callee.kind === 'function') {
     return { function: callee.function, captures: [] };
   }
-  const closure = readRegister(frame, callee.register);
-  if (!isComposite(closure) || closure.kind !== 'closure') {
+  const closure =
+    closureOf(readRegister(frame, callee.register)) ??
     unreachable(`A non-function was called at pc ${frame.pc}; the checker forbids it.`);
-  }
   return { function: closure.function, captures: closure.captures };
 }
 

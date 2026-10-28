@@ -13,7 +13,7 @@
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { TypeReference } from '../../definition/types.ts';
-import { handleTarget, isComposite, type Value } from '../../definition/values.ts';
+import { closureOf, handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { passedValues, writeReference } from '../interpreter/machine.ts';
 import type {
@@ -178,11 +178,11 @@ function nativeLogsOf(instance: Instance, startedAt: bigint): NativeLogs {
 function nativeInstancesOf(instance: Instance): NativeInstances {
   return {
     spawn: (entry, options) => {
-      if (!isComposite(entry) || entry.kind !== 'closure') {
+      const closure =
+        closureOf(entry) ??
         unreachable('An instance is spawned with no function; the checker forbids it.');
-      }
       return instance.spawn(
-        { function: entry.function, captures: entry.captures, arguments: [] },
+        { function: closure.function, captures: closure.captures, arguments: [] },
         options,
       );
     },
