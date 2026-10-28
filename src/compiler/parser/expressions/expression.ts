@@ -101,21 +101,26 @@ const binaryParselets = Object.fromEntries(
     .map((operator) => [operator, binaryParselet(operator)]),
 );
 
-const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
-  ...binaryParselets,
-  is: isParselet,
-  not: notInParselet,
-  '..': rangeParselet(false),
-  '..=': rangeParselet(true),
-  '(': callParselet,
+/** The postfix parselets a spawned callee is built of, before its call (§9). */
+const spawnCalleeSteps: Partial<Record<CursorKind, InfixParselet>> = {
   '[': indexParselet,
   '.': memberParselet,
   '?.': optionalParselet,
   '->': arrowParselet('->'),
   '?->': arrowParselet('?->'),
+  '{': structLiteralParselet,
+};
+
+const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
+  ...binaryParselets,
+  ...spawnCalleeSteps,
+  is: isParselet,
+  not: notInParselet,
+  '..': rangeParselet(false),
+  '..=': rangeParselet(true),
+  '(': callParselet,
   '?': propagateParselet,
   '!': unwrapParselet,
-  '{': structLiteralParselet,
   template: templateParselet,
 };
 
@@ -185,9 +190,6 @@ function parseSpawn(parser: Parser): Expression {
   return { kind: 'Spawn', span: parser.spanFrom(start), call };
 }
 
-/** The postfix forms a spawned callee is built of, before its call. */
-const calleeSteps: ReadonlySet<CursorKind> = new Set(['.', '?.', '->', '?->', '[', '{']);
-
 /**
  * One step of a spawned callee: a member, an element, a struct literal, or type arguments; the
  * first call, which a `?.(` or type arguments may already have made, ends it.
@@ -197,10 +199,9 @@ function calleeStep(parser: Parser, callee: Expression): Expression | undefined 
   if (callee.kind === 'Call') {
     return undefined;
   }
-  if (kind === '<') {
-    return parseTypeApplication(parser, callee);
-  }
-  return calleeSteps.has(kind) ? infixParselets[kind]?.parse(parser, callee) : undefined;
+  return kind === '<'
+    ? parseTypeApplication(parser, callee)
+    : spawnCalleeSteps[kind]?.parse(parser, callee);
 }
 
 /** Whether the next token can start an expression. */
