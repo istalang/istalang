@@ -21,43 +21,33 @@ import type {
   Expression,
   Unary,
 } from '../../syntax/expressions/index.ts';
-import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
+import {
+  binaryOperators,
+  isChainingOperator,
+  type Relation,
+  unaryOperators,
+} from '../../syntax/operators.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCallAt, emitImplicitCall } from '../emit-call.ts';
 import { lowerNullish } from './nullish.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
-  const { meaning } = binaryOperators[node.operator];
-  switch (meaning.kind) {
-    case 'logic':
-      return shortCircuit(context, node, meaning.rightWhen);
-    case 'coalesce':
-      return lowerNullish(context, node);
-    case 'membership': {
-      const [item, container] = operands(context, node);
-      const includes = emitCallAt(context, node, [container, item]);
-      return meaning.negated ? negated(context, includes, node.span) : includes;
-    }
-    case 'equality': {
-      const dst = context.code.allocate();
-      const [left, right] = operands(context, node);
-      context.code.emit({ kind: 'equal', span: node.span, dst, left, right });
-      return meaning.negated ? negated(context, dst, node.span) : dst;
-    }
-    case 'order':
-      return ordered(
-        context,
-        node.span,
-        emitCallAt(context, node, operands(context, node)),
-        meaning.relation,
-      );
-    case 'call':
-      return emitCallAt(context, node, operands(context, node));
-    default: {
-      const unhandled: never = meaning;
-      return unhandled;
-    }
+  const { operator } = node;
+  if (isChainingOperator(operator)) {
+    return compared(
+      context,
+      { left: node.left, operator, right: node.right },
+      operands(context, node),
+    );
   }
+  const { meaning } = binaryOperators[operator];
+  if (meaning.kind === 'logic') {
+    return shortCircuit(context, node, meaning.rightWhen);
+  }
+  if (meaning.kind === 'coalesce') {
+    return lowerNullish(context, node);
+  }
+  return emitCallAt(context, node, operands(context, node));
 }
 
 export function lowerChainedComparison(
@@ -98,9 +88,7 @@ function compared(
   const { meaning } = binaryOperators[link.operator];
   const { span } = link.right;
   if (meaning.kind === 'equality') {
-    const dst = context.code.allocate();
-    context.code.emit({ kind: 'equal', span, dst, left, right });
-    return meaning.negated ? negated(context, dst, span) : dst;
+    return equal(context, span, [left, right], meaning.negated);
   }
   if (meaning.kind === 'membership') {
     const includes = emitImplicitCall(context, link.right, 'includes', [right, left]);
@@ -108,6 +96,18 @@ function compared(
   }
   const comparison = emitImplicitCall(context, link.right, 'compare', [left, right]);
   return ordered(context, span, comparison, meaning.relation);
+}
+
+/** Whether `left` and `right` are `==`, or `!=` when `isNegated`. */
+export function equal(
+  context: FunctionContext,
+  span: Span,
+  [left, right]: readonly [Register, Register],
+  isNegated = false,
+): Register {
+  const dst = context.code.allocate();
+  context.code.emit({ kind: 'equal', span, dst, left, right });
+  return isNegated ? negated(context, dst, span) : dst;
 }
 
 /**

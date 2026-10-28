@@ -24,18 +24,11 @@ import type {
   Expression,
   Unary,
 } from '../../syntax/expressions/index.ts';
-import { type BinaryMeaning, binaryOperators } from '../../syntax/operators.ts';
-import {
-  type AppliedOperator,
-  applied,
-  type Operand,
-  resolveOperator,
-  unaryApplied,
-} from '../calls/operators.ts';
+import { type BinaryMeaning, binaryOperators, isChainingOperator } from '../../syntax/operators.ts';
+import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { topLevelCandidates } from '../resolution/candidates.ts';
-import { implicitCall } from '../resolution/implicit.ts';
+import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
 import { checkEqualSides } from '../types/equality.ts';
 import { boolType, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -43,29 +36,19 @@ import { checkNullish } from './optionals.ts';
 
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
   const { operator } = node;
-  const { meaning } = binaryOperators[operator];
-  switch (meaning.kind) {
-    case 'logic':
-      context.expect(node.left, boolType);
-      context.expect(node.right, boolType);
-      return boolType;
-    case 'equality':
-      return checkEquality(context, node);
-    case 'coalesce':
-      return checkNullish(context, node, expected);
-    case 'membership':
-      return checkMembership(context, node, applied(operator, meaning));
-    case 'order':
-    case 'call': {
-      const operation = applied(operator, meaning);
-      const result = resolveOperator(context, node, operation, operandsOf(context, node));
-      return meaning.kind === 'call' || result.kind === 'error' ? result : boolType;
-    }
-    default: {
-      const unhandled: never = meaning;
-      return unhandled;
-    }
+  if (isChainingOperator(operator)) {
+    return checkComparisons(context, [{ left: node.left, operator, right: node.right }]);
   }
+  const { meaning } = binaryOperators[operator];
+  if (meaning.kind === 'logic') {
+    context.expect(node.left, boolType);
+    context.expect(node.right, boolType);
+    return boolType;
+  }
+  if (meaning.kind === 'coalesce') {
+    return checkNullish(context, node, expected);
+  }
+  return resolveOperator(context, node, applied(operator, meaning), operandsOf(context, node));
 }
 
 export function checkUnary(context: BodyContext, node: Unary): Type {
@@ -78,35 +61,30 @@ export function checkUnary(context: BodyContext, node: Unary): Type {
   ]);
 }
 
-/** `item in container`: `includes(container, item)`, its operands checked as written. */
-function checkMembership(context: BodyContext, node: Binary, operation: AppliedOperator): Type {
-  const [item, container] = operandsOf(context, node);
-  if (item === undefined || container === undefined) {
-    return boolType;
-  }
-  expectBool(context, resolveOperator(context, node, operation, [container, item]), node.span);
-  return boolType;
-}
-
 /** `a < b <= c`: each operand compared with the next (§3.9). */
 export function checkChainedComparison(context: BodyContext, node: ChainedComparison): Type {
+  return checkComparisons(context, comparisonLinksOf(node));
+}
+
+/** Checks one or more comparison links in sequence, checking shared operands once. */
+function checkComparisons(context: BodyContext, links: readonly ComparisonLink[]): Type {
   const checked = new Map<Expression, Type>();
   const operand = (expression: Expression, expected?: Type): Operand => {
     const type = checked.get(expression) ?? context.expression(expression, expected);
     checked.set(expression, type);
     return { node: expression, type };
   };
-  const [first, last] = [node.operands[0], node.operands.at(-1)];
-  const wrappable = (side: Operand) =>
+  const [first, last] = [links[0]?.left, links.at(-1)?.right];
+  const wrappable = (side: Operand): ImplicitOperand =>
     side.node === first || side.node === last ? side : { type: side.type, node: undefined };
-  for (const link of comparisonLinksOf(node)) {
+  for (const link of links) {
     const { meaning } = binaryOperators[link.operator];
     const left = operand(link.left);
     const right = operand(link.right, meaning.kind === 'equality' ? left.type : undefined);
     if (meaning.kind === 'equality') {
       checkEqualSides(context, wrappable(left), wrappable(right), linkAt(link));
     } else {
-      checkLinkCall(context, link, meaning, [left.type, right.type]);
+      checkLinkCall(context, link, meaning, [wrappable(left), wrappable(right)]);
     }
   }
   return boolType;
@@ -125,18 +103,17 @@ function checkLinkCall(
   context: BodyContext,
   link: ComparisonLink,
   meaning: Extract<BinaryMeaning, { kind: 'order' | 'membership' }>,
-  [left, right]: readonly [Type, Type],
+  [left, right]: readonly [ImplicitOperand, ImplicitOperand],
 ): void {
   const membership = meaning.kind === 'membership';
-  const types = membership ? [right, left] : [left, right];
   const at = linkAt(link);
-  const result = implicitCall(context, {
+  const result = implicitOperatorCall(context, {
     node: link.right,
+    span: at.span,
+    operator: link.operator,
+    function: meaning.function,
     role: membership ? 'includes' : 'compare',
-    candidates: topLevelCandidates(context.checker, context.module, meaning.function, types),
-    arguments: types.map((type) => ({ type, passing: 'value' }) as const),
-    failure: () =>
-      checkerDiagnostics.operatorTypes(at.span, at.operator, types.map(typeText).join(' and ')),
+    arguments: membership ? [right, left] : [left, right],
   });
   if (membership && result !== undefined) {
     expectBool(context, result, at.span);
@@ -155,16 +132,4 @@ function operandsOf(context: BodyContext, node: Binary): readonly Operand[] {
     node: operand,
     type: context.expression(operand),
   }));
-}
-
-function checkEquality(context: BodyContext, node: Binary): Type {
-  const left = context.expression(node.left);
-  const right = context.expression(node.right, left);
-  checkEqualSides(
-    context,
-    { type: left, node: node.left },
-    { type: right, node: node.right },
-    node,
-  );
-  return boolType;
 }

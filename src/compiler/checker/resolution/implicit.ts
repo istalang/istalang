@@ -20,13 +20,18 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
+import type { Span } from '../../../text/span.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
+import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
-import type { Candidate } from './candidates.ts';
+import { type Candidate, topLevelCandidates } from './candidates.ts';
 import type { CallArgument } from './choice.ts';
 import { chooseSilently } from './silent-choice.ts';
 
@@ -55,6 +60,7 @@ export class ImplicitCalls {
 /** An implicit call: its construct and role, the function name, its candidates and arguments. */
 export interface ImplicitRequest {
   readonly node: NodeOf<string>;
+  readonly span?: Span;
   readonly role: ImplicitRole;
   readonly candidates: readonly Candidate[];
   readonly arguments: readonly CallArgument[];
@@ -62,6 +68,22 @@ export interface ImplicitRequest {
   readonly expected?: Type;
   /** What to report when no single function takes the arguments. */
   readonly failure: () => Diagnostic;
+}
+
+/** An operand of an implicit operator call; `node` is given when it may be wrapped to fit. */
+export interface ImplicitOperand {
+  readonly type: Type;
+  readonly node: Expression | undefined;
+}
+
+/** An operator call (`compare` or `includes`) recorded as an implicit call at `node`. */
+export interface ImplicitOperatorRequest {
+  readonly node: NodeOf<string>;
+  readonly span?: Span;
+  readonly operator: string;
+  readonly function: string;
+  readonly role: 'compare' | 'includes';
+  readonly arguments: readonly [ImplicitOperand, ImplicitOperand];
 }
 
 /** A call the language makes on a prelude function it owns, whose absence is a toolchain bug. */
@@ -91,6 +113,47 @@ export function preludeCall(context: BodyContext, request: PreludeRequest): Type
 }
 
 /**
+ * Makes an operator's `compare` or `includes` call and records it under `request.node` and
+ * `request.role`, fitting any wrappable operand to its parameter.
+ */
+export function implicitOperatorCall(
+  context: BodyContext,
+  request: ImplicitOperatorRequest,
+): Type | undefined {
+  const operands = request.arguments;
+  if (operands.some(({ type }) => type.kind === 'error')) {
+    return undefined;
+  }
+  const types = operands.map(({ type }) => type);
+  const span = request.span ?? request.node.span;
+  const site = useSite(context.checker, context.module, span);
+  const chosen = chooseSilently(
+    site,
+    topLevelCandidates(context.checker, context.module, request.function, types),
+    types.map((type) => ({ type, passing: 'value' })),
+  );
+  if (chosen === undefined) {
+    context.report(
+      checkerDiagnostics.operatorTypes(span, request.operator, types.map(typeText).join(' and ')),
+    );
+    return undefined;
+  }
+  const { application, instantiation, result } = chosen;
+  for (const [index, operand] of operands.entries()) {
+    const parameter = application.signature.parameters[index];
+    if (operand.node !== undefined && parameter !== undefined) {
+      context.fit(
+        operand.type,
+        substitute(parameter.type, instantiation.substitution),
+        operand.node,
+      );
+    }
+  }
+  context.implicit.record(request.node, request.role, callMade(application, instantiation));
+  return result;
+}
+
+/**
  * Makes the call `request` asks for and records it under its node and role; the result's type,
  * or undefined after reporting why no call could be made.
  */
@@ -98,7 +161,7 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
   if (request.arguments.some(({ type }) => type?.kind === 'error')) {
     return undefined;
   }
-  const site = useSite(context.checker, context.module, request.node.span);
+  const site = useSite(context.checker, context.module, request.span ?? request.node.span);
   const chosen = chooseSilently(site, request.candidates, request.arguments, request.expected);
   if (chosen === undefined) {
     context.report(request.failure());

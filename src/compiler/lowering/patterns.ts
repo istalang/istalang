@@ -28,12 +28,11 @@ import {
   type PatternValue,
 } from '../checker/checked-pattern.ts';
 import type { Identifier } from '../syntax/node.ts';
-import { binaryOperators } from '../syntax/operators.ts';
 import type { Label } from './code-writer.ts';
 import { constantValue } from './constants.ts';
 import type { FunctionContext } from './context.ts';
-import { emitCallAt, emitImplicitCall } from './emit-call.ts';
-import { ordered } from './expressions/operators.ts';
+import { emitImplicitCall } from './emit-call.ts';
+import { equal, ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
 import { readPart } from './places.ts';
 import { declareVariable } from './statements/variables.ts';
@@ -135,46 +134,12 @@ function passed(
   part: Register,
   span: Span,
 ): Register {
-  switch (test.kind) {
-    case 'compare': {
-      const value = context.expression(test.site.value);
-      const comparison = emitCallAt(context, test.site, [part, value]);
-      const { meaning } = binaryOperators[test.site.operator];
-      if (meaning.kind !== 'order') {
-        unreachable(
-          `'${test.site.operator}' is an equal test; the checker should have made it one.`,
-        );
-      }
-      return ordered(context, span, comparison, meaning.relation);
-    }
-    case 'length': {
-      const length = emitImplicitCall(context, test.site, 'length', [part]);
-      const count = context.constant(BigInt(test.count), span);
-      if (!test.orMore) {
-        return equal(context, length, count, span);
-      }
-      const comparison = emitImplicitCall(context, test.site, 'compare', [length, count]);
-      return ordered(context, span, comparison, 'greaterOrEqual');
-    }
-    case 'bound': {
-      const bound = context.expression(test.bound.value);
-      const comparison = emitImplicitCall(context, test.bound, 'compare', [part, bound]);
-      return ordered(context, span, comparison, test.relation);
-    }
-    case 'equal': {
-      const holds = equal(context, part, comparedWith(context, test.value), span);
-      if (!test.negated) {
-        return holds;
-      }
-      const negated = context.code.allocate();
-      context.code.emit({ kind: 'not', span, dst: negated, src: holds });
-      return negated;
-    }
-    default: {
-      const unhandled: never = test;
-      return unhandled;
-    }
+  const value = comparedWith(context, test.value, span);
+  if (test.kind === 'equal') {
+    return equal(context, span, [part, value], test.negated);
   }
+  const comparison = emitImplicitCall(context, test.site, 'compare', [part, value]);
+  return ordered(context, span, comparison, test.relation);
 }
 
 /**
@@ -217,7 +182,7 @@ function bindChosen(
   for (const [index, alternative] of test.alternatives.entries()) {
     const chosen = code.newLabel();
     const next = code.newLabel();
-    const isChosen = equal(context, choice, context.constant(BigInt(index), run.span), run.span);
+    const isChosen = equal(context, run.span, [choice, context.constant(BigInt(index), run.span)]);
     code.branch(isChosen, chosen, next, run.span);
     code.place(chosen);
     bind(context, alternative, run, variables);
@@ -244,8 +209,7 @@ function readPartAlong(
       positions.push(step);
     } else {
       const array = readPart(context, value, positions, span);
-      const offsets = step.kind === 'item' ? [step.offset] : [step.before, step.after];
-      const constants = offsets.map((offset) => context.constant(BigInt(offset), span));
+      const constants = stepOffsets(step).map((offset) => context.constant(BigInt(offset), span));
       value = emitImplicitCall(context, step.site, step.kind, [array, ...constants]);
       positions = [];
     }
@@ -253,16 +217,20 @@ function readPartAlong(
   return readPart(context, value, positions, span);
 }
 
-function equal(context: FunctionContext, left: Register, right: Register, span: Span): Register {
-  const dst = context.code.allocate();
-  context.code.emit({ kind: 'equal', span, dst, left, right });
-  return dst;
+function stepOffsets(step: Exclude<PartStep, number>): readonly number[] {
+  if (step.kind === 'length') {
+    return [];
+  }
+  return step.kind === 'item' ? [step.offset] : [step.before, step.after];
 }
 
-/** The value an `equal` test compares the part with. */
-function comparedWith(context: FunctionContext, value: PatternValue): Register {
+/** The value an `equal` or `compare` test compares the part with. */
+function comparedWith(context: FunctionContext, value: PatternValue, span: Span): Register {
   if (value.kind === 'expression') {
     return context.expression(value.node);
+  }
+  if (value.kind === 'int') {
+    return context.constant(value.value, span);
   }
   const form = context.checker.constantNamed(context.module, value.name)?.form;
   if (form === undefined) {

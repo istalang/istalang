@@ -41,11 +41,10 @@ import type {
   RangePattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
-import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { preludeCall } from '../resolution/implicit.ts';
+import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
 import { checkEqualSides, comparable } from '../types/equality.ts';
@@ -139,7 +138,12 @@ function arrayTest(
     call('compare', compareFunction, [intType, intType]);
     call('rest', arrayPatternFunctions.rest, [part.type, intType, intType], part.type);
   }
-  return { test: { kind: 'length', path: part.path, site: node, count, orMore: hasRest }, items };
+  const lengthPath = [...part.path, { kind: 'length', site: node } as const];
+  const value = { kind: 'int', value: BigInt(count) } as const;
+  const test: PatternTest = hasRest
+    ? { kind: 'compare', path: lengthPath, site: node, value, relation: 'greaterOrEqual' }
+    : { kind: 'equal', path: lengthPath, value, negated: false };
+  return { test, items };
 }
 
 function rangeLeaf(context: BodyContext, node: RangePattern, part: ValuePart): Leaf {
@@ -168,9 +172,10 @@ function rangeLeaf(context: BodyContext, node: RangePattern, part: ValuePart): L
     });
   }
   const test = (bound: LiteralPattern, relation: Relation): PatternTest => ({
-    kind: 'bound',
+    kind: 'compare',
     path: part.path,
-    bound,
+    site: bound,
+    value: { kind: 'expression', node: bound.value },
     relation,
   });
   const tests = [
@@ -213,19 +218,36 @@ function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): L
 
 function comparison(context: BodyContext, item: CompareFieldPattern, part: ValuePart): Leaf {
   const { operator, value } = item;
-  if (operator !== '==' && operator !== '!=') {
-    const field = { node: item.field, type: part.type };
-    resolveOperator(context, item, binaryApplied(operator), [
-      field,
-      { node: value, type: context.expression(value) },
-    ]);
-    return { tests: [{ kind: 'compare', path: part.path, site: item }], shape: undefined };
+  const { meaning } = binaryOperators[operator];
+  if (meaning.kind === 'order') {
+    implicitOperatorCall(context, {
+      node: item,
+      operator,
+      function: meaning.function,
+      role: 'compare',
+      arguments: [
+        { type: part.type, node: undefined },
+        { type: context.expression(value), node: value },
+      ],
+    });
+    return {
+      tests: [
+        {
+          kind: 'compare',
+          path: part.path,
+          site: item,
+          value: { kind: 'expression', node: value },
+          relation: meaning.relation,
+        },
+      ],
+      shape: undefined,
+    };
   }
   const type = context.expression(value, part.type);
   checkEqualSides(context, { type: part.type, node: undefined }, { type, node: value }, item);
   const counts = operator === '==' && comparable(type, part.type);
   return {
-    tests: [equalTest(part, value, operator === '!=')],
+    tests: [equalTest(part, value, meaning.negated)],
     shape: counts ? valueShape(context, value) : undefined,
   };
 }

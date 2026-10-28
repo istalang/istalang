@@ -87,8 +87,6 @@ function instantiatedPattern(checked: CheckedPattern, substitution: Substitution
       case 'variant':
       case 'equal':
       case 'compare':
-      case 'length':
-      case 'bound':
         return patternTest;
       default: {
         const unhandled: never = patternTest;

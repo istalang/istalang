@@ -20,12 +20,13 @@ export type TargetOwner = VariableDeclaration | For | Comprehension | SelectCase
 /**
  * A step from a value to one of its parts (§3.11, §3.15): a field or tuple element by position, or
  * what an array pattern reads of an array, through the prelude calls the checker made at `site`:
- * the item `offset` from its start, or from its end when negative, and the items between the
- * first `before` and the last `after`. A target never reads an array, since its length can fail,
- * so its parts are positions (`TargetBinding`).
+ * its length, the item `offset` from its start, or from its end when negative, and the items
+ * between the first `before` and the last `after`. A target never reads an array, since its length
+ * can fail, so its parts are positions (`TargetBinding`).
  */
 export type PartStep =
   | number
+  | { readonly kind: 'length'; readonly site: ArrayPattern }
   | { readonly kind: 'item'; readonly site: ArrayPattern; readonly offset: number }
   | {
       readonly kind: 'rest';
@@ -58,12 +59,10 @@ export interface PartBinding {
  * - `variant`: the part is its enum's `variant`-th variant.
  * - `downcast`: the part, of the `any` type `from`, holds a value of the type `to` (§3.10), which
  *   the tests after it reach at the part's field 0.
- * - `equal`: the part `==` a value: a literal or comparison's expression, or a top-level
- *   constant's name; `negated` for `!=`.
- * - `compare`: `compare(part, value)` called at `site`, in the relation its operator names.
- * - `length`: the part, an array, has `count` items, or more when `orMore`; the calls are `site`'s.
- * - `bound`: `compare(part, bound)`, the call made at the bound, is in `relation`: one end of a
- *   range pattern.
+ * - `equal`: the part `==` a value: a literal or comparison's expression, a top-level constant's
+ *   name, or an array pattern's fixed item count; `negated` for `!=`.
+ * - `compare`: `compare(part, value)`, the implicit call recorded at `site`, is in `relation`: a
+ *   struct pattern's field ordering, a range pattern's bound, or an array pattern's rest length.
  * - `or`: one of the alternatives matches, the first that does deciding what the names bind.
  */
 export type PatternTest =
@@ -87,27 +86,17 @@ export type PatternTest =
   | {
       readonly kind: 'compare';
       readonly path: readonly PartStep[];
-      readonly site: CompareFieldPattern;
-    }
-  | {
-      readonly kind: 'length';
-      readonly path: readonly PartStep[];
-      readonly site: ArrayPattern;
-      readonly count: number;
-      readonly orMore: boolean;
-    }
-  | {
-      readonly kind: 'bound';
-      readonly path: readonly PartStep[];
-      readonly bound: LiteralPattern;
+      readonly site: CompareFieldPattern | LiteralPattern | ArrayPattern;
+      readonly value: PatternValue;
       readonly relation: Relation;
     }
   | { readonly kind: 'or'; readonly alternatives: readonly CheckedPattern[] };
 
-/** What an `equal` test compares with: an expression, or the constant a pattern names. */
+/** What an `equal` or `compare` test compares the part with. */
 export type PatternValue =
   | { readonly kind: 'expression'; readonly node: Expression }
-  | { readonly kind: 'constant'; readonly name: Identifier };
+  | { readonly kind: 'constant'; readonly name: Identifier }
+  | { readonly kind: 'int'; readonly value: bigint };
 
 /**
  * A `match` case's or `is`'s pattern as checked: its tests, then the names it binds outside its
