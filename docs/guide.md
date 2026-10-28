@@ -3,6 +3,7 @@ description: A developer's guide to writing Istalang programs, breadth first —
 owner: tech-lead
 status: active
 applies_to: istalang
+last_verified: 2026-10-28
 last_updated: 2026-10-28
 tags: [language, guide]
 ---
@@ -80,7 +81,7 @@ async fn purchase(req: PurchaseRequest) -> Future<string>:
 
 ### 2.2 Syntax, types, variables (§2, §3.4)
 
-```python
+```python statements
 const limit: int = 50_000      # immutable, deeply
 let count = 0                  # mutable, inferred int
 count += 1
@@ -127,7 +128,7 @@ enum Decision:
 
 **Shared structs** are how you get identity. Their values are handles to one cell, built with `new`, read and written through `->`:
 
-```python
+```python statements
 shared struct Lease:
     name: string
     renewals: int = 0
@@ -157,7 +158,7 @@ async fn fetch(id: string) -> Future<User>: …     # may await; inside it, retu
 - **Overloading.** Functions are told apart by parameter types, never by return type.
 - **References.** A caller writes `&x` to let a function change its variable. A reference lives only for the call: it can't be stored or returned.
 
-  ```python
+  ```python statements
   fn bump(n: &int): n += 1
   let x = 1
   bump(&x)                 # x is 2
@@ -187,7 +188,7 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 
 ### 2.6 Control flow and patterns (§4, §3.11)
 
-```python
+```python statements
 const size = if n < 10: "small" elif n < 100: "medium" else: "large"
 for i in 0..10: total += i
 for key, value in m: …
@@ -237,7 +238,7 @@ const both = (await a, await b)
 
 - **`select`** waits for the first of several futures. Every losing case is disposed, so a call that lost is stopped and a `receive` that lost consumes nothing.
 
-  ```python
+  ```python statements
   const deadline = time.delay(5d)           # create once, reuse in every iteration
   while true:
       await select:
@@ -255,7 +256,7 @@ const both = (await a, await b)
 
 The runtime disposes a resource, such as an unfinished call's future, a slot, an inbox, a timer or a revertible message, when its **last holder** lets go. Holders are variables, fields, elements and captures, and a block releases its variables when it ends.
 
-```python
+```python statements
 _ = startJob()              # held until this block ends
 hold _ = startJob()         # held until the function ends, even when written in a loop
 hold(rows) _ = startJob()   # held until the loop or block labelled rows ends
@@ -306,17 +307,17 @@ import helper from './helper'                     # relative to this file
 @Suite{"purchase"}
 fn suite() -> Array<Test>: [
     test("expires after 5 days", withPurchaseEnv, async fn(env): {
-        const t = testing.start(purchase, PurchaseRequest{id: "p1", amount: 900})
+        const t = spawn purchase(PurchaseRequest{id: "p1", amount: 900})
         await t.idle()                    # everything so far has committed
         env.clock.advance(5d)
-        assertEq(await t.result(), "expired")
+        assertEq(await t.result(), Ok{"expired"})
     }),
 ]
 ```
 
 - **Isolation.** Each test runs in a fresh instance, and only `*.test.ista` files may import `testing`.
 - **Mocks.** `hold _ = mock(chargeCard, fakeCharge)` replaces a function while the mock is held, and `FakeClock` controls time by mocking `time.now` and `time.at`.
-- **Crash testing.** `testing.start(f, args…, crashEveryAwait = true)` re-runs every segment once before committing it, which catches extern calls that aren't idempotent.
+- **Crash testing.** `testing.spawnCrashingEveryAwait(f)` re-runs every segment once before committing it, which catches extern calls that aren't idempotent.
 - **Waypoints.** `@Waypoint{"approval"}` on an `await` names the spot, for `t.reaches("approval")` and for operators.
 
 ---

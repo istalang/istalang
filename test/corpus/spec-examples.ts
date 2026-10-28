@@ -1,9 +1,9 @@
 /**
- * The fenced code examples of docs/spec.md, read when tests load.
+ * The fenced code examples of docs/spec.md and docs/guide.md, read when tests load.
  *
- * The spec is the only home of its examples. Tests derive them on every run instead of keeping
- * copies, which would drift with the next spec edit. Each example records the heading it sits
- * under and the line where its code starts, so a failure points into the spec.
+ * The spec and guide are the only homes of their examples. Tests derive them on every run instead
+ * of keeping copies, which would drift with the next doc edit. Each example records the heading it
+ * sits under and the line where its code starts, so a failure points into its document.
  *
  * Some examples use `…` to mark omitted code, so they aren't valid source as written. `elided` is
  * derived from the text, never kept in a hand-maintained list, so a new elided example needs no
@@ -23,14 +23,14 @@ type ExampleForm = 'module' | 'statements' | 'fragment';
 
 export interface SpecExample {
   readonly section: string;
-  /** One-based line in docs/spec.md of the example's first code line. */
+  /** One-based line of the example's first code line. */
   readonly line: number;
   readonly code: string;
   readonly elided: boolean;
   readonly form: ExampleForm;
 }
 
-const specUrl = new URL('../../docs/spec.md', import.meta.url);
+const documentPaths = ['docs/spec.md', 'docs/guide.md'] as const;
 const headingPattern = /^#{1,6}\s+(?<title>.+)$/u;
 const fence = '```';
 const elisionMark = '…';
@@ -43,11 +43,11 @@ const formTags: Readonly<Record<string, ExampleForm>> = {
 };
 
 /** The form an opening fence's info string declares: the words after the language. */
-function formOf(openingFence: string, line: number): ExampleForm {
+function formOf(path: string, openingFence: string, line: number): ExampleForm {
   const tag = openingFence.slice(fence.length).trim().split(whitespace).slice(1).join(' ');
   const form = formTags[tag];
   if (form === undefined) {
-    throw new Error(`docs/spec.md:${line}: unknown example form '${tag}'`);
+    throw new Error(`${path}:${line}: unknown example form '${tag}'`);
   }
   return form;
 }
@@ -60,14 +60,16 @@ export function isPlaceholder(text: string): boolean {
   return rest !== text && rest.replaceAll(/[{}\s]/gu, '') === '';
 }
 
-function extractExamples(markdown: string): SpecExample[] {
+function extractExamples(path: string, markdown: string): SpecExample[] {
   const examples: SpecExample[] = [];
   let section = '';
-  let open: { line: number; form: ExampleForm; lines: string[] } | undefined;
+  let open: { line: number; indent: number; form: ExampleForm; lines: string[] } | undefined;
   for (const [index, line] of markdown.split('\n').entries()) {
-    if (line.startsWith(fence)) {
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith(fence)) {
       if (open === undefined) {
-        open = { line: index + 2, form: formOf(line, index + 1), lines: [] };
+        const indent = line.length - trimmed.length;
+        open = { line: index + 2, indent, form: formOf(path, trimmed, index + 1), lines: [] };
       } else {
         const code = open.lines.join('\n');
         examples.push({
@@ -82,13 +84,15 @@ function extractExamples(markdown: string): SpecExample[] {
     } else if (open === undefined) {
       section = headingPattern.exec(line)?.groups?.title ?? section;
     } else {
-      open.lines.push(line);
+      open.lines.push(line.slice(Math.min(open.indent, line.length)));
     }
   }
   return examples;
 }
 
-export const specExamples: readonly SpecExample[] = extractExamples(readFileSync(specUrl, 'utf8'));
+export const specExamples: readonly SpecExample[] = documentPaths.flatMap((path) =>
+  extractExamples(path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')),
+);
 
 /** The code of every example in `section` that `wanted` picks; throws when it picks none. */
 export function specCode(
