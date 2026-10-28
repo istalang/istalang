@@ -1,4 +1,4 @@
-# outcome: "3 | 11 | 2 22 | 5 | 0"
+# outcome: "3 | 11 | 2 22 | 5 | 0 | 2 22 | 2 22 | 0"
 # Sendable function types (§3.14): a function value capturing only sendable values has a sendable
 # function type, which fits where the plain one is expected. Where one value is decided but others
 # may follow, the type is widened to the plain function type: a `let` without a written type, and
@@ -22,7 +22,14 @@ async fn main() -> Future<string>:
   const add = fn(n: int): n + base
   let seen = 20
   const mixed = [fn(n: int): n + 1, fn(n: int): n + seen]
+  const nested = [[fn(n: int): n + 1], [fn(n: int): n + seen]]
+  const pairs = [(1, fn(n: int): n + 1), (2, fn(n: int): n + seen)]
+  const branchedPair = if base > 5: (1, fn(n: int): n * 0) else: (2, fn(n: int): n + seen)
+  const panicking: fn(int) -> int = fn(n: int): panic(string(n))
   const picked = if base > 5: fn(n: int): n * 0 else: fn(n: int): n + seen
   seen += 1
   const items = string(mixed[0](1)) + " " + string(mixed[1](1))
-  string(reassigned()) + " | " + string(applied(add, 1)) + " | " + items + " | " + string(sent(fn(n: int): n, 5)) + " | " + string(picked(3))
+  const nestedItems = string(nested[0][0](1)) + " " + string(nested[1][0](1))
+  const pairItems = string(pairs[0].1(1)) + " " + string(pairs[1].1(1))
+  const kept = if false: panicking(1) else: branchedPair.1(3)
+  string(reassigned()) + " | " + string(applied(add, 1)) + " | " + items + " | " + string(sent(fn(n: int): n, 5)) + " | " + string(picked(3)) + " | " + nestedItems + " | " + pairItems + " | " + string(kept)

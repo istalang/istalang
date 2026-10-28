@@ -20,6 +20,7 @@ import {
   type AnyType,
   type FunctionType,
   fillsPack,
+  isPrimitive,
   type ParameterKey,
   sameShape,
   sameType,
@@ -137,7 +138,12 @@ export class Inference {
     return (
       given.isAsync === declared.isAsync &&
       (given.isSendable || !declared.isSendable) &&
-      sameShape(declared, given, (part, other) => this.#matchExact(part, other))
+      sameShape(
+        declared,
+        given,
+        (part, other) => this.#matchExact(part, other),
+        (part, other) => this.#matchExact(part, other) || isPrimitive(other, 'never'),
+      )
     );
   }
 

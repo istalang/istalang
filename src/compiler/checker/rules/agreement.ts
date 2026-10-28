@@ -47,12 +47,17 @@ export function agreedType(
   expected?: Type,
 ): Agreement {
   const first = produced.find(({ type }) => !isPrimitive(type, 'never'))?.type;
-  const decided =
-    expected ?? (first === undefined ? undefined : firstOrWidened(first, produced, fits));
+  const target = expected ?? first;
+  const decided = target === undefined ? undefined : firstOrWidened(target, produced, fits);
   return {
     decided,
     disagreeing:
-      decided === undefined ? [] : produced.filter(({ type }) => !fitsExactly(fits(type, decided))),
+      decided === undefined
+        ? []
+        : produced.filter(
+            ({ type }) =>
+              !(fitsExactly(fits(type, decided)) || fitsExactly(fits(widened(type), decided))),
+          ),
   };
 }
 
@@ -62,12 +67,13 @@ function firstOrWidened(
   produced: readonly Produced[],
   fits: (found: Type, decided: Type) => Fit | undefined,
 ): Type {
-  const fitsAll = (decided: Type) => produced.every(({ type }) => fitsExactly(fits(type, decided)));
+  const fitsAll = (decided: Type, widenProducer = false) =>
+    produced.every(({ type }) => fitsExactly(fits(widenProducer ? widened(type) : type, decided)));
   if (fitsAll(first)) {
     return first;
   }
   const wide = widened(first);
-  return fitsAll(wide) ? wide : first;
+  return fitsAll(wide, true) ? wide : first;
 }
 
 /**

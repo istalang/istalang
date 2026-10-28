@@ -294,6 +294,7 @@ export function sameShape(
   declared: FunctionType,
   given: FunctionType,
   parts: (declared: Type, given: Type) => boolean,
+  results: (declared: Type, given: Type) => boolean = parts,
 ): boolean {
   const fixed = declared.parameters.length;
   const samePrefix =
@@ -313,11 +314,11 @@ export function sameShape(
     return (
       given.parameters.length === fixed &&
       given.pack === undefined &&
-      parts(declared.result, given.result)
+      results(declared.result, given.result)
     );
   }
   const rest = restOf(given, fixed);
-  return rest !== undefined && parts(declared.pack, rest) && parts(declared.result, given.result);
+  return rest !== undefined && parts(declared.pack, rest) && results(declared.result, given.result);
 }
 
 /**
@@ -343,8 +344,8 @@ function sameTypes(first: readonly Type[], second: readonly Type[]): boolean {
 }
 
 /**
- * Whether a value of type `source` fits where `target` is expected: the same type, or a sendable
- * function where a plain one of the same signature is expected (§3.14).
+ * Whether a value of type `source` fits where `target` is expected: the same type, or a function
+ * whose sendability is at least `target`'s and whose result fits `target`'s (§2, §3.14).
  */
 export function isAssignable(source: Type, target: Type): boolean {
   return (
@@ -354,7 +355,8 @@ export function isAssignable(source: Type, target: Type): boolean {
     sameType(source, target) ||
     (source.kind === 'function' &&
       target.kind === 'function' &&
-      source.isSendable &&
-      sameType({ ...source, isSendable: false }, target))
+      source.isAsync === target.isAsync &&
+      (source.isSendable || !target.isSendable) &&
+      sameShape(target, source, sameType, (declared, given) => isAssignable(given, declared)))
   );
 }

@@ -153,6 +153,25 @@ describe('fitting a plain function where an async one is expected', () => {
     const tuple = (element: Type): Type => ({ kind: 'tuple', elements: [element, intType] });
     expect(fitOf(tuple(plain), tuple(async), fitting)).toBeUndefined();
   });
+
+  it('fits a function returning never where any result type is expected', () => {
+    fc.assert(
+      fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
+        const found = functionOf(parameter, neverType, given);
+        const expected = wrapped(functionOf(parameter, result, wanted), count);
+        const sendableFits = given.isSendable || !wanted.isSendable;
+        const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
+        expect(fitOf(found, expected, fitting)).toEqual(
+          fits
+            ? {
+                conversion: { kind: !given.isAsync && wanted.isAsync ? 'async' : 'none' },
+                wraps: count,
+              }
+            : undefined,
+        );
+      }),
+    );
+  });
 });
 
 /** The one-element tuple of `type`. */
