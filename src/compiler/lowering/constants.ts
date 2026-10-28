@@ -6,10 +6,24 @@
  * instruction like any literal's, interned by its value (tables.ts).
  */
 
+import type { Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
+import type { Span } from '../../text/span.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import type { ConstantForm } from '../checker/constant-form.ts';
+import type { CodeWriter } from './code-writer.ts';
 import type { DefinitionTables } from './tables.ts';
+
+/** Allocates a register and emits a `constant` instruction loading `value` into it. */
+export function emitConstant(
+  context: { readonly code: CodeWriter; readonly tables: DefinitionTables },
+  value: Value,
+  span: Span,
+): Register {
+  const dst = context.code.allocate();
+  context.code.emit({ kind: 'constant', span, dst, constant: context.tables.constant(value) });
+  return dst;
+}
 
 /** The persisted value of a form the checker computed. */
 export function constantValue(tables: DefinitionTables, form: ConstantForm): Value {

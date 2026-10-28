@@ -35,7 +35,7 @@ import type { DefinitionTables } from './tables.ts';
  * it names, and the checker it asks about types. Code lowering writes with no syntax behind it
  * (boundary/) works through this alone, as do the helpers both kinds share.
  */
-export type CodeContext = Pick<FunctionContext, 'checker' | 'tables' | 'code'>;
+export type CodeContext = Pick<FunctionContext, 'checker' | 'tables' | 'code' | 'constant'>;
 
 export interface FunctionContext {
   readonly checker: Checker;

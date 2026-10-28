@@ -128,7 +128,7 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   },
   LiteralPattern: (walk, node, part) =>
     refutable(walk, node, part, (tests) => tests.literal(node, part)),
-  ParenthesizedPattern: (walk, node, part) => walk.take(node.pattern, part),
+  ParenthesizedPattern: () => unreachable('Parenthesized patterns are unwrapped before dispatch.'),
   AsPattern: (walk, node, part) => {
     const matched = takeMatched(walk, node.pattern, part);
     walk.bindings.push({ name: node.name, ...matched.part });

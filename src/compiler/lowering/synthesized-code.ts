@@ -19,6 +19,7 @@ import type { Span } from '../../text/span.ts';
 import type { Checker } from '../checker/check.ts';
 import type { AnonymousStructType, NominalType } from '../checker/types/type.ts';
 import { CodeWriter } from './code-writer.ts';
+import { emitConstant } from './constants.ts';
 import type { CodeContext } from './context.ts';
 import { emitCall, emitFunctionCall } from './emit-call.ts';
 import { branchOnVariant, buildVariant, payloadOf, variantTestOf } from './expressions/variants.ts';
@@ -51,15 +52,8 @@ export class SynthesizedCode implements CodeContext {
     this.captures = Array.from({ length: captures }, () => this.code.allocate());
   }
 
-  constant(value: Value): Register {
-    const dst = this.code.allocate();
-    this.code.emit({
-      kind: 'constant',
-      span: this.span,
-      dst,
-      constant: this.tables.constant(value),
-    });
-    return dst;
+  constant(value: Value, span: Span = this.span): Register {
+    return emitConstant(this, value, span);
   }
 
   /** Calls `callee` with `values`, each a register passed by value or an argument as written. */

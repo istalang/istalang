@@ -1,19 +1,20 @@
 /**
- * Calls the language makes on its own (§2, §3.9, §3.10): what a construct means as calls that no
- * call written in the source stands for. A `for`, a comprehension and a spread call `iterate`;
- * writing an element calls `setIndex`; a map literal of a type other than `Map` calls its
- * `default` and a `setIndex` per entry; and `..=` adds one to its end.
+ * Calls the language makes on its own (§2, §3.9, §3.10, §3.11): what a construct means as calls
+ * that no call written in the source stands for.
  *
- * - Which functions such a call may mean depends on whose it is. A program may give its own types
- *   `iterate` and `setIndex`, so those are found like an operator's function: in scope, through
- *   argument-dependent lookup, and among the requirements of type parameters (§3.13, §3.10). A
- *   type's `default` is Default's witness (default-witness.ts), the same wherever it is used.
- *   Adding to a range's end is the language's own, so it takes only the prelude's functions: a
- *   program's function of the same name joins the prelude's overloads (§3.13), but must never
- *   replace them.
- * - A call is chosen, instantiated and made exactly as a written call is (choice.ts,
- *   calls-made.ts); only the report differs, since there is no call written to point at, so the
- *   construct says what failed.
+ * - A `for`, a comprehension and a spread call `iterate`; writing an element and a map literal of
+ *   another declared type call `setIndex` (and `default`); orderings (`<`, `<=`, `>`, `>=`, and
+ *   struct field orderings in patterns) call `compare`; `in` and `not in` call `includes`; and a
+ *   template's interpolated values call `toString`. A program may define these for its own types,
+ *   so they are found like a written call's function: in scope, through argument-dependent lookup,
+ *   and among the requirements of type parameters (§3.10, §3.13).
+ * - Constructs backed by prelude-owned helpers (`..=`'s `_inclusiveEnd`, array patterns' `length`,
+ *   `_patternItem`, `_patternRest` and `compare`, range patterns' `compare`, `x!`'s `panic`, and a
+ *   template's `join`) go through `preludeCall`: the prelude is a toolchain invariant, so a
+ *   missing or inapplicable prelude helper is `unreachable`.
+ * - Every implicit call chooses, instantiates, fits wrappable operands and records under one rule:
+ *   ambiguity (`5003`) and unmet trait constraints (`5101`) are reported as on a written call, and
+ *   the construct's `failure` callback reports only when no candidate takes the arguments (`none`).
  * - Each call is recorded under the node of its construct and its role there, for lowering
  *   (check.ts, `CheckedBody.implicitCallOf`).
  */
@@ -30,7 +31,7 @@ import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
 import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { silent, useSite } from '../use-site.ts';
+import { useSite } from '../use-site.ts';
 import { argumentSlotsOf } from './binding.ts';
 import { callMade } from './calls-made.ts';
 import { type Candidate, topLevelCandidates } from './candidates.ts';
@@ -80,7 +81,16 @@ export interface ImplicitOperand {
 }
 
 /** A comparison or membership operator that calls a function (`compare` or `includes`). */
-export type ImplicitOperator = Exclude<ChainingOperator, '==' | '!='>;
+export type ImplicitOperator = {
+  [Operator in ChainingOperator]: (typeof binaryOperators)[Operator]['meaning']['kind'] extends 'equality'
+    ? never
+    : Operator;
+}[ChainingOperator];
+
+/** Whether `operator` calls an implicit function (`compare` or `includes`) rather than `==`. */
+export function isImplicitOperator(operator: ChainingOperator): operator is ImplicitOperator {
+  return binaryOperators[operator].meaning.kind !== 'equality';
+}
 
 /** An operator call (`compare` or `includes`) recorded as an implicit call at `node`. */
 export interface ImplicitOperatorRequest {
@@ -153,25 +163,22 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
   }
   const span = request.span ?? request.node.span;
   const choice = choose(context.checker, request.candidates, request.arguments, undefined);
-  if (choice.kind === 'several' && request.operator !== undefined) {
+  if (choice.kind === 'several') {
+    const name = request.operator ?? request.candidates[0]?.declaration.name.text ?? '';
     const types = request.arguments
       .map(({ type }) => (type === undefined ? '_' : typeText(type)))
       .join(', ');
-    context.report(checkerDiagnostics.ambiguousCall(span, request.operator, types));
+    context.report(checkerDiagnostics.ambiguousCall(span, name, types));
     return undefined;
   }
-  if (choice.kind !== 'chosen') {
+  if (choice.kind === 'none') {
     context.report(request.failure());
     return undefined;
   }
   const { application } = choice;
-  const baseSite = useSite(context.checker, context.module, span);
-  const site = request.operator === undefined ? silent(baseSite) : baseSite;
+  const site = useSite(context.checker, context.module, span);
   const instantiation = instantiate(site, application, request.expected);
   if (instantiation === undefined) {
-    if (request.operator === undefined) {
-      context.report(request.failure());
-    }
     return undefined;
   }
   const slots = argumentSlotsOf(application.signature.parameters, application.binding);

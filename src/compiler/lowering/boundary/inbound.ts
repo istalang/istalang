@@ -47,13 +47,7 @@ export function emitInbound(
   inbound: Inbound,
   span: Span,
 ): Register {
-  const path = context.code.allocate();
-  context.code.emit({
-    kind: 'constant',
-    span,
-    dst: path,
-    constant: context.tables.constant(inbound.path),
-  });
+  const path = context.constant(inbound.path, span);
   const call = (target: ClosedCall, values: readonly Register[]) =>
     emitFunctionCall(context, { span, call: target, arguments: values });
   return call(inbound.accept, [call(inbound.decode, [json, path])]);

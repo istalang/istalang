@@ -16,6 +16,7 @@
  * - `??` works on optionals (optionals.ts).
  */
 
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import { type ComparisonLink, comparisonLinksOf } from '../../syntax/expressions/comparisons.ts';
 import type {
@@ -32,6 +33,7 @@ import {
   type ImplicitOperand,
   type ImplicitOperator,
   implicitOperatorCall,
+  isImplicitOperator,
 } from '../resolution/implicit.ts';
 import { checkEqualSides } from '../types/equality.ts';
 import { boolType, isPrimitive, type Type } from '../types/type.ts';
@@ -52,9 +54,10 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
   if (meaning.kind === 'coalesce') {
     return checkNullish(context, node, expected);
   }
-  return meaning.kind === 'call'
-    ? resolveOperator(context, node, applied(operator, meaning), operandsOf(context, node))
-    : boolType;
+  if (meaning.kind !== 'call') {
+    unreachable(`'${operator}' is a comparison; isChainingOperator should have matched it.`);
+  }
+  return resolveOperator(context, node, applied(operator, meaning), operandsOf(context, node));
 }
 
 export function checkUnary(context: BodyContext, node: Unary): Type {
@@ -86,14 +89,12 @@ function checkComparisons(context: BodyContext, links: readonly ComparisonLink[]
   for (const link of links) {
     const { operator } = link;
     const left = operand(link.left);
-    const right = operand(
-      link.right,
-      operator === '==' || operator === '!=' ? left.type : undefined,
-    );
-    if (operator === '==' || operator === '!=') {
-      checkEqualSides(context, wrappable(left), wrappable(right), linkAt(link));
-    } else {
+    if (isImplicitOperator(operator)) {
+      const right = operand(link.right);
       checkLinkCall(context, link, operator, [wrappable(left), wrappable(right)]);
+    } else {
+      const right = operand(link.right, left.type);
+      checkEqualSides(context, wrappable(left), wrappable(right), linkAt(link));
     }
   }
   return boolType;

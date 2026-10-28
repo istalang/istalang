@@ -13,6 +13,7 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Checker } from '../check.ts';
 import { type FieldMember, isPrimitive, type Type } from '../types/type.ts';
@@ -100,7 +101,10 @@ export function witnessText(checker: ShapeChecker, shape: WitnessShape, type: Ty
     const items = shape.arguments.map((argument) => witnessText(checker, argument, signed.items));
     return `[${[...items, ...(orMore ? ['..._'] : [])].join(', ')}]`;
   }
-  const key = typeof shape.key === 'string' ? shape.key : '';
+  if (typeof shape.key !== 'string') {
+    unreachable('An array length constructor was produced for a non-array type.');
+  }
+  const { key } = shape;
   const made = signed?.find((option) => option.key === key);
   const parts = shape.arguments.map((argument, index) =>
     witnessText(checker, argument, made?.arguments[index] ?? type),

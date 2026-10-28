@@ -44,6 +44,7 @@ import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import { CodeWriter } from '../code-writer.ts';
+import { emitConstant } from '../constants.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitFunctionCall } from '../emit-call.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
@@ -350,9 +351,7 @@ class FunctionLowering implements FunctionContext {
   }
 
   constant(value: Value, span: Span): Register {
-    const dst = this.code.allocate();
-    this.code.emit({ kind: 'constant', span, dst, constant: this.tables.constant(value) });
-    return dst;
+    return emitConstant(this, value, span);
   }
 }
 

@@ -44,7 +44,7 @@ import type {
 import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
+import { implicitOperatorCall, isImplicitOperator, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
 import { checkEqualSides, comparable } from '../types/equality.ts';
@@ -218,7 +218,7 @@ function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): L
 
 function comparison(context: BodyContext, item: CompareFieldPattern, part: ValuePart): Leaf {
   const { operator, value } = item;
-  if (operator !== '==' && operator !== '!=') {
+  if (isImplicitOperator(operator)) {
     implicitOperatorCall(context, {
       node: item,
       operator,
@@ -240,11 +240,12 @@ function comparison(context: BodyContext, item: CompareFieldPattern, part: Value
       shape: undefined,
     };
   }
+  const { negated } = binaryOperators[operator].meaning;
   const type = context.expression(value, part.type);
   checkEqualSides(context, { type: part.type, node: undefined }, { type, node: value }, item);
-  const counts = operator === '==' && comparable(type, part.type);
+  const counts = !negated && comparable(type, part.type);
   return {
-    tests: [equalTest(part, value, operator === '!=')],
+    tests: [equalTest(part, value, negated)],
     shape: counts ? valueShape(context, value) : undefined,
   };
 }

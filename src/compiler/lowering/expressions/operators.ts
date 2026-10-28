@@ -28,7 +28,7 @@ import {
   unaryOperators,
 } from '../../syntax/operators.ts';
 import type { FunctionContext } from '../context.ts';
-import { emitCallAt, emitImplicitCall } from '../emit-call.ts';
+import { emitCallAt, emitFunctionCall } from '../emit-call.ts';
 import { lowerNullish } from './nullish.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
@@ -90,12 +90,19 @@ function compared(
   if (meaning.kind === 'equality') {
     return equal(context, span, [left, right], meaning.negated);
   }
-  const where = { node: link.right, span };
   if (meaning.kind === 'membership') {
-    const includes = emitImplicitCall(context, where, 'includes', [right, left]);
+    const includes = emitFunctionCall(context, {
+      span,
+      call: context.implicitCallAt(link.right, 'includes'),
+      arguments: [right, left],
+    });
     return meaning.negated ? negated(context, includes, span) : includes;
   }
-  const comparison = emitImplicitCall(context, where, 'compare', [left, right]);
+  const comparison = emitFunctionCall(context, {
+    span,
+    call: context.implicitCallAt(link.right, 'compare'),
+    arguments: [left, right],
+  });
   return ordered(context, span, comparison, meaning.relation);
 }
 
