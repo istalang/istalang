@@ -5,8 +5,8 @@
  * - A call reaches the newest mock held for its target: its instance's own, or else the one of
  *   the nearest instance it descends from that holds one (instance-names.ts), which only a test
  *   world has (test-world.ts). Releasing a mock therefore brings back the one before it. Every
- *   call path asks `callTargetOf`: a written call, a function value's, a disposal's. Starting an
- *   instance isn't a call, so an instance started or spawned with a mocked function runs it.
+ *   call path goes through `startCall`: a written call, a function value's, a disposal's. Starting
+ *   an instance isn't a call, so an instance started or spawned with a mocked function runs it.
  * - A call to another instance's mock is answered there, as a host answers an extern (§9): the
  *   arguments and the result are copied across, the caller's future is filled once the answer is
  *   given, and the holder records the call. A segment that runs again calls it again, as it calls
@@ -99,12 +99,11 @@ interface CallToMock extends Caller {
 }
 
 /**
- * What a call from `caller` to `target`, passing `contents`, runs, every call path's one answer
- * (§10): `target` with `captures`, unless a mock replaces it, which a mock of the caller's own does
- * by recording the call and running its replacement, and one another instance holds by answering
- * it.
+ * Starts a call from `caller` to `target` with `contents` and `captures`, every call path's one
+ * entry (§10): records and runs any mock replacing `target`, calls a native at once, and otherwise
+ * gives the code entry to push.
  */
-export function callTargetOf(
+export function startCall(
   caller: Caller,
   target: FunctionId,
   contents: readonly RegisterContents[],
@@ -242,7 +241,7 @@ function startAnswer(
   instance.futures.answer(future, call.instance, call.token);
   const callable = instance.loaded.functions.callee(replacement.function);
   if (callable.kind === 'code') {
-    return instance.startExecution(replacement.function, values, replacement.captures, future);
+    return instance.startExecution(callable, values, replacement.captures, future);
   }
   instance.futures.resolve(future, natives.call(replacement.function, callable.native, values));
   return undefined;

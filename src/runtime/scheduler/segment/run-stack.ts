@@ -3,7 +3,8 @@
  * the bottom. An async callee runs on top of its caller until it awaits or returns, and a
  * disposal's code runs on top of whatever runs (disposal-runs.ts), so the stack, not JavaScript's,
  * holds every nested run. It is one unit both the runner and the disposals share, so what runs is
- * always its top.
+ * always its top. Every frame push and pop goes through it, so the total frame count across the
+ * stack stays exact and bounded (limits.ts).
  */
 
 import type { Definition } from '../../../definition/definition.ts';

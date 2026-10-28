@@ -77,6 +77,8 @@ export interface WorldSeams {
 /** What the test's own instance is named; the instances it starts are named after it. */
 const testInstance = 'test';
 
+const allowTest = (): void => undefined;
+
 export class World implements TestWorld {
   readonly #seams: SchedulerSeams;
   readonly #loaded: LoadedDefinition;
@@ -191,6 +193,8 @@ export class World implements TestWorld {
       }
     }
   };
+
+  readonly requireTest = allowTest;
 
   inspect(instance: string): Inspection | undefined {
     const snapshot = this.#snapshotOf(instance);

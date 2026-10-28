@@ -18,7 +18,7 @@ import { resume } from '../../interpreter/suspension.ts';
 import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposal.ts';
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
-import { type Caller, callTargetOf } from '../mocks.ts';
+import { type Caller, startCall } from '../mocks.ts';
 import type { RunStack } from './run-stack.ts';
 
 export interface DisposalRunSeams {
@@ -101,7 +101,7 @@ export class DisposalRuns {
 
   #call(call: DisposalCall): boolean {
     const { instance, caller, runStack } = this.#seams;
-    const target = callTargetOf(caller, call.function, call.arguments, call.captures);
+    const target = startCall(caller, call.function, call.arguments, call.captures);
     if (target.kind === 'answered') {
       return true;
     }

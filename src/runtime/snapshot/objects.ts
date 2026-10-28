@@ -134,7 +134,7 @@ export const heapObject = z.discriminatedUnion('kind', [
    * lives, or why it is gone once it was disposed or its call ended.
    */
   defineObject('weakRef', {
-    target: z.union([objectId, z.enum(['disposed', 'returned'])]),
+    target: z.union([objectId, z.enum(['disposed', 'callEnded'])]),
   }),
   /** A `defer` guard: disposing it calls `callback` (spec §7). */
   defineObject('guard', { callback: value }),

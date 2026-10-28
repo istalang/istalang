@@ -126,7 +126,7 @@ export class Instance {
     }
     const { call } = snapshot.status;
     const instance = new Instance(loaded, snapshot);
-    instance.startExecution(call.function, call.arguments, call.captures);
+    instance.startExecution(instance.#frameEntry(call.function), call.arguments, call.captures);
     return instance;
   }
 
@@ -274,13 +274,12 @@ export class Instance {
    * closure's `captures` after them; an async call's execution `resolves` its future on return.
    */
   startExecution(
-    entry: FunctionId | FrameEntry,
+    entry: FrameEntry,
     contents: readonly RegisterContents[],
     captures: readonly Value[] = [],
     resolves?: number,
   ): LiveExecution {
-    const frameEntry = typeof entry === 'number' ? this.#frameEntry(entry) : entry;
-    const frame = newFrame(frameEntry, contents, this.frameHeap, captures);
+    const frame = newFrame(entry, contents, this.frameHeap, captures);
     return this.heap.add((id) => ({
       kind: 'execution',
       id,

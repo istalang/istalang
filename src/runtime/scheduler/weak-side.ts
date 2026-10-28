@@ -66,17 +66,17 @@ export class WeakSide {
    * on one of them, it is to resume on that one, whatever else has resolved (§7); that watch.
    */
   disposing(execution: LiveExecution): number | undefined {
-    const watches = this.#resolveWatches(execution.id, 'returned');
+    const watches = this.#resolveWatches(execution.id, 'callEnded');
     return waitedOn(execution).find((future) => watches.includes(future));
   }
 
   /** The call `execution` returned, so it can no longer be disposed. */
   onReturned(execution: number): void {
-    this.#letGo(execution, 'returned');
+    this.#letGo(execution, 'callEnded');
   }
 
   /** Lets go of `target` and resolves the watches pending on its weak reference; those watches. */
-  #resolveWatches(target: number, gone: 'disposed' | 'returned'): readonly number[] {
+  #resolveWatches(target: number, gone: 'disposed' | 'callEnded'): readonly number[] {
     const watches = this.#letGo(target, gone);
     for (const watch of watches) {
       this.#futures.resolve(watch, null);
@@ -85,7 +85,7 @@ export class WeakSide {
   }
 
   /** Clears the weak reference to `target`, if it has one, marking why; the watches pending on it. */
-  #letGo(target: number, gone: 'disposed' | 'returned'): readonly number[] {
+  #letGo(target: number, gone: 'disposed' | 'callEnded'): readonly number[] {
     const weak = this.#referenceTo(target);
     if (weak === undefined) {
       return [];

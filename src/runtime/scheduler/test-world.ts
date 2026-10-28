@@ -42,6 +42,8 @@ export interface TestWorld {
    * then. A wait on an instance's end is the scheduler's, as anywhere else (instance-ends.ts).
    */
   readonly watched: (instance: string, until: TestWatch) => Value | undefined;
+  /** Panics unless the instance runs inside `ista test` (§10). */
+  readonly requireTest: () => void;
   /** Where `instance` stands and waits, from its last commit; undefined before its first. */
   readonly inspect: (instance: string) => Inspection | undefined;
   /** A host payload no other `testing.handle` gives. */
@@ -56,7 +58,8 @@ function outsideTest(): never {
 export const noTestWorld: TestWorld = {
   mockOf: () => undefined,
   answer: () => unreachable('No mock is held outside a test world.'),
-  watched: outsideTest,
+  watched: () => undefined,
+  requireTest: outsideTest,
   inspect: outsideTest,
   handlePayload: outsideTest,
 };

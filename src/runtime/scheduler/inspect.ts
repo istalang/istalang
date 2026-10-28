@@ -62,6 +62,7 @@ export function withdrawnAnswers(
   caller: string,
   callerSnapshot: Snapshot | undefined,
 ): readonly CallerFuture[] {
+  // A panicked caller's snapshot still holds its futures for a retry, while a finished or terminated one has none.
   const waiting = new Set(
     (callerSnapshot?.objects ?? []).flatMap((object) =>
       object.kind === 'future' && object.state.kind === 'host' ? [object.state.token] : [],

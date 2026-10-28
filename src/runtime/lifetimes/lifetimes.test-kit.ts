@@ -86,7 +86,7 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
       ),
       contents.map((callback): LiveObject => ({ kind: 'guard', id: object, callback })),
       fc
-        .oneof(id, fc.constantFrom('disposed' as const, 'returned' as const))
+        .oneof(id, fc.constantFrom('disposed' as const, 'callEnded' as const))
         .map((target): LiveObject => ({ kind: 'weakRef', id: object, target })),
     );
   const frame = fc

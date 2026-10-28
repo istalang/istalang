@@ -47,7 +47,7 @@ import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
-import { type Caller, callTargetOf, driverOf, returnedValue, type SegmentStart } from '../mocks.ts';
+import { type Caller, driverOf, returnedValue, type SegmentStart, startCall } from '../mocks.ts';
 import { NativeCalls } from '../native-calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
 import { panicOf, requireDepth } from './limits.ts';
@@ -168,7 +168,7 @@ class SegmentRunner implements Machine {
     captures: readonly Value[] = [],
   ): void {
     const contents = argumentList.map((argument) => argumentContents(frame, argument));
-    const target = callTargetOf(this.#caller, callee, contents, captures);
+    const target = startCall(this.#caller, callee, contents, captures);
     if (target.kind === 'answered') {
       resumeAfterCall(frame, target.value);
       return;

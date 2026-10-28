@@ -32,7 +32,7 @@ const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
     (state): Made =>
       (object) => ({ kind: 'future', id: object, state }),
   ),
-  fc.oneof(id, fc.constantFrom('disposed' as const, 'returned' as const)).map(
+  fc.oneof(id, fc.constantFrom('disposed' as const, 'callEnded' as const)).map(
     (target): Made =>
       (object) => ({ kind: 'weakRef', id: object, target }),
   ),

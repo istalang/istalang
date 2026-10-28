@@ -119,7 +119,7 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
         .map((parts) => ({ id: objectId, kind: 'slot' as const, ...parts })),
       futureState.map((state) => ({ id: objectId, kind: 'future' as const, state })),
       fc
-        .oneof(id, fc.constantFrom('disposed' as const, 'returned' as const))
+        .oneof(id, fc.constantFrom('disposed' as const, 'callEnded' as const))
         .map((target) => ({ id: objectId, kind: 'weakRef' as const, target })),
       value.map((callback) => ({ id: objectId, kind: 'guard' as const, callback })),
       fc

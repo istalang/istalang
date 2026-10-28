@@ -8,8 +8,8 @@
  *   leaving a deeper value, where an execution can reach it or as its outcome, panics where it
  *   ended instead, so it commits nothing (§5).
  * - A segment has at most `maximumFrames` frames running at once across its run stack: enough for
- *   the 100,000-deep recursion frames-as-data supports (§5), while stopping unbounded recursion
- *   before it exhausts the host's memory.
+ *   deep recursion in heap frames (test/corpus/run/recursion.ista runs 100,000 frames deep), while
+ *   stopping unbounded recursion before it exhausts the host's memory.
  */
 
 import { maximumDepth } from '../../../definition/values.ts';
