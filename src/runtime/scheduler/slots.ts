@@ -14,7 +14,8 @@
  */
 
 import type { Value } from '../../definition/values.ts';
-import type { FutureState, Futures } from './futures.ts';
+import type { FutureState } from '../snapshot/objects.ts';
+import type { Futures } from './futures.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
 
 export type SlotOperation = Extract<FutureState, { kind: 'slot' }>['operation'];

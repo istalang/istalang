@@ -14,63 +14,68 @@
  */
 
 import { handlesIn, type Value } from '../../definition/values.ts';
-import { type Frame, type HeapObject, isReference, type RegisterContents } from './objects.ts';
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import {
+  type Frame,
+  type FutureState,
+  type HeapObject,
+  isReference,
+  type RegisterContents,
+} from './objects.ts';
 
 /** A frame as holding reads it: what its registers hold, an empty one undefined. */
 export interface HoldingFrame {
   readonly registers: readonly (RegisterContents | undefined)[];
 }
 
-/** How one kind of object holds and watches. */
-interface KindHoldings<Object> {
-  /** Every value it holds, each counted once with whatever it contains. */
-  readonly values: (object: Object) => readonly Value[];
-  /** The ids it holds itself, rather than through a value. */
-  readonly holds: (object: Object) => readonly number[];
-  /** The ids it names without holding them. */
-  readonly watches: (object: Object) => readonly number[];
+/** Whether `object` is a root, kept for its own sake rather than held by another: an execution or an answer. */
+export function isRoot<Object extends { readonly kind: HeapObject['kind'] }>(
+  object: Object,
+): object is Extract<Object, { readonly kind: 'execution' | 'answer' }> {
+  return object.kind === 'execution' || object.kind === 'answer';
 }
 
-type ObjectOf<Kind extends HeapObject['kind']> = Extract<HeapObject, { kind: Kind }>;
+/** What one object holds and watches. */
+interface Holding {
+  /** Every value it holds, each counted once with whatever it contains. */
+  readonly values: readonly Value[];
+  /** The ids it holds itself, rather than through a value. */
+  readonly holds: readonly number[];
+  /** The ids it names without holding them. */
+  readonly watches: readonly number[];
+}
 
-type FutureState = ObjectOf<'future'>['state'];
-
-type StateOf<Kind extends FutureState['kind']> = Extract<FutureState, { kind: Kind }>;
-
-const nothing = (): readonly never[] => [];
+const empty: Holding = { values: [], holds: [], watches: [] };
 
 /** What a future holds by its state; a future watches nothing. */
-const futureStates: {
-  readonly [Kind in FutureState['kind']]: Omit<KindHoldings<StateOf<Kind>>, 'watches'>;
-} = {
-  resolved: { values: (state) => [state.value], holds: nothing },
-  call: { values: nothing, holds: nothing },
-  slot: { values: (state) => present(state.value), holds: (state) => [state.slot] },
-  timer: { values: nothing, holds: nothing },
-  host: { values: nothing, holds: nothing },
-  first: { values: nothing, holds: (state) => state.futures },
-  disposed: { values: nothing, holds: (state) => [state.weakRef] },
-  watch: { values: nothing, holds: nothing },
+const futureStates: Handlers<undefined, FutureState, [], Omit<Holding, 'watches'>> = {
+  resolved: (_context, state) => ({ values: [state.value], holds: [] }),
+  call: () => empty,
+  slot: (_context, state) => ({ values: present(state.value), holds: [state.slot] }),
+  timer: () => empty,
+  host: () => empty,
+  first: (_context, state) => ({ values: [], holds: state.futures }),
+  disposed: (_context, state) => ({ values: [], holds: [state.weakRef] }),
+  watch: () => empty,
 };
 
-const kinds: { readonly [Kind in HeapObject['kind']]: KindHoldings<ObjectOf<Kind>> } = {
-  cell: { values: (cell) => [cell.value], holds: nothing, watches: nothing },
-  slot: { values: (slot) => present(slot.value), holds: nothing, watches: (slot) => slot.waiting },
-  future: {
-    values: ({ state }) => stateEntry(state).values(state),
-    holds: ({ state }) => stateEntry(state).holds(state),
-    watches: nothing,
-  },
-  weakRef: { values: nothing, holds: nothing, watches: (weak) => present(weak.target) },
-  guard: { values: (guard) => [guard.callback], holds: nothing, watches: nothing },
-  resource: { values: nothing, holds: nothing, watches: nothing },
-  mock: { values: (mock) => [mock.replacement, ...mock.calls], holds: nothing, watches: nothing },
-  answer: { values: nothing, holds: (answer) => [answer.future], watches: nothing },
-  execution: {
-    values: ({ frames }) => frames.flatMap((frame) => frameValues(holdingFrame(frame))),
-    holds: ({ frames }) => frames.flatMap((frame) => frameCells(holdingFrame(frame))),
-    watches: (execution) => present(execution.resolves),
-  },
+const kinds: Handlers<undefined, HeapObject, [], Holding> = {
+  cell: (_context, cell) => ({ ...empty, values: [cell.value] }),
+  slot: (_context, slot) => ({ values: present(slot.value), holds: [], watches: slot.waiting }),
+  future: (_context, { state }) => ({
+    ...handlerOf(futureStates, state)(undefined, state),
+    watches: [],
+  }),
+  weakRef: (_context, weak) => ({ ...empty, watches: present(weak.target) }),
+  guard: (_context, guard) => ({ ...empty, values: [guard.callback] }),
+  resource: () => empty,
+  mock: (_context, mock) => ({ ...empty, values: [mock.replacement, ...mock.calls] }),
+  answer: (_context, answer) => ({ ...empty, holds: [answer.future] }),
+  execution: (_context, { frames, resolves }) => ({
+    values: frames.flatMap((frame) => frameValues(holdingFrame(frame))),
+    holds: frames.flatMap((frame) => frameCells(holdingFrame(frame))),
+    watches: present(resolves),
+  }),
 };
 
 /**
@@ -78,18 +83,18 @@ const kinds: { readonly [Kind in HeapObject['kind']]: KindHoldings<ObjectOf<Kind
  * holds. What nothing holds any more is disposed (runtime/lifetimes/).
  */
 export function heldObjects(object: HeapObject): readonly number[] {
-  const entry = entryOf(object);
-  return [...entry.holds(object), ...entry.values(object).flatMap(handlesIn)];
+  const holding = holdingOf(object);
+  return [...holding.holds, ...holding.values.flatMap(handlesIn)];
 }
 
 /** Every value `object` holds, each counted once with whatever it contains. */
 export function valuesIn(object: HeapObject): readonly Value[] {
-  return entryOf(object).values(object);
+  return holdingOf(object).values;
 }
 
 /** The ids of the objects `object` refers to: the ones it holds, and the ones it only watches. */
 export function referencedObjects(object: HeapObject): readonly number[] {
-  return [...heldObjects(object), ...entryOf(object).watches(object)];
+  return [...heldObjects(object), ...holdingOf(object).watches];
 }
 
 /** The values `frame` holds in its registers, references aside. */
@@ -111,14 +116,8 @@ function holdingFrame(frame: Frame): HoldingFrame {
   return { registers: frame.registers.map(([, contents]) => contents) };
 }
 
-/** The entry of `object`'s kind, typed for the object as its union sees it. */
-function entryOf(object: HeapObject): KindHoldings<HeapObject> {
-  return kinds[object.kind] as KindHoldings<HeapObject>;
-}
-
-/** The entry of `state`'s kind, typed for the state as its union sees it. */
-function stateEntry(state: FutureState): Omit<KindHoldings<FutureState>, 'watches'> {
-  return futureStates[state.kind] as Omit<KindHoldings<FutureState>, 'watches'>;
+function holdingOf(object: HeapObject): Holding {
+  return handlerOf(kinds, object)(undefined, object);
 }
 
 function present<Item>(item: Item | undefined): readonly Item[] {

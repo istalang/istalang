@@ -40,10 +40,11 @@ import { resume } from '../../interpreter/suspension.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
 import { seedBytes, seedTextOf } from '../../random-seed.ts';
+import { heldObjects, isRoot } from '../../snapshot/holdings.ts';
 import { type HeapObject, isReference, type RegisterContents } from '../../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import { type Answered, Futures } from '../futures.ts';
-import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from '../heap.ts';
+import { Heap, type LiveExecution, type LiveObjectOf } from '../heap.ts';
 import { spawnedName } from '../instance-names.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
 import { leaving, reachingMock } from '../mocks.ts';
@@ -252,9 +253,9 @@ export class Instance {
     return this.#logs;
   }
 
-  /** The answers still to give, which are roots, as executions are: what they wait on is held. */
+  /** The futures the answers still to give wait on, which each holds until it is given (§10). */
   answers(): readonly number[] {
-    return this.heap.objectsOf('answer').map(({ id }) => id);
+    return this.heap.objectsOf('answer').flatMap(heldObjects);
   }
 
   /** The answers this segment gave other instances' calls, each filled once it commits (§10). */
@@ -354,11 +355,6 @@ export class Instance {
 export interface Persisted {
   readonly objects: readonly HeapObject[];
   readonly depth: number;
-}
-
-/** Whether `object` is kept for its own sake, not for what holds it: an execution or an answer. */
-function isRoot(object: LiveObject): boolean {
-  return object.kind === 'execution' || object.kind === 'answer';
 }
 
 /** The innermost frame of `execution`, which always has one. */

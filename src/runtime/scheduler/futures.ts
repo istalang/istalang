@@ -21,11 +21,9 @@ import { handleTarget, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { readRegister } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
-import type { HeapObject } from '../snapshot/objects.ts';
+import type { FutureState } from '../snapshot/objects.ts';
 import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
 import type { CallerFuture } from './test-world.ts';
-
-export type FutureState = Extract<HeapObject, { kind: 'future' }>['state'];
 
 /** A pending `futures.first`. */
 type FirstFuture = LiveObjectOf<'future'> & {

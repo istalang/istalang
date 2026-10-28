@@ -18,6 +18,7 @@
 import { pushAll } from '../../structures/stack.ts';
 import { type GraphEdge, stronglyConnected } from '../../structures/strongly-connected.ts';
 import type { Heap, LiveObject } from '../scheduler/heap.ts';
+import { isRoot } from '../snapshot/holdings.ts';
 import { holdsOf, walkHolds } from './holders.ts';
 
 /** What finding the orphans to dispose starts from. */
@@ -86,7 +87,7 @@ function coveredBy(
 function orphansFrom(heap: Heap, search: OrphanSearch): readonly LiveObject[] {
   const orphans: LiveObject[] = [];
   walkHolds(heap, search.from, (object) => {
-    if (search.held.has(object.id) || object.kind === 'execution') {
+    if (search.held.has(object.id) || isRoot(object)) {
       return 'past';
     }
     orphans.push(object);

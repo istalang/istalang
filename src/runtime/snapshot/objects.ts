@@ -102,6 +102,8 @@ const futureState = z.discriminatedUnion('kind', [
   }),
 ]);
 
+export type FutureState = z.output<typeof futureState>;
+
 /** A heap object schema: `kind` and `id`, plus its own fields. */
 function defineObject<const Kind extends string, Shape extends z.ZodRawShape>(
   kind: Kind,

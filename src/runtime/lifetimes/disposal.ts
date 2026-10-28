@@ -26,10 +26,11 @@
 import type { FunctionId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/types.ts';
 import type { Value } from '../../definition/values.ts';
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { FutureState } from '../scheduler/futures.ts';
-import type { Heap, LiveExecution, LiveKind, LiveObject, LiveObjectOf } from '../scheduler/heap.ts';
+import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/heap.ts';
 import type { WeakSide } from '../scheduler/weak-side.ts';
+import type { FutureState } from '../snapshot/objects.ts';
 
 /** A call a disposal makes: a function value, or a function with its arguments. */
 export interface DisposalCall {
@@ -62,14 +63,6 @@ export interface DisposalContext extends Disposability {
   readonly weak: WeakSide;
 }
 
-/** How one kind of object is disposed. */
-interface KindDisposal<Object extends LiveObject> {
-  /** Whether such an object is disposed when nothing holds it, rather than simply left out of the next commit. */
-  readonly disposable: (context: Disposability, object: Object) => boolean;
-  /** Disposes it its own way: the code to run, for a disposal that runs code. */
-  readonly dispose: (context: DisposalContext, object: Object) => DisposalRun | undefined;
-}
-
 const always = (): boolean => true;
 const never = (): boolean => false;
 const nothing = (): undefined => undefined;
@@ -90,40 +83,55 @@ const futureStates: { readonly [Kind in FutureState['kind']]: boolean } = {
   watch: false,
 };
 
-/** A kind disposed through its type entry's `disposal`: a cell, or a resource. */
-const declared: KindDisposal<LiveObjectOf<'cell' | 'resource'>> = {
-  disposable: ({ types }, object) => disposalOf(types, object.type).kind !== 'none',
-  dispose: (context, object) => {
-    const disposal = disposalOf(context.types, object.type);
-    return disposal.kind === 'function'
-      ? {
-          kind: 'call',
-          function: disposal.function,
-          captures: [],
-          arguments: [{ kind: 'handle', object: object.id }],
-        }
-      : undefined;
-  },
+/** Whether a cell or resource is disposed through its type entry's `disposal`. */
+const hasDeclaredDisposal = (
+  { types }: Disposability,
+  object: LiveObjectOf<'cell' | 'resource'>,
+): boolean => disposalOf(types, object.type).kind !== 'none';
+
+/** The call a cell or resource's type entry declares for its disposal, if any. */
+const callDeclaredDisposal = (
+  context: DisposalContext,
+  object: LiveObjectOf<'cell' | 'resource'>,
+): DisposalRun | undefined => {
+  const disposal = disposalOf(context.types, object.type);
+  return disposal.kind === 'function'
+    ? {
+        kind: 'call',
+        function: disposal.function,
+        captures: [],
+        arguments: [{ kind: 'handle', object: object.id }],
+      }
+    : undefined;
 };
 
-const kinds: { readonly [Kind in LiveKind]: KindDisposal<LiveObjectOf<Kind>> } = {
-  future: {
-    disposable: (context, future) => futureStates[future.state.kind] || watched(context, future),
-    dispose: disposeFuture,
-  },
-  slot: { disposable: watched, dispose: nothing },
-  mock: { disposable: always, dispose: nothing },
-  guard: { disposable: always, dispose: (_context, guard) => callOf(guard.callback) },
-  cell: declared,
-  resource: declared,
-  weakRef: { disposable: never, dispose: nothing },
-  answer: { disposable: never, dispose: nothing },
-  execution: { disposable: never, dispose: nothing },
+const disposables: Handlers<Disposability, LiveObject, [], boolean> = {
+  future: (context, future) => futureStates[future.state.kind] || watched(context, future),
+  slot: watched,
+  mock: always,
+  guard: always,
+  cell: hasDeclaredDisposal,
+  resource: hasDeclaredDisposal,
+  weakRef: never,
+  answer: never,
+  execution: never,
+};
+
+const disposers: Handlers<DisposalContext, LiveObject, [], DisposalRun | undefined> = {
+  future: disposeFuture,
+  slot: nothing,
+  mock: nothing,
+  guard: (_context, guard) => callOf(guard.callback),
+  cell: callDeclaredDisposal,
+  resource: callDeclaredDisposal,
+  weakRef: nothing,
+  answer: nothing,
+  execution: nothing,
 };
 
 /** Whether `object` is disposed when nothing holds it any more, rather than simply left out of the next commit. */
 export function isDisposable(context: Disposability, object: LiveObject): boolean {
-  return entryOf(object).disposable(context, object);
+  return handlerOf(disposables, object)(context, object);
 }
 
 /**
@@ -131,12 +139,7 @@ export function isDisposable(context: Disposability, object: LiveObject): boolea
  * is removed by the caller, once that code has finished.
  */
 export function dispose(context: DisposalContext, object: LiveObject): DisposalRun | undefined {
-  return entryOf(object).dispose(context, object);
-}
-
-/** The entry of `object`'s kind, typed for the object as its union sees it. */
-function entryOf(object: LiveObject): KindDisposal<LiveObject> {
-  return kinds[object.kind] as KindDisposal<LiveObject>;
+  return handlerOf(disposers, object)(context, object);
 }
 
 /** A call's future disposes its call; a pending slot operation leaves its slot's queue. */

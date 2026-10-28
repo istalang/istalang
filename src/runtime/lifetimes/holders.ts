@@ -27,6 +27,7 @@ import {
   frameValues,
   type HoldingFrame,
   heldObjects,
+  isRoot,
   valuesIn,
 } from '../snapshot/holdings.ts';
 
@@ -100,9 +101,9 @@ export function walkHolds(
   }
 }
 
-/** What `object` holds; an execution, a root while it lives, is never held through. */
+/** What `object` holds; a root is never held through. */
 export function holdsOf(object: LiveObject): readonly number[] {
-  return object.kind === 'execution' ? [] : heldObjects(object);
+  return isRoot(object) ? [] : heldObjects(object);
 }
 
 /** The objects reached from `frames` and `objects`, until `stop` says to, asked of each. */
@@ -127,7 +128,7 @@ function reached(
 
 function valuesOf(heap: Heap, id: number): readonly Value[] {
   const object = heap.objectOf(id);
-  return object.kind === 'execution' ? [] : valuesIn(object);
+  return isRoot(object) ? [] : valuesIn(object);
 }
 
 function deepestOf(values: readonly Value[]): number {

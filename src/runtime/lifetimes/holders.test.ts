@@ -9,7 +9,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { depthOf, handlesIn } from '../../definition/values.ts';
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
-import { frameValues, valuesIn } from '../snapshot/holdings.ts';
+import { frameValues, isRoot, valuesIn } from '../snapshot/holdings.ts';
 import { heldFrom, holdsOf } from './holders.ts';
 import { heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
 
@@ -39,7 +39,7 @@ describe('holding', () => {
           ...frames.flatMap(frameValues),
           ...[...held.objects].flatMap((id) => {
             const object = heap.objectOf(id);
-            return object.kind === 'execution' ? [] : valuesIn(object);
+            return isRoot(object) ? [] : valuesIn(object);
           }),
         ];
         expect(held.depth).toBe(Math.max(0, ...values.map(depthOf)));
