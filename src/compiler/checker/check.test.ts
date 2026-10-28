@@ -1,7 +1,13 @@
 /**
  * The checker through the coordinator, with the real prelude: one invalid case per rule, each
- * reporting its code over the text it explains; valid programs reporting nothing; and totality on
- * broken programs and on every spec example.
+ * reporting its code over the text it explains; valid programs reporting nothing; the spec's and
+ * the guide's module examples checking clean; and totality on broken programs and on every spec
+ * example.
+ *
+ * A section's module examples build on each other, as §12.1's make one program, so they are
+ * checked joined, section by section. The sections that don't check clean yet are listed by name,
+ * most because they use declarations their document leaves out; a listed section that comes to
+ * check clean fails until it leaves the list, so the list only shrinks.
  */
 
 import fc from 'fast-check';
@@ -269,6 +275,63 @@ describe('top-level constants defined through themselves', () => {
       codes: Array.from({ length: 3 }, () => reports.constantCycle.code),
       spanTexts: ['a', 'b', 'c'],
     });
+  });
+});
+
+/** Doc sections whose module examples, joined, don't check clean yet. */
+const uncheckedSections = new Set([
+  'docs/spec.md › 3.1 Structs',
+  'docs/spec.md › 3.3 Functions',
+  'docs/spec.md › 3.6 Extern declarations',
+  'docs/spec.md › 3.7 Methods and references',
+  'docs/spec.md › 3.8 Prelude and standard library',
+  'docs/spec.md › 3.9 Operator overloading',
+  'docs/spec.md › 3.10 Traits',
+  'docs/spec.md › 3.13 Modules',
+  'docs/spec.md › 3.14 Function types and closures',
+  'docs/spec.md › 5. Persistence',
+  'docs/spec.md › 6. Slots and inboxes',
+  'docs/spec.md › 7. Lifetimes and disposal',
+  'docs/spec.md › 9. Program structure',
+  'docs/spec.md › 10. Testing',
+  'docs/spec.md › 12.2 Approver side',
+  'docs/spec.md › 12.3 Broadcast with expiry',
+  'docs/guide.md › Level 0: what it is',
+  'docs/guide.md › 2.1 A whole program',
+  'docs/guide.md › 2.5 Generics, traits, operators (§3.5, §3.9, §3.10)',
+  'docs/guide.md › 2.7 Errors (§3.12)',
+  'docs/guide.md › 2.9 Concurrency (§6, §8, §9)',
+  'docs/guide.md › 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11)',
+  'docs/guide.md › 2.12 Testing (§10)',
+]);
+
+describe('doc examples', () => {
+  const bySection = Map.groupBy(
+    specExamples.filter((example) => example.form === 'module' && !example.elided),
+    (example) => `${example.document} › ${example.section}`,
+  );
+  const sections = [...bySection].map(([title, examples]) => ({
+    title,
+    text: examples.map((example) => example.code).join('\n'),
+  }));
+  const isUnchecked = ({ title }: { readonly title: string }) => uncheckedSections.has(title);
+
+  it.each(sections.filter((section) => !isUnchecked(section)))(
+    'check clean in $title',
+    ({ text }) => {
+      expect(reported(text)).toEqual(reportedNothing);
+    },
+  );
+
+  it.each(sections.filter(isUnchecked))(
+    'still report something in $title, which is listed as not checking clean',
+    ({ text }) => {
+      expect(reported(text)).not.toEqual(reportedNothing);
+    },
+  );
+
+  it('list only sections that have module examples', () => {
+    expect([...uncheckedSections].filter((title) => !bySection.has(title))).toEqual([]);
   });
 });
 
