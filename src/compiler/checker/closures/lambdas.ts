@@ -201,7 +201,7 @@ function nestedParameters(
   nodes: readonly (Parameter | Invalid)[],
   slots: ParameterSlots | undefined,
 ): readonly SignatureParameter[] {
-  return nodes.flatMap((node, index) => {
+  return nodes.flatMap((node, index): readonly SignatureParameter[] => {
     if (node.kind === 'Invalid') {
       return [];
     }

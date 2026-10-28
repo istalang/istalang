@@ -24,6 +24,11 @@
  *   trait's `Self` (`any Iterable<int>` is `Iterable<int, Self>`), which stands for each value's own
  *   type. The `any` type binds it, so substituting from outside never replaces it, and no type
  *   mentioning it is open.
+ * - An alias names no type of its own (§3.17): a type written through one carries it only so its
+ *   text can read as written (`Entries<int>`), which messages and hovers show. Exact relations and
+ *   type keys look through it. Only substitution keeps it, substituting its arguments too, since
+ *   that rewrites the alias's own parameters alike; any other change of a type's parts leaves a
+ *   type the alias didn't write, so it drops it (type-parts.ts).
  * - Exact relations live here; fitting with the implicit wrap into `T?` needs to know which type
  *   is `Optional`, so it lives in fit.ts.
  */
@@ -38,6 +43,7 @@ import type {
   Field,
   StructDeclaration,
   TraitDeclaration,
+  TypeAliasDeclaration,
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import type { StructLiteral } from '../../syntax/expressions/index.ts';
@@ -177,7 +183,13 @@ export interface ErrorType {
 /** A type a struct value can have: a declared struct or an anonymous one. */
 export type StructValueType = NominalType | AnonymousStructType;
 
-export type Type =
+/** The alias a type was written through, with the arguments it was given there (§3.17). */
+export interface AliasUse {
+  readonly declaration: TypeAliasDeclaration;
+  readonly arguments: readonly Type[];
+}
+
+export type Type = (
   | PrimitiveType
   | NominalType
   | AnonymousStructType
@@ -185,7 +197,13 @@ export type Type =
   | FunctionType
   | TypeParameterType
   | AnyType
-  | ErrorType;
+  | ErrorType
+) & { readonly alias?: AliasUse | undefined };
+
+/** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */
+export function aliasedAs<Aliased extends Type>(type: Aliased, alias: AliasUse): Aliased {
+  return type.kind === 'error' ? type : { ...type, alias };
+}
 
 /** The primitive type named `name`. */
 export function primitiveType(name: PrimitiveName): PrimitiveType {

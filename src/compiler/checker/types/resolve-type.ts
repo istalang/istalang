@@ -12,7 +12,8 @@
  *   (the checker memoizes `resolveType` per node), and its module's own check resolves every type
  *   node it has, defaults of type parameters included, so every check is noted by then, whichever
  *   module asked first.
- * - An alias is the type it stands for, its own parameters replaced by the arguments (§3.17).
+ * - An alias is the type it stands for, its own parameters replaced by the arguments, written
+ *   through the alias so it reads as written (§3.17).
  * - `T?` is the prelude's `Optional<T>` (§2), and `Self` inside a trait is the trait's implicit
  *   parameter (types/type.ts).
  * - `&T` is only ever a parameter's type (the parser enforces it); here it denotes `T`, and the
@@ -47,6 +48,7 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { substitute, substitutionFor } from './substitution.ts';
 import {
+  aliasedAs,
   errorType,
   type FieldMember,
   isPack,
@@ -236,9 +238,12 @@ function namedType(resolution: Resolution, node: NamedType): Type {
           const typeArguments = argumentsOf(resolution, node, declaration);
           return typeArguments === undefined
             ? errorType
-            : substitute(
-                checker.aliasedType(declaration),
-                substitutionFor(declaration.typeParameters, typeArguments),
+            : aliasedAs(
+                substitute(
+                  checker.aliasedType(declaration),
+                  substitutionFor(declaration.typeParameters, typeArguments),
+                ),
+                { declaration, arguments: typeArguments },
               );
         }
         case 'TraitDeclaration':
