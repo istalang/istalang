@@ -17,7 +17,7 @@ import {
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { fieldlessStructOf } from '../resolution/named.ts';
-import { errorType, nominalType, type Type } from '../types/type.ts';
+import { errorType, expectsError, nominalType, type Type } from '../types/type.ts';
 import { checkVariantName, variantsAccepted } from './variants.ts';
 
 export function checkName(
@@ -113,6 +113,10 @@ function bareStructValue(
   if (expected?.kind === 'nominal' && expected.entity.declaration === declaration) {
     return expected;
   }
-  context.report(checkerDiagnostics.cannotInfer(node.span, declaration.name.text, open.name.text));
+  if (!expectsError(expected)) {
+    context.report(
+      checkerDiagnostics.cannotInfer(node.span, declaration.name.text, open.name.text),
+    );
+  }
   return errorType;
 }

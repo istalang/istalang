@@ -230,7 +230,9 @@ export const errorType: ErrorType = { kind: 'error' };
 
 /**
  * Whether a value is expected to be of the error type, whose cause was reported already: a value
- * that needs an expected type to mean anything (`none`, a bare variant) reports nothing more.
+ * that needs an expected type to mean anything (`none`, a bare variant or generic struct without
+ * fields, an empty collection, a function named among overloads, a lambda's untyped parameter)
+ * reports nothing more.
  */
 export function expectsError(expected: Type | undefined): boolean {
   return expected?.kind === 'error';

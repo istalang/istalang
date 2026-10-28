@@ -55,6 +55,7 @@ import { checkIterated, iteratedItem } from '../rules/iteration.ts';
 import { isExact, withoutOptionals } from '../types/fit.ts';
 import {
   errorType,
+  expectsError,
   intType,
   isPack,
   type NominalType,
@@ -102,7 +103,9 @@ export function checkArrayLiteral(
     );
   }
   if (produced.length === 0 && expectedItem === undefined) {
-    context.report(checkerDiagnostics.emptyCollection(node.span, '[]'));
+    if (!expectsError(expected)) {
+      context.report(checkerDiagnostics.emptyCollection(node.span, '[]'));
+    }
     return errorType;
   }
   const item = agreeOn(context, produced, expectedItem, 'element') ?? expectedItem ?? neverType;
@@ -122,7 +125,9 @@ export function checkMapLiteral(
   const [expectedKey, expectedValue] = map?.arguments ?? [];
   const { keys, values } = entriesOf(context, node, map);
   if (node.entries.length === 0 && target === undefined) {
-    context.report(checkerDiagnostics.emptyCollection(node.span, '[:]'));
+    if (!expectsError(expected)) {
+      context.report(checkerDiagnostics.emptyCollection(node.span, '[:]'));
+    }
     return errorType;
   }
   const key = agreeOn(context, keys, expectedKey, 'key') ?? expectedKey ?? neverType;

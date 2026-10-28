@@ -33,7 +33,7 @@ import { type Application, chooseAsValue, signatureOf } from '../resolution/choi
 import { instantiate } from '../resolution/conformance.ts';
 import { namedType } from '../resolution/named.ts';
 import { substitute } from '../types/substitution.ts';
-import { errorType, type FunctionType, type Type, withPack } from '../types/type.ts';
+import { errorType, expectsError, type FunctionType, type Type, withPack } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, futureOf } from '../types/well-known.ts';
 import { useSite } from '../use-site.ts';
@@ -116,7 +116,9 @@ export function checkFunctionValue(
   const application =
     shape === undefined ? loneFunction(context, candidates) : chosenFor(context, candidates, shape);
   if (application === undefined) {
-    context.report(checkerDiagnostics.functionValueUnchosen(site.span, name));
+    if (!expectsError(expected)) {
+      context.report(checkerDiagnostics.functionValueUnchosen(site.span, name));
+    }
     return errorType;
   }
   const { checker } = context;

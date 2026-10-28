@@ -1,7 +1,12 @@
-# error: 5125 at 13:3
-# error: 5125 at 18:21
-# error: 5125 at 23:3
-# error: 5125 at 26:3
+# error: 5125 at 18:3
+# error: 5125 at 23:21
+# error: 5125 at 28:3
+# error: 5125 at 31:3
+# error: 5125 at 60:3
+# error: 5125 at 61:3
+# error: 5125 at 62:3
+# error: 5125 at 63:3
+# error: 5125 at 64:3
 # A generic type is compiled per instantiation, so one that refers to itself, directly or through
 # others, with a type argument built from its own would need endlessly many of them (§3.5): it is
 # reported at the field that grows the argument. A field that passes its parameter on whole, or
@@ -42,3 +47,21 @@ fn qualified() -> Chain<int>:
 async fn main() -> Future<int>:
   made()
   Tree<int>{value: 1, children: [], pairs: []}.value
+
+# A value given to a field the expansion error-typed reports nothing more, however much it needs
+# the field's type to mean anything: an empty collection, a generic struct without fields, a
+# function named among overloads, or a nested function's untyped parameter.
+struct Marker<T>
+
+fn scaled(x: int) -> int: x
+fn scaled(x: string) -> string: x
+
+struct Endless<T>:
+  items: Array<Endless<(T,)>>
+  entries: Map<string, Endless<(T,)>>
+  marker: Marker<Endless<(T,)>>
+  named: fn(Endless<(T,)>) -> int
+  nested: fn(Endless<(T,)>) -> int
+
+fn endless() -> Endless<int>:
+  Endless<int>{items: [], entries: [:], marker: Marker, named: scaled, nested: fn(x): 0}

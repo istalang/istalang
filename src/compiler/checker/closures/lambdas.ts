@@ -36,6 +36,7 @@ import { isSendable } from '../traits/sendable.ts';
 import { withoutOptionals } from '../types/fit.ts';
 import {
   errorType,
+  expectsError,
   type FunctionType,
   isPack,
   packRestSlot,
@@ -77,7 +78,14 @@ export function checkLambda(context: BodyContext, node: Lambda, expected: Type |
     return checked.type;
   }
   const shape = expectedFunction(context, expected);
-  return checkLambdaAs(context, node, shape, shape?.result);
+  const slots = shape ?? (expectsError(expected) ? errorSlots(node) : undefined);
+  return checkLambdaAs(context, node, slots, shape?.result);
+}
+
+/** A lambda expected of the error type, its cause reported: every parameter is of the error type. */
+function errorSlots(node: Lambda): ParameterSlots {
+  const parameters = node.parameters.map(() => ({ type: errorType, reference: false }));
+  return { parameters, pack: errorType };
 }
 
 /** The function type `expected` asks a lambda or function value for, through any optionals (§2). */
