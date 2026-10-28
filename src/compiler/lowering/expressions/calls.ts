@@ -14,9 +14,9 @@
  * as an array where it stands, so a cursor it runs runs in the order written; emit-call then makes
  * the rest parameter of what is passed, an array or a pack's elements (§3.5).
  *
- * A call the checker resolved no function for is a call of a function value (§3.14): the callee's
- * value is the closure called, and each argument is passed as written, which the checker matched
- * to the closure's parameters.
+ * A call the checker recorded as a call of a function value (§3.14, `CheckedBody.valueCalls`)
+ * calls its callee's value, the closure, and each argument is passed as written, which the
+ * checker matched to the closure's parameters.
  */
 
 import type { Callee } from '../../../definition/instructions/calls.ts';
@@ -103,7 +103,7 @@ function lowerValueCall(context: FunctionContext, node: Call): Register {
   return dst;
 }
 
-/** The function value a call of no resolved function calls; `f?.()` calls the one inside `f`. */
+/** The function value a value call calls; `f?.()` calls the one inside `f`. */
 function valueCallee(context: FunctionContext, node: Call): Register {
   if (node.isOptional) {
     return context.chains.target(context, node);
