@@ -1,13 +1,14 @@
-# error: 5903 at 27:1
-# error: 5902 at 32:11
-# error: 5905 at 33:10
-# error: 5906 at 34:13
-# error: 5904 at 35:25
-# error: 5907 at 36:3
-# error: 5026 at 37:20
-# error: 5903 at 39:1
-# error: 5908 at 44:3
-# error: 5903 at 46:3
+# error: 5903 at 28:1
+# error: 5902 at 33:11
+# error: 5905 at 34:10
+# error: 5906 at 35:13
+# error: 5904 at 36:25
+# error: 5907 at 37:3
+# error: 5909 at 38:20
+# error: 5903 at 40:1
+# error: 5908 at 45:3
+# error: 5908 at 47:3
+# error: 5903 at 51:3
 # An annotation is a struct value computed at compile time (§3.16), and what it means decides where
 # it may stand: the json module's on fields, @JsonSkip only on a field whose type is Default, which
 # it reads back as, @JsonBigInt only on an int, @Waypoint only on a statement that waits, any other
@@ -43,9 +44,13 @@ struct Annotated:
 async fn main():
   @Waypoint{"nowhere"}
   const x = 1
+  @Waypoint{"immediate"}
+  const polled = select:
+    case runtime() as n: n
+    else: 0
   @Note{"a statement"}
   const y = await runtime()
-  x + y
+  x + polled + y
 
 async fn runtime() -> Future<int>:
   2

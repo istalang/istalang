@@ -41,6 +41,11 @@ export const boundaryTemplates = {
     message: () =>
       "'@Waypoint' names where a statement waits, and this one has no 'await' or 'select'.",
   },
+  annotationNotConstant: {
+    code: 5909,
+    message: () =>
+      'An annotation needs a value compile time computes: literals, other constants, and structs, arrays and maps built from them.',
+  },
   disposableSendable: {
     code: 5910,
     message: (type: string) =>

@@ -129,7 +129,7 @@ export class ConstantChecks {
       valueNamed: (name) => this.constantNamed(module, name),
     });
     if (outcome.kind === 'refused') {
-      checker.report(module, refusalOf(outcome));
+      checker.report(module, refusalOf(outcome, checkerDiagnostics.notConstant));
     }
     const bindings = walkTargets(
       {

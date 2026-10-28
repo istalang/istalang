@@ -209,7 +209,7 @@ export class Annotations implements AnnotationQueries {
       valueNamed: (name) => checker.constantNamed(module, name),
     });
     if (outcome.kind === 'refused') {
-      checker.report(module, refusalOf(outcome));
+      checker.report(module, refusalOf(outcome, checkerDiagnostics.annotationNotConstant));
     }
     return outcome.kind === 'computed' ? { node, type, form: outcome.form } : undefined;
   }
@@ -284,5 +284,9 @@ export function statementPlace(statement: Statement): AnnotationPlace {
 }
 
 function waits(node: SyntaxNode): boolean {
-  return node.kind === 'Await' || node.kind === 'Select' || bodyChildrenOf(node).some(waits);
+  return (
+    node.kind === 'Await' ||
+    (node.kind === 'Select' && node.awaits) ||
+    bodyChildrenOf(node).some(waits)
+  );
 }

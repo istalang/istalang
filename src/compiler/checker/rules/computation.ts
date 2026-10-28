@@ -22,6 +22,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
+import type { Span } from '../../../text/span.ts';
 import type { VariableOwner } from '../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type {
@@ -68,10 +69,13 @@ export function computeConstant(initializer: Expression, scope: ComputationScope
 }
 
 /** Why compile time leaves `outcome` uncomputed, reported where its part stands. */
-export function refusalOf(outcome: Extract<Outcome, { kind: 'refused' }>): Diagnostic {
+export function refusalOf(
+  outcome: Extract<Outcome, { readonly kind: 'refused' }>,
+  notConstant: (at: Span) => Diagnostic,
+): Diagnostic {
   return outcome.why === 'endless'
     ? checkerDiagnostics.endlessDefault(outcome.part.span)
-    : checkerDiagnostics.notConstant(outcome.part.span);
+    : notConstant(outcome.part.span);
 }
 
 class Computation {
