@@ -14,13 +14,12 @@
  * - The error type and `never` fit anything and bind nothing, so one mistake is reported once.
  */
 
-import { type Fitting, fitOf, optionalInner, singleElement } from '../types/fit.ts';
+import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import {
   type AnyType,
   type FunctionType,
   fillsPack,
-  isPrimitive,
   type ParameterKey,
   sameShape,
   sameType,
@@ -44,21 +43,13 @@ export class Inference {
 
   /** Matches a declared type against a given one, binding what it can; whether they fit. */
   match(declared: Type, given: Type): boolean {
-    if (given.kind === 'error' || isPrimitive(given, 'never')) {
-      return true;
-    }
-    if (
-      this.#matchExact(declared, given) ||
-      this.#matchMadeAsync(declared, given) ||
-      this.#matchSingle(declared, given)
-    ) {
-      return true;
-    }
-    if (declared.kind === 'any') {
-      return this.#convertsInto(declared, given);
-    }
-    const inner = optionalInner(declared, this.#fitting.optional);
-    return inner !== undefined && this.match(inner, given);
+    return (
+      matchConversion(given, declared, {
+        optional: this.#fitting.optional,
+        exact: (target, source) => this.#matchExact(target, source),
+        meetsAny: (source, target) => this.#convertsInto(target, source),
+      }) !== undefined
+    );
   }
 
   /**
@@ -71,27 +62,6 @@ export class Inference {
       return false;
     }
     return this.#fitting.meetsAny(given, known);
-  }
-
-  /** Matches a plain function `given` where `declared` is an async one it fits made async (§3.14). */
-  #matchMadeAsync(declared: Type, given: Type): boolean {
-    return (
-      declared.kind === 'function' &&
-      given.kind === 'function' &&
-      declared.isAsync &&
-      !given.isAsync &&
-      this.#matchExact(declared, { ...given, isAsync: true })
-    );
-  }
-
-  /** Matches across the conversion between a one-element tuple and its element (§3.15). */
-  #matchSingle(declared: Type, given: Type): boolean {
-    const element = singleElement(declared);
-    const inside = singleElement(given);
-    return (
-      (element !== undefined && this.#matchExact(element, given)) ||
-      (inside !== undefined && this.#matchExact(declared, inside))
-    );
   }
 
   /** Matches `declared` against a type `given` must equal, as an expected result. */

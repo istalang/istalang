@@ -16,15 +16,7 @@
  *   say (`Fitting`).
  */
 
-import {
-  type AnyType,
-  isAssignable,
-  isPrimitive,
-  type NominalEntity,
-  sameShape,
-  sameType,
-  type Type,
-} from './type.ts';
+import { type AnyType, isAssignable, isPrimitive, type NominalEntity, type Type } from './type.ts';
 
 /** The entity of the prelude's `Optional`, or undefined in a program without the prelude. */
 export type OptionalEntity = NominalEntity | undefined;
@@ -56,28 +48,48 @@ export interface Fitting {
   readonly meetsAny: (found: Type, target: AnyType) => boolean;
 }
 
+/** How `matchConversion` compares leaf types and checks `any` conformance. */
+export interface ConversionRules extends Fitting {
+  readonly exact: (expected: Type, found: Type) => boolean;
+}
+
 /** How `found` fits `expected`; undefined when nothing makes it fit. */
 export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | undefined {
-  if (isAssignable(found, expected)) {
+  return matchConversion(found, expected, {
+    ...fitting,
+    exact: (target, source) => isAssignable(source, target),
+  });
+}
+
+/**
+ * How `found` fits `expected` under `rules` (§2, §3.10, §3.14, §3.15): exact, a plain function
+ * made async, a one-element tuple and its element, a conversion into `any`, then optional wraps.
+ */
+export function matchConversion(
+  found: Type,
+  expected: Type,
+  rules: ConversionRules,
+): Fit | undefined {
+  if (found.kind === 'error' || isPrimitive(found, 'never') || rules.exact(expected, found)) {
     return exactFit;
   }
-  if (fitsAsync(found, expected)) {
+  if (fitsAsync(found, expected, rules.exact)) {
     return { conversion: { kind: 'async' }, wraps: 0 };
   }
-  if (expected.kind === 'any') {
-    return fitting.meetsAny(found, expected)
-      ? { conversion: { kind: 'any', to: expected }, wraps: 0 }
-      : undefined;
-  }
-  const single = singleConversion(found, expected);
+  const single = singleConversion(found, expected, rules.exact);
   if (single !== undefined) {
     return { conversion: { kind: single }, wraps: 0 };
   }
-  const inner = optionalInner(expected, fitting.optional);
-  if (inner === undefined || isPrimitive(found, 'never')) {
+  if (expected.kind === 'any') {
+    return rules.meetsAny(found, expected)
+      ? { conversion: { kind: 'any', to: expected }, wraps: 0 }
+      : undefined;
+  }
+  const inner = optionalInner(expected, rules.optional);
+  if (inner === undefined) {
     return undefined;
   }
-  const fit = fitOf(found, inner, fitting);
+  const fit = matchConversion(found, inner, rules);
   return fit === undefined ? undefined : { ...fit, wraps: fit.wraps + 1 };
 }
 
@@ -85,13 +97,17 @@ export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | unde
  * How `found` converts to `expected` between a one-element tuple and its element (§3.15): made one
  * where one of it is expected, or taken out where its element is; undefined when neither.
  */
-function singleConversion(found: Type, expected: Type): 'tupled' | 'untupled' | undefined {
+function singleConversion(
+  found: Type,
+  expected: Type,
+  exact: (expected: Type, found: Type) => boolean,
+): 'tupled' | 'untupled' | undefined {
   const element = singleElement(expected);
-  if (element !== undefined && isAssignable(found, element)) {
+  if (element !== undefined && exact(element, found)) {
     return 'tupled';
   }
   const inside = singleElement(found);
-  return inside !== undefined && isAssignable(inside, expected) ? 'untupled' : undefined;
+  return inside !== undefined && exact(expected, inside) ? 'untupled' : undefined;
 }
 
 /** The element of a one-element tuple type; undefined for any other type. */
@@ -109,14 +125,17 @@ export function reshapes(fit: Fit): boolean {
  * Whether a plain function of type `source` fits where `target`, an async function of the same
  * parameters and result, is expected: calling it gives a future already resolved (§3.14).
  */
-function fitsAsync(source: Type, target: Type): boolean {
+function fitsAsync(
+  source: Type,
+  target: Type,
+  exact: (expected: Type, found: Type) => boolean,
+): boolean {
   return (
     source.kind === 'function' &&
     target.kind === 'function' &&
     !source.isAsync &&
     target.isAsync &&
-    (source.isSendable || !target.isSendable) &&
-    sameShape(target, source, sameType)
+    exact(target, { ...source, isAsync: true })
   );
 }
 
