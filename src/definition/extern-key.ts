@@ -19,6 +19,7 @@
  */
 
 import type { PrimitiveName } from '../language/primitives.ts';
+import { qualifiedName } from '../language/well-known.ts';
 
 /** A declared type, as a key spells it. */
 export type KeyType =
@@ -48,11 +49,10 @@ export interface ExternSignature {
   readonly parameters: readonly KeyParameter[];
 }
 
-/** A parameter as a key spells it: its type, and whether it takes a reference or is the rest. */
+/** A parameter as a key spells it: its type, and how it is passed. */
 interface KeyParameter {
   readonly type: KeyType;
-  readonly reference: boolean;
-  readonly rest?: boolean;
+  readonly passing: 'value' | 'reference' | 'rest';
 }
 
 /** A primitive type, as a key spells it. */
@@ -129,12 +129,12 @@ export function nativeKey(
 
 function keyParameterOf(parameter: NativeParameter): KeyParameter {
   if (typeof parameter !== 'string' && 'reference' in parameter) {
-    return { type: parameter.reference, reference: true };
+    return { type: parameter.reference, passing: 'reference' };
   }
   if (typeof parameter !== 'string' && 'rest' in parameter) {
-    return { type: parameter.rest, reference: false, rest: true };
+    return { type: parameter.rest, passing: 'rest' };
   }
-  return { type: typeOf(parameter), reference: false };
+  return { type: typeOf(parameter), passing: 'value' };
 }
 
 function typeOf(parameter: WrittenType): KeyType {
@@ -145,15 +145,23 @@ export function externKey(signature: ExternSignature): string {
   const parameters = signature.parameters.map(
     (parameter) => `${markerOf(parameter)}${keyTypeText(parameter.type)}`,
   );
-  return `${signature.module}.${signature.name}(${parameters.join(', ')})`;
+  return `${qualifiedName(signature)}(${parameters.join(', ')})`;
 }
 
 /** What a key writes before a parameter's type: `&` for a reference, `...` for the rest. */
 function markerOf(parameter: KeyParameter): string {
-  if (parameter.reference) {
-    return '&';
+  switch (parameter.passing) {
+    case 'reference':
+      return '&';
+    case 'rest':
+      return '...';
+    case 'value':
+      return '';
+    default: {
+      const unhandled: never = parameter.passing;
+      return unhandled;
+    }
   }
-  return parameter.rest === true ? '...' : '';
 }
 
 /**

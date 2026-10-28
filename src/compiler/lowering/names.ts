@@ -19,6 +19,7 @@ import {
   keyTypeText,
 } from '../../definition/extern-key.ts';
 import { staticName } from '../../language/static-names.ts';
+import { qualifiedName } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
@@ -56,7 +57,10 @@ type NamedDeclaration =
  * a top-level constant's is its first name's.
  */
 export function qualifiedNameOf(checker: Checker, declaration: NamedDeclaration): string {
-  return `${moduleName(checker, checker.moduleOf(declaration))}.${nameOf(declaration)}`;
+  return qualifiedName({
+    module: moduleName(checker, checker.moduleOf(declaration)),
+    name: nameOf(declaration),
+  });
 }
 
 function nameOf(declaration: NamedDeclaration): string {
@@ -90,13 +94,19 @@ export function keyOf(
   const signature: ExternSignature = {
     module: moduleName(checker, checker.moduleOf(declaration)),
     name: nameOf(declaration),
-    parameters: parameters.map(({ type, reference, node }) => ({
-      type: keyType(checker, type),
-      reference,
-      rest: node?.isRest === true,
+    parameters: parameters.map((parameter) => ({
+      type: keyType(checker, parameter.type),
+      passing: passingOf(parameter),
     })),
   };
   return externKey(signature);
+}
+
+function passingOf(parameter: KeyedParameter): 'value' | 'reference' | 'rest' {
+  if (parameter.reference) {
+    return 'reference';
+  }
+  return parameter.node?.isRest === true ? 'rest' : 'value';
 }
 
 /** `type` spelled as keys spell it: module-qualified, without sugar (`prelude.Optional<int>`). */
