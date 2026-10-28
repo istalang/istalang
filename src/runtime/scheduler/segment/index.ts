@@ -267,7 +267,7 @@ class SegmentRunner implements Machine {
   }
 
   currentCall(): Value {
-    return this.#instance.weak.reference(this.#runStack.current().id);
+    return this.#instance.weak.reference({ kind: 'handle', object: this.#runStack.current().id });
   }
 
   /** Runs drivers until one awaits, the root returns, or nothing is ready. */

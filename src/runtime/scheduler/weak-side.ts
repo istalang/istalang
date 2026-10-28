@@ -30,36 +30,34 @@ export class WeakSide {
     this.#futures = futures;
   }
 
-  /** A handle to the one weak reference to object `target`, made on first use. */
-  reference(target: number): Value {
+  /** A handle to the one weak reference to `referent`, made on first use. */
+  reference(referent: Value): Value {
+    const target = handleObject(referent);
     const weak =
       this.#referenceTo(target) ?? this.#heap.add((id) => ({ kind: 'weakRef', id, target }));
     return { kind: 'handle', object: weak.id };
   }
 
-  /** The object `weak` refers to, until it is disposed. */
-  target(weak: Value): number | undefined {
-    return this.#heap.of(handleObject(weak), 'weakRef').target;
+  /** A handle to what `weak` refers to, until it is disposed. */
+  target(weak: Value): Value | undefined {
+    const { target } = this.#heap.of(handleObject(weak), 'weakRef');
+    return target === undefined ? undefined : { kind: 'handle', object: target };
   }
 
   /**
-   * A watch on `weak`: a future that resolves when its referent is disposed, and never if it has
-   * none left. `worker.disposing()` is one on the call's weak reference.
+   * A watch on `weak` (`w.disposed()`, `worker.disposing()`): a future that resolves when its
+   * referent is disposed, already resolved once it was, and never once its call returned.
    */
   watch(weak: Value): Value {
-    return this.#futures.createHandle({ kind: 'disposed', weakRef: handleObject(weak) });
-  }
-
-  /** `w.disposed()`: a watch on `weak`, already resolved once its referent is disposed. */
-  whenDisposed(weak: Value): Value {
-    return this.target(weak) === undefined
+    const reference = this.#heap.of(handleObject(weak), 'weakRef');
+    return reference.gone === 'disposed'
       ? this.#futures.createHandle({ kind: 'resolved', value: null })
-      : this.watch(weak);
+      : this.#futures.createHandle({ kind: 'disposed', weakRef: reference.id });
   }
 
   /** Object `id` was disposed and is gone: its weak reference lets go of it, its watches resolve. */
   disposed(id: number): void {
-    this.#resolveWatches(id);
+    this.#resolveWatches(id, 'disposed');
   }
 
   /**
@@ -67,31 +65,31 @@ export class WeakSide {
    * on one of them, it is to resume on that one, whatever else has resolved (§7); that watch.
    */
   disposing(execution: LiveExecution): number | undefined {
-    const watches = this.#resolveWatches(execution.id);
+    const watches = this.#resolveWatches(execution.id, 'returned');
     return waitedOn(execution).find((future) => watches.includes(future));
   }
 
   /** The call `execution` returned, so it can no longer be disposed. */
   onReturned(execution: number): void {
-    this.#letGo(execution);
+    this.#letGo(execution, 'returned');
   }
 
   /** Lets go of `target` and resolves the watches pending on its weak reference; those watches. */
-  #resolveWatches(target: number): readonly number[] {
-    const watches = this.#letGo(target);
+  #resolveWatches(target: number, gone: 'disposed' | 'returned'): readonly number[] {
+    const watches = this.#letGo(target, gone);
     for (const watch of watches) {
       this.#futures.resolve(watch, null);
     }
     return watches;
   }
 
-  /** Clears the weak reference to `target`, if it has one; the watches pending on it. */
-  #letGo(target: number): readonly number[] {
+  /** Clears the weak reference to `target`, if it has one, marking why; the watches pending on it. */
+  #letGo(target: number, gone: 'disposed' | 'returned'): readonly number[] {
     const weak = this.#referenceTo(target);
     if (weak === undefined) {
       return [];
     }
-    this.#heap.replace({ kind: 'weakRef', id: weak.id });
+    this.#heap.replace({ kind: 'weakRef', id: weak.id, gone });
     return this.#heap.find('watches', weak.id).map(({ id }) => id);
   }
 

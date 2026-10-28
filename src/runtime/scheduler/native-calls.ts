@@ -138,13 +138,10 @@ function nativeSlotsOf(slots: Slots): NativeSlots {
 /** The instance's weak references as natives reach them: through handles (§7). */
 function nativeWeakSideOf(weak: WeakSide): NativeWeakSide {
   return {
-    reference: (referent) => weak.reference(handleObject(referent)),
-    target: (reference) => {
-      const target = weak.target(reference);
-      return target === undefined ? undefined : { kind: 'handle', object: target };
-    },
+    reference: (referent) => weak.reference(referent),
+    target: (reference) => weak.target(reference),
     watch: (reference) => weak.watch(reference),
-    whenDisposed: (reference) => weak.whenDisposed(reference),
+    whenDisposed: (reference) => weak.watch(reference),
   };
 }
 

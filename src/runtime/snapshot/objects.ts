@@ -122,10 +122,13 @@ export const heapObject = z.discriminatedUnion('kind', [
   defineObject('slot', { value: value.optional(), waiting: z.array(objectId) }),
   defineObject('future', { state: futureState }),
   /**
-   * A weak reference, the one to its referent (spec §7): `target` is absent once the referent is
-   * disposed or, for a call's own (`currentCall`), once the call has returned.
+   * A weak reference, the one to its referent (spec §7): `target` is replaced by `gone` once the
+   * referent is disposed or, for a call's own (`currentCall`), once the call has returned.
    */
-  defineObject('weakRef', { target: objectId.optional() }),
+  defineObject('weakRef', {
+    target: objectId.optional(),
+    gone: z.enum(['disposed', 'returned']).optional(),
+  }),
   /** A `defer` guard: disposing it calls `callback` (spec §7). */
   defineObject('guard', { callback: value }),
   /** A host value of an extern type that declares a `dispose` (docs/arch/definition.md). */

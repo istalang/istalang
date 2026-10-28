@@ -15,6 +15,8 @@ import { WeakSide } from './weak-side.ts';
 
 const referents = 3;
 
+const handle = (object: number): Value => ({ kind: 'handle', object });
+
 type Event =
   | { readonly kind: 'watch'; readonly referent: number }
   | { readonly kind: 'dispose'; readonly referent: number }
@@ -45,7 +47,7 @@ class Scene {
       this.heap.add((id) => ({ kind: 'slot', id, waiting: [] })),
     ).map(({ id }) => id),
   ];
-  readonly references = this.ids.map((id) => this.weak.reference(id));
+  readonly references = this.ids.map((id) => this.weak.reference(handle(id)));
   readonly watches: {
     readonly referent: number;
     readonly future: Value;
@@ -63,7 +65,7 @@ class Scene {
 
   #watch(referent: number): void {
     const reference = this.references[referent] ?? null;
-    const future = referent === 0 ? this.weak.watch(reference) : this.weak.whenDisposed(reference);
+    const future = this.weak.watch(reference);
     this.watches.push({ referent, future, late: this.ended.has(referent) });
   }
 
@@ -96,8 +98,8 @@ describe('the weak side', () => {
     const [first, second] = [0, 1].map(
       () => heap.add((id) => ({ kind: 'slot', id, waiting: [] })).id,
     );
-    expect(weak.reference(first ?? -1)).toEqual(weak.reference(first ?? -1));
-    expect(weak.reference(first ?? -1)).not.toEqual(weak.reference(second ?? -1));
+    expect(weak.reference(handle(first ?? -1))).toEqual(weak.reference(handle(first ?? -1)));
+    expect(weak.reference(handle(first ?? -1))).not.toEqual(weak.reference(handle(second ?? -1)));
   });
 
   it('lets go of a referent once it is disposed or its call returned, and only then', () => {
