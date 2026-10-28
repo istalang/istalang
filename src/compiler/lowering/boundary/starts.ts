@@ -10,7 +10,7 @@
  * - A start entry is the function's own body taking each argument as `Json` and decoding it, so
  *   JSON that doesn't fit fails the host's start and nothing runs. The instance is therefore one
  *   execution of the function, as any other is, and its traces and waits are the function's own.
- *   What it returns is encoded as every instance's outcome is, by the runtime once it returns.
+ *   What it returns is encoded as every instance's outcome is, by the runtime as it returns.
  */
 
 import type { CodeFunction } from '../../../definition/functions.ts';
@@ -31,7 +31,7 @@ import { instanceLowering, nestedLowering, type StartEdges } from '../function-l
 import { rootInstance } from '../instances.ts';
 import { keyOf } from '../names.ts';
 import type { DefinitionTables, StartTarget } from '../tables.ts';
-import { outcomeEncoderIndex } from './codec-calls.ts';
+import { codecCall } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
 
 /** A function a host may start: what it is, the key it goes by, and its signature. */
@@ -135,10 +135,9 @@ export function listStart(
   lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
   startable: Startable,
 ): FunctionId {
-  const encoder =
-    outcomeEncoderIndex(lowering, startable.outcome) ??
-    unreachable('A startable outcome has no codec writing it.');
-  return lowering.tables.startIndex(startable.target, startable.key, encoder);
+  const { checker, tables } = lowering;
+  const encoder = tables.callIndex(codecCall(checker, undefined, startable.outcome, 'write'));
+  return tables.startIndex(startable.target, startable.key, encoder);
 }
 
 /** The start entry of `startable`: its own body, taking its arguments as JSON (function-lowering/). */

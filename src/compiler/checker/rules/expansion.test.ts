@@ -80,6 +80,22 @@ describe('endless instantiation', () => {
     );
   });
 
+  it("is reported where a spawn's outcome codec leads back to an expanding instance", () => {
+    const main = [
+      "import Json from 'json'",
+      'struct Box<T> { value: T }',
+      'fn leaf<T is Sendable>(x: T) -> Box<T>: Box{value: x}',
+      'fn toJson<T is Sendable>(self: Box<T>) -> Json:',
+      '  drop spawn leaf(self)',
+      '  Json.Null',
+      'async fn main(): { drop spawn leaf(1); 0 }',
+    ].join('\n');
+    const { diagnostics } = diagnosedAt(stdProgramOf({ main }), 'main');
+    expect(diagnostics.map(({ code }) => code)).toEqual([
+      checkerDiagnostics.expandingInstantiation.code,
+    ]);
+  });
+
   it("checks no body a module's own generic functions don't reach", () => {
     const program = stdProgramOf({
       main: "import helper from 'lib'\nfn useIt() -> int: helper()",

@@ -35,7 +35,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - test or branch on an enum variant or read variant field 0 → `variantTestOf`, `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`)
 - convert a value into an `any` variant → `convertedIntoAny` (`src/compiler/lowering/trait-objects/trait-objects.ts`)
 - wrap a plain function value as an `async` closure → `madeAsync` (`src/compiler/lowering/async-fits.ts`)
-- the entry encoding an instance's outcome of a type for its host, or call a type's codec → `outcomeEncoderIndex`, `codecCall` (`src/compiler/lowering/boundary/codec-calls.ts`)
+- call the codec writing or reading a type, closed within an instance → `codecCall` (`src/compiler/lowering/boundary/codec-calls.ts`)
 - apply a checker-recorded `Fit` (conversion plus optional wraps) to a register → `fittedValue` (`src/compiler/lowering/function-lowering/fits.ts`)
 - emit a constant or convert a `ConstantForm` / `CheckedAnnotation` → `emitConstant`, `constantValue`, `annotationValues` (`src/compiler/lowering/constants.ts`)
 - release block variables or statement temporaries → `endScope`, `headerTemporaries`, `lowerGuarded`, `release` (`src/compiler/lowering/statements/scopes.ts`)

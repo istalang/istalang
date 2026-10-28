@@ -10,6 +10,9 @@
  *   instantiation, and a call through `?.` may not happen at all, so none of them can be.
  * - Every argument, a method's receiver included, is copied into the new instance, so it must be
  *   sendable (§3.1).
+ * - When a codec writes the new instance's outcome, the spawn records it as an implicit call, so the
+ *   host can read that outcome as JSON (§9). A generic body records it as it checks everything,
+ *   once, against its type parameters' constraints (§3.5), and its calls count in its expansion.
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
@@ -45,7 +48,12 @@ export function checkSpawn(context: BodyContext, node: Spawn): Type {
       context.report(checkerDiagnostics.unsendableArgument(argument.span, typeText(type)));
     }
   }
-  return wellKnownOf(context.checker, wellKnown.instance, [outcomeOf(context, call)]);
+  const outcome = outcomeOf(context, call);
+  const encoder = context.checker.json.codecOf(outcome, 'write');
+  if (encoder !== undefined) {
+    context.implicit.record(node, 'encodeOutcome', encoder);
+  }
+  return wellKnownOf(context.checker, wellKnown.instance, [outcome]);
 }
 
 /** What the instance `call` starts ends with: what its function returns, an async one's awaited. */

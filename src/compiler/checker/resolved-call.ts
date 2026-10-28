@@ -163,4 +163,9 @@ export type ImplicitRole =
   /** A template's value written as text with its `toString` (§2). */
   | 'interpolate'
   /** A template's texts and values joined into its string (§2). */
-  | 'join';
+  | 'join'
+  /**
+   * The codec writing what a `spawn`'s new instance gives, which encodes its outcome for the host
+   * (§9); recorded only when a codec writes it.
+   */
+  | 'encodeOutcome';
