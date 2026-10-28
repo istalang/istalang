@@ -12,7 +12,7 @@ export function typeChildren(type: Type): readonly Type[] {
     case 'nominal':
       return type.arguments;
     case 'anonymous':
-      return [...(type.arguments ?? []), ...type.fields.map((field) => field.type)];
+      return type.fields.map((field) => field.type);
     case 'tuple':
       return type.elements;
     case 'function':
@@ -70,11 +70,7 @@ export function mapChildren(type: Type, map: (child: Type) => Type): Type {
     case 'nominal':
       return { ...type, arguments: type.arguments.map(map) };
     case 'anonymous':
-      return {
-        ...type,
-        ...(type.arguments === undefined ? {} : { arguments: type.arguments.map(map) }),
-        fields: type.fields.map((field) => ({ ...field, type: map(field.type) })),
-      };
+      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':

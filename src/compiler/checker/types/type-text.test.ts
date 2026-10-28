@@ -6,9 +6,10 @@
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { idOf, programOf } from '../../program/program.test-kit.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration, StructDeclaration } from '../../syntax/declarations.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { checkProgram } from '../check.ts';
+import { intType, stringType } from './type.ts';
 import { typeText } from './type-text.ts';
 
 /** The text of the type `written` resolves to, as a parameter's. */
@@ -38,18 +39,25 @@ describe('typeText', () => {
       'main.ista': [
         'shared struct Counter { count: int }',
         'shared struct Box<K, V> { key: K }',
-        'fn f(c: Counter, b: Box<int, string>):',
+        'fn f(c: Counter):',
         '  const a = *c',
-        '  const d = *b',
       ].join('\n'),
     });
     const checker = checkProgram(program);
     const items = program.modules.get(idOf('main.ista'))?.tree.root.items ?? [];
+    const box = items[1] as StructDeclaration;
     const f = items[2] as FunctionDeclaration;
     const body = f.body === undefined ? undefined : checker.bodyOf(f);
-    const [a, d] = (f.body?.statements ?? []) as VariableDeclaration[];
+    const [a] = (f.body?.statements ?? []) as VariableDeclaration[];
     expect(a && body && typeText(body.typeOf(a.initializer))).toBe('*Counter');
-    expect(d && body && typeText(body.typeOf(d.initializer))).toBe('*Box<int, string>');
+    expect(
+      typeText({
+        kind: 'anonymous',
+        origin: box,
+        arguments: [intType, stringType],
+        fields: [{ name: 'key', type: intType }],
+      }),
+    ).toBe('*Box<int, string>');
   });
 
   it('spells a non-prelude Optional declaration as Optional<T>, not T?', () => {

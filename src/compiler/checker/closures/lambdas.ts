@@ -27,7 +27,6 @@
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
-import { inferredLambdaOf } from '../calls/lambda-arguments.ts';
 import { isChangeable } from '../calls/places.ts';
 import type { NestedFunction, SignatureParameter } from '../check.ts';
 import type { BodyContext } from '../context.ts';
@@ -72,9 +71,9 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | und
 }
 
 export function checkLambda(context: BodyContext, node: Lambda, expected: Type | undefined): Type {
-  const inferred = inferredLambdaOf(node);
-  if (inferred !== undefined) {
-    return inferred;
+  const checked = context.functions.checkedOf(node);
+  if (checked !== undefined) {
+    return checked.type;
   }
   const shape = expectedFunction(context, expected);
   return checkLambdaAs(context, node, shape, shape?.result);

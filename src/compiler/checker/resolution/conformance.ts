@@ -150,35 +150,42 @@ export function witnessesFor(
   return isFailure(witnesses) ? undefined : witnesses;
 }
 
-/** What searching for a single required function's witness found for a caller that distinguishes undeclared from failed. */
-export type SingleWitness =
-  | { readonly kind: 'call'; readonly call: ResolvedCall }
-  | { readonly kind: 'none' }
+/** What searching for a constraint's witnesses found, distinguishing an undeclared function from a failure. */
+export type ConformanceOutcome =
+  | { readonly kind: 'met'; readonly witnesses: readonly ResolvedCall[] }
+  | { readonly kind: 'undeclared' }
   | { readonly kind: 'failed' };
 
 /**
- * The witness of the one function `constraint` requires of `type`: `none` without reporting when
- * nothing is declared for it, or `failed` after reporting at `site` why a declared one doesn't
+ * The witnesses of `constraint` for `type`: `undeclared` without reporting when a required
+ * function has no declared candidate, or `failed` after reporting at `site` why `type` doesn't
  * meet `constraint`.
  */
-export function singleWitnessFor(site: UseSite, type: Type, constraint: Constraint): SingleWitness {
+export function conformWitnesses(
+  site: UseSite,
+  type: Type,
+  constraint: Constraint,
+): ConformanceOutcome {
   let undeclared = false;
-  const witnesses = functionWitnesses({ site, type, constraint }, 0, () => {
+  const witnesses = conform({ site, type, constraint }, 0, () => {
     undeclared = true;
     return 'failed';
   });
-  const [call] = isFailure(witnesses) ? [] : witnesses;
-  if (call !== undefined) {
-    return { kind: 'call', call };
+  if (!isFailure(witnesses)) {
+    return { kind: 'met', witnesses };
   }
-  return undeclared ? { kind: 'none' } : { kind: 'failed' };
+  return undeclared ? { kind: 'undeclared' } : { kind: 'failed' };
 }
 
 /**
  * The witness of every function `constraint` requires of `type`. A type already in error was
  * reported, so it fails silently.
  */
-function conform(meeting: Meeting, depth: number): readonly ResolvedCall[] | Failure {
+function conform(
+  meeting: Meeting,
+  depth: number,
+  unmet?: (declaration: FunctionDeclaration) => ResolvedCall | Failure,
+): readonly ResolvedCall[] | Failure {
   const { site, type, constraint } = meeting;
   const { checker } = site;
   if (type.kind === 'error') {
@@ -197,7 +204,7 @@ function conform(meeting: Meeting, depth: number): readonly ResolvedCall[] | Fai
       return lacks(meeting, `a field '${field.name.text}: ${typeText(fieldType)}'`);
     }
   }
-  return functionWitnesses(meeting, depth);
+  return functionWitnesses(meeting, depth, unmet);
 }
 
 /** A constraint being met by a type at a use site, for reporting why it isn't. */

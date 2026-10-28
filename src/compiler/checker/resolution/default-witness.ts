@@ -10,19 +10,30 @@ import type { ResolvedCall } from '../resolved-call.ts';
 import { wellKnownConstraint } from '../traits/constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import type { UseSite } from '../use-site.ts';
-import { type SingleWitness, singleWitnessFor, witnessesFor } from './conformance.ts';
+import { conformWitnesses, witnessesFor } from './conformance.ts';
 
 /** The call giving `type`'s default, Default's witness; undefined after `site` reports why not. */
 export function defaultWitness(site: UseSite, type: Type): ResolvedCall | undefined {
   return witnessesFor(site, type, defaultConstraint(site.checker))?.[0];
 }
 
+/** What searching for `type`'s `Default` witness found. */
+export type DefaultOutcome =
+  | { readonly kind: 'call'; readonly call: ResolvedCall }
+  | { readonly kind: 'none' }
+  | { readonly kind: 'failed' };
+
 /**
  * `type`'s `default()` witness: `none` when none is declared, or `failed` after `site` reported
  * why the declared one doesn't meet `Default`.
  */
-export function resolveDefault(site: UseSite, type: Type): SingleWitness {
-  return singleWitnessFor(site, type, defaultConstraint(site.checker));
+export function resolveDefault(site: UseSite, type: Type): DefaultOutcome {
+  const outcome = conformWitnesses(site, type, defaultConstraint(site.checker));
+  if (outcome.kind === 'undeclared') {
+    return { kind: 'none' };
+  }
+  const [call] = outcome.kind === 'met' ? outcome.witnesses : [];
+  return call === undefined ? { kind: 'failed' } : { kind: 'call', call };
 }
 
 function defaultConstraint(checker: CheckerContext): Constraint {

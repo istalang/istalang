@@ -35,49 +35,25 @@ interface Argument {
   readonly type: Type | undefined;
 }
 
-let activeInferredLambdas: ReadonlyMap<Lambda, Type> | undefined;
-
-/** The type `checkDecidedLambdas` already inferred for `node` in the current call; else undefined. */
-export function inferredLambdaOf(node: Lambda): Type | undefined {
-  return activeInferredLambdas?.get(node);
-}
-
-/** Runs `run` with `lambdas` visible to `checkLambda`, so decided lambdas aren't checked twice. */
-export function withInferredLambdas(lambdas: ReadonlyMap<Lambda, Type>, run: () => void): void {
-  const previous = activeInferredLambdas;
-  activeInferredLambdas = lambdas;
-  try {
-    run();
-  } finally {
-    activeInferredLambdas = previous;
-  }
-}
-
 /**
  * Checks the lambdas among `written` that `application` decides, binding what their results give;
- * their inferred types, by lambda node.
+ * each checked lambda is recorded on `context.functions`, so `checkLambda` reuses its type when
+ * `fitArguments` checks the enclosing argument.
  */
 export function checkDecidedLambdas(
   context: BodyContext,
   written: readonly Argument[],
   application: Application,
-): ReadonlyMap<Lambda, Type> {
+): void {
   const { signature, inference, binding } = application;
   const slots = argumentSlotsOf(signature.parameters, binding);
-  const inferred = new Map<Lambda, Type>();
   written.forEach(({ node, type }, index) => {
     const slot = slots.get(index);
     if (type !== undefined || slot === undefined) {
       return;
     }
-    inferNestedLambdas(context, node, slot.type, { inference, inferred });
+    inferNestedLambdas(context, node, slot.type, inference);
   });
-  return inferred;
-}
-
-interface LambdaInference {
-  readonly inference: Inference;
-  readonly inferred: Map<Lambda, Type>;
 }
 
 /** Checks `node`, a lambda, against `expected` when its parameters are known, binding its result. */
@@ -85,7 +61,7 @@ function inferLambdaAt(
   context: BodyContext,
   node: Lambda,
   expected: Type,
-  { inference, inferred }: LambdaInference,
+  inference: Inference,
 ): void {
   const partial = withoutOptionals(
     substitute(expected, inference.substitution()),
@@ -102,7 +78,6 @@ function inferLambdaAt(
     ? context.inferLambda(node, partial)
     : context.expression(node, partial);
   inference.match(partial, checked);
-  inferred.set(node, checked);
 }
 
 /** Walks `node` and `expected` together, inferring any decided lambdas inside `node`. */
@@ -110,33 +85,33 @@ function inferNestedLambdas(
   context: BodyContext,
   node: Expression,
   expected: Type,
-  state: LambdaInference,
+  inference: Inference,
 ): void {
   const bare = unparenthesized(node);
   const unwrapped = withoutOptionals(
-    substitute(expected, state.inference.substitution()),
+    substitute(expected, inference.substitution()),
     context.checker.optionalEntity,
   );
   switch (bare.kind) {
     case 'Lambda':
-      inferLambdaAt(context, bare, unwrapped, state);
+      inferLambdaAt(context, bare, unwrapped, inference);
       return;
     case 'BlockExpression':
     case 'If':
     case 'Match':
     case 'Select':
       for (const body of branchBodiesOf(bare)) {
-        inferBlockLambdas(context, body, expected, state);
+        inferBlockLambdas(context, body, expected, inference);
       }
       return;
     case 'Tuple':
-      inferTupleLambdas(context, bare.elements, unwrapped, state);
+      inferTupleLambdas(context, bare.elements, unwrapped, inference);
       return;
     case 'ArrayLiteral':
-      inferArrayLambdas(context, bare.elements, unwrapped, state);
+      inferArrayLambdas(context, bare.elements, unwrapped, inference);
       return;
     case 'MapLiteral':
-      inferMapLambdas(context, bare.entries, unwrapped, state);
+      inferMapLambdas(context, bare.entries, unwrapped, inference);
       return;
     default:
       return;
@@ -170,7 +145,7 @@ function inferTupleLambdas(
   context: BodyContext,
   elements: readonly Expression[],
   unwrapped: Type,
-  state: LambdaInference,
+  inference: Inference,
 ): void {
   if (unwrapped.kind !== 'tuple' || unwrapped.elements.length !== elements.length) {
     return;
@@ -178,7 +153,7 @@ function inferTupleLambdas(
   elements.forEach((element, index) => {
     const guide = unwrapped.elements[index];
     if (guide !== undefined) {
-      inferNestedLambdas(context, element, guide, state);
+      inferNestedLambdas(context, element, guide, inference);
     }
   });
 }
@@ -187,7 +162,7 @@ function inferArrayLambdas(
   context: BodyContext,
   elements: Extract<Expression, { readonly kind: 'ArrayLiteral' }>['elements'],
   unwrapped: Type,
-  state: LambdaInference,
+  inference: Inference,
 ): void {
   const item = arrayElement(context.checker, unwrapped);
   if (item === undefined) {
@@ -195,7 +170,7 @@ function inferArrayLambdas(
   }
   for (const element of elements) {
     if (element.kind !== 'Spread') {
-      inferNestedLambdas(context, element, item, state);
+      inferNestedLambdas(context, element, item, inference);
     }
   }
 }
@@ -204,16 +179,16 @@ function inferMapLambdas(
   context: BodyContext,
   entries: Extract<Expression, { readonly kind: 'MapLiteral' }>['entries'],
   unwrapped: Type,
-  state: LambdaInference,
+  inference: Inference,
 ): void {
   const [keyType, valueType] = wellKnownArguments(context.checker, wellKnown.map, unwrapped) ?? [];
   for (const entry of entries) {
     if (entry.kind === 'MapEntry') {
       if (keyType !== undefined) {
-        inferNestedLambdas(context, entry.key, keyType, state);
+        inferNestedLambdas(context, entry.key, keyType, inference);
       }
       if (valueType !== undefined) {
-        inferNestedLambdas(context, entry.value, valueType, state);
+        inferNestedLambdas(context, entry.value, valueType, inference);
       }
     }
   }
@@ -223,11 +198,11 @@ function inferBlockLambdas(
   context: BodyContext,
   block: Block,
   expected: Type,
-  state: LambdaInference,
+  inference: Inference,
 ): void {
   const tail = tailExpressionOf(block);
   if (tail !== undefined && block.statements.length === 1) {
-    inferNestedLambdas(context, tail, expected, state);
+    inferNestedLambdas(context, tail, expected, inference);
   }
 }
 

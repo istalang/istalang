@@ -12,7 +12,6 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { optionalInner } from '../types/fit.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { type NominalType, nominalType, primitiveType, type Type } from '../types/type.ts';
 
@@ -64,9 +63,7 @@ export function chooseVariant(
     return { enum: naming.enum, variant: naming.variant };
   }
   const candidates: readonly VariantEntity[] = context.checker.bindings.candidatesOf(naming);
-  const chosen = candidates.find(
-    (candidate) => sameEnum(context.checker, expected, candidate.enum) !== undefined,
-  );
+  const chosen = candidates.find((candidate) => sameEnum(expected, candidate.enum) !== undefined);
   if (chosen === undefined) {
     context.report(checkerDiagnostics.bareVariant(at.span, at.name));
     return undefined;
@@ -74,25 +71,14 @@ export function chooseVariant(
   return { enum: chosen.enum, variant: chosen.variant };
 }
 
-/**
- * The nominal type of `declaration` that `expected` asks for, through any optionals wrapping it
- * (§2); `Optional<T>` itself when `declaration` is `Optional`.
- */
+/** `expected`, when it is a type of `declaration`. */
 export function sameEnum(
-  checker: Pick<CheckerContext, 'optionalEntity'>,
   expected: Type | undefined,
   declaration: EnumDeclaration,
 ): NominalType | undefined {
-  for (
-    let current = expected;
-    current !== undefined;
-    current = optionalInner(current, checker.optionalEntity)
-  ) {
-    if (current.kind === 'nominal' && current.entity.declaration === declaration) {
-      return current;
-    }
-  }
-  return undefined;
+  return expected?.kind === 'nominal' && expected.entity.declaration === declaration
+    ? expected
+    : undefined;
 }
 
 /** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */

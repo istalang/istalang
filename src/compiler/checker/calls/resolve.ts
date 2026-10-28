@@ -41,7 +41,7 @@ import { substitute } from '../types/substitution.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
-import { checkDecidedLambdas, withInferredLambdas } from './lambda-arguments.ts';
+import { checkDecidedLambdas } from './lambda-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from './places.ts';
 
 /**
@@ -126,7 +126,7 @@ function typesText(written: readonly WrittenArgument[]): string {
 
 function complete(context: BodyContext, request: CallRequest, application: Application): Type {
   const { site } = request;
-  const lambdas = checkDecidedLambdas(context, request.arguments, application);
+  checkDecidedLambdas(context, request.arguments, application);
   const instantiation = instantiate(
     useSite(context.checker, context.module, site.span),
     application,
@@ -137,16 +137,14 @@ function complete(context: BodyContext, request: CallRequest, application: Appli
   }
   const { signature } = application;
   const slots = argumentSlotsOf(signature.parameters, application.binding);
-  withInferredLambdas(lambdas, () => {
-    fitArguments(
-      context,
-      request.arguments,
-      request.arguments.map((_, index) => {
-        const slot = slots.get(index);
-        return slot === undefined ? undefined : substitute(slot.type, instantiation.substitution);
-      }),
-    );
-  });
+  fitArguments(
+    context,
+    request.arguments,
+    request.arguments.map((_, index) => {
+      const slot = slots.get(index);
+      return slot === undefined ? undefined : substitute(slot.type, instantiation.substitution);
+    }),
+  );
   const { receiver } = request;
   recordChosen(context, { site, application, instantiation, receiver });
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
@@ -333,39 +331,25 @@ function explainArguments(
   misfits: Extract<Inapplicability, { kind: 'arguments' }>['misfits'],
 ): void {
   const { site, name } = request;
-  const reported = didReport(context, () => {
-    for (const { index, expected } of misfits) {
-      const argument = request.arguments[index];
-      if (argument?.type !== undefined) {
-        const { node, type } = argument;
-        context.report(
-          checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(type)),
-        );
-      } else if (argument !== undefined) {
-        context.expect(argument.node, expected);
+  let reported = false;
+  for (const { index, expected } of misfits) {
+    const argument = request.arguments[index];
+    if (argument?.type !== undefined) {
+      const { node, type } = argument;
+      reported = true;
+      context.report(
+        checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(type)),
+      );
+    } else if (argument !== undefined) {
+      const checked = context.expect(argument.node, expected);
+      if (checked.kind === 'error' || context.checker.fitOf(checked, expected) === undefined) {
+        reported = true;
       }
     }
-  });
+  }
   if (!reported) {
     context.report(
       checkerDiagnostics.noMatchingOverload(site.span, name, typesText(request.arguments)),
     );
   }
-}
-
-/** Runs `check` and returns whether `context.report` was called while it ran. */
-function didReport(context: BodyContext, check: () => void): boolean {
-  let reported = false;
-  const original = context.report.bind(context);
-  const tracked = context as { report: BodyContext['report'] };
-  tracked.report = (diagnostic) => {
-    reported = true;
-    original(diagnostic);
-  };
-  try {
-    check();
-  } finally {
-    Reflect.deleteProperty(tracked, 'report');
-  }
-  return reported;
 }
