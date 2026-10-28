@@ -31,7 +31,7 @@ import type {
   PatternPart,
   StructPattern,
 } from '../../syntax/patterns.ts';
-import { targetNames } from '../../syntax/patterns.ts';
+import { targetNames, unparenthesizedPattern } from '../../syntax/patterns.ts';
 import type { PartBinding, PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type AnyType, errorType, sameType, type Type } from '../types/type.ts';
@@ -84,8 +84,12 @@ interface Walk extends Taking<Pattern | PatternPart> {
   readonly tests: PatternTests | undefined;
   readonly found: PatternTest[];
   readonly bindings: PartBinding[];
-  /** The part each downcasting pattern matched its value of the named type at, for its `as`. */
-  readonly downcasts: Map<Pattern | PatternPart, ValuePart>;
+}
+
+/** A pattern or part as walked: its shape for exhaustiveness, and the part it matched at. */
+interface Matched {
+  readonly shape: Shape | undefined;
+  readonly part: ValuePart;
 }
 
 function newWalk(scope: PatternScope, tests: PatternTests | undefined): Walk {
@@ -94,8 +98,7 @@ function newWalk(scope: PatternScope, tests: PatternTests | undefined): Walk {
     tests,
     found: [],
     bindings: [],
-    downcasts: new Map(),
-    take: (node, part) => takePattern(walk, node, part),
+    take: (node, part) => takeMatched(walk, node, part).shape,
   };
   return walk;
 }
@@ -127,12 +130,9 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
     refutable(walk, node, part, (tests) => tests.literal(node, part)),
   ParenthesizedPattern: (walk, node, part) => walk.take(node.pattern, part),
   AsPattern: (walk, node, part) => {
-    const shape = walk.take(node.pattern, part);
-    walk.bindings.push({
-      name: node.name,
-      ...(walk.downcasts.get(unparenthesized(node.pattern)) ?? part),
-    });
-    return shape;
+    const matched = takeMatched(walk, unparenthesizedPattern(node.pattern), part);
+    walk.bindings.push({ name: node.name, ...matched.part });
+    return matched.shape;
   },
   TuplePattern: (walk, node, part) =>
     takeApart(walk, { kind: 'tuple', elements: node.elements, span: node.span }, part),
@@ -148,12 +148,12 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /** A part already in error was reported where it arose; it takes anything, for exhaustiveness. */
-function takePattern(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shape | undefined {
+function takeMatched(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Matched {
   if (part.type.kind === 'any' && isDowncasting(walk, node)) {
     return takeDowncast(walk, node, { ...part, type: part.type });
   }
   const shape = handlerOf(patternHandlers, node)(walk, node, part);
-  return part.type.kind === 'error' ? anyShape : shape;
+  return { shape: part.type.kind === 'error' ? anyShape : shape, part };
 }
 
 /** Whether `node`, against an `any` part, names a type to downcast to (downcasts.ts). */
@@ -187,14 +187,14 @@ function takeDowncast(
   walk: Walk,
   node: StructPattern | NamePattern,
   part: ValuePart & { readonly type: AnyType },
-): undefined {
+): Matched {
   const downcast = walk.tests?.downcast(node, part);
   if (downcast === undefined) {
-    return;
+    return { shape: undefined, part };
   }
   walk.found.push(downcast.test);
-  walk.downcasts.set(node, downcast.part);
   handlerOf(patternHandlers, node)(walk, node, downcast.part);
+  return { shape: undefined, part: downcast.part };
 }
 
 /** `A | B`: each alternative walked on its own, as one alternative of an `or` test. */
@@ -293,11 +293,6 @@ function takeArray(walk: Walk, node: ArrayPattern, part: ValuePart): Shape | und
 
 function isShape(shape: Shape | undefined): shape is Shape {
   return shape !== undefined;
-}
-
-/** `node` without the parentheses around it. */
-function unparenthesized(node: Pattern): Pattern {
-  return node.kind === 'ParenthesizedPattern' ? unparenthesized(node.pattern) : node;
 }
 
 /**

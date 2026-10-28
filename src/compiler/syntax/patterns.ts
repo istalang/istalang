@@ -138,6 +138,11 @@ function targetLeaves(node: Pattern | PatternPart | Invalid): readonly TargetLea
   return handlerOf(targetLeafHandlers, node)(undefined, node);
 }
 
+/** `node` without the parentheses around it. */
+export function unparenthesizedPattern(node: Pattern): Pattern {
+  return node.kind === 'ParenthesizedPattern' ? unparenthesizedPattern(node.pattern) : node;
+}
+
 /**
  * The names a declaration's or loop's target binds, in source order. There, unlike in a `match`
  * case, a bare name always binds whatever its case; a qualified one refers, so it binds nothing.
