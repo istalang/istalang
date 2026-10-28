@@ -44,7 +44,7 @@ export class Scope {
   readonly #parent: Scope | undefined;
   /** A block, the module or the universe receives the names of nested scopes that end. */
   readonly #isBlock: boolean;
-  /** The function whose parameters and body this scope holds. */
+  /** The function whose body this scope holds. */
   readonly #function: ScopedFunction | undefined;
 
   private constructor(parent: Scope | undefined, isBlock: boolean, node?: ScopedFunction) {
@@ -68,8 +68,11 @@ export class Scope {
     return new Scope(parent, false);
   }
 
-  /** A scope for a function's parameters, and through them its body. */
-  static ofFunction(parent: Scope, node: ScopedFunction): Scope {
+  /**
+   * A scope for a function's body, inside its parameters'. A parameter's default isn't in it: it
+   * runs before the call starts (§3.3).
+   */
+  static ofBody(parent: Scope, node: ScopedFunction): Scope {
     return new Scope(parent, false, node);
   }
 

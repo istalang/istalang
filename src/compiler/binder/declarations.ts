@@ -39,7 +39,7 @@ export function bindFunction(
   node: FunctionDeclaration | Lambda,
   scope: Scope,
 ): void {
-  const inner = Scope.ofFunction(scope, node);
+  const inner = Scope.nested(scope);
   if (node.kind === 'FunctionDeclaration') {
     if (node.owner !== undefined) {
       binder.use(node.owner, scope, 'type');
@@ -52,10 +52,11 @@ export function bindFunction(
   if (node.returnType !== undefined) {
     binder.walk.type(binder, node.returnType, inner);
   }
+  const body = Scope.ofBody(inner, node);
   if (node.kind === 'Lambda') {
-    binder.walk.expression(binder, node.body, inner);
+    binder.walk.expression(binder, node.body, body);
   } else if (node.body !== undefined) {
-    binder.walk.block(binder, node.body, inner);
+    binder.walk.block(binder, node.body, body);
   }
 }
 

@@ -42,7 +42,7 @@ import type {
   NamespaceEntity,
   VariantEntity,
 } from './entities.ts';
-import type { FreeName, QualifiedPath } from './local-binder.ts';
+import { type FreeName, noOwnCall, type QualifiedPath } from './local-binder.ts';
 import type { ImportPlaceholder, LocalEntity } from './scope.ts';
 
 interface ModuleLinks {
@@ -52,6 +52,8 @@ interface ModuleLinks {
   /** Free names and the later parts of qualified names. */
   readonly resolved: Map<Identifier, Entity>;
   readonly imports: Map<ImportPlaceholder, Entity>;
+  /** Names that linking found denote nothing, though their tree resolved them or left them free. */
+  readonly refused: Set<Identifier>;
   readonly diagnostics: Diagnostic[];
 }
 
@@ -102,7 +104,7 @@ class Linker {
 
   entityOf(module: ModuleId, name: Identifier): Entity | undefined {
     const links = this.#links.get(module);
-    return links === undefined
+    return links === undefined || links.refused.has(name)
       ? undefined
       : (links.resolved.get(name) ?? resolvedImport(links, links.local.entities.get(name)));
   }
@@ -151,6 +153,7 @@ class Linker {
       local,
       resolved: new Map(),
       imports: new Map(),
+      refused: new Set(),
       diagnostics: [],
     };
     this.#links.set(id, links);
@@ -193,6 +196,9 @@ class Linker {
     }
     for (const free of links.local.free) {
       this.#resolveFree(id, links, free);
+    }
+    for (const head of links.local.linkedHeads) {
+      this.#refuseFunctionHead(id, links, head);
     }
     for (const path of links.local.paths) {
       this.#resolvePath(id, links, path);
@@ -279,6 +285,15 @@ class Linker {
     links.diagnostics.push(
       (miss === undefined ? unexplained : explained[miss])(name.span, name.text),
     );
+  }
+
+  /** A name before a `.` that names imported or prelude functions: none of them can enclose it (§7). */
+  #refuseFunctionHead(id: ModuleId, links: ModuleLinks, head: Identifier): void {
+    const entity = this.entityOf(id, head);
+    if (entity?.kind === 'functions') {
+      links.diagnostics.push(noOwnCall(head, entity));
+      links.refused.add(head);
+    }
   }
 
   #unseenFunction(id: ModuleId, name: string): FunctionsEntity {

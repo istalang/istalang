@@ -1,10 +1,13 @@
-# error: 4016 at 13:7
-# error: 4016 at 16:8
-# error: 4017 at 20:7
-# error: 5101 at 21:13
+# error: 4016 at 16:7
+# error: 4016 at 19:8
+# error: 4017 at 23:7
+# error: 5101 at 24:13
+# error: 4016 at 27:40
+# error: 4016 at 31:8
 # `worker.disposing()` watches the call of an enclosing async fn named `worker` (§7): not another
-# function's, not a plain fn's, and never `main`'s, which nothing holds. A weak reference refers
-# only to a disposable.
+# function's, not a plain fn's, and never `main`'s, which nothing holds; not from a parameter's
+# default, which runs before the call starts; and not a prelude function's. A weak reference
+# refers only to a disposable.
 
 async fn other() -> Future<int>:
   1
@@ -20,3 +23,9 @@ async fn main() -> Future<int>:
   _ = main.disposing()
   const w = WeakRef(5)
   await other() + late()
+
+async fn early(started: Future<unit> = early.disposing()) -> Future<unit>:
+  await started
+
+fn named():
+  drop panic.disposing()

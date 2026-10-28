@@ -68,6 +68,11 @@ export interface LocalResult {
   readonly entities: ReadonlyMap<Identifier, LocalEntity>;
   /** The variable each async function holds its own call in, when its name before a `.` reads it. */
   readonly ownCalls: ReadonlyMap<FunctionDeclaration | Lambda, VariableEntity>;
+  /**
+   * Names before a `.` that only linking can tell name functions, imported or the prelude's, which
+   * then denote no call (`useBeforeMember`).
+   */
+  readonly linkedHeads: readonly Identifier[];
   readonly free: readonly FreeName[];
   readonly paths: readonly QualifiedPath[];
   readonly diagnostics: readonly Diagnostic[];
@@ -117,6 +122,7 @@ export class LocalBinder {
   readonly #diagnostics: Diagnostic[] = [];
   readonly #variants = new Map<string, VariantsEntity>();
   readonly #ownCalls = new Map<FunctionDeclaration | Lambda, VariableEntity>();
+  readonly #linkedHeads: Identifier[] = [];
 
   constructor(walk: Walk) {
     this.walk = walk;
@@ -126,6 +132,7 @@ export class LocalBinder {
     return {
       entities: this.#entities,
       ownCalls: this.#ownCalls,
+      linkedHeads: this.#linkedHeads,
       free: this.#free,
       paths: this.#paths,
       diagnostics: this.#diagnostics,
@@ -181,20 +188,19 @@ export class LocalBinder {
   useBeforeMember(name: Identifier, scope: Scope): void {
     const entity = scope.lookup(name.text);
     const functions = functionsNamed(entity);
-    if (functions === undefined) {
+    if (entity === undefined || functions === undefined) {
       this.use(name, scope, 'value');
-      return;
-    }
-    if (entity?.kind === 'functions' && name.text === entryFunction) {
-      this.report(binderDiagnostics.mainNeverDisposed(name.span));
+      if (entity === undefined || entity.kind === 'import') {
+        this.#linkedHeads.push(name);
+      }
       return;
     }
     const enclosing = scope.enclosingOf(functions);
-    if (enclosing === undefined || !enclosing.isAsync) {
-      this.report(binderDiagnostics.notOwnCall(name.span, name.text));
-      return;
+    if (enclosing?.isAsync === true && !namesMain(name, entity)) {
+      this.record(name, this.#ownCallOf(enclosing));
+    } else {
+      this.report(noOwnCall(name, entity));
     }
-    this.record(name, this.#ownCallOf(enclosing));
   }
 
   /**
@@ -305,6 +311,20 @@ interface DeclarationRules {
    * none when `false`, for a name whose repeat its declaration reported already.
    */
   readonly clash?: ((span: Span, name: string) => Diagnostic) | false;
+}
+
+/**
+ * Why `name`, naming the functions `entity` before a `.`, denotes no call (§7): none of them that
+ * encloses it is async, or it names `main`, whose call nothing holds.
+ */
+export function noOwnCall(name: Identifier, entity: LocalEntity): Diagnostic {
+  return namesMain(name, entity)
+    ? binderDiagnostics.mainNeverDisposed(name.span)
+    : binderDiagnostics.notOwnCall(name.span, name.text);
+}
+
+function namesMain(name: Identifier, entity: LocalEntity): boolean {
+  return entity.kind === 'functions' && name.text === entryFunction;
 }
 
 /** The functions `entity` names: a top-level set of this tree's, or a local `fn` or named lambda. */

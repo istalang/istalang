@@ -4,10 +4,17 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { type Files, idOf, moduleAt } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { declaringName, entityOfName, namesIn, preludeProgramOf } from './bind.test-kit.ts';
+import {
+  boundReport,
+  declaringName,
+  entityOfName,
+  namesIn,
+  preludeProgramOf,
+} from './bind.test-kit.ts';
 import { bindProgram } from './bind.ts';
 import type { Entity } from './entities.ts';
 
@@ -302,3 +309,13 @@ function functionsOf(program: Program): readonly FunctionDeclaration[] {
     (item): item is FunctionDeclaration => item.kind === 'FunctionDeclaration',
   );
 }
+
+describe("an imported function's name before a '.'", () => {
+  it('denotes no call, since only a function of the module can enclose one', () => {
+    const files = {
+      main: "import helper from 'lib'\nasync fn f():\n  drop helper.disposing()",
+      lib,
+    };
+    expect(boundReport(files)).toEqual(reportedOnce(4016, 'helper'));
+  });
+});
