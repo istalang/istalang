@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -43,7 +43,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - inspect instruction wait/termination flow → `awaitedRegisters`, `waits`, `terminates` (`src/definition/instructions/flow.ts`)
 - inspect `Definition` function parameters or captures → `takesReference`, `capturesOf` (`src/definition/functions.ts`)
 - check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/functions.ts`)
-- inspect `Definition` type references, roles or resource types → `typesIn`, `isResourceType`, `hasRole` (`src/definition/types.ts`)
+- inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/types.ts`)
 - validate `Definition` table references or value shapes → `checkReferences`, `valueProblems` (`src/definition/references.ts`)
 
 ## One-way rules
