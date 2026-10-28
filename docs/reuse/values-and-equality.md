@@ -32,7 +32,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - look up, insert or remove an entry in a runtime `MapValue` → `entryPosition`, `entryValue`, `withEntry`, `withoutEntry` (`src/definition/equality.ts`)
 - compare compile-time `ConstantForm`s with `==` or build constant maps → `formSemantics` (`src/compiler/checker/constant-form.ts`)
 - define `==` and structural map hashing over a value representation → `ValueSemantics` (`src/language/values.ts`)
-- order two `bigint`s or UTF-16 `string`s → `compareOrdered` (`src/language/values.ts`)
+- order two `bigint`s or UTF-16 `string`s → `compareOrdered` (`src/language/order.ts`)
 - find the `json.Json` type entry or test if a `Value` is `Json` → `jsonTypeIn`, `jsonTypeOf`, `isJsonValue` (`src/definition/json-values.ts`)
 - convert between `json.Json` values, JSON text, and host JS values → `jsonText`, `jsonOfText`, `plainOfJson`, `jsonOfPlain` (`src/definition/json-values.ts`)
 

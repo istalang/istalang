@@ -19,7 +19,7 @@
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
 
-import { compareOrdered } from '../language/values.ts';
+import { compareOrdered } from '../language/order.ts';
 import { jsonVariants } from '../language/well-known.ts';
 import { memo } from '../structures/memo.ts';
 import { unreachable } from '../structures/unreachable.ts';

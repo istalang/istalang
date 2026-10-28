@@ -15,7 +15,7 @@
 import { createHash } from 'node:crypto';
 import { parse, stringify } from 'lossless-json';
 import { z } from 'zod';
-import { compareOrdered } from '../language/values.ts';
+import { compareOrdered } from '../language/order.ts';
 import { unreachable } from '../structures/unreachable.ts';
 
 const integerSyntax = /^-?\d+$/u;

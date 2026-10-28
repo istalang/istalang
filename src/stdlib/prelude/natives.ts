@@ -18,7 +18,7 @@
  */
 
 import type { Value } from '../../definition/values.ts';
-import { compareOrdered } from '../../language/values.ts';
+import { compareOrdered } from '../../language/order.ts';
 import { conversionFunction } from '../../language/well-known.ts';
 import {
   type NativeContext,

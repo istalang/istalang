@@ -352,17 +352,3 @@ function mapHash(hashes: readonly number[]): number {
   }
   return mix(sum, hashes.length);
 }
-
-/**
- * The order of two ints, or of two strings by UTF-16 code unit, as the language and its canonical
- * formats order them: the same for any two equal values and different for any two different ones.
- */
-export function compareOrdered<Ordered extends bigint | string>(
-  left: Ordered,
-  right: Ordered,
-): number {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
-}
