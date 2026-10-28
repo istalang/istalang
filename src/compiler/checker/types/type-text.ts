@@ -6,8 +6,14 @@
  * already says where.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
-import type { Constraint, Type } from './type.ts';
+import { optionalVariants, wellKnown } from '../../../language/well-known.ts';
+import {
+  type EnumDeclaration,
+  type StructDeclaration,
+  typeParametersOf,
+} from '../../syntax/declarations.ts';
+import type { TypeNode } from '../../syntax/types.ts';
+import type { AnonymousStructType, Constraint, NominalType, Type } from './type.ts';
 
 /**
  * `type` as source would spell it. Extern keys spell types too (definition/extern-key.ts), but
@@ -18,9 +24,9 @@ export function typeText(type: Type): string {
     case 'primitive':
       return type.name;
     case 'nominal':
-      return nominalText(type.entity.declaration.name.text, type.arguments);
+      return nominalTypeText(type);
     case 'anonymous':
-      return `struct { ${type.fields.map((field) => `${field.name}: ${typeText(field.type)}`).join('; ')} }`;
+      return anonymousText(type);
     case 'tuple':
       return `(${type.elements.map(typeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
     case 'function': {
@@ -57,17 +63,137 @@ function constraintText({ trait, arguments: typeArguments }: Constraint): string
   while (written > 0 && isOwnSelf(typeArguments[written - 1])) {
     written -= 1;
   }
-  return nominalText(trait.name.text, typeArguments.slice(0, written));
+  return parameterizedText(trait.name.text, typeArguments.slice(0, written));
 }
 
 /**
  * `Optional<T>` reads as `T?` (§2), a function type in parentheses, since its result would take
  * the `?`; anything else as `Name<Arguments>`.
  */
-function nominalText(name: string, typeArguments: readonly Type[]): string {
-  const [only] = typeArguments;
-  if (name === wellKnown.optional.name && typeArguments.length === 1 && only !== undefined) {
+function nominalTypeText(type: NominalType): string {
+  const { declaration } = type.entity;
+  const [only] = type.arguments;
+  if (isOptionalDeclaration(declaration) && type.arguments.length === 1 && only !== undefined) {
     return only.kind === 'function' ? `(${typeText(only)})?` : `${typeText(only)}?`;
   }
+  return parameterizedText(declaration.name.text, type.arguments);
+}
+
+/** Whether `declaration` is the prelude's `Optional<T>` enum (`Some` and `None`). */
+function isOptionalDeclaration(declaration: NominalType['entity']['declaration']): boolean {
+  if (
+    declaration.kind !== 'EnumDeclaration' ||
+    declaration.name.text !== wellKnown.optional.name ||
+    typeParametersOf(declaration.typeParameters).length !== 1
+  ) {
+    return false;
+  }
+  return sameVariantNames(declaration, [optionalVariants.some, optionalVariants.none]);
+}
+
+function sameVariantNames(declaration: EnumDeclaration, expected: readonly string[]): boolean {
+  const names = declaration.variants.flatMap((variant) =>
+    variant.kind === 'Variant' ? [variant.name.text] : [],
+  );
+  return names.length === expected.length && names.every((name, index) => name === expected[index]);
+}
+
+/**
+ * An anonymous struct as written: `*Name<Arguments>` for the value behind a shared struct (§3.18),
+ * or `struct { … }` for any other.
+ */
+function anonymousText(type: AnonymousStructType): string {
+  if (type.origin.kind === 'StructDeclaration') {
+    const typeArguments = sharedTypeArguments(type.origin, type);
+    return `*${parameterizedText(type.origin.name.text, typeArguments)}`;
+  }
+  return `struct { ${type.fields.map((field) => `${field.name}: ${typeText(field.type)}`).join('; ')} }`;
+}
+
+/** The type arguments of a shared struct `declaration` recovered from its value's `fields`. */
+function sharedTypeArguments(
+  declaration: StructDeclaration,
+  value: AnonymousStructType,
+): readonly Type[] {
+  const parameters = typeParametersOf(declaration.typeParameters);
+  if (parameters.length === 0) {
+    return [];
+  }
+  const parameterNames = new Set(parameters.map((parameter) => parameter.name.text));
+  const found = new Map<string, Type>();
+  for (const field of value.fields) {
+    const declaredType = field.declared?.node.type;
+    if (declaredType !== undefined) {
+      collectTypeArguments(declaredType, field.type, parameterNames, found);
+    }
+  }
+  return parameters.flatMap((parameter) => {
+    const argument = found.get(parameter.name.text);
+    return argument === undefined ? [] : [argument];
+  });
+}
+
+function collectTypeArguments(
+  node: TypeNode,
+  actual: Type,
+  parameters: ReadonlySet<string>,
+  found: Map<string, Type>,
+): void {
+  switch (node.kind) {
+    case 'ParenthesizedType':
+    case 'ReferenceType':
+      collectTypeArguments(
+        node.kind === 'ParenthesizedType' ? node.inner : node.referent,
+        actual,
+        parameters,
+        found,
+      );
+      return;
+    case 'OptionalType':
+      if (
+        actual.kind === 'nominal' &&
+        isOptionalDeclaration(actual.entity.declaration) &&
+        actual.arguments[0] !== undefined
+      ) {
+        collectTypeArguments(node.inner, actual.arguments[0], parameters, found);
+      }
+      return;
+    case 'TupleType':
+      if (actual.kind === 'tuple') {
+        node.elements.forEach((element, index) => {
+          const item = actual.elements[index];
+          if (item !== undefined) {
+            collectTypeArguments(element, item, parameters, found);
+          }
+        });
+      }
+      return;
+    case 'NamedType': {
+      const [first] = node.path;
+      if (
+        node.path.length === 1 &&
+        node.typeArguments.length === 0 &&
+        first !== undefined &&
+        parameters.has(first.text)
+      ) {
+        found.set(first.text, actual);
+        return;
+      }
+      if (actual.kind === 'nominal') {
+        node.typeArguments.forEach((argument, index) => {
+          const item = actual.arguments[index];
+          if (item !== undefined) {
+            collectTypeArguments(argument, item, parameters, found);
+          }
+        });
+      }
+      return;
+    }
+    default:
+      return;
+  }
+}
+
+function parameterizedText(name: string, typeArguments: readonly Type[]): string {
   return typeArguments.length === 0 ? name : `${name}<${typeArguments.map(typeText).join(', ')}>`;
 }

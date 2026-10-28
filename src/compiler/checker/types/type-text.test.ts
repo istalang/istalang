@@ -5,8 +5,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { idOf } from '../../program/program.test-kit.ts';
+import { idOf, programOf } from '../../program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { checkProgram } from '../check.ts';
 import { typeText } from './type-text.ts';
 
@@ -30,5 +31,33 @@ describe('typeText', () => {
     'fn() -> (fn() -> int)?',
   ])('spells %s as written', (written) => {
     expect(spelled(written)).toBe(written);
+  });
+
+  it('spells the value behind a shared struct as *Name with its type arguments', () => {
+    const program = stdProgramOf({
+      'main.ista': [
+        'shared struct Counter { count: int }',
+        'fn f(c: Counter, s: Shared<int>):',
+        '  const a = *c',
+        '  const b = *s',
+      ].join('\n'),
+    });
+    const checker = checkProgram(program);
+    const items = program.modules.get(idOf('main.ista'))?.tree.root.items ?? [];
+    const f = items[1] as FunctionDeclaration;
+    const body = f.body === undefined ? undefined : checker.bodyOf(f);
+    const [a, b] = (f.body?.statements ?? []) as VariableDeclaration[];
+    expect(a && body && typeText(body.typeOf(a.initializer))).toBe('*Counter');
+    expect(b && body && typeText(body.typeOf(b.initializer))).toBe('*Shared<int>');
+  });
+
+  it('spells a non-prelude Optional declaration as Optional<T>, not T?', () => {
+    const program = programOf({
+      'main.ista': 'struct Optional<T> { value: T }\nfn f(x: Optional<int>):\n  ()\n',
+    });
+    const checker = checkProgram(program);
+    const f = program.modules.get(idOf('main.ista'))?.tree.root.items[1] as FunctionDeclaration;
+    const [x] = checker.parametersOf(f);
+    expect(x && typeText(x.type)).toBe('Optional<int>');
   });
 });
