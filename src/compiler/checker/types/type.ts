@@ -109,13 +109,11 @@ export interface FieldMember {
 
 /**
  * A struct without a name (§3.1): introduced by a `{…}` type, by a `struct{…}` literal with
- * nothing to take a type from, or by a shared struct as the value behind it (§3.18), carrying that
- * shared struct's type arguments.
+ * nothing to take a type from, or by a shared struct as the value behind it (§3.18).
  */
 export interface AnonymousStructType {
   readonly kind: 'anonymous';
   readonly origin: StructType | StructLiteral | StructDeclaration;
-  readonly arguments?: readonly Type[];
   readonly fields: readonly FieldMember[];
 }
 

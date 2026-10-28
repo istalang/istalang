@@ -42,9 +42,7 @@ export function variantsAccepted(
   if (naming?.kind !== 'variants') {
     return undefined;
   }
-  const candidates = context.checker.bindings.candidatesOf(naming);
-  return (expected) =>
-    candidates.some((candidate) => targetEnum(context, expected, candidate.enum) !== undefined);
+  return (expected) => expectedEnum(context, naming, expected) !== undefined;
 }
 
 /**
@@ -89,7 +87,7 @@ export function checkVariantName(
   naming: VariantNaming,
   expected: Type | undefined,
 ): Type {
-  const target = expectedForNaming(context, naming, expected);
+  const target = expectedEnum(context, naming, expected);
   const chosen = chooseVariant(context, writtenAs(node), naming, target);
   if (chosen === undefined) {
     return errorType;
@@ -109,7 +107,7 @@ export function checkVariantLiteral(
   expected: Type | undefined,
 ): Type {
   const typeNode = node.type;
-  const target = expectedForNaming(context, naming, expected);
+  const target = expectedEnum(context, naming, expected);
   const chosen = chooseVariant(context, writtenAs(node), naming, target);
   if (chosen === undefined || typeNode === undefined) {
     return errorType;
@@ -128,13 +126,13 @@ export function checkVariantLiteral(
   return checkLiteralFields(context, node, shape);
 }
 
-function expectedForNaming(
+function expectedEnum(
   context: BodyContext,
   naming: VariantNaming,
   expected: Type | undefined,
-): Type | undefined {
+): NominalType | undefined {
   if (naming.kind === 'variant') {
-    return targetEnum(context, expected, naming.enum) ?? expected;
+    return targetEnum(context, expected, naming.enum);
   }
   for (const candidate of context.checker.bindings.candidatesOf(naming)) {
     const matched = targetEnum(context, expected, candidate.enum);
@@ -142,7 +140,7 @@ function expectedForNaming(
       return matched;
     }
   }
-  return expected;
+  return undefined;
 }
 
 function writtenAs(node: VariantNode): { readonly span: Span; readonly name: string } {

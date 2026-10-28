@@ -277,15 +277,16 @@ function checkDeclaredLiteral(
   // With no default declared the literal says what it needs; one declared that doesn't meet
   // Default is reported by conformance, which says why.
   const outcome = resolveDefault(useSite(checker, context.module, node.span), type);
-  if (outcome.kind === 'call') {
-    context.implicit.record(node, 'default', outcome.call);
-  } else if (outcome.kind === 'none') {
+  const [made] = outcome.kind === 'met' ? outcome.witnesses : [];
+  if (made !== undefined) {
+    context.implicit.record(node, 'default', made);
+  } else if (outcome.kind === 'undeclared') {
     context.report(failure());
   }
   for (const entry of node.kind === 'MapLiteral' ? node.entries : []) {
-    insertEntry(context, entry, type, outcome.kind === 'call' ? failure : undefined);
+    insertEntry(context, entry, type, made === undefined ? undefined : failure);
   }
-  return outcome.kind === 'call' ? type : errorType;
+  return made === undefined ? errorType : type;
 }
 
 /**

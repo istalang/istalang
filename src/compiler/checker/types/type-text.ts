@@ -79,12 +79,12 @@ function nominalTypeText(type: NominalType): string {
 }
 
 /**
- * An anonymous struct as written: `*Name<Arguments>` for the value behind a shared struct (§3.18),
+ * An anonymous struct as written: `*Name` for the value behind a non-generic shared struct (§3.18),
  * or `struct { … }` for any other.
  */
 function anonymousText(type: AnonymousStructType): string {
-  if (type.origin.kind === 'StructDeclaration') {
-    return `*${parameterizedText(type.origin.name.text, type.arguments ?? [])}`;
+  if (type.origin.kind === 'StructDeclaration' && type.origin.typeParameters.length === 0) {
+    return `*${type.origin.name.text}`;
   }
   return `struct { ${type.fields.map((field) => `${field.name}: ${typeText(field.type)}`).join('; ')} }`;
 }
