@@ -25,6 +25,33 @@ export function utf16Offset(s: string, position: number): number {
   return offset;
 }
 
+/** How many code points `s` holds, counted without allocating an array of them. */
+export function codePointCount(s: string): number {
+  return codePointPositions(s)(s.length);
+}
+
+/** The code point at `position` of `s`, in code points; undefined outside `s`. */
+export function codePointAtPosition(s: string, position: number): string | undefined {
+  if (position < 0 || position >= s.length) {
+    return undefined;
+  }
+  const offset = utf16Offset(s, position);
+  return offset < s.length ? s.slice(offset, offset + codePointWidth(s, offset)) : undefined;
+}
+
+/** The substring of `s` from code point `start` to `end`, both non-negative. */
+export function codePointSlice(s: string, start: number, end: number): string {
+  if (end <= start) {
+    return '';
+  }
+  const from = utf16Offset(s, start);
+  let to = from;
+  for (let counted = start; counted < end && to < s.length; counted += 1) {
+    to += codePointWidth(s, to);
+  }
+  return s.slice(from, to);
+}
+
 /**
  * The code point position of each UTF-16 offset of `s` it is asked for, each an offset where a code
  * point starts. Asked in increasing order, as a scan finds matches, it counts each code point once.

@@ -17,9 +17,15 @@ import { restKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
-import { codePointPositions, codePoints, utf16Offset } from '../../text/code-points.ts';
+import {
+  codePointCount,
+  codePointPositions,
+  codePointSlice,
+  codePoints,
+  utf16Offset,
+} from '../../text/code-points.ts';
 import { arrayOf, int, optionalValue, text } from '../native-values.ts';
-import { sliced } from '../positions.ts';
+import { sliceBounds } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { formatted } from './format.ts';
 
@@ -50,9 +56,14 @@ const reading = (keys: NativeKeys): Natives<NativeContext> => ({
 
 const splitting = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('slice', 'string', 'int', optionalInt)]: ([s, start, end]) => {
+    const whole = text(s);
     const last = optionalValue(end);
-    const points = codePoints(text(s));
-    return sliced(points, int(start), last === undefined ? undefined : int(last)).join('');
+    const bounds = sliceBounds(
+      codePointCount(whole),
+      int(start),
+      last === undefined ? undefined : int(last),
+    );
+    return codePointSlice(whole, bounds.start, bounds.end);
   },
   [keys.of('split', 'string', 'string')]: ([s, separator]) => {
     const by = text(separator);
@@ -112,13 +123,12 @@ function position(whole: string, found: number): bigint {
 
 /** What pads `s` to `length` code points: `fill` repeated and cut to fit; none when it is long enough. */
 function padding(s: string, length: bigint, fill: string): string {
-  const missing = Number(length) - codePoints(s).length;
-  const fillPoints = codePoints(fill);
-  if (missing <= 0 || fillPoints.length === 0) {
+  const missing = Number(length) - codePointCount(s);
+  const fillLength = codePointCount(fill);
+  if (missing <= 0 || fillLength === 0) {
     return '';
   }
   return (
-    fill.repeat(Math.floor(missing / fillPoints.length)) +
-    fillPoints.slice(0, missing % fillPoints.length).join('')
+    fill.repeat(Math.floor(missing / fillLength)) + codePointSlice(fill, 0, missing % fillLength)
   );
 }

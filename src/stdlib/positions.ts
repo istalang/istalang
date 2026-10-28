@@ -27,9 +27,28 @@ export function atPosition(key: bigint, length: number): number | undefined {
   return position >= 0n && position < BigInt(length) ? Number(position) : undefined;
 }
 
+/** The span `slice(start, end)` selects in a sequence of `length`: clamped, a negative index counting from the end. */
+export function sliceBounds(
+  length: number,
+  start: bigint,
+  end: bigint | undefined,
+): { readonly start: number; readonly end: number } {
+  const clamp = (index: bigint) => {
+    const shifted = index < 0n ? BigInt(length) + index : index;
+    if (shifted <= 0n) {
+      return 0;
+    }
+    return shifted >= BigInt(length) ? length : Number(shifted);
+  };
+  const from = clamp(start);
+  const to = end === undefined ? length : clamp(end);
+  return { start: from, end: Math.max(from, to) };
+}
+
 /** The items `slice(start, end)` selects of `items`: clamped, a negative index counting from the end. */
 export function sliced<T>(items: readonly T[], start: bigint, end: bigint | undefined): T[] {
-  return items.slice(Number(start), end === undefined ? undefined : Number(end));
+  const bounds = sliceBounds(items.length, start, end);
+  return items.slice(bounds.start, bounds.end);
 }
 
 /** What a range selects in a sequence: a span between two positions, or every step-th position. */
