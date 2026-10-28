@@ -61,7 +61,6 @@ import { Parameters } from './declarations/parameters.ts';
 import { callResult, declaredBodyResult, writtenByReference } from './declarations/signatures.ts';
 import { StaticFunctions } from './declarations/statics.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
-import type { FrontierConstruct } from './frontier.ts';
 import { LazyChecks } from './lazy-checks.ts';
 import { meetsAny, memberWitnesses } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
@@ -87,7 +86,6 @@ import {
   unitType,
 } from './types/type.ts';
 import { TypeKeys } from './types/type-keys.ts';
-import { notSupported } from './unsupported.ts';
 
 export class ProgramChecker implements CheckerContext {
   readonly program: Program;
@@ -184,11 +182,6 @@ export class ProgramChecker implements CheckerContext {
     const diagnostics = this.#diagnostics.get(module) ?? [];
     diagnostics.push(diagnostic);
     this.#diagnostics.set(module, diagnostics);
-  }
-
-  unsupported(module: ModuleId, node: NodeOf<string>, construct?: FrontierConstruct): Type {
-    this.report(module, notSupported(node, construct));
-    return errorType;
   }
 
   moduleOf(declaration: Declaration | VariableDeclaration): ModuleId {

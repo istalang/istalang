@@ -2,15 +2,13 @@
  * Lowering's table of expression handlers, one per kind (architecture: Registries; docs/arch/
  * definition.md, "How each construct lowers"). Each handler emits the code computing its value and
  * gives the register holding it; construct modules beside this one hold the handlers.
- *
- * Kinds not supported yet share `notLowered`, which a clean check never reaches.
  */
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Handlers } from '../../../structures/kind-table.ts';
 import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
-import { notLowered } from '../not-lowered.ts';
+import { neverLowered } from '../never-lowered.ts';
 import { lowerDereference } from '../places.ts';
 import { lowerAwait } from './await.ts';
 import { lowerCall, lowerSpawn } from './calls.ts';
@@ -56,7 +54,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Comprehension: lowerComprehension,
   Tuple: lowerTuple,
   Lambda: lowerLambda,
-  Reference: notLowered,
+  Reference: neverLowered,
   Index: lowerIndex,
   Propagate: lowerPropagate,
   Spawn: lowerSpawn,
@@ -69,8 +67,8 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Range: lowerRange,
   Match: lowerMatch,
   Select: lowerSelect,
-  Missing: notLowered,
-  Invalid: notLowered,
+  Missing: neverLowered,
+  Invalid: neverLowered,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

@@ -1,7 +1,7 @@
 /**
  * The checker through the coordinator, with the real prelude: one invalid case per rule, each
  * reporting its code over the text it explains; valid programs reporting nothing; and totality on
- * broken programs and on every spec example, most of which use constructs not supported yet.
+ * broken programs and on every spec example.
  */
 
 import fc from 'fast-check';

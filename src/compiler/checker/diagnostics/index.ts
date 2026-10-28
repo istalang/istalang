@@ -6,9 +6,6 @@
  * Messages name types the way source writes them (types/type-text.ts), so the caller passes text.
  * A diagnostic about a value points at the expression that has it; one about a declaration points
  * at its name.
- *
- * `notSupportedYet` is the one diagnostic for every construct the checker doesn't handle yet. Each
- * feature slice that adds a construct removes its use, so the code disappears with the last one.
  */
 
 import { defineDiagnostics } from '../../../diagnostics/catalog.ts';
@@ -27,10 +24,6 @@ import { valueTemplates } from './values.ts';
 import { weakSideTemplates } from './weak-side.ts';
 
 export const checkerDiagnostics = defineDiagnostics('checker', {
-  notSupportedYet: {
-    code: 5000,
-    message: (construct: string) => `${construct} is not supported yet.`,
-  },
   typeMismatch: {
     code: 5001,
     message: (expected: string, found: string) => `Expected ${expected}, found ${found}.`,

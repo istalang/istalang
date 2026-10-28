@@ -25,7 +25,7 @@ import type { Entity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
-import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
+import type { Identifier, Invalid } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -43,7 +43,6 @@ import { acceptsOf, expressionHandlers } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-fields.ts';
 import { OptionalChains } from './expressions/optionals.ts';
 import { LabelTargets } from './flow/labels.ts';
-import type { FrontierConstruct } from './frontier.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
@@ -240,10 +239,6 @@ export class BodyChecker implements BodyContext {
 
   report(diagnostic: Diagnostic): void {
     this.checker.report(this.module, diagnostic);
-  }
-
-  unsupported(node: NodeOf<string>, construct?: FrontierConstruct): Type {
-    return this.checker.unsupported(this.module, node, construct);
   }
 
   resolveType(node: TypeNode): Type {

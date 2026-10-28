@@ -26,7 +26,7 @@ import {
 } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
 import { lowerLocalFunction } from '../expressions/closures.ts';
-import { notLowered } from '../not-lowered.ts';
+import { neverLowered } from '../never-lowered.ts';
 import { lowerFor, lowerLabelledBlock, lowerLoopExit, lowerWhile } from './loops.ts';
 import { endScope, release } from './scopes.ts';
 import { lowerAssignment, lowerVariableDeclaration } from './variables.ts';
@@ -55,7 +55,7 @@ const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void
     context.variables.declareUnnamed(guard);
   },
   Drop: lowerDrop,
-  Invalid: notLowered,
+  Invalid: neverLowered,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

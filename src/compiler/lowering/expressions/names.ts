@@ -5,8 +5,8 @@
  * of its enum (variants.ts), and a struct without fields is a value of its own, written bare
  * (§3.1). A top-level function named as a value is a closure (closures.ts), and a local function
  * or named lambda lives in a register like any variable. An extern constant is read by calling the
- * entry that reads it (§3.6). Only these reach lowering; the checker reports every other value a
- * name could denote as not supported yet.
+ * entry that reads it (§3.6). Only these reach lowering; the checker refuses a name denoting
+ * anything else as a value.
  */
 
 import type { Register } from '../../../definition/operands.ts';

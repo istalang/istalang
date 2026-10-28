@@ -25,7 +25,7 @@ import type {
   TypeParameter,
 } from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
-import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
+import type { Identifier, Invalid } from '../syntax/node.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { Checker, ValueSite, VariantMember } from './check.ts';
@@ -37,7 +37,6 @@ import type { CollectionForms } from './expressions/collections.ts';
 import type { StructLiterals } from './expressions/literal-fields.ts';
 import type { OptionalChains } from './expressions/optionals.ts';
 import type { LabelTargets } from './flow/labels.ts';
-import type { FrontierConstruct } from './frontier.ts';
 import type { JsonCodecs } from './json-form.ts';
 import type { CheckedPatterns } from './patterns/matching.ts';
 import type { Accepts } from './resolution/choice.ts';
@@ -59,12 +58,6 @@ import type {
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
   readonly report: (module: ModuleId, diagnostic: Diagnostic) => void;
-  /** Reports `node` of `module` as a construct not supported yet (named by `construct`); the error type. */
-  readonly unsupported: (
-    module: ModuleId,
-    node: NodeOf<string>,
-    construct?: FrontierConstruct,
-  ) => Type;
   /** The type `node` denotes in `module`. */
   readonly resolveType: (module: ModuleId, node: TypeNode) => Type;
   /** The type `any` followed by `traits` denotes in `module` (§3.10). */
@@ -155,8 +148,6 @@ export interface BodyContext {
   /** Checks a statement; its type, which only a block's last statement passes on (§4). */
   readonly statement: (node: Statement | Invalid, expected?: Type) => Type;
   readonly report: (diagnostic: Diagnostic) => void;
-  /** Reports `node` as a construct not supported yet (named by `construct`); the error type. */
-  readonly unsupported: (node: NodeOf<string>, construct?: FrontierConstruct) => Type;
   /** The type `node` denotes in this body's module. */
   readonly resolveType: (node: TypeNode) => Type;
   readonly entityOf: (name: Identifier) => Entity | undefined;

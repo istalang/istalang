@@ -14,7 +14,7 @@ A **Definition** is the whole compiled program: flat tables of modules, types, f
 
 Both are persisted for an instance's whole life. Each is one zod schema that validates, decodes and encodes. The texts are canonical JSON with a version envelope, and the content hash keys storage.
 
-Both formats were written for the whole language before any of it compiled, so the feature slices code against one contract instead of each inventing its part. Lowering doesn't emit every instruction yet, and the runtime doesn't run every one: the instructions and load rules for constructs still behind the checker's frontier stand untested by real programs, exercised only by random and hand-written Definitions. The slice that first emits an instruction amends what using it shows to be wrong, through the tech-lead.
+Both formats were written for the whole language before any of it compiled, so the feature slices code against one contract instead of each inventing its part. Lowering doesn't emit every instruction yet, and the runtime doesn't run every one: the instructions and load rules no construct emits yet stand untested by real programs, exercised only by random and hand-written Definitions. The slice that first emits an instruction amends what using it shows to be wrong, through the tech-lead.
 
 ## Decisions
 
