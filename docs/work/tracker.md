@@ -19,7 +19,7 @@ tags: [tracker]
 | M3 Feature slices | done |
 | M4 Standard library | done |
 | M5 Test runner | done |
-| Language features (`docs/work/language-features/plan.md`) | in progress |
+| Language features (`docs/work/language-features/plan.md`) | done |
 | M6 Formatter | planned |
 | M7 Language service and LSP | planned |
 | M8 Packages | planned |
