@@ -75,7 +75,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ### 2.4 Argument-Dependent Lookup (ADL) & Type Display Hard-Coded for `Shared<T>` (`src/compiler/checker/overloads/candidates.ts`)
 
-- **Hard-coded behavior:** ` callCandidates` unwraps one layer of `wellKnown.shared` so `Inbox<T>` (`type Inbox<T> = Shared<InboxState<T>>`) searches `InboxState`’s module (`inbox`). Because `Type` erases `TypeAliasDeclaration` (**D105**) and ADL only unwraps `Shared<T>` at depth 1, nested handles (such as `WeakRef<Inbox<T>>`) or other wrapper aliases do not carry their alias origin into ADL or diagnostics (`typeText` prints `Shared<InboxState<int>>` instead of `Inbox<int>`).
+- **Hard-coded behavior:** ` callCandidates` unwraps one layer of `wellKnown.shared` so `Inbox<T>` (`type Inbox<T> = Shared<InboxState<T>>`) searches `InboxState`’s module (`inbox`). Because `Type` erases `TypeAliasDeclaration` (**B3**) and ADL only unwraps `Shared<T>` at depth 1, nested handles (such as `WeakRef<Inbox<T>>`) or other wrapper aliases do not carry their alias origin into ADL or diagnostics (`typeText` prints `Shared<InboxState<int>>` instead of `Inbox<int>`).
 
 ### 2.5 Must-Use Ignores Constrained Type Parameters (`src/compiler/checker/rules/must-use.ts`, D108)
 
@@ -132,11 +132,11 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
    - Because traits have no `impl` blocks and witnesses are resolved at each call site from in-scope functions + ADL, the same type `T` can satisfy a trait with two different functions in two different modules. Lowering keeps them sound by including `witnessesKey` in `instanceKey` (`src/compiler/lowering/instances.ts`), but behavior depends on call-site scope.
 2. **Eager array materialization for `Iterable` (`src/stdlib/prelude/prelude.ista`, `src/compiler/lowering/iteration.ts`):**
    - `Iterable<T>` requires `fn iterate(self: C) -> Array<T>`. Iterating over a `Range` (`for i in 0..1_000_000`) or `Map` allocates and populates the entire `Array` upfront before the loop starts, rather than stepping a lazy cursor/iterator protocol.
-3. **Quadratic immutable collection construction (**D76**, `src/compiler/lowering/expressions/comprehensions.ts`, `src/stdlib/prelude/`):**
+3. **Quadratic immutable collection construction (**P2**, `src/compiler/lowering/expressions/comprehensions.ts`, `src/stdlib/prelude/`):**
    - Arrays and maps are plain JS arrays and entry arrays copied on every `push`, comprehension iteration (`[for x in xs: f(x)]` emits an `array` spread instruction on every pass), or `m[k] = v`. Building an $N$-element collection in a loop or comprehension is $O(N^2)$ without persistent data structures or single-holder in-place mutation.
 4. **Copy-in / copy-out aliasing gap on `&container[key]` (`src/compiler/lowering/places.ts`):**
    - Passing `&m[k]` or calling `m[k].mutate()` copies the element into a temporary cell before the call and writes it back with `setIndex` after the call returns. If the callee observes `m` during the call (for instance through a captured `Shared`), it sees the stale pre-call element.
-5. **Full-snapshot round-trip and heap scans on commits/disposals (**D44, D107, D111, D112, D113**):**
+5. **Full-snapshot round-trip and heap scans on commits/disposals (**P1, P3, D111, P4, D113**):**
    - Every `await` encodes the snapshot to canonical JSON text and parses it back (`src/runtime/scheduler/wake.ts`), and disposing call futures or weak references scans heap object lists linearly (`src/runtime/lifetimes/disposal.ts`, `src/runtime/scheduler/weak-side.ts`).
 
 ---

@@ -102,7 +102,7 @@ tags: [plan, m3, checker, lowering, runtime]
 
 *Acceptance:* the whole corpus passes unchanged; one structural type key with no module-global counters; `diagnosticsOf` stays lazy (checks only what it is asked for); D73's property tests exist.
 
-**3.6 Concurrency** (5600–5699). Slots; futures held in variables (D45/D49); `select` in both forms; `spawn`; sendable rules at `spawn`; the `inbox` and `futures` (`first`) modules; scheduler introspection for `testing.start`. Measure D44. Spec §3.2, §6, §8, and `spawn` from §9.
+**3.6 Concurrency** (5600–5699). Slots; futures held in variables (D45/D49); `select` in both forms; `spawn`; sendable rules at `spawn`; the `inbox` and `futures` (`first`) modules; scheduler introspection for `testing.start`. Measure P1. Spec §3.2, §6, §8, and `spawn` from §9.
 
 *Acceptance:*
 - §6's inbox order and receiver rules

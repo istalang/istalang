@@ -10,7 +10,7 @@ import { ista, tempProject as project } from '../cli.test-kit.ts';
 
 /**
  * How long a run of §10's whole suite may take: each of its tests commits every segment of a whole
- * program through the snapshot codec, seconds in all (D44), more than a unit test's default.
+ * program through the snapshot codec, seconds in all, more than a unit test's default.
  */
 const wholeSuiteTimeout = 20_000;
 

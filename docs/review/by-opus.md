@@ -35,7 +35,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 | # | Finding | Proposal |
 | --- | --- | --- |
-| D139 | `Shared<T>` plays four roles, each a separate structural special case: the cell of a captured or referenced variable; a module's resource type (`isOwnedHandle`); the one ADL exception (`candidates.ts` `lookupTypes`); a host handle when its struct has only function fields (`hostHandleOf`). The root: a module can't declare a nominal type with identity, so `type Inbox<T> = Shared<InboxState<T>>` smuggles identity through a transparent alias. D105 has the same root. | A nominal handle declaration, which deletes all four special cases. |
+| D139 | `Shared<T>` plays four roles, each a separate structural special case: the cell of a captured or referenced variable; a module's resource type (`isOwnedHandle`); the one ADL exception (`candidates.ts` `lookupTypes`); a host handle when its struct has only function fields (`hostHandleOf`). The root: a module can't declare a nominal type with identity, so `type Inbox<T> = Shared<InboxState<T>>` smuggles identity through a transparent alias. B3 has the same root. | A nominal handle declaration, which deletes all four special cases. |
 | D140 | JSON is a closed compiler table, not traits: `leafHelpers`, `containers` (Array, Optional, Map), 34 `codecHelpers` names in `language/well-known.ts`, and the same three types again in `annotations.ts` `emptyValues`. Every other type-directed feature goes through a trait (operators, `for`, `x[k]`, `$`, `T(x)`, `toString`), so this is a second way to do one thing. M4's Decimal or a Set would need compiler edits to cross. | Real `Encodable`/`Decodable` traits, in the Codable/serde shape. Container codecs become generic json-module overloads; the compiler derives codecs only for structs, enums and tuples. |
 | D141 | `iterate` returns `Array<T>`, so every `for` materializes what it loops over. `for i in 0..n` allocates n ints and persists them in every snapshot taken while the loop runs. Each pass also makes three function-table calls. | A persistable lazy form: an indexable view with a length, or a cursor struct. |
 | D142 | Mixed arithmetic is an overload matrix. The prelude has 20 int/float natives, plus `add(string, int\|float\|bool)` but no `add(int, string)`. M4's Decimal makes it nine combinations per operator. | One numeric promotion rule, plus `add<T is Stringable>(string, T)`. |
@@ -46,10 +46,10 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 | # | Finding |
 | --- | --- |
 | D133 | Flow analysis for `drop` (`rules/dropped.ts`) is a switch over about 14 kinds whose `default` treats any new control-flow construct as straight-line code. Two more ad-hoc walks (`waits`, `checkSelfStays`) each decide again where a nested function cuts. Extract one flow model, and one "walk this body, not nested functions" helper, before a second flow rule arrives. |
-| D134 | The heap has no indexes, and its scans are filed one at a time: D107, D111 and D113, plus the host token, pending `first`s and due timers. Decide one derived-index layer, measured with D44. |
+| D134 | The heap has no indexes, and its scans are filed one at a time: P3, D111 and D113, plus the host token, pending `first`s and due timers. Decide one derived-index layer, measured with P1. |
 | D135 | All 12 checker folders form one import cycle. `rules/` has no entry and about 50 importers, and traits↔overloads is one engine split across two folders. Lowering imports checker internals besides `check.ts`. Extract a `resolution/` unit, move variant naming out of `expressions/`, and have dependency-cruiser enforce the inner layers. |
-| D136 | `CheckedBody` grows a side table per feature: 15 now, and every M3 slice changed `check.ts`. Decide before M7: keep per-concern records, or have the checker produce an elaborated tree (Roslyn's BoundTree, rustc's THIR). |
-| D137 | The checker is memoized per Program, so every edit re-checks every body the LSP asks for. Plan M7 with early cutoff. |
+| Q3 | `CheckedBody` grows a side table per feature: 15 now, and every M3 slice changed `check.ts`. Decide before M7: keep per-concern records, or have the checker produce an elaborated tree (Roslyn's BoundTree, rustc's THIR). |
+| P5 | The checker is memoized per Program, so every edit re-checks every body the LSP asks for. Plan M7 with early cutoff. |
 | D138 | The Definition and the runtime recognize `prelude.Shared` and `prelude.Future` by name (`definition/types.ts`, `host-natives.ts`). Give extern type entries a role instead. |
 
 ## Modularity: are features plugins?
@@ -83,12 +83,12 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 - Turbofish (`::<>`): parser speculation handles it.
 
 **Present:**
-- Swift-style value semantics without Swift's copy-on-write: building a collection is quadratic (D76). Swift's fix is `isKnownUniquelyReferenced`.
+- Swift-style value semantics without Swift's copy-on-write: building a collection is quadratic (P2). Swift's fix is `isKnownUniquelyReferenced`.
 - Eager iteration (D141).
-- Primitive operators are mockable function-table natives, so each `i + 1` is a call. Measure with D44, and use an intrinsic unless mocking `add(int, int)` is a feature.
+- Primitive operators are mockable function-table natives, so each `i + 1` is a call. Measure with P1, and use an intrinsic unless mocking `add(int, int)` is a feature.
 - Incoherent witnesses (D143).
 - No interfaces, so behaviour objects are structs of closures in a `Shared` (D139).
-- A TypeScript-style whole-program recheck on every edit (D137).
+- A TypeScript-style whole-program recheck on every edit (P5).
 
 ## Integration
 

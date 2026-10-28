@@ -63,7 +63,7 @@ Features, decisions, landing points and gaps: `features.md`. Spec: `docs/spec.md
 
 ## Decided
 
-- **D136:** these features keep the per-construct side tables; the elaborated-tree decision stays with M7.
+- **Q3:** these features keep the per-construct side tables; the elaborated-tree decision stays with M7.
 - **Variadic generics:** level 1 (tuple packs) is L7. Level 2 (mapped packs) is out, so setups keep their per-arity overloads, and mixed-type values use `any Stringable`.
 
 ## Out of scope
