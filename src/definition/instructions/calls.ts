@@ -33,7 +33,7 @@ const call = defineInstruction('call', {
  * sendable function type, whose captures go along; the arguments are sendable copies (spec §9).
  * `dst` gets its `Instance<T>`, of extern type entry `type`, whose payload is the instance's name.
  * `encoder`, when a codec writes `T`, is that codec's entry, which encodes the new instance's
- * outcome for its host once it returns.
+ * outcome for its host as it returns.
  */
 const spawn = defineInstruction('spawn', {
   dst: register,

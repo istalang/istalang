@@ -19,8 +19,8 @@
  * What a segment leaves is persisted when it commits, so it must nest no deeper than a snapshot
  * may (limits.ts).
  *
- * When the root returns, the instance's encoder, if it has one, is called with the outcome on the
- * root's execution, so its JSON for the host (§9) is written in the segment that finishes it.
+ * Before the root's last frame returns, the instance's encoder, if it has one, encodes its outcome
+ * for the host (outcome-encoding.ts).
  *
  * After every instruction that let go of something, the segment collects (runtime/lifetimes/):
  * what lost its last holder is disposed right there (§7). A disposal that runs code runs on the
@@ -56,6 +56,7 @@ import type { MockCall } from '../test-world.ts';
 import { type Caller, returnedValue, startCall } from './calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
 import { panicOf, requireDepth } from './limits.ts';
+import { type Outcome, OutcomeEncoding } from './outcome-encoding.ts';
 import { RunStack } from './run-stack.ts';
 
 /** What a segment begins with: an execution about to run from its start, or answering a call. */
@@ -71,12 +72,6 @@ export type SegmentEnd =
   /** The root returned: commit its outcome, encoded too when the instance has an encoder. */
   | ({ readonly kind: 'finished' } & Outcome)
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
-
-/** What an instance's root gave, and that as `Json` when the instance has an encoder (§9). */
-interface Outcome {
-  readonly outcome: Value;
-  readonly encoded?: Value;
-}
 
 /**
  * Runs one segment of `instance`, which started at `startedAt`. It begins with `first`: an
@@ -113,9 +108,8 @@ class SegmentRunner implements Machine {
   readonly #runStack = new RunStack();
   readonly #collector: Collector;
   readonly #disposals: DisposalRuns;
+  readonly #encoding: OutcomeEncoding;
   #end: DriveEnd | undefined;
-  /** The root's outcome while the instance's encoder, running on the root, encodes it. */
-  #encoding: Value | undefined;
 
   constructor(instance: Instance, startedAt: bigint) {
     this.#instance = instance;
@@ -124,10 +118,10 @@ class SegmentRunner implements Machine {
       callerTrace: () => this.#runStack.callerTrace(this.definition),
     });
     this.#caller = { instance, natives: this.#natives, startedAt };
+    const running = { instance, caller: this.#caller, runStack: this.#runStack };
+    this.#encoding = new OutcomeEncoding(running);
     this.#disposals = new DisposalRuns({
-      instance,
-      caller: this.#caller,
-      runStack: this.#runStack,
+      ...running,
       returned: () => {
         this.#collector.returned();
       },
@@ -208,12 +202,20 @@ class SegmentRunner implements Machine {
   }
 
   return(frame: ActiveFrame, value: Value): void {
+    if (this.#encoding.before(frame, value)) {
+      return;
+    }
     const execution = this.#runStack.popFrame(frame);
     releaseFrame(frame);
     if (this.#disposals.returned(execution, frame)) {
       return;
     }
     const returned = returnedValue(this.#instance, frame, value);
+    const rootReturn = this.#encoding.returned(frame, returned);
+    if (rootReturn !== undefined) {
+      this.return(rootReturn.root, rootReturn.outcome);
+      return;
+    }
     const caller = execution.frames.at(-1);
     if (caller !== undefined) {
       resumeAfterCall(caller, returned);
@@ -224,33 +226,12 @@ class SegmentRunner implements Machine {
     }
     const future = execution.resolves;
     if (future === undefined) {
-      this.#rootReturned(returned);
+      this.#end = { finished: this.#encoding.finished(returned) };
       return;
     }
     this.#instance.remove(execution);
     this.#instance.futures.resolve(future, returned);
     this.#leave(future, 'returned');
-  }
-
-  /**
-   * The root returned `returned`: the outcome, which the instance's encoder is called with first
-   * when it has one; the encoder's own return then gives its JSON.
-   */
-  #rootReturned(returned: Value): void {
-    if (this.#encoding !== undefined) {
-      this.#end = { finished: { outcome: this.#encoding, encoded: returned } };
-      return;
-    }
-    const { encoder } = this.#instance;
-    const target =
-      encoder === undefined ? undefined : startCall(this.#caller, encoder, [returned], []);
-    if (target?.kind === 'code') {
-      this.#encoding = returned;
-      const { entry, contents, captures } = target;
-      this.#runStack.pushFrame(newFrame(entry, contents, this.#instance.frameHeap, captures));
-      return;
-    }
-    this.#end = { finished: { outcome: returned, ...(target && { encoded: target.value }) } };
   }
 
   wait(frame: ActiveFrame): void {

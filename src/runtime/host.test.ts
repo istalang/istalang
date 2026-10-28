@@ -99,6 +99,19 @@ describe('the runtime', () => {
     expect(() => unencoded && program.outcome(unencoded)).toThrow(Refusal);
   });
 
+  it("encodes the root's outcome before what its frame holds is disposed, so a defer's panic is traced from main", () => {
+    const program = testRuntime().runtime.deploy(
+      compiledText('async fn main() -> Future<int>: { defer fn(): panic("boom"); 42 }'),
+    );
+    const { state } = program.start('i');
+    expect(state).toMatchObject({ kind: 'panicked', message: 'boom' });
+    const frames = state.kind === 'panicked' ? state.trace.split('\n') : [];
+    expect(frames.map((frame) => frame.split(' ')[1])).toEqual([
+      'main.main.lambda@1:41',
+      'main.main',
+    ]);
+  });
+
   it('refuses a start whose seed from the host has the wrong length, writing nothing', () => {
     const { runtime, store } = testRuntime({ seed: () => new Uint8Array(3) });
     const program = runtime.deploy(subsetText);

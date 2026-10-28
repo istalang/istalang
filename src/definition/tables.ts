@@ -33,7 +33,7 @@ export const tables = z.strictObject({
   /**
    * What a host may start (§9), by the key it names each by: the code entry that takes the
    * arguments as JSON and runs the function, and the entry encoding its outcome as JSON, which the
-   * runtime calls once it returns (docs/arch/boundary.md).
+   * runtime calls as it returns (docs/arch/boundary.md).
    */
   starts: z.array(z.strictObject({ key: z.string(), function: functionId, encoder: functionId })),
   /**

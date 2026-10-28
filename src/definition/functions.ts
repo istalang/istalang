@@ -92,7 +92,7 @@ export function capturesOf(entry: FunctionDefinition): number {
 
 /**
  * Why `entry` can't encode an instance's outcome as JSON for its host (§9), which the runtime calls
- * once the instance's root returns; undefined when it can.
+ * as the instance's root returns; undefined when it can.
  */
 export function encoderProblem(entry: FunctionDefinition): string | undefined {
   const takesOneValue = entry.parameters.length === 1 && !takesReference(entry, 0);
