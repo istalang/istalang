@@ -124,13 +124,14 @@ const disposal = z.discriminatedUnion('kind', [
 ]);
 
 /**
- * What the runtime makes of an extern type's values: a `cell` type is every shared struct's (spec
- * §3.18), and `_Cell<T>`, the one variables live in (§3.7, §3.14); a `future` type is every
- * `Future<T>`, which a host's extern returning one gives back pending (§9); an `instance` type is
- * every `Instance<T>`, which `spawn` gives, holding the new instance's name (§9). Any other extern
- * type has none.
+ * What the runtime makes of an extern type's values: a `shared` type is every shared struct's,
+ * whose values are handles to the cells `newCell` makes (spec §3.18); a `cell` type is every
+ * `_Cell<T>`, the one a variable passed by `&` or captured lives in (§3.7, §3.14), as a code entry
+ * lists in its `cells`; a `future` type is every `Future<T>`, which a host's extern returning one
+ * gives back pending (§9); an `instance` type is every `Instance<T>`, which `spawn` gives, holding
+ * the new instance's name (§9). Any other extern type has none.
  */
-const externRole = z.enum(['cell', 'future', 'instance']);
+const externRole = z.enum(['shared', 'cell', 'future', 'instance']);
 
 /** A type the runtime or host implements, such as `prelude.Array<int>` or a host `Queue<T>`. */
 const external = z.strictObject({
@@ -150,11 +151,17 @@ export type TypeDefinition = z.output<typeof typeDefinition>;
 /**
  * Whether a value of the host type entry `type` of `types` is a resource object behind a handle
  * (§7): a `dispose` makes it disposable, so its values have an identity of their own, unless it is
- * a cell's. Any other host type's values are its host's JSON, as plain as an int.
+ * a shared struct's, whose values are cells. Any other host type's values are its host's JSON, as
+ * plain as an int.
  */
 export function isResourceType(types: readonly TypeDefinition[], type: number): boolean {
   const entry = types[type];
-  return entry?.kind === 'extern' && entry.disposal.kind === 'function' && entry.role !== 'cell';
+  return entry?.kind === 'extern' && entry.disposal.kind === 'function' && entry.role !== 'shared';
+}
+
+/** Whether a cell may have the type entry `type` of `types`: a shared struct's or a variable's. */
+export function isCellType(types: readonly TypeDefinition[], type: number): boolean {
+  return hasRole(types, type, 'shared') || hasRole(types, type, 'cell');
 }
 
 /** Whether type entry `type` of `types` has `role`. */

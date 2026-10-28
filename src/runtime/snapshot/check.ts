@@ -14,7 +14,7 @@
  *   value, with values the Definition agrees with
  * - its outcome's encoder, when it has one, is an entry that can encode one, and a finished
  *   instance's JSON of its outcome is a `Json` value (§9)
- * - a cell is a type entry of role `cell` and a resource of an extern type
+ * - a cell is of a shared struct's type entry or a `_Cell<T>`'s, and a resource of an extern type
  * - every value held anywhere names types and functions the Definition has, and agrees with them,
  *   by the same check the Definition's own constants pass (definition/references.ts)
  */
@@ -26,7 +26,7 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import { isJsonValue, jsonTypeIn } from '../../definition/json-values.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { valueProblems } from '../../definition/references.ts';
-import { hasRole } from '../../definition/types.ts';
+import { isCellType } from '../../definition/types.ts';
 import { handleTarget } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { Refusal } from '../refusal.ts';
@@ -68,7 +68,7 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
       ),
     ),
   cell: (definition, cell) =>
-    hasRole(definition.types, cell.type, 'cell') ? [] : [`cell ${cell.id} is not of a cell type`],
+    isCellType(definition.types, cell.type) ? [] : [`cell ${cell.id} is not of a cell type`],
   resource: (definition, resource) =>
     definition.types[resource.type]?.kind === 'extern'
       ? []

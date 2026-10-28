@@ -19,7 +19,7 @@ import {
   type Sizes,
   span,
 } from './instructions/instruction.test-kit.ts';
-import { hasRole, type TypeDefinition, type TypeReference } from './types.ts';
+import { type ExternRole, hasRole, type TypeDefinition, type TypeReference } from './types.ts';
 import { valueArbitrary } from './values.test-kit.ts';
 
 function typeReference(types: number): fc.Arbitrary<TypeReference> {
@@ -83,7 +83,7 @@ function typeDefinition(sizes: Sizes): fc.Arbitrary<TypeDefinition> {
           fc.constant({ kind: 'runtime' as const }),
           index(sizes.functions).map((fn) => ({ kind: 'function' as const, function: fn })),
         ),
-        role: fc.option(fc.constantFrom('cell' as const, 'future' as const, 'instance' as const), {
+        role: fc.option(fc.constantFrom<ExternRole>('shared', 'cell', 'future', 'instance'), {
           nil: undefined,
         }),
       })
@@ -148,14 +148,17 @@ function body(
   if (entry.kind !== 'code') {
     return fc.constant(entry);
   }
-  const sharedTypes = scope.types.flatMap((_type, id) =>
+  const variableCellTypes = scope.types.flatMap((_type, id) =>
     hasRole(scope.types, id, 'cell') ? [id] : [],
   );
   const cellsOfFrame =
-    sharedTypes.length === 0
+    variableCellTypes.length === 0
       ? fc.constant<{ register: number; type: number }[]>([])
       : fc.array(
-          fc.record({ register: index(entry.registers), type: fc.constantFrom(...sharedTypes) }),
+          fc.record({
+            register: index(entry.registers),
+            type: fc.constantFrom(...variableCellTypes),
+          }),
           { maxLength: 2 },
         );
   return fc.integer({ min: 1, max: 8 }).chain((labels) => {

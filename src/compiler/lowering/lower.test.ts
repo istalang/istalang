@@ -246,6 +246,28 @@ describe('lowering', () => {
     expect(bump?.kind === 'code' && bump.cells).toEqual([]);
   });
 
+  it("gives a shared struct's entry the shared role, apart from a variable's _Cell", () => {
+    const program = stdProgramOf({
+      main: [
+        'shared struct Counter:',
+        '  count: int',
+        'fn bump(n: &int):',
+        '  n += 1',
+        'async fn main() -> Future<int>:',
+        '  let n = 0',
+        '  bump(&n)',
+        '  const counter = new Counter{count: n}',
+        '  counter->count',
+      ].join('\n'),
+    });
+    const roles = compiledDefinition(program, 'main').types.flatMap((type) =>
+      type.kind === 'extern' && type.role !== undefined ? [[type.name, type.role]] : [],
+    );
+    expect(roles).toContainEqual(['main.Counter', 'shared']);
+    expect(roles).toContainEqual(['prelude._Cell', 'cell']);
+    expect(roles.filter(([, role]) => role === 'shared')).toEqual([['main.Counter', 'shared']]);
+  });
+
   it("gives the json module's Json enum the json role, and no other enum one", () => {
     const program = stdProgramOf({
       main: [

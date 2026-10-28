@@ -70,7 +70,9 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
   field: none,
   store: none,
   newCell: (tables, i) =>
-    hasRole(tables.types, i.type, 'cell') ? undefined : `type ${i.type} is not a cell's.`,
+    hasRole(tables.types, i.type, 'shared')
+      ? undefined
+      : `type ${i.type} is not a shared struct's.`,
   readCell: none,
   writeCell: none,
   array: none,

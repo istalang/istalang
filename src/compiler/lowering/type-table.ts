@@ -83,14 +83,14 @@ function anyEnum(entry: AnyEntry): TypeDefinition {
 }
 
 /**
- * The std type each role of an extern type entry is (definition/types.ts). A shared struct's entry
- * is a cell's too (§3.18).
+ * The std type each role of an extern type entry is (definition/types.ts); a shared struct's role
+ * comes from its declaration's kind instead (§3.18).
  */
 const externRoles = {
   cell: wellKnown.cell,
   future: wellKnown.future,
   instance: wellKnown.instance,
-} as const satisfies Record<ExternRole, WellKnownDeclaration>;
+} as const satisfies Record<Exclude<ExternRole, 'shared'>, WellKnownDeclaration>;
 
 /** The std type each role of an enum entry is (definition/types.ts). */
 const enumRoles = {
@@ -220,7 +220,7 @@ export class TypeTable {
           arguments: typeArguments,
           sendable: false,
           disposal: this.#disposal(this.#checker.disposalOf(type)),
-          role: 'cell',
+          role: 'shared',
         };
       case 'StructDeclaration':
         return {
