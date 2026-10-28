@@ -33,6 +33,12 @@ struct Tree<T>:
 fn made() -> Wrapped<int>:
   Wrapped<int>{value: 1, next: none, grows: none}
 
+fn bare() -> Chain<int>:
+  Deeper{head: 1, tail: End}
+
+fn qualified() -> Chain<int>:
+  Chain.Deeper{head: 1, tail: Chain.End}
+
 async fn main() -> Future<int>:
   made()
   Tree<int>{value: 1, children: [], pairs: []}.value

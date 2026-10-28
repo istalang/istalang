@@ -228,6 +228,14 @@ export const unitType = primitiveType('unit');
 export const neverType = primitiveType('never');
 export const errorType: ErrorType = { kind: 'error' };
 
+/**
+ * Whether a value is expected to be of the error type, whose cause was reported already: a value
+ * that needs an expected type to mean anything (`none`, a bare variant) reports nothing more.
+ */
+export function expectsError(expected: Type | undefined): boolean {
+  return expected?.kind === 'error';
+}
+
 export function isPrimitive(type: Type, name: PrimitiveName): boolean {
   return type.kind === 'primitive' && type.name === name;
 }

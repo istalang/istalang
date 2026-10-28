@@ -22,7 +22,13 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant, sameEnum } from '../resolution/named.ts';
 import { optionalInner } from '../types/fit.ts';
 import { typeArgumentsFor } from '../types/resolve-type.ts';
-import { errorType, type NominalType, nominalType, type Type } from '../types/type.ts';
+import {
+  errorType,
+  expectsError,
+  type NominalType,
+  nominalType,
+  type Type,
+} from '../types/type.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
 
 /** A node naming a variant: bare, qualified, or as a literal's type. */
@@ -57,7 +63,7 @@ export function checkNone(
   if (expected !== undefined && optionalInner(expected, optionalEntity) !== undefined) {
     return expected;
   }
-  if (expected?.kind === 'error') {
+  if (expectsError(expected)) {
     return errorType;
   }
   context.report(checkerDiagnostics.noneNeedsType(node.span));
@@ -135,6 +141,9 @@ function enumTypeFor(
   const same = sameEnum(context.checker, expected, declaration);
   if (same !== undefined) {
     return same;
+  }
+  if (expectsError(expected)) {
+    return errorType;
   }
   const open = typeParametersOf(declaration.typeParameters).find(
     (parameter) => parameter.defaultType === undefined,

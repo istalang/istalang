@@ -14,7 +14,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 
 - check a `Program` lazily and query expression types, signatures or bodies → `checkProgram`, `Checker`, `CheckedBody` (`src/compiler/checker/check.ts`)
 - get built-in primitive types → `intType`, `floatType`, `boolType`, `stringType`, `unitType`, `neverType` (`src/compiler/checker/types/type.ts`)
-- get `errorType`, build a primitive type, or test for a primitive → `errorType`, `primitiveType`, `isPrimitive` (`src/compiler/checker/types/type.ts`)
+- get `errorType`, build a primitive type, or test for a primitive → `errorType`, `primitiveType`, `isPrimitive` (`src/compiler/checker/types/type.ts`); a value expected of the error type reports nothing more → `expectsError`
 - build or inspect tuple types → `tupleType`, `tupleElements` (`src/compiler/checker/types/type.ts`)
 - build or inspect nominal or shared-value types → `nominalType`, `isNominalEntity`, `isSharedValueType` (`src/compiler/checker/types/type.ts`)
 - inspect or attach variadic type packs on function types → `isPack`, `fillsPack`, `withPack`, `packRestSlot` (`src/compiler/checker/types/type.ts`)

@@ -16,6 +16,7 @@ import { optionalInner } from '../types/fit.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
   aliasedAs,
+  expectsError,
   type NominalType,
   nominalType,
   primitiveType,
@@ -74,7 +75,9 @@ export function chooseVariant(
     (candidate) => sameEnum(context.checker, expected, candidate.enum) !== undefined,
   );
   if (chosen === undefined) {
-    context.report(checkerDiagnostics.bareVariant(at.span, at.name));
+    if (!expectsError(expected)) {
+      context.report(checkerDiagnostics.bareVariant(at.span, at.name));
+    }
     return undefined;
   }
   return { enum: chosen.enum, variant: chosen.variant };
