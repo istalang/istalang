@@ -248,8 +248,9 @@ async fn mockedDispose():
   const queue = handle<Queue>()
   hold _ = mock(open, fn(): queue)
   const disposed = mock(dispose, fn(given: Queue): ())
+  drop open()
   drop await spawn opensAndLets().result()
-  assert(disposed.calls() == [queue])
+  assert(disposed.calls() == [queue, queue])
 
 @Suite{"disposal"}
 fn suite() -> Array<Test>: [test("unmocked", unmockedDispose), test("mocked", mockedDispose)]

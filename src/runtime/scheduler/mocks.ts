@@ -68,12 +68,13 @@ type MockedCall =
   | {
       readonly kind: 'replaced';
       readonly replacement: Extract<CompositeValue, { kind: 'closure' }>;
+      readonly values: readonly Value[];
     }
   | { readonly kind: 'answered'; readonly value: Value };
 
 /**
- * What a call runs: a function, its target or a mock's replacement, with the captures that go
- * with it, or nothing, when another instance's mock answered it.
+ * What a call runs: a function, its target or a mock's replacement, with the arguments and
+ * captures that go with it, or nothing, when another instance's mock answered it.
  */
 export type CallTarget =
   | { readonly kind: 'answered'; readonly value: Value }
@@ -81,7 +82,9 @@ export type CallTarget =
       readonly kind: 'run';
       readonly function: FunctionId;
       readonly callable: Callable;
+      readonly contents: readonly RegisterContents[];
       readonly captures: readonly Value[];
+      readonly mocked: boolean;
     };
 
 /** Who makes calls: an instance, in a segment started at `startedAt`. */
@@ -118,7 +121,9 @@ export function callTargetOf(
     kind: 'run',
     function: run.function,
     callable: caller.instance.loaded.functions.callee(run.function),
+    contents: mocked?.values ?? contents,
     captures: run.captures,
+    mocked: mocked !== undefined,
   };
 }
 
@@ -146,12 +151,13 @@ export function driverOf(
 function mockedCall(call: CallToMock): MockedCall | undefined {
   const own = call.instance.mockOf(call.target);
   if (own !== undefined) {
-    recordCall(call.instance, own, call.values());
+    const values = call.values().map((each) => leaving(call.instance, each, false));
+    recordCall(call.instance, own, values);
     const { replacement } = own;
     if (!isComposite(replacement) || replacement.kind !== 'closure') {
       unreachable('A mock holds no function; the checker forbids it.');
     }
-    return { kind: 'replaced', replacement };
+    return { kind: 'replaced', replacement, values };
   }
   const relayed = relayedMockOf(call.instance, call.target);
   return relayed === undefined ? undefined : { kind: 'answered', value: relayCall(call, relayed) };
@@ -240,22 +246,25 @@ function startAnswer(
  * `value` as it leaves `instance` for another, as an argument of a call to a mock or its answer; a
  * panic for a handle that can't leave.
  */
-export function leaving(instance: Instance, value: Value): Value {
+export function leaving(instance: Instance, value: Value, acrossInstances = true): Value {
   if (!isComposite(value)) {
     return value;
   }
   if (value.kind === 'handle') {
     const object = instance.heap.objectOf(value.object);
-    if (object.kind !== 'resource') {
+    if (object.kind === 'resource') {
+      return { kind: 'extern', type: object.type, payload: object.payload };
+    }
+    if (acrossInstances) {
       throw new Panic(
         "A call to a mock another instance holds carries a value that isn't sendable (§10).",
       );
     }
-    return { kind: 'extern', type: object.type, payload: object.payload };
+    return value;
   }
   return withChildValues(
     value,
-    childValues(value).map((child) => leaving(instance, child)),
+    childValues(value).map((child) => leaving(instance, child, acrossInstances)),
   );
 }
 

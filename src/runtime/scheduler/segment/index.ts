@@ -47,7 +47,7 @@ import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
-import { type Caller, callTargetOf, driverOf, type SegmentStart } from '../mocks.ts';
+import { arriving, type Caller, callTargetOf, driverOf, type SegmentStart } from '../mocks.ts';
 import { NativeCalls } from '../native-calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
 import { panicOf, requireDepth } from './limits.ts';
@@ -96,6 +96,7 @@ class SegmentRunner implements Machine {
   readonly #runStack = new RunStack();
   readonly #collector: Collector;
   readonly #disposals: DisposalRuns;
+  readonly #mockFrames = new WeakSet<ActiveFrame>();
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, startedAt: bigint) {
@@ -176,17 +177,28 @@ class SegmentRunner implements Machine {
     }
     const { callable } = target;
     if (callable.kind === 'native') {
-      resumeAfterCall(frame, this.#natives.call(target.function, callable.native, contents));
+      const value = this.#natives.call(target.function, callable.native, target.contents);
+      resumeAfterCall(frame, target.mocked ? arriving(this.#instance, value) : value);
       return;
     }
     if (callable.code.async) {
       const future = this.#instance.futures.create({ kind: 'call' });
-      this.#runStack.push(
-        this.#instance.startExecution(callable.function, contents, target.captures, future),
+      const execution = this.#instance.startExecution(
+        callable.function,
+        target.contents,
+        target.captures,
+        future,
       );
+      if (target.mocked) {
+        this.#mockFrames.add(topFrame(execution));
+      }
+      this.#runStack.push(execution);
       return;
     }
-    const calleeFrame = newFrame(callable, contents, frame.heap, target.captures);
+    const calleeFrame = newFrame(callable, target.contents, frame.heap, target.captures);
+    if (target.mocked) {
+      this.#mockFrames.add(calleeFrame);
+    }
     this.#runStack.current().frames.push(calleeFrame);
   }
 
@@ -199,9 +211,10 @@ class SegmentRunner implements Machine {
     if (this.#disposals.returned(execution, frame)) {
       return;
     }
+    const returned = this.#mockFrames.has(frame) ? arriving(this.#instance, value) : value;
     const caller = execution.frames.at(-1);
     if (caller !== undefined) {
-      resumeAfterCall(caller, value);
+      resumeAfterCall(caller, returned);
       return;
     }
     if (this.#disposals.suspended(execution)) {
@@ -209,11 +222,11 @@ class SegmentRunner implements Machine {
     }
     const future = execution.resolves;
     if (future === undefined) {
-      this.#end = { finished: value };
+      this.#end = { finished: returned };
       return;
     }
     this.#instance.remove(execution);
-    this.#instance.futures.resolve(future, value);
+    this.#instance.futures.resolve(future, returned);
     this.#leave(future, 'returned');
   }
 

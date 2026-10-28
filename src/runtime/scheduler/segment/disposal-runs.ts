@@ -109,10 +109,10 @@ export class DisposalRuns {
     }
     const { callable } = target;
     if (callable.kind === 'native') {
-      natives.call(target.function, callable.native, call.arguments);
+      natives.call(target.function, callable.native, target.contents);
       return true;
     }
-    const frame = newFrame(callable, call.arguments, instance.frameHeap, target.captures);
+    const frame = newFrame(callable, target.contents, instance.frameHeap, target.captures);
     this.#frames.add(frame);
     let running = runStack.top();
     if (running === undefined) {
