@@ -22,11 +22,15 @@
  * - What lowering needs is recorded: each place written, with its part of the value and its fit.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import { type CompoundAssignment, compoundOperator } from '../../syntax/operators.ts';
-import { type Assignment, destructuringOf, isUnnamedTarget } from '../../syntax/statements.ts';
+import {
+  type Assignment,
+  type Destructuring,
+  destructuringOf,
+  isUnnamedTarget,
+} from '../../syntax/statements.ts';
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import { checkChangedPlace, checkDistinctPlaces, immutableKind } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
@@ -46,61 +50,69 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
     checkCompound(context, node, only, node.operator);
     return;
   }
-  const { expected, places } = prepareTargets(context, node.targets);
+  const targets = node.targets.map((target) => prepareTarget(context, target));
+  const [first] = targets;
+  const expected =
+    targets.length === 1 && first !== undefined ? expectedOf(first) : tupleExpected(targets);
   const whole = { type: context.expression(node.value, expected), path: [] };
-  const assigning = assigningIn(context, places, node.value.span);
-  takeTargets(assigning, node.targets, whole, node.span);
+  const assigning = assigningIn(context, node.value.span);
+  takeTargets(assigning, targets, whole, node.span);
   checkDistinctPlaces(context, assigning.parts);
   context.variables.recordAssigned(node, assigning.parts);
 }
 
 /**
- * Checks the leaf places of `targets` in source order and builds the type `targets` expect of the
- * assigned value; undefined when any target gives no type (as for `_`).
+ * A target with its place checked: a place of its type, `_`, or a destructuring of such targets.
+ * The targets are prepared in source order before the value is checked, which they may guide, and
+ * taking the value apart then walks them, not the syntax again.
  */
-function prepareTargets(
-  context: BodyContext,
-  targets: readonly Expression[],
-): { readonly expected: Type | undefined; readonly places: ReadonlyMap<Expression, Type> } {
-  const places = new Map<Expression, Type>();
-  const [only] = targets;
-  const expected =
-    targets.length === 1 && only !== undefined
-      ? prepareTarget(context, only, places)
-      : prepareTupleTargets(context, targets, places);
-  return { expected, places };
-}
+type PreparedTarget =
+  | { readonly kind: 'place'; readonly node: Expression; readonly type: Type }
+  | { readonly kind: 'unnamed' }
+  | { readonly kind: 'destructuring'; readonly destructuring: Destructuring<PreparedTarget> };
 
-function prepareTarget(
-  context: BodyContext,
-  target: Expression,
-  places: Map<Expression, Type>,
-): Type | undefined {
+function prepareTarget(context: BodyContext, target: Expression): PreparedTarget {
   const destructuring = destructuringOf(target);
-  if (destructuring !== undefined) {
-    if (destructuring.kind === 'tuple') {
-      return prepareTupleTargets(context, destructuring.elements, places);
-    }
-    for (const item of destructuring.items) {
-      prepareTarget(context, item.target, places);
-    }
-    return undefined;
+  if (destructuring?.kind === 'tuple') {
+    const elements = destructuring.elements.map((element) => prepareTarget(context, element));
+    return { kind: 'destructuring', destructuring: { ...destructuring, elements } };
+  }
+  if (destructuring?.kind === 'struct') {
+    const items = destructuring.items.map((item) => ({
+      ...item,
+      target: prepareTarget(context, item.target),
+    }));
+    return { kind: 'destructuring', destructuring: { ...destructuring, items } };
   }
   const bare = unparenthesized(target);
-  if (isUnnamedTarget(bare)) {
-    return undefined;
-  }
-  const place = assignedPlace(context, bare);
-  places.set(bare, place);
-  return place.kind === 'error' ? undefined : place;
+  return isUnnamedTarget(bare)
+    ? { kind: 'unnamed' }
+    : { kind: 'place', node: bare, type: assignedPlace(context, bare) };
 }
 
-function prepareTupleTargets(
-  context: BodyContext,
-  elements: readonly Expression[],
-  places: Map<Expression, Type>,
-): Type | undefined {
-  const types = elements.map((element) => prepareTarget(context, element, places));
+/**
+ * The type `target` expects of the value it takes, which guides checking it; undefined when any
+ * part gives none, as `_` or a struct target.
+ */
+function expectedOf(target: PreparedTarget): Type | undefined {
+  switch (target.kind) {
+    case 'place':
+      return target.type.kind === 'error' ? undefined : target.type;
+    case 'unnamed':
+      return undefined;
+    case 'destructuring':
+      return target.destructuring.kind === 'tuple'
+        ? tupleExpected(target.destructuring.elements)
+        : undefined;
+    default: {
+      const unhandled: never = target;
+      return unhandled;
+    }
+  }
+}
+
+function tupleExpected(elements: readonly PreparedTarget[]): Type | undefined {
+  const types = elements.map(expectedOf);
   const known = types.filter((type): type is Type => type !== undefined);
   return known.length === elements.length ? tupleType(known) : undefined;
 }
@@ -126,21 +138,15 @@ function checkCompound(
  * Taking an assigned value apart (patterns/taking.ts): where the places written are collected. Its
  * parts are positions, since an assignment's targets read no array's items.
  */
-interface Assigning extends Taking<Expression, number> {
+interface Assigning extends Taking<PreparedTarget, number> {
   readonly parts: AssignedPart[];
-  readonly places: ReadonlyMap<Expression, Type>;
   readonly valueSpan: Span;
 }
 
-function assigningIn(
-  context: BodyContext,
-  places: ReadonlyMap<Expression, Type>,
-  valueSpan: Span,
-): Assigning {
+function assigningIn(context: BodyContext, valueSpan: Span): Assigning {
   const assigning: Assigning = {
     scope: bodyScope(context),
     parts: [],
-    places,
     valueSpan,
     take: (target, part) => assignPart(context, assigning, target, part),
   };
@@ -154,22 +160,25 @@ function assigningIn(
 function assignPart(
   context: BodyContext,
   assigning: Assigning,
-  target: Expression,
+  target: PreparedTarget,
   part: ValuePart<number>,
 ): Shape | undefined {
-  const destructuring = destructuringOf(target);
-  if (destructuring !== undefined) {
-    return takeApart(assigning, destructuring, part);
+  switch (target.kind) {
+    case 'destructuring':
+      return takeApart(assigning, target.destructuring, part);
+    case 'unnamed':
+      return anyShape;
+    case 'place': {
+      const at = part.path.length === 0 ? assigning.valueSpan : target.node.span;
+      const fit = context.fitWritten(part.type, target.type, at);
+      assigning.parts.push({ target: target.node, path: part.path, type: part.type, fit });
+      return anyShape;
+    }
+    default: {
+      const unhandled: never = target;
+      return unhandled;
+    }
   }
-  const bare = unparenthesized(target);
-  if (isUnnamedTarget(bare)) {
-    return anyShape;
-  }
-  const place = assigning.places.get(bare) ?? unreachable('An assignment target was not prepared.');
-  const at = part.path.length === 0 ? assigning.valueSpan : bare.span;
-  const fit = context.fitWritten(part.type, place, at);
-  assigning.parts.push({ target: bare, path: part.path, type: part.type, fit });
-  return anyShape;
 }
 
 /**
