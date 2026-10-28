@@ -35,6 +35,7 @@ import {
   type Declaration,
   type DeclaredStruct,
   type EnumDeclaration,
+  type Field,
   type FunctionDeclaration,
   type TypeAliasDeclaration,
   type TypeParameter,
@@ -342,6 +343,10 @@ export class ProgramChecker implements CheckerContext {
 
   declaredVariantsOf(declaration: EnumDeclaration): readonly VariantMember[] {
     return this.#layouts.declaredVariantsOf(declaration);
+  }
+
+  endlessFieldsOf(declaration: DeclaredStruct | EnumDeclaration): ReadonlySet<Field> {
+    return this.#layouts.endlessFieldsOf(declaration);
   }
 
   languageFunctions(module: LanguageModule, name: string): readonly FunctionDeclaration[] {

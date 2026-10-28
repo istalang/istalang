@@ -59,6 +59,11 @@ export const genericTemplates = {
     message: (name: string) =>
       `'${name}' would need endlessly many instantiations: it calls itself, directly or not, with a type argument built from its own.`,
   },
+  expandingType: {
+    code: 5125,
+    message: (type: string, field: string) =>
+      `'${type}' would need endlessly many instantiations: its field '${field}' names it again, directly or not, with a type argument built from its own.`,
+  },
   defaultCycle: {
     code: 5112,
     message: (name: string) => `A default value of '${name}' depends on '${name}' itself.`,

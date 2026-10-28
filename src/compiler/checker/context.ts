@@ -24,6 +24,7 @@ import type { ModuleId } from '../program/program.ts';
 import type {
   DeclaredStruct,
   EnumDeclaration,
+  Field,
   FunctionDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
@@ -94,6 +95,8 @@ export interface CheckerContext extends Checker {
   readonly declaredFieldsOf: (declaration: DeclaredStruct) => readonly FieldMember[];
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
+  /** The fields of a declaration that would make its instantiation endless (§3.5). */
+  readonly endlessFieldsOf: (declaration: DeclaredStruct | EnumDeclaration) => ReadonlySet<Field>;
   /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§9). */
   readonly json: JsonCodecs;
   /** The prelude's `Optional`, which the implicit wrap fills (§2); undefined without a prelude. */

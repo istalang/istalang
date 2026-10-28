@@ -7,7 +7,8 @@
  * no fields of the struct type itself, so `x.f` and patterns never see them, and `*x` reads them as
  * an anonymous struct of its own, the one value type of that declaration.
  *
- * - As declared: field types resolved in the declaring module, once per declaration.
+ * - As declared: field types resolved in the declaring module, once per declaration; a field that
+ *   would make the type's instantiation endless reads as the error type (type-expansion.ts).
  * - As instantiated: substituted for a nominal type's arguments, derived on demand from the
  *   declared layout and never stored per instantiation (types/type.ts).
  *
@@ -15,21 +16,41 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { DeclaredStruct, EnumDeclaration } from '../../syntax/declarations.ts';
+import type { DeclaredStruct, EnumDeclaration, Field, Variant } from '../../syntax/declarations.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { declaredFields } from '../types/resolve-type.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
-import type { AnonymousStructType, FieldMember, NominalType, Type } from '../types/type.ts';
+import {
+  type AnonymousStructType,
+  errorType,
+  type FieldMember,
+  type NominalType,
+  type Type,
+} from '../types/type.ts';
+import { type FieldedDeclaration, TypeExpansion } from './type-expansion.ts';
 
 export class Layouts {
   readonly #checker: CheckerContext;
+  readonly #written = new Map<DeclaredStruct | Variant, readonly FieldMember[]>();
   readonly #fields = new Map<DeclaredStruct, readonly FieldMember[]>();
   readonly #variants = new Map<EnumDeclaration, readonly VariantMember[]>();
+  readonly #expansion = new TypeExpansion((declaration) =>
+    declaration.kind === 'EnumDeclaration'
+      ? declaration.variants.flatMap((variant) =>
+          variant.kind === 'Variant' ? this.#writtenVariantFields(declaration, variant) : [],
+        )
+      : this.#writtenFields(declaration),
+  );
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
+  }
+
+  /** The fields of `declaration` that would make its instantiation endless (§3.5). */
+  endlessFieldsOf(declaration: FieldedDeclaration): ReadonlySet<Field> {
+    return this.#expansion.endlessFieldsOf(declaration);
   }
 
   /**
@@ -80,12 +101,7 @@ export class Layouts {
 
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
     return memo(this.#fields, declaration, () =>
-      declaredFields(
-        this.#checker,
-        this.#checker.moduleOf(declaration),
-        declaration.fields,
-        fieldsFunctionOf(declaration),
-      ),
+      this.#ended(declaration, this.#writtenFields(declaration)),
     );
   }
 
@@ -96,15 +112,42 @@ export class Layouts {
           ? [
               {
                 name: variant.name.text,
-                fields: declaredFields(
-                  this.#checker,
-                  this.#checker.moduleOf(declaration),
-                  variant.fields,
-                  fieldsFunctionOf(declaration, variant),
-                ),
+                fields: this.#ended(declaration, this.#writtenVariantFields(declaration, variant)),
               },
             ]
           : [],
+      ),
+    );
+  }
+
+  /** `fields` of `declaration`, each that would make its instantiation endless read as an error. */
+  #ended(declaration: FieldedDeclaration, fields: readonly FieldMember[]): readonly FieldMember[] {
+    const endless = this.endlessFieldsOf(declaration);
+    return fields.map((field) =>
+      field.declared !== undefined && endless.has(field.declared.node)
+        ? { ...field, type: errorType }
+        : field,
+    );
+  }
+
+  #writtenFields(declaration: DeclaredStruct): readonly FieldMember[] {
+    return memo(this.#written, declaration, () =>
+      declaredFields(
+        this.#checker,
+        this.#checker.moduleOf(declaration),
+        declaration.fields,
+        fieldsFunctionOf(declaration),
+      ),
+    );
+  }
+
+  #writtenVariantFields(declaration: EnumDeclaration, variant: Variant): readonly FieldMember[] {
+    return memo(this.#written, variant, () =>
+      declaredFields(
+        this.#checker,
+        this.#checker.moduleOf(declaration),
+        variant.fields,
+        fieldsFunctionOf(declaration, variant),
       ),
     );
   }

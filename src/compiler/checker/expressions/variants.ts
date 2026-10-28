@@ -57,6 +57,9 @@ export function checkNone(
   if (expected !== undefined && optionalInner(expected, optionalEntity) !== undefined) {
     return expected;
   }
+  if (expected?.kind === 'error') {
+    return errorType;
+  }
   context.report(checkerDiagnostics.noneNeedsType(node.span));
   return errorType;
 }

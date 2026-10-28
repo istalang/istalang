@@ -3,10 +3,10 @@
 # error: 5211 at 16:15
 # error: 5211 at 17:12
 # error: 5211 at 18:12
-# error: 5211 at 19:23
+# error: 5125 at 19:23
 # A method taking `self` by value clashes with one taking it by reference, as `x.f()` couldn't
 # choose (§3.7). A struct never holds itself, directly, through a tuple, or through another
-# struct (§3.1).
+# struct (§3.1), and one growing its own type argument is endless (§3.5).
 
 struct P { x: int }
 fn f(self: P): 1

@@ -1,0 +1,38 @@
+# error: 5125 at 13:3
+# error: 5125 at 18:21
+# error: 5125 at 23:3
+# error: 5125 at 26:3
+# A generic type is compiled per instantiation, so one that refers to itself, directly or through
+# others, with a type argument built from its own would need endlessly many of them (§3.5): it is
+# reported at the field that grows the argument. A field that passes its parameter on whole, or
+# reaches the type again only through other parameters, ends.
+
+struct Wrapped<T>:
+  value: T
+  next: Wrapped<T>?
+  grows: Wrapped<(T,)>?
+
+enum Chain<T>:
+  End
+  Link { head: T; tail: Chain<T> }
+  Deeper { head: T; tail: Chain<Array<T>> }
+
+struct Ping<T>:
+  pong: Pong<T>?
+struct Pong<T>:
+  ping: Ping<Array<T>>?
+
+shared struct Cell<T>:
+  inner: Cell<(T, T)>?
+
+struct Tree<T>:
+  value: T
+  children: Array<Tree<T>>
+  pairs: Array<(Tree<T>, Tree<T>)>
+
+fn made() -> Wrapped<int>:
+  Wrapped<int>{value: 1, next: none, grows: none}
+
+async fn main() -> Future<int>:
+  made()
+  Tree<int>{value: 1, children: [], pairs: []}.value

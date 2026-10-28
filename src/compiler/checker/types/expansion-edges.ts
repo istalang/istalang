@@ -8,7 +8,7 @@
  * mentions to the parameter the argument is given for, an expanding edge when the parameter is
  * nested inside the argument rather than being the whole of it. Instantiation is endless exactly
  * when a cycle holds an expanding edge. Functions find their uses in their calls (rules/
- * expansion.ts).
+ * expansion.ts), types in their fields (declarations/type-expansion.ts).
  */
 
 import { stronglyConnected } from '../../../structures/strongly-connected.ts';

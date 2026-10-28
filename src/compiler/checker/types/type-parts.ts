@@ -1,10 +1,17 @@
 /**
  * What a type is built from (type.ts): the types one level down, a type with them replaced, and
- * what walking them finds, the type parameters and `any` types a type mentions and whether it holds
+ * what walking them finds, the type parameters, nominal and `any` types a type mentions and whether it holds
  * the error type.
  */
 
-import { type AnyType, isSharedValueType, type ParameterKey, type Type, withPack } from './type.ts';
+import {
+  type AnyType,
+  isSharedValueType,
+  type NominalType,
+  type ParameterKey,
+  type Type,
+  withPack,
+} from './type.ts';
 
 /** The types `type` is built from, one level down. */
 export function typeChildren(type: Type): readonly Type[] {
@@ -48,6 +55,12 @@ export function parametersIn(type: Type): readonly ParameterKey[] {
     }
   }
   return [...mentioned];
+}
+
+/** The nominal types `type` is or is built from, outermost first. */
+export function nominalsIn(type: Type): readonly NominalType[] {
+  const inner = typeChildren(type).flatMap(nominalsIn);
+  return type.kind === 'nominal' ? [type, ...inner] : inner;
 }
 
 /** The `any` types `type` is or is built from, outermost first. */
