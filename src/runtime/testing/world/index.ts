@@ -30,7 +30,7 @@ import { InstanceGroup } from '../../instance-group.ts';
 import type { Inspection, LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';
 import type { Answered } from '../../scheduler/futures.ts';
-import { inspection, pendingTestWatches, withdrawnAnswers } from '../../scheduler/inspect.ts';
+import { inspection } from '../../scheduler/inspect.ts';
 import { storedSnapshot } from '../../scheduler/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
 import { reachingMock } from '../../scheduler/mocks.ts';
@@ -45,6 +45,7 @@ import {
 import type { TestWatch } from '../../snapshot/objects.ts';
 import type { InstanceCall, MockCall, Snapshot } from '../../snapshot/snapshot.ts';
 import { memoryStore } from '../../store.ts';
+import { pendingTestWatches, withdrawnAnswers } from './snapshot-reads.ts';
 import { unmockedExterns } from './test-host.ts';
 
 /** A failed test: why, where, and the log records its instances committed, in order (§10). */
