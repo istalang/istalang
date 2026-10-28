@@ -8,6 +8,7 @@
  */
 
 import type { CheckedBody } from '../check.ts';
+import type { CheckedPattern, PatternTest } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
 import {
   type Substitution,
@@ -58,17 +59,48 @@ export function instantiatedBody(body: CheckedBody, substitution: Substitution):
       const chained = body.chainOf(link);
       return chained === undefined ? undefined : { ...chained, base: concrete(chained.base) };
     },
-    patternOf: (pattern) => {
-      const checked = body.patternOf(pattern);
-      return {
-        tests: checked.tests.map((test) =>
-          test.kind === 'downcast'
-            ? { ...test, from: substituteAny(test.from, substitution), to: concrete(test.to) }
-            : test,
-        ),
-        bindings: checked.bindings.map((binding) => ({ ...binding, type: concrete(binding.type) })),
-      };
-    },
+    patternOf: (pattern) => instantiatedPattern(body.patternOf(pattern), substitution),
     result: concrete(body.result),
+  };
+}
+
+/**
+ * `checked` with every type it records substituted, in its or-patterns' alternatives too. Each test
+ * kind is listed, so a kind that comes to carry a type can't pass through unsubstituted.
+ */
+function instantiatedPattern(checked: CheckedPattern, substitution: Substitution): CheckedPattern {
+  const instantiatedTest = (patternTest: PatternTest): PatternTest => {
+    switch (patternTest.kind) {
+      case 'downcast':
+        return {
+          ...patternTest,
+          from: substituteAny(patternTest.from, substitution),
+          to: substitute(patternTest.to, substitution),
+        };
+      case 'or':
+        return {
+          ...patternTest,
+          alternatives: patternTest.alternatives.map((each) =>
+            instantiatedPattern(each, substitution),
+          ),
+        };
+      case 'variant':
+      case 'equal':
+      case 'compare':
+      case 'length':
+      case 'bound':
+        return patternTest;
+      default: {
+        const unhandled: never = patternTest;
+        return unhandled;
+      }
+    }
+  };
+  return {
+    tests: checked.tests.map(instantiatedTest),
+    bindings: checked.bindings.map((binding) => ({
+      ...binding,
+      type: substitute(binding.type, substitution),
+    })),
   };
 }
