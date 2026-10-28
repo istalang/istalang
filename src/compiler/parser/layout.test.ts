@@ -139,6 +139,33 @@ describe('block expressions', () => {
       ),
     );
   });
+
+  it('nest multi-line blocks directly and inside call arguments', () => {
+    const text = lines(
+      '{',
+      '    const f = fn(): {',
+      '        a()',
+      '        b()',
+      '    }',
+      '    retry(fn(): {',
+      '        f()',
+      '    }, 2)',
+      '}',
+    );
+    expect(dumpClean('statement', text)).toBe(
+      statement(
+        `(BlockExpression ${block(
+          `(VariableDeclaration _ [(NamePattern [f])] _ (Lambda _ [] _ (BlockExpression ${block(
+            statement('(Call a [] [])'),
+            statement('(Call b [] [])'),
+          )})))`,
+          statement(
+            `(Call retry [] [(Lambda _ [] _ (BlockExpression ${bodyOf('(Call f [] [])')})) 2])`,
+          ),
+        )})`,
+      ),
+    );
+  });
 });
 
 describe('annotations', () => {

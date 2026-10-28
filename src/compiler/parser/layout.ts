@@ -314,12 +314,15 @@ function placeOfNextLine(
   next: { readonly kind: CursorKind; readonly span: Span },
 ): 'sameBlock' | 'deeper' | 'strayDedent' | 'ownCloser' | 'outside' {
   const { cursor } = parser;
-  if (!cursor.separatesItems || cursor.closesEnclosing(next.kind)) {
+  if (!cursor.separatesItems) {
     return 'outside';
   }
   if (next.kind === cursor.closer) {
     // A suite inside braces keeps their `}` as its closer, but only the braces may consume it.
     return cursor.ownsCloser ? 'ownCloser' : 'outside';
+  }
+  if (cursor.closesEnclosing(next.kind)) {
+    return 'outside';
   }
   const column = cursor.blockColumn;
   if (column === undefined) {
