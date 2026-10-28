@@ -140,8 +140,11 @@ export const unaryOperators = {
 
 export type UnaryOperator = keyof typeof unaryOperators;
 
-/** A binary operator that calls a function, which gives it meaning for a type (§3.9). */
-export type CallingBinaryOperator = BinaryOperatorOf<'call' | 'order' | 'membership'>;
+/**
+ * A binary operator that calls the function its entry names, which gives it meaning for a type
+ * (§3.9); the implicit operators call theirs as the language does (`ImplicitOperator`).
+ */
+export type CallingBinaryOperator = BinaryOperatorOf<'call'>;
 
 /** A prefix operator that calls a function. */
 export type CallingUnaryOperator = {
