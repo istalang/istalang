@@ -25,7 +25,7 @@
 
 import type { FunctionId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/types.ts';
-import { closureOf, type Value } from '../../definition/values.ts';
+import { closureOf, handleTo, type Value } from '../../definition/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/heap.ts';
@@ -100,7 +100,7 @@ function declared(object: LiveObjectOf<'cell' | 'resource'>): KindDisposal {
             kind: 'call',
             function: disposal.function,
             captures: [],
-            arguments: [{ kind: 'handle', object: object.id }],
+            arguments: [handleTo(object.id)],
           }
         : undefined;
     },

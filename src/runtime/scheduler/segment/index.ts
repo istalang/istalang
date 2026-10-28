@@ -29,7 +29,7 @@
 import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import { depthOf, type Value } from '../../../definition/values.ts';
+import { depthOf, handleTo, type Value } from '../../../definition/values.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { runInstruction } from '../../interpreter/instructions.ts';
 import {
@@ -242,11 +242,11 @@ class SegmentRunner implements Machine {
 
   guard(callback: Value): Value {
     const guard = this.#instance.heap.add((id) => ({ kind: 'guard', id, callback }));
-    return { kind: 'handle', object: guard.id };
+    return handleTo(guard.id);
   }
 
   currentCall(): Value {
-    return this.#instance.weak.reference({ kind: 'handle', object: this.#runStack.current().id });
+    return this.#instance.weak.reference(handleTo(this.#runStack.current().id));
   }
 
   /** Runs drivers until one awaits, the root returns, or nothing is ready. */
@@ -369,6 +369,6 @@ class SegmentRunner implements Machine {
       this.#end = end;
       return;
     }
-    resumeAfterCall(topFrame(caller), { kind: 'handle', object: future });
+    resumeAfterCall(topFrame(caller), handleTo(future));
   }
 }

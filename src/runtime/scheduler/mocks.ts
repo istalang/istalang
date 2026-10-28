@@ -25,6 +25,7 @@ import {
   type CompositeValue,
   childValues,
   closureOf,
+  handleTo,
   isComposite,
   samePayload,
   type Value,
@@ -204,7 +205,7 @@ function relayCall(call: CallToMock, held: HeldMock): Value {
     instance: instance.name,
     token: future.token,
   });
-  const handle: Value = { kind: 'handle', object: future.id };
+  const handle: Value = handleTo(future.id);
   if (given.kind === 'failed') {
     throw new Panic(
       `The instance holding the mock of ${calleeName(instance, target)} failed to answer it.`,
@@ -312,7 +313,7 @@ export function arriving(instance: Instance, value: Value): Value {
         type: value.type,
         payload: value.payload,
       }));
-    return { kind: 'handle', object: resource.id };
+    return handleTo(resource.id);
   }
   return withChildValues(
     value,

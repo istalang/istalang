@@ -239,6 +239,11 @@ export function samePayload(first: unknown, second: unknown): boolean {
   return first === second || encodeJson(first) === encodeJson(second);
 }
 
+/** A handle to heap object `object`. */
+export function handleTo(object: number): Value {
+  return { kind: 'handle', object };
+}
+
 /** The heap object a handle names; undefined for any other value. */
 export function handleTarget(candidate: Value | undefined): number | undefined {
   return candidate !== undefined && isComposite(candidate) && candidate.kind === 'handle'

@@ -10,7 +10,7 @@
 
 import fc from 'fast-check';
 import { exactJson } from './codec.test-kit.ts';
-import type { Value } from './values.ts';
+import { handleTo, type Value } from './values.ts';
 
 export interface ValueOptions {
   readonly typed?: boolean;
@@ -49,9 +49,7 @@ export function valueArbitrary(options: ValueOptions = {}): fc.Arbitrary<Value> 
       fc.record({ type: id, payload: exactJson }).map((parts) => ({ kind: 'extern', ...parts })),
     ];
     const handleKinds: fc.Arbitrary<Value>[] =
-      handles.length === 0
-        ? []
-        : [fc.constantFrom(...handles).map((object) => ({ kind: 'handle', object }))];
+      handles.length === 0 ? [] : [fc.constantFrom(...handles).map(handleTo)];
     return {
       value: fc.oneof(
         { depthSize: 'small', maxDepth: 4 },

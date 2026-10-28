@@ -17,7 +17,7 @@
  */
 
 import { awaitedRegisters } from '../../definition/instructions/flow.ts';
-import { handleTarget, type Value } from '../../definition/values.ts';
+import { handleTarget, handleTo, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { readRegister } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';
@@ -71,7 +71,7 @@ export class Futures {
 
   /** A handle to a new future in `state`. */
   createHandle(state: FutureState): Value {
-    return { kind: 'handle', object: this.create(state) };
+    return handleTo(this.create(state));
   }
 
   /** The value of the future `handle` names, once it has resolved. */

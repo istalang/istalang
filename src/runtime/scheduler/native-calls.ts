@@ -14,7 +14,7 @@ import { namedTypeOf } from '../../definition/declared-values.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
 import { instanceHandle } from '../../definition/instance-handles.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { closureOf, handleTarget, type Value } from '../../definition/values.ts';
+import { closureOf, handleTarget, handleTo, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { passedValues, writeReference } from '../interpreter/machine.ts';
 import type {
@@ -132,7 +132,7 @@ function nativeResourcesOf(heap: Heap): NativeResources {
   return {
     create: (type, payload) => {
       const resource = heap.add((id) => ({ kind: 'resource', id, type, payload }));
-      return { kind: 'handle', object: resource.id };
+      return handleTo(resource.id);
     },
     payloadOf: (handle) => {
       const id = handleTarget(handle);
@@ -192,7 +192,7 @@ function nativeTestingOf(instance: Instance): NativeTesting {
         replacement,
         calls: [],
       }));
-      return { kind: 'handle', object: mock.id };
+      return handleTo(mock.id);
     },
     calls: (handle) => instance.heap.of(handleObject(handle), 'mock').calls,
     inspect: (name) => world.inspect(name),

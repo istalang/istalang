@@ -7,11 +7,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { depthOf, handlesIn } from '../../definition/values.ts';
+import { depthOf, handlesIn, handleTo } from '../../definition/values.ts';
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
 import { frameValues, isRoot, valuesIn } from '../snapshot/holdings.ts';
 import { heldFrom, holdsOf } from './holders.ts';
-import { handle, heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
+import { heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
 
 describe('holding', () => {
   it('holds exactly what the roots reach', () => {
@@ -70,11 +70,11 @@ describe('holding', () => {
         kind: 'cell',
         id,
         type: 1,
-        value: id + 1 < length ? handle(id + 1) : null,
+        value: id + 1 < length ? handleTo(id + 1) : null,
       }),
     );
     const held = heldFrom(new Heap(cells), {
-      frames: [{ registers: [handle(0)] }],
+      frames: [{ registers: [handleTo(0)] }],
       objects: [],
     });
     expect(held.objects.size).toBe(length);

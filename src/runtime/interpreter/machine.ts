@@ -28,7 +28,7 @@ import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/functions.ts';
 import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register, TypeId } from '../../definition/operands.ts';
-import { handleTarget, type Value } from '../../definition/values.ts';
+import { handleTarget, handleTo, type Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
@@ -190,7 +190,7 @@ export function writeRegister(frame: ActiveFrame, register: Register, value: Val
       frame.heap.released(contents);
     }
   } else if (contents === undefined) {
-    frame.registers[register] = { kind: 'handle', object: frame.heap.create(cell.type, value) };
+    frame.registers[register] = handleTo(frame.heap.create(cell.type, value));
   } else {
     frame.heap.write(cellOf(contents), value);
   }
@@ -198,7 +198,7 @@ export function writeRegister(frame: ActiveFrame, register: Register, value: Val
 
 /** A handle to a new cell of type entry `type` holding `value`: a shared struct's (§3.18). */
 export function newCell(frame: ActiveFrame, type: TypeId, value: Value): Value {
-  return { kind: 'handle', object: frame.heap.create(type, value) };
+  return handleTo(frame.heap.create(type, value));
 }
 
 /** The value in the cell the handle in `register` names (§3.9). */

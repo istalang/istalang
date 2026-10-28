@@ -7,10 +7,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { handleTo } from '../../definition/values.ts';
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
 import { isDisposable } from './disposal.ts';
 import { heldFrom, holdsOf } from './holders.ts';
-import { handle, heapArbitrary, reachedFrom, testTypes } from './lifetimes.test-kit.ts';
+import { heapArbitrary, reachedFrom, testTypes } from './lifetimes.test-kit.ts';
 import { readyOrphans } from './orphans.ts';
 
 /** Whether `object` of `heap` is disposed when nothing holds it. */
@@ -46,11 +47,11 @@ describe('ready orphans', () => {
       kind: 'cell',
       id,
       type: 0,
-      value: holds === undefined ? null : handle(holds),
+      value: holds === undefined ? null : handleTo(holds),
     });
-    const plain: LiveObject = { kind: 'cell', id: 4, type: 1, value: handle(5) };
+    const plain: LiveObject = { kind: 'cell', id: 4, type: 1, value: handleTo(5) };
     const heap = new Heap([lease(0, 1), lease(1, 0), lease(2, 4), lease(3), plain, lease(5)]);
-    const frames = [{ registers: [handle(3)] }];
+    const frames = [{ registers: [handleTo(3)] }];
     const held = heldFrom(heap, { frames, objects: [] }).objects;
     const from = [0, 2];
     expect(readyOrphans(heap, { held, from, isDisposable: disposableIn(heap) })).toEqual([2, 1, 0]);

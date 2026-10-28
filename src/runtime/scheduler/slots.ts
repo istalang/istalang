@@ -13,7 +13,7 @@
  *   operation that completes at once never jumps a waiter of its own kind.
  */
 
-import type { Value } from '../../definition/values.ts';
+import { handleTo, type Value } from '../../definition/values.ts';
 import type { FutureState } from '../snapshot/objects.ts';
 import type { Futures } from './futures.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
@@ -34,7 +34,7 @@ export class Slots {
   /** A handle to a new, empty slot. */
   create(): Value {
     const slot = this.#heap.add((id): SlotObject => ({ kind: 'slot', id, waiting: [] }));
-    return { kind: 'handle', object: slot.id };
+    return handleTo(slot.id);
   }
 
   /** A handle to the future of `operation` on the slot `handle` names; `value` is a put's. */
@@ -49,7 +49,7 @@ export class Slots {
         ...(operation === 'put' ? { value } : {}),
       });
       this.#heap.replace({ ...slot, waiting: [...slot.waiting, future] });
-      return { kind: 'handle', object: future };
+      return handleTo(future);
     }
     const { yielded, contents } = completed(slot.value, operation, value);
     this.#serve(slot, contents);

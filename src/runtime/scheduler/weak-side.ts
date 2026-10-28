@@ -17,7 +17,7 @@
  *   cleanup within the disposal (spec §7).
  */
 
-import type { Value } from '../../definition/values.ts';
+import { handleTo, type Value } from '../../definition/values.ts';
 import type { NativeWeakSide } from '../natives.ts';
 import { type Futures, waitedOn } from './futures.ts';
 import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
@@ -36,13 +36,13 @@ export class WeakSide implements NativeWeakSide {
     const target = handleObject(referent);
     const weak =
       this.#referenceTo(target) ?? this.#heap.add((id) => ({ kind: 'weakRef', id, target }));
-    return { kind: 'handle', object: weak.id };
+    return handleTo(weak.id);
   }
 
   /** A handle to what `weak` refers to, until it is disposed. */
   target(weak: Value): Value | undefined {
     const { target } = this.#heap.of(handleObject(weak), 'weakRef');
-    return typeof target === 'number' ? { kind: 'handle', object: target } : undefined;
+    return typeof target === 'number' ? handleTo(target) : undefined;
   }
 
   /**

@@ -8,7 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../definition/values.ts';
-import { handle } from '../lifetimes/lifetimes.test-kit.ts';
+import { handleTo } from '../../definition/values.ts';
 import { ignoredEvents } from './futures.test-kit.ts';
 import { Futures } from './futures.ts';
 import { Heap, type LiveExecution } from './heap.ts';
@@ -46,7 +46,7 @@ class Scene {
       this.heap.add((id) => ({ kind: 'slot', id, waiting: [] })),
     ).map(({ id }) => id),
   ];
-  readonly references = this.ids.map((id) => this.weak.reference(handle(id)));
+  readonly references = this.ids.map((id) => this.weak.reference(handleTo(id)));
   readonly watches: {
     readonly referent: number;
     readonly future: Value;
@@ -97,8 +97,10 @@ describe('the weak side', () => {
     const [first, second] = [0, 1].map(
       () => heap.add((id) => ({ kind: 'slot', id, waiting: [] })).id,
     );
-    expect(weak.reference(handle(first ?? -1))).toEqual(weak.reference(handle(first ?? -1)));
-    expect(weak.reference(handle(first ?? -1))).not.toEqual(weak.reference(handle(second ?? -1)));
+    expect(weak.reference(handleTo(first ?? -1))).toEqual(weak.reference(handleTo(first ?? -1)));
+    expect(weak.reference(handleTo(first ?? -1))).not.toEqual(
+      weak.reference(handleTo(second ?? -1)),
+    );
   });
 
   it('lets go of a referent once it is disposed or its call returned, and only then', () => {

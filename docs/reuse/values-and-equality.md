@@ -13,6 +13,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 ## Units
 
 - narrow a `Value` to composite, array, map or closure → `isComposite`, `elementsOf`, `mapValueOf`, `handleTarget`, `closureOf` (`src/definition/values.ts`)
+- make a handle to a heap object → `handleTo` (`src/definition/values.ts`)
 - read or replace a composite's children or depth → `childValues`, `withChildValues`, `handlesIn`, `depthOf`, `samePayload` (`src/definition/values.ts`)
 - read or build a struct or variant `Value` by declared name → `fieldValueOf`, `structOf`, `variantOf`, `variantShape` (`src/definition/declared-values.ts`)
 - build an `Optional`, `Result` (`Ok`, `Err`) or `Error` `Value` → `optionalOf`, `okOf`, `errOf`, `errorOf`, `okTypeOf` (`src/definition/declared-values.ts`)
@@ -38,6 +39,6 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 ## One-way rules
 
 - Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `native-values.ts`), never by positional index.
-- Narrow closures with `closureOf` and handles with `handleTarget` (`src/definition/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks.
+- Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` (`src/definition/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle', … }` literals.
 - Values are immutable: never mutate `fields`, `elements`, `entries` or `captures`; rebuild with `withPart`, `withChildValues`, or `withEntry`/`withoutEntry`.
 - Built-in `==` and map hashing live in `ValueSemantics` (`src/language/values.ts`), shared by `definition/equality.ts` and `checker/constant-form.ts`.
