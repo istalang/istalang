@@ -172,13 +172,13 @@ export class LocalBinder {
    */
   path(parts: QualifiedName, scope: Scope, role: Role): void {
     this.use(parts[0], scope, role);
-    this.#qualifyLater(parts, false);
+    this.#qualifyLater(parts, scope, false);
   }
 
   /** `a.b.c` in an expression, where a part after an enum may be a static function. */
   memberPath(parts: QualifiedName, scope: Scope): void {
     this.useBeforeMember(parts[0], scope);
-    this.#qualifyLater(parts, true);
+    this.#qualifyLater(parts, scope, true);
   }
 
   /**
@@ -275,9 +275,9 @@ export class LocalBinder {
   }
 
   /** Leaves the later parts of `parts` for linking, when its head may qualify them. */
-  #qualifyLater(parts: QualifiedName, inExpression: boolean): void {
+  #qualifyLater(parts: QualifiedName, scope: Scope, inExpression: boolean): void {
     const complete = !parts.some(isMissingName);
-    if (parts.length > 1 && complete && mayQualify(this.#entities.get(parts[0]))) {
+    if (parts.length > 1 && complete && mayQualify(scope.lookup(parts[0].text))) {
       this.#paths.push({ parts, inExpression });
     }
   }
@@ -343,7 +343,10 @@ function functionsNamed(
   }
 }
 
-/** Whether a name's later parts can be resolved by name: through a module or an enum. */
+/**
+ * Whether a name's later parts can be resolved by name: through a module or an enum, or through
+ * whatever a name declared nowhere here turns out to be once linked.
+ */
 function mayQualify(head: LocalEntity | undefined): boolean {
   switch (head?.kind) {
     case undefined:

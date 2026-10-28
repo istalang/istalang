@@ -16,6 +16,7 @@ import {
   preludeProgramOf,
 } from './bind.test-kit.ts';
 import { bindProgram } from './bind.ts';
+import { bindModule } from './bind-module.ts';
 import type { Entity } from './entities.ts';
 
 const lib = 'struct Shape { radius: int }\nfn helper(): 1\nenum Color { Red; Green }';
@@ -292,6 +293,11 @@ describe("a function's name before a '.'", () => {
     expect(entityOfName(program, 'main', 'worker', 1)).toBe(own);
     expect(entityOfName(program, 'main', 'worker', 2)).toBe(own);
     expect(idle === undefined ? idle : bindings.ownCallOf(idOf('main'), idle)).toBeUndefined();
+  });
+
+  it('leaves nothing to link where it denotes no call', () => {
+    const program = preludeProgramOf({ main: 'fn helper(): 1\nasync fn f():\n  drop helper.bits' });
+    expect(bindModule(moduleAt(program, 'main').tree).paths).toEqual([]);
   });
 
   it('denotes a variable that shadows the function', () => {
