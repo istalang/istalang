@@ -28,14 +28,12 @@ import type {
   NativeResources,
   NativeSlots,
   NativeTesting,
-  NativeWeakSide,
 } from '../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { Futures } from './futures.ts';
 import { type Heap, handleObject } from './heap.ts';
 import type { Instance } from './instance/index.ts';
 import type { Slots } from './slots.ts';
-import type { WeakSide } from './weak-side.ts';
 
 export class NativeCalls {
   readonly #instance: Instance;
@@ -100,7 +98,7 @@ function capabilitiesOf(instance: Instance, startedAt: bigint): NativeCapabiliti
   return {
     futures: nativeFuturesOf(instance.futures),
     slots: nativeSlotsOf(instance.slots),
-    weak: nativeWeakSideOf(instance.weak),
+    weak: instance.weak,
     resources: nativeResourcesOf(instance.heap),
     random: nativeRandomOf(instance),
     logs: nativeLogsOf(instance, startedAt),
@@ -126,16 +124,6 @@ function nativeSlotsOf(slots: Slots): NativeSlots {
     put: (slot, value) => slots.operate(slot, 'put', value),
     take: (slot) => slots.operate(slot, 'take'),
     read: (slot) => slots.operate(slot, 'read'),
-  };
-}
-
-/** The instance's weak references as natives reach them: through handles (§7). */
-function nativeWeakSideOf(weak: WeakSide): NativeWeakSide {
-  return {
-    reference: (referent) => weak.reference(referent),
-    target: (reference) => weak.target(reference),
-    watch: (reference) => weak.watch(reference),
-    whenDisposed: (reference) => weak.watch(reference),
   };
 }
 

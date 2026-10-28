@@ -94,8 +94,6 @@ export interface NativeWeakSide {
    * non-call referent was, and never once a call entered cleanup or returned.
    */
   readonly watch: (weak: Value) => Value;
-  /** `watch`, under the name the prelude's `disposed` extern calls. */
-  readonly whenDisposed: (weak: Value) => Value;
 }
 
 /**

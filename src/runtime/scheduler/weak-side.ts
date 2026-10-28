@@ -18,10 +18,11 @@
  */
 
 import type { Value } from '../../definition/values.ts';
+import type { NativeWeakSide } from '../natives.ts';
 import { type Futures, waitedOn } from './futures.ts';
 import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
 
-export class WeakSide {
+export class WeakSide implements NativeWeakSide {
   readonly #heap: Heap;
   readonly #futures: Futures;
 

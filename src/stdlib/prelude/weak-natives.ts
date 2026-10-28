@@ -19,7 +19,7 @@ export const weakNatives = (keys: NativeKeys): Natives<NativeContext & WithWeakS
     context.weak.reference(given(value)),
   [keys.of('deref', weakRef)]: ([weak], context) =>
     resultOptional(context, context.weak.target(given(weak))),
-  [keys.of('disposed', weakRef)]: ([weak], context) => context.weak.whenDisposed(given(weak)),
+  [keys.of('disposed', weakRef)]: ([weak], context) => context.weak.watch(given(weak)),
   [keys.of('disposing', knownTypeKey(wellKnown.call))]: ([call], context) =>
     context.weak.watch(given(call)),
 });
