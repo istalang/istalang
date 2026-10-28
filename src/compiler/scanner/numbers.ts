@@ -12,23 +12,22 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import {
+  millisecondsPerDay,
+  millisecondsPerHour,
+  millisecondsPerMinute,
+  millisecondsPerSecond,
+} from '../../language/time-units.ts';
 import { identifierRunEnd, isDecimalDigit, isHexDigit } from './characters.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import type { ScannedLexeme } from './lexeme.ts';
-
-const millisecondsPerSecond = 1000n;
-const secondsPerMinute = 60n;
-const minutesPerHour = 60n;
-const hoursPerDay = 24n;
-const millisecondsPerMinute = millisecondsPerSecond * secondsPerMinute;
-const millisecondsPerHour = millisecondsPerMinute * minutesPerHour;
 
 const millisecondsPerUnit: ReadonlyMap<string, bigint> = new Map([
   ['ms', 1n],
   ['s', millisecondsPerSecond],
   ['m', millisecondsPerMinute],
   ['h', millisecondsPerHour],
-  ['d', millisecondsPerHour * hoursPerDay],
+  ['d', millisecondsPerDay],
 ]);
 
 const separatorRuns = /_+/gu;
