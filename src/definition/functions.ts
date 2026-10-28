@@ -39,6 +39,8 @@ const code = z.strictObject({
   kind: z.literal('code'),
   ...common,
   async: z.boolean(),
+  /** Whether the entry gives a parameter or a field its default (spec §3.1, §3.3). */
+  givesDefault: z.boolean(),
   parameters: z.array(z.strictObject({ reference: z.boolean() })),
   /** How many captured values a closure of this function carries. */
   captures: count,

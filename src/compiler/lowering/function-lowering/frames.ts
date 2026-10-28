@@ -55,6 +55,8 @@ export interface StartFrame {
 export interface Frame {
   readonly header: EntryHeader;
   readonly isAsync: boolean;
+  /** Whether the entry gives a parameter of its function its default (§3.1, §3.3). */
+  readonly givesDefault: boolean;
   readonly parameters: readonly SignatureParameter[];
   readonly captures: readonly CapturedVariable[];
   /** The function the entry runs: a top-level declaration, or a nested function. */
@@ -129,6 +131,7 @@ export function instanceFrame(
   return {
     header: start?.header ?? tables.entryHeader(instance),
     isAsync: declaration.isAsync && entry.kind === 'own',
+    givesDefault: entry.kind === 'default',
     parameters: entry.kind === 'default' ? parameters.slice(0, entry.parameter) : parameters,
     captures: [],
     function: declaration,
@@ -153,6 +156,7 @@ export function nestedFrame(
   return {
     header: start?.header ?? lowered.tables.nestedHeader(nested),
     isAsync: type.isAsync,
+    givesDefault: false,
     parameters,
     captures,
     function: node,

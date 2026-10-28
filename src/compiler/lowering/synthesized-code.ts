@@ -147,6 +147,7 @@ export class SynthesizedCode implements CodeContext {
       kind: 'code',
       ...header,
       async: isAsync,
+      givesDefault: false,
       parameters: this.parameters.map((_, index) => ({ reference: references[index] === true })),
       captures: this.captures.length,
       registers,

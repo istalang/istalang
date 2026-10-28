@@ -109,6 +109,7 @@ function signature(sizes: Sizes): fc.Arbitrary<FunctionDefinition> {
       .record({
         ...common,
         async: fc.boolean(),
+        givesDefault: fc.boolean(),
         parameters: fc.array(fc.record({ reference: fc.boolean() }), { maxLength: 3 }),
         captures: fc.nat({ max: 2 }),
         extra: fc.integer({ min: 1, max: 6 }),

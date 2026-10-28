@@ -64,6 +64,32 @@ describe('function-table names', () => {
   });
 });
 
+describe('default entries', () => {
+  it("mark exactly the entries giving a parameter's or a field's default", () => {
+    const program = stdProgramOf({
+      main: [
+        'struct Retry { tries: int = 3; backoff: int = tries * 2 }',
+        'fn wait(retry: Retry = Retry{}, times: int = 1) -> int: retry.backoff * times',
+        'async fn main() -> Future<int>:',
+        '  wait()',
+      ].join('\n'),
+    });
+    const code = compiledDefinition(program, 'main').functions.flatMap((entry) =>
+      entry.kind === 'code' && entry.name.startsWith('main.') ? [entry] : [],
+    );
+    const marked = code.filter((entry) => entry.givesDefault).map(({ name }) => name);
+    expect(marked.toSorted()).toEqual([
+      'main.Retry/backoff',
+      'main.Retry/tries',
+      'main.wait/retry',
+      'main.wait/times',
+    ]);
+    expect(code.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(['main.main', 'main.wait']),
+    );
+  });
+});
+
 describe('extern keys', () => {
   it('spell declared types module-qualified, without sugar, references, rest and parameters kept', () => {
     const program = stdProgramOf({

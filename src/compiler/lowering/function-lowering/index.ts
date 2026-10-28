@@ -323,12 +323,13 @@ class FunctionLowering implements FunctionContext {
   }
 
   #entry(): CodeFunction {
-    const { header, isAsync, captures } = this.frame;
+    const { header, isAsync, givesDefault, captures } = this.frame;
     const { registers, instructions } = this.code.finish();
     return {
       kind: 'code',
       ...header,
       async: isAsync,
+      givesDefault,
       parameters: this.#slots().flatMap(({ parameter, elements }) =>
         elements === undefined
           ? [{ reference: parameter.reference }]
