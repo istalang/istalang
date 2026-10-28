@@ -16,7 +16,7 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { DeclaredStruct, EnumDeclaration, Field, Variant } from '../../syntax/declarations.ts';
+import type { DeclaredStruct, EnumDeclaration, Field } from '../../syntax/declarations.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
@@ -33,24 +33,13 @@ import { type FieldedDeclaration, TypeExpansion } from './type-expansion.ts';
 
 export class Layouts {
   readonly #checker: CheckerContext;
-  readonly #written = new Map<DeclaredStruct | Variant, readonly FieldMember[]>();
   readonly #fields = new Map<DeclaredStruct, readonly FieldMember[]>();
   readonly #variants = new Map<EnumDeclaration, readonly VariantMember[]>();
-  readonly #expansion = new TypeExpansion((declaration) =>
-    declaration.kind === 'EnumDeclaration'
-      ? declaration.variants.flatMap((variant) =>
-          variant.kind === 'Variant' ? this.#writtenVariantFields(declaration, variant) : [],
-        )
-      : this.#writtenFields(declaration),
-  );
+  readonly #expansion: TypeExpansion;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
-  }
-
-  /** The fields of `declaration` that would make its instantiation endless (§3.5). */
-  endlessFieldsOf(declaration: FieldedDeclaration): ReadonlySet<Field> {
-    return this.#expansion.endlessFieldsOf(declaration);
+    this.#expansion = new TypeExpansion(checker);
   }
 
   /**
@@ -101,7 +90,15 @@ export class Layouts {
 
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
     return memo(this.#fields, declaration, () =>
-      this.#ended(declaration, this.#writtenFields(declaration)),
+      this.#ended(
+        declaration,
+        declaredFields(
+          this.#checker,
+          this.#checker.moduleOf(declaration),
+          declaration.fields,
+          fieldsFunctionOf(declaration),
+        ),
+      ),
     );
   }
 
@@ -112,7 +109,15 @@ export class Layouts {
           ? [
               {
                 name: variant.name.text,
-                fields: this.#ended(declaration, this.#writtenVariantFields(declaration, variant)),
+                fields: this.#ended(
+                  declaration,
+                  declaredFields(
+                    this.#checker,
+                    this.#checker.moduleOf(declaration),
+                    variant.fields,
+                    fieldsFunctionOf(declaration, variant),
+                  ),
+                ),
               },
             ]
           : [],
@@ -122,33 +127,11 @@ export class Layouts {
 
   /** `fields` of `declaration`, each that would make its instantiation endless read as an error. */
   #ended(declaration: FieldedDeclaration, fields: readonly FieldMember[]): readonly FieldMember[] {
-    const endless = this.endlessFieldsOf(declaration);
+    const endless: ReadonlySet<Field> = this.#expansion.endlessFieldsOf(declaration);
     return fields.map((field) =>
       field.declared !== undefined && endless.has(field.declared.node)
         ? { ...field, type: errorType }
         : field,
-    );
-  }
-
-  #writtenFields(declaration: DeclaredStruct): readonly FieldMember[] {
-    return memo(this.#written, declaration, () =>
-      declaredFields(
-        this.#checker,
-        this.#checker.moduleOf(declaration),
-        declaration.fields,
-        fieldsFunctionOf(declaration),
-      ),
-    );
-  }
-
-  #writtenVariantFields(declaration: EnumDeclaration, variant: Variant): readonly FieldMember[] {
-    return memo(this.#written, variant, () =>
-      declaredFields(
-        this.#checker,
-        this.#checker.moduleOf(declaration),
-        variant.fields,
-        fieldsFunctionOf(declaration, variant),
-      ),
     );
   }
 }

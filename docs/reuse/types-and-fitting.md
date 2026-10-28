@@ -21,7 +21,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - compare two types or constraints for equality or fit → `sameType`, `sameConstraint`, `sameShape`, `isAssignable` (`src/compiler/checker/types/type.ts`)
 - inspect or map a type's direct child types → `typeChildren`, `mapChildren` (`src/compiler/checker/types/type-parts.ts`)
 - list type parameters, nominal or `any` types in a `Type` → `parametersIn`, `nominalsIn`, `anyTypesIn`, `mentionsError` (`src/compiler/checker/types/type-parts.ts`)
-- decide whether generic uses would instantiate endlessly (§3.5): build edges, find expanding ones on a cycle → `argumentEdges`, `endlessEdges` (`src/compiler/checker/types/expansion-edges.ts`); a type's endless fields → `CheckerContext.endlessFieldsOf`
+- decide whether generic uses would instantiate endlessly (§3.5): build edges, find expanding ones on a cycle → `argumentEdges`, `endlessEdges` (`src/compiler/checker/types/expansion-edges.ts`)
 - drop refinements (such as `sendable` on function types) at any depth → `widened` (`src/compiler/checker/types/widening.ts`)
 - spell a `Type` as written, through its alias if it has one, for messages → `typeText` (`src/compiler/checker/types/type-text.ts`)
 - give a type the alias it was written through → `aliasedAs` (`src/compiler/checker/types/type.ts`); `substitute` keeps it, `widened` drops it where it widens

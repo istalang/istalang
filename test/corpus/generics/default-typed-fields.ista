@@ -1,0 +1,18 @@
+# outcome: 1
+# A generic struct's field may take its type from its default, which names another generic struct
+# whose fields name the first again with its parameter whole: instantiation ends (§3.5), and the
+# default depends on nothing of its own (§3.1).
+
+enum Opt<T>:
+  Some { value: T }
+  None
+
+struct A<T>:
+  b = B<T>{x: 1, a: Opt.None}
+
+struct B<U>:
+  x: int
+  a: Opt<A<U>>
+
+async fn main() -> Future<int>:
+  A<string>{}.b.x

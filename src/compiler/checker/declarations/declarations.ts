@@ -24,7 +24,6 @@ import type { Annotatable } from '../../syntax/annotations.ts';
 import {
   type Declaration,
   type DeclaredStruct,
-  type EnumDeclaration,
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
@@ -123,23 +122,8 @@ function annotatedNowhere(description: string) {
 function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: ModuleId): void {
   annotatedNowhere('a struct declaration')(checker, node, module);
   checkTypeParameters(checker, node);
-  reportEndlessFields(checker, node, module);
   checker.annotations.checkFields(checker.declaredFieldsOf(node));
   checkFieldDefaults(checker, fieldsFunctionOf(node));
-}
-
-/** Reports each field of `node` that would make its instantiation endless (§3.5). */
-function reportEndlessFields(
-  checker: CheckerContext,
-  node: DeclaredStruct | EnumDeclaration,
-  module: ModuleId,
-): void {
-  for (const field of checker.endlessFieldsOf(node)) {
-    checker.report(
-      module,
-      checkerDiagnostics.expandingType(field.name.span, node.name.text, field.name.text),
-    );
-  }
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -176,7 +160,6 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   EnumDeclaration: (checker, node, module) => {
     annotatedNowhere('an enum declaration')(checker, node, module);
     checkTypeParameters(checker, node);
-    reportEndlessFields(checker, node, module);
     for (const variant of node.variants) {
       if (variant.kind === 'Variant') {
         annotatedNowhere('an enum variant')(checker, variant, module);

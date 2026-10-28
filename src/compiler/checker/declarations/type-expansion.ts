@@ -5,22 +5,25 @@
  * The expansion graph (types/expansion-edges.ts) takes its edges from fields here: each generic
  * struct or enum a field's type names, at any depth, gives that type's parameters arguments built
  * from the declaring type's own. A field making an expanding edge on a cycle is endless: it is
- * reported at its declaration, and the layout reads its type as the error type (layout.ts), so
- * every walk over types meets finitely many instantiations.
+ * reported where its declaration's layout is made, once, and the layout reads its type as the
+ * error type (layout.ts), so every walk over types meets finitely many instantiations.
  *
- * Edges are found from fields as written, before any layout is made, so finding them never asks
- * for one. A declaration's edges follow only the generic types its fields reach.
+ * Edges come from fields' written types alone, which resolve without checking any code. A field
+ * typed by its default has a type only once the default is checked, which may itself need the
+ * layout being made, so it adds no edge.
  */
 
 import { memo } from '../../../structures/memo.ts';
 import {
+  type DeclaredField,
   type DeclaredStruct,
   type EnumDeclaration,
-  type Field,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
+import type { CheckerContext } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdges } from '../types/expansion-edges.ts';
-import type { FieldMember, ParameterKey } from '../types/type.ts';
+import type { ParameterKey } from '../types/type.ts';
 import { nominalsIn } from '../types/type-parts.ts';
 
 /** A declaration with fields of its own: a struct's, shared or not, or an enum's variants'. */
@@ -28,28 +31,36 @@ export type FieldedDeclaration = DeclaredStruct | EnumDeclaration;
 
 interface FieldEdge extends ArgumentEdge {
   readonly declaration: FieldedDeclaration;
-  readonly field: Field;
+  readonly field: DeclaredField;
   /** The generic type the field names, whose own fields the graph follows next. */
   readonly reached: FieldedDeclaration;
 }
 
 export class TypeExpansion {
-  readonly #writtenFieldsOf: (declaration: FieldedDeclaration) => readonly FieldMember[];
+  readonly #checker: Pick<CheckerContext, 'resolveType' | 'moduleOf' | 'report'>;
   readonly #edges = new Map<FieldedDeclaration, readonly FieldEdge[]>();
-  readonly #endless = new Map<FieldedDeclaration, ReadonlySet<Field>>();
+  readonly #endless = new Map<FieldedDeclaration, ReadonlySet<DeclaredField>>();
 
-  /** `writtenFieldsOf` gives a declaration's fields, every variant's for an enum, as written. */
-  constructor(writtenFieldsOf: (declaration: FieldedDeclaration) => readonly FieldMember[]) {
-    this.#writtenFieldsOf = writtenFieldsOf;
+  constructor(checker: Pick<CheckerContext, 'resolveType' | 'moduleOf' | 'report'>) {
+    this.#checker = checker;
   }
 
-  /** The fields of `declaration` that make its instantiation endless. */
-  endlessFieldsOf(declaration: FieldedDeclaration): ReadonlySet<Field> {
+  /** The fields of `declaration` that make its instantiation endless, reported once. */
+  endlessFieldsOf(declaration: FieldedDeclaration): ReadonlySet<DeclaredField> {
     return memo(this.#endless, declaration, () => {
-      const endless = endlessEdges(this.#reachedFrom(declaration));
-      return new Set(
-        endless.filter((edge) => edge.declaration === declaration).map((edge) => edge.field),
+      const endless = new Set(
+        endlessEdges(this.#reachedFrom(declaration))
+          .filter((edge) => edge.declaration === declaration)
+          .map((edge) => edge.field),
       );
+      const module = this.#checker.moduleOf(declaration);
+      for (const field of endless) {
+        this.#checker.report(
+          module,
+          checkerDiagnostics.expandingType(field.name.span, declaration.name.text, field.name.text),
+        );
+      }
+      return endless;
     });
   }
 
@@ -72,22 +83,36 @@ export class TypeExpansion {
   #edgesOf(declaration: FieldedDeclaration): readonly FieldEdge[] {
     return memo(this.#edges, declaration, () => {
       const own = new Set<ParameterKey>(typeParametersOf(declaration.typeParameters));
-      return this.#writtenFieldsOf(declaration).flatMap(({ type, declared }) =>
-        declared === undefined
+      const module = this.#checker.moduleOf(declaration);
+      return writtenFieldsOf(declaration).flatMap((field) =>
+        field.type === undefined
           ? []
-          : nominalsIn(type).flatMap(({ entity, arguments: typeArguments }) => {
-              const reached = entity.declaration;
-              if (reached.kind === 'ExternStructDeclaration') {
-                return [];
-              }
-              return argumentEdges(own, reached.typeParameters, typeArguments).map((edge) => ({
-                ...edge,
-                declaration,
-                field: declared.node,
-                reached,
-              }));
-            }),
+          : nominalsIn(this.#checker.resolveType(module, field.type)).flatMap(
+              ({ entity, arguments: typeArguments }) => {
+                const reached = entity.declaration;
+                if (reached.kind === 'ExternStructDeclaration') {
+                  return [];
+                }
+                return argumentEdges(own, reached.typeParameters, typeArguments).map((edge) => ({
+                  ...edge,
+                  declaration,
+                  field,
+                  reached,
+                }));
+              },
+            ),
       );
     });
   }
+}
+
+/** The fields `declaration` declares: a struct's, or every variant's of an enum. */
+function writtenFieldsOf(declaration: FieldedDeclaration): readonly DeclaredField[] {
+  const fields =
+    declaration.kind === 'EnumDeclaration'
+      ? declaration.variants.flatMap((variant) =>
+          variant.kind === 'Variant' ? variant.fields : [],
+        )
+      : declaration.fields;
+  return fields.filter((field) => field.kind === 'DeclaredField');
 }
