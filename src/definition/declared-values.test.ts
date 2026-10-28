@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { structOf, variantOf } from './declared-values.ts';
+import { fieldValueOf, structOf, variantOf } from './declared-values.ts';
 import type { TypeDefinition } from './types.ts';
 import { valueArbitrary } from './values.test-kit.ts';
 
@@ -34,14 +34,17 @@ const types: readonly TypeDefinition[] = [
 ];
 
 describe('a value built through its declaration', () => {
-  it('holds the given fields in declared order, whatever they hold', () => {
+  it('holds the given fields in declared order, whatever they hold, and reads them back by name', () => {
     fc.assert(
       fc.property(valueArbitrary(), valueArbitrary(), (first, second) => {
-        expect(structOf(types, 0, { second, first })).toEqual({
+        const built = structOf(types, 0, { second, first });
+        expect(built).toEqual({
           kind: 'struct',
           type: 0,
           fields: [first, second],
         });
+        expect(fieldValueOf(types, built, 'first')).toEqual(first);
+        expect(fieldValueOf(types, built, 'second')).toEqual(second);
       }),
     );
   });

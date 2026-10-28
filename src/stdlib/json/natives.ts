@@ -24,11 +24,19 @@ import {
 } from '../../definition/json-values.ts';
 import { isResourceType } from '../../definition/types.ts';
 import { elementsOf, type Value } from '../../definition/values.ts';
-import { codecHelpers, wellKnown } from '../../language/well-known.ts';
+import { codecHelpers, jsonVariants, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { fieldOf, float, given, resultErr, resultOk, text } from '../native-values.ts';
+import {
+  fieldOf,
+  float,
+  given,
+  resultErr,
+  resultOk,
+  resultVariant,
+  text,
+} from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */
@@ -66,17 +74,11 @@ export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResou
     '_object',
     knownTypeKey(wellKnown.array, { kind: 'tuple', elements: [primitiveKey('string'), json] }),
   )]: ([fields], context) => {
-    const shape = jsonTypeOf(context.types);
     const entries = elementsOf(fields).map((pair): [string, Value] => [
       text(fieldOf(pair, 0)),
       fieldOf(pair, 1),
     ]);
-    return {
-      kind: 'variant',
-      type: shape.type,
-      variant: shape.variants.Object,
-      fields: [mapOf(entries)],
-    };
+    return resultVariant(context, jsonVariants.object, { fields: mapOf(entries) });
   },
   [keys.of(codecHelpers.encodeHandle, parameterKey('T'))]: ([value], context) =>
     jsonOfPlain(hostPayloadOf(given(value), context), jsonTypeOf(context.types)),

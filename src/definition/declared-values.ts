@@ -10,7 +10,7 @@ import { optionalVariants, resultVariants } from '../language/well-known.ts';
 import { unreachable } from '../structures/unreachable.ts';
 import type { TypeId } from './operands.ts';
 import type { TypeDefinition, TypeReference } from './types.ts';
-import type { Value } from './values.ts';
+import { isComposite, type Value } from './values.ts';
 
 /** Fields given by name, as a struct or a variant is built. */
 export type NamedFields = Readonly<Record<string, Value>>;
@@ -72,6 +72,24 @@ export function structOf(
   return { kind: 'struct', type, fields: inDeclaredOrder(declared.fields, fields) };
 }
 
+/** Field `name` of struct value `candidate`, found by the name its type entry declares. */
+export function fieldValueOf(
+  types: readonly TypeDefinition[],
+  candidate: Value | undefined,
+  name: string,
+): Value {
+  if (candidate === undefined || !isComposite(candidate) || candidate.kind !== 'struct') {
+    unreachable('Expected a struct.');
+  }
+  const declared = types[candidate.type];
+  const position =
+    declared?.kind === 'struct' ? declared.fields.findIndex((each) => each.name === name) : -1;
+  const field = candidate.fields[position];
+  return field === undefined
+    ? unreachable(`Type ${candidate.type} has no field '${name}'.`)
+    : field;
+}
+
 /** Variant `name` of enum entry `type`, holding `fields` by name. */
 export function variantOf(
   types: readonly TypeDefinition[],
@@ -95,7 +113,7 @@ function variantFieldType(
 }
 
 /** Where enum entry `type` has variant `name`, with its declared fields. */
-function variantShape(types: readonly TypeDefinition[], type: TypeId, name: string) {
+export function variantShape(types: readonly TypeDefinition[], type: TypeId, name: string) {
   const declared = types[type];
   const variants = declared?.kind === 'enum' ? declared.variants : [];
   const variant = variants.findIndex((each) => each.name === name);

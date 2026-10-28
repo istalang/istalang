@@ -246,6 +246,13 @@ export function handleTarget(candidate: Value | undefined): number | undefined {
     : undefined;
 }
 
+/** The closure `candidate` is; undefined for any other value. */
+export function closureOf(candidate: Value | undefined): ClosureOf<Value> | undefined {
+  return candidate !== undefined && isComposite(candidate) && candidate.kind === 'closure'
+    ? candidate
+    : undefined;
+}
+
 /** Whether a value has parts, so it can be walked with `childValues`. */
 export function isComposite(candidate: Value): candidate is CompositeValue {
   return candidate !== null && typeof candidate === 'object';

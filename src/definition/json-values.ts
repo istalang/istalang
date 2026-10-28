@@ -24,6 +24,7 @@ import { jsonVariants } from '../language/well-known.ts';
 import { memo } from '../structures/memo.ts';
 import { unreachable } from '../structures/unreachable.ts';
 import { decodeJson } from './codec.ts';
+import { variantShape } from './declared-values.ts';
 import { mapOf } from './equality.ts';
 import type { TypeId } from './operands.ts';
 import type { TypeDefinition } from './types.ts';
@@ -61,15 +62,11 @@ function findJsonType(types: readonly TypeDefinition[]): JsonType | undefined {
   const index = types.findIndex(
     (candidate) => candidate.kind === 'enum' && candidate.role === 'json',
   );
-  const entry = types[index];
-  if (entry?.kind !== 'enum') {
+  if (index < 0) {
     return undefined;
   }
   const variants = Object.fromEntries(
-    Object.values(jsonVariants).map((name) => [
-      name,
-      entry.variants.findIndex((each) => each.name === name),
-    ]),
+    Object.values(jsonVariants).map((name) => [name, variantShape(types, index, name).variant]),
   ) as Record<JsonVariant, number>;
   return { type: index, variants };
 }

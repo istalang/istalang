@@ -28,7 +28,7 @@ import { memo } from '../../structures/memo.ts';
 import { codePointPositions } from '../../text/code-points.ts';
 import {
   arrayOf,
-  fieldOf,
+  fieldNamed,
   okStruct,
   parseFailure,
   resultOk,
@@ -57,24 +57,25 @@ export const regexNatives = (keys: NativeKeys): Natives<NativeContext> => {
         ? parseFailure(context, invalidPattern(pattern, program))
         : resultOk(context, okStruct(context, { pattern }));
     },
-    [keys.of('test', regex, 'string')]: ([pattern, s]) => programOf(pattern).test(text(s)),
+    [keys.of('test', regex, 'string')]: ([pattern, s], context) =>
+      programOf(context, pattern).test(text(s)),
     [keys.of('find', regex, 'string')]: ([pattern, s], context) => {
       const whole = text(s);
-      const [found] = programOf(pattern).matchAll(whole);
+      const [found] = programOf(context, pattern).matchAll(whole);
       const build = matchBuilder(context.types, resultTypeArgument(context, 0), whole);
       return resultOptional(context, found === undefined ? undefined : build(found));
     },
     [keys.of('findAll', regex, 'string')]: ([pattern, s], context) => {
       const whole = text(s);
       const build = matchBuilder(context.types, resultTypeArgument(context, 0), whole);
-      return arrayOf([...programOf(pattern).matchAll(whole)].map(build));
+      return arrayOf([...programOf(context, pattern).matchAll(whole)].map(build));
     },
-    [keys.of('replace', regex, 'string', 'string')]: ([pattern, s, replacement]) =>
-      programOf(pattern).matcher(text(s)).replaceFirst(text(replacement)),
-    [keys.of('replaceAll', regex, 'string', 'string')]: ([pattern, s, replacement]) =>
-      programOf(pattern).matcher(text(s)).replaceAll(text(replacement)),
-    [keys.of('split', regex, 'string')]: ([pattern, s]) =>
-      arrayOf(split(programOf(pattern), text(s))),
+    [keys.of('replace', regex, 'string', 'string')]: ([pattern, s, replacement], context) =>
+      programOf(context, pattern).matcher(text(s)).replaceFirst(text(replacement)),
+    [keys.of('replaceAll', regex, 'string', 'string')]: ([pattern, s, replacement], context) =>
+      programOf(context, pattern).matcher(text(s)).replaceAll(text(replacement)),
+    [keys.of('split', regex, 'string')]: ([pattern, s], context) =>
+      arrayOf(split(programOf(context, pattern), text(s))),
     [keys.of('escape', 'string')]: ([s]) => RE2JS.quote(text(s)),
   };
 };
@@ -99,8 +100,8 @@ function invalidPattern(pattern: string, reason: string): string {
 }
 
 /** The compiled program of a `Regex` argument, whose pattern must be valid. */
-function programOf(regex: Value | undefined): RE2JS {
-  const pattern = text(fieldOf(regex, 0));
+function programOf(context: Pick<NativeContext, 'types'>, regex: Value | undefined): RE2JS {
+  const pattern = text(fieldNamed(context, regex, 'pattern'));
   const program = compile(pattern);
   if (typeof program === 'string') {
     throw new Panic(invalidPattern(pattern, program));

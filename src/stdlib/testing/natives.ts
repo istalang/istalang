@@ -8,7 +8,7 @@
  */
 
 import { functionKey, type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
-import { isComposite, type Value } from '../../definition/values.ts';
+import { closureOf, type Value } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { InstanceState } from '../../runtime/instance-state.ts';
 import {
@@ -75,9 +75,9 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
 
 /** The function a mock's target names; the checker allows only a named function there. */
 function namedFunction(target: Value | undefined): number {
-  const value = given(target);
-  if (!isComposite(value) || value.kind !== 'closure' || value.captures.length > 0) {
+  const closure = closureOf(given(target));
+  if (closure === undefined || closure.captures.length > 0) {
     throw new Panic("A mock's target must name a function (§10).");
   }
-  return value.function;
+  return closure.function;
 }

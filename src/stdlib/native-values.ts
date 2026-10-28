@@ -11,6 +11,7 @@
 import {
   errOf,
   errorOf,
+  fieldValueOf,
   type NamedFields,
   okOf,
   okTypeOf,
@@ -20,7 +21,7 @@ import {
   variantOf,
 } from '../definition/declared-values.ts';
 import type { TypeId } from '../definition/operands.ts';
-import { childValues, isComposite, type Value } from '../definition/values.ts';
+import { isComposite, type Value } from '../definition/values.ts';
 import type { NativeContext } from '../runtime/natives.ts';
 import { unreachable } from '../structures/unreachable.ts';
 
@@ -54,13 +55,16 @@ export const int = argumentOf('bigint');
 export const float = argumentOf('number');
 export const text = argumentOf('string');
 
-/** Field `index` of a struct argument. */
+/** Element `index` of a tuple argument. */
 export function fieldOf(value: Value | undefined, index: number): Value {
-  const field = value !== undefined && isComposite(value) ? childValues(value)[index] : undefined;
-  if (field === undefined) {
-    unreachable(`Expected a struct with a field ${index}.`);
+  const element =
+    value !== undefined && isComposite(value) && value.kind === 'tuple'
+      ? value.elements[index]
+      : undefined;
+  if (element === undefined) {
+    unreachable(`Expected a tuple with an element ${index}.`);
   }
-  return field;
+  return element;
 }
 
 /** The type entry the extern's declared result names: a struct or an enum. */
@@ -168,13 +172,7 @@ export function fieldNamed(
   value: Value | undefined,
   name: string,
 ): Value {
-  if (value === undefined || !isComposite(value) || value.kind !== 'struct') {
-    unreachable('Expected a struct.');
-  }
-  const declared = context.types[value.type];
-  const position =
-    declared?.kind === 'struct' ? declared.fields.findIndex((each) => each.name === name) : -1;
-  return value.fields[position] ?? unreachable(`Type ${value.type} has no field '${name}'.`);
+  return fieldValueOf(context.types, value, name);
 }
 
 /**
