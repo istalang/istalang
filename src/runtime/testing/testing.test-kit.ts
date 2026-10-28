@@ -58,3 +58,16 @@ export function outcomesOf(reports: readonly TestReport[]): readonly string[] {
       : `${title}: ${outcome.kind}`,
   );
 }
+
+/** A test module: the imports the runner tests' programs use, then `body`. */
+export function testModule(body: string): string {
+  return [
+    "import Suite, Test, test, group, skip, only, assert, assertEq, FakeClock, FakeQueue, mock, calls, handle from 'testing'",
+    "import idle, reaches, waitingAt, state from 'testing'",
+    "import Decodable from 'json'",
+    "import * as testing from 'testing'",
+    "import * as time from 'time'",
+    "import Time, Duration from 'time'",
+    body,
+  ].join('\n');
+}

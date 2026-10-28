@@ -7,8 +7,8 @@
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { argumentValue } from '../syntax/expressions/arguments.ts';
 import {
-  argumentValue,
   type CallArgument,
   casesOf,
   type Expression,

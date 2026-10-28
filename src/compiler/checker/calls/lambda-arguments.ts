@@ -16,7 +16,8 @@ import type { BodyContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import { argumentSlotsOf } from '../resolution/binding.ts';
 import type { Application } from '../resolution/choice.ts';
-import { substitute, type Type } from '../types/type.ts';
+import { substitute } from '../types/substitution.ts';
+import type { Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */

@@ -25,8 +25,8 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { RestKind, SignatureParameter } from '../../checker/check.ts';
 import { parameterOfArgument } from '../../checker/resolved-call.ts';
+import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import {
-  argumentValue,
   type Call,
   type Expression,
   type Spawn,

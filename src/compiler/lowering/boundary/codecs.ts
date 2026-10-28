@@ -11,7 +11,7 @@ import type { CodeFunction } from '../../../definition/functions.ts';
 import { derivedCodecs } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
-import { substitute } from '../../checker/types/type.ts';
+import { substitute } from '../../checker/types/substitution.ts';
 import { type FunctionInstance, substitutionOf } from '../instances.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
 import type { DefinitionTables } from '../tables.ts';

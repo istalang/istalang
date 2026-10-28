@@ -13,8 +13,8 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
+import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import {
-  argumentValue,
   type Call,
   type Expression,
   type Spawn,

@@ -17,13 +17,12 @@
  */
 
 import type { Span } from '../../../text/span.ts';
-import {
-  type Binary,
-  type ChainedComparison,
-  type ComparisonLink,
-  comparisonLinksOf,
-  type Expression,
-  type Unary,
+import { type ComparisonLink, comparisonLinksOf } from '../../syntax/expressions/comparisons.ts';
+import type {
+  Binary,
+  ChainedComparison,
+  Expression,
+  Unary,
 } from '../../syntax/expressions/index.ts';
 import { type BinaryMeaning, binaryOperators } from '../../syntax/operators.ts';
 import {

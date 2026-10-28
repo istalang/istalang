@@ -5,7 +5,8 @@
  * construct (implicit.ts), while finding a type's `dispose` simply finds nothing.
  */
 
-import { substitute, type Type } from '../types/type.ts';
+import { substitute } from '../types/substitution.ts';
+import type { Type } from '../types/type.ts';
 import { silent, type UseSite } from '../use-site.ts';
 import type { Candidate } from './candidates.ts';
 import { type Application, type CallArgument, choose } from './choice.ts';

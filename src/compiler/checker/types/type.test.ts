@@ -7,6 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { TypeParameter } from '../../syntax/declarations.ts';
+import { substitute } from './substitution.ts';
 import {
   boolType,
   type FunctionType,
@@ -14,7 +15,6 @@ import {
   sameShape,
   sameType,
   stringType,
-  substitute,
   type Type,
   tupleType,
   unitType,

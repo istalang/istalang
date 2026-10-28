@@ -73,6 +73,7 @@ import { JsonForms } from './rules/json-forms/index.ts';
 import { resolveAnyType } from './traits/any-types.ts';
 import { type Fit, type Fitting, fitOf, type OptionalEntity } from './types/fit.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
+import type { Substitution } from './types/substitution.ts';
 import {
   type AnonymousStructType,
   type AnyType,
@@ -81,7 +82,6 @@ import {
   type FieldMember,
   isNominalEntity,
   type NominalType,
-  type Substitution,
   type Type,
   unitType,
 } from './types/type.ts';

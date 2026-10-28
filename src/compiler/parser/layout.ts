@@ -32,13 +32,12 @@
  * any other item is reported.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotation } from '../syntax/annotations.ts';
 import type { Docstring } from '../syntax/declarations.ts';
 import type { Invalid } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
-import { parseAnnotations } from './annotations.ts';
+import { parseAnnotations, rejectAnnotations } from './annotations.ts';
 import type { CursorKind } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { misplacedDocstring, parseDocstring, type WithDocstring } from './docstrings.ts';
@@ -268,22 +267,6 @@ function annotate<Item extends SyntaxNode>(
 }
 
 const { danglingAnnotation, misplacedAnnotation } = parserDiagnostics;
-
-/** Annotations that can't apply to anything: reported once, and kept as an Invalid node. */
-function rejectAnnotations(
-  parser: Parser,
-  annotations: readonly Annotation[],
-  diagnostic: (span: Span) => Diagnostic,
-): Invalid[] {
-  const [first] = annotations;
-  const last = annotations.at(-1);
-  if (first === undefined || last === undefined) {
-    return [];
-  }
-  const span = { start: first.span.start, end: last.span.end };
-  parser.report(diagnostic(span));
-  return [{ kind: 'Invalid', span }];
-}
 
 /** Consumes any `;`, since empty items are allowed (`{ a: int; }`); whether there was one. */
 function skipSemicolons(parser: Parser): boolean {

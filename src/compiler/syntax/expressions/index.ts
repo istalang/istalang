@@ -159,31 +159,6 @@ interface NamedArgument extends NodeOf<'NamedArgument'> {
 export type CallArgument = Expression | Spread | NamedArgument;
 
 /**
- * The first argument a call gives by position, or spreads, after a named one: out of the order
- * named arguments keep (§3.3), which the parser reports and the checker leaves alone.
- */
-export function misplacedArgument(
-  callArguments: readonly CallArgument[],
-): CallArgument | undefined {
-  const named = callArguments.findIndex((argument) => argument.kind === 'NamedArgument');
-  return named === -1
-    ? undefined
-    : callArguments.slice(named + 1).find((argument) => argument.kind !== 'NamedArgument');
-}
-
-/** The expression an argument gives: itself, what it spreads, or the value it names. */
-export function argumentValue(argument: CallArgument): Expression {
-  switch (argument.kind) {
-    case 'Spread':
-      return argument.expression;
-    case 'NamedArgument':
-      return argument.value;
-    default:
-      return argument;
-  }
-}
-
-/**
  * `spawn f(args)`: starts the call as a new instance (§9). It binds as JavaScript's `new` does: the
  * callee, its members and type arguments, then one argument list, so what follows applies to what
  * the spawn gives. `call` is whatever followed `spawn`, which the checker requires to be a call.
@@ -269,21 +244,6 @@ export interface ChainedComparison extends NodeOf<'ChainedComparison'> {
   readonly operands: readonly Expression[];
   /** One fewer than the operands: `operators[i]` compares `operands[i]` with `operands[i + 1]`. */
   readonly operators: readonly ChainingOperator[];
-}
-
-/** One comparison of a chain: an operand, the operator after it, and the operand after that. */
-export interface ComparisonLink {
-  readonly left: Expression;
-  readonly operator: ChainingOperator;
-  readonly right: Expression;
-}
-
-/** The comparisons a chain makes, in order; neighbouring ones share an operand. */
-export function comparisonLinksOf(chain: ChainedComparison): readonly ComparisonLink[] {
-  return chain.operators.flatMap((operator, index) => {
-    const [left, right] = [chain.operands[index], chain.operands[index + 1]];
-    return left === undefined || right === undefined ? [] : [{ left, operator, right }];
-  });
 }
 
 /** `x is Pattern`. */

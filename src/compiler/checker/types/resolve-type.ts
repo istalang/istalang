@@ -45,6 +45,7 @@ import type {
 } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { substitute, substitutionFor } from './substitution.ts';
 import {
   errorType,
   type FieldMember,
@@ -54,8 +55,6 @@ import {
   type PackType,
   type ParameterKey,
   primitiveType,
-  substitute,
-  substitutionFor,
   type Type,
   tupleType,
   unitType,

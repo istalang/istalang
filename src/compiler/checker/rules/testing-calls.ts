@@ -8,18 +8,15 @@
  */
 
 import { languageModules, testingFunctions } from '../../../language/well-known.ts';
-import {
-  argumentValue,
-  type Call,
-  type Expression,
-  unparenthesized,
-} from '../../syntax/expressions/index.ts';
+import { argumentValue } from '../../syntax/expressions/arguments.ts';
+import { type Call, type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostType } from '../host-externs.ts';
 import type { CallSite, FunctionCall, ResolvedCall } from '../resolved-call.ts';
-import { substitute, substitutionFor, type Type } from '../types/type.ts';
+import { substitute, substitutionFor } from '../types/substitution.ts';
+import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** Checks each of `calls`, a body's, that calls `mock` or `handle`; the mocks' targets. */

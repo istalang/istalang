@@ -113,6 +113,7 @@ const checkerSurface = [
   'checked-annotation.ts',
   'host-externs.ts',
   'types/type.ts',
+  'types/substitution.ts',
   'types/fit.ts',
   'types/type-keys.ts',
   'types/instantiation.ts',

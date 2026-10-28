@@ -37,7 +37,8 @@ import {
 } from '../resolution/choice.ts';
 import { instantiate } from '../resolution/conformance.ts';
 import { namedType } from '../resolution/named.ts';
-import { errorType, type FunctionType, substitute, type Type, withPack } from '../types/type.ts';
+import { substitute } from '../types/substitution.ts';
+import { errorType, type FunctionType, type Type, withPack } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, futureOf } from '../types/well-known.ts';
 import { useSite } from '../use-site.ts';

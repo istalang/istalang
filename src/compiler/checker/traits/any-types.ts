@@ -17,13 +17,8 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import {
-  type Constraint,
-  errorType,
-  substitute,
-  substitutionFor,
-  type Type,
-} from '../types/type.ts';
+import { substitute, substitutionFor } from '../types/substitution.ts';
+import { type Constraint, errorType, type Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { requiredFields, requiredFunctions, resolveAnyConstraints } from './constraints.ts';
 

@@ -20,15 +20,8 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { declaredFields } from '../types/resolve-type.ts';
-import {
-  type AnonymousStructType,
-  type FieldMember,
-  type NominalType,
-  type Substitution,
-  substitute,
-  substitutionFor,
-  type Type,
-} from '../types/type.ts';
+import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
+import type { AnonymousStructType, FieldMember, NominalType, Type } from '../types/type.ts';
 
 export class Layouts {
   readonly #checker: CheckerContext;

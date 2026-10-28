@@ -1,9 +1,10 @@
 /**
- * What a type is built from (type.ts): the types one level down, and what walking them finds, the
- * type parameters and `any` types a type mentions and whether it holds the error type.
+ * What a type is built from (type.ts): the types one level down, a type with them replaced, and
+ * what walking them finds, the type parameters and `any` types a type mentions and whether it holds
+ * the error type.
  */
 
-import type { AnyType, ParameterKey, Type } from './type.ts';
+import { type AnyType, type ParameterKey, type Type, withPack } from './type.ts';
 
 /** The types `type` is built from, one level down. */
 export function typeChildren(type: Type): readonly Type[] {
@@ -56,4 +57,45 @@ export function anyTypesIn(type: Type): readonly AnyType[] {
 /** Whether `type` is, or is built from, the error type. */
 export function mentionsError(type: Type): boolean {
   return type.kind === 'error' || typeChildren(type).some(mentionsError);
+}
+
+/** `type` with each type it is built from, one level down, replaced by what `map` gives. */
+export function mapChildren<Mapped extends Type>(type: Mapped, map: (child: Type) => Type): Mapped;
+export function mapChildren(type: Type, map: (child: Type) => Type): Type {
+  switch (type.kind) {
+    case 'primitive':
+    case 'parameter':
+    case 'error':
+      return type;
+    case 'nominal':
+      return { ...type, arguments: type.arguments.map(map) };
+    case 'anonymous':
+      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
+    case 'tuple':
+      return { ...type, elements: type.elements.map(map) };
+    case 'function':
+      return withPack(
+        {
+          ...type,
+          parameters: type.parameters.map((parameter) => ({
+            ...parameter,
+            type: map(parameter.type),
+          })),
+          result: map(type.result),
+        },
+        type.pack === undefined ? undefined : map(type.pack),
+      );
+    case 'any':
+      return {
+        ...type,
+        constraints: type.constraints.map((constraint) => ({
+          ...constraint,
+          arguments: constraint.arguments.map(map),
+        })),
+      };
+    default: {
+      const unhandled: never = type;
+      return unhandled;
+    }
+  }
 }

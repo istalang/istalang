@@ -46,12 +46,12 @@ import type { Annotations } from './rules/annotations.ts';
 import type { Iterations } from './rules/iteration.ts';
 import type { VariableScope } from './statements/variables.ts';
 import type { Fit, Fitting, OptionalEntity } from './types/fit.ts';
+import type { Substitution } from './types/substitution.ts';
 import type {
   Constraint,
   FieldMember,
   FunctionType,
   NominalDeclaration,
-  Substitution,
   Type,
 } from './types/type.ts';
 

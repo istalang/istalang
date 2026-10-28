@@ -38,7 +38,8 @@ import {
 } from '../resolution/choice.ts';
 import { type Instantiation, instantiate } from '../resolution/conformance.ts';
 import type { CallSite } from '../resolved-call.ts';
-import { errorType, substitute, type Type } from '../types/type.ts';
+import { substitute } from '../types/substitution.ts';
+import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
 import { checkDecidedLambdas } from './lambda-arguments.ts';

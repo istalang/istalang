@@ -15,7 +15,7 @@ import { languageModules, testingFunctions } from '../../language/well-known.ts'
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
-import { substitute } from '../checker/types/type.ts';
+import { substitute } from '../checker/types/substitution.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { asyncFitEntry } from './async-fits.ts';
 import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';

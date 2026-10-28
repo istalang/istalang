@@ -39,7 +39,7 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FunctionCall } from '../resolved-call.ts';
 import { instantiatedBody } from '../types/instantiation.ts';
-import { type Substitution, substitute, substitutionFor } from '../types/type.ts';
+import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 
 /**
  * What the walk reads: the checker's layouts and field defaults, the constant computed, its

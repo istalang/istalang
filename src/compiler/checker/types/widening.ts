@@ -12,7 +12,8 @@
  * sendable function type widens to the plain function type of the same signature (§3.14).
  */
 
-import { mapChildren, type Type } from './type.ts';
+import type { Type } from './type.ts';
+import { mapChildren } from './type-parts.ts';
 
 /** `type` without its refinements, nor those of any type it is built from. */
 export function widened(type: Type): Type {

@@ -32,15 +32,12 @@ import {
   type Witnesses,
 } from '../checker/resolved-call.ts';
 import {
-  type AnyType,
-  type FunctionType,
-  type ParameterKey,
   type Substitution,
   substitute,
   substituteAny,
   substitutionFor,
-  type Type,
-} from '../checker/types/type.ts';
+} from '../checker/types/substitution.ts';
+import type { AnyType, FunctionType, ParameterKey, Type } from '../checker/types/type.ts';
 import type { TypeKeys } from '../checker/types/type-keys.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';

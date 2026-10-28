@@ -17,7 +17,7 @@ import { callArgumentOf, explain, fitArguments, type WrittenArgument } from '../
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { bindArguments } from '../resolution/binding.ts';
-import { takenBy } from '../resolution/choice.ts';
+import { takenBy } from '../resolution/taking.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

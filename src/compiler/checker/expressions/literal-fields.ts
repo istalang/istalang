@@ -48,14 +48,8 @@ import { itemField } from '../patterns/struct-items.ts';
 import { callWithTypes } from '../resolution/typed-call.ts';
 import type { FunctionCall, MadeCall } from '../resolved-call.ts';
 import { constrainArguments, parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
-import {
-  errorType,
-  type FieldMember,
-  type ParameterKey,
-  type Substitution,
-  substitute,
-  type Type,
-} from '../types/type.ts';
+import { type Substitution, substitute } from '../types/substitution.ts';
+import { errorType, type FieldMember, type ParameterKey, type Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
 

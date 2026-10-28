@@ -25,15 +25,8 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
 import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
-import {
-  type AnyType,
-  type Constraint,
-  type ParameterKey,
-  type Substitution,
-  substitute,
-  substitutionFor,
-  type Type,
-} from '../types/type.ts';
+import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
+import type { AnyType, Constraint, ParameterKey, Type } from '../types/type.ts';
 
 /** The well-known trait `declaration` names, as a constraint with no type arguments. */
 export function wellKnownConstraint(

@@ -9,7 +9,12 @@
 
 import type { CheckedBody } from '../check.ts';
 import type { Fit } from './fit.ts';
-import { type Substitution, substitute, substituteAny, substituteFunction } from './type.ts';
+import {
+  type Substitution,
+  substitute,
+  substituteAny,
+  substituteFunction,
+} from './substitution.ts';
 
 /** `body` as one instantiation sees it: every type it records substituted by `substitution`. */
 export function instantiatedBody(body: CheckedBody, substitution: Substitution): CheckedBody {

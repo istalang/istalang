@@ -11,8 +11,8 @@ import type { ModuleId } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { resolveConstraints } from '../traits/constraints.ts';
+import { type Substitution, substitute } from '../types/substitution.ts';
 import type { Constraint } from '../types/type.ts';
-import { type Substitution, substitute } from '../types/type.ts';
 import { useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
 

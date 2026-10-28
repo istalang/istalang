@@ -4,8 +4,8 @@
  *
  * - The body is read through what owns it (instances.ts), a function instance or a top-level
  *   constant: its types are concrete, and its calls target the instances they close to.
- * - A value the checker fitted by the implicit wrap (§2) is wrapped here, once it is computed, so
- *   no handler needs to know about wrapping. An optional chain is lowered from its last link
+ * - A value the checker fitted (§2) is converted and wrapped once it is computed (fits.ts), so no
+ *   handler needs to know about fitting. An optional chain is lowered from its last link
  *   (optional-chains.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
@@ -29,28 +29,26 @@ import type { CodeFunction } from '../../../definition/functions.ts';
 import type { Instruction } from '../../../definition/instructions/instruction.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values.ts';
-import { optionalVariants } from '../../../language/well-known.ts';
 import { handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
 import type { CallSite, ImplicitRole, ResolvedCall } from '../../checker/resolved-call.ts';
-import { type Fit, singleElement } from '../../checker/types/fit.ts';
-import { type FunctionType, substitute, type Type } from '../../checker/types/type.ts';
+import type { Fit } from '../../checker/types/fit.ts';
+import { substitute } from '../../checker/types/substitution.ts';
+import type { Type } from '../../checker/types/type.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
-import { madeAsync } from '../async-fits.ts';
 import { emitInbound, type Inbound } from '../boundary/inbound.ts';
 import { CodeWriter } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitFunctionCall } from '../emit-call.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
 import { tupleOf } from '../expressions/tuples.ts';
-import { buildVariant } from '../expressions/variants.ts';
 import {
   type BodyOwner,
   type ClosedCall,
@@ -62,13 +60,12 @@ import {
 } from '../instances.ts';
 import { OptionalChains } from '../optional-chains.ts';
 import { packElements } from '../packs.ts';
-import { readPart } from '../places.ts';
 import { HoldScopes } from '../statements/holds.ts';
 import { LoopStack } from '../statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
 import { declareVariable, VariableRegisters } from '../statements/variables.ts';
 import type { DefinitionTables } from '../tables.ts';
-import { convertedIntoAny } from '../trait-objects/trait-objects.ts';
+import { fittedValue } from './fits.ts';
 import {
   type Frame,
   instanceFrame,
@@ -208,62 +205,7 @@ class FunctionLowering implements FunctionContext {
   }
 
   fitted(value: Register, type: Type, fit: Fit, site: ValueSite): Register {
-    const { span } = site;
-    const converted = this.#converted({ value, type }, fit.conversion, site);
-    let register = converted.value;
-    let current = converted.type;
-    for (let left = fit.wraps; left > 0; left -= 1) {
-      const optional = this.checker.optionalOf(current);
-      const some = { type: optional, name: optionalVariants.some };
-      register = buildVariant(this, some, [register], span);
-      current = optional;
-    }
-    return register;
-  }
-
-  /**
-   * `typed`, converted by `conversion` at `site`: into an `any` type, a plain function made async,
-   * or between a one-element tuple and its element.
-   */
-  #converted(
-    typed: { readonly value: Register; readonly type: Type },
-    conversion: Fit['conversion'],
-    site: ValueSite,
-  ): { readonly value: Register; readonly type: Type } {
-    switch (conversion.kind) {
-      case 'none':
-        return typed;
-      case 'any': {
-        const { to } = conversion;
-        const value = convertedIntoAny(
-          this,
-          { value: typed.value, from: typed.type, to },
-          site.span,
-        );
-        return { value, type: to };
-      }
-      case 'async': {
-        const plain = functionTypeOf(typed.type);
-        const value = madeAsync(this, { owner: this.owner, site, type: plain }, typed.value);
-        return { value, type: { ...plain, isAsync: true } };
-      }
-      case 'tupled':
-        return {
-          value: tupleOf(this, [typed.value], site.span),
-          type: { kind: 'tuple', elements: [typed.type] },
-        };
-      case 'untupled': {
-        const element = singleElement(typed.type);
-        if (element === undefined) {
-          unreachable('Only a one-element tuple is untupled.');
-        }
-        return { value: readPart(this, typed.value, [0], site.span), type: element };
-      }
-      default: {
-        const unhandled: never = conversion;
-        return unhandled;
-      }
-    }
+    return fittedValue(this, { value, type }, fit, { owner: this.owner, site });
   }
 
   get result(): Type {
@@ -411,14 +353,6 @@ class FunctionLowering implements FunctionContext {
     this.code.emit({ kind: 'constant', span, dst, constant: this.tables.constant(value) });
     return dst;
   }
-}
-
-/** `type`, which the checker made async to fit, so a function type. */
-function functionTypeOf(type: Type): FunctionType {
-  if (type.kind !== 'function') {
-    unreachable(`Only a function is made async, not a ${type.kind} type.`);
-  }
-  return type;
 }
 
 /** The default of `parameter`, which a parameter with a default's entry has. */

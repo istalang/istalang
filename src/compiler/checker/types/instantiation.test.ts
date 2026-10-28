@@ -10,7 +10,8 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { For } from '../../syntax/statements.ts';
 import { checkProgram } from '../check.ts';
 import { instantiatedBody } from './instantiation.ts';
-import { intType, substitutionFor } from './type.ts';
+import { substitutionFor } from './substitution.ts';
+import { intType } from './type.ts';
 import { typeText } from './type-text.ts';
 
 describe('an instantiated body', () => {

@@ -6,9 +6,12 @@
  * `{…}`. Anything else, such as a call, is reported but kept, so the tree shows what was written.
  *
  * Attaching adds the annotations to an item already parsed, and widens its span over them, so no
- * item parser has to know about annotations.
+ * item parser has to know about annotations. Annotations nothing can take are reported and kept as
+ * an Invalid node; where that is, layout decides (layout.ts).
  */
 
+import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { Span } from '../../text/span.ts';
 import type { Annotatable, Annotation } from '../syntax/annotations.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
 import type { Invalid } from '../syntax/node.ts';
@@ -53,4 +56,20 @@ export function attachAnnotations<Item extends SyntaxNode & Annotatable>(
     end: Math.max(item.span.end, annotations.at(-1)?.span.end ?? item.span.end),
   };
   return item.kind === 'Invalid' ? { kind: 'Invalid', span } : { ...item, span, annotations };
+}
+
+/** Annotations that can't apply to anything: reported once, and kept as an Invalid node. */
+export function rejectAnnotations(
+  parser: Parser,
+  annotations: readonly Annotation[],
+  diagnostic: (span: Span) => Diagnostic,
+): Invalid[] {
+  const [first] = annotations;
+  const last = annotations.at(-1);
+  if (first === undefined || last === undefined) {
+    return [];
+  }
+  const span = { start: first.span.start, end: last.span.end };
+  parser.report(diagnostic(span));
+  return [{ kind: 'Invalid', span }];
 }

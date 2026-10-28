@@ -15,16 +15,15 @@
  */
 
 import { type Fitting, fitOf, optionalInner, singleElement } from '../types/fit.ts';
+import { type Substitution, substitute } from '../types/substitution.ts';
 import {
   type AnyType,
   type FunctionType,
   fillsPack,
   isPrimitive,
   type ParameterKey,
-  type Substitution,
   sameShape,
   sameType,
-  substitute,
   type Type,
 } from '../types/type.ts';
 import { parametersIn, typeChildren } from '../types/type-parts.ts';
