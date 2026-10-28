@@ -1,9 +1,10 @@
 /**
- * How a type reads in messages and in the names of instantiations: the way a programmer would
- * write it, `Pair<int, string>`, `int?`, `fn(int) -> bool`.
+ * How a type reads in messages (and M7's hovers): the way a programmer would write it,
+ * `Pair<int, string>`, `int?`, `fn(int) -> bool`.
  *
  * Nominal types print their declared name without a module: inside a message the source location
- * already says where.
+ * already says where. A type written through an alias reads as the alias, with its arguments
+ * (§3.17), as the programmer wrote it.
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
@@ -20,6 +21,9 @@ import {
  * apart on purpose: they are a persisted identity, and must never follow a change of wording here.
  */
 export function typeText(type: Type): string {
+  if (type.alias !== undefined) {
+    return parameterizedText(type.alias.declaration.name.text, type.alias.arguments);
+  }
   switch (type.kind) {
     case 'primitive':
       return type.name;
