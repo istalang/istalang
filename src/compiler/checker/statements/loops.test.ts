@@ -60,3 +60,24 @@ describe('labels', () => {
     expect(reported(started + inFunction(body))).toEqual(reportedOnce(diagnostic.code, spanText));
   });
 });
+
+describe('iterate', () => {
+  const unmetConstraint = [
+    'struct P { x: int }',
+    'struct Wrap<T> { inner: T }',
+    'fn iterate<T is Comparable>(self: Wrap<T>) -> fn() -> int?:',
+    '  fn next() -> int?: none',
+    '  next',
+    'fn subject(w: Wrap<P>):',
+  ];
+
+  it.each([
+    ['a for loop', '  for x in w: x'],
+    ['a comprehension', '  const xs = [for x in w: x]'],
+    ['a spread', '  const xs = [...w]'],
+  ])('reports an unmet constraint of its call on the iterable of %s', (_case, line) => {
+    expect(reported([...unmetConstraint, line].join('\n'))).toEqual(
+      reportedOnce(reports.notConforming.code, 'w'),
+    );
+  });
+});

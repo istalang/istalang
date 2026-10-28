@@ -5,7 +5,8 @@
  *   next item, and `none` once there are no more. Any type with an `iterate` is iterable;
  *   `iterate` is found like an operator's function, so a program's types join in
  *   (resolution/implicit.ts). Lowering calls the cursor until it gives `none`, so the loop makes
- *   no call of the language's own.
+ *   no call of the language's own. Whatever its call reports, an ambiguity or an unmet constraint
+ *   among them, falls on the iterable, not the whole loop.
  * - How each iteration runs is recorded (`IterationForm`): through its cursor, of its items' type,
  *   or, for a spread of the collection its literal builds, copied whole
  *   (expressions/collections.ts).
@@ -73,6 +74,7 @@ export function iteratedItem(
   const failure = () => checkerDiagnostics.notIterable(iterable.span, typeText(type));
   const cursor = implicitCall(context, {
     node,
+    span: iterable.span,
     role: 'iterate',
     candidates: topLevelCandidates(context.checker, context.module, collectionFunctions.iterate, [
       type,
