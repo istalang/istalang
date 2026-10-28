@@ -13,12 +13,11 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotatable, Annotation } from '../syntax/annotations.ts';
-import type { Expression } from '../syntax/expressions/index.ts';
+import { type Expression, qualifiedPath } from '../syntax/expressions/index.ts';
 import type { Invalid } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
-import { qualifiedPath } from './parts/names.ts';
 
 /** Every annotation from here to the end of the line or the first token that isn't `@`. */
 export function parseAnnotations(parser: Parser): Annotation[] {

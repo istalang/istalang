@@ -18,7 +18,7 @@
  * was written.
  */
 
-import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
+import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from '../node.ts';
 import type { BinaryOperator, ChainingOperator, UnaryOperator } from '../operators.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements.ts';
@@ -187,6 +187,21 @@ export interface MemberAccess extends NodeOf<'MemberAccess'> {
   readonly target: Expression;
   readonly isOptional: boolean;
   readonly member: Identifier;
+}
+
+/**
+ * The names of a qualified name such as `m.Pair`, or undefined for any other expression. Until a
+ * `{` or `<…>` follows, a qualified name parses as member accesses; this reads it back as the
+ * names alone, whose spans the type or binder path keeps.
+ */
+export function qualifiedPath(expression: Expression): QualifiedName | undefined {
+  const members: Identifier[] = [];
+  let current: Expression = expression;
+  while (current.kind === 'MemberAccess' && !current.isOptional) {
+    members.unshift(current.member);
+    current = current.target;
+  }
+  return current.kind === 'Identifier' ? [current, ...members] : undefined;
 }
 
 /** `node` without the parentheses written around it, which change nothing about it. */

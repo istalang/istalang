@@ -1,11 +1,10 @@
 /**
  * Names: qualified names (`Pair`, `time.Duration`) and the named types built from them, lists of
- * imported names, and the targets that bind names. Types, patterns, struct literals and
- * annotations all name a type this way, and loops, comprehensions and variables all bind through
- * targets, so each rule lives here once.
+ * imported names, and the targets that bind names. Types, patterns and struct literals name a type
+ * this way, and loops, comprehensions and variables all bind through targets, so each rule lives
+ * here once.
  */
 
-import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier, QualifiedName } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { NamedType, TypeNode } from '../../syntax/types.ts';
@@ -21,22 +20,6 @@ export function parseQualifiedName(parser: Parser): QualifiedName {
     rest.push(parser.identifier());
   }
   return [first, ...rest];
-}
-
-/**
- * The names of a qualified name such as `m.Pair`, or undefined for any other expression. Until a
- * `{` or `<…>` follows, a qualified name parses as member accesses; this reads it back as the
- * names alone, whose spans the type keeps.
- */
-export function qualifiedPath(expression: Expression): QualifiedName | undefined {
-  if (expression.kind === 'Identifier') {
-    return [expression];
-  }
-  if (expression.kind !== 'MemberAccess' || expression.isOptional) {
-    return undefined;
-  }
-  const target = qualifiedPath(expression.target);
-  return target === undefined ? undefined : [...target, expression.member];
 }
 
 /**

@@ -12,9 +12,9 @@ import {
   type CallArgument,
   casesOf,
   type Expression,
-  type MemberAccess,
+  qualifiedPath,
 } from '../syntax/expressions/index.ts';
-import type { Identifier, QualifiedName } from '../syntax/node.ts';
+import type { Identifier } from '../syntax/node.ts';
 import { underBindings, underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import type { Scope } from './scope.ts';
@@ -66,7 +66,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   },
   TupleElement: (binder, node, scope) => bindExpression(binder, node.target, scope),
   MemberAccess: (binder, node, scope) => {
-    const path = qualifiedPathOf(node);
+    const path = qualifiedPath(node);
     if (path === undefined) {
       bindExpression(binder, node.target, scope);
     } else {
@@ -174,15 +174,4 @@ function bindFieldValue(
   } else {
     bindExpression(binder, value, scope);
   }
-}
-
-/** `a.b.c` as the parts of a name, when every link is a plain `.` from a name. */
-function qualifiedPathOf(node: MemberAccess): QualifiedName | undefined {
-  const members: Identifier[] = [];
-  let current: Expression = node;
-  while (current.kind === 'MemberAccess' && !current.isOptional) {
-    members.unshift(current.member);
-    current = current.target;
-  }
-  return current.kind === 'Identifier' ? [current, ...members] : undefined;
 }

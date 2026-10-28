@@ -22,18 +22,19 @@
  */
 
 import { misplacedArgument } from '../../syntax/expressions/arguments.ts';
-import type {
-  Call,
-  CallArgument,
-  Dereference,
-  Expression,
-  Index,
+import {
+  type Call,
+  type CallArgument,
+  type Dereference,
+  type Expression,
+  type Index,
+  qualifiedPath,
 } from '../../syntax/expressions/index.ts';
 import { isPlace } from '../../syntax/expressions/places.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
-import { namedTypeFrom, qualifiedPath } from '../parts/names.ts';
+import { namedTypeFrom } from '../parts/names.ts';
 import { parseDelimited, parseEnclosed } from '../recovery.ts';
 import { parseReference } from './operators.ts';
 import type { InfixParselet } from './parselet.ts';
