@@ -6,8 +6,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { compiledText } from '../../compile.test-kit.ts';
+import { reported } from '../check.test-kit.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 
 /** A type to write values of, and how source writes it. */
 type Shape =
@@ -111,6 +114,39 @@ describe('computed constants', () => {
         });
       }),
       { numRuns: 40 },
+    );
+  });
+
+  it('apply one-element tuple conversions recorded on the initializer and its parts', () => {
+    const main = [
+      'const tupled: (int,) = 3',
+      'const untupled: int = (4,)',
+      'const nested: Array<(int,)> = [5, (6,)]',
+      '',
+      'async fn main() -> Future<bool>:',
+      '  const localTupled: (int,) = 3',
+      '  const localUntupled: int = (4,)',
+      '  const localNested: Array<(int,)> = [5, (6,)]',
+      '  (tupled, untupled, nested) == (localTupled, localUntupled, localNested)',
+    ].join('\n');
+    expect(startToEnd(testRuntime(), compiledText(main))).toEqual({
+      kind: 'finished',
+      outcome: 'true',
+    });
+  });
+
+  it.each([
+    ['an optional wrap', 'const x: int? = 1', '1'],
+    ['an enum variant literal', 'const x: int? = Some{1}', 'Some{1}'],
+    ['a plain function made async', 'const f: async fn() -> int = fn(): 1', 'fn(): 1'],
+    ['a value converted into an any type', 'trait Named {}\nconst a: any Named = 1', '1'],
+  ])('refuse %s, which compile time does not compute', (_case, text, spanText) => {
+    expect(reported(text)).toEqual(reportedOnce(checkerDiagnostics.notConstant.code, spanText));
+  });
+
+  it('do not report 5026 on top of 5218 for a shared struct written without new', () => {
+    expect(reported('shared struct Box { n: int }\nconst b = Box{n: 1}')).toEqual(
+      reportedOnce(checkerDiagnostics.sharedNeedsNew.code, 'Box'),
     );
   });
 });

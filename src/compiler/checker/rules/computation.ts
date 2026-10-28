@@ -1,12 +1,13 @@
 /**
  * The one walk over a top-level constant's initializer (§3): it decides what compile time computes
  * and computes it, in the same switch, so the two can't disagree. Compile time computes literals, a
- * negated number and a template without values among them, duration literals, tuples, structs in
- * every literal form (a spread copying a computed struct's fields), a struct without fields written
- * bare, arrays and maps of `Map`, lambdas, which capture nothing at the top level (§3.14), and
- * other top-level constants;
- * anything else, a map literal of another type or a shared struct's `new` among them, is refused
- * where it stands.
+ * negated number and a template without values among them, duration literals, tuples (including a
+ * value converted to or from a one-element tuple, §3.15), structs in every literal form (a spread
+ * copying a computed struct's fields), a struct without fields written bare, arrays and maps of
+ * `Map`, lambdas, which capture nothing at the top level (§3.14), and other top-level constants;
+ * anything else, a map literal of another type, a shared struct's `new`, an enum variant, or a
+ * value needing an optional wrap, an `any` conversion or an async function fit among them, is
+ * refused where it stands.
  *
  * A spread spreads only an array or a map compile time built itself: its elements, or its entries
  * as tuples. Anything else iterable is iterated by `iterate` when the program runs, and computing
@@ -20,6 +21,7 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { VariableOwner } from '../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type {
@@ -41,11 +43,7 @@ import type { FunctionCall } from '../resolved-call.ts';
 import { instantiatedBody } from '../types/instantiation.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 
-/**
- * What the walk reads: the checker's layouts and field defaults, the constant computed, its
- * initializer's checking, and the other constants. An annotation's value (§3.16) is computed the
- * same way, owned by no constant, so it can't hold a lambda, and so is a field's default.
- */
+/** What the walk reads: layouts, field defaults, the constant or annotation checked, and others. */
 export interface ComputationScope {
   readonly checker: Pick<
     CheckerContext,
@@ -53,19 +51,13 @@ export interface ComputationScope {
   >;
   readonly constant: VariableDeclaration | undefined;
   readonly checked: CheckedBody;
-  /** The constant `name` denotes, or in a field's default, the field before it so named. */
   readonly valueNamed: (name: Identifier) => CheckedConstant | undefined;
 }
 
-/** How computing a part of an initializer went. */
+/** How computing a part of an initializer went: computed, refused (`form` or `endless`), or already in error. */
 export type Outcome =
   | { readonly kind: 'computed'; readonly form: ConstantForm }
-  /**
-   * Compile time doesn't compute `part`: it is no form compile time computes, or it needs a
-   * default being computed, so it would never be finished.
-   */
   | { readonly kind: 'refused'; readonly part: NodeOf<string>; readonly why: 'form' | 'endless' }
-  /** An error a diagnostic already explained leaves no value. */
   | { readonly kind: 'unknown' };
 
 const unknown: Outcome = { kind: 'unknown' };
@@ -84,9 +76,7 @@ export function refusalOf(outcome: Extract<Outcome, { kind: 'refused' }>): Diagn
 
 class Computation {
   readonly #scope: ComputationScope;
-  /** The defaults being computed, by fields function and arity, which a cycle reaches again. */
   readonly #computing: Map<FunctionDeclaration, Set<number>>;
-  /** What the scope's body is read through, which the calls it records, as checked, still need. */
   readonly #substitution: Substitution;
 
   constructor(
@@ -100,6 +90,11 @@ class Computation {
   }
 
   of(node: Expression): Outcome {
+    const outcome = this.#own(node);
+    return outcome.kind === 'computed' ? this.#fitted(node, outcome.form) : outcome;
+  }
+
+  #own(node: Expression): Outcome {
     switch (node.kind) {
       case 'IntegerLiteral':
       case 'FloatLiteral':
@@ -145,6 +140,31 @@ class Computation {
     }
   }
 
+  /** Applies the implicit conversion recorded at `node`, or refuses one only the runtime makes. */
+  #fitted(node: Expression, form: ConstantForm): Outcome {
+    const { conversion, wraps } = this.#scope.checked.fitAt(node);
+    if (wraps > 0) {
+      return refused(node);
+    }
+    switch (conversion.kind) {
+      case 'none':
+        return computed(form);
+      case 'tupled':
+        return computed({ kind: 'tuple', elements: [form] });
+      case 'untupled': {
+        const [element] = form.kind === 'tuple' && form.elements.length === 1 ? form.elements : [];
+        return computed(element ?? unreachable('Only a one-element tuple is untupled.'));
+      }
+      case 'any':
+      case 'async':
+        return refused(node);
+      default: {
+        const unhandled: never = conversion;
+        return unhandled;
+      }
+    }
+  }
+
   /** A lambda's function value, when it captures nothing: a closure of no captures. */
   #lambda(node: Lambda): Outcome {
     const checked = this.#scope.checked.functionOf(node);
@@ -162,16 +182,20 @@ class Computation {
     if (node.isNew) {
       return refused(node);
     }
-    const type = this.#scope.checked.typeOf(node);
-    const fields = this.#scope.checker.fieldsOf(type);
-    if (fields === undefined || (type.kind !== 'nominal' && type.kind !== 'anonymous')) {
-      return unknown;
-    }
-    if (node.items.some((item) => item.kind === 'Invalid')) {
-      return unknown;
-    }
-    const sources = this.#scope.checked.sourcesOf(node);
+    const sources = node.items.some((item) => item.kind === 'Invalid')
+      ? undefined
+      : this.#scope.checked.sourcesOf(node);
     if (sources === undefined) {
+      return unknown;
+    }
+    const type = this.#scope.checked.typeOf(node);
+    if (type.kind === 'nominal' && type.entity.declaration.kind === 'EnumDeclaration') {
+      return refused(node);
+    }
+    if (
+      this.#scope.checker.fieldsOf(type) === undefined ||
+      (type.kind !== 'nominal' && type.kind !== 'anonymous')
+    ) {
       return unknown;
     }
     const forms: ConstantForm[] = [];
@@ -185,10 +209,7 @@ class Computation {
     return computed({ kind: 'struct', type, fields: forms });
   }
 
-  /**
-   * A field of the struct `literal`, from its `source`, after the fields `earlier`. A default it
-   * refuses is refused at the literal, which runs it, where its declaration may be elsewhere.
-   */
+  /** A field of `literal` from `source`; a refused default is reported at `literal`. */
   #field(literal: StructLiteral, source: FieldSource, earlier: readonly ConstantForm[]): Outcome {
     switch (source.kind) {
       case 'value':
@@ -206,10 +227,7 @@ class Computation {
     }
   }
 
-  /**
-   * The default `call` gives a field, from the fields before it, `earlier`: the field after them,
-   * since a literal gives its fields in order (syntax/field-defaults.ts).
-   */
+  /** The default `call` gives the field after `earlier` (syntax/field-defaults.ts). */
   #default(call: FunctionCall, earlier: readonly ConstantForm[]): Outcome {
     const { checker } = this.#scope;
     const declaration = call.function;
@@ -372,15 +390,12 @@ function pairOf(item: ConstantForm): (readonly [ConstantForm, ConstantForm])[] {
   const [key, value] = item.kind === 'tuple' ? item.elements : [];
   return key === undefined || value === undefined ? [] : [[key, value]];
 }
-
 function computed(form: ConstantForm): Outcome {
   return { kind: 'computed', form };
 }
-
 function refused(part: NodeOf<string>): Outcome {
   return { kind: 'refused', part, why: 'form' };
 }
-
 /** A number literal, possibly parenthesized: what compile time negates. */
 function isNumberLiteral(node: Expression): boolean {
   if (node.kind === 'Parenthesized') {
