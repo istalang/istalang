@@ -13,13 +13,12 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Checker } from '../check.ts';
 import { type FieldMember, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
-import { type ConstructorOf, isLongerKey, type Shape, type Signature } from './exhaustiveness.ts';
+import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 
 /** What shapes read of the checker: a type's fields, variants, and whether it is an `Array`. */
 type ShapeChecker = Pick<Checker, 'fieldsOf' | 'variantsOf' | 'wellKnownType'>;
@@ -91,19 +90,20 @@ function literalKey(node: Expression): string | undefined {
 }
 
 /** A shape of a value of `type` written as the pattern that would match it. */
-export function witnessText(checker: ShapeChecker, shape: Shape, type: Type): string {
+export function witnessText(checker: ShapeChecker, shape: WitnessShape, type: Type): string {
   if (shape.kind === 'any') {
     return '_';
   }
-  if (shape.kind !== 'constructor') {
-    unreachable(`A witness is built of constructors, not of an ${shape.kind} shape.`);
-  }
   const signed = signatureOf(checker)(type);
-  if (signed !== undefined && 'items' in signed) {
-    const items = shape.arguments.map((argument) => witnessText(checker, argument, signed.items));
-    return `[${[...items, ...(isLongerKey(shape.key) ? ['..._'] : [])].join(', ')}]`;
+  if (typeof shape.key !== 'string') {
+    const itemType = signed !== undefined && 'items' in signed ? signed.items : type;
+    const items = shape.arguments.map((argument) => witnessText(checker, argument, itemType));
+    return `[${[...items, ...(shape.key.orMore ? ['..._'] : [])].join(', ')}]`;
   }
-  const made = signed?.find(({ key }) => key === shape.key);
+  const made =
+    signed !== undefined && !('items' in signed)
+      ? signed.find(({ key }) => key === shape.key)
+      : undefined;
   const parts = shape.arguments.map((argument, index) =>
     witnessText(checker, argument, made?.arguments[index] ?? type),
   );

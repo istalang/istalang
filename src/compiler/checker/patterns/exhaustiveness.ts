@@ -17,27 +17,39 @@
  * - Missing values are reported as a few witnesses, not all of them: enough to say what to add.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
+/** A pattern as written, before array patterns are laid out as length constructors. */
+export type Shape = AnyShape | ConstructorShape<Shape> | OrShape<Shape> | ArrayShape;
 
-/** A pattern as exhaustiveness sees it. */
-export type Shape = AnyShape | ConstructorShape | OrShape | ArrayShape;
+/** A pattern after array shapes are laid out as the length constructors they match. */
+type LaidOutShape = AnyShape | ConstructorShape<LaidOutShape> | OrShape<LaidOutShape>;
+
+/** A missing-value witness: anything, or a constructor of witnesses. */
+export type WitnessShape = AnyShape | ConstructorShape<WitnessShape>;
 
 export interface AnyShape {
   readonly kind: 'any';
 }
 
+/** The key of an array constructor: its item count, or that count and longer when `orMore`. */
+interface LengthKey {
+  readonly length: number;
+  readonly orMore: boolean;
+}
+
+/** Tells constructors of one type apart: a named constructor, or an array length. */
+export type ConstructorKey = string | LengthKey;
+
 /** A value built by one constructor, with a shape for each of its arguments. */
-interface ConstructorShape {
+interface ConstructorShape<Child = Shape> {
   readonly kind: 'constructor';
-  /** Tells constructors of one type apart: a variant's name, `true`, a literal's value. */
-  readonly key: string;
-  readonly arguments: readonly Shape[];
+  readonly key: ConstructorKey;
+  readonly arguments: readonly Child[];
 }
 
 /** A value any of `alternatives` matches. */
-interface OrShape {
+interface OrShape<Child = Shape> {
   readonly kind: 'or';
-  readonly alternatives: readonly Shape[];
+  readonly alternatives: readonly Child[];
 }
 
 /** An array: its first and last items, and whether a rest between them takes any number. */
@@ -50,24 +62,22 @@ interface ArrayShape {
 
 export const anyShape: AnyShape = { kind: 'any' };
 
-/** The key of the constructor of arrays of exactly `length` items. */
-export function lengthKey(length: number): string {
-  return `[${length}]`;
+/** The key of the constructor of arrays of `length` items, or `length` and more when `orMore`. */
+export function lengthKey(length: number, orMore = false): LengthKey {
+  return { length, orMore };
 }
 
-/** The key of the constructor of arrays of `length` items or more, the lengths no pattern fixes. */
-export function longerKey(length: number): string {
-  return `[${length}+]`;
-}
-
-/** Whether `key` is `longerKey`'s: arrays of its length or more. */
-export function isLongerKey(key: string): boolean {
-  return key.endsWith('+]');
+/** Whether two constructor keys name the same constructor. */
+export function sameConstructorKey(left: ConstructorKey, right: ConstructorKey): boolean {
+  if (typeof left === 'string' || typeof right === 'string') {
+    return left === right;
+  }
+  return left.length === right.length && left.orMore === right.orMore;
 }
 
 /** One constructor of a type, with its arguments' types. */
 export interface ConstructorOf<T> {
-  readonly key: string;
+  readonly key: ConstructorKey;
   readonly arguments: readonly T[];
 }
 
@@ -85,7 +95,7 @@ const witnessLimit = 3;
 /** What analyzing a `match` found. */
 export interface Analysis {
   /** Shapes of values no case matches; empty when the cases are exhaustive. */
-  readonly missing: readonly Shape[];
+  readonly missing: readonly WitnessShape[];
   /** The indexes of the cases no value can reach, given the unguarded cases before them. */
   readonly unreachable: readonly number[];
 }
@@ -105,7 +115,7 @@ export function analyze<T>(
   const longer = longArrays(cases.map(({ shape }) => shape));
   const matrix = new Matrix(signature, longer);
   const unreached: number[] = [];
-  const covering: (readonly Shape[])[] = [];
+  const covering: (readonly LaidOutShape[])[] = [];
   for (const [index, { guarded, ...written }] of cases.entries()) {
     const shape = withLengths(written.shape, longer);
     if (!matrix.useful(covering, [shape], [type])) {
@@ -156,7 +166,7 @@ function arrayExtents(shape: Shape): readonly ArrayShape[] {
  * without a rest; with one, each length from its fixed count below `longer`, and the longer ones,
  * its rest's items taking anything.
  */
-function withLengths(shape: Shape, longer: number): Shape {
+function withLengths(shape: Shape, longer: number): LaidOutShape {
   switch (shape.kind) {
     case 'any':
       return shape;
@@ -172,7 +182,7 @@ function withLengths(shape: Shape, longer: number): Shape {
         items.map((each) => withLengths(each, longer)),
       );
       const fixed = (prefix?.length ?? 0) + (suffix?.length ?? 0);
-      const filled = (length: number) => [
+      const filled = (length: number): readonly LaidOutShape[] => [
         ...(prefix ?? []),
         ...Array.from({ length: length - fixed }, () => anyShape),
         ...(suffix ?? []),
@@ -181,12 +191,16 @@ function withLengths(shape: Shape, longer: number): Shape {
         return { kind: 'constructor', key: lengthKey(fixed), arguments: filled(fixed) };
       }
       const lengths = Array.from({ length: longer - fixed }, (_, index) => fixed + index);
-      const alternatives: Shape[] = lengths.map((length) => ({
+      const alternatives: LaidOutShape[] = lengths.map((length) => ({
         kind: 'constructor',
         key: lengthKey(length),
         arguments: filled(length),
       }));
-      alternatives.push({ kind: 'constructor', key: longerKey(longer), arguments: filled(longer) });
+      alternatives.push({
+        kind: 'constructor',
+        key: lengthKey(longer, true),
+        arguments: filled(longer),
+      });
       return { kind: 'or', alternatives };
     }
     default: {
@@ -194,6 +208,12 @@ function withLengths(shape: Shape, longer: number): Shape {
       return unhandled;
     }
   }
+}
+
+/** A non-empty row whose first shape is already split across any leading `or` alternatives. */
+interface SpecializedRow {
+  readonly head: AnyShape | ConstructorShape<LaidOutShape>;
+  readonly rest: readonly LaidOutShape[];
 }
 
 /** The algorithm, over rows of shapes, one column per value still to match. */
@@ -207,26 +227,23 @@ class Matrix<T> {
     this.#longer = longer;
   }
 
-  /** Whether some value matching `vector` matches no row of `rows`. */
+  /** Whether some value matching `vector` matches no row of `written`. */
   useful(
-    written: readonly (readonly Shape[])[],
-    vector: readonly Shape[],
+    written: readonly (readonly LaidOutShape[])[],
+    vector: readonly LaidOutShape[],
     types: readonly T[],
   ): boolean {
-    const rows = withAlternatives(written);
     const [head, ...rest] = vector;
     const [type, ...restTypes] = types;
     if (head === undefined || type === undefined) {
-      return rows.length === 0;
+      return written.length === 0;
     }
     if (head.kind === 'or') {
       return head.alternatives.some((alternative) =>
-        this.useful(rows, [alternative, ...rest], types),
+        this.useful(written, [alternative, ...rest], types),
       );
     }
-    if (head.kind === 'array') {
-      unreachable('An array shape is made its lengths before the analysis.');
-    }
+    const rows = withAlternatives(written);
     if (head.kind === 'constructor') {
       const made = this.#constructorOf(type, head.key, head.arguments.length);
       return this.useful(
@@ -250,14 +267,14 @@ class Matrix<T> {
 
   /** Vectors of shapes no row matches, at most `witnessLimit`; none when the rows are exhaustive. */
   missing(
-    written: readonly (readonly Shape[])[],
+    written: readonly (readonly LaidOutShape[])[],
     types: readonly T[],
-  ): readonly (readonly Shape[])[] {
-    const rows = withAlternatives(written);
+  ): readonly (readonly WitnessShape[])[] {
     const [type, ...restTypes] = types;
     if (type === undefined) {
-      return rows.length === 0 ? [[]] : [];
+      return written.length === 0 ? [[]] : [];
     }
+    const rows = withAlternatives(written);
     const complete = this.#completeSignature(rows, type);
     if (complete === undefined) {
       const missingRest = this.missing(defaultRows(rows), restTypes);
@@ -267,7 +284,7 @@ class Matrix<T> {
       const unlisted = this.#unlistedConstructor(rows, type);
       return missingRest.map((rest) => [unlisted, ...rest]);
     }
-    const witnesses: (readonly Shape[])[] = [];
+    const witnesses: (readonly WitnessShape[])[] = [];
     for (const option of complete) {
       const arity = option.arguments.length;
       const below = this.missing(specialize(rows, option.key, arity), [
@@ -275,7 +292,7 @@ class Matrix<T> {
         ...restTypes,
       ]);
       for (const vector of below) {
-        const built: ConstructorShape = {
+        const built: ConstructorShape<WitnessShape> = {
           kind: 'constructor',
           key: option.key,
           arguments: vector.slice(0, arity),
@@ -294,22 +311,21 @@ class Matrix<T> {
    * be looked at; undefined when some value of `type` is left to the rows taking anything.
    */
   #completeSignature(
-    rows: readonly (readonly Shape[])[],
+    rows: readonly SpecializedRow[],
     type: T,
   ): readonly ConstructorOf<T>[] | undefined {
     const all = this.#constructors(type);
     if (all === undefined) {
       return undefined;
     }
-    const listed = headKeys(rows);
-    return all.length > 0 && all.every(({ key }) => listed.has(key)) ? all : undefined;
+    return all.length > 0 && all.every(({ key }) => rowsMention(rows, key)) ? all : undefined;
   }
 
   /** A shape of a value of `type` that no row lists by its constructor. */
-  #unlistedConstructor(rows: readonly (readonly Shape[])[], type: T): Shape {
-    const listed = headKeys(rows);
-    const unlisted = this.#constructors(type)?.find(({ key }) => !listed.has(key));
-    return unlisted === undefined || listed.size === 0
+  #unlistedConstructor(rows: readonly SpecializedRow[], type: T): WitnessShape {
+    const all = this.#constructors(type);
+    const unlisted = all?.find(({ key }) => !rowsMention(rows, key));
+    return unlisted === undefined || !all?.some(({ key }) => rowsMention(rows, key))
       ? anyShape
       : {
           kind: 'constructor',
@@ -319,8 +335,8 @@ class Matrix<T> {
   }
 
   /** The constructor `key` of `type`; for a type with no finite signature, one of `arity` unknowns. */
-  #constructorOf(type: T, key: string, arity: number): ConstructorOf<T> {
-    const found = this.#constructors(type)?.find((option) => option.key === key);
+  #constructorOf(type: T, key: ConstructorKey, arity: number): ConstructorOf<T> {
+    const found = this.#constructors(type)?.find((option) => sameConstructorKey(option.key, key));
     return found ?? { key, arguments: Array.from({ length: arity }, () => type) };
   }
 
@@ -335,45 +351,42 @@ class Matrix<T> {
       arguments: Array.from({ length }, () => signed.items),
     }));
     const longer = Array.from({ length: this.#longer }, () => signed.items);
-    return [...lengths, { key: longerKey(this.#longer), arguments: longer }];
+    return [...lengths, { key: lengthKey(this.#longer, true), arguments: longer }];
   }
 }
 
 /** `rows` with each row whose first shape is an or-pattern made one row per alternative. */
-function withAlternatives(rows: readonly (readonly Shape[])[]): readonly (readonly Shape[])[] {
-  return rows.flatMap(([head, ...rest]) =>
-    head?.kind === 'or'
-      ? withAlternatives(head.alternatives.map((alternative) => [alternative, ...rest]))
-      : [[...(head === undefined ? [] : [head]), ...rest]],
-  );
+function withAlternatives(rows: readonly (readonly LaidOutShape[])[]): readonly SpecializedRow[] {
+  return rows.flatMap(([head, ...rest]): readonly SpecializedRow[] => {
+    if (head === undefined) {
+      return [];
+    }
+    if (head.kind === 'or') {
+      return withAlternatives(head.alternatives.map((alternative) => [alternative, ...rest]));
+    }
+    return [{ head, rest }];
+  });
 }
 
 /** The rows matching a value built by the constructor `key` of `arity`, its arguments laid out. */
 function specialize(
-  rows: readonly (readonly Shape[])[],
-  key: string,
+  rows: readonly SpecializedRow[],
+  key: ConstructorKey,
   arity: number,
-): readonly (readonly Shape[])[] {
-  return rows.flatMap((row) => {
-    const [head, ...rest] = row;
-    if (head === undefined) {
-      return [];
-    }
+): readonly (readonly LaidOutShape[])[] {
+  return rows.flatMap(({ head, rest }) => {
     if (head.kind === 'any') {
       return [[...Array.from({ length: arity }, () => anyShape), ...rest]];
     }
-    if (head.kind !== 'constructor') {
-      unreachable(`A row starts with an ${head.kind} shape only before it is laid out.`);
-    }
-    return head.key === key ? [[...head.arguments, ...rest]] : [];
+    return sameConstructorKey(head.key, key) ? [[...head.arguments, ...rest]] : [];
   });
 }
 
 /** The rows whose first column takes anything, without that column. */
-function defaultRows(rows: readonly (readonly Shape[])[]): readonly (readonly Shape[])[] {
-  return rows.flatMap(([head, ...rest]) => (head?.kind === 'any' ? [rest] : []));
+function defaultRows(rows: readonly SpecializedRow[]): readonly (readonly LaidOutShape[])[] {
+  return rows.flatMap(({ head, rest }) => (head.kind === 'any' ? [rest] : []));
 }
 
-function headKeys(rows: readonly (readonly Shape[])[]): ReadonlySet<string> {
-  return new Set(rows.flatMap(([head]) => (head?.kind === 'constructor' ? [head.key] : [])));
+function rowsMention(rows: readonly SpecializedRow[], key: ConstructorKey): boolean {
+  return rows.some(({ head }) => head.kind === 'constructor' && sameConstructorKey(head.key, key));
 }

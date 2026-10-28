@@ -4,12 +4,13 @@ import {
   analyze,
   anyShape,
   type CaseShape,
+  type ConstructorKey,
   type ConstructorOf,
   lengthKey,
   longArrays,
-  longerKey,
   type Shape,
   type Signature,
+  sameConstructorKey,
 } from './exhaustiveness.ts';
 
 /**
@@ -85,7 +86,10 @@ function valuesOf(type: TestType, longer: number): readonly Shape[] {
             key: lengthKey(length),
             arguments: Array.from({ length }, () => signed.items),
           })),
-          { key: longerKey(longer), arguments: Array.from({ length: longer }, () => signed.items) },
+          {
+            key: lengthKey(longer, true),
+            arguments: Array.from({ length: longer }, () => signed.items),
+          },
         ]
       : signed;
   return constructors.flatMap(({ key, arguments: argumentTypes }) =>
@@ -102,7 +106,7 @@ function combinations(lists: readonly (readonly Shape[])[]): readonly (readonly 
   );
 }
 
-function constructed(key: string, values: readonly Shape[]): Shape {
+function constructed(key: ConstructorKey, values: readonly Shape[]): Shape {
   return { kind: 'constructor', key, arguments: values };
 }
 
@@ -162,7 +166,7 @@ function matches(pattern: Shape, value: Shape): boolean {
     case 'constructor':
       return (
         value.kind === 'constructor' &&
-        value.key === pattern.key &&
+        sameConstructorKey(value.key, pattern.key) &&
         allMatch(pattern.arguments, value.arguments)
       );
     default: {
@@ -178,10 +182,9 @@ function matchesArray(pattern: Extract<Shape, { kind: 'array' }>, value: Shape):
   }
   const items = value.arguments;
   const fixed = pattern.prefix.length + pattern.suffix.length;
-  const fits =
-    value.key === lengthKey(items.length)
-      ? items.length === fixed || (pattern.hasRest && items.length >= fixed)
-      : pattern.hasRest;
+  const fits = sameConstructorKey(value.key, lengthKey(items.length))
+    ? items.length === fixed || (pattern.hasRest && items.length >= fixed)
+    : pattern.hasRest;
   return (
     fits &&
     allMatch(pattern.prefix, items.slice(0, pattern.prefix.length)) &&
