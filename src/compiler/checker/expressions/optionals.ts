@@ -24,7 +24,7 @@ import type { ChainLink } from '../check.ts';
 import { checkOwnCall } from '../closures/own-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
+import { preludeCall } from '../resolution/implicit.ts';
 import { optionalInner } from '../types/fit.ts';
 import { errorType, isAssignable, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -124,12 +124,11 @@ export function checkUnwrap(context: BodyContext, node: Unwrap, expected: Type |
     }
     return errorType;
   }
-  implicitCall(context, {
+  preludeCall(context, {
     node,
     role: 'panic',
-    candidates: preludeCandidates(context, panicFunction),
-    arguments: [{ type: stringType, passing: 'value' }],
-    failure: () => checkerDiagnostics.needsOptional(node.span, '!', typeText(operand)),
+    name: panicFunction,
+    arguments: [stringType],
   });
   return inner;
 }

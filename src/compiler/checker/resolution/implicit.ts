@@ -19,6 +19,7 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { BodyContext } from '../context.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
@@ -63,9 +64,30 @@ export interface ImplicitRequest {
   readonly failure: () => Diagnostic;
 }
 
+/** A call the language makes on a prelude function it owns, whose absence is a toolchain bug. */
+export interface PreludeRequest {
+  readonly node: NodeOf<string>;
+  readonly role: ImplicitRole;
+  readonly name: string;
+  readonly arguments: readonly Type[];
+  readonly expected?: Type;
+}
+
 /** The prelude's functions of `name`, the only candidates of the language's own machinery. */
 export function preludeCandidates(context: BodyContext, name: string): readonly Candidate[] {
   return context.checker.languageFunctions('prelude', name).map((declaration) => ({ declaration }));
+}
+
+/** Makes a prelude-owned implicit call and records it under its node and role. */
+export function preludeCall(context: BodyContext, request: PreludeRequest): Type | undefined {
+  return implicitCall(context, {
+    node: request.node,
+    role: request.role,
+    candidates: preludeCandidates(context, request.name),
+    arguments: request.arguments.map((type) => ({ type, passing: 'value' })),
+    ...(request.expected === undefined ? {} : { expected: request.expected }),
+    failure: () => unreachable(`The prelude declares no '${request.name}' for ${request.role}.`),
+  });
 }
 
 /**

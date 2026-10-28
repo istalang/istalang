@@ -45,7 +45,7 @@ import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
+import { preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
 import { checkEqualSides, comparable } from '../types/equality.ts';
@@ -124,13 +124,12 @@ function arrayTest(
   const hasRest = node.elements.some((element) => element.kind === 'RestPattern');
   const count = node.elements.length - (hasRest ? 1 : 0);
   const call = (role: ImplicitRole, name: string, types: readonly Type[], expected?: Type) =>
-    implicitCall(context, {
+    preludeCall(context, {
       node,
       role,
-      candidates: preludeCandidates(context, name),
-      arguments: types.map((type) => ({ type, passing: 'value' })),
+      name,
+      arguments: types,
       ...(expected === undefined ? {} : { expected }),
-      failure: () => checkerDiagnostics.notArrayPattern(node.span, typeText(part.type)),
     });
   call('length', arrayPatternFunctions.length, [part.type]);
   if (count > 0) {
@@ -161,12 +160,11 @@ function rangeLeaf(context: BodyContext, node: RangePattern, part: ValuePart): L
     context.report(checkerDiagnostics.emptyRangePattern(node.span));
   }
   for (const bound of bounds) {
-    implicitCall(context, {
+    preludeCall(context, {
       node: bound,
       role: 'compare',
-      candidates: preludeCandidates(context, compareFunction),
-      arguments: [intType, intType].map((type) => ({ type, passing: 'value' })),
-      failure: () => checkerDiagnostics.notIntRangePattern(node.span, 'int'),
+      name: compareFunction,
+      arguments: [intType, intType],
     });
   }
   const test = (bound: LiteralPattern, relation: Relation): PatternTest => ({

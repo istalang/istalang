@@ -15,7 +15,7 @@ import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/t
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
-import { implicitCall, preludeCandidates } from '../resolution/implicit.ts';
+import { implicitCall, preludeCall } from '../resolution/implicit.ts';
 import { sameType, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownOf } from '../types/well-known.ts';
@@ -39,22 +39,11 @@ export function checkTemplate(
 
 /** Makes the `join` call writing a template's texts and values as its string. */
 function join(context: BodyContext, node: TemplateLiteral): void {
-  const parts = [
-    { type: wellKnownOf(context.checker, wellKnown.array, [stringType]), passing: 'value' },
-    { type: stringType, passing: 'value' },
-  ] as const;
-  const name = templateFunctions.join;
-  implicitCall(context, {
+  preludeCall(context, {
     node,
     role: 'join',
-    candidates: preludeCandidates(context, name),
-    arguments: parts,
-    failure: () =>
-      checkerDiagnostics.noMatchingOverload(
-        node.span,
-        name,
-        parts.map(({ type }) => typeText(type)).join(', '),
-      ),
+    name: templateFunctions.join,
+    arguments: [wellKnownOf(context.checker, wellKnown.array, [stringType]), stringType],
   });
 }
 
