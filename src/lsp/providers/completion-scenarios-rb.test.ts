@@ -1,0 +1,101 @@
+/**
+ * Completion scenarios RB of docs/work/completion/ (resilience), one test each.
+ * A test named `<ID> <title>` pinned with `fails` is a scenario the server does not meet yet
+ * (completion-scenarios.test-kit.ts).
+ */
+
+import { describeScenarios, type Scenario } from './completion-scenarios.test-kit.ts';
+
+const scenarios: readonly Scenario[] = [
+  {
+    id: 'RB-01',
+    title: 'Empty function body at the end of the file',
+    src: ['fn g(a: int):\n  ‸'],
+    where: 'top',
+    expect: { has: ['a', 'plus'] },
+    fails: true,
+  },
+  {
+    id: 'RB-02',
+    title: 'Empty block in the middle',
+    src: [
+      '  if n:\n    ‸\n  0',
+      '  for i in xs:\n    ‸\n  0',
+      '  match d:\n    case Approved{by}:\n      ‸\n    case _: 0',
+    ],
+    expect: { has: ['xs', 'n'] },
+  },
+  {
+    id: 'RB-02b',
+    title: 'Bindings in a freshly opened block',
+    src: ['  for i in xs:\n    ‸\n  0', '  if r is Ok{value as y}:\n    ‸\n  0'],
+    expect: { anyOf: ['i', 'y'] },
+    fails: true,
+  },
+  {
+    id: 'RB-03',
+    title: 'Trailing dot with code below',
+    src: ['  p.‸\n  let y = 1\n  y', '  xs.‸\n  return 1'],
+    trigger: '.',
+    expect: { has: [], lacks: ['let', 'xs'], nonEmpty: true },
+  },
+  {
+    id: 'RB-04',
+    title: 'Unclosed literal with code below',
+    src: ['  Pair{first: 1, ‸\n  return 1'],
+    trigger: ',',
+    expect: { has: ['second'], lacks: ['xs'] },
+  },
+  {
+    id: 'RB-04b',
+    title: 'Unclosed call with code below',
+    src: ['  plus(1, ‸\n  return 1'],
+    trigger: ',',
+    expect: { has: ['b:'] },
+    fails: true,
+  },
+  {
+    id: 'RB-05',
+    title: 'Errors elsewhere',
+    src: [
+      'fn broken(:\n  1\n\nfn g(xs: Array<int>) -> int:\n  xs.‸\n  0',
+      'fn broken() -> int:\n  let = \n  1\nfn g(p: Pair) -> int:\n  p.‸\n  0',
+    ],
+    trigger: '.',
+    where: 'top',
+    expect: { nonEmpty: true },
+    fails: true,
+  },
+  {
+    id: 'RB-06',
+    title: 'A type error in the same function',
+    src: ['  const bad: string = 1\n  p.‸'],
+    trigger: '.',
+    expect: { has: ['first'] },
+  },
+  {
+    id: 'RB-07',
+    title: 'Empty file',
+    src: ['‸'],
+    where: 'empty',
+    expect: { has: ['fn', 'struct'], lacks: ['let', 'while'] },
+    fails: true,
+  },
+  {
+    id: 'RB-08',
+    title: 'Non-BMP characters before the cursor',
+    src: ['  const s = "😀"; p.‸'],
+    trigger: '.',
+    expect: { has: ['first'] },
+  },
+  {
+    id: 'RB-09',
+    title: 'CRLF line endings',
+    src: ['  p.‸\n  0'],
+    trigger: '.',
+    crlf: true,
+    expect: { has: ['first'] },
+  },
+];
+
+describeScenarios('completion scenarios RB', scenarios);

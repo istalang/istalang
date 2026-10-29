@@ -528,7 +528,7 @@ fn g(p: Pair) -> int:
 ### RB-10 · Position past the end · P3 · ✅ pass
 
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** A position beyond the line or the document gives an empty list, never an error.
+- **Offer:** A position beyond the line or the document is answered (LSP clamps a character to the line's end), never an error.
 - **Not:** Errors.
 - **Basis:** LSP position clamping.
 

@@ -1,0 +1,147 @@
+/**
+ * Completion scenarios CO, CF of docs/work/completion/ (collections, lambdas, templates; control flow), one test each.
+ * A test named `<ID> <title>` pinned with `fails` is a scenario the server does not meet yet
+ * (completion-scenarios.test-kit.ts).
+ */
+
+import { describeScenarios, type Scenario } from './completion-scenarios.test-kit.ts';
+
+const scenarios: readonly Scenario[] = [
+  {
+    id: 'CO-01',
+    title: 'Array and map literals',
+    src: [
+      '  const a = [‸',
+      '  const a = [1, ‸',
+      '  const a = [...‸',
+      '  const a = ["k": ‸',
+      '  const a = [1, 2][‸',
+    ],
+    expect: { has: ['xs', 'plus', 'true'], lacks: ['let', 'while', 'case'] },
+    fails: true,
+  },
+  {
+    id: 'CO-02',
+    title: 'Spread',
+    src: ['  const a = [...‸'],
+    expect: { within: { labels: ['xs'], k: 3 } },
+    fails: true,
+  },
+  {
+    id: 'CO-03',
+    title: 'Tuples and ranges and slices',
+    src: ['  const t = (1, ‸', '  const r = 0..‸', '  const s = xs[1..‸'],
+    expect: { has: ['xs', 'plus'], lacks: ['let', 'case'] },
+    fails: true,
+  },
+  {
+    id: 'CO-04',
+    title: 'Comprehension',
+    src: ['  const e = [for x in xs if ‸', '  const e = [for x in xs: ‸'],
+    expect: { has: ['x', 'xs'], lacks: ['let'] },
+    fails: true,
+  },
+  {
+    id: 'CO-04b',
+    title: 'Comprehension binder',
+    src: ['  const e = [for ‸'],
+    expect: { none: true },
+    fails: true,
+  },
+  {
+    id: 'CO-05',
+    title: 'Lambda parameters',
+    src: ['  const f = fn(‸', '  const f = fn ‸'],
+    expect: { none: true },
+    fails: true,
+  },
+  {
+    id: 'CO-06',
+    title: 'Lambda body',
+    src: ['  const f = fn(q): ‸', '  const f = fn q: ‸'],
+    expect: { has: ['q', 'xs'], lacks: ['let'] },
+    fails: true,
+  },
+  {
+    id: 'CO-06b',
+    title: 'Lambda annotation',
+    src: ['  const f = fn(q: ‸'],
+    expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
+    fails: true,
+  },
+  {
+    id: 'CO-07',
+    title: 'Template interpolation',
+    src: ['  const s = `id ${‸}`', '  const s = `id ${n} and ${‸'],
+    expect: { has: ['xs', 'n', 'plus'], lacks: ['let', 'case'] },
+    fails: true,
+  },
+  {
+    id: 'CO-08',
+    title: 'Template text',
+    src: ['  const s = `id ‸`', '  const s = `${n} ‸ tail`'],
+    expect: { none: true },
+    fails: true,
+  },
+  {
+    id: 'CO-09',
+    title: 'Index',
+    src: ['  xs[‸]', '  m[‸]'],
+    expect: { has: ['n'], lacks: ['let'] },
+    fails: true,
+  },
+  {
+    id: 'CF-01',
+    title: 'Condition',
+    src: ['  if ‸', '  while ‸', '  if n > 1 and ‸'],
+    expect: { has: ['xs', 'n', 'true'], lacks: ['let', 'for'] },
+    fails: true,
+  },
+  {
+    id: 'CF-02',
+    title: 'Scrutinee',
+    src: ['  match ‸'],
+    expect: { has: ['d', 'xs'], lacks: ['let', 'for'] },
+    fails: true,
+  },
+  {
+    id: 'CF-03',
+    title: 'Select case',
+    src: ['  await select:\n    case ‸', '  select:\n    case work(1) as v: v\n    case ‸'],
+    where: 'async',
+    expect: { has: ['fetch', 'work'], lacks: ['let', 'for'] },
+    fails: true,
+  },
+  {
+    id: 'CF-04',
+    title: 'After the awaited future',
+    src: ['  select:\n    case work(1) ‸'],
+    where: 'async',
+    expect: { has: ['as'], lacks: ['xs', 'plus'] },
+    fails: true,
+  },
+  {
+    id: 'CF-05',
+    title: 'Binding after as',
+    src: ['  select:\n    case work(1) as ‸', '  match d:\n    case Approved{by} as ‸'],
+    where: 'async',
+    expect: { none: true },
+    fails: true,
+  },
+  {
+    id: 'CF-06',
+    title: 'Result of await select',
+    src: ['  const v = await select:\n    case work(1): 1\n    else: ‸'],
+    where: 'async',
+    expect: { has: ['xs'] },
+  },
+  {
+    id: 'CF-07',
+    title: 'Line-start case in a nested match',
+    src: ['  match d:\n    case Approved{by}:\n      match o:\n        ‸'],
+    expect: { has: ['case'], lacks: ['xs', 'let'] },
+    fails: true,
+  },
+];
+
+describeScenarios('completion scenarios CO, CF', scenarios);

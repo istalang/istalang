@@ -14,6 +14,8 @@ What an editor should offer at every position the grammar has, how a list opens 
 
 Files: `declarations.md`, `statements.md`, `values.md`, `mechanics.md`.
 
+**Tests.** `src/lsp/providers/completion-scenarios-*.test.ts`, one test per scenario, named `<ID> <title>` (run one with `vitest -t "TL-01 "`), over the LSP in memory. A scenario still failing is pinned with `it.fails`; when a fix makes it hold, its test fails: drop the `fails` flag from its entry and refresh its status here. The fixture and the checks are in `completion-scenarios.test-kit.ts`; RB-10 to RB-13 and VC-01 to VC-03 are hand-written in `completion-scenarios-protocol.test.ts`.
+
 ## How to read a scenario
 
 - **Snippet.** The cursor is `‸`. A snippet marked "in `fn t`" is the body of the fixture function below, indented two spaces, with a statement after it, so the block is not empty (an empty block at the end of the file is RB-01, RB-02). "Top level" ones follow the fixture's declarations. `---` separates variants; every variant must meet the expectation. `⟵ typing "x"` marks the character whose typing asks for the list.
