@@ -262,6 +262,19 @@ describe('incremental', () => {
 });
 
 describe('moduleOf', () => {
+  it('answers for every entity a name of the corpus denotes, but primitives and candidates', () => {
+    const undeclared = boundCorpus().flatMap(({ program, modules }) => {
+      const bindings = bindProgram(program);
+      return modules
+        .flatMap((module) => resolvedNames(program, module))
+        .filter(({ entity }) => entity.kind !== 'primitive' && entity.kind !== 'variants')
+        .filter(({ entity }) => bindings.moduleOf(entity) === undefined);
+    });
+    expect(
+      undeclared.map(({ module, name }) => `${module}:${name.span.start} ${name.text}`),
+    ).toEqual([]);
+  });
+
   it('answers, for every entity a name of the corpus declares, the module declaring it', () => {
     const misplaced = boundCorpus().flatMap(({ program, modules }) => {
       const bindings = bindProgram(program);
@@ -278,6 +291,22 @@ describe('moduleOf', () => {
     expect(
       misplaced.map(({ module, name }) => `${module}:${name.span.start} ${name.text}`),
     ).toEqual([]);
+  });
+
+  it('answers for an unnamed parameter, a repeated declaration and an own call', () => {
+    const program = preludeProgramOf({
+      main: 'const a = 1\nconst a = 2\nfn f(_: int): 1\nasync fn g() -> int:\n  g.disposing()\n  1\n',
+    });
+    const bindings = bindProgram(program);
+    const entities = [
+      ['a', 1],
+      ['_', 0],
+      ['g', 1],
+    ].map(([text, index]) => entityOfName(program, 'main', String(text), Number(index)));
+    expect(entities.map((entity) => entity?.kind)).toEqual(['variable', 'variable', 'variable']);
+    expect(entities.map((entity) => entity && bindings.moduleOf(entity))).toEqual(
+      entities.map(() => idOf('main')),
+    );
   });
 
   it('answers for locals too, which alone are not top-level', () => {

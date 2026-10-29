@@ -22,14 +22,18 @@ import {
   type Declaration,
   type DeclaredStruct,
   type EnumDeclaration,
+  type ExternStructDeclaration,
   type FunctionDeclaration,
   type TraitDeclaration,
+  type TypeAliasDeclaration,
   type TypeParameters,
   typeParametersOf,
+  type Variant,
 } from '../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
+import type { SyntaxNode } from '../syntax/tree.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 import { bindTargets, bindVariableValue } from './statements.ts';
@@ -40,7 +44,6 @@ export function bindFunction(
   node: FunctionDeclaration | Lambda,
   scope: Scope,
 ): void {
-  binder.enter(node, scope);
   const inner = Scope.nested(scope);
   if (node.kind === 'FunctionDeclaration') {
     if (node.owner !== undefined) {
@@ -50,7 +53,8 @@ export function bindFunction(
   } else if (node.name !== undefined) {
     binder.declareVariable(inner, node.name, node);
   }
-  bindParameters(binder, node.parameters, inner);
+  binder.enter(node, inner);
+  bindParameters(binder, node, inner);
   if (node.returnType !== undefined) {
     binder.walk.type(binder, node.returnType, inner);
   }
@@ -64,15 +68,15 @@ export function bindFunction(
 
 function bindParameters(
   binder: LocalBinder,
-  parameters: readonly (Parameter | Invalid)[],
+  node: FunctionDeclaration | Lambda,
   scope: Scope,
 ): void {
-  for (const parameter of parameters) {
+  for (const parameter of node.parameters) {
     if (parameter.kind === 'Parameter' && parameter.type !== undefined) {
       binder.walk.type(binder, parameter.type, scope);
     }
   }
-  bindDefaults(binder, parameters, scope, (parameter) =>
+  bindDefaults(binder, { node, parameters: node.parameters }, scope, (parameter) =>
     binder.declareVariable(scope, parameter.name, parameter),
   );
 }
@@ -83,6 +87,7 @@ function bindParameters(
  */
 function bindFieldDefaults(
   binder: LocalBinder,
+  owner: DeclaredStruct | Variant,
   fieldsFunction: FunctionDeclaration | undefined,
   scope: Scope,
 ): void {
@@ -90,16 +95,25 @@ function bindFieldDefaults(
     return;
   }
   const inner = Scope.nested(scope);
-  bindDefaults(binder, fieldsFunction.parameters, inner, (field) => {
+  bindDefaults(binder, { node: owner, parameters: fieldsFunction.parameters }, inner, (field) => {
     const entity = { kind: 'variable', name: field.name, owner: field } as const;
     binder.declare(inner, field.name, entity, { clash: false });
   });
 }
 
-/** Each parameter is defined after its default, which sees only the ones before it. */
+/** Parameters, or fields as their function's parameters, and the node in the tree declaring them. */
+interface DeclaredParameters {
+  readonly node: SyntaxNode;
+  readonly parameters: readonly (Parameter | Invalid)[];
+}
+
+/**
+ * Each parameter is defined after its default, which sees only the ones before it; past it, the
+ * declaring node sees it too.
+ */
 function bindDefaults(
   binder: LocalBinder,
-  parameters: readonly (Parameter | Invalid)[],
+  { node, parameters }: DeclaredParameters,
   scope: Scope,
   define: (parameter: Parameter) => void,
 ): void {
@@ -109,14 +123,15 @@ function bindDefaults(
         binder.walk.expression(binder, parameter.defaultValue, scope);
       }
       define(parameter);
+      binder.enter(node, scope, parameter.span.end);
     }
   }
 }
 
 function bindStruct(binder: LocalBinder, node: DeclaredStruct, scope: Scope): void {
-  const inner = typeParameterScope(binder, node.typeParameters, scope);
+  const inner = typeParameterScope(binder, node, scope);
   bindFields(binder, node.fields, inner);
-  bindFieldDefaults(binder, fieldsFunctionOf(node), inner);
+  bindFieldDefaults(binder, node, fieldsFunctionOf(node), inner);
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -130,10 +145,10 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
   StructDeclaration: bindStruct,
   SharedStructDeclaration: bindStruct,
   ExternStructDeclaration: (binder, node, scope) => {
-    typeParameterScope(binder, node.typeParameters, scope);
+    typeParameterScope(binder, node, scope);
   },
   TypeAliasDeclaration: (binder, node, scope) =>
-    binder.walk.type(binder, node.type, typeParameterScope(binder, node.typeParameters, scope)),
+    binder.walk.type(binder, node.type, typeParameterScope(binder, node, scope)),
   EnumDeclaration: bindEnum,
   TraitDeclaration: bindTrait,
   NamedImport: holdsNoNames,
@@ -148,12 +163,12 @@ export function bindDeclaration(binder: LocalBinder, node: Declaration, scope: S
 }
 
 function bindEnum(binder: LocalBinder, node: EnumDeclaration, scope: Scope): void {
-  const inner = typeParameterScope(binder, node.typeParameters, scope);
+  const inner = typeParameterScope(binder, node, scope);
   for (const variant of node.variants) {
     if (variant.kind === 'Variant') {
       binder.annotations(variant, inner);
       bindFields(binder, variant.fields, inner);
-      bindFieldDefaults(binder, fieldsFunctionOf(node, variant), inner);
+      bindFieldDefaults(binder, variant, fieldsFunctionOf(node, variant), inner);
     }
   }
 }
@@ -162,6 +177,7 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
   const inner = Scope.nested(scope);
   inner.define('Self', { kind: 'self', trait: node });
   defineTypeParameters(binder, node.typeParameters, inner);
+  binder.enter(node, inner);
   const fields = node.members.filter((member) => member.kind !== 'FunctionDeclaration');
   bindFields(binder, fields, inner);
   for (const member of node.members) {
@@ -173,9 +189,15 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
   }
 }
 
-function typeParameterScope(binder: LocalBinder, parameters: TypeParameters, scope: Scope): Scope {
+/** The scope of a declaration's type parameters, which the whole declaration sees. */
+function typeParameterScope(
+  binder: LocalBinder,
+  node: DeclaredStruct | ExternStructDeclaration | TypeAliasDeclaration | EnumDeclaration,
+  scope: Scope,
+): Scope {
   const inner = Scope.nested(scope);
-  defineTypeParameters(binder, parameters, inner);
+  defineTypeParameters(binder, node.typeParameters, inner);
+  binder.enter(node, inner);
   return inner;
 }
 

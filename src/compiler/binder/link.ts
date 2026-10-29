@@ -33,7 +33,6 @@ import { memo } from '../../structures/memo.ts';
 import { isTestModule, type ModuleId, type Program } from '../program/program.ts';
 import type { EnumDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
-import { nodesAt } from '../syntax/tree.ts';
 import { bindModule, type ModuleBindings } from './bind-module.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import type {
@@ -145,7 +144,7 @@ class Linker {
     if (links === undefined || tree === undefined) {
       return new Map();
     }
-    const scoped = links.local.visibility.namesAt(nodesAt(tree, offset), offset);
+    const scoped = links.local.visibility.namesAt(tree, offset);
     const variants = [...this.#variantsByName.keys()].map(
       (name) => [name, links.local.variantsNamed(name)] as const,
     );
@@ -251,8 +250,10 @@ class Linker {
         this.#topLevel.add(entity);
       }
     }
-    for (const entity of local.defined) {
-      if (entity.kind !== 'import' && entity.kind !== 'primitive') {
+    // What the tree's names denote and its scopes define is the tree's own, locals included, but
+    // for what no module declares: placeholders, the shared primitives, a bare name's candidates.
+    for (const entity of new Set([...local.entities.values(), ...local.defined])) {
+      if (entity.kind !== 'import' && entity.kind !== 'primitive' && entity.kind !== 'variants') {
         this.#owners.set(entity, id);
       }
     }

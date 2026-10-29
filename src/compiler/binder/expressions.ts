@@ -17,7 +17,7 @@ import {
   qualifiedPath,
 } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
-import { underBindings, underCondition, underLoop } from './flow.ts';
+import { bindConditionValue, underBindings, underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import type { Scope } from './scope.ts';
 
@@ -91,23 +91,19 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
       bindExpression(binder, node.target, scope);
     }
   },
-  Binary: bindValueCondition,
-  Is: bindValueCondition,
+  Binary: bindConditionValue,
+  Is: bindConditionValue,
   StructLiteral: bindLiteral,
   NewStructLiteral: bindLiteral,
   Lambda: (binder, node, scope) => binder.walk.function(binder, node, scope),
   BlockExpression: (binder, node, scope) => binder.walk.block(binder, node.block, scope),
   Comprehension: (binder, node, scope) =>
     underLoop(binder, node, scope, (variables) =>
-      underCondition(binder, node.condition, variables, (flow) =>
-        bindExpression(binder, node.body, flow),
-      ),
+      underCondition(binder, node, variables, (flow) => bindExpression(binder, node.body, flow)),
     ),
   If: (binder, node, scope) => {
     for (const branch of node.branches) {
-      underCondition(binder, branch.condition, scope, (flow) =>
-        binder.walk.block(binder, branch.body, flow),
-      );
+      underCondition(binder, branch, scope, (flow) => binder.walk.block(binder, branch.body, flow));
     }
     if (node.elseClause !== undefined) {
       binder.walk.block(binder, node.elseClause.body, scope);
@@ -116,14 +112,14 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   Match: (binder, node, scope) => {
     bindExpression(binder, node.subject, scope);
     for (const matchCase of casesOf(node)) {
-      underBindings(
-        scope,
-        (bindings) => binder.walk.pattern(binder, matchCase.pattern, scope, { into: bindings }),
-        (bindings) =>
-          underCondition(binder, matchCase.guard, bindings, (flow) =>
+      underBindings(binder, matchCase, scope, {
+        define: (bindings) =>
+          binder.walk.pattern(binder, matchCase.pattern, scope, { into: bindings }),
+        body: (bindings) =>
+          underCondition(binder, matchCase, bindings, (flow) =>
             binder.walk.block(binder, matchCase.body, flow),
           ),
-      );
+      });
     }
   },
   Select: (binder, node, scope) => {
@@ -136,9 +132,10 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
             binder.declareVariable(bindings, name, selectCase);
           }
         };
-        underBindings(scope, define, (bindings) =>
-          binder.walk.block(binder, selectCase.body, bindings),
-        );
+        underBindings(binder, selectCase, scope, {
+          define,
+          body: (bindings) => binder.walk.block(binder, selectCase.body, bindings),
+        });
       }
     }
     if (node.elseClause !== undefined) {
@@ -151,11 +148,6 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
 export function bindExpression(binder: LocalBinder, node: Expression, scope: Scope): void {
   binder.enter(node, scope);
   handlerOf(expressionHandlers, node)(binder, node, scope);
-}
-
-/** An `is` or `and`/`or` used as a value: its bindings reach only its own right-hand sides. */
-function bindValueCondition(binder: LocalBinder, node: Expression, scope: Scope): void {
-  underCondition(binder, node, scope, () => undefined);
 }
 
 /** Binds the value each of `nodes` gives: an expression's own, a spread's, or a named argument's. */
