@@ -75,16 +75,28 @@ export interface LiteralSpread {
   readonly type?: Type;
 }
 
-/** The struct literals of one body, each with where its fields' values come from. */
+/**
+ * The struct literals of one body, each with the fields it builds and where their values come
+ * from.
+ */
 export class StructLiterals implements LiteralSources {
   readonly #sources = new Map<FieldsLiteral, readonly FieldSource[]>();
+  readonly #fields = new Map<FieldsLiteral, readonly FieldMember[]>();
 
   record(literal: FieldsLiteral, sources: readonly FieldSource[]): void {
     this.#sources.set(literal, sources);
   }
 
+  recordFields(literal: FieldsLiteral, fields: readonly FieldMember[]): void {
+    this.#fields.set(literal, fields);
+  }
+
   sourcesOf(literal: FieldsLiteral): readonly FieldSource[] | undefined {
     return this.#sources.get(literal);
+  }
+
+  fieldsOf(literal: FieldsLiteral): readonly FieldMember[] | undefined {
+    return this.#fields.get(literal);
   }
 
   /** The calls of the defaults the literals leave their fields to, each at its literal. */
@@ -125,6 +137,11 @@ export function checkLiteralFields(
     checkItem(context, items, item, spread?.node);
   }
   const completed = complete(context, node, shape, inference);
+  const found = completed?.substitution ?? inference.substitution();
+  context.literals.recordFields(
+    node,
+    shape.fields.map((field) => ({ ...field, type: substitute(field.type, found) })),
+  );
   if (completed === undefined) {
     return errorType;
   }

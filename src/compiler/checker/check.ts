@@ -202,6 +202,12 @@ export interface CheckedBody {
    * literal the checker found a mistake in.
    */
   readonly sourcesOf: (literal: FieldsLiteral) => readonly FieldSource[] | undefined;
+  /**
+   * The fields a struct or variant literal builds, typed by the type arguments found for it,
+   * whatever its items give: what may be written in it (§3.1); undefined for a literal never
+   * checked against declared fields.
+   */
+  readonly literalFieldsOf: (literal: FieldsLiteral) => readonly FieldMember[] | undefined;
   /** A `match` case's or `is`'s pattern as checked (§3.11); undefined for one never checked. */
   readonly patternOf: (pattern: Pattern) => CheckedPattern | undefined;
   /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */

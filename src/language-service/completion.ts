@@ -3,6 +3,8 @@
  * - after a member's operator (`.`, `?.`, `->`, `?->`), what the value before it has: its fields,
  *   and the methods and statics a call through it may choose (checker lookup/members.ts);
  * - after a namespace, what its module exports; after a type, its statics and variants;
+ * - where a struct or variant literal's item names its field, the fields the literal builds that
+ *   its other items don't give (§3.1);
  * - anywhere else, the names visible where the name starts (§3.4), then the keywords.
  *
  * Only a member can follow a `.` or `?.`, so where none can stand there, as after a name on a line
@@ -22,6 +24,7 @@ import type { FunctionDeclaration } from '../compiler/syntax/declarations.ts';
 import { chainStepOf } from '../compiler/syntax/expressions/chains.ts';
 import {
   type Expression,
+  type FieldsLiteral,
   type MemberAccess,
   qualifiedPath,
 } from '../compiler/syntax/expressions/index.ts';
@@ -78,9 +81,29 @@ export function completionsAt(
     return memberCompletions(checked, place);
   }
   const before = tokenBefore(checked.tree, offset);
-  return before !== undefined && memberOnlyOperators.has(before.kind)
-    ? []
-    : scopeCompletions(checked, offset);
+  if (before !== undefined && memberOnlyOperators.has(before.kind)) {
+    return [];
+  }
+  const fields = fieldsAt(checked, offset);
+  if (fields === undefined) {
+    return scopeCompletions(checked, offset);
+  }
+  return fields.takesValue
+    ? [...fields.offered, ...scopeCompletions(checked, offset)]
+    : fields.offered;
+}
+
+/**
+ * The candidates for a field's name in a struct or variant literal at `offset` of `module`;
+ * undefined where no field's name stands.
+ */
+export function fieldCompletionsAt(
+  program: Program,
+  module: ModuleId,
+  offset: number,
+): readonly Completion[] | undefined {
+  const checked = checkedModule(program, module);
+  return checked && fieldsAt(checked, offset)?.offered;
 }
 
 /** The candidates for a member at `offset` of `module`; undefined where no member is written. */
@@ -147,20 +170,29 @@ function unfinishedQualifierAt(tree: SyntaxTree, dot: Token): MemberPlace | unde
 }
 
 /**
- * The token right before the name the cursor at `offset` is writing, a keyword's spelling
- * included, or right before `offset` when it writes none; undefined when space parts them.
+ * The name the cursor at `offset` is writing, a keyword's spelling included, if any; and the token
+ * before it, or before `offset` when it writes none.
  */
-function tokenBefore(tree: SyntaxTree, offset: number): Token | undefined {
+function writingAt(
+  tree: SyntaxTree,
+  offset: number,
+): { readonly name: Token | undefined; readonly before: Token | undefined } {
   const tokens = codeTokensOf(tree);
   const last = tokens.findLastIndex(({ span }) => span.start < offset);
   const written = tokens[last];
-  const isNameWritten =
+  const isName =
     written !== undefined &&
     written.span.end >= offset &&
     (written.kind === 'identifier' || isKeyword(written.kind));
-  const before = isNameWritten ? tokens[last - 1] : written;
-  const nameStart = isNameWritten ? written.span.start : offset;
-  return before?.span.end === nameStart ? before : undefined;
+  return isName
+    ? { name: written, before: tokens[last - 1] }
+    : { name: undefined, before: written };
+}
+
+/** The token right before what the cursor at `offset` writes; undefined when space parts them. */
+function tokenBefore(tree: SyntaxTree, offset: number): Token | undefined {
+  const { name, before } = writingAt(tree, offset);
+  return before?.span.end === (name?.span.start ?? offset) ? before : undefined;
 }
 
 function memberPlaceOf(
@@ -181,6 +213,63 @@ function memberPlaceOf(
     return head && { head, access: undefined };
   }
   return undefined;
+}
+
+/**
+ * The fields the literal whose item's name the cursor is on, or would start, builds and its other
+ * items don't give; none for a literal checking found no declared fields for. Undefined where no
+ * field's name stands. Right after its `{`, a literal building one field also takes that field's
+ * value without its name (§3.1), so a value may stand there too (`takesValue`).
+ */
+function fieldsAt(
+  { checker, module, tree }: CheckedModule,
+  offset: number,
+): { readonly offered: readonly Completion[]; readonly takesValue: boolean } | undefined {
+  const place = fieldPlaceAt(tree, offset);
+  if (place === undefined) {
+    return undefined;
+  }
+  const { literal, item, opens } = place;
+  const fields = checker.lookup.bodyHolding(module, literal)?.literalFieldsOf(literal) ?? [];
+  const given = new Set(
+    literal.items.flatMap((each) =>
+      each !== item && each.kind === 'FieldInitializer' ? [each.name.text] : [],
+    ),
+  );
+  const offered = fields
+    .filter(({ name }) => !given.has(name))
+    .map(({ name, type }): Completion => ({ name, kind: 'field', detail: typeText(type) }));
+  return { offered, takesValue: opens && fields.length === 1 };
+}
+
+/**
+ * Where a field's name is written in a struct or variant literal: right after the literal's own
+ * `{` (`opens`) or one of its `,`, the only tokens an item follows, whatever the parser made of a
+ * name half written there (`item`, the item it starts) or of a literal not closed yet.
+ */
+function fieldPlaceAt(tree: SyntaxTree, offset: number): FieldPlace | undefined {
+  const { name, before } = writingAt(tree, offset);
+  if (before?.kind !== '{' && before?.kind !== ',') {
+    return undefined;
+  }
+  const literal = nodesAt(tree, before.span.start).at(-1);
+  if (!isFieldsLiteral(literal)) {
+    return undefined;
+  }
+  const item = literal.items.find(
+    ({ span }) => name !== undefined && spanIn(tree, span).start === name.span.start,
+  );
+  return { literal, item, opens: before.kind === '{' };
+}
+
+interface FieldPlace {
+  readonly literal: FieldsLiteral;
+  readonly item: FieldsLiteral['items'][number] | undefined;
+  readonly opens: boolean;
+}
+
+function isFieldsLiteral(node: SyntaxNode | undefined): node is FieldsLiteral {
+  return node?.kind === 'StructLiteral' || node?.kind === 'NewStructLiteral';
 }
 
 function scopeCompletions({ checker, module, tree }: CheckedModule, offset: number) {

@@ -337,6 +337,8 @@ export interface Variables {
 /** Where each struct or variant literal's fields get values (expressions/literal-fields.ts). */
 export interface LiteralSources {
   readonly record: (literal: FieldsLiteral, sources: readonly FieldSource[]) => void;
+  /** Records the fields `literal` builds, typed by the type arguments found for it. */
+  readonly recordFields: (literal: FieldsLiteral, fields: readonly FieldMember[]) => void;
 }
 
 /** The functions a body is checked in, innermost current (closures/functions.ts). */

@@ -74,6 +74,94 @@ describe('completion', () => {
     expect(names('fn f() -> int:', '  [1].‸', '  1')).not.toContain('push');
   });
 
+  it("offers an async function's own call's members after its name, but none for main", () => {
+    expect(names('async fn worker() -> Future<int>:', '  worker.‸', '  1')).toContain('disposing');
+    expect(names('async fn main() -> Future<int>:', '  main.‸', '  1')).toEqual([]);
+  });
+
+  it("offers the fields a struct literal doesn't give yet, where an item's name stands", () => {
+    const literal = (items: string) => names(...pair, `fn f() -> Pair: Pair{${items}}`);
+    expect(literal('‸')).toEqual(['first', 'second']);
+    expect(literal('first: 1, ‸')).toEqual(['second']);
+    expect(literal('first: 1, se‸')).toEqual(['second']);
+    expect(literal('fi‸rst: 1, second: 2')).toEqual(['first']);
+    expect(names(time, 'fn f() -> int:', '  const d = time.DateTime{‸}', '  1')).toEqual([
+      'year',
+      'month',
+      'day',
+      'hour',
+      'minute',
+      'second',
+      'millisecond',
+    ]);
+  });
+
+  it("offers each literal its own fields when nested, and a shorthand's name counts as given", () => {
+    const outer = ['struct Wrap:', '  inner: Pair', '  tag: int', ''];
+    const nested = (items: string) => names(...pair, ...outer, `fn f() -> Wrap: Wrap{${items}}`);
+    expect(nested('inner: Pair{‸}, tag: 1')).toEqual(['first', 'second']);
+    expect(nested('inner: Pair{first: 1}, ‸')).toEqual(['tag']);
+    expect(names(...pair, 'fn f(first: int) -> Pair: Pair{first, ‸}')).toEqual(['second']);
+    expect(names(...pair, 'fn f() -> Pair: Pair{second: 2, fir‸st}')).toEqual(['first']);
+  });
+
+  it('offers the fields of a literal not closed yet, at the end of the text', () => {
+    const typed = (line: string) => names(...pair, 'fn f() -> Pair:', line);
+    expect(typed('  Pair{‸')).toEqual(['first', 'second']);
+    expect(typed('  Pair{first: 1,‸')).toEqual(['second']);
+    expect(typed('  Pair{first: 1, ‸')).toEqual(['second']);
+    expect(typed('  Pair{fi‸')).toEqual(['first', 'second']);
+  });
+
+  it("offers a field's name on a line of its own, or spelled as a keyword so far", () => {
+    const multiline = ['fn f() -> Pair:', '  Pair{', '    first: 1,', '    se‸', '  }'];
+    expect(names(...pair, ...multiline)).toEqual(['second']);
+    const before = ['fn f() -> Pair:', '  Pair{', '    fi‸', '    second: 2', '  }'];
+    expect(names(...pair, ...before)).toContain('first');
+    const slot = ['struct Slot:', '  index: int', '  inbox: string', ''];
+    expect(names(...slot, 'fn f() -> Slot: Slot{in‸}')).toEqual(['index', 'inbox']);
+  });
+
+  it('offers nothing where a field of a literal with no known fields would stand', () => {
+    expect(names('fn f() -> int:', '  const n = Nope{‸}', '  1')).toEqual([]);
+  });
+
+  it("details each field with its type as the literal's type arguments make it", () => {
+    const box = ['struct Box<T>:', '  value: T', '  count: int', ''];
+    const { program, module, offset } = programAt(...box, 'fn f() -> Box<int>: Box<int>{‸}');
+    expect(completionsAt(program, module, offset)).toEqual([
+      { name: 'value', kind: 'field', detail: 'int' },
+      { name: 'count', kind: 'field', detail: 'int' },
+    ]);
+  });
+
+  it("offers a one-field literal's field, and the visible names for its value, after its `{`", () => {
+    const one = ['struct One:', '  value: int', ''];
+    expect(names(...one, 'fn f(count: int) -> One: One{‸}')).toEqual(
+      expect.arrayContaining(['value', 'count']),
+    );
+  });
+
+  it("offers a variant literal's and a shared struct literal's fields", () => {
+    const decision = [
+      'enum Decision:',
+      '  Approved { by: string }',
+      '  Rejected { by: string; reason: string }',
+      '',
+    ];
+    expect(names(...decision, 'fn f() -> Decision: Rejected{by: "x", ‸}')).toEqual(['reason']);
+    const counter = ['shared struct Counter:', '  count: int', '  label: string = "counted"', ''];
+    expect(names(...counter, 'fn f() -> Counter: new Counter{‸}')).toEqual(['count', 'label']);
+  });
+
+  it("offers the visible names in a field's value, written or not yet", () => {
+    const valued = (items: string) => names(...pair, `fn f(count: int) -> Pair: Pair{${items}}`);
+    expect(valued('first: co‸unt, second: 1')).toContain('count');
+    expect(valued('first: ‸')).toEqual(expect.arrayContaining(['count', 'while']));
+    expect(valued('first: ‸')).not.toContain('second');
+    expect(valued('first: count + ‸, second: 2')).toContain('count');
+  });
+
   it('offers the names visible where the name starts, then keywords', () => {
     const offered = names('fn f(count: int) -> int:', '  let total = 1', '  to‸tal + count');
     expect(offered).toEqual(expect.arrayContaining(['total', 'count', 'f', 'fn', 'while']));

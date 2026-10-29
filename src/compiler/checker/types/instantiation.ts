@@ -17,7 +17,7 @@ import {
   substituteAny,
   substituteFunction,
 } from './substitution.ts';
-import type { Type } from './type.ts';
+import type { FieldMember, Type } from './type.ts';
 
 /**
  * `body` as one instantiation sees it: every type it records substituted by `substitution`, and
@@ -35,6 +35,7 @@ export function instantiatedBody(
     fit.conversion.kind === 'any'
       ? { ...fit, conversion: { kind: 'any', to: substituteAny(fit.conversion.to, substitution) } }
       : fit;
+  const concreteField = (field: FieldMember) => ({ ...field, type: concrete(field.type) });
   const concreteRead = (read: FieldRead): FieldRead =>
     read.kind === 'position' ? read : requiredFieldRead(checker, concrete(read.on), read.required);
   return {
@@ -69,14 +70,15 @@ export function instantiatedBody(
         })),
       })),
     sourcesOf: body.sourcesOf,
+    literalFieldsOf: (literal) =>
+      mapDefined(body.literalFieldsOf(literal), (fields) => fields.map(concreteField)),
     patternOf: (pattern) =>
       mapDefined(body.patternOf(pattern), (checked) => instantiatedPattern(checked, substitution)),
     chainOf: (link) =>
       mapDefined(body.chainOf(link), (chained) => ({ ...chained, base: concrete(chained.base) })),
     fieldReadOf: (access) => mapDefined(body.fieldReadOf(access), concreteRead),
     declaredTypeOf: (name) => mapDefined(body.declaredTypeOf(name), concrete),
-    namedFieldOf: (name) =>
-      mapDefined(body.namedFieldOf(name), (field) => ({ ...field, type: concrete(field.type) })),
+    namedFieldOf: (name) => mapDefined(body.namedFieldOf(name), concreteField),
     chosenVariantOf: body.chosenVariantOf,
     candidatesAt: body.candidatesAt,
     labels: body.labels,

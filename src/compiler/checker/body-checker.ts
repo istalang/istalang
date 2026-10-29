@@ -341,6 +341,7 @@ export class BodyChecker implements BodyContext {
       inCell: (name) => variables.inCell(name),
       functionOf: (node) => functions.checkedOf(node),
       sourcesOf: (literal) => literals.sourcesOf(literal),
+      literalFieldsOf: (literal) => literals.fieldsOf(literal),
       patternOf: (pattern) => patterns.patternOf(pattern),
       chainOf: (link) => chains.chainOf(link),
       fieldReadOf: (access) => fieldReads.of(access),

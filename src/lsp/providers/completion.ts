@@ -1,12 +1,15 @@
 /**
  * Completion (language-service/completion.ts), as LSP's completion items. Typing `.` or the `>` of
- * `->` asks for members; a `>` that writes no `->`, as in a comparison, offers nothing.
+ * `->` asks for members; a `>` that writes no `->`, as in a comparison, offers nothing. Typing the
+ * `{` or a `,` of a struct literal asks for the fields it doesn't give yet; anywhere else, as in a
+ * block or a call, either offers nothing.
  */
 
 import { CompletionItemKind } from 'vscode-languageserver/node';
 import {
   type CompletionKind,
   completionsAt,
+  fieldCompletionsAt,
   memberCompletionsAt,
 } from '../../language-service/completion.ts';
 import { documentOffset } from '../locations.ts';
@@ -23,18 +26,27 @@ const kinds = {
   keyword: CompletionItemKind.Keyword,
 } as const satisfies Record<CompletionKind, CompletionItemKind>;
 
+/** What typing a trigger character asks for, where it narrows what completion offers. */
+const narrowing: Readonly<Record<string, typeof memberCompletionsAt>> = {
+  '>': memberCompletionsAt,
+  '{': fieldCompletionsAt,
+  ',': fieldCompletionsAt,
+};
+
 export const completion: Provider = {
-  capabilities: { completionProvider: { triggerCharacters: ['.', '>'] } },
+  capabilities: { completionProvider: { triggerCharacters: ['.', ...Object.keys(narrowing)] } },
   register: (connection, workspace) => {
     connection.onCompletion((params) => {
       const at = documentOffset(workspace, params);
       if (at === undefined) {
         return [];
       }
+      const trigger = params.context?.triggerCharacter;
+      const narrowed = trigger === undefined ? undefined : narrowing[trigger];
       const offered =
-        params.context?.triggerCharacter === '>'
-          ? (memberCompletionsAt(workspace.program, at.module, at.offset) ?? [])
-          : completionsAt(workspace.program, at.module, at.offset);
+        narrowed === undefined
+          ? completionsAt(workspace.program, at.module, at.offset)
+          : (narrowed(workspace.program, at.module, at.offset) ?? []);
       return offered.map(({ name, kind, detail }) => ({
         label: name,
         kind: kinds[kind],
