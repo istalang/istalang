@@ -6,7 +6,7 @@ metadata:
 ---
 
 - Fork briefs state only which fork it is and its task (e.g. "IMPLEMENTER, M1 phase 1.1, branch m1-syntax; task: §1.1 of m1-syntax.md"). No explanations: the fork already has the context.
-- Serial forks work directly in the main checkout, without a worktree. Parallel forks use worktrees (`.claude/worktrees/<branch>`), at most 3 at a time; when one finishes and merges, the next starts. A worktree's node_modules is a symlink to the main checkout's: say in the brief never to run npm ci/install there (on 2026-10-28 one did and emptied main's node_modules). Dependency changes: `npm ci` in the main checkout after the phase lands.
+- Serial forks work directly in the main checkout, without a worktree. Parallel forks use worktrees (`.claude/worktrees/<branch>`), at most 3 at a time; when one finishes and merges, the next starts. A worktree's node_modules is a symlink to the main checkout's: say in the brief never to run npm ci/install there (on 2026-10-28 one did and emptied main's node_modules). A fork needing a new dependency: the tech-lead runs `npm install --no-save --ignore-scripts <pkg>@<ver>` in the main checkout before forking; the fork pins it in package.json and runs `npm install --package-lock-only`.
 - The tech-lead doesn't merge branches or resolve conflicts. If main moved, the tech-lead asks the fork to rebase onto main itself and report again.
 - Forks raise issues directly with the human, not the tech-lead. A fork reports to the tech-lead only after its qa/review fixes are done and the human has approved.
 - The tech-lead says little to the human while work runs; the human reads the fork transcripts.
