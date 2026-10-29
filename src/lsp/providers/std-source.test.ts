@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { tempProject } from '../../project/project.test-kit.ts';
 import { stdModuleSources } from '../../stdlib/std-sources.ts';
 import { connectedClient } from '../server.test-kit.ts';
-import { stdSourceRequest } from './std-source.ts';
+import { stdSourceRequest } from '../std-source-request.ts';
 
 describe('ista/source', () => {
   it('gives each std module its text, by its std: URI', async () => {

@@ -21,6 +21,12 @@ export const languageModules = {
 /** A role, which is also the name of the std module that plays it. */
 export type LanguageModule = keyof typeof languageModules;
 
+/**
+ * The scheme of a std module's id, `std:<name>`. No file can have it, so a std module is never
+ * confused with a project file; an editor shows one by asking the language server for its text.
+ */
+export const stdScheme = 'std';
+
 /** A declaration of a language module the toolchain treats specially. */
 export interface WellKnownDeclaration {
   readonly module: LanguageModule;

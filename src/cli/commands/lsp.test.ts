@@ -10,32 +10,21 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-  createProtocolConnection,
   DidOpenTextDocumentNotification,
   DocumentSymbolRequest,
   ExitNotification,
   InitializeRequest,
   PublishDiagnosticsNotification,
   ShutdownRequest,
-  StreamMessageReader,
-  StreamMessageWriter,
 } from 'vscode-languageserver/node';
 import { tempProject } from '../../project/project.test-kit.ts';
 import { builtCli } from '../cli.test-kit.ts';
+import { clientOf, initializeParams } from './lsp.test-kit.ts';
 
 /** `ista lsp --stdio` started in `root`, with a client connected to its pipes. */
 function startedServer(root: string) {
-  const server = spawn(process.execPath, [builtCli, 'lsp', '--stdio'], { cwd: root });
-  const client = createProtocolConnection(
-    new StreamMessageReader(server.stdout),
-    new StreamMessageWriter(server.stdin),
-  );
-  client.listen();
-  const exited = once(server, 'exit').then(([code]) => code as number | null);
-  return { client, exited };
+  return clientOf(spawn(process.execPath, [builtCli, 'lsp', '--stdio'], { cwd: root }));
 }
-
-const initialize = { processId: null, rootUri: null, capabilities: {} };
 
 describe('ista lsp', () => {
   it('serves the project it runs in, and exits cleanly once shut down', async () => {
@@ -43,7 +32,7 @@ describe('ista lsp', () => {
     const root = tempProject({ 'main.ista': text, 'lib.ista': 'fn helper() -> int: 1\n' });
     const uri = pathToFileURL(`${root}/main.ista`).href;
     const { client, exited } = startedServer(root);
-    const { capabilities } = await client.sendRequest(InitializeRequest.type, initialize);
+    const { capabilities } = await client.sendRequest(InitializeRequest.type, initializeParams);
     expect(capabilities.documentSymbolProvider).toBe(true);
     const published = new Promise((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, ({ diagnostics }) => {
@@ -72,7 +61,7 @@ describe('ista lsp', () => {
 
   it('exits with an error when the client leaves without shutting it down', async () => {
     const { client, exited } = startedServer(tempProject({}));
-    await client.sendRequest(InitializeRequest.type, initialize);
+    await client.sendRequest(InitializeRequest.type, initializeParams);
     await client.sendNotification(ExitNotification.type);
     expect(await exited).toBe(1);
   });
