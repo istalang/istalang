@@ -5,27 +5,35 @@
  * - after a namespace, what its module exports; after a type, its statics and variants;
  * - anywhere else, the names visible where the name starts (§3.4), then the keywords.
  *
+ * Only a member can follow a `.` or `?.`, so where none can stand there, as after a name on a line
+ * of its own at the top level, nothing is offered: never the visible names.
+ *
  * The editor filters by what has been typed, so every candidate is offered whatever the prefix.
- * A value read through an optional chain offers what the value inside the optional has (§4).
+ * A link of an optional chain offers what the value its step works on has, as checking found it
+ * (§4): the value inside after `?.`, and nothing after a `?.` on a value that isn't optional.
  */
 
 import type { Entity } from '../compiler/binder/entities.ts';
 import type { Checker } from '../compiler/checker/check.ts';
 import type { TypeMembers } from '../compiler/checker/denotation.ts';
 import { typeText } from '../compiler/checker/types/type-text.ts';
-import { optionalArgument } from '../compiler/checker/types/well-known.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import type { FunctionDeclaration } from '../compiler/syntax/declarations.ts';
-import { isOptionallyChained } from '../compiler/syntax/expressions/chains.ts';
-import type { Expression } from '../compiler/syntax/expressions/index.ts';
+import { chainStepOf } from '../compiler/syntax/expressions/chains.ts';
+import {
+  type Expression,
+  type MemberAccess,
+  qualifiedPath,
+} from '../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
-import { keywords } from '../compiler/syntax/tokens.ts';
-import { nodesAt, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import { isKeyword, keywords, type Token } from '../compiler/syntax/tokens.ts';
+import { nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { type CheckedModule, checkedModule } from './checked-module.ts';
 import { identifierAt } from './identifier-at.ts';
 import { importedModule } from './namespaces.ts';
 import { signatureOf } from './signatures.ts';
+import { codeTokensOf } from './tokens.ts';
 
 export type CompletionKind =
   | 'variable'
@@ -66,9 +74,13 @@ export function completionsAt(
     return [];
   }
   const place = memberPlaceAt(checked.tree, offset);
-  return place === undefined
-    ? scopeCompletions(checked, offset)
-    : memberCompletions(checked, place);
+  if (place !== undefined) {
+    return memberCompletions(checked, place);
+  }
+  const before = tokenBefore(checked.tree, offset);
+  return before !== undefined && memberOnlyOperators.has(before.kind)
+    ? []
+    : scopeCompletions(checked, offset);
 }
 
 /** The candidates for a member at `offset` of `module`; undefined where no member is written. */
@@ -83,43 +95,72 @@ export function memberCompletionsAt(
 }
 
 /**
- * Where a member is written: after a namespace or a type, `head` names it; after a value,
- * `receiver` is the expression giving the value, read through an optional when the member's link
- * is optionally chained (§4). A qualified name in a type or a pattern has a head alone.
+ * Where a member is written: after a namespace or a type, `head` names it; after a value, `access`
+ * reads it. A qualified name in a type or a pattern has a head alone.
  */
 interface MemberPlace {
   readonly head: Identifier | undefined;
-  readonly receiver: Expression | undefined;
-  readonly isOptional: boolean;
+  readonly access: MemberAccess | undefined;
 }
 
 /**
  * The member place the cursor is in: a member's name, or the spot right after its operator, as a
  * member access has it (`a.b`, `a?.b`, `a->b`, its name missing while unwritten), or a qualified
- * name's later segment.
+ * name's later segment. A member spelled as a keyword so far (`xs.in` on the way to `includes`)
+ * is no name to the parser, which ends the access at its operator, so the place is looked up
+ * there.
  */
 function memberPlaceAt(tree: SyntaxTree, offset: number): MemberPlace | undefined {
-  for (const node of nodesAt(tree, offset - 1).toReversed()) {
-    const place = memberPlaceOf(tree, node, offset);
+  const before = tokenBefore(tree, offset);
+  const at = before !== undefined && memberOperators.has(before.kind) ? before.span.end : offset;
+  for (const node of nodesAt(tree, at - 1).toReversed()) {
+    const place = memberPlaceOf(tree, node, at);
     if (place !== undefined) {
       return place;
     }
   }
-  return unfinishedQualifierAt(tree, offset);
+  return before?.kind === '.' ? unfinishedQualifierAt(tree, before) : undefined;
 }
+
+/** What a member's name is written right after (§4). */
+const memberOperators: ReadonlySet<string> = new Set(['.', '?.', '->', '?->']);
+
+/**
+ * What only a member can follow. A `->` also starts a function's result type, where the visible
+ * names are what is written.
+ */
+const memberOnlyOperators: ReadonlySet<string> = new Set(['.', '?.']);
 
 /**
  * A qualifier whose name isn't written yet in a type or a pattern, `time.` in `t: time.` or
  * `Color.` in `case Color.:`: the parser ends the name before the `.` and reads the `.` apart from
- * it, as an invalid node or a member access of nothing, so the qualifier is the name right before
- * a `.` the cursor follows.
+ * it, as an invalid node or a member access of nothing, so the qualifier is the type's or the
+ * pattern's name right before `dot`.
  */
-function unfinishedQualifierAt(tree: SyntaxTree, offset: number): MemberPlace | undefined {
-  const dot = offset - 1;
-  const head = tree.source.text.charAt(dot) === '.' ? identifierAt(tree, dot) : undefined;
-  return head !== undefined && spanIn(tree, head.span).end === dot
-    ? { head, receiver: undefined, isOptional: false }
+function unfinishedQualifierAt(tree: SyntaxTree, dot: Token): MemberPlace | undefined {
+  const head = identifierAt(tree, dot.span.start);
+  const holder = head && parentOf(tree, head);
+  const qualifies = holder?.kind === 'NamedType' || holder?.kind === 'NamePattern';
+  return head !== undefined && qualifies && spanIn(tree, head.span).end === dot.span.start
+    ? { head, access: undefined }
     : undefined;
+}
+
+/**
+ * The token right before the name the cursor at `offset` is writing, a keyword's spelling
+ * included, or right before `offset` when it writes none; undefined when space parts them.
+ */
+function tokenBefore(tree: SyntaxTree, offset: number): Token | undefined {
+  const tokens = codeTokensOf(tree);
+  const last = tokens.findLastIndex(({ span }) => span.start < offset);
+  const written = tokens[last];
+  const isNameWritten =
+    written !== undefined &&
+    written.span.end >= offset &&
+    (written.kind === 'identifier' || isKeyword(written.kind));
+  const before = isNameWritten ? tokens[last - 1] : written;
+  const nameStart = isNameWritten ? written.span.start : offset;
+  return before?.span.end === nameStart ? before : undefined;
 }
 
 function memberPlaceOf(
@@ -133,17 +174,11 @@ function memberPlaceOf(
   };
   const isWritten = ({ span }: SyntaxNode) => span.from < span.to;
   if (node.kind === 'MemberAccess' && isWritten(node.target) && reaches(node.member)) {
-    const { target } = node;
-    const head = target.kind === 'MemberAccess' ? target.member : target;
-    return {
-      head: head.kind === 'Identifier' ? head : undefined,
-      receiver: target,
-      isOptional: isOptionallyChained(node),
-    };
+    return { head: qualifiedPath(node)?.at(-2), access: node };
   }
   if (node.kind === 'NamedType' || node.kind === 'NamePattern') {
     const head = node.path[node.path.findIndex((name, index) => index > 0 && reaches(name)) - 1];
-    return head && { head, receiver: undefined, isOptional: false };
+    return head && { head, access: undefined };
   }
   return undefined;
 }
@@ -160,8 +195,8 @@ function scopeCompletions({ checker, module, tree }: CheckedModule, offset: numb
 }
 
 function memberCompletions(
-  { checker, module }: CheckedModule,
-  { head, receiver, isOptional }: MemberPlace,
+  { checker, module, tree }: CheckedModule,
+  { head, access }: MemberPlace,
 ): readonly Completion[] {
   const named = head === undefined ? [] : checker.lookup.denotationsOf(module, head);
   for (const { declared, type } of named) {
@@ -182,9 +217,23 @@ function memberCompletions(
       ];
     }
   }
-  const read = receiver && checker.lookup.bodyHolding(module, receiver)?.typeOf(receiver);
-  const value = read && isOptional ? (optionalArgument(checker, read) ?? read) : read;
-  return value === undefined ? [] : valueMembers(checker, checker.lookup.membersOf(module, value));
+  if (access === undefined) {
+    return [];
+  }
+  const body = checker.lookup.bodyHolding(module, access);
+  const value = body && (body.chainOf(linkOf(tree, access))?.base ?? body.typeOf(access.target));
+  return value === undefined
+    ? []
+    : valueMembers(checker, checker.lookup.membersOf(module, value, access));
+}
+
+/**
+ * The link of an optional chain `access` is read by, if it is one (§4): a method call takes the
+ * access's step, so its call is the link; any other access is its own.
+ */
+function linkOf(tree: SyntaxTree, access: MemberAccess): Expression {
+  const parent = parentOf(tree, access);
+  return parent?.kind === 'Call' && chainStepOf(parent)?.target === access.target ? parent : access;
 }
 
 function valueMembers(checker: Checker, { fields, methods }: TypeMembers): readonly Completion[] {

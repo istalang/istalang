@@ -6,6 +6,7 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
+import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
@@ -36,8 +37,8 @@ export class Lookup implements LookupQueries {
     return this.#itemChecked(module, node).resolvedTypeOf(node);
   }
 
-  membersOf(module: ModuleId, type: Type): TypeMembers {
-    return membersOf(this.#checker, module, type);
+  membersOf(module: ModuleId, type: Type, access?: MemberAccess): TypeMembers {
+    return membersOf(this.#checker, module, type, access);
   }
 
   /** The checker, with the item of `module` holding `node` checked whole. */

@@ -5,8 +5,15 @@
  *
  * A method is found as a method call finds it (resolution/candidates.ts): by each name the module
  * sees at its top level, the type's own module exports, or its constraints require, with that
- * call's candidates kept where `self` takes the type. Taking it is judged by the type's
- * declaration, its arguments aside, since completing a call needn't know them yet.
+ * call's candidates kept where `self` takes a value of the type as a call's receiver
+ * (resolution/applicability.ts), and the type parameters that decides meet their constraints. The
+ * call's other arguments are aside, since completing a call needn't know them yet.
+ *
+ * Read through a member access, a method taking `&self` counts only where the access is a place,
+ * as for a call (resolution/candidates.ts `callableThrough`).
+ *
+ * The error type has no members: what a value of it is isn't known, and a call on it resolves to
+ * nothing, so offering any member would mislead.
  */
 
 import type { ModuleId } from '../../program/program.ts';
@@ -14,29 +21,51 @@ import {
   declaredFunctions,
   type FunctionDeclaration,
   isMethod,
+  type TypeParameter,
 } from '../../syntax/declarations.ts';
+import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { CheckerContext } from '../context.ts';
 import type { TypeMembers } from '../denotation.ts';
+import type { Inference } from '../inference/infer.ts';
+import { takenBy } from '../resolution/applicability.ts';
+import { bindArguments } from '../resolution/binding.ts';
 import {
+  type Candidate,
+  callableThrough,
   modulesSeenFrom,
   staticCandidates,
   staticFunctionsAmong,
   staticTargetOf,
   topLevelCandidates,
 } from '../resolution/candidates.ts';
+import { signatureOf } from '../resolution/choice.ts';
+import { meets } from '../resolution/conformance.ts';
 import {
   fieldOf,
   knownConstraints,
   requiredFields,
   requiredFunctions,
+  substituteConstraint,
 } from '../traits/constraints.ts';
-import type { FieldMember, Type } from '../types/type.ts';
+import type { FieldMember, ParameterKey, Type } from '../types/type.ts';
+import { parametersIn } from '../types/type-parts.ts';
+import { searchSite } from '../use-site.ts';
 
-export function membersOf(checker: CheckerContext, module: ModuleId, type: Type): TypeMembers {
+const noMembers: TypeMembers = { fields: [], variants: [], methods: [], statics: [] };
+
+export function membersOf(
+  checker: CheckerContext,
+  module: ModuleId,
+  type: Type,
+  access: MemberAccess | undefined,
+): TypeMembers {
+  if (type.kind === 'error') {
+    return noMembers;
+  }
   return {
     fields: fieldsOf(checker, type),
     variants: (type.kind === 'nominal' ? checker.variantsOf(type) : undefined) ?? [],
-    methods: methodsOf(checker, module, type),
+    methods: methodsOf(checker, module, type, access),
     statics: staticsOf(checker, module, type),
   };
 }
@@ -78,16 +107,21 @@ function staticsOf(
   }
 }
 
+/** The methods a call through a value of `type` may choose, and through `access` if given. */
 function methodsOf(
   checker: CheckerContext,
   module: ModuleId,
   type: Type,
+  access: MemberAccess | undefined,
 ): readonly FunctionDeclaration[] {
   const found = new Set<FunctionDeclaration>();
   for (const name of methodNames(checker, module, type)) {
-    for (const { declaration } of topLevelCandidates(checker, module, name, [type])) {
-      if (takesAsSelf(checker, declaration, type)) {
-        found.add(declaration);
+    const candidates = topLevelCandidates(checker, module, name, [type]);
+    const callable =
+      access === undefined ? candidates : callableThrough(checker, access, candidates);
+    for (const candidate of callable) {
+      if (takesAsSelf(checker, candidate, type)) {
+        found.add(candidate.declaration);
       }
     }
   }
@@ -115,20 +149,54 @@ function methodNames(checker: CheckerContext, module: ModuleId, type: Type): Rea
   ]);
 }
 
-/** Whether `declaration` is a method whose `self` takes a value of `type`, its arguments aside. */
-function takesAsSelf(
-  checker: CheckerContext,
-  declaration: FunctionDeclaration,
-  type: Type,
-): boolean {
-  const self = isMethod(declaration) ? checker.parametersOf(declaration)[0]?.type : undefined;
-  if (self === undefined) {
+/**
+ * Whether `candidate` is a method a call through a value of `type` may choose, its other arguments
+ * aside: its `self` takes the value as the call's receiver, and the type parameters that decides
+ * meet their constraints.
+ */
+function takesAsSelf(checker: CheckerContext, candidate: Candidate, type: Type): boolean {
+  const { declaration, requirement } = candidate;
+  if (!isMethod(declaration)) {
     return false;
   }
-  if (self.kind === 'parameter') {
-    return true;
-  }
-  return self.kind === 'nominal' && type.kind === 'nominal'
-    ? self.entity.declaration === type.entity.declaration
-    : checker.fitOf(type, self) !== undefined;
+  const { typeParameters, parameters } = signatureOf(
+    checker,
+    declaration,
+    requirement?.substitution,
+  );
+  const taken = takenBy(
+    checker,
+    { typeParameters, parameters: parameters.slice(0, 1) },
+    {
+      callArguments: [{ type, passing: 'receiver' }],
+      written: undefined,
+      binder: bindArguments,
+    },
+  );
+  return 'inference' in taken && meetsWhereFound(checker, typeParameters, taken.inference);
+}
+
+/**
+ * Whether the type parameters `inference` found meet their constraints. A parameter still open, or
+ * a constraint mentioning one, waits for the arguments that decide it.
+ */
+function meetsWhereFound(
+  checker: CheckerContext,
+  parameters: readonly TypeParameter[],
+  inference: Inference,
+): boolean {
+  const site = searchSite(checker);
+  const substitution = inference.substitution();
+  const isOpen = (parameter: ParameterKey) =>
+    inference.isUnknown(parameter) && inference.boundOf(parameter) === undefined;
+  return parameters.every((parameter) => {
+    const found = inference.boundOf(parameter);
+    return (
+      found === undefined ||
+      checker.constraintsOf(parameter).every((constraint) => {
+        const mapped = substituteConstraint(constraint, substitution);
+        return mapped.arguments.flatMap(parametersIn).some(isOpen) || meets(site, found, mapped);
+      })
+    );
+  });
 }

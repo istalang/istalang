@@ -13,6 +13,7 @@
 import type { Entity, NamespaceEntity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { MemberAccess } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -71,6 +72,9 @@ export interface LookupQueries {
    * such as a pattern's or a struct literal's type, or a constraint's trait.
    */
   readonly typeOfNode: (module: ModuleId, node: TypeNode) => Type | undefined;
-  /** What a value of `type` has, as `module` sees it. */
-  readonly membersOf: (module: ModuleId, type: Type) => TypeMembers;
+  /**
+   * What a value of `type` has, as `module` sees it; read through `access`, only the methods a
+   * call through it may choose (a method taking `&self` needs a place, §3.7).
+   */
+  readonly membersOf: (module: ModuleId, type: Type, access?: MemberAccess) => TypeMembers;
 }
