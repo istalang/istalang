@@ -26,7 +26,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F12, P12, Q32, B22. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F12, P13, Q32, B22. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -64,6 +64,7 @@ Time and memory: measured costs, quadratic paths, hot-path checks.
 | P9 | Map-key hashes (language/values.ts) are an unkeyed 32-bit multiply-add, so crafted keys collide cheaply. Hashes never persist: seed them per process instead of `fnvOffsetBasis`. | easy | none; can be done now | audit Wave 1 review 2026-10-28 |
 | P10 | An edit re-binds its whole module (1.8 ms per 2,098 lines) and replays thousands of `entityOf` reads; entity identity across edits comes from per-node factories. Binding per item first needs Scope's tree-wide definition numbering and its ended-scope misses (a top-level function's parameters land in the module scope) made per item, so one item's binding can't change another's. Margin on the 2,098-line budget (15 ms) is ~1 ms; the other lever is the three walks of `notesOfReads` per revision. | big | none; can be done now | phase 7A.7 report 2026-10-29 |
 | P11 | `language-service/edit.bench.ts` reports medians but asserts no budget (machine-specific), so a latency regression shows only to whoever runs `npm run bench`. | small | none; can be done now | phase 7A.7 report 2026-10-29 |
+| P12 | The LSP signature-help property (lsp/providers/signature-help.test.ts) runs one round trip per corpus call argument, 1,560 tests, about 26 s of its file's time; the suite's wall time hides it only while files run in parallel. Sample the cuts, or drive the provider without the protocol. | small | none; can be done now | End fix F3 report 2026-10-29 |
 
 ### Code quality (Q)
 
