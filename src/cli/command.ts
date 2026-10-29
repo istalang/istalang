@@ -5,6 +5,7 @@
  * instead of exiting, so the whole CLI runs in-process under test exactly as it does from a shell.
  */
 
+import type { Readable, Writable } from 'node:stream';
 import type { Command } from 'commander';
 
 export interface CliEnvironment {
@@ -17,6 +18,11 @@ export interface CliEnvironment {
    * `ista run --host` stops waiting on its host then.
    */
   readonly idle: Promise<void>;
+  /**
+   * Standard input and output as streams, for a command speaking a protocol over them (`lsp`).
+   * Every other command writes text through `write`.
+   */
+  readonly stdio: { readonly input: Readable; readonly output: Writable };
 }
 
 /** What a command's exit code says. */

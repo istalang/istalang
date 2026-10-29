@@ -18,7 +18,7 @@
  * a program can't be built without its prelude.
  */
 
-import type { LocatedModule, ModuleLoader } from '../compiler/program/program.ts';
+import type { LocatedModule, ModuleId, ModuleLoader } from '../compiler/program/program.ts';
 import { moduleIdOf } from '../compiler/program/program.ts';
 import { type LanguageModule, languageModules } from '../language/well-known.ts';
 import { stdModuleSources } from './std-sources.ts';
@@ -58,7 +58,17 @@ function roleModule(role: LanguageModule, sources: StdSources): LocatedModule {
   return located(role, sources[role] ?? stdModuleSources[role]);
 }
 
+/** The shipped source of the std module `id`; undefined for an id that names none. */
+export function stdSourceOf(id: ModuleId): string | undefined {
+  const url = new URL(id);
+  return url.protocol === stdScheme ? shippedSources.get(url.pathname) : undefined;
+}
+
+const stdScheme = 'std:';
+
+const shippedSources: ReadonlyMap<string, string> = new Map(Object.entries(stdModuleSources));
+
 function located(name: string, text: string): LocatedModule {
-  const id = moduleIdOf(new URL(`std:${name}`));
+  const id = moduleIdOf(new URL(`${stdScheme}${name}`));
   return { id, name, label: id, read: () => text, isStd: true };
 }

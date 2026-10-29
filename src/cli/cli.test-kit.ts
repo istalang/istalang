@@ -5,6 +5,7 @@
 
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
+import { PassThrough, Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { runCli } from './cli.ts';
 
@@ -33,6 +34,7 @@ export async function ista(cwd: string, ...args: string[]): Promise<Run> {
     },
     // A test's process always has work left, so its host's promises are never given up on.
     idle: new Promise(() => undefined),
+    stdio: { input: Readable.from([]), output: new PassThrough() },
   });
   return { code, out, err };
 }

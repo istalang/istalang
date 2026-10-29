@@ -11,6 +11,8 @@ Top-level folders are toolchain features. Their layers and contracts are in `doc
 - `definition/`: the compiled program, the contract between lowering and the runtime (`docs/arch/definition.md`). Like `compiler/syntax/`, its modules are imported directly. Every persisted format goes through `format.ts` and `codec.ts`.
 - `runtime/`: the interpreter. `host.ts` is its API (deploy a Definition's text; start, wake, fill, inspect, retry and terminate instances), `natives.ts` and `store.ts` its seams, `scheduler/` segments and commits, `interpreter/` the instruction table, `values/` built-in semantics such as `==`, `boundary/` host externs and what crosses to the host (`docs/arch/boundary.md`), and `snapshot/` the persisted instance format.
 - `project/`: a project on disk, for every app: `project.ts` finds sources and picks the loaders and roles, `file-loader.ts` loads project files by import path.
+- `language-service/`: what an editor asks of a project, with no protocol and no I/O: the workspace (open texts and the program they make, `workspace.ts`) and one module or folder per feature.
+- `lsp/`: the language server over vscode-languageserver; `server.ts` composes it, `providers/` holds one provider per request, and `ista lsp` runs it.
 - `cli/`: the `ista` app. `cli.ts` is its composition root, `host-module.ts` loads the host externs of `run --host`, `report.ts` renders diagnostics, and `commands/` holds one module per subcommand.
 
 Use a phase or feature folder only through its entry module. Upward imports and import cycles fail lint. Layers are an allow-list in `.dependency-cruiser.mjs`: a new folder can import nothing until you list it there.

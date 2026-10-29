@@ -17,4 +17,5 @@ process.exitCode = await runCli(process.argv.slice(2), {
       resolve();
     });
   }),
+  stdio: { input: process.stdin, output: process.stdout },
 });

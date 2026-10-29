@@ -44,23 +44,28 @@ export interface ProjectOptions {
   readonly files?: ProjectFiles;
   /** Std module sources in place of the shipped ones, for the loader and the roles alike. */
   readonly std?: StdSources;
+  /** The program last loaded, whose unchanged trees the new one reuses: an editor's snapshot. */
+  readonly previous?: Program | undefined;
 }
 
 /** The program rooted at the files at `paths`, with the std modules. */
 export function loadProject(
   cwd: string,
   paths: readonly string[],
-  { files = diskFiles, std }: ProjectOptions = {},
+  { files = diskFiles, std, previous }: ProjectOptions = {},
 ): Project {
   const places = { projectRoot: cwd, cwd };
   const roots = paths.map((path) => ({
     path,
     module: locateFile(resolve(cwd, path), places, files),
   }));
-  const program = buildProgram({
-    roots: roots.flatMap(({ module }) => module ?? []),
-    loaders: [fileLoader(places, files), stdlibLoader(std)],
-    roles: stdRoles(std),
-  });
+  const program = buildProgram(
+    {
+      roots: roots.flatMap(({ module }) => module ?? []),
+      loaders: [fileLoader(places, files), stdlibLoader(std)],
+      roles: stdRoles(std),
+    },
+    previous,
+  );
   return { program, unreadable: roots.filter(({ module }) => !module).map(({ path }) => path) };
 }

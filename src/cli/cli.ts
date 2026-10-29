@@ -19,12 +19,14 @@ import {
 } from './command.ts';
 import { defineCheckCommand } from './commands/check.ts';
 import { defineFmtCommand } from './commands/fmt.ts';
+import { defineLspCommand } from './commands/lsp.ts';
 import { defineRunCommand } from './commands/run.ts';
 import { defineTestCommand } from './commands/test.ts';
 
 const commands: readonly CommandDefinition[] = [
   defineCheckCommand,
   defineFmtCommand,
+  defineLspCommand,
   defineRunCommand,
   defineTestCommand,
 ];

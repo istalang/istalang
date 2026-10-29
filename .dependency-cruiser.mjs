@@ -247,5 +247,11 @@ export default {
     tsConfig: { fileName: 'tsconfig.json' },
     exclude: { path: '\\.(test|test-kit|bench)\\.ts$' },
     doNotFollow: { path: 'node_modules' },
+    // Subpaths resolve through a package's `exports`, as Node resolves them: some exist nowhere
+    // else, and only for Node (`vscode-languageserver/node`).
+    enhancedResolveOptions: {
+      exportsFields: ['exports'],
+      conditionNames: ['import', 'require', 'node', 'default'],
+    },
   },
 };
