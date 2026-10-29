@@ -5,9 +5,15 @@
  * array of nodes, an optional node or node array, or a primitive (node.ts), so any object with a
  * `kind` is a child. Adding a node kind therefore needs no traversal change. Children come back in
  * source order, derived from their spans, so no builder has to put fields in any order.
+ *
+ * What tools ask of a tree by position derives from the same children, memoized on the immutable
+ * node or tree: a node's parent, and the nodes at an offset. A child's span lies inside its
+ * parent's and before its next sibling's (the parser's tests hold every tree to it), so the nodes
+ * at an offset are found by descending from the root.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { memo } from '../../structures/memo.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import type { Annotation } from './annotations.ts';
 import type { Declaration, DeclarationPart, FunctionDeclaration, Module } from './declarations.ts';
@@ -52,11 +58,52 @@ export function isNode(value: unknown): value is SyntaxNode {
   return typeof value === 'object' && value !== null && 'kind' in value;
 }
 
+const children = new WeakMap<SyntaxNode, readonly SyntaxNode[]>();
+
 /** A node's direct children, in source order. */
 export function childrenOf(node: SyntaxNode): readonly SyntaxNode[] {
-  return Object.values(node)
-    .flatMap((value: unknown) => (Array.isArray(value) ? value : [value]).filter(isNode))
-    .toSorted((first, second) => first.span.start - second.span.start);
+  return memo(children, node, () =>
+    Object.values(node)
+      .flatMap((value: unknown) => (Array.isArray(value) ? value : [value]).filter(isNode))
+      .toSorted((first, second) => first.span.start - second.span.start),
+  );
+}
+
+const parents = new WeakMap<SyntaxTree, ReadonlyMap<SyntaxNode, SyntaxNode>>();
+
+/** The node `node` is a child of in `tree`; undefined for the root, or a node `tree` lacks. */
+export function parentOf(tree: SyntaxTree, node: SyntaxNode): SyntaxNode | undefined {
+  return memo(parents, tree, () => parentsUnder(tree.root)).get(node);
+}
+
+function parentsUnder(root: SyntaxNode): ReadonlyMap<SyntaxNode, SyntaxNode> {
+  const parentOfChild = new Map<SyntaxNode, SyntaxNode>();
+  const pending = [root];
+  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+    for (const child of childrenOf(node)) {
+      parentOfChild.set(child, node);
+      pending.push(child);
+    }
+  }
+  return parentOfChild;
+}
+
+/**
+ * The nodes of `tree` holding `offset`, from the root to the innermost. A span holds the offsets
+ * from its start up to its end, not including it: of two nodes that touch, only the second holds
+ * the offset where they meet, and an empty node, such as a `Missing`, holds none.
+ */
+export function nodesAt(tree: SyntaxTree, offset: number): readonly SyntaxNode[] {
+  const holds = (node: SyntaxNode) => node.span.start <= offset && offset < node.span.end;
+  const path: SyntaxNode[] = [];
+  for (
+    let node: SyntaxNode | undefined = holds(tree.root) ? tree.root : undefined;
+    node !== undefined;
+    node = childrenOf(node).find(holds)
+  ) {
+    path.push(node);
+  }
+  return path;
 }
 
 /** Whether `node` makes a function of its own, a lambda or a local function (§3.14). */
