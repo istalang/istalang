@@ -18,7 +18,12 @@ fn suite() -> Array<Test>: [
     log.warn("w")
     log.error("e")
     const empty = json.Json.Object{fields: [:]}
-    assertEq(calls(written), [(Level.Debug, "d", empty), (Level.Info, "i", empty), (Level.Warn, "w", empty), (Level.Error, "e", empty)])
+    assertEq(calls(written), [
+      (Level.Debug, "d", empty),
+      (Level.Info, "i", empty),
+      (Level.Warn, "w", empty),
+      (Level.Error, "e", empty),
+    ])
   }),
   test("fields arrive as their JSON", fn(): {
     const written = mock(log.write, ignored)

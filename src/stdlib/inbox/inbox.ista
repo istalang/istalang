@@ -39,15 +39,12 @@ shared struct Revertible<T>:
 # hands out a revertible send, a disposable host type its host retracts (§3.6).
 fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
   const held = new Shared<R?>{value: resource}
-  fn retract():
-    held->value = none
+  fn retract(): held->value = none
   new Revertible<T>{retract}
 
-fn Inbox.create<T>() -> Inbox<T>:
-  new Inbox<T>{slot: Slot.create<T>()}
+fn Inbox.create<T>() -> Inbox<T>: new Inbox<T>{slot: Slot.create<T>()}
 
-fn send<T>(self: Inbox<T>, message: T):
-  drop _queue(self, message)
+fn send<T>(self: Inbox<T>, message: T): drop _queue(self, message)
 
 # The holder retracts the message when its last holder lets go of it, unless it was received. It
 # reaches the inbox weakly, so holding it keeps no inbox alive.
@@ -63,20 +60,16 @@ fn receive<T>(self: Inbox<T>) -> Future<T>:
 # The messages waiting, oldest first, without receiving them: the slot's, then the backlog's.
 fn pending<T>(self: Inbox<T>) -> Array<T>:
   const next: Array<T> = select:
-    case self->slot.read() as message:
-      [message]
-    else:
-      []
+    case self->slot.read() as message: [message]
+    else: []
   [...next, ...[for queued in self->backlog: queued.message]]
 
 # Disposing an inbox (§6, §7) lets go of its fields, so the slot dies with the message in it, and
 # the backlog with it. Declaring `dispose` is what makes an inbox disposable, and so something a
 # `WeakRef` can watch.
-fn dispose<T>(self: Inbox<T>):
-  ()
+fn dispose<T>(self: Inbox<T>): ()
 
-fn dispose<T>(self: Revertible<T>):
-  self->retract()
+fn dispose<T>(self: Revertible<T>): self->retract()
 
 # Queues `message` behind the others; its number.
 fn _queue<T>(self: Inbox<T>, message: T) -> int:
@@ -106,7 +99,5 @@ fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: int):
 # operation let go does nothing (§6), so a `take` that doesn't settle consumes nothing.
 fn _settles<T>(operation: Future<T>) -> bool:
   select:
-    case operation:
-      true
-    else:
-      false
+    case operation: true
+    else: false

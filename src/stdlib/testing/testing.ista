@@ -44,16 +44,20 @@ struct _Entry:
   body: async fn() -> unit
 
 # Every test of `suite`, depth first, titled under `title`, the suite's.
-fn _list(suite: fn() -> Array<Test>, title: string) -> Array<Listed>:
-  [for entry in _entries(title, suite(), false, false): entry.listed]
+fn _list(suite: fn() -> Array<Test>, title: string) -> Array<Listed>: [
+  for entry in _entries(title, suite(), false, false): entry.listed
+]
 
 # Runs test `position` of `suite`, once sure its listing still puts `expected` there (§10).
 async fn _run(suite: fn() -> Array<Test>, title: string, position: int, expected: string):
   const entry = _entries(title, suite(), false, false).at(position)
-  if entry is Some{value as found} and found.listed.title == expected:
-    await found.body()
+  if entry is Some{value as found} and found.listed.title == expected: await found.body()
   else:
-    panic("The suite listed other tests when it was called again, so test '" + expected + "' can't be found.")
+    panic(
+      "The suite listed other tests when it was called again, so test '" +
+        expected +
+        "' can't be found.",
+    )
 
 # The tests of `tests`, depth first, titled under `title`, each with its own marks and `skipping`
 # and `focusing`, its groups'.
@@ -62,10 +66,17 @@ fn _entries(title: string, tests: Array<Test>, skipping: bool, focusing: bool) -
   for each in tests:
     match each:
       case Case{title as own, body, skipped, only as focused}:
-        const listed = Listed{title: title + " › " + own, skipped: skipped or skipping, only: focused or focusing}
+        const listed = Listed{
+          title: title + " › " + own,
+          skipped: skipped or skipping,
+          only: focused or focusing,
+        }
         entries.push(_Entry{listed, body})
       case Group{title as own, tests as inner, skipped, only as focused}:
-        entries = [...entries, ..._entries(title + " › " + own, inner, skipped or skipping, focused or focusing)]
+        entries = [
+          ...entries,
+          ..._entries(title + " › " + own, inner, skipped or skipping, focused or focusing),
+        ]
   entries
 
 # A mock's handle (§10): while it is held, calls to its target run its replacement, and the
@@ -76,8 +87,12 @@ extern fn dispose<F>(self: Mock<F>)
 extern fn _mock<F>(target: F, replacement: F) -> Mock<F>
 extern fn _calls<F, A>(self: Mock<F>) -> Array<A>
 
-fn mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>: _mock(target, replacement)
-fn mock<...A, R>(target: async fn(...A) -> R, replacement: async fn(...A) -> R) -> Mock<async fn(...A) -> R>: _mock(target, replacement)
+fn mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>:
+  _mock(target, replacement)
+fn mock<...A, R>(target: async fn(...A) -> R, replacement: async fn(...A) -> R) -> Mock<async fn(
+  ...A,
+) -> R>:
+  _mock(target, replacement)
 
 # The arguments of every call so far, oldest first, a tuple per call: `(x,)` for a function of one
 # parameter, and `()`, the unit, for one of none.
@@ -125,10 +140,18 @@ fn only(entry: Test) -> Test: _marked(entry, false, true)
 # `entry` with its own marks, and `skipping` and `focusing` added.
 fn _marked(entry: Test, skipping: bool, focusing: bool) -> Test:
   match entry:
-    case Case{title, body, skipped, only as focused}:
-      Case{title, body, skipped: skipped or skipping, only: focused or focusing}
-    case Group{title, tests, skipped, only as focused}:
-      Group{title, tests, skipped: skipped or skipping, only: focused or focusing}
+    case Case{title, body, skipped, only as focused}: Case{
+      title,
+      body,
+      skipped: skipped or skipping,
+      only: focused or focusing,
+    }
+    case Group{title, tests, skipped, only as focused}: Group{
+      title,
+      tests,
+      skipped: skipped or skipping,
+      only: focused or focusing,
+    }
 
 # An environment for tests (§10): prepares it, runs the test inside it, and tears it down after.
 type Setup<E> = async fn(async fn(E) -> unit) -> unit
@@ -139,20 +162,34 @@ fn setups<A, B, C>(a: Setup<A>, b: Setup<B>, c: Setup<C>) -> Setup<(A, B, C)>:
   _joined(setups(a, b), c, fn(p: (A, B), z: C): (p.0, p.1, z))
 fn setups<A, B, C, D>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>) -> Setup<(A, B, C, D)>:
   _joined(setups(a, b, c), d, fn(p: (A, B, C), z: D): (p.0, p.1, p.2, z))
-fn setups<A, B, C, D, E>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>, e: Setup<E>) -> Setup<(A, B, C, D, E)>:
+fn setups<A, B, C, D, E>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>, e: Setup<E>) -> Setup<(
+  A,
+  B,
+  C,
+  D,
+  E,
+)>:
   _joined(setups(a, b, c, d), e, fn(p: (A, B, C, D), z: E): (p.0, p.1, p.2, p.3, z))
-fn setups<A, B, C, D, E, G>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>, e: Setup<E>, g: Setup<G>) -> Setup<(A, B, C, D, E, G)>:
+fn setups<A, B, C, D, E, G>(
+  a: Setup<A>,
+  b: Setup<B>,
+  c: Setup<C>,
+  d: Setup<D>,
+  e: Setup<E>,
+  g: Setup<G>,
+) -> Setup<(A, B, C, D, E, G)>:
   _joined(setups(a, b, c, d, e), g, fn(p: (A, B, C, D, E), z: G): (p.0, p.1, p.2, p.3, p.4, z))
 
 # `outer` around `inner`, the test receiving their environments as `join` makes one of them.
 fn _joined<O, I, J>(outer: Setup<O>, inner: Setup<I>, join: fn(O, I) -> J) -> Setup<J>:
-  async fn(body: async fn(J) -> unit): await outer(async fn(o: O): await inner(async fn(i: I): await body(join(o, i))))
+  async fn(body: async fn(J) -> unit): await outer(
+    async fn(o: O): await inner(async fn(i: I): await body(join(o, i))),
+  )
 
 # Panics unless `condition` holds (§10).
 fn assert(condition: bool): assert(condition, "The assertion failed.")
 fn assert(condition: bool, message: string):
-  if not condition:
-    panic(message)
+  if not condition: panic(message)
 
 # Panics unless `actual` equals `expected`, showing both as JSON (§10).
 fn assertEq<T is Encodable>(actual: T, expected: T):
@@ -161,7 +198,8 @@ fn assertEq<T is Encodable>(actual: T, expected: T):
 
 # Spawns `f` as an instance of its own, since a panic freezes the instance it happens in (§5), and
 # waits for its end: the message it panics with. Panics if `f` returns instead (§10).
-async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<string>: await _panicOf(spawn f())
+async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<string>:
+  await _panicOf(spawn f())
 
 async fn _panicOf<R is Sendable>(instance: Instance<R>) -> Future<string>:
   match await instance.result():
@@ -195,8 +233,7 @@ fn _waitUntil(clock: _Clock, deadline: Time) -> Future<unit>:
 
 # Moves the clock forward by `by`, filling every wait whose deadline it passes (§10).
 fn advance(self: FakeClock, by: Duration):
-  if by < Duration{value: 0}:
-    panic("A fake clock only moves forward, not by " + by + ".")
+  if by < Duration{value: 0}: panic("A fake clock only moves forward, not by " + by + ".")
   const clock = self._state
   clock->now = clock->now + by
   _fillDue(clock)
@@ -212,8 +249,7 @@ async fn withClock(body: async fn(FakeClock) -> unit):
 fn _fillDue(clock: _Clock):
   const (due, later) = _splitDue(clock->waits, clock->now)
   clock->waits = later
-  for each in due:
-    drop each.slot.put(())
+  for each in due: drop each.slot.put(())
 
 # `waits` split at `time`: those due by then, and the later ones, each in their order.
 fn _splitDue(waits: Array<_Wait>, time: Time) -> (Array<_Wait>, Array<_Wait>):
@@ -253,16 +289,14 @@ fn sendRevertible<Q, T, K>(self: FakeQueue<Q, T, K>, queue: Q, message: T) -> Re
 # The queue of `key`, made the first time.
 fn _opened<Q, T, K>(queues: _Queues<Q, T, K>, make: fn() -> Q, key: K) -> _Queue<Q, T, K>:
   for each in queues->opened:
-    if each.key == key:
-      return each
+    if each.key == key: return each
   const made = _Queue{key, queue: make(), inbox: Inbox.create<T>()}
   queues->opened.push(made)
   made
 
 fn _inboxOf<Q, T, K>(queues: _Queues<Q, T, K>, queue: Q) -> Inbox<T>:
   for each in queues->opened:
-    if each.queue == queue:
-      return each.inbox
+    if each.queue == queue: return each.inbox
   panic("This FakeQueue didn't open the queue it was given.")
 
 # The receipts of a host's revertible sends, of extern type `R` (§3.6, §10): `revertibleSender(queues)`
@@ -285,8 +319,7 @@ fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K
   fn sendInto(queue: Q, message: T) -> R:
     const receipt = (self.make)()
     const held = new Shared<Revertible<T>?>{value: queues.sendRevertible(queue, message)}
-    fn retract():
-      held->value = none
+    fn retract(): held->value = none
     self._entries->held.push(_Receipt{receipt, retract})
     receipt
   sendInto
@@ -294,8 +327,6 @@ fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K
 fn _disposeReceipt<R>(entries: _Receipts<R>, receipt: R):
   let remaining: Array<_Receipt<R>> = []
   for each in entries->held:
-    if each.receipt == receipt:
-      (each.retract)()
-    else:
-      remaining.push(each)
+    if each.receipt == receipt: (each.retract)()
+    else: remaining.push(each)
   entries->held = remaining

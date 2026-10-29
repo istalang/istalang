@@ -27,16 +27,13 @@ fn logged(log: Log, value: int) -> Setup<int>:
     log->lines.push("tear down " + value)
   }
 
-async fn withFortyOne(body: async fn(int) -> unit):
-  await body(41)
+async fn withFortyOne(body: async fn(int) -> unit): await body(41)
 
 # The title and marks of `entry`, as the runner reads them.
 fn described(entry: Test) -> string:
   match entry:
-    case Case{title, skipped, only}:
-      marked(title, skipped, only)
-    case Group{title, skipped, only}:
-      marked(title, skipped, only)
+    case Case{title, skipped, only}: marked(title, skipped, only)
+    case Group{title, skipped, only}: marked(title, skipped, only)
 
 fn marked(title: string, skipped: bool, only: bool) -> string:
   title + (if skipped: " skipped" else: "") + (if only: " only" else: "")
@@ -84,12 +81,21 @@ fn tests() -> Array<Test>: [
 fn setupTests() -> Array<Test>: [
   test("nest the first outermost, handing the test every environment", async fn(): {
     const log = new Log{}
-    await setups(logged(log, 1), logged(log, 2))(async fn(both: (int, int)): log->lines.push("test " + both.0 + both.1))
+    await setups(logged(log, 1), logged(log, 2))(
+      async fn(both: (int, int)): log->lines.push("test " + both.0 + both.1),
+    )
     assertEq(log->lines, ["prepare 1", "prepare 2", "test 12", "tear down 2", "tear down 1"])
   }),
   test("join up to six", async fn(): {
     const log = new Log{}
-    const six = setups(logged(log, 1), logged(log, 2), logged(log, 3), logged(log, 4), logged(log, 5), logged(log, 6))
+    const six = setups(
+      logged(log, 1),
+      logged(log, 2),
+      logged(log, 3),
+      logged(log, 4),
+      logged(log, 5),
+      logged(log, 6),
+    )
     await six(async fn(all: (int, int, int, int, int, int)): assertEq(all, (1, 2, 3, 4, 5, 6)))
   }),
 ]
@@ -103,7 +109,10 @@ fn assertions() -> Array<Test>: [
   }),
   test("assertEq panics showing both values as JSON", async fn(): {
     assertEq([1, 2], [1, 2])
-    assertEq(await expectPanic(fn(): assertEq("approved", "expired")), "expected \"expired\", found \"approved\"")
+    assertEq(
+      await expectPanic(fn(): assertEq("approved", "expired")),
+      "expected \"expired\", found \"approved\"",
+    )
     assertEq(await expectPanic(fn(): assertEq([1, 2], [1])), "expected [1], found [1,2]")
   }),
   test("expectPanic gives the message of a plain or an async function's panic", async fn(): {
@@ -122,14 +131,20 @@ async fn later(a: int) -> Future<int>: a
 
 @Suite{"testing › mock"}
 fn mocks() -> Array<Test>: [
-  test("records a unit per call of a function of none, and a tuple per call of seven or more", async fn(): {
-    const nullary = mock(pair, fn(): 7)
-    const lots = mock(many, fn(a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: string): "m" + h)
-    assertEq([pair(), pair()], [7, 7])
-    assertEq(many(1, 2, 3, 4, 5, 6, 7, "q"), "mq")
-    assertEq(nullary.calls(), [(), ()])
-    assertEq(lots.calls(), [(1, 2, 3, 4, 5, 6, 7, "q")])
-  }),
+  test(
+    "records a unit per call of a function of none, and a tuple per call of seven or more",
+    async fn(): {
+      const nullary = mock(pair, fn(): 7)
+      const lots = mock(
+        many,
+        fn(a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: string): "m" + h,
+      )
+      assertEq([pair(), pair()], [7, 7])
+      assertEq(many(1, 2, 3, 4, 5, 6, 7, "q"), "mq")
+      assertEq(nullary.calls(), [(), ()])
+      assertEq(lots.calls(), [(1, 2, 3, 4, 5, 6, 7, "q")])
+    },
+  ),
   test("keeps an async target's own type and records its calls", async fn(): {
     const m = mock(later, async fn(a: int): a * 10)
     assertEq(await later(9), 90)
@@ -151,7 +166,9 @@ fn clocks() -> Array<Test>: [
     hold _ = mock(replacement: clock.now, target: time.now)
     assertEq(time.now(), Time{value: 5})
   }),
-  test("fills a deadline once advanced to it, in an instance the test started", withClock, async fn(clock): {
+  test("fills a deadline once advanced to it, in an instance the test started", withClock, async fn(
+    clock,
+  ): {
     const started = spawn waitsAday()
     await started.idle()
     clock.advance(Duration{value: 86_399_999})
@@ -171,7 +188,11 @@ fn clocks() -> Array<Test>: [
     const second = spawn waitsThenRecords("second", 1)
     await second.idle()
     clock.advance(Duration{value: 2})
-    assertEq([await late.result(), await first.result(), await second.result()], [Ok{()}, Ok{()}, Ok{()}])
+    assertEq([await late.result(), await first.result(), await second.result()], [
+      Ok{()},
+      Ok{()},
+      Ok{()},
+    ])
     assertEq(records.calls(), [("first",), ("second",), ("late",)])
   }),
   test("resolves a deadline already reached at once", async fn(): {
@@ -181,7 +202,9 @@ fn clocks() -> Array<Test>: [
     await time.at(Time{value: 1})
   }),
   test("panics when advanced by a negative duration", async fn(): {
-    const message = await expectPanic(fn(): FakeClock{start: Time{value: 0}}.advance(Duration{value: -1}))
+    const message = await expectPanic(
+      fn(): FakeClock{start: Time{value: 0}}.advance(Duration{value: -1}),
+    )
     assertEq(message, "A fake clock only moves forward, not by " + Duration{value: -1} + ".")
   }),
 ]

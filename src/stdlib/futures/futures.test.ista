@@ -31,13 +31,20 @@ async fn allWithOneFailing() -> Future<Result<Array<int>, string>>:
   await later(b, Err{("b")})
   await all
 
-async fn allOfNone() -> Future<Result<Array<int>, string>>:
-  await futures.all<int, string>([])
+async fn allOfNone() -> Future<Result<Array<int>, string>>: await futures.all<int, string>([])
 
 @Suite{"futures › all"}
 fn allSuite() -> Array<Test>: [
-  ...runAndReRun("gives every Ok value in position order, whatever order they arrive in", allArrivingOutOfOrder, Ok{([1, 2])}),
-  ...runAndReRun("gives the first Err as soon as it arrives, while the others still wait", allWithOneFailing, Err{("b")}),
+  ...runAndReRun(
+    "gives every Ok value in position order, whatever order they arrive in",
+    allArrivingOutOfOrder,
+    Ok{([1, 2])},
+  ),
+  ...runAndReRun(
+    "gives the first Err as soon as it arrives, while the others still wait",
+    allWithOneFailing,
+    Err{("b")},
+  ),
   ...runAndReRun("of no futures is Ok and empty", allOfNone, Ok{([])}),
 ]
 
@@ -50,7 +57,11 @@ async fn allSettledWithAFailure() -> Future<Array<Outcome>>:
 
 @Suite{"futures › allSettled"}
 fn allSettledSuite() -> Array<Test>: [
-  ...runAndReRun("gives every value in position order once all arrived, failures included", allSettledWithAFailure, [Ok{(1)}, Err{("b")}]),
+  ...runAndReRun(
+    "gives every value in position order once all arrived, failures included",
+    allSettledWithAFailure,
+    [Ok{(1)}, Err{("b")}],
+  ),
 ]
 
 async fn raceOfTwo() -> Future<int>:
@@ -63,7 +74,10 @@ async fn raceOfTwo() -> Future<int>:
 fn raceSuite() -> Array<Test>: [
   ...runAndReRun("gives the first value to arrive", raceOfTwo, 2),
   test("panics on no futures", async fn(): {
-    assertEq(await expectPanic(async fn(): await futures.race<int>([])), "futures.first was given no futures.")
+    assertEq(
+      await expectPanic(async fn(): await futures.race<int>([])),
+      "futures.first was given no futures.",
+    )
   }),
 ]
 
@@ -81,13 +95,20 @@ async fn anyAllFailing() -> Future<Result<int, Array<string>>>:
   await later(a, Err{("a")})
   await either
 
-async fn anyOfNone() -> Future<Result<int, Array<string>>>:
-  await futures.any<int, string>([])
+async fn anyOfNone() -> Future<Result<int, Array<string>>>: await futures.any<int, string>([])
 
 @Suite{"futures › any"}
 fn anySuite() -> Array<Test>: [
-  ...runAndReRun("gives the first Ok to arrive, past the errors before it", anyAfterAnError, Ok{(2)}),
-  ...runAndReRun("gives every error in position order once all failed", anyAllFailing, Err{(["a", "b"])}),
+  ...runAndReRun(
+    "gives the first Ok to arrive, past the errors before it",
+    anyAfterAnError,
+    Ok{(2)},
+  ),
+  ...runAndReRun(
+    "gives every error in position order once all failed",
+    anyAllFailing,
+    Err{(["a", "b"])},
+  ),
   ...runAndReRun("of no futures is an empty Err", anyOfNone, Err{([])}),
 ]
 
@@ -111,8 +132,16 @@ async fn quorumOfZero() -> Future<Result<Array<int>, Array<string>>>:
 
 @Suite{"futures › quorum"}
 fn quorumSuite() -> Array<Test>: [
-  ...runAndReRun("gives the first n Ok values in the order they arrived", quorumReached, Ok{([3, 2])}),
-  ...runAndReRun("fails once n can't be reached, with the errors in position order", quorumOutOfReach, Err{(["a", "c"])}),
+  ...runAndReRun(
+    "gives the first n Ok values in the order they arrived",
+    quorumReached,
+    Ok{([3, 2])},
+  ),
+  ...runAndReRun(
+    "fails once n can't be reached, with the errors in position order",
+    quorumOutOfReach,
+    Err{(["a", "c"])},
+  ),
   ...runAndReRun("of zero is Ok and empty", quorumOfZero, Ok{([])}),
   test("panics when n is more than the futures", async fn(): {
     const message = await expectPanic(async fn(): await futures.quorum<int, string>(1, []))
@@ -153,7 +182,11 @@ fn timeoutSuite() -> Array<Test>: [
 # attempt that succeeds the third time: the outcome, and when each attempt started.
 async fn succeedingThirdTime() -> Future<(Outcome, Array<int>)>:
   let startedAt: Array<int> = []
-  const attempt = async fn() -> Future<Outcome>: { startedAt.push(time.now().value); if startedAt.length() < 3: Err{("failed")} else: Ok{(startedAt.length())} }
+  const attempt = async fn() -> Future<Outcome>: {
+    startedAt.push(time.now().value)
+    if startedAt.length() < 3: Err{("failed")}
+    else: Ok{(startedAt.length())}
+  }
   (await futures.retry(attempt, backoff: 1s), startedAt)
 
 # Moves `clock` through the backoffs of `retrying`, an instance running `succeedingThirdTime`.
@@ -169,17 +202,24 @@ async fn failingTwice() -> Future<Outcome>:
   let attempts = 0
   await futures.retry(fn() -> Outcome: { attempts += 1; Err{("attempt " + attempts)} }, 2, 1s)
 
-async fn succeedingFirstTime() -> Future<Outcome>:
-  await futures.retry(fn() -> Outcome: Ok{(1)})
+async fn succeedingFirstTime() -> Future<Outcome>: await futures.retry(fn() -> Outcome: Ok{(1)})
 
 @Suite{"futures › retry"}
 fn retrySuite() -> Array<Test>: [
-  test("waits backoff before the first retry and twice as long before the next", withClock, async fn(clock): {
-    await backingOff(clock, spawn succeedingThirdTime())
-  }),
-  test("waits backoff before the first retry and twice as long before the next, with every segment re-run", withClock, async fn(clock): {
-    await backingOff(clock, spawnCrashingEveryAwait(succeedingThirdTime))
-  }),
+  test(
+    "waits backoff before the first retry and twice as long before the next",
+    withClock,
+    async fn(clock): {
+      await backingOff(clock, spawn succeedingThirdTime())
+    },
+  ),
+  test(
+    "waits backoff before the first retry and twice as long before the next, with every segment re-run",
+    withClock,
+    async fn(clock): {
+      await backingOff(clock, spawnCrashingEveryAwait(succeedingThirdTime))
+    },
+  ),
   test("gives the last Err once every attempt failed", withClock, async fn(clock): {
     const retrying = spawn failingTwice()
     await retrying.idle()

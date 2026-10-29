@@ -4,7 +4,7 @@
 # text in the encoding asked for; `decode` gives text too, so it fails on bytes that aren't UTF-8.
 
 enum Hash:
-  Sha1          # for interop with older systems only
+  Sha1 # for interop with older systems only
   Sha256
   Sha384
   Sha512
@@ -12,11 +12,16 @@ enum Hash:
 enum Encoding:
   Hex
   Base64
-  Base64Url     # unpadded, as JWT writes it
+  Base64Url # unpadded, as JWT writes it
 
 extern fn hash(algorithm: Hash, data: string, encoding: Encoding = Encoding.Hex) -> string
 
-extern fn hmac(algorithm: Hash, key: string, data: string, encoding: Encoding = Encoding.Hex) -> string
+extern fn hmac(
+  algorithm: Hash,
+  key: string,
+  data: string,
+  encoding: Encoding = Encoding.Hex,
+) -> string
 
 # Takes the same time whatever two strings of one length hold; strings of different lengths are
 # unequal at once.

@@ -5,7 +5,14 @@ import Test, test, assertEq, spawnCrashingEveryAwait from 'testing'
 import Encodable from 'json'
 
 # Two tests of `scenario`, run as it is and with every segment re-run, each expecting `expected`.
-fn runAndReRun<R is Encodable & Sendable>(title: string, scenario: sendable async fn() -> R, expected: R) -> Array<Test>: [
+fn runAndReRun<R is Encodable & Sendable>(
+  title: string,
+  scenario: sendable async fn() -> R,
+  expected: R,
+) -> Array<Test>: [
   test(title, async fn(): assertEq(await scenario(), expected)),
-  test(title + ", with every segment re-run", async fn(): assertEq(await spawnCrashingEveryAwait(scenario).result(), Ok{(expected)})),
+  test(
+    title + ", with every segment re-run",
+    async fn(): assertEq(await spawnCrashingEveryAwait(scenario).result(), Ok{(expected)}),
+  ),
 ]

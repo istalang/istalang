@@ -12,7 +12,7 @@ enum Rounding:
   Ceiling
   TowardZero
   AwayFromZero
-  HalfEven              # a tie goes to the even neighbour
+  HalfEven # a tie goes to the even neighbour
   HalfAwayFromZero
 
 extern fn abs(self: int) -> int
@@ -27,12 +27,15 @@ extern fn sqrt(self: int) -> float
 extern fn sqrt(self: float) -> float
 
 fn min<T is Comparable>(self: T, other: T) -> T:
-  if other < self: other else: self
+  if other < self: other
+  else: self
 
 fn max<T is Comparable>(self: T, other: T) -> T:
-  if other > self: other else: self
+  if other > self: other
+  else: self
 
 fn clamp<T is Comparable>(self: T, low: T, high: T) -> T:
-  if low > high:
-    panic("clamp's low bound is above its high bound.")
-  if self < low: low elif self > high: high else: self
+  if low > high: panic("clamp's low bound is above its high bound.")
+  if self < low: low
+  elif self > high: high
+  else: self

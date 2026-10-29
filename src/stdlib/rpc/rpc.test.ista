@@ -7,8 +7,7 @@ import * as rpc from 'rpc'
 import * as runtime from 'runtime'
 
 # Whether `reply` is the `Err` of a call let go without a reply.
-fn unanswered<R>(reply: Result<R>) -> bool:
-  reply is Err{error} and error.code == "unanswered"
+fn unanswered<R>(reply: Result<R>) -> bool: reply is Err{error} and error.code == "unanswered"
 
 # Two calls to a handler that waits at a gate opened once per call: the replies, and what the
 # handler logged.
@@ -16,7 +15,12 @@ async fn servingTwoCalls() -> Future<(Array<Result<int>>, Array<string>)>:
   const method = rpc.create<int, int>()
   const gate = Slot.create<unit>()
   let log: Array<string> = []
-  hold _ = method.onMessage(async fn(n: int): { log.push("start " + n); await gate.take(); log.push("end " + n); n })
+  hold _ = method.onMessage(async fn(n: int): {
+    log.push("start " + n)
+    await gate.take()
+    log.push("end " + n)
+    n
+  })
   const (first, second) = (method.call(1), method.call(2))
   await runtime.commit()
   await gate.put(())
@@ -31,7 +35,11 @@ fn rpcSuite() -> Array<Test>: [
     hold _ = double.onMessage(fn(n: int): n * 2)
     assertEq(await double.call(21), Ok{(42)})
   }),
-  ...runAndReRun("serves calls one at a time, in the order they arrived", servingTwoCalls, ([Ok{(1)}, Ok{(2)}], ["start 1", "end 1", "start 2", "end 2"])),
+  ...runAndReRun(
+    "serves calls one at a time, in the order they arrived",
+    servingTwoCalls,
+    ([Ok{(1)}, Ok{(2)}], ["start 1", "end 1", "start 2", "end 2"]),
+  ),
   test("shares the calls among its servers, each call going to one", async fn(): {
     const method = rpc.create<int, string>()
     hold _ = method.onMessage(fn(n: int): "a" + n)

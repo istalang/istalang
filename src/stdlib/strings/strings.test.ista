@@ -68,7 +68,10 @@ fn suite() -> Array<Test>: [
       assertEq(strings.repeat("a", 0), "")
     }),
     test("repeat panics on a negative count", async fn(): {
-      assertEq(await expectPanic(fn(): strings.repeat("a", -1)), "A string can't be repeated -1 times.")
+      assertEq(
+        await expectPanic(fn(): strings.repeat("a", -1)),
+        "A string can't be repeated -1 times.",
+      )
     }),
     test("replace and replaceAll match plain text, writing a `$` as it is", fn(): {
       assertEq(strings.replace("a.b.c", ".", "$&"), "a$&b.c")

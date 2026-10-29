@@ -23,8 +23,7 @@ struct _Call<P, R>:
 shared struct _Reply<R>:
   slot: Slot<Result<R>>?
 
-fn create<P, R>() -> Method<P, R>:
-  new Method<P, R>{}
+fn create<P, R>() -> Method<P, R>: new Method<P, R>{}
 
 # Sends `message` to the method's servers: the reply, or an `Err` when the call is let go without one.
 fn call<P, R>(self: Method<P, R>, message: P) -> Future<Result<R>>:

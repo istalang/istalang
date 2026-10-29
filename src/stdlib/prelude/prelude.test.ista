@@ -8,15 +8,12 @@ struct Item:
   name: string
   rank: int
 
-fn byRank(left: Item, right: Item) -> int:
-  left.rank - right.rank
+fn byRank(left: Item, right: Item) -> int: left.rank - right.rank
 
-fn isEven(n: int) -> bool:
-  n % 2 == 0
+fn isEven(n: int) -> bool: n % 2 == 0
 
 fn panicsOnThree(n: int) -> bool:
-  if n == 3:
-    panic("three")
+  if n == 3: panic("three")
   false
 
 @Suite{"prelude › arrays"}
@@ -142,8 +139,7 @@ fn openStart() -> bool: 1 in ..5 by 2
 
 fn openEnd() -> int:
   let total = 0
-  for i in 3..:
-    total += i
+  for i in 3..: total += i
   total
 
 @Suite{"prelude › ranges"}
@@ -158,24 +154,32 @@ fn ranges() -> Array<Test>: [
     assert(6 in 0..10 by 3 and 7 not in 0..10 by 3 and 10 not in 0..10)
     assert(1_000_000 in 2.. by 2 and -7 in ..0 and 0 in 5..=0 by -1)
   }),
-  test("panic on a step of 0, an open start stepping by more than 1, and iterating an open one", async fn(): {
-    assertEq(await expectPanic(zeroStep), "The range 0..5 by 0 has a step of 0.")
-    assertEq(await expectPanic(openStart), "The range ..5 by 2 has no start for its step to count from.")
-    assertEq(await expectPanic(openEnd), "Iterating needs a range with both ends, not 3...")
-  }),
+  test(
+    "panic on a step of 0, an open start stepping by more than 1, and iterating an open one",
+    async fn(): {
+      assertEq(await expectPanic(zeroStep), "The range 0..5 by 0 has a step of 0.")
+      assertEq(
+        await expectPanic(openStart),
+        "The range ..5 by 2 has no start for its step to count from.",
+      )
+      assertEq(await expectPanic(openEnd), "Iterating needs a range with both ends, not 3...")
+    },
+  ),
 ]
 
 # A string doubled until it outgrows what the runtime can hold.
 fn doubledForever() -> string:
   let doubled = "x"
-  for _ in 0..64:
-    doubled = doubled + doubled
+  for _ in 0..64: doubled = doubled + doubled
   doubled
 
 @Suite{"prelude › limits"}
 fn limits() -> Array<Test>: [
   test("a string outgrowing what the runtime can hold panics", async fn(): {
-    assertEq(await expectPanic(doubledForever), "The string would be longer than the runtime can hold.")
+    assertEq(
+      await expectPanic(doubledForever),
+      "The string would be longer than the runtime can hold.",
+    )
   }),
 ]
 

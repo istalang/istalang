@@ -16,5 +16,4 @@ extern fn uuid() -> string
 const _floatSteps = 9_007_199_254_740_992
 
 # A uniform float from 0 up to 1.
-fn fraction() -> float:
-  float(integer(0.._floatSteps)) / float(_floatSteps)
+fn fraction() -> float: float(integer(0.._floatSteps)) / float(_floatSteps)

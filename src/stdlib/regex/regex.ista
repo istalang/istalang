@@ -20,14 +20,11 @@ struct Match:
 
 extern fn Regex.parse(text: string) -> Result<Regex>
 
-fn toString(self: Regex) -> string:
-  self.pattern
+fn toString(self: Regex) -> string: self.pattern
 
-fn toJson(self: Regex) -> json.Json:
-  json.encodeText(self)
+fn toJson(self: Regex) -> json.Json: json.encodeText(self)
 
-fn Regex.fromJson(value: json.Json, path: string) -> Result<Regex>:
-  json.decodeText(value, path)
+fn Regex.fromJson(value: json.Json, path: string) -> Result<Regex>: json.decodeText(value, path)
 
 # Whether the regex matches anywhere in `s`.
 extern fn test(self: Regex, s: string) -> bool

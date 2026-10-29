@@ -17,24 +17,18 @@ extern fn now() -> Time
 
 extern fn at(time: Time) -> Future<unit>
 
-fn add(left: Time, right: Duration) -> Time:
-  Time{value: left.value + right.value}
+fn add(left: Time, right: Duration) -> Time: Time{value: left.value + right.value}
 
-fn add(left: Duration, right: Duration) -> Duration:
-  Duration{value: left.value + right.value}
+fn add(left: Duration, right: Duration) -> Duration: Duration{value: left.value + right.value}
 
-fn multiply(left: Duration, right: int) -> Duration:   # Duration * int
-  Duration{value: left.value * right}
+fn multiply(left: Duration, right: int) -> Duration: Duration{value: left.value * right} # Duration * int
 
-fn delay(duration: Duration) -> Future<unit>:
-  at(now() + duration)
+fn delay(duration: Duration) -> Future<unit>: at(now() + duration)
 
 # Times and durations are ordered as the milliseconds they hold (§3.10 `Comparable`).
-fn compare(left: Time, right: Time) -> int:
-  compare(left.value, right.value)
+fn compare(left: Time, right: Time) -> int: compare(left.value, right.value)
 
-fn compare(left: Duration, right: Duration) -> int:
-  compare(left.value, right.value)
+fn compare(left: Duration, right: Duration) -> int: compare(left.value, right.value)
 
 # ISO 8601 text (§3.8, §9): a time as JavaScript's Date.toJSON writes it, a duration as
 # Temporal.Duration does. Both are Stringable and Parsable, and cross as JSON as that text.
@@ -46,14 +40,11 @@ extern fn Time.parse(text: string) -> Result<Time>
 
 extern fn Duration.parse(text: string) -> Result<Duration>
 
-fn toJson(self: Time) -> json.Json:
-  json.encodeText(self)
+fn toJson(self: Time) -> json.Json: json.encodeText(self)
 
-fn toJson(self: Duration) -> json.Json:
-  json.encodeText(self)
+fn toJson(self: Duration) -> json.Json: json.encodeText(self)
 
-fn Time.fromJson(value: json.Json, path: string) -> Result<Time>:
-  json.decodeText(value, path)
+fn Time.fromJson(value: json.Json, path: string) -> Result<Time>: json.decodeText(value, path)
 
 fn Duration.fromJson(value: json.Json, path: string) -> Result<Duration>:
   json.decodeText(value, path)
@@ -82,11 +73,9 @@ extern fn Zone.parse(id: string) -> Result<Zone>
 # The canonical id: `Europe/Berlin`.
 extern fn toString(self: Zone) -> string
 
-fn toJson(self: Zone) -> json.Json:
-  json.encodeText(self)
+fn toJson(self: Zone) -> json.Json: json.encodeText(self)
 
-fn Zone.fromJson(value: json.Json, path: string) -> Result<Zone>:
-  json.decodeText(value, path)
+fn Zone.fromJson(value: json.Json, path: string) -> Result<Zone>: json.decodeText(value, path)
 
 # As Temporal.PlainDateTime writes it: `2026-10-25T13:00:00`, a fraction of a second only when
 # there is one.
@@ -94,8 +83,7 @@ extern fn toString(self: DateTime) -> string
 
 extern fn DateTime.parse(text: string) -> Result<DateTime>
 
-fn toJson(self: DateTime) -> json.Json:
-  json.encodeText(self)
+fn toJson(self: DateTime) -> json.Json: json.encodeText(self)
 
 fn DateTime.fromJson(value: json.Json, path: string) -> Result<DateTime>:
   json.decodeText(value, path)

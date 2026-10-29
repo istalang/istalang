@@ -17,7 +17,8 @@ extern fn write(level: Level, message: string, fields: json.Json)
 
 fn debug(message: string): write(Level.Debug, message, _noFields())
 
-fn debug<F is Encodable>(message: string, fields: F): write(Level.Debug, message, json.encode(fields))
+fn debug<F is Encodable>(message: string, fields: F):
+  write(Level.Debug, message, json.encode(fields))
 
 fn info(message: string): write(Level.Info, message, _noFields())
 
@@ -29,8 +30,8 @@ fn warn<F is Encodable>(message: string, fields: F): write(Level.Warn, message, 
 
 fn error(message: string): write(Level.Error, message, _noFields())
 
-fn error<F is Encodable>(message: string, fields: F): write(Level.Error, message, json.encode(fields))
+fn error<F is Encodable>(message: string, fields: F):
+  write(Level.Error, message, json.encode(fields))
 
 # A record without fields has an empty object, so a host reads every record's fields one way.
-fn _noFields() -> json.Json:
-  json.Json.Object{fields: [:]}
+fn _noFields() -> json.Json: json.Json.Object{fields: [:]}

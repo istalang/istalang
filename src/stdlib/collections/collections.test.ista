@@ -83,8 +83,7 @@ fn weakMap() -> Array<Test>: [
     const map: Boxes = WeakMap.create()
     const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
     const watched = entryOf(map, holder)
-    if holder->value is Some{value as key}:
-      assert(map.delete(key))
+    if holder->value is Some{value as key}: assert(map.delete(key))
     await watched.value.disposed()
   }),
   test("lets go of an entry whose key is disposed after a snapshot", async fn(): {

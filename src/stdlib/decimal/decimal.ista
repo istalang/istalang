@@ -14,8 +14,8 @@ extern sendable struct Decimal
 
 extern fn Decimal.from(value: int) -> Decimal
 
-extern fn int.from(value: Decimal) -> int        # truncates toward zero
-extern fn float.from(value: Decimal) -> float    # the nearest float
+extern fn int.from(value: Decimal) -> int # truncates toward zero
+extern fn float.from(value: Decimal) -> float # the nearest float
 
 # The text of a value has no exponent, no zeros ending its fraction and no `-0`: `-12.5`. `parse`
 # reads an optional `-`, digits and an optional fraction, so a text's length bounds its value's.
@@ -46,9 +46,24 @@ extern fn negate(value: Decimal) -> Decimal
 extern fn divide(left: Decimal, right: Decimal) -> Decimal
 extern fn divide(left: Decimal, right: int) -> Decimal
 extern fn divide(left: int, right: Decimal) -> Decimal
-extern fn divide(left: Decimal, right: Decimal, places: int, mode: Rounding = Rounding.HalfEven) -> Decimal
-extern fn divide(left: Decimal, right: int, places: int, mode: Rounding = Rounding.HalfEven) -> Decimal
-extern fn divide(left: int, right: Decimal, places: int, mode: Rounding = Rounding.HalfEven) -> Decimal
+extern fn divide(
+  left: Decimal,
+  right: Decimal,
+  places: int,
+  mode: Rounding = Rounding.HalfEven,
+) -> Decimal
+extern fn divide(
+  left: Decimal,
+  right: int,
+  places: int,
+  mode: Rounding = Rounding.HalfEven,
+) -> Decimal
+extern fn divide(
+  left: int,
+  right: Decimal,
+  places: int,
+  mode: Rounding = Rounding.HalfEven,
+) -> Decimal
 
 # As on ints, `a == (a // b) * b + a % b`, and `%` takes the divisor's sign (§3.9).
 extern fn floorDivide(left: Decimal, right: Decimal) -> Decimal

@@ -36,8 +36,7 @@ async fn spawnsThenDraws():
   seenText(finishedWith(await first.result()) + " " + finishedWith(await second.result()))
   await runtime.commit()
 
-async fn drawsUuid() -> Future<string>:
-  random.uuid()
+async fn drawsUuid() -> Future<string>: random.uuid()
 
 fn emptyRange() -> int: random.integer(3..3)
 
@@ -47,14 +46,12 @@ fn openRange() -> int: random.integer(3..)
 fn suite() -> Array<Test>: [
   test("integer draws every value of its range, and only those", fn(): {
     const draws = [for _ in 0..200: random.integer(1..=6)]
-    for value in 1..=6:
-      assert(draws.includes(value), "never drew " + value)
+    for value in 1..=6: assert(draws.includes(value), "never drew " + value)
     assertEq([for each in draws if each < 1 or each > 6: each], [])
   }),
   test("integer draws only the values a stepped range reaches, either way", fn(): {
     const draws = [for _ in 0..100: random.integer(0..20 by 5)]
-    for value in 0..20 by 5:
-      assert(value in draws, "never drew " + value)
+    for value in 0..20 by 5: assert(value in draws, "never drew " + value)
     assertEq([for each in draws if each not in 0..20 by 5: each], [])
     assertEq([for _ in 0..20: random.integer(10..0 by -10)], [for _ in 0..20: 10])
   }),
@@ -66,7 +63,10 @@ fn suite() -> Array<Test>: [
     assert([for each in draws if each >= twoTo64: each].length() > 0)
   }),
   test("integer panics on an empty or an open range", async fn(): {
-    assertEq(await expectPanic(emptyRange), "random.integer has nothing to draw from the empty range 3..3.")
+    assertEq(
+      await expectPanic(emptyRange),
+      "random.integer has nothing to draw from the empty range 3..3.",
+    )
     assertEq(await expectPanic(openRange), "random.integer needs a range with both ends, not 3...")
   }),
   test("fraction lies from 0 up to 1", fn(): {
@@ -91,14 +91,17 @@ fn suite() -> Array<Test>: [
     assertEq(values.length(), 2)
     assertEq(values[0], values[1])
   }),
-  test("a spawned instance draws from a seed of its own, the same one when its parent's segment runs again", async fn(): {
-    const recorded = mock(seenText, ignoredText)
-    assertEq(await spawnCrashingEveryAwait(spawnsThenDraws).result(), Ok{()})
-    const values = calls(recorded)
-    assertEq(values.length(), 4)
-    assertEq(values[0], values[1])
-    assertEq(values[2], values[3])
-    assert(values[2].0[0..36] != values[2].0[37..73], "siblings drew alike")
-    assert(values[2].0[0..36] != values[0].0, "a child drew as its parent")
-  }),
+  test(
+    "a spawned instance draws from a seed of its own, the same one when its parent's segment runs again",
+    async fn(): {
+      const recorded = mock(seenText, ignoredText)
+      assertEq(await spawnCrashingEveryAwait(spawnsThenDraws).result(), Ok{()})
+      const values = calls(recorded)
+      assertEq(values.length(), 4)
+      assertEq(values[0], values[1])
+      assertEq(values[2], values[3])
+      assert(values[2].0[0..36] != values[2].0[37..73], "siblings drew alike")
+      assert(values[2].0[0..36] != values[0].0, "a child drew as its parent")
+    },
+  ),
 ]

@@ -10,8 +10,7 @@ import Inbox from 'inbox'
 # The next `count` messages `seen` receives.
 async fn received(seen: Inbox<int>, count: int) -> Future<Array<int>>:
   let messages: Array<int> = []
-  for _ in 0..count:
-    messages.push(await seen.receive())
+  for _ in 0..count: messages.push(await seen.receive())
   messages
 
 # Three messages to a quick subscriber and a gated one, the second sent revertibly and released
@@ -68,7 +67,11 @@ fn fanoutSuite() -> Array<Test>: [
     await gate.put(())
     assertEq(await received(seen, 1), [2])
   }),
-  ...runAndReRun("retracts a revertible message from the subscribers that haven't read it", retractingTheSecond, ([1, 3], [1, 2])),
+  ...runAndReRun(
+    "retracts a revertible message from the subscribers that haven't read it",
+    retractingTheSecond,
+    ([1, 3], [1, 2]),
+  ),
   test("stops once its subscription is disposed", async fn(): {
     const bus = fanout.create<int>()
     const seen = Inbox.create<int>()

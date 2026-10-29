@@ -10,20 +10,20 @@ import repeat from 'strings'
 # Whether `pattern` parses: its Err's message, or "ok".
 fn parsed(pattern: string) -> string:
   match Regex.parse(pattern):
-    case Ok{}:
-      "ok"
-    case Err{error}:
-      error.message
+    case Ok{}: "ok"
+    case Err{error}: error.message
 
-fn date() -> Regex:
-  Regex{"(?P<year>\\d{4})-(?P<month>\\d{2})(-(?P<day>\\d{2}))?"}
+fn date() -> Regex: Regex{"(?P<year>\\d{4})-(?P<month>\\d{2})(-(?P<day>\\d{2}))?"}
 
 @Suite{"regex"}
 fn suite() -> Array<Test>: [
   group("patterns", [
     test("Regex.parse checks a pattern", fn(): {
       assertEq(parsed("a+(b|c)*"), "ok")
-      assertEq(parsed("("), "'(' is not a regular expression (error parsing regexp: missing closing ): `(`).")
+      assertEq(
+        parsed("("),
+        "'(' is not a regular expression (error parsing regexp: missing closing ): `(`).",
+      )
     }),
     test("backreferences and lookaround are refused", fn(): {
       assert(parsed("(a)\\1") != "ok")

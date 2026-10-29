@@ -15,18 +15,15 @@ struct _Entry<V>:
 shared struct WeakMap<K is Disposable, V>:
   entries: Map<WeakRef<K>, _Entry<V>> = [:]
 
-fn WeakMap.create<K is Disposable, V>() -> WeakMap<K, V>:
-  new WeakMap<K, V>{}
+fn WeakMap.create<K is Disposable, V>() -> WeakMap<K, V>: new WeakMap<K, V>{}
 
 fn get<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> V?:
   self->entries.get(WeakRef(key))?.value
 
-fn has<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> bool:
-  self->entries.has(WeakRef(key))
+fn has<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> bool: self->entries.has(WeakRef(key))
 
 # As `has`, for `in` (§3.9).
-fn includes<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> bool:
-  self.has(key)
+fn includes<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> bool: self.has(key)
 
 # Setting a key the map holds keeps its watch.
 fn set<K is Disposable, V>(self: WeakMap<K, V>, key: K, value: V):
