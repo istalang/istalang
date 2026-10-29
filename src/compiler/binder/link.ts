@@ -33,17 +33,20 @@ import { memo } from '../../structures/memo.ts';
 import { isTestModule, type ModuleId, type Program } from '../program/program.ts';
 import type { EnumDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
+import { nodesAt } from '../syntax/tree.ts';
 import { bindModule, type ModuleBindings } from './bind-module.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import type {
   Bindings,
   Entity,
+  EntityUse,
   FunctionsEntity,
   NamespaceEntity,
   VariantEntity,
 } from './entities.ts';
 import { type FreeName, noOwnCall, type QualifiedPath } from './local-binder.ts';
 import type { ImportPlaceholder, LocalEntity } from './scope.ts';
+import { usesByEntity } from './uses.ts';
 
 interface ModuleLinks {
   /** The module linked. */
@@ -63,6 +66,9 @@ export function link(program: Program): Bindings {
     entityOf: (module, name) => linker.entityOf(module, name),
     exportsOf: (module) => linker.local(module)?.exports ?? new Map(),
     moduleOf: (entity) => linker.moduleOf(entity),
+    isTopLevel: (entity) => linker.isTopLevel(entity),
+    usesOf: (entity) => linker.usesOf(entity),
+    visibleAt: (module, offset) => linker.visibleAt(module, offset),
     overloadsOf: (functions) => linker.overloadsOf(functions),
     candidatesOf: ({ name }) => linker.variantsNamed(name),
     ownCallOf: (module, node) => linker.local(module)?.ownCalls.get(node),
@@ -76,6 +82,8 @@ class Linker {
   readonly #locals: ReadonlyMap<ModuleId, ModuleBindings>;
   readonly #links = new Map<ModuleId, ModuleLinks>();
   readonly #owners = new Map<Entity, ModuleId>();
+  readonly #topLevel = new Set<Entity>();
+  #uses: ReadonlyMap<Entity, readonly EntityUse[]> | undefined;
   readonly #variantsByName = new Map<string, VariantEntity[]>();
   readonly #variantsOfEnum = new Map<EnumDeclaration, ReadonlyMap<string, VariantEntity>>();
   readonly #overloads = new Map<FunctionsEntity, readonly FunctionDeclaration[]>();
@@ -119,6 +127,37 @@ class Linker {
 
   moduleOf(entity: Entity): ModuleId | undefined {
     return this.#owners.get(entity);
+  }
+
+  isTopLevel(entity: Entity): boolean {
+    return this.#topLevel.has(entity);
+  }
+
+  usesOf(entity: Entity): readonly EntityUse[] {
+    this.#uses ??= usesByEntity(this.#program, (module, name) => this.entityOf(module, name));
+    return this.#uses.get(entity) ?? [];
+  }
+
+  /** The names visible at `offset` in `module`, resolved as a name written there would be. */
+  visibleAt(module: ModuleId, offset: number): ReadonlyMap<string, Entity> {
+    const links = this.#links.get(module);
+    const tree = this.#program.modules.get(module)?.tree;
+    if (links === undefined || tree === undefined) {
+      return new Map();
+    }
+    const scoped = links.local.visibility.namesAt(nodesAt(tree, offset), offset);
+    const variants = [...this.#variantsByName.keys()].map(
+      (name) => [name, links.local.variantsNamed(name)] as const,
+    );
+    const prelude = this.#preludeFor(module)?.exports ?? [];
+    const linked = [...scoped].map(
+      ([name, entity]) => [name, resolvedImport(links, entity)] as const,
+    );
+    // A later entry hides an earlier one, as a free name resolves; an import that failed hides too.
+    const visible = new Map<string, Entity | undefined>([...variants, ...prelude, ...linked]);
+    return new Map(
+      [...visible].flatMap(([name, entity]) => (entity === undefined ? [] : [[name, entity]])),
+    );
   }
 
   diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
@@ -208,6 +247,12 @@ class Linker {
   #index(id: ModuleId, local: ModuleBindings): void {
     for (const { entity } of local.topLevel.values()) {
       if (entity.kind !== 'import') {
+        this.#owners.set(entity, id);
+        this.#topLevel.add(entity);
+      }
+    }
+    for (const entity of local.defined) {
+      if (entity.kind !== 'import' && entity.kind !== 'primitive') {
         this.#owners.set(entity, id);
       }
     }

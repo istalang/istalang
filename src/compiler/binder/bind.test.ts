@@ -1,7 +1,8 @@
 /**
  * The binder's rules (§2, §3.1, §3.4, §3.11, §3.13): one invalid case per rule, reported once at
  * the offending name; valid programs, the prelude and §12 binding cleanly; totality on broken
- * programs; and reuse of unchanged modules' bindings across snapshots.
+ * programs; reuse of unchanged modules' bindings across snapshots; and the module declaring each
+ * entity, at the top level or inside a declaration.
  */
 
 import fc from 'fast-check';
@@ -12,8 +13,18 @@ import namesMain from '../../../test/corpus/names/main.ista';
 import { specCode, specExamples } from '../../../test/corpus/spec-examples.ts';
 import { reportedNothing, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { preludeModule } from '../../stdlib/stdlib-loader.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
-import { boundReport, preludeProgramOf } from './bind.test-kit.ts';
+import { programModule } from '../program/program.ts';
+import { descendants } from '../syntax/tree.test-kit.ts';
+import {
+  boundCorpus,
+  boundReport,
+  declaringName,
+  entityOfName,
+  preludeProgramOf,
+  resolvedNames,
+} from './bind.test-kit.ts';
 import { bindProgram } from './bind.ts';
 import { bindModule } from './bind-module.ts';
 import { binderDiagnostics as d } from './diagnostics.ts';
@@ -247,5 +258,46 @@ describe('incremental', () => {
     const shapeIn = (program: typeof before) =>
       bindProgram(program).exportsOf(idOf('names/lib')).get('Shape');
     expect(shapeIn(after)).toBe(shapeIn(before));
+  });
+});
+
+describe('moduleOf', () => {
+  it('answers, for every entity a name of the corpus declares, the module declaring it', () => {
+    const misplaced = boundCorpus().flatMap(({ program, modules }) => {
+      const bindings = bindProgram(program);
+      return modules.flatMap((module) => {
+        const names = new Set(descendants(programModule(program, module).tree.root));
+        return resolvedNames(program, module).filter(({ entity }) => {
+          const declaring = declaringName(entity);
+          return declaring !== undefined && names.has(declaring)
+            ? bindings.moduleOf(entity) !== module
+            : false;
+        });
+      });
+    });
+    expect(
+      misplaced.map(({ module, name }) => `${module}:${name.span.start} ${name.text}`),
+    ).toEqual([]);
+  });
+
+  it('answers for locals too, which alone are not top-level', () => {
+    const program = preludeProgramOf({
+      main: 'const limit = 3\nfn f<T>(x: T, n: int) -> int:\n  let y = n + limit\n  y\n',
+    });
+    const bindings = bindProgram(program);
+    const named = (text: string) =>
+      entityOfName(program, 'main', text, 0) ?? unreachable(`Nothing named ${text}.`);
+    const locals = ['T', 'x', 'y'].map(named);
+    expect(locals.map((entity) => bindings.moduleOf(entity))).toEqual(
+      locals.map(() => idOf('main')),
+    );
+    expect(locals.map((entity) => bindings.isTopLevel(entity))).toEqual([false, false, false]);
+    expect(['limit', 'f'].map((text) => bindings.isTopLevel(named(text)))).toEqual([true, true]);
+  });
+
+  it('answers nothing for a primitive type', () => {
+    const program = preludeProgramOf({ main: 'fn f(n: int): n' });
+    const int = entityOfName(program, 'main', 'int', 0) ?? unreachable('No int.');
+    expect(bindProgram(program).moduleOf(int)).toBeUndefined();
   });
 });

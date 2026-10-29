@@ -149,6 +149,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 export function bindExpression(binder: LocalBinder, node: Expression, scope: Scope): void {
+  binder.enter(node, scope);
   handlerOf(expressionHandlers, node)(binder, node, scope);
 }
 

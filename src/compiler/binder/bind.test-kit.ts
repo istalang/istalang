@@ -1,16 +1,19 @@
 /**
  * Programs bound with the real prelude, and what tests observe of them: the binder's diagnostics
- * per module, and which declaration a name resolves to.
+ * per module, which declaration a name resolves to, and every name resolved over the corpus.
  *
  * A resolution is asserted as "the n-th `x` in this module resolves to the m-th `x`", identifiers
  * found by their text in source order, so a test reads as its source and needs no offsets.
  */
 
+import namesLib from '../../../test/corpus/names/lib.ista';
+import namesMain from '../../../test/corpus/names/main.ista';
+import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
 import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
 import { preludeModule, stdlibLoader, stdRoles } from '../../stdlib/stdlib-loader.ts';
 import type { Files } from '../program/program.test-kit.ts';
 import { idOf, moduleAt, programOf } from '../program/program.test-kit.ts';
-import type { Program } from '../program/program.ts';
+import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { descendants } from '../syntax/tree.test-kit.ts';
 import { bindProgram } from './bind.ts';
@@ -85,4 +88,45 @@ export function declaringName(entity: Entity | undefined): Identifier | undefine
     default:
       return;
   }
+}
+
+/** A name the binder resolved, and what it denotes. */
+export interface ResolvedName {
+  readonly module: ModuleId;
+  readonly name: Identifier;
+  readonly entity: Entity;
+}
+
+/** Every name of `module` the binder resolved, in source order. */
+export function resolvedNames(program: Program, module: ModuleId): readonly ResolvedName[] {
+  const bindings = bindProgram(program);
+  return descendants(programModule(program, module).tree.root).flatMap((name) => {
+    const entity = name.kind === 'Identifier' ? bindings.entityOf(module, name) : undefined;
+    return name.kind === 'Identifier' && entity !== undefined ? [{ module, name, entity }] : [];
+  });
+}
+
+/** A program of the corpus, and the modules of it to observe. */
+export interface CorpusProgram {
+  readonly program: Program;
+  readonly modules: readonly ModuleId[];
+}
+
+/**
+ * The corpus, bound: each corpus program, the modules of `names/` importing each other, and every
+ * std module once.
+ */
+export function boundCorpus(): readonly CorpusProgram[] {
+  const programs = [...runPrograms, ...invalidPrograms].map(({ text }) => ({
+    program: stdProgramOf({ main: text }),
+    modules: [idOf('main')],
+  }));
+  const names = stdProgramOf({ 'names/main': namesMain, 'names/lib': namesLib });
+  const std = stdProgramOf({ main: '' });
+  const stdModules = [...std.modules.values()].filter(({ isStd }) => isStd).map(({ id }) => id);
+  return [
+    ...programs,
+    { program: names, modules: [idOf('names/main'), idOf('names/lib')] },
+    { program: std, modules: stdModules },
+  ];
 }

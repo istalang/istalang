@@ -57,7 +57,7 @@ export class FunctionScopes implements Functions {
   }
 
   noteUse(context: BodyContext, name: Identifier, entity: VariableEntity): void {
-    if (context.checker.bindings.moduleOf(entity) !== undefined) {
+    if (context.checker.bindings.isTopLevel(entity)) {
       return;
     }
     const declared = entity.name.span;

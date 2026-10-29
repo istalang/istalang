@@ -17,6 +17,11 @@
  *
  * A function's scope knows its function, so a name before a `.` can find the enclosing function it
  * names, whose call it denotes (§7).
+ *
+ * Scopes outlive binding, for tools that ask what is visible where (visibility.ts). Every
+ * definition in one tree's scopes is numbered in the order binding made it, so a snapshot (a scope
+ * and how many definitions had been made) tells afterwards exactly what a lookup found at that
+ * moment, though the scope went on to define more.
  */
 
 import { primitiveNames } from '../../language/primitives.ts';
@@ -38,10 +43,26 @@ export type Miss = 'pending' | 'ended' | 'underOr';
 
 type ScopedFunction = FunctionDeclaration | Lambda;
 
+/** A scope as binding had defined it at one moment. */
+export interface ScopeSnapshot {
+  readonly scope: Scope;
+  /** How many definitions the tree's scopes had made then. */
+  readonly at: number;
+}
+
+/** The definitions of one tree's scopes, counted in the order they were made. */
+interface Definitions {
+  readonly entities: Set<LocalEntity>;
+  count: number;
+}
+
 export class Scope {
   readonly #defined = new Map<string, LocalEntity>();
+  /** The number of each name's definition. */
+  readonly #numbers = new Map<string, number>();
   readonly #misses = new Map<string, Miss>();
   readonly #parent: Scope | undefined;
+  readonly #definitions: Definitions;
   /** A block, the module or the universe receives the names of nested scopes that end. */
   readonly #isBlock: boolean;
   /** The function whose body this scope holds. */
@@ -51,6 +72,8 @@ export class Scope {
     this.#parent = parent;
     this.#isBlock = isBlock;
     this.#function = node;
+    this.#definitions =
+      parent === undefined ? { entities: new Set(), count: 0 } : parent.#definitions;
   }
 
   /** The outermost scope, which has no parent. */
@@ -99,8 +122,34 @@ export class Scope {
       return false;
     }
     this.#defined.set(name, entity);
+    this.#definitions.count += 1;
+    this.#definitions.entities.add(entity);
+    this.#numbers.set(name, this.#definitions.count);
     this.#misses.delete(name);
     return true;
+  }
+
+  /** This scope as it is defined now. */
+  snapshot(): ScopeSnapshot {
+    return { scope: this, at: this.#definitions.count };
+  }
+
+  /** Every entity this tree's scopes have defined, in any scope. */
+  definedEntities(): ReadonlySet<LocalEntity> {
+    return this.#definitions.entities;
+  }
+
+  /** What a lookup in `snapshot` found for each name: an inner definition hides an outer one. */
+  static visibleIn({ scope, at }: ScopeSnapshot): ReadonlyMap<string, LocalEntity> {
+    const visible = new Map<string, LocalEntity>();
+    for (let current: Scope | undefined = scope; current; current = current.#parent) {
+      for (const [name, entity] of current.#defined) {
+        if (!visible.has(name) && (current.#numbers.get(name) ?? 0) <= at) {
+          visible.set(name, entity);
+        }
+      }
+    }
+    return visible;
   }
 
   /** Notes that a later statement of this block declares `name`. */

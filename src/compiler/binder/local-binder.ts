@@ -14,6 +14,9 @@
  *
  * Every entity is made here, per tree, never while linking: an unchanged module keeps the
  * identity of everything it declares or refers to across Program snapshots.
+ *
+ * Each category notes the scope it binds each node in (`enter`), so tools can tell afterwards which
+ * names are visible where (visibility.ts).
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -27,6 +30,7 @@ import type { Comprehension, Expression, Lambda } from '../syntax/expressions/in
 import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { Block, For, VariableDeclaration } from '../syntax/statements.ts';
+import type { SyntaxNode } from '../syntax/tree.ts';
 import type { NamedType, TypeNode } from '../syntax/types.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import {
@@ -36,7 +40,8 @@ import {
   type VariantsEntity,
 } from './entities.ts';
 import { type Convention, conventionViolation } from './naming.ts';
-import type { LocalEntity, Miss, Scope } from './scope.ts';
+import type { LocalEntity, Miss, Scope, ScopeSnapshot } from './scope.ts';
+import { type Visibility, VisibilityNotes } from './visibility.ts';
 
 /**
  * How a name is used: read as a value, named as a type, assigned to, or called. A called name that
@@ -76,6 +81,11 @@ export interface LocalResult {
   readonly free: readonly FreeName[];
   readonly paths: readonly QualifiedPath[];
   readonly diagnostics: readonly Diagnostic[];
+  readonly visibility: Visibility;
+  /** What a bare name denotes when it may be any variant so named: one entity per name per tree. */
+  readonly variantsNamed: (name: string) => VariantsEntity;
+  /** Every entity the tree's scopes defined. */
+  readonly defined: ReadonlySet<LocalEntity>;
 }
 
 /** The handler of a kind whose nodes hold no names. */
@@ -123,12 +133,14 @@ export class LocalBinder {
   readonly #variants = new Map<string, VariantsEntity>();
   readonly #ownCalls = new Map<FunctionDeclaration | Lambda, VariableEntity>();
   readonly #linkedHeads: Identifier[] = [];
+  readonly #notes = new VisibilityNotes();
 
   constructor(walk: Walk) {
     this.walk = walk;
   }
 
-  result(): LocalResult {
+  /** What binding the tree produced, `topLevel` being its module's scope once defined. */
+  result(topLevel: ScopeSnapshot): LocalResult {
     return {
       entities: this.#entities,
       ownCalls: this.#ownCalls,
@@ -136,7 +148,15 @@ export class LocalBinder {
       free: this.#free,
       paths: this.#paths,
       diagnostics: this.#diagnostics,
+      visibility: this.#notes.visibility(topLevel),
+      variantsNamed: (name) => this.#variantsNamed(name),
+      defined: topLevel.scope.definedEntities(),
     };
+  }
+
+  /** Notes that `node`, from `from` on, is bound in `scope` as it is defined now. */
+  enter(node: SyntaxNode, scope: Scope, from?: number): void {
+    this.#notes.note(node, scope, from);
   }
 
   /** Records what `name` denotes without defining it in a scope. */

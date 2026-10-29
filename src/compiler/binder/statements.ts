@@ -88,9 +88,11 @@ export function bindBlock(binder: LocalBinder, block: Block, parent: Scope): voi
       scope.expect(name.text);
     }
   }
+  binder.enter(block, scope);
   for (const statement of statements) {
     binder.annotations(statement, scope);
     handlerOf(statementHandlers, statement)(binder, statement, scope);
+    binder.enter(block, scope, statement.span.end);
   }
   scope.end();
 }

@@ -41,6 +41,7 @@ const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 export function bindType(binder: LocalBinder, node: TypeNode, scope: Scope): void {
+  binder.enter(node, scope);
   handlerOf(typeHandlers, node)(binder, node, scope);
 }
 

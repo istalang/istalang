@@ -148,6 +148,12 @@ export type Entity =
   | VariantsEntity
   | NamespaceEntity;
 
+/** One name in a module that denotes an entity. */
+export interface EntityUse {
+  readonly module: ModuleId;
+  readonly name: Identifier;
+}
+
 /** The names of a whole program, bound. */
 export interface Bindings {
   /**
@@ -158,8 +164,25 @@ export interface Bindings {
   readonly entityOf: (module: ModuleId, name: Identifier) => Entity | undefined;
   /** The names a module exports: its own top-level declarations not starting with `_`. */
   readonly exportsOf: (module: ModuleId) => ReadonlyMap<string, Entity>;
-  /** The module declaring a top-level entity; argument-dependent lookup starts there (§3.13). */
+  /**
+   * The module declaring `entity`, at its top level or inside a declaration; argument-dependent
+   * lookup starts there (§3.13). Undefined for what no module declares: a primitive type, or the
+   * candidates of a bare variant.
+   */
   readonly moduleOf: (entity: Entity) => ModuleId | undefined;
+  /** Whether `entity` is one of its module's top-level names rather than declared inside one. */
+  readonly isTopLevel: (entity: Entity) => boolean;
+  /**
+   * Every name of the program that denotes `entity`, in any module: its uses and the names
+   * declaring it. Members the checker resolves by type (`x.field`) are not among them.
+   */
+  readonly usesOf: (entity: Entity) => readonly EntityUse[];
+  /**
+   * The names visible at `offset` in `module`, each with what it denotes there: its scopes'
+   * (§3.4), its top level's and imports', then the prelude's exports, then, for any other name an
+   * enum of the program has a variant by, those variants, in the order a free name resolves.
+   */
+  readonly visibleAt: (module: ModuleId, offset: number) => ReadonlyMap<string, Entity>;
   /** A function set's overloads, the prelude's of the same name joined (§3.13). */
   readonly overloadsOf: (functions: FunctionsEntity) => readonly FunctionDeclaration[];
   /** The variants a bare name may denote; the expected type picks one (§3.11). */

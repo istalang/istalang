@@ -40,11 +40,12 @@ export function bindModule(tree: SyntaxTree): ModuleBindings {
   return memo(bound, tree, () => {
     const binder = new LocalBinder(walk);
     const { scope, ...moduleScope } = defineModuleScope(binder, tree.root, universe());
+    const topLevel = scope.snapshot();
     for (const item of tree.root.items) {
       if (item.kind !== 'Invalid') {
         bindDeclaration(binder, item, scope);
       }
     }
-    return { ...moduleScope, ...binder.result() };
+    return { ...moduleScope, ...binder.result(topLevel) };
   });
 }

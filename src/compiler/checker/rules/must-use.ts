@@ -67,7 +67,7 @@ function undroppable(context: BodyContext, entity: VariableEntity): string | und
   if (localFunctionOf(entity) !== undefined) {
     return 'it names a function';
   }
-  if (context.checker.bindings.moduleOf(entity) !== undefined) {
+  if (context.checker.bindings.isTopLevel(entity)) {
     return 'it is declared at the top level';
   }
   if (context.functions.current.captures.has(entity.name)) {

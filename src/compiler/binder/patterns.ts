@@ -100,6 +100,7 @@ export function bindPattern(
 }
 
 function walk(binder: LocalBinder, node: Pattern, binding: Binding): void {
+  binder.enter(node, binding.scope);
   handlerOf(patternHandlers, node)(binder, node, binding);
 }
 
