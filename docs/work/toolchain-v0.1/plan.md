@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-24
-last_updated: 2026-10-27
+last_updated: 2026-10-29
 tags: [plan, roadmap]
 ---
 
@@ -68,9 +68,9 @@ D. Two ∥ structural debt forks before 6: runtime and IR (D80, D78, D81), check
 
 **Language features** (details: `../language-features/plan.md`). The features agreed after M5 (rest and named arguments, `**`, `isolate` and `Instance<T>`, `hold` and labels, templates, docstrings, patterns, `any T`, `!`, bitwise operators, variadic tuple packs), before M6, because the formatter and the LSP must cover them.
 
-**M6 — Formatter.** `ista fmt` and the formatting API. *Done when:* output over the corpus is idempotent and preserves both the tree and the comments.
+**M6 — Formatter.** `ista fmt` and the formatting API. *Done when:* output over the corpus is idempotent and preserves both the tree and the comments. Plan: `../m6-m7/plan.md`.
 
-**M7 — Language service and LSP.** *Done when:* every provider answers correctly on corpus fixtures, and the VSCode extension starts the server.
+**M7 — Language service and LSP.** *Done when:* every provider answers correctly on corpus fixtures, and the VSCode extension starts the server. Plan: `../m6-m7/plan.md`.
 1. Workspace snapshots, diagnostics, symbols, folding, syntactic semantic tokens, and formatting.
 2. Hover, go-to-definition, references, rename, completion, signature help, and inlay hints for inferred types.
 3. `.vscode/extensions/ista/`: the client, beside the TextMate grammar already there.
