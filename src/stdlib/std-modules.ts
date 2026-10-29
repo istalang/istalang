@@ -1,65 +1,48 @@
 /**
- * The one list of std modules (§3.8): adding a module is adding its record here, and the loader
- * (stdlib-loader.ts) and the natives table (natives.ts) both derive from this list. A module the
- * language refers to by role is named by its role (language/well-known.ts); every other module's
- * name is spelled here and nowhere else.
- *
- * Each source is imported as text and compiled into the package, so loading a std module never
- * touches a file system.
+ * The std modules as the runtime needs them: each module of the list of sources (std-sources.ts)
+ * with the natives of its externs, built from keys bound to its name (std-module.ts). The natives
+ * table (natives.ts) derives from these. The loader reads the sources alone, so compiling or
+ * editing a program never imports a native.
  */
 
 import { languageModules } from '../language/well-known.ts';
-import collectionsSource from './collections/collections.ista';
-import cryptoSource from './crypto/crypto.ista';
+import type { Natives } from '../runtime/natives.ts';
 import { cryptoNatives } from './crypto/natives.ts';
-import decimalSource from './decimal/decimal.ista';
 import { decimalNatives } from './decimal/natives.ts';
-import fanoutSource from './fanout/fanout.ista';
-import futuresSource from './futures/futures.ista';
 import { futuresNatives } from './futures/natives.ts';
-import inboxSource from './inbox/inbox.ista';
-import jsonSource from './json/json.ista';
 import { jsonNatives } from './json/natives.ts';
-import logSource from './log/log.ista';
 import { logNatives } from './log/natives.ts';
-import mathSource from './math/math.ista';
 import { mathNatives } from './math/natives.ts';
 import { preludeNatives } from './prelude/natives.ts';
-import preludeSource from './prelude/prelude.ista';
 import { randomNatives } from './random/natives.ts';
-import randomSource from './random/random.ista';
 import { regexNatives } from './regex/natives.ts';
-import regexSource from './regex/regex.ista';
-import rpcSource from './rpc/rpc.ista';
 import { runtimeNatives } from './runtime/natives.ts';
-import runtimeSource from './runtime/runtime.ista';
-import { nativeKeysOf, type StdModule, stdModule } from './std-module.ts';
+import { type NativeKeys, nativeKeysOf, type StdModule, stdModule } from './std-module.ts';
+import { type StdModuleName, stdModuleSources } from './std-sources.ts';
 import { stringsNatives } from './strings/natives.ts';
-import stringsSource from './strings/strings.ista';
 import { testingNatives } from './testing/natives.ts';
-import testingSource from './testing/testing.ista';
 import { timeNatives } from './time/natives.ts';
-import timeSource from './time/time.ista';
 
-/** `decimal` rounds in `math`'s modes, so its natives are keyed by `math`'s keys too. */
-const math = stdModule('math', mathSource, mathNatives);
+/** The natives of each std module that declares externs, from the keys of its name. */
+const nativesOf: Partial<Record<StdModuleName, (keys: NativeKeys) => Natives>> = {
+  [languageModules.prelude]: preludeNatives,
+  [languageModules.time]: timeNatives,
+  [languageModules.json]: jsonNatives,
+  futures: futuresNatives,
+  runtime: runtimeNatives,
+  strings: stringsNatives,
+  regex: regexNatives,
+  math: mathNatives,
+  // `decimal` rounds in `math`'s modes, so its natives are keyed by `math`'s keys too.
+  decimal: (keys) => decimalNatives(keys, nativeKeysOf('math' satisfies StdModuleName)),
+  random: randomNatives,
+  log: logNatives,
+  crypto: cryptoNatives,
+  [languageModules.testing]: testingNatives,
+};
 
-export const stdModules: readonly StdModule[] = [
-  stdModule(languageModules.prelude, preludeSource, preludeNatives),
-  stdModule(languageModules.time, timeSource, timeNatives),
-  stdModule(languageModules.json, jsonSource, jsonNatives),
-  stdModule('futures', futuresSource, futuresNatives),
-  stdModule('inbox', inboxSource),
-  stdModule('rpc', rpcSource),
-  stdModule('fanout', fanoutSource),
-  stdModule('runtime', runtimeSource, runtimeNatives),
-  stdModule('strings', stringsSource, stringsNatives),
-  stdModule('regex', regexSource, regexNatives),
-  stdModule('collections', collectionsSource),
-  math,
-  stdModule('decimal', decimalSource, (keys) => decimalNatives(keys, nativeKeysOf(math.name))),
-  stdModule('random', randomSource, randomNatives),
-  stdModule('log', logSource, logNatives),
-  stdModule('crypto', cryptoSource, cryptoNatives),
-  stdModule(languageModules.testing, testingSource, testingNatives),
-];
+const natives = new Map(Object.entries(nativesOf));
+
+export const stdModules: readonly StdModule[] = Object.entries(stdModuleSources).map(
+  ([name, source]) => stdModule(name, source, natives.get(name)),
+);

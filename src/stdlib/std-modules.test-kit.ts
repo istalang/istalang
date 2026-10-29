@@ -3,7 +3,8 @@
 import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
 import { type Checker, checkProgram } from '../compiler/checker/check.ts';
 import type { ModuleId, ProgramModule } from '../compiler/program/program.ts';
-import { stdSources } from './stdlib-loader.ts';
+import { languageModules } from '../language/well-known.ts';
+import { stdModuleSources } from './std-sources.ts';
 
 export interface EveryStdModule {
   readonly checker: Checker;
@@ -13,7 +14,9 @@ export interface EveryStdModule {
 
 /** A program importing every std module an import can name, checked. */
 export function everyStdModule(): EveryStdModule {
-  const imports = Object.keys(stdSources).map((name) => `import * as ${name} from '${name}'`);
+  const imports = Object.keys(stdModuleSources)
+    .filter((name) => name !== languageModules.prelude)
+    .map((name) => `import * as ${name} from '${name}'`);
   const program = stdProgramOf({ main: imports.join('\n') });
   const modules = [...program.modules].filter(([, module]) => module.isStd);
   return { checker: checkProgram(program), modules };

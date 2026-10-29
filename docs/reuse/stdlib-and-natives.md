@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ---
 
@@ -13,7 +13,8 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ## Units
 
 - register a std module or build its extern keys → `stdModule`, `nativeKeysOf`, `knownTypeKey`, `NativeKeys` (`src/stdlib/std-module.ts`)
-- load std modules in the compiler → `stdlibLoader`, `stdRoles`, `preludeModule`, `stdSources` (`src/stdlib/stdlib-loader.ts`)
+- load std modules in the compiler, with sources laid over the shipped ones in tests → `stdlibLoader`, `stdRoles`, `preludeModule`, `StdSources` (`src/stdlib/stdlib-loader.ts`)
+- list every std module's source by name, or name a std module → `stdModuleSources`, `StdModuleName` (`src/stdlib/std-sources.ts`)
 - get the combined std natives table or the list of std module records → `stdNatives` (`src/stdlib/natives.ts`), `stdModules` (`src/stdlib/std-modules.ts`)
 - type a native function/table by the capabilities it uses, or throw a language panic → `Native`, `Natives`, `NativeContext`, `Panic` (`src/runtime/natives.ts`)
 - request futures, slots, weak refs or resources in a native's context → `WithFutures`, `WithSlots`, `WithWeakSide`, `WithResources` (`src/runtime/natives.ts`)
@@ -36,7 +37,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 
 ## One-way rules
 
-- Every std module is listed once in `src/stdlib/std-modules.ts`; `stdlibLoader` and `stdNatives` derive from it.
+- Every std module is listed once in `src/stdlib/std-sources.ts`; `stdlibLoader` reads it without natives (a cruiser rule), and `stdModules`, then `stdNatives`, attach the natives by name.
 - Methods taking a function value (`map`, `filter`, `sort`, `futures.retry`) are written in `.ista`, never in TS natives (`docs/arch/architecture.md`).
 - Extern types needing canonical equality (`decimal.Decimal`, `time.Zone`) keep their canonical string as the extern payload (`docs/arch/architecture.md`).
 - External input failures (`parse`, `crypto.decode`, `json.parse`) return `Result`; broken preconditions throw `Panic`; broken invariants call `unreachable`.
@@ -46,7 +47,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ### Add a std module
 
 1. Create `src/stdlib/<name>/<name>.ista` (and `natives.ts` if it declares `extern`s, building keys with `keys.of`, `keys.ofStatic`, `keys.type`).
-2. Register `stdModule('<name>', source, natives)` in `src/stdlib/std-modules.ts` (and `src/language/well-known.ts` + `stdRoles` only if used by language role).
+2. List its source in `src/stdlib/std-sources.ts`, and its natives, if any, in `src/stdlib/std-modules.ts` (and `src/language/well-known.ts` + `stdRoles` only if used by language role).
 3. Add language tests in `src/stdlib/<name>/<name>.test.ista`.
 
 ### Add a native capability

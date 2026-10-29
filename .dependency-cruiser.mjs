@@ -210,6 +210,13 @@ export default {
       to: { path: '^src/compiler/checker/(body-checker|program-checker)\\.ts$' },
     },
     {
+      // Compiling or editing a program loads std sources without natives or the runtime they reach.
+      name: 'std-loader-reaches-natives',
+      severity: 'error',
+      from: { path: '^src/stdlib/stdlib-loader\\.ts$' },
+      to: { path: '^src/runtime/|natives\\.ts$', reachable: true },
+    },
+    {
       name: 'checker-internals-imported',
       severity: 'error',
       from: { path: '^src/', pathNot: '^src/compiler/checker/' },

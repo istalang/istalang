@@ -6,7 +6,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { moduleIdOf } from '../compiler/program/program.ts';
-import { stdlibLoader } from './stdlib-loader.ts';
+import { stdModuleSources } from './std-sources.ts';
+import { stdlibLoader, stdRoles } from './stdlib-loader.ts';
 
 const importer = moduleIdOf(new URL('file:///app/main.ista'));
 const load = stdlibLoader({ time: 'fn now(): 1\n', inbox: '' });
@@ -32,5 +33,24 @@ describe('stdlibLoader', () => {
         expect(load(name, importer)).toBeUndefined();
       }),
     );
+  });
+
+  it('never answers the prelude, which no import names (§3.13)', () => {
+    expect(stdlibLoader()('prelude', importer)).toBeUndefined();
+    expect(stdlibLoader({ prelude: '' })('prelude', importer)).toBeUndefined();
+  });
+});
+
+describe('stdRoles', () => {
+  it('hands each role from the given sources, and the shipped module where they lack one', () => {
+    const roles = stdRoles({ time: 'fn now(): 1\n' });
+    expect(roles.time.read()).toBe('fn now(): 1\n');
+    expect(roles.prelude.read()).toBe(stdModuleSources.prelude);
+    expect(Object.values(roles).map(({ id }) => id)).toEqual([
+      'std:prelude',
+      'std:time',
+      'std:json',
+      'std:testing',
+    ]);
   });
 });

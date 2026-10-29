@@ -1,6 +1,6 @@
 /**
- * Loads std modules (§3.8) by their simple names, such as `'time'`, from the list of std modules
- * (std-modules.ts).
+ * Loads std modules (§3.8) by their simple names, such as `'time'`, from the list of std module
+ * sources (std-sources.ts), which holds no natives: compiling a program needs none.
  *
  * A std module's id is `std:<name>`, a scheme no file can have, so a std module can never be
  * confused with a project file; a name that both this loader and the project's answer is ambiguous
@@ -12,50 +12,50 @@
  * types every duration literal (§2); `json`, whose codecs every value crossing to a host goes
  * through (§9); and `testing`, which only test modules may import (§10). The last three are loaded
  * with every program but visible only where imported.
+ *
+ * Tests lay sources of their own over the shipped ones. The loader then answers only theirs, while
+ * each role still loads, from theirs when they give its module and from the shipped one otherwise:
+ * a program can't be built without its prelude.
  */
 
 import type { LocatedModule, ModuleLoader } from '../compiler/program/program.ts';
 import { moduleIdOf } from '../compiler/program/program.ts';
 import { type LanguageModule, languageModules } from '../language/well-known.ts';
-import { unreachable } from '../structures/unreachable.ts';
-import { stdModules } from './std-modules.ts';
+import { stdModuleSources } from './std-sources.ts';
 
-/** Every std module an import can name, its source by name: all but the prelude. */
-export const stdSources: Readonly<Record<string, string>> = Object.fromEntries(
-  stdModules
-    .filter((module) => module.name !== languageModules.prelude)
-    .map((module) => [module.name, module.source]),
-);
+/** Std module sources by name. */
+export type StdSources = Readonly<Record<string, string>>;
 
 /** The prelude, as a module for the program to load (§3.13). */
 export function preludeModule(): LocatedModule {
-  return roleModule(languageModules.prelude);
+  return roleModule(languageModules.prelude, stdModuleSources);
 }
 
 /** The std modules a program is handed by role, as every app hands them (§2, §3.13). */
-export function stdRoles(): Readonly<Record<LanguageModule, LocatedModule>> {
+export function stdRoles(
+  sources: StdSources = stdModuleSources,
+): Readonly<Record<LanguageModule, LocatedModule>> {
   return {
-    prelude: preludeModule(),
-    time: roleModule(languageModules.time),
-    json: roleModule(languageModules.json),
-    testing: roleModule(languageModules.testing),
+    prelude: roleModule(languageModules.prelude, sources),
+    time: roleModule(languageModules.time, sources),
+    json: roleModule(languageModules.json, sources),
+    testing: roleModule(languageModules.testing, sources),
   };
 }
 
-/** The loader of the std modules in `sources`. */
-export function stdlibLoader(sources: Readonly<Record<string, string>> = stdSources): ModuleLoader {
+/** The loader of the std modules in `sources`, which no import names the prelude through. */
+export function stdlibLoader(sources: StdSources = stdModuleSources): ModuleLoader {
   const texts = new Map(Object.entries(sources));
+  texts.delete(languageModules.prelude);
   return (name) => {
     const text = texts.get(name);
     return text === undefined ? undefined : located(name, text);
   };
 }
 
-/** The std module that plays a role, which bears the role's name. */
-function roleModule(name: string): LocatedModule {
-  const module =
-    stdModules.find((each) => each.name === name) ?? unreachable(`No std module ${name}.`);
-  return located(name, module.source);
+/** The std module that plays a role, which bears the role's name: from `sources`, or shipped. */
+function roleModule(role: LanguageModule, sources: StdSources): LocatedModule {
+  return located(role, sources[role] ?? stdModuleSources[role]);
 }
 
 function located(name: string, text: string): LocatedModule {
