@@ -8,5 +8,10 @@
     "outDir": "dist"
   },
   "include": [],
-  "files": ["src/runtime/host.ts", "src/stdlib/natives.ts", "src/stdlib/ista-source.d.ts"]
+  "files": [
+    "src/runtime/host.ts",
+    "src/stdlib/natives.ts",
+    "src/formatter/format.ts",
+    "src/stdlib/ista-source.d.ts"
+  ]
 }

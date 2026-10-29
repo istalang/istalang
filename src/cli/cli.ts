@@ -17,12 +17,14 @@ import {
   exitCodes,
 } from './command.ts';
 import { defineCheckCommand } from './commands/check.ts';
+import { defineFmtCommand } from './commands/fmt.ts';
 import { defineRunCommand } from './commands/run.ts';
 import { defineTestCommand } from './commands/test.ts';
 import { isSystemError } from './errno.ts';
 
 const commands: readonly CommandDefinition[] = [
   defineCheckCommand,
+  defineFmtCommand,
   defineRunCommand,
   defineTestCommand,
 ];

@@ -14,7 +14,12 @@ import { defineConfig } from 'tsdown';
 import { istaTextPlugin } from './scripts/ista-text-plugin.ts';
 
 export default defineConfig({
-  entry: ['src/cli/main.ts', 'src/runtime/host.ts', 'src/stdlib/natives.ts'],
+  entry: [
+    'src/cli/main.ts',
+    'src/runtime/host.ts',
+    'src/stdlib/natives.ts',
+    'src/formatter/format.ts',
+  ],
   root: 'src',
   outDir: 'dist',
   format: 'esm',

@@ -3,7 +3,7 @@ description: tokens, AST nodes, operators, places, chains, field defaults, templ
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
+last_verified: 2026-10-29
 last_updated: 2026-10-29
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
@@ -14,6 +14,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 
 - scan a `SourceText` into tokens, comments and diagnostics → `scan` (`src/compiler/scanner/scan.ts`)
 - parse a `SourceText` and `ScanResult` into a `SyntaxTree` → `parse` (`src/compiler/parser/parse.ts`)
+- print a `SyntaxTree`, a `SourceText` or a text in the canonical format, refusing one with syntax errors → `formatTree`, `formatSource`, `formatText` (`src/formatter/format.ts`)
 - check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens.ts`)
 - get the last identifier of a `QualifiedName` or check for a missing identifier → `lastName`, `isMissingName` (`src/compiler/syntax/node.ts`)
 - list a syntax node's direct children in source order → `childrenOf`, `isNode` (`src/compiler/syntax/tree.ts`)

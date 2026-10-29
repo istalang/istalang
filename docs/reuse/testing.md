@@ -3,8 +3,8 @@ description: phase test kits, fast-check arbitraries, spec-example extractors, c
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_verified: 2026-10-29
+last_updated: 2026-10-29
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -16,6 +16,8 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - scan source text in tests or list non-`end` tokens → `scanText`, `lexemes`, `kindsAndTexts`, `soleToken` (`src/compiler/scanner/scan.test-kit.ts`)
 - check scanner losslessness or malformed-line recovery → `losslessnessViolations`, `scanMalformed`, `scannedPast` (`src/compiler/scanner/scan.test-kit.ts`)
 - dump a `SyntaxNode` as an S-expression or list descendants → `dump`, `descendants` (`src/compiler/syntax/tree.test-kit.ts`)
+- read every corpus module, programs and module corpora alike → `corpusFiles` (`test/corpus/programs.ts`)
+- run a property over every corpus file and spec example that parses clean, or explain a line past the width → `formattableInputs`, `parseText`, `commentTexts`, `unexplainedLongLines` (`src/formatter/format.test-kit.ts`)
 - check syntax tree span nesting or list error nodes → `spanViolations`, `errorNodes` (`src/compiler/syntax/tree.test-kit.ts`)
 - parse a single grammar category or dump a clean parse → `parseAs`, `dumpClean`, `reported`, `lines` (`src/compiler/parser/parse.test-kit.ts`)
 - generate random token soup in parser tests → `tokenSoup`, `parenFreeSoup` (`src/compiler/parser/parse.test-kit.ts`)

@@ -45,10 +45,22 @@ const moduleCorpora = new Set(['names']);
 const outcome = /^# (?<expects>outcome|panic): (?<expected>.*)$/u;
 const error = /^# error: (?<code>\d+) at (?<line>\d+):(?<column>\d+)$/u;
 
-const programs = readdirSync(corpusDirectory, { recursive: true, encoding: 'utf8' })
-  .filter((name) => name.endsWith('.ista') && !moduleCorpora.has(name.split('/')[0] ?? ''))
+/** A module of the corpus, by its path from the corpus directory. */
+export interface CorpusFile {
+  readonly name: string;
+  readonly text: string;
+}
+
+/** Every module of the corpus: its programs and the modules of its module corpora. */
+export const corpusFiles: readonly CorpusFile[] = readdirSync(corpusDirectory, {
+  recursive: true,
+  encoding: 'utf8',
+})
+  .filter((name) => name.endsWith('.ista'))
   .sort()
   .map((name) => ({ name, text: readFileSync(`${corpusDirectory}${name}`, 'utf8') }));
+
+const programs = corpusFiles.filter(({ name }) => !moduleCorpora.has(name.split('/')[0] ?? ''));
 
 export const runPrograms: readonly RunProgram[] = programs.flatMap(({ name, text }) => {
   const { expects, expected } = outcome.exec(text.split('\n')[0] ?? '')?.groups ?? {};

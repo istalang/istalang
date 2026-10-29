@@ -21,6 +21,10 @@
     "./stdlib": {
       "types": "./dist/stdlib/natives.d.ts",
       "default": "./dist/stdlib/natives.js"
+    },
+    "./formatter": {
+      "types": "./dist/formatter/format.d.ts",
+      "default": "./dist/formatter/format.js"
     }
   },
   "scripts": {
@@ -50,6 +54,7 @@
     "decimal.js": "10.6.0",
     "lossless-json": "4.3.3",
     "lru-cache": "11.5.3",
+    "prettier": "3.9.10",
     "re2js": "2.9.0",
     "temporal-polyfill": "1.0.6",
     "zod": "4.6.7"
