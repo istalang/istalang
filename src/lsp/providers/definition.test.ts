@@ -1,15 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { nameAt } from '../../language-service/navigation/declarations.ts';
-import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
+import { corpusClient, corpusDocuments, corpusProgram } from '../corpus-client.test-kit.ts';
 import { locationOf, moduleIdOfUri } from '../locations.ts';
 import type { TestClient } from '../server.test-kit.ts';
-import {
-  corpusProgram,
-  definitionsAt,
-  namesOf,
-  placeOf,
-  positionOf,
-} from './navigation.test-kit.ts';
+import { definitionsAt, namesOf, placeOf, positionOf } from './navigation.test-kit.ts';
 
 let client: TestClient;
 

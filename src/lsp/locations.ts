@@ -44,6 +44,11 @@ export function rangeOf(source: SourceText, span: Span): Range {
   };
 }
 
+/** The span `range` covers in `source`: `rangeOf` read back. */
+export function spanOf(source: SourceText, range: Range): Span {
+  return { start: offsetOf(source, range.start), end: offsetOf(source, range.end) };
+}
+
 /** The offset `position` stands at in `source`. */
 function offsetOf(source: SourceText, position: Position): number {
   return lineMapOf(source).offsetAt({ line: position.line, column: position.character });

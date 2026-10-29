@@ -142,9 +142,7 @@ export function isLookedUp(program: Program, { module, name, entity }: ResolvedN
   const parent = parentOf(programModule(program, module).tree, name);
   const isTail =
     (parent?.kind === 'MemberAccess' && parent.member === name) ||
-    (parent !== undefined &&
-      'path' in parent &&
-      Array.isArray(parent.path) &&
+    ((parent?.kind === 'NamedType' || parent?.kind === 'NamePattern') &&
       parent.path.indexOf(name) > 0);
   const isDeclaring =
     declaringName(entity) === name ||

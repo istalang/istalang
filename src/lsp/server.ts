@@ -19,14 +19,18 @@ import { Workspace } from '../language-service/workspace.ts';
 import { diagnosticsPublisher } from './diagnostics.ts';
 import { moduleIdOfUri } from './locations.ts';
 import { projectProgramLoader } from './project-loader.ts';
+import { completion } from './providers/completion.ts';
 import { definition } from './providers/definition.ts';
 import { documentSymbols } from './providers/document-symbols.ts';
 import { foldingRanges } from './providers/folding-ranges.ts';
 import { formatting } from './providers/formatting.ts';
+import { hover } from './providers/hover.ts';
+import { inlayHints } from './providers/inlay-hints.ts';
 import type { Provider } from './providers/provider.ts';
 import { references } from './providers/references.ts';
 import { rename } from './providers/rename.ts';
 import { semanticTokens } from './providers/semantic-tokens.ts';
+import { signatureHelp } from './providers/signature-help.ts';
 import { stdSource } from './providers/std-source.ts';
 
 const providers: readonly Provider[] = [
@@ -38,6 +42,10 @@ const providers: readonly Provider[] = [
   definition,
   references,
   rename,
+  hover,
+  inlayHints,
+  signatureHelp,
+  completion,
 ];
 
 /** Serves the language over `connection`, for the project the client opens, else `cwd`. */

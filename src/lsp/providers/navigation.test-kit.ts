@@ -1,7 +1,4 @@
-/**
- * Asking a server where names lead, by LSP positions, and the project the corpus client serves,
- * loaded apart from the server, to say what it must answer.
- */
+/** Asking a server where names lead, by LSP positions. */
 
 import {
   DefinitionRequest,
@@ -9,17 +6,11 @@ import {
   type Position,
   ReferencesRequest,
 } from 'vscode-languageserver/node';
-import { corpusDirectory } from '../../../test/corpus/programs.ts';
-import type { Program } from '../../compiler/program/program.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { nodesUnder, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { SourceText } from '../../text/source-text.ts';
-import { projectProgramLoader } from '../project-loader.ts';
 import type { TestClient } from '../server.test-kit.ts';
-
-/** The corpus project as `ista check` loads it, which the corpus client's documents equal. */
-export const corpusProgram: Program = projectProgramLoader(corpusDirectory)(new Map(), undefined);
 
 /** Every name written in `tree`. */
 export function namesOf(tree: SyntaxTree): readonly Identifier[] {

@@ -20,11 +20,11 @@ import { isSamePlace, nameAt } from '../../language-service/navigation/declarati
 import { namesDenoting } from '../../language-service/navigation/references.ts';
 import { renamingAt } from '../../language-service/navigation/rename.ts';
 import { lineMapOf } from '../../text/line-map.ts';
-import { corpusClient } from '../corpus-client.test-kit.ts';
+import { corpusClient, corpusProgram } from '../corpus-client.test-kit.ts';
 import { moduleIdOfUri, rangeOf } from '../locations.ts';
 import { projectProgramLoader } from '../project-loader.ts';
 import type { TestClient } from '../server.test-kit.ts';
-import { corpusProgram, namesOf, positionOf } from './navigation.test-kit.ts';
+import { namesOf, positionOf } from './navigation.test-kit.ts';
 
 let client: TestClient;
 

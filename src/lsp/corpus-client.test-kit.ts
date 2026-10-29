@@ -7,10 +7,13 @@
 import { pathToFileURL } from 'node:url';
 import { corpusDirectory, corpusFiles } from '../../test/corpus/programs.ts';
 import { parse } from '../compiler/parser/parse.ts';
+import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { scan } from '../compiler/scanner/scan.ts';
 import type { SyntaxTree } from '../compiler/syntax/tree.ts';
 import { stdModuleSources } from '../stdlib/std-sources.ts';
 import { createSourceText } from '../text/source-text.ts';
+import { moduleIdOfUri } from './locations.ts';
+import { projectProgramLoader } from './project-loader.ts';
 import { connectedClient, type TestClient } from './server.test-kit.ts';
 
 export interface OpenDocument {
@@ -39,3 +42,20 @@ export async function corpusClient(): Promise<TestClient> {
   await Promise.all(corpusDocuments.map(({ uri, text }) => client.open(uri, text)));
   return client;
 }
+
+/** The corpus project as `ista check` loads it, which the corpus client's documents equal. */
+export const corpusProgram: Program = projectProgramLoader(corpusDirectory)(new Map(), undefined);
+
+/** A document of `corpusDocuments` that `corpusProgram` holds, with its module and tree there. */
+export interface ProgramDocument {
+  readonly uri: string;
+  readonly module: ModuleId;
+  readonly tree: SyntaxTree;
+}
+
+/** Every document of `corpusDocuments` that `corpusProgram` holds: what a test states answers from. */
+export const programDocuments: readonly ProgramDocument[] = corpusDocuments.flatMap(({ uri }) => {
+  const module = moduleIdOfUri(uri);
+  const tree = corpusProgram.modules.get(module)?.tree;
+  return tree === undefined ? [] : [{ uri, module, tree }];
+});
