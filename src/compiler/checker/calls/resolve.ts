@@ -289,7 +289,7 @@ export function explain(
       context.report(checkerDiagnostics.cannotInfer(site.span, name, reason.parameter.name.text));
       return;
     case 'arguments': {
-      const before = context.checker.diagnosticCount(context.module);
+      const before = context.checker.reportCount();
       for (const { index, expected } of reason.misfits) {
         const argument = request.arguments[index];
         if (argument?.type !== undefined) {
@@ -301,7 +301,7 @@ export function explain(
           context.expect(argument.node, expected);
         }
       }
-      if (context.checker.diagnosticCount(context.module) === before) {
+      if (context.checker.reportCount() === before) {
         context.report(
           checkerDiagnostics.noMatchingOverload(
             site.span,

@@ -5,26 +5,28 @@
  * that is an alias belongs to the type the alias stands for.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import type { EntryTable } from '../../../structures/entries.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { CheckerContext, StaticOwner } from '../context.ts';
+import type { CheckerContext, CheckerNote, StaticOwner } from '../context.ts';
 import { isNominalEntity } from '../types/type.ts';
 
 export class StaticFunctions {
   readonly #checker: CheckerContext;
-  readonly #byModule = new Map<
+  readonly #byModule: EntryTable<
+    CheckerNote,
     ModuleId,
     ReadonlyMap<StaticOwner, readonly FunctionDeclaration[]>
-  >();
+  >;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
+    this.#byModule = checker.entries.table();
   }
 
   /** The static functions declared on `owner` in `module`. */
   in(module: ModuleId, owner: StaticOwner): readonly FunctionDeclaration[] {
-    return memo(this.#byModule, module, () => this.#index(module)).get(owner) ?? [];
+    return this.#byModule.get(module, () => this.#index(module)).get(owner) ?? [];
   }
 
   #index(module: ModuleId): ReadonlyMap<StaticOwner, readonly FunctionDeclaration[]> {

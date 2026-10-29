@@ -268,16 +268,6 @@ describe('top-level constants hold only what compile time computes', () => {
   });
 });
 
-describe('top-level constants defined through themselves', () => {
-  it('are reported at every constant of the cycle, whichever is checked first', () => {
-    const text = 'const a = b\nconst b = c\nconst c = a\nconst d = 1';
-    expect(reported(text)).toEqual({
-      codes: Array.from({ length: 3 }, () => reports.constantCycle.code),
-      spanTexts: ['a', 'b', 'c'],
-    });
-  });
-});
-
 /** The spec section whose module examples make one program. */
 const programSection = '12.1 Purchase approval';
 

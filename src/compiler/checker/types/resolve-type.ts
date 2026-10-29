@@ -304,14 +304,13 @@ export function declaredFields(
   defaults?: FunctionDeclaration,
 ): readonly FieldMember[] {
   const declared = fields.filter((field) => field.kind !== 'Invalid');
-  return declared.map((field, index) => ({
-    name: field.name.text,
-    type:
+  return declared.map((field, index) => {
+    const type =
       field.type === undefined
         ? defaultedType(checker, index, defaults)
-        : checker.resolveType(module, field.type),
-    declared: { node: field, module },
-  }));
+        : checker.resolveType(module, field.type);
+    return { name: field.name.text, type, declared: { node: field, module, type } };
+  });
 }
 
 /** The type field `index`'s default gives it: its parameter's in `defaults`, read in order. */

@@ -251,7 +251,7 @@ function requiredField(
   const type = checker.resolvedTypeOf(field.type);
   return type === undefined
     ? []
-    : fieldDenotation({ name: field.name.text, type, declared: { node: field, module } });
+    : fieldDenotation({ name: field.name.text, type, declared: { node: field, module, type } });
 }
 
 /** What the binder says `site`'s name denotes, refined by what the checker chose there. */
@@ -301,10 +301,10 @@ function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): rea
 function declaredVariableType(site: NameSite, entity: VariableEntity): Type | undefined {
   const { checker } = site;
   const { owner, name } = entity;
-  if (owner.kind === 'ExternConstantDeclaration') {
-    return checker.resolvedTypeOf(owner.type);
-  }
   const module = checker.bindings.moduleOf(entity) ?? site.module;
+  if (owner.kind === 'ExternConstantDeclaration') {
+    return checker.resolveType(module, owner.type);
+  }
   const inBody = bodyHolding(checker, module, name)?.declaredTypeOf(name);
   if (inBody !== undefined || owner.kind !== 'Parameter') {
     return inBody;

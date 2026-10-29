@@ -11,9 +11,11 @@
  *   `ConstantForm` lowering only maps to a value. What it refuses is reported here. A lambda's
  *   form is lowered from the initializer's checking, which the unit keeps (`bodyOf`).
  * - A constant is checked once, on first demand, and one defined through itself, directly or
- *   through others, is reported at every constant of the cycle (lazy-checks.ts).
+ *   through others, is reported at every constant of the cycle, which all stand unchecked
+ *   (structures/entries.ts); their initializers keep their checking.
  */
 
+import type { EntryTable } from '../../../structures/entries.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
@@ -21,9 +23,8 @@ import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant } from '../check.ts';
 import type { TargetBinding } from '../checked-pattern.ts';
 import { formAt } from '../constant-form.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { LazyChecks } from '../lazy-checks.ts';
 import { computeConstant, refusalOf } from '../rules/computation.ts';
 import { errorType, type Type } from '../types/type.ts';
 
@@ -46,31 +47,33 @@ export interface ConstantSeams {
 /** What a constant that has no value checks to: the error type, already reported. */
 const uncomputed: CheckedConstant = { type: errorType, form: undefined };
 
-/**
- * A top-level declaration checked: its whole value, what each of its names binds, and its
- * initializer's checking, undefined for one never checked.
- */
+/** A top-level declaration checked: its whole value, and what each of its names binds. */
 interface CheckedDeclaration {
   readonly whole: CheckedConstant;
   readonly bindings: readonly TargetBinding[];
-  readonly body: CheckedBody | undefined;
 }
 
-const unchecked: CheckedDeclaration = { whole: uncomputed, bindings: [], body: undefined };
+const unchecked: CheckedDeclaration = { whole: uncomputed, bindings: [] };
 
 export class ConstantChecks {
   readonly #seams: ConstantSeams;
-  readonly #checks: LazyChecks<VariableDeclaration, CheckedDeclaration>;
+  readonly #checks: EntryTable<CheckerNote, VariableDeclaration, CheckedDeclaration>;
+  /** Each initializer's checking, kept apart so that a constant's cycle keeps it. */
+  readonly #bodies: EntryTable<CheckerNote, VariableDeclaration, CheckedBody>;
 
   constructor(seams: ConstantSeams) {
     this.#seams = seams;
-    this.#checks = new LazyChecks((member) => {
-      const [name] = member.targets.flatMap(targetNames);
-      const module = seams.moduleOfItem(member);
-      if (name !== undefined && module !== undefined) {
-        seams.checker.report(module, checkerDiagnostics.constantCycle(name.span, name.text));
-      }
+    this.#checks = seams.checker.entries.table({
+      standIn: () => unchecked,
+      reportMember: (member) => {
+        const [name] = member.targets.flatMap(targetNames);
+        const module = seams.moduleOfItem(member);
+        if (name !== undefined && module !== undefined) {
+          seams.checker.report(module, checkerDiagnostics.constantCycle(name.span, name.text));
+        }
+      },
     });
+    this.#bodies = seams.checker.entries.table();
   }
 
   /**
@@ -81,9 +84,17 @@ export class ConstantChecks {
     return this.#checked(declaration)?.whole;
   }
 
-  /** The checking of `declaration`'s initializer, which holds its lambdas (§3.14). */
+  /**
+   * The checking of `declaration`'s initializer, which holds its lambdas (§3.14). It is reached
+   * through the constant, so a cycle through it always reaches the constant first.
+   */
   bodyOf(declaration: VariableDeclaration): CheckedBody | undefined {
-    return this.#checked(declaration)?.body;
+    const module = this.#seams.moduleOfItem(declaration);
+    if (module === undefined) {
+      return undefined;
+    }
+    this.#checked(declaration);
+    return this.#checkedBody(module, declaration);
   }
 
   /** The checked constant `name` denotes in `module`; undefined when it denotes anything else. */
@@ -112,17 +123,21 @@ export class ConstantChecks {
     if (module === undefined) {
       return undefined;
     }
-    if (this.#checks.inCycle(declaration)) {
-      return unchecked;
-    }
-    return this.#checks.resultOf(declaration, () => this.#check(module, declaration));
+    return this.#checks.get(declaration, () => this.#check(module, declaration));
+  }
+
+  #checkedBody(module: ModuleId, declaration: VariableDeclaration): CheckedBody {
+    return this.#bodies.get(declaration, () => {
+      const { checker } = this.#seams;
+      const declared =
+        declaration.type === undefined ? undefined : checker.resolveType(module, declaration.type);
+      return this.#seams.checkConstant(module, declaration, declared);
+    });
   }
 
   #check(module: ModuleId, declaration: VariableDeclaration): CheckedDeclaration {
     const { checker } = this.#seams;
-    const declared =
-      declaration.type === undefined ? undefined : checker.resolveType(module, declaration.type);
-    const checked = this.#seams.checkConstant(module, declaration, declared);
+    const checked = this.#checkedBody(module, declaration);
     const outcome = computeConstant(declaration.initializer, {
       checker,
       constant: declaration,
@@ -136,7 +151,6 @@ export class ConstantChecks {
     return {
       whole: { type: checked.result, form },
       bindings: checked.targetsOf(declaration),
-      body: checked,
     };
   }
 }

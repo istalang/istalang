@@ -49,7 +49,7 @@ describe('the body holding a node', () => {
     const annotation = first('Annotation');
     const body = lookup.bodyHolding(module, named('label', 1));
     expect(body).toBeDefined();
-    expect(body).toBe(annotation && checker.annotations.bodyOf(annotation));
+    expect(body).toBe(annotation && checker.annotations.bodyOf(module, annotation));
   });
 
   it('is none for a signature or a declaring name', () => {

@@ -15,11 +15,18 @@
  * ProgramChecker composes this unit and answers the layout queries through it.
  */
 
-import { memo } from '../../../structures/memo.ts';
-import type { DeclaredStruct, EnumDeclaration, Field } from '../../syntax/declarations.ts';
+import type { EntryTable } from '../../../structures/entries.ts';
+import type {
+  DeclaredStruct,
+  EnumDeclaration,
+  Field,
+  FunctionDeclaration,
+  Variant,
+} from '../../syntax/declarations.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
+import type { Invalid } from '../../syntax/node.ts';
 import type { VariantMember } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext, CheckerNote } from '../context.ts';
 import { declaredFields } from '../types/resolve-type.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import {
@@ -33,12 +40,21 @@ import { type FieldedDeclaration, TypeExpansion } from './type-expansion.ts';
 
 export class Layouts {
   readonly #checker: CheckerContext;
-  readonly #fields = new Map<DeclaredStruct, readonly FieldMember[]>();
-  readonly #variants = new Map<EnumDeclaration, readonly VariantMember[]>();
+  readonly #fields: EntryTable<CheckerNote, DeclaredStruct, readonly FieldMember[]>;
+  readonly #variants: EntryTable<CheckerNote, EnumDeclaration, readonly VariantMember[]>;
   readonly #expansion: TypeExpansion;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
+    // A layout reached again while its fields' defaults are checked, as when a default builds the
+    // struct it belongs to, stands for its fields with those its defaults type read as the error
+    // type; the cycle is reported at the defaults (parameters.ts).
+    this.#fields = checker.entries.table({
+      standIn: (declaration) => this.#fieldsOf(declaration, declaration.fields, undefined),
+    });
+    this.#variants = checker.entries.table({
+      standIn: (declaration) => this.#variantsOf(declaration, () => undefined),
+    });
     this.#expansion = new TypeExpansion(checker);
   }
 
@@ -89,40 +105,42 @@ export class Layouts {
   }
 
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
-    return memo(this.#fields, declaration, () =>
-      this.#ended(
-        declaration,
-        declaredFields(
-          this.#checker,
-          this.#checker.moduleOf(declaration),
-          declaration.fields,
-          fieldsFunctionOf(declaration),
-        ),
-      ),
+    return this.#fields.get(declaration, () =>
+      this.#fieldsOf(declaration, declaration.fields, fieldsFunctionOf(declaration)),
     );
   }
 
   declaredVariantsOf(declaration: EnumDeclaration): readonly VariantMember[] {
-    return memo(this.#variants, declaration, () =>
-      declaration.variants.flatMap((variant) =>
-        variant.kind === 'Variant'
-          ? [
-              {
-                name: variant.name.text,
-                fields: this.#ended(
-                  declaration,
-                  declaredFields(
-                    this.#checker,
-                    this.#checker.moduleOf(declaration),
-                    variant.fields,
-                    fieldsFunctionOf(declaration, variant),
-                  ),
-                ),
-              },
-            ]
-          : [],
-      ),
+    return this.#variants.get(declaration, () =>
+      this.#variantsOf(declaration, (variant) => fieldsFunctionOf(declaration, variant)),
     );
+  }
+
+  /** `declaration`'s variants, each variant's fields typed by the defaults `defaultsOf` gives. */
+  #variantsOf(
+    declaration: EnumDeclaration,
+    defaultsOf: (variant: Variant) => FunctionDeclaration | undefined,
+  ): readonly VariantMember[] {
+    return declaration.variants.flatMap((variant) =>
+      variant.kind === 'Variant'
+        ? [
+            {
+              name: variant.name.text,
+              fields: this.#fieldsOf(declaration, variant.fields, defaultsOf(variant)),
+            },
+          ]
+        : [],
+    );
+  }
+
+  /** `fields` of `declaration`, as declared, typed by `defaults` where a default gives the type. */
+  #fieldsOf(
+    declaration: FieldedDeclaration,
+    fields: readonly (Field | Invalid)[],
+    defaults: FunctionDeclaration | undefined,
+  ): readonly FieldMember[] {
+    const module = this.#checker.moduleOf(declaration);
+    return this.#ended(declaration, declaredFields(this.#checker, module, fields, defaults));
   }
 
   /** `fields` of `declaration`, each that would make its instantiation endless read as an error. */

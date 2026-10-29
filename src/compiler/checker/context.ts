@@ -18,10 +18,12 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
+import type { Entries } from '../../structures/entries.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
+  Declaration,
   DeclaredStruct,
   EnumDeclaration,
   FunctionDeclaration,
@@ -81,11 +83,37 @@ import type {
   Type,
 } from './types/type.ts';
 
+/** That `typeArguments` gives `parameter` an argument at `at`, which must meet its constraints. */
+export interface ConstraintCheck {
+  readonly at: Span;
+  readonly parameter: TypeParameter;
+  readonly typeArguments: Substitution;
+}
+
+/**
+ * What an entry notes while it computes (structures/entries.ts): a diagnostic reported in a
+ * module, or a constraint check to run once that module is checked (`constrainLater`).
+ */
+export type CheckerNote =
+  | { readonly kind: 'diagnostic'; readonly module: ModuleId; readonly diagnostic: Diagnostic }
+  | { readonly kind: 'constraint'; readonly module: ModuleId; readonly check: ConstraintCheck };
+
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
+  /**
+   * The tables every program-wide result is kept in, each entry with what it read and reported,
+   * so an answer never depends on what was asked before it.
+   */
+  readonly entries: Entries<CheckerNote>;
+  /**
+   * Checks the top-level item `item` of `module` whole, once: what its module's check reads of
+   * it, and what a lookup reads before it reads what checking decided inside the item.
+   */
+  readonly checkItem: (module: ModuleId, item: Declaration) => void;
+  /** Reports `diagnostic` in `module`, from the entry computing now. */
   readonly report: (module: ModuleId, diagnostic: Diagnostic) => void;
-  /** How many diagnostics have been reported in `module` so far. */
-  readonly diagnosticCount: (module: ModuleId) => number;
+  /** How many diagnostics the entry computing now has reported itself, so far. */
+  readonly reportCount: () => number;
   /** The type `node` denotes in `module`. */
   readonly resolveType: (module: ModuleId, node: TypeNode) => Type;
   /**
@@ -120,8 +148,10 @@ export interface CheckerContext extends Checker {
   readonly aliasedType: (alias: TypeAliasDeclaration) => Type;
   /**
    * Notes that the argument `typeArguments` gives `parameter` at `at` in `module` must meet the
-   * parameter's constraints (§3.5), which may name the declaration's other parameters. Types resolve while signatures are still being resolved, and meeting a
-   * constraint looks at signatures, so the check runs once the module's declarations are checked.
+   * parameter's constraints (§3.5), which may name the declaration's other parameters. Types
+   * resolve while signatures are still being resolved, and meeting a constraint looks at
+   * signatures, so the check runs once the module's declarations are checked: it is noted in the
+   * entry computing now, which that module's check reads.
    */
   readonly constrainLater: (
     module: ModuleId,

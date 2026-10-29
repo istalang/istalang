@@ -205,8 +205,8 @@ describe('optional operators', () => {
   it("refuses '!' on a value that isn't optional", () => {
     const lines = [...chained, '  const n = 1', '  n!'];
     expect(reported(lines.join('\n')).codes).toEqual([
-      reports.forceUnwrap.code,
       reports.needsOptional.code,
+      reports.forceUnwrap.code,
     ]);
   });
 

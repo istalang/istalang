@@ -12,16 +12,16 @@
  *
  * Checking stays lazy. A module's diagnostics follow edges only from its own generic functions,
  * so only the bodies those edges reach are checked. Every cycle through one of the module's calls
- * is among them, since a cycle comes back to where it starts. Each function's edges are found
- * once per checker, by whichever module reaches it first.
+ * is among them, since a cycle comes back to where it starts. Each function's edges are an entry
+ * of their own, found once per checker whichever module reaches them first.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import type { EntryTable } from '../../../structures/entries.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
 import { functionsOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FunctionCall, ResolvedCall } from '../resolved-call.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdges } from '../types/expansion-edges.ts';
@@ -36,11 +36,12 @@ interface Edge extends ArgumentEdge {
 /** The expansion rule over one checker's program. */
 export class Expansion {
   readonly #checker: CheckerContext;
-  readonly #edges = new Map<FunctionDeclaration, readonly Edge[]>();
+  readonly #edges: EntryTable<CheckerNote, FunctionDeclaration, readonly Edge[]>;
   #generic: ReadonlySet<FunctionDeclaration> | undefined;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
+    this.#edges = checker.entries.table();
   }
 
   /** Reports every call in a generic function of `module` that makes an expanding cycle. */
@@ -77,7 +78,7 @@ export class Expansion {
   }
 
   #edgesOf(caller: FunctionDeclaration): readonly Edge[] {
-    return memo(this.#edges, caller, () => callerEdges(this.#checker, caller));
+    return this.#edges.get(caller, () => callerEdges(this.#checker, caller));
   }
 
   /** The program's generic functions, whose type parameters are the graph's nodes. */

@@ -199,7 +199,11 @@ export function fieldOf(checker: CheckerContext, type: Type, name: string): Foun
         member: {
           name,
           type: requiredFieldType(checker, constraint, field, type),
-          declared: { node: field, module: checker.moduleOf(constraint.trait) },
+          declared: {
+            node: field,
+            module: checker.moduleOf(constraint.trait),
+            type: checker.resolveType(checker.moduleOf(constraint.trait), field.type),
+          },
         },
         read: requiredFieldRead(checker, type, { trait: constraint.trait, field }),
       };

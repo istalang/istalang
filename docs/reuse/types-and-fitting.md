@@ -3,7 +3,7 @@ description: building, comparing, substituting, printing and fitting checker typ
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
+last_verified: 2026-10-29
 last_updated: 2026-10-29
 tags: [reuse, checker, types, fitting, patterns, flow]
 ---
@@ -27,7 +27,9 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - spell a function type in parts (head, each parameter, tail), or a parameter's type with its `&` → `functionTypeParts`, `slotText` (`src/compiler/checker/types/type-text.ts`)
 - show a function as an editor does, its signature with where each parameter stands in it → `signatureOf`, `functionTypeSignature` (`src/language-service/signatures.ts`)
 - give a type the alias it was written through → `aliasedAs` (`src/compiler/checker/types/type.ts`); `substitute` keeps it, `widened` drops it where it widens
-- get a canonical key for a `Type` or numeric identity for an object → `TypeKeys.typeKey`, `TypeKeys.identityOf` (`src/compiler/checker/types/type-keys.ts`)
+- get a canonical key for a `Type` or numeric identity for an object → `typeKeys.typeKey`, `typeKeys.identityOf` (`src/compiler/checker/types/type-keys.ts`)
+- keep a program-wide checker result (cached, cycle-aware, its diagnostics kept with it) → `checker.entries.table()` (`EntryTable`, `src/structures/entries.ts`); report through `checker.report`, inside an entry
+- read a module's diagnostics, or check one top-level item whole before reading what checking decided in it → `checker.diagnosticsOf`, `checker.checkItem` (`src/compiler/checker/declarations/module-checks.ts`)
 - guard a coinductive recursive type check (`Sendable`, JSON codecs) against cycles → `TypeCycle` (`src/compiler/checker/types/type-cycle.ts`)
 - build or apply a type substitution → `substitutionFor`, `substitute`, `substituteAny`, `substituteFunction` (`src/compiler/checker/types/substitution.ts`)
 - view a `CheckedBody` with all recorded types substituted for one instantiation → `instantiatedBody` (`src/compiler/checker/types/instantiation.ts`)
@@ -62,11 +64,10 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - analyze `match` exhaustiveness → `analyze` (`src/compiler/checker/patterns/exhaustiveness.ts`)
 - list names bound by a checked pattern → `namesBound` (`src/compiler/checker/checked-pattern.ts`)
 - run forward data-flow analysis over a body → `flowThrough`, `FlowRule` (`src/compiler/checker/flow/forward.ts`)
-- run lazy cycle-checked queries over functions or constants → `LazyChecks` (`src/compiler/checker/lazy-checks.ts`)
 
 ## One-way rules
 
 - Fit every value through `BodyContext.expect` / `fit` (`fitWritten` for assignments, `fitUnwrapped` for spreads) so conversions are recorded once.
 - Recognize well-known types by binder entity via `src/compiler/checker/types/well-known.ts` or `optionalInner` (`fit.ts`), never by declaration name string.
-- Never use a module-global counter for type or node keys; use `checker.typeKeys` (`src/compiler/checker/types/type-keys.ts`).
+- Key types and identities through `checker.typeKeys` (`src/compiler/checker/types/type-keys.ts`), whose numbers are the module's, alike in every checker; never write those numbers into lowering's output.
 - Every pattern goes through `src/compiler/checker/patterns/walk.ts`, and every body flow rule goes through `flowThrough` (`flow/forward.ts`).

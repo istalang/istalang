@@ -1,22 +1,23 @@
 /**
- * The checker of one Program: every program-wide answer, each computed once and memoized here, so
- * the checker as a whole is a memoized function of its Program (check.ts keys it on that
- * snapshot).
+ * The checker of one Program: every program-wide answer, each computed once as an entry of the
+ * checker's tables (structures/entries.ts), so the checker as a whole is a function of its Program
+ * (check.ts keys it on that snapshot), whatever was asked of it first.
  *
  * - Checking is lazy. A function's body is checked the first time anything needs it: its module's
- *   diagnostics, lowering, or another function inferring a result from a call to it. Each piece
- *   is computed once, so each diagnostic is reported once, by whoever asks first.
+ *   diagnostics, lowering, or another function inferring a result from a call to it. Each entry
+ *   keeps what it reported, and a module's diagnostics are read back from what its check read
+ *   (declarations/module-checks.ts), so each is reported once and found by every module it is in.
  * - A function with no declared result gets the one its body produces (§2). Inferring it checks
  *   the body; a call reached while that body is being checked is the function calling itself,
- *   directly or through others, which needs a declared result.
+ *   directly or through others, which needs a declared result: every result on the cycle stands
+ *   for the error type, whichever was asked first.
  * - A top-level constant is checked the same lazy way, and one reached while it is being checked
- *   is defined through itself (§3). Both use one lazy check with cycle reporting (lazy-checks.ts).
+ *   is defined through itself (§3).
  * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
  *   (declarations/: constants, layouts, parameters, aliases, static functions; traits/: type
  *   parameters; rules/: expansion), as BodyChecker composes the units of a body.
  * - Items checked by their module are its top-level items and a trait's members; type parameters
  *   are noted with the module declaring them, where their constraints resolve.
- * - Diagnostics are kept per module, in the order found; the coordinator sorts them.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -25,12 +26,12 @@ import {
   type WellKnownDeclaration,
   wellKnown,
 } from '../../language/well-known.ts';
-import { memo } from '../../structures/memo.ts';
+import { Entries } from '../../structures/entries.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
-import { type ModuleId, type Program, programModule } from '../program/program.ts';
+import type { ModuleId, Program } from '../program/program.ts';
 import {
   type Declaration,
   type DeclaredStruct,
@@ -52,23 +53,21 @@ import type {
   SignatureParameter,
   VariantMember,
 } from './check.ts';
-import type { CheckerContext, StaticOwner } from './context.ts';
+import type { CheckerContext, CheckerNote, StaticOwner } from './context.ts';
 import { Aliases } from './declarations/aliases.ts';
 import { ConstantChecks } from './declarations/constants.ts';
-import { checkDeclaration } from './declarations/declarations.ts';
 import { Layouts } from './declarations/layout.ts';
+import { ModuleChecks } from './declarations/module-checks.ts';
 import { DeclaringModules } from './declarations/modules.ts';
 import { Parameters } from './declarations/parameters.ts';
 import { callResult, declaredBodyResult, writtenByReference } from './declarations/signatures.ts';
 import { StaticFunctions } from './declarations/statics.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
-import { LazyChecks } from './lazy-checks.ts';
 import { Lookup } from './lookup/lookup.ts';
 import { meetsAny, memberWitnesses } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
 import type { ResolvedCall } from './resolved-call.ts';
 import { Annotations } from './rules/annotations.ts';
-import { checkClashes } from './rules/clashes.ts';
 import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
@@ -87,24 +86,27 @@ import {
   type Type,
   unitType,
 } from './types/type.ts';
-import { TypeKeys } from './types/type-keys.ts';
+import { typeKeys } from './types/type-keys.ts';
 
 export class ProgramChecker implements CheckerContext {
   readonly program: Program;
   readonly bindings: Bindings;
-  readonly typeKeys = new TypeKeys();
-  readonly #diagnostics = new Map<ModuleId, Diagnostic[]>();
-  readonly #declaredResults = new Map<FunctionDeclaration, Type | undefined>();
-  readonly #resolvedTypes = new Map<TypeNode, Type>();
-  readonly #results = new Map<FunctionDeclaration, Type>();
-  /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
-  readonly #disposals = new Map<string, Disposal>();
-  readonly #bodies = new LazyChecks<FunctionDeclaration, CheckedBody>((member) => {
-    this.report(
-      this.moduleOf(member),
-      checkerDiagnostics.recursiveReturnType(member.name.span, member.name.text),
-    );
+  readonly typeKeys = typeKeys;
+  readonly entries = new Entries<CheckerNote>();
+  readonly #declaredResults = this.entries.table<FunctionDeclaration, Type | undefined>();
+  readonly #resolvedTypes = this.entries.table<TypeNode, Type>();
+  /** A result inferred from a body that reaches it again needs a declared one (§2). */
+  readonly #results = this.entries.table<FunctionDeclaration, Type>({
+    standIn: () => errorType,
+    reportMember: (member) =>
+      this.report(
+        this.moduleOf(member),
+        checkerDiagnostics.recursiveReturnType(member.name.span, member.name.text),
+      ),
   });
+  readonly #bodies = this.entries.table<FunctionDeclaration, CheckedBody>();
+  /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
+  readonly #disposals = this.entries.table<string, Disposal>();
   readonly #constants = new ConstantChecks({
     checker: this,
     moduleOfItem: (declaration) => this.#modules.itemModuleOf(declaration),
@@ -114,7 +116,6 @@ export class ProgramChecker implements CheckerContext {
         declaredResult,
       }).checkConstant(declaration),
   });
-  readonly #checkedModules = new Set<ModuleId>();
   readonly #layouts = new Layouts(this);
   readonly #parameters = new Parameters({
     checker: this,
@@ -134,7 +135,10 @@ export class ProgramChecker implements CheckerContext {
   readonly #aliases = new Aliases(this);
   readonly #statics = new StaticFunctions(this);
   readonly #typeParameters = new TypeParameters(this);
-  readonly #expansion = new Expansion(this);
+  readonly #moduleChecks = new ModuleChecks(this, {
+    expansion: new Expansion(this),
+    typeParameters: this.#typeParameters,
+  });
   readonly annotations = new Annotations({
     checker: this,
     checkValue: (module, value) =>
@@ -183,13 +187,11 @@ export class ProgramChecker implements CheckerContext {
   }
 
   report(module: ModuleId, diagnostic: Diagnostic): void {
-    const diagnostics = this.#diagnostics.get(module) ?? [];
-    diagnostics.push(diagnostic);
-    this.#diagnostics.set(module, diagnostics);
+    this.entries.note({ kind: 'diagnostic', module, diagnostic });
   }
 
-  diagnosticCount(module: ModuleId): number {
-    return (this.#diagnostics.get(module) ?? []).length;
+  reportCount(): number {
+    return this.entries.notesMade().filter((note) => note.kind === 'diagnostic').length;
   }
 
   moduleOf(declaration: Declaration | VariableDeclaration): ModuleId {
@@ -198,11 +200,11 @@ export class ProgramChecker implements CheckerContext {
 
   /** Each type node resolves once: in its own module, it always denotes the same type. */
   resolveType(module: ModuleId, node: TypeNode): Type {
-    return memo(this.#resolvedTypes, node, () => resolveTypeNode(this, module, node));
+    return this.#resolvedTypes.get(node, () => resolveTypeNode(this, module, node));
   }
 
   resolvedTypeOf(node: TypeNode): Type | undefined {
-    return this.#resolvedTypes.get(node);
+    return this.#resolvedTypes.computed(node);
   }
 
   memberWitnesses(type: AnyType, constraint: number, member: Type): readonly ResolvedCall[] {
@@ -279,26 +281,30 @@ export class ProgramChecker implements CheckerContext {
   }
 
   resultOf(declaration: FunctionDeclaration): Type {
-    const declared = this.#declaredBodyResult(declaration);
-    if (
-      declared === undefined &&
-      !this.#results.has(declaration) &&
-      this.#bodies.inCycle(declaration)
-    ) {
-      return errorType;
-    }
-    return memo(this.#results, declaration, () =>
-      callResult(this, declaration, declared ?? this.bodyOf(declaration)?.result ?? unitType),
-    );
+    return this.#results.get(declaration, () => {
+      const declared = this.#declaredBodyResult(declaration);
+      const inferred = declared === undefined ? this.#checkedBody(declaration)?.result : undefined;
+      return callResult(this, declaration, declared ?? inferred ?? unitType);
+    });
   }
 
-  /** The checked body of a function with one; undefined for an extern. */
+  /**
+   * The checked body of a function with one; undefined for an extern. A body its result is inferred
+   * from is reached through that result, so a cycle through it always reaches the result first.
+   */
   bodyOf(declaration: FunctionDeclaration): CheckedBody | undefined {
+    if (this.#declaredBodyResult(declaration) === undefined) {
+      this.resultOf(declaration);
+    }
+    return this.#checkedBody(declaration);
+  }
+
+  #checkedBody(declaration: FunctionDeclaration): CheckedBody | undefined {
     const { body } = declaration;
     if (body === undefined) {
       return undefined;
     }
-    return this.#bodies.resultOf(declaration, () => {
+    return this.#bodies.get(declaration, () => {
       const kind: BodyKind = {
         kind: 'function',
         declaration,
@@ -337,7 +343,7 @@ export class ProgramChecker implements CheckerContext {
   }
 
   disposalOf(type: NominalType): Disposal {
-    return memo(this.#disposals, this.typeKeys.typeKey(type), () => disposalOf(this, type));
+    return this.#disposals.get(this.typeKeys.typeKey(type), () => disposalOf(this, type));
   }
 
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
@@ -353,24 +359,16 @@ export class ProgramChecker implements CheckerContext {
     return entity?.kind === 'functions' ? this.bindings.overloadsOf(entity) : [];
   }
 
-  /** Every diagnostic of `module`, after checking all of its declarations. */
   diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
-    if (!this.#checkedModules.has(module)) {
-      this.#checkedModules.add(module);
-      for (const item of programModule(this.program, module).tree.root.items) {
-        if (item.kind !== 'Invalid') {
-          checkDeclaration(this, module, item);
-        }
-      }
-      checkClashes(this, module);
-      this.#typeParameters.checkPending(module);
-      this.#expansion.check(module);
-    }
-    return this.#diagnostics.get(module) ?? [];
+    return this.#moduleChecks.diagnosticsOf(module);
+  }
+
+  checkItem(module: ModuleId, item: Declaration): void {
+    this.#moduleChecks.checkItem(module, item);
   }
 
   #declaredBodyResult(declaration: FunctionDeclaration): Type | undefined {
-    return memo(this.#declaredResults, declaration, () =>
+    return this.#declaredResults.get(declaration, () =>
       declaredBodyResult(this, this.moduleOf(declaration), declaration),
     );
   }

@@ -243,7 +243,7 @@ export interface CheckedConstant {
 export interface Checker {
   readonly program: Program;
   readonly bindings: Bindings;
-  /** Keys for types, and numbers for the identities they are made of, for this program. */
+  /** Keys for types, and numbers for the identities they are made of, alike in every checker. */
   readonly typeKeys: TypeKeys;
   /** Every diagnostic of checking `module`, which checks all of its declarations. */
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];

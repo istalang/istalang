@@ -1,8 +1,9 @@
 /**
  * Annotations (§3.16): struct values computed at compile time, attached to fields, functions and
  * statements. ProgramChecker composes this unit; each item's annotations are checked once, on
- * first demand, by whoever reaches the item first: its declaration's check, a body's statement,
- * the boundary's forms or lowering.
+ * first demand: by its declaration's check, a body's statement, the boundary's forms or lowering.
+ * What they are checked against depends on the item alone: a field's on its type as declared,
+ * whatever instance of its struct asks, and an annotation's value is checked on its own.
  *
  * - An annotation is checked as a value of its own in its module, and computed as a top-level
  *   constant is (computation.ts), so the two can't disagree on what compile time
@@ -18,7 +19,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
-import { memo } from '../../../structures/memo.ts';
+import type { EntryTable } from '../../../structures/entries.ts';
 import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
@@ -29,7 +30,7 @@ import type { Statement } from '../../syntax/statements.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
 import type { AnnotationPlace, CheckedAnnotation } from '../checked-annotation.ts';
-import type { AnnotationChecks, CheckerContext } from '../context.ts';
+import type { AnnotationChecks, CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { defaultWitness } from '../resolution/default-witness.ts';
 import type { FieldMember, Type } from '../types/type.ts';
@@ -56,11 +57,13 @@ export interface AnnotationSeams {
 
 export class Annotations implements AnnotationChecks {
   readonly #seams: AnnotationSeams;
-  readonly #checked = new Map<NodeOf<string>, readonly CheckedAnnotation[]>();
-  readonly #bodies = new Map<Annotation, CheckedBody>();
+  readonly #checked: EntryTable<CheckerNote, NodeOf<string>, readonly CheckedAnnotation[]>;
+  readonly #bodies: EntryTable<CheckerNote, Annotation, CheckedBody>;
 
   constructor(seams: AnnotationSeams) {
     this.#seams = seams;
+    this.#checked = seams.checker.entries.table();
+    this.#bodies = seams.checker.entries.table();
   }
 
   /** The annotations on `item` of `module`, standing at `place`, checked once. */
@@ -69,11 +72,11 @@ export class Annotations implements AnnotationChecks {
     item: Annotatable & NodeOf<string>,
     place: AnnotationPlace,
   ): readonly CheckedAnnotation[] {
-    return memo(this.#checked, item, () => this.#check(module, item, place));
+    return this.#checked.get(item, () => this.#check(module, item, place));
   }
 
-  bodyOf(annotation: Annotation): CheckedBody | undefined {
-    return this.#bodies.get(annotation);
+  bodyOf(module: ModuleId, annotation: Annotation): CheckedBody {
+    return this.#bodies.get(annotation, () => this.#seams.checkValue(module, annotation.value));
   }
 
   /** Which of the toolchain's own annotations `annotation` is; undefined for any other struct. */
@@ -85,12 +88,15 @@ export class Annotations implements AnnotationChecks {
     });
   }
 
-  /** The annotations on `field`, checked where it is declared; none for one no field declares. */
+  /**
+   * The annotations on `field`, checked where it is declared, against its type there whatever
+   * instance asks; none for one no field declares.
+   */
   ofField(field: FieldMember): readonly CheckedAnnotation[] {
     const { declared } = field;
     return declared === undefined
       ? []
-      : this.of(declared.module, declared.node, { kind: 'field', type: field.type });
+      : this.of(declared.module, declared.node, { kind: 'field', type: declared.type });
   }
 
   /** The name a field has in JSON (§9): its `@JsonName`, or its own. */
@@ -188,9 +194,8 @@ export class Annotations implements AnnotationChecks {
 
   /** `node`'s value as an annotation; undefined after reporting why it isn't one. */
   #value(module: ModuleId, node: Annotation): CheckedAnnotation | undefined {
-    const { checker, checkValue } = this.#seams;
-    const checked = checkValue(module, node.value);
-    this.#bodies.set(node, checked);
+    const { checker } = this.#seams;
+    const checked = this.bodyOf(module, node);
     const type = checked.result;
     if (type.kind === 'error') {
       return undefined;

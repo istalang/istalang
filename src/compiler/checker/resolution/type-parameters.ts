@@ -1,35 +1,32 @@
 /**
  * Type parameters across the program (§3.5): where each is declared, its constraints resolved
- * there once, and the arguments noted for those constraints, checked once the module that gave
+ * there once, and the arguments given for those constraints, checked once the module that gave
  * them is checked (types/resolve-type.ts explains why later, and why every check is noted by then).
- * Each check is keyed by where it was written, so it runs once.
+ *
+ * A check is noted in the entry that resolved the arguments, so the module's check finds each
+ * one among what it read, whatever was asked before. Each is keyed by where it was written, so it
+ * runs once; running one may note more, which run too.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import type { EntryTable } from '../../../structures/entries.ts';
 import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext, CheckerNote, ConstraintCheck } from '../context.ts';
 import { resolveConstraints } from '../traits/constraints.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { Constraint } from '../types/type.ts';
 import { useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
 
-interface PendingCheck {
-  readonly at: Span;
-  readonly parameter: TypeParameter;
-  readonly typeArguments: Substitution;
-}
-
 export class TypeParameters {
   readonly #checker: CheckerContext;
   readonly #modules = new Map<TypeParameter, ModuleId>();
-  readonly #constraints = new Map<TypeParameter, readonly Constraint[]>();
-  readonly #pending = new Map<ModuleId, PendingCheck[]>();
+  readonly #constraints: EntryTable<CheckerNote, TypeParameter, readonly Constraint[]>;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
+    this.#constraints = checker.entries.table();
   }
 
   /** Records that `parameter` is declared in `module`. */
@@ -38,7 +35,7 @@ export class TypeParameters {
   }
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
-    return memo(this.#constraints, parameter, () => {
+    return this.#constraints.get(parameter, () => {
       const module = this.#modules.get(parameter);
       return module === undefined ? [] : resolveConstraints(this.#checker, module, parameter);
     });
@@ -50,22 +47,52 @@ export class TypeParameters {
     parameter: TypeParameter,
     typeArguments: Substitution,
   ): void {
-    const pending = this.#pending.get(module) ?? [];
-    if (!pending.some((check) => check.at === at && check.parameter === parameter)) {
-      pending.push({ at, parameter, typeArguments });
-    }
-    this.#pending.set(module, pending);
+    this.#checker.entries.note({
+      kind: 'constraint',
+      module,
+      check: { at, parameter, typeArguments },
+    });
   }
 
-  /** Runs the checks noted for `module`, including any noted while running them. */
-  checkPending(module: ModuleId): void {
-    const pending = this.#pending.get(module) ?? [];
-    for (let check = pending.shift(); check !== undefined; check = pending.shift()) {
-      this.#check(module, check);
+  /**
+   * Runs the checks noted for `module` by the entry computing now (its check) and by everything it
+   * read, including any noted while running them.
+   */
+  checkNoted(module: ModuleId): void {
+    const done = new Map<Span, Set<TypeParameter>>();
+    for (
+      let pending = this.#noted(module, done);
+      pending.length > 0;
+      pending = this.#noted(module, done)
+    ) {
+      for (const check of pending) {
+        const parameters = done.get(check.at) ?? new Set();
+        if (!parameters.has(check.parameter)) {
+          parameters.add(check.parameter);
+          done.set(check.at, parameters);
+          this.#check(module, check);
+        }
+      }
     }
   }
 
-  #check(module: ModuleId, { at, parameter, typeArguments }: PendingCheck): void {
+  /** The checks noted for `module` among what the entry computing now reached, not yet `done`. */
+  #noted(
+    module: ModuleId,
+    done: ReadonlyMap<Span, ReadonlySet<TypeParameter>>,
+  ): readonly ConstraintCheck[] {
+    return this.#checker.entries
+      .notesReached()
+      .flatMap((note) =>
+        note.kind === 'constraint' &&
+        note.module === module &&
+        done.get(note.check.at)?.has(note.check.parameter) !== true
+          ? [note.check]
+          : [],
+      );
+  }
+
+  #check(module: ModuleId, { at, parameter, typeArguments }: ConstraintCheck): void {
     const argument = typeArguments.get(parameter);
     if (argument === undefined) {
       return;

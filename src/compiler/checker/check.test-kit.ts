@@ -7,6 +7,9 @@
 import { reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../compile.test-kit.ts';
+import type { Program } from '../program/program.ts';
+import type { CheckerContext } from './context.ts';
+import { ProgramChecker } from './program-checker.ts';
 
 /** Everything reported for `text` as module `main.ista`, beside the std modules and `others`. */
 export function reported(text: string, others: Readonly<Record<string, string>> = {}) {
@@ -23,4 +26,12 @@ export function inFunction(body: string): string {
     .split('\n')
     .map((line) => `  ${line}`)
     .join('\n')}\n`;
+}
+
+/**
+ * A checker of `program` made apart from `checkProgram`'s, which keeps the first checker of each
+ * program: tests compare two of them, each asked its own way.
+ */
+export function checkedApart(program: Program): CheckerContext {
+  return new ProgramChecker(program);
 }

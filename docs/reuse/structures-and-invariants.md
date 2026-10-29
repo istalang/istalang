@@ -3,7 +3,7 @@ description: memoization, kind tables, explicit stacks, cycle components and bro
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
+last_verified: 2026-10-29
 last_updated: 2026-10-29
 tags: [reuse, structures, memo, kind-table, invariants]
 ---
@@ -14,6 +14,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 
 - dispatch exhaustively over a discriminated union's `kind` → `Handlers`, `handlerOf` (`src/structures/kind-table.ts`)
 - compute and cache a derived value once per key (including `undefined`) → `memo`, `MemoCache` (`src/structures/memo.ts`)
+- compute results once per key, each recording what it read and the notes it made, with cycles answered by a stand-in whichever member was asked first → `Entries`, `EntryTable`, `Cyclic` (`src/structures/entries.ts`)
 - push an active item onto a work stack for the duration of a callback and pop in `finally` → `withPushed` (`src/structures/stack.ts`)
 - push an iterable onto an explicit stack without overflowing the JS call stack → `pushAll` (`src/structures/stack.ts`)
 - find the last of items kept in ascending order whose key is at most a value, by bisection → `lastIndexAtMost` (`src/structures/sorted.ts`)

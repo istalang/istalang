@@ -62,10 +62,38 @@ export function declaredParameters(
         : defaults.check(defaultValue, declared);
     const type = declared ?? valueType ?? errorType;
     defaults?.declare(node, type);
-    return [
-      { node, type, reference: writtenByReference(node), rest: restSlotOf(checker, node, type) },
-    ];
+    return [signatureParameter(checker, node, type)];
   });
+}
+
+/**
+ * The parameters of `declaration` as written, a type taken from a default read as the error type.
+ * It reports nothing, so it can stand for the parameters while their defaults reach them.
+ */
+export function writtenParameters(
+  checker: CheckerContext,
+  module: ModuleId,
+  declaration: FunctionDeclaration,
+): readonly SignatureParameter[] {
+  return declaration.parameters.flatMap((node) =>
+    node.kind === 'Invalid'
+      ? []
+      : [
+          signatureParameter(
+            checker,
+            node,
+            node.type === undefined ? errorType : checker.resolveType(module, node.type),
+          ),
+        ],
+  );
+}
+
+function signatureParameter(
+  checker: CheckerContext,
+  node: Parameter,
+  type: Type,
+): SignatureParameter {
+  return { node, type, reference: writtenByReference(node), rest: restSlotOf(checker, node, type) };
 }
 
 /** What a rest parameter of type `type` collects into: a pack's tuple, or an array of its items. */

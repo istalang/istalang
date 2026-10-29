@@ -125,7 +125,8 @@ interface TupleType extends WrittenThrough {
 export interface FieldMember {
   readonly name: string;
   readonly type: Type;
-  readonly declared?: { readonly node: Field; readonly module: ModuleId };
+  /** Where the field is declared, and its type there, before any substitution. */
+  readonly declared?: { readonly node: Field; readonly module: ModuleId; readonly type: Type };
 }
 
 /**

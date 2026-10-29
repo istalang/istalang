@@ -42,6 +42,6 @@ export interface AnnotationQueries {
   readonly waypointOf: (module: ModuleId, statement: Statement) => string | undefined;
   /** The title a function's `@Suite` gives its suite (§10); undefined without one. */
   readonly suiteTitleOf: (module: ModuleId, declaration: FunctionDeclaration) => string | undefined;
-  /** The checking of `annotation`'s value; undefined until its item's annotations are checked. */
-  readonly bodyOf: (annotation: Annotation) => CheckedBody | undefined;
+  /** The checking of `annotation`'s value, on its own in `module`, wherever it stands. */
+  readonly bodyOf: (module: ModuleId, annotation: Annotation) => CheckedBody;
 }

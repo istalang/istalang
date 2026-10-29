@@ -7,17 +7,17 @@
  *   defaults are checked apart, when their diagnostics or lowering ask. Choosing a call therefore
  *   never checks the defaults of a function it doesn't choose.
  * - A default reaching its own function through calls, while that function's types wait on it, is
- *   a cycle, reported at the function (lazy-checks.ts).
+ *   a cycle, reported at the function, whose parameters then stand as written, a type taken from
+ *   a default read as the error type (structures/entries.ts); its defaults keep their checking.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import type { EntryTable } from '../../../structures/entries.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { CheckedBody, SignatureParameter } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { LazyChecks } from '../lazy-checks.ts';
-import { type DefaultValues, declaredParameters } from './signatures.ts';
+import { type DefaultValues, declaredParameters, writtenParameters } from './signatures.ts';
 
 /** A body in which a function's defaults are checked, and what checking `values` found. */
 interface DefaultsBody extends DefaultValues {
@@ -37,43 +37,53 @@ interface Checked {
 
 export class Parameters {
   readonly #unit: ParameterUnit;
+  /** Each function's parameters; a function's whose defaults reach them stand as written. */
+  readonly #types: EntryTable<CheckerNote, FunctionDeclaration, readonly SignatureParameter[]>;
+  /** The defaults of a function whose parameters all declare their types. */
+  readonly #defaults: EntryTable<CheckerNote, FunctionDeclaration, CheckedBody | undefined>;
   /** Types and defaults together, for a function whose types wait on a default. */
-  readonly #together: LazyChecks<FunctionDeclaration, Checked>;
-  readonly #types = new Map<FunctionDeclaration, readonly SignatureParameter[]>();
-  readonly #defaults = new Map<FunctionDeclaration, CheckedBody | undefined>();
+  readonly #together: EntryTable<CheckerNote, FunctionDeclaration, Checked>;
 
   constructor(unit: ParameterUnit) {
     this.#unit = unit;
-    this.#together = new LazyChecks((member) => {
-      unit.checker.report(
-        unit.checker.moduleOf(member),
-        checkerDiagnostics.defaultCycle(member.name.span, member.name.text),
-      );
+    const { checker } = unit;
+    this.#types = checker.entries.table({
+      standIn: (declaration) =>
+        writtenParameters(checker, checker.moduleOf(declaration), declaration),
+      reportMember: (member) =>
+        checker.report(
+          checker.moduleOf(member),
+          checkerDiagnostics.defaultCycle(member.name.span, member.name.text),
+        ),
     });
+    this.#defaults = checker.entries.table();
+    this.#together = checker.entries.table();
   }
 
   parametersOf(declaration: FunctionDeclaration): readonly SignatureParameter[] {
-    if (typesWaitOnDefaults(declaration)) {
-      return this.#checkedTogether(declaration)?.parameters ?? [];
-    }
-    return memo(this.#types, declaration, () => {
+    return this.#types.get(declaration, () => {
+      if (typesWaitOnDefaults(declaration)) {
+        return this.#checkedTogether(declaration).parameters;
+      }
       const { checker } = this.#unit;
       return declaredParameters(checker, checker.moduleOf(declaration), declaration, undefined);
     });
   }
 
+  /**
+   * The checked defaults of `declaration`. Those its types wait on are reached through its
+   * types, so a cycle through them always reaches the types first.
+   */
   defaultsOf(declaration: FunctionDeclaration): CheckedBody | undefined {
     if (typesWaitOnDefaults(declaration)) {
-      return this.#checkedTogether(declaration)?.defaults;
+      this.parametersOf(declaration);
+      return this.#checkedTogether(declaration).defaults;
     }
-    return memo(this.#defaults, declaration, () => this.#checkDefaults(declaration));
+    return this.#defaults.get(declaration, () => this.#checkDefaults(declaration));
   }
 
-  #checkedTogether(declaration: FunctionDeclaration): Checked | undefined {
-    if (this.#together.inCycle(declaration)) {
-      return undefined;
-    }
-    return this.#together.resultOf(declaration, () => {
+  #checkedTogether(declaration: FunctionDeclaration): Checked {
+    return this.#together.get(declaration, () => {
       const { checker } = this.#unit;
       const module = checker.moduleOf(declaration);
       const body = this.#unit.defaultsBody(declaration);

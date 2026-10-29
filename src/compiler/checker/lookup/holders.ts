@@ -8,7 +8,7 @@
 
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type { Annotation } from '../../syntax/annotations.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
@@ -29,6 +29,14 @@ export function ancestorsOf(tree: SyntaxTree, node: SyntaxNode): readonly Syntax
   return path;
 }
 
+/** The top-level item of `tree` holding `node`, or `node` itself; undefined for the root. */
+export function itemHolding(tree: SyntaxTree, node: SyntaxNode): Declaration | undefined {
+  const path = new Set(ancestorsOf(tree, node));
+  return tree.root.items.find(
+    (item): item is Declaration => item.kind !== 'Invalid' && path.has(item),
+  );
+}
+
 /** The checked body holding `node` of `module`; undefined outside every body. */
 export function bodyHolding(
   checker: Holders,
@@ -38,7 +46,7 @@ export function bodyHolding(
   const path = ancestorsOf(programModule(checker.program, module).tree, node);
   const annotation = path.find((each): each is Annotation => each.kind === 'Annotation');
   if (annotation !== undefined) {
-    return checker.annotations.bodyOf(annotation);
+    return checker.annotations.bodyOf(module, annotation);
   }
   const [root, ...inward] = path.toReversed();
   return root?.kind === 'Module' ? bodyInItem(checker, inward) : undefined;

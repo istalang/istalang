@@ -25,9 +25,9 @@ import {
   codecHelpers,
   derivedCodecs,
 } from '../../../../language/well-known.ts';
-import { memo } from '../../../../structures/memo.ts';
+import type { EntryTable } from '../../../../structures/entries.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { isHostType } from '../../host-externs.ts';
 import {
   type DerivedCodec,
@@ -70,18 +70,20 @@ interface Part {
 
 export class JsonForms implements JsonCodecs {
   readonly #seams: JsonFormSeams;
-  readonly #forms = new Map<string, DerivedForm>();
+  /** Each type's form, by its key. */
+  readonly #forms: EntryTable<CheckerNote, string, DerivedForm>;
   /** The derived codecs being decided, by direction, which count as found meanwhile. */
   readonly #deciding: Readonly<Record<JsonDirection, TypeCycle>>;
 
   constructor(seams: JsonFormSeams) {
     this.#seams = seams;
+    this.#forms = seams.checker.entries.table();
     const { typeKeys } = seams.checker;
     this.#deciding = { write: new TypeCycle(typeKeys), read: new TypeCycle(typeKeys) };
   }
 
   formOf(type: Type): DerivedForm {
-    return memo(this.#forms, this.#seams.checker.typeKeys.typeKey(type), () => this.#form(type));
+    return this.#forms.get(this.#seams.checker.typeKeys.typeKey(type), () => this.#form(type));
   }
 
   refusalOf(type: Type): string | undefined {

@@ -13,14 +13,14 @@
  * layout being made, so it adds no edge.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import type { EntryTable } from '../../../structures/entries.ts';
 import {
   type DeclaredField,
   type DeclaredStruct,
   type EnumDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdges } from '../types/expansion-edges.ts';
 import type { ParameterKey } from '../types/type.ts';
@@ -36,18 +36,22 @@ interface FieldEdge extends ArgumentEdge {
   readonly reached: FieldedDeclaration;
 }
 
-export class TypeExpansion {
-  readonly #checker: Pick<CheckerContext, 'resolveType' | 'moduleOf' | 'report'>;
-  readonly #edges = new Map<FieldedDeclaration, readonly FieldEdge[]>();
-  readonly #endless = new Map<FieldedDeclaration, ReadonlySet<DeclaredField>>();
+type ExpansionSeams = Pick<CheckerContext, 'entries' | 'resolveType' | 'moduleOf' | 'report'>;
 
-  constructor(checker: Pick<CheckerContext, 'resolveType' | 'moduleOf' | 'report'>) {
+export class TypeExpansion {
+  readonly #checker: ExpansionSeams;
+  readonly #edges: EntryTable<CheckerNote, FieldedDeclaration, readonly FieldEdge[]>;
+  readonly #endless: EntryTable<CheckerNote, FieldedDeclaration, ReadonlySet<DeclaredField>>;
+
+  constructor(checker: ExpansionSeams) {
     this.#checker = checker;
+    this.#edges = checker.entries.table();
+    this.#endless = checker.entries.table();
   }
 
   /** The fields of `declaration` that make its instantiation endless, reported once. */
   endlessFieldsOf(declaration: FieldedDeclaration): ReadonlySet<DeclaredField> {
-    return memo(this.#endless, declaration, () => {
+    return this.#endless.get(declaration, () => {
       const endless = new Set(
         endlessEdges(this.#reachedFrom(declaration))
           .filter((edge) => edge.declaration === declaration)
@@ -81,7 +85,7 @@ export class TypeExpansion {
   }
 
   #edgesOf(declaration: FieldedDeclaration): readonly FieldEdge[] {
-    return memo(this.#edges, declaration, () => {
+    return this.#edges.get(declaration, () => {
       const own = new Set<ParameterKey>(typeParametersOf(declaration.typeParameters));
       const module = this.#checker.moduleOf(declaration);
       return writtenFieldsOf(declaration).flatMap((field) =>

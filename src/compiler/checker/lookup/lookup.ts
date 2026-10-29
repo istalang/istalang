@@ -1,11 +1,11 @@
 /**
- * What tools ask of a checked program (denotation.ts). Each query about a module first checks
- * that module whole, so what it reads was decided before it asks, whatever was asked before: an
- * editor asks in any order, and a body checked by a query reports into its module's diagnostics
- * before anyone reads them.
+ * What tools ask of a checked program (denotation.ts). A query reads what it needs and nothing
+ * more: the bodies holding a node and the declarations it names are checked on demand, and a type
+ * node's type is read after the item holding it is checked whole, since only checking decides
+ * which type nodes denote types. So an answer never depends on what was asked before it.
  */
 
-import type { ModuleId } from '../../program/program.ts';
+import { type ModuleId, programModule } from '../../program/program.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
@@ -14,7 +14,7 @@ import type { CheckerContext } from '../context.ts';
 import type { Denotation, LookupQueries, TypeMembers } from '../denotation.ts';
 import type { Type } from '../types/type.ts';
 import { denotationsOf } from './denotations.ts';
-import { bodyHolding } from './holders.ts';
+import { bodyHolding, itemHolding } from './holders.ts';
 import { membersOf } from './members.ts';
 
 export class Lookup implements LookupQueries {
@@ -25,24 +25,27 @@ export class Lookup implements LookupQueries {
   }
 
   denotationsOf(module: ModuleId, name: Identifier): readonly Denotation[] {
-    return denotationsOf(this.#checked(module), module, name);
+    return denotationsOf(this.#itemChecked(module, name), module, name);
   }
 
   bodyHolding(module: ModuleId, node: SyntaxNode): CheckedBody | undefined {
-    return bodyHolding(this.#checked(module), module, node);
+    return bodyHolding(this.#checker, module, node);
   }
 
   typeOfNode(module: ModuleId, node: TypeNode): Type | undefined {
-    return this.#checked(module).resolvedTypeOf(node);
+    return this.#itemChecked(module, node).resolvedTypeOf(node);
   }
 
   membersOf(module: ModuleId, type: Type): TypeMembers {
-    return membersOf(this.#checked(module), module, type);
+    return membersOf(this.#checker, module, type);
   }
 
-  /** The checker, with `module` checked whole. */
-  #checked(module: ModuleId): CheckerContext {
-    this.#checker.diagnosticsOf(module);
+  /** The checker, with the item of `module` holding `node` checked whole. */
+  #itemChecked(module: ModuleId, node: SyntaxNode): CheckerContext {
+    const item = itemHolding(programModule(this.#checker.program, module).tree, node);
+    if (item !== undefined) {
+      this.#checker.checkItem(module, item);
+    }
     return this.#checker;
   }
 }
