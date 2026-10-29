@@ -13,6 +13,7 @@
  *   a bare one chosen by expected type resolve to the same entity.
  */
 
+import { type Convention, isPrivate } from '../../language/naming.ts';
 import {
   type Declaration,
   declaredFunctions,
@@ -25,7 +26,6 @@ import { targetNames } from '../syntax/patterns.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import type { Entity, FunctionsEntity, VariantEntity } from './entities.ts';
 import type { LocalBinder } from './local-binder.ts';
-import { type Convention, isPrivate } from './naming.ts';
 import { type ImportPlaceholder, type LocalEntity, Scope } from './scope.ts';
 
 /** A top-level name and the identifier that first declared it. */

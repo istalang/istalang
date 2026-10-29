@@ -35,7 +35,7 @@ The top level is split by toolchain feature. Inside a phase, folders are split b
 
 ```
 src/
-  language/             the language's fixed vocabulary: primitive type names, the std modules and declarations the toolchain knows by name (roles, `Future`, `_Cell`, `dispose`, `main`); how a static function is named, `Owner.name` (static-names.ts); the built-in `==` and map keys over any representation of values (values.ts); the order of ints and strings that `<` and the canonical formats share (order.ts)
+  language/             the language's fixed vocabulary: primitive type names, the std modules and declarations the toolchain knows by name (roles, `Future`, `_Cell`, `dispose`, `main`); how a static function is named, `Owner.name` (static-names.ts); the built-in `==` and map keys over any representation of values (values.ts); the order of ints and strings that `<` and the canonical formats share (order.ts); the naming conventions: case, privacy, and what case makes a bare name in a pattern do (naming.ts)
   structures/           the generic structures every phase builds on: exhaustive kind tables (nodes, instructions), `memo`, scoped stacks, bisection over sorted items, and `unreachable`, the one way a broken invariant is thrown
   text/                 SourceText, Span (UTF-16 offsets), LineMap, code points in UTF-16 text (code-points.ts)
   diagnostics/          Diagnostic model, per-phase catalog helper, renderer

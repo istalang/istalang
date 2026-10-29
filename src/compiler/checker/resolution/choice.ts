@@ -14,6 +14,7 @@
  * report about a failed call explains the reason it found.
  */
 
+import { receiverParameter } from '../../../language/well-known.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
@@ -73,7 +74,7 @@ export function signatureOf(
     typeParameters: typeParametersOf(declaration.typeParameters),
     parameters: checker.parametersOf(declaration).map(({ node, type, reference, rest }, index) => {
       const substituted = substitute(type, substitution);
-      const isReceiver = index === 0 && node.name.text === 'self';
+      const isReceiver = index === 0 && node.name.text === receiverParameter;
       return {
         type: substituted,
         reference,

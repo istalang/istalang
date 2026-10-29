@@ -16,6 +16,7 @@
  * as an Invalid node, so a tree never holds a top-level statement.
  */
 
+import { receiverParameter } from '../../language/well-known.ts';
 import type { Annotatable } from './annotations.ts';
 import type { Expression, Parameter, StringLiteral } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
@@ -68,7 +69,7 @@ export interface FunctionDeclaration
 /** Whether `declaration` is a method: its first parameter is named `self` (§3.7). */
 export function isMethod(declaration: FunctionDeclaration): boolean {
   const [first] = declaration.parameters;
-  return first?.kind === 'Parameter' && first.name.text === 'self';
+  return first?.kind === 'Parameter' && first.name.text === receiverParameter;
 }
 
 /** What a struct's declaration holds, shared or not: its name, type parameters and fields (§3.1). */

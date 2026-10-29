@@ -196,6 +196,9 @@ export const templateFunctions = {
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';
 
+/** What a method's first parameter is named, which makes it one (§3.7). */
+export const receiverParameter = 'self';
+
 /** The end `..=` stores, one past the written end in the step's direction (§3.8). */
 export const inclusiveEndFunction = '_inclusiveEnd';
 

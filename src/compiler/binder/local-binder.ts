@@ -20,6 +20,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { Convention } from '../../language/naming.ts';
 import { entryFunction } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
@@ -39,7 +40,7 @@ import {
   type VariableOwner,
   type VariantsEntity,
 } from './entities.ts';
-import { type Convention, conventionViolation } from './naming.ts';
+import { conventionViolation } from './naming.ts';
 import type { LocalEntity, Miss, Scope, ScopeSnapshot } from './scope.ts';
 import { type Visibility, VisibilityNotes } from './visibility.ts';
 

@@ -14,6 +14,7 @@ tags: [reuse, language, modules, program, binder, names]
 
 - list the language's built-in primitive type names → `primitiveNames`, `PrimitiveName` (`src/language/primitives.ts`)
 - spell a static function name `Owner.name` (`Time.parse`) → `staticName` (`src/language/static-names.ts`)
+- test a name against the naming conventions, its privacy, whether it is the unnamed `_`, or whether a bare name binds in a pattern → `followsConvention`, `Convention`, `isPrivate`, `isUnnamed`, `bindsInPattern` (`src/language/naming.ts`)
 - spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/language/well-known.ts`)
 - spell a checked declaration's module-qualified name or extern/startable key → `qualifiedNameOf`, `keyOf`, `spelledType` (`src/compiler/lowering/names.ts`)
 - build an extern key (`prelude.add(int, float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
@@ -24,7 +25,7 @@ tags: [reuse, language, modules, program, binder, names]
 - look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/language/well-known.ts`)
 - look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/language/well-known.ts`)
 - look up collection, template or pattern function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions` (`src/language/well-known.ts`)
-- look up `dispose`, `from` or `main` function names → `disposeFunction`, `conversionFunction`, `entryFunction` (`src/language/well-known.ts`)
+- look up `dispose`, `from` or `main` function names, or `self`, the parameter making a function a method → `disposeFunction`, `conversionFunction`, `entryFunction`, `receiverParameter` (`src/language/well-known.ts`)
 - look up `_inclusiveEnd` or `panic` function names → `inclusiveEndFunction`, `panicFunction` (`src/language/well-known.ts`)
 - build a branded `ModuleId` from a `URL` → `moduleIdOf`, `ModuleId` (`src/compiler/program/program.ts`)
 - load a `Program` from roots and `ModuleLoader`s (reusing unchanged trees) → `buildProgram`, `Program`, `ModuleLoader` (`src/compiler/program/program.ts`)
