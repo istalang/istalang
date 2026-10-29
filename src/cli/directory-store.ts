@@ -12,8 +12,8 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
+import { isSystemError } from '../project/errno.ts';
 import type { InstanceStore } from '../runtime/store.ts';
-import { isSystemError } from './errno.ts';
 
 export function directoryStore(directory: string): InstanceStore {
   const definitions = join(directory, 'definitions');

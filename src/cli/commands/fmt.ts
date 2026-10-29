@@ -14,6 +14,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { formatSource } from '../../formatter/format.ts';
+import { isSystemError } from '../../project/errno.ts';
+import { findProjectSources } from '../../project/project.ts';
 import { createSourceText } from '../../text/source-text.ts';
 import {
   type CliEnvironment,
@@ -21,8 +23,6 @@ import {
   type ExitCode,
   exitCodes,
 } from '../command.ts';
-import { isSystemError } from '../errno.ts';
-import { findProjectSources } from '../project.ts';
 import { reportDiagnostics } from '../report.ts';
 
 interface FmtOptions {

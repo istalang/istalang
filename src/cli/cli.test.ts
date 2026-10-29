@@ -7,7 +7,8 @@ import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { describe, expect, it } from 'vitest';
-import { builtCli, ista, istaProcess, tempProject as project } from './cli.test-kit.ts';
+import { tempProject as project } from '../project/project.test-kit.ts';
+import { builtCli, ista, istaProcess } from './cli.test-kit.ts';
 
 const summaryOfOneError = /1 error, 0 warnings\.\n$/u;
 const otherPeoplesCode = /node_modules|vendor|hidden/u;

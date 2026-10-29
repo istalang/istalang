@@ -10,6 +10,7 @@
 
 import { readFileSync } from 'node:fs';
 import { Command, CommanderError } from 'commander';
+import { isSystemError } from '../project/errno.ts';
 import {
   type CliEnvironment,
   type CommandDefinition,
@@ -20,7 +21,6 @@ import { defineCheckCommand } from './commands/check.ts';
 import { defineFmtCommand } from './commands/fmt.ts';
 import { defineRunCommand } from './commands/run.ts';
 import { defineTestCommand } from './commands/test.ts';
-import { isSystemError } from './errno.ts';
 
 const commands: readonly CommandDefinition[] = [
   defineCheckCommand,

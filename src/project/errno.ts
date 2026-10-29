@@ -1,7 +1,7 @@
 /**
  * Errors the operating system raised, which Node marks with an errno and its code (`ENOENT`,
- * `EACCES`, `ENOTDIR`). Every CLI module that touches the file system tells them apart through
- * here, so what counts as a system error is decided once.
+ * `EACCES`, `ENOTDIR`). Every module that touches the file system tells them apart through here, so
+ * what counts as a system error is decided once.
  */
 
 /** An error the operating system raised. */

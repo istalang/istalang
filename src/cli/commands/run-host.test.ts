@@ -11,7 +11,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { specCode } from '../../../test/corpus/spec-examples.ts';
-import { ista, tempProject as project } from '../cli.test-kit.ts';
+import { tempProject as project } from '../../project/project.test-kit.ts';
+import { ista } from '../cli.test-kit.ts';
 
 const wrongResult =
   /^panic: The host gave what doesn't fit: main\.charge\.value: expected a string, found an integer\n/u;

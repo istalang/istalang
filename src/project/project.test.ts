@@ -1,13 +1,12 @@
 /**
- * The CLI's composition of loaders on a real project: what a command's roots and imports load
- * from, and the one rule that spans loaders, that a path naming both a std module and a project
+ * The apps' composition of loaders on a real project: what an app's roots and imports load from, and the one rule that spans loaders, that a path naming both a std module and a project
  * file is ambiguous.
  */
 
 import { describe, expect, it } from 'vitest';
 import { programDiagnostics } from '../compiler/program/diagnostics.ts';
 import { stdlibLoader } from '../stdlib/stdlib-loader.ts';
-import { tempProject } from './cli.test-kit.ts';
+import { tempProject } from './project.test-kit.ts';
 import { loadProject } from './project.ts';
 
 describe('loadProject', () => {

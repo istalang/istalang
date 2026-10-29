@@ -6,7 +6,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { istaProcess, tempProject as project } from '../cli.test-kit.ts';
+import { tempProject as project } from '../../project/project.test-kit.ts';
+import { istaProcess } from '../cli.test-kit.ts';
 
 const nodeWarning = /unsettled top-level await/u;
 const hostFailed = /^ista: the host's main\.bad\(\) failed: Error: x\n/u;

@@ -25,6 +25,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { compileProgram, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/format.ts';
+import { loadProject } from '../../project/project.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
 import { seedBytes } from '../../runtime/random-seed.ts';
@@ -42,7 +43,6 @@ import {
 import { directoryStore } from '../directory-store.ts';
 import { type HostModule, loadHostModule } from '../host-module.ts';
 import { logLine } from '../log-lines.ts';
-import { loadProject } from '../project.ts';
 import { reportDiagnostics } from '../report.ts';
 
 interface RunOptions {

@@ -6,7 +6,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { specCode } from '../../../test/corpus/spec-examples.ts';
-import { ista, tempProject as project } from '../cli.test-kit.ts';
+import { tempProject as project } from '../../project/project.test-kit.ts';
+import { ista } from '../cli.test-kit.ts';
 
 /**
  * How long a run of §10's whole suite may take: each of its tests commits every segment of a whole

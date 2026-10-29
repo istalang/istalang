@@ -6,7 +6,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ista, tempProject as project } from '../cli.test-kit.ts';
+import { tempProject as project } from '../../project/project.test-kit.ts';
+import { ista } from '../cli.test-kit.ts';
 
 const formatted = 'fn main(): 1\n';
 const unformatted = 'fn main():\n    1\n';

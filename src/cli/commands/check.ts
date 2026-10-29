@@ -8,13 +8,13 @@
  */
 
 import { diagnose } from '../../compiler/compile.ts';
+import { findProjectSources, loadProject } from '../../project/project.ts';
 import {
   type CliEnvironment,
   type CommandDefinition,
   type ExitCode,
   exitCodes,
 } from '../command.ts';
-import { findProjectSources, loadProject } from '../project.ts';
 import { reportDiagnostics } from '../report.ts';
 
 export const defineCheckCommand: CommandDefinition = (cli, { environment, exitWith }) => {

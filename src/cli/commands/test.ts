@@ -17,6 +17,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { compileTests, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { testModuleSuffix } from '../../language/well-known.ts';
+import { findSources, loadProject } from '../../project/project.ts';
 import { runTests, type TestReport } from '../../runtime/testing/run-tests.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { clock } from '../clock.ts';
@@ -27,7 +28,6 @@ import {
   exitCodes,
 } from '../command.ts';
 import { logLine } from '../log-lines.ts';
-import { findSources, loadProject } from '../project.ts';
 import { reportDiagnostics } from '../report.ts';
 
 interface TestOptions {

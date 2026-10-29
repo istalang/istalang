@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 ---
 
@@ -43,7 +43,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - store Definitions and snapshots in memory → `memoryStore`, `InstanceStore` (`src/runtime/store.ts`)
 - store Definitions and snapshots atomically in a directory → `directoryStore` (`src/cli/directory-store.ts`)
 - load a `--host` JS module or format a `LogRecord` as JSON → `loadHostModule` (`src/cli/host-module.ts`), `logLine` (`src/cli/log-lines.ts`)
-- read the CLI clock or check for an OS `errno` error → `clock` (`src/cli/clock.ts`), `isSystemError` (`src/cli/errno.ts`)
+- read the CLI clock or check for an OS `errno` error → `clock` (`src/cli/clock.ts`), `isSystemError` (`src/project/errno.ts`)
 - run a test `Definition`'s suites or a single test's `World` → `runTests` (`src/runtime/testing/run-tests.ts`), `World` (`src/runtime/testing/world/index.ts`)
 - build or check the arguments of the testing runner's `_list`/`_run` calls → `listingArguments`, `runningArguments`, `runnerArity` (`src/definition/test-runner.ts`)
 

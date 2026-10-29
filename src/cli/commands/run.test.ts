@@ -12,7 +12,8 @@ import process from 'node:process';
 import { describe, expect, it, vi } from 'vitest';
 import { corpusDirectory as corpus, runPrograms } from '../../../test/corpus/programs.ts';
 import { subsetOutcome, subsetSource } from '../../../test/definitions/subset.ts';
-import { builtCli, ista, tempProject as project } from '../cli.test-kit.ts';
+import { tempProject as project } from '../../project/project.test-kit.ts';
+import { builtCli, ista } from '../cli.test-kit.ts';
 
 /** The start of an ISO 8601 time, as a log record's is written (§9). */
 const isoTime = /^\d{4}-\d{2}-\d{2}T/u;

@@ -1,5 +1,5 @@
 /**
- * The CLI's file loader on real files: where each form of path points, that two paths to one file
+ * The project's file loader on real files: where each form of path points, that two paths to one file
  * name one module, and that anything outside the path syntax, or a file that isn't there, names
  * nothing.
  */
@@ -10,8 +10,8 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { type ModuleId, moduleIdOf } from '../compiler/program/program.ts';
-import { tempProject } from './cli.test-kit.ts';
 import { fileLoader, locateFile } from './file-loader.ts';
+import { tempProject } from './project.test-kit.ts';
 
 const files = {
   'a.ista': 'fn a(): 1',

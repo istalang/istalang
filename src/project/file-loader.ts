@@ -10,7 +10,7 @@
  *
  * Locating a file only checks that it is there; the loading core reads it once, when it loads the
  * module. A path to nothing, or to a directory, is simply not a module. Any other error is the
- * system refusing, and propagates for the CLI to report. A module's label is its path relative to
+ * system refusing, and propagates for the app to report. A module's label is its path relative to
  * the working directory, which is how diagnostics show it; its name is its path from the project
  * root in this same syntax, which never depends on where `ista` runs.
  */
