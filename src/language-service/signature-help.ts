@@ -15,15 +15,10 @@ import { parameterOfArgument, type ResolvedCall } from '../compiler/checker/reso
 import type { FunctionType } from '../compiler/checker/types/type.ts';
 import { optionalArgument } from '../compiler/checker/types/well-known.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
-import { type FunctionDeclaration, isMethod } from '../compiler/syntax/declarations.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
-import type { Token } from '../compiler/syntax/tokens.ts';
-import { nodesAt, type SyntaxTree } from '../compiler/syntax/tree.ts';
-import { lastIndexAtMost } from '../structures/sorted.ts';
+import { callAt, calleesOf, writtenParameter } from './call-at.ts';
 import { checkedModule } from './checked-module.ts';
 import { functionTypeSignature, type Signature, signatureOf } from './signatures.ts';
-import { closingBracketsOf, codeTokensOf } from './tokens.ts';
 
 export interface SignatureHelp {
   readonly signatures: readonly CallSignature[];
@@ -43,75 +38,14 @@ export function signatureHelpAt(
   offset: number,
 ): SignatureHelp | undefined {
   const checked = checkedModule(program, module);
-  const call = checked && callAround(checked.tree, offset);
-  const body = call && checked?.checker.lookup.bodyHolding(module, call);
-  if (checked === undefined || call === undefined || body === undefined) {
+  const at = checked && callAt(checked, offset);
+  if (checked === undefined || at === undefined) {
     return undefined;
   }
-  const argument = argumentAt(checked.tree, call, offset);
+  const { call, body, argument } = at;
   return body.valueCalls.has(call)
     ? valueCallHelp(checked.checker, body, call, argument)
     : functionCallHelp(checked.checker, body, call, argument);
-}
-
-/**
- * The innermost call whose parentheses hold `offset`: past its `(` and up to its `)`, or, while
- * no `)` closes it, as when a call is being typed, up to the next token after it.
- *
- * The tree keeps no tokens, so the parentheses are the code's (tokens.ts): the `(` is the first
- * after the callee and its type arguments, and the `)` the one pairing with it.
- */
-function callAround(tree: SyntaxTree, offset: number): Call | undefined {
-  const tokens = codeTokensOf(tree);
-  const closings = closingBracketsOf(tree);
-  const holds = (call: Call) => {
-    const before = spanIn(tree, (call.typeArguments.at(-1) ?? call.callee).span).end;
-    const opening = openingAfter(tokens, before);
-    if (opening === undefined) {
-      return false;
-    }
-    const end =
-      closings.get(opening)?.span.start ?? nextTokenStart(tree, spanIn(tree, call.span).end);
-    return opening.span.start < offset && offset <= end;
-  };
-  const previous = tokens[nextTokenIndex(tokens, offset) - 1];
-  const at = previous === undefined ? offset : Math.min(previous.span.end, offset);
-  return nodesAt(tree, at - 1)
-    .toReversed()
-    .find((node): node is Call => node.kind === 'Call' && holds(node));
-}
-
-/**
- * The number of the written argument at `offset`: the one it is in, or after but for whitespace,
- * else the next. An argument not written yet, between two commas, is a `Missing` one.
- */
-function argumentAt(tree: SyntaxTree, call: Call, offset: number): number {
-  const index = call.arguments.findIndex(
-    (argument) => offset <= nextTokenStart(tree, spanIn(tree, argument.span).end),
-  );
-  return index === -1 ? call.arguments.length : index;
-}
-
-/** The first `(` of `tokens` at or after `offset`: a call's, past its callee and type arguments. */
-function openingAfter(tokens: readonly Token[], offset: number): Token | undefined {
-  for (let index = nextTokenIndex(tokens, offset); index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (token?.kind === '(') {
-      return token;
-    }
-  }
-  return undefined;
-}
-
-/** The index of the first of `tokens` starting at or after `offset`. */
-function nextTokenIndex(tokens: readonly Token[], offset: number): number {
-  return lastIndexAtMost(tokens, (token) => token.span.start, offset - 1) + 1;
-}
-
-/** Where the first token of `tree`'s code at or after `offset` starts; the text's end past the last. */
-function nextTokenStart(tree: SyntaxTree, offset: number): number {
-  const tokens = codeTokensOf(tree);
-  return tokens[nextTokenIndex(tokens, offset)]?.span.start ?? tree.source.text.length;
 }
 
 function valueCallHelp(
@@ -144,12 +78,7 @@ function functionCallHelp(
   argument: number,
 ): SignatureHelp | undefined {
   const resolved = body.resolved.get(call);
-  const functions = [
-    ...new Set([
-      ...(resolved === undefined ? [] : [resolved.function]),
-      ...body.candidatesAt(call),
-    ]),
-  ];
+  const functions = calleesOf(body, call);
   if (functions.length === 0) {
     return undefined;
   }
@@ -169,31 +98,4 @@ function functionCallHelp(
 function boundParameter(resolved: ResolvedCall, argument: number): number | undefined {
   const passed = argument + (resolved.receiver === undefined ? 0 : 1);
   return parameterOfArgument(resolved.binding).get(passed);
-}
-
-/**
- * The parameter of `declaration` that the written `argument` would give: the one it names, else
- * the one at its position, past `self` when the call is written as a method's, else a rest
- * parameter collecting it.
- */
-function writtenParameter(
-  declaration: FunctionDeclaration,
-  call: Call,
-  argument: number,
-): number | undefined {
-  const { parameters } = declaration;
-  const written = call.arguments[argument];
-  if (written?.kind === 'NamedArgument') {
-    const named = parameters.findIndex(
-      (parameter) => parameter.kind === 'Parameter' && parameter.name.text === written.name.text,
-    );
-    return named === -1 ? undefined : named;
-  }
-  const receivers = call.callee.kind === 'MemberAccess' && isMethod(declaration) ? 1 : 0;
-  const position = argument + receivers;
-  const last = parameters.at(-1);
-  if (position < parameters.length) {
-    return position;
-  }
-  return last?.kind === 'Parameter' && last.isRest ? parameters.length - 1 : undefined;
 }
