@@ -69,6 +69,30 @@ const layers = {
     'definition',
   ],
   stdlib: ['text', 'compiler/program', 'definition', 'runtime'],
+  formatter: ['text', 'diagnostics', 'compiler/syntax', 'compiler/scanner', 'compiler/parser'],
+  project: ['text', 'diagnostics', 'compiler/program', 'stdlib'],
+  'language-service': [
+    'text',
+    'diagnostics',
+    'compiler/syntax',
+    'compiler/scanner',
+    'compiler/parser',
+    'compiler/program',
+    'compiler/binder',
+    'compiler/checker',
+    'compiler/compile',
+    'formatter',
+  ],
+  lsp: [
+    'text',
+    'diagnostics',
+    'compiler/syntax',
+    'compiler/program',
+    'language-service',
+    'formatter',
+    'project',
+    'stdlib',
+  ],
   cli: [
     'text',
     'diagnostics',
@@ -77,6 +101,9 @@ const layers = {
     'stdlib',
     'definition',
     'runtime',
+    'formatter',
+    'project',
+    'lsp',
   ],
   definition: [],
   runtime: ['definition', 'text'],
@@ -119,6 +146,7 @@ const checkerSurface = [
   'types/substitution.ts',
   'types/fit.ts',
   'types/type-keys.ts',
+  'types/type-text.ts',
   'types/instantiation.ts',
   'types/well-known.ts',
 ];
@@ -128,8 +156,11 @@ const checkerFolder = (names) => `^src/compiler/checker/(${names.join('|')})/`;
 /** The checker folders its contracts may name: diagnostics and the type model beneath everything. */
 const checkerModel = ['diagnostics', 'types'];
 
-/** Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams. */
-const nodeLayers = ['cli'];
+/**
+ * Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams, and
+ * `project/`, which reads a project's files for both of them.
+ */
+const nodeLayers = ['cli', 'lsp', 'project'];
 
 /** A layer is a folder (`compiler/program`) or a single module (`compiler/compile` is compile.ts). */
 const layerPath = (names) => `^src/(${names.join('|')})(/|\\.ts$)`;

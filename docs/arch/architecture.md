@@ -111,6 +111,7 @@ src/
   formatter/            SyntaxTree → text; one printer per construct
   language-service/     editor-agnostic queries over Program snapshots; one folder per feature
   lsp/                  LSP adapter (vscode-languageserver): server.ts root, one provider per feature
+  project/              a project on disk: source discovery, the files ModuleLoader, open texts laid over disk
   packages/             ista.json, minimal version selection, lockfile, vendor, verify, vendor loader
   cli/                  main.ts executable, cli.ts root, command.ts (the command seam), file-loader.ts (the project files ModuleLoader), project.ts (sources, loaders), directory-store.ts (the InstanceStore of --store), host-module.ts (the host externs of --host), errno.ts (system errors), report.ts (diagnostics output), clock.ts (the one clock), log-lines.ts (a log record as one line of JSON), commands/ (check, run, test)
 test/corpus/            shared .ista corpus (spec examples, valid/invalid cases) used by every phase
@@ -121,8 +122,10 @@ test/corpus/            shared .ista corpus (spec examples, valid/invalid cases)
 Imports point only downward; cycles are forbidden. Both rules are enforced by lint, not left to review.
 
 ```
-cli · lsp                               apps (composition roots); nothing imports them
-language-service · formatter · packages tooling
+cli                                     the app (composition root); nothing imports it
+lsp                                     the language server, a composition root that `ista lsp` runs
+language-service · formatter · packages tooling; language-service imports no Node built-in
+project                                 a project on disk: its sources and the loaders reading them
 compiler/compile ─▶ lowering ─▶ checker ─▶ binder ─▶ program ─▶ parser · scanner ─▶ syntax
 runtime ─▶ definition ◀─ lowering       runtime never imports compiler/
 stdlib ─▶ program (loader seam) · runtime native seam · definition values (==, map keys: definition/equality.ts)
@@ -130,14 +133,14 @@ text · diagnostics                      foundation; the runtime may use text/ f
 language · structures                   beneath every layer; they import nothing
 ```
 
-- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `host-externs.ts`, `types/type.ts`, `types/substitution.ts`, `types/fit.ts`, `types/type-keys.ts`, `types/well-known.ts`, `types/instantiation.ts`), which lowering reads module by module.
+- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `host-externs.ts`, `types/type.ts`, `types/substitution.ts`, `types/fit.ts`, `types/type-keys.ts`, `types/type-text.ts`, `types/well-known.ts`, `types/instantiation.ts`), which lowering reads module by module.
 - Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types`, `inference`, `traits`, `resolution`, `calls`, `patterns`, `flow`, `rules`, `declarations`, `closures`, `expressions`, `statements`. A folder imports only those beneath it, so engines never import constructs. Its root modules are its entry, contexts and contracts, which every folder may import, except the classes that wire a body and a program together (`body-checker.ts`, `program-checker.ts`).
 - `syntax/` and `definition/` are contracts with high fan-in. Change them deliberately, and update every caller in the same change.
 - Mechanisms:
   - Biome `noExcessiveLinesPerFile` enforces the 400-line limit.
   - Biome `noImportCycles` (project domain) forbids cycles.
   - dependency-cruiser enforces the layers as an allow-list over resolved paths (`.dependency-cruiser.mjs`), the checker's inner layers and its surface included. A layer not listed there can import nothing. Biome's import rules match specifiers, whose shape depends on directory depth, so they can't state an allow-list.
-  - npm packages may be imported by any layer. Node's built-ins only by apps: the layers beneath reach files, processes and clocks through seams. The one exception is `crypto`, which is computation, not I/O: `definition/` hashes content with it, `runtime/` draws an instance's random values (`scheduler/random-source.ts`) and seeds a test's from its title (`testing/run-tests.ts`), and `stdlib/` implements the `crypto` module.
+  - npm packages may be imported by any layer. Node's built-ins only by apps (`cli/`, `lsp/`) and `project/`, which reads a project's files for both: the layers beneath reach files, processes and clocks through seams. The one exception is `crypto`, which is computation, not I/O: `definition/` hashes content with it, `runtime/` draws an instance's random values (`scheduler/random-source.ts`) and seeds a test's from its title (`testing/run-tests.ts`), and `stdlib/` implements the `crypto` module.
 
 ## Phase contracts
 
