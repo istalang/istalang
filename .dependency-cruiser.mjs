@@ -105,6 +105,9 @@ const layers = {
     'project',
     'lsp',
   ],
+  // The VS Code client, bundled on its own into the extension (.vscode/extensions/ista): of the
+  // server it shares only the protocol's request, so no server code reaches the bundle.
+  'vscode-client': ['lsp/std-source-request'],
   definition: [],
   runtime: ['definition', 'text'],
 };
@@ -162,7 +165,7 @@ const checkerModel = ['diagnostics', 'types'];
  * Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams, and
  * `project/`, which reads a project's files for both of them.
  */
-const nodeLayers = ['cli', 'lsp', 'project'];
+const nodeLayers = ['cli', 'lsp', 'project', 'vscode-client'];
 
 /** A layer is a folder (`compiler/program`) or a single module (`compiler/compile` is compile.ts). */
 const layerPath = (names) => `^src/(${names.join('|')})(/|\\.ts$)`;
@@ -235,6 +238,12 @@ export default {
     })),
     { from: { path: '^src/' }, to: { dependencyTypes: ['npm'] } },
     { from: { path: layerPath(nodeLayers) }, to: { dependencyTypes: ['core'] } },
+    {
+      // The VS Code client is bundled whole at build time, so what it imports are the package's
+      // devDependencies; the package's own code, which runs from node_modules, may import none.
+      from: { path: layerPath(['vscode-client']) },
+      to: { dependencyTypes: ['npm-dev'] },
+    },
     {
       // Hashing is computation, not I/O: content hashes, random draws and the `crypto` module.
       from: { path: layerPath(['definition', 'runtime', 'stdlib']) },

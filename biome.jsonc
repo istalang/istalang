@@ -73,6 +73,12 @@
       }
     },
     {
+      // `vscode` is the editor's own module, given to an extension at run time; no package
+      // provides it, and its types come from @types/vscode.
+      "includes": ["src/vscode-client/extension.ts"],
+      "linter": { "rules": { "correctness": { "noUndeclaredDependencies": "off" } } }
+    },
+    {
       // Tool configuration files must default-export their config, and a text import (an `.ista`
       // source compiled in by the build) has nothing but a default export to declare.
       "includes": ["*.config.ts", ".dependency-cruiser.mjs", "src/**/*.d.ts"],

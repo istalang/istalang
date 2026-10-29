@@ -2,5 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   // dependency-cruiser parses with swc (.dependency-cruiser.mjs `parser`); without it, it cruises
   // no module at all and reports no violation, so the layer check would pass checking nothing.
-  "ignoreDependencies": ["@swc/core"]
+  // `vscode` is the editor's own module, given to the VS Code client at run time (its types come
+  // from @types/vscode), so no package can list it.
+  "ignoreDependencies": ["@swc/core", "vscode"]
 }
