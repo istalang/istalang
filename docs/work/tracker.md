@@ -26,7 +26,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F12, P13, Q32, B22. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F14, P14, Q34, B23. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -47,6 +47,8 @@ Language or toolchain features deferred by decision, not defects.
 | F9 | Loop and block labels aren't navigable: definition, references and rename skip them, since no declaration kind exists for labels. | small | — | phase 7.2a report 2026-10-29 |
 | F10 | VS Code client: Windows isn't served (`.bin/ista.cmd` needs a shell), and a changed `ista.server.path` takes effect only on reload. | small | — | phase 7.3 report 2026-10-29 |
 | F11 | The language server doesn't watch the disk (`workspace/didChangeWatchedFiles`): a file changed outside the editor is seen at the next edit. It serves only the first workspace folder. | medium | — | phase 7.1 report 2026-10-29 |
+| F12 | Completion offers a literal's missing fields after its `{` or `,`, but a struct pattern's (`case Pair{‸}`) offers none. | small | none; can be done now | completion fix 2026-10-30 |
+| F13 | With no completion from the server (after a top-level `time.`, `main.`), VS Code still shows word-based suggestions unless `editor.wordBasedSuggestions` is off; the extension could default it off for `[ista]` (`configurationDefaults`). | easy | none; can be done now | completion fix 2026-10-30 |
 
 ### Performance (P)
 
@@ -65,6 +67,7 @@ Time and memory: measured costs, quadratic paths, hot-path checks.
 | P10 | An edit re-binds its whole module (1.8 ms per 2,098 lines) and replays thousands of `entityOf` reads; entity identity across edits comes from per-node factories. Binding per item first needs Scope's tree-wide definition numbering and its ended-scope misses (a top-level function's parameters land in the module scope) made per item, so one item's binding can't change another's. Margin on the 2,098-line budget (15 ms) is ~1 ms; the other lever is the three walks of `notesOfReads` per revision. | big | none; can be done now | phase 7A.7 report 2026-10-29 |
 | P11 | `language-service/edit.bench.ts` reports medians but asserts no budget (machine-specific), so a latency regression shows only to whoever runs `npm run bench`. | small | none; can be done now | phase 7A.7 report 2026-10-29 |
 | P12 | The LSP signature-help property (lsp/providers/signature-help.test.ts) runs one round trip per corpus call argument, 1,560 tests, about 26 s of its file's time; the suite's wall time hides it only while files run in parallel. Sample the cuts, or drive the provider without the protocol. | small | none; can be done now | End fix F3 report 2026-10-29 |
+| P13 | Member completion runs `takenBy` and a constraint search per candidate method name; unmeasured on a large module in the editor. | small | none; can be done now | completion fix 2026-10-30 |
 
 ### Code quality (Q)
 
@@ -78,6 +81,8 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q29 | runtime/scheduler/mocks.ts `asHostValue` and `leaving` walk a value the same way and differ only on a non-resource handle (kept vs panic). One walk, given what a handle does. | easy | none; can be done now | Q21 fix 2026-10-28 |
 | Q30 | A local's module has two answers keyed differently: `Checker.moduleOf` finds it by node through a tree search (checker/declaring-modules.ts), while `Bindings.moduleOf` answers by entity for every entity a tree makes. Keep one. | small | — | phase 7A.1 report 2026-10-29 |
 | Q31 | Incremental == fresh holds only while the checker reads the program through `CheckerContext.inputs` and table contexts are decided by their keys. Nothing enforces either: a unit reading `checker.program` directly, or a context carrying a computed value, breaks it silently, and only revisions.test.ts would notice. Make both structural (no program on the contexts units see; contexts derived from keys). | medium | — | phase 7A.4 report 2026-10-29 |
+| Q32 | Which field a literal's item gives has two rules: completion reads `FieldInitializer` names only, the checker `patterns/struct-items.ts` `itemField` (a positional item counts there). Keep the checker's. | small | none; can be done now | completion fix 2026-10-30 |
+| Q33 | The member-completion soundness property can't probe a method taking another argument by `&` (it needs a place of the exact type), so such methods are left out of it. | small | none; can be done now | completion fix 2026-10-30 |
 
 ### Behaviour and correctness (B)
 
@@ -101,3 +106,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B19 | Rename doesn't refuse a field of a struct with a derived JSON codec, nor an extern: renaming one silently changes its wire or host name. | small | — | phase 7.2a report 2026-10-29 |
 | B20 | In a program with errors, an inlay hint can read `fn(?) -> ?`: a hint is dropped only when its whole type is the error type. Dropping any type that mentions an error needs `mentionsError` (checker types/type-parts.ts) on the checker surface. | small | — | phase 7.2b report 2026-10-29 |
 | B21 | Tests time out under the full parallel run on a loaded machine, once each: binder bind.test.ts's totality property (5 s limit), lsp/diagnostics.test.ts, syntax tree.test.ts `nodesAt`, and run.test.ts "continues an instance killed while it waits". All pass alone and on rerun. | small | — | phase 7.2b report 2026-10-29 |
+| B22 | Whether a name is a method is decided by name only for a member read (structs.ts `noField`, 5504 "is a method: call it") and a call's 5214, while completion and the members query judge by the receiver: `x.filter` on an int reports "'filter' is a method", and `x.filter(f)` reports 5001 at the receiver, not 5214. One rule for all three changes diagnostics. | medium | none; can be done now | completion fix 2026-10-30 |
