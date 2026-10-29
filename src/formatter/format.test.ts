@@ -3,6 +3,7 @@
  * style decisions those inputs don't pin down, each on a small module.
  */
 
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { dump } from '../compiler/syntax/tree.test-kit.ts';
 import {
@@ -19,16 +20,68 @@ describe('formatting every corpus file and spec example', () => {
   it.each(formattableInputs)(
     '$name keeps its tree and comments, and formats once and for all within the width',
     ({ text }) => {
-      const tree = parseText(text);
-      const formatted = formatTree(tree) ?? '';
-      const reparsed = parseText(formatted);
-      expect(reparsed.diagnostics).toEqual([]);
-      expect(dump(reparsed, reparsed.root)).toBe(dump(tree, tree.root));
-      expect(commentTexts(reparsed)).toEqual(commentTexts(tree));
-      expect(formatTree(reparsed)).toBe(formatted);
+      const { actual, expected, reparsed } = acceptanceOf(text);
+      expect(actual).toEqual(expected);
       expect(unexplainedLongLines(reparsed)).toEqual([]);
     },
   );
+});
+
+/**
+ * Acceptance 1–3 for `text`: what its format re-parses to (diagnostics, tree, comments) and formats
+ * to again, beside what each must be.
+ */
+function acceptanceOf(text: string) {
+  const tree = parseText(text);
+  const formatted = formatTree(tree) ?? '';
+  const reparsed = parseText(formatted);
+  return {
+    reparsed,
+    actual: {
+      diagnostics: reparsed.diagnostics,
+      tree: dump(reparsed, reparsed.root),
+      comments: commentTexts(reparsed),
+      formattedAgain: formatTree(reparsed),
+    },
+    expected: {
+      diagnostics: [],
+      tree: dump(tree, tree.root),
+      comments: commentTexts(tree),
+      formattedAgain: formatted,
+    },
+  };
+}
+
+describe('a body whose one statement is a braced block', () => {
+  const headers = ['fn f():', 'fn f(): # on f', 'if a:', 'for x in xs:', 'while a:'];
+  const leaders = ['# lead', '@Waypoint{"w"}'];
+  const blocks = [['g()'], ['g()', 'h()']];
+
+  it('keeps Acceptance 1–3 with comments and annotations before its brace', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...headers),
+        fc.array(fc.constantFrom(...leaders), { maxLength: 3 }),
+        fc.constantFrom(...blocks),
+        fc.boolean(),
+        (header, leading, statements, nestedFunction) => {
+          const nested = nestedFunction || !header.startsWith('fn');
+          const outer = nested ? ['fn outer():'] : [];
+          const depth = nested ? '  ' : '';
+          const text = lines(
+            ...outer,
+            `${depth}${header}`,
+            ...leading.map((leader) => `${depth}  ${leader}`),
+            `${depth}  {`,
+            ...statements.map((statement) => `${depth}    ${statement}`),
+            `${depth}  }`,
+          );
+          const { actual, expected } = acceptanceOf(text);
+          expect(actual).toEqual(expected);
+        },
+      ),
+    );
+  });
 });
 
 describe('refusing', () => {

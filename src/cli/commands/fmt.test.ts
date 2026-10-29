@@ -58,14 +58,13 @@ describe('ista fmt', () => {
     expect(run.err).not.toContain(root);
   });
 
-  it('writes nothing when a named file is missing, or lies under a file', async () => {
-    const root = project({ 'a.ista': unformatted });
-    expect(await ista(root, 'fmt', 'a.ista/sub.ista')).toEqual({
-      code: 2,
-      out: '',
-      err: 'ista: no such file: a.ista/sub.ista\n',
-    });
-  });
+  it.each(['missing.ista', './missing.ista', 'lib', 'a.ista/sub.ista'])(
+    'reports %s, which names no file, as ista check does',
+    async (path) => {
+      const root = project({ 'a.ista': unformatted, 'lib/b.ista': formatted });
+      expect(await ista(root, 'fmt', path)).toEqual(await ista(root, 'check', path));
+    },
+  );
 
   it('writes nothing when a named file is missing', async () => {
     const root = project({ 'a.ista': unformatted });

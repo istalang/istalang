@@ -4,18 +4,19 @@
  * With no files, every source under the project root. `--check` writes nothing and lists the files
  * that would change, for CI. A file with syntax errors is reported and left as it is: the parser
  * recovered from them by guessing, and printing its guesses would rewrite code the user didn't
- * write. Every named file is read before any is written, so a typo in the command line changes
- * nothing.
+ * write. Every named file is found before any is written, so a typo in the command line changes
+ * nothing. Files are read through project/'s seam, so a path names a file for `fmt` exactly when
+ * it does for `check`.
  *
  * Exit codes: 0 when every file is formatted (with `--check`, already was), 1 when a file has
  * syntax errors or `--check` found one to change, and 2 when a named file can't be read.
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { formatSource } from '../../formatter/format.ts';
-import { isSystemError } from '../../project/errno.ts';
 import { findProjectSources } from '../../project/project.ts';
+import { diskFiles } from '../../project/project-files.ts';
 import { createSourceText } from '../../text/source-text.ts';
 import {
   type CliEnvironment,
@@ -23,7 +24,7 @@ import {
   type ExitCode,
   exitCodes,
 } from '../command.ts';
-import { reportDiagnostics } from '../report.ts';
+import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
 interface FmtOptions {
   readonly check?: boolean;
@@ -40,38 +41,19 @@ export const defineFmtCommand: CommandDefinition = (cli, { environment, exitWith
     });
 };
 
-/** The system errors saying a path names no file to read. */
-const noFile: ReadonlySet<string> = new Set(['ENOENT', 'EISDIR', 'ENOTDIR']);
-
-/** The text of the file at `path`, or undefined when there is none to read. */
-function readText(path: string): string | undefined {
-  try {
-    return readFileSync(path, 'utf8');
-  } catch (error) {
-    if (isSystemError(error) && noFile.has(error.code)) {
-      return undefined;
-    }
-    throw error;
-  }
-}
-
 function fmt(files: readonly string[], check: boolean, environment: CliEnvironment): ExitCode {
   const { cwd } = environment;
-  const paths =
-    files.length > 0 ? files.map((file) => resolve(cwd, file)) : findProjectSources(cwd);
-  const read = paths.map((path) => ({ path, text: readText(path) }));
-  const unreadable = read.filter(({ text }) => text === undefined);
+  const named = files.length > 0 ? files : findProjectSources(cwd);
+  const unreadable = named.filter((file) => !diskFiles.isFile(resolve(cwd, file)));
   if (unreadable.length > 0) {
-    environment.writeError(
-      unreadable.map(({ path }) => `ista: no such file: ${relative(cwd, path)}\n`).join(''),
-    );
+    reportUnreadable(unreadable, environment.writeError);
     return exitCodes.couldNotRun;
   }
-  const results = read.map(({ path, text = '' }) => ({
-    path,
-    original: text,
-    ...formatSource(createSourceText(relative(cwd, path), text)),
-  }));
+  const results = named.map((file) => {
+    const path = resolve(cwd, file);
+    const original = diskFiles.read(path);
+    return { path, original, ...formatSource(createSourceText(relative(cwd, path), original)) };
+  });
   const refused = results.filter(({ text }) => text === undefined);
   reportDiagnostics(
     refused.map(({ tree }) => ({ source: tree.source, diagnostics: tree.diagnostics })),

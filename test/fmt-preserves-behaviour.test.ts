@@ -76,9 +76,7 @@ describe('ista fmt over the corpus', () => {
 describe('ista fmt over line breaks (spec §2: `\\n`, `\\r\\n` or a lone `\\r`)', () => {
   const breaks = { 'a CRLF': '\r\n', 'a lone CR': '\r' } as const;
 
-  // Open bug: a CRLF is read as two line breaks, so it writes a blank line after every statement
-  // and item. `it.fails` turns green-by-accident into a loud failure once it is fixed.
-  it.fails('formats a CRLF module as its LF twin', () => {
+  it('formats a CRLF module as its LF twin', () => {
     const different = formattableInputs.filter(
       ({ text }) => formatText(text.replaceAll('\n', breaks['a CRLF'])) !== formatText(text),
     );

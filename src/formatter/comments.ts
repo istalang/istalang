@@ -10,7 +10,7 @@
 
 import { builders } from 'prettier/doc';
 import type { Comment } from '../compiler/syntax/tokens.ts';
-import { lineMapOf } from '../text/line-map.ts';
+import { lineMapOf, splitLines } from '../text/line-map.ts';
 import type { SourceText } from '../text/source-text.ts';
 import { type Span, textOf } from '../text/span.ts';
 
@@ -71,11 +71,11 @@ function whitespaceEnd(text: string, offset: number): number {
   return end;
 }
 
-const blankLine = /(?:\r\n|\r|\n)[^\S\r\n]*(?:\r\n|\r|\n)/u;
-
 /** Whether a line of nothing but whitespace stands between `start` and `end`. */
 export function hasBlankLine(text: string, start: number, end: number): boolean {
-  return blankLine.test(text.slice(start, end));
+  return splitLines(text.slice(start, end))
+    .slice(1, -1)
+    .some((line) => line.trim() === '');
 }
 
 /**

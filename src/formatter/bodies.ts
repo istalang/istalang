@@ -4,9 +4,9 @@
  *
  * A one-item body stays on its header's line when it fits, unless the item opens a body of its own
  * outside brackets: an `else` after it would then belong to it (spec §4, "Continuing a
- * construct"). A body with a docstring is always indented, the docstring first. A braced block is
- * the one item that never moves off the header's line, since breaking before its `{` only adds a
- * level of indentation around the braces.
+ * construct"). A body with a docstring is always indented, the docstring first. A braced block
+ * never moves off the header's line, since breaking before its `{` only adds a level of
+ * indentation around the braces; unless a comment or annotation stands before its `{`.
  *
  * Annotations written before an item stand on lines of their own above it; those written after it
  * stay on its line (§3.16).
@@ -17,7 +17,7 @@ import type { Annotatable, Annotation } from '../compiler/syntax/annotations.ts'
 import type { Docstring } from '../compiler/syntax/declarations.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Block } from '../compiler/syntax/statements.ts';
-import { fieldChildrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { extentIn, fieldChildrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { blankBetween, hasComments, hugging, itemLines } from './lists.ts';
 import type { Printer } from './printer.ts';
 
@@ -67,8 +67,18 @@ export function opensBody(node: SyntaxNode): boolean {
   return bodyOpeners.has(node.kind) || unbracketedChildren(node).some(opensBody);
 }
 
-function isBracedBlock(node: SyntaxNode): boolean {
-  return node.kind === 'ExpressionStatement' && node.expression.kind === 'BlockExpression';
+/**
+ * Whether `statement`, `block`'s one item, is a braced block whose `{` is the first thing the body
+ * prints. A comment or annotation before the brace ends its own line, so the body is indented then.
+ */
+function startsWithBrace(printer: Printer, block: Block, statement: SyntaxNode): boolean {
+  if (statement.kind !== 'ExpressionStatement' || statement.expression.kind !== 'BlockExpression') {
+    return false;
+  }
+  const brace = extentIn(printer.tree, statement.expression).start;
+  return [block, statement, statement.expression].every(
+    (node) => printer.extentOf(node).start === brace,
+  );
 }
 
 /**
@@ -81,7 +91,7 @@ export function body(printer: Printer, block: Block): builders.Doc {
   if (only === undefined || rest.length > 0 || opensBody(only)) {
     return [header, indent([hardline, printer.print(block)])];
   }
-  if (isBracedBlock(only)) {
+  if (startsWithBrace(printer, block, only)) {
     return [header, ' ', printer.print(block)];
   }
   const indented = indent([line, printer.print(block)]);
