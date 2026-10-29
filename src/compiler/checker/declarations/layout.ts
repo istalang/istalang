@@ -15,7 +15,7 @@
  * ProgramChecker composes this unit and answers the layout queries through it.
  */
 
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type {
   DeclaredStruct,

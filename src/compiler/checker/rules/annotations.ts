@@ -19,7 +19,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';

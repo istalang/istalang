@@ -19,7 +19,7 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
 import type { LanguageModule } from '../../language/well-known.ts';
-import type { Entries } from '../../structures/entries.ts';
+import type { Entries } from '../../structures/entries/index.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
@@ -93,7 +93,7 @@ export interface ConstraintCheck {
 }
 
 /**
- * What an entry notes while it computes (structures/entries.ts): a diagnostic reported in a
+ * What an entry notes while it computes (structures/entries/): a diagnostic reported in a
  * module, or a constraint check to run once that module is checked (`constrainLater`).
  */
 export type CheckerNote =

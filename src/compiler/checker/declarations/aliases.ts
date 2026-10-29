@@ -4,7 +4,7 @@
  * is reported at each alias of the cycle, which then stands for the error type.
  */
 
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

@@ -1,6 +1,6 @@
 /**
  * Equality of results, for deciding whether a value computed again is the one computed before
- * (entries.ts, early cutoff). Items compare by a given equality, by identity unless told otherwise,
+ * (entries/, early cutoff). Items compare by a given equality, by identity unless told otherwise,
  * so nodes and entities, whose identity is their meaning, compare as themselves.
  */
 

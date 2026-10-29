@@ -8,7 +8,7 @@
  * runs once; running one may note more, which run too.
  */
 
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';

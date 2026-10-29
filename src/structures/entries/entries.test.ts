@@ -8,10 +8,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { Entries, type EntryTable } from './entries.ts';
-import { sameItems } from './equality.ts';
-import type { GraphEdge } from './strongly-connected.ts';
-import { Unreachable } from './unreachable.ts';
+import { sameItems } from '../equality.ts';
+import type { GraphEdge } from '../strongly-connected.ts';
+import { Unreachable } from '../unreachable.ts';
+import { Entries, type EntryTable } from './index.ts';
 
 type Edge = GraphEdge<number>;
 

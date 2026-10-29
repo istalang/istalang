@@ -14,7 +14,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 
 - dispatch exhaustively over a discriminated union's `kind` → `Handlers`, `handlerOf` (`src/structures/kind-table.ts`)
 - compute and cache a derived value once per key (including `undefined`) → `memo`, `MemoCache` (`src/structures/memo.ts`)
-- compute results once per key, each recording what it read and the notes it made, with cycles answered by a stand-in whichever member was asked first, and taken over by a later revision whose reads answer alike → `Entries`, `EntryTable` (`table`), `input`, `release`, `RevisionOptions` (`src/structures/entries.ts`)
+- compute results once per key, each recording what it read and the notes it made, with cycles answered by a stand-in whichever member was asked first, and taken over by a later revision whose reads answer alike → `Entries`, `EntryTable` (`table`), `input`, `release`, `RevisionOptions` (`src/structures/entries/index.ts`)
 - compare results item by item, entry by entry, member by member or property by property → `sameItems`, `sameEntries`, `sameMembers`, `sameProperties`, `Equality` (`src/structures/equality.ts`)
 - push an active item onto a work stack for the duration of a callback and pop in `finally` → `withPushed` (`src/structures/stack.ts`)
 - push an iterable onto an explicit stack without overflowing the JS call stack → `pushAll` (`src/structures/stack.ts`)

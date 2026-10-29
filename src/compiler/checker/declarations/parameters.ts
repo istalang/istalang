@@ -8,10 +8,10 @@
  *   never checks the defaults of a function it doesn't choose.
  * - A default reaching its own function through calls, while that function's types wait on it, is
  *   a cycle, reported at the function, whose parameters then stand as written, a type taken from
- *   a default read as the error type (structures/entries.ts); its defaults keep their checking.
+ *   a default read as the error type (structures/entries/); its defaults keep their checking.
  */
 
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';

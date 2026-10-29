@@ -1,6 +1,6 @@
 /**
  * What checking reads of its Program and its Bindings, as inputs of the checker's revision
- * (structures/entries.ts): each answer is recorded in the entry computing now, so a later revision
+ * (structures/entries/): each answer is recorded in the entry computing now, so a later revision
  * takes an entry over whenever what it read still answers alike, however much else changed
  * (docs/work/m6-m7/incremental-checking.md §1, §4).
  *
@@ -14,7 +14,7 @@
  */
 
 import type { LanguageModule } from '../../language/well-known.ts';
-import type { Entries } from '../../structures/entries.ts';
+import type { Entries } from '../../structures/entries/index.ts';
 import { sameEntries, sameItems } from '../../structures/equality.ts';
 import type { Bindings, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';

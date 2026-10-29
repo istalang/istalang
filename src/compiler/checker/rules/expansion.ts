@@ -20,7 +20,7 @@
  * function's reports, which alone read where its calls stand.
  */
 
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems, sameProperties } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations.ts';

@@ -30,7 +30,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - show a function as an editor does, its signature with where each parameter stands in it → `signatureOf`, `functionTypeSignature` (`src/language-service/signatures.ts`)
 - give a type the alias it was written through → `aliasedAs` (`src/compiler/checker/types/type.ts`); `substitute` keeps it, `widened` drops it where it widens
 - get a canonical key for a `Type` or numeric identity for an object → `typeKeys.typeKey`, `typeKeys.identityOf` (`src/compiler/checker/types/type-keys.ts`)
-- keep a program-wide checker result (cached, cycle-aware, its diagnostics kept with it) → `checker.entries.table()` (`EntryTable`, `src/structures/entries.ts`); report through `checker.report`, inside an entry
+- keep a program-wide checker result (cached, cycle-aware, its diagnostics kept with it) → `checker.entries.table()` (`EntryTable`, `src/structures/entries/index.ts`); report through `checker.report`, inside an entry
 - read a module's diagnostics, or check one top-level item whole before reading what checking decided in it → `checker.diagnosticsOf`, `checker.checkItem` (`src/compiler/checker/declarations/module-checks.ts`)
 - guard a coinductive recursive type check (`Sendable`, JSON codecs) against cycles → `TypeCycle` (`src/compiler/checker/types/type-cycle.ts`)
 - build or apply a type substitution → `substitutionFor`, `substitute`, `substituteAny`, `substituteFunction` (`src/compiler/checker/types/substitution.ts`)

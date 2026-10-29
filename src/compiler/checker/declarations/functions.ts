@@ -9,7 +9,7 @@
  * type, whichever was asked first.
  */
 
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckedBody } from '../check.ts';

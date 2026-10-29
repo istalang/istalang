@@ -11,7 +11,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { compareOrdered } from '../../../language/order.ts';
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Declaration } from '../../syntax/declarations.ts';
 import { diagnosticIn, type SegmentBases } from '../../syntax/positions.ts';

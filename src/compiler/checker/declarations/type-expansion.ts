@@ -13,7 +13,7 @@
  * layout being made, so it adds no edge.
  */
 
-import type { EntryTable } from '../../../structures/entries.ts';
+import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems, sameMembers, sameProperties } from '../../../structures/equality.ts';
 import {
   type DeclaredField,

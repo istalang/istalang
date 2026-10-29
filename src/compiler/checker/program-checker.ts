@@ -1,6 +1,6 @@
 /**
  * The checker of one Program: every program-wide answer, each computed once as an entry of the
- * checker's tables (structures/entries.ts), so the checker as a whole is a function of its Program
+ * checker's tables (structures/entries/), so the checker as a whole is a function of its Program
  * (check.ts keys it on that snapshot), whatever was asked of it first.
  *
  * - Checking is lazy. A function's body is checked the first time anything needs it: its module's
@@ -15,7 +15,7 @@
  * - Items checked by their module are its top-level items and a trait's members; type parameters
  *   resolve their constraints in the module declaring them (declaring-modules.ts).
  * - A checker made with the checker of an earlier snapshot takes over its entries wherever what
- *   they read answers alike (structures/entries.ts). It reads its Program and Bindings only through
+ *   they read answers alike (structures/entries/). It reads its Program and Bindings only through
  *   inputs recorded in the entry computing now (program-inputs.ts), so nothing it answers rests on
  *   a read no entry recorded.
  */
@@ -26,7 +26,7 @@ import {
   type WellKnownDeclaration,
   wellKnown,
 } from '../../language/well-known.ts';
-import { Entries, type EntryTable } from '../../structures/entries.ts';
+import { Entries, type EntryTable } from '../../structures/entries/index.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
