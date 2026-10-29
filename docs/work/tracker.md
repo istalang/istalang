@@ -20,8 +20,8 @@ tags: [tracker]
 | M4 Standard library | done |
 | M5 Test runner | done |
 | Language features (`docs/work/language-features/plan.md`) | done |
-| M6 Formatter | planned |
-| M7 Language service and LSP | planned |
+| M6 Formatter | done |
+| M7 Language service and LSP | done (the human's VS Code install check pending) |
 | M8 Packages | planned |
 
 ## Filed

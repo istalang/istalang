@@ -1,7 +1,7 @@
 ---
 description: M7 details — what the compiler lacks for a language service (research of 2026-10-29), phase scopes, contracts, libraries and falsifiable acceptance; read before implementing or examining any M7 phase
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-10-29
 last_updated: 2026-10-29

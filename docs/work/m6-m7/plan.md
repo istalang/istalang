@@ -1,7 +1,7 @@
 ---
 description: plan for M6 (formatter) and M7 (language service, LSP, VS Code client), built in parallel — read before forking, implementing or examining any M6/M7 phase
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-10-29
 last_updated: 2026-10-29
