@@ -7,7 +7,7 @@
 import { memo } from '../../structures/memo.ts';
 import type { Program } from '../program/program.ts';
 import type { Identifier } from '../syntax/node.ts';
-import { childrenOf, type SyntaxNode } from '../syntax/tree.ts';
+import { nodesUnder, type SyntaxNode } from '../syntax/tree.ts';
 import type { Bindings, Entity, EntityUse } from './entities.ts';
 
 /** Each entity's names across `program`, in module order, then source order. */
@@ -17,7 +17,7 @@ export function usesByEntity(
 ): ReadonlyMap<Entity, readonly EntityUse[]> {
   const uses = new Map<Entity, EntityUse[]>();
   for (const [module, { tree }] of program.modules) {
-    for (const name of identifiersUnder(tree.root)) {
+    for (const name of nodesUnder(tree, tree.root).filter(isIdentifier)) {
       const entity = entityOf(module, name);
       if (entity !== undefined) {
         memo(uses, entity, (): EntityUse[] => []).push({ module, name });
@@ -27,14 +27,6 @@ export function usesByEntity(
   return uses;
 }
 
-function identifiersUnder(root: SyntaxNode): readonly Identifier[] {
-  const found: Identifier[] = [];
-  const pending = [root];
-  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
-    if (node.kind === 'Identifier') {
-      found.push(node);
-    }
-    pending.push(...childrenOf(node).toReversed());
-  }
-  return found;
+function isIdentifier(node: SyntaxNode): node is Identifier {
+  return node.kind === 'Identifier';
 }

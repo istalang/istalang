@@ -232,8 +232,9 @@ describe('layout errors', () => {
   ])('reports %s once and parses on', (_name, text, diagnostic, spanText) => {
     const source = lines(text, after);
     expect(reported('module', source)).toEqual(reportedOnce(diagnostic.code, spanText));
-    const { items } = parseAs('module', source).node as Module;
-    expect(dump(items.at(-1) ?? { kind: 'Missing', span: { start: 0, end: 0 } })).toBe(
+    const parsed = parseAs('module', source);
+    const { items } = parsed.node as Module;
+    expect(dump(parsed, items.at(-1) ?? { kind: 'Missing', span: { start: 0, end: 0 } })).toBe(
       functionOf('ok', bodyOf('1')),
     );
   });

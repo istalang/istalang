@@ -5,9 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { dump } from '../../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, parseAs, reported } from '../parse.test-kit.ts';
+import { dumpClean, dumpOf, parseAs, reported } from '../parse.test-kit.ts';
 
 describe('templates', () => {
   it.each([
@@ -51,7 +50,7 @@ describe('templates', () => {
     expect(reported('expression', '`${}` + 1')).toEqual(
       reportedOnce(parserDiagnostics.emptyTemplateValue.code, '${}'),
     );
-    expect(dump(parseAs('expression', '`${}` + 1').node)).toBe(
+    expect(dumpOf(parseAs('expression', '`${}` + 1'))).toBe(
       '(Binary (TemplateLiteral _ [(TemplateText ) (TemplateText )] [?]) + 1)',
     );
   });

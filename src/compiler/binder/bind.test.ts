@@ -279,7 +279,8 @@ describe('moduleOf', () => {
     const misplaced = boundCorpus().flatMap(({ program, modules }) => {
       const bindings = bindProgram(program);
       return modules.flatMap((module) => {
-        const names = new Set(nodesUnder(programModule(program, module).tree.root));
+        const { tree } = programModule(program, module);
+        const names = new Set(nodesUnder(tree, tree.root));
         return resolvedNames(program, module).filter(({ entity }) => {
           const declaring = declaringName(entity);
           return declaring !== undefined && names.has(declaring)

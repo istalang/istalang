@@ -18,12 +18,7 @@
 
 import type { Identifier } from '../compiler/syntax/node.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
-import {
-  childrenOf,
-  nodesUnder,
-  type SyntaxNode,
-  type SyntaxTree,
-} from '../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { lastIndexAtMost } from '../structures/sorted.ts';
 import { type LineMap, lineMapOf } from '../text/line-map.ts';
 import type { Span } from '../text/span.ts';
@@ -79,8 +74,8 @@ function bracketSpans(tokens: readonly Token[]): readonly Span[] {
 }
 
 /** Indented blocks and item lists, which fold by layout rather than by brackets. */
-function layoutSpans({ root }: SyntaxTree, tokens: readonly Token[]): readonly Span[] {
-  return nodesUnder(root).flatMap((node) => {
+function layoutSpans(tree: SyntaxTree, tokens: readonly Token[]): readonly Span[] {
+  return nodesUnder(tree, tree.root).flatMap((node) => {
     const start = layoutStart(node, tokens);
     return start === undefined ? [] : [{ start, end: node.span.end }];
   });
@@ -100,7 +95,7 @@ const named = (node: { readonly name: Identifier }) => node.name.span.start;
 const layoutStarts: LayoutStarts = {
   // An indented block starts where its first statement does; a braced one is a bracket pair.
   Block: (node, tokens) =>
-    childrenOf(node)[0]?.span.start === node.span.start
+    node.statements[0]?.span.start === node.span.start
       ? tokens[lastIndexAtMost(tokens, (token) => token.span.end, node.span.start)]?.span.start
       : undefined,
   StructDeclaration: named,

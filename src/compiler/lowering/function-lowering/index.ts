@@ -46,6 +46,7 @@ import type { Expression, Lambda, MemberAccess } from '../../syntax/expressions/
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
+import { writtenBodyOf } from '../bodies.ts';
 import { CodeWriter } from '../code-writer.ts';
 import { emitConstant } from '../constants.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
@@ -152,7 +153,8 @@ class FunctionLowering implements FunctionContext {
   /** The code entry for a lambda or local function of the owner (§3.14). */
   lowerNested(node: Lambda | FunctionDeclaration): CodeFunction {
     this.#declareFrame();
-    const { body } = node;
+    const body =
+      node.kind === 'Lambda' ? node.body : writtenBodyOf(this.checker.program, this.module, node);
     if (body === undefined) {
       unreachable(`The local function at ${node.span.start} has no body.`);
     }

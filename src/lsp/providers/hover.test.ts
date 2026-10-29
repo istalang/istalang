@@ -80,7 +80,7 @@ describe('hover over the corpus', () => {
     };
     const offsets = shownAt(tree, shown);
     const wrong = await Promise.all(
-      nodesUnder(tree.root).map(async (node) => {
+      nodesUnder(tree, tree.root).map(async (node) => {
         const texts = shown(node);
         const offset = offsets.get(node);
         const { line, character } = rangeOf(tree.source, node.span).start;

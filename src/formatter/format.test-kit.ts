@@ -50,9 +50,9 @@ function linesOf(tree: SyntaxTree, start: number, end: number): readonly number[
  * run outside brackets, neither of which a line break may part (spec §2).
  */
 export function unexplainedLongLines(tree: SyntaxTree): readonly string[] {
-  const inBrackets = nodesInBrackets(tree.root);
+  const inBrackets = nodesInBrackets(tree);
   const unbreakable = new Set(
-    nodesUnder(tree.root)
+    nodesUnder(tree, tree.root)
       .filter(
         (node) =>
           node.kind === 'NamedImport' ||

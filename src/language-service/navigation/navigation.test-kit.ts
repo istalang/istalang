@@ -16,7 +16,8 @@ export function navigable(files: Readonly<Record<string, string>>) {
   const program = stdProgramOf(files);
   const named = (key: string, text: string, nth = 0): EntityUse => {
     const module = idOf(key);
-    const found = nodesUnder(programModule(program, module).tree.root).filter(
+    const { tree } = programModule(program, module);
+    const found = nodesUnder(tree, tree.root).filter(
       (node): node is Identifier => node.kind === 'Identifier' && node.text === text,
     )[nth];
     if (found === undefined) {

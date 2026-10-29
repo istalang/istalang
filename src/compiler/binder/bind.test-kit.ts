@@ -54,7 +54,8 @@ export function boundReport(files: Files, key = Object.keys(files)[0] ?? ''): Re
 
 /** The identifiers spelled `text` in module `key`, in source order. */
 export function namesIn(program: Program, key: string, text: string): readonly Identifier[] {
-  return nodesUnder(moduleAt(program, key).tree.root).filter(
+  const { tree } = moduleAt(program, key);
+  return nodesUnder(tree, tree.root).filter(
     (node): node is Identifier => node.kind === 'Identifier' && node.text === text,
   );
 }
@@ -100,7 +101,8 @@ export interface ResolvedName {
 /** Every name of `module` the binder resolved, in source order. */
 export function resolvedNames(program: Program, module: ModuleId): readonly ResolvedName[] {
   const bindings = bindProgram(program);
-  return nodesUnder(programModule(program, module).tree.root).flatMap((name) => {
+  const { tree } = programModule(program, module);
+  return nodesUnder(tree, tree.root).flatMap((name) => {
     const entity = name.kind === 'Identifier' ? bindings.entityOf(module, name) : undefined;
     return name.kind === 'Identifier' && entity !== undefined ? [{ module, name, entity }] : [];
   });

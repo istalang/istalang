@@ -122,7 +122,9 @@ describe('lookup over the corpus', () => {
     }
     const checked = { checker, module, tree };
     const reported = [...checker.diagnosticsOf(module)];
-    const disagreeing = nodesUnder(tree.root).flatMap((node) => disagreementsAt(checked, node));
+    const disagreeing = nodesUnder(tree, tree.root).flatMap((node) =>
+      disagreementsAt(checked, node),
+    );
     expect(checker.diagnosticsOf(module)).toEqual(reported);
     expect(disagreeing).toEqual([]);
   });

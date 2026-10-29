@@ -37,7 +37,8 @@ export function checkSuite(
     return;
   }
   const body = checker.bodyOf(declaration);
-  if (declaration.body === undefined || body === undefined) {
+  const written = checker.inputs.bodyOf(module, declaration);
+  if (written === undefined || body === undefined) {
     return;
   }
   const effectSites = new Set(
@@ -48,7 +49,7 @@ export function checkSuite(
       )
       .map(({ site }) => site),
   );
-  const offending = firstEffect(effectSites, declaration.body);
+  const offending = firstEffect(effectSites, written);
   if (offending !== undefined) {
     checker.report(module, checkerDiagnostics.suiteEffect(offending.span));
   }

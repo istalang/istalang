@@ -57,8 +57,11 @@ export function checkDropped(context: BodyContext, body: SyntaxNode): void {
         return variable === undefined ? dropped : new Set([...dropped, variable]);
       },
     },
-    context.labels,
-    body,
+    {
+      root: body,
+      labels: context.labels,
+      bodyOf: (declaration) => context.checker.inputs.bodyOf(context.module, declaration),
+    },
     new Set(),
   );
 }

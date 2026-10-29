@@ -25,7 +25,7 @@ import type { Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
 import type { Pattern } from '../syntax/patterns.ts';
-import type { Statement } from '../syntax/statements.ts';
+import type { Block, Statement } from '../syntax/statements.ts';
 import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { Cursor } from './cursor.ts';
@@ -69,6 +69,7 @@ export class Parser {
   readonly #source: SourceText;
   readonly #grammar: Grammar;
   readonly #diagnostics: Diagnostic[] = [];
+  readonly #bodies = new Map<FunctionDeclaration, Block>();
   #speculationDepth = 0;
   #nesting = 0;
 
@@ -104,6 +105,28 @@ export class Parser {
 
   report(diagnostic: Diagnostic): void {
     this.#diagnostics.push(diagnostic);
+  }
+
+  /**
+   * The body of each function parsed, which the tree holds apart from the function (syntax/tree.ts),
+   * functions the parser let go of since included: a parse undone, a node made Invalid.
+   */
+  get recordedBodies(): ReadonlyMap<FunctionDeclaration, Block> {
+    return this.#bodies;
+  }
+
+  /** Records `body` as `declaration`'s. */
+  addBody(declaration: FunctionDeclaration, body: Block): void {
+    this.#bodies.set(declaration, body);
+  }
+
+  /** Gives `from`'s body, if it has one, to `to`, the same function made anew. */
+  moveBody(from: FunctionDeclaration, to: FunctionDeclaration): void {
+    const body = this.#bodies.get(from);
+    if (body !== undefined) {
+      this.#bodies.delete(from);
+      this.#bodies.set(to, body);
+    }
   }
 
   /**

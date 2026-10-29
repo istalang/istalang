@@ -32,7 +32,7 @@ describe('completion over the corpus', () => {
     const scoped = resolvedNames(program, module)
       .filter((resolved) => isLookedUp(program, resolved))
       .map(({ name }) => name);
-    const members = nodesUnder(tree.root)
+    const members = nodesUnder(tree, tree.root)
       .flatMap((node) => {
         if (node.kind === 'MemberAccess') {
           return [node.member];

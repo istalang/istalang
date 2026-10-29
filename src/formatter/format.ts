@@ -63,15 +63,15 @@ const printers: Printers<SyntaxNode> = {
 const noComments: CommentsOf = { leading: [], trailing: [], dangling: [] };
 
 class TreePrinter implements Printer {
-  readonly source: SourceText;
+  readonly tree: SyntaxTree;
   readonly #placement: ReadonlyMap<SyntaxNode, CommentsOf>;
   readonly #inBrackets: ReadonlySet<SyntaxNode>;
   readonly #printed = new Set<PlacedComment>();
 
   constructor(tree: SyntaxTree, placement: ReadonlyMap<SyntaxNode, CommentsOf>) {
-    this.source = tree.source;
+    this.tree = tree;
     this.#placement = placement;
-    this.#inBrackets = nodesInBrackets(tree.root);
+    this.#inBrackets = nodesInBrackets(tree);
   }
 
   print(node: SyntaxNode): builders.Doc {
@@ -125,10 +125,10 @@ class TreePrinter implements Printer {
 }
 
 /** The spans of the literals printed as copies, whose comments are copied with them. */
-function copiedSpans(source: SourceText, node: SyntaxNode): readonly Span[] {
-  return isMultiLine(source, node)
+function copiedSpans(tree: SyntaxTree, node: SyntaxNode): readonly Span[] {
+  return isMultiLine(tree.source, node)
     ? [node.span]
-    : childrenOf(node).flatMap((child) => copiedSpans(source, child));
+    : childrenOf(tree, node).flatMap((child) => copiedSpans(tree, child));
 }
 
 /** `tree`'s canonical text; undefined when it has syntax diagnostics, which are the reason. */
@@ -136,7 +136,7 @@ export function formatTree(tree: SyntaxTree): string | undefined {
   if (tree.diagnostics.length > 0) {
     return undefined;
   }
-  const copied = copiedSpans(tree.source, tree.root);
+  const copied = copiedSpans(tree, tree.root);
   const placement = placeComments(tree, (comment) =>
     copied.some((span) => encloses(span, comment.span)),
   );

@@ -14,7 +14,7 @@ import type { TestClient } from '../server.test-kit.ts';
 
 /** Every name written in `tree`. */
 export function namesOf(tree: SyntaxTree): readonly Identifier[] {
-  return nodesUnder(tree.root).filter(
+  return nodesUnder(tree, tree.root).filter(
     (node): node is Identifier => node.kind === 'Identifier' && !isMissingName(node),
   );
 }

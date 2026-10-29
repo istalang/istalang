@@ -12,6 +12,8 @@ import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { scan } from '../scanner/scan.ts';
+import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { Block } from '../syntax/statements.ts';
 import { dump } from '../syntax/tree.test-kit.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import { parseModule } from './declarations/declaration.ts';
@@ -23,6 +25,8 @@ export type Category = 'expression' | 'type' | 'pattern' | 'parameterType' | 'st
 export interface Parsed {
   readonly source: SourceText;
   readonly node: SyntaxNode;
+  /** The bodies of the functions parsed, which the tree holds apart from them. */
+  readonly bodies: ReadonlyMap<FunctionDeclaration, Block>;
   /** The parser's diagnostics; scanner diagnostics are left out. */
   readonly diagnostics: readonly Diagnostic[];
   readonly scanDiagnostics: readonly Diagnostic[];
@@ -47,10 +51,16 @@ export function parseAs(category: Category, text: string): Parsed {
   return {
     source,
     node,
+    bodies: parser.recordedBodies,
     diagnostics: parser.diagnostics,
     scanDiagnostics: scanned.diagnostics,
     rest,
   };
+}
+
+/** The dump of what `parsed` parsed. */
+export function dumpOf(parsed: Parsed): string {
+  return dump(parsed, parsed.node);
 }
 
 /** The dump of a category parse that must succeed: consumed everything, reported nothing. */
@@ -61,7 +71,7 @@ export function dumpClean(category: Category, text: string): string {
     ...parsed.diagnostics.map((diagnostic) => diagnostic.message),
     ...(parsed.rest > 0 ? [`${parsed.rest} tokens left unparsed`] : []),
   ];
-  return problems.length === 0 ? dump(parsed.node) : `NOT CLEAN: ${problems.join(' | ')}`;
+  return problems.length === 0 ? dumpOf(parsed) : `NOT CLEAN: ${problems.join(' | ')}`;
 }
 
 /** Lines joined into one source text, so a test can show its layout line by line. */

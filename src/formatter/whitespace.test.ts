@@ -42,8 +42,8 @@ function gapsBetween(tokens: readonly Token[], spacesOnly: boolean): readonly (G
 function freeGaps(text: string): readonly Gap[] {
   const tree = parseText(text);
   const { tokens } = scan(tree.source);
-  const inBrackets = nodesInBrackets(tree.root);
-  const nodes = nodesUnder(tree.root);
+  const inBrackets = nodesInBrackets(tree);
+  const nodes = nodesUnder(tree, tree.root);
   const isFree = (node: SyntaxNode | undefined): boolean =>
     node !== undefined && inBrackets.has(node);
   const deepestAt = (offset: number, edge: 'start' | 'end'): SyntaxNode | undefined =>
@@ -112,7 +112,7 @@ describe('whitespace where line breaks mean nothing', () => {
         const changed = parseText(variant);
         fc.pre(
           changed.diagnostics.length === 0 &&
-            dump(changed.root) === dump(original.root) &&
+            dump(changed, changed.root) === dump(original, original.root) &&
             commentTexts(changed).join('\n') === commentTexts(original).join('\n'),
         );
         expect(formatText(variant)).toBe(formatText(text));

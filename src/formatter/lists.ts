@@ -29,7 +29,7 @@ export function itemLines(printer: Printer, items: readonly SyntaxNode[]): build
 
 /** Whether the source has a blank line between two items, their comments included. */
 export function blankBetween(printer: Printer, first: SyntaxNode, second: SyntaxNode): boolean {
-  const { text } = printer.source;
+  const { text } = printer.tree.source;
   return hasBlankLine(text, printer.extentOf(first).end, printer.extentOf(second).start);
 }
 

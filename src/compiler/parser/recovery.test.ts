@@ -20,7 +20,14 @@ import type { MemberAccess } from '../syntax/expressions/index.ts';
 import { dump, errorNodes, spanViolations } from '../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { operatorTree, printFull } from './expressions/precedence.test-kit.ts';
-import { type Category, parenFreeSoup, parseAs, reported, tokenSoup } from './parse.test-kit.ts';
+import {
+  type Category,
+  dumpOf,
+  parenFreeSoup,
+  parseAs,
+  reported,
+  tokenSoup,
+} from './parse.test-kit.ts';
 
 const categories: readonly Category[] = ['expression', 'type', 'pattern', 'statement', 'module'];
 
@@ -30,8 +37,8 @@ describe('totality', () => {
       fc.property(tokenSoup, (text) => {
         const parsed = parseAs(category, text);
         const unexplainedError =
-          errorNodes(parsed.node).length > 0 && parsed.diagnostics.length === 0;
-        expect(spanViolations(parsed.node)).toEqual([]);
+          errorNodes(parsed, parsed.node).length > 0 && parsed.diagnostics.length === 0;
+        expect(spanViolations(parsed, parsed.node)).toEqual([]);
         expect(unexplainedError).toBe(false);
       }),
       { numRuns: 300 },
@@ -46,7 +53,8 @@ describe('nodes whose first child is missing', () => {
     ['expression', 'fn( = 1): 1'],
     ['expression', 'fn(a,  1): x'],
   ] as const)('keep the missing child inside them: %s %j', (category, text) => {
-    expect(spanViolations(parseAs(category, text).node)).toEqual([]);
+    const parsed = parseAs(category, text);
+    expect(spanViolations(parsed, parsed.node)).toEqual([]);
   });
 });
 
@@ -96,7 +104,7 @@ describe('recovery stays inside its brackets', () => {
         const text = `${open}${soup}${close}.after`;
         const parsed = parseAs('expression', text);
         const root = parsed.node as MemberAccess;
-        expect(dump(root.member)).toBe('after');
+        expect(dump(parsed, root.member)).toBe('after');
         expect(root.target.span.end).toBe(text.lastIndexOf(')') + 1);
         expect(parsed.rest).toBe(0);
       }),
@@ -106,7 +114,7 @@ describe('recovery stays inside its brackets', () => {
 
   it('stops an unclosed inner list at the enclosing closer', () => {
     const text = 'f([1, 2).x';
-    expect(dump(parseAs('expression', text).node)).toBe(
+    expect(dumpOf(parseAs('expression', text))).toBe(
       '(MemberAccess (Call f [] [(ArrayLiteral [1 2])]) x)',
     );
     expect(reported('expression', text)).toEqual(
@@ -115,7 +123,7 @@ describe('recovery stays inside its brackets', () => {
   });
 
   it('skips junk to the next comma and keeps it as an Invalid item', () => {
-    expect(dump(parseAs('expression', 'f(a b c, d)').node)).toBe('(Call f [] [a ! d])');
+    expect(dumpOf(parseAs('expression', 'f(a b c, d)'))).toBe('(Call f [] [a ! d])');
     expect(reported('expression', 'f(a b c, d)')).toEqual(
       reportedOnce(parserDiagnostics.expected.code, 'b'),
     );
@@ -123,13 +131,13 @@ describe('recovery stays inside its brackets', () => {
 
   it('skips a whole bracket group inside junk', () => {
     const parsed = parseAs('expression', 'f(a 1 (b, ]) [d], e)');
-    expect(dump(parsed.node)).toBe('(Call f [] [a ! e])');
+    expect(dumpOf(parsed)).toBe('(Call f [] [a ! e])');
     expect(parsed.rest).toBe(0);
   });
 
   it('consumes a stray closer that closes nothing', () => {
     const parsed = parseAs('expression', 'f(a ], b)');
-    expect(dump(parsed.node)).toBe('(Call f [] [a ! b])');
+    expect(dumpOf(parsed)).toBe('(Call f [] [a ! b])');
     expect(parsed.rest).toBe(0);
   });
 });

@@ -8,13 +8,13 @@
  */
 
 import type { builders } from 'prettier/doc';
-import type { SyntaxNode } from '../compiler/syntax/tree.ts';
+import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree.ts';
 import type { Handlers } from '../structures/kind-table.ts';
-import type { SourceText } from '../text/source-text.ts';
 import type { Span } from '../text/span.ts';
 
 export interface Printer {
-  readonly source: SourceText;
+  /** The tree printed, which holds its text and its functions' bodies. */
+  readonly tree: SyntaxTree;
   /** `node` printed by its kind's printer, with the comments placed before and after it. */
   readonly print: (node: SyntaxNode) => builders.Doc;
   /** `doc`, printed in place of `node`'s own printer, with `node`'s comments around it. */

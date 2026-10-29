@@ -38,7 +38,7 @@ const bound = new WeakMap<SyntaxTree, ModuleBindings>();
 
 export function bindModule(tree: SyntaxTree): ModuleBindings {
   return memo(bound, tree, () => {
-    const binder = new LocalBinder(walk);
+    const binder = new LocalBinder(walk, tree);
     const { scope, ...moduleScope } = defineModuleScope(binder, tree.root, universe());
     const topLevel = scope.snapshot();
     for (const item of tree.root.items) {

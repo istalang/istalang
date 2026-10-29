@@ -87,7 +87,7 @@ function applied(text: string, edit: Edit): string {
 function nodeNumbers(program: Program): ReadonlyMap<object, number> {
   const numbers = new Map<object, number>();
   for (const { tree } of program.modules.values()) {
-    for (const node of nodesUnder(tree.root)) {
+    for (const node of nodesUnder(tree, tree.root)) {
       numbers.set(node, numbers.size);
     }
   }
@@ -131,7 +131,7 @@ function spelled(
 function answersOf(checker: Checker, module: ModuleId): readonly string[] {
   const tree = checker.program.modules.get(module)?.tree;
   const numbers = nodeNumbers(checker.program);
-  return (tree === undefined ? [] : nodesUnder(tree.root)).map((node) =>
+  return (tree === undefined ? [] : nodesUnder(tree, tree.root)).map((node) =>
     spelled(answersAt(checker, module, node), numbers),
   );
 }
@@ -363,7 +363,7 @@ describe('a checker made after an earlier one', () => {
       edited: 'main.ista',
       edits: [{ kind: 'append', item: 0 }],
     });
-    expect(checked.flat().filter((each) => each.body === undefined)).toEqual([]);
+    expect(checked.flat().map(({ name }) => name.text)).not.toContain('host');
   });
 
   it('checks bodies in a first revision, and the edited one in the next', () => {

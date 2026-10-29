@@ -24,7 +24,7 @@ export function checkedMain(text: string, imported: Readonly<Record<string, stri
   if (tree === undefined) {
     throw new Error('main.ista was not loaded.');
   }
-  const nodes = nodesUnder(tree.root);
+  const nodes = nodesUnder(tree, tree.root);
   /** The `nth` identifier written as `text`, counting from 0 in source order. */
   const named = (written: string, nth = 0): Identifier => {
     const found = nodes.filter(

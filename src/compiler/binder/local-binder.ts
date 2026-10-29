@@ -31,7 +31,7 @@ import type { Comprehension, Expression, Lambda } from '../syntax/expressions/in
 import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { Block, For, VariableDeclaration } from '../syntax/statements.ts';
-import type { SyntaxNode } from '../syntax/tree.ts';
+import type { SyntaxNode, SyntaxTree } from '../syntax/tree.ts';
 import type { NamedType, TypeNode } from '../syntax/types.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import {
@@ -127,6 +127,8 @@ export interface Walk {
 
 export class LocalBinder {
   readonly walk: Walk;
+  /** The tree being bound, which holds its functions' bodies. */
+  readonly tree: SyntaxTree;
   readonly #entities = new Map<Identifier, LocalEntity>();
   readonly #free: FreeName[] = [];
   readonly #paths: QualifiedPath[] = [];
@@ -136,8 +138,9 @@ export class LocalBinder {
   readonly #linkedHeads: Identifier[] = [];
   readonly #notes = new VisibilityNotes();
 
-  constructor(walk: Walk) {
+  constructor(walk: Walk, tree: SyntaxTree) {
     this.walk = walk;
+    this.tree = tree;
   }
 
   /** What binding the tree produced, `topLevel` being its module's scope once defined. */

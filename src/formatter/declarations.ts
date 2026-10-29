@@ -19,7 +19,7 @@ import type {
   TypeParameters,
 } from '../compiler/syntax/declarations.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
-import type { SyntaxNode } from '../compiler/syntax/tree.ts';
+import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';
 import { angled, bracketed, fieldList, itemLines } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
@@ -46,9 +46,10 @@ function functionDoc(printer: Printer, node: FunctionDeclaration): builders.Doc 
     bracketed(printer, node, ['(', ')'], node.parameters),
     node.returnType === undefined ? '' : [' -> ', printer.print(node.returnType)],
   ];
-  return node.body === undefined
+  const body = bodyOf(printer.tree, node);
+  return body === undefined
     ? [header, docBelow(printer, node.doc)]
-    : group([header, ':', functionBody(printer, node.doc, node.body)]);
+    : group([header, ':', functionBody(printer, node.doc, body)]);
 }
 
 /** `members` indented under the header's `:`, or the docstring alone below a header without. */

@@ -10,8 +10,9 @@ import { reportedNothing, reportedOnce } from '../../../diagnostics/diagnostic.t
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { bindProgram } from '../../binder/bind.ts';
 import { idOf } from '../../program/program.test-kit.ts';
+import { programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { nestsFunction, nodesUnder } from '../../syntax/tree.ts';
 import { reported } from '../check.test-kit.ts';
 import type { NestedFunction } from '../check.ts';
 import { checkProgram } from '../check.ts';
@@ -69,7 +70,10 @@ describe('the call disposing() watches', () => {
     const module = program.modules.get(idOf('main.ista'));
     const worker = module?.tree.root.items[0] as FunctionDeclaration;
     const body = checker.bodyOf(worker);
-    const between = nestedIn(worker);
+    const { tree } = programModule(program, idOf('main.ista'));
+    const between = nodesUnder(tree, worker).filter(
+      (node): node is NestedFunction => node !== worker && nestsFunction(node),
+    );
     expect(checker.diagnosticsOf(idOf('main.ista'))).toEqual([]);
     const call = bindProgram(program).ownCallOf(idOf('main.ista'), worker);
     expect(call?.owner).toEqual({ kind: 'OwnCall', function: worker });
@@ -101,12 +105,3 @@ describe('the call disposing() watches', () => {
     );
   });
 });
-
-/** The functions nested in `node`, outermost first. */
-function nestedIn(node: SyntaxNode): readonly NestedFunction[] {
-  return childrenOf(node).flatMap((child) =>
-    child.kind === 'Lambda' || child.kind === 'FunctionDeclaration'
-      ? [child as NestedFunction, ...nestedIn(child)]
-      : nestedIn(child),
-  );
-}

@@ -55,7 +55,7 @@ export interface ItemRules<Item extends SyntaxNode> {
   readonly parseItem: (parser: Parser) => Item | Invalid;
   /** Undefined where items can't carry annotations. */
   readonly annotate:
-    | ((item: Item | Invalid, annotations: readonly Annotation[]) => Item | Invalid)
+    | ((parser: Parser, item: Item | Invalid, annotations: readonly Annotation[]) => Item | Invalid)
     | undefined;
 }
 
@@ -257,7 +257,7 @@ function annotate<Item extends SyntaxNode>(
     return [item];
   }
   if (rules.annotate !== undefined) {
-    return [rules.annotate(item, [...leading, ...trailing])];
+    return [rules.annotate(parser, item, [...leading, ...trailing])];
   }
   return [
     ...rejectAnnotations(parser, leading, misplacedAnnotation),

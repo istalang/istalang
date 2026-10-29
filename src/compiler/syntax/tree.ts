@@ -6,6 +6,11 @@
  * `kind` is a child. Adding a node kind therefore needs no traversal change. Children come back in
  * source order, derived from their spans, so no builder has to put fields in any order.
  *
+ * A function's body is the one child not in a field: the tree holds it, so a declaration's node can
+ * outlive an edit of its body (docs/work/m6-m7/incremental-checking.md). Traversal therefore takes
+ * the tree, and a function's children are its fields' and then its body. A walk that reaches bodies
+ * its own way, as checking does through the reads it records, takes a node's field children alone.
+ *
  * What tools ask of a tree by position derives from the same children, memoized on the immutable
  * node or tree: a node's parent, and the nodes at an offset. A child's span lies inside its
  * parent's and before its next sibling's (the parser's tests hold every tree to it), so the nodes
@@ -43,14 +48,24 @@ export type SyntaxNode =
   | Annotation;
 
 /**
- * What parsing one source file yields: its module, its comments, and the diagnostics of scanning
- * and parsing it, in that order. Later phases need nothing else from the syntax of a file.
+ * What parsing one source file yields: its module, the body of each function that has one, its
+ * comments, and the diagnostics of scanning and parsing it, in that order. Later phases need
+ * nothing else from the syntax of a file. Bodies are read through `bodyOf`.
  */
 export interface SyntaxTree {
   readonly source: SourceText;
   readonly root: Module;
+  readonly bodies: ReadonlyMap<FunctionDeclaration, Block>;
   readonly comments: readonly Comment[];
   readonly diagnostics: readonly Diagnostic[];
+}
+
+/** What a walk reads of a tree beyond its nodes: the body of each function. */
+export type TreeBodies = Pick<SyntaxTree, 'bodies'>;
+
+/** The body of `declaration`, a function of `tree`; undefined for one written without a body. */
+export function bodyOf(tree: TreeBodies, declaration: FunctionDeclaration): Block | undefined {
+  return tree.bodies.get(declaration);
 }
 
 /** Whether a field value is a node, as opposed to a primitive, a span or undefined. */
@@ -58,11 +73,21 @@ export function isNode(value: unknown): value is SyntaxNode {
   return typeof value === 'object' && value !== null && 'kind' in value;
 }
 
-const children = new WeakMap<SyntaxNode, readonly SyntaxNode[]>();
+const fieldChildren = new WeakMap<SyntaxNode, readonly SyntaxNode[]>();
 
-/** A node's direct children, in source order. */
-export function childrenOf(node: SyntaxNode): readonly SyntaxNode[] {
-  return memo(children, node, () =>
+/** A node's direct children in `tree`, in source order. */
+export function childrenOf(tree: TreeBodies, node: SyntaxNode): readonly SyntaxNode[] {
+  const inFields = fieldChildrenOf(node);
+  const body = node.kind === 'FunctionDeclaration' ? bodyOf(tree, node) : undefined;
+  return body === undefined ? inFields : [...inFields, body];
+}
+
+/**
+ * The children `node`'s fields hold, in source order: all of them, but for a function's body.
+ * An immutable node holds them for good.
+ */
+export function fieldChildrenOf(node: SyntaxNode): readonly SyntaxNode[] {
+  return memo(fieldChildren, node, () =>
     Object.values(node)
       .flatMap((value: unknown) => (Array.isArray(value) ? value : [value]).filter(isNode))
       .toSorted((first, second) => first.span.start - second.span.start),
@@ -73,27 +98,27 @@ const parents = new WeakMap<SyntaxTree, ReadonlyMap<SyntaxNode, SyntaxNode>>();
 
 /** The node `node` is a child of in `tree`; undefined for the root, or a node `tree` lacks. */
 export function parentOf(tree: SyntaxTree, node: SyntaxNode): SyntaxNode | undefined {
-  return memo(parents, tree, () => parentsUnder(tree.root)).get(node);
+  return memo(parents, tree, () => parentsIn(tree)).get(node);
 }
 
-function parentsUnder(root: SyntaxNode): ReadonlyMap<SyntaxNode, SyntaxNode> {
+function parentsIn(tree: SyntaxTree): ReadonlyMap<SyntaxNode, SyntaxNode> {
   return new Map(
-    nodesUnder(root).flatMap((parent) =>
-      childrenOf(parent).map((child) => [child, parent] as const),
+    nodesUnder(tree, tree.root).flatMap((parent) =>
+      childrenOf(tree, parent).map((child) => [child, parent] as const),
     ),
   );
 }
 
 /**
- * `node` and every node under it, in source order, each before its children. Trees nest as deep as
- * the parser allows, so the walk keeps its own stack.
+ * `node` and every node under it in `tree`, in source order, each before its children. Trees nest
+ * as deep as the parser allows, so the walk keeps its own stack.
  */
-export function nodesUnder(node: SyntaxNode): readonly SyntaxNode[] {
+export function nodesUnder(tree: TreeBodies, node: SyntaxNode): readonly SyntaxNode[] {
   const nodes: SyntaxNode[] = [];
   const pending = [node];
   for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
     nodes.push(next);
-    pending.push(...childrenOf(next).toReversed());
+    pending.push(...childrenOf(tree, next).toReversed());
   }
   return nodes;
 }
@@ -109,7 +134,7 @@ export function nodesAt(tree: SyntaxTree, offset: number): readonly SyntaxNode[]
   for (
     let node: SyntaxNode | undefined = holds(tree.root) ? tree.root : undefined;
     node !== undefined;
-    node = childrenOf(node).find(holds)
+    node = childrenOf(tree, node).find(holds)
   ) {
     path.push(node);
   }
@@ -127,5 +152,5 @@ export function nestsFunction(node: SyntaxNode): node is Lambda | FunctionDeclar
  * never enters a function it nests.
  */
 export function bodyChildrenOf(node: SyntaxNode): readonly SyntaxNode[] {
-  return nestsFunction(node) ? [] : childrenOf(node);
+  return nestsFunction(node) ? [] : fieldChildrenOf(node);
 }

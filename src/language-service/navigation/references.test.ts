@@ -71,7 +71,7 @@ describe('the names denoting a declaration across the corpus', () => {
   it("include every use the binder resolves to the declaration's entity", () => {
     const { program } = loadProject(corpusDirectory, findProjectSources(corpusDirectory));
     const missed = [...program.modules].flatMap(([module, { tree }]) =>
-      nodesUnder(tree.root).flatMap((name) =>
+      nodesUnder(tree, tree.root).flatMap((name) =>
         name.kind === 'Identifier' ? missedUses(program, module, name) : [],
       ),
     );

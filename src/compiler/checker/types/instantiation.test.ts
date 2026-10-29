@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../../test/corpus/programs.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
+import { programModule } from '../../program/program.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
@@ -20,7 +21,7 @@ import {
 } from '../../syntax/expressions/index.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import { type For, tailExpressionOf } from '../../syntax/statements.ts';
-import { nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
+import { bodyOf, nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import { type CheckedBody, checkProgram } from '../check.ts';
 import { namesBound } from '../checked-pattern.ts';
 import { instantiatedBody } from './instantiation.ts';
@@ -35,8 +36,9 @@ describe('an instantiated body', () => {
       'fn count<T>(xs: Array<T>) -> int:\n  let n = 0\n  for x in xs:\n    n += 1\n  n\n';
     const program = stdProgramOf({ 'main.ista': text });
     const checker = checkProgram(program);
-    const count = program.modules.get(idOf('main.ista'))?.tree.root.items[0] as FunctionDeclaration;
-    const loop = count.body?.statements[1] as For;
+    const { tree } = programModule(program, idOf('main.ista'));
+    const count = tree.root.items[0] as FunctionDeclaration;
+    const loop = bodyOf(tree, count)?.statements[1] as For;
     const body = checker.bodyOf(count);
     const form =
       body &&
@@ -56,8 +58,9 @@ describe('an instantiated body', () => {
     ].join('\n');
     const program = stdProgramOf({ 'main.ista': text });
     const checker = checkProgram(program);
-    const first = program.modules.get(idOf('main.ista'))?.tree.root.items[0] as FunctionDeclaration;
-    const statement = first.body?.statements[0];
+    const { tree } = programModule(program, idOf('main.ista'));
+    const first = tree.root.items[0] as FunctionDeclaration;
+    const statement = bodyOf(tree, first)?.statements[0];
     const match = (
       statement?.kind === 'ExpressionStatement' ? statement.expression : statement
     ) as Match;
@@ -85,9 +88,10 @@ describe('an instantiated body', () => {
     ].join('\n');
     const program = stdProgramOf({ 'main.ista': text });
     const checker = checkProgram(program);
-    const items = program.modules.get(idOf('main.ista'))?.tree.root.items ?? [];
-    const [sizeOf, kinds] = items.slice(2) as FunctionDeclaration[];
-    const access = sizeOf?.body && (tailExpressionOf(sizeOf.body) as MemberAccess);
+    const { tree } = programModule(program, idOf('main.ista'));
+    const [sizeOf, kinds] = tree.root.items.slice(2) as FunctionDeclaration[];
+    const written = sizeOf && bodyOf(tree, sizeOf);
+    const access = written && (tailExpressionOf(written) as MemberAccess);
     const body = sizeOf && checker.bodyOf(sizeOf);
     const readFor = (index: number) => {
       const type = kinds && checker.parametersOf(kinds)[index]?.type;
@@ -156,7 +160,9 @@ describe('a generic function instantiated as lowering reads it', () => {
         substitutionFor(generic.typeParameters, call.typeArguments),
         checker,
       );
-      const nodes = generic.body === undefined ? [] : nodesUnder(generic.body);
+      const { tree } = programModule(program, checker.moduleOf(generic));
+      const written = bodyOf(tree, generic);
+      const nodes = written === undefined ? [] : nodesUnder(tree, written);
       return [instance.result, ...nodes.flatMap((node) => typedTablesAt(instance, node))]
         .flatMap((each) => valuesIn(each))
         .filter(

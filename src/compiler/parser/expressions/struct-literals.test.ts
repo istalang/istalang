@@ -6,9 +6,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { dump } from '../../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, named, parseAs, reported } from '../parse.test-kit.ts';
+import { dumpClean, dumpOf, named, parseAs, reported } from '../parse.test-kit.ts';
 
 const literal = (type: string, items: string) => `(StructLiteral ${type} [${items}])`;
 
@@ -87,7 +86,7 @@ describe('the type before the braces', () => {
     'leaves the braces after %s, which is not a name (§2)',
     (text) => {
       const parsed = parseAs('expression', text);
-      expect(dump(parsed.node)).not.toContain('StructLiteral');
+      expect(dumpOf(parsed)).not.toContain('StructLiteral');
       expect(parsed.rest).toBeGreaterThan(0);
     },
   );

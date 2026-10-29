@@ -8,7 +8,7 @@
  * caller.
  */
 
-import { childrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 
 /** Whether `child` of `parent` stands in brackets, given whether `parent` does. */
 function inBracketsUnder(
@@ -52,17 +52,17 @@ function inBracketsUnder(
   }
 }
 
-/** Every node of the tree under `root` that stands in brackets. */
-export function nodesInBrackets(root: SyntaxNode): ReadonlySet<SyntaxNode> {
+/** Every node of `tree` that stands in brackets. */
+export function nodesInBrackets(tree: SyntaxTree): ReadonlySet<SyntaxNode> {
   const found = new Set<SyntaxNode>();
   const visit = (node: SyntaxNode, inBrackets: boolean): void => {
     if (inBrackets) {
       found.add(node);
     }
-    for (const child of childrenOf(node)) {
+    for (const child of childrenOf(tree, node)) {
       visit(child, inBracketsUnder(node, child, inBrackets));
     }
   };
-  visit(root, false);
+  visit(tree.root, false);
   return found;
 }

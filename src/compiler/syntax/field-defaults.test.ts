@@ -62,15 +62,19 @@ describe('fieldsFunctionOf', () => {
   });
 
   it('walks as a node whose children are its parameters, never its owner', () => {
-    const { node: root } = parseAs(
+    const parsed = parseAs(
       'module',
       ['struct Retry:', '  times: int = 3', 'enum Shape:', '  Circle { r: int = 1 }'].join('\n'),
     );
+    const root = parsed.node;
     if (root.kind !== 'Module') {
       throw new Error('Expected a module.');
     }
     for (const made of root.items.flatMap(fieldsFunctionsOf)) {
-      expect(childrenOf(made).map((child) => child.kind)).toEqual(['Identifier', 'Parameter']);
+      expect(childrenOf(parsed, made).map((child) => child.kind)).toEqual([
+        'Identifier',
+        'Parameter',
+      ]);
     }
   });
 });

@@ -22,6 +22,7 @@
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { chainStepOf, isOptionallyChained } from '../../syntax/expressions/chains.ts';
 import {
   type Expression,
@@ -40,7 +41,7 @@ import {
   type Statement,
   targetParts,
 } from '../../syntax/statements.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { fieldChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { LabelResolution } from '../check.ts';
 
 /** What a flow rule decides: its states, where paths meet, and what its own events do. */
@@ -57,19 +58,24 @@ export interface FlowRule<State> {
   readonly drop?: (node: Drop, state: State) => State;
 }
 
-/**
- * What reaches the end of `body`, run from `state`; undefined when no path does. `labels` says
- * which loop each `break` and `continue` leaves.
- */
+/** A body a walk runs, and what the walk needs to know of it beyond its syntax. */
+export interface FlowBody {
+  readonly root: SyntaxNode;
+  /** Which loop each `break` and `continue` leaves. */
+  readonly labels: LabelResolution;
+  /** The body of each local function the body declares, which its tree holds apart. */
+  readonly bodyOf: (declaration: FunctionDeclaration) => Block | undefined;
+}
+
+/** What reaches the end of `body`, run from `state`; undefined when no path does. */
 export function flowThrough<State extends Opaque>(
   rule: FlowRule<State>,
-  labels: LabelResolution,
-  body: SyntaxNode,
+  body: FlowBody,
   state: State,
 ): State | undefined {
   // The walk hands the rule only states the rule made, so it carries them unlooked-into.
-  const walk = new FlowWalk(rule as unknown as FlowRule<Opaque>, labels);
-  return walk.function(body, state) as State | undefined;
+  const walk = new FlowWalk(rule as unknown as FlowRule<Opaque>, body);
+  return walk.function(body.root, state) as State | undefined;
 }
 
 /** A rule's state, as the walk carries it: never undefined, which marks a point no path reaches. */
@@ -91,11 +97,13 @@ type Construct = Expression | Statement | Block;
 class FlowWalk {
   readonly #rule: FlowRule<Opaque>;
   readonly #labels: LabelResolution;
+  readonly bodyOf: FlowBody['bodyOf'];
   #loops: LoopExits[] = [];
 
-  constructor(rule: FlowRule<Opaque>, labels: LabelResolution) {
+  constructor(rule: FlowRule<Opaque>, { labels, bodyOf }: FlowBody) {
     this.#rule = rule;
     this.#labels = labels;
+    this.bodyOf = bodyOf;
   }
 
   /** Runs a function's body from `state`, its loops its own. */
@@ -110,7 +118,7 @@ class FlowWalk {
   /** What reaches the end of `node`, run from `state`. */
   node(node: SyntaxNode, state: Opaque): Flow {
     if (!isConstruct(node)) {
-      return this.sequence(childrenOf(node), state);
+      return this.sequence(fieldChildrenOf(node), state);
     }
     return handlerOf(constructs, node)(this, node, state);
   }
@@ -250,7 +258,7 @@ class FlowWalk {
   link(node: Expression, state: Opaque) {
     const step = chainStepOf(node);
     if (step === undefined) {
-      return this.sequence(childrenOf(node), state);
+      return this.sequence(fieldChildrenOf(node), state);
     }
     const reached = this.node(step.target, state);
     const parts = partsBeside(node, step.target);
@@ -262,7 +270,7 @@ class FlowWalk {
 
 /** A construct whose parts run in source order. */
 function children(walk: FlowWalk, node: SyntaxNode, state: Opaque): Flow {
-  return walk.sequence(childrenOf(node), state);
+  return walk.sequence(fieldChildrenOf(node), state);
 }
 
 /** A construct that may be a link of an optional chain. */
@@ -275,11 +283,11 @@ function link(walk: FlowWalk, node: Expression, state: Opaque): Flow {
  * child (`chainStepOf`): a callee holding the target is opened up into its other parts.
  */
 function partsBeside(node: SyntaxNode, target: SyntaxNode): readonly SyntaxNode[] {
-  return childrenOf(node).flatMap((child) => {
+  return fieldChildrenOf(node).flatMap((child) => {
     if (child === target) {
       return [];
     }
-    const parts = childrenOf(child);
+    const parts = fieldChildrenOf(child);
     return parts.includes(target) ? parts.filter((part) => part !== target) : [child];
   });
 }
@@ -357,8 +365,9 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   VariableDeclaration: (walk, node, state) =>
     walk.sequence(node.targets, walk.node(node.initializer, state)),
   FunctionDeclaration: (walk, node, state) => {
-    if (node.body !== undefined) {
-      walk.function(node.body, state);
+    const body = walk.bodyOf(node);
+    if (body !== undefined) {
+      walk.function(body, state);
     }
     return state;
   },

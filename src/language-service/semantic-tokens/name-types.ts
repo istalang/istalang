@@ -97,7 +97,7 @@ export function nameTypesOf(tree: SyntaxTree): ReadonlyMap<number, SemanticType>
         found.set(start, found.get(start) ?? type);
       }
     };
-    for (const node of nodesUnder(tree.root)) {
+    for (const node of nodesUnder(tree, tree.root)) {
       const roleOf = rolesOf[node.kind] as ((node: SyntaxNode) => readonly Role[]) | undefined;
       for (const [identifier, type] of roleOf?.(node) ?? []) {
         name(identifier, type);

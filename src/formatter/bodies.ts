@@ -16,7 +16,7 @@ import { builders } from 'prettier/doc';
 import type { Annotatable, Annotation } from '../compiler/syntax/annotations.ts';
 import type { Docstring } from '../compiler/syntax/declarations.ts';
 import type { Block } from '../compiler/syntax/statements.ts';
-import { childrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { fieldChildrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { blankBetween, hasComments, hugging, itemLines } from './lists.ts';
 import type { Printer } from './printer.ts';
 
@@ -46,7 +46,10 @@ const bracketKinds: ReadonlySet<SyntaxNode['kind']> = new Set([
   'TemplateLiteral',
 ]);
 
-/** The children of `node` that stand outside its brackets. */
+/**
+ * The children of `node` that stand outside its brackets. A function opens a body itself, so the
+ * body its tree holds apart is never asked for.
+ */
 function unbracketedChildren(node: SyntaxNode): readonly SyntaxNode[] {
   switch (node.kind) {
     case 'Call':
@@ -54,7 +57,7 @@ function unbracketedChildren(node: SyntaxNode): readonly SyntaxNode[] {
     case 'Index':
       return [node.target];
     default:
-      return bracketKinds.has(node.kind) ? [] : childrenOf(node);
+      return bracketKinds.has(node.kind) ? [] : fieldChildrenOf(node);
   }
 }
 
@@ -164,7 +167,7 @@ export function annotated(
   node: SyntaxNode & Annotatable,
   core: builders.Doc,
 ): builders.Doc {
-  const { text } = printer.source;
+  const { text } = printer.tree.source;
   const before: Annotation[] = [];
   let offset = node.span.start;
   for (const annotation of node.annotations ?? []) {

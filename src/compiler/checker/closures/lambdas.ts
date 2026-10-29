@@ -134,7 +134,7 @@ function checkLambdaAs(
 
 /** A local `fn`: its name, a `const` holding the function, from here on (§3.14). */
 export function checkLocalFunction(context: BodyContext, node: FunctionDeclaration): Type {
-  const { body } = node;
+  const body = context.checker.inputs.bodyOf(context.module, node);
   if (node.typeParameters.length > 0) {
     context.report(checkerDiagnostics.nestedFunctionForm(node.name.span, 'type parameters'));
   }

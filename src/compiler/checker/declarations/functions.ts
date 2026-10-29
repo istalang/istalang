@@ -42,11 +42,13 @@ function sameOptionalType(first: Type | undefined, second: Type | undefined): bo
 }
 
 export class FunctionChecks {
+  readonly #checker: CheckerContext;
   readonly #declaredResults: EntryTable<CheckerNote, FunctionDeclaration, Type | undefined>;
   readonly #results: EntryTable<CheckerNote, FunctionDeclaration, Type>;
   readonly #bodies: EntryTable<CheckerNote, FunctionDeclaration, CheckedBody>;
 
   constructor({ checker, checkBody }: FunctionSeams) {
+    this.#checker = checker;
     const { entries } = checker;
     this.#declaredResults = entries.table({
       name: 'declared results',
@@ -101,6 +103,9 @@ export class FunctionChecks {
 
   /** The checked body of a function with one; a function without, such as an extern, has none. */
   #checkedBody(declaration: FunctionDeclaration): CheckedBody | undefined {
-    return declaration.body === undefined ? undefined : this.#bodies.get(declaration);
+    const module = this.#checker.moduleOf(declaration);
+    return this.#checker.inputs.bodyOf(module, declaration) === undefined
+      ? undefined
+      : this.#bodies.get(declaration);
   }
 }

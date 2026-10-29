@@ -114,6 +114,8 @@ export interface ProgramInputs {
   readonly role: (role: LanguageModule) => ModuleId | undefined;
   /** `module`'s tree, which tools walk up from a node; checking reads `itemsOf`. */
   readonly treeOf: (module: ModuleId) => SyntaxTree;
+  /** The body of `declaration`, a function of `module`, read apart from the rest of its tree. */
+  readonly bodyOf: (module: ModuleId, declaration: FunctionDeclaration) => Block | undefined;
   /**
    * The first variant of the program named `name` (§3.11) declared by one of `enums`, in the
    * order the program lists its variants: what a bare name expecting those enums chooses.

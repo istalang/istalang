@@ -53,12 +53,13 @@ function blocksSeeingMoreThanBefore({ program, modules }: CorpusProgram): readon
       ([name, entity]) => before.get(name) !== entity && !declaredByFirst(entity),
     );
   };
-  return modules.flatMap((module) =>
-    nodesUnder(programModule(program, module).tree.root)
+  return modules.flatMap((module) => {
+    const { tree } = programModule(program, module);
+    return nodesUnder(tree, tree.root)
       .filter((node): node is Block => node.kind === 'Block' && node.span.start < node.span.end)
       .filter((block) => seesMore(module, block))
-      .map(({ span }) => `${module}:${span.start}`),
-  );
+      .map(({ span }) => `${module}:${span.start}`);
+  });
 }
 
 const cursor = '‸';

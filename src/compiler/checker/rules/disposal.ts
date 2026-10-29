@@ -21,7 +21,7 @@ import { disposeFunction } from '../../../language/well-known.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Parameter } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import { childrenOf, nestsFunction, type SyntaxNode } from '../../syntax/tree.ts';
+import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../syntax/tree.ts';
 import type { Disposal } from '../check.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -169,6 +169,12 @@ function checkSelfStays(
   const body = checker.bodyOf(declaration);
   const isExternCall = (node: SyntaxNode | undefined): boolean =>
     node?.kind === 'Call' && body?.resolved.get(node)?.function.isExtern === true;
+  // A local function's body is read as checking reads bodies, not through the tree.
+  const bodyHeldApart = (node: SyntaxNode): readonly SyntaxNode[] => {
+    const held =
+      node.kind === 'FunctionDeclaration' ? checker.inputs.bodyOf(module, node) : undefined;
+    return held === undefined ? [] : [held];
+  };
   const visit = (node: SyntaxNode, outer: readonly SyntaxNode[], nested: boolean): void => {
     const entity = node.kind === 'Identifier' ? checker.bindings.entityOf(module, node) : undefined;
     if (entity?.kind === 'variable' && entity.owner === self) {
@@ -182,12 +188,13 @@ function checkSelfStays(
       }
     }
     const inner = nested || nestsFunction(node);
-    for (const child of childrenOf(node)) {
+    for (const child of [...fieldChildrenOf(node), ...bodyHeldApart(node)]) {
       visit(child, [node, ...outer], inner);
     }
   };
-  if (declaration.body !== undefined) {
-    visit(declaration.body, [], false);
+  const root = checker.inputs.bodyOf(module, declaration);
+  if (root !== undefined) {
+    visit(root, [], false);
   }
 }
 

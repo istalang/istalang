@@ -39,7 +39,7 @@ describe('a comment where the corpus has none', () => {
     const once = formatText(input) ?? '';
     const reparsed = parseText(once);
     expect(reparsed.diagnostics).toEqual([]);
-    expect(dump(reparsed.root)).toBe(dump(tree.root));
+    expect(dump(reparsed, reparsed.root)).toBe(dump(tree, tree.root));
     expect(commentTexts(reparsed)).toEqual(commentTexts(tree));
     expect(formatText(once)).toBe(once);
   });
@@ -58,7 +58,7 @@ describe('a comment in an unusual place', () => {
     const once = formatText(input) ?? '';
     const reparsed = parseText(once);
     expect(reparsed.diagnostics).toEqual([]);
-    expect(dump(reparsed.root)).toBe(dump(tree.root));
+    expect(dump(reparsed, reparsed.root)).toBe(dump(tree, tree.root));
     expect(commentTexts(reparsed)).toEqual(commentTexts(tree));
     expect(formatText(once)).toBe(once);
   });

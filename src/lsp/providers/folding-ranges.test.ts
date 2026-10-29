@@ -46,7 +46,7 @@ function layoutFoldables(
   lineOf: (offset: number) => number,
 ): readonly Foldable[] {
   const colons = allTokensOf(tree).filter((token) => token.kind === ':');
-  return nodesUnder(tree.root).flatMap((node) => {
+  return nodesUnder(tree, tree.root).flatMap((node) => {
     const named = itemLists.has(node.kind) && 'name' in node ? node.name : undefined;
     const indented = node.kind === 'Block' && tree.source.text[node.span.start] !== '{';
     const colon = indented

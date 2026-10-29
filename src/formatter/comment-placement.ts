@@ -28,7 +28,6 @@
 
 import type { Comment } from '../compiler/syntax/tokens.ts';
 import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
-import type { SourceText } from '../text/source-text.ts';
 import { encloses } from '../text/span.ts';
 import {
   type CommentsOf,
@@ -56,9 +55,9 @@ interface Surroundings {
   readonly following: SyntaxNode | undefined;
 }
 
-/** What placing reads of the tree: its text, and where each comment ending at an offset starts. */
+/** What placing reads: the tree, and where each of its comments ending at an offset starts. */
 interface Source {
-  readonly source: SourceText;
+  readonly tree: SyntaxTree;
   readonly commentStarts: ReadonlyMap<number, number>;
 }
 
@@ -68,7 +67,7 @@ export function placeComments(
   isCopied: (comment: Comment) => boolean,
 ): ReadonlyMap<SyntaxNode, CommentsOf> {
   const context: Source = {
-    source: tree.source,
+    tree,
     commentStarts: new Map(tree.comments.map(({ span }) => [span.end, span.start])),
   };
   const placement = new Map<SyntaxNode, MutableComments>();
@@ -88,14 +87,14 @@ export function placeComments(
 function surroundingsOf(tree: SyntaxTree, comment: PlacedComment): Surroundings {
   const path: [SyntaxNode, ...SyntaxNode[]] = [tree.root];
   for (
-    let inner = childrenOf(tree.root).find((child) => encloses(child.span, comment.span));
+    let inner = childrenOf(tree, tree.root).find((child) => encloses(child.span, comment.span));
     inner !== undefined;
-    inner = childrenOf(inner).find((child) => encloses(child.span, comment.span))
+    inner = childrenOf(tree, inner).find((child) => encloses(child.span, comment.span))
   ) {
     path.push(inner);
   }
   const enclosing = path.at(-1) ?? tree.root;
-  const children = childrenOf(enclosing);
+  const children = childrenOf(tree, enclosing);
   const before = children.findLast((child) => child.span.end <= comment.span.start);
   const opened =
     before !== undefined && opensBetween(tree.source.text, before.span.end, comment.span.start);
@@ -133,7 +132,8 @@ function endOfLinePlace(
 }
 
 function ownLinePlace(context: Source, around: Surroundings, comment: PlacedComment): Placement {
-  const { source } = context;
+  const { tree } = context;
+  const { source } = tree;
   const { path, enclosing, preceding, following } = around;
   const column = columnOf(source, comment.span.start);
   const leads =
@@ -144,7 +144,7 @@ function ownLinePlace(context: Source, around: Surroundings, comment: PlacedComm
     return [following, 'leading'];
   }
   if (preceding !== undefined) {
-    return [closedItem(source, preceding, column) ?? preceding, 'trailing'];
+    return [closedItem(tree, preceding, column) ?? preceding, 'trailing'];
   }
   if (opener.test(tokenBefore(context, comment.span.start))) {
     return [enclosing, 'dangling'];
@@ -207,34 +207,37 @@ function lineMayStartBefore(
     );
   }
   return (
-    itemSeparators.has(token) || childrenOf(enclosing).some((child) => child.span.end === previous)
+    itemSeparators.has(token) ||
+    childrenOf(context.tree, enclosing).some((child) => child.span.end === previous)
   );
 }
 
 /** Where the last token before `offset` ends, past whitespace and comments. */
-function previousTokenEnd({ source, commentStarts }: Source, offset: number): number {
-  let end = whitespaceStart(source.text, offset);
+function previousTokenEnd({ tree, commentStarts }: Source, offset: number): number {
+  const { text } = tree.source;
+  let end = whitespaceStart(text, offset);
   for (let start = commentStarts.get(end); start !== undefined; start = commentStarts.get(end)) {
-    end = whitespaceStart(source.text, start);
+    end = whitespaceStart(text, start);
   }
   return end;
 }
 
 /** The last character of the token before `offset`, past whitespace and comments. */
 function tokenBefore(context: Source, offset: number): string {
-  return context.source.text[previousTokenEnd(context, offset) - 1] ?? '';
+  return context.tree.source.text[previousTokenEnd(context, offset) - 1] ?? '';
 }
 
 /**
  * The deepest item ending `node`, of a list whose items stand on lines of their own, that stands no
  * deeper than `column`: the list a comment at that column, after `node`, was written to close.
  */
-function closedItem(source: SourceText, node: SyntaxNode, column: number): SyntaxNode | undefined {
+function closedItem(tree: SyntaxTree, node: SyntaxNode, column: number): SyntaxNode | undefined {
+  const { source } = tree;
   let found: SyntaxNode | undefined;
   for (
-    let [owner, last] = [node, childrenOf(node).at(-1)];
+    let [owner, last] = [node, childrenOf(tree, node).at(-1)];
     last !== undefined;
-    [owner, last] = [last, childrenOf(last).at(-1)]
+    [owner, last] = [last, childrenOf(tree, last).at(-1)]
   ) {
     const start = columnOf(source, last.span.start);
     const startsLine = source.text.slice(last.span.start - start, last.span.start).trim() === '';

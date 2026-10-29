@@ -18,6 +18,7 @@ import { isHostExtern } from '../checker/host-externs.ts';
 import { substitute } from '../checker/types/substitution.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { asyncFitEntry } from './async-fits.ts';
+import { writtenBodyOf } from './bodies.ts';
 import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';
 import {
   constantNativeEntry,
@@ -155,8 +156,9 @@ function entryOf(
   }
   const parameters = checker.parametersOf(declaration);
   const lowering = instanceLowering({ checker, tables }, instance);
-  if (lowering !== undefined && declaration.body !== undefined) {
-    return lowering.lower(declaration.body);
+  const body = writtenBodyOf(checker.program, checker.moduleOf(declaration), declaration);
+  if (lowering !== undefined && body !== undefined) {
+    return lowering.lower(body);
   }
   const substitution = substitutionOf(instance);
   return {

@@ -56,7 +56,7 @@ export function referencesAt(
 function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly EntityUse[]> {
   const checker = checkProgram(program);
   const denoting = [...program.modules].flatMap(([module, { tree }]) =>
-    nodesUnder(tree.root).flatMap((name) =>
+    nodesUnder(tree, tree.root).flatMap((name) =>
       name.kind === 'Identifier' && !isMissingName(name)
         ? declarationsOf(checker, module, name).map(({ at }) => ({
             declaring: placeKeyOf(at),

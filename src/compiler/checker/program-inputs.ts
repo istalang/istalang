@@ -4,8 +4,8 @@
  * takes an entry over whenever what it read still answers alike, however much else changed
  * (docs/work/m6-m7/incremental-checking.md §1, §4).
  *
- * - A module is read in parts (its items, the modules its imports name, its tree), never whole, so
- *   an entry depends only on the parts it used.
+ * - A module is read in parts (its items, the modules its imports name, a function's body, its
+ *   tree), never whole, so an entry depends only on the parts it used.
  * - Every Bindings answer is an input too. Entities compare by identity, which holds across
  *   revisions for every module whose tree was reused (binder/entities.ts); lists and maps compare
  *   item by item.
@@ -19,7 +19,8 @@ import { sameEntries, sameItems } from '../../structures/equality.ts';
 import type { Bindings, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import { isStdModule, programModule } from '../program/program.ts';
-import type { EnumDeclaration } from '../syntax/declarations.ts';
+import type { EnumDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
+import { bodyOf } from '../syntax/tree.ts';
 import type { CheckerNote, ProgramInputs } from './context.ts';
 import { DeclaringModules } from './declaring-modules.ts';
 
@@ -47,6 +48,11 @@ export function programInputs(
     treeOf: entries.input({
       name: 'tree of',
       read: (module: ModuleId) => programModule(program, module).tree,
+    }),
+    bodyOf: entries.input({
+      name: 'body of',
+      read: (module: ModuleId, declaration: FunctionDeclaration) =>
+        bodyOf(programModule(program, module).tree, declaration),
     }),
     variantNamed: entries.input({
       name: 'variant named',

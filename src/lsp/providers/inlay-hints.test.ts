@@ -48,7 +48,7 @@ describe('inlay hints over the corpus', () => {
       const { line, character } = rangeOf(tree.source, { start: offset, end: offset }).start;
       return `${line}:${character}${label}`;
     };
-    const expected = nodesUnder(tree.root)
+    const expected = nodesUnder(tree, tree.root)
       .flatMap(untypedNames)
       .filter((name) => !isMissingName(name))
       .flatMap((name) => {

@@ -10,9 +10,10 @@ import { describe, expect, it } from 'vitest';
 import { reportedNothing } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
+import { type Program, programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { nodesUnder } from '../../syntax/tree.ts';
 import { reported } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
 
@@ -38,10 +39,10 @@ function nested(depth: number, declared: number): string {
   return `fn f():\n${own}  const g = fn(): ${levelBody(1)}`;
 }
 
-/** Every lambda in `node`, outermost first, as a chain of nested ones is written. */
-function lambdasIn(node: SyntaxNode): readonly Lambda[] {
-  const own = node.kind === 'Lambda' ? [node as Lambda] : [];
-  return [...own, ...childrenOf(node).flatMap(lambdasIn)];
+/** Every lambda in the function `f` of `program`'s main module, outermost first. */
+function lambdasIn(program: Program, f: FunctionDeclaration): readonly Lambda[] {
+  const { tree } = programModule(program, idOf('main.ista'));
+  return nodesUnder(tree, f).filter((node): node is Lambda => node.kind === 'Lambda');
 }
 
 describe('captures', () => {
@@ -57,7 +58,7 @@ describe('captures', () => {
           const module = program.modules.get(idOf('main.ista'));
           const f = module?.tree.root.items[0] as FunctionDeclaration;
           const body = checker.bodyOf(f);
-          const lambdas = lambdasIn(f);
+          const lambdas = lambdasIn(program, f);
           const captured = lambdas.map((lambda) =>
             (body?.functionOf(lambda)?.captures ?? []).find(
               ({ entity }) => entity.name.text === 'x',
@@ -83,7 +84,7 @@ describe('captures across modules', () => {
     const program = stdProgramOf({ 'main.ista': main, 'other.ista': other });
     const checker = checkProgram(program);
     const f = program.modules.get(idOf('main.ista'))?.tree.root.items[1] as FunctionDeclaration;
-    const [read] = lambdasIn(f);
+    const [read] = lambdasIn(program, f);
     expect(checker.diagnosticsOf(idOf('main.ista'))).toEqual([]);
     expect(read !== undefined && checker.bodyOf(f)?.functionOf(read)?.captures).toEqual([]);
   });

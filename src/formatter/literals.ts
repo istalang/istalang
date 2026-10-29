@@ -44,7 +44,7 @@ export function isMultiLine(source: SourceText, node: SyntaxNode): node is Copie
 type LiteralNode = Literal | Extract<SyntaxNode, { kind: 'TemplateText' | 'Docstring' }>;
 
 const asWritten = (printer: Printer, node: SyntaxNode): builders.Doc =>
-  textOf(printer.source, node.span);
+  textOf(printer.tree.source, node.span);
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const literalPrinters: Printers<LiteralNode | TemplateLiteral> = {
@@ -56,10 +56,12 @@ export const literalPrinters: Printers<LiteralNode | TemplateLiteral> = {
   NoneLiteral: asWritten,
   TemplateText: asWritten,
   Docstring: (printer, node) =>
-    isMultiLine(printer.source, node) ? copied(printer.source, node) : asWritten(printer, node),
+    isMultiLine(printer.tree.source, node)
+      ? copied(printer.tree.source, node)
+      : asWritten(printer, node),
   TemplateLiteral: (printer, node) =>
-    isMultiLine(printer.source, node)
-      ? copied(printer.source, node)
+    isMultiLine(printer.tree.source, node)
+      ? copied(printer.tree.source, node)
       : oneLineTemplate(printer, node),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

@@ -6,7 +6,7 @@
  */
 
 import type { Token } from '../../compiler/syntax/tokens.ts';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { memo } from '../../structures/memo.ts';
 import { lastIndexAtMost } from '../../structures/sorted.ts';
 import { codeTokensOf } from '../tokens.ts';
@@ -20,12 +20,10 @@ export function angleBracketsOf(tree: SyntaxTree): ReadonlySet<Token> {
   return memo(brackets, tree, () => {
     const tokens = codeTokensOf(tree);
     const found = new Set<Token>();
-    const pending: SyntaxNode[] = [tree.root];
-    for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+    for (const node of nodesUnder(tree, tree.root)) {
       for (const token of bracketsAround(typeListOf(node), tokens)) {
         found.add(token);
       }
-      pending.push(...childrenOf(node));
     }
     return found;
   });

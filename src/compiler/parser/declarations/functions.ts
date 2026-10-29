@@ -39,7 +39,7 @@ export function parseFunction(
     start,
     signatureIsComplete: hasParameters,
   });
-  return {
+  const declaration: FunctionDeclaration = {
     kind: 'FunctionDeclaration',
     span: parser.spanFrom(start),
     isExtern: form === 'extern',
@@ -49,9 +49,12 @@ export function parseFunction(
     typeParameters,
     parameters,
     returnType,
-    body,
     ...documentedBy(doc),
   };
+  if (body !== undefined) {
+    parser.addBody(declaration, body);
+  }
+  return declaration;
 }
 
 /** A defined function, top-level or local. */

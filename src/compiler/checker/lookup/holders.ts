@@ -78,14 +78,17 @@ function bodyInItem(
   }
 }
 
-/** The body holding `inner` inside `part` of the function `declaration`: its body or defaults. */
+/**
+ * The body holding `inner` inside `part` of the function `declaration`: its body, the one block a
+ * function holds, or its defaults.
+ */
 function bodyInFunction(
   checker: Holders,
   declaration: FunctionDeclaration,
   part: SyntaxNode | undefined,
   inner: SyntaxNode | undefined,
 ): CheckedBody | undefined {
-  if (part !== undefined && part === declaration.body) {
+  if (part?.kind === 'Block') {
     return checker.bodyOf(declaration);
   }
   return isDefault(part, inner) ? checker.defaultsOf(declaration) : undefined;

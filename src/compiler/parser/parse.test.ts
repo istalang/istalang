@@ -19,7 +19,7 @@ import {
 import { createSourceText } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import { scan } from '../scanner/scan.ts';
-import { dump, errorNodes, spanViolations } from '../syntax/tree.test-kit.ts';
+import { dump, errorNodes, spanViolations, strayBodies } from '../syntax/tree.test-kit.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { bodyOf, functionOf } from './parse.test-kit.ts';
@@ -59,7 +59,8 @@ describe('spec examples', () => {
   it.each(examplesOf('fragment'))(
     'parse the fragment at $document:$line into a well-nested tree',
     (example) => {
-      expect(spanViolations(parseText(example.code).root)).toEqual([]);
+      const tree = parseText(example.code);
+      expect(spanViolations(tree, tree.root)).toEqual([]);
     },
   );
 
@@ -79,8 +80,10 @@ describe('totality', () => {
     fc.assert(
       fc.property(brokenText(modules.map(({ code }) => code)), (text) => {
         const tree = parseText(text);
-        const unexplainedError = errorNodes(tree.root).length > 0 && tree.diagnostics.length === 0;
-        expect(spanViolations(tree.root)).toEqual([]);
+        const unexplainedError =
+          errorNodes(tree, tree.root).length > 0 && tree.diagnostics.length === 0;
+        expect(spanViolations(tree, tree.root)).toEqual([]);
+        expect(strayBodies(tree)).toEqual([]);
         expect(unexplainedError).toBe(false);
       }),
       { numRuns: 300 },
@@ -110,14 +113,14 @@ describe('hostile nesting', () => {
     const tree = parseText(`${deep}\nfn after(): 1`);
     const codes = tree.diagnostics.map((diagnostic) => diagnostic.code);
     expect(codes.filter((code) => code === parserDiagnostics.nestingTooDeep.code)).toHaveLength(1);
-    expect(spanViolations(tree.root)).toEqual([]);
-    expect(dump(tree.root.items.at(-1) ?? tree.root)).toBe(functionOf('after', bodyOf('1')));
+    expect(spanViolations(tree, tree.root)).toEqual([]);
+    expect(dump(tree, tree.root.items.at(-1) ?? tree.root)).toBe(functionOf('after', bodyOf('1')));
   });
 
   it('reports unclosed parentheses nested past the limit once, without throwing', () => {
     const tree = parseText(`fn f(): ${'('.repeat(depth)}`);
     const codes = tree.diagnostics.map((diagnostic) => diagnostic.code);
     expect(codes.filter((code) => code === parserDiagnostics.nestingTooDeep.code)).toHaveLength(1);
-    expect(spanViolations(tree.root)).toEqual([]);
+    expect(spanViolations(tree, tree.root)).toEqual([]);
   });
 });

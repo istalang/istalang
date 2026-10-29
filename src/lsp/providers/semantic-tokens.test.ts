@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { scan } from '../../compiler/scanner/scan.ts';
 import { isKeyword, type Token } from '../../compiler/syntax/tokens.ts';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
 import type { TestClient } from '../server.test-kit.ts';
@@ -26,25 +26,18 @@ const literals = {
 function comparesAt(tree: SyntaxTree, token: Token): boolean {
   const between = (left: SyntaxNode, right: SyntaxNode) =>
     left.span.end <= token.span.start && token.span.end <= right.span.start;
-  const pending: SyntaxNode[] = [tree.root];
-  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
-    if (node.kind === 'Binary' && between(node.left, node.right)) {
-      return true;
+  return nodesUnder(tree, tree.root).some((node) => {
+    if (node.kind === 'Binary') {
+      return between(node.left, node.right);
     }
-    if (node.kind === 'CompareFieldPattern' && between(node.field, node.value)) {
-      return true;
+    if (node.kind === 'CompareFieldPattern') {
+      return between(node.field, node.value);
     }
     const { operands } = node.kind === 'ChainedComparison' ? node : { operands: [] };
-    if (
-      operands.some(
-        (operand, index) => index > 0 && between(operands[index - 1] ?? operand, operand),
-      )
-    ) {
-      return true;
-    }
-    pending.push(...childrenOf(node));
-  }
-  return false;
+    return operands.some(
+      (operand, index) => index > 0 && between(operands[index - 1] ?? operand, operand),
+    );
+  });
 }
 
 const angles = new Set(['<', '>', '>>']);

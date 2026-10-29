@@ -6,11 +6,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { dump } from '../../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import {
   bodyOf,
   dumpClean,
+  dumpOf,
   expressionStatement,
   ifThen,
   int,
@@ -211,7 +211,7 @@ describe('labels, `hold` and spawn as a value', () => {
   });
 
   it('parses what follows a misplaced label as the statement', () => {
-    expect(dump(parseAs('statement', 'outer: x = 1').node)).toBe('(Assignment [x] = 1)');
+    expect(dumpOf(parseAs('statement', 'outer: x = 1'))).toBe('(Assignment [x] = 1)');
   });
 
   it('no longer reads `fn let`, the older spelling of `hold let`', () => {

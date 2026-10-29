@@ -6,7 +6,8 @@
  * `{…}`. Anything else, such as a call, is reported but kept, so the tree shows what was written.
  *
  * Attaching adds the annotations to an item already parsed, and widens its span over them, so no
- * item parser has to know about annotations. Annotations nothing can take are reported and kept as
+ * item parser has to know about annotations. It makes the item anew, so a function's body, which
+ * the tree holds by its function (syntax/tree.ts), moves to the function made. Annotations nothing can take are reported and kept as
  * an Invalid node; where that is, layout decides (layout.ts).
  */
 
@@ -47,6 +48,7 @@ function isAnnotationShape(value: Expression): boolean {
  * item stays Invalid and simply covers them too.
  */
 export function attachAnnotations<Item extends SyntaxNode & Annotatable>(
+  parser: Parser,
   item: Item | Invalid,
   annotations: readonly Annotation[],
 ): Item | Invalid {
@@ -54,7 +56,14 @@ export function attachAnnotations<Item extends SyntaxNode & Annotatable>(
     start: Math.min(item.span.start, annotations[0]?.span.start ?? item.span.start),
     end: Math.max(item.span.end, annotations.at(-1)?.span.end ?? item.span.end),
   };
-  return item.kind === 'Invalid' ? { kind: 'Invalid', span } : { ...item, span, annotations };
+  if (item.kind === 'Invalid') {
+    return { kind: 'Invalid', span };
+  }
+  const annotated = { ...item, span, annotations };
+  if (item.kind === 'FunctionDeclaration' && annotated.kind === 'FunctionDeclaration') {
+    parser.moveBody(item, annotated);
+  }
+  return annotated;
 }
 
 /** Annotations that can't apply to anything: reported once, and kept as an Invalid node. */

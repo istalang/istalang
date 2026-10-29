@@ -100,7 +100,6 @@ export function fieldsFunctionOf(
           typeParameters: declaration.typeParameters,
           parameters: owner.fields.map(fieldParameter),
           returnType: undefined,
-          body: undefined,
           fieldsOwner,
         }
       : undefined,

@@ -33,7 +33,7 @@ import {
 import type { Lambda, Parameter } from '../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
-import type { SyntaxNode } from '../syntax/tree.ts';
+import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 import { bindTargets, bindVariableValue } from './statements.ts';
@@ -61,8 +61,11 @@ export function bindFunction(
   const body = Scope.ofBody(inner, node);
   if (node.kind === 'Lambda') {
     binder.walk.expression(binder, node.body, body);
-  } else if (node.body !== undefined) {
-    binder.walk.block(binder, node.body, body);
+    return;
+  }
+  const block = bodyOf(binder.tree, node);
+  if (block !== undefined) {
+    binder.walk.block(binder, block, body);
   }
 }
 

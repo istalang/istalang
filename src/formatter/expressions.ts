@@ -14,7 +14,7 @@ import type {
   Expression,
   ExpressionPart,
 } from '../compiler/syntax/expressions/index.ts';
-import { childrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { angled, bracketed, enclosed, hasComments, hugging, oneLine, tupleList } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 
@@ -80,8 +80,10 @@ const linedKinds: ReadonlySet<SyntaxNode['kind']> = new Set([
   'BlockExpression',
 ]);
 
-function laysOutLines(node: SyntaxNode): boolean {
-  return linedKinds.has(node.kind) || childrenOf(node).some(laysOutLines);
+function laysOutLines(tree: SyntaxTree, node: SyntaxNode): boolean {
+  return (
+    linedKinds.has(node.kind) || childrenOf(tree, node).some((child) => laysOutLines(tree, child))
+  );
 }
 
 /**
@@ -109,7 +111,8 @@ function operatorRun(
     firstDoc ?? '',
     operations.map(([operator], index) => [' ', operator, ' ', rest[index] ?? '']),
   ];
-  return operands.some(laysOutLines) || utils.willBreak(run) ? run : oneLine(run);
+  const laysOut = operands.some((operand) => laysOutLines(printer.tree, operand));
+  return laysOut || utils.willBreak(run) ? run : oneLine(run);
 }
 
 /**

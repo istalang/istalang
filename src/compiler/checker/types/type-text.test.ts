@@ -7,8 +7,10 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../compile.test-kit.ts';
 import { idOf, programOf } from '../../program/program.test-kit.ts';
+import { programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
+import { bodyOf } from '../../syntax/tree.ts';
 import { checkProgram } from '../check.ts';
 import { typeText } from './type-text.ts';
 
@@ -53,10 +55,11 @@ describe('typeText', () => {
       ].join('\n'),
     });
     const checker = checkProgram(program);
-    const items = program.modules.get(idOf('main.ista'))?.tree.root.items ?? [];
-    const f = items[2] as FunctionDeclaration;
-    const body = f.body === undefined ? undefined : checker.bodyOf(f);
-    const [a, d] = (f.body?.statements ?? []) as VariableDeclaration[];
+    const { tree } = programModule(program, idOf('main.ista'));
+    const f = tree.root.items[2] as FunctionDeclaration;
+    const written = bodyOf(tree, f);
+    const body = written === undefined ? undefined : checker.bodyOf(f);
+    const [a, d] = (written?.statements ?? []) as VariableDeclaration[];
     const typeAt = (declaration: VariableDeclaration | undefined) => {
       const type = declaration && body?.typeOf(declaration.initializer);
       return type && typeText(type);

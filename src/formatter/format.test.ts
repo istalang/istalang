@@ -23,7 +23,7 @@ describe('formatting every corpus file and spec example', () => {
       const formatted = formatTree(tree) ?? '';
       const reparsed = parseText(formatted);
       expect(reparsed.diagnostics).toEqual([]);
-      expect(dump(reparsed.root)).toBe(dump(tree.root));
+      expect(dump(reparsed, reparsed.root)).toBe(dump(tree, tree.root));
       expect(commentTexts(reparsed)).toEqual(commentTexts(tree));
       expect(formatTree(reparsed)).toBe(formatted);
       expect(unexplainedLongLines(reparsed)).toEqual([]);

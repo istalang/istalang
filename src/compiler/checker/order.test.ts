@@ -73,7 +73,7 @@ function askable(program: Program, withStd = false) {
   const modules = [...program.modules.keys()].filter((id) => withStd || !isStdModule(program, id));
   const nodes = modules.flatMap((module) => {
     const tree = program.modules.get(module)?.tree;
-    return tree === undefined ? [] : nodesUnder(tree.root).map((node) => ({ module, node }));
+    return tree === undefined ? [] : nodesUnder(tree, tree.root).map((node) => ({ module, node }));
   });
   const functions = [...program.modules.values()].flatMap(({ tree }) =>
     declaredFunctions(tree.root),

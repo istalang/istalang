@@ -26,6 +26,7 @@ import type {
   FunctionDeclaration,
 } from '../../syntax/declarations.ts';
 import type { Invalid } from '../../syntax/node.ts';
+import { writtenBodyOf } from '../bodies.ts';
 import { constantValue } from '../constants.ts';
 import { instanceLowering, nestedLowering, type StartEdges } from '../function-lowering/index.ts';
 import { rootInstance } from '../instances.ts';
@@ -75,7 +76,7 @@ function functionStartable(
   const parameters = checker.parametersOf(declaration);
   if (
     declaration.isExtern ||
-    declaration.body === undefined ||
+    writtenBodyOf(checker.program, checker.moduleOf(declaration), declaration) === undefined ||
     declaration.typeParameters.length > 0 ||
     parameters.some((parameter) => parameter.reference)
   ) {
@@ -160,10 +161,11 @@ export function startEntry(
   const header = tables.declarationHeader(target);
   if (target.kind === 'FunctionDeclaration') {
     const entry = instanceLowering(lowering, rootInstance(target), header);
-    if (entry === undefined || target.body === undefined) {
+    const body = writtenBodyOf(checker.program, checker.moduleOf(target), target);
+    if (entry === undefined || body === undefined) {
       unreachable('A startable function has no body.');
     }
-    return entry.lowerStart(edges, target.body);
+    return entry.lowerStart(edges, body);
   }
   const form = checker.constantOf(target)?.form;
   if (form?.kind !== 'function' || form.lambda.body === undefined) {

@@ -83,7 +83,7 @@ function activeOf(help: SignatureHelp | null) {
 
 describe('signature help over the corpus', () => {
   it.each(documents)('$uri', async ({ uri, module, tree }) => {
-    const asked = nodesUnder(tree.root).flatMap((node) => {
+    const asked = nodesUnder(tree, tree.root).flatMap((node) => {
       const expected = node.kind === 'Call' ? expectedAt(module, node) : undefined;
       return node.kind === 'Call' && expected !== undefined
         ? node.arguments.map((argument, index) => ({ at: argument.span.start, index, expected }))

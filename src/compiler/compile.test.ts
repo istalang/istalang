@@ -34,7 +34,7 @@ describe('compiling', () => {
       const main = idOf('main');
       const tree = program.modules.get(main)?.tree;
       const bindings = bindProgram(program);
-      for (const node of tree === undefined ? [] : nodesUnder(tree.root).toReversed()) {
+      for (const node of tree === undefined ? [] : nodesUnder(tree, tree.root).toReversed()) {
         const entity = node.kind === 'Identifier' ? bindings.entityOf(main, node) : undefined;
         typeKeys.identityOf(entity ?? node);
       }
