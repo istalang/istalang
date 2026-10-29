@@ -28,7 +28,7 @@ import {
   exitCodes,
 } from '../command.ts';
 import { logLine } from '../log-lines.ts';
-import { reportDiagnostics } from '../report.ts';
+import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
 interface TestOptions {
   readonly filter?: string;
@@ -74,9 +74,7 @@ async function test(
   const { cwd } = environment;
   const found = testModulesOf(cwd, paths.length > 0 ? paths : [cwd]);
   if (found.unreadable.length > 0) {
-    environment.writeError(
-      found.unreadable.map((path) => `ista: no such file: ${path}\n`).join(''),
-    );
+    reportUnreadable(found.unreadable, environment.writeError);
     return exitCodes.couldNotRun;
   }
   const { program } = loadProject(cwd, found.modules);

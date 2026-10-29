@@ -37,6 +37,23 @@ export function lineBreakLength(text: string, offset: number): number {
   return text[offset + 1] === lineFeed ? 2 : 1;
 }
 
+/** The lines of `text`, without their line breaks; one more than it has breaks. */
+export function splitLines(text: string): string[] {
+  const lines: string[] = [];
+  let lineStart = 0;
+  let offset = 0;
+  while (offset < text.length) {
+    const breakLength = lineBreakLength(text, offset);
+    if (breakLength > 0) {
+      lines.push(text.slice(lineStart, offset));
+      lineStart = offset + breakLength;
+    }
+    offset += Math.max(breakLength, 1);
+  }
+  lines.push(text.slice(lineStart));
+  return lines;
+}
+
 /** Where the line holding `offset` starts: just past the line break before it, or 0. */
 export function lineStartAt(text: string, offset: number): number {
   let start = offset;

@@ -43,7 +43,7 @@ import {
 import { directoryStore } from '../directory-store.ts';
 import { type HostModule, loadHostModule } from '../host-module.ts';
 import { logLine } from '../log-lines.ts';
-import { reportDiagnostics } from '../report.ts';
+import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
 interface RunOptions {
   readonly store?: string;
@@ -118,7 +118,7 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
   const { program, unreadable } = loadProject(environment.cwd, [entry]);
   const [root] = program.roots;
   if (unreadable.length > 0 || root === undefined) {
-    environment.writeError(`ista: no such file: ${entry}\n`);
+    reportUnreadable([entry], environment.writeError);
     return exitCodes.couldNotRun;
   }
   reportDiagnostics(diagnose(program).values(), environment.writeError);

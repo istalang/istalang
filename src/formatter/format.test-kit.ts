@@ -8,14 +8,12 @@ import { specExamples } from '../../test/corpus/spec-examples.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import { scan } from '../compiler/scanner/scan.ts';
 import { extentIn, nodesUnder, type SyntaxTree } from '../compiler/syntax/tree.ts';
-import { lineMapOf } from '../text/line-map.ts';
+import { lineMapOf, splitLines } from '../text/line-map.ts';
 import { createSourceText } from '../text/source-text.ts';
 import { textOf } from '../text/span.ts';
 import { nodesInBrackets } from './brackets.ts';
 
 const printWidth = 100;
-
-const lineBreak = /\r\n|\r|\n/u;
 
 export function parseText(text: string): SyntaxTree {
   const source = createSourceText('formatted.ista', text);
@@ -72,7 +70,7 @@ export function unexplainedLongLines(tree: SyntaxTree): readonly string[] {
   ];
   const { lineStarts } = lineMapOf(tree.source);
   const { text } = tree.source;
-  return text.split(lineBreak).filter((line, index) => {
+  return splitLines(text).filter((line, index) => {
     const { length } = [...line];
     if (length <= printWidth || unbreakable.has(index)) {
       return false;

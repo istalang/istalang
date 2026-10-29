@@ -20,6 +20,7 @@ import type { Literal, TemplateLiteral } from '../compiler/syntax/expressions/in
 import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
 import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree.ts';
+import { splitLines } from '../text/line-map.ts';
 import { createSourceText, type SourceText } from '../text/source-text.ts';
 import { textOf } from '../text/span.ts';
 import { columnOf } from './comments.ts';
@@ -28,7 +29,6 @@ import type { Printer, Printers } from './printer.ts';
 
 const { lineSuffixBoundary, literalline, markAsRoot } = builders;
 
-const lineBreak = /\r\n|\r|\n/u;
 const leadingSpaces = /^ */u;
 
 /** Literals spanning lines, which print as copies. */
@@ -38,7 +38,7 @@ export type CopiedLiteral = TemplateLiteral | Docstring;
 export function isMultiLine(tree: SyntaxTree, node: SyntaxNode): node is CopiedLiteral {
   return (
     (node.kind === 'TemplateLiteral' || node.kind === 'Docstring') &&
-    lineBreak.test(writtenText(tree, node))
+    splitLines(writtenText(tree, node)).length > 1
   );
 }
 
@@ -81,7 +81,7 @@ function oneLineTemplate(printer: Printer, node: TemplateLiteral): builders.Doc 
 }
 
 function copied(tree: SyntaxTree, node: CopiedLiteral): builders.Doc {
-  const [first = '', ...later] = writtenText(tree, node).split(lineBreak);
+  const [first = '', ...later] = splitLines(writtenText(tree, node));
   const moved = movedLines(tree, node, first, later);
   const lines = (moved ?? later).map((text) =>
     // A blank line takes no indentation: the value ignores it, and the output stays trimmed.

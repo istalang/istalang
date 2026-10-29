@@ -15,7 +15,7 @@ import {
   type ExitCode,
   exitCodes,
 } from '../command.ts';
-import { reportDiagnostics } from '../report.ts';
+import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
 export const defineCheckCommand: CommandDefinition = (cli, { environment, exitWith }) => {
   cli
@@ -34,7 +34,7 @@ function check(files: readonly string[], environment: CliEnvironment): ExitCode 
     files.length > 0 ? files : findProjectSources(cwd),
   );
   if (unreadable.length > 0) {
-    environment.writeError(unreadable.map((file) => `ista: no such file: ${file}\n`).join(''));
+    reportUnreadable(unreadable, environment.writeError);
     return exitCodes.couldNotRun;
   }
   return reportDiagnostics(diagnose(program).values(), environment.write) > 0

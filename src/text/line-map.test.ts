@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { LineMap, lineBreakLength, lineMapOf } from './line-map.ts';
+import { LineMap, lineBreakLength, lineMapOf, splitLines } from './line-map.ts';
 import { createSourceText } from './source-text.ts';
 
 const lineBreaks = ['\n', '\r\n', '\r'];
@@ -29,6 +29,7 @@ describe('line map (§2)', () => {
           const text = lines.map(([line, ending]) => line + ending).join('') + lastLine;
           const map = new LineMap(text);
           expect(map.lineCount).toBe(lines.length + 1);
+          expect(splitLines(text)).toEqual([...lines.map(([line]) => line), lastLine]);
           let offset = 0;
           for (const [lineIndex, line] of [...lines.map(([l]) => l), lastLine].entries()) {
             for (let column = 0; column <= line.length; column += 1) {
@@ -44,6 +45,7 @@ describe('line map (§2)', () => {
 
   it('counts \\r\\n as one line break and a lone \\r as another', () => {
     expect(new LineMap('a\r\nb\rc\nd').lineCount).toBe(4);
+    expect(splitLines('a\r\n\r\nb')).toEqual(['a', '', 'b']);
     expect(lineBreakLength('\r\n', 0)).toBe(2);
     expect(lineBreakLength('\r', 0)).toBe(1);
     expect(lineBreakLength('\n', 0)).toBe(1);
