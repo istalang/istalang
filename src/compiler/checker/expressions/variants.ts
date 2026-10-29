@@ -18,7 +18,7 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { chooseVariant, sameEnum } from '../resolution/named.ts';
+import { chooseVariant, enumsExpected, sameEnum } from '../resolution/named.ts';
 import { optionalInner } from '../types/fit.ts';
 import { typeArgumentsFor } from '../types/resolve-type.ts';
 import {
@@ -46,11 +46,9 @@ export function variantsAccepted(
   if (naming?.kind !== 'variants') {
     return undefined;
   }
-  const candidates = context.checker.bindings.candidatesOf(naming);
+  const { checker } = context;
   return (expected) =>
-    candidates.some(
-      (candidate) => sameEnum(context.checker, expected, candidate.enum) !== undefined,
-    );
+    checker.inputs.variantNamed(naming.name, enumsExpected(checker, expected)) !== undefined;
 }
 
 export function checkNone(

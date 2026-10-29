@@ -24,7 +24,7 @@
  */
 
 import { staticName } from '../../../language/static-names.ts';
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import {
   declaredFunctions,
   type FunctionDeclaration,
@@ -41,9 +41,8 @@ import { mentionsError } from '../types/type-parts.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
-  const { root } = programModule(checker.program, module).tree;
   const groups = new Map<string, FunctionDeclaration[]>();
-  for (const item of declaredFunctions(root)) {
+  for (const item of declaredFunctions({ items: checker.inputs.itemsOf(module) })) {
     const group = groupOf(checker, module, item);
     const earlier = groups.get(group) ?? [];
     const shape = shapeOf(checker, item);
@@ -85,7 +84,7 @@ function preludeOverloads(
   module: ModuleId,
   declaration: FunctionDeclaration,
 ): readonly FunctionDeclaration[] {
-  return declaration.owner === undefined && module !== checker.program.roles.prelude
+  return declaration.owner === undefined && module !== checker.inputs.role('prelude')
     ? checker.languageFunctions('prelude', declaration.name.text)
     : [];
 }

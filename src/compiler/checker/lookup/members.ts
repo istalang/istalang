@@ -9,7 +9,7 @@
  * declaration, its arguments aside, since completing a call needn't know them yet.
  */
 
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import {
   declaredFunctions,
   type FunctionDeclaration,
@@ -96,16 +96,16 @@ function methodsOf(
 
 /** The names a method of `type` may have, seen from `module`. */
 function methodNames(checker: CheckerContext, module: ModuleId, type: Type): ReadonlySet<string> {
-  const { bindings, program } = checker;
+  const { bindings, inputs } = checker;
   const target = staticTargetOf(checker, type);
   const exporting = [
-    program.roles.prelude,
+    inputs.role('prelude'),
     target?.kind === 'owner' ? target.module : undefined,
   ].filter((each) => each !== undefined);
-  const { root } = programModule(program, module).tree;
+  const items = inputs.itemsOf(module);
   return new Set([
-    ...declaredFunctions(root).map(({ name }) => name.text),
-    ...root.items.flatMap((item) =>
+    ...declaredFunctions({ items }).map(({ name }) => name.text),
+    ...items.flatMap((item) =>
       item.kind === 'NamedImport' ? item.names.map(({ text }) => text) : [],
     ),
     ...exporting.flatMap((each) => [...bindings.exportsOf(each).keys()]),

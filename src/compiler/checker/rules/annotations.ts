@@ -20,6 +20,7 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import type { EntryTable } from '../../../structures/entries.ts';
+import { sameItems } from '../../../structures/equality.ts';
 import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
@@ -27,13 +28,16 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
-import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { bodyChildrenOf, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
+import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import type { AnnotationPlace, CheckedAnnotation } from '../checked-annotation.ts';
+import { sameForm } from '../constant-form.ts';
 import type { AnnotationChecks, CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { defaultWitness } from '../resolution/default-witness.ts';
-import type { FieldMember, Type } from '../types/type.ts';
+import { errorType, type FieldMember, type Type } from '../types/type.ts';
+import { sameTypeSpelled } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
 import { searchSite } from '../use-site.ts';
 import { computeConstant, refusalOf } from './computation.ts';
@@ -57,13 +61,30 @@ export interface AnnotationSeams {
 
 export class Annotations implements AnnotationChecks {
   readonly #seams: AnnotationSeams;
-  readonly #checked: EntryTable<CheckerNote, NodeOf<string>, readonly CheckedAnnotation[]>;
-  readonly #bodies: EntryTable<CheckerNote, Annotation, CheckedBody>;
+  readonly #checked: EntryTable<
+    CheckerNote,
+    Annotatable & NodeOf<string>,
+    readonly CheckedAnnotation[],
+    { readonly module: ModuleId; readonly place: AnnotationPlace }
+  >;
+  readonly #bodies: EntryTable<CheckerNote, Annotation, CheckedBody, ModuleId>;
 
   constructor(seams: AnnotationSeams) {
     this.#seams = seams;
-    this.#checked = seams.checker.entries.table();
-    this.#bodies = seams.checker.entries.table();
+    this.#checked = seams.checker.entries.table({
+      name: 'annotations',
+      compute: (item, { module, place }) => this.#check(module, item, place),
+      equal: sameItems(
+        (first, second) =>
+          first.node === second.node &&
+          sameTypeSpelled(first.type, second.type) &&
+          sameForm(first.form, second.form),
+      ),
+    });
+    this.#bodies = seams.checker.entries.table({
+      name: 'annotation bodies',
+      compute: (annotation, module) => seams.checkValue(module, annotation.value),
+    });
   }
 
   /** The annotations on `item` of `module`, standing at `place`, checked once. */
@@ -72,11 +93,11 @@ export class Annotations implements AnnotationChecks {
     item: Annotatable & NodeOf<string>,
     place: AnnotationPlace,
   ): readonly CheckedAnnotation[] {
-    return this.#checked.get(item, () => this.#check(module, item, place));
+    return this.#checked.get(item, { module, place });
   }
 
   bodyOf(module: ModuleId, annotation: Annotation): CheckedBody {
-    return this.#bodies.get(annotation, () => this.#seams.checkValue(module, annotation.value));
+    return this.#bodies.get(annotation, module);
   }
 
   /** Which of the toolchain's own annotations `annotation` is; undefined for any other struct. */
@@ -94,9 +115,7 @@ export class Annotations implements AnnotationChecks {
    */
   ofField(field: FieldMember): readonly CheckedAnnotation[] {
     const { declared } = field;
-    return declared === undefined
-      ? []
-      : this.of(declared.module, declared.node, { kind: 'field', type: declared.type });
+    return declared === undefined ? [] : this.of(declared.module, declared.node, { kind: 'field' });
   }
 
   /** The name a field has in JSON (§9): its `@JsonName`, or its own. */
@@ -151,14 +170,16 @@ export class Annotations implements AnnotationChecks {
 
   #check(
     module: ModuleId,
-    item: Annotatable,
+    item: Annotatable & NodeOf<string>,
     place: AnnotationPlace,
   ): readonly CheckedAnnotation[] {
     const found: CheckedAnnotation[] = [];
+    const placed: Placed =
+      place.kind === 'field' ? { kind: 'field', type: this.#fieldType(module, item) } : place;
     for (const node of item.annotations ?? []) {
       const annotation = this.#value(module, node);
       const problem =
-        annotation === undefined ? undefined : this.#problem(annotation, found, place);
+        annotation === undefined ? undefined : this.#problem(annotation, found, placed);
       if (problem !== undefined) {
         this.#seams.checker.report(module, problem);
       } else if (annotation !== undefined) {
@@ -168,11 +189,39 @@ export class Annotations implements AnnotationChecks {
     return found;
   }
 
+  /**
+   * The type the field `node` of `module` is declared with, read where checking decided it: its
+   * struct's or variant's layout, or its trait's written type. It is read here, in the entry of its
+   * annotations, rather than given by whoever asks, so the entry depends on it.
+   */
+  #fieldType(module: ModuleId, node: NodeOf<string>): Type {
+    const { checker } = this.#seams;
+    if (node.kind === 'FieldDeclaration') {
+      return checker.resolveType(module, (node as FieldDeclaration).type);
+    }
+    const fields = this.#siblingsOf(module, node);
+    return fields.find((field) => field.declared?.node === node)?.declared?.type ?? errorType;
+  }
+
+  /** The fields declared beside the field `node` of `module`: its struct's, or its enum's. */
+  #siblingsOf(module: ModuleId, node: NodeOf<string>): readonly FieldMember[] {
+    const { checker } = this.#seams;
+    const tree = checker.inputs.treeOf(module);
+    const owner = parentOf(tree, node as SyntaxNode);
+    if (owner?.kind === 'StructDeclaration' || owner?.kind === 'SharedStructDeclaration') {
+      return checker.declaredFieldsOf(owner);
+    }
+    const declaration = owner?.kind === 'Variant' ? parentOf(tree, owner) : undefined;
+    return declaration?.kind === 'EnumDeclaration'
+      ? checker.declaredVariantsOf(declaration).flatMap((variant) => variant.fields)
+      : [];
+  }
+
   /** Why `annotation` doesn't belong at `place` after those `found` there already. */
   #problem(
     annotation: CheckedAnnotation,
     found: readonly CheckedAnnotation[],
-    place: AnnotationPlace,
+    place: Placed,
   ): Diagnostic | undefined {
     const { node, type } = annotation;
     const name = type.entity.declaration.name.text;
@@ -217,6 +266,11 @@ export class Annotations implements AnnotationChecks {
   }
 }
 
+/** A place as its annotations' check reads it: a field's with the type it is declared with. */
+type Placed =
+  | Exclude<AnnotationPlace, { readonly kind: 'field' }>
+  | { readonly kind: 'field'; readonly type: Type };
+
 /**
  * Where each annotation means something: `'elsewhere'` when `place` is no place for it, a
  * diagnostic at its span when the place is right but the item can't take it, else nothing.
@@ -225,7 +279,7 @@ export class Annotations implements AnnotationChecks {
 const placements: Record<
   Known | 'any',
   (
-    place: AnnotationPlace,
+    place: Placed,
     isDefault: (type: Type) => boolean,
   ) => 'elsewhere' | ((at: Span) => Diagnostic) | undefined
 > = {
@@ -257,7 +311,7 @@ const placements: Record<
 };
 
 /** How a diagnostic names `place`. */
-function placeText(place: AnnotationPlace): string {
+function placeText(place: Placed): string {
   switch (place.kind) {
     case 'field':
       return 'a field';

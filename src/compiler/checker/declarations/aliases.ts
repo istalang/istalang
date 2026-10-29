@@ -9,26 +9,28 @@ import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type } from '../types/type.ts';
+import { sameTypeSpelled } from '../types/type-parts.ts';
 
 export class Aliases {
-  readonly #checker: CheckerContext;
   readonly #types: EntryTable<CheckerNote, TypeAliasDeclaration, Type>;
 
   constructor(checker: CheckerContext) {
-    this.#checker = checker;
-    this.#types = checker.entries.table<TypeAliasDeclaration, Type>({
-      standIn: () => errorType,
-      reportMember: (member) =>
-        checker.report(
-          checker.moduleOf(member),
-          checkerDiagnostics.aliasCycle(member.name.span, member.name.text),
-        ),
+    this.#types = checker.entries.table({
+      name: 'aliased types',
+      compute: (alias) => checker.resolveType(checker.moduleOf(alias), alias.type),
+      equal: sameTypeSpelled,
+      cyclic: {
+        standIn: () => errorType,
+        reportMember: (member) =>
+          checker.report(
+            checker.moduleOf(member),
+            checkerDiagnostics.aliasCycle(member.name.span, member.name.text),
+          ),
+      },
     });
   }
 
   aliasedType(alias: TypeAliasDeclaration): Type {
-    return this.#types.get(alias, () =>
-      this.#checker.resolveType(this.#checker.moduleOf(alias), alias.type),
-    );
+    return this.#types.get(alias);
   }
 }

@@ -199,7 +199,7 @@ export interface Module extends NodeOf<'Module'>, Documented {
 }
 
 /** The top-level functions `module` declares, static ones included. */
-export function declaredFunctions(module: Module): readonly FunctionDeclaration[] {
+export function declaredFunctions(module: Pick<Module, 'items'>): readonly FunctionDeclaration[] {
   return module.items.filter((item) => item.kind === 'FunctionDeclaration');
 }
 

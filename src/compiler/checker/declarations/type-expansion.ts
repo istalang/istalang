@@ -14,6 +14,7 @@
  */
 
 import type { EntryTable } from '../../../structures/entries.ts';
+import { sameItems, sameMembers, sameProperties } from '../../../structures/equality.ts';
 import {
   type DeclaredField,
   type DeclaredStruct,
@@ -45,27 +46,37 @@ export class TypeExpansion {
 
   constructor(checker: ExpansionSeams) {
     this.#checker = checker;
-    this.#edges = checker.entries.table();
-    this.#endless = checker.entries.table();
+    this.#edges = checker.entries.table({
+      name: 'field edges',
+      compute: (declaration) => this.#fieldEdges(declaration),
+      equal: sameItems(sameProperties),
+    });
+    this.#endless = checker.entries.table({
+      name: 'endless fields',
+      compute: (declaration) => this.#endlessFields(declaration),
+      equal: sameMembers,
+    });
   }
 
   /** The fields of `declaration` that make its instantiation endless, reported once. */
   endlessFieldsOf(declaration: FieldedDeclaration): ReadonlySet<DeclaredField> {
-    return this.#endless.get(declaration, () => {
-      const endless = new Set(
-        endlessEdges(this.#reachedFrom(declaration))
-          .filter((edge) => edge.declaration === declaration)
-          .map((edge) => edge.field),
+    return this.#endless.get(declaration);
+  }
+
+  #endlessFields(declaration: FieldedDeclaration): ReadonlySet<DeclaredField> {
+    const endless = new Set(
+      endlessEdges(this.#reachedFrom(declaration))
+        .filter((edge) => edge.declaration === declaration)
+        .map((edge) => edge.field),
+    );
+    const module = this.#checker.moduleOf(declaration);
+    for (const field of endless) {
+      this.#checker.report(
+        module,
+        checkerDiagnostics.expandingType(field.name.span, declaration.name.text, field.name.text),
       );
-      const module = this.#checker.moduleOf(declaration);
-      for (const field of endless) {
-        this.#checker.report(
-          module,
-          checkerDiagnostics.expandingType(field.name.span, declaration.name.text, field.name.text),
-        );
-      }
-      return endless;
-    });
+    }
+    return endless;
   }
 
   /** The edges of `root`'s fields, and of every generic type those edges reach. */
@@ -76,7 +87,7 @@ export class TypeExpansion {
     for (let declaration = pending.pop(); declaration !== undefined; declaration = pending.pop()) {
       if (!visited.has(declaration)) {
         visited.add(declaration);
-        const own = this.#edgesOf(declaration);
+        const own = this.#edges.get(declaration);
         edges.push(...own);
         pending.push(...own.map((edge) => edge.reached));
       }
@@ -84,29 +95,27 @@ export class TypeExpansion {
     return edges;
   }
 
-  #edgesOf(declaration: FieldedDeclaration): readonly FieldEdge[] {
-    return this.#edges.get(declaration, () => {
-      const own = new Set<ParameterKey>(typeParametersOf(declaration.typeParameters));
-      const module = this.#checker.moduleOf(declaration);
-      return writtenFieldsOf(declaration).flatMap((field) =>
-        field.type === undefined
-          ? []
-          : nominalsIn(this.#checker.resolveType(module, field.type)).flatMap(
-              ({ entity, arguments: typeArguments }) => {
-                const reached = entity.declaration;
-                if (reached.kind === 'ExternStructDeclaration') {
-                  return [];
-                }
-                return argumentEdges(own, reached.typeParameters, typeArguments).map((edge) => ({
-                  ...edge,
-                  declaration,
-                  field,
-                  reached,
-                }));
-              },
-            ),
-      );
-    });
+  #fieldEdges(declaration: FieldedDeclaration): readonly FieldEdge[] {
+    const own = new Set<ParameterKey>(typeParametersOf(declaration.typeParameters));
+    const module = this.#checker.moduleOf(declaration);
+    return writtenFieldsOf(declaration).flatMap((field) =>
+      field.type === undefined
+        ? []
+        : nominalsIn(this.#checker.resolveType(module, field.type)).flatMap(
+            ({ entity, arguments: typeArguments }) => {
+              const reached = entity.declaration;
+              if (reached.kind === 'ExternStructDeclaration') {
+                return [];
+              }
+              return argumentEdges(own, reached.typeParameters, typeArguments).map((edge) => ({
+                ...edge,
+                declaration,
+                field,
+                reached,
+              }));
+            },
+          ),
+    );
   }
 }
 

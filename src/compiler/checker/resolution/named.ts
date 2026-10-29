@@ -6,7 +6,7 @@
  */
 
 import type { Span } from '../../../text/span.ts';
-import type { Entity, VariantEntity, VariantNaming } from '../../binder/entities.ts';
+import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import type { EnumDeclaration, StructDeclaration, Variant } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
@@ -78,9 +78,9 @@ export function chooseVariant(
   if (naming.kind === 'variant') {
     return { enum: naming.enum, variant: naming.variant };
   }
-  const candidates: readonly VariantEntity[] = context.checker.bindings.candidatesOf(naming);
-  const chosen = candidates.find(
-    (candidate) => sameEnum(context.checker, expected, candidate.enum) !== undefined,
+  const chosen = context.checker.inputs.variantNamed(
+    naming.name,
+    enumsExpected(context.checker, expected),
   );
   if (chosen === undefined) {
     if (!expectsError(expected)) {
@@ -111,6 +111,27 @@ export function sameEnum(
     }
   }
   return undefined;
+}
+
+/**
+ * The enums a value of `expected` may be a variant of: its own, and those inside its optionals,
+ * outermost first, as `sameEnum` finds them.
+ */
+export function enumsExpected(
+  checker: Pick<CheckerContext, 'optionalEntity'>,
+  expected: Type | undefined,
+): readonly EnumDeclaration[] {
+  const enums: EnumDeclaration[] = [];
+  for (
+    let current = expected;
+    current !== undefined;
+    current = optionalInner(current, checker.optionalEntity)
+  ) {
+    if (current.kind === 'nominal' && current.entity.declaration.kind === 'EnumDeclaration') {
+      enums.push(current.entity.declaration);
+    }
+  }
+  return enums;
 }
 
 /** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */

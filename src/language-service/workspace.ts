@@ -5,7 +5,8 @@
  * The open texts are the one thing the editor knows that the disk may not, so the workspace holds
  * them, as an immutable map replaced on every edit, and derives everything else. The program is
  * built once per map, however many features ask after one edit, and each build hands the loader
- * the program before it, whose unchanged trees it reuses (program.ts).
+ * the program before it, whose unchanged trees it reuses (program.ts), and its checker to the new
+ * program's, which takes over every result the edit left alike (check.ts).
  *
  * Loading is a seam: the app decides which roots a project has and where the rest of its texts
  * come from, so this layer does no I/O and knows no protocol. A document the program doesn't hold
@@ -13,6 +14,7 @@
  * that read syntax alone.
  */
 
+import { checkProgram } from '../compiler/checker/check.ts';
 import { diagnoseModule, type ModuleDiagnostics } from '../compiler/compile.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
@@ -54,13 +56,16 @@ export class Workspace {
     return [...this.#open.keys()];
   }
 
-  /** The program of the open texts as they stand now. */
+  /**
+   * The program of the open texts as they stand now, whose checker takes over what it can from the
+   * program before it (check.ts).
+   */
   get program(): Program {
     if (this.#snapshot?.open !== this.#open) {
-      this.#snapshot = {
-        open: this.#open,
-        program: this.#load(this.#open, this.#snapshot?.program),
-      };
+      const previous = this.#snapshot?.program;
+      const program = this.#load(this.#open, previous);
+      checkProgram(program, previous);
+      this.#snapshot = { open: this.#open, program };
     }
     return this.#snapshot.program;
   }

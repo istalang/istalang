@@ -6,7 +6,7 @@
  * stands. A lambda or local function is checked in the body holding it, so it owns none.
  */
 
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type { Annotation } from '../../syntax/annotations.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/field-defaults.ts';
@@ -17,7 +17,7 @@ import type { CheckerContext } from '../context.ts';
 /** What finding a holding body reads of the checker. */
 export type Holders = Pick<
   CheckerContext,
-  'program' | 'bodyOf' | 'defaultsOf' | 'constantBodyOf' | 'annotations'
+  'inputs' | 'bodyOf' | 'defaultsOf' | 'constantBodyOf' | 'annotations'
 >;
 
 /** `node` and the nodes holding it, innermost first, up to its module's root. */
@@ -43,7 +43,7 @@ export function bodyHolding(
   module: ModuleId,
   node: SyntaxNode,
 ): CheckedBody | undefined {
-  const path = ancestorsOf(programModule(checker.program, module).tree, node);
+  const path = ancestorsOf(checker.inputs.treeOf(module), node);
   const annotation = path.find((each): each is Annotation => each.kind === 'Annotation');
   if (annotation !== undefined) {
     return checker.annotations.bodyOf(module, annotation);

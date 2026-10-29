@@ -9,6 +9,7 @@ import { type MapOf, ValueSemantics } from '../../language/values.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import { type NominalType, type StructValueType, sameType } from './types/type.ts';
+import { sameTypeSpelled } from './types/type-parts.ts';
 
 /**
  * A primitive (`unit` is `null`), a struct of a struct type with its fields in declaration order,
@@ -70,6 +71,45 @@ export const formSemantics = new ValueSemantics<ConstantForm>({
   },
   headKey: (form) => form.kind,
 });
+
+/**
+ * Whether two forms are alike part by part, in order, their struct types spelled alike: what
+ * lowering emits alike, so a constant computed again to an equal form is the one before. Unlike
+ * `==`, a map's entries count in order, and a lambda is itself.
+ */
+export function sameForm(first: ConstantForm, second: ConstantForm): boolean {
+  const pending: [ConstantForm, ConstantForm][] = [[first, second]];
+  for (let pair = pending.pop(); pair !== undefined; pair = pending.pop()) {
+    const [left, right] = pair;
+    const leftParts = left.kind === 'map' ? left.entries.flat() : partsOf(left);
+    const rightParts = right.kind === 'map' ? right.entries.flat() : partsOf(right);
+    if (!(sameHeads(left, right) && leftParts.length === rightParts.length)) {
+      return false;
+    }
+    pending.push(
+      ...leftParts.map((part, index) => [part, rightParts[index]] as [ConstantForm, ConstantForm]),
+    );
+  }
+  return true;
+}
+
+/** Whether two forms agree but for their parts. */
+function sameHeads(left: ConstantForm, right: ConstantForm): boolean {
+  switch (left.kind) {
+    case 'primitive':
+      return right.kind === 'primitive' && Object.is(left.value, right.value);
+    case 'struct':
+      return right.kind === 'struct' && sameTypeSpelled(left.type, right.type);
+    case 'function':
+      return (
+        right.kind === 'function' &&
+        left.lambda === right.lambda &&
+        left.constant === right.constant
+      );
+    default:
+      return left.kind === right.kind;
+  }
+}
 
 /** The parts of a form that isn't a primitive or a map, in order. */
 function partsOf(form: ConstantForm): readonly ConstantForm[] {

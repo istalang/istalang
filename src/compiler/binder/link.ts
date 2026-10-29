@@ -18,9 +18,10 @@
  *   an enum lacks may be a static function (`Color.default()`), so only a pattern or type reports
  *   it as a missing variant.
  *
- * Linking makes no entities: it maps names to the ones each tree made, so their identities hold
- * across snapshots. What depends on the whole program (a function set joined with the prelude's,
- * a bare name's candidate variants) is answered per query and memoized on the Program.
+ * Linking makes no entities but the empty function sets of names left to argument-dependent
+ * lookup, and those once per tree: it maps names to the ones each tree made, so their identities
+ * hold across snapshots. What depends on the whole program (a function set joined with the
+ * prelude's, a bare name's candidate variants) is answered per query and memoized on the Program.
  *
  * Imported names are never re-exported, so resolving one module's imports needs only the others'
  * own declarations, and linking needs no fixpoint even when imports form cycles. Every module's
@@ -46,6 +47,13 @@ import type {
 import { type FreeName, noOwnCall, type QualifiedPath } from './local-binder.ts';
 import type { ImportPlaceholder, LocalEntity } from './scope.ts';
 import { usesByEntity } from './uses.ts';
+
+/**
+ * Per module, the empty function set each called name no scope defines denotes. It is made once
+ * per module's own bindings, as entities are, so a later Program reusing the tree keeps it, and
+ * everything the checker took over about it.
+ */
+const unseenFunctions = new WeakMap<ModuleBindings, Map<string, FunctionsEntity>>();
 
 interface ModuleLinks {
   /** The module linked. */
@@ -86,8 +94,6 @@ class Linker {
   readonly #variantsByName = new Map<string, VariantEntity[]>();
   readonly #variantsOfEnum = new Map<EnumDeclaration, ReadonlyMap<string, VariantEntity>>();
   readonly #overloads = new Map<FunctionsEntity, readonly FunctionDeclaration[]>();
-  /** Per module, the empty function set each called name no scope defines denotes. */
-  readonly #unseenFunctions = new Map<ModuleId, Map<string, FunctionsEntity>>();
 
   constructor(program: Program) {
     this.#program = program;
@@ -314,7 +320,9 @@ class Linker {
     const entity =
       this.#preludeFor(id)?.exports.get(name.text) ??
       (isVariant ? variants : undefined) ??
-      (role === 'callee' && miss === undefined ? this.#unseenFunction(id, name.text) : undefined);
+      (role === 'callee' && miss === undefined
+        ? this.#unseenFunction(id, links.local, name.text)
+        : undefined);
     if (entity !== undefined) {
       links.resolved.set(name, entity);
       return;
@@ -342,13 +350,15 @@ class Linker {
     }
   }
 
-  #unseenFunction(id: ModuleId, name: string): FunctionsEntity {
-    const ofModule = memo(this.#unseenFunctions, id, () => new Map<string, FunctionsEntity>());
-    return memo(ofModule, name, () => {
-      const entity: FunctionsEntity = { kind: 'functions', name, overloads: [] };
-      this.#owners.set(entity, id);
-      return entity;
-    });
+  #unseenFunction(id: ModuleId, local: ModuleBindings, name: string): FunctionsEntity {
+    const ofModule = memo(unseenFunctions, local, () => new Map<string, FunctionsEntity>());
+    const entity = memo(
+      ofModule,
+      name,
+      () => ({ kind: 'functions', name, overloads: [] }) as const,
+    );
+    this.#owners.set(entity, id);
+    return entity;
   }
 
   #resolvePath(id: ModuleId, links: ModuleLinks, { parts, inExpression }: QualifiedPath): void {

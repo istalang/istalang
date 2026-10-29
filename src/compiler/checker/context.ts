@@ -18,6 +18,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
+import type { LanguageModule } from '../../language/well-known.ts';
 import type { Entries } from '../../structures/entries.ts';
 import type { Span } from '../../text/span.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
@@ -52,6 +53,7 @@ import type {
   Statement,
   While,
 } from '../syntax/statements.ts';
+import type { SyntaxTree } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type {
   AssignedPart,
@@ -98,6 +100,30 @@ export type CheckerNote =
   | { readonly kind: 'diagnostic'; readonly module: ModuleId; readonly diagnostic: Diagnostic }
   | { readonly kind: 'constraint'; readonly module: ModuleId; readonly check: ConstraintCheck };
 
+/**
+ * What checking reads of its Program, each answer recorded in the entry computing now
+ * (program-inputs.ts), so an entry depends only on the parts it read. Checking reads a program
+ * through these alone, never through `program`.
+ */
+export interface ProgramInputs {
+  /** `module`'s top-level items, as its tree holds them. */
+  readonly itemsOf: (module: ModuleId) => SyntaxTree['root']['items'];
+  /** The modules `module`'s imports name. */
+  readonly importedBy: (module: ModuleId) => readonly ModuleId[];
+  /** The std module the language refers to as `role`; undefined when the program lacks it. */
+  readonly role: (role: LanguageModule) => ModuleId | undefined;
+  /** `module`'s tree, which tools walk up from a node; checking reads `itemsOf`. */
+  readonly treeOf: (module: ModuleId) => SyntaxTree;
+  /**
+   * The first variant of the program named `name` (§3.11) declared by one of `enums`, in the
+   * order the program lists its variants: what a bare name expecting those enums chooses.
+   */
+  readonly variantNamed: (
+    name: string,
+    enums: readonly EnumDeclaration[],
+  ) => VariantEntity | undefined;
+}
+
 /** The program-wide services, beyond what later phases read (check.ts). */
 export interface CheckerContext extends Checker {
   /**
@@ -105,6 +131,8 @@ export interface CheckerContext extends Checker {
    * so an answer never depends on what was asked before it.
    */
   readonly entries: Entries<CheckerNote>;
+  /** What checking reads of its program; `bindings` records its answers alike. */
+  readonly inputs: ProgramInputs;
   /**
    * Checks the top-level item `item` of `module` whole, once: what its module's check reads of
    * it, and what a lookup reads before it reads what checking decided inside the item.

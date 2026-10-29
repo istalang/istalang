@@ -47,6 +47,7 @@ import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { optionalInner } from '../../types/fit.ts';
 import type { FieldMember, NominalType, Type } from '../../types/type.ts';
 import { TypeCycle } from '../../types/type-cycle.ts';
+import { unaliased } from '../../types/type-parts.ts';
 import { hostSite, searchSite, silent, type UseSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
@@ -71,19 +72,22 @@ interface Part {
 export class JsonForms implements JsonCodecs {
   readonly #seams: JsonFormSeams;
   /** Each type's form, by its key. */
-  readonly #forms: EntryTable<CheckerNote, string, DerivedForm>;
+  readonly #forms: EntryTable<CheckerNote, string, DerivedForm, Type>;
   /** The derived codecs being decided, by direction, which count as found meanwhile. */
   readonly #deciding: Readonly<Record<JsonDirection, TypeCycle>>;
 
   constructor(seams: JsonFormSeams) {
     this.#seams = seams;
-    this.#forms = seams.checker.entries.table();
+    this.#forms = seams.checker.entries.table({
+      name: 'json forms',
+      compute: (_key, type) => this.#form(unaliased(type)),
+    });
     const { typeKeys } = seams.checker;
     this.#deciding = { write: new TypeCycle(typeKeys), read: new TypeCycle(typeKeys) };
   }
 
   formOf(type: Type): DerivedForm {
-    return this.#forms.get(this.#seams.checker.typeKeys.typeKey(type), () => this.#form(type));
+    return this.#forms.get(this.#seams.checker.typeKeys.typeKey(type), type);
   }
 
   refusalOf(type: Type): string | undefined {
@@ -131,7 +135,7 @@ export class JsonForms implements JsonCodecs {
 
   codecOf(type: Type, direction: JsonDirection): ResolvedCall | undefined {
     const { checker } = this.#seams;
-    if (checker.program.roles.json === undefined) {
+    if (checker.inputs.role('json') === undefined) {
       return undefined;
     }
     const constraint = wellKnownConstraint(checker, jsonTraits[direction]);

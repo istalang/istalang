@@ -5,30 +5,29 @@
  * cross is rules/host-boundary.ts's.
  */
 
-import { isStdModule } from '../program/program.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Checker } from './check.ts';
 import type { NominalType, Type } from './types/type.ts';
 
 /** Whether `declaration` is an extern its host implements, rather than the runtime. */
 export function isHostExtern(
-  checker: Pick<Checker, 'program' | 'moduleOf'>,
+  checker: Pick<Checker, 'isStd' | 'moduleOf'>,
   declaration: FunctionDeclaration | ExternConstantDeclaration,
 ): boolean {
   return (
     (declaration.kind === 'ExternConstantDeclaration' || declaration.isExtern) &&
-    !isStdModule(checker.program, checker.moduleOf(declaration))
+    !checker.isStd(checker.moduleOf(declaration))
   );
 }
 
 /** Whether `type` is one its host provides (§3.6): an extern type no std module declares. */
 export function isHostType(
-  checker: Pick<Checker, 'program' | 'bindings'>,
+  checker: Pick<Checker, 'isStd' | 'bindings'>,
   type: Type,
 ): type is NominalType {
   return (
     type.kind === 'nominal' &&
     type.entity.declaration.kind === 'ExternStructDeclaration' &&
-    !isStdModule(checker.program, checker.bindings.moduleOf(type.entity))
+    !checker.isStd(checker.bindings.moduleOf(type.entity))
   );
 }

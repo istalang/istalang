@@ -9,6 +9,7 @@ import {
   isSharedValueType,
   type NominalType,
   type ParameterKey,
+  sameType,
   type Type,
   withPack,
 } from './type.ts';
@@ -41,6 +42,59 @@ export function typeChildren(type: Type): readonly Type[] {
       return unhandled;
     }
   }
+}
+
+/**
+ * Whether two types are alike in every part: `sameType` at every level, alias arguments included,
+ * with the same alias by its declaration and an `any`'s constraints in the same order, which
+ * `sameType` overlooks. A checker result computed again is the one before only if its types are alike so
+ * (incremental-checking.md §1), since a taken-over result keeps every node its types name.
+ */
+export function sameTypeSpelled(first: Type, second: Type): boolean {
+  const pending: [Type, Type][] = [[first, second]];
+  for (let pair = pending.pop(); pair !== undefined; pair = pending.pop()) {
+    const [one, other] = pair;
+    const parts = spelledParts(one);
+    const others = spelledParts(other);
+    const alike =
+      one === other ||
+      (sameType(one, other) &&
+        one.alias?.declaration === other.alias?.declaration &&
+        sameConstraintOrder(one, other) &&
+        parts.length === others.length);
+    if (!alike) {
+      return false;
+    }
+    if (one !== other) {
+      pending.push(...parts.map((part, index) => [part, others[index] ?? part] as [Type, Type]));
+    }
+  }
+  return true;
+}
+
+/** The types `type` is spelled with, one level down: its parts, then its alias's arguments. */
+function spelledParts(type: Type): readonly Type[] {
+  return [...typeChildren(type), ...(type.alias?.arguments ?? [])];
+}
+
+/** Whether two types that are `any` types name their constraints' traits in one order. */
+function sameConstraintOrder(one: Type, other: Type): boolean {
+  return (
+    one.kind !== 'any' ||
+    (other.kind === 'any' &&
+      one.constraints.every(
+        (constraint, index) => constraint.trait === other.constraints[index]?.trait,
+      ))
+  );
+}
+
+/**
+ * `type` written through no alias at any level: the type its key names (type-keys.ts). A result
+ * kept by a type's key is computed from it, so it never depends on how the type was spelled where
+ * it was first asked for.
+ */
+export function unaliased<Written extends Type>(type: Written): Written {
+  return mapChildren(type.alias === undefined ? type : { ...type, alias: undefined }, unaliased);
 }
 
 /** The type parameters `type` mentions, each once, in order of appearance. */

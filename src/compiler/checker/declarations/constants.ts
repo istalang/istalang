@@ -16,17 +16,19 @@
  */
 
 import type { EntryTable } from '../../../structures/entries.ts';
+import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant } from '../check.ts';
 import type { TargetBinding } from '../checked-pattern.ts';
-import { formAt } from '../constant-form.ts';
+import { formAt, sameForm } from '../constant-form.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { computeConstant, refusalOf } from '../rules/computation.ts';
 import { errorType, type Type } from '../types/type.ts';
+import { sameTypeSpelled } from '../types/type-parts.ts';
 
 /** What ProgramChecker gives the unit: how to find a constant's module, and to check a value. */
 export interface ConstantSeams {
@@ -55,25 +57,60 @@ interface CheckedDeclaration {
 
 const unchecked: CheckedDeclaration = { whole: uncomputed, bindings: [] };
 
+/** Whether two checks of a declaration give the same constant, and bind its names alike. */
+function sameDeclaration(first: CheckedDeclaration, second: CheckedDeclaration): boolean {
+  const [one, other] = [first.whole, second.whole];
+  const sameWhole =
+    sameTypeSpelled(one.type, other.type) &&
+    (one.form === other.form ||
+      (one.form !== undefined && other.form !== undefined && sameForm(one.form, other.form)));
+  return sameWhole && sameBindings(first.bindings, second.bindings);
+}
+
+const sameBindings = sameItems<TargetBinding>(
+  (first, second) =>
+    first.name === second.name &&
+    sameTypeSpelled(first.type, second.type) &&
+    sameItems()(first.path, second.path),
+);
+
 export class ConstantChecks {
   readonly #seams: ConstantSeams;
-  readonly #checks: EntryTable<CheckerNote, VariableDeclaration, CheckedDeclaration>;
-  /** Each initializer's checking, kept apart so that a constant's cycle keeps it. */
-  readonly #bodies: EntryTable<CheckerNote, VariableDeclaration, CheckedBody>;
+  readonly #checks: EntryTable<CheckerNote, VariableDeclaration, CheckedDeclaration, ModuleId>;
+  /**
+   * Each initializer's checking, kept apart so that a constant's cycle keeps it, and so that a
+   * constant whose value checks alike again cuts off there.
+   */
+  readonly #bodies: EntryTable<CheckerNote, VariableDeclaration, CheckedBody, ModuleId>;
 
   constructor(seams: ConstantSeams) {
     this.#seams = seams;
     this.#checks = seams.checker.entries.table({
-      standIn: () => unchecked,
-      reportMember: (member) => {
-        const [name] = member.targets.flatMap(targetNames);
-        const module = seams.moduleOfItem(member);
-        if (name !== undefined && module !== undefined) {
-          seams.checker.report(module, checkerDiagnostics.constantCycle(name.span, name.text));
-        }
+      name: 'constants',
+      compute: (declaration, module) => this.#check(module, declaration),
+      equal: sameDeclaration,
+      cyclic: {
+        standIn: () => unchecked,
+        reportMember: (member) => {
+          const [name] = member.targets.flatMap(targetNames);
+          const module = seams.moduleOfItem(member);
+          if (name !== undefined && module !== undefined) {
+            seams.checker.report(module, checkerDiagnostics.constantCycle(name.span, name.text));
+          }
+        },
       },
     });
-    this.#bodies = seams.checker.entries.table();
+    this.#bodies = seams.checker.entries.table({
+      name: 'constant bodies',
+      compute: (declaration, module) => {
+        const { checker } = this.#seams;
+        const declared =
+          declaration.type === undefined
+            ? undefined
+            : checker.resolveType(module, declaration.type);
+        return this.#seams.checkConstant(module, declaration, declared);
+      },
+    });
   }
 
   /**
@@ -94,7 +131,7 @@ export class ConstantChecks {
       return undefined;
     }
     this.#checked(declaration);
-    return this.#checkedBody(module, declaration);
+    return this.#bodies.get(declaration, module);
   }
 
   /** The checked constant `name` denotes in `module`; undefined when it denotes anything else. */
@@ -123,21 +160,12 @@ export class ConstantChecks {
     if (module === undefined) {
       return undefined;
     }
-    return this.#checks.get(declaration, () => this.#check(module, declaration));
-  }
-
-  #checkedBody(module: ModuleId, declaration: VariableDeclaration): CheckedBody {
-    return this.#bodies.get(declaration, () => {
-      const { checker } = this.#seams;
-      const declared =
-        declaration.type === undefined ? undefined : checker.resolveType(module, declaration.type);
-      return this.#seams.checkConstant(module, declaration, declared);
-    });
+    return this.#checks.get(declaration, module);
   }
 
   #check(module: ModuleId, declaration: VariableDeclaration): CheckedDeclaration {
     const { checker } = this.#seams;
-    const checked = this.#checkedBody(module, declaration);
+    const checked = this.#bodies.get(declaration, module);
     const outcome = computeConstant(declaration.initializer, {
       checker,
       constant: declaration,

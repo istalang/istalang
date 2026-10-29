@@ -10,7 +10,7 @@
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { Entity, VariableEntity } from '../../binder/entities.ts';
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Call, MemberAccess } from '../../syntax/expressions/index.ts';
 import { isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
@@ -40,7 +40,7 @@ export function denotationsOf(
   module: ModuleId,
   name: Identifier,
 ): readonly Denotation[] {
-  const [, ...holders] = ancestorsOf(programModule(checker.program, module).tree, name);
+  const [, ...holders] = ancestorsOf(checker.inputs.treeOf(module), name);
   const body = bodyHolding(checker, module, name);
   return denotationsAt({ checker, module, name, holders, body });
 }
@@ -309,7 +309,7 @@ function declaredVariableType(site: NameSite, entity: VariableEntity): Type | un
   if (inBody !== undefined || owner.kind !== 'Parameter') {
     return inBody;
   }
-  const declaration = parentOf(programModule(checker.program, module).tree, owner);
+  const declaration = parentOf(checker.inputs.treeOf(module), owner);
   return declaration?.kind === 'FunctionDeclaration'
     ? checker.parametersOf(declaration).find(({ node }) => node === owner)?.type
     : undefined;

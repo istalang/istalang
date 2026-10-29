@@ -16,6 +16,7 @@
  */
 
 import type { EntryTable } from '../../../structures/entries.ts';
+import { sameItems } from '../../../structures/equality.ts';
 import type {
   DeclaredStruct,
   EnumDeclaration,
@@ -36,7 +37,21 @@ import {
   type NominalType,
   type Type,
 } from '../types/type.ts';
+import { sameTypeSpelled } from '../types/type-parts.ts';
 import { type FieldedDeclaration, TypeExpansion } from './type-expansion.ts';
+
+/** Whether two lists of fields name, type and declare their fields alike, in order. */
+const sameFields = sameItems<FieldMember>(
+  (first, second) =>
+    first.name === second.name &&
+    sameTypeSpelled(first.type, second.type) &&
+    (first.declared === second.declared ||
+      (first.declared !== undefined &&
+        second.declared !== undefined &&
+        first.declared.node === second.declared.node &&
+        first.declared.module === second.declared.module &&
+        sameTypeSpelled(first.declared.type, second.declared.type))),
+);
 
 export class Layouts {
   readonly #checker: CheckerContext;
@@ -50,10 +65,22 @@ export class Layouts {
     // struct it belongs to, stands for its fields with those its defaults type read as the error
     // type; the cycle is reported at the defaults (parameters.ts).
     this.#fields = checker.entries.table({
-      standIn: (declaration) => this.#fieldsOf(declaration, declaration.fields, undefined),
+      name: 'declared fields',
+      compute: (declaration) =>
+        this.#fieldsOf(declaration, declaration.fields, fieldsFunctionOf(declaration)),
+      equal: sameFields,
+      cyclic: {
+        standIn: (declaration) => this.#fieldsOf(declaration, declaration.fields, undefined),
+      },
     });
     this.#variants = checker.entries.table({
-      standIn: (declaration) => this.#variantsOf(declaration, () => undefined),
+      name: 'declared variants',
+      compute: (declaration) =>
+        this.#variantsOf(declaration, (variant) => fieldsFunctionOf(declaration, variant)),
+      equal: sameItems(
+        (first, second) => first.name === second.name && sameFields(first.fields, second.fields),
+      ),
+      cyclic: { standIn: (declaration) => this.#variantsOf(declaration, () => undefined) },
     });
     this.#expansion = new TypeExpansion(checker);
   }
@@ -105,15 +132,11 @@ export class Layouts {
   }
 
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
-    return this.#fields.get(declaration, () =>
-      this.#fieldsOf(declaration, declaration.fields, fieldsFunctionOf(declaration)),
-    );
+    return this.#fields.get(declaration);
   }
 
   declaredVariantsOf(declaration: EnumDeclaration): readonly VariantMember[] {
-    return this.#variants.get(declaration, () =>
-      this.#variantsOf(declaration, (variant) => fieldsFunctionOf(declaration, variant)),
-    );
+    return this.#variants.get(declaration);
   }
 
   /** `declaration`'s variants, each variant's fields typed by the defaults `defaultsOf` gives. */

@@ -5,7 +5,7 @@
  * which type nodes denote types. So an answer never depends on what was asked before it.
  */
 
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
@@ -42,7 +42,7 @@ export class Lookup implements LookupQueries {
 
   /** The checker, with the item of `module` holding `node` checked whole. */
   #itemChecked(module: ModuleId, node: SyntaxNode): CheckerContext {
-    const item = itemHolding(programModule(this.#checker.program, module).tree, node);
+    const item = itemHolding(this.#checker.inputs.treeOf(module), node);
     if (item !== undefined) {
       this.#checker.checkItem(module, item);
     }

@@ -45,7 +45,7 @@ export interface FieldsFunction extends FunctionDeclaration {
 const fieldsFunctions = new WeakMap<DeclaredStruct | Variant, FieldsFunction | undefined>();
 
 /** The functions `module` runs code in: its top-level `fn`s, then those its fields read as. */
-export function functionsOf(module: Module): readonly FunctionDeclaration[] {
+export function functionsOf(module: Pick<Module, 'items'>): readonly FunctionDeclaration[] {
   return [...declaredFunctions(module), ...module.items.flatMap(fieldsFunctionsOf)];
 }
 

@@ -18,7 +18,6 @@
  */
 
 import { disposeFunction } from '../../../language/well-known.ts';
-import { isStdModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Parameter } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
@@ -98,7 +97,7 @@ function isOwnedHandle(checker: CheckerContext, type: NominalType): boolean {
 }
 
 function isStdType(checker: CheckerContext, type: NominalType): boolean {
-  return isStdModule(checker.program, checker.bindings.moduleOf(type.entity));
+  return checker.isStd(checker.bindings.moduleOf(type.entity));
 }
 
 /** Whether `type`'s std module declares an extern `dispose` for it: the runtime's to perform. */

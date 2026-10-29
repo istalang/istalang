@@ -2,7 +2,8 @@
  * The checker's entry: a program's types (§2–§4), as queries memoized on the Program.
  *
  * Checking is lazy (program-checker.ts): the coordinator asks for every module's diagnostics, and
- * lowering asks for the bodies it lowers, so an editor would pay only for what it asks. The
+ * lowering asks for the bodies it lowers, so an editor pays only for what it asks, and a checker
+ * made after an earlier snapshot's re-checks only what an edit changed. The
  * surface below is what later phases read; the context interfaces in context.ts are the checker's
  * own wiring.
  */
@@ -249,6 +250,8 @@ export interface Checker {
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];
   /** The module declaring `declaration`: whose item it is, or whose tree holds a local one. */
   readonly moduleOf: (declaration: Declaration | VariableDeclaration) => ModuleId;
+  /** Whether the toolchain ships `module` (§3.8); false for none. */
+  readonly isStd: (module: ModuleId | undefined) => boolean;
   readonly parametersOf: (declaration: FunctionDeclaration) => readonly SignatureParameter[];
   /** What calling the function yields: `Future<T>` for an async one. */
   readonly resultOf: (declaration: FunctionDeclaration) => Type;
@@ -315,8 +318,16 @@ export interface Checker {
   readonly lookup: LookupQueries;
 }
 
-const checkers = new WeakMap<Program, Checker>();
+const checkers = new WeakMap<Program, ProgramChecker>();
 
-export function checkProgram(program: Program): Checker {
-  return memo(checkers, program, () => new ProgramChecker(program));
+/**
+ * The checker of `program`, made once: every checker of one program answers alike. Made after
+ * `previous`, the snapshot before it, it takes over the entries of `previous`'s checker, if one was
+ * made, wherever what they read answers alike (incremental-checking.md §1).
+ */
+export function checkProgram(program: Program, previous?: Program): Checker {
+  return memo(checkers, program, () => {
+    const before = previous === undefined ? undefined : checkers.get(previous);
+    return new ProgramChecker(program, { previous: before });
+  });
 }

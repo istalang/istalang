@@ -47,7 +47,8 @@ tags: [reuse, language, modules, program, binder, names]
 - resolve a name a body uses where it is written, noting closure captures → `BodyContext.useEntity`; only ask → `BodyContext.entityOf` (`src/compiler/checker/context.ts`)
 - find an entity's declaring module, locals included, tell a top-level name apart, or join prelude overloads → `Bindings.moduleOf`, `Bindings.isTopLevel`, `Bindings.overloadsOf` (`src/compiler/binder/entities.ts`)
 - list every name denoting an entity across modules, or the names visible at an offset → `Bindings.usesOf`, `Bindings.visibleAt` (`src/compiler/binder/entities.ts`)
-- find the module declaring any declaration, a local one included → `Checker.moduleOf` (`src/compiler/checker/declarations/modules.ts`)
+- find the module declaring any declaration, a local one included → `Checker.moduleOf` (`src/compiler/checker/declaring-modules.ts`)
+- read a module's items, imports, roles or tree, or the bare variant an expected enum chooses, inside the checker → `CheckerContext.inputs` (`src/compiler/checker/program-inputs.ts`); whether a module is std → `Checker.isStd`
 - ask what an identifier denotes, the body holding a node, a written type's type or a type's members (tools, by position) → `Checker.lookup` (`src/compiler/checker/denotation.ts`)
 - list bare variant candidates or look up a top-level/prelude name → `Bindings.candidatesOf`, `Bindings.topLevelNamed` (`src/compiler/binder/entities.ts`)
 - find the hidden variable an async function holds its own call in, which its name before a `.` reads (§7) → `Bindings.ownCallOf` (`src/compiler/binder/entities.ts`)

@@ -87,13 +87,12 @@ export function staticCandidates(
 
 /** The modules whose declarations `module` sees: its own, those it imports, and the prelude. */
 export function modulesSeenFrom(
-  checker: Pick<CheckerContext, 'program'>,
+  checker: Pick<CheckerContext, 'inputs'>,
   module: ModuleId,
 ): readonly ModuleId[] {
-  const { program } = checker;
-  const imported = program.modules.get(module)?.imports.values() ?? [];
-  const prelude = program.roles.prelude === undefined ? [] : [program.roles.prelude];
-  return [module, ...imported, ...prelude];
+  const { inputs } = checker;
+  const prelude = inputs.role('prelude');
+  return [module, ...inputs.importedBy(module), ...(prelude === undefined ? [] : [prelude])];
 }
 
 /**
@@ -209,7 +208,7 @@ function requirementCandidates(
 export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarget | undefined {
   switch (type.kind) {
     case 'primitive': {
-      const { prelude } = checker.program.roles;
+      const prelude = checker.inputs.role('prelude');
       return prelude === undefined
         ? undefined
         : { kind: 'owner', owner: type.name, module: prelude };

@@ -10,72 +10,15 @@ import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { Declaration } from '../../syntax/declarations.ts';
-import type { Call, Expression } from '../../syntax/expressions/index.ts';
+import type { Call } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { Pattern } from '../../syntax/patterns.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { nodesUnder, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
-import type { TypeNode } from '../../syntax/types.ts';
 import { type CheckedBody, type Checker, checkProgram } from '../check.ts';
 import type { Denotation } from '../denotation.ts';
 import type { ResolvedSite } from '../resolved-call.ts';
+import { answersAt } from './lookup.test-kit.ts';
 
 const corpus = [...runPrograms, ...invalidPrograms].map(({ name, text }) => ({ name, text }));
-
-const typeKinds = new Set([
-  'NamedType',
-  'OptionalType',
-  'TupleType',
-  'ParenthesizedType',
-  'FunctionType',
-  'StructType',
-  'ReferenceType',
-  'AnyType',
-]);
-
-const declarationKinds = new Set([
-  'NamedImport',
-  'NamespaceImport',
-  'StructDeclaration',
-  'SharedStructDeclaration',
-  'ExternStructDeclaration',
-  'ExternConstantDeclaration',
-  'EnumDeclaration',
-  'TraitDeclaration',
-  'TypeAliasDeclaration',
-  'FunctionDeclaration',
-  'VariableDeclaration',
-]);
-
-/** Asks every query that may be asked of `node`; each answer is thrown away. */
-function askEverything(checker: Checker, module: ModuleId, node: SyntaxNode): void {
-  const { lookup } = checker;
-  const body = lookup.bodyHolding(module, node);
-  body?.typeOf(node as Expression);
-  body?.patternOf(node as Pattern);
-  body?.candidatesAt(node as ResolvedSite);
-  if (node.kind === 'Identifier') {
-    lookup.denotationsOf(module, node);
-    body?.declaredTypeOf(node);
-    body?.namedFieldOf(node);
-    body?.chosenVariantOf(node);
-  }
-  if (node.kind === 'MemberAccess') {
-    body?.fieldReadOf(node);
-    body?.chainOf(node);
-    const target = body?.typeOf(node.target);
-    if (target !== undefined) {
-      lookup.membersOf(module, target);
-    }
-  }
-  if (typeKinds.has(node.kind)) {
-    lookup.typeOfNode(module, node as TypeNode);
-  }
-  if (declarationKinds.has(node.kind)) {
-    checker.moduleOf(node as Declaration | VariableDeclaration);
-  }
-}
 
 /** The corpus program's module, checked. */
 interface CheckedModule {
@@ -87,7 +30,7 @@ interface CheckedModule {
 /** Where `node`, asked every query, is not answered as binding and checking chose. */
 function disagreementsAt(checked: CheckedModule, node: SyntaxNode): readonly string[] {
   const { checker, module } = checked;
-  askEverything(checker, module, node);
+  answersAt(checker, module, node);
   const body = checker.lookup.bodyHolding(module, node);
   if (node.kind !== 'Identifier' || body === undefined) {
     return [];

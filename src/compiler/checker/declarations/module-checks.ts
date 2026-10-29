@@ -12,7 +12,7 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { compareOrdered } from '../../../language/order.ts';
 import type { EntryTable } from '../../../structures/entries.ts';
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type { Declaration } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import type { TypeParameters } from '../resolution/type-parameters.ts';
@@ -27,41 +27,48 @@ export interface ModuleRules {
 }
 
 export class ModuleChecks {
-  readonly #checker: CheckerContext;
-  readonly #rules: ModuleRules;
   readonly #modules: EntryTable<CheckerNote, ModuleId, void>;
-  readonly #items: EntryTable<CheckerNote, Declaration, void>;
+  readonly #items: EntryTable<CheckerNote, Declaration, void, ModuleId>;
   readonly #clashes: EntryTable<CheckerNote, ModuleId, void>;
   readonly #expansions: EntryTable<CheckerNote, ModuleId, void>;
 
   constructor(checker: CheckerContext, rules: ModuleRules) {
-    this.#checker = checker;
-    this.#rules = rules;
-    this.#modules = checker.entries.table();
-    this.#items = checker.entries.table();
-    this.#clashes = checker.entries.table();
-    this.#expansions = checker.entries.table();
+    this.#modules = checker.entries.table({
+      name: 'module checks',
+      compute: (module) => {
+        for (const item of checker.inputs.itemsOf(module)) {
+          if (item.kind !== 'Invalid') {
+            this.checkItem(module, item);
+          }
+        }
+        this.#clashes.get(module);
+        this.#expansions.get(module);
+        rules.typeParameters.checkNoted(module);
+      },
+    });
+    this.#items = checker.entries.table({
+      name: 'item checks',
+      compute: (item, module) => checkDeclaration(checker, module, item),
+    });
+    this.#clashes = checker.entries.table({
+      name: 'clashes',
+      compute: (module) => checkClashes(checker, module),
+    });
+    this.#expansions = checker.entries.table({
+      name: 'expansions',
+      compute: (module) => rules.expansion.check(module),
+    });
   }
 
   /** Every diagnostic of `module`, once it is checked whole. */
   diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
-    const checker = this.#checker;
-    this.#modules.get(module, () => {
-      for (const item of programModule(checker.program, module).tree.root.items) {
-        if (item.kind !== 'Invalid') {
-          this.checkItem(module, item);
-        }
-      }
-      this.#clashes.get(module, () => checkClashes(checker, module));
-      this.#expansions.get(module, () => this.#rules.expansion.check(module));
-      this.#rules.typeParameters.checkNoted(module);
-    });
+    this.#modules.get(module);
     return diagnosticsIn(module, this.#modules.notesFrom(module));
   }
 
   /** Checks the top-level item `item` of `module` whole, once. */
   checkItem(module: ModuleId, item: Declaration): void {
-    this.#items.get(item, () => checkDeclaration(this.#checker, module, item));
+    this.#items.get(item, module);
   }
 }
 

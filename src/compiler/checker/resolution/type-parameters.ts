@@ -9,6 +9,7 @@
  */
 
 import type { EntryTable } from '../../../structures/entries.ts';
+import { sameItems } from '../../../structures/equality.ts';
 import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
@@ -16,29 +17,36 @@ import type { CheckerContext, CheckerNote, ConstraintCheck } from '../context.ts
 import { resolveConstraints } from '../traits/constraints.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { Constraint } from '../types/type.ts';
+import { sameTypeSpelled } from '../types/type-parts.ts';
 import { useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
 
 export class TypeParameters {
   readonly #checker: CheckerContext;
-  readonly #modules = new Map<TypeParameter, ModuleId>();
   readonly #constraints: EntryTable<CheckerNote, TypeParameter, readonly Constraint[]>;
 
-  constructor(checker: CheckerContext) {
+  /** `moduleOf` answers the module whose item declares a parameter; undefined for a local one. */
+  constructor(
+    checker: CheckerContext,
+    moduleOf: (parameter: TypeParameter) => ModuleId | undefined,
+  ) {
     this.#checker = checker;
-    this.#constraints = checker.entries.table();
-  }
-
-  /** Records that `parameter` is declared in `module`. */
-  declare(parameter: TypeParameter, module: ModuleId): void {
-    this.#modules.set(parameter, module);
+    this.#constraints = checker.entries.table({
+      name: 'constraints',
+      compute: (parameter) => {
+        const module = moduleOf(parameter);
+        return module === undefined ? [] : resolveConstraints(checker, module, parameter);
+      },
+      equal: sameItems(
+        (first, second) =>
+          first.trait === second.trait &&
+          sameItems(sameTypeSpelled)(first.arguments, second.arguments),
+      ),
+    });
   }
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
-    return this.#constraints.get(parameter, () => {
-      const module = this.#modules.get(parameter);
-      return module === undefined ? [] : resolveConstraints(this.#checker, module, parameter);
-    });
+    return this.#constraints.get(parameter);
   }
 
   constrainLater(

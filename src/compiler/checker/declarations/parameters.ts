@@ -12,15 +12,18 @@
  */
 
 import type { EntryTable } from '../../../structures/entries.ts';
+import { sameItems } from '../../../structures/equality.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { CheckedBody, SignatureParameter } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { RestSlot } from '../types/type.ts';
+import { sameTypeSpelled } from '../types/type-parts.ts';
 import { type DefaultValues, declaredParameters, writtenParameters } from './signatures.ts';
 
 /** A body in which a function's defaults are checked, and what checking `values` found. */
-interface DefaultsBody extends DefaultValues {
+export interface DefaultsBody extends DefaultValues {
   readonly checked: (values: readonly Expression[]) => CheckedBody;
 }
 
@@ -33,6 +36,22 @@ interface ParameterUnit {
 interface Checked {
   readonly parameters: readonly SignatureParameter[];
   readonly defaults: CheckedBody | undefined;
+}
+
+/** Whether two lists of parameters are the same nodes, each typed and passed alike. */
+const sameParameters = sameItems<SignatureParameter>(
+  (first, second) =>
+    first.node === second.node &&
+    first.reference === second.reference &&
+    sameTypeSpelled(first.type, second.type) &&
+    sameRest(first.rest, second.rest),
+);
+
+function sameRest(first: RestSlot | undefined, second: RestSlot | undefined): boolean {
+  if (first?.kind === 'array') {
+    return second?.kind === 'array' && sameTypeSpelled(first.item, second.item);
+  }
+  return first?.kind === second?.kind;
 }
 
 export class Parameters {
@@ -48,26 +67,39 @@ export class Parameters {
     this.#unit = unit;
     const { checker } = unit;
     this.#types = checker.entries.table({
-      standIn: (declaration) =>
-        writtenParameters(checker, checker.moduleOf(declaration), declaration),
-      reportMember: (member) =>
-        checker.report(
-          checker.moduleOf(member),
-          checkerDiagnostics.defaultCycle(member.name.span, member.name.text),
-        ),
+      name: 'parameters',
+      compute: (declaration) =>
+        typesWaitOnDefaults(declaration)
+          ? this.#together.get(declaration).parameters
+          : declaredParameters(checker, checker.moduleOf(declaration), declaration, undefined),
+      equal: sameParameters,
+      cyclic: {
+        standIn: (declaration) =>
+          writtenParameters(checker, checker.moduleOf(declaration), declaration),
+        reportMember: (member) =>
+          checker.report(
+            checker.moduleOf(member),
+            checkerDiagnostics.defaultCycle(member.name.span, member.name.text),
+          ),
+      },
     });
-    this.#defaults = checker.entries.table();
-    this.#together = checker.entries.table();
+    this.#defaults = checker.entries.table({
+      name: 'parameter defaults',
+      compute: (declaration) => this.#checkDefaults(declaration),
+    });
+    this.#together = checker.entries.table({
+      name: 'parameters with defaults',
+      compute: (declaration) => {
+        const module = checker.moduleOf(declaration);
+        const body = this.#unit.defaultsBody(declaration);
+        const parameters = declaredParameters(checker, module, declaration, body);
+        return { parameters, defaults: body.checked(defaultValuesOf(declaration)) };
+      },
+    });
   }
 
   parametersOf(declaration: FunctionDeclaration): readonly SignatureParameter[] {
-    return this.#types.get(declaration, () => {
-      if (typesWaitOnDefaults(declaration)) {
-        return this.#checkedTogether(declaration).parameters;
-      }
-      const { checker } = this.#unit;
-      return declaredParameters(checker, checker.moduleOf(declaration), declaration, undefined);
-    });
+    return this.#types.get(declaration);
   }
 
   /**
@@ -77,19 +109,9 @@ export class Parameters {
   defaultsOf(declaration: FunctionDeclaration): CheckedBody | undefined {
     if (typesWaitOnDefaults(declaration)) {
       this.parametersOf(declaration);
-      return this.#checkedTogether(declaration).defaults;
+      return this.#together.get(declaration).defaults;
     }
-    return this.#defaults.get(declaration, () => this.#checkDefaults(declaration));
-  }
-
-  #checkedTogether(declaration: FunctionDeclaration): Checked {
-    return this.#together.get(declaration, () => {
-      const { checker } = this.#unit;
-      const module = checker.moduleOf(declaration);
-      const body = this.#unit.defaultsBody(declaration);
-      const parameters = declaredParameters(checker, module, declaration, body);
-      return { parameters, defaults: body.checked(defaultValuesOf(declaration)) };
-    });
+    return this.#defaults.get(declaration);
   }
 
   /** The defaults of a function whose parameters all declare their types, checked against them. */

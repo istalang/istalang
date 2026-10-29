@@ -7,17 +7,17 @@
  *   diagnostics, lowering, or another function inferring a result from a call to it. Each entry
  *   keeps what it reported, and a module's diagnostics are read back from what its check read
  *   (declarations/module-checks.ts), so each is reported once and found by every module it is in.
- * - A function with no declared result gets the one its body produces (§2). Inferring it checks
- *   the body; a call reached while that body is being checked is the function calling itself,
- *   directly or through others, which needs a declared result: every result on the cycle stands
- *   for the error type, whichever was asked first.
  * - A top-level constant is checked the same lazy way, and one reached while it is being checked
  *   is defined through itself (§3).
  * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
- *   (declarations/: constants, layouts, parameters, aliases, static functions; traits/: type
- *   parameters; rules/: expansion), as BodyChecker composes the units of a body.
+ *   (declarations/: functions, constants, layouts, parameters, aliases, static functions;
+ *   resolution/: type parameters; rules/: expansion), as BodyChecker composes a body's units.
  * - Items checked by their module are its top-level items and a trait's members; type parameters
- *   are noted with the module declaring them, where their constraints resolve.
+ *   resolve their constraints in the module declaring them (declaring-modules.ts).
+ * - A checker made with the checker of an earlier snapshot takes over its entries wherever what
+ *   they read answers alike (structures/entries.ts). It reads its Program and Bindings only through
+ *   inputs recorded in the entry computing now (program-inputs.ts), so nothing it answers rests on
+ *   a read no entry recorded.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -26,23 +26,21 @@ import {
   type WellKnownDeclaration,
   wellKnown,
 } from '../../language/well-known.ts';
-import { Entries } from '../../structures/entries.ts';
+import { Entries, type EntryTable } from '../../structures/entries.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
-import {
-  type Declaration,
-  type DeclaredStruct,
-  type EnumDeclaration,
-  type FunctionDeclaration,
-  type TypeAliasDeclaration,
-  type TypeParameter,
-  typeParametersOf,
+import type {
+  Declaration,
+  DeclaredStruct,
+  EnumDeclaration,
+  FunctionDeclaration,
+  TypeAliasDeclaration,
+  TypeParameter,
 } from '../syntax/declarations.ts';
-import { fieldsFunctionsOf } from '../syntax/field-defaults.ts';
-import type { Identifier } from '../syntax/node.ts';
+import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { BodyChecker, type BodyKind } from './body-checker.ts';
@@ -53,17 +51,17 @@ import type {
   SignatureParameter,
   VariantMember,
 } from './check.ts';
-import type { CheckerContext, CheckerNote, StaticOwner } from './context.ts';
+import type { CheckerContext, CheckerNote, ProgramInputs, StaticOwner } from './context.ts';
 import { Aliases } from './declarations/aliases.ts';
 import { ConstantChecks } from './declarations/constants.ts';
+import { FunctionChecks } from './declarations/functions.ts';
 import { Layouts } from './declarations/layout.ts';
 import { ModuleChecks } from './declarations/module-checks.ts';
-import { DeclaringModules } from './declarations/modules.ts';
-import { Parameters } from './declarations/parameters.ts';
-import { callResult, declaredBodyResult, writtenByReference } from './declarations/signatures.ts';
+import { type DefaultsBody, Parameters } from './declarations/parameters.ts';
+import { writtenByReference } from './declarations/signatures.ts';
 import { StaticFunctions } from './declarations/statics.ts';
-import { checkerDiagnostics } from './diagnostics/index.ts';
 import { Lookup } from './lookup/lookup.ts';
+import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
 import { meetsAny, memberWitnesses } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
 import type { ResolvedCall } from './resolved-call.ts';
@@ -79,111 +77,137 @@ import {
   type AnonymousStructType,
   type AnyType,
   type Constraint,
-  errorType,
   type FieldMember,
   isNominalEntity,
   type NominalType,
   type Type,
-  unitType,
 } from './types/type.ts';
 import { typeKeys } from './types/type-keys.ts';
+import { sameTypeSpelled, unaliased } from './types/type-parts.ts';
+
+/** What a checker is made with, beside its program. */
+export interface CheckerOptions {
+  /**
+   * The checker of an earlier snapshot, whose entries this one takes over where what they read
+   * answers alike; making this one lets go of that checker's own previous, so at most two
+   * revisions' tables are held.
+   */
+  readonly previous?: ProgramChecker | undefined;
+  /** Called each time an entry is computed rather than taken over: a seam for tests to count. */
+  readonly observe?: ((table: string, key: unknown) => void) | undefined;
+}
 
 export class ProgramChecker implements CheckerContext {
   readonly program: Program;
-  readonly bindings: Bindings;
   readonly typeKeys = typeKeys;
-  readonly entries = new Entries<CheckerNote>();
-  readonly #declaredResults = this.entries.table<FunctionDeclaration, Type | undefined>();
-  readonly #resolvedTypes = this.entries.table<TypeNode, Type>();
-  /** A result inferred from a body that reaches it again needs a declared one (§2). */
-  readonly #results = this.entries.table<FunctionDeclaration, Type>({
-    standIn: () => errorType,
-    reportMember: (member) =>
-      this.report(
-        this.moduleOf(member),
-        checkerDiagnostics.recursiveReturnType(member.name.span, member.name.text),
-      ),
-  });
-  readonly #bodies = this.entries.table<FunctionDeclaration, CheckedBody>();
+  readonly entries: Entries<CheckerNote>;
+  readonly bindings: Bindings;
+  readonly inputs: ProgramInputs;
+  readonly moduleOf: (declaration: Declaration | VariableDeclaration) => ModuleId;
+  readonly isStd: (module: ModuleId | undefined) => boolean;
+  /** The module whose item, or item's type parameter, `node` is; undefined for a local one. */
+  readonly #itemModuleOf: (node: NodeOf<string>) => ModuleId | undefined;
+  readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
   /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
-  readonly #disposals = this.entries.table<string, Disposal>();
-  readonly #constants = new ConstantChecks({
-    checker: this,
-    moduleOfItem: (declaration) => this.#modules.itemModuleOf(declaration),
-    checkConstant: (module, declaration, declaredResult) =>
-      new BodyChecker(this, module, {
-        kind: 'value',
-        declaredResult,
-      }).checkConstant(declaration),
-  });
-  readonly #layouts = new Layouts(this);
-  readonly #parameters = new Parameters({
-    checker: this,
-    defaultsBody: (declaration) => {
-      const body = new BodyChecker(this, this.moduleOf(declaration), {
-        kind: 'value',
-        declaredResult: undefined,
-      });
-      return {
-        check: (value, declared) => body.expect(value, declared),
-        declare: (node, type) =>
-          body.variables.declareParameter({ node, type, reference: writtenByReference(node) }),
-        checked: (values) => body.defaults(values),
-      };
-    },
-  });
-  readonly #aliases = new Aliases(this);
-  readonly #statics = new StaticFunctions(this);
-  readonly #typeParameters = new TypeParameters(this);
-  readonly #moduleChecks = new ModuleChecks(this, {
-    expansion: new Expansion(this),
-    typeParameters: this.#typeParameters,
-  });
-  readonly annotations = new Annotations({
-    checker: this,
-    checkValue: (module, value) =>
-      new BodyChecker(this, module, { kind: 'value', declaredResult: undefined }).checkValue(value),
-  });
-  readonly json = new JsonForms({ checker: this, annotations: this.annotations });
-  readonly lookup = new Lookup(this);
-  #optional: { entity: OptionalEntity } | undefined;
+  readonly #disposals: EntryTable<CheckerNote, string, Disposal, NominalType>;
+  readonly #optional: EntryTable<CheckerNote, 'optional', OptionalEntity>;
+  readonly #functions: FunctionChecks;
+  readonly #constants: ConstantChecks;
+  readonly #layouts: Layouts;
+  readonly #parameters: Parameters;
+  readonly #aliases: Aliases;
+  readonly #statics: StaticFunctions;
+  readonly #typeParameters: TypeParameters;
+  readonly #moduleChecks: ModuleChecks;
+  readonly annotations: Annotations;
+  readonly json: JsonForms;
+  readonly lookup: Lookup;
 
-  readonly #modules: DeclaringModules;
-
-  constructor(program: Program) {
+  constructor(program: Program, { previous, observe }: CheckerOptions = {}) {
+    previous?.entries.release();
     this.program = program;
-    this.#modules = new DeclaringModules(program);
-    this.bindings = bindProgram(program);
-    for (const [id, module] of program.modules) {
-      for (const item of module.tree.root.items) {
-        if (item.kind !== 'Invalid') {
-          this.#declare(item, id);
-        }
-      }
-    }
+    const entries = new Entries<CheckerNote>({ previous: previous?.entries, observe });
+    this.entries = entries;
+    const bindings = bindProgram(program);
+    this.bindings = recordedBindings(entries, bindings);
+    this.inputs = programInputs(entries, program, bindings);
+    const declaring = declaringInputs(entries, program);
+    this.moduleOf = declaring.moduleOf;
+    this.#itemModuleOf = declaring.itemModuleOf;
+    this.isStd = declaring.isStd;
+    this.#resolvedTypes = entries.table({
+      name: 'resolved types',
+      compute: (node, module) => resolveTypeNode(this, module, node),
+      equal: sameTypeSpelled,
+    });
+    this.#disposals = entries.table({
+      name: 'disposals',
+      compute: (_key, type) => disposalOf(this, unaliased(type)),
+      equal: (first, second) =>
+        first === second || (first.kind !== 'function' && first.kind === second.kind),
+    });
+    this.#optional = entries.table({
+      name: 'optional entity',
+      compute: () => this.wellKnownType(wellKnown.optional)?.entity,
+    });
+    this.#functions = new FunctionChecks({
+      checker: this,
+      checkBody: (module, declaration, declared) => this.#checkBody(module, declaration, declared),
+    });
+    this.#constants = new ConstantChecks({
+      checker: this,
+      moduleOfItem: this.#itemModuleOf,
+      checkConstant: (module, declaration, declared) =>
+        this.#valueBody(module, declared).checkConstant(declaration),
+    });
+    this.#layouts = new Layouts(this);
+    this.#parameters = new Parameters({
+      checker: this,
+      defaultsBody: (declaration) => this.#defaultsBody(declaration),
+    });
+    this.#aliases = new Aliases(this);
+    this.#statics = new StaticFunctions(this);
+    this.#typeParameters = new TypeParameters(this, this.#itemModuleOf);
+    this.#moduleChecks = new ModuleChecks(this, {
+      expansion: new Expansion(this),
+      typeParameters: this.#typeParameters,
+    });
+    this.annotations = new Annotations({
+      checker: this,
+      checkValue: (module, value) => this.#valueBody(module, undefined).checkValue(value),
+    });
+    this.json = new JsonForms({ checker: this, annotations: this.annotations });
+    this.lookup = new Lookup(this);
   }
 
-  /**
-   * Notes `item` and what it declares inside (a trait's members, the functions it derives, type
-   * parameters) as `module`'s.
-   */
-  #declare(item: Declaration, module: ModuleId): void {
-    this.#modules.note(item, module);
-    if ('typeParameters' in item) {
-      for (const parameter of typeParametersOf(item.typeParameters)) {
-        this.#typeParameters.declare(parameter, module);
-      }
+  /** Checks a function's body, which must produce `declaredResult` if given. */
+  #checkBody(
+    module: ModuleId,
+    declaration: FunctionDeclaration,
+    declaredResult: Type | undefined,
+  ): CheckedBody {
+    const { body, isAsync } = declaration;
+    if (body === undefined) {
+      return unreachable('A function with no body had its body checked.');
     }
-    if (item.kind === 'TraitDeclaration') {
-      for (const member of item.members) {
-        if (member.kind === 'FunctionDeclaration') {
-          this.#declare(member, module);
-        }
-      }
-    }
-    for (const declared of fieldsFunctionsOf(item)) {
-      this.#modules.note(declared, module);
-    }
+    const kind: BodyKind = { kind: 'function', declaration, isAsync, declaredResult };
+    return new BodyChecker(this, module, kind).checkFunction(body, this.parametersOf(declaration));
+  }
+
+  /** A body checking a value of its own in `module`: a constant's, an annotation's. */
+  #valueBody(module: ModuleId, declaredResult: Type | undefined): BodyChecker {
+    return new BodyChecker(this, module, { kind: 'value', declaredResult });
+  }
+
+  /** The body a function's parameter defaults are checked in, each seeing those before it. */
+  #defaultsBody(declaration: FunctionDeclaration): DefaultsBody {
+    const body = this.#valueBody(this.moduleOf(declaration), undefined);
+    return {
+      check: (value, declared) => body.expect(value, declared),
+      declare: (node, type) =>
+        body.variables.declareParameter({ node, type, reference: writtenByReference(node) }),
+      checked: (values) => body.defaults(values),
+    };
   }
 
   report(module: ModuleId, diagnostic: Diagnostic): void {
@@ -194,13 +218,9 @@ export class ProgramChecker implements CheckerContext {
     return this.entries.notesMade().filter((note) => note.kind === 'diagnostic').length;
   }
 
-  moduleOf(declaration: Declaration | VariableDeclaration): ModuleId {
-    return this.#modules.moduleOf(declaration);
-  }
-
   /** Each type node resolves once: in its own module, it always denotes the same type. */
   resolveType(module: ModuleId, node: TypeNode): Type {
-    return this.#resolvedTypes.get(node, () => resolveTypeNode(this, module, node));
+    return this.#resolvedTypes.get(node, module);
   }
 
   resolvedTypeOf(node: TypeNode): Type | undefined {
@@ -224,10 +244,7 @@ export class ProgramChecker implements CheckerContext {
   }
 
   get optionalEntity(): OptionalEntity {
-    this.#optional ??= {
-      entity: this.wellKnownType(wellKnown.optional)?.entity,
-    };
-    return this.#optional.entity;
+    return this.#optional.get('optional');
   }
 
   optionalOf(type: Type): NominalType {
@@ -281,41 +298,11 @@ export class ProgramChecker implements CheckerContext {
   }
 
   resultOf(declaration: FunctionDeclaration): Type {
-    return this.#results.get(declaration, () => {
-      const declared = this.#declaredBodyResult(declaration);
-      const inferred = declared === undefined ? this.#checkedBody(declaration)?.result : undefined;
-      return callResult(this, declaration, declared ?? inferred ?? unitType);
-    });
+    return this.#functions.resultOf(declaration);
   }
 
-  /**
-   * The checked body of a function with one; undefined for an extern. A body its result is inferred
-   * from is reached through that result, so a cycle through it always reaches the result first.
-   */
   bodyOf(declaration: FunctionDeclaration): CheckedBody | undefined {
-    if (this.#declaredBodyResult(declaration) === undefined) {
-      this.resultOf(declaration);
-    }
-    return this.#checkedBody(declaration);
-  }
-
-  #checkedBody(declaration: FunctionDeclaration): CheckedBody | undefined {
-    const { body } = declaration;
-    if (body === undefined) {
-      return undefined;
-    }
-    return this.#bodies.get(declaration, () => {
-      const kind: BodyKind = {
-        kind: 'function',
-        declaration,
-        isAsync: declaration.isAsync,
-        declaredResult: this.#declaredBodyResult(declaration),
-      };
-      return new BodyChecker(this, this.moduleOf(declaration), kind).checkFunction(
-        body,
-        this.parametersOf(declaration),
-      );
-    });
+    return this.#functions.bodyOf(declaration);
   }
 
   constantOf(declaration: VariableDeclaration): CheckedConstant | undefined {
@@ -343,7 +330,7 @@ export class ProgramChecker implements CheckerContext {
   }
 
   disposalOf(type: NominalType): Disposal {
-    return this.#disposals.get(this.typeKeys.typeKey(type), () => disposalOf(this, type));
+    return this.#disposals.get(this.typeKeys.typeKey(type), type);
   }
 
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
@@ -367,12 +354,6 @@ export class ProgramChecker implements CheckerContext {
     this.#moduleChecks.checkItem(module, item);
   }
 
-  #declaredBodyResult(declaration: FunctionDeclaration): Type | undefined {
-    return this.#declaredResults.get(declaration, () =>
-      declaredBodyResult(this, this.moduleOf(declaration), declaration),
-    );
-  }
-
   wellKnownEntity({ module, name }: WellKnownDeclaration): Entity | undefined {
     return this.#languageDeclaration(module, name);
   }
@@ -392,7 +373,7 @@ export class ProgramChecker implements CheckerContext {
    * exports, or a private name the toolchain itself uses, such as a json helper a codec calls.
    */
   #languageDeclaration(module: LanguageModule, name: string) {
-    const id = this.program.roles[module];
+    const id = this.inputs.role(module);
     return id === undefined ? undefined : this.bindings.topLevelNamed(id, name);
   }
 }

@@ -19,7 +19,7 @@
 
 import { entryFunction } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import { isStdModule, type ModuleId } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import {
   type Declaration,
@@ -103,7 +103,7 @@ function checkFieldDefaults(
 
 /** `main` gives its host an outcome as JSON (§9), so what it gives must be `Encodable`. */
 function checkOutcome(checker: CheckerContext, node: FunctionDeclaration, module: ModuleId): void {
-  if (node.name.text !== entryFunction || isStdModule(checker.program, module)) {
+  if (node.name.text !== entryFunction || checker.isStd(module)) {
     return;
   }
   const result = checker.resultOf(node);
@@ -142,8 +142,8 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
         checkFunction(checker, member);
         refuseRequiredDefaults(checker, module, member);
       } else if (member.kind === 'FieldDeclaration') {
-        const type = checker.resolveType(module, member.type);
-        checker.annotations.of(module, member, { kind: 'field', type });
+        checker.resolveType(module, member.type);
+        checker.annotations.of(module, member, { kind: 'field' });
       }
     }
   },

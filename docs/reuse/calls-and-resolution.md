@@ -43,7 +43,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - mark a method receiver changed → `changeReceiver` (`src/compiler/checker/calls/places.ts`); test if a variable may change → `context.variables.isChangeable` (`src/compiler/checker/statements/variables.ts`)
 - resolve a type or fieldless struct in value/pattern position → `namedType`, `nameNodeOf`, `fieldlessStructOf` (`src/compiler/checker/resolution/named.ts`)
 - the type a binder entity names (a declared type with no arguments, a primitive, an alias) → `entityType` (`src/compiler/checker/resolution/named.ts`)
-- choose a bare or qualified enum variant against an expected type → `chooseVariant`, `sameEnum` (`src/compiler/checker/resolution/named.ts`)
+- choose a bare or qualified enum variant against an expected type, or list the enums an expected type may be a variant of → `chooseVariant`, `sameEnum`, `enumsExpected` (`src/compiler/checker/resolution/named.ts`)
 - check `for`/comprehension/spread iteration → `checkIterated`, `iteratedItem`, `checkLoopOver` (`src/compiler/checker/rules/iteration.ts`)
 
 ## One-way rules

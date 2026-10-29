@@ -6,7 +6,8 @@
  */
 
 import type { EntryTable } from '../../../structures/entries.ts';
-import { type ModuleId, programModule } from '../../program/program.ts';
+import { sameEntries, sameItems } from '../../../structures/equality.ts';
+import type { ModuleId } from '../../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote, StaticOwner } from '../context.ts';
 import { isNominalEntity } from '../types/type.ts';
@@ -21,18 +22,22 @@ export class StaticFunctions {
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
-    this.#byModule = checker.entries.table();
+    this.#byModule = checker.entries.table({
+      name: 'statics',
+      compute: (module) => this.#index(module),
+      equal: sameEntries(sameItems()),
+    });
   }
 
   /** The static functions declared on `owner` in `module`. */
   in(module: ModuleId, owner: StaticOwner): readonly FunctionDeclaration[] {
-    return this.#byModule.get(module, () => this.#index(module)).get(owner) ?? [];
+    return this.#byModule.get(module).get(owner) ?? [];
   }
 
   #index(module: ModuleId): ReadonlyMap<StaticOwner, readonly FunctionDeclaration[]> {
     const index = new Map<StaticOwner, FunctionDeclaration[]>();
-    const { root } = programModule(this.#checker.program, module).tree;
-    const statics = declaredFunctions(root).filter((declared) => declared.owner !== undefined);
+    const items = this.#checker.inputs.itemsOf(module);
+    const statics = declaredFunctions({ items }).filter((declared) => declared.owner !== undefined);
     for (const item of statics) {
       const owner = this.#ownerOf(module, item);
       if (owner !== undefined) {

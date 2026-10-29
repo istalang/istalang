@@ -23,6 +23,8 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - list type parameters, nominal or `any` types in a `Type` → `parametersIn`, `nominalsIn`, `anyTypesIn`, `mentionsError` (`src/compiler/checker/types/type-parts.ts`)
 - decide whether generic uses would instantiate endlessly (§3.5): build edges, find expanding ones on a cycle → `argumentEdges`, `endlessEdges` (`src/compiler/checker/types/expansion-edges.ts`)
 - drop refinements (such as `sendable` on function types) at any depth → `widened` (`src/compiler/checker/types/widening.ts`)
+- tell whether a result computed again has types alike in every part (aliases by declaration and an `any`'s constraint order included) → `sameTypeSpelled` (`src/compiler/checker/types/type-parts.ts`)
+- strip every alias from a type, giving the type its key names, so a result kept by key never depends on its first asker's spelling → `unaliased` (`src/compiler/checker/types/type-parts.ts`)
 - spell a `Type` as written, through its alias if it has one, for messages → `typeText` (`src/compiler/checker/types/type-text.ts`)
 - spell a function type in parts (head, each parameter, tail), or a parameter's type with its `&` → `functionTypeParts`, `slotText` (`src/compiler/checker/types/type-text.ts`)
 - show a function as an editor does, its signature with where each parameter stands in it → `signatureOf`, `functionTypeSignature` (`src/language-service/signatures.ts`)

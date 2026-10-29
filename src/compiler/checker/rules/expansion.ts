@@ -12,12 +12,17 @@
  *
  * Checking stays lazy. A module's diagnostics follow edges only from its own generic functions,
  * so only the bodies those edges reach are checked. Every cycle through one of the module's calls
- * is among them, since a cycle comes back to where it starts. Each function's edges are an entry
- * of their own, found once per checker whichever module reaches them first.
+ * is among them, since a cycle comes back to where it starts.
+ *
+ * Three entries keep it incremental (docs/work/m6-m7/incremental-checking.md §1): a function's
+ * edges apart from where their calls stand, which an edit of its body leaves equal unless it
+ * changes what it calls with what; the module's expanding edges, the graph's verdict; and each
+ * function's reports, which alone read where its calls stand.
  */
 
 import type { EntryTable } from '../../../structures/entries.ts';
-import { type ModuleId, programModule } from '../../program/program.ts';
+import { sameItems, sameProperties } from '../../../structures/equality.ts';
+import type { ModuleId } from '../../program/program.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
 import { functionsOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
@@ -27,68 +32,101 @@ import type { FunctionCall, ResolvedCall } from '../resolved-call.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdges } from '../types/expansion-edges.ts';
 import type { ParameterKey } from '../types/type.ts';
 
+/** An edge of the graph, made by a call in `caller`'s code to `callee`, wherever it stands. */
 interface Edge extends ArgumentEdge {
   readonly caller: FunctionDeclaration;
   readonly callee: FunctionDeclaration;
+}
+
+/** An edge, at the call that makes it. */
+interface SitedEdge extends Edge {
   readonly site: NodeOf<string>;
 }
+
+const sameEdges = sameItems<Edge>(sameProperties);
 
 /** The expansion rule over one checker's program. */
 export class Expansion {
   readonly #checker: CheckerContext;
+  /** Each function's edges, apart from their call sites, so an edit moving a call cuts off. */
   readonly #edges: EntryTable<CheckerNote, FunctionDeclaration, readonly Edge[]>;
-  #generic: ReadonlySet<FunctionDeclaration> | undefined;
+  /** The expanding edges on cycles through a module's generic functions: the graph's verdict. */
+  readonly #endless: EntryTable<CheckerNote, ModuleId, readonly Edge[]>;
+  /** Each generic function's reports, at the calls making its expanding edges. */
+  readonly #reports: EntryTable<CheckerNote, FunctionDeclaration, void, ModuleId>;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
-    this.#edges = checker.entries.table();
+    this.#edges = checker.entries.table({
+      name: 'expansion edges',
+      compute: (caller) => sitedEdges(checker, caller).map(({ site: _site, ...edge }) => edge),
+      equal: sameEdges,
+    });
+    this.#endless = checker.entries.table({
+      name: 'endless expansions',
+      compute: (module) => {
+        const own = this.#ownGeneric(module);
+        return endlessEdges(this.#reachedFrom(own)).filter((edge) => own.has(edge.caller));
+      },
+      equal: sameEdges,
+    });
+    this.#reports = checker.entries.table({
+      name: 'expansion reports',
+      compute: (caller, module) => this.#report(caller, module),
+    });
   }
 
   /** Reports every call in a generic function of `module` that makes an expanding cycle. */
   check(module: ModuleId): void {
-    const { root } = programModule(this.#checker.program, module).tree;
-    const own = new Set(functionsOf(root).filter(isGeneric));
-    const reported = new Set<NodeOf<string>>();
-    for (const edge of endlessEdges(this.#reachedFrom(own))) {
-      if (own.has(edge.caller) && !reported.has(edge.site)) {
-        reported.add(edge.site);
-        this.#checker.report(
-          module,
-          checkerDiagnostics.expandingInstantiation(edge.site.span, edge.caller.name.text),
-        );
-      }
+    for (const caller of this.#ownGeneric(module)) {
+      this.#reports.get(caller, module);
+    }
+  }
+
+  #ownGeneric(module: ModuleId): ReadonlySet<FunctionDeclaration> {
+    const items = this.#checker.inputs.itemsOf(module);
+    return new Set(functionsOf({ items }).filter(isGeneric));
+  }
+
+  /**
+   * Whether `callee` is a node of the graph: a generic function its module declares at the top
+   * level or reads its fields as, not a trait's member or a local function.
+   */
+  #isNode(callee: FunctionDeclaration): boolean {
+    return isGeneric(callee) && this.#ownGeneric(this.#checker.moduleOf(callee)).has(callee);
+  }
+
+  /** Reports `caller`'s calls that make one of its module's expanding edges, each call once. */
+  #report(caller: FunctionDeclaration, module: ModuleId): void {
+    const endless = this.#endless.get(module).filter((edge) => edge.caller === caller);
+    if (endless.length === 0) {
+      return;
+    }
+    const sites = sitedEdges(this.#checker, caller)
+      .filter(({ site: _site, ...edge }) => endless.some((each) => sameProperties(each, edge)))
+      .map((edge) => edge.site);
+    for (const site of new Set(sites)) {
+      this.#checker.report(
+        module,
+        checkerDiagnostics.expandingInstantiation(site.span, caller.name.text),
+      );
     }
   }
 
   /** The edges of `roots`, and of every generic function those edges lead to. */
   #reachedFrom(roots: ReadonlySet<FunctionDeclaration>): readonly Edge[] {
-    const generic = this.#programGeneric();
     const visited = new Set<FunctionDeclaration>();
     const pending = [...roots];
     const edges: Edge[] = [];
     for (let caller = pending.pop(); caller !== undefined; caller = pending.pop()) {
       if (!visited.has(caller)) {
         visited.add(caller);
-        const own = this.#edgesOf(caller);
+        const own = this.#edges.get(caller);
         edges.push(...own);
-        pending.push(...own.map((edge) => edge.callee).filter((callee) => generic.has(callee)));
+        pending.push(...own.map((edge) => edge.callee).filter((callee) => this.#isNode(callee)));
       }
     }
     return edges;
-  }
-
-  #edgesOf(caller: FunctionDeclaration): readonly Edge[] {
-    return this.#edges.get(caller, () => callerEdges(this.#checker, caller));
-  }
-
-  /** The program's generic functions, whose type parameters are the graph's nodes. */
-  #programGeneric(): ReadonlySet<FunctionDeclaration> {
-    this.#generic ??= new Set(
-      [...this.#checker.program.modules.values()].flatMap((module) =>
-        functionsOf(module.tree.root).filter(isGeneric),
-      ),
-    );
-    return this.#generic;
   }
 }
 
@@ -96,7 +134,8 @@ function isGeneric(declaration: FunctionDeclaration): boolean {
   return declaration.typeParameters.length > 0;
 }
 
-function callerEdges(checker: CheckerContext, caller: FunctionDeclaration): readonly Edge[] {
+/** Every edge `caller`'s code makes, at its call. */
+function sitedEdges(checker: CheckerContext, caller: FunctionDeclaration): readonly SitedEdge[] {
   const own = new Set<ParameterKey>(typeParametersOf(caller.typeParameters));
   const bodies = [checker.bodyOf(caller), checker.defaultsOf(caller)];
   const calls = bodies.flatMap((body) => body?.madeCalls() ?? []);
