@@ -196,7 +196,11 @@ export function fieldOf(checker: CheckerContext, type: Type, name: string): Foun
     const field = requiredFields(constraint.trait).find((each) => each.name.text === name);
     if (field !== undefined) {
       return {
-        type: requiredFieldType(checker, constraint, field, type),
+        member: {
+          name,
+          type: requiredFieldType(checker, constraint, field, type),
+          declared: { node: field, module: checker.moduleOf(constraint.trait) },
+        },
         read: requiredFieldRead(checker, type, { trait: constraint.trait, field }),
       };
     }

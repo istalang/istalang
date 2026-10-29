@@ -20,7 +20,6 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isDeclaredStruct, isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { linkOperator } from '../../syntax/expressions/chains.ts';
@@ -34,7 +33,7 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
-import type { FieldRead } from '../checked-field.ts';
+import type { FieldRead, FoundField } from '../checked-field.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
@@ -276,8 +275,18 @@ export function checkMemberAccess(
     context.report(noField(context, node, type));
     return errorType;
   }
-  context.fieldReads.record(node, field.read);
-  return field.type;
+  recordFieldRead(context, node, field);
+  return field.member.type;
+}
+
+/** Records how `access` reads the field `found`, and the field its member's name names. */
+export function recordFieldRead(
+  context: BodyContext,
+  access: MemberAccess,
+  found: FoundField,
+): void {
+  context.fieldReads.record(access, found.read);
+  context.recordField(access.member, found.member);
 }
 
 /** The field reads of one body, recorded as each is checked. */
@@ -288,12 +297,8 @@ export class FieldReads implements FieldReadRecord {
     this.#reads.set(access, read);
   }
 
-  of(access: MemberAccess): FieldRead {
-    const read = this.#reads.get(access);
-    if (read === undefined) {
-      unreachable(`No field read was recorded at ${access.span.start}.`);
-    }
-    return read;
+  of(access: MemberAccess): FieldRead | undefined {
+    return this.#reads.get(access);
   }
 }
 

@@ -74,6 +74,10 @@ export interface CallRequest {
 
 /** Resolves `request`, recording the call; what it yields, or the error type after a report. */
 export function resolveCall(context: BodyContext, request: CallRequest): Type {
+  context.recordCandidates(
+    request.site,
+    request.candidates.map(({ declaration }) => declaration),
+  );
   const written = request.arguments;
   if (written.some(({ type }) => type?.kind === 'error')) {
     return errorType;

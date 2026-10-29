@@ -147,7 +147,7 @@ export function lowerRange(context: FunctionContext, node: Range): Register {
     written !== undefined && node.isInclusive
       ? emitImplicitCall(context, node, 'inclusiveEnd', [written, step])
       : written;
-  const range = context.body.typeOf(node);
+  const range = context.typeOf(node);
   if (range.kind !== 'nominal') {
     unreachable("A range isn't the prelude's Range; the checker should have said so.");
   }
@@ -224,7 +224,7 @@ function lowerDeclaredLiteral(
   entries: readonly (MapEntry | Spread | Invalid)[],
 ): Register {
   const { code } = context;
-  const value = cellRegister(context, context.body.typeOf(node));
+  const value = cellRegister(context, context.typeOf(node));
   code.emit({
     kind: 'move',
     span: node.span,

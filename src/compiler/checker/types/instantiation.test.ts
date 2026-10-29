@@ -4,16 +4,29 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { runPrograms } from '../../../../test/corpus/programs.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import { casesOf, type Match, type MemberAccess } from '../../syntax/expressions/index.ts';
+import {
+  type FunctionDeclaration,
+  type TypeParameter,
+  typeParametersOf,
+} from '../../syntax/declarations.ts';
+import {
+  casesOf,
+  type Expression,
+  type Match,
+  type MemberAccess,
+} from '../../syntax/expressions/index.ts';
+import type { Pattern } from '../../syntax/patterns.ts';
 import { type For, tailExpressionOf } from '../../syntax/statements.ts';
-import { checkProgram } from '../check.ts';
+import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { type CheckedBody, checkProgram } from '../check.ts';
 import { namesBound } from '../checked-pattern.ts';
 import { instantiatedBody } from './instantiation.ts';
 import { substitutionFor } from './substitution.ts';
 import { intType } from './type.ts';
+import { parametersIn } from './type-parts.ts';
 import { typeText } from './type-text.ts';
 
 describe('an instantiated body', () => {
@@ -83,8 +96,80 @@ describe('an instantiated body', () => {
         ? instantiatedBody(body, substitution, checker).fieldReadOf(access)
         : undefined;
     };
-    expect(access && body?.fieldReadOf(access).kind).toBe('required');
+    expect(access && body?.fieldReadOf(access)?.kind).toBe('required');
     expect(readFor(0)).toEqual({ kind: 'position', index: 1 });
     expect(readFor(1)?.kind).toBe('dispatch');
   });
 });
+
+/** Every value `value` holds, outside syntax: a node keeps no type of its instance. */
+function valuesIn(value: unknown, seen = new Set<unknown>()): readonly unknown[] {
+  if (typeof value !== 'object' || value === null || seen.has(value) || 'span' in value) {
+    return [];
+  }
+  seen.add(value);
+  return [value, ...Object.values(value).flatMap((each) => valuesIn(each, seen))];
+}
+
+/** What each typed table of `body` records at `node`. */
+function typedTablesAt(body: CheckedBody, node: SyntaxNode): readonly unknown[] {
+  const expression = node as Expression;
+  return [
+    body.typeOf(expression),
+    body.fitAt(expression),
+    body.chainOf(expression),
+    body.patternOf(node as Pattern),
+    node.kind === 'MemberAccess' ? body.fieldReadOf(node) : undefined,
+    node.kind === 'Identifier' ? [body.declaredTypeOf(node), body.namedFieldOf(node)] : undefined,
+    node.kind === 'Lambda' || node.kind === 'FunctionDeclaration'
+      ? body.functionOf(node)
+      : undefined,
+    node.kind === 'VariableDeclaration' || node.kind === 'For' || node.kind === 'SelectCase'
+      ? body.targetsOf(node)
+      : undefined,
+    node.kind === 'For' || node.kind === 'Comprehension' ? body.iterationOf(node) : undefined,
+    node.kind === 'Assignment' ? body.assignedOf(node) : undefined,
+  ];
+}
+
+describe('a generic function instantiated as lowering reads it', () => {
+  it.each(runPrograms)('names none of its type parameters in $name', ({ text }) => {
+    const program = stdProgramOf({ 'main.ista': text });
+    const checker = checkProgram(program);
+    const items = program.modules.get(idOf('main.ista'))?.tree.root.items ?? [];
+    const functions = items.filter((item) => item.kind === 'FunctionDeclaration');
+    const calls = functions.flatMap((each) => checker.bodyOf(each)?.madeCalls() ?? []);
+    const leaking = calls.flatMap(({ call }) => {
+      const generic = call.function;
+      const body = checker.bodyOf(generic);
+      const parameters = typeParametersOf(generic.typeParameters);
+      if (
+        call.kind !== 'function' ||
+        body === undefined ||
+        parameters.length === 0 ||
+        call.typeArguments.some((type) => parametersIn(type).length > 0)
+      ) {
+        return [];
+      }
+      const instance = instantiatedBody(
+        body,
+        substitutionFor(generic.typeParameters, call.typeArguments),
+        checker,
+      );
+      const nodes = generic.body === undefined ? [] : nodesOf(generic.body);
+      return [instance.result, ...nodes.flatMap((node) => typedTablesAt(instance, node))]
+        .flatMap((each) => valuesIn(each))
+        .filter(
+          (each) =>
+            (each as { kind?: unknown }).kind === 'parameter' &&
+            parameters.includes((each as { declaration: TypeParameter }).declaration),
+        )
+        .map(() => generic.name.text);
+    });
+    expect(leaking).toEqual([]);
+  });
+});
+
+function nodesOf(node: SyntaxNode): readonly SyntaxNode[] {
+  return [node, ...childrenOf(node).flatMap(nodesOf)];
+}

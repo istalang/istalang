@@ -112,7 +112,7 @@ class Computation {
       }
       case 'DurationLiteral': {
         const type = this.#scope.checked.typeOf(node);
-        return type.kind === 'nominal' ? computed(durationForm(type, node.value)) : unknown;
+        return type?.kind === 'nominal' ? computed(durationForm(type, node.value)) : unknown;
       }
       case 'Parenthesized':
         return this.of(node.expression);
@@ -191,10 +191,11 @@ class Computation {
       return unknown;
     }
     const type = this.#scope.checked.typeOf(node);
-    if (type.kind === 'nominal' && type.entity.declaration.kind === 'EnumDeclaration') {
+    if (type?.kind === 'nominal' && type.entity.declaration.kind === 'EnumDeclaration') {
       return refused(node);
     }
     if (
+      type === undefined ||
       this.#scope.checker.fieldsOf(type) === undefined ||
       (type.kind !== 'nominal' && type.kind !== 'anonymous')
     ) {
@@ -372,7 +373,7 @@ class Computation {
   /** A struct without fields named bare (§3.1); any other name that isn't a constant is refused. */
   #bareStruct(node: Identifier): Outcome {
     const type = this.#scope.checked.typeOf(node);
-    return type.kind === 'nominal' && this.#scope.checker.fieldsOf(type)?.length === 0
+    return type?.kind === 'nominal' && this.#scope.checker.fieldsOf(type)?.length === 0
       ? computed({ kind: 'struct', type, fields: [] })
       : refused(node);
   }

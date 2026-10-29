@@ -11,7 +11,7 @@ import { constantValue } from '../constants.ts';
 import type { FunctionContext } from '../context.ts';
 
 export function lowerDurationLiteral(context: FunctionContext, node: DurationLiteral): Register {
-  const type = context.body.typeOf(node);
+  const type = context.typeOf(node);
   if (type.kind !== 'nominal') {
     unreachable(
       `A duration at ${node.span.start} isn't a Duration; the checker should have said so.`,

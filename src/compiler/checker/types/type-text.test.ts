@@ -57,8 +57,12 @@ describe('typeText', () => {
     const f = items[2] as FunctionDeclaration;
     const body = f.body === undefined ? undefined : checker.bodyOf(f);
     const [a, d] = (f.body?.statements ?? []) as VariableDeclaration[];
-    expect(a && body && typeText(body.typeOf(a.initializer))).toBe('*Counter');
-    expect(d && body && typeText(body.typeOf(d.initializer))).toBe('*Box<int, string>');
+    const typeAt = (declaration: VariableDeclaration | undefined) => {
+      const type = declaration && body?.typeOf(declaration.initializer);
+      return type && typeText(type);
+    };
+    expect(typeAt(a)).toBe('*Counter');
+    expect(typeAt(d)).toBe('*Box<int, string>');
   });
 
   describe('a type written through an alias (§3.17)', () => {

@@ -17,7 +17,7 @@ const unwrappedNone = 'Force-unwrapped none.';
 export function lowerUnwrap(context: FunctionContext, node: Unwrap): Register {
   const { code } = context;
   const optional = context.expression(node.operand);
-  const type = context.body.typeOf(node.operand);
+  const type = context.typeOf(node.operand);
   if (!isEnum(type)) {
     unreachable(`'!' needs an optional at ${node.span.start}; the checker should have said so.`);
   }

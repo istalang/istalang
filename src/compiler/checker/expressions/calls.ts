@@ -54,6 +54,7 @@ import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { spreadArgumentType } from './collections.ts';
+import { recordFieldRead } from './structs.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   if (misplacedArgument(node.arguments) !== undefined) {
@@ -154,8 +155,8 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     return errorType;
   }
   if (field !== undefined) {
-    context.fieldReads.record(callee, field.read);
-    return checkValueCall(context, call, callee, field.type);
+    recordFieldRead(context, callee, field);
+    return checkValueCall(context, call, callee, field.member.type);
   }
   const candidates = isPlace(callee)
     ? methods

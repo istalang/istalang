@@ -22,7 +22,6 @@
  */
 
 import { arrayPatternFunctions, optionalVariants } from '../../../language/well-known.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
 import type { VariantNaming } from '../../binder/entities.ts';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
@@ -67,12 +66,8 @@ export class CheckedPatterns implements PatternRecord {
     this.#patterns.set(pattern, checked);
   }
 
-  patternOf(pattern: Pattern): CheckedPattern {
-    const checked = this.#patterns.get(pattern);
-    if (checked === undefined) {
-      unreachable(`No pattern was checked at ${pattern.span.start}.`);
-    }
-    return checked;
+  patternOf(pattern: Pattern): CheckedPattern | undefined {
+    return this.#patterns.get(pattern);
   }
 }
 
@@ -330,8 +325,9 @@ function namedVariant(
   if (part.type.kind === 'error') {
     return undefined;
   }
-  const name = lastName(at.path).text;
-  const chosen = chooseVariant(context, { span: at.span, name }, naming, part.type);
+  const written = lastName(at.path);
+  const name = written.text;
+  const chosen = chooseVariant(context, { span: at.span, name: written }, naming, part.type);
   if (chosen === undefined) {
     return undefined;
   }

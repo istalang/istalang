@@ -19,7 +19,7 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
 import type { Span } from '../../text/span.ts';
-import type { Entity, VariableEntity } from '../binder/entities.ts';
+import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
   DeclaredStruct,
@@ -88,6 +88,11 @@ export interface CheckerContext extends Checker {
   readonly diagnosticCount: (module: ModuleId) => number;
   /** The type `node` denotes in `module`. */
   readonly resolveType: (module: ModuleId, node: TypeNode) => Type;
+  /**
+   * The type checking resolved `node` to; undefined for one it never resolved, such as a pattern's
+   * or a struct literal's type, which name a type rather than denote one. Asking reports nothing.
+   */
+  readonly resolvedTypeOf: (node: TypeNode) => Type | undefined;
   /** The type `any` followed by `traits` denotes in `module` (§3.10). */
   readonly anyTypeOf: (module: ModuleId, traits: readonly TypeNode[]) => Type;
   /** A struct declaration's fields, types as declared (not substituted). */
@@ -188,6 +193,15 @@ export interface BodyContext {
    */
   readonly useEntity: (name: Identifier) => Entity | undefined;
   readonly recordCall: (site: ResolvedSite, call: ResolvedCall) => void;
+  /** Records the functions the call at `site` chooses among (calls/resolve.ts). */
+  readonly recordCandidates: (
+    site: ResolvedSite,
+    candidates: readonly FunctionDeclaration[],
+  ) => void;
+  /** Records the field `name` names in a struct literal, a pattern or an assignment's target. */
+  readonly recordField: (name: Identifier, field: FieldMember) => void;
+  /** Records the variant the bare name `name` chose (resolution/named.ts). */
+  readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** Records that `node` calls a function value (§3.14). */
   readonly recordValueCall: (node: Call) => void;
   /** Whether the innermost function is async, the only kind that may `await` (§5). */

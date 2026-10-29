@@ -24,7 +24,7 @@ export function lowerMatch(context: FunctionContext, node: Match): Register {
   const end = code.newLabel();
   for (const matchCase of casesOf(node)) {
     const next = code.newLabel();
-    const pattern = context.body.patternOf(matchCase.pattern);
+    const pattern = context.patternOf(matchCase.pattern);
     const matching = { subject: subject.result, pattern };
     const enter = () => {
       lowerMatching(context, matching, next, matchCase.pattern.span);
@@ -59,7 +59,7 @@ export function lowerMatch(context: FunctionContext, node: Match): Register {
 export function lowerIs(context: FunctionContext, node: Is): Register {
   const matching = {
     subject: context.expression(node.subject),
-    pattern: context.body.patternOf(node.pattern),
+    pattern: context.patternOf(node.pattern),
   };
   const result = context.code.allocate();
   const fail = context.code.newLabel();

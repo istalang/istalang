@@ -72,7 +72,12 @@ export class VariableScope implements Variables {
   }
 
   typeOf(variable: VariableEntity): Type {
-    return this.#types.get(variable.name) ?? errorType;
+    return this.declaredTypeOf(variable.name) ?? errorType;
+  }
+
+  /** The type `name` was declared with; undefined for a name this body doesn't declare. */
+  declaredTypeOf(name: Identifier): Type | undefined {
+    return this.#types.get(name);
   }
 
   noteChanged(variable: VariableEntity): void {
@@ -132,9 +137,14 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
   const declared = node.type === undefined ? undefined : context.resolveType(node.type);
   const initial = context.expect(node.initializer, declared);
   const held = declared ?? (node.isMutable ? widened(initial) : initial);
-  const bindings = walkTargets(bodyScope(context), node.targets, held);
-  for (const { name, type } of bindings) {
-    context.variables.declare(name, type);
+  declareTargets(context, node, held);
+}
+
+/** Takes a value of `type` apart into `node`'s targets, declaring each name with its part's type. */
+export function declareTargets(context: BodyContext, node: VariableDeclaration, type: Type): void {
+  const bindings = walkTargets(bodyScope(context), node.targets, type);
+  for (const { name, type: part } of bindings) {
+    context.variables.declare(name, part);
   }
   context.variables.recordTargets(node, bindings);
 }

@@ -41,7 +41,7 @@ import {
   typeParametersOf,
 } from '../syntax/declarations.ts';
 import { fieldsFunctionsOf } from '../syntax/field-defaults.ts';
-import type { Identifier, NodeOf } from '../syntax/node.ts';
+import type { Identifier } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { BodyChecker, type BodyKind } from './body-checker.ts';
@@ -57,11 +57,13 @@ import { Aliases } from './declarations/aliases.ts';
 import { ConstantChecks } from './declarations/constants.ts';
 import { checkDeclaration } from './declarations/declarations.ts';
 import { Layouts } from './declarations/layout.ts';
+import { DeclaringModules } from './declarations/modules.ts';
 import { Parameters } from './declarations/parameters.ts';
 import { callResult, declaredBodyResult, writtenByReference } from './declarations/signatures.ts';
 import { StaticFunctions } from './declarations/statics.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import { LazyChecks } from './lazy-checks.ts';
+import { Lookup } from './lookup/lookup.ts';
 import { meetsAny, memberWitnesses } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
 import type { ResolvedCall } from './resolved-call.ts';
@@ -91,8 +93,6 @@ export class ProgramChecker implements CheckerContext {
   readonly program: Program;
   readonly bindings: Bindings;
   readonly typeKeys = new TypeKeys();
-  /** Every module's top-level items, with the module declaring each. */
-  readonly #modules = new Map<NodeOf<string>, ModuleId>();
   readonly #diagnostics = new Map<ModuleId, Diagnostic[]>();
   readonly #declaredResults = new Map<FunctionDeclaration, Type | undefined>();
   readonly #resolvedTypes = new Map<TypeNode, Type>();
@@ -107,12 +107,12 @@ export class ProgramChecker implements CheckerContext {
   });
   readonly #constants = new ConstantChecks({
     checker: this,
-    moduleOfItem: (declaration) => this.#modules.get(declaration),
-    checkValue: (module, initializer, declaredResult) =>
+    moduleOfItem: (declaration) => this.#modules.itemModuleOf(declaration),
+    checkConstant: (module, declaration, declaredResult) =>
       new BodyChecker(this, module, {
         kind: 'value',
         declaredResult,
-      }).checkValue(initializer),
+      }).checkConstant(declaration),
   });
   readonly #checkedModules = new Set<ModuleId>();
   readonly #layouts = new Layouts(this);
@@ -141,10 +141,14 @@ export class ProgramChecker implements CheckerContext {
       new BodyChecker(this, module, { kind: 'value', declaredResult: undefined }).checkValue(value),
   });
   readonly json = new JsonForms({ checker: this, annotations: this.annotations });
+  readonly lookup = new Lookup(this);
   #optional: { entity: OptionalEntity } | undefined;
+
+  readonly #modules: DeclaringModules;
 
   constructor(program: Program) {
     this.program = program;
+    this.#modules = new DeclaringModules(program);
     this.bindings = bindProgram(program);
     for (const [id, module] of program.modules) {
       for (const item of module.tree.root.items) {
@@ -160,7 +164,7 @@ export class ProgramChecker implements CheckerContext {
    * parameters) as `module`'s.
    */
   #declare(item: Declaration, module: ModuleId): void {
-    this.#modules.set(item, module);
+    this.#modules.note(item, module);
     if ('typeParameters' in item) {
       for (const parameter of typeParametersOf(item.typeParameters)) {
         this.#typeParameters.declare(parameter, module);
@@ -174,7 +178,7 @@ export class ProgramChecker implements CheckerContext {
       }
     }
     for (const declared of fieldsFunctionsOf(item)) {
-      this.#modules.set(declared, module);
+      this.#modules.note(declared, module);
     }
   }
 
@@ -189,16 +193,16 @@ export class ProgramChecker implements CheckerContext {
   }
 
   moduleOf(declaration: Declaration | VariableDeclaration): ModuleId {
-    const module = this.#modules.get(declaration);
-    if (module === undefined) {
-      unreachable(`No module declares ${declaration.kind} at ${declaration.span.start}.`);
-    }
-    return module;
+    return this.#modules.moduleOf(declaration);
   }
 
   /** Each type node resolves once: in its own module, it always denotes the same type. */
   resolveType(module: ModuleId, node: TypeNode): Type {
     return memo(this.#resolvedTypes, node, () => resolveTypeNode(this, module, node));
+  }
+
+  resolvedTypeOf(node: TypeNode): Type | undefined {
+    return this.#resolvedTypes.get(node);
   }
 
   memberWitnesses(type: AnyType, constraint: number, member: Type): readonly ResolvedCall[] {

@@ -127,7 +127,7 @@ export function lowerFieldRead(
   link: Expression = node,
 ): Register {
   const src = context.chains.target(context, link);
-  const read = context.body.fieldReadOf(node);
+  const read = context.fieldReadOf(node);
   switch (read.kind) {
     case 'position':
       return context.code.field(src, read.index, node.span);
@@ -162,7 +162,7 @@ function structTypeOf(
   context: FunctionContext,
   node: Expression,
 ): NominalType | AnonymousStructType {
-  const type = context.body.typeOf(node);
+  const type = context.typeOf(node);
   if (type.kind !== 'nominal' && type.kind !== 'anonymous') {
     unreachable(`Expected a struct at ${node.span.start}; the checker should have said so.`);
   }

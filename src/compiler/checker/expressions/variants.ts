@@ -11,7 +11,6 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import { type EnumDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
 import type { FieldsLiteral, MemberAccess, NoneLiteral } from '../../syntax/expressions/index.ts';
@@ -77,12 +76,13 @@ export function checkVariantName(
   naming: VariantNaming,
   expected: Type | undefined,
 ): Type {
-  const chosen = chooseVariant(context, writtenAs(node), naming, expected);
+  const name = node.kind === 'Identifier' ? node : node.member;
+  const chosen = chooseVariant(context, { span: node.span, name }, naming, expected);
   if (chosen === undefined) {
     return errorType;
   }
   if (chosen.variant.fields.length > 0) {
-    context.report(checkerDiagnostics.variantFields(node.span, nameOf(node)));
+    context.report(checkerDiagnostics.variantFields(node.span, name.text));
     return errorType;
   }
   return enumTypeFor(context, node, chosen.enum, expected);
@@ -96,8 +96,12 @@ export function checkVariantLiteral(
   expected: Type | undefined,
 ): Type {
   const typeNode = node.type;
-  const chosen = chooseVariant(context, writtenAs(node), naming, expected);
-  if (chosen === undefined || typeNode === undefined) {
+  if (typeNode === undefined) {
+    return errorType;
+  }
+  const name = lastName(typeNode.path);
+  const chosen = chooseVariant(context, { span: node.span, name }, naming, expected);
+  if (chosen === undefined) {
     return errorType;
   }
   const { checker } = context;
@@ -113,22 +117,6 @@ export function checkVariantLiteral(
     typeOf: (typeArguments: readonly Type[]) => enumType(context, chosen.enum, typeArguments),
   };
   return checkLiteralFields(context, node, shape);
-}
-
-function writtenAs(node: VariantNode): { readonly span: Span; readonly name: string } {
-  return { span: node.span, name: nameOf(node) };
-}
-
-/** The variant name `node` is written with. */
-function nameOf(node: VariantNode): string {
-  switch (node.kind) {
-    case 'Identifier':
-      return node.text;
-    case 'MemberAccess':
-      return node.member.text;
-    default:
-      return node.type === undefined ? '' : lastName(node.type.path).text;
-  }
 }
 
 /** The enum type a fieldless variant has: the expected one, or one from the defaults. */

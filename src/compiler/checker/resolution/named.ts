@@ -29,7 +29,14 @@ import {
  */
 export function namedType(context: BodyContext, node: Expression): Type | undefined {
   const name = nameNodeOf(node);
-  const entity = name === undefined ? undefined : context.entityOf(name);
+  return entityType(context.checker, name === undefined ? undefined : context.entityOf(name));
+}
+
+/** The type `entity` names, a trait's none: a declared type with no type arguments given. */
+export function entityType(
+  checker: Pick<CheckerContext, 'aliasedType'>,
+  entity: Entity | undefined,
+): Type | undefined {
   if (entity?.kind === 'primitive') {
     return primitiveType(entity.name);
   }
@@ -41,7 +48,7 @@ export function namedType(context: BodyContext, node: Expression): Type | undefi
     case 'TypeParameter':
       return parameterType(declaration);
     case 'TypeAliasDeclaration':
-      return aliasedAs(context.checker.aliasedType(declaration), { declaration, arguments: [] });
+      return aliasedAs(checker.aliasedType(declaration), { declaration, arguments: [] });
     case 'TraitDeclaration':
       return undefined;
     default:
@@ -59,11 +66,12 @@ export function nameNodeOf(node: Expression): Identifier | undefined {
 
 /**
  * The variant a name written at `at` means: the one its qualification names, or the one the
- * expected enum has (§3.11). A pattern names a variant the same way, its value's type expected.
+ * expected enum has (§3.11), recorded for the bare name. A pattern names a variant the same way,
+ * its value's type expected.
  */
 export function chooseVariant(
   context: BodyContext,
-  at: { readonly span: Span; readonly name: string },
+  at: { readonly span: Span; readonly name: Identifier },
   naming: VariantNaming,
   expected: Type | undefined,
 ): { enum: EnumDeclaration; variant: Variant } | undefined {
@@ -76,10 +84,11 @@ export function chooseVariant(
   );
   if (chosen === undefined) {
     if (!expectsError(expected)) {
-      context.report(checkerDiagnostics.bareVariant(at.span, at.name));
+      context.report(checkerDiagnostics.bareVariant(at.span, at.name.text));
     }
     return undefined;
   }
+  context.recordVariant(at.name, chosen);
   return { enum: chosen.enum, variant: chosen.variant };
 }
 

@@ -46,7 +46,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Unary: lowerUnary,
   Call: lowerCall,
   StructLiteral: (context, node) =>
-    isEnum(context.body.typeOf(node))
+    isEnum(context.typeOf(node))
       ? lowerVariantLiteral(context, node)
       : lowerStructLiteral(context, node),
   NewStructLiteral: lowerNewStructLiteral,

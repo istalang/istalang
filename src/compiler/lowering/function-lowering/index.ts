@@ -34,14 +34,17 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
+import type { FieldRead } from '../../checker/checked-field.ts';
+import type { CheckedPattern } from '../../checker/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../../checker/resolved-call.ts';
 import type { Fit } from '../../checker/types/fit.ts';
 import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
+import type { Expression, Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
+import type { Pattern } from '../../syntax/patterns.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import { CodeWriter } from '../code-writer.ts';
 import { emitConstant } from '../constants.ts';
@@ -201,7 +204,7 @@ class FunctionLowering implements FunctionContext {
       this.body.chainOf(node) === undefined
         ? handlerOf(expressionHandlers, node)(this, node)
         : this.chains.lower(this, node);
-    return this.fitted(register, this.body.typeOf(node), this.body.fitAt(node), node);
+    return this.fitted(register, this.typeOf(node), this.body.fitAt(node), node);
   }
 
   fitted(value: Register, type: Type, fit: Fit, site: ValueSite): Register {
@@ -229,10 +232,19 @@ class FunctionLowering implements FunctionContext {
   }
 
   #closedAt(resolved: ResolvedCall | undefined, at: NodeOf<string>): ClosedCall {
-    if (resolved === undefined) {
-      unreachable(`No call was made for the ${at.kind} at ${at.span.start}.`);
-    }
-    return this.closed(resolved);
+    return this.closed(checkedAt(resolved, at, 'call'));
+  }
+
+  typeOf(node: Expression): Type {
+    return checkedAt(this.body.typeOf(node), node, 'type');
+  }
+
+  fieldReadOf(access: MemberAccess): FieldRead {
+    return checkedAt(this.body.fieldReadOf(access), access, 'field read');
+  }
+
+  patternOf(pattern: Pattern): CheckedPattern {
+    return checkedAt(this.body.patternOf(pattern), pattern, 'pattern');
   }
 
   block(node: Block): Register {
@@ -355,4 +367,12 @@ function defaultValueOf(parameter: SignatureParameter): Expression {
     unreachable(`'${parameter.node.name.text}' has no default; the checker should have said so.`);
   }
   return defaultValue;
+}
+
+/** The checker's `answer` about `at`, which lowering reads only of what was checked. */
+function checkedAt<T>(answer: T | undefined, at: NodeOf<string>, what: string): T {
+  if (answer === undefined) {
+    unreachable(`No ${what} was checked for the ${at.kind} at ${at.span.start}.`);
+  }
+  return answer;
 }

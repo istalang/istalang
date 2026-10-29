@@ -57,6 +57,7 @@ export interface AnnotationSeams {
 export class Annotations implements AnnotationChecks {
   readonly #seams: AnnotationSeams;
   readonly #checked = new Map<NodeOf<string>, readonly CheckedAnnotation[]>();
+  readonly #bodies = new Map<Annotation, CheckedBody>();
 
   constructor(seams: AnnotationSeams) {
     this.#seams = seams;
@@ -69,6 +70,10 @@ export class Annotations implements AnnotationChecks {
     place: AnnotationPlace,
   ): readonly CheckedAnnotation[] {
     return memo(this.#checked, item, () => this.#check(module, item, place));
+  }
+
+  bodyOf(annotation: Annotation): CheckedBody | undefined {
+    return this.#bodies.get(annotation);
   }
 
   /** Which of the toolchain's own annotations `annotation` is; undefined for any other struct. */
@@ -185,6 +190,7 @@ export class Annotations implements AnnotationChecks {
   #value(module: ModuleId, node: Annotation): CheckedAnnotation | undefined {
     const { checker, checkValue } = this.#seams;
     const checked = checkValue(module, node.value);
+    this.#bodies.set(node, checked);
     const type = checked.result;
     if (type.kind === 'error') {
       return undefined;

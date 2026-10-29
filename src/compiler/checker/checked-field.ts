@@ -9,7 +9,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { TraitDeclaration } from '../syntax/declarations.ts';
 import type { FieldDeclaration } from '../syntax/types.ts';
 import type { Checker } from './check.ts';
-import type { AnyType, Type, TypeParameterType } from './types/type.ts';
+import type { AnyType, FieldMember, Type, TypeParameterType } from './types/type.ts';
 
 /** A field a trait requires (§3.10): the trait, and its field's declaration. */
 export interface RequiredField {
@@ -47,9 +47,9 @@ export function requiredFieldRead(
   return found.read;
 }
 
-/** A field a read finds: its type, and how the read reaches it. */
+/** A field a read finds, as the type read has it, and how the read reaches it. */
 export interface FoundField {
-  readonly type: Type;
+  readonly member: FieldMember;
   readonly read: FieldRead;
 }
 
@@ -62,5 +62,5 @@ export function structFieldOf(
   const fields = checker.fieldsOf(type) ?? [];
   const index = fields.findIndex((candidate) => candidate.name === name);
   const field = fields[index];
-  return field === undefined ? undefined : { type: field.type, read: { kind: 'position', index } };
+  return field === undefined ? undefined : { member: field, read: { kind: 'position', index } };
 }

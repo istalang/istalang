@@ -252,8 +252,12 @@ function checkItem(
     return;
   }
   const { shape, inference, given } = items;
-  const index = itemField(itemName(item), shape.fields);
+  const name = itemName(item);
+  const index = itemField(name, shape.fields);
   const field = shape.fields[index];
+  if (field !== undefined && name !== undefined) {
+    context.recordField(name, field);
+  }
   const value = itemValue(item);
   if (field === undefined || given.has(index)) {
     reportMisfit(context, items, item, field);

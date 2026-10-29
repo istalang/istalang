@@ -25,18 +25,21 @@ export interface PatternScope {
   readonly fieldsOf: Checker['fieldsOf'];
   readonly entityOf: (name: Identifier) => Entity | undefined;
   readonly report: (diagnostic: Diagnostic) => void;
+  /** Records the field an item's name names. */
+  readonly recordField: (name: Identifier, field: FieldMember) => void;
 }
 
 /** The body as a pattern reads it. */
-export function bodyScope(context: {
-  readonly checker: Pick<Checker, 'fieldsOf'>;
-  readonly entityOf: PatternScope['entityOf'];
-  readonly report: PatternScope['report'];
-}): PatternScope {
+export function bodyScope(
+  context: Pick<PatternScope, 'entityOf' | 'report' | 'recordField'> & {
+    readonly checker: Pick<Checker, 'fieldsOf'>;
+  },
+): PatternScope {
   return {
     fieldsOf: (type) => context.checker.fieldsOf(type),
     entityOf: (name) => context.entityOf(name),
     report: (diagnostic) => context.report(diagnostic),
+    recordField: (name, field) => context.recordField(name, field),
   };
 }
 
@@ -110,13 +113,16 @@ export function structParts(
  * `fields` (struct-items.ts); an item giving none is reported, and its part has the error type.
  */
 export function fieldPart<Step extends PartStep>(
-  scope: Pick<PatternScope, 'report'>,
+  scope: Pick<PatternScope, 'report' | 'recordField'>,
   fields: readonly FieldMember[] | undefined,
   item: { readonly name: Identifier | undefined; readonly span: Span },
   part: ValuePart<Step | number>,
 ): { readonly index: number; readonly part: ValuePart<Step | number> } {
   const index = fields === undefined ? -1 : itemField(item.name, fields);
   const field = fields?.[index];
+  if (field !== undefined && item.name !== undefined) {
+    scope.recordField(item.name, field);
+  }
   if (fields !== undefined && field === undefined) {
     const type = typeText(part.type);
     scope.report(

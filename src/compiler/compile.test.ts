@@ -12,7 +12,7 @@ import { stdProgramOf } from './binder/bind.test-kit.ts';
 import { binderDiagnostics } from './binder/diagnostics.ts';
 import { checkerDiagnostics } from './checker/diagnostics/index.ts';
 import { diagnosedAt } from './compile.test-kit.ts';
-import { diagnose } from './compile.ts';
+import { diagnose, diagnoseModule } from './compile.ts';
 import { programDiagnostics } from './program/diagnostics.ts';
 import { idOf, programOf } from './program/program.test-kit.ts';
 import type { Program } from './program/program.ts';
@@ -100,5 +100,14 @@ describe('diagnostics, whatever order modules are asked in', () => {
     expect(libFirst).toEqual(mainFirst);
     expect(libFirst.lib).toEqual(libAlone.lib);
     expect(libAlone.lib).toEqual([checkerDiagnostics.notConforming.code]);
+  });
+});
+
+describe('one module diagnosed alone', () => {
+  it.each(invalidPrograms)('reports in $name what diagnosing every module does', ({ text }) => {
+    const main = idOf('main.ista');
+    const alone = diagnoseModule(stdProgramOf({ 'main.ista': text }), main);
+    const whole = diagnose(stdProgramOf({ 'main.ista': text })).get(main);
+    expect(alone.diagnostics).toEqual(whole?.diagnostics);
   });
 });

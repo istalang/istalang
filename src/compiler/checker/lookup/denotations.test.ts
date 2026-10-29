@@ -1,0 +1,103 @@
+import { describe, expect, it } from 'vitest';
+import type { Denotation } from '../denotation.ts';
+import { typeText } from '../types/type-text.ts';
+import { checkedMain } from './lookup.test-kit.ts';
+
+const text = `struct Pair { first: int; second: int }
+fn Pair.zero() -> Pair: Pair{first: 0, second: 0}
+fn total(self: Pair) -> int: self.first + self.second
+fn sum(a: int, b: int = 1) -> int: a + b
+fn main() -> int:
+  const first = 1
+  const p = Pair{first, second: 2}
+  match p:
+    case Pair{first, second as s}: sum(first, b: s)
+    case _: p.total()
+fn Pair.from(n: int) -> Pair: Pair{first: n, second: n}
+fn converted() -> Pair: Pair(3)
+trait Measured:
+  size: int
+  fn measure(self: Self) -> int
+  fn Self.unit() -> Self
+fn measuredSize<T is Measured>(t: T) -> int: t.size + t.measure()
+`;
+
+/** The name a declaration is declared with, or its kind where it has none to show. */
+function declaredName(declared: Denotation['declared']): string {
+  switch (declared.kind) {
+    case 'field':
+      return declared.field.name;
+    case 'function':
+      return declared.declaration.name.text;
+    case 'variable':
+      return declared.entity.name.text;
+    default:
+      return declared.kind;
+  }
+}
+
+/** What each denotation declares, by kind and name, with its type's text. */
+function described(denotations: readonly Denotation[]): readonly string[] {
+  return denotations.map(
+    ({ declared, type }) =>
+      `${declared.kind} ${declaredName(declared)}: ${type === undefined ? '-' : typeText(type)}`,
+  );
+}
+
+describe('what an identifier denotes', () => {
+  const { checker, module, named, first } = checkedMain(text);
+  const at = (name: string, nth: number) =>
+    described(checker.lookup.denotationsOf(module, named(name, nth)));
+
+  it('answers a shorthand with its field and its variable', () => {
+    expect(at('first', 4)).toEqual(['field first: int', 'variable first: int']);
+    expect(at('first', 5)).toEqual(['field first: int', 'variable first: int']);
+  });
+
+  it("answers a field's declaring name, a read and a literal's name with the field", () => {
+    expect(at('first', 0)).toEqual(['field first: int']);
+    expect(at('first', 1)).toEqual(['field first: int']);
+    expect(at('first', 2)).toEqual(['field first: int']);
+  });
+
+  it('answers a call, a method call and a named argument with what the call resolved to', () => {
+    expect(at('sum', 1)).toEqual(['function sum: -']);
+    expect(at('total', 1)).toEqual(['function total: -']);
+    expect(at('b', 2)).toEqual(['variable b: int']);
+  });
+
+  it("answers a static's and a trait's function by its declaring name", () => {
+    expect(at('zero', 0)).toEqual(['function zero: -']);
+    expect(at('measure', 0)).toEqual(['function measure: -']);
+  });
+
+  it('answers a conversion with its type and the function converting', () => {
+    expect(at('Pair', 11)).toEqual(['type type: Pair', 'function from: -']);
+  });
+
+  it("answers a parameter's declaring name with its signature's type", () => {
+    expect(at('a', 0)).toEqual(['variable a: int']);
+  });
+
+  it('answers a written type with the type it denotes', () => {
+    const written = first('NamedType');
+    const type = written && checker.lookup.typeOfNode(module, written);
+    expect(type && typeText(type)).toBe('int');
+  });
+
+  it('lists the fields, methods and static functions of a type', () => {
+    const pair = checker.lookup.denotationsOf(module, named('Pair', 0))[0]?.type;
+    const members = pair && checker.lookup.membersOf(module, pair);
+    expect(members?.fields.map(({ name }) => name)).toEqual(['first', 'second']);
+    expect(members?.methods.map(({ name }) => name.text)).toEqual(['total']);
+    expect(members?.statics.map(({ name }) => name.text)).toEqual(['zero', 'from']);
+  });
+
+  it('lists what the constraints on a type parameter require', () => {
+    const t = checker.lookup.denotationsOf(module, named('t', 1))[0]?.type;
+    const members = t && checker.lookup.membersOf(module, t);
+    expect(members?.fields.map(({ name }) => name)).toEqual(['size']);
+    expect(members?.methods.map(({ name }) => name.text)).toEqual(['measure']);
+    expect(members?.statics.map(({ name }) => name.text)).toEqual(['unit']);
+  });
+});

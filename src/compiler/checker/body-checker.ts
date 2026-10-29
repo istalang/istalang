@@ -21,12 +21,12 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Span } from '../../text/span.ts';
-import type { Entity } from '../binder/entities.ts';
+import type { Entity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Call, Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
-import type { Block, Statement } from '../syntax/statements.ts';
+import type { Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
@@ -53,9 +53,15 @@ import { Iterations } from './rules/iteration.ts';
 import { checkTestingCalls } from './rules/testing-calls.ts';
 import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
-import { VariableScope } from './statements/variables.ts';
+import { declareTargets, VariableScope } from './statements/variables.ts';
 import { exactFit, type Fit, isExact } from './types/fit.ts';
-import { errorType, type FunctionType, type Type, unitType } from './types/type.ts';
+import {
+  errorType,
+  type FieldMember,
+  type FunctionType,
+  type Type,
+  unitType,
+} from './types/type.ts';
 import { typeText } from './types/type-text.ts';
 import { useSite } from './use-site.ts';
 
@@ -88,6 +94,9 @@ export class BodyChecker implements BodyContext {
   readonly #types = new Map<Expression, Type>();
   readonly #resolved = new Map<ResolvedSite, ResolvedCall>();
   readonly #valueCalls = new Set<Call>();
+  readonly #candidates = new Map<ResolvedSite, readonly FunctionDeclaration[]>();
+  readonly #namedFields = new Map<Identifier, FieldMember>();
+  readonly #chosenVariants = new Map<Identifier, VariantEntity>();
   readonly #fits = new Map<ValueSite, Fit>();
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
@@ -135,6 +144,15 @@ export class BodyChecker implements BodyContext {
     const { declared } = this.#result;
     const type = this.expect(node, declared);
     return this.#finished([node], declared ?? type);
+  }
+
+  /** Checks a top-level constant (§3): its initializer as `checkValue` does, then its targets. */
+  checkConstant(declaration: VariableDeclaration): CheckedBody {
+    const { declared } = this.#result;
+    const type = this.expect(declaration.initializer, declared);
+    const value = declared ?? type;
+    declareTargets(this, declaration, value);
+    return this.#finished([declaration.initializer], value);
   }
 
   /** The body checked from `roots`, after the rules over a whole body ran on it. */
@@ -272,12 +290,27 @@ export class BodyChecker implements BodyContext {
     this.#valueCalls.add(node);
   }
 
+  recordCandidates(site: ResolvedSite, candidates: readonly FunctionDeclaration[]): void {
+    this.#candidates.set(site, candidates);
+  }
+
+  recordField(name: Identifier, field: FieldMember): void {
+    this.#namedFields.set(name, field);
+  }
+
+  recordVariant(name: Identifier, variant: VariantEntity): void {
+    this.#chosenVariants.set(name, variant);
+  }
+
   /** The CheckedBody of what was checked, producing `result`. */
   #checked(result: Type): CheckedBody {
     const types = this.#types;
     const resolved = this.#resolved;
     const valueCalls = this.#valueCalls;
     const fits = this.#fits;
+    const candidates = this.#candidates;
+    const namedFields = this.#namedFields;
+    const chosenVariants = this.#chosenVariants;
     const {
       variables,
       literals,
@@ -291,7 +324,7 @@ export class BodyChecker implements BodyContext {
       labels,
     } = this;
     return {
-      typeOf: (expression) => types.get(expression) ?? errorType,
+      typeOf: (expression) => types.get(expression),
       resolved,
       valueCalls,
       madeCalls: () => [
@@ -311,6 +344,10 @@ export class BodyChecker implements BodyContext {
       patternOf: (pattern) => patterns.patternOf(pattern),
       chainOf: (link) => chains.chainOf(link),
       fieldReadOf: (access) => fieldReads.of(access),
+      declaredTypeOf: (name) => variables.declaredTypeOf(name),
+      namedFieldOf: (name) => namedFields.get(name),
+      chosenVariantOf: (name) => chosenVariants.get(name),
+      candidatesAt: (site) => candidates.get(site) ?? [],
       labels,
       result,
     };

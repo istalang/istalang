@@ -364,7 +364,7 @@ function witnessOf(
 
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
   const field = fieldOf(checker, type, name);
-  return field !== undefined && sameType(field.type, fieldType);
+  return field !== undefined && sameType(field.member.type, fieldType);
 }
 
 function substituteConstraint(constraint: Constraint, substitution: Substitution): Constraint {

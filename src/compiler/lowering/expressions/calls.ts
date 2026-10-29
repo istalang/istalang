@@ -152,7 +152,7 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
     called === undefined
       ? valueArguments(context, spawned, copied)
       : copied.map(({ argument }) => argument);
-  const instance = context.body.typeOf(node);
+  const instance = context.typeOf(node);
   if (instance.kind !== 'nominal') {
     unreachable('A spawn checked clean is an Instance<T>.');
   }
@@ -260,7 +260,7 @@ function valueArguments(
       return [given];
     }
     const elements = packElementsOf(context, given.register, {
-      type: context.body.typeOf(argument.expression),
+      type: context.typeOf(argument.expression),
       span: argument.span,
     });
     return elements.map((register) => ({ kind: 'value', register }) as const);

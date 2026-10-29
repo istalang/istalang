@@ -41,7 +41,7 @@ export class OptionalChains {
   /** Lowers `link`, the last link of a chain; the register of the chain's value. */
   lower(context: FunctionContext, link: Expression): Register {
     const { code } = context;
-    const type = context.body.typeOf(link);
+    const type = context.typeOf(link);
     if (!isEnum(type)) {
       unreachable(`A chain at ${link.span.start} isn't optional; the checker should have said so.`);
     }

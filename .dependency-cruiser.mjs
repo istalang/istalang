@@ -130,6 +130,7 @@ const checkerLayers = [
   'closures',
   'expressions',
   'statements',
+  'lookup', // what tools ask by position, read from what every layer beneath decided
 ];
 
 /** What later phases may import of the checker: its entry and the models its surface names. */
@@ -141,6 +142,7 @@ const checkerSurface = [
   'constant-form.ts',
   'json-form.ts',
   'checked-annotation.ts',
+  'denotation.ts',
   'host-externs.ts',
   'types/type.ts',
   'types/substitution.ts',

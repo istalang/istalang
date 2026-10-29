@@ -18,7 +18,7 @@ import type { SourceText } from '../text/source-text.ts';
 import { bindProgram } from './binder/bind.ts';
 import { checkProgram } from './checker/check.ts';
 import { lower, lowerTests } from './lowering/lower.ts';
-import type { ModuleId, Program } from './program/program.ts';
+import { type ModuleId, type Program, programModule } from './program/program.ts';
 import type { FunctionDeclaration } from './syntax/declarations.ts';
 
 export interface ModuleDiagnostics {
@@ -28,6 +28,7 @@ export interface ModuleDiagnostics {
 }
 
 const diagnosed = new WeakMap<Program, ReadonlyMap<ModuleId, ModuleDiagnostics>>();
+const diagnosedModules = new WeakMap<Program, Map<ModuleId, ModuleDiagnostics>>();
 
 /**
  * Every module's diagnostics from every phase, in load order. A module the toolchain ships is
@@ -35,23 +36,27 @@ const diagnosed = new WeakMap<Program, ReadonlyMap<ModuleId, ModuleDiagnostics>>
  * a program uses of it is still checked, lazily, when lowering reads it.
  */
 export function diagnose(program: Program): ReadonlyMap<ModuleId, ModuleDiagnostics> {
-  return memo(diagnosed, program, () => {
-    const bindings = bindProgram(program);
-    const checker = checkProgram(program);
-    return new Map(
-      [...program.modules].map(([id, { tree, diagnostics, isStd }]) => [
-        id,
-        {
-          source: tree.source,
-          diagnostics: [
-            ...tree.diagnostics,
-            ...diagnostics,
-            ...bindings.diagnosticsOf(id),
-            ...(isStd ? [] : checker.diagnosticsOf(id)),
-          ].sort((first, second) => first.span.start - second.span.start),
-        },
-      ]),
-    );
+  return memo(
+    diagnosed,
+    program,
+    () => new Map([...program.modules.keys()].map((id) => [id, diagnoseModule(program, id)])),
+  );
+}
+
+/** One module's diagnostics from every phase, sorted by position; an editor asks per document. */
+export function diagnoseModule(program: Program, id: ModuleId): ModuleDiagnostics {
+  const modules = memo(diagnosedModules, program, () => new Map<ModuleId, ModuleDiagnostics>());
+  return memo(modules, id, () => {
+    const { tree, diagnostics, isStd } = programModule(program, id);
+    return {
+      source: tree.source,
+      diagnostics: [
+        ...tree.diagnostics,
+        ...diagnostics,
+        ...bindProgram(program).diagnosticsOf(id),
+        ...(isStd ? [] : checkProgram(program).diagnosticsOf(id)),
+      ].sort((first, second) => first.span.start - second.span.start),
+    };
   });
 }
 

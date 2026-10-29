@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, diagnostics, errors, testing]
 ---
 
@@ -17,6 +17,7 @@ tags: [reuse, diagnostics, errors, testing]
 - test whether a `Diagnostic` is an error (stops compilation) vs a warning → `isError`, `Diagnostic`, `Severity` (`src/diagnostics/diagnostic.ts`)
 - format one `Diagnostic` with `path:line:column` header, source line and caret → `renderDiagnostic` (`src/diagnostics/render.ts`)
 - write all module diagnostics with an error and warning summary count → `reportDiagnostics` (`src/cli/report.ts`)
+- one module's diagnostics from every phase, sorted (an editor's document) → `diagnoseModule` (`src/compiler/compile.ts`); every module's → `diagnose`
 
 ## One-way rules
 

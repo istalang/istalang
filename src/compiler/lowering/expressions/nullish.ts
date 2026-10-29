@@ -13,9 +13,9 @@ import type { FunctionContext } from '../context.ts';
 import { branchOnVariant, isEnum, payloadOf, variantTestOf } from './variants.ts';
 
 export function lowerNullish(context: FunctionContext, node: Binary): Register {
-  const { code, body } = context;
+  const { code } = context;
   const left = context.expression(node.left);
-  const leftType = body.typeOf(node.left);
+  const leftType = context.typeOf(node.left);
   if (!isEnum(leftType)) {
     unreachable(`'??' needs an optional at ${node.span.start}; the checker should have said so.`);
   }
@@ -26,7 +26,7 @@ export function lowerNullish(context: FunctionContext, node: Binary): Register {
   const isSome = variantTestOf(context.checker, left, leftType, optionalVariants.some);
   branchOnVariant(context, isSome, { matched: some, otherwise: none }, node.span);
   code.place(some);
-  const keeps = sameType(body.typeOf(node), leftType);
+  const keeps = sameType(context.typeOf(node), leftType);
   const value = keeps ? left : payloadOf(context, left, node.left.span);
   code.emit({ kind: 'move', span: node.left.span, dst: result, src: value });
   code.jump(end, node.span);

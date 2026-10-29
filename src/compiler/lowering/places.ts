@@ -82,7 +82,7 @@ export function enterReferenced(context: FunctionContext, node: Expression): Ref
   if (location.kind === 'place') {
     return { place: location.place, leave: undefined };
   }
-  const cell = cellRegister(context, context.body.typeOf(node));
+  const cell = cellRegister(context, context.typeOf(node));
   const src = readAt(context, location, node.span);
   context.code.emit({ kind: 'move', span: node.span, dst: cell, src });
   return {
@@ -109,7 +109,7 @@ export function cellRegister(context: FunctionContext, type: Type): Register {
 
 /** The position, in its struct's declaration order, of the field `node` reads. */
 function fieldPositionOf(context: FunctionContext, node: MemberAccess): number {
-  const read = context.body.fieldReadOf(node);
+  const read = context.fieldReadOf(node);
   if (read.kind !== 'position') {
     unreachable(`The field read at ${node.span.start} has no position: it reads no struct.`);
   }
@@ -182,7 +182,7 @@ function changeAt(
   }
   const { accessor, path } = location;
   const register = passedOn
-    ? cellRegister(context, context.body.typeOf(accessor.node))
+    ? cellRegister(context, context.typeOf(accessor.node))
     : context.code.allocate();
   accessor.read(accessor.node.span, register);
   change({ register, path: [...path] });

@@ -88,7 +88,7 @@ function emitVariant(
   name: string,
   fields: readonly Register[],
 ): Register {
-  const type = context.body.typeOf(node);
+  const type = context.typeOf(node);
   if (!isEnum(type)) {
     unreachable(`Expected an enum at ${node.span.start}; the checker should have said so.`);
   }

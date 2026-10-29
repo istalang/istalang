@@ -9,6 +9,7 @@ import type { Annotatable, Annotation } from '../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { Statement } from '../syntax/statements.ts';
+import type { CheckedBody } from './check.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { FieldMember, NominalType, Type } from './types/type.ts';
 
@@ -41,4 +42,6 @@ export interface AnnotationQueries {
   readonly waypointOf: (module: ModuleId, statement: Statement) => string | undefined;
   /** The title a function's `@Suite` gives its suite (§10); undefined without one. */
   readonly suiteTitleOf: (module: ModuleId, declaration: FunctionDeclaration) => string | undefined;
+  /** The checking of `annotation`'s value; undefined until its item's annotations are checked. */
+  readonly bodyOf: (annotation: Annotation) => CheckedBody | undefined;
 }

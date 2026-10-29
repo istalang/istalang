@@ -51,7 +51,7 @@ export function lowerNamed(
     unreachable(`'${name.text}' names no value; the checker should have said so.`);
   }
   if (entity.owner.kind === 'ExternConstantDeclaration') {
-    const reader = context.tables.externConstantIndex(entity.owner, context.body.typeOf(read));
+    const reader = context.tables.externConstantIndex(entity.owner, context.typeOf(read));
     return emitCall(context, { span: read.span, callee: reader, arguments: [] });
   }
   return context.variables.registerOf(entity.name);

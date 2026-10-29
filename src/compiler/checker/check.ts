@@ -10,7 +10,7 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { LanguageModule, WellKnownDeclaration } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
-import type { Bindings, Entity, VariableEntity } from '../binder/entities.ts';
+import type { Bindings, Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type {
@@ -42,6 +42,7 @@ import type { AnnotationQueries } from './checked-annotation.ts';
 import type { FieldRead } from './checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
+import type { LookupQueries } from './denotation.ts';
 import type { JsonFormQueries } from './json-form.ts';
 import { ProgramChecker } from './program-checker.ts';
 import type {
@@ -162,8 +163,8 @@ export interface LabelResolution {
 
 /** What checking a function body found, for lowering (architecture: phase contracts). */
 export interface CheckedBody {
-  /** The type of an expression of this body; the error type for one never checked. */
-  readonly typeOf: (expression: Expression) => Type;
+  /** The type of an expression of this body; undefined for one never checked. */
+  readonly typeOf: (expression: Expression) => Type | undefined;
   /** The function each call site of this body calls, or each function value names. */
   readonly resolved: ReadonlyMap<ResolvedSite, ResolvedCall>;
   /** The calls of function values, which call whatever their callee gives (§3.14). */
@@ -200,12 +201,23 @@ export interface CheckedBody {
    * literal the checker found a mistake in.
    */
   readonly sourcesOf: (literal: FieldsLiteral) => readonly FieldSource[] | undefined;
-  /** A `match` case's or `is`'s pattern as checked (§3.11). */
-  readonly patternOf: (pattern: Pattern) => CheckedPattern;
+  /** A `match` case's or `is`'s pattern as checked (§3.11); undefined for one never checked. */
+  readonly patternOf: (pattern: Pattern) => CheckedPattern | undefined;
   /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
   readonly chainOf: (link: Expression) => ChainLink | undefined;
-  /** How the field read `access` reaches its field; asked only of a program checked clean. */
-  readonly fieldReadOf: (access: MemberAccess) => FieldRead;
+  /** How the field read `access` reaches its field; undefined where it reads no field. */
+  readonly fieldReadOf: (access: MemberAccess) => FieldRead | undefined;
+  /**
+   * The type of a name the body declares: a variable's, a parameter's, or what a loop, a pattern
+   * or a `select` case binds; undefined for any other name.
+   */
+  readonly declaredTypeOf: (name: Identifier) => Type | undefined;
+  /** The field a field's name in a struct literal, a pattern or an assignment's target names. */
+  readonly namedFieldOf: (name: Identifier) => FieldMember | undefined;
+  /** The variant a bare variant name chose by the type expected of it (§3.11). */
+  readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
+  /** The functions a call site chose among, in the order considered; none where nothing was. */
+  readonly candidatesAt: (site: ResolvedSite) => readonly FunctionDeclaration[];
   /** What each `break`, `continue` and `hold(name)` of the body names (§3.4, §4). */
   readonly labels: LabelResolution;
   /** What the body produces: `T` for an async function returning `Future<T>`. */
@@ -235,7 +247,7 @@ export interface Checker {
   readonly typeKeys: TypeKeys;
   /** Every diagnostic of checking `module`, which checks all of its declarations. */
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];
-  /** The module whose item `declaration` is, a top-level constant's among them. */
+  /** The module declaring `declaration`: whose item it is, or whose tree holds a local one. */
   readonly moduleOf: (declaration: Declaration | VariableDeclaration) => ModuleId;
   readonly parametersOf: (declaration: FunctionDeclaration) => readonly SignatureParameter[];
   /** What calling the function yields: `Future<T>` for an async one. */
@@ -299,6 +311,8 @@ export interface Checker {
   readonly json: JsonFormQueries;
   /** Annotations, each checked once where its item stands (§3.16; rules/annotations.ts). */
   readonly annotations: AnnotationQueries;
+  /** What tools ask by position: what names denote, the body holding a node (lookup/). */
+  readonly lookup: LookupQueries;
 }
 
 const checkers = new WeakMap<Program, Checker>();

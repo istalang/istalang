@@ -82,10 +82,18 @@ export function staticCandidates(
   target: StaticTarget,
   name: string,
 ): readonly Candidate[] {
+  return staticCandidatesIn(checker, modulesSeenFrom(checker, module), target, name);
+}
+
+/** The modules whose declarations `module` sees: its own, those it imports, and the prelude. */
+export function modulesSeenFrom(
+  checker: Pick<CheckerContext, 'program'>,
+  module: ModuleId,
+): readonly ModuleId[] {
   const { program } = checker;
   const imported = program.modules.get(module)?.imports.values() ?? [];
   const prelude = program.roles.prelude === undefined ? [] : [program.roles.prelude];
-  return staticCandidatesIn(checker, [module, ...imported, ...prelude], target, name);
+  return [module, ...imported, ...prelude];
 }
 
 /**
@@ -128,11 +136,19 @@ function staticCandidatesIn(
       .filter((requirement) => requirement.declaration.owner !== undefined)
       .map((requirement) => ({ declaration: requirement.declaration, requirement }));
   }
+  return staticFunctionsAmong(checker, modules, target)
+    .filter((declaration) => declaration.name.text === name)
+    .map((declaration) => ({ declaration }));
+}
+
+/** The static functions on `target`'s type declared in its own module or one of `modules`. */
+export function staticFunctionsAmong(
+  checker: Pick<CheckerContext, 'staticFunctionsIn'>,
+  modules: readonly ModuleId[],
+  target: Extract<StaticTarget, { readonly kind: 'owner' }>,
+): readonly FunctionDeclaration[] {
   return [...new Set([...modules, target.module])].flatMap((each) =>
-    checker
-      .staticFunctionsIn(each, target.owner)
-      .filter((declaration) => declaration.name.text === name)
-      .map((declaration) => ({ declaration })),
+    checker.staticFunctionsIn(each, target.owner),
   );
 }
 

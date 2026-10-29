@@ -15,7 +15,6 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
@@ -25,7 +24,6 @@ import { formAt } from '../constant-form.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { LazyChecks } from '../lazy-checks.ts';
-import { walkTargets } from '../patterns/walk.ts';
 import { computeConstant, refusalOf } from '../rules/computation.ts';
 import { errorType, type Type } from '../types/type.ts';
 
@@ -34,10 +32,13 @@ export interface ConstantSeams {
   readonly checker: CheckerContext;
   /** The module whose top-level item `declaration` is; undefined for a local variable. */
   readonly moduleOfItem: (declaration: VariableDeclaration) => ModuleId | undefined;
-  /** Checks `initializer` in `module` against `declared`, as a value of its own. */
-  readonly checkValue: (
+  /**
+   * Checks `declaration` in `module` as a value of its own, its initializer against `declared`,
+   * then its targets, which take the value apart as a local declaration's do.
+   */
+  readonly checkConstant: (
     module: ModuleId,
-    initializer: Expression,
+    declaration: VariableDeclaration,
     declared: Type | undefined,
   ) => CheckedBody;
 }
@@ -121,7 +122,7 @@ export class ConstantChecks {
     const { checker } = this.#seams;
     const declared =
       declaration.type === undefined ? undefined : checker.resolveType(module, declaration.type);
-    const checked = this.#seams.checkValue(module, declaration.initializer, declared);
+    const checked = this.#seams.checkConstant(module, declaration, declared);
     const outcome = computeConstant(declaration.initializer, {
       checker,
       constant: declaration,
@@ -131,16 +132,11 @@ export class ConstantChecks {
     if (outcome.kind === 'refused') {
       checker.report(module, refusalOf(outcome, checkerDiagnostics.notConstant));
     }
-    const bindings = walkTargets(
-      {
-        fieldsOf: (type) => checker.fieldsOf(type),
-        entityOf: (name) => checker.bindings.entityOf(module, name),
-        report: (diagnostic) => checker.report(module, diagnostic),
-      },
-      declaration.targets,
-      checked.result,
-    );
     const form = outcome.kind === 'computed' ? outcome.form : undefined;
-    return { whole: { type: checked.result, form }, bindings, body: checked };
+    return {
+      whole: { type: checked.result, form },
+      bindings: checked.targetsOf(declaration),
+      body: checked,
+    };
   }
 }

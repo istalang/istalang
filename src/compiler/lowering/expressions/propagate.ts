@@ -14,7 +14,7 @@ import { branchOnVariant, buildVariant, isEnum, payloadOf, variantTestOf } from 
 export function lowerPropagate(context: FunctionContext, node: Propagate): Register {
   const { code } = context;
   const operand = context.expression(node.operand);
-  const operandType = context.body.typeOf(node.operand);
+  const operandType = context.typeOf(node.operand);
   const returned = context.result;
   if (!(isEnum(operandType) && isEnum(returned))) {
     unreachable(`'?' needs two Results at ${node.span.start}; the checker should have said so.`);

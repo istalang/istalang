@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ---
 
@@ -16,6 +16,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - look up top-level functions in a module (prelude joined) → `namedInModule` (`src/compiler/checker/resolution/candidates.ts`)
 - look up call candidates with ADL and type-parameter requirements → `topLevelCandidates`, `callCandidates` (`src/compiler/checker/resolution/candidates.ts`)
 - look up static or trait witness candidates → `staticCandidates`, `staticTargetOf`, `witnessCandidates` (`src/compiler/checker/resolution/candidates.ts`)
+- list the modules a module sees (its own, its imports, the prelude), or every static function on a type they declare → `modulesSeenFrom`, `staticFunctionsAmong` (`src/compiler/checker/resolution/candidates.ts`)
 - bind call or function-value arguments to parameter slots → `bindArguments`, `bindValue`, `positionalCounts` (`src/compiler/checker/resolution/binding.ts`)
 - map bound arguments to slots or test for a valid binding → `argumentSlotsOf`, `isBinding` (`src/compiler/checker/resolution/binding.ts`)
 - map argument indices to parameter indices or test if all parameters are passed → `parameterOfArgument`, `passesAll` (`src/compiler/checker/resolved-call.ts`)
@@ -41,6 +42,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - check aliasing of `&` arguments or destructuring places → `checkReferencedPlaces`, `checkDistinctPlaces` (`src/compiler/checker/calls/places.ts`)
 - mark a method receiver changed → `changeReceiver` (`src/compiler/checker/calls/places.ts`); test if a variable may change → `context.variables.isChangeable` (`src/compiler/checker/statements/variables.ts`)
 - resolve a type or fieldless struct in value/pattern position → `namedType`, `nameNodeOf`, `fieldlessStructOf` (`src/compiler/checker/resolution/named.ts`)
+- the type a binder entity names (a declared type with no arguments, a primitive, an alias) → `entityType` (`src/compiler/checker/resolution/named.ts`)
 - choose a bare or qualified enum variant against an expected type → `chooseVariant`, `sameEnum` (`src/compiler/checker/resolution/named.ts`)
 - check `for`/comprehension/spread iteration → `checkIterated`, `iteratedItem`, `checkLoopOver` (`src/compiler/checker/rules/iteration.ts`)
 
