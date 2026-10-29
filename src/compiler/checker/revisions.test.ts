@@ -1,20 +1,28 @@
 /**
- * A checker made after an earlier snapshot's (docs/work/m6-m7/incremental-checking.md, 7A.4):
- * over random edit sequences on corpus programs and std test modules, each revision answers every
- * module's diagnostics and every query at every node of every module the test owns as a checker
- * made afresh does; and after an edit of a module nothing imports, it checks no body outside that
- * module, and never a std body again.
+ * A checker made after an earlier snapshot's (docs/work/m6-m7/incremental-checking.md, 7A.4,
+ * 7A.7): over random edit sequences on corpus programs and std test modules, each revision answers
+ * every module's diagnostics and every query at every node of every module the test owns as a
+ * checker made afresh does; after an edit of a module nothing imports, it checks no body outside
+ * that module, and never a std body again; and after an edit inside one body that changes no
+ * declaration and no inferred result, it checks that body alone.
  */
 
-import { globSync, readFileSync } from 'node:fs';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
-import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
+import {
+  applied,
+  bodyEditChoices,
+  type Edit,
+  editedTexts,
+  editInsideBody,
+  editSequences,
+  stdTests,
+} from '../parser/edits.test-kit.ts';
 import type { Files } from '../program/program.test-kit.ts';
-import { idOf } from '../program/program.test-kit.ts';
+import { idOf, moduleAt } from '../program/program.test-kit.ts';
 import { isStdModule, type ModuleId, type Program } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { nodesUnder } from '../syntax/tree.ts';
@@ -22,66 +30,6 @@ import { checkedApart } from './check.test-kit.ts';
 import { type Checker, checkProgram } from './check.ts';
 import { answersAt } from './lookup/lookup.test-kit.ts';
 import type { ProgramChecker } from './program-checker.ts';
-
-const stdTests = globSync('*/*.test.ista', { cwd: new URL('../../stdlib/', import.meta.url) }).map(
-  (name) => ({
-    name: `std ${name}`,
-    text: readFileSync(new URL(`../../stdlib/${name}`, import.meta.url), 'utf8'),
-  }),
-);
-
-/** An edit of a module's text, its positions taken modulo what the text has. */
-type Edit =
-  | { readonly kind: 'delete' | 'duplicate'; readonly line: number }
-  | { readonly kind: 'replace' | 'rename'; readonly word: number; readonly by: number }
-  | { readonly kind: 'append'; readonly item: number };
-
-/** Items an edit appends: a function, a struct, and an enum whose variants others may name bare. */
-const appended = [
-  'fn appended(x: int) -> int: x + 1',
-  'struct Appended:\n  a: int',
-  'enum Appended:\n  None\n  Some\n  Red',
-];
-
-const editArbitrary: fc.Arbitrary<Edit> = fc.oneof(
-  fc.record({ kind: fc.constantFrom('delete', 'duplicate'), line: fc.nat() }),
-  fc.record({ kind: fc.constantFrom('replace', 'rename'), word: fc.nat(), by: fc.nat() }),
-  fc.record({ kind: fc.constant('append'), item: fc.nat(appended.length - 1) }),
-) as fc.Arbitrary<Edit>;
-
-const editSequences = fc.array(editArbitrary, { minLength: 1, maxLength: 3 });
-
-/** `text` after `edit`: a line deleted or doubled, a word replaced or renamed, an item added. */
-function applied(text: string, edit: Edit): string {
-  const lines = text.split('\n');
-  const words = [...text.matchAll(/[A-Za-z_]\w*/gu)];
-  switch (edit.kind) {
-    case 'delete':
-    case 'duplicate': {
-      const line = edit.line % Math.max(lines.length, 1);
-      const kept = edit.kind === 'delete' ? [] : [lines[line] ?? ''];
-      return [...lines.slice(0, line), ...kept, ...lines.slice(line)].join('\n');
-    }
-    case 'replace':
-    case 'rename': {
-      const word = words[edit.word % Math.max(words.length, 1)];
-      const by = words[edit.by % Math.max(words.length, 1)]?.[0] ?? 'x';
-      if (word?.index === undefined) {
-        return text;
-      }
-      if (edit.kind === 'rename') {
-        return text.replaceAll(new RegExp(`\\b${word[0]}\\b`, 'gu'), `${word[0]}Z`);
-      }
-      return text.slice(0, word.index) + by + text.slice(word.index + word[0].length);
-    }
-    case 'append':
-      return `${text}\n${appended[edit.item] ?? ''}\n`;
-    default: {
-      const unhandled: never = edit;
-      return unhandled;
-    }
-  }
-}
 
 /** Every node of `program`, numbered, so two checkers' answers name nodes alike. */
 function nodeNumbers(program: Program): ReadonlyMap<object, number> {
@@ -223,7 +171,7 @@ function bodiesChecked(sequence: Edited) {
 
 const names = { 'names/main': namesMain, 'names/lib': namesLib };
 
-const sources = [...runPrograms, ...invalidPrograms, ...stdTests].map(({ name, text }) => ({
+const sources = editedTexts.map(({ name, text }) => ({
   name,
   files: { 'main.test.ista': text },
 }));
@@ -280,6 +228,37 @@ describe('a checker made after an earlier one', () => {
               (checked[index + 1] ?? []).filter((each) => checker.moduleOf(each) !== idOf(edited)),
             );
           expect(elsewhere.map((each) => each.name.text)).toEqual([]);
+        }),
+        { numRuns: 3 },
+      );
+    },
+  );
+
+  it.each(twoModules)(
+    'checks only the body edited in $name, when the edit changes no declaration or inferred result',
+    ({ files, edited }) => {
+      const first = stdProgramOf(files);
+      const previous = checkedApart(first);
+      diagnosticsOf(previous, everyModule(first));
+      const declaresResult = (declaration: FunctionDeclaration) =>
+        declaration.returnType !== undefined;
+      fc.assert(
+        fc.property(bodyEditChoices, (choices) => {
+          const edit = editInsideBody(moduleAt(first, edited).tree, choices, declaresResult);
+          if (edit === undefined) {
+            return;
+          }
+          const checked: FunctionDeclaration[] = [];
+          const revision = checkedApart(stdProgramOf({ ...files, [edited]: edit.text }, first), {
+            previous,
+            observe: (table, key) => {
+              if (table === 'bodies') {
+                checked.push(key as FunctionDeclaration);
+              }
+            },
+          });
+          diagnosticsOf(revision, everyModule(revision.program));
+          expect(checked).toEqual([edit.edited]);
         }),
         { numRuns: 3 },
       );

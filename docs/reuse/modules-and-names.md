@@ -43,6 +43,7 @@ tags: [reuse, language, modules, program, binder, names]
 - get a module of a program, its tree and the program's checker, for an editor feature reading types → `checkedModule` (`src/language-service/checked-module.ts`)
 - find the module a namespace import loaded → `importedModule` (`src/language-service/namespaces.ts`)
 - bind a `Program`'s names (memoized per `Program` and per `SyntaxTree`) → `bindProgram` (`src/compiler/binder/bind.ts`)
+- make an entity, once per node it stands for, so it outlives edits elsewhere → `variableEntity`, `ownCallEntity`, `typeEntity`, `selfEntity`, `variantEntity`, `namespaceEntity`, `functionsEntity` (`src/compiler/binder/entities.ts`); an import's placeholder → `importPlaceholder` (`src/compiler/binder/scope.ts`)
 - resolve what an `Identifier` denotes or list a module's exports → `Bindings.entityOf`, `Bindings.exportsOf` (`src/compiler/binder/entities.ts`)
 - resolve a name a body uses where it is written, noting closure captures → `BodyContext.useEntity`; only ask → `BodyContext.entityOf` (`src/compiler/checker/context.ts`)
 - find an entity's declaring module, locals included, tell a top-level name apart, or join prelude overloads → `Bindings.moduleOf`, `Bindings.isTopLevel`, `Bindings.overloadsOf` (`src/compiler/binder/entities.ts`)

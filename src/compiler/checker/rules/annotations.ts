@@ -23,12 +23,12 @@ import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
-import type { NodeOf } from '../../syntax/node.ts';
+import type { Invalid, NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Statement } from '../../syntax/statements.ts';
-import { bodyChildrenOf, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import type { AnnotationPlace, CheckedAnnotation } from '../checked-annotation.ts';
@@ -203,17 +203,18 @@ export class Annotations implements AnnotationChecks {
     return fields.find((field) => field.declared?.node === node)?.declared?.type ?? errorType;
   }
 
-  /** The fields declared beside the field `node` of `module`: its struct's, or its enum's. */
+  /**
+   * The fields declared beside the field `node` of `module`: its struct's, or its enum's. The item
+   * declaring it is found among the module's items, which checking reads, not by walking its tree.
+   */
   #siblingsOf(module: ModuleId, node: NodeOf<string>): readonly FieldMember[] {
     const { checker } = this.#seams;
-    const tree = checker.inputs.treeOf(module);
-    const owner = parentOf(tree, node as SyntaxNode);
+    const owner = checker.inputs.itemsOf(module).find((item) => declaresField(item, node));
     if (owner?.kind === 'StructDeclaration' || owner?.kind === 'SharedStructDeclaration') {
       return checker.declaredFieldsOf(owner);
     }
-    const declaration = owner?.kind === 'Variant' ? parentOf(tree, owner) : undefined;
-    return declaration?.kind === 'EnumDeclaration'
-      ? checker.declaredVariantsOf(declaration).flatMap((variant) => variant.fields)
+    return owner?.kind === 'EnumDeclaration'
+      ? checker.declaredVariantsOf(owner).flatMap((variant) => variant.fields)
       : [];
   }
 
@@ -345,4 +346,19 @@ function waits(node: SyntaxNode): boolean {
     (node.kind === 'Select' && node.awaits) ||
     bodyChildrenOf(node).some(waits)
   );
+}
+
+/** Whether `item` declares the field `node`: a struct's own, or one of its variants'. */
+function declaresField(item: Declaration | Invalid, node: NodeOf<string>): boolean {
+  switch (item.kind) {
+    case 'StructDeclaration':
+    case 'SharedStructDeclaration':
+      return item.fields.some((field) => field === node);
+    case 'EnumDeclaration':
+      return item.variants.some(
+        (variant) => variant.kind === 'Variant' && variant.fields.some((field) => field === node),
+      );
+    default:
+      return false;
+  }
 }

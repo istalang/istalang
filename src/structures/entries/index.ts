@@ -34,9 +34,11 @@ import {
   notesFrom,
   notesOfReads,
   type Read,
+  readsFirst,
   type Table,
   type TableOptions,
 } from './entry.ts';
+import { TupleSet } from './tuple-set.ts';
 
 /** One kind of result, by key, computed once in its revision. */
 export interface EntryTable<Note, Key, Value, Context = void> {
@@ -172,7 +174,10 @@ export class Entries<Note> {
 
   #readInput(name: string, input: Input, args: readonly unknown[]): unknown {
     const answer = input.read(...args);
-    this.#running.at(-1)?.log.push({ kind: 'input', input: name, args, answer });
+    const reader = this.#running.at(-1);
+    if (reader !== undefined && readsFirst(reader, [name, ...args])) {
+      reader.log.push({ kind: 'input', input: name, args, answer });
+    }
     return answer;
   }
 
@@ -206,6 +211,7 @@ export class Entries<Note> {
       running: true,
       reads: new Set(),
       log: [],
+      inputsRead: undefined,
       notes: [],
       order: this.#started,
       lowest: this.#started,
@@ -230,6 +236,7 @@ export class Entries<Note> {
     this.#open.push(entry);
     try {
       if (!this.#takeOver(entry)) {
+        entry.inputsRead = new TupleSet();
         this.#observe?.(options.name, entry.key);
         entry.value = options.compute(entry.key, entry.context);
         entry.member = isMember(entry);
@@ -243,6 +250,7 @@ export class Entries<Note> {
     } finally {
       this.#running.pop();
       entry.running = false;
+      entry.inputsRead = undefined;
     }
     if (reader !== undefined) {
       reader.lowest = Math.min(reader.lowest, entry.lowest);
@@ -286,9 +294,12 @@ export class Entries<Note> {
         return equal(read.answer, this.#get(table, read.entry.key, read.entry.context));
       }
       case 'input': {
+        // The log replayed holds each read once already, so it is logged again as it is read.
         const input =
           this.#inputs.get(read.input) ?? unreachable(`No input is named ${read.input}.`);
-        return input.equal(read.answer, this.#readInput(read.input, input, read.args));
+        const answer = input.read(...read.args);
+        this.#current().log.push({ ...read, answer });
+        return input.equal(read.answer, answer);
       }
       case 'notes':
         return sameNotes(read.notes, this.#readNotes());

@@ -2,9 +2,10 @@
  * What a name denotes, as the binder hands it to the checker: the binder's output vocabulary.
  *
  * - Entities point at the syntax that declares them and carry nothing derived. Their types and
- *   meaning are the checker's, keyed by entity identity. Every entity is made while binding one
- *   tree and lives as long as that tree, so an unchanged module keeps its entities across Program
- *   snapshots, and everything the checker memoized on them.
+ *   meaning are the checker's, keyed by entity identity. An entity is made once per node it stands
+ *   for (a function set once per list of overloads), however often a module is bound, so a segment
+ *   an edit left alike keeps its nodes (parser/reuse.ts) and with them its entities, and everything
+ *   the checker took over about them.
  * - What depends on the whole program is a query on Bindings, memoized per Program: a function
  *   set's overloads with the prelude's joined, a bare variant's candidates.
  * - Values and types share one namespace per scope. Naming conventions keep them apart (types are
@@ -19,6 +20,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
+import { memo, SequenceMemo } from '../../structures/memo.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
   EnumDeclaration,
@@ -112,7 +114,7 @@ export interface PrimitiveEntity {
 }
 
 /** `Self` inside a trait: the type that satisfies it (§3.10). */
-interface SelfEntity {
+export interface SelfEntity {
   readonly kind: 'self';
   readonly trait: TraitDeclaration;
 }
@@ -149,6 +151,61 @@ export type Entity =
   | NamespaceEntity;
 
 /** One name in a module that denotes an entity. */
+const variables = new WeakMap<Identifier, VariableEntity>();
+const ownCalls = new WeakMap<FunctionDeclaration | Lambda, VariableEntity>();
+const types = new WeakMap<TypeDeclaration, TypeEntity>();
+const selves = new WeakMap<TraitDeclaration, SelfEntity>();
+const variants = new WeakMap<Variant, VariantEntity>();
+const namespaces = new WeakMap<NamespaceImport, NamespaceEntity>();
+const functionSets = new SequenceMemo<FunctionDeclaration, FunctionsEntity>();
+
+/** The variable `name` declares, `owner` declaring it. */
+export function variableEntity(name: Identifier, owner: VariableOwner): VariableEntity {
+  return memo(variables, name, () => ({ kind: 'variable', name, owner }));
+}
+
+/**
+ * The variable an async function holds its own call in, named like the function where it declares
+ * its name, so a name before a `.` in its body reads it (§7).
+ */
+export function ownCallEntity(
+  node: FunctionDeclaration | Lambda,
+  declared: Identifier,
+): VariableEntity {
+  return memo(ownCalls, node, () => {
+    const name: Identifier = { kind: 'Identifier', span: declared.span, text: declared.text };
+    return { kind: 'variable', name, owner: { kind: 'OwnCall', function: node } };
+  });
+}
+
+export function typeEntity(declaration: TypeDeclaration): TypeEntity {
+  return memo(types, declaration, () => ({ kind: 'type', declaration }));
+}
+
+/** `Self` in `trait`. */
+export function selfEntity(trait: TraitDeclaration): SelfEntity {
+  return memo(selves, trait, () => ({ kind: 'self', trait }));
+}
+
+export function variantEntity(declaration: EnumDeclaration, variant: Variant): VariantEntity {
+  return memo(variants, variant, () => ({ kind: 'variant', enum: declaration, variant }));
+}
+
+export function namespaceEntity(declaration: NamespaceImport): NamespaceEntity {
+  return memo(namespaces, declaration, () => ({ kind: 'namespace', declaration }));
+}
+
+/** The top-level functions `overloads`, all of one name, as one set. */
+export function functionsEntity(
+  overloads: readonly [FunctionDeclaration, ...FunctionDeclaration[]],
+): FunctionsEntity {
+  return functionSets.get(overloads, () => ({
+    kind: 'functions',
+    name: overloads[0].name.text,
+    overloads,
+  }));
+}
+
 export interface EntityUse {
   readonly module: ModuleId;
   readonly name: Identifier;

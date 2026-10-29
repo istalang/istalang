@@ -12,8 +12,8 @@
  * goes to `free` with the reason a scope gave for missing it. A qualified name (`m.Pair`,
  * `Decision.Expired`) goes to `paths` whole: its later parts are resolved once its head is.
  *
- * Every entity is made here, per tree, never while linking: an unchanged module keeps the
- * identity of everything it declares or refers to across Program snapshots.
+ * Every entity is made here, never while linking, once per node it stands for (entities.ts): a
+ * segment an edit left alike keeps the identity of everything it declares or refers to.
  *
  * Each category notes the scope it binds each node in (`enter`), so tools can tell afterwards which
  * names are visible where (visibility.ts).
@@ -22,10 +22,10 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { Convention } from '../../language/naming.ts';
 import { entryFunction } from '../../language/well-known.ts';
-import { memo } from '../../structures/memo.ts';
+import { memo, SequenceMemo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { FunctionDeclaration, Module } from '../syntax/declarations.ts';
 import type { Comprehension, Expression, Lambda } from '../syntax/expressions/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
@@ -36,9 +36,11 @@ import type { NamedType, TypeNode } from '../syntax/types.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import {
   localFunctionOf,
+  ownCallEntity,
   type VariableEntity,
   type VariableOwner,
   type VariantsEntity,
+  variableEntity,
 } from './entities.ts';
 import { conventionViolation } from './naming.ts';
 import type { LocalEntity, Miss, Scope, ScopeSnapshot } from './scope.ts';
@@ -83,11 +85,14 @@ export interface LocalResult {
   readonly paths: readonly QualifiedPath[];
   readonly diagnostics: readonly Diagnostic<AnchoredSpan>[];
   readonly visibility: Visibility;
-  /** What a bare name denotes when it may be any variant so named: one entity per name per tree. */
+  /** What a bare name denotes when it may be any variant so named: one entity per name per module. */
   readonly variantsNamed: (name: string) => VariantsEntity;
   /** Every entity the tree's scopes defined. */
   readonly defined: ReadonlySet<LocalEntity>;
 }
+
+/** Per module, by its items, the entity of each bare name that may be any variant so named. */
+const variantsByModule = new SequenceMemo<Module['items'][number], Map<string, VariantsEntity>>();
 
 /** The handler of a kind whose nodes hold no names. */
 export const holdsNoNames = (): void => undefined;
@@ -133,7 +138,6 @@ export class LocalBinder {
   readonly #free: FreeName[] = [];
   readonly #paths: QualifiedPath[] = [];
   readonly #diagnostics: Diagnostic<AnchoredSpan>[] = [];
-  readonly #variants = new Map<string, VariantsEntity>();
   readonly #ownCalls = new Map<FunctionDeclaration | Lambda, VariableEntity>();
   readonly #linkedHeads: Identifier[] = [];
   readonly #notes = new VisibilityNotes();
@@ -256,7 +260,7 @@ export class LocalBinder {
 
   /** Declares a camelCase variable whose declaring node is `owner`. */
   declareVariable(scope: Scope, name: Identifier, owner: VariableOwner): void {
-    this.declare(scope, name, { kind: 'variable', name, owner }, { convention: 'value' });
+    this.declare(scope, name, variableEntity(name, owner), { convention: 'value' });
   }
 
   /**
@@ -306,24 +310,22 @@ export class LocalBinder {
     }
   }
 
-  /**
-   * One variable per function per tree, named like the function where it declares its name, so
-   * it survives every snapshot that keeps the tree.
-   */
   #ownCallOf(node: FunctionDeclaration | Lambda): VariableEntity {
-    return memo(this.#ownCalls, node, () => {
-      const declared = node.name;
-      if (declared === undefined) {
-        unreachable('Only a named function has a call its name reads.');
-      }
-      const name: Identifier = { kind: 'Identifier', span: declared.span, text: declared.text };
-      return { kind: 'variable', name, owner: { kind: 'OwnCall', function: node } };
-    });
+    return memo(this.#ownCalls, node, () =>
+      ownCallEntity(
+        node,
+        node.name ?? unreachable('Only a named function has a call its name reads.'),
+      ),
+    );
   }
 
-  /** One entity per bare name per tree, so it survives every snapshot that keeps the tree. */
+  /**
+   * One entity per bare name per module, kept while the module's items are, so an edit inside a
+   * body keeps it (entities.ts).
+   */
   #variantsNamed(name: string): VariantsEntity {
-    return memo(this.#variants, name, () => ({ kind: 'variants', name }));
+    const ofModule = variantsByModule.get(this.tree.root.items, () => new Map());
+    return memo(ofModule, name, () => ({ kind: 'variants', name }));
   }
 }
 

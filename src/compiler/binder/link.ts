@@ -19,9 +19,10 @@
  *   it as a missing variant.
  *
  * Linking makes no entities but the empty function sets of names left to argument-dependent
- * lookup, and those once per tree: it maps names to the ones each tree made, so their identities
- * hold across snapshots. What depends on the whole program (a function set joined with the
- * prelude's, a bare name's candidate variants) is answered per query and memoized on the Program.
+ * lookup, and those once per module's items: it maps names to the ones binding made, so their
+ * identities hold across snapshots. What depends on the whole program (a function set joined with
+ * the prelude's, a bare name's candidate variants) is answered per query and memoized on the
+ * Program.
  *
  * Imported names are never re-exported, so resolving one module's imports needs only the others'
  * own declarations, and linking needs no fixpoint even when imports form cycles. Every module's
@@ -30,9 +31,9 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { memo } from '../../structures/memo.ts';
-import { isTestModule, type ModuleId, type Program } from '../program/program.ts';
-import type { EnumDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
+import { memo, SequenceMemo } from '../../structures/memo.ts';
+import { isTestModule, type ModuleId, type Program, programModule } from '../program/program.ts';
+import type { EnumDeclaration, FunctionDeclaration, Module } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { type AnchoredSpan, diagnosticIn } from '../syntax/positions.ts';
 import { bindModule, type ModuleBindings } from './bind-module.ts';
@@ -50,11 +51,11 @@ import type { ImportPlaceholder, LocalEntity } from './scope.ts';
 import { usesByEntity } from './uses.ts';
 
 /**
- * Per module, the empty function set each called name no scope defines denotes. It is made once
- * per module's own bindings, as entities are, so a later Program reusing the tree keeps it, and
- * everything the checker took over about it.
+ * Per module, the empty function set each called name no scope defines denotes. It is kept while
+ * the module's items are, as entities are kept with their nodes (entities.ts), so an edit inside a
+ * body keeps it, and everything the checker took over about it.
  */
-const unseenFunctions = new WeakMap<ModuleBindings, Map<string, FunctionsEntity>>();
+const unseenFunctions = new SequenceMemo<Module['items'][number], Map<string, FunctionsEntity>>();
 
 interface ModuleLinks {
   /** The module linked. */
@@ -324,9 +325,7 @@ class Linker {
     const entity =
       this.#preludeFor(id)?.exports.get(name.text) ??
       (isVariant ? variants : undefined) ??
-      (role === 'callee' && miss === undefined
-        ? this.#unseenFunction(id, links.local, name.text)
-        : undefined);
+      (role === 'callee' && miss === undefined ? this.#unseenFunction(id, name.text) : undefined);
     if (entity !== undefined) {
       links.resolved.set(name, entity);
       return;
@@ -354,8 +353,9 @@ class Linker {
     }
   }
 
-  #unseenFunction(id: ModuleId, local: ModuleBindings, name: string): FunctionsEntity {
-    const ofModule = memo(unseenFunctions, local, () => new Map<string, FunctionsEntity>());
+  #unseenFunction(id: ModuleId, name: string): FunctionsEntity {
+    const { items } = programModule(this.#program, id).tree.root;
+    const ofModule = unseenFunctions.get(items, () => new Map<string, FunctionsEntity>());
     const entity = memo(
       ofModule,
       name,

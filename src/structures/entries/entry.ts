@@ -6,6 +6,7 @@
 
 import type { Equality } from '../equality.ts';
 import { unreachable } from '../unreachable.ts';
+import type { TupleSet } from './tuple-set.ts';
 
 /** How a table's entries answer in a cycle. */
 interface Cyclic<Key, Value> {
@@ -59,6 +60,8 @@ export interface Entry<Note> {
   readonly reads: Set<Entry<Note>>;
   /** Every read, in the order made, for a later revision to replay. */
   readonly log: Read<Note>[];
+  /** While it computes, the inputs it has read, so it logs each once: read again, one answers alike. */
+  inputsRead: TupleSet | undefined;
   readonly notes: Note[];
   /** Tarjan's: the order the entry started in, and the lowest order it reached on the stack. */
   readonly order: number;
@@ -69,6 +72,13 @@ export interface Entry<Note> {
   reachedRunning: boolean;
   /** Whether it lies on a cycle, so that it answers its table's stand-in. */
   member: boolean;
+}
+
+/** Whether `entry`, computing, reads the input of `read` (its name, then its arguments) first. */
+export function readsFirst<Note>(entry: Entry<Note>, read: readonly unknown[]): boolean {
+  return (entry.inputsRead ?? unreachable('An input was read by an entry not computing.')).add(
+    read,
+  );
 }
 
 /** Whether `entry`, done computing, lies on a cycle. */

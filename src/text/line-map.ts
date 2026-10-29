@@ -37,6 +37,15 @@ export function lineBreakLength(text: string, offset: number): number {
   return text[offset + 1] === lineFeed ? 2 : 1;
 }
 
+/** Where the line holding `offset` starts: just past the line break before it, or 0. */
+export function lineStartAt(text: string, offset: number): number {
+  let start = offset;
+  while (start > 0 && lineBreakLength(text, start - 1) === 0) {
+    start -= 1;
+  }
+  return start;
+}
+
 export class LineMap {
   readonly #lineStarts: readonly number[];
   /** Where each line's content ends, before its line break. */

@@ -7,7 +7,7 @@
  * - A module is read in parts (its items, the modules its imports name, a function's body, its
  *   tree), never whole, so an entry depends only on the parts it used.
  * - Every Bindings answer is an input too. Entities compare by identity, which holds across
- *   revisions for every module whose tree was reused (binder/entities.ts); lists and maps compare
+ *   revisions for every node a revision's tree kept (binder/entities.ts); lists and maps compare
  *   item by item.
  * - A bare variant is read as the one its expected type chooses, not as every variant so named, so
  *   an enum added elsewhere changes only the entries whose choice it changes.

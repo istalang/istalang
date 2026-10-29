@@ -35,6 +35,7 @@ import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { endOf } from '../syntax/positions.ts';
 import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
+import { selfEntity, typeEntity, variableEntity } from './entities.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 import { bindTargets, bindVariableValue } from './statements.ts';
@@ -100,8 +101,7 @@ function bindFieldDefaults(
   }
   const inner = Scope.nested(scope);
   bindDefaults(binder, { node: owner, parameters: fieldsFunction.parameters }, inner, (field) => {
-    const entity = { kind: 'variable', name: field.name, owner: field } as const;
-    binder.declare(inner, field.name, entity, { clash: false });
+    binder.declare(inner, field.name, variableEntity(field.name, field), { clash: false });
   });
 }
 
@@ -179,7 +179,7 @@ function bindEnum(binder: LocalBinder, node: EnumDeclaration, scope: Scope): voi
 
 function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): void {
   const inner = Scope.nested(scope);
-  inner.define('Self', { kind: 'self', trait: node });
+  inner.define('Self', selfEntity(node));
   defineTypeParameters(binder, node.typeParameters, inner);
   binder.enter(node, inner);
   const fields = node.members.filter((member) => member.kind !== 'FunctionDeclaration');
@@ -208,8 +208,7 @@ function typeParameterScope(
 function defineTypeParameters(binder: LocalBinder, parameters: TypeParameters, scope: Scope): void {
   const declared = typeParametersOf(parameters);
   for (const parameter of declared) {
-    const entity = { kind: 'type', declaration: parameter } as const;
-    binder.declare(scope, parameter.name, entity, { convention: 'type' });
+    binder.declare(scope, parameter.name, typeEntity(parameter), { convention: 'type' });
   }
   for (const parameter of declared) {
     for (const constraint of parameter.constraints) {

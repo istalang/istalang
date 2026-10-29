@@ -18,8 +18,9 @@
  *   `imports`. Loading is total over whatever loaders return; a `read` that throws (the system
  *   refusing a file) propagates to the app, which reports it.
  * - A Program is immutable. Building one with the previous snapshot reuses each tree whose text is
- *   unchanged, by identity. Everything derived per tree (bindings, types) is memoized on that
- *   identity, so an edit re-derives only what it touched, and no cache is invalidated by hand.
+ *   unchanged, by identity, and parses an edited module keeping the nodes of every segment the edit
+ *   left alike (parser/reuse.ts). Everything derived is memoized on those identities, so an edit
+ *   re-derives only what it touched, and no cache is invalidated by hand.
  * - Loading, meaning scanning, parsing and resolving, belongs here: discovering a module's imports
  *   needs its tree. The coordinator (compile.ts) takes over from a Program.
  */
@@ -127,7 +128,7 @@ export interface ProgramOptions {
   readonly roles?: Readonly<Partial<Record<LanguageModule, LocatedModule>>>;
 }
 
-/** Loads the modules reachable from the roots, reusing unchanged trees from `previous`. */
+/** Loads the modules reachable from the roots, reusing what an edit left alike of `previous`. */
 export function buildProgram(options: ProgramOptions, previous?: Program): Program {
   const modules = new Map<ModuleId, ProgramModule>();
   const roles = Object.entries(options.roles ?? {});
@@ -136,7 +137,8 @@ export function buildProgram(options: ProgramOptions, previous?: Program): Progr
     const { id, name, label, read, isStd = false, isTest = false } = next;
     if (!modules.has(id)) {
       const source = createSourceText(label, read());
-      const tree = reusableTree(previous?.modules.get(id)?.tree, source) ?? parseSource(source);
+      const before = previous?.modules.get(id)?.tree;
+      const tree = reusableTree(before, source) ?? parse(source, scan(source), before);
       const { imports, diagnostics, found } = resolveImports(tree, id, options.loaders);
       modules.set(id, { id, name, isStd, isTest, tree, imports, diagnostics });
       queue.push(...found);
@@ -152,10 +154,6 @@ export function buildProgram(options: ProgramOptions, previous?: Program): Progr
 function reusableTree(tree: SyntaxTree | undefined, source: SourceText): SyntaxTree | undefined {
   const unchanged = tree?.source.text === source.text && tree.source.path === source.path;
   return unchanged ? tree : undefined;
-}
-
-function parseSource(source: SourceText): SyntaxTree {
-  return parse(source, scan(source));
 }
 
 interface ResolvedImports extends Pick<ProgramModule, 'imports' | 'diagnostics'> {

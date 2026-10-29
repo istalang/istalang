@@ -34,6 +34,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - state what a language server must answer over the corpus, from the corpus project loaded apart, and its open documents there → `corpusProgram`, `programDocuments`, `ProgramDocument` (`src/lsp/corpus-client.test-kit.ts`)
 - tell whether a resolved name was looked up in scope (not a qualified tail, a declaring name, an ADL callee or an own call) → `isLookedUp` (`src/compiler/binder/bind.test-kit.ts`)
 - build an in-memory `Program` or `ModuleLoader` → `programOf`, `memoryLoader`, `idOf`, `moduleAt`, `loadedPaths` (`src/compiler/program/program.test-kit.ts`)
+- edit a module's text as an editor does (random edit sequences, or one name renamed inside one function's body), over the corpus and std test modules → `editSequences`, `applied`, `editInsideBody`, `bodyEditChoices`, `editedTexts`, `stdTests` (`src/compiler/parser/edits.test-kit.ts`)
 - build a `Program` with the prelude or all std modules (cached) → `preludeProgramOf`, `stdProgramOf`, `boundReport` (`src/compiler/binder/bind.test-kit.ts`)
 - inspect bound entities by name occurrence in source order → `namesIn`, `entityOfName`, `declaringName` (`src/compiler/binder/bind.test-kit.ts`)
 - sweep every name the binder resolved over the corpus and std modules → `boundCorpus`, `resolvedNames` (`src/compiler/binder/bind.test-kit.ts`)

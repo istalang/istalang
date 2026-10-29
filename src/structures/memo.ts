@@ -24,3 +24,27 @@ export function memo<Key, Value>(
   cache.set(key, value);
   return value;
 }
+
+/**
+ * Values each derived from a sequence of objects, such as a module's items: the same objects in the
+ * same order find a value again, and a value goes once one of its objects is collected.
+ */
+export class SequenceMemo<Item extends object, Value> {
+  readonly #root: SequenceNode<Item, Value> = { next: new WeakMap() };
+
+  /** The value `compute` gives for `items`, computed the first time they are asked for. */
+  get(items: readonly Item[], compute: () => Value): Value {
+    let node = this.#root;
+    for (const item of items) {
+      node = memo(node.next, item, () => ({ next: new WeakMap() }));
+    }
+    node.found ??= { value: compute() };
+    return node.found.value;
+  }
+}
+
+/** One step of a sequence: the steps after it, and the value of the sequence ending at it. */
+interface SequenceNode<Item extends object, Value> {
+  readonly next: WeakMap<Item, SequenceNode<Item, Value>>;
+  found?: { readonly value: Value };
+}

@@ -24,9 +24,18 @@ import {
 import type { Identifier } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import { binderDiagnostics } from './diagnostics.ts';
-import type { Entity, FunctionsEntity, VariantEntity } from './entities.ts';
+import {
+  type Entity,
+  type FunctionsEntity,
+  functionsEntity,
+  namespaceEntity,
+  typeEntity,
+  type VariantEntity,
+  variableEntity,
+  variantEntity,
+} from './entities.ts';
 import type { LocalBinder } from './local-binder.ts';
-import { type ImportPlaceholder, type LocalEntity, Scope } from './scope.ts';
+import { type ImportPlaceholder, importPlaceholder, type LocalEntity, Scope } from './scope.ts';
 
 /** A top-level name and the identifier that first declared it. */
 interface TopLevelName {
@@ -81,30 +90,30 @@ class TopLevelDefiner {
     switch (item.kind) {
       case 'NamedImport':
         for (const name of item.names) {
-          const placeholder: ImportPlaceholder = { kind: 'import', name, declaration: item };
+          const placeholder = importPlaceholder(name, item);
           if (this.#define(name, placeholder, 'import', undefined)) {
             this.imports.push(placeholder);
           }
         }
         return;
       case 'NamespaceImport':
-        this.#define(item.alias, { kind: 'namespace', declaration: item }, 'import', 'value');
+        this.#define(item.alias, namespaceEntity(item), 'import', 'value');
         return;
       case 'FunctionDeclaration':
         this.#defineFunction(item);
         return;
       case 'ExternConstantDeclaration': {
         const { name } = item;
-        this.#define(name, { kind: 'variable', name, owner: item }, 'declaration', 'value');
+        this.#define(name, variableEntity(name, item), 'declaration', 'value');
         return;
       }
       case 'VariableDeclaration':
         for (const name of item.targets.flatMap(targetNames)) {
-          this.#define(name, { kind: 'variable', name, owner: item }, 'declaration', 'value');
+          this.#define(name, variableEntity(name, item), 'declaration', 'value');
         }
         return;
       default:
-        this.#define(item.name, { kind: 'type', declaration: item }, 'declaration', 'type');
+        this.#define(item.name, typeEntity(item), 'declaration', 'type');
     }
   }
 
@@ -166,15 +175,13 @@ function ownNames(
 
 /** A set per name of the top-level functions; static functions belong to their type instead. */
 function functionSets(module: Module): ReadonlyMap<string, FunctionsEntity> {
-  const sets = new Map<string, FunctionDeclaration[]>();
+  const sets = new Map<string, [FunctionDeclaration, ...FunctionDeclaration[]]>();
   for (const declared of declaredFunctions(module)) {
     if (declared.owner === undefined) {
       sets.set(declared.name.text, [...(sets.get(declared.name.text) ?? []), declared]);
     }
   }
-  return new Map(
-    [...sets].map(([name, overloads]) => [name, { kind: 'functions', name, overloads }] as const),
-  );
+  return new Map([...sets].map(([name, overloads]) => [name, functionsEntity(overloads)] as const));
 }
 
 function variantsOf(
@@ -191,7 +198,7 @@ function variantsOf(
       );
       const byName = new Map<string, VariantEntity>();
       for (const variant of variants) {
-        const entity: VariantEntity = { kind: 'variant', enum: declaration, variant };
+        const entity = variantEntity(declaration, variant);
         binder.record(variant.name, entity);
         byName.set(variant.name.text, entity);
       }

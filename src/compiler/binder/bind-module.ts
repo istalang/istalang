@@ -5,8 +5,9 @@
  * (local-binder.ts) and the categories never import one another for recursion.
  *
  * The result depends on the tree alone, so it is memoized on the tree. A Program snapshot that
- * reuses an unchanged tree reuses its bindings and its entities with it, and every result derived
- * from those entities, without anything being invalidated.
+ * reuses an unchanged tree reuses its bindings with it. An edited module is bound again whole, but
+ * an entity is made once per node it stands for (entities.ts), so every segment the edit left alike
+ * keeps its entities, and every result derived from them, without anything being invalidated.
  */
 
 import { memo } from '../../structures/memo.ts';

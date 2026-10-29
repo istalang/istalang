@@ -25,6 +25,7 @@
  */
 
 import { primitiveNames } from '../../language/primitives.ts';
+import { memo } from '../../structures/memo.ts';
 import type { FunctionDeclaration, NamedImport } from '../syntax/declarations.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
@@ -35,6 +36,13 @@ export interface ImportPlaceholder {
   readonly kind: 'import';
   readonly name: Identifier;
   readonly declaration: NamedImport;
+}
+
+const placeholders = new WeakMap<Identifier, ImportPlaceholder>();
+
+/** The placeholder of `name`, imported by `declaration`: one per name, as entities are (entities.ts). */
+export function importPlaceholder(name: Identifier, declaration: NamedImport): ImportPlaceholder {
+  return memo(placeholders, name, () => ({ kind: 'import', name, declaration }));
 }
 
 export type LocalEntity = Entity | ImportPlaceholder;
