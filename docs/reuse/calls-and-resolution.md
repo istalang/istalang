@@ -15,6 +15,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - build a `UseSite` (reporting, silent, or host-crossing) → `useSite`, `searchSite`, `hostSite`, `silent` (`src/compiler/checker/use-site.ts`)
 - look up top-level functions in a module (prelude joined) → `namedInModule` (`src/compiler/checker/resolution/candidates.ts`)
 - look up call candidates with ADL and type-parameter requirements → `topLevelCandidates`, `callCandidates` (`src/compiler/checker/resolution/candidates.ts`)
+- keep the methods a call through a member access may mean, `&self` ones only through a place → `callableThrough` (`src/compiler/checker/resolution/candidates.ts`)
 - look up static or trait witness candidates → `staticCandidates`, `staticTargetOf`, `witnessCandidates` (`src/compiler/checker/resolution/candidates.ts`)
 - list the modules a module sees (its own, its imports, the prelude), or every static function on a type they declare → `modulesSeenFrom`, `staticFunctionsAmong` (`src/compiler/checker/resolution/candidates.ts`)
 - bind call or function-value arguments to parameter slots → `bindArguments`, `bindValue`, `positionalCounts` (`src/compiler/checker/resolution/binding.ts`)

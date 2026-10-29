@@ -57,7 +57,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - find the field `x.f` reads and how → `fieldOf` (`src/compiler/checker/traits/constraints.ts`); a struct's field, or a required one on a concrete type → `structFieldOf`, `requiredFieldRead` (`src/compiler/checker/checked-field.ts`)
 - record a field read in a body, with the field its member names → `recordFieldRead` (`src/compiler/checker/expressions/structs.ts`); a field named in a literal, pattern or target → `BodyContext.recordField`
 - read a written type's type without resolving (or reporting) anything → `CheckerContext.resolvedTypeOf` (`src/compiler/checker/context.ts`)
-- map or list constraints on a parameter or `any` → `constraintSubstitution`, `knownConstraints`, `constraintOn` (`src/compiler/checker/traits/constraints.ts`)
+- map or list constraints on a parameter or `any` → `constraintSubstitution`, `substituteConstraint`, `knownConstraints`, `constraintOn` (`src/compiler/checker/traits/constraints.ts`)
 - look up required functions or field types on a constrained type → `requirementsNamed`, `requiredFieldType` (`src/compiler/checker/traits/constraints.ts`)
 - check or resolve `any` conformance and witnesses → `meetsAny`, `reportUnmet`, `memberWitnesses` (`src/compiler/checker/resolution/trait-objects.ts`)
 - walk patterns or destructuring targets → `walkPattern`, `walkTargets` (`src/compiler/checker/patterns/walk.ts`)
