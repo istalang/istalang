@@ -19,6 +19,10 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - get the last identifier of a `QualifiedName` or check for a missing identifier → `lastName`, `isMissingName` (`src/compiler/syntax/node.ts`)
 - list a syntax node's direct children in source order (memoized per node) → `childrenOf`, `isNode` (`src/compiler/syntax/tree.ts`)
 - find a node's parent, or the nodes holding an offset from the root to the innermost → `parentOf`, `nodesAt` (`src/compiler/syntax/tree.ts`)
+- read where a node stands in the text: its own span → `spanIn`; it and everything under it, through a function's body or a trait's members → `extentIn` (`src/compiler/syntax/positions.ts`, `src/compiler/syntax/tree.ts`)
+- join or compare spans of one segment: first to last, covering several, the empty span at an end, containment, one place → `spanAcross`, `spanCovering`, `endOf`, `encloses`, `startTogether` (`src/compiler/syntax/positions.ts`)
+- turn a phase's anchored diagnostic into one at text positions as it leaves → `diagnosticIn` (`src/compiler/syntax/positions.ts`)
+- the text a lambda or local function covers, header and body → `nestedFunctionSpan` (`src/compiler/syntax/declarations.ts`); lowering's, from the tree → `nestedSpanOf` (`src/compiler/lowering/bodies.ts`)
 - list a node and every node under it in source order, each before its children (explicit stack) → `nodesUnder` (`src/compiler/syntax/tree.ts`)
 - list direct children that run in the same function body (skipping nested functions) → `bodyChildrenOf`, `nestsFunction` (`src/compiler/syntax/tree.ts`)
 - look up operator precedence, associativity and meaning → `binaryOperators`, `unaryOperators`, `operatorLevels` (`src/compiler/syntax/operators.ts`)
@@ -50,7 +54,8 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 
 - Shared desugaring (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`, `placePath`, `destructuringOf`) lives in `src/compiler/syntax/`.
 - A link reads through an optional when its node `isOptional` (member access, tuple element, index, call, `->`); its operator is spelled by `linkOperator`/`optionalOperatorOf` (`chains.ts`), never as a literal.
-- Node fields hold only nodes, node arrays, optional nodes/arrays, `Span` or primitives, so `childrenOf` (`tree.ts`) derives traversal automatically.
+- Node fields hold only nodes, node arrays, optional nodes/arrays, a span or primitives, so `childrenOf` (`tree.ts`) derives traversal automatically.
+- A node's span is anchored to its segment (`AnchoredSpan`, `positions.ts`): offsets of different segments never compare, and text positions come only through the tree (`spanIn`, `extentIn`). A function's own span covers its header alone, as does a top-level trait's whose members stand on lines of their own; use `extentIn` for all a node covers.
 - In `src/compiler/parser/`, bracketed lists use `parseEnclosed` / `parseDelimited` (`recovery.ts`) and recursive entries use `nested` (`nesting.ts`).
 
 ## Recipes

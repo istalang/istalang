@@ -104,6 +104,7 @@ export function spanViolations(tree: TreePlaces, root: SyntaxNode): readonly str
           ? [`${label} overlaps ${previous.kind}`]
           : []),
         ...(child.span.to < child.span.from ? [`${label} has a negative span`] : []),
+        ...(child.span.from < 0 ? [`${label} starts before its segment`] : []),
       ];
     });
   });

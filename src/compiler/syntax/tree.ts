@@ -4,7 +4,9 @@
  * Children are found by reading a node's fields, not from a per-kind list. A field holds a node, an
  * array of nodes, an optional node or node array, or a primitive (node.ts), so any object with a
  * `kind` is a child. Adding a node kind therefore needs no traversal change. Children come back in
- * source order, derived from their spans, so no builder has to put fields in any order.
+ * source order, derived from their spans, so no builder has to put fields in any order. Spans
+ * compare only within a segment (positions.ts), so children heading segments of their own, a
+ * module's items and a trait's members, come after the rest, in the order their field lists them.
  *
  * A function's body is the one child not in a field: the tree holds it, so a declaration's node can
  * outlive an edit of its body (docs/work/m6-m7/incremental-checking.md). Traversal therefore takes
@@ -94,11 +96,16 @@ export function childrenOf(tree: TreeBodies, node: SyntaxNode): readonly SyntaxN
  * An immutable node holds them for good.
  */
 export function fieldChildrenOf(node: SyntaxNode): readonly SyntaxNode[] {
-  return memo(fieldChildren, node, () =>
-    Object.values(node)
-      .flatMap((value: unknown) => (Array.isArray(value) ? value : [value]).filter(isNode))
-      .toSorted((first, second) => first.span.from - second.span.from),
-  );
+  return memo(fieldChildren, node, () => {
+    const children = Object.values(node).flatMap((value: unknown) =>
+      (Array.isArray(value) ? value : [value]).filter(isNode),
+    );
+    const inSegment = (child: SyntaxNode) => child.span.segment === node.span.segment;
+    return [
+      ...children.filter(inSegment).toSorted((first, second) => first.span.from - second.span.from),
+      ...children.filter((child) => !inSegment(child)),
+    ];
+  });
 }
 
 const parents = new WeakMap<SyntaxTree, ReadonlyMap<SyntaxNode, SyntaxNode>>();

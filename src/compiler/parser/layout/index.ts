@@ -1,6 +1,6 @@
 /**
- * Layout: blocks of lines, the bodies that follow a `:`, and which line continues what (spec §2,
- * §4). Every decision to move past a line break is made here, and only here.
+ * Layout: blocks of lines, the bodies that follow a `:` (bodies.ts), and which line continues what
+ * (spec §2, §4). Every decision to move past a line break is made here, and only here.
  *
  * A block is a run of items, one or more per line, at one column. Statements, struct fields, enum
  * variants, trait members and match cases are all laid out this way, so one loop serves them all.
@@ -14,10 +14,6 @@
  * is held to that column too. Entries in braces (`struct Req { id: int; value: string }`) are the
  * same list without a column: every line continues it until the `}`.
  *
- * A body after `:` is either one item on the same line, or a block indented deeper than the line
- * the construct starts on. A `;` right after a one-line body is an error (§4): a Python reader
- * would think `if x: a; b` puts both statements in the body.
- *
  * `elif` and `else` continue an `if` on its line, or first on a later line at the column where the
  * `if`'s line starts (§4). A dangling `else` therefore binds to the nearest `if` whose line it
  * lines up with.
@@ -27,33 +23,36 @@
  * after it. Where items can't carry annotations (match and select cases), an annotation is
  * reported and kept as an Invalid node.
  *
- * Docstrings are placed here too (§2): first in a documented body or a module, or on the line right
- * after a declaration without an indented body, deeper than the declaration. A docstring starting
- * any other item is reported.
+ * Docstrings are placed here too (§2): first in a documented body (bodies.ts) or a module, or on
+ * the line right after a declaration without an indented body, deeper than the declaration. A
+ * docstring starting any other item is reported.
  */
 
-import type { Span } from '../../text/span.ts';
-import type { Annotation } from '../syntax/annotations.ts';
-import type { Docstring } from '../syntax/declarations.ts';
-import type { Invalid } from '../syntax/node.ts';
-import { type AnchoredSpan, spanAcross } from '../syntax/positions.ts';
-import type { SyntaxNode } from '../syntax/tree.ts';
-import { parseAnnotations, rejectAnnotations } from './annotations.ts';
-import type { CursorKind } from './cursor.ts';
-import { parserDiagnostics } from './diagnostics.ts';
-import { misplacedDocstring, parseDocstring, type WithDocstring } from './docstrings.ts';
-import type { Parser } from './parser.ts';
+import type { Span } from '../../../text/span.ts';
+import type { Annotation } from '../../syntax/annotations.ts';
+import type { Invalid } from '../../syntax/node.ts';
+import type { SyntaxNode } from '../../syntax/tree.ts';
+import { parseAnnotations, rejectAnnotations } from '../annotations.ts';
+import type { CursorKind } from '../cursor.ts';
+import { parserDiagnostics } from '../diagnostics.ts';
+import { misplacedDocstring, parseDocstring, type WithDocstring } from '../docstrings.ts';
+import type { Parser } from '../parser.ts';
 import {
   atRegionEnd,
   type Enclosed,
   parseEnclosedIn,
   skipToSeparator,
   skipUntil,
-} from './recovery.ts';
+} from '../recovery.ts';
 
 /** How to parse one kind of item, and how it takes annotations. */
 export interface ItemRules<Item extends SyntaxNode> {
   readonly parseItem: (parser: Parser) => Item | Invalid;
+  /**
+   * Whether each item standing on lines of its own heads a segment of the text (syntax/
+   * positions.ts), its annotations included: a module's items and a trait's members do.
+   */
+  readonly headsSegments?: boolean;
   /** Undefined where items can't carry annotations. */
   readonly annotate:
     | ((parser: Parser, item: Item | Invalid, annotations: readonly Annotation[]) => Item | Invalid)
@@ -64,85 +63,18 @@ export type Items<Item> = readonly (Item | Invalid)[];
 
 export interface Lines<Item> {
   readonly items: Items<Item>;
+  /** Whether its items head segments of their own (`ItemRules.headsSegments`). */
+  readonly headedSegments: boolean;
   /** Whether any `;` separated two items, which a block on one line needs (§4). */
   readonly separated: boolean;
 }
 
-export interface Body<Item> {
-  readonly items: Items<Item>;
-  readonly span: AnchoredSpan;
-}
-
-/**
- * The body after a construct's `:`. `headerStart` is where the construct starts: an indented
- * body must be deeper than that line.
- */
-export function parseBody<Item extends SyntaxNode>(
-  parser: Parser,
-  rules: ItemRules<Item>,
-  headerStart: number,
-): Body<Item> {
-  return parseBodyOf(parser, rules, headerStart, false).value;
-}
-
-/** The body after a declaration's `:`, whose first line may be its docstring when indented. */
-export function parseDocumentedBody<Item extends SyntaxNode>(
-  parser: Parser,
-  rules: ItemRules<Item>,
-  headerStart: number,
-): WithDocstring<Body<Item>> {
-  return parseBodyOf(parser, rules, headerStart, true);
-}
-
-/**
- * The docstring of a declaration without an indented body, starting at `headerStart`: on the next
- * line, deeper than the declaration's, and first there.
- */
-export function parseDocstringBelow(parser: Parser, headerStart: number): Docstring | undefined {
-  const { cursor } = parser;
-  const next = cursor.lineStart;
-  if (next?.kind !== 'docstring' || parser.columnOf(next) <= parser.indentationAt(headerStart)) {
-    return undefined;
-  }
-  cursor.crossLineBreak();
-  return parseDocstring(parser);
-}
-
-function parseBodyOf<Item extends SyntaxNode>(
-  parser: Parser,
-  rules: ItemRules<Item>,
-  headerStart: number,
-  isDocumented: boolean,
-): WithDocstring<Body<Item>> {
-  const { cursor } = parser;
-  const next = cursor.lineStart;
-  if (next !== undefined) {
-    const column = parser.columnOf(next);
-    if (column <= parser.indentationAt(headerStart) || cursor.closesAny(next.kind)) {
-      return { value: emptyBody(parser), doc: undefined };
-    }
-    return cursor.inBlock(column, () => {
-      const doc = isDocumented ? parseDocstring(parser) : undefined;
-      const { items } = parseLines(parser, rules);
-      return { value: { items, span: spanOfItems(parser, items) }, doc };
-    });
-  }
-  if (cursor.at(';') || atRegionEnd(parser)) {
-    return { value: emptyBody(parser), doc: undefined };
-  }
-  const items = cursor.onOneLine(() => parseAnnotatedItems(parser, rules));
-  if (cursor.at(';')) {
-    parser.report(parserDiagnostics.semicolonAfterInlineBody(cursor.token.span));
-  }
-  return { value: { items, span: spanOfItems(parser, items) }, doc: undefined };
-}
-
 /** One item on its line with the annotations there, as a one-line body: never any pending. */
-function parseAnnotatedItems<Item extends SyntaxNode>(
+export function parseAnnotatedItems<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
 ): Items<Item> {
-  const step = parseLineItem(parser, rules, []);
+  const step = parseLineItem(parser, rules, [], false);
   return [...step.items, ...rejectAnnotations(parser, step.pending, danglingAnnotation)];
 }
 
@@ -189,15 +121,35 @@ export function parseItemEntries<Item extends SyntaxNode>(
   return parseEnclosedIn(parser, '{', enter, () => parseLines(parser, rules).items);
 }
 
-/** The items of the current list region (cursor.ts), up to the line where it ends. */
-function parseLines<Item extends SyntaxNode>(parser: Parser, rules: ItemRules<Item>): Lines<Item> {
+/**
+ * The items of the current list region (cursor.ts), up to the line where it ends. Items heading
+ * segments do so only in a block, where each stands on lines of its own, not in braces.
+ */
+export function parseLines<Item extends SyntaxNode>(
+  parser: Parser,
+  rules: ItemRules<Item>,
+): Lines<Item> {
+  const headsSegments = rules.headsSegments === true && parser.cursor.blockColumn !== undefined;
+  return headsSegments
+    ? parser.restoringSegment(() => parseLinesOf(parser, rules, true))
+    : parseLinesOf(parser, rules, false);
+}
+
+function parseLinesOf<Item extends SyntaxNode>(
+  parser: Parser,
+  rules: ItemRules<Item>,
+  headsSegments: boolean,
+): Lines<Item> {
   const { cursor } = parser;
   const items: (Item | Invalid)[] = [];
   let pending: readonly Annotation[] = [];
   let separated = false;
   while (moveToItem(parser)) {
     const before = cursor.index;
-    const step = parseLine(parser, rules, pending);
+    if (headsSegments && pending.length === 0) {
+      parser.startHeader();
+    }
+    const step = parseLine(parser, rules, pending, headsSegments);
     items.push(...step.items);
     ({ pending } = step);
     separated = skipSemicolons(parser) || separated;
@@ -207,6 +159,7 @@ function parseLines<Item extends SyntaxNode>(parser: Parser, rules: ItemRules<It
   }
   return {
     items: [...items, ...rejectAnnotations(parser, pending, danglingAnnotation)],
+    headedSegments: headsSegments,
     separated,
   };
 }
@@ -222,23 +175,31 @@ function parseLine<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
   pending: readonly Annotation[],
+  headsSegment: boolean,
 ): LineItem<Item> {
   return parser.cursor.onOneLine(() => {
     const reported = parser.diagnostics.length;
-    const step = parseLineItem(parser, rules, pending);
+    const step = parseLineItem(parser, rules, pending, headsSegment);
     return { ...step, items: [...step.items, ...skipToSeparator(parser, reported)] };
   });
 }
 
-/** The current line's item with its annotations, or the annotations alone if nothing follows. */
+/**
+ * The current line's item with its annotations, or the annotations alone if nothing follows. An
+ * item heading a segment marks where it starts, past its annotations.
+ */
 function parseLineItem<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
   pending: readonly Annotation[],
+  headsSegment: boolean,
 ): LineItem<Item> {
   const before = parseAnnotations(parser);
   if (before.length > 0 && (parser.cursor.at(';') || atRegionEnd(parser))) {
     return { items: [], pending: [...pending, ...before] };
+  }
+  if (headsSegment) {
+    parser.markItemStart();
   }
   const item = parser.cursor.at('docstring') ? misplacedDocstring(parser) : rules.parseItem(parser);
   const annotations = { leading: [...pending, ...before], trailing: parseAnnotations(parser) };
@@ -377,21 +338,4 @@ export function skipDeeperLines(parser: Parser, indentation: number): void {
 function deeperLineFollows(parser: Parser, indentation: number): boolean {
   const next = parser.cursor.lineStart;
   return next !== undefined && parser.columnOf(next) > indentation;
-}
-
-/** From the first item to the last, or empty where the next item would be. */
-function spanOfItems(parser: Parser, items: Items<SyntaxNode>): AnchoredSpan {
-  const [first] = items;
-  const last = items.at(-1);
-  if (first === undefined || last === undefined) {
-    const at = parser.cursor.previousEnd;
-    return parser.anchor({ start: at, end: at });
-  }
-  return spanAcross(first.span, last.span);
-}
-
-/** A body that isn't there: reported where it should start. */
-function emptyBody<Item>(parser: Parser): Body<Item> {
-  parser.report(parserDiagnostics.expectedIndentedBlock(parser.nextSpan, parser.describeNext()));
-  return { items: [], span: spanOfItems(parser, []) };
 }

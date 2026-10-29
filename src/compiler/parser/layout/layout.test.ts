@@ -6,11 +6,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
-import type { Module } from '../syntax/declarations.ts';
-import { spanIn } from '../syntax/positions.ts';
-import { dump, handMadeSpan } from '../syntax/tree.test-kit.ts';
-import { parserDiagnostics } from './diagnostics.ts';
+import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
+import type { Module } from '../../syntax/declarations.ts';
+import { spanIn } from '../../syntax/positions.ts';
+import { dump, handMadeSpan } from '../../syntax/tree.test-kit.ts';
+import { parserDiagnostics } from '../diagnostics.ts';
 import {
   block,
   bodyOf,
@@ -22,7 +22,7 @@ import {
   parseAs,
   reported,
   expressionStatement as statement,
-} from './parse.test-kit.ts';
+} from '../parse.test-kit.ts';
 
 const {
   expected,
@@ -184,10 +184,10 @@ describe('annotations', () => {
     );
   });
 
-  it("widen their item's span over them", () => {
+  it("widen their item's span over them, a function's over its header", () => {
     const parsed = parseAs('module', lines('@A', 'fn f(): 1'));
     const [item] = (parsed.node as Module).items;
-    expect(item && spanIn(parsed, item.span)).toEqual({ start: 0, end: 12 });
+    expect(item && spanIn(parsed, item.span)).toEqual({ start: 0, end: '@A\nfn f():'.length });
   });
 });
 

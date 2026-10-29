@@ -356,6 +356,11 @@ export interface Functions {
 export interface FunctionFrame {
   /** The function checked: the body's own declaration, or a nested one; none for a value's body. */
   readonly function: NestedFunction | undefined;
+  /**
+   * What a nested function's text covers, header and body: the names declared there are its own.
+   * None for the body's own function, every local name of which is its own.
+   */
+  readonly reach: AnchoredSpan | undefined;
   readonly isAsync: boolean;
   readonly returns: Returns;
   readonly enclosing: Enclosing;

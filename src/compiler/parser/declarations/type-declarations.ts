@@ -23,13 +23,8 @@ import type { Invalid } from '../../syntax/node.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { documentedBy, type WithDocstring } from '../docstrings.ts';
-import {
-  type ItemRules,
-  type Items,
-  parseDocstringBelow,
-  parseDocumentedBody,
-  parseItemEntries,
-} from '../layout.ts';
+import { parseDocstringBelow, parseDocumentedMembers } from '../layout/bodies.ts';
+import { type ItemRules, type Items, parseItemEntries } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
 import { declaredFieldRules, parseField } from '../parts/structs.ts';
 import { parseFunction } from './functions.ts';
@@ -66,10 +61,20 @@ export function parseEnum(parser: Parser): EnumDeclaration {
   return { kind: 'EnumDeclaration', span, name, typeParameters, variants, ...documentedBy(doc) };
 }
 
+/**
+ * A trait that is an item of its own, its members on lines of their own, gives each a segment
+ * (syntax/positions.ts), and its span ends with its header, at its `:` or docstring, where their
+ * segments begin. Members in braces or on its line, or of a trait standing in a block, stay inside
+ * it.
+ */
 export function parseTrait(parser: Parser): TraitDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
-  const { value: members, doc } = parseMembers(parser, traitMemberRules, start);
-  const span = parser.spanFrom(start);
+  const rules = { ...traitMemberRules, headsSegments: parser.isHeaderItem(start) };
+  const { value: members, doc, segmentsStart } = parseMembers(parser, rules, start);
+  const span =
+    segmentsStart === undefined
+      ? parser.spanFrom(start)
+      : parser.anchor({ start, end: segmentsStart });
   return { kind: 'TraitDeclaration', span, name, typeParameters, members, ...documentedBy(doc) };
 }
 
@@ -94,14 +99,19 @@ function parseTypeHead(parser: Parser) {
  */
 function parseMembers<
   Item extends DeclaredField | FieldDeclaration | Variant | FunctionDeclaration,
->(parser: Parser, rules: ItemRules<Item>, headerStart: number): WithDocstring<Items<Item>> {
+>(
+  parser: Parser,
+  rules: ItemRules<Item>,
+  headerStart: number,
+): WithDocstring<Items<Item>> & { readonly segmentsStart: number | undefined } {
   const { cursor } = parser;
   if (cursor.eat(':') !== undefined) {
-    const { value, doc } = parseDocumentedBody(parser, rules, headerStart);
-    return { value: value.items, doc };
+    const { value, doc } = parseDocumentedMembers(parser, rules, headerStart);
+    const segmentsStart = value.headedSegments ? value.headerEnd : undefined;
+    return { value: value.items, doc, segmentsStart };
   }
   const items = cursor.at('{') ? parseItemEntries(parser, rules).value : [];
-  return { value: items, doc: parseDocstringBelow(parser, headerStart) };
+  return { value: items, doc: parseDocstringBelow(parser, headerStart), segmentsStart: undefined };
 }
 
 /** `Expired`, or `Rejected { by: string; reason: string }`. */

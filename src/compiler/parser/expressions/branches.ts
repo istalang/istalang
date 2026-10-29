@@ -24,7 +24,8 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { type ItemRules, moveToContinuation, parseBlockBraces, parseBody } from '../layout.ts';
+import { parseBody } from '../layout/bodies.ts';
+import { type ItemRules, moveToContinuation, parseBlockBraces } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
 import { parseHeaderBody, statementRules } from '../parts/blocks.ts';
 import { skipToSeparator } from '../recovery.ts';

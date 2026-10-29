@@ -5,8 +5,8 @@
  *
  * - Each function has its own result, loops and asyncness: `return` leaves the innermost one,
  *   `break` can't reach a loop outside it, and `await` needs it to be async.
- * - Captures are found where names are used, from where they are declared: a nested function
- *   encloses every name it declares, so a variable declared outside a nested function is
+ * - Captures are found where names are used, from where they are declared: a nested function's
+ *   text encloses every name it declares, so a variable declared outside a nested function is
  *   captured by it, and by every function between the two. A top-level name, of this module or
  *   another, is never captured; which names are top-level is the binder's to say (it gives them
  *   a module), so a local one is always in this body's own tree, where spans compare.
@@ -62,8 +62,8 @@ export class FunctionScopes implements Functions {
     }
     const declared = entity.name.span;
     const capturing = this.#stack.filter(
-      ({ function: checked, captures }) =>
-        checked !== undefined && !encloses(checked.span, declared) && !captures.has(entity.name),
+      ({ reach, captures }) =>
+        reach !== undefined && !encloses(reach, declared) && !captures.has(entity.name),
     );
     for (const scope of capturing) {
       scope.capture(entity);

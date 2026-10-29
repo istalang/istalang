@@ -22,7 +22,8 @@ import { receiverParameter } from '../../language/well-known.ts';
 import type { Annotatable } from './annotations.ts';
 import type { Expression, Parameter, StringLiteral } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
-import type { VariableDeclaration } from './statements.ts';
+import { type AnchoredSpan, spanAcross } from './positions.ts';
+import type { Block, VariableDeclaration } from './statements.ts';
 import type { FieldDeclaration, TypeNode } from './types.ts';
 
 /** `"""…"""`: what a declaration or module is for, in its own words (§2); tools read it. */
@@ -65,6 +66,17 @@ export interface FunctionDeclaration
   readonly typeParameters: TypeParameters;
   readonly parameters: readonly (Parameter | Invalid)[];
   readonly returnType: TypeNode | undefined;
+}
+
+/**
+ * The text a function nested in a body covers, its header and `body`, which share the body's
+ * segment; a function's own span covers its header alone (positions.ts).
+ */
+export function nestedFunctionSpan(
+  declaration: FunctionDeclaration,
+  body: Block | undefined,
+): AnchoredSpan {
+  return body === undefined ? declaration.span : spanAcross(declaration.span, body.span);
 }
 
 /** Whether `declaration` is a method: its first parameter is named `self` (§3.7). */

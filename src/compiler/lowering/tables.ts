@@ -31,6 +31,7 @@ import type {
 } from '../syntax/declarations.ts';
 import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
+import { nestedSpanOf } from './bodies.ts';
 import { annotationValues } from './constants.ts';
 import {
   type AsyncFit,
@@ -164,9 +165,9 @@ export class DefinitionTables {
 
   /** The header of a nested function's entry: named after its owner, where its node is. */
   nestedHeader(nested: NestedInstance): EntryHeader {
-    return this.#ownedHeader(nested.owner, nested.node.span, (where) =>
-      nestedName(this.#checker, nested, where),
-    );
+    const module = this.#checker.moduleOf(ownerDeclaration(nested.owner));
+    const at = nestedSpanOf(this.#checker.program, module, nested.node);
+    return this.#ownedHeader(nested.owner, at, (where) => nestedName(this.#checker, nested, where));
   }
 
   /** The header of an async fit's entry: named after its owner, where its site is. */

@@ -24,9 +24,10 @@
  * - The type is recorded with the parameters and captures for lowering (`functionOf`).
  */
 
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import { type FunctionDeclaration, nestedFunctionSpan } from '../../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { NestedFunction, SignatureParameter } from '../check.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
@@ -125,6 +126,7 @@ function checkLambdaAs(
     parameters: nestedParameters(context, node.parameters, slots),
     isAsync: node.isAsync,
     declaredResult,
+    reach: node.span,
     tail: (declared) => {
       const type = context.expression(node.body, declared);
       return { type, span: node.body.span, site: node.body };
@@ -144,6 +146,7 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
       parameters: nestedParameters(context, node.parameters, undefined),
       isAsync: node.isAsync,
       declaredResult: declaredBodyResult(context.checker, context.module, node),
+      reach: nestedFunctionSpan(node, body),
       tail: (declared) => blockTail(body, context.block(body, declared)),
     });
   }
@@ -156,6 +159,8 @@ interface NestedHeader {
   readonly parameters: readonly SignatureParameter[];
   readonly isAsync: boolean;
   readonly declaredResult: Type | undefined;
+  /** What the function's text covers, header and body. */
+  readonly reach: AnchoredSpan;
   /** Checks the body, expecting `declared` of it; its tail. */
   readonly tail: (declared: Type | undefined) => Produced;
 }
@@ -174,7 +179,12 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   if (name !== undefined && declaredResult !== undefined) {
     context.variables.declare(name, typeWith(declaredResult));
   }
-  const scope = new FunctionScope(node, isAsync, new ReturnScope(declaredResult, true));
+  const scope = new FunctionScope(
+    node,
+    isAsync,
+    new ReturnScope(declaredResult, true),
+    header.reach,
+  );
   const result = context.functions.inside(scope, () => {
     for (const parameter of parameters) {
       context.variables.declareParameter(parameter);

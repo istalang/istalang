@@ -173,6 +173,7 @@ describe('declarations only the top level allows', () => {
     ['type Id = string'],
     ['fn Duration.zero(): 1'],
     ['extern fn f()'],
+    ['trait T:\n        fn m()'],
   ])('are reported once inside a block: %s', (text) => {
     const source = lines('fn f():', `    ${text}`);
     expect(reported('module', source)).toEqual(reportedOnce(declarationInBlock.code, text));

@@ -11,7 +11,9 @@
  *
  * The parser reads text positions: tokens carry them, and so do its own decisions. A node it makes
  * gets its span anchored to the segment being parsed (syntax/positions.ts), and reading a node's
- * position back goes through the segments' starts, which the tree keeps.
+ * position back goes through the segments' starts, which the tree keeps. Layout starts a header
+ * segment for each item of a module or a trait standing on lines of its own, and a function that
+ * is such an item parses its body as a segment of its own (`inFunctionBody`).
  *
  * Speculation settles two ambiguities: `name<…>(` against a comparison (§3.5), and `a, b = …`
  * against a comma that belongs to an enclosing call. An attempt that reports anything is undone
@@ -24,7 +26,11 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import { type Span, textOf } from '../../text/span.ts';
-import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
+import {
+  type Declaration,
+  type FunctionDeclaration,
+  nestedFunctionSpan,
+} from '../syntax/declarations.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
@@ -32,6 +38,7 @@ import type { Pattern } from '../syntax/patterns.ts';
 import { type AnchoredSpan, type Segment, type SegmentBases, spanIn } from '../syntax/positions.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
+import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { Cursor } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
@@ -69,6 +76,16 @@ export interface Grammar {
  */
 export const nestingLimit = 200;
 
+/**
+ * Where the parser is among segments: the one it anchors spans to, where it starts, and where the
+ * item of a header segment starts, past its annotations.
+ */
+interface Place {
+  readonly segment: Segment;
+  readonly base: number;
+  readonly itemStart: number | undefined;
+}
+
 export class Parser implements SegmentBases {
   #cursor: Cursor;
   readonly #source: SourceText;
@@ -76,7 +93,7 @@ export class Parser implements SegmentBases {
   readonly #diagnostics: Diagnostic[] = [];
   readonly #bodies = new Map<FunctionDeclaration, Block>();
   readonly #bases = new Map<Segment, number>();
-  readonly #segment: Segment = { kind: 'module' };
+  #place: Place;
   #speculationDepth = 0;
   #nesting = 0;
 
@@ -84,7 +101,8 @@ export class Parser implements SegmentBases {
     this.#cursor = new Cursor(tokens);
     this.#source = source;
     this.#grammar = grammar;
-    this.#bases.set(this.#segment, 0);
+    this.#place = { segment: { kind: 'module' }, base: 0, itemStart: undefined };
+    this.#bases.set(this.#place.segment, 0);
   }
 
   get cursor(): Cursor {
@@ -130,8 +148,57 @@ export class Parser implements SegmentBases {
 
   /** `span`, text positions in the segment being parsed, anchored to that segment. */
   anchor({ start, end }: Span): AnchoredSpan {
-    const base = this.#bases.get(this.#segment) ?? 0;
-    return { segment: this.#segment, from: start - base, to: end - base };
+    const { segment, base } = this.#place;
+    // Before a header's first token is read, the end of the last one read lies in the segment
+    // before; a position there, where an empty node is taken to stand, is the header's start.
+    return { segment, from: Math.max(0, start - base), to: Math.max(0, end - base) };
+  }
+
+  /** Starts a header segment at the next token, where a module's or a trait's item starts. */
+  startHeader(): void {
+    this.#enter({ kind: 'header' }, this.cursor.token.span.start);
+  }
+
+  /** Marks the next token as where the item of the header segment begun last starts. */
+  markItemStart(): void {
+    this.#place = { ...this.#place, itemStart: this.cursor.token.span.start };
+  }
+
+  /**
+   * Runs `parse`, the body of a function starting at `start`, from here on: as a segment of its
+   * own when that function is the item of the header segment being parsed, in the segment around
+   * it when it is nested in one, as a local function is.
+   */
+  inFunctionBody<Result>(start: number, parse: () => Result): Result {
+    if (!this.isHeaderItem(start)) {
+      return parse();
+    }
+    return this.restoringSegment(() => {
+      this.#enter({ kind: 'body' }, this.cursor.previousEnd);
+      return parse();
+    });
+  }
+
+  /**
+   * Whether the item starting at `start` is the one the header segment being parsed was begun
+   * for, whose body or members then take segments of their own, as nothing nested does.
+   */
+  isHeaderItem(start: number): boolean {
+    const { segment, itemStart } = this.#place;
+    return segment.kind === 'header' && start === itemStart;
+  }
+
+  /** Runs `parse`, then parses on in the segment, and for the item, current before it. */
+  restoringSegment<Result>(parse: () => Result): Result {
+    const place = this.#place;
+    const result = parse();
+    this.#place = place;
+    return result;
+  }
+
+  #enter(segment: Segment, base: number): void {
+    this.#bases.set(segment, base);
+    this.#place = { segment, base, itemStart: undefined };
   }
 
   /** The text positions of `span`, which this parser anchored. */
@@ -147,6 +214,16 @@ export class Parser implements SegmentBases {
   /** Records `body` as `declaration`'s. */
   addBody(declaration: FunctionDeclaration, body: Block): void {
     this.#bodies.set(declaration, body);
+  }
+
+  /**
+   * The span `node` covers with the body recorded for it: a local function's, header and body, in
+   * one segment; any other node's own.
+   */
+  wholeSpanOf(node: SyntaxNode): AnchoredSpan {
+    return node.kind === 'FunctionDeclaration'
+      ? nestedFunctionSpan(node, this.#bodies.get(node))
+      : node.span;
   }
 
   /** Gives `from`'s body, if it has one, to `to`, the same function made anew. */

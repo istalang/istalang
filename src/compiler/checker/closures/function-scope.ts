@@ -6,6 +6,7 @@
 
 import type { VariableEntity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { NestedFunction } from '../check.ts';
 import type { FunctionFrame } from '../context.ts';
 import { EnclosingScopes } from './enclosing-scopes.ts';
@@ -14,14 +15,21 @@ import type { ReturnScope } from './returns.ts';
 /** One function being checked: the body's own, or a nested one. */
 export class FunctionScope implements FunctionFrame {
   readonly function: NestedFunction | undefined;
+  readonly reach: AnchoredSpan | undefined;
   readonly isAsync: boolean;
   readonly returns: ReturnScope;
   readonly enclosing: EnclosingScopes;
   readonly #captures = new Map<Identifier, VariableEntity>();
   #cleanups = 0;
 
-  constructor(checked: NestedFunction | undefined, isAsync: boolean, returns: ReturnScope) {
+  constructor(
+    checked: NestedFunction | undefined,
+    isAsync: boolean,
+    returns: ReturnScope,
+    reach?: AnchoredSpan,
+  ) {
     this.function = checked;
+    this.reach = reach;
     this.isAsync = isAsync;
     this.returns = returns;
     this.enclosing = new EnclosingScopes(checked?.name);

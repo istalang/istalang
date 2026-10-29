@@ -15,6 +15,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import { nestedSpanOf } from '../bodies.ts';
 import type { FunctionContext } from '../context.ts';
 import { declareVariable } from '../statements/variables.ts';
 
@@ -61,7 +62,7 @@ function closureOf(
   }
   context.code.emit({
     kind: 'closure',
-    span: node.span,
+    span: nestedSpanOf(context.checker.program, context.module, node),
     dst,
     function: context.nestedIndex(node),
     captures: checked.captures.map(({ entity }) => context.variables.registerOf(entity.name)),

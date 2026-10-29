@@ -10,10 +10,12 @@ import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { createSourceText } from '../../text/source-text.ts';
+import { textOf } from '../../text/span.ts';
 import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
 import type { Call } from './expressions/index.ts';
 import type { Identifier } from './node.ts';
+import { spanIn } from './positions.ts';
 import { handMadeSpan as at, strayBodies } from './tree.test-kit.ts';
 import {
   bodyOf,
@@ -144,6 +146,92 @@ function parentViolations(tree: SyntaxTree): readonly string[] {
 }
 
 const anyText = fc.string({ unit: 'grapheme-ascii', maxLength: 80 }).map(parseText);
+
+describe('segments', () => {
+  const tree = parseText(
+    '@A\nfn f(x: int) -> int:\n  """Doc."""\n  fn g(): x\n  g()\ntrait T:\n  fn m()\n  n: int\ntrait B { fn m() }\n',
+  );
+  const [f, t, b] = tree.root.items;
+  if (f?.kind !== 'FunctionDeclaration' || t?.kind !== 'TraitDeclaration' || b === undefined) {
+    throw new Error('Expected a function and two traits.');
+  }
+  const body = bodyOf(tree, f);
+  const [local] = body?.statements ?? [];
+  const textAt = (node: SyntaxNode) => textOf(tree.source, spanIn(tree, node.span));
+  const extentText = (node: SyntaxNode) => textOf(tree.source, extentIn(tree, node));
+
+  it('give each top-level item a header of its own, from its annotations on', () => {
+    expect(tree.root.span.segment.kind).toBe('module');
+    expect(new Set([f, t, b].map((item) => item.span.segment)).size).toBe(3);
+    expect([f, t, b].every((item) => item.span.segment.kind === 'header')).toBe(true);
+    expect(spanIn(tree, f.span).start).toBe(0);
+  });
+
+  it("end a function's span with its header, docstring included, where its body's begins", () => {
+    expect(textAt(f)).toBe('@A\nfn f(x: int) -> int:\n  """Doc."""');
+    expect(body?.span.segment.kind).toBe('body');
+    expect(body && tree.bases.get(body.span.segment)).toBe(spanIn(tree, f.span).end);
+    expect(extentText(f)).toBe(`${textAt(f)}\n  fn g(): x\n  g()`);
+  });
+
+  it("keep a local function's header and body in the body around them", () => {
+    expect(local?.kind).toBe('FunctionDeclaration');
+    if (local?.kind !== 'FunctionDeclaration') {
+      return;
+    }
+    expect(local.span.segment).toBe(body?.span.segment);
+    expect(bodyOf(tree, local)?.span.segment).toBe(body?.span.segment);
+    expect(textAt(local)).toBe('fn g():');
+    expect(extentText(local)).toBe('fn g(): x');
+  });
+
+  it("give each of a trait's members on lines of their own a header, ending the trait's span", () => {
+    expect(textAt(t)).toBe('trait T:');
+    expect(t.members.map((member) => member.span.segment.kind)).toEqual(['header', 'header']);
+    expect(new Set([t, ...t.members].map((node) => node.span.segment)).size).toBe(3);
+    expect(extentText(t)).toBe('trait T:\n  fn m()\n  n: int');
+  });
+
+  it("keep a trait's members on its line inside it", () => {
+    const oneLine = parseText('trait C: fn m()\n');
+    const [trait] = oneLine.root.items;
+    if (trait?.kind !== 'TraitDeclaration') {
+      throw new Error('Expected a trait.');
+    }
+    expect(trait.members.map((member) => member.span.segment)).toEqual([trait.span.segment]);
+    expect(textOf(oneLine.source, spanIn(oneLine, trait.span))).toBe('trait C: fn m()');
+  });
+
+  it("keep a trait's members in braces inside it", () => {
+    expect(
+      b.kind === 'TraitDeclaration' && b.members.every((m) => m.span.segment === b.span.segment),
+    ).toBe(true);
+    expect(textAt(b)).toBe('trait B { fn m() }');
+  });
+
+  it("hold every node in its parent's segment, but for items, members and bodies, over the corpus", () => {
+    const heads = (within: SyntaxTree, parent: SyntaxNode, child: SyntaxNode) =>
+      (child.span.segment.kind === 'header' &&
+        (parent.kind === 'Module' ||
+          (parent.kind === 'TraitDeclaration' && parentOf(within, parent) === within.root))) ||
+      (child.span.segment.kind === 'body' && parent.kind === 'FunctionDeclaration');
+    const strays = trees.flatMap((each) =>
+      nodesUnder(each, each.root).flatMap((parent) =>
+        childrenOf(each, parent)
+          .filter(
+            (child) => child.span.segment !== parent.span.segment && !heads(each, parent, child),
+          )
+          .map((child) => `${child.kind} in ${parent.kind}`),
+      ),
+    );
+    expect(strays).toEqual([]);
+  });
+
+  it('order children across segments as written', () => {
+    expect(childrenOf(tree, tree.root)).toEqual(tree.root.items);
+    expect(childrenOf(tree, t).slice(-2)).toEqual(t.members);
+  });
+});
 
 describe('bodies', () => {
   it('are of functions of their own tree, over every corpus program and example', () => {

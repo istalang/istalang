@@ -14,7 +14,7 @@
 import type { Declaration, Module } from '../../syntax/declarations.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { documentedBy } from '../docstrings.ts';
-import { type ItemRules, parseModuleLines } from '../layout.ts';
+import { type ItemRules, parseModuleLines } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
 import { parseModuleItem } from '../parts/items.ts';
 import { parseExtern } from './externs.ts';
@@ -77,4 +77,5 @@ export function parseModule(parser: Parser): Module {
 const moduleRules: ItemRules<Declaration> = {
   parseItem: parseModuleItem,
   annotate: attachAnnotations,
+  headsSegments: true,
 };

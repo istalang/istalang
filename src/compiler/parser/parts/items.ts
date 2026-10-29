@@ -31,9 +31,12 @@ function parseAnyItem(parser: Parser): Item | Invalid {
   return parser.topLevelDeclaration() ?? parser.statement();
 }
 
-/** Reported, unless it is empty: a Missing expression, which its own diagnostic explains. */
+/**
+ * Reported, unless it is empty: a Missing expression, which its own diagnostic explains. The
+ * Invalid node left covers all the item was read from, a function's body included.
+ */
 function misplaced(parser: Parser, item: Item, diagnostic: (span: Span) => Diagnostic): Invalid {
-  const { span } = item;
+  const span = parser.spanFrom(parser.startOf(item));
   if (span.from < span.to) {
     parser.report(diagnostic(parser.textSpanOf(span)));
   }

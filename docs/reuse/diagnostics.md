@@ -3,7 +3,7 @@ description: diagnostic model, per-phase catalogs, code blocks, rendering and te
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
+last_verified: 2026-10-29
 last_updated: 2026-10-29
 tags: [reuse, diagnostics, errors, testing]
 ---
@@ -21,7 +21,7 @@ tags: [reuse, diagnostics, errors, testing]
 
 ## One-way rules
 
-- Never build a `Diagnostic` literal by hand; call the typed factory in the phase's `diagnostics.ts` catalog (`src/diagnostics/catalog.ts`).
+- Never build a `Diagnostic` literal by hand; call the typed factory in the phase's `diagnostics.ts` catalog (`src/diagnostics/catalog.ts`). A factory makes a `Diagnostic<Where>` at a span of either kind: the binder and checker report at anchored spans and convert as their diagnostics leave (`diagnosticIn`); the scanner, parser and program report at text spans.
 - Each phase returns its diagnostics as values with its result; there is no global sink (`docs/arch/architecture.md`, Phase contracts).
 - Tests assert `reportedIn(source, diagnostics)` against codes and span texts, never message wording or raw offsets (`src/diagnostics/diagnostic.test-kit.ts`).
 

@@ -12,7 +12,7 @@
 
 import type { Invalid } from '../syntax/node.ts';
 import { parserDiagnostics } from './diagnostics.ts';
-import { skipDeeperLines } from './layout.ts';
+import { skipDeeperLines } from './layout/index.ts';
 import { nestingLimit, type Parser } from './parser.ts';
 import { skipUntil } from './recovery.ts';
 

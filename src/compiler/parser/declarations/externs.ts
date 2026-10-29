@@ -11,7 +11,7 @@ import type {
   FunctionDeclaration,
 } from '../../syntax/declarations.ts';
 import { documentedBy } from '../docstrings.ts';
-import { parseDocstringBelow } from '../layout.ts';
+import { parseDocstringBelow } from '../layout/bodies.ts';
 import type { Parser } from '../parser.ts';
 import { parseFunction } from './functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';
