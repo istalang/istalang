@@ -59,8 +59,8 @@ Over every corpus file (export the full list from `test/corpus/programs.ts`) and
 1. **Idempotent:** `format(format(x)) === format(x)`.
 2. **Tree kept:** `dump(parse(format(x)))` equals `dump(parse(x))`, using `syntax/tree.test-kit.ts` `dump`.
 3. **Comments kept:** the comments' texts, in order, are unchanged.
-4. **Width:** no line is longer than 100 unless one unbreakable token makes it so.
-5. **Whitespace-insensitive (property):** a variant of the input with random whitespace inside `()`, `[]`, `${}` and struct-literal `{}` formats to the same text. The `${}` of a multi-line literal, which is copied, is excluded.
+4. **Width:** no line is longer than 100 unless it has no legal break point (spec §2): one comment, string, template or docstring token makes it long, or it holds an import's names or an operator run outside brackets.
+5. **Whitespace-insensitive (property):** a variant of the input with random whitespace inside `()`, `[]`, `${}` and struct-literal `{}` formats to the same text. Excluded: the `${}` of a multi-line literal, which is copied; gaps holding a comment; the line a multi-line literal starts on; and line breaks inside `${}`, where only spaces vary.
 
 Also:
 6. A tree with syntax diagnostics gives `undefined`. `ista fmt` leaves that file untouched, and `--check` exits non-zero when a file would change.
