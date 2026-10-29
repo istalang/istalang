@@ -167,10 +167,17 @@ export function knownConstraints(checker: CheckerContext, type: Type): readonly 
 
 /** `constraint` of an `any` type as met by `type`: its trait's own `Self` replaced by `type`. */
 export function constraintOn(constraint: Constraint, type: Type): Constraint {
-  const self = new Map([[constraint.trait, type]]);
+  return substituteConstraint(constraint, new Map([[constraint.trait, type]]));
+}
+
+/** `constraint` with `substitution` applied to its trait's arguments. */
+export function substituteConstraint(
+  constraint: Constraint,
+  substitution: Substitution,
+): Constraint {
   return {
     trait: constraint.trait,
-    arguments: constraint.arguments.map((argument) => substitute(argument, self)),
+    arguments: constraint.arguments.map((argument) => substitute(argument, substitution)),
   };
 }
 

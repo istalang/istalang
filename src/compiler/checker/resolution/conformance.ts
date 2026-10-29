@@ -41,6 +41,7 @@ import {
   requiredFields,
   requiredFieldType,
   requiredFunctions,
+  substituteConstraint,
 } from '../traits/constraints.ts';
 import { isSendable, isSendableTrait } from '../traits/sendable.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
@@ -365,13 +366,6 @@ function witnessOf(
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
   const field = fieldOf(checker, type, name);
   return field !== undefined && sameType(field.member.type, fieldType);
-}
-
-function substituteConstraint(constraint: Constraint, substitution: Substitution): Constraint {
-  return {
-    trait: constraint.trait,
-    arguments: constraint.arguments.map((argument) => substitute(argument, substitution)),
-  };
 }
 
 /** Which way `trait` says a type crosses as JSON: `Encodable` writes, `Decodable` reads. */

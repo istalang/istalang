@@ -14,8 +14,8 @@ import type { ModuleId } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CheckerContext, CheckerNote, ConstraintCheck } from '../context.ts';
-import { resolveConstraints } from '../traits/constraints.ts';
-import { type Substitution, substitute } from '../types/substitution.ts';
+import { resolveConstraints, substituteConstraint } from '../traits/constraints.ts';
+import type { Substitution } from '../types/substitution.ts';
 import type { Constraint } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { useSite } from '../use-site.ts';
@@ -106,10 +106,11 @@ export class TypeParameters {
       return;
     }
     for (const constraint of this.constraintsOf(parameter)) {
-      meets(useSite(this.#checker, module, at), argument, {
-        trait: constraint.trait,
-        arguments: constraint.arguments.map((each) => substitute(each, typeArguments)),
-      });
+      meets(
+        useSite(this.#checker, module, at),
+        argument,
+        substituteConstraint(constraint, typeArguments),
+      );
     }
   }
 }
