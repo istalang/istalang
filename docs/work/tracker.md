@@ -68,6 +68,7 @@ Time and memory: measured costs, quadratic paths, hot-path checks.
 | P11 | `language-service/edit.bench.ts` reports medians but asserts no budget (machine-specific), so a latency regression shows only to whoever runs `npm run bench`. | small | none; can be done now | phase 7A.7 report 2026-10-29 |
 | P12 | The LSP signature-help property (lsp/providers/signature-help.test.ts) runs one round trip per corpus call argument, 1,560 tests, about 26 s of its file's time; the suite's wall time hides it only while files run in parallel. Sample the cuts, or drive the provider without the protocol. | small | none; can be done now | End fix F3 report 2026-10-29 |
 | P13 | Member completion runs `takenBy` and a constraint search per candidate method name; unmeasured on a large module in the editor. | small | none; can be done now | completion fix 2026-10-30 |
+| P14 | Completion outside a member or literal field re-parses the whole module with a placeholder at the cursor (`completion/placeholder.ts`; `parse()` re-scans and re-parses whole, about 9 ms on the 2,098-line module), unmeasured against the edit budget. Lever: parse only the segment holding the cursor. | small | none; can be done now | completion C1 report 2026-10-30 |
 
 ### Code quality (Q)
 
