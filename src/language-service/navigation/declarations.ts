@@ -1,0 +1,92 @@
+/**
+ * What a name declares or refers to, found where it is declared: the name declaring it.
+ *
+ * The identifier query (checker denotation.ts) answers what a name denotes; this module adds where
+ * that was declared. A declaring name is also how navigation tells declarations apart: every
+ * declaration has one, whatever its kind, while the checker's answers for a field are made per
+ * type, so two answers for one field may differ where its declaring name doesn't. A primitive
+ * type, `Self` and a field of a struct literal's own type have no declaring name, so nothing can
+ * go to them, find them or rename them. A declaring name is told apart by where it stands, not by
+ * its node: an async function's own call, a variable, is declared by a copy of the function's name.
+ */
+
+import type { EntityUse } from '../../compiler/binder/entities.ts';
+import { type Checker, checkProgram } from '../../compiler/checker/check.ts';
+import type { Denotation } from '../../compiler/checker/denotation.ts';
+import type { ModuleId, Program } from '../../compiler/program/program.ts';
+import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
+import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { identifierAt } from '../identifier-at.ts';
+
+type Declared = Denotation['declared'];
+
+/** A declaration a name denotes, and the name declaring it. */
+export interface DeclaredAt {
+  readonly declared: Declared;
+  readonly at: EntityUse;
+}
+
+/** The declarations `name` of `module` denotes, each once: two for a shorthand, none for nothing. */
+export function declarationsOf(
+  checker: Checker,
+  module: ModuleId,
+  name: Identifier,
+): readonly DeclaredAt[] {
+  const found = checker.lookup.denotationsOf(module, name).flatMap(({ declared }) => {
+    const at = handlerOf(declaringNames, declared)(checker, declared);
+    return at === undefined ? [] : [{ declared, at }];
+  });
+  return found.filter(
+    ({ at }, index) => found.findIndex((other) => isSamePlace(other.at, at)) === index,
+  );
+}
+
+/** Whether two names stand in one place: they are one name, though read through two nodes. */
+export function isSamePlace(first: EntityUse, second: EntityUse): boolean {
+  return first.module === second.module && first.name.span.start === second.name.span.start;
+}
+
+/** A name, and what it denotes. */
+export interface NameAt {
+  readonly name: Identifier;
+  /** Every declaration the name denotes. */
+  readonly declarations: readonly DeclaredAt[];
+  /**
+   * The declarations finding references and renaming act on: those spelled as the name is, so a
+   * conversion's callee acts on its type rather than the function converting; and at a shorthand,
+   * which names a field and the value it reads or binds, a variable or a function, that value, the
+   * name the code around it reads.
+   */
+  readonly targets: readonly DeclaredAt[];
+}
+
+/** The name at `offset` of `module`, and what it denotes; undefined where no name stands. */
+export function nameAt(program: Program, module: ModuleId, offset: number): NameAt | undefined {
+  const tree = program.modules.get(module)?.tree;
+  const name = tree && identifierAt(tree, offset);
+  if (name === undefined) {
+    return undefined;
+  }
+  const declarations = declarationsOf(checkProgram(program), module, name);
+  const spelled = declarations.filter(({ at }) => at.name.text === name.text);
+  const values = spelled.filter(({ declared }) => declared.kind !== 'field');
+  return { name, declarations, targets: values.length > 0 ? values : spelled };
+}
+
+const declaringNames: Handlers<Checker, Declared, [], EntityUse | undefined> = {
+  variable: ({ bindings }, { entity }) => named(bindings.moduleOf(entity), entity.name),
+  field: (_, { field }) =>
+    field.declared === undefined
+      ? undefined
+      : named(field.declared.module, field.declared.node.name),
+  variant: ({ bindings }, { entity }) => named(bindings.moduleOf(entity), entity.variant.name),
+  function: (checker, { declaration }) => named(checker.moduleOf(declaration), declaration.name),
+  type: ({ bindings }, { entity }) =>
+    entity.kind === 'type' ? named(bindings.moduleOf(entity), entity.declaration.name) : undefined,
+  namespace: ({ bindings }, { entity }) =>
+    named(bindings.moduleOf(entity), entity.declaration.alias),
+};
+
+function named(module: ModuleId | undefined, name: Identifier): EntityUse | undefined {
+  return module === undefined || isMissingName(name) ? undefined : { module, name };
+}

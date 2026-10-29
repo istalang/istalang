@@ -9,8 +9,19 @@
  */
 
 import { fileURLToPath } from 'node:url';
-import type { Range } from 'vscode-languageserver/node';
-import { type ModuleId, moduleIdOf } from '../compiler/program/program.ts';
+import type {
+  Location,
+  Position,
+  Range,
+  TextDocumentPositionParams,
+} from 'vscode-languageserver/node';
+import {
+  type ModuleId,
+  moduleIdOf,
+  type Program,
+  programModule,
+} from '../compiler/program/program.ts';
+import type { Workspace } from '../language-service/workspace.ts';
 import { moduleIdOfFile } from '../project/file-loader.ts';
 import { lineMapOf } from '../text/line-map.ts';
 import type { SourceText } from '../text/source-text.ts';
@@ -31,4 +42,24 @@ export function rangeOf(source: SourceText, span: Span): Range {
     start: { line: start.line, character: start.column },
     end: { line: end.line, character: end.column },
   };
+}
+
+/** The offset `position` stands at in `source`. */
+function offsetOf(source: SourceText, position: Position): number {
+  return lineMapOf(source).offsetAt({ line: position.line, column: position.character });
+}
+
+/** The module a request's document stands for, and the offset its position stands at there. */
+export function documentOffset(
+  workspace: Workspace,
+  { textDocument, position }: TextDocumentPositionParams,
+): { readonly module: ModuleId; readonly offset: number } | undefined {
+  const module = moduleIdOfUri(textDocument.uri);
+  const source = workspace.treeOf(module)?.source;
+  return source && { module, offset: offsetOf(source, position) };
+}
+
+/** Where `span` of `module` of `program` is. */
+export function locationOf(program: Program, module: ModuleId, span: Span): Location {
+  return { uri: module, range: rangeOf(programModule(program, module).tree.source, span) };
 }

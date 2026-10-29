@@ -25,6 +25,8 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - make a real project on disk, removed after the test → `tempProject` (`src/project/project.test-kit.ts`)
 - talk LSP to a language server in memory (open, change, close documents; await published diagnostics; read highlighting decoded) → `connectedClient`, `TestClient` (`src/lsp/server.test-kit.ts`)
 - run a property over every corpus and std module open in one language server → `corpusClient`, `corpusDocuments` (`src/lsp/corpus-client.test-kit.ts`)
+- ask a language server for definitions or references by position, against the corpus project loaded apart → `definitionsAt`, `referencesAt`, `corpusProgram`, `namesOf`, `positionOf` (`src/lsp/providers/navigation.test-kit.ts`)
+- write a navigation test over in-memory modules, finding names as written and applying rename edits → `navigable`, `placeOf`, `edited` (`src/language-service/navigation/navigation.test-kit.ts`)
 - parse a few lines as a module for a language-service feature's test → `treeOf` (`src/language-service/language-service.test-kit.ts`)
 - build an in-memory `Program` or `ModuleLoader` → `programOf`, `memoryLoader`, `idOf`, `moduleAt`, `loadedPaths` (`src/compiler/program/program.test-kit.ts`)
 - build a `Program` with the prelude or all std modules (cached) → `preludeProgramOf`, `stdProgramOf`, `boundReport` (`src/compiler/binder/bind.test-kit.ts`)
