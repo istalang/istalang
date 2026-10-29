@@ -85,8 +85,8 @@ describe('signature help', () => {
   });
 
   it("offers nothing outside a call's parentheses", () => {
-    expect(help('fn add(a: int, b: int) -> int: a + b', 'fn f() -> int: add(1, 2)‸')).toBe(
-      undefined,
-    );
+    const add = 'fn add(a: int, b: int) -> int: a + b';
+    expect(help(add, 'fn f() -> int: add(1, 2)‸')).toBeUndefined();
+    expect(help(add, 'fn f(a: Array<int>) -> int: add(a[0, 2)‸')).toBeUndefined();
   });
 });

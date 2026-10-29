@@ -3,9 +3,10 @@
  * keywords, operators. Trees hold no tokens (syntax/node.ts), so they are scanned again, once per
  * tree.
  *
- * Brackets pair as the parser nests them: a closing bracket closes the innermost one open if it is
- * of its kind, and is passed over otherwise, so an unclosed bracket, as in code being typed, pairs
- * with nothing and leaves the pairs around it intact.
+ * Brackets pair as the parser groups them (parser/cursor.ts `skipGroup`): a closing bracket closes
+ * the innermost one open of its kind, and any open inside that one stay unclosed, so an unclosed
+ * bracket, as in code being typed, pairs with nothing and leaves the pairs around it intact. A
+ * closing bracket with none of its kind open is passed over.
  *
  * The scanner nests a template's values' tokens in the template token. Features read them in
  * place, after the template, so a value's code is found like any other.
@@ -21,6 +22,7 @@ const code = new WeakMap<SyntaxTree, readonly Token[]>();
 const closings = new WeakMap<SyntaxTree, ReadonlyMap<Token, Token>>();
 
 const openers: Readonly<Record<string, string>> = { ')': '(', ']': '[', '}': '{' };
+const openings = new Set(Object.values(openers));
 
 /** Every token of `tree`'s source in order, without the `end` tokens closing each list. */
 export function allTokensOf(tree: SyntaxTree): readonly Token[] {
@@ -40,21 +42,25 @@ export function codeTokensOf(tree: SyntaxTree): readonly Token[] {
 
 /** The bracket closing each opening bracket of `tree`'s code that one closes. */
 export function closingBracketsOf(tree: SyntaxTree): ReadonlyMap<Token, Token> {
-  return memo(closings, tree, () => {
-    const open: Token[] = [];
-    const pairs = new Map<Token, Token>();
-    for (const token of codeTokensOf(tree)) {
-      const opener = openers[token.kind];
-      if (opener === undefined) {
-        if (token.kind === '(' || token.kind === '[' || token.kind === '{') {
-          open.push(token);
-        }
-      } else if (open.at(-1)?.kind === opener) {
-        pairs.set(open.pop() ?? token, token);
+  return memo(closings, tree, () => pairedBrackets(codeTokensOf(tree)));
+}
+
+function pairedBrackets(tokens: readonly Token[]): ReadonlyMap<Token, Token> {
+  const open: Token[] = [];
+  const pairs = new Map<Token, Token>();
+  for (const token of tokens) {
+    const opener = openers[token.kind];
+    if (openings.has(token.kind)) {
+      open.push(token);
+    } else if (opener !== undefined) {
+      const innermost = open.findLastIndex((each) => each.kind === opener);
+      const [paired] = innermost === -1 ? [] : open.splice(innermost);
+      if (paired !== undefined) {
+        pairs.set(paired, token);
       }
     }
-    return pairs;
-  });
+  }
+  return pairs;
 }
 
 function flatten(tokens: readonly Token[]): readonly Token[] {

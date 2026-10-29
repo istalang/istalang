@@ -28,4 +28,9 @@ describe('folding', () => {
     const tree = treeOf('const x = f(fn():', '  1', ')', 'const y = [', '  1,');
     expect(foldingRangesOf(tree)).toEqual([{ start: 0, end: 2 }]);
   });
+
+  it('folds a bracket around an unclosed one of another kind, as the parser closes it', () => {
+    const tree = treeOf('const x = f(', '  a[0,', '  2,', ')');
+    expect(foldingRangesOf(tree)).toEqual([{ start: 0, end: 3 }]);
+  });
 });
