@@ -41,14 +41,12 @@ import { binderDiagnostics } from './diagnostics.ts';
 import type {
   Bindings,
   Entity,
-  EntityUse,
   FunctionsEntity,
   NamespaceEntity,
   VariantEntity,
 } from './entities.ts';
 import { type FreeName, noOwnCall, type QualifiedPath } from './local-binder.ts';
 import type { ImportPlaceholder, LocalEntity } from './scope.ts';
-import { usesByEntity } from './uses.ts';
 
 /**
  * Per module, the empty function set each called name no scope defines denotes. It is kept while
@@ -76,7 +74,6 @@ export function link(program: Program): Bindings {
     exportsOf: (module) => linker.local(module)?.exports ?? new Map(),
     moduleOf: (entity) => linker.moduleOf(entity),
     isTopLevel: (entity) => linker.isTopLevel(entity),
-    usesOf: (entity) => linker.usesOf(entity),
     visibleAt: (module, offset) => linker.visibleAt(module, offset),
     overloadsOf: (functions) => linker.overloadsOf(functions),
     candidatesOf: ({ name }) => linker.variantsNamed(name),
@@ -92,7 +89,6 @@ class Linker {
   readonly #links = new Map<ModuleId, ModuleLinks>();
   readonly #owners = new Map<Entity, ModuleId>();
   readonly #topLevel = new Set<Entity>();
-  #uses: ReadonlyMap<Entity, readonly EntityUse[]> | undefined;
   readonly #variantsByName = new Map<string, VariantEntity[]>();
   readonly #variantsOfEnum = new Map<EnumDeclaration, ReadonlyMap<string, VariantEntity>>();
   readonly #overloads = new Map<FunctionsEntity, readonly FunctionDeclaration[]>();
@@ -138,11 +134,6 @@ class Linker {
 
   isTopLevel(entity: Entity): boolean {
     return this.#topLevel.has(entity);
-  }
-
-  usesOf(entity: Entity): readonly EntityUse[] {
-    this.#uses ??= usesByEntity(this.#program, (module, name) => this.entityOf(module, name));
-    return this.#uses.get(entity) ?? [];
   }
 
   /** The names visible at `offset` in `module`, resolved as a name written there would be. */

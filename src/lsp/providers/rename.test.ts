@@ -6,7 +6,6 @@ import {
   type WorkspaceEdit,
 } from 'vscode-languageserver/node';
 import { corpusDirectory } from '../../../test/corpus/programs.ts';
-import type { EntityUse } from '../../compiler/binder/entities.ts';
 import { diagnoseModule } from '../../compiler/compile.ts';
 import {
   isStdModule,
@@ -17,6 +16,7 @@ import {
 import { spanIn } from '../../compiler/syntax/positions.ts';
 import { parentOf } from '../../compiler/syntax/tree.ts';
 import { isError } from '../../diagnostics/diagnostic.ts';
+import type { NamePlace } from '../../language-service/navigation/declarations.ts';
 import { isSamePlace, nameAt } from '../../language-service/navigation/declarations.ts';
 import { namesDenoting } from '../../language-service/navigation/references.ts';
 import { renamingAt } from '../../language-service/navigation/rename.ts';
@@ -38,7 +38,7 @@ beforeAll(async () => {
  * a module with errors, a name meant for a declaration may not resolve to it, so renaming the
  * declaration leaves it, and its diagnostic, behind.
  */
-const renamable: readonly EntityUse[] = [...corpusProgram.modules].flatMap(([module, { tree }]) =>
+const renamable: readonly NamePlace[] = [...corpusProgram.modules].flatMap(([module, { tree }]) =>
   isStdModule(corpusProgram, module) ||
   diagnoseModule(corpusProgram, module).diagnostics.some(isError)
     ? []
@@ -50,7 +50,7 @@ const renamable: readonly EntityUse[] = [...corpusProgram.modules].flatMap(([mod
 );
 
 /** Whether a name denoting what `declaring` declares is a shorthand, naming a field and a variable. */
-function hasShorthand(declaring: EntityUse): boolean {
+function hasShorthand(declaring: NamePlace): boolean {
   return namesDenoting(corpusProgram, declaring).some(({ module, name }) => {
     const holder = parentOf(programModule(corpusProgram, module).tree, name);
     return (
@@ -110,7 +110,7 @@ function applied(edit: WorkspaceEdit, newName: string) {
  * diagnostic changed, or a renamed name no longer denoting it. Nothing, when the program means what
  * it meant.
  */
-async function renamingProblems(declaring: EntityUse): Promise<readonly string[]> {
+async function renamingProblems(declaring: NamePlace): Promise<readonly string[]> {
   const uri = declaring.module;
   const { tree } = programModule(corpusProgram, declaring.module);
   const { source } = tree;

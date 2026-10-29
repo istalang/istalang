@@ -3,23 +3,23 @@
  * read.
  *
  * The names are found by asking the identifier query of every identifier in every module, std
- * modules included. The binder's `usesOf` would serve its own entities, but fields, methods and
- * statics are resolved by type, so only the checker knows which names reach them; asking one query
- * of every name keeps references, renaming and going to a definition in agreement. The answer
+ * modules included: fields, methods and statics are resolved by type, so only the checker knows
+ * which names reach them, and asking one query of every name keeps references, renaming and going
+ * to a definition in agreement. This is the program's one index of the names denoting each
+ * declaration. The answer
  * depends on the whole program, so it is made once per program, on the first question, and kept
  * with it.
  */
 
-import type { EntityUse } from '../../compiler/binder/entities.ts';
 import { checkProgram } from '../../compiler/checker/check.ts';
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import { isMissingName } from '../../compiler/syntax/node.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
 import { memo } from '../../structures/memo.ts';
-import { declarationsOf, isSamePlace, nameAt, spanOfUse } from './declarations.ts';
+import { declarationsOf, isSamePlace, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
 
 /** A name denoting a declaration. */
-export interface Reference extends EntityUse {
+export interface Reference extends NamePlace {
   /** Whether the name declares it, rather than referring to it. */
   readonly declares: boolean;
 }
@@ -27,14 +27,14 @@ export interface Reference extends EntityUse {
 /** Where a declaring name stands, as one key: its module, then its offset. */
 type PlaceKey = `${ModuleId} ${number}`;
 
-const indexes = new WeakMap<Program, ReadonlyMap<PlaceKey, readonly EntityUse[]>>();
+const indexes = new WeakMap<Program, ReadonlyMap<PlaceKey, readonly NamePlace[]>>();
 
 /** Every name of `program` denoting what `declaring` declares, `declaring` among them. */
-export function namesDenoting(program: Program, declaring: EntityUse): readonly EntityUse[] {
+export function namesDenoting(program: Program, declaring: NamePlace): readonly NamePlace[] {
   return memo(indexes, program, () => indexOf(program)).get(placeKeyOf(program, declaring)) ?? [];
 }
 
-function placeKeyOf(program: Program, use: EntityUse): PlaceKey {
+function placeKeyOf(program: Program, use: NamePlace): PlaceKey {
   return `${use.module} ${spanOfUse(program, use).start}`;
 }
 
@@ -53,7 +53,7 @@ export function referencesAt(
   );
 }
 
-function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly EntityUse[]> {
+function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly NamePlace[]> {
   const checker = checkProgram(program);
   const denoting = [...program.modules].flatMap(([module, { tree }]) =>
     nodesUnder(tree, tree.root).flatMap((name) =>

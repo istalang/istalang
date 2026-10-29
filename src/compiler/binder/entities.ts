@@ -206,11 +206,6 @@ export function functionsEntity(
   }));
 }
 
-export interface EntityUse {
-  readonly module: ModuleId;
-  readonly name: Identifier;
-}
-
 /** The names of a whole program, bound. */
 export interface Bindings {
   /**
@@ -229,11 +224,6 @@ export interface Bindings {
   readonly moduleOf: (entity: Entity) => ModuleId | undefined;
   /** Whether `entity` is one of its module's top-level names rather than declared inside one. */
   readonly isTopLevel: (entity: Entity) => boolean;
-  /**
-   * Every name of the program that denotes `entity`, in any module: its uses and the names
-   * declaring it. Members the checker resolves by type (`x.field`) are not among them.
-   */
-  readonly usesOf: (entity: Entity) => readonly EntityUse[];
   /**
    * The names visible at `offset` in `module`, each with what it denotes there: its scopes'
    * (§3.4), its top level's and imports', then the prelude's exports, then, for any other name an

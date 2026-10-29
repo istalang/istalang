@@ -23,7 +23,7 @@ import { extentIn, nodesUnder, type SyntaxNode, type SyntaxTree } from '../compi
 import { lastIndexAtMost } from '../structures/sorted.ts';
 import { type LineMap, lineMapOf } from '../text/line-map.ts';
 import type { Span } from '../text/span.ts';
-import { codeTokensOf } from './tokens.ts';
+import { closingBracketsOf, codeTokensOf } from './tokens.ts';
 
 /** Lines `start` through `end`, 0-based. */
 export interface LineRange {
@@ -31,13 +31,11 @@ export interface LineRange {
   readonly end: number;
 }
 
-const closers: Readonly<Record<string, string>> = { ')': '(', ']': '[', '}': '{' };
-
 /** Every fold of `tree`, by its first line. */
 export function foldingRangesOf(tree: SyntaxTree): readonly LineRange[] {
   const lines = lineMapOf(tree.source);
   const tokens = codeTokensOf(tree);
-  const spans = [...bracketSpans(tokens), ...layoutSpans(tree, tokens)];
+  const spans = [...bracketSpans(tree), ...layoutSpans(tree, tokens)];
   const longestByStart = new Map<number, LineRange>();
   for (const span of spans) {
     const range = lineRangeOf(lines, span);
@@ -57,21 +55,11 @@ function lineRangeOf(lines: LineMap, span: Span): LineRange {
 }
 
 /** From each opening bracket through the one closing it; an unclosed bracket folds nothing. */
-function bracketSpans(tokens: readonly Token[]): readonly Span[] {
-  const open: Token[] = [];
-  const spans: Span[] = [];
-  for (const token of tokens) {
-    const opener = closers[token.kind];
-    if (opener === undefined) {
-      if (token.kind === '(' || token.kind === '[' || token.kind === '{') {
-        open.push(token);
-      }
-    } else if (open.at(-1)?.kind === opener) {
-      const start = open.pop()?.span.start ?? token.span.start;
-      spans.push({ start, end: token.span.end });
-    }
-  }
-  return spans;
+function bracketSpans(tree: SyntaxTree): readonly Span[] {
+  return [...closingBracketsOf(tree)].map(([opening, closing]) => ({
+    start: opening.span.start,
+    end: closing.span.end,
+  }));
 }
 
 /** Indented blocks and item lists, which fold by layout rather than by brackets. */

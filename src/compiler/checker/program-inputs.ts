@@ -73,13 +73,6 @@ export function recordedBindings(entries: Entries<CheckerNote>, bindings: Bindin
     exportsOf: entries.input({ name: 'exports of', read: bindings.exportsOf, equal: sameNames }),
     moduleOf: entries.input({ name: 'module of entity', read: bindings.moduleOf }),
     isTopLevel: entries.input({ name: 'is top level', read: bindings.isTopLevel }),
-    usesOf: entries.input({
-      name: 'uses of',
-      read: bindings.usesOf,
-      equal: sameItems(
-        (first, second) => first.module === second.module && first.name === second.name,
-      ),
-    }),
     visibleAt: entries.input({ name: 'visible at', read: bindings.visibleAt, equal: sameNames }),
     overloadsOf: entries.input({
       name: 'overloads of',

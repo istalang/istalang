@@ -18,7 +18,6 @@
  *   case (§2), which also decides what a bare name in a pattern does (§3.11).
  */
 
-import type { EntityUse } from '../../compiler/binder/entities.ts';
 import {
   isStdModule,
   type ModuleId,
@@ -40,7 +39,7 @@ import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { memo } from '../../structures/memo.ts';
 import { createSourceText } from '../../text/source-text.ts';
 import type { Span } from '../../text/span.ts';
-import { type DeclaredAt, isSamePlace, nameAt, spanOfUse } from './declarations.ts';
+import { type DeclaredAt, isSamePlace, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
 import { namesDenoting } from './references.ts';
 
 /** What renaming a name renames, or why it can't be renamed. */
@@ -240,7 +239,7 @@ function namesCalledByName(program: Program): ReadonlySet<string> {
 /** How `use` is spelled once its target is renamed to `newName`: a shorthand spelled out. */
 function spelledAnew(
   program: Program,
-  use: EntityUse,
+  use: NamePlace,
   { declared }: DeclaredAt,
   newName: string,
 ): string {

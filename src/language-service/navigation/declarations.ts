@@ -10,7 +10,6 @@
  * its node: an async function's own call, a variable, is declared by a copy of the function's name.
  */
 
-import type { EntityUse } from '../../compiler/binder/entities.ts';
 import { type Checker, checkProgram } from '../../compiler/checker/check.ts';
 import type { Denotation } from '../../compiler/checker/denotation.ts';
 import { type ModuleId, type Program, programModule } from '../../compiler/program/program.ts';
@@ -22,10 +21,16 @@ import { identifierAt } from '../identifier-at.ts';
 
 type Declared = Denotation['declared'];
 
+/** A name, and the module it stands in. */
+export interface NamePlace {
+  readonly module: ModuleId;
+  readonly name: Identifier;
+}
+
 /** A declaration a name denotes, and the name declaring it. */
 export interface DeclaredAt {
   readonly declared: Declared;
-  readonly at: EntityUse;
+  readonly at: NamePlace;
 }
 
 /** The declarations `name` of `module` denotes, each once: two for a shorthand, none for nothing. */
@@ -44,12 +49,12 @@ export function declarationsOf(
 }
 
 /** Whether two names stand in one place: they are one name, though read through two nodes. */
-export function isSamePlace(first: EntityUse, second: EntityUse): boolean {
+export function isSamePlace(first: NamePlace, second: NamePlace): boolean {
   return first.module === second.module && startTogether(first.name.span, second.name.span);
 }
 
-/** Where `use`'s name stands in its module's text. */
-export function spanOfUse(program: Program, { module, name }: EntityUse): Span {
+/** Where a name stands in its module's text. */
+export function spanOfUse(program: Program, { module, name }: NamePlace): Span {
   return spanIn(programModule(program, module).tree, name.span);
 }
 
@@ -80,7 +85,7 @@ export function nameAt(program: Program, module: ModuleId, offset: number): Name
   return { name, declarations, targets: values.length > 0 ? values : spelled };
 }
 
-const declaringNames: Handlers<Checker, Declared, [], EntityUse | undefined> = {
+const declaringNames: Handlers<Checker, Declared, [], NamePlace | undefined> = {
   variable: ({ bindings }, { entity }) => named(bindings.moduleOf(entity), entity.name),
   field: (_, { field }) =>
     field.declared === undefined
@@ -94,6 +99,6 @@ const declaringNames: Handlers<Checker, Declared, [], EntityUse | undefined> = {
     named(bindings.moduleOf(entity), entity.declaration.alias),
 };
 
-function named(module: ModuleId | undefined, name: Identifier): EntityUse | undefined {
+function named(module: ModuleId | undefined, name: Identifier): NamePlace | undefined {
   return module === undefined || isMissingName(name) ? undefined : { module, name };
 }

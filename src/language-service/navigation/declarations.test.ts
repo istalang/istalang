@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { EntityUse } from '../../compiler/binder/entities.ts';
 import { idOf } from '../../compiler/program/program.test-kit.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
-import { type DeclaredAt, nameAt, spanOfUse } from './declarations.ts';
+import { type DeclaredAt, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
 import { navigable, placeOf } from './navigation.test-kit.ts';
 
 const pair = 'struct Pair:\n  first: int\n  second: int\n';
@@ -18,7 +17,7 @@ function declaredAround(
 }
 
 /** Where each declaration the name `use` denotes is declared. */
-function declaredAt(program: ReturnType<typeof navigable>['program'], use: EntityUse): string[] {
+function declaredAt(program: ReturnType<typeof navigable>['program'], use: NamePlace): string[] {
   return declaredAround(program, use.module, spanOfUse(program, use).start).map(({ at }) =>
     placeOf(program, at),
   );

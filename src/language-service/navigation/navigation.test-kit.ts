@@ -4,18 +4,18 @@
  */
 
 import { stdProgramOf } from '../../compiler/binder/bind.test-kit.ts';
-import type { EntityUse } from '../../compiler/binder/entities.ts';
 import { idOf } from '../../compiler/program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../../compiler/program/program.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
+import type { NamePlace } from './declarations.ts';
 import { spanOfUse } from './declarations.ts';
 import type { NameEdit } from './rename.ts';
 
 /** A program of `files`, keyed by import path, and its names, the `nth` written as `text` in `key`. */
 export function navigable(files: Readonly<Record<string, string>>) {
   const program = stdProgramOf(files);
-  const named = (key: string, text: string, nth = 0): EntityUse => {
+  const named = (key: string, text: string, nth = 0): NamePlace => {
     const module = idOf(key);
     const { tree } = programModule(program, module);
     const found = nodesUnder(tree, tree.root).filter(
@@ -30,7 +30,7 @@ export function navigable(files: Readonly<Record<string, string>>) {
 }
 
 /** Where `use` of `program` stands, as `key:offset` with `key` the module's import path. */
-export function placeOf(program: Program, use: EntityUse): string {
+export function placeOf(program: Program, use: NamePlace): string {
   return `${keyOf(use.module)}:${spanOfUse(program, use).start}`;
 }
 
