@@ -27,7 +27,7 @@
  */
 
 import type { Comment } from '../compiler/syntax/tokens.ts';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import { childrenOf, extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { encloses } from '../text/span.ts';
 import {
   type CommentsOf,
@@ -76,7 +76,7 @@ export function placeComments(
     const [node, slot] = placeOne(context, surroundingsOf(tree, placed), placed);
     const comments = placement.get(node) ?? { leading: [], trailing: [], dangling: [] };
     if (slot === 'trailing') {
-      comments.trailing.push(...takeTrailingAfter(placement, node));
+      comments.trailing.push(...takeTrailingAfter(tree, placement, node));
     }
     comments[slot].push(placed);
     placement.set(node, comments);
@@ -87,23 +87,29 @@ export function placeComments(
 function surroundingsOf(tree: SyntaxTree, comment: PlacedComment): Surroundings {
   const path: [SyntaxNode, ...SyntaxNode[]] = [tree.root];
   for (
-    let inner = childrenOf(tree, tree.root).find((child) => encloses(child.span, comment.span));
+    let inner = childrenOf(tree, tree.root).find(encloserOf(tree, comment));
     inner !== undefined;
-    inner = childrenOf(tree, inner).find((child) => encloses(child.span, comment.span))
+    inner = childrenOf(tree, inner).find(encloserOf(tree, comment))
   ) {
     path.push(inner);
   }
   const enclosing = path.at(-1) ?? tree.root;
   const children = childrenOf(tree, enclosing);
-  const before = children.findLast((child) => child.span.end <= comment.span.start);
+  const before = children.findLast((child) => extentIn(tree, child).end <= comment.span.start);
   const opened =
-    before !== undefined && opensBetween(tree.source.text, before.span.end, comment.span.start);
+    before !== undefined &&
+    opensBetween(tree.source.text, extentIn(tree, before).end, comment.span.start);
   return {
     path,
     enclosing,
     preceding: opened ? undefined : before,
-    following: children.find((child) => child.span.start >= comment.span.end),
+    following: children.find((child) => extentIn(tree, child).start >= comment.span.end),
   };
+}
+
+/** Whether a node of `tree` holds `comment` in the text it and its descendants cover. */
+function encloserOf(tree: SyntaxTree, comment: PlacedComment): (node: SyntaxNode) => boolean {
+  return (node) => encloses(extentIn(tree, node), comment.span);
 }
 
 function placeOne(context: Source, around: Surroundings, comment: PlacedComment): Placement {
@@ -138,9 +144,9 @@ function ownLinePlace(context: Source, around: Surroundings, comment: PlacedComm
   const column = columnOf(source, comment.span.start);
   const leads =
     following !== undefined &&
-    onlyCommentsBetween(source.text, comment.span.end, following.span.start) &&
+    onlyCommentsBetween(source.text, comment.span.end, extentIn(tree, following).start) &&
     lineMayStartBefore(context, enclosing, comment.span.start, following);
-  if (leads && column <= columnOf(source, following.span.start)) {
+  if (leads && column <= columnOf(source, extentIn(tree, following).start)) {
     return [following, 'leading'];
   }
   if (preceding !== undefined) {
@@ -162,7 +168,7 @@ function leadingConstruct(context: Source, path: Surroundings['path']): Placemen
     if (
       parent !== undefined &&
       node !== undefined &&
-      lineMayStartBefore(context, parent, node.span.start, node)
+      lineMayStartBefore(context, parent, extentIn(context.tree, node).start, node)
     ) {
       return [node, 'leading'];
     }
@@ -197,7 +203,7 @@ function lineMayStartBefore(
   following: SyntaxNode,
 ): boolean {
   const previous = previousTokenEnd(context, offset);
-  if (previous <= enclosing.span.start) {
+  if (previous <= extentIn(context.tree, enclosing).start) {
     return true;
   }
   const token = tokenBefore(context, offset);
@@ -208,7 +214,9 @@ function lineMayStartBefore(
   }
   return (
     itemSeparators.has(token) ||
-    childrenOf(context.tree, enclosing).some((child) => child.span.end === previous)
+    childrenOf(context.tree, enclosing).some(
+      (child) => extentIn(context.tree, child).end === previous,
+    )
   );
 }
 
@@ -239,8 +247,9 @@ function closedItem(tree: SyntaxTree, node: SyntaxNode, column: number): SyntaxN
     last !== undefined;
     [owner, last] = [last, childrenOf(tree, last).at(-1)]
   ) {
-    const start = columnOf(source, last.span.start);
-    const startsLine = source.text.slice(last.span.start - start, last.span.start).trim() === '';
+    const offset = extentIn(tree, last).start;
+    const start = columnOf(source, offset);
+    const startsLine = source.text.slice(offset - start, offset).trim() === '';
     if (itemLists.has(owner.kind) && startsLine && start <= column) {
       found = last;
     }
@@ -254,13 +263,15 @@ function closedItem(tree: SyntaxTree, node: SyntaxNode, column: number): SyntaxN
  * print after it.
  */
 function takeTrailingAfter(
+  tree: SyntaxTree,
   placement: ReadonlyMap<SyntaxNode, MutableComments>,
   node: SyntaxNode,
 ): readonly PlacedComment[] {
   const taken: PlacedComment[] = [];
+  const extent = extentIn(tree, node);
   for (const [ancestor, { trailing }] of placement) {
-    if (ancestor !== node && encloses(ancestor.span, node.span)) {
-      const after = trailing.filter((comment) => comment.span.start >= node.span.end);
+    if (ancestor !== node && encloses(extentIn(tree, ancestor), extent)) {
+      const after = trailing.filter((comment) => comment.span.start >= extent.end);
       taken.push(...after);
       trailing.splice(
         0,

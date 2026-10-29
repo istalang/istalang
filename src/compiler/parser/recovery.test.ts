@@ -17,6 +17,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import type { MemberAccess } from '../syntax/expressions/index.ts';
+import { spanIn } from '../syntax/positions.ts';
 import { dump, errorNodes, spanViolations } from '../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { operatorTree, printFull } from './expressions/precedence.test-kit.ts';
@@ -105,7 +106,7 @@ describe('recovery stays inside its brackets', () => {
         const parsed = parseAs('expression', text);
         const root = parsed.node as MemberAccess;
         expect(dump(parsed, root.member)).toBe('after');
-        expect(root.target.span.end).toBe(text.lastIndexOf(')') + 1);
+        expect(spanIn(parsed, root.target.span).end).toBe(text.lastIndexOf(')') + 1);
         expect(parsed.rest).toBe(0);
       }),
       { numRuns: 200 },

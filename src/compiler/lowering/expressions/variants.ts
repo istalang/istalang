@@ -6,11 +6,11 @@
 import type { Register } from '../../../definition/operands.ts';
 import { optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import type { Expression, StructLiteral } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Label } from '../code-writer.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { literalFields } from './structs.ts';
@@ -64,7 +64,7 @@ export function branchOnVariant(
   context: CodeContext,
   test: VariantTest,
   labels: { readonly matched: Label; readonly otherwise: Label },
-  span: Span,
+  span: AnchoredSpan,
 ): void {
   const targets = Array.from({ length: test.variant + 1 }, (_, index) =>
     index === test.variant ? labels.matched : labels.otherwise,
@@ -73,7 +73,7 @@ export function branchOnVariant(
 }
 
 /** The value a `Some`, `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */
-export function payloadOf(context: CodeContext, register: Register, span: Span): Register {
+export function payloadOf(context: CodeContext, register: Register, span: AnchoredSpan): Register {
   return context.code.field(register, 0, span);
 }
 
@@ -90,7 +90,7 @@ function emitVariant(
 ): Register {
   const type = context.typeOf(node);
   if (!isEnum(type)) {
-    unreachable(`Expected an enum at ${node.span.start}; the checker should have said so.`);
+    unreachable(`Expected an enum at ${node.span.from}; the checker should have said so.`);
   }
   return buildVariant(context, { type, name }, fields, node.span);
 }
@@ -100,7 +100,7 @@ export function buildVariant(
   context: CodeContext,
   { type, name }: { readonly type: NominalType; readonly name: string },
   fields: readonly Register[],
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   const dst = context.code.allocate();
   context.code.emit({

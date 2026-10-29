@@ -12,6 +12,7 @@
 import { isMethod } from '../../compiler/syntax/declarations.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../../compiler/syntax/node.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { memo } from '../../structures/memo.ts';
 import type { SemanticType } from './semantic-types.ts';
@@ -93,7 +94,7 @@ export function nameTypesOf(tree: SyntaxTree): ReadonlyMap<number, SemanticType>
     const found = new Map<number, SemanticType>();
     const name = (identifier: Identifier | undefined, type: SemanticType) => {
       if (identifier !== undefined && !isMissingName(identifier)) {
-        const { start } = identifier.span;
+        const { start } = spanIn(tree, identifier.span);
         found.set(start, found.get(start) ?? type);
       }
     };

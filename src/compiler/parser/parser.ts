@@ -9,6 +9,10 @@
  * without calling a category (qualified names, literals, parameters, struct parts) lives in
  * `parts/`, which every category may import. dependency-cruiser enforces both rules.
  *
+ * The parser reads text positions: tokens carry them, and so do its own decisions. A node it makes
+ * gets its span anchored to the segment being parsed (syntax/positions.ts), and reading a node's
+ * position back goes through the segments' starts, which the tree keeps.
+ *
  * Speculation settles two ambiguities: `name<…>(` against a comparison (§3.5), and `a, b = …`
  * against a comma that belongs to an enclosing call. An attempt that reports anything is undone
  * completely, cursor (cursor.ts) and diagnostics together, and while speculating, recovery gives
@@ -25,6 +29,7 @@ import type { Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
 import type { Pattern } from '../syntax/patterns.ts';
+import { type AnchoredSpan, type Segment, type SegmentBases, spanIn } from '../syntax/positions.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -64,12 +69,14 @@ export interface Grammar {
  */
 export const nestingLimit = 200;
 
-export class Parser {
+export class Parser implements SegmentBases {
   #cursor: Cursor;
   readonly #source: SourceText;
   readonly #grammar: Grammar;
   readonly #diagnostics: Diagnostic[] = [];
   readonly #bodies = new Map<FunctionDeclaration, Block>();
+  readonly #bases = new Map<Segment, number>();
+  readonly #segment: Segment = { kind: 'module' };
   #speculationDepth = 0;
   #nesting = 0;
 
@@ -77,6 +84,7 @@ export class Parser {
     this.#cursor = new Cursor(tokens);
     this.#source = source;
     this.#grammar = grammar;
+    this.#bases.set(this.#segment, 0);
   }
 
   get cursor(): Cursor {
@@ -113,6 +121,27 @@ export class Parser {
    */
   get recordedBodies(): ReadonlyMap<FunctionDeclaration, Block> {
     return this.#bodies;
+  }
+
+  /** Where each segment parsed starts in the text. */
+  get bases(): ReadonlyMap<Segment, number> {
+    return this.#bases;
+  }
+
+  /** `span`, text positions in the segment being parsed, anchored to that segment. */
+  anchor({ start, end }: Span): AnchoredSpan {
+    const base = this.#bases.get(this.#segment) ?? 0;
+    return { segment: this.#segment, from: start - base, to: end - base };
+  }
+
+  /** The text positions of `span`, which this parser anchored. */
+  textSpanOf(span: AnchoredSpan): Span {
+    return spanIn(this, span);
+  }
+
+  /** Where `node`, which this parser made, starts in the text. */
+  startOf(node: { readonly span: AnchoredSpan }): number {
+    return this.textSpanOf(node.span).start;
   }
 
   /** Records `body` as `declaration`'s. */
@@ -228,7 +257,12 @@ export class Parser {
    * or its first consumed token, never at the next token's position taken beforehand: a missing
    * child sits before any whitespace, and would fall outside its parent.
    */
-  spanFrom(start: number): Span {
+  spanFrom(start: number): AnchoredSpan {
+    return this.anchor(this.textSpanFrom(start));
+  }
+
+  /** As `spanFrom`, in text positions: where a diagnostic about what was just read points. */
+  textSpanFrom(start: number): Span {
     return { start, end: Math.max(start, this.cursor.previousEnd) };
   }
 
@@ -257,7 +291,7 @@ export class Parser {
   identifier(what = 'a name'): Identifier {
     const token = this.cursor.eat('identifier');
     if (token !== undefined) {
-      return { kind: 'Identifier', span: token.span, text: this.textOf(token) };
+      return { kind: 'Identifier', span: this.anchor(token.span), text: this.textOf(token) };
     }
     this.reportExpected(what);
     return { kind: 'Identifier', span: this.#emptySpan(), text: '' };
@@ -299,8 +333,8 @@ export class Parser {
     }
   }
 
-  #emptySpan(): Span {
+  #emptySpan(): AnchoredSpan {
     const at = this.cursor.previousEnd;
-    return { start: at, end: at };
+    return this.anchor({ start: at, end: at });
   }
 }

@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { reportedNothing, reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
+import { spanIn } from '../../syntax/positions.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { dumpClean, named, parseAs, reported } from '../parse.test-kit.ts';
 
@@ -138,9 +139,10 @@ describe('tuple elements (§3.15)', () => {
   });
 
   it('spans each element from the target to its own position', () => {
-    const { node } = parseAs('expression', 't.10.2');
+    const parsed = parseAs('expression', 't.10.2');
+    const { node } = parsed;
     const inner = node.kind === 'TupleElement' ? node.target : undefined;
-    expect([node.span, inner?.span]).toEqual([
+    expect([node, inner].map((each) => each && spanIn(parsed, each.span))).toEqual([
       { start: 0, end: 6 },
       { start: 0, end: 4 },
     ]);

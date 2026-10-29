@@ -18,11 +18,11 @@ import type { Callee } from '../../definition/instructions/calls.ts';
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
 import type { SignatureParameter } from '../checker/check.ts';
 import type { ImplicitRole, ResolvedSite } from '../checker/resolved-call.ts';
 import { substitute } from '../checker/types/substitution.ts';
 import type { NodeOf } from '../syntax/node.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
 import {
   type ClosedCall,
@@ -34,7 +34,7 @@ import { packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */
 export interface CallToEmit {
-  readonly span: Span;
+  readonly span: AnchoredSpan;
   /** A function-table entry, or a callee as the Definition writes it. */
   readonly callee: FunctionId | Callee;
   /** Each argument: a register, passed by value, or an argument as the Definition writes it. */
@@ -62,7 +62,7 @@ export function emitCall(
 
 /** A closed call of a resolved function to write: where, the call, and the arguments it passes. */
 export interface FunctionCallToEmit {
-  readonly span: Span;
+  readonly span: AnchoredSpan;
   readonly call: ClosedCall;
   /** Numbered as the call's binding numbers them: a method's receiver first, then as written. */
   readonly arguments: readonly (Register | Argument)[];
@@ -147,7 +147,11 @@ interface CollectedItem {
  */
 function restParameters(
   context: CodeContext,
-  rest: { readonly call: ClosedCall; readonly span: Span; readonly declared: SignatureParameter },
+  rest: {
+    readonly call: ClosedCall;
+    readonly span: AnchoredSpan;
+    readonly declared: SignatureParameter;
+  },
   items: readonly CollectedItem[],
 ): readonly Register[] {
   const { call, span, declared } = rest;

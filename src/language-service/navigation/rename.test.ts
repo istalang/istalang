@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EntityUse } from '../../compiler/binder/entities.ts';
 import type { Program } from '../../compiler/program/program.ts';
+import { spanOfUse } from './declarations.ts';
 import { edited, navigable } from './navigation.test-kit.ts';
 import { renameEdits, renamingAt } from './rename.ts';
 
@@ -8,12 +9,12 @@ const pair = 'struct Pair:\n  first: int\n  second: int\n';
 
 /** The texts renaming `use` to `newName` makes, or why it is refused. */
 function renamed(program: Program, use: EntityUse, newName: string) {
-  const renaming = renameEdits(program, use.module, use.name.span.start, newName);
+  const renaming = renameEdits(program, use.module, spanOfUse(program, use).start, newName);
   return renaming?.kind === 'renamed' ? edited(program, renaming.edits) : renaming;
 }
 
 function refusalOf(program: Program, use: EntityUse): string | undefined {
-  const renaming = renamingAt(program, use.module, use.name.span.start);
+  const renaming = renamingAt(program, use.module, spanOfUse(program, use).start);
   return renaming?.kind === 'refused' ? renaming.reason : undefined;
 }
 

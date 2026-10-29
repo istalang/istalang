@@ -20,9 +20,9 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { argumentListText, filledTypes, fitArguments } from '../resolution/argument-fit.ts';
@@ -69,7 +69,7 @@ export interface CallRequest {
   /** A method call's receiver, its first argument (§3.7). */
   readonly receiver?: Expression;
   /** What to report instead when no candidate takes the arguments, if anything. */
-  readonly hint?: () => Diagnostic | undefined;
+  readonly hint?: () => Diagnostic<AnchoredSpan> | undefined;
 }
 
 /** Resolves `request`, recording the call; what it yields, or the error type after a report. */
@@ -168,7 +168,7 @@ export function recordChosen(context: BodyContext, chosen: Chosen): void {
 }
 
 /** The report saying why a call's arguments can't fill its one function's parameters (§3.3). */
-function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnostic {
+function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnostic<AnchoredSpan> {
   const { site, name } = request;
   switch (reason.kind) {
     case 'arity': {
@@ -200,7 +200,7 @@ function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnost
 function packReport(
   request: ExplainedCall,
   reason: Extract<Inapplicability, { kind: 'pack' | 'packTypeArgument' }>,
-): Diagnostic {
+): Diagnostic<AnchoredSpan> {
   const { site } = request;
   if (reason.kind === 'packTypeArgument') {
     const { parameter, type } = reason;
@@ -214,7 +214,7 @@ function packReport(
 }
 
 /** Where the argument named `name` is written; the call, if none is. */
-function namedAt(request: ExplainedCall, name: string): Span {
+function namedAt(request: ExplainedCall, name: string): AnchoredSpan {
   const named = request.arguments.findLast((argument) => argument.name?.text === name);
   return named?.name?.span ?? request.site.span;
 }

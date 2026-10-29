@@ -22,7 +22,6 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import type { VariableOwner } from '../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type {
@@ -35,6 +34,7 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import { constantTextOf } from '../../syntax/expressions/templates.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant, FieldSource } from '../check.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../constant-form.ts';
@@ -72,8 +72,8 @@ export function computeConstant(initializer: Expression, scope: ComputationScope
 /** Why compile time leaves `outcome` uncomputed, reported where its part stands. */
 export function refusalOf(
   outcome: Extract<Outcome, { readonly kind: 'refused' }>,
-  notConstant: (at: Span) => Diagnostic,
-): Diagnostic {
+  notConstant: (at: AnchoredSpan) => Diagnostic<AnchoredSpan>,
+): Diagnostic<AnchoredSpan> {
   return outcome.why === 'endless'
     ? checkerDiagnostics.endlessDefault(outcome.part.span)
     : notConstant(outcome.part.span);

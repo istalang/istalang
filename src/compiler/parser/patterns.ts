@@ -40,7 +40,7 @@ export function parsePattern(parser: Parser): Pattern {
     return pattern;
   }
   const name = parser.identifier('a name to bind');
-  return { kind: 'AsPattern', span: parser.spanFrom(pattern.span.start), pattern, name };
+  return { kind: 'AsPattern', span: parser.spanFrom(parser.startOf(pattern)), pattern, name };
 }
 
 /** How a pattern starting at a token of some kind is parsed. */
@@ -104,7 +104,7 @@ function parseOrPattern(parser: Parser, first: Pattern): Pattern {
   while (parser.cursor.eat('|') !== undefined) {
     alternatives.push(parsePatternAt(parser, 'range'));
   }
-  return { kind: 'OrPattern', span: parser.spanFrom(first.span.start), alternatives };
+  return { kind: 'OrPattern', span: parser.spanFrom(parser.startOf(first)), alternatives };
 }
 
 /** `[first, ...rest, last]`; a second rest is reported, since the items between would be ambiguous. */
@@ -114,7 +114,7 @@ function parseArrayPattern(parser: Parser): Pattern {
     parser.cursor.at('...') ? parseRestPattern(parser) : parser.pattern(),
   );
   for (const extra of items.filter((item) => item.kind === 'RestPattern').slice(1)) {
-    parser.report(parserDiagnostics.secondRest(extra.span));
+    parser.report(parserDiagnostics.secondRest(parser.textSpanOf(extra.span)));
   }
   return { kind: 'ArrayPattern', span: parser.spanFrom(start), elements: items };
 }
@@ -130,7 +130,7 @@ function parseRestPattern(parser: Parser): RestPattern {
 function parseWildcard(parser: Parser): WildcardPattern | undefined {
   const { cursor } = parser;
   return cursor.at('identifier') && parser.textOf(cursor.token) === '_'
-    ? { kind: 'WildcardPattern', span: cursor.advance().span }
+    ? { kind: 'WildcardPattern', span: parser.anchor(cursor.advance().span) }
     : undefined;
 }
 
@@ -140,7 +140,7 @@ function parseRangePattern(parser: Parser, start: Pattern): Pattern {
   const end = parseRangeBound(parser, isInclusive);
   return {
     kind: 'RangePattern',
-    span: parser.spanFrom(start.span.start),
+    span: parser.spanFrom(parser.startOf(start)),
     start: boundOf(parser, start),
     isInclusive,
     end,
@@ -166,7 +166,7 @@ function parseOpenRangePattern(parser: Parser): Pattern {
  */
 function parseRangeBound(parser: Parser, required: boolean): LiteralPattern | undefined {
   const { kind } = parser.cursor;
-  const startsLiteral = kind === '-' || literalFrom(parser.cursor.token) !== undefined;
+  const startsLiteral = kind === '-' || literalFrom(parser, parser.cursor.token) !== undefined;
   if (!startsLiteral) {
     if (required) {
       parser.reportExpected('a literal');
@@ -181,7 +181,7 @@ function boundOf(parser: Parser, bound: Pattern): LiteralPattern | undefined {
   if (bound.kind === 'LiteralPattern') {
     return bound;
   }
-  parser.report(parserDiagnostics.rangeBound(bound.span));
+  parser.report(parserDiagnostics.rangeBound(parser.textSpanOf(bound.span)));
   return undefined;
 }
 
@@ -192,7 +192,7 @@ function parseNamedPattern(parser: Parser): Pattern {
     return wildcard;
   }
   const path = parseQualifiedName(parser);
-  const { start } = path[0].span;
+  const start = parser.startOf(path[0]);
   return cursor.at('{')
     ? parseStructPattern(parser, namedTypeFrom(parser, path, []), start)
     : { kind: 'NamePattern', span: parser.spanFrom(start), path };
@@ -213,7 +213,7 @@ function parseStructPattern(parser: Parser, type: NamedType | undefined, start: 
 function parseFieldPattern(parser: Parser): StructPattern['fields'][number] {
   const { cursor } = parser;
   const field = parser.identifier('a field name');
-  const { start } = field.span;
+  const start = parser.startOf(field);
   const { kind } = cursor;
   if (cursor.eat('as') !== undefined) {
     const alias = parser.identifier('a name to bind');
@@ -246,7 +246,7 @@ function parseTuplePattern(parser: Parser): Pattern {
 }
 
 function parseLiteralPattern(parser: Parser): Pattern {
-  const literal = literalFrom(parser.cursor.token);
+  const literal = literalFrom(parser, parser.cursor.token);
   if (literal === undefined) {
     return unreachable('A literal pattern starts at a literal token.');
   }
@@ -260,7 +260,7 @@ function parseNegativeLiteral(parser: Parser): Pattern {
   const { kind } = parser.cursor;
   const operand =
     kind === 'integer' || kind === 'float' || kind === 'duration'
-      ? literalFrom(parser.cursor.advance())
+      ? literalFrom(parser, parser.cursor.advance())
       : undefined;
   const value = operand ?? parser.missing('a number after the minus');
   const span = parser.spanFrom(start);

@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Location } from 'vscode-languageserver/node';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
 import type { TestClient } from '../server.test-kit.ts';
 import {
@@ -22,8 +23,8 @@ async function namesByDeclaration(): Promise<ReadonlyMap<string, readonly string
     corpusDocuments.flatMap(({ uri, tree }) =>
       namesOf(tree).map(async (name) => {
         const range = {
-          start: positionOf(tree.source, name.span.start),
-          end: positionOf(tree.source, name.span.end),
+          start: positionOf(tree.source, spanIn(tree, name.span).start),
+          end: positionOf(tree.source, spanIn(tree, name.span).end),
         };
         const declarations = await definitionsAt(client, uri, range.start);
         return declarations.map((declaration) => ({ declaration, use: placeOf({ uri, range }) }));
@@ -53,8 +54,8 @@ describe('the references of a declaration', () => {
           const location: Location = {
             uri,
             range: {
-              start: positionOf(tree.source, name.span.start),
-              end: positionOf(tree.source, name.span.end),
+              start: positionOf(tree.source, spanIn(tree, name.span).start),
+              end: positionOf(tree.source, spanIn(tree, name.span).end),
             },
           };
           return [placeOf(location), location] as const;

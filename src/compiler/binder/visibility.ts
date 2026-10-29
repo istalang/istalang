@@ -21,11 +21,18 @@
  * in.
  */
 
+import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
 import { nodesAt, type SyntaxNode, type SyntaxTree } from '../syntax/tree.ts';
 import { type LocalEntity, Scope, type ScopeSnapshot } from './scope.ts';
 
-/** A scope state, noted for a node from an offset on. */
+/** A scope state, noted for a node from where `start` starts on. */
 interface NotedSnapshot {
+  readonly start: AnchoredSpan;
+  readonly snapshot: ScopeSnapshot;
+}
+
+/** A note with its start as a text offset, for comparing with a cursor's. */
+interface PlacedSnapshot {
   readonly from: number;
   readonly snapshot: ScopeSnapshot;
 }
@@ -48,13 +55,13 @@ export class VisibilityNotes {
   /** The notes of empty nodes, from their position on. */
   readonly #empty: NotedSnapshot[] = [];
 
-  /** Notes that `node`, from `from` on, is bound in `scope` as it is defined now. */
-  note(node: SyntaxNode, scope: Scope, from = node.span.start): void {
+  /** Notes that `node`, from where `start` starts on, is bound in `scope` as it is defined now. */
+  note(node: SyntaxNode, scope: Scope, start = node.span): void {
     const noted = this.#noted.get(node) ?? [];
-    const note = { from, snapshot: scope.snapshot() };
+    const note = { start, snapshot: scope.snapshot() };
     noted.push(note);
     this.#noted.set(node, noted);
-    if (node.span.start === node.span.end) {
+    if (node.span.from === node.span.to) {
       this.#empty.push(note);
     }
   }
@@ -65,10 +72,12 @@ export class VisibilityNotes {
     const empty = this.#empty;
     return {
       namesAt: (tree, offset) => {
-        const isBlankUpTo = ({ from }: NotedSnapshot) =>
+        const placed = (notes: readonly NotedSnapshot[]): readonly PlacedSnapshot[] =>
+          notes.map(({ start, snapshot }) => ({ from: spanIn(tree, start).start, snapshot }));
+        const isBlankUpTo = ({ from }: PlacedSnapshot) =>
           blankStretch.test(tree.source.text.slice(from, offset));
-        const missing = latestStarted(empty.filter(isBlankUpTo), offset);
-        const started = (node: SyntaxNode) => latestStarted(noted.get(node) ?? [], offset);
+        const missing = latestStarted(placed(empty).filter(isBlankUpTo), offset);
+        const started = (node: SyntaxNode) => latestStarted(placed(noted.get(node) ?? []), offset);
         const found =
           missing ??
           nodesAt(tree, offset)
@@ -82,8 +91,11 @@ export class VisibilityNotes {
 }
 
 /** Of `notes`, the one started last by `offset`; of two starting together, the later noted. */
-function latestStarted(notes: readonly NotedSnapshot[], offset: number): NotedSnapshot | undefined {
-  return notes.reduce<NotedSnapshot | undefined>(
+function latestStarted(
+  notes: readonly PlacedSnapshot[],
+  offset: number,
+): PlacedSnapshot | undefined {
+  return notes.reduce<PlacedSnapshot | undefined>(
     (latest, note) =>
       note.from <= offset && (latest === undefined || note.from >= latest.from) ? note : latest,
     undefined,

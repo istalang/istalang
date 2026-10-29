@@ -14,7 +14,7 @@ export function lowerDurationLiteral(context: FunctionContext, node: DurationLit
   const type = context.typeOf(node);
   if (type.kind !== 'nominal') {
     unreachable(
-      `A duration at ${node.span.start} isn't a Duration; the checker should have said so.`,
+      `A duration at ${node.span.from} isn't a Duration; the checker should have said so.`,
     );
   }
   const form = durationForm(type, node.value);

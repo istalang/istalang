@@ -10,6 +10,7 @@ import { type CompletionItem, CompletionRequest } from 'vscode-languageserver/no
 import { isLookedUp, resolvedNames } from '../../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../../compiler/checker/check.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
 import {
   corpusClient,
@@ -42,7 +43,7 @@ describe('completion over the corpus', () => {
       .filter((member) => checker.lookup.denotationsOf(module, member).length > 0);
     const unoffered = await Promise.all(
       [...scoped, ...members].map(async (name: Identifier) => {
-        const position = rangeOf(tree.source, name.span).end;
+        const position = rangeOf(tree.source, spanIn(tree, name.span)).end;
         const items = await client.connection.sendRequest(CompletionRequest.type, {
           textDocument: { uri },
           position,

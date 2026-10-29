@@ -17,6 +17,7 @@ import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { isStdModule, type ModuleId, type Program } from '../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
+import { handMadeSpan } from '../syntax/tree.test-kit.ts';
 import { nodesUnder } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { checkedApart } from './check.test-kit.ts';
@@ -184,7 +185,7 @@ describe('a checker', () => {
     expect(
       () =>
         module !== undefined &&
-        checker.report(module, checkerDiagnostics.recursiveReturnType({ start: 0, end: 1 }, 'f')),
+        checker.report(module, checkerDiagnostics.recursiveReturnType(handMadeSpan(0, 1), 'f')),
     ).toThrow(Unreachable);
   });
 

@@ -1,7 +1,8 @@
 /**
  * What every syntax tree node shares, and the nodes that every grammar category uses.
  *
- * A node is an immutable plain object: a `kind` naming its shape, a `span`, and fields that are
+ * A node is an immutable plain object: a `kind` naming its shape, a `span` anchored to its segment
+ * of text (positions.ts), and fields that are
  * nodes, arrays of nodes, optional nodes or node arrays, or primitives. That invariant is what lets traversal be
  * derived from the fields (tree.ts) instead of being written out for each kind. Nodes hold no
  * tokens and no resolved references; later phases keep those in side tables keyed by node.
@@ -14,11 +15,11 @@
  * The parser reports a diagnostic for each of them.
  */
 
-import type { Span } from '../../text/span.ts';
+import type { AnchoredSpan } from './positions.ts';
 
 export interface NodeOf<Kind extends string> {
   readonly kind: Kind;
-  readonly span: Span;
+  readonly span: AnchoredSpan;
 }
 
 /** A name. Empty `text` marks a name the parser expected but didn't find. */

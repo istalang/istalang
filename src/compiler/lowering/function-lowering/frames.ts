@@ -140,7 +140,7 @@ export function nestedFrame(
   const { node } = nested;
   const checked = lowered.body.functionOf(node);
   if (checked === undefined) {
-    unreachable(`The function at ${node.span.start} was never checked.`);
+    unreachable(`The function at ${node.span.from} was never checked.`);
   }
   const { type, parameters, captures } = checked;
   return {

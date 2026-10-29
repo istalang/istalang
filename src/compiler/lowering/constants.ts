@@ -8,9 +8,9 @@
 
 import type { Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
-import type { Span } from '../../text/span.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import type { ConstantForm } from '../checker/constant-form.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeWriter } from './code-writer.ts';
 import type { DefinitionTables } from './tables.ts';
 
@@ -18,7 +18,7 @@ import type { DefinitionTables } from './tables.ts';
 export function emitConstant(
   context: { readonly code: CodeWriter; readonly tables: DefinitionTables },
   value: Value,
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   const dst = context.code.allocate();
   context.code.emit({ kind: 'constant', span, dst, constant: context.tables.constant(value) });

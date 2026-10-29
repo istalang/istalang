@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { FoldingRangeRequest } from 'vscode-languageserver/node';
-import { nodesUnder, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
+import { extentIn, nodesUnder, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { allTokensOf } from '../../language-service/tokens.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Span } from '../../text/span.ts';
@@ -48,15 +49,14 @@ function layoutFoldables(
   const colons = allTokensOf(tree).filter((token) => token.kind === ':');
   return nodesUnder(tree, tree.root).flatMap((node) => {
     const named = itemLists.has(node.kind) && 'name' in node ? node.name : undefined;
-    const indented = node.kind === 'Block' && tree.source.text[node.span.start] !== '{';
-    const colon = indented
-      ? colons.findLast((token) => token.span.end <= node.span.start)
-      : undefined;
-    const header = itemLists.has(node.kind) ? (named ?? node) : colon;
+    const { start } = spanIn(tree, node.span);
+    const indented = node.kind === 'Block' && tree.source.text[start] !== '{';
+    const colon = indented ? colons.findLast((token) => token.span.end <= start) : undefined;
+    const header = itemLists.has(node.kind) ? spanIn(tree, (named ?? node).span) : colon?.span;
     if (header === undefined) {
       return [];
     }
-    const span = { start: header.span.start, end: node.span.end };
+    const span = { start: header.start, end: extentIn(tree, node).end };
     return [{ what: node.kind, span, earliest: lineOf(span.start) }];
   });
 }

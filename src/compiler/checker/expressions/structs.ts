@@ -31,6 +31,7 @@ import {
 } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
 import type { FieldRead, FoundField } from '../checked-field.ts';
@@ -307,7 +308,7 @@ export class FieldReads implements FieldReadRecord {
  * the optional it is (`?.`, or `?->` for an optional shared struct), or `node` names a method,
  * read only by calling.
  */
-function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnostic {
+function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnostic<AnchoredSpan> {
   const { checker } = context;
   const { span, text: name } = node.member;
   const behind = (owner: Type) => {

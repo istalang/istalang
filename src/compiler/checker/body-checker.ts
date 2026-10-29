@@ -20,12 +20,12 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
 import type { Entity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Call, Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -216,12 +216,12 @@ export class BodyChecker implements BodyContext {
     }
   }
 
-  fitWritten(found: Type, expected: Type, at: Span): Fit {
+  fitWritten(found: Type, expected: Type, at: AnchoredSpan): Fit {
     return this.#fitOf(found, expected, at);
   }
 
   /** How `found` fits `expected`; as it is after reporting a mismatch at `at`. */
-  #fitOf(found: Type, expected: Type, at: Span): Fit {
+  #fitOf(found: Type, expected: Type, at: AnchoredSpan): Fit {
     const fit = this.checker.fitOf(found, expected);
     if (fit === undefined) {
       this.#mismatch(found, expected, at);
@@ -229,7 +229,7 @@ export class BodyChecker implements BodyContext {
     return fit ?? exactFit;
   }
 
-  fitUnwrapped(found: Type, expected: Type, at: Span): void {
+  fitUnwrapped(found: Type, expected: Type, at: AnchoredSpan): void {
     const fit = this.checker.fitOf(found, expected);
     if (fit === undefined || !isExact(fit)) {
       this.#mismatch(found, expected, at);
@@ -237,7 +237,7 @@ export class BodyChecker implements BodyContext {
   }
 
   /** Reports why `found` doesn't fit: a trait it doesn't meet, when an `any` type is expected. */
-  #mismatch(found: Type, expected: Type, at: Span): void {
+  #mismatch(found: Type, expected: Type, at: AnchoredSpan): void {
     if (
       expected.kind === 'any' &&
       reportUnmet(useSite(this.checker, this.module, at), found, expected)
@@ -262,7 +262,7 @@ export class BodyChecker implements BodyContext {
     return handlerOf(statementHandlers, node)(this, node, expected);
   }
 
-  report(diagnostic: Diagnostic): void {
+  report(diagnostic: Diagnostic<AnchoredSpan>): void {
     this.checker.report(this.module, diagnostic);
   }
 

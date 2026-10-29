@@ -3,8 +3,8 @@ import { type DocumentSymbol, DocumentSymbolRequest } from 'vscode-languageserve
 import type { Declaration } from '../../compiler/syntax/declarations.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { targetNames } from '../../compiler/syntax/patterns.ts';
+import { type AnchoredSpan, spanIn } from '../../compiler/syntax/positions.ts';
 import { lineMapOf } from '../../text/line-map.ts';
-import type { Span } from '../../text/span.ts';
 import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
 import type { TestClient } from '../server.test-kit.ts';
 
@@ -45,7 +45,7 @@ function declaredBy(declaration: Declaration): readonly Declared[] {
 }
 
 /** Where a name stands, as a range's key. */
-type KeyOf = (span: Span) => string;
+type KeyOf = (span: AnchoredSpan) => string;
 
 /** Each declared name with no symbol selecting it, or whose symbol isn't under its declaration's. */
 function misplaced(
@@ -73,7 +73,8 @@ describe('the outline', () => {
         textDocument: { uri },
       })) ?? []) as readonly DocumentSymbol[];
       const lines = lineMapOf(tree.source);
-      const keyOf: KeyOf = ({ start, end }) => {
+      const keyOf: KeyOf = (span) => {
+        const { start, end } = spanIn(tree, span);
         const from = lines.positionAt(start);
         const to = lines.positionAt(end);
         return `${from.line}:${from.column}-${to.line}:${to.column}`;

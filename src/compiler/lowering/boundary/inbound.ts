@@ -8,9 +8,9 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { CodecHelper } from '../../../language/well-known.ts';
-import type { Span } from '../../../text/span.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CodeContext } from '../context.ts';
 import { emitFunctionCall } from '../emit-call.ts';
 import { type ClosedCall, closeCall, type FunctionInstance } from '../instances.ts';
@@ -45,7 +45,7 @@ export function emitInbound(
   context: CodeContext,
   json: Register,
   inbound: Inbound,
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   const path = context.constant(inbound.path, span);
   const call = (target: ClosedCall, values: readonly Register[]) =>

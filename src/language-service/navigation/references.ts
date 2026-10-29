@@ -16,7 +16,7 @@ import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import { isMissingName } from '../../compiler/syntax/node.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
 import { memo } from '../../structures/memo.ts';
-import { declarationsOf, isSamePlace, nameAt } from './declarations.ts';
+import { declarationsOf, isSamePlace, nameAt, spanOfUse } from './declarations.ts';
 
 /** A name denoting a declaration. */
 export interface Reference extends EntityUse {
@@ -31,11 +31,11 @@ const indexes = new WeakMap<Program, ReadonlyMap<PlaceKey, readonly EntityUse[]>
 
 /** Every name of `program` denoting what `declaring` declares, `declaring` among them. */
 export function namesDenoting(program: Program, declaring: EntityUse): readonly EntityUse[] {
-  return memo(indexes, program, () => indexOf(program)).get(placeKeyOf(declaring)) ?? [];
+  return memo(indexes, program, () => indexOf(program)).get(placeKeyOf(program, declaring)) ?? [];
 }
 
-function placeKeyOf({ module, name }: EntityUse): PlaceKey {
-  return `${module} ${name.span.start}`;
+function placeKeyOf(program: Program, use: EntityUse): PlaceKey {
+  return `${use.module} ${spanOfUse(program, use).start}`;
 }
 
 /** The names denoting what the name at `offset` of `module` stands for (`NameAt.targets`), each once. */
@@ -59,7 +59,7 @@ function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly EntityUse[]> 
     nodesUnder(tree, tree.root).flatMap((name) =>
       name.kind === 'Identifier' && !isMissingName(name)
         ? declarationsOf(checker, module, name).map(({ at }) => ({
-            declaring: placeKeyOf(at),
+            declaring: placeKeyOf(program, at),
             module,
             name,
           }))

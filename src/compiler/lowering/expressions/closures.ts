@@ -57,7 +57,7 @@ function closureOf(
 ): Register {
   const checked = context.body.functionOf(node);
   if (checked === undefined) {
-    unreachable(`The function at ${node.span.start} was never checked.`);
+    unreachable(`The function at ${node.span.from} was never checked.`);
   }
   context.code.emit({
     kind: 'closure',

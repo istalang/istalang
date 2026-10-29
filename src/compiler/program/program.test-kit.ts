@@ -7,6 +7,8 @@
  */
 
 import { isTestModulePath } from '../../language/well-known.ts';
+import type { Span } from '../../text/span.ts';
+import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
 import {
   buildProgram,
   type LocatedModule,
@@ -16,6 +18,7 @@ import {
   type Program,
   type ProgramModule,
   type ProgramOptions,
+  programModule,
 } from './program.ts';
 
 export type Files = Readonly<Record<string, string>>;
@@ -73,6 +76,15 @@ export function moduleAt(program: Program, key: string): ProgramModule {
     throw new Error(`${key} is not in the program`);
   }
   return module;
+}
+
+/** Where `node`, a node of `module`, stands in that module's text. */
+export function textSpanOf(
+  program: Program,
+  module: ModuleId,
+  node: { readonly span: AnchoredSpan },
+): Span {
+  return spanIn(programModule(program, module).tree, node.span);
 }
 
 /** The keys of the loaded modules, in load order. */

@@ -19,7 +19,6 @@
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
 import {
   type CheckedPattern,
   namesBound,
@@ -28,6 +27,7 @@ import {
   type PatternValue,
 } from '../checker/checked-pattern.ts';
 import type { Identifier } from '../syntax/node.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Label } from './code-writer.ts';
 import { constantValue } from './constants.ts';
 import type { FunctionContext } from './context.ts';
@@ -45,7 +45,7 @@ export interface Matching {
 /** Where a pattern's tests stand: the subject, where a failing test jumps, and each `or`'s choice. */
 interface Run {
   readonly subject: Register;
-  readonly span: Span;
+  readonly span: AnchoredSpan;
   readonly fail: Label;
   readonly choices: Map<PatternTest, Register>;
 }
@@ -58,7 +58,7 @@ export function lowerMatching(
   context: FunctionContext,
   { subject, pattern }: Matching,
   fail: Label,
-  span: Span,
+  span: AnchoredSpan,
 ): void {
   const run: Run = { subject, span, fail, choices: new Map() };
   lowerTests(context, pattern.tests, run);
@@ -108,7 +108,7 @@ function lowerAlternatives(
 interface Branch {
   readonly matched: Label;
   readonly otherwise: Label;
-  readonly span: Span;
+  readonly span: AnchoredSpan;
 }
 
 function lowerTest(
@@ -131,7 +131,7 @@ function passed(
   context: FunctionContext,
   test: Exclude<PatternTest, { kind: 'variant' | 'downcast' | 'or' }>,
   part: Register,
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   const value = comparedWith(context, test.value, span);
   if (test.kind === 'equal') {
@@ -199,7 +199,7 @@ function readPartAlong(
   context: FunctionContext,
   subject: Register,
   path: readonly PartStep[],
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   let value = subject;
   let positions: number[] = [];
@@ -224,7 +224,7 @@ function stepOffsets(step: Exclude<PartStep, number>): readonly number[] {
 }
 
 /** The value an `equal` or `compare` test compares the part with. */
-function comparedWith(context: FunctionContext, value: PatternValue, span: Span): Register {
+function comparedWith(context: FunctionContext, value: PatternValue, span: AnchoredSpan): Register {
   if (value.kind === 'expression') {
     return context.expression(value.node);
   }

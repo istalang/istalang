@@ -5,6 +5,7 @@
  * past its last type closes it. One `>>` token can close two lists at once (`Array<Array<int>>`).
  */
 
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import type { Token } from '../../compiler/syntax/tokens.ts';
 import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { memo } from '../../structures/memo.ts';
@@ -21,7 +22,7 @@ export function angleBracketsOf(tree: SyntaxTree): ReadonlySet<Token> {
     const tokens = codeTokensOf(tree);
     const found = new Set<Token>();
     for (const node of nodesUnder(tree, tree.root)) {
-      for (const token of bracketsAround(typeListOf(node), tokens)) {
+      for (const token of bracketsAround(tree, typeListOf(node), tokens)) {
         found.add(token);
       }
     }
@@ -38,7 +39,11 @@ function typeListOf(node: SyntaxNode): readonly SyntaxNode[] {
 }
 
 /** The tokens opening and closing a list of `types`, among `tokens` ordered by their ends. */
-function bracketsAround(types: readonly SyntaxNode[], tokens: readonly Token[]): readonly Token[] {
+function bracketsAround(
+  tree: SyntaxTree,
+  types: readonly SyntaxNode[],
+  tokens: readonly Token[],
+): readonly Token[] {
   const [first] = types;
   const last = types.at(-1);
   if (first === undefined || last === undefined) {
@@ -46,7 +51,10 @@ function bracketsAround(types: readonly SyntaxNode[], tokens: readonly Token[]):
   }
   const lastEndingBy = (offset: number) =>
     lastIndexAtMost(tokens, (token) => token.span.end, offset);
-  const around = [tokens[lastEndingBy(first.span.start)], tokens[lastEndingBy(last.span.end) + 1]];
+  const around = [
+    tokens[lastEndingBy(spanIn(tree, first.span).start)],
+    tokens[lastEndingBy(spanIn(tree, last.span).end) + 1],
+  ];
   return around.filter(
     (token): token is Token => token !== undefined && angleTokens.has(token.kind),
   );

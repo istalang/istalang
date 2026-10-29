@@ -18,7 +18,6 @@ import { type Value, value } from '../../definition/values.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
-import type { Span } from '../../text/span.ts';
 import type { Checker } from '../checker/check.ts';
 import type { RequiredField } from '../checker/checked-field.ts';
 import { passesAll } from '../checker/resolved-call.ts';
@@ -30,6 +29,8 @@ import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
 } from '../syntax/declarations.ts';
+import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
+import type { SyntaxTree } from '../syntax/tree.ts';
 import { annotationValues } from './constants.ts';
 import {
   type AsyncFit,
@@ -97,7 +98,7 @@ export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 
 export class DefinitionTables {
   readonly #checker: Checker;
   readonly types: TypeTable;
-  readonly #modules: Tables['modules'][number][] = [];
+  readonly #modules: (Tables['modules'][number] & { readonly id: ModuleId })[] = [];
   readonly #moduleIndexes = new Map<ModuleId, number>();
   readonly #constants: Value[] = [];
   readonly #constantIndexes = new Map<string, number>();
@@ -123,6 +124,15 @@ export class DefinitionTables {
     return memo(this.#moduleIndexes, module, () => this.#addModule(module));
   }
 
+  /** The tree of the module at `index` of the module table, which an entry's spans point into. */
+  treeAt(index: number): SyntaxTree {
+    const module = this.#modules[index];
+    if (module === undefined) {
+      return unreachable(`No module ${index} is in the module table.`);
+    }
+    return programModule(this.#checker.program, module.id).tree;
+  }
+
   #addModule(module: ModuleId): number {
     const { lineStarts } = lineMapOf(programModule(this.#checker.program, module).tree.source);
     return this.#modules.push({ id: module, lineStarts: [...lineStarts] }) - 1;
@@ -144,7 +154,7 @@ export class DefinitionTables {
     return {
       name: instanceName(this.#checker, instance),
       module: this.moduleIndex(module),
-      span: declaration.name.span,
+      span: spanIn(programModule(this.#checker.program, module).tree, declaration.name.span),
       annotations: annotationValues(
         this,
         this.#checker.annotations.of(module, declaration, { kind: 'function' }),
@@ -167,10 +177,11 @@ export class DefinitionTables {
   }
 
   /** The header of an entry a body owns, at `span`, named by `nameAt` from where it stands. */
-  #ownedHeader(owner: BodyOwner, span: Span, nameAt: (where: string) => string): EntryHeader {
+  #ownedHeader(owner: BodyOwner, at: AnchoredSpan, nameAt: (where: string) => string): EntryHeader {
     const module = this.#checker.moduleOf(ownerDeclaration(owner));
-    const { source } = programModule(this.#checker.program, module).tree;
-    const { line, column } = lineMapOf(source).positionAt(span.start);
+    const { tree } = programModule(this.#checker.program, module);
+    const span = spanIn(tree, at);
+    const { line, column } = lineMapOf(tree.source).positionAt(span.start);
     return {
       name: nameAt(`${line + 1}:${column + 1}`),
       module: this.moduleIndex(module),
@@ -183,8 +194,14 @@ export class DefinitionTables {
   declarationHeader(declaration: HostExternDeclaration | StartTarget): EntryHeader {
     const module = this.#checker.moduleOf(declaration);
     const name = qualifiedNameOf(this.#checker, declaration);
-    const span =
+    const at =
       declaration.kind === 'VariableDeclaration' ? declaration.span : declaration.name.span;
+    return this.headerAt(name, module, at);
+  }
+
+  /** The header of an entry named `name` that stands at `at` in `module`, with no annotations. */
+  headerAt(name: string, module: ModuleId, at: AnchoredSpan): EntryHeader {
+    const span = spanIn(programModule(this.#checker.program, module).tree, at);
     return { name, module: this.moduleIndex(module), span, annotations: [] };
   }
 

@@ -4,8 +4,8 @@
  * home.
  */
 
-import type { Span } from '../../../text/span.ts';
 import { type ChainingOperator, isChainingOperator } from '../operators.ts';
+import { type AnchoredSpan, spanAcross } from '../positions.ts';
 import type { Binary, ChainedComparison, Expression } from './index.ts';
 
 /** One comparison of a chain: an operand, the operator after it, and the operand after that. */
@@ -30,6 +30,6 @@ export function comparisonLinkOf(node: Binary): ComparisonLink | undefined {
 }
 
 /** Where a link stands: from its left operand to its right one. */
-export function linkSpan(link: ComparisonLink): Span {
-  return { start: link.left.span.start, end: link.right.span.end };
+export function linkSpan(link: ComparisonLink): AnchoredSpan {
+  return spanAcross(link.left.span, link.right.span);
 }

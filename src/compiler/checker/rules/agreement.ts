@@ -10,7 +10,7 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { Span } from '../../../text/span.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { ValueSite } from '../check.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../context.ts';
 import { type Fit, isExact } from '../types/fit.ts';
@@ -24,7 +24,7 @@ import { widened } from '../types/widening.ts';
  */
 export interface Produced {
   readonly type: Type;
-  readonly span: Span;
+  readonly span: AnchoredSpan;
   readonly site: ValueSite | undefined;
 }
 
@@ -82,7 +82,7 @@ export function settleAgreement(
   context: BodyContext,
   produced: readonly Produced[],
   expected: Type | undefined,
-  mismatch: (span: Span, decided: Type, found: Type) => Diagnostic,
+  mismatch: (span: AnchoredSpan, decided: Type, found: Type) => Diagnostic<AnchoredSpan>,
 ): Type | undefined {
   const { fitOf } = context.checker;
   const { decided, disagreeing } = agreedType(produced, fitOf, expected);

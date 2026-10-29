@@ -10,12 +10,12 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { Span } from '../../../text/span.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { FunctionContext } from '../context.ts';
 import type { BlockScope } from './variables.ts';
 
 /** Ends `scope`: keeps what its held variables hold, then releases every variable. */
-export function endScope(context: FunctionContext, scope: BlockScope, span: Span): void {
+export function endScope(context: FunctionContext, scope: BlockScope, span: AnchoredSpan): void {
   const lists = Map.groupBy(scope.kept, (kept) => kept.into);
   for (const [into, kept] of lists) {
     context.code.emit({
@@ -50,7 +50,7 @@ export interface Guarded {
   readonly body: () => void;
   /** Where the body goes once its scope has ended, such as past the other branches. */
   readonly leave: () => void;
-  readonly span: Span;
+  readonly span: AnchoredSpan;
 }
 
 /**
@@ -81,7 +81,7 @@ export function lowerGuarded(context: FunctionContext, guarded: Guarded): void {
 export function release(
   context: FunctionContext,
   registers: readonly Register[],
-  span: Span,
+  span: AnchoredSpan,
 ): void {
   if (registers.length > 0) {
     context.code.emit({ kind: 'release', span, registers: [...registers] });

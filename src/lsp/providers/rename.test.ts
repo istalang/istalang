@@ -14,6 +14,7 @@ import {
   type Program,
   programModule,
 } from '../../compiler/program/program.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import { parentOf } from '../../compiler/syntax/tree.ts';
 import { isError } from '../../diagnostics/diagnostic.ts';
 import { isSamePlace, nameAt } from '../../language-service/navigation/declarations.ts';
@@ -42,7 +43,7 @@ const renamable: readonly EntityUse[] = [...corpusProgram.modules].flatMap(([mod
   diagnoseModule(corpusProgram, module).diagnostics.some(isError)
     ? []
     : namesOf(tree).flatMap((name) => {
-        const renaming = renamingAt(corpusProgram, module, name.span.start);
+        const renaming = renamingAt(corpusProgram, module, spanIn(tree, name.span).start);
         const use = { module, name };
         return renaming?.kind === 'renamable' && isSamePlace(renaming.target.at, use) ? [use] : [];
       }),
@@ -111,15 +112,17 @@ function applied(edit: WorkspaceEdit, newName: string) {
  */
 async function renamingProblems(declaring: EntityUse): Promise<readonly string[]> {
   const uri = declaring.module;
-  const { source } = programModule(corpusProgram, declaring.module).tree;
-  const position = positionOf(source, declaring.name.span.start);
+  const { tree } = programModule(corpusProgram, declaring.module);
+  const { source } = tree;
+  const declaringAt = spanIn(tree, declaring.name.span);
+  const position = positionOf(source, declaringAt.start);
   const old = declaring.name.text;
   const newName = `${old}Renamed`;
   const prepared = await client.connection.sendRequest(PrepareRenameRequest.type, {
     textDocument: { uri },
     position,
   });
-  const expected = { range: rangeOf(source, declaring.name.span), placeholder: old };
+  const expected = { range: rangeOf(source, declaringAt), placeholder: old };
   const edit = await client.connection.sendRequest(RenameRequest.type, {
     textDocument: { uri },
     position,
@@ -129,7 +132,7 @@ async function renamingProblems(declaring: EntityUse): Promise<readonly string[]
   const renamed = projectProgramLoader(corpusDirectory)(texts, corpusProgram);
   const before = diagnosticsOf(corpusProgram, (message) => message);
   const after = diagnosticsOf(renamed, (message) => message.replaceAll(newName, old));
-  const declaringNow = moved.get(`${declaring.module} ${declaring.name.span.start}`);
+  const declaringNow = moved.get(`${declaring.module} ${declaringAt.start}`);
   return [
     ...(writtenNames.has(newName) ? [`${newName} is written already`] : []),
     ...(JSON.stringify(prepared) === JSON.stringify(expected) ? [] : ['prepared another range']),
@@ -139,7 +142,9 @@ async function renamingProblems(declaring: EntityUse): Promise<readonly string[]
       const module = place.slice(0, place.lastIndexOf(' ')) as ModuleId;
       const denoted = nameAt(renamed, module, offset)?.declarations ?? [];
       const still = denoted.some(
-        ({ at }) => at.module === declaring.module && at.name.span.start === declaringNow,
+        ({ at }) =>
+          at.module === declaring.module &&
+          spanIn(programModule(renamed, at.module).tree, at.name.span).start === declaringNow,
       );
       return still ? [] : [`${place} no longer denotes it`];
     }),

@@ -13,6 +13,7 @@ import { typeText } from '../../compiler/checker/types/type-text.ts';
 import { wellKnownArguments } from '../../compiler/checker/types/well-known.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
 import type { Call } from '../../compiler/syntax/expressions/index.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import {
@@ -86,7 +87,11 @@ describe('signature help over the corpus', () => {
     const asked = nodesUnder(tree, tree.root).flatMap((node) => {
       const expected = node.kind === 'Call' ? expectedAt(module, node) : undefined;
       return node.kind === 'Call' && expected !== undefined
-        ? node.arguments.map((argument, index) => ({ at: argument.span.start, index, expected }))
+        ? node.arguments.map((argument, index) => ({
+            at: spanIn(tree, argument.span).start,
+            index,
+            expected,
+          }))
         : [];
     });
     const wrong = await Promise.all(

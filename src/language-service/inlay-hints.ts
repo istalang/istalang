@@ -9,7 +9,8 @@ import { typeText } from '../compiler/checker/types/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { type Identifier, isMissingName } from '../compiler/syntax/node.ts';
 import { targetNames } from '../compiler/syntax/patterns.ts';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
+import { childrenOf, extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import type { Span } from '../text/span.ts';
 import { type CheckedModule, checkedModule } from './checked-module.ts';
 
@@ -28,16 +29,18 @@ export function inlayHintsIn(program: Program, module: ModuleId, span: Span): re
   }
   return untypedNames(checked.tree, checked.tree.root, span).flatMap((name) => {
     const type = declaredType(checked, name);
-    const stands = span.start <= name.span.end && name.span.end <= span.end;
+    const { end } = spanIn(checked.tree, name.span);
+    const stands = span.start <= end && end <= span.end;
     return stands && type !== undefined && type.kind !== 'error'
-      ? [{ offset: name.span.end, label: `: ${typeText(type)}` }]
+      ? [{ offset: end, label: `: ${typeText(type)}` }]
       : [];
   });
 }
 
 /** The names declared with no written type in the nodes `span` reaches, in source order. */
 function untypedNames(tree: SyntaxTree, node: SyntaxNode, span: Span): readonly Identifier[] {
-  if (node.span.end < span.start || span.end < node.span.start) {
+  const extent = extentIn(tree, node);
+  if (extent.end < span.start || span.end < extent.start) {
     return [];
   }
   return [

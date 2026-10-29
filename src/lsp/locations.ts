@@ -21,6 +21,7 @@ import {
   type Program,
   programModule,
 } from '../compiler/program/program.ts';
+import { type AnchoredSpan, spanIn } from '../compiler/syntax/positions.ts';
 import type { Workspace } from '../language-service/workspace.ts';
 import { moduleIdOfFile } from '../project/file-loader.ts';
 import { lineMapOf } from '../text/line-map.ts';
@@ -65,6 +66,7 @@ export function documentOffset(
 }
 
 /** Where `span` of `module` of `program` is. */
-export function locationOf(program: Program, module: ModuleId, span: Span): Location {
-  return { uri: module, range: rangeOf(programModule(program, module).tree.source, span) };
+export function locationOf(program: Program, module: ModuleId, span: AnchoredSpan): Location {
+  const { tree } = programModule(program, module);
+  return { uri: module, range: rangeOf(tree.source, spanIn(tree, span)) };
 }

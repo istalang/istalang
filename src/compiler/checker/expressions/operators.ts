@@ -17,7 +17,6 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import {
   type ComparisonLink,
   comparisonLinkOf,
@@ -36,6 +35,7 @@ import {
   type ImplicitOperator,
   isImplicitOperator,
 } from '../../syntax/operators.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -130,7 +130,7 @@ function checkLinkCall(
 }
 
 /** `includes` must give a `bool`, since `in` is one. */
-function expectBool(context: BodyContext, result: Type, span: Span): void {
+function expectBool(context: BodyContext, result: Type, span: AnchoredSpan): void {
   if (result.kind !== 'error' && !isPrimitive(result, 'bool')) {
     context.report(checkerDiagnostics.typeMismatch(span, 'bool', typeText(result)));
   }

@@ -5,7 +5,7 @@
  * leaves differs, which each says through its own `take`.
  */
 
-import type { Span } from '../../../text/span.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Destructuring, FieldTarget } from '../../syntax/statements.ts';
 import type { PartStep } from '../checked-pattern.ts';
 import type { FieldMember } from '../types/type.ts';
@@ -38,7 +38,7 @@ export function takeTargets<Target, Step extends PartStep>(
   taking: Taking<Target, Step | number>,
   targets: readonly Target[],
   part: ValuePart<Step | number>,
-  span: Span,
+  span: AnchoredSpan,
 ): Shape | undefined {
   const [only] = targets;
   if (targets.length === 1 && only !== undefined) {

@@ -29,6 +29,6 @@ describe('a checked body', () => {
       );
     });
     expect(checker.diagnosticsOf(idOf('main'))).toEqual([]);
-    expect(unrecorded.map(({ span }) => span.start)).toEqual([]);
+    expect(unrecorded.map(({ span }) => span.from)).toEqual([]);
   });
 });

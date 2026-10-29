@@ -34,8 +34,8 @@ function parseAnyItem(parser: Parser): Item | Invalid {
 /** Reported, unless it is empty: a Missing expression, which its own diagnostic explains. */
 function misplaced(parser: Parser, item: Item, diagnostic: (span: Span) => Diagnostic): Invalid {
   const { span } = item;
-  if (span.start < span.end) {
-    parser.report(diagnostic(span));
+  if (span.from < span.to) {
+    parser.report(diagnostic(parser.textSpanOf(span)));
   }
   return { kind: 'Invalid', span };
 }

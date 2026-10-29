@@ -71,7 +71,7 @@ function topLevelKeyword(parser: Parser): TopLevelKeyword | undefined {
 export function parseModule(parser: Parser): Module {
   const { value: items, doc } = parseModuleLines(parser, moduleRules);
   const { end } = parser.cursor.token.span;
-  return { kind: 'Module', span: { start: 0, end }, items, ...documentedBy(doc) };
+  return { kind: 'Module', span: parser.anchor({ start: 0, end }), items, ...documentedBy(doc) };
 }
 
 const moduleRules: ItemRules<Declaration> = {

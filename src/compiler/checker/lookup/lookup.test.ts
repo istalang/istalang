@@ -38,7 +38,7 @@ function disagreementsAt(checked: CheckedModule, node: SyntaxNode): readonly str
   const denotations = checker.lookup.denotationsOf(module, node);
   return chosenFor(checked, node, body)
     .filter((chosen) => !denotations.some(chosen))
-    .map(() => `${node.text} at ${node.span.start}`);
+    .map(() => `${node.text} at ${node.span.from}`);
 }
 
 /** `call` when it is a call of `callee`. */

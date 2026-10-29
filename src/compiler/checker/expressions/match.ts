@@ -11,8 +11,8 @@
  *   are declared here with their parts' types.
  */
 
-import type { Span } from '../../../text/span.ts';
 import { casesOf, type Is, type Match } from '../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';
@@ -50,7 +50,7 @@ export function checkIs(context: BodyContext, node: Is): Type {
 
 /** A case as exhaustiveness sees it, and where its pattern is written. */
 interface CoveringCase extends CaseShape {
-  readonly at: Span;
+  readonly at: AnchoredSpan;
 }
 
 function reportCoverage(

@@ -38,7 +38,7 @@ export function parseLabelled(
   statement: () => Statement | Invalid,
 ): Statement | Invalid {
   const label = parser.identifier('a label');
-  const { start } = label.span;
+  const start = parser.startOf(label);
   const labelled = parser.cursor.kindAt(1);
   if (labelled === 'lineBreak') {
     const body = parseHeaderBody(parser, start);
@@ -51,7 +51,7 @@ export function parseLabelled(
   if (labelled === 'while') {
     return parseWhileAfter(parser, start, label);
   }
-  parser.report(parserDiagnostics.misplacedLabel(parser.spanFrom(start)));
+  parser.report(parserDiagnostics.misplacedLabel(parser.textSpanFrom(start)));
   return statement();
 }
 

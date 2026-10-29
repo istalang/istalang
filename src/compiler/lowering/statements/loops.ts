@@ -52,7 +52,7 @@ export class LoopStack {
   of(loop: LabelledScope | undefined, exit: Break | Continue): LoopTargets {
     const lowered = this.#loops.findLast((each) => each.loop === loop);
     if (lowered === undefined) {
-      unreachable(`A loop exit at ${exit.span.start} leaves no loop being lowered.`);
+      unreachable(`A loop exit at ${exit.span.from} leaves no loop being lowered.`);
     }
     return lowered.targets;
   }

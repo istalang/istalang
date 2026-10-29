@@ -96,7 +96,7 @@ export function parseSelectFrom(parser: Parser, start: number, awaits: boolean):
 }
 
 function misplacedElse(parser: Parser, clause: ElseClause): Invalid {
-  parser.report(parserDiagnostics.elseNotLast(clause.span));
+  parser.report(parserDiagnostics.elseNotLast(parser.textSpanOf(clause.span)));
   return { kind: 'Invalid', span: clause.span };
 }
 
@@ -132,7 +132,7 @@ function parseCase<Case>(parser: Parser, parseRest: (start: number) => Case): Ca
   }
   const at = parser.cursor.previousEnd;
   const [skipped] = skipToSeparator(parser, reported);
-  return skipped ?? { kind: 'Invalid', span: { start: at, end: at } };
+  return skipped ?? { kind: 'Invalid', span: parser.anchor({ start: at, end: at }) };
 }
 
 /** `{ a; b }`, or the same over several lines, as an expression. */
@@ -141,8 +141,9 @@ export function parseBlockExpression(parser: Parser): Expression {
   const enclosed = parseBlockBraces(parser, statementRules);
   const { items, separated } = enclosed.value;
   const { span } = enclosed;
-  if (!separated && parser.onSameLine(start, span.end)) {
-    parser.report(parserDiagnostics.blockWithoutSemicolon(span));
+  const { end } = parser.textSpanOf(span);
+  if (!separated && parser.onSameLine(start, end)) {
+    parser.report(parserDiagnostics.blockWithoutSemicolon(parser.textSpanOf(span)));
   }
   return { kind: 'BlockExpression', span, block: { kind: 'Block', span, statements: items } };
 }

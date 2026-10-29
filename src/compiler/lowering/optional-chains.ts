@@ -43,7 +43,7 @@ export class OptionalChains {
     const { code } = context;
     const type = context.typeOf(link);
     if (!isEnum(type)) {
-      unreachable(`A chain at ${link.span.start} isn't optional; the checker should have said so.`);
+      unreachable(`A chain at ${link.span.from} isn't optional; the checker should have said so.`);
     }
     const result = code.allocate();
     const none = code.newLabel();
@@ -79,7 +79,7 @@ export class OptionalChains {
       return value;
     }
     if (base === undefined || none === undefined) {
-      unreachable(`A '?.' at ${link.span.start} is outside a chain; lowering lost track of it.`);
+      unreachable(`A '?.' at ${link.span.from} is outside a chain; lowering lost track of it.`);
     }
     const some = context.code.newLabel();
     const optional = context.checker.optionalOf(base);

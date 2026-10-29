@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { idOf, moduleAt } from '../program/program.test-kit.ts';
+import { idOf, moduleAt, textSpanOf } from '../program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import type { Block } from '../syntax/statements.ts';
 import { nodesUnder } from '../syntax/tree.ts';
@@ -46,19 +46,20 @@ function visibleAtMarker(program: Program, marker: string): ReadonlyMap<string, 
 function blocksSeeingMoreThanBefore({ program, modules }: CorpusProgram): readonly string[] {
   const bindings = bindProgram(program);
   const seesMore = (module: ModuleId, block: Block) => {
-    const before = bindings.visibleAt(module, block.span.start - 1);
+    const { start } = textSpanOf(program, module, block);
+    const before = bindings.visibleAt(module, start - 1);
     const declaredByFirst = (entity: Entity) =>
       entity.kind === 'variable' && entity.owner === block.statements[0];
-    return [...bindings.visibleAt(module, block.span.start)].some(
+    return [...bindings.visibleAt(module, start)].some(
       ([name, entity]) => before.get(name) !== entity && !declaredByFirst(entity),
     );
   };
   return modules.flatMap((module) => {
     const { tree } = programModule(program, module);
     return nodesUnder(tree, tree.root)
-      .filter((node): node is Block => node.kind === 'Block' && node.span.start < node.span.end)
+      .filter((node): node is Block => node.kind === 'Block' && node.span.from < node.span.to)
       .filter((block) => seesMore(module, block))
-      .map(({ span }) => `${module}:${span.start}`);
+      .map((block) => `${module}:${textSpanOf(program, module, block).start}`);
   });
 }
 
@@ -141,9 +142,10 @@ describe('visibleAt', () => {
           .filter((resolved) => isLookedUp(program, resolved))
           .filter(
             ({ name, entity }) =>
-              bindings.visibleAt(module, name.span.start).get(name.text) !== entity,
+              bindings.visibleAt(module, textSpanOf(program, module, name).start).get(name.text) !==
+              entity,
           )
-          .map(({ name }) => `${module}:${name.span.start} ${name.text}`),
+          .map(({ name }) => `${module}:${name.span.from} ${name.text}`),
       );
     });
     expect(unseen).toEqual([]);

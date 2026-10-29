@@ -60,7 +60,7 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
   return parseStructLiteralBody(
     parser,
     namedTypeFrom(parser, path, typeArguments),
-    left.span.start,
+    parser.startOf(left),
   );
 }
 
@@ -71,10 +71,10 @@ function parseCall(
   typeArguments: readonly TypeNode[],
 ): Call {
   const { items } = parseDelimited(parser, '(', () => parseArgument(parser));
-  const span = parser.spanFrom(callee.span.start);
+  const span = parser.spanFrom(parser.startOf(callee));
   const misplaced = misplacedArgument(items);
   if (misplaced !== undefined && misplaced.kind !== 'Invalid') {
-    parser.report(parserDiagnostics.positionalAfterNamed(misplaced.span));
+    parser.report(parserDiagnostics.positionalAfterNamed(parser.textSpanOf(misplaced.span)));
   }
   return { kind: 'Call', span, callee, isOptional, typeArguments, arguments: items };
 }
@@ -89,7 +89,7 @@ function parseArgument(parser: Parser): CallArgument {
     const name = parser.identifier('a parameter name');
     cursor.advance();
     const value = parseArgumentValue(parser);
-    return { kind: 'NamedArgument', span: parser.spanFrom(name.span.start), name, value };
+    return { kind: 'NamedArgument', span: parser.spanFrom(parser.startOf(name)), name, value };
   }
   return parseArgumentValue(parser);
 }
@@ -103,9 +103,11 @@ function parseArgumentValue(parser: Parser): Expression {
   const reference = parseReference(parser);
   const argument = parser.continueExpression(reference);
   if (argument !== reference) {
-    parser.report(parserDiagnostics.misplacedReference(reference.span));
+    parser.report(parserDiagnostics.misplacedReference(parser.textSpanOf(reference.span)));
   } else if (!isPlace(reference.expression)) {
-    parser.report(parserDiagnostics.referenceNotPlace(reference.expression.span));
+    parser.report(
+      parserDiagnostics.referenceNotPlace(parser.textSpanOf(reference.expression.span)),
+    );
   }
   return argument;
 }
@@ -123,7 +125,13 @@ export const indexParselet: InfixParselet = {
 /** `a[i]`, or `a?.[i]` after its `?.`, at the `[`. */
 function parseIndex(parser: Parser, target: Expression, isOptional: boolean): Index {
   const index = parseEnclosed(parser, '[', () => parser.expression()).value;
-  return { kind: 'Index', span: parser.spanFrom(target.span.start), target, isOptional, index };
+  return {
+    kind: 'Index',
+    span: parser.spanFrom(parser.startOf(target)),
+    target,
+    isOptional,
+    index,
+  };
 }
 
 export const memberParselet: InfixParselet = {
@@ -154,7 +162,7 @@ export function arrowParselet(isOptional: boolean): InfixParselet {
       parser.cursor.advance();
       const operand: Dereference = {
         kind: 'Dereference',
-        span: parser.spanFrom(left.span.start),
+        span: parser.spanFrom(parser.startOf(left)),
         operator: '->',
         operand: left,
         isOptional,
@@ -171,7 +179,7 @@ function parseMember(parser: Parser, target: Expression, isOptional: boolean): E
     return parseTupleElements(parser, target, isOptional);
   }
   const member = parser.identifier('a member name');
-  const span = parser.spanFrom(target.span.start);
+  const span = parser.spanFrom(parser.startOf(target));
   return { kind: 'MemberAccess', span, target, isOptional, member };
 }
 
@@ -184,13 +192,13 @@ function parseTupleElements(parser: Parser, left: Expression, isOptional: boolea
   const text = parser.textOf(token);
   if (!tupleElementText.test(text)) {
     parser.report(parserDiagnostics.invalidTupleElement(token.span, text));
-    return { kind: 'Invalid', span: parser.spanFrom(left.span.start) };
+    return { kind: 'Invalid', span: parser.spanFrom(parser.startOf(left)) };
   }
   const [first, second] = text.split('.');
   const firstEnd = token.span.start + (first?.length ?? 0);
   const outer: Expression = {
     kind: 'TupleElement',
-    span: { start: left.span.start, end: firstEnd },
+    span: parser.anchor({ start: parser.startOf(left), end: firstEnd }),
     target: left,
     isOptional,
     element: Number(first),
@@ -198,7 +206,7 @@ function parseTupleElements(parser: Parser, left: Expression, isOptional: boolea
   if (second === undefined) {
     return outer;
   }
-  const span = parser.spanFrom(left.span.start);
+  const span = parser.spanFrom(parser.startOf(left));
   return {
     kind: 'TupleElement',
     span,
@@ -212,7 +220,7 @@ export const propagateParselet: InfixParselet = {
   level: 'postfix',
   parse(parser, left) {
     parser.cursor.advance();
-    return { kind: 'Propagate', span: parser.spanFrom(left.span.start), operand: left };
+    return { kind: 'Propagate', span: parser.spanFrom(parser.startOf(left)), operand: left };
   },
 };
 
@@ -220,7 +228,7 @@ export const unwrapParselet: InfixParselet = {
   level: 'postfix',
   parse(parser, left) {
     parser.cursor.advance();
-    return { kind: 'Unwrap', span: parser.spanFrom(left.span.start), operand: left };
+    return { kind: 'Unwrap', span: parser.spanFrom(parser.startOf(left)), operand: left };
   },
 };
 
@@ -230,6 +238,6 @@ export const structLiteralParselet: InfixParselet = {
     const path = qualifiedPath(left);
     return path === undefined
       ? undefined
-      : parseStructLiteralBody(parser, namedTypeFrom(parser, path, []), left.span.start);
+      : parseStructLiteralBody(parser, namedTypeFrom(parser, path, []), parser.startOf(left));
   },
 };

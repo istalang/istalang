@@ -12,7 +12,6 @@
  */
 
 import { unreachable } from '../structures/unreachable.ts';
-import type { Span } from '../text/span.ts';
 import { codeBlockSize, codeBlocks, type DiagnosticPhase } from './code-blocks.ts';
 import type { Diagnostic, Severity } from './diagnostic.ts';
 
@@ -23,11 +22,11 @@ interface DiagnosticTemplate {
   readonly message: (...args: never[]) => string;
 }
 
-/** Makes a diagnostic; `code` identifies it without making one. */
-type DiagnosticFactory<Args extends readonly unknown[]> = ((
-  span: Span,
+/** Makes a diagnostic at a span of either kind; `code` identifies it without making one. */
+type DiagnosticFactory<Args extends readonly unknown[]> = (<Where>(
+  span: Where,
   ...args: Args
-) => Diagnostic) & {
+) => Diagnostic<Where>) & {
   readonly code: number;
 };
 
@@ -51,7 +50,7 @@ export function defineDiagnostics<const Templates extends Record<string, Diagnos
       unreachable(`Diagnostic code ${template.code} is declared twice (at '${name}').`);
     }
     seen.add(template.code);
-    const make = (span: Span, ...args: never[]): Diagnostic => ({
+    const make = <Where>(span: Where, ...args: never[]): Diagnostic<Where> => ({
       code: template.code,
       severity: template.severity ?? 'error',
       message: template.message(...args),

@@ -17,7 +17,7 @@ export function lowerNullish(context: FunctionContext, node: Binary): Register {
   const left = context.expression(node.left);
   const leftType = context.typeOf(node.left);
   if (!isEnum(leftType)) {
-    unreachable(`'??' needs an optional at ${node.span.start}; the checker should have said so.`);
+    unreachable(`'??' needs an optional at ${node.span.from}; the checker should have said so.`);
   }
   const result = code.allocate();
   const some = code.newLabel();

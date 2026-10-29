@@ -22,6 +22,7 @@ import type {
   MatchCase,
   SelectCase,
 } from '../syntax/expressions/index.ts';
+import { type AnchoredSpan, endOf } from '../syntax/positions.ts';
 import type { For, While } from '../syntax/statements.ts';
 import type { LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
@@ -47,7 +48,7 @@ function bindCondition(binder: LocalBinder, node: Expression, scope: Scope): Sco
   }
   if (node.kind === 'Binary' && node.operator === 'and') {
     const left = bindCondition(binder, node.left, scope);
-    binder.enter(node, left, node.left.span.end);
+    binder.enter(node, left, endOf(node.left.span));
     return bindCondition(binder, node.right, left);
   }
   if (node.kind === 'Binary' && node.operator === 'or') {
@@ -86,7 +87,7 @@ export function underCondition(
   const condition = node.kind === 'MatchCase' ? node.guard : node.condition;
   const flow = condition === undefined ? scope : bindCondition(binder, condition, scope);
   if (condition !== undefined) {
-    binder.enter(node, flow, condition.span.end);
+    binder.enter(node, flow, endOf(condition.span));
   }
   body(flow);
   flow.endUpTo(scope);
@@ -129,13 +130,13 @@ export function underLoop(
 }
 
 /** Where a construct's own bindings start to be visible: after what declares them. */
-function bindingsStartOf(node: Binding): number {
+function bindingsStartOf(node: Binding): AnchoredSpan {
   switch (node.kind) {
     case 'MatchCase':
-      return node.pattern.span.end;
+      return endOf(node.pattern.span);
     case 'SelectCase':
-      return (node.binding ?? node.future).span.end;
+      return endOf((node.binding ?? node.future).span);
     default:
-      return node.iterable.span.end;
+      return endOf(node.iterable.span);
   }
 }

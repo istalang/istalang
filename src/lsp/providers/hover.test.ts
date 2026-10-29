@@ -12,6 +12,7 @@ import { checkProgram } from '../../compiler/checker/check.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import {
   nodesAt,
   nodesUnder,
@@ -37,7 +38,7 @@ beforeAll(async () => {
 /** The types a hover over `node` must show; undefined for a node with neither a name nor a type. */
 function shownTypes(module: ModuleId, node: SyntaxNode): readonly string[] | undefined {
   const isLink = node.kind === 'Dereference' && node.operator === '->';
-  if (isLink || node.span.start === node.span.end) {
+  if (isLink || node.span.from === node.span.to) {
     return undefined;
   }
   const denotations = node.kind === 'Identifier' ? checker.lookup.denotationsOf(module, node) : [];
@@ -83,7 +84,7 @@ describe('hover over the corpus', () => {
       nodesUnder(tree, tree.root).map(async (node) => {
         const texts = shown(node);
         const offset = offsets.get(node);
-        const { line, character } = rangeOf(tree.source, node.span).start;
+        const { line, character } = rangeOf(tree.source, spanIn(tree, node.span)).start;
         if (texts === undefined) {
           return [];
         }

@@ -19,7 +19,7 @@ export function parse(source: SourceText, scanned: ScanResult): SyntaxTree {
   const root = parseModule(parser);
   const diagnostics = [...scanned.diagnostics, ...parser.diagnostics];
   const bodies = bodiesHeldBy(root, parser.recordedBodies);
-  return { source, root, bodies, comments: scanned.comments, diagnostics };
+  return { source, root, bodies, bases: parser.bases, comments: scanned.comments, diagnostics };
 }
 
 /**

@@ -36,7 +36,7 @@ export function afterStructKeyword<Body>(parser: Parser, parseBraced: () => Body
 export function parseField(parser: Parser): FieldDeclaration {
   const { span, name, type, defaultValue } = parseDeclaredField(parser);
   if (defaultValue !== undefined) {
-    parser.report(parserDiagnostics.misplacedFieldDefault(defaultValue.span));
+    parser.report(parserDiagnostics.misplacedFieldDefault(parser.textSpanOf(defaultValue.span)));
   }
   return { kind: 'FieldDeclaration', span, name, type: type ?? parser.placeholder() };
 }
@@ -44,7 +44,7 @@ export function parseField(parser: Parser): FieldDeclaration {
 /** A struct's or a variant's field: `name: Type`, `name: Type = default` or `name = default`. */
 function parseDeclaredField(parser: Parser): DeclaredField {
   const name = parser.identifier('a field name');
-  const { start } = name.span;
+  const start = parser.startOf(name);
   const field = { kind: 'DeclaredField', name } as const;
   if (parser.cursor.eat('=') !== undefined) {
     const defaultValue = parser.expression();

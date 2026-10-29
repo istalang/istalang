@@ -20,7 +20,6 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
 import type { LanguageModule } from '../../language/well-known.ts';
 import type { Entries } from '../../structures/entries.ts';
-import type { Span } from '../../text/span.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
@@ -41,6 +40,7 @@ import type {
 } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type {
   Assignment,
   Block,
@@ -87,7 +87,7 @@ import type {
 
 /** That `typeArguments` gives `parameter` an argument at `at`, which must meet its constraints. */
 export interface ConstraintCheck {
-  readonly at: Span;
+  readonly at: AnchoredSpan;
   readonly parameter: TypeParameter;
   readonly typeArguments: Substitution;
 }
@@ -97,7 +97,11 @@ export interface ConstraintCheck {
  * module, or a constraint check to run once that module is checked (`constrainLater`).
  */
 export type CheckerNote =
-  | { readonly kind: 'diagnostic'; readonly module: ModuleId; readonly diagnostic: Diagnostic }
+  | {
+      readonly kind: 'diagnostic';
+      readonly module: ModuleId;
+      readonly diagnostic: Diagnostic<AnchoredSpan>;
+    }
   | { readonly kind: 'constraint'; readonly module: ModuleId; readonly check: ConstraintCheck };
 
 /**
@@ -141,7 +145,7 @@ export interface CheckerContext extends Checker {
    */
   readonly checkItem: (module: ModuleId, item: Declaration) => void;
   /** Reports `diagnostic` in `module`, from the entry computing now. */
-  readonly report: (module: ModuleId, diagnostic: Diagnostic) => void;
+  readonly report: (module: ModuleId, diagnostic: Diagnostic<AnchoredSpan>) => void;
   /** How many diagnostics the entry computing now has reported itself, so far. */
   readonly reportCount: () => number;
   /** The type `node` denotes in `module`. */
@@ -185,7 +189,7 @@ export interface CheckerContext extends Checker {
    */
   readonly constrainLater: (
     module: ModuleId,
-    at: Span,
+    at: AnchoredSpan,
     parameter: TypeParameter,
     typeArguments: Substitution,
   ) => void;
@@ -225,24 +229,24 @@ export interface BodyContext {
    * doesn't fit `expected`. When it fits by converting the value, made async or wrapped into `T?`
    * (§2, §3.14), records the fit for lowering.
    */
-  readonly fit: (found: Type, expected: Type, site: ValueSite, at?: Span) => void;
+  readonly fit: (found: Type, expected: Type, site: ValueSite, at?: AnchoredSpan) => void;
   /**
    * Reports at `at` when `found`, written to a place of `expected` by an assignment, doesn't fit
    * it; how the value is converted to fit (§2, §3.14), which the assignment records on its part.
    */
-  readonly fitWritten: (found: Type, expected: Type, at: Span) => Fit;
+  readonly fitWritten: (found: Type, expected: Type, at: AnchoredSpan) => Fit;
   /**
    * Reports at `at` when the items of a spread, of `found`, don't fit `expected` as they are: the
    * spread gives its items as a whole, so none of them is wrapped (§2).
    */
-  readonly fitUnwrapped: (found: Type, expected: Type, at: Span) => void;
+  readonly fitUnwrapped: (found: Type, expected: Type, at: AnchoredSpan) => void;
   /** Checks a block in its own scope; its type is that of its last expression (§4). */
   readonly block: (node: Block, expected?: Type) => Type;
   /** Checks a block run only for its effects, such as a loop's body, discarding every value. */
   readonly effectBlock: (node: Block) => void;
   /** Checks a statement; its type, which only a block's last statement passes on (§4). */
   readonly statement: (node: Statement | Invalid, expected?: Type) => Type;
-  readonly report: (diagnostic: Diagnostic) => void;
+  readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
   /** The type `node` denotes in this body's module. */
   readonly resolveType: (node: TypeNode) => Type;
   /** What `name` denotes, a query: for a name only asked about, declared, or checked elsewhere. */
@@ -371,7 +375,7 @@ export interface Returns {
   /** Checks a `return` and what it returns: its value, or `unit` for a bare one. */
   readonly check: (context: BodyContext, node: Return) => void;
   /** Notes a `?` at `span` that would return an `Err` of `error` (§3.12). */
-  readonly propagate: (context: BodyContext, error: Type, span: Span) => void;
+  readonly propagate: (context: BodyContext, error: Type, span: AnchoredSpan) => void;
 }
 
 /** The loops and labelled blocks around what one function checks (closures/enclosing-scopes.ts). */

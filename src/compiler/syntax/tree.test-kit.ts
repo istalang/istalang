@@ -1,12 +1,27 @@
+import { encloses } from '../../text/span.ts';
+import type { AnchoredSpan, Segment, SegmentBases } from './positions.ts';
 import {
   bodyOf,
   childrenOf,
+  extentIn,
   isNode,
   nodesUnder,
   type SyntaxNode,
   type SyntaxTree,
   type TreeBodies,
+  type TreePlaces,
 } from './tree.ts';
+
+/** The segment of the nodes and spans a test makes by hand, which starts its text. */
+const handMade: Segment = { kind: 'module' };
+
+/** Where `handMadeSpan`'s segment starts, as a tree would give it. */
+export const handMadeBases: SegmentBases = { bases: new Map([[handMade, 0]]) };
+
+/** A span a test makes by hand, from `from` to `to` of its text. */
+export function handMadeSpan(from: number, to = from): AnchoredSpan {
+  return { segment: handMade, from, to };
+}
 
 function dumpField(tree: TreeBodies, name: string, value: unknown): string | undefined {
   if (value === undefined) {
@@ -71,21 +86,24 @@ export function dump(tree: TreeBodies, node: SyntaxNode): string {
   return `(${[node.kind, ...fields].join(' ')})`;
 }
 
-/** Where children stick out of their parent or overlap their siblings. Empty when well nested. */
-export function spanViolations(tree: TreeBodies, root: SyntaxNode): readonly string[] {
+/**
+ * Where the text a child covers sticks out of its parent's or overlaps its siblings', or a span
+ * ends before it starts. Empty when well nested.
+ */
+export function spanViolations(tree: TreePlaces, root: SyntaxNode): readonly string[] {
   return nodesUnder(tree, root).flatMap((parent) => {
     const children = childrenOf(tree, parent);
+    const outer = extentIn(tree, parent);
     return children.flatMap((child, index) => {
       const previous = children[index - 1];
+      const extent = extentIn(tree, child);
       const label = `${child.kind} in ${parent.kind}`;
       return [
-        ...(child.span.start < parent.span.start || child.span.end > parent.span.end
-          ? [`${label} lies outside its parent`]
-          : []),
-        ...(previous !== undefined && previous.span.end > child.span.start
+        ...(encloses(outer, extent) ? [] : [`${label} lies outside its parent`]),
+        ...(previous !== undefined && extentIn(tree, previous).end > extent.start
           ? [`${label} overlaps ${previous.kind}`]
           : []),
-        ...(child.span.end < child.span.start ? [`${label} has a negative span`] : []),
+        ...(child.span.to < child.span.from ? [`${label} has a negative span`] : []),
       ];
     });
   });
@@ -96,7 +114,7 @@ export function strayBodies(tree: SyntaxTree): readonly string[] {
   const functions = new Set(nodesUnder(tree, tree.root));
   return [...tree.bodies.keys()]
     .filter((declaration) => !functions.has(declaration))
-    .map(({ span }) => `the body of a function at ${span.start}`);
+    .map(({ span }) => `the body of a function at ${span.from}`);
 }
 
 /** Nodes that stand for an error: Missing, Invalid, and names the parser didn't find. */

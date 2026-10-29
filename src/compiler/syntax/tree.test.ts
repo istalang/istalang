@@ -14,10 +14,11 @@ import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
 import type { Call } from './expressions/index.ts';
 import type { Identifier } from './node.ts';
-import { strayBodies } from './tree.test-kit.ts';
+import { handMadeSpan as at, strayBodies } from './tree.test-kit.ts';
 import {
   bodyOf,
   childrenOf,
+  extentIn,
   fieldChildrenOf,
   nodesAt,
   nodesUnder,
@@ -26,7 +27,6 @@ import {
   type SyntaxTree,
 } from './tree.ts';
 
-const at = (start: number, end: number) => ({ start, end });
 const name = (text: string, start: number): Identifier => ({
   kind: 'Identifier',
   span: at(start, start + text.length),
@@ -102,8 +102,10 @@ const trees = [
 
 /** Where `nodesAt` breaks its contract over `tree`, at any offset of its text or past its end. */
 function positionViolations(tree: SyntaxTree): readonly string[] {
-  const holds = (node: SyntaxNode, offset: number) =>
-    node.span.start <= offset && offset < node.span.end;
+  const holds = (node: SyntaxNode, offset: number) => {
+    const { start, end } = extentIn(tree, node);
+    return start <= offset && offset < end;
+  };
   const violations: string[] = [];
   for (let offset = 0; offset <= tree.source.text.length + 1; offset += 1) {
     const path = nodesAt(tree, offset);
@@ -120,10 +122,14 @@ function positionViolations(tree: SyntaxTree): readonly string[] {
       violations.push(`the nodes at ${offset} are no path from the root`);
     }
   }
-  const missed = nodesUnder(tree, tree.root).filter(
-    (node) => node.span.start < node.span.end && !nodesAt(tree, node.span.start).includes(node),
-  );
-  return [...violations, ...missed.map((node) => `${node.kind} at ${node.span.start} is missed`)];
+  const missed = nodesUnder(tree, tree.root).filter((node) => {
+    const { start, end } = extentIn(tree, node);
+    return start < end && !nodesAt(tree, start).includes(node);
+  });
+  return [
+    ...violations,
+    ...missed.map((node) => `${node.kind} at ${extentIn(tree, node).start} is missed`),
+  ];
 }
 
 /** The nodes whose parent `parentOf` doesn't give as the node listing them as children. */
@@ -133,7 +139,7 @@ function parentViolations(tree: SyntaxTree): readonly string[] {
   );
   return [
     ...(parentOf(tree, tree.root) === undefined ? [] : ['the root has a parent']),
-    ...misplaced.map((child) => `${child.kind} at ${child.span.start}`),
+    ...misplaced.map((child) => `${child.kind} at ${extentIn(tree, child).start}`),
   ];
 }
 

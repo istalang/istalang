@@ -4,10 +4,11 @@
 
 import type { Literal } from '../../syntax/expressions/index.ts';
 import type { CursorToken } from '../cursor.ts';
+import type { Parser } from '../parser.ts';
 
 /** The literal a token denotes, or undefined if it denotes none. */
-export function literalFrom(token: CursorToken): Literal | undefined {
-  const { span } = token;
+export function literalFrom(parser: Parser, token: CursorToken): Literal | undefined {
+  const span = parser.anchor(token.span);
   switch (token.kind) {
     case 'integer':
       return { kind: 'IntegerLiteral', span, value: token.value };

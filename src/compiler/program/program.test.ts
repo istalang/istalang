@@ -14,6 +14,7 @@ import {
   reportedOnce,
 } from '../../diagnostics/diagnostic.test-kit.ts';
 import { textOf } from '../../text/span.ts';
+import { spanIn } from '../syntax/positions.ts';
 import { programDiagnostics } from './diagnostics.ts';
 import {
   type Files,
@@ -39,7 +40,7 @@ function resolvedImportsOf(program: Program, key: string): Record<string, string
   const { tree, imports } = moduleAt(program, key);
   return Object.fromEntries(
     [...imports].map(([item, target]) => [
-      textOf(tree.source, item.path.span),
+      textOf(tree.source, spanIn(tree, item.path.span)),
       program.modules.get(target)?.tree.source.path,
     ]),
   );

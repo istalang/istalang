@@ -10,9 +10,9 @@
 
 import type { EntryTable } from '../../../structures/entries.ts';
 import { sameItems } from '../../../structures/equality.ts';
-import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CheckerContext, CheckerNote, ConstraintCheck } from '../context.ts';
 import { resolveConstraints } from '../traits/constraints.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
@@ -51,7 +51,7 @@ export class TypeParameters {
 
   constrainLater(
     module: ModuleId,
-    at: Span,
+    at: AnchoredSpan,
     parameter: TypeParameter,
     typeArguments: Substitution,
   ): void {
@@ -67,7 +67,7 @@ export class TypeParameters {
    * read, including any noted while running them.
    */
   checkNoted(module: ModuleId): void {
-    const done = new Map<Span, Set<TypeParameter>>();
+    const done = new Map<AnchoredSpan, Set<TypeParameter>>();
     for (
       let pending = this.#noted(module, done);
       pending.length > 0;
@@ -87,7 +87,7 @@ export class TypeParameters {
   /** The checks noted for `module` among what the entry computing now reached, not yet `done`. */
   #noted(
     module: ModuleId,
-    done: ReadonlyMap<Span, ReadonlySet<TypeParameter>>,
+    done: ReadonlyMap<AnchoredSpan, ReadonlySet<TypeParameter>>,
   ): readonly ConstraintCheck[] {
     return this.#checker.entries
       .notesReached()

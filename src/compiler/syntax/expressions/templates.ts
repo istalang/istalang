@@ -10,6 +10,7 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
+import { endOf, spanAcross } from '../positions.ts';
 import type { ArrayLiteral, Call, Expression, TemplateLiteral } from './index.ts';
 
 /** A template with a tag. */
@@ -34,7 +35,7 @@ export function taggedCall(template: TaggedTemplate): Call {
     const { tag } = template;
     const texts: ArrayLiteral = {
       kind: 'ArrayLiteral',
-      span: { start: tag.span.end, end: template.span.end },
+      span: spanAcross(endOf(tag.span), template.span),
       elements: template.texts.map(({ span, value }) => ({ kind: 'StringLiteral', span, value })),
     };
     return {

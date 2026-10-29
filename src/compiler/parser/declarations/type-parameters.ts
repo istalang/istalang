@@ -20,7 +20,7 @@ function parseTypeParameter(parser: Parser): TypeParameter {
   const { cursor } = parser;
   const pack = cursor.eat('...');
   const name = parser.identifier('a type parameter');
-  const start = pack?.span.start ?? name.span.start;
+  const start = pack?.span.start ?? parser.startOf(name);
   const constraints: TypeNode[] = [];
   if (cursor.eat('is') !== undefined) {
     constraints.push(parser.type());

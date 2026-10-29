@@ -36,6 +36,7 @@ import type { Span } from '../../text/span.ts';
 import type { Annotation } from '../syntax/annotations.ts';
 import type { Docstring } from '../syntax/declarations.ts';
 import type { Invalid } from '../syntax/node.ts';
+import { type AnchoredSpan, spanAcross } from '../syntax/positions.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import { parseAnnotations, rejectAnnotations } from './annotations.ts';
 import type { CursorKind } from './cursor.ts';
@@ -69,7 +70,7 @@ export interface Lines<Item> {
 
 export interface Body<Item> {
   readonly items: Items<Item>;
-  readonly span: Span;
+  readonly span: AnchoredSpan;
 }
 
 /**
@@ -379,9 +380,14 @@ function deeperLineFollows(parser: Parser, indentation: number): boolean {
 }
 
 /** From the first item to the last, or empty where the next item would be. */
-function spanOfItems(parser: Parser, items: Items<SyntaxNode>): Span {
-  const at = parser.cursor.previousEnd;
-  return { start: items[0]?.span.start ?? at, end: items.at(-1)?.span.end ?? at };
+function spanOfItems(parser: Parser, items: Items<SyntaxNode>): AnchoredSpan {
+  const [first] = items;
+  const last = items.at(-1);
+  if (first === undefined || last === undefined) {
+    const at = parser.cursor.previousEnd;
+    return parser.anchor({ start: at, end: at });
+  }
+  return spanAcross(first.span, last.span);
 }
 
 /** A body that isn't there: reported where it should start. */

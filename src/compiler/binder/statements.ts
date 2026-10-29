@@ -16,6 +16,7 @@ import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { type Expression, unparenthesized } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
+import { endOf } from '../syntax/positions.ts';
 import {
   type Block,
   destructures,
@@ -92,7 +93,7 @@ export function bindBlock(binder: LocalBinder, block: Block, parent: Scope): voi
   for (const statement of statements) {
     binder.annotations(statement, scope);
     handlerOf(statementHandlers, statement)(binder, statement, scope);
-    binder.enter(block, scope, statement.span.end);
+    binder.enter(block, scope, endOf(statement.span));
   }
   scope.end();
 }

@@ -51,7 +51,7 @@ export class DeclaringModules {
         return id;
       }
     }
-    return unreachable(`No module holds the ${node.kind} at ${node.span.start}.`);
+    return unreachable(`No module holds the ${node.kind} at ${node.span.from}.`);
   }
 }
 

@@ -30,10 +30,10 @@ function templateLiteral(parser: Parser, tag: Expression | undefined): Expressio
     return parser.missing('a template');
   }
   const texts = token.texts.map(
-    ({ span, value }) => ({ kind: 'TemplateText', span, value }) as const,
+    ({ span, value }) => ({ kind: 'TemplateText', span: parser.anchor(span), value }) as const,
   );
   const values = token.values.map((value) => parseValue(parser, value));
-  const start = tag?.span.start ?? token.span.start;
+  const start = tag === undefined ? token.span.start : parser.startOf(tag);
   return { kind: 'TemplateLiteral', span: parser.spanFrom(start), tag, texts, values };
 }
 

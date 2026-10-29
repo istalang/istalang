@@ -24,12 +24,12 @@ import type { Convention } from '../../language/naming.ts';
 import { entryFunction } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Comprehension, Expression, Lambda } from '../syntax/expressions/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block, For, VariableDeclaration } from '../syntax/statements.ts';
 import type { SyntaxNode, SyntaxTree } from '../syntax/tree.ts';
 import type { NamedType, TypeNode } from '../syntax/types.ts';
@@ -81,7 +81,7 @@ export interface LocalResult {
   readonly linkedHeads: readonly Identifier[];
   readonly free: readonly FreeName[];
   readonly paths: readonly QualifiedPath[];
-  readonly diagnostics: readonly Diagnostic[];
+  readonly diagnostics: readonly Diagnostic<AnchoredSpan>[];
   readonly visibility: Visibility;
   /** What a bare name denotes when it may be any variant so named: one entity per name per tree. */
   readonly variantsNamed: (name: string) => VariantsEntity;
@@ -132,7 +132,7 @@ export class LocalBinder {
   readonly #entities = new Map<Identifier, LocalEntity>();
   readonly #free: FreeName[] = [];
   readonly #paths: QualifiedPath[] = [];
-  readonly #diagnostics: Diagnostic[] = [];
+  readonly #diagnostics: Diagnostic<AnchoredSpan>[] = [];
   readonly #variants = new Map<string, VariantsEntity>();
   readonly #ownCalls = new Map<FunctionDeclaration | Lambda, VariableEntity>();
   readonly #linkedHeads: Identifier[] = [];
@@ -159,7 +159,7 @@ export class LocalBinder {
   }
 
   /** Notes that `node`, from `from` on, is bound in `scope` as it is defined now. */
-  enter(node: SyntaxNode, scope: Scope, from?: number): void {
+  enter(node: SyntaxNode, scope: Scope, from?: AnchoredSpan): void {
     this.#notes.note(node, scope, from);
   }
 
@@ -168,7 +168,7 @@ export class LocalBinder {
     this.#entities.set(name, entity);
   }
 
-  report(diagnostic: Diagnostic): void {
+  report(diagnostic: Diagnostic<AnchoredSpan>): void {
     this.#diagnostics.push(diagnostic);
   }
 
@@ -334,14 +334,14 @@ interface DeclarationRules {
    * Makes the diagnostic for a name the scope already defines; a plain duplicate by default, and
    * none when `false`, for a name whose repeat its declaration reported already.
    */
-  readonly clash?: ((span: Span, name: string) => Diagnostic) | false;
+  readonly clash?: ((span: AnchoredSpan, name: string) => Diagnostic<AnchoredSpan>) | false;
 }
 
 /**
  * Why `name`, naming the functions `entity` before a `.`, denotes no call (§7): none of them that
  * encloses it is async, or it names `main`, whose call nothing holds.
  */
-export function noOwnCall(name: Identifier, entity: LocalEntity): Diagnostic {
+export function noOwnCall(name: Identifier, entity: LocalEntity): Diagnostic<AnchoredSpan> {
   return namesMain(name, entity)
     ? binderDiagnostics.mainNeverDisposed(name.span)
     : binderDiagnostics.notOwnCall(name.span, name.text);

@@ -32,6 +32,7 @@ import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
 import type { ImportDeclaration } from '../syntax/declarations.ts';
 import type { StringLiteral } from '../syntax/expressions/index.ts';
+import { type AnchoredSpan, diagnosticIn } from '../syntax/positions.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
 import { programDiagnostics } from './diagnostics.ts';
 
@@ -175,7 +176,7 @@ function resolveImports(
     if (isImport && item.path.kind === 'StringLiteral') {
       const located = locateImport(item.path, importer, loaders);
       if ('code' in located) {
-        diagnostics.push(located);
+        diagnostics.push(diagnosticIn(tree, located));
       } else {
         imports.set(item, located.id);
         found.push(located);
@@ -190,7 +191,7 @@ function locateImport(
   { span, value }: StringLiteral,
   importer: ModuleId,
   loaders: readonly ModuleLoader[],
-): LocatedModule | Diagnostic {
+): LocatedModule | Diagnostic<AnchoredSpan> {
   const answers = loaders.flatMap((load) => load(value, importer) ?? []);
   const distinct = answers.filter(
     (answer, index) => answers.findIndex(({ id }) => id === answer.id) === index,

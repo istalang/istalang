@@ -34,5 +34,5 @@ function parseFrom(parser: Parser): StringLiteral | Missing {
   if (token?.kind !== 'string') {
     return parser.missing('a module path string');
   }
-  return { kind: 'StringLiteral', span: token.span, value: token.value };
+  return { kind: 'StringLiteral', span: parser.anchor(token.span), value: token.value };
 }

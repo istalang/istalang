@@ -15,6 +15,7 @@
 import { builders } from 'prettier/doc';
 import type { Annotatable, Annotation } from '../compiler/syntax/annotations.ts';
 import type { Docstring } from '../compiler/syntax/declarations.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Block } from '../compiler/syntax/statements.ts';
 import { fieldChildrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { blankBetween, hasComments, hugging, itemLines } from './lists.ts';
@@ -167,15 +168,16 @@ export function annotated(
   node: SyntaxNode & Annotatable,
   core: builders.Doc,
 ): builders.Doc {
-  const { text } = printer.tree.source;
+  const { tree } = printer;
   const before: Annotation[] = [];
-  let offset = node.span.start;
+  let offset = spanIn(tree, node.span).start;
   for (const annotation of node.annotations ?? []) {
-    if (tokenAfter(text, offset) !== annotation.span.start) {
+    const written = spanIn(tree, annotation.span);
+    if (tokenAfter(tree.source.text, offset) !== written.start) {
       break;
     }
     before.push(annotation);
-    offset = annotation.span.end;
+    offset = written.end;
   }
   const after = (node.annotations ?? []).slice(before.length);
   return [

@@ -19,7 +19,7 @@ import { bindProgram } from './bind.ts';
 const corpus = boundCorpus();
 
 function label({ module, name }: Omit<ResolvedName, 'entity'>): string {
-  return `${module}:${name.span.start} ${name.text}`;
+  return `${module}:${name.span.from} ${name.text}`;
 }
 
 /** The names of `modules` the binder resolved that their entity's uses leave out. */

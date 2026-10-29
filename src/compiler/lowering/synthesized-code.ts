@@ -15,9 +15,9 @@ import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import { resultVariants } from '../../language/well-known.ts';
-import type { Span } from '../../text/span.ts';
 import type { Checker } from '../checker/check.ts';
 import type { AnonymousStructType, NominalType } from '../checker/types/type.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import { CodeWriter } from './code-writer.ts';
 import { emitConstant } from './constants.ts';
 import type { CodeContext } from './context.ts';
@@ -36,12 +36,12 @@ export class SynthesizedCode implements CodeContext {
   readonly parameters: readonly Register[];
   readonly captures: readonly Register[];
   /** Where every instruction points: the declaration the code stands for. */
-  readonly span: Span;
+  readonly span: AnchoredSpan;
 
   /** Code at `span` taking `parameters` arguments, then `captures` captures, as a closure's entry. */
   constructor(
     context: Pick<CodeContext, 'checker' | 'tables'>,
-    span: Span,
+    span: AnchoredSpan,
     parameters: number,
     captures = 0,
   ) {
@@ -52,7 +52,7 @@ export class SynthesizedCode implements CodeContext {
     this.captures = Array.from({ length: captures }, () => this.code.allocate());
   }
 
-  constant(value: Value, span: Span = this.span): Register {
+  constant(value: Value, span: AnchoredSpan = this.span): Register {
     return emitConstant(this, value, span);
   }
 
@@ -142,7 +142,7 @@ export class SynthesizedCode implements CodeContext {
 
   /** The finished entry, named and placed by `header`; `references` says which parameters are `&`. */
   entry(header: EntryHeader, isAsync: boolean, references: readonly boolean[] = []): CodeFunction {
-    const { registers, instructions } = this.code.finish();
+    const { registers, instructions } = this.code.finish(this.tables.treeAt(header.module));
     return {
       kind: 'code',
       ...header,

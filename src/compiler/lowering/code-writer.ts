@@ -5,6 +5,8 @@
  * - Registers are numbered as the frame lays them out: parameters first, then locals and
  *   temporaries, each a fresh register. Nothing is reused, so a register's meaning never changes
  *   within a function, which keeps the code easy to read back from a snapshot.
+ * - An instruction is written at the span of the syntax it stands for (syntax/positions.ts), and
+ *   finishing turns every span into its module's text positions, the one place lowering does.
  * - A jump to a label not yet placed is patched when the label is placed, so code is written in a
  *   single pass. A label a jump names but nothing places would leave the jump at instruction 0,
  *   which loading can't tell from a real target, so finishing refuses code with one.
@@ -13,7 +15,7 @@
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
+import { type AnchoredSpan, type SegmentBases, spanIn } from '../syntax/positions.ts';
 
 /** A place in the code, known once the code before it has been written. */
 export interface Label {
@@ -28,6 +30,13 @@ export interface SelectCaseCode {
   readonly target: Label;
 }
 
+/** An instruction as lowering writes it: at the span of the syntax it stands for. */
+export type WrittenInstruction = Instruction extends infer Each
+  ? Each extends Instruction
+    ? Omit<Each, 'span'> & { readonly span: AnchoredSpan }
+    : never
+  : never;
+
 /** A function's code as written: how many registers its frame needs, and its instructions. */
 export interface WrittenCode {
   readonly registers: number;
@@ -35,7 +44,7 @@ export interface WrittenCode {
 }
 
 export class CodeWriter {
-  readonly #instructions: Instruction[] = [];
+  readonly #instructions: WrittenInstruction[] = [];
   /** The name `@Waypoint` gives the waits written now (§10); undefined outside such a statement. */
   #waypoint: string | undefined;
   readonly #placed = new Map<number, number>();
@@ -63,19 +72,19 @@ export class CodeWriter {
     };
   }
 
-  emit(instruction: Instruction): void {
+  emit(instruction: WrittenInstruction): void {
     this.#instructions.push(instruction);
   }
 
   /** Reads field `index` of the struct, variant or tuple in `src`; its register. */
-  field(src: Register, index: number, span: Span): Register {
+  field(src: Register, index: number, span: AnchoredSpan): Register {
     const dst = this.allocate();
     this.emit({ kind: 'field', span, dst, src, index });
     return dst;
   }
 
   /** Reads the part of the value in `src` at `path`, field and element positions; its register. */
-  readPath(src: Register, path: readonly number[], span: Span): Register {
+  readPath(src: Register, path: readonly number[], span: AnchoredSpan): Register {
     return path.reduce((current, index) => this.field(current, index, span), src);
   }
 
@@ -94,16 +103,20 @@ export class CodeWriter {
     this.#patches.delete(label.id);
   }
 
-  jump(target: Label, span: Span): void {
-    const instruction: Extract<Instruction, { kind: 'jump' }> = { kind: 'jump', span, target: 0 };
+  jump(target: Label, span: AnchoredSpan): void {
+    const instruction: Extract<WrittenInstruction, { kind: 'jump' }> = {
+      kind: 'jump',
+      span,
+      target: 0,
+    };
     this.emit(instruction);
     this.#refer(target, (position) => {
       instruction.target = position;
     });
   }
 
-  branch(condition: Register, whenTrue: Label, whenFalse: Label, span: Span): void {
-    const instruction: Extract<Instruction, { kind: 'branch' }> = {
+  branch(condition: Register, whenTrue: Label, whenFalse: Label, span: AnchoredSpan): void {
+    const instruction: Extract<WrittenInstruction, { kind: 'branch' }> = {
       kind: 'branch',
       span,
       condition,
@@ -123,8 +136,8 @@ export class CodeWriter {
    * Jumps by the variant of the enum value in `value`: to `targets[i]` for variant i, and to
    * `otherwise` for every variant past them.
    */
-  switch(value: Register, targets: readonly Label[], span: Span, otherwise?: Label): void {
-    const instruction: Extract<Instruction, { kind: 'switch' }> = {
+  switch(value: Register, targets: readonly Label[], span: AnchoredSpan, otherwise?: Label): void {
+    const instruction: Extract<WrittenInstruction, { kind: 'switch' }> = {
       kind: 'switch',
       span,
       value,
@@ -155,13 +168,13 @@ export class CodeWriter {
   }
 
   /** Waits on the future in `future`, its value then in `dst` (§5). */
-  await(dst: Register, future: Register, span: Span): void {
+  await(dst: Register, future: Register, span: AnchoredSpan): void {
     this.emit({ kind: 'await', span, dst, future, ...this.#waypointField() });
   }
 
   /** Chooses among `cases` by their futures (§8): waits for one, or goes to `otherwise` at once. */
-  select(cases: readonly SelectCaseCode[], otherwise: Label | undefined, span: Span): void {
-    const instruction: Extract<Instruction, { kind: 'select' }> = {
+  select(cases: readonly SelectCaseCode[], otherwise: Label | undefined, span: AnchoredSpan): void {
+    const instruction: Extract<WrittenInstruction, { kind: 'select' }> = {
       kind: 'select',
       span,
       ...this.#waypointField(),
@@ -189,13 +202,21 @@ export class CodeWriter {
     }
   }
 
-  /** The code written; throws when a jump names a label nothing placed, a bug in lowering. */
-  finish(): WrittenCode {
+  /**
+   * The code written, at text positions in `tree`, the module of the entry it is for. Throws when a
+   * jump names a label nothing placed, a bug in lowering.
+   */
+  finish(tree: SegmentBases): WrittenCode {
     if (this.#patches.size > 0) {
       const labels = [...this.#patches.keys()].join(', ');
       unreachable(`Labels ${labels} are jumped to but never placed.`);
     }
-    return { registers: this.#registers, instructions: this.#instructions };
+    // A written instruction differs from its Definition one by its span alone, which the spread
+    // replaces; the type system can't follow that through the union.
+    const instructions = this.#instructions.map(
+      ({ span, ...written }) => ({ ...written, span: spanIn(tree, span) }) as Instruction,
+    );
+    return { registers: this.#registers, instructions };
   }
 
   #waypointField(): { readonly waypoint?: string } {

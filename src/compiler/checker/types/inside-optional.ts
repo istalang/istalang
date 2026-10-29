@@ -7,8 +7,8 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { Span } from '../../../text/span.ts';
 import { type LinkForm, optionalOperatorOf } from '../../syntax/expressions/chains.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from './fit.ts';
@@ -21,10 +21,10 @@ import { typeText } from './type-text.ts';
  */
 export function insideOptional(
   checker: Pick<CheckerContext, 'optionalEntity'>,
-  at: Span,
+  at: AnchoredSpan,
   type: Type,
   form: LinkForm,
-): Diagnostic | undefined {
+): Diagnostic<AnchoredSpan> | undefined {
   return optionalInner(type, checker.optionalEntity) === undefined
     ? undefined
     : checkerDiagnostics.insideOptional(at, typeText(type), optionalOperatorOf(form));

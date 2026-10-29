@@ -16,9 +16,9 @@ import type { FunctionDefinition } from '../../../definition/functions.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/checked-field.ts';
 import { type AnyType, sameType, type Type } from '../../checker/types/type.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { closeWitness, type Dispatch } from '../instances.ts';
@@ -39,7 +39,7 @@ export interface IntoAny {
 export function convertedIntoAny(
   context: CodeContext,
   { value, from, to }: IntoAny,
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   const { tables, code } = context;
   if (from.kind === 'any') {
@@ -93,8 +93,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   });
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));
   const name = `${spelledType(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
-  const module = tables.moduleIndex(checker.moduleOf(required));
-  const header = { name, module, span: required.name.span, annotations: [] };
+  const header = tables.headerAt(name, checker.moduleOf(required), required.name.span);
   return code.entry(header, required.isAsync, references);
 }
 
@@ -119,8 +118,7 @@ export function anyConversionEntry(
     code.return(convertedIntoAny(code, { value: code.field(value, 0), from: type, to }, span));
   });
   const name = `${spelledType(checker, from)} as ${spelledType(checker, to)}`;
-  const module = tables.moduleIndex(checker.moduleOf(first.trait));
-  return code.entry({ name, module, span, annotations: [] }, false);
+  return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span), false);
 }
 
 /** The entry reading `required`'s field, which a trait of `on` requires, from a value of `on`. */
@@ -144,8 +142,7 @@ export function anyFieldEntry(
     code.return(code.field(code.field(value, 0), read.index));
   });
   const name = `${spelledType(checker, on)}.${field.name.text}`;
-  const module = tables.moduleIndex(checker.moduleOf(trait));
-  return code.entry({ name, module, span: field.name.span, annotations: [] }, false);
+  return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span), false);
 }
 
 /**

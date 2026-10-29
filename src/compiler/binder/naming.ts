@@ -3,13 +3,14 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { type Convention, followsConvention } from '../../language/naming.ts';
 import { type Identifier, isMissingName } from '../syntax/node.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 
 /** The diagnostic for a declared name that breaks its convention, if it does. */
 export function conventionViolation(
   name: Identifier,
   convention: Convention,
-): Diagnostic | undefined {
+): Diagnostic<AnchoredSpan> | undefined {
   if (isMissingName(name) || followsConvention(name.text, convention)) {
     return;
   }

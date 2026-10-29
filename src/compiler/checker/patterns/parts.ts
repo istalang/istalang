@@ -9,9 +9,9 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { Span } from '../../../text/span.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { Checker } from '../check.ts';
 import type { PartStep } from '../checked-pattern.ts';
@@ -24,7 +24,7 @@ import { itemField } from './struct-items.ts';
 export interface PatternScope {
   readonly fieldsOf: Checker['fieldsOf'];
   readonly entityOf: (name: Identifier) => Entity | undefined;
-  readonly report: (diagnostic: Diagnostic) => void;
+  readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
   /** Records the field an item's name names. */
   readonly recordField: (name: Identifier, field: FieldMember) => void;
 }
@@ -60,7 +60,7 @@ export function elementParts<Step extends PartStep>(
   scope: Pick<PatternScope, 'report'>,
   part: ValuePart<Step | number>,
   count: number,
-  span: Span,
+  span: AnchoredSpan,
 ): readonly ValuePart<Step | number>[] {
   const { type } = part;
   const fits = type.kind === 'error' || (type.kind === 'tuple' && type.elements.length === count);
@@ -83,7 +83,7 @@ export function structParts(
   scope: PatternScope,
   named: NamedType | undefined,
   type: Type,
-  span: Span,
+  span: AnchoredSpan,
 ): readonly FieldMember[] | undefined {
   const entity = named === undefined ? undefined : scope.entityOf(lastName(named.path));
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
@@ -115,7 +115,7 @@ export function structParts(
 export function fieldPart<Step extends PartStep>(
   scope: Pick<PatternScope, 'report' | 'recordField'>,
   fields: readonly FieldMember[] | undefined,
-  item: { readonly name: Identifier | undefined; readonly span: Span },
+  item: { readonly name: Identifier | undefined; readonly span: AnchoredSpan },
   part: ValuePart<Step | number>,
 ): { readonly index: number; readonly part: ValuePart<Step | number> } {
   const index = fields === undefined ? -1 : itemField(item.name, fields);

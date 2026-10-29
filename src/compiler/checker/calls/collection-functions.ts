@@ -13,8 +13,8 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { collectionFunctions } from '../../../language/well-known.ts';
-import type { Span } from '../../../text/span.ts';
 import type { NodeOf } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
@@ -29,7 +29,7 @@ export interface ElementWrite {
   readonly container: Type;
   readonly key: Type;
   readonly element: Type;
-  readonly failure: () => Diagnostic;
+  readonly failure: () => Diagnostic<AnchoredSpan>;
 }
 
 /** Makes the `setIndex` call writing an element; false after a report. */
@@ -58,7 +58,7 @@ export function writeElement(context: BodyContext, write: ElementWrite): boolean
 export function runsAtOnce(
   context: BodyContext,
   call: ResolvedCall | undefined,
-  at: Span,
+  at: AnchoredSpan,
 ): boolean {
   if (call?.function.isAsync !== true) {
     return true;

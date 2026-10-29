@@ -98,7 +98,7 @@ function parseFunctionBody(
   }
   const documented = parseDocumentedStatementBody(parser, start);
   if (form === 'extern') {
-    parser.report(parserDiagnostics.externWithBody(documented.value.span));
+    parser.report(parserDiagnostics.externWithBody(parser.textSpanOf(documented.value.span)));
   }
   return documented;
 }

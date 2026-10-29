@@ -41,7 +41,7 @@ export class Iterations implements IterationRecord {
   of(iteration: Iteration): IterationForm {
     const form = this.#forms.get(iteration);
     if (form === undefined) {
-      unreachable(`An iteration at ${iteration.span.start} was never checked.`);
+      unreachable(`An iteration at ${iteration.span.from} was never checked.`);
     }
     return form;
   }

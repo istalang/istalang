@@ -34,6 +34,7 @@ import { memo } from '../../structures/memo.ts';
 import { isTestModule, type ModuleId, type Program } from '../program/program.ts';
 import type { EnumDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Identifier } from '../syntax/node.ts';
+import { type AnchoredSpan, diagnosticIn } from '../syntax/positions.ts';
 import { bindModule, type ModuleBindings } from './bind-module.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import type {
@@ -64,7 +65,7 @@ interface ModuleLinks {
   readonly imports: Map<ImportPlaceholder, Entity>;
   /** Names that linking found denote nothing, though their tree resolved them or left them free. */
   readonly refused: Set<Identifier>;
-  readonly diagnostics: Diagnostic[];
+  readonly diagnostics: Diagnostic<AnchoredSpan>[];
 }
 
 export function link(program: Program): Bindings {
@@ -167,7 +168,10 @@ class Linker {
 
   diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
     const links = this.#links.get(module);
-    return links === undefined ? [] : [...links.local.diagnostics, ...links.diagnostics];
+    const tree = this.#program.modules.get(module)?.tree;
+    return links === undefined || tree === undefined
+      ? []
+      : [...links.local.diagnostics, ...links.diagnostics].map((each) => diagnosticIn(tree, each));
   }
 
   variantsNamed(name: string): readonly VariantEntity[] {

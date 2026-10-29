@@ -11,7 +11,6 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import type { FieldSource } from '../../checker/check.ts';
 import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
 import {
@@ -22,6 +21,7 @@ import {
   type NewStructLiteral,
   type StructLiteral,
 } from '../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { defaultEntryOf } from '../instances.ts';
@@ -35,7 +35,7 @@ export function lowerNewStructLiteral(context: FunctionContext, node: NewStructL
   const sharedValue = context.checker.sharedValueOf(type);
   if (sharedValue === undefined) {
     unreachable(
-      `'new' at ${node.span.start} builds no shared struct; the checker should have said so.`,
+      `'new' at ${node.span.from} builds no shared struct; the checker should have said so.`,
     );
   }
   const value = construct(context, sharedValue, literalFields(context, node), node.span);
@@ -54,7 +54,7 @@ export function literalFields(context: FunctionContext, node: FieldsLiteral): Re
   const sources = context.body.sourcesOf(node);
   if (sources === undefined) {
     unreachable(
-      `A struct literal misses a field at ${node.span.start}; the checker should have said so.`,
+      `A struct literal misses a field at ${node.span.from}; the checker should have said so.`,
     );
   }
   const values = new Map<Expression, Register>();
@@ -149,7 +149,7 @@ export function construct(
   context: FunctionContext,
   type: NominalType | AnonymousStructType,
   fields: readonly Register[],
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   const dst = context.code.allocate();
   const index = context.tables.types.index(type);
@@ -164,7 +164,7 @@ function structTypeOf(
 ): NominalType | AnonymousStructType {
   const type = context.typeOf(node);
   if (type.kind !== 'nominal' && type.kind !== 'anonymous') {
-    unreachable(`Expected a struct at ${node.span.start}; the checker should have said so.`);
+    unreachable(`Expected a struct at ${node.span.from}; the checker should have said so.`);
   }
   return type;
 }
@@ -172,7 +172,7 @@ function structTypeOf(
 function registerOf(values: ReadonlyMap<Expression, Register>, value: Expression): Register {
   const register = values.get(value);
   if (register === undefined) {
-    unreachable(`No value was lowered for the item at ${value.span.start}.`);
+    unreachable(`No value was lowered for the item at ${value.span.from}.`);
   }
   return register;
 }

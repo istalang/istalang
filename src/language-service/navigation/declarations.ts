@@ -13,9 +13,11 @@
 import type { EntityUse } from '../../compiler/binder/entities.ts';
 import { type Checker, checkProgram } from '../../compiler/checker/check.ts';
 import type { Denotation } from '../../compiler/checker/denotation.ts';
-import type { ModuleId, Program } from '../../compiler/program/program.ts';
+import { type ModuleId, type Program, programModule } from '../../compiler/program/program.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
+import { spanIn, startTogether } from '../../compiler/syntax/positions.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import type { Span } from '../../text/span.ts';
 import { identifierAt } from '../identifier-at.ts';
 
 type Declared = Denotation['declared'];
@@ -43,7 +45,12 @@ export function declarationsOf(
 
 /** Whether two names stand in one place: they are one name, though read through two nodes. */
 export function isSamePlace(first: EntityUse, second: EntityUse): boolean {
-  return first.module === second.module && first.name.span.start === second.name.span.start;
+  return first.module === second.module && startTogether(first.name.span, second.name.span);
+}
+
+/** Where `use`'s name stands in its module's text. */
+export function spanOfUse(program: Program, { module, name }: EntityUse): Span {
+  return spanIn(programModule(program, module).tree, name.span);
 }
 
 /** A name, and what it denotes. */

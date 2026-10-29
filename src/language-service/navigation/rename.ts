@@ -40,7 +40,7 @@ import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { memo } from '../../structures/memo.ts';
 import { createSourceText } from '../../text/source-text.ts';
 import type { Span } from '../../text/span.ts';
-import { type DeclaredAt, isSamePlace, nameAt } from './declarations.ts';
+import { type DeclaredAt, isSamePlace, nameAt, spanOfUse } from './declarations.ts';
 import { namesDenoting } from './references.ts';
 
 /** What renaming a name renames, or why it can't be renamed. */
@@ -99,7 +99,7 @@ export function renamingAt(
  */
 function asDeclared(program: Program, target: DeclaredAt): DeclaredAt {
   const { at } = target;
-  const there = nameAt(program, at.module, at.name.span.start)?.targets;
+  const there = nameAt(program, at.module, spanOfUse(program, at).start)?.targets;
   return there?.find((each) => isSamePlace(each.at, at)) ?? target;
 }
 
@@ -121,7 +121,7 @@ export function renameEdits(
   }
   const edits = namesDenoting(program, target.at).map((use) => ({
     module: use.module,
-    span: use.name.span,
+    span: spanOfUse(program, use),
     text: spelledAnew(program, use, target, newName),
   }));
   return { kind: 'renamed', edits };
@@ -140,7 +140,7 @@ function targetRefusal(program: Program, { declared, at }: DeclaredAt): string |
     return meaningRefusal(text);
   }
   const isNamedWithOthers = namesDenoting(program, at).some(
-    ({ module, name }) => (nameAt(program, module, name.span.start)?.targets.length ?? 0) > 1,
+    (use) => (nameAt(program, use.module, spanOfUse(program, use).start)?.targets.length ?? 0) > 1,
   );
   return isNamedWithOthers
     ? `\`${text}\` is named together with another declaration of that name, as an import names every overload; renaming one alone would part them.`

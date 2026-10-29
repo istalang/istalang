@@ -13,7 +13,6 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { Span } from '../../../text/span.ts';
 import {
   type ComparisonLink,
   comparisonLinkOf,
@@ -27,6 +26,7 @@ import type {
   Unary,
 } from '../../syntax/expressions/index.ts';
 import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCallAt, emitFunctionCall } from '../emit-call.ts';
 import { lowerNullish } from './nullish.ts';
@@ -102,7 +102,7 @@ function compared(
 /** Whether `left` and `right` are `==`, or `!=` when `isNegated`. */
 export function equal(
   context: FunctionContext,
-  span: Span,
+  span: AnchoredSpan,
   [left, right]: readonly [Register, Register],
   isNegated = false,
 ): Register {
@@ -117,7 +117,7 @@ export function equal(
  */
 export function ordered(
   context: FunctionContext,
-  span: Span,
+  span: AnchoredSpan,
   comparison: Register,
   relation: Relation,
 ): Register {
@@ -137,7 +137,7 @@ function operands(context: FunctionContext, node: Binary): [Register, Register] 
   return [context.expression(node.left), context.expression(node.right)];
 }
 
-function negated(context: FunctionContext, src: Register, span: Span): Register {
+function negated(context: FunctionContext, src: Register, span: AnchoredSpan): Register {
   const dst = context.code.allocate();
   context.code.emit({ kind: 'not', span, dst, src });
   return dst;

@@ -19,6 +19,7 @@ import type { FunctionDeclaration } from '../compiler/syntax/declarations.ts';
 import { isOptionallyChained } from '../compiler/syntax/expressions/chains.ts';
 import type { Expression } from '../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
 import { keywords } from '../compiler/syntax/tokens.ts';
 import { nodesAt, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { type CheckedModule, checkedModule } from './checked-module.ts';
@@ -99,7 +100,7 @@ interface MemberPlace {
  */
 function memberPlaceAt(tree: SyntaxTree, offset: number): MemberPlace | undefined {
   for (const node of nodesAt(tree, offset - 1).toReversed()) {
-    const place = memberPlaceOf(node, offset);
+    const place = memberPlaceOf(tree, node, offset);
     if (place !== undefined) {
       return place;
     }
@@ -116,12 +117,21 @@ function memberPlaceAt(tree: SyntaxTree, offset: number): MemberPlace | undefine
 function unfinishedQualifierAt(tree: SyntaxTree, offset: number): MemberPlace | undefined {
   const dot = offset - 1;
   const head = tree.source.text.charAt(dot) === '.' ? identifierAt(tree, dot) : undefined;
-  return head?.span.end === dot ? { head, receiver: undefined, isOptional: false } : undefined;
+  return head !== undefined && spanIn(tree, head.span).end === dot
+    ? { head, receiver: undefined, isOptional: false }
+    : undefined;
 }
 
-function memberPlaceOf(node: SyntaxNode, offset: number): MemberPlace | undefined {
-  const reaches = (name: Identifier) => name.span.start <= offset && offset <= name.span.end;
-  const isWritten = ({ span }: SyntaxNode) => span.start < span.end;
+function memberPlaceOf(
+  tree: SyntaxTree,
+  node: SyntaxNode,
+  offset: number,
+): MemberPlace | undefined {
+  const reaches = (name: Identifier) => {
+    const { start, end } = spanIn(tree, name.span);
+    return start <= offset && offset <= end;
+  };
+  const isWritten = ({ span }: SyntaxNode) => span.from < span.to;
   if (node.kind === 'MemberAccess' && isWritten(node.target) && reaches(node.member)) {
     const { target } = node;
     const head = target.kind === 'MemberAccess' ? target.member : target;
@@ -139,7 +149,8 @@ function memberPlaceOf(node: SyntaxNode, offset: number): MemberPlace | undefine
 }
 
 function scopeCompletions({ checker, module, tree }: CheckedModule, offset: number) {
-  const start = identifierAt(tree, offset)?.span.start ?? offset;
+  const written = identifierAt(tree, offset);
+  const start = written === undefined ? offset : spanIn(tree, written.span).start;
   return [
     ...[...checker.bindings.visibleAt(module, start)].map(
       ([name, entity]): Completion => ({ name, kind: entityKinds[entity.kind] }),

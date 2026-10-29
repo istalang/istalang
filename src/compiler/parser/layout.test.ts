@@ -8,7 +8,8 @@
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import type { Module } from '../syntax/declarations.ts';
-import { dump } from '../syntax/tree.test-kit.ts';
+import { spanIn } from '../syntax/positions.ts';
+import { dump, handMadeSpan } from '../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import {
   block,
@@ -186,7 +187,7 @@ describe('annotations', () => {
   it("widen their item's span over them", () => {
     const parsed = parseAs('module', lines('@A', 'fn f(): 1'));
     const [item] = (parsed.node as Module).items;
-    expect(item?.span).toEqual({ start: 0, end: 12 });
+    expect(item && spanIn(parsed, item.span)).toEqual({ start: 0, end: 12 });
   });
 });
 
@@ -234,7 +235,7 @@ describe('layout errors', () => {
     expect(reported('module', source)).toEqual(reportedOnce(diagnostic.code, spanText));
     const parsed = parseAs('module', source);
     const { items } = parsed.node as Module;
-    expect(dump(parsed, items.at(-1) ?? { kind: 'Missing', span: { start: 0, end: 0 } })).toBe(
+    expect(dump(parsed, items.at(-1) ?? { kind: 'Missing', span: handMadeSpan(0) })).toBe(
       functionOf('ok', bodyOf('1')),
     );
   });

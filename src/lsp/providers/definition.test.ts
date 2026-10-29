@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nameAt } from '../../language-service/navigation/declarations.ts';
 import { corpusClient, corpusDocuments, corpusProgram } from '../corpus-client.test-kit.ts';
 import { locationOf, moduleIdOfUri } from '../locations.ts';
@@ -18,11 +19,13 @@ describe('going to a definition', () => {
       const module = moduleIdOfUri(uri);
       const names = namesOf(tree);
       const landed = await Promise.all(
-        names.map((name) => definitionsAt(client, uri, positionOf(tree.source, name.span.start))),
+        names.map((name) =>
+          definitionsAt(client, uri, positionOf(tree.source, spanIn(tree, name.span).start)),
+        ),
       );
       const denoted = names.map((name) =>
-        (nameAt(corpusProgram, module, name.span.start)?.declarations ?? []).map(({ at }) =>
-          placeOf(locationOf(corpusProgram, at.module, at.name.span)),
+        (nameAt(corpusProgram, module, spanIn(tree, name.span).start)?.declarations ?? []).map(
+          ({ at }) => placeOf(locationOf(corpusProgram, at.module, at.name.span)),
         ),
       );
       expect(landed.map((locations) => locations.map(placeOf))).toEqual(denoted);

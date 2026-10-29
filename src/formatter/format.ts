@@ -15,7 +15,8 @@
 import { type builders, printer as docPrinter } from 'prettier/doc';
 import { parse } from '../compiler/parser/parse.ts';
 import { scan } from '../compiler/scanner/scan.ts';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
+import { childrenOf, extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { handlerOf } from '../structures/kind-table.ts';
 import { unreachable } from '../structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../text/source-text.ts';
@@ -96,9 +97,10 @@ class TreePrinter implements Printer {
 
   extentOf(node: SyntaxNode): Span {
     const { leading, trailing } = this.#commentsOf(node);
+    const extent = extentIn(this.tree, node);
     return {
-      start: leading[0]?.span.start ?? node.span.start,
-      end: trailing.at(-1)?.span.end ?? node.span.end,
+      start: leading[0]?.span.start ?? extent.start,
+      end: trailing.at(-1)?.span.end ?? extent.end,
     };
   }
 
@@ -126,8 +128,8 @@ class TreePrinter implements Printer {
 
 /** The spans of the literals printed as copies, whose comments are copied with them. */
 function copiedSpans(tree: SyntaxTree, node: SyntaxNode): readonly Span[] {
-  return isMultiLine(tree.source, node)
-    ? [node.span]
+  return isMultiLine(tree, node)
+    ? [spanIn(tree, node.span)]
     : childrenOf(tree, node).flatMap((child) => copiedSpans(tree, child));
 }
 

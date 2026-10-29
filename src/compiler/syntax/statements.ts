@@ -14,7 +14,6 @@
  * variable that holds the value until the block ends (§3.4).
  */
 
-import type { Span } from '../../text/span.ts';
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
 import { type Expression, itemName, itemValue, unparenthesized } from './expressions/index.ts';
@@ -22,6 +21,7 @@ import { isPlace } from './expressions/places.ts';
 import type { Identifier, Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
 import type { Pattern } from './patterns.ts';
+import type { AnchoredSpan } from './positions.ts';
 import type { NamedType, TypeNode } from './types.ts';
 
 export interface Block extends NodeOf<'Block'> {
@@ -72,18 +72,18 @@ export interface Assignment extends NodeOf<'Assignment'>, Annotatable {
  * expressions, but both read as one of these, which the checker takes apart by one walk.
  */
 export type Destructuring<Target> =
-  | { readonly kind: 'tuple'; readonly elements: readonly Target[]; readonly span: Span }
+  | { readonly kind: 'tuple'; readonly elements: readonly Target[]; readonly span: AnchoredSpan }
   | {
       readonly kind: 'struct';
       readonly type: NamedType | undefined;
       readonly items: readonly FieldTarget<Target>[];
-      readonly span: Span;
+      readonly span: AnchoredSpan;
     };
 
 /** A struct target's item: the field it names, none when positional (§3.1), and its target. */
 export interface FieldTarget<Target> {
   readonly name: Identifier | undefined;
-  readonly span: Span;
+  readonly span: AnchoredSpan;
   readonly target: Target;
 }
 

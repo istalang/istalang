@@ -4,8 +4,8 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { Span } from '../../../text/span.ts';
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { FunctionContext } from '../context.ts';
 
 export function lowerTuple(context: FunctionContext, node: Tuple): Register {
@@ -17,7 +17,7 @@ export function lowerTuple(context: FunctionContext, node: Tuple): Register {
 export function tupleOf(
   context: FunctionContext,
   elements: readonly Register[],
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   if (elements.length === 0) {
     return context.constant(null, span);

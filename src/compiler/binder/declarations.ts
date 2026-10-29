@@ -33,6 +33,7 @@ import {
 import type { Lambda, Parameter } from '../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
+import { endOf } from '../syntax/positions.ts';
 import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
@@ -126,7 +127,7 @@ function bindDefaults(
         binder.walk.expression(binder, parameter.defaultValue, scope);
       }
       define(parameter);
-      binder.enter(node, scope, parameter.span.end);
+      binder.enter(node, scope, endOf(parameter.span));
     }
   }
 }

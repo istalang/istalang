@@ -5,8 +5,8 @@
  * own, such as the field a pattern compares (§3.11), is never wrapped.
  */
 
-import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isPrimitive, sameType, type Type } from './type.ts';
@@ -33,7 +33,7 @@ export function checkEqualSides(
   context: BodyContext,
   left: EqualitySide,
   right: EqualitySide,
-  at: { readonly span: Span; readonly operator: string },
+  at: { readonly span: AnchoredSpan; readonly operator: string },
 ): void {
   if (comparable(left.type, right.type)) {
     return;

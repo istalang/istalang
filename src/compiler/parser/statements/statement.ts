@@ -85,7 +85,7 @@ function namesFunctionAt(parser: Parser, ahead: number): boolean {
 function parseExpressionStatement(parser: Parser): Statement {
   const { cursor } = parser;
   const first = parser.expression();
-  const { start } = first.span;
+  const start = parser.startOf(first);
   const targets = cursor.at(',')
     ? (parser.speculate(() => parseMoreTargets(parser, first)) ?? [first])
     : [first];
@@ -98,7 +98,7 @@ function parseExpressionStatement(parser: Parser): Statement {
   }
   cursor.advance();
   for (const target of targets.filter((each) => !isTarget(each))) {
-    parser.report(parserDiagnostics.invalidAssignmentTarget(target.span));
+    parser.report(parserDiagnostics.invalidAssignmentTarget(parser.textSpanOf(target.span)));
   }
   const value = parser.expression();
   return { kind: 'Assignment', span: parser.spanFrom(start), targets, operator, value };

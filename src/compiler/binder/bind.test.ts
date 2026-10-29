@@ -271,7 +271,7 @@ describe('moduleOf', () => {
         .filter(({ entity }) => bindings.moduleOf(entity) === undefined);
     });
     expect(
-      undeclared.map(({ module, name }) => `${module}:${name.span.start} ${name.text}`),
+      undeclared.map(({ module, name }) => `${module}:${name.span.from} ${name.text}`),
     ).toEqual([]);
   });
 
@@ -289,9 +289,9 @@ describe('moduleOf', () => {
         });
       });
     });
-    expect(
-      misplaced.map(({ module, name }) => `${module}:${name.span.start} ${name.text}`),
-    ).toEqual([]);
+    expect(misplaced.map(({ module, name }) => `${module}:${name.span.from} ${name.text}`)).toEqual(
+      [],
+    );
   });
 
   it('answers for an unnamed parameter, a repeated declaration and an own call', () => {

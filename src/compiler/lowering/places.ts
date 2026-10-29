@@ -26,12 +26,12 @@
 import type { Place } from '../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
 import type { Type } from '../checker/types/type.ts';
 import { chainStepOf } from '../syntax/expressions/chains.ts';
 import type { Dereference, Expression, Index, MemberAccess } from '../syntax/expressions/index.ts';
 import { type PlaceStep, placePath } from '../syntax/expressions/places.ts';
 import type { Identifier } from '../syntax/node.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
 import { emitFunctionCall } from './emit-call.ts';
 
@@ -43,7 +43,7 @@ import { emitFunctionCall } from './emit-call.ts';
 interface Accessor {
   readonly node: Index | Dereference;
   /** Reads the part, into `dst` when given; its register. */
-  readonly read: (span: Span, dst?: Register) => Register;
+  readonly read: (span: AnchoredSpan, dst?: Register) => Register;
   readonly write: (value: Register) => void;
 }
 
@@ -54,8 +54,8 @@ type Location =
 
 /** A place entered for an assignment, read and written where it stands when each happens. */
 export interface AssignedPlace {
-  readonly read: (span: Span) => Register;
-  readonly write: (value: Register, span: Span) => void;
+  readonly read: (span: AnchoredSpan) => Register;
+  readonly write: (value: Register, span: AnchoredSpan) => void;
 }
 
 /** Enters the place `node` names for an assignment, computing its handle and keys. */
@@ -111,7 +111,7 @@ export function cellRegister(context: FunctionContext, type: Type): Register {
 function fieldPositionOf(context: FunctionContext, node: MemberAccess): number {
   const read = context.fieldReadOf(node);
   if (read.kind !== 'position') {
-    unreachable(`The field read at ${node.span.start} has no position: it reads no struct.`);
+    unreachable(`The field read at ${node.span.from} has no position: it reads no struct.`);
   }
   return read.index;
 }
@@ -143,7 +143,7 @@ function withField(location: Location, index: number): Location {
 }
 
 /** Reads the value at `location` as it stands now. */
-function readAt(context: FunctionContext, location: Location, span: Span): Register {
+function readAt(context: FunctionContext, location: Location, span: AnchoredSpan): Register {
   if (location.kind === 'place') {
     return readPlace(context, location.place, span);
   }
@@ -152,7 +152,12 @@ function readAt(context: FunctionContext, location: Location, span: Span): Regis
 }
 
 /** Writes `value` at `location`: a part behind an accessor into its value as it stands now. */
-function writeAt(context: FunctionContext, location: Location, value: Register, span: Span): void {
+function writeAt(
+  context: FunctionContext,
+  location: Location,
+  value: Register,
+  span: AnchoredSpan,
+): void {
   if (location.kind === 'accessor' && location.path.length === 0) {
     location.accessor.write(value);
     return;
@@ -245,7 +250,7 @@ function sharedAccessor(context: FunctionContext, node: Expression): Accessor {
 }
 
 /** Reads the value at `place`: its register's value, read along the place's field positions. */
-function readPlace(context: CodeContext, place: Place, span: Span): Register {
+function readPlace(context: CodeContext, place: Place, span: AnchoredSpan): Register {
   return context.code.readPath(place.register, place.path, span);
 }
 

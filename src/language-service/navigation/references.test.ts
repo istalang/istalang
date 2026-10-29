@@ -6,7 +6,7 @@ import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
 import { findProjectSources, loadProject } from '../../project/project.ts';
-import { isSamePlace, nameAt } from './declarations.ts';
+import { isSamePlace, nameAt, spanOfUse } from './declarations.ts';
 import { navigable, placeOf } from './navigation.test-kit.ts';
 import { namesDenoting, referencesAt } from './references.ts';
 
@@ -19,8 +19,10 @@ describe('the references of a declaration', () => {
     const declaring = named('lib', 'first');
     const expected = [declaring, ...[0, 1, 2, 3].map((nth) => named('main', 'first', nth))];
     for (const use of expected) {
-      const found = referencesAt(program, use.module, use.name.span.start);
-      expect(new Set(found.map(placeOf))).toEqual(new Set(expected.map(placeOf)));
+      const found = referencesAt(program, use.module, spanOfUse(program, use).start);
+      expect(new Set(found.map((each) => placeOf(program, each)))).toEqual(
+        new Set(expected.map((each) => placeOf(program, each))),
+      );
       expect(found).toHaveLength(expected.length);
     }
   });
@@ -32,17 +34,19 @@ describe('the references of a declaration', () => {
     const found = referencesAt(
       program,
       named('main', 'get').module,
-      named('main', 'get').name.span.start,
+      spanOfUse(program, named('main', 'get')).start,
     );
-    expect(found.map(placeOf)).toEqual([0, 1, 2].map((nth) => placeOf(named('main', 'get', nth))));
+    expect(found.map((each) => placeOf(program, each))).toEqual(
+      [0, 1, 2].map((nth) => placeOf(program, named('main', 'get', nth))),
+    );
   });
 
   it('say which name declares it', () => {
     const { program, named } = navigable({ main: 'fn f(x: int) -> int: x + x\n' });
     const use = named('main', 'x', 2);
-    const found = referencesAt(program, use.module, use.name.span.start);
-    expect(found.filter(({ declares }) => declares).map(placeOf)).toEqual([
-      placeOf(named('main', 'x')),
+    const found = referencesAt(program, use.module, spanOfUse(program, use).start);
+    expect(found.filter(({ declares }) => declares).map((each) => placeOf(program, each))).toEqual([
+      placeOf(program, named('main', 'x')),
     ]);
     expect(found).toHaveLength(3);
   });
@@ -53,9 +57,11 @@ describe('the references of a declaration', () => {
  * denoting it miss; none where `name` declares no entity.
  */
 function missedUses(program: Program, module: ModuleId, name: Identifier): readonly string[] {
-  const declaring = nameAt(program, module, name.span.start)?.declarations.find(({ at }) =>
-    isSamePlace(at, { module, name }),
-  );
+  const declaring = nameAt(
+    program,
+    module,
+    spanOfUse(program, { module, name }).start,
+  )?.declarations.find(({ at }) => isSamePlace(at, { module, name }));
   if (declaring === undefined || !('entity' in declaring.declared)) {
     return [];
   }
@@ -64,7 +70,7 @@ function missedUses(program: Program, module: ModuleId, name: Identifier): reado
   return checkProgram(program)
     .bindings.usesOf(declaring.declared.entity)
     .filter((use) => !isFound(use))
-    .map((use) => `${use.module}:${use.name.span.start} ${use.name.text}`);
+    .map((use) => `${use.module}:${spanOfUse(program, use).start} ${use.name.text}`);
 }
 
 describe('the names denoting a declaration across the corpus', () => {

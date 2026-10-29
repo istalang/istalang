@@ -17,7 +17,6 @@ import type { Instruction } from '../../../definition/instructions/instruction.t
 import type { Register } from '../../../definition/operands.ts';
 import { optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import { intType } from '../../checker/types/type.ts';
 import type {
   ArrayLiteral,
@@ -29,6 +28,7 @@ import type {
   Spread,
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitCallAt, emitImplicitCall, referenceTo } from '../emit-call.ts';
 import { cursorOf, emitLoop } from '../iteration.ts';
@@ -61,7 +61,7 @@ interface LiteralParts<Part, Node> {
  */
 export function appendElement(
   context: CodeContext,
-  span: Span,
+  span: AnchoredSpan,
   dst: Register,
   item: Register,
 ): void {
@@ -92,7 +92,7 @@ export function lowerArrayLiteral(context: FunctionContext, node: ArrayLiteral):
 function arrayOf(
   context: FunctionContext,
   elements: readonly (Expression | Spread)[],
-  span: Span,
+  span: AnchoredSpan,
 ): Register {
   const parts: LiteralParts<ArrayItem, Expression> = {
     emit: (dst, items) => context.code.emit({ kind: 'array', span, dst, elements: [...items] }),
@@ -250,7 +250,11 @@ function lowerDeclaredLiteral(
 }
 
 /** An `int?` of a range's end: `Some` of its value, or `None` when it is left out. */
-function optionalInt(context: FunctionContext, span: Span, value: Register | undefined): Register {
+function optionalInt(
+  context: FunctionContext,
+  span: AnchoredSpan,
+  value: Register | undefined,
+): Register {
   const type = context.checker.optionalOf(intType);
   const name = value === undefined ? optionalVariants.none : optionalVariants.some;
   return buildVariant(context, { type, name }, value === undefined ? [] : [value], span);

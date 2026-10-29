@@ -17,8 +17,8 @@
  * Each loop iteration consumes a token or stops, so parsing always terminates.
  */
 
-import type { Span } from '../../text/span.ts';
 import type { Invalid } from '../syntax/node.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import { type Closer, type CursorKind, isBracketOpener, type Opener, openers } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
@@ -26,7 +26,7 @@ import type { Parser } from './parser.ts';
 export interface Enclosed<Value> {
   readonly value: Value;
   /** From the opener to the closer, or to the last token read if the closer is missing. */
-  readonly span: Span;
+  readonly span: AnchoredSpan;
 }
 
 export interface CommaSeparated<Item> {
@@ -35,7 +35,7 @@ export interface CommaSeparated<Item> {
   readonly separated: boolean;
 }
 
-export type DelimitedList<Item> = CommaSeparated<Item> & { readonly span: Span };
+export type DelimitedList<Item> = CommaSeparated<Item> & { readonly span: AnchoredSpan };
 
 /**
  * Parses `opener`, whatever `parseInner` reads, and the matching closer; the cursor must be at
@@ -95,8 +95,8 @@ export function parseDelimited<Item>(
 
 /** How `parseGroup` builds what it parsed: a tuple, or a group around one item. */
 export interface GroupShapes<Item, Node> {
-  readonly tuple: (span: Span, elements: readonly (Item | Invalid)[]) => Node;
-  readonly grouped: (span: Span, item: Item | Invalid) => Node;
+  readonly tuple: (span: AnchoredSpan, elements: readonly (Item | Invalid)[]) => Node;
+  readonly grouped: (span: AnchoredSpan, item: Item | Invalid) => Node;
 }
 
 /**

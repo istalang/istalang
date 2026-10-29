@@ -49,5 +49,5 @@ export function namedTypeFrom(
   path: QualifiedName,
   typeArguments: readonly TypeNode[],
 ): NamedType {
-  return { kind: 'NamedType', span: parser.spanFrom(path[0].span.start), path, typeArguments };
+  return { kind: 'NamedType', span: parser.spanFrom(parser.startOf(path[0])), path, typeArguments };
 }

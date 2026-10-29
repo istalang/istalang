@@ -27,7 +27,6 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import {
   type Field,
@@ -38,6 +37,7 @@ import {
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import { type Invalid, lastName } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type {
   FunctionType as FunctionTypeNode,
   NamedType,
@@ -113,7 +113,7 @@ export function parameterType(declaration: ParameterKey): Type {
 
 /** Type arguments given a generic declaration at `at`; `self` is what a trait's `Self` stands for. */
 export interface ArgumentList {
-  readonly at: Span;
+  readonly at: AnchoredSpan;
   readonly declaration: GenericDeclaration;
   readonly types: readonly Type[];
   readonly self?: Type;

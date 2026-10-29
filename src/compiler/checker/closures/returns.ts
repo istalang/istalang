@@ -13,7 +13,7 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
-import type { Span } from '../../../text/span.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { type Block, type Return, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
 import type { BodyContext, Returns } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -25,7 +25,7 @@ import { wellKnownArguments } from '../types/well-known.ts';
 /** A `?` in the body: the error type it would return, and where. */
 interface Propagation {
   readonly error: Type;
-  readonly span: Span;
+  readonly span: AnchoredSpan;
 }
 
 /** The result of one body: declared, or gathered from its `return`s as they are checked. */
@@ -62,7 +62,7 @@ export class ReturnScope implements Returns {
     this.#returned.push({ type, span: value.span, site: value });
   }
 
-  propagate(context: BodyContext, error: Type, span: Span): void {
+  propagate(context: BodyContext, error: Type, span: AnchoredSpan): void {
     if (!this.#isFunction) {
       context.report(checkerDiagnostics.propagateOutsideFunction(span));
     } else if (this.declared === undefined) {

@@ -4,8 +4,8 @@
  * function's call is disposed, an await stops the call instead (§7), which is warned about.
  */
 
-import type { Span } from '../../../text/span.ts';
 import type { Await } from '../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type } from '../types/type.ts';
@@ -28,7 +28,7 @@ export function checkAwait(context: BodyContext, node: Await, expected: Type | u
 }
 
 /** Reports a wait at `at` outside an async function, or where it stops a call being disposed. */
-export function reportWait(context: BodyContext, at: Span): void {
+export function reportWait(context: BodyContext, at: AnchoredSpan): void {
   if (!context.inAsync) {
     context.report(checkerDiagnostics.awaitOutsideAsync(at));
   } else if (context.functions.current.inCleanup) {

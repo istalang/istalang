@@ -59,7 +59,7 @@ function prefixOperand(parser: Parser, prefix: Prefix, level: PrecedenceLevel): 
     const entry: BinaryOperatorEntry = binaryOperators[operand.operator];
     if (entry.refusesPrefixedLeft === true) {
       parser.report(
-        parserDiagnostics.prefixBeforePower(parser.spanFrom(prefix.start), prefix.spelling),
+        parserDiagnostics.prefixBeforePower(parser.textSpanFrom(prefix.start), prefix.spelling),
       );
     }
   }
@@ -94,7 +94,7 @@ export const parseDoubleDereference: PrefixParselet = (parser, minLevel) => {
   const operand = prefixOperand(parser, { start, spelling: '*' }, operatorLevels.dereference);
   const inner: Expression = {
     kind: 'Dereference',
-    span: { start: start + 1, end: operand.span.end },
+    span: parser.anchor({ start: start + 1, end: parser.textSpanOf(operand.span).end }),
     operator: '*',
     operand,
     isOptional: false,
@@ -127,7 +127,7 @@ export function parseReference(parser: Parser): Reference {
 /** `&x` anywhere a call argument doesn't start (§3.7). */
 export const parseMisplacedReference: PrefixParselet = (parser) => {
   const reference = parseReference(parser);
-  parser.report(parserDiagnostics.misplacedReference(reference.span));
+  parser.report(parserDiagnostics.misplacedReference(parser.textSpanOf(reference.span)));
   return reference;
 };
 
@@ -169,7 +169,7 @@ export function rangeParselet(isInclusive: boolean): InfixParselet {
     level: operatorLevels.range,
     parse(parser, left) {
       parser.cursor.advance();
-      return parseRangeRest(parser, left.span.start, left, isInclusive);
+      return parseRangeRest(parser, parser.startOf(left), left, isInclusive);
     },
   };
 }
@@ -179,7 +179,7 @@ export const isParselet: InfixParselet = {
   parse(parser, left) {
     parser.cursor.advance();
     const pattern = parser.pattern();
-    return { kind: 'Is', span: parser.spanFrom(left.span.start), subject: left, pattern };
+    return { kind: 'Is', span: parser.spanFrom(parser.startOf(left)), subject: left, pattern };
   },
 };
 
@@ -211,7 +211,7 @@ function parseBinaryRest(parser: Parser, left: Expression, operator: BinaryOpera
   const entry: BinaryOperatorEntry = binaryOperators[operator];
   const right = parser.expression(rightOperandLevel(operator));
   reportMixed(parser, operator, entry.refusesUnparenthesized ?? [], [left, right]);
-  const span = parser.spanFrom(left.span.start);
+  const span = parser.spanFrom(parser.startOf(left));
   const chain = isChainingOperator(operator) ? comparisonsOf(left) : undefined;
   if (chain !== undefined && isChainingOperator(operator)) {
     return {
@@ -245,7 +245,13 @@ function reportMixed(
 ): void {
   for (const operand of operands) {
     if (operand.kind === 'Binary' && refused.includes(operand.operator)) {
-      parser.report(parserDiagnostics.mixedOperators(operand.span, operator, operand.operator));
+      parser.report(
+        parserDiagnostics.mixedOperators(
+          parser.textSpanOf(operand.span),
+          operator,
+          operand.operator,
+        ),
+      );
     }
   }
 }

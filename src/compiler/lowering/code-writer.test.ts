@@ -5,9 +5,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { spanIn } from '../syntax/positions.ts';
+import { handMadeBases, handMadeSpan } from '../syntax/tree.test-kit.ts';
 import { CodeWriter, type Label } from './code-writer.ts';
 
-const span = { start: 0, end: 0 };
+const span = handMadeSpan(0);
 
 /**
  * One step of writing: a jump to label `n`, a switch to labels `ns` and maybe an `otherwise`, a
@@ -88,7 +90,7 @@ function write(script: readonly Step[]) {
   for (let label = 0; label < labelCount; label += 1) {
     place(label);
   }
-  return { code: code.finish(), positions, jumps, switches };
+  return { code: code.finish(handMadeBases), positions, jumps, switches };
 }
 
 describe('CodeWriter', () => {
@@ -113,7 +115,7 @@ describe('CodeWriter', () => {
         for (const { at, labels, otherwise } of switches) {
           expect(code.instructions[at]).toStrictEqual({
             kind: 'switch',
-            span,
+            span: spanIn(handMadeBases, span),
             value: expect.any(Number),
             targets: labels.map((label) => positions.get(label)),
             ...(otherwise === undefined ? {} : { otherwise: positions.get(otherwise) }),
@@ -126,6 +128,6 @@ describe('CodeWriter', () => {
   it('refuses code with a label jumped to but never placed', () => {
     const code = new CodeWriter();
     code.jump(code.newLabel(), span);
-    expect(() => code.finish()).toThrow(neverPlaced);
+    expect(() => code.finish(handMadeBases)).toThrow(neverPlaced);
   });
 });

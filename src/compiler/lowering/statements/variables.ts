@@ -22,12 +22,12 @@
 
 import type { Register, TypeId } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import type { AssignedPart } from '../../checker/check.ts';
 import type { TargetOwner } from '../../checker/checked-pattern.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { hasUnnamedPart } from '../../syntax/patterns.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import {
   type Assignment,
   hasUnnamedTarget,
@@ -193,7 +193,7 @@ export function bindTargets(
   context: FunctionContext,
   owner: TargetOwner,
   value: Register,
-  span: Span,
+  span: AnchoredSpan,
 ): void {
   const lifetime = lifetimeOf(context, owner);
   for (const binding of context.body.targetsOf(owner)) {
@@ -204,7 +204,7 @@ export function bindTargets(
 }
 
 /** A fresh register holding a copy of `value`, as a variable with no name keeps it (§7). */
-function copied(context: FunctionContext, value: Register, span: Span): Register {
+function copied(context: FunctionContext, value: Register, span: AnchoredSpan): Register {
   const copy = context.code.allocate();
   context.code.emit({ kind: 'move', span, dst: copy, src: value });
   return copy;

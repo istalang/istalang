@@ -21,10 +21,10 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { binaryOperators, type ImplicitOperator } from '../../syntax/operators.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, ImplicitRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
@@ -64,7 +64,7 @@ export class ImplicitCalls implements ImplicitRecord {
 /** An implicit call: its construct and role, the function name, its candidates and arguments. */
 export interface ImplicitRequest {
   readonly node: NodeOf<string>;
-  readonly span?: Span;
+  readonly span?: AnchoredSpan;
   readonly role: ImplicitRole;
   readonly operator?: string;
   readonly candidates: readonly Candidate[];
@@ -72,7 +72,7 @@ export interface ImplicitRequest {
   /** The type the call is to give, which may decide its type arguments. */
   readonly expected?: Type;
   /** What to report when no single function takes the arguments. */
-  readonly failure: () => Diagnostic;
+  readonly failure: () => Diagnostic<AnchoredSpan>;
 }
 
 /** An operand of an implicit operator call; `node` is given when it may be wrapped to fit. */
@@ -84,7 +84,7 @@ export interface ImplicitOperand {
 /** An operator call (`compare` or `includes`) recorded as an implicit call at `node`. */
 export interface ImplicitOperatorRequest {
   readonly node: NodeOf<string>;
-  readonly span?: Span;
+  readonly span?: AnchoredSpan;
   readonly operator: ImplicitOperator;
   readonly arguments: readonly [ImplicitOperand, ImplicitOperand];
 }

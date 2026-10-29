@@ -21,7 +21,6 @@
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type {
   ArrayPattern,
@@ -32,6 +31,7 @@ import type {
   StructPattern,
 } from '../../syntax/patterns.ts';
 import { targetNames, unparenthesizedPattern } from '../../syntax/patterns.ts';
+import { type AnchoredSpan, spanAcross } from '../../syntax/positions.ts';
 import type { PartBinding, PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type AnyType, errorType, sameType, type Type } from '../types/type.ts';
@@ -353,8 +353,11 @@ function refused(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shap
   return anyShape;
 }
 
-function spanOf(targets: readonly Pattern[]): Span {
-  const first = targets[0]?.span;
-  const last = targets.at(-1)?.span;
-  return { start: first?.start ?? 0, end: last?.end ?? 0 };
+/** From the first of `targets` to the last; the parser reads at least one. */
+function spanOf(targets: readonly Pattern[]): AnchoredSpan {
+  const [first] = targets;
+  const last = targets.at(-1);
+  return first === undefined || last === undefined
+    ? unreachable('A declaration has no targets.')
+    : spanAcross(first.span, last.span);
 }

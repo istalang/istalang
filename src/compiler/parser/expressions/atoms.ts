@@ -17,7 +17,7 @@ export function parseName(parser: Parser): Expression {
 }
 
 export function parseLiteral(parser: Parser): Expression {
-  return literalFrom(parser.cursor.advance()) ?? parser.missing('a literal');
+  return literalFrom(parser, parser.cursor.advance()) ?? parser.missing('a literal');
 }
 
 /** `(x)` groups; `()`, `(x,)` and `(x, y)` are tuples (§3.15). */

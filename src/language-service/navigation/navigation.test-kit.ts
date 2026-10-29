@@ -9,6 +9,7 @@ import { idOf } from '../../compiler/program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../../compiler/program/program.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
+import { spanOfUse } from './declarations.ts';
 import type { NameEdit } from './rename.ts';
 
 /** A program of `files`, keyed by import path, and its names, the `nth` written as `text` in `key`. */
@@ -28,9 +29,9 @@ export function navigable(files: Readonly<Record<string, string>>) {
   return { program, named };
 }
 
-/** Where `use` stands, as `key:offset` with `key` the module's import path. */
-export function placeOf({ module, name }: EntityUse): string {
-  return `${keyOf(module)}:${name.span.start}`;
+/** Where `use` of `program` stands, as `key:offset` with `key` the module's import path. */
+export function placeOf(program: Program, use: EntityUse): string {
+  return `${keyOf(use.module)}:${spanOfUse(program, use).start}`;
 }
 
 /** Each module's text with `edits` made, by the module's import path. */

@@ -12,8 +12,8 @@
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
 import { type Type, tupleElements } from '../checker/types/type.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeContext } from './context.ts';
 
 /** The element types of a pack, `concrete` as an instantiation substitutes it: a tuple's. */
@@ -28,7 +28,7 @@ export function packElements(concrete: Type): readonly Type[] {
 export function packElementsOf(
   context: CodeContext,
   tuple: Register,
-  { type, span }: { readonly type: Type; readonly span: Span },
+  { type, span }: { readonly type: Type; readonly span: AnchoredSpan },
 ): readonly Register[] {
   return packElements(type).map((_, index) => context.code.field(tuple, index, span));
 }

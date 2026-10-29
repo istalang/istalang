@@ -7,6 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { TypeParameter } from '../../syntax/declarations.ts';
+import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
 import { substitute } from './substitution.ts';
 import {
   boolType,
@@ -20,7 +21,7 @@ import {
   unitType,
 } from './type.ts';
 
-const span = { start: 0, end: 0 };
+const span = handMadeSpan(0);
 
 /** A pack type parameter, `...A`. */
 const packDeclaration: TypeParameter = {

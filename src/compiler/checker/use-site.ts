@@ -7,14 +7,14 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { Span } from '../../text/span.ts';
 import type { ModuleId } from '../program/program.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CheckerContext } from './context.ts';
 
 export interface UseSite {
   readonly checker: CheckerContext;
   /** Reports the diagnostic `diagnosticAt` makes at the site's span; a silent site reports none. */
-  readonly report: (diagnosticAt: (at: Span) => Diagnostic) => void;
+  readonly report: (diagnosticAt: (at: AnchoredSpan) => Diagnostic<AnchoredSpan>) => void;
   /**
    * Whether values cross to the host here, as JSON (§3.6, §9). Encodable and Decodable imply
    * Sendable because a value that goes through JSON and back is a copy, sent; a disposable host
@@ -25,7 +25,7 @@ export interface UseSite {
 }
 
 /** A use site at `at` in `module`, reporting through the module's checker. */
-export function useSite(checker: CheckerContext, module: ModuleId, at: Span): UseSite {
+export function useSite(checker: CheckerContext, module: ModuleId, at: AnchoredSpan): UseSite {
   return {
     checker,
     report: (diagnosticAt) => checker.report(module, diagnosticAt(at)),

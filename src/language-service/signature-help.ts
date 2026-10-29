@@ -17,6 +17,7 @@ import { optionalArgument } from '../compiler/checker/types/well-known.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { type FunctionDeclaration, isMethod } from '../compiler/syntax/declarations.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
 import { nodesAt, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { checkedModule } from './checked-module.ts';
 import { functionTypeSignature, type Signature, signatureOf } from './signatures.ts';
@@ -44,7 +45,7 @@ export function signatureHelpAt(
   if (checked === undefined || call === undefined || body === undefined) {
     return undefined;
   }
-  const argument = argumentAt(call, offset, checked.tree.source.text);
+  const argument = argumentAt(checked.tree, call, offset);
   return body.valueCalls.has(call)
     ? valueCallHelp(checked.checker, body, call, argument)
     : functionCallHelp(checked.checker, body, call, argument);
@@ -61,9 +62,11 @@ export function signatureHelpAt(
 function callAround(tree: SyntaxTree, offset: number): Call | undefined {
   const { text } = tree.source;
   const holds = (call: Call) => {
-    const opening = text.indexOf('(', (call.typeArguments.at(-1) ?? call.callee).span.end);
-    const isOpen = !text.endsWith(')', call.span.end);
-    const end = isOpen ? afterWhitespace(text, call.span.end) : call.span.end - 1;
+    const before = spanIn(tree, (call.typeArguments.at(-1) ?? call.callee).span);
+    const opening = text.indexOf('(', before.end);
+    const { end: written } = spanIn(tree, call.span);
+    const isOpen = !text.endsWith(')', written);
+    const end = isOpen ? afterWhitespace(text, written) : written - 1;
     return opening !== -1 && opening < offset && offset <= end;
   };
   return [...nodesAt(tree, beforeWhitespace(text, offset) - 1)]
@@ -75,9 +78,9 @@ function callAround(tree: SyntaxTree, offset: number): Call | undefined {
  * The number of the written argument at `offset`: the one it is in, or after but for whitespace,
  * else the next. An argument not written yet, between two commas, is a `Missing` one.
  */
-function argumentAt(call: Call, offset: number, text: string): number {
+function argumentAt(tree: SyntaxTree, call: Call, offset: number): number {
   const index = call.arguments.findIndex(
-    (argument) => offset <= afterWhitespace(text, argument.span.end),
+    (argument) => offset <= afterWhitespace(tree.source.text, spanIn(tree, argument.span).end),
   );
   return index === -1 ? call.arguments.length : index;
 }

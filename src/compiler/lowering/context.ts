@@ -11,7 +11,6 @@
 
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
-import type { Span } from '../../text/span.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CheckedBody, Checker, ValueSite } from '../checker/check.ts';
 import type { FieldRead } from '../checker/checked-field.ts';
@@ -24,6 +23,7 @@ import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression, Lambda, MemberAccess } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { CodeWriter } from './code-writer.ts';
 import type { ClosedCall } from './instances.ts';
@@ -77,7 +77,7 @@ export interface FunctionContext {
   /** The function-table entry of a lambda or local function in this body (§3.14). */
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
   /** A fresh register holding the constant `value`. */
-  readonly constant: (value: Value, span: Span) => Register;
+  readonly constant: (value: Value, span: AnchoredSpan) => Register;
   /** The function's code: registers, instructions and labels. */
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;

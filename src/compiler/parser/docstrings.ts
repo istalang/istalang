@@ -21,7 +21,7 @@ export interface WithDocstring<Value> {
 export function parseDocstring(parser: Parser): Docstring | undefined {
   const token = parser.cursor.eat('docstring');
   return token?.kind === 'docstring'
-    ? { kind: 'Docstring', span: token.span, value: token.value }
+    ? { kind: 'Docstring', span: parser.anchor(token.span), value: token.value }
     : undefined;
 }
 
@@ -29,7 +29,7 @@ export function parseDocstring(parser: Parser): Docstring | undefined {
 export function misplacedDocstring(parser: Parser): Invalid {
   const { span } = parser.cursor.advance();
   parser.report(parserDiagnostics.misplacedDocstring(span));
-  return { kind: 'Invalid', span };
+  return { kind: 'Invalid', span: parser.anchor(span) };
 }
 
 /** The `doc` field of a declaration documented by `doc`, if any. */

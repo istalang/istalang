@@ -19,6 +19,6 @@ function parseParameter(parser: Parser): Parameter {
   const name = parser.identifier('a parameter name');
   const type = cursor.eat(':') === undefined ? undefined : parser.parameterType();
   const defaultValue = cursor.eat('=') === undefined ? undefined : parser.expression();
-  const span = parser.spanFrom((rest ?? name).span.start);
+  const span = parser.spanFrom(rest?.span.start ?? parser.startOf(name));
   return { kind: 'Parameter', span, isRest: rest !== undefined, name, type, defaultValue };
 }

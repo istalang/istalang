@@ -86,12 +86,12 @@ function parseWordType(parser: Parser): TypeNode {
 /** `T?`, and `T??`, which arrives as one token and means `T?` twice. */
 function parseOptionalType(parser: Parser, inner: TypeNode): TypeNode {
   const token = parser.cursor.advance();
-  const { start } = inner.span;
+  const start = parser.startOf(inner);
   const once: TypeNode =
     token.kind === '??'
-      ? { kind: 'OptionalType', span: { start, end: token.span.start + 1 }, inner }
+      ? { kind: 'OptionalType', span: parser.anchor({ start, end: token.span.start + 1 }), inner }
       : inner;
-  return { kind: 'OptionalType', span: { start, end: token.span.end }, inner: once };
+  return { kind: 'OptionalType', span: parser.spanFrom(start), inner: once };
 }
 
 /** `<A, B>`, starting at the `<`. */
@@ -188,6 +188,6 @@ function parseReferenceType(parser: Parser): ReferenceType {
 
 function parseMisplacedReferenceType(parser: Parser): TypeNode {
   const reference = parseReferenceType(parser);
-  parser.report(parserDiagnostics.misplacedReference(reference.span));
+  parser.report(parserDiagnostics.misplacedReference(parser.textSpanOf(reference.span)));
   return reference;
 }

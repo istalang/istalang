@@ -9,7 +9,7 @@
  */
 
 import { builders, printer as docPrinter, utils } from 'prettier/doc';
-import type { SyntaxNode } from '../compiler/syntax/tree.ts';
+import { extentIn, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { hasBlankLine } from './comments.ts';
 import type { Printer } from './printer.ts';
 
@@ -157,8 +157,9 @@ export function oneLine(doc: builders.Doc): string {
 
 /** Whether comments are printed before or after `node`, which a run around it must keep apart. */
 export function hasComments(printer: Printer, node: SyntaxNode): boolean {
-  const extent = printer.extentOf(node);
-  return extent.start !== node.span.start || extent.end !== node.span.end;
+  const withComments = printer.extentOf(node);
+  const extent = extentIn(printer.tree, node);
+  return withComments.start !== extent.start || withComments.end !== extent.end;
 }
 
 /**

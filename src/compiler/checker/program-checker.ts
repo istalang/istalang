@@ -28,10 +28,9 @@ import {
 } from '../../language/well-known.ts';
 import { Entries, type EntryTable } from '../../structures/entries.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
 import { bindProgram } from '../binder/bind.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
-import type { ModuleId, Program } from '../program/program.ts';
+import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import type {
   Declaration,
   DeclaredStruct,
@@ -41,6 +40,7 @@ import type {
   TypeParameter,
 } from '../syntax/declarations.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
+import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { BodyChecker, type BodyKind } from './body-checker.ts';
@@ -211,7 +211,7 @@ export class ProgramChecker implements CheckerContext {
     };
   }
 
-  report(module: ModuleId, diagnostic: Diagnostic): void {
+  report(module: ModuleId, diagnostic: Diagnostic<AnchoredSpan>): void {
     this.entries.note({ kind: 'diagnostic', module, diagnostic });
   }
 
@@ -283,7 +283,7 @@ export class ProgramChecker implements CheckerContext {
 
   constrainLater(
     module: ModuleId,
-    at: Span,
+    at: AnchoredSpan,
     parameter: TypeParameter,
     typeArguments: Substitution,
   ): void {
@@ -348,7 +348,7 @@ export class ProgramChecker implements CheckerContext {
   }
 
   diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
-    return this.#moduleChecks.diagnosticsOf(module);
+    return this.#moduleChecks.diagnosticsOf(module, programModule(this.program, module).tree);
   }
 
   checkItem(module: ModuleId, item: Declaration): void {

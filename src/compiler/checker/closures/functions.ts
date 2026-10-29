@@ -17,10 +17,10 @@
  *   can't know its type: that is recursion needing a declared result (§2), as for top-level ones.
  */
 
-import { encloses } from '../../../text/span.ts';
 import type { VariableEntity } from '../../binder/entities.ts';
 import { localFunctionOf } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import { encloses } from '../../syntax/positions.ts';
 import type { CheckedFunction, NestedFunction } from '../check.ts';
 import type { BodyContext, FunctionFrame, Functions } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

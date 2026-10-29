@@ -17,6 +17,7 @@ import { typeText } from '../compiler/checker/types/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import type { Expression } from '../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
 import { nodesAt, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import type { Span } from '../text/span.ts';
 import { type CheckedModule, checkedModule } from './checked-module.ts';
@@ -62,16 +63,19 @@ function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined 
   }
   const named = node.kind === 'Identifier' ? nameHover(checked, node) : undefined;
   const type = named === undefined ? typeAt(checked, node) : undefined;
-  return named ?? (type && { span: node.span, code: [typeText(type)], doc: undefined });
+  return (
+    named ??
+    (type && { span: spanIn(checked.tree, node.span), code: [typeText(type)], doc: undefined })
+  );
 }
 
-function nameHover({ checker, module }: CheckedModule, name: Identifier): Hover | undefined {
+function nameHover({ checker, module, tree }: CheckedModule, name: Identifier): Hover | undefined {
   const denotations = checker.lookup.denotationsOf(module, name);
   if (denotations.length === 0) {
     return undefined;
   }
   return {
-    span: name.span,
+    span: spanIn(tree, name.span),
     code: denotations.flatMap((denotation) => denotationLines(checker, name, denotation)),
     doc: denotations
       .map(({ declared }) => docOf(checker, declared))

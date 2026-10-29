@@ -17,8 +17,9 @@ import { builders, utils } from 'prettier/doc';
 import { scan } from '../compiler/scanner/scan.ts';
 import type { Docstring } from '../compiler/syntax/declarations.ts';
 import type { Literal, TemplateLiteral } from '../compiler/syntax/expressions/index.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
-import type { SyntaxNode } from '../compiler/syntax/tree.ts';
+import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree.ts';
 import { createSourceText, type SourceText } from '../text/source-text.ts';
 import { textOf } from '../text/span.ts';
 import { columnOf } from './comments.ts';
@@ -34,17 +35,22 @@ const leadingSpaces = /^ */u;
 export type CopiedLiteral = TemplateLiteral | Docstring;
 
 /** Whether `node` is a template or docstring spanning lines. */
-export function isMultiLine(source: SourceText, node: SyntaxNode): node is CopiedLiteral {
+export function isMultiLine(tree: SyntaxTree, node: SyntaxNode): node is CopiedLiteral {
   return (
     (node.kind === 'TemplateLiteral' || node.kind === 'Docstring') &&
-    lineBreak.test(textOf(source, node.span))
+    lineBreak.test(writtenText(tree, node))
   );
+}
+
+/** The text `node` was written as. */
+function writtenText(tree: SyntaxTree, node: SyntaxNode): string {
+  return textOf(tree.source, spanIn(tree, node.span));
 }
 
 type LiteralNode = Literal | Extract<SyntaxNode, { kind: 'TemplateText' | 'Docstring' }>;
 
 const asWritten = (printer: Printer, node: SyntaxNode): builders.Doc =>
-  textOf(printer.tree.source, node.span);
+  writtenText(printer.tree, node);
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const literalPrinters: Printers<LiteralNode | TemplateLiteral> = {
@@ -56,13 +62,9 @@ export const literalPrinters: Printers<LiteralNode | TemplateLiteral> = {
   NoneLiteral: asWritten,
   TemplateText: asWritten,
   Docstring: (printer, node) =>
-    isMultiLine(printer.tree.source, node)
-      ? copied(printer.tree.source, node)
-      : asWritten(printer, node),
+    isMultiLine(printer.tree, node) ? copied(printer.tree, node) : asWritten(printer, node),
   TemplateLiteral: (printer, node) =>
-    isMultiLine(printer.tree.source, node)
-      ? copied(printer.tree.source, node)
-      : oneLineTemplate(printer, node),
+    isMultiLine(printer.tree, node) ? copied(printer.tree, node) : oneLineTemplate(printer, node),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
@@ -78,9 +80,9 @@ function oneLineTemplate(printer: Printer, node: TemplateLiteral): builders.Doc 
   return [node.tag === undefined ? '' : printer.print(node.tag), '`', parts, '`'];
 }
 
-function copied(source: SourceText, node: CopiedLiteral): builders.Doc {
-  const [first = '', ...later] = textOf(source, node.span).split(lineBreak);
-  const moved = movedLines(source, node, first, later);
+function copied(tree: SyntaxTree, node: CopiedLiteral): builders.Doc {
+  const [first = '', ...later] = writtenText(tree, node).split(lineBreak);
+  const moved = movedLines(tree, node, first, later);
   const lines = (moved ?? later).map((text) =>
     // A blank line takes no indentation: the value ignores it, and the output stays trimmed.
     moved === undefined || text === '' ? [literalline, text] : [markAsRoot(literalline), text],
@@ -90,12 +92,13 @@ function copied(source: SourceText, node: CopiedLiteral): builders.Doc {
 
 /** `later` without the indentation of the literal's first line, if that keeps its value. */
 function movedLines(
-  source: SourceText,
+  tree: SyntaxTree,
   node: CopiedLiteral,
   first: string,
   later: readonly string[],
 ): readonly string[] | undefined {
-  const indentation = ' '.repeat(lineIndentation(source, node.span.start));
+  const { start } = spanIn(tree, node.span);
+  const indentation = ' '.repeat(lineIndentation(tree.source, start));
   // A line of spaces shorter than the indentation is blank and moves as an empty line; the spaces
   // of a longer one past the indentation are part of the value, so they move with it.
   const moved = later.map((text) =>

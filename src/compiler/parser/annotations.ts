@@ -16,6 +16,7 @@ import type { Span } from '../../text/span.ts';
 import type { Annotatable, Annotation } from '../syntax/annotations.ts';
 import { type Expression, qualifiedPath } from '../syntax/expressions/index.ts';
 import type { Invalid } from '../syntax/node.ts';
+import { spanAcross, spanCovering } from '../syntax/positions.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
@@ -28,7 +29,7 @@ export function parseAnnotations(parser: Parser): Annotation[] {
   while (at !== undefined) {
     const value = parser.expression('postfix');
     if (!isAnnotationShape(value)) {
-      parser.report(parserDiagnostics.invalidAnnotation(value.span));
+      parser.report(parserDiagnostics.invalidAnnotation(parser.textSpanOf(value.span)));
     }
     annotations.push({ kind: 'Annotation', span: parser.spanFrom(at.span.start), value });
     at = cursor.eat('@');
@@ -52,10 +53,7 @@ export function attachAnnotations<Item extends SyntaxNode & Annotatable>(
   item: Item | Invalid,
   annotations: readonly Annotation[],
 ): Item | Invalid {
-  const span = {
-    start: Math.min(item.span.start, annotations[0]?.span.start ?? item.span.start),
-    end: Math.max(item.span.end, annotations.at(-1)?.span.end ?? item.span.end),
-  };
+  const span = spanCovering(item.span, ...annotations.map((annotation) => annotation.span));
   if (item.kind === 'Invalid') {
     return { kind: 'Invalid', span };
   }
@@ -77,7 +75,7 @@ export function rejectAnnotations(
   if (first === undefined || last === undefined) {
     return [];
   }
-  const span = { start: first.span.start, end: last.span.end };
-  parser.report(diagnostic(span));
+  const span = spanAcross(first.span, last.span);
+  parser.report(diagnostic(parser.textSpanOf(span)));
   return [{ kind: 'Invalid', span }];
 }

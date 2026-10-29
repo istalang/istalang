@@ -20,7 +20,7 @@ import {
   renamingAt,
 } from '../../language-service/navigation/rename.ts';
 import type { Workspace } from '../../language-service/workspace.ts';
-import { documentOffset, rangeOf } from '../locations.ts';
+import { documentOffset, locationOf, rangeOf } from '../locations.ts';
 import type { Provider } from './provider.ts';
 
 export const rename: Provider = {
@@ -46,8 +46,7 @@ function answerPreparing(connection: Connection, workspace: Workspace): void {
       return failed(renaming);
     }
     const { name } = renaming;
-    const { source } = programModule(program, at.module).tree;
-    return { range: rangeOf(source, name.span), placeholder: name.text };
+    return { range: locationOf(program, at.module, name.span).range, placeholder: name.text };
   });
 }
 

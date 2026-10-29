@@ -12,19 +12,22 @@
  * its own way, as checking does through the reads it records, takes a node's field children alone.
  *
  * What tools ask of a tree by position derives from the same children, memoized on the immutable
- * node or tree: a node's parent, and the nodes at an offset. A child's span lies inside its
- * parent's and before its next sibling's (the parser's tests hold every tree to it), so the nodes
- * at an offset are found by descending from the root.
+ * node or tree: a node's parent, the text a node and everything under it cover (its extent, as its
+ * own span is anchored to its segment: positions.ts), and the nodes at an offset. A child's extent
+ * lies inside its parent's and before its next sibling's (the parser's tests hold every tree to
+ * it), so the nodes at an offset are found by descending from the root.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { memo } from '../../structures/memo.ts';
 import type { SourceText } from '../../text/source-text.ts';
+import type { Span } from '../../text/span.ts';
 import type { Annotation } from './annotations.ts';
 import type { Declaration, DeclarationPart, FunctionDeclaration, Module } from './declarations.ts';
 import type { Expression, ExpressionPart, Lambda } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing } from './node.ts';
 import type { Pattern, PatternPart } from './patterns.ts';
+import { type SegmentBases, spanIn } from './positions.ts';
 import type { Block, Statement, StatementPart } from './statements.ts';
 import type { Comment } from './tokens.ts';
 import type { TypeNode, TypePart } from './types.ts';
@@ -48,11 +51,12 @@ export type SyntaxNode =
   | Annotation;
 
 /**
- * What parsing one source file yields: its module, the body of each function that has one, its
- * comments, and the diagnostics of scanning and parsing it, in that order. Later phases need
- * nothing else from the syntax of a file. Bodies are read through `bodyOf`.
+ * What parsing one source file yields: its module, the body of each function that has one, where
+ * each segment of its text starts (positions.ts), its comments, and the diagnostics of scanning and
+ * parsing it, in that order. Later phases need nothing else from the syntax of a file. Bodies are
+ * read through `bodyOf`, and text positions through `spanIn`.
  */
-export interface SyntaxTree {
+export interface SyntaxTree extends SegmentBases {
   readonly source: SourceText;
   readonly root: Module;
   readonly bodies: ReadonlyMap<FunctionDeclaration, Block>;
@@ -62,6 +66,9 @@ export interface SyntaxTree {
 
 /** What a walk reads of a tree beyond its nodes: the body of each function. */
 export type TreeBodies = Pick<SyntaxTree, 'bodies'>;
+
+/** What placing a node in the text reads of its tree: the bodies under it and the segments. */
+export type TreePlaces = Pick<SyntaxTree, 'bodies' | 'bases'>;
 
 /** The body of `declaration`, a function of `tree`; undefined for one written without a body. */
 export function bodyOf(tree: TreeBodies, declaration: FunctionDeclaration): Block | undefined {
@@ -90,7 +97,7 @@ export function fieldChildrenOf(node: SyntaxNode): readonly SyntaxNode[] {
   return memo(fieldChildren, node, () =>
     Object.values(node)
       .flatMap((value: unknown) => (Array.isArray(value) ? value : [value]).filter(isNode))
-      .toSorted((first, second) => first.span.start - second.span.start),
+      .toSorted((first, second) => first.span.from - second.span.from),
   );
 }
 
@@ -124,12 +131,15 @@ export function nodesUnder(tree: TreeBodies, node: SyntaxNode): readonly SyntaxN
 }
 
 /**
- * The nodes of `tree` holding `offset`, from the root to the innermost. A span holds the offsets
- * from its start up to its end, not including it: of two nodes that touch, only the second holds
- * the offset where they meet, and an empty node, such as a `Missing`, holds none.
+ * The nodes of `tree` holding `offset`, from the root to the innermost. A node holds the offsets
+ * its extent covers, from its start up to its end, not including it: of two nodes that touch, only
+ * the second holds the offset where they meet, and an empty node, such as a `Missing`, holds none.
  */
 export function nodesAt(tree: SyntaxTree, offset: number): readonly SyntaxNode[] {
-  const holds = (node: SyntaxNode) => node.span.start <= offset && offset < node.span.end;
+  const holds = (node: SyntaxNode) => {
+    const { start, end } = extentIn(tree, node);
+    return start <= offset && offset < end;
+  };
   const path: SyntaxNode[] = [];
   for (
     let node: SyntaxNode | undefined = holds(tree.root) ? tree.root : undefined;
@@ -139,6 +149,30 @@ export function nodesAt(tree: SyntaxTree, offset: number): readonly SyntaxNode[]
     path.push(node);
   }
   return path;
+}
+
+/**
+ * The text `node` and every node under it cover in `tree`'s text, through its body, members and
+ * items, which its own span may leave out. Children come in source order, so the first and last
+ * child decide it, level by level down to the leaves.
+ */
+export function extentIn(tree: TreePlaces, node: SyntaxNode): Span {
+  let { start, end } = spanIn(tree, node.span);
+  for (
+    let [first] = childrenOf(tree, node);
+    first !== undefined;
+    [first] = childrenOf(tree, first)
+  ) {
+    start = Math.min(start, spanIn(tree, first.span).start);
+  }
+  for (let last = lastChildOf(tree, node); last !== undefined; last = lastChildOf(tree, last)) {
+    end = Math.max(end, spanIn(tree, last.span).end);
+  }
+  return { start, end };
+}
+
+function lastChildOf(tree: TreeBodies, node: SyntaxNode): SyntaxNode | undefined {
+  return childrenOf(tree, node).at(-1);
 }
 
 /** Whether `node` makes a function of its own, a lambda or a local function (§3.14). */

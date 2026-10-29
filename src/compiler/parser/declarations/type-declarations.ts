@@ -108,7 +108,7 @@ function parseMembers<
 function parseVariant(parser: Parser): Variant {
   const name = parser.identifier('a variant name');
   const fields = parser.cursor.at('{') ? parseItemEntries(parser, declaredFieldRules).value : [];
-  return { kind: 'Variant', span: parser.spanFrom(name.span.start), name, fields };
+  return { kind: 'Variant', span: parser.spanFrom(parser.startOf(name)), name, fields };
 }
 
 const variantRules: ItemRules<Variant> = { parseItem: parseVariant, annotate: attachAnnotations };

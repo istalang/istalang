@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
 import { scan } from '../compiler/scanner/scan.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
 import { dump } from '../compiler/syntax/tree.test-kit.ts';
-import { nodesUnder, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { extentIn, nodesUnder, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { encloses, type Span } from '../text/span.ts';
 import { nodesInBrackets } from './brackets.ts';
 import { commentTexts, formattableInputs, parseText } from './format.test-kit.ts';
@@ -47,7 +47,7 @@ function freeGaps(text: string): readonly Gap[] {
   const isFree = (node: SyntaxNode | undefined): boolean =>
     node !== undefined && inBrackets.has(node);
   const deepestAt = (offset: number, edge: 'start' | 'end'): SyntaxNode | undefined =>
-    nodes.findLast((node) => node.span[edge] === offset);
+    nodes.findLast((node) => extentIn(tree, node)[edge] === offset);
   const multiLineStarts = tokens
     .filter((token) => token.kind === 'template' || token.kind === 'docstring')
     .filter((token) => lineBreak.test(text.slice(token.span.start, token.span.end)))

@@ -17,8 +17,9 @@
  */
 
 import type { Identifier } from '../compiler/syntax/node.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
-import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import { extentIn, nodesUnder, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { lastIndexAtMost } from '../structures/sorted.ts';
 import { type LineMap, lineMapOf } from '../text/line-map.ts';
 import type { Span } from '../text/span.ts';
@@ -76,42 +77,50 @@ function bracketSpans(tokens: readonly Token[]): readonly Span[] {
 /** Indented blocks and item lists, which fold by layout rather than by brackets. */
 function layoutSpans(tree: SyntaxTree, tokens: readonly Token[]): readonly Span[] {
   return nodesUnder(tree, tree.root).flatMap((node) => {
-    const start = layoutStart(node, tokens);
-    return start === undefined ? [] : [{ start, end: node.span.end }];
+    const start = layoutStart(tree, node, tokens);
+    return start === undefined ? [] : [{ start, end: extentIn(tree, node).end }];
   });
 }
 
 type LayoutStarts = {
   readonly [Kind in SyntaxNode['kind']]?: (
     node: Extract<SyntaxNode, { readonly kind: Kind }>,
+    tree: SyntaxTree,
     tokens: readonly Token[],
   ) => number | undefined;
 };
 
-const named = (node: { readonly name: Identifier }) => node.name.span.start;
+const named = (node: { readonly name: Identifier }, tree: SyntaxTree) =>
+  spanIn(tree, node.name.span).start;
+
+const own = (node: SyntaxNode, tree: SyntaxTree) => spanIn(tree, node.span).start;
 
 /** Where each node that folds by layout starts its fold. */
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const layoutStarts: LayoutStarts = {
   // An indented block starts where its first statement does; a braced one is a bracket pair.
-  Block: (node, tokens) =>
-    node.statements[0]?.span.start === node.span.start
-      ? tokens[lastIndexAtMost(tokens, (token) => token.span.end, node.span.start)]?.span.start
+  Block: (node, tree, tokens) =>
+    node.statements[0]?.span.from === node.span.from
+      ? tokens[lastIndexAtMost(tokens, (token) => token.span.end, own(node, tree))]?.span.start
       : undefined,
   StructDeclaration: named,
   SharedStructDeclaration: named,
   EnumDeclaration: named,
   Variant: named,
   TraitDeclaration: named,
-  Match: (node) => node.span.start,
-  Select: (node) => node.span.start,
+  Match: own,
+  Select: own,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /** Where a fold of `node` by layout starts; undefined for a node that doesn't fold by layout. */
-function layoutStart(node: SyntaxNode, tokens: readonly Token[]): number | undefined {
+function layoutStart(
+  tree: SyntaxTree,
+  node: SyntaxNode,
+  tokens: readonly Token[],
+): number | undefined {
   const startOf = layoutStarts[node.kind] as
-    | ((node: SyntaxNode, tokens: readonly Token[]) => number | undefined)
+    | ((node: SyntaxNode, tree: SyntaxTree, tokens: readonly Token[]) => number | undefined)
     | undefined;
-  return startOf?.(node, tokens);
+  return startOf?.(node, tree, tokens);
 }

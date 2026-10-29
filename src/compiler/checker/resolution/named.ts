@@ -5,11 +5,11 @@
  * and patterns name them the same way.
  */
 
-import type { Span } from '../../../text/span.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import type { EnumDeclaration, StructDeclaration, Variant } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { optionalInner } from '../types/fit.ts';
@@ -71,7 +71,7 @@ export function nameNodeOf(node: Expression): Identifier | undefined {
  */
 export function chooseVariant(
   context: BodyContext,
-  at: { readonly span: Span; readonly name: Identifier },
+  at: { readonly span: AnchoredSpan; readonly name: Identifier },
   naming: VariantNaming,
   expected: Type | undefined,
 ): { enum: EnumDeclaration; variant: Variant } | undefined {

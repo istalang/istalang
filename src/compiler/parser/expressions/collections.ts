@@ -8,7 +8,6 @@
  * anything else starts a list of elements or entries.
  */
 
-import type { Span } from '../../../text/span.ts';
 import type {
   Comprehension,
   Expression,
@@ -17,6 +16,7 @@ import type {
   Spread,
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
+import { type AnchoredSpan, endOf } from '../../syntax/positions.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { parseTargets } from '../parts/names.ts';
@@ -66,20 +66,20 @@ function parseItem(parser: Parser): CollectionItem {
     return key;
   }
   const value = parser.expression();
-  return { kind: 'MapEntry', span: parser.spanFrom(key.span.start), key, value };
+  return { kind: 'MapEntry', span: parser.spanFrom(parser.startOf(key)), key, value };
 }
 
 function toLiteral(
   parser: Parser,
   items: readonly (CollectionItem | Invalid)[],
-  span: Span,
+  span: AnchoredSpan,
 ): Expression {
   if (!items.some((item) => item.kind === 'MapEntry')) {
     return { kind: 'ArrayLiteral', span, elements: items.filter(isArrayItem) };
   }
   const stray = items.find((item) => !isMapItem(item));
   if (stray !== undefined) {
-    parser.report(parserDiagnostics.mixedCollection(stray.span));
+    parser.report(parserDiagnostics.mixedCollection(parser.textSpanOf(stray.span)));
   }
   return { kind: 'MapLiteral', span, entries: items.map(toMapItem) };
 }
@@ -97,12 +97,11 @@ function toMapItem(item: CollectionItem | Invalid): MapLiteral['entries'][number
   if (isMapItem(item)) {
     return item;
   }
-  const { end } = item.span;
   return {
     kind: 'MapEntry',
     span: item.span,
     key: item,
-    value: { kind: 'Missing', span: { start: end, end } },
+    value: { kind: 'Missing', span: endOf(item.span) },
   };
 }
 

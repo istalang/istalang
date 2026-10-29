@@ -16,7 +16,8 @@ import {
 } from '../compiler/syntax/declarations.ts';
 import { type Identifier, type Invalid, isMissingName } from '../compiler/syntax/node.ts';
 import { targetNames } from '../compiler/syntax/patterns.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
+import { extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import type { FieldDeclaration } from '../compiler/syntax/types.ts';
 import type { Span } from '../text/span.ts';
 
@@ -44,108 +45,97 @@ export interface DocumentSymbol {
   readonly children: readonly DocumentSymbol[];
 }
 
+/** A symbol as the outline finds it: the nodes it stands for, which the tree places. */
+interface OutlineSymbol {
+  readonly name: string;
+  readonly kind: SymbolKind;
+  readonly node: SyntaxNode;
+  readonly nameNode: SyntaxNode;
+  readonly children: readonly OutlineSymbol[];
+}
+
 type SymbolsOf = {
   readonly [Kind in Declaration['kind']]: (
     declaration: Extract<Declaration, { readonly kind: Kind }>,
-  ) => readonly DocumentSymbol[];
+  ) => readonly OutlineSymbol[];
 };
 
-/** The symbols of a node named `name`, or none when the parser found no name. */
+/** The symbols of `node`, named `name`, or none when the parser found no name. */
 function symbol(
   name: Identifier,
   kind: SymbolKind,
-  span: Span,
-  children: readonly DocumentSymbol[] = [],
-): readonly DocumentSymbol[] {
-  return isMissingName(name)
-    ? []
-    : [{ name: name.text, kind, span, nameSpan: name.span, children }];
+  node: SyntaxNode,
+  children: readonly OutlineSymbol[] = [],
+): readonly OutlineSymbol[] {
+  return isMissingName(name) ? [] : [{ name: name.text, kind, node, nameNode: name, children }];
 }
 
 function fieldSymbols(
   fields: readonly (DeclaredField | FieldDeclaration | Invalid)[],
-): readonly DocumentSymbol[] {
+): readonly OutlineSymbol[] {
   return fields.flatMap((field) =>
-    field.kind === 'Invalid' ? [] : symbol(field.name, 'field', field.span),
+    field.kind === 'Invalid' ? [] : symbol(field.name, 'field', field),
   );
 }
 
-function variantSymbols(variants: readonly (Variant | Invalid)[]): readonly DocumentSymbol[] {
+function variantSymbols(variants: readonly (Variant | Invalid)[]): readonly OutlineSymbol[] {
   return variants.flatMap((variant) =>
     variant.kind === 'Invalid'
       ? []
-      : symbol(variant.name, 'variant', variant.span, fieldSymbols(variant.fields)),
+      : symbol(variant.name, 'variant', variant, fieldSymbols(variant.fields)),
   );
 }
 
-const struct = (declaration: {
-  readonly name: Identifier;
-  readonly span: Span;
-  readonly fields?: readonly (DeclaredField | Invalid)[];
-}) => symbol(declaration.name, 'struct', declaration.span, fieldSymbols(declaration.fields ?? []));
+const struct = (
+  declaration: SyntaxNode & {
+    readonly name: Identifier;
+    readonly fields?: readonly (DeclaredField | Invalid)[];
+  },
+) => symbol(declaration.name, 'struct', declaration, fieldSymbols(declaration.fields ?? []));
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const symbolsOfDeclaration: SymbolsOf = {
   NamedImport: (declaration) => {
     const { path } = declaration;
-    const names = declaration.names.flatMap((name) => symbol(name, 'imported', name.span));
+    const names = declaration.names.flatMap((name) => symbol(name, 'imported', name));
     return path.kind === 'StringLiteral' && path.value !== ''
-      ? [
-          {
-            name: path.value,
-            kind: 'module',
-            span: declaration.span,
-            nameSpan: path.span,
-            children: names,
-          },
-        ]
+      ? [{ name: path.value, kind: 'module', node: declaration, nameNode: path, children: names }]
       : names;
   },
-  NamespaceImport: (declaration) => symbol(declaration.alias, 'namespace', declaration.span),
+  NamespaceImport: (declaration) => symbol(declaration.alias, 'namespace', declaration),
   StructDeclaration: struct,
   SharedStructDeclaration: struct,
   ExternStructDeclaration: struct,
-  ExternConstantDeclaration: (declaration) =>
-    symbol(declaration.name, 'constant', declaration.span),
+  ExternConstantDeclaration: (declaration) => symbol(declaration.name, 'constant', declaration),
   EnumDeclaration: (declaration) =>
-    symbol(declaration.name, 'enum', declaration.span, variantSymbols(declaration.variants)),
+    symbol(declaration.name, 'enum', declaration, variantSymbols(declaration.variants)),
   TraitDeclaration: (declaration) =>
     symbol(
       declaration.name,
       'trait',
-      declaration.span,
+      declaration,
       declaration.members.flatMap((member) =>
         member.kind === 'Invalid'
           ? []
-          : symbol(
-              member.name,
-              member.kind === 'FunctionDeclaration' ? 'method' : 'field',
-              member.span,
-            ),
+          : symbol(member.name, member.kind === 'FunctionDeclaration' ? 'method' : 'field', member),
       ),
     ),
-  TypeAliasDeclaration: (declaration) => symbol(declaration.name, 'typeAlias', declaration.span),
+  TypeAliasDeclaration: (declaration) => symbol(declaration.name, 'typeAlias', declaration),
   FunctionDeclaration: (declaration) => {
     const { owner, name } = declaration;
     const kind = isMethod(declaration) ? 'method' : 'function';
     if (owner === undefined || isMissingName(owner) || isMissingName(name)) {
-      return symbol(name, kind, declaration.span);
+      return symbol(name, kind, declaration);
     }
     // A static function is named as it is called (`Owner.name`), and selected by its own name.
     return [
-      {
-        name: `${owner.text}.${name.text}`,
-        kind,
-        span: declaration.span,
-        nameSpan: name.span,
-        children: [],
-      },
+      { name: `${owner.text}.${name.text}`, kind, node: declaration, nameNode: name, children: [] },
     ];
   },
   VariableDeclaration: (declaration) =>
     declaration.targets
       .flatMap(targetNames)
-      .flatMap((name) => symbol(name, 'constant', declaration.span)),
+      .flatMap((name) => symbol(name, 'constant', declaration)),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
@@ -157,7 +147,19 @@ export function symbolsOf(tree: SyntaxTree): readonly DocumentSymbol[] {
     }
     const symbolsOfItem = symbolsOfDeclaration[item.kind] as (
       declaration: Declaration,
-    ) => readonly DocumentSymbol[];
-    return symbolsOfItem(item);
+    ) => readonly OutlineSymbol[];
+    return symbolsOfItem(item).map((found) => placed(tree, found));
   });
+}
+
+/** `found` with its places in `tree`'s text: the whole declaration, through any body, and its name. */
+function placed(tree: SyntaxTree, found: OutlineSymbol): DocumentSymbol {
+  const { name, kind, node, nameNode, children } = found;
+  return {
+    name,
+    kind,
+    span: extentIn(tree, node),
+    nameSpan: spanIn(tree, nameNode.span),
+    children: children.map((child) => placed(tree, child)),
+  };
 }

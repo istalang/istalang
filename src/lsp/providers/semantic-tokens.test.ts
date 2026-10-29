@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { scan } from '../../compiler/scanner/scan.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import { isKeyword, type Token } from '../../compiler/syntax/tokens.ts';
 import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { lineMapOf } from '../../text/line-map.ts';
@@ -25,7 +26,8 @@ const literals = {
 /** Whether `token` stands between the two sides of a comparison or a shift. */
 function comparesAt(tree: SyntaxTree, token: Token): boolean {
   const between = (left: SyntaxNode, right: SyntaxNode) =>
-    left.span.end <= token.span.start && token.span.end <= right.span.start;
+    spanIn(tree, left.span).end <= token.span.start &&
+    token.span.end <= spanIn(tree, right.span).start;
   return nodesUnder(tree, tree.root).some((node) => {
     if (node.kind === 'Binary') {
       return between(node.left, node.right);

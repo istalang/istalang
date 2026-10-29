@@ -10,6 +10,7 @@ import { checkProgram } from '../../compiler/checker/check.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { targetNames } from '../../compiler/syntax/patterns.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nodesUnder, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {
   corpusClient,
@@ -55,7 +56,7 @@ describe('inlay hints over the corpus', () => {
         const type = checker.lookup.bodyHolding(module, name)?.declaredTypeOf(name);
         return type === undefined || type.kind === 'error'
           ? []
-          : [hintAt(name.span.end, `: ${typeText(type)}`)];
+          : [hintAt(spanIn(tree, name.span).end, `: ${typeText(type)}`)];
       });
     const hints = await client.connection.sendRequest(InlayHintRequest.type, {
       textDocument: { uri },

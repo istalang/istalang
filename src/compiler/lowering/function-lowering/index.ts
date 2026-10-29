@@ -26,12 +26,10 @@
  */
 
 import type { CodeFunction } from '../../../definition/functions.ts';
-import type { Instruction } from '../../../definition/instructions/instruction.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values.ts';
 import { handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
 import type { FieldRead } from '../../checker/checked-field.ts';
@@ -40,14 +38,15 @@ import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../../checker/res
 import type { Fit } from '../../checker/types/fit.ts';
 import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type.ts';
-import type { ModuleId } from '../../program/program.ts';
+import { type ModuleId, programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import { writtenBodyOf } from '../bodies.ts';
-import { CodeWriter } from '../code-writer.ts';
+import { CodeWriter, type WrittenInstruction } from '../code-writer.ts';
 import { emitConstant } from '../constants.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
@@ -80,7 +79,7 @@ import {
 } from './frames.ts';
 
 /** Decodes a start entry's JSON argument into its parameter's value. */
-type StartParameterDecoder = (context: CodeContext, json: Register, span: Span) => Register;
+type StartParameterDecoder = (context: CodeContext, json: Register, span: AnchoredSpan) => Register;
 
 /**
  * The JSON at a start entry's edges: how each argument is read from `Json`, a mismatch failing the
@@ -156,7 +155,7 @@ class FunctionLowering implements FunctionContext {
     const body =
       node.kind === 'Lambda' ? node.body : writtenBodyOf(this.checker.program, this.module, node);
     if (body === undefined) {
-      unreachable(`The local function at ${node.span.start} has no body.`);
+      unreachable(`The local function at ${node.span.from} has no body.`);
     }
     const value = body.kind === 'Block' ? lowerBody(this, body) : this.expression(body);
     this.code.emit({ kind: 'return', span: body.span, value });
@@ -326,7 +325,7 @@ class FunctionLowering implements FunctionContext {
   }
 
   /** Declares `name` in a register of its own, written by the instruction `fill` makes. */
-  #declareFilled(name: Identifier, fill: (dst: Register) => Instruction): void {
+  #declareFilled(name: Identifier, fill: (dst: Register) => WrittenInstruction): void {
     const register = this.code.allocate();
     this.variables.declare(name, register);
     this.code.emit(fill(register));
@@ -339,7 +338,8 @@ class FunctionLowering implements FunctionContext {
 
   #entry(): CodeFunction {
     const { header, isAsync, givesDefault, captures } = this.frame;
-    const { registers, instructions } = this.code.finish();
+    const { tree } = programModule(this.checker.program, this.module);
+    const { registers, instructions } = this.code.finish(tree);
     return {
       kind: 'code',
       ...header,
@@ -357,7 +357,7 @@ class FunctionLowering implements FunctionContext {
     };
   }
 
-  constant(value: Value, span: Span): Register {
+  constant(value: Value, span: AnchoredSpan): Register {
     return emitConstant(this, value, span);
   }
 }
@@ -374,7 +374,7 @@ function defaultValueOf(parameter: SignatureParameter): Expression {
 /** The checker's `answer` about `at`, which lowering reads only of what was checked. */
 function checkedAt<T>(answer: T | undefined, at: NodeOf<string>, what: string): T {
   if (answer === undefined) {
-    unreachable(`No ${what} was checked for the ${at.kind} at ${at.span.start}.`);
+    unreachable(`No ${what} was checked for the ${at.kind} at ${at.span.from}.`);
   }
   return answer;
 }

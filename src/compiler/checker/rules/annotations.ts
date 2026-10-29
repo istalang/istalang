@@ -21,12 +21,12 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import type { EntryTable } from '../../../structures/entries.ts';
 import { sameItems } from '../../../structures/equality.ts';
-import type { Span } from '../../../text/span.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Statement } from '../../syntax/statements.ts';
 import { bodyChildrenOf, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
@@ -222,7 +222,7 @@ export class Annotations implements AnnotationChecks {
     annotation: CheckedAnnotation,
     found: readonly CheckedAnnotation[],
     place: Placed,
-  ): Diagnostic | undefined {
+  ): Diagnostic<AnchoredSpan> | undefined {
     const { node, type } = annotation;
     const name = type.entity.declaration.name.text;
     if (found.some((earlier) => earlier.type.entity === type.entity)) {
@@ -281,7 +281,7 @@ const placements: Record<
   (
     place: Placed,
     isDefault: (type: Type) => boolean,
-  ) => 'elsewhere' | ((at: Span) => Diagnostic) | undefined
+  ) => 'elsewhere' | ((at: AnchoredSpan) => Diagnostic<AnchoredSpan>) | undefined
 > = {
   jsonName: (place) => (place.kind === 'field' ? undefined : 'elsewhere'),
   jsonSkip: (place, isDefault) => {

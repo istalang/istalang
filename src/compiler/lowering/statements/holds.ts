@@ -44,7 +44,7 @@ export class HoldScopes {
     }
     const named = this.#labelled.findLast((each) => each.scope === scope);
     if (named === undefined) {
-      unreachable(`A hold at ${hold.span.start} names a scope not being lowered.`);
+      unreachable(`A hold at ${hold.span.from} names a scope not being lowered.`);
     }
     return named.list;
   }

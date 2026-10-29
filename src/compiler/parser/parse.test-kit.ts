@@ -13,6 +13,7 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { scan } from '../scanner/scan.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { Segment } from '../syntax/positions.ts';
 import type { Block } from '../syntax/statements.ts';
 import { dump } from '../syntax/tree.test-kit.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
@@ -27,6 +28,8 @@ export interface Parsed {
   readonly node: SyntaxNode;
   /** The bodies of the functions parsed, which the tree holds apart from them. */
   readonly bodies: ReadonlyMap<FunctionDeclaration, Block>;
+  /** Where each segment parsed starts, as a tree keeps it. */
+  readonly bases: ReadonlyMap<Segment, number>;
   /** The parser's diagnostics; scanner diagnostics are left out. */
   readonly diagnostics: readonly Diagnostic[];
   readonly scanDiagnostics: readonly Diagnostic[];
@@ -52,6 +55,7 @@ export function parseAs(category: Category, text: string): Parsed {
     source,
     node,
     bodies: parser.recordedBodies,
+    bases: parser.bases,
     diagnostics: parser.diagnostics,
     scanDiagnostics: scanned.diagnostics,
     rest,

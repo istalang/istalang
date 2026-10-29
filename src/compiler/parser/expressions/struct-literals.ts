@@ -35,7 +35,7 @@ export function parseNew(parser: Parser): Expression {
   const { start } = parser.cursor.advance().span;
   const type = parser.type();
   if (type.kind !== 'NamedType' || !parser.cursor.at('{')) {
-    parser.report(parserDiagnostics.newWithoutLiteral(parser.spanFrom(start)));
+    parser.report(parserDiagnostics.newWithoutLiteral(parser.textSpanFrom(start)));
     return { kind: 'Invalid', span: parser.spanFrom(start) };
   }
   const items = parseItems(parser);
@@ -53,7 +53,7 @@ function parseItems(parser: Parser): FieldsLiteral['items'] {
   const { items } = parseDelimited(parser, '{', () => parseItem(parser));
   const positional = items.find((item) => item.kind === 'PositionalInitializer');
   if (positional !== undefined && items.length > 1) {
-    parser.report(parserDiagnostics.positionalNotAlone(positional.span));
+    parser.report(parserDiagnostics.positionalNotAlone(parser.textSpanOf(positional.span)));
   }
   return items;
 }
@@ -67,7 +67,7 @@ function parseItem(parser: Parser): FieldsLiteral['items'][number] {
   if (cursor.at('identifier') && (next === ':' || next === ',' || next === '}')) {
     const name = parser.identifier();
     const value = cursor.eat(':') === undefined ? undefined : parser.expression();
-    return { kind: 'FieldInitializer', span: parser.spanFrom(name.span.start), name, value };
+    return { kind: 'FieldInitializer', span: parser.spanFrom(parser.startOf(name)), name, value };
   }
   const value = parser.expression();
   return { kind: 'PositionalInitializer', span: value.span, value };

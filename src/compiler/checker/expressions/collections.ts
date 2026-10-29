@@ -28,7 +28,6 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { inclusiveEndFunction, wellKnown } from '../../../language/well-known.ts';
-import type { Span } from '../../../text/span.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -38,6 +37,7 @@ import type {
   Spread,
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import type { CollectionForm } from '../check.ts';
 import type { AcceptedPart, Accepts, BodyContext, CollectionRecord } from '../context.ts';
@@ -315,7 +315,7 @@ function insertEntry(
   context: BodyContext,
   entry: MapEntry | Spread | Invalid,
   type: NominalType,
-  failure: (() => Diagnostic) | undefined,
+  failure: (() => Diagnostic<AnchoredSpan>) | undefined,
 ): void {
   if (entry.kind === 'Invalid') {
     return;
@@ -415,7 +415,7 @@ function agreeOn(
   expected: Type | undefined,
   part: 'element' | 'key' | 'value',
 ): Type | undefined {
-  return settleAgreement(context, produced, expected, (span: Span, decided, found) =>
+  return settleAgreement(context, produced, expected, (span: AnchoredSpan, decided, found) =>
     checkerDiagnostics.itemTypes(span, part, typeText(decided), typeText(found)),
   );
 }

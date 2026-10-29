@@ -19,7 +19,7 @@ export function lowerUnwrap(context: FunctionContext, node: Unwrap): Register {
   const optional = context.expression(node.operand);
   const type = context.typeOf(node.operand);
   if (!isEnum(type)) {
-    unreachable(`'!' needs an optional at ${node.span.start}; the checker should have said so.`);
+    unreachable(`'!' needs an optional at ${node.span.from}; the checker should have said so.`);
   }
   const some = code.newLabel();
   const none = code.newLabel();

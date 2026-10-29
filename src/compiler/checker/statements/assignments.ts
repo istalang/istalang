@@ -22,9 +22,9 @@
  * - What lowering needs is recorded: each place written, with its part of the value and its fit.
  */
 
-import type { Span } from '../../../text/span.ts';
 import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import { type CompoundAssignment, compoundOperator } from '../../syntax/operators.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import {
   type Assignment,
   type Destructuring,
@@ -140,10 +140,10 @@ function checkCompound(
  */
 interface Assigning extends Taking<PreparedTarget, number> {
   readonly parts: AssignedPart[];
-  readonly valueSpan: Span;
+  readonly valueSpan: AnchoredSpan;
 }
 
-function assigningIn(context: BodyContext, valueSpan: Span): Assigning {
+function assigningIn(context: BodyContext, valueSpan: AnchoredSpan): Assigning {
   const assigning: Assigning = {
     scope: bodyScope(context),
     parts: [],
