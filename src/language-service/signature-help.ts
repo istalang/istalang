@@ -18,9 +18,12 @@ import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { type FunctionDeclaration, isMethod } from '../compiler/syntax/declarations.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
+import type { Token } from '../compiler/syntax/tokens.ts';
 import { nodesAt, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import { lastIndexAtMost } from '../structures/sorted.ts';
 import { checkedModule } from './checked-module.ts';
 import { functionTypeSignature, type Signature, signatureOf } from './signatures.ts';
+import { closingBracketsOf, codeTokensOf } from './tokens.ts';
 
 export interface SignatureHelp {
   readonly signatures: readonly CallSignature[];
@@ -52,25 +55,29 @@ export function signatureHelpAt(
 }
 
 /**
- * The innermost call whose parentheses hold `offset`: past its `(` and before its `)`, or, while
- * it has no `)` yet, as when a call is being typed, anywhere up to the next thing written after it.
+ * The innermost call whose parentheses hold `offset`: past its `(` and up to its `)`, or, while
+ * no `)` closes it, as when a call is being typed, up to the next token after it.
  *
- * The tree keeps no tokens, so where the `(` stands and whether a `)` closes the call are read
- * from the text: the `(` is the first after the callee and its type arguments, and a closed call
- * ends with its `)`.
+ * The tree keeps no tokens, so the parentheses are the code's (tokens.ts): the `(` is the first
+ * after the callee and its type arguments, and the `)` the one pairing with it.
  */
 function callAround(tree: SyntaxTree, offset: number): Call | undefined {
-  const { text } = tree.source;
+  const tokens = codeTokensOf(tree);
+  const closings = closingBracketsOf(tree);
   const holds = (call: Call) => {
-    const before = spanIn(tree, (call.typeArguments.at(-1) ?? call.callee).span);
-    const opening = text.indexOf('(', before.end);
-    const { end: written } = spanIn(tree, call.span);
-    const isOpen = !text.endsWith(')', written);
-    const end = isOpen ? afterWhitespace(text, written) : written - 1;
-    return opening !== -1 && opening < offset && offset <= end;
+    const before = spanIn(tree, (call.typeArguments.at(-1) ?? call.callee).span).end;
+    const opening = openingAfter(tokens, before);
+    if (opening === undefined) {
+      return false;
+    }
+    const end =
+      closings.get(opening)?.span.start ?? nextTokenStart(tree, spanIn(tree, call.span).end);
+    return opening.span.start < offset && offset <= end;
   };
-  return [...nodesAt(tree, beforeWhitespace(text, offset) - 1)]
-    .reverse()
+  const previous = tokens[nextTokenIndex(tokens, offset) - 1];
+  const at = previous === undefined ? offset : Math.min(previous.span.end, offset);
+  return nodesAt(tree, at - 1)
+    .toReversed()
     .find((node): node is Call => node.kind === 'Call' && holds(node));
 }
 
@@ -80,19 +87,31 @@ function callAround(tree: SyntaxTree, offset: number): Call | undefined {
  */
 function argumentAt(tree: SyntaxTree, call: Call, offset: number): number {
   const index = call.arguments.findIndex(
-    (argument) => offset <= afterWhitespace(tree.source.text, spanIn(tree, argument.span).end),
+    (argument) => offset <= nextTokenStart(tree, spanIn(tree, argument.span).end),
   );
   return index === -1 ? call.arguments.length : index;
 }
 
-/** The offset past the whitespace starting at `offset`. */
-function afterWhitespace(text: string, offset: number): number {
-  return text.length - text.slice(offset).trimStart().length;
+/** The first `(` of `tokens` at or after `offset`: a call's, past its callee and type arguments. */
+function openingAfter(tokens: readonly Token[], offset: number): Token | undefined {
+  for (let index = nextTokenIndex(tokens, offset); index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token?.kind === '(') {
+      return token;
+    }
+  }
+  return undefined;
 }
 
-/** The offset where the whitespace ending at `offset` starts. */
-function beforeWhitespace(text: string, offset: number): number {
-  return text.slice(0, offset).trimEnd().length;
+/** The index of the first of `tokens` starting at or after `offset`. */
+function nextTokenIndex(tokens: readonly Token[], offset: number): number {
+  return lastIndexAtMost(tokens, (token) => token.span.start, offset - 1) + 1;
+}
+
+/** Where the first token of `tree`'s code at or after `offset` starts; the text's end past the last. */
+function nextTokenStart(tree: SyntaxTree, offset: number): number {
+  const tokens = codeTokensOf(tree);
+  return tokens[nextTokenIndex(tokens, offset)]?.span.start ?? tree.source.text.length;
 }
 
 function valueCallHelp(

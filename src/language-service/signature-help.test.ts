@@ -48,6 +48,24 @@ describe('signature help', () => {
     expect(help(add, 'fn f() -> int: add(1 ‸, 2, 3)')?.parameter).toBe('a: int');
   });
 
+  it('helps with a call left open after an argument ending in a parenthesis', () => {
+    const declared = ['fn pair(a: int, b: int) -> int: a + b', 'fn one(n: int) -> int: n'];
+    expect(help(...declared, 'fn f() -> int: pair(one(1)‸')).toEqual({
+      label: 'fn pair(a: int, b: int) -> int',
+      parameter: 'a: int',
+    });
+    expect(help(...declared, 'fn f() -> int: pair(one(1) ‸')?.parameter).toBe('a: int');
+    expect(help(...declared, 'fn f() -> int: pair((1)‸')?.parameter).toBe('a: int');
+  });
+
+  it('helps with a name being typed after a named argument', () => {
+    const connect = 'fn connect(host: string, port: int) -> int: port';
+    expect(help(connect, 'fn f() -> int: connect(host: "x", po‸')).toEqual({
+      label: 'fn connect(host: string, port: int) -> int',
+      parameter: 'port: int',
+    });
+  });
+
   it("starts a generic call's help at its `(`, not at its type arguments", () => {
     expect(help('fn id<T>(x: T) -> T: x', 'fn f() -> int: id<int>‸(1)')).toBeUndefined();
   });

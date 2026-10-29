@@ -36,7 +36,8 @@ type Declared =
 
 /**
  * What an identifier denotes: the declaration it names, and its type there: an expression's as
- * checked, a declared name's, a field's or a type's; undefined where it has none.
+ * checked, a declared name's, a field's or a type's, a written type's with its type arguments, a
+ * variant's enum; undefined where it has none.
  */
 export interface Denotation {
   readonly declared: Declared;

@@ -1,13 +1,14 @@
 /**
  * The lookup queries over every corpus program, valid and invalid: no query throws at any node,
- * and every name binding or checking resolved in a body is answered with the declaration they
- * chose. Checking a program twice is the costly part, so one pass per program asks both.
+ * every name binding or checking resolved in a body is answered with the declaration they chose,
+ * and every name of a variant with its enum's type. Checking a program twice is the costly part,
+ * so one pass per program asks all of it.
  */
 
 import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../../../test/corpus/programs.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import type { Entity } from '../../binder/entities.ts';
+import type { Entity, VariantEntity } from '../../binder/entities.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Call } from '../../syntax/expressions/index.ts';
@@ -16,6 +17,7 @@ import { nodesUnder, parentOf, type SyntaxNode, type SyntaxTree } from '../../sy
 import { type CheckedBody, type Checker, checkProgram } from '../check.ts';
 import type { Denotation } from '../denotation.ts';
 import type { ResolvedSite } from '../resolved-call.ts';
+import type { Type } from '../types/type.ts';
 import { answersAt } from './lookup.test-kit.ts';
 
 const corpus = [...runPrograms, ...invalidPrograms].map(({ name, text }) => ({ name, text }));
@@ -32,13 +34,28 @@ function disagreementsAt(checked: CheckedModule, node: SyntaxNode): readonly str
   const { checker, module } = checked;
   answersAt(checker, module, node);
   const body = checker.lookup.bodyHolding(module, node);
-  if (node.kind !== 'Identifier' || body === undefined) {
+  if (node.kind !== 'Identifier') {
     return [];
   }
+  const outsideItsEnum = checker.lookup
+    .denotationsOf(module, node)
+    .filter(({ declared, type }) => declared.kind === 'variant' && !isEnumOf(declared.entity, type))
+    .map(() => `${node.text} at ${node.span.from} outside its enum`);
+  if (body === undefined) {
+    return outsideItsEnum;
+  }
   const denotations = checker.lookup.denotationsOf(module, node);
-  return chosenFor(checked, node, body)
-    .filter((chosen) => !denotations.some(chosen))
-    .map(() => `${node.text} at ${node.span.from}`);
+  return [
+    ...outsideItsEnum,
+    ...chosenFor(checked, node, body)
+      .filter((chosen) => !denotations.some(chosen))
+      .map(() => `${node.text} at ${node.span.from}`),
+  ];
+}
+
+/** Whether `type` is the enum declaring `variant`, with whatever type arguments. */
+function isEnumOf(variant: VariantEntity, type: Type | undefined): boolean {
+  return type?.kind === 'nominal' && type.entity.declaration === variant.enum;
 }
 
 /** `call` when it is a call of `callee`. */

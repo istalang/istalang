@@ -1,7 +1,7 @@
 /**
  * What an editor shows for the spot under a pointer: for a name, what it denotes there, each
  * declaration as a line of code with its type, and the docstring of what it names; for any other
- * expression, its type.
+ * expression or written type, its type.
  *
  * A name is answered through the identifier query (checker denotation.ts), as going to its
  * definition is, so the two never disagree. A shorthand, `Pair{first}`, names a field and a
@@ -19,6 +19,7 @@ import type { Expression } from '../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import { nodesAt, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import type { TypeNode } from '../compiler/syntax/types.ts';
 import type { Span } from '../text/span.ts';
 import { type CheckedModule, checkedModule } from './checked-module.ts';
 import { identifierAt } from './identifier-at.ts';
@@ -84,11 +85,16 @@ function nameHover({ checker, module, tree }: CheckedModule, name: Identifier): 
 }
 
 /**
- * The type checking gave `node`. A body's types are keyed by its expression nodes themselves, so a
- * node of any other kind is simply not among them.
+ * The type checking gave `node`: an expression's in the body holding it, a written type's as it
+ * resolved. Both are keyed by their nodes themselves, so a node of any other kind is simply not
+ * among them.
  */
 function typeAt({ checker, module }: CheckedModule, node: SyntaxNode): Type | undefined {
-  return checker.lookup.bodyHolding(module, node)?.typeOf(node as Expression);
+  const { lookup } = checker;
+  return (
+    lookup.bodyHolding(module, node)?.typeOf(node as Expression) ??
+    lookup.typeOfNode(module, node as TypeNode)
+  );
 }
 
 /**

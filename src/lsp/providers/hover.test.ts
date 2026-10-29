@@ -1,9 +1,10 @@
 /**
  * Hovers over every corpus and std module, through the protocol. Every name the identifier query
- * answers and every node checking typed is shown somewhere: where it is the innermost node holding
- * the offset that has a name or a type. There, a name shows each of its types, and any other node
- * its own. A node holding no offset (a `Missing` one) has nothing to hover over, and the `x->` of
- * `x->f` is the member read's link, as `.` is.
+ * answers, every node checking typed and every written type is shown somewhere: where it is the
+ * innermost node holding the offset that has a name or a type, or, for a written type, at its last
+ * name. There, a name shows each of its types, and any other node its own. A node holding no
+ * offset (a `Missing` one) has nothing to hover over, and the `x->` of `x->f` is the member read's
+ * link, as `.` is.
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -12,6 +13,7 @@ import { checkProgram } from '../../compiler/checker/check.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
+import { lastName } from '../../compiler/syntax/node.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';
 import {
   nodesAt,
@@ -19,6 +21,7 @@ import {
   type SyntaxNode,
   type SyntaxTree,
 } from '../../compiler/syntax/tree.ts';
+import type { TypeNode } from '../../compiler/syntax/types.ts';
 import {
   corpusClient,
   programDocuments as documents,
@@ -45,7 +48,9 @@ function shownTypes(module: ModuleId, node: SyntaxNode): readonly string[] | und
   if (denotations.length > 0) {
     return denotations.flatMap(({ type }) => (type === undefined ? [] : typeText(type)));
   }
-  const typed = checker.lookup.bodyHolding(module, node)?.typeOf(node as Expression);
+  const typed =
+    checker.lookup.bodyHolding(module, node)?.typeOf(node as Expression) ??
+    checker.lookup.typeOfNode(module, node as TypeNode);
   return typed && [typeText(typed)];
 }
 
@@ -83,7 +88,9 @@ describe('hover over the corpus', () => {
     const wrong = await Promise.all(
       nodesUnder(tree, tree.root).map(async (node) => {
         const texts = shown(node);
-        const offset = offsets.get(node);
+        const offset =
+          offsets.get(node) ??
+          (node.kind === 'NamedType' ? offsets.get(lastName(node.path)) : undefined);
         const { line, character } = rangeOf(tree.source, spanIn(tree, node.span)).start;
         if (texts === undefined) {
           return [];

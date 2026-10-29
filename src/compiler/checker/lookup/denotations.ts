@@ -6,22 +6,33 @@
  *
  * Where the identifier stands decides which choice to read, so the answer is routed by the node
  * holding it; a name standing anywhere else is the binder's.
+ *
+ * A name's type is the one it has where it stands: a written type's as it resolved, type arguments
+ * included; a variant's, that of the value it makes, bare, qualified or as a literal, else, where it
+ * is declared or matched, its enum's own type.
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import type { Entity, VariableEntity } from '../../binder/entities.ts';
+import {
+  type Entity,
+  typeEntity,
+  type VariableEntity,
+  type VariantEntity,
+} from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
 import type { Call, MemberAccess } from '../../syntax/expressions/index.ts';
 import { isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
-import type { Identifier } from '../../syntax/node.ts';
+import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Hold } from '../../syntax/statements.ts';
 import { nestsFunction, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
+import type { NamedType } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../denotation.ts';
 import { entityType } from '../resolution/named.ts';
-import type { FieldMember, Type } from '../types/type.ts';
+import { parameterType } from '../types/resolve-type.ts';
+import { type FieldMember, nominalType, type Type } from '../types/type.ts';
 import { ancestorsOf, bodyHolding } from './holders.ts';
 
 /** An identifier, where it stands, and the body holding it, if any. */
@@ -64,6 +75,7 @@ type NameHolder = Extract<
       | 'TemplateLiteral'
       | 'DeclaredField'
       | 'FieldDeclaration'
+      | 'NamedType'
       | 'FunctionDeclaration'
       | 'Hold';
   }
@@ -92,6 +104,8 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
       : undefined,
   DeclaredField: (site, node) => (site.name === node.name ? declaredField(site) : undefined),
   FieldDeclaration: (site, node) => (site.name === node.name ? declaredField(site) : undefined),
+  NamedType: (site, node) =>
+    site.name === lastName(node.path) ? writtenTypeName(site, node, site.holders[1]) : undefined,
   // An item's, a static's or a trait's function: a local function's name is a variable's.
   FunctionDeclaration: (site, node) =>
     site.name === node.name && site.body === undefined
@@ -156,7 +170,8 @@ function memberDenotations(
   if (holder?.kind === 'TemplateLiteral' && isTagged(holder) && holder.tag === access) {
     return calledAt(site, taggedCall(holder), undefined) ?? named(site);
   }
-  return calledAt(site, access, site.body?.typeOf(access)) ?? named(site);
+  const type = site.body?.typeOf(access);
+  return calledAt(site, access, type) ?? named(site, type);
 }
 
 /**
@@ -254,11 +269,29 @@ function requiredField(
     : fieldDenotation({ name: field.name.text, type, declared: { node: field, module, type } });
 }
 
-/** What the binder says `site`'s name denotes, refined by what the checker chose there. */
-function named(site: NameSite): readonly Denotation[] {
-  const { checker, module, name, body } = site;
+/**
+ * The last name of a written type: the type it resolved to; or, for a literal's, what the literal
+ * makes, a variant among them, with the literal's type.
+ */
+function writtenTypeName(
+  site: NameSite,
+  node: NamedType,
+  holder: SyntaxNode | undefined,
+): readonly Denotation[] {
+  const isLiteral =
+    (holder?.kind === 'StructLiteral' || holder?.kind === 'NewStructLiteral') &&
+    holder.type === node;
+  return named(site, isLiteral ? site.body?.typeOf(holder) : site.checker.resolvedTypeOf(node));
+}
+
+/**
+ * What the binder says `site`'s name denotes, refined by what the checker chose there; `type` is
+ * what the name has there, by default its own as an expression.
+ */
+function named(site: NameSite, type = site.body?.typeOf(site.name)): readonly Denotation[] {
+  const { checker, module, name } = site;
   const entity = checker.bindings.entityOf(module, name);
-  return entity === undefined ? [] : fromEntity(site, entity, body?.typeOf(name));
+  return entity === undefined ? [] : fromEntity(site, entity, type);
 }
 
 function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): readonly Denotation[] {
@@ -278,12 +311,12 @@ function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): rea
     case 'type':
     case 'primitive':
     case 'self':
-      return [{ declared: { kind: 'type', entity }, type: entityType(checker, entity) }];
+      return [{ declared: { kind: 'type', entity }, type: type ?? entityType(checker, entity) }];
     case 'variant':
-      return [{ declared: { kind: 'variant', entity }, type }];
+      return [variantDenotation(entity, type)];
     case 'variants': {
       const chosen = body?.chosenVariantOf(name);
-      return chosen === undefined ? [] : [{ declared: { kind: 'variant', entity: chosen }, type }];
+      return chosen === undefined ? [] : [variantDenotation(chosen, type)];
     }
     case 'namespace':
       return [{ declared: { kind: 'namespace', entity }, type: undefined }];
@@ -292,6 +325,20 @@ function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): rea
       return unhandled;
     }
   }
+}
+
+/**
+ * A variant, with its enum's type: the value's it makes where checking typed one as that enum,
+ * else the enum's own, as where checking failed.
+ */
+function variantDenotation(entity: VariantEntity, type: Type | undefined): Denotation {
+  const { enum: declaration } = entity;
+  const isItsEnum = type?.kind === 'nominal' && type.entity.declaration === declaration;
+  const own = typeParametersOf(declaration.typeParameters).map(parameterType);
+  return {
+    declared: { kind: 'variant', entity },
+    type: isItsEnum ? type : nominalType(typeEntity(declaration), own),
+  };
 }
 
 /**

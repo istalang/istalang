@@ -76,6 +76,52 @@ describe('hover', () => {
     ]);
   });
 
+  it('shows the arguments of a call being typed after a named argument', () => {
+    const connect = 'fn connect(host: string, port: int) -> int: port';
+    expect(hover(connect, 'fn f() -> int: connect(host: "x‸", po')?.code).toEqual(['string']);
+  });
+
+  it('shows a written type with its type arguments', () => {
+    const pair = ['struct Pair<A, B>:', '  first: A', '  second: B', ''];
+    expect(hover(...pair, 'fn f(p: Pa‸ir<int, string>) -> int: 1')?.code).toEqual([
+      '(type) Pair<int, string>',
+    ]);
+    expect(hover('fn f(p: (int‸, string)) -> int: 1')?.code).toEqual(['(int, string)']);
+    expect(hover('fn f(g: fn(int) ‸-> bool) -> int: 1')?.code).toEqual(['fn(int) -> bool']);
+  });
+
+  it("shows a variant's enum wherever the variant is named", () => {
+    const color = ['enum Color { Red; Green }', ''];
+    const shown = '(variant) Red: Color';
+    expect(hover('enum Color { R‸ed; Green }')?.code).toEqual([shown]);
+    expect(hover(...color, 'fn f() -> Color: Color.R‸ed')?.code).toEqual([shown]);
+    expect(
+      hover(
+        ...color,
+        'fn f(c: Color) -> int:',
+        '  match c:',
+        '    case R‸ed: 1',
+        '    case Green: 2',
+      )?.code,
+    ).toEqual([shown]);
+    const opt = ['enum Opt<T>:', '  Some { value: T }', '  None', ''];
+    expect(hover(...opt, 'fn f() -> Opt<int>: So‸me{value: 1}')?.code).toEqual([
+      '(variant) Some: Opt<int>',
+    ]);
+    expect(hover(...opt, 'fn f() -> Opt<int>: Opt.So‸me{value: 1}')?.code).toEqual([
+      '(variant) Some: Opt<int>',
+    ]);
+    expect(
+      hover(
+        ...opt,
+        'fn f(o: Opt<int>) -> int:',
+        '  match o:',
+        '    case So‸me{value}: value',
+        '    case None: 0',
+      )?.code,
+    ).toEqual(['(variant) Some: Opt<T>']);
+  });
+
   it('shows nothing where nothing has a type', () => {
     expect(hover('fn f() -> int:', '  le‸t x = 1', '  x')).toBeUndefined();
   });

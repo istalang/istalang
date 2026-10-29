@@ -21,8 +21,9 @@
  *
  * An argument written `&x` passes the place `x` by reference, which must be a place that may
  * change (calls/places.ts). A named argument fills the parameter of its name, and a spread a rest
- * parameter (§3.3, resolution/binding.ts). A call giving one by position after a named one was
- * reported by the parser, so it is left unchecked.
+ * parameter (§3.3, resolution/binding.ts). An argument given by position after a named one was
+ * reported by the parser, so it counts as the error type: the call still checks its arguments and
+ * records the candidates a tool shows while the call is being written, and reports nothing more.
  */
 
 import { staticName } from '../../../language/static-names.ts';
@@ -57,9 +58,7 @@ import { spreadArgumentType } from './collections.ts';
 import { recordFieldRead } from './structs.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
-  if (misplacedArgument(node.arguments) !== undefined) {
-    return errorType;
-  }
+  const misplaced = misplacedArgument(node.arguments);
   const call: WrittenCall = {
     node,
     expected,
@@ -67,7 +66,10 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
       node.typeArguments.length === 0
         ? undefined
         : node.typeArguments.map((argument) => context.resolveType(argument)),
-    written: node.arguments.map((argument) => writtenArgument(context, argument)),
+    written: node.arguments.map((argument) => {
+      const written = writtenArgument(context, argument);
+      return argument === misplaced ? { ...written, type: errorType } : written;
+    }),
   };
   const { callee } = node;
   if (node.isOptional) {
