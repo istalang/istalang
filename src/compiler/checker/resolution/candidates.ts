@@ -21,6 +21,8 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type { MemberAccess } from '../../syntax/expressions/index.ts';
+import { isPlace } from '../../syntax/expressions/places.ts';
 import type { CheckerContext, StaticOwner } from '../context.ts';
 import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
 import type { Type } from '../types/type.ts';
@@ -63,6 +65,21 @@ export function callCandidates(
     ...[...declarations].map((declaration) => ({ declaration })),
     ...requirementCandidates(checker, name, given),
   ];
+}
+
+/**
+ * The methods of `methods` a call through `callee`, a member access, may mean: one taking `&self`
+ * only when the access is a place (§3.7), since what it changes must be the caller's own. Whether
+ * that place may change is judged once one is chosen (calls/places.ts).
+ */
+export function callableThrough(
+  checker: Pick<CheckerContext, 'parametersOf'>,
+  callee: MemberAccess,
+  methods: readonly Candidate[],
+): readonly Candidate[] {
+  return isPlace(callee)
+    ? methods
+    : methods.filter(({ declaration }) => checker.parametersOf(declaration)[0]?.reference !== true);
 }
 
 /** The functions a top-level name denotes in `module`, the prelude's joined (§3.9, §3.13). */

@@ -37,13 +37,13 @@ import type {
   Expression,
   MemberAccess,
 } from '../../syntax/expressions/index.ts';
-import { isPlace } from '../../syntax/expressions/places.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
+  callableThrough,
   callCandidates,
   staticCandidates,
   staticTargetOf,
@@ -160,9 +160,7 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     recordFieldRead(context, callee, field);
     return checkValueCall(context, call, callee, field.member.type);
   }
-  const candidates = isPlace(callee)
-    ? methods
-    : methods.filter(({ declaration }) => checker.parametersOf(declaration)[0]?.reference !== true);
+  const candidates = callableThrough(checker, callee, methods);
   if (candidates.length === 0) {
     context.report(
       methods.length > 0
