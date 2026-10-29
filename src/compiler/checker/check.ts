@@ -45,7 +45,7 @@ import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-patte
 import type { ConstantForm } from './constant-form.ts';
 import type { LookupQueries } from './denotation.ts';
 import type { JsonFormQueries } from './json-form.ts';
-import { ProgramChecker } from './program-checker.ts';
+import { type CheckerOptions, ProgramChecker } from './program-checker.ts';
 import type {
   FunctionCall,
   ImplicitRole,
@@ -320,14 +320,23 @@ export interface Checker {
 
 const checkers = new WeakMap<Program, ProgramChecker>();
 
-/**
- * The checker of `program`, made once: every checker of one program answers alike. Made after
- * `previous`, the snapshot before it, it takes over the entries of `previous`'s checker, if one was
- * made, wherever what they read answers alike (incremental-checking.md §1).
- */
-export function checkProgram(program: Program, previous?: Program): Checker {
+/** What the checker of a program is made with, the first time it is asked for. */
+export interface CheckProgramOptions {
+  /**
+   * An earlier snapshot, whose checker's entries this one takes over, if that checker was made,
+   * wherever what they read answers alike (incremental-checking.md §1).
+   */
+  readonly previous?: Program | undefined;
+  readonly observe?: CheckerOptions['observe'];
+}
+
+/** The checker of `program`, made once: every checker of one program answers alike. */
+export function checkProgram(
+  program: Program,
+  { previous, observe }: CheckProgramOptions = {},
+): Checker {
   return memo(checkers, program, () => {
     const before = previous === undefined ? undefined : checkers.get(previous);
-    return new ProgramChecker(program, { previous: before });
+    return new ProgramChecker(program, { previous: before, observe });
   });
 }

@@ -275,7 +275,7 @@ describe('a checker made after an earlier one', () => {
       return;
     }
     diagnosticsOf(checkProgram(first), everyModule(first));
-    const after = checkProgram(second, first);
+    const after = checkProgram(second, { previous: first });
     const fresh = checkedApart(second);
     const own = ownModules(second);
     expect(diagnosticsOf(after, own)).toEqual(diagnosticsOf(fresh, own));

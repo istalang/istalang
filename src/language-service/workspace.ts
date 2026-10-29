@@ -14,7 +14,7 @@
  * that read syntax alone.
  */
 
-import { checkProgram } from '../compiler/checker/check.ts';
+import { type Checker, checkProgram } from '../compiler/checker/check.ts';
 import { diagnoseModule, type ModuleDiagnostics } from '../compiler/compile.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
@@ -29,14 +29,21 @@ export type OpenTexts = ReadonlyMap<ModuleId, string>;
 /** The program of a project with `open` laid over it, reusing what it can of `previous`. */
 export type ProgramLoader = (open: OpenTexts, previous: Program | undefined) => Program;
 
+/** Makes the checker of `program`, taking over what it can from `previous`'s (check.ts). */
+export type ProgramChecking = (program: Program, previous: Program | undefined) => Checker;
+
+const checkAfter: ProgramChecking = (program, previous) => checkProgram(program, { previous });
+
 export class Workspace {
   readonly #load: ProgramLoader;
+  readonly #check: ProgramChecking;
   #open: OpenTexts = new Map();
   #snapshot: { readonly open: OpenTexts; readonly program: Program } | undefined;
   readonly #ownTrees = new WeakMap<OpenTexts, Map<ModuleId, SyntaxTree>>();
 
-  constructor(load: ProgramLoader) {
+  constructor(load: ProgramLoader, check: ProgramChecking = checkAfter) {
     this.#load = load;
+    this.#check = check;
   }
 
   /** Opens a document, or replaces its text. */
@@ -64,7 +71,7 @@ export class Workspace {
     if (this.#snapshot?.open !== this.#open) {
       const previous = this.#snapshot?.program;
       const program = this.#load(this.#open, previous);
-      checkProgram(program, previous);
+      this.#check(program, previous);
       this.#snapshot = { open: this.#open, program };
     }
     return this.#snapshot.program;
