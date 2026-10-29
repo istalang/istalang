@@ -156,7 +156,7 @@ language · structures                   beneath every layer; they import nothin
   - Biome `noExcessiveLinesPerFile` enforces the 400-line limit.
   - Biome `noImportCycles` (project domain) forbids cycles.
   - dependency-cruiser enforces the layers as an allow-list over resolved paths (`.dependency-cruiser.mjs`), the checker's inner layers and its surface included. A layer not listed there can import nothing. Biome's import rules match specifiers, whose shape depends on directory depth, so they can't state an allow-list.
-  - npm packages may be imported by any layer. Node's built-ins only by apps (`cli/`, `lsp/`) and `project/`, which reads a project's files for both: the layers beneath reach files, processes and clocks through seams. The one exception is `crypto`, which is computation, not I/O: `definition/` hashes content with it, `runtime/` draws an instance's random values (`scheduler/random-source.ts`) and seeds a test's from its title (`testing/run-tests.ts`), and `stdlib/` implements the `crypto` module.
+  - npm packages may be imported by any layer. Node's built-ins only by apps (`cli/`, `lsp/`, `vscode-client/`) and `project/`, which reads a project's files for both: the layers beneath reach files, processes and clocks through seams. The one exception is `crypto`, which is computation, not I/O: `definition/` hashes content with it, `runtime/` draws an instance's random values (`scheduler/random-source.ts`) and seeds a test's from its title (`testing/run-tests.ts`), and `stdlib/` implements the `crypto` module.
 
 ## Phase contracts
 
