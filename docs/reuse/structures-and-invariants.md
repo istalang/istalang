@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, structures, memo, kind-table, invariants]
 ---
 
@@ -16,6 +16,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 - compute and cache a derived value once per key (including `undefined`) → `memo`, `MemoCache` (`src/structures/memo.ts`)
 - push an active item onto a work stack for the duration of a callback and pop in `finally` → `withPushed` (`src/structures/stack.ts`)
 - push an iterable onto an explicit stack without overflowing the JS call stack → `pushAll` (`src/structures/stack.ts`)
+- find the last of items kept in ascending order whose key is at most a value, by bisection → `lastIndexAtMost` (`src/structures/sorted.ts`)
 - find strongly connected components or test whether an edge lies on a cycle → `stronglyConnected`, `GraphEdge` (`src/structures/strongly-connected.ts`)
 - fail on a broken toolchain invariant → `unreachable`, `Unreachable` (`src/structures/unreachable.ts`)
 

@@ -14,6 +14,7 @@
  */
 
 import { memo } from '../structures/memo.ts';
+import { lastIndexAtMost } from '../structures/sorted.ts';
 import type { SourceText } from './source-text.ts';
 
 export interface Position {
@@ -103,15 +104,9 @@ export function lineMapOf(source: SourceText): LineMap {
 
 /** The position of `offset` among lines starting at `lineStarts` (ascending, the first at 0). */
 export function positionIn(lineStarts: readonly number[], offset: number): Position {
-  let low = 0;
-  let high = lineStarts.length - 1;
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-    if ((lineStarts[middle] ?? offset) <= offset) {
-      low = middle;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return { line: low, column: offset - (lineStarts[low] ?? 0) };
+  const line = Math.max(
+    lastIndexAtMost(lineStarts, (start) => start, offset),
+    0,
+  );
+  return { line, column: offset - (lineStarts[line] ?? 0) };
 }

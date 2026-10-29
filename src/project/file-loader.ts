@@ -55,12 +55,22 @@ export function locateFile(
     return;
   }
   return {
-    id: moduleIdOf(pathToFileURL(file)),
+    id: moduleIdOfFile(file),
     name: withoutExtension(relative(places.projectRoot, file).split(sep).join('/')),
     label: relative(places.cwd, file),
     isTest: isTestModulePath(file),
     read: () => files.read(file),
   };
+}
+
+/** The id of the module in `file`, an absolute path: its file's URL. */
+export function moduleIdOfFile(file: string): ModuleId {
+  return moduleIdOf(pathToFileURL(file));
+}
+
+/** The file holding the module `id`, an absolute path; `undefined` for a module that isn't a file. */
+export function fileOfModule(id: ModuleId): string | undefined {
+  return id.startsWith('file:') ? fileURLToPath(id) : undefined;
 }
 
 /** The file a path names, or `undefined` when it isn't in the toolchain's syntax. */
@@ -80,7 +90,8 @@ function filePathOf(path: string, importer: ModuleId, projectRoot: string): stri
 
 /** The directory of a module on disk; `undefined` for a module that isn't a file. */
 function directoryOf(id: ModuleId): string | undefined {
-  return id.startsWith('file:') ? dirname(fileURLToPath(id)) : undefined;
+  const file = fileOfModule(id);
+  return file === undefined ? undefined : dirname(file);
 }
 
 /** A path as an import names it: without the `.ista` it implies. A root may lack it. */
