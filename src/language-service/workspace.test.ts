@@ -1,22 +1,50 @@
 import { describe, expect, it } from 'vitest';
+import { checkProgram } from '../compiler/checker/check.ts';
+import { diagnoseModule } from '../compiler/compile.ts';
 import { type Files, idOf, programOf } from '../compiler/program/program.test-kit.ts';
 import type { Program } from '../compiler/program/program.ts';
+import type { FunctionDeclaration } from '../compiler/syntax/declarations.ts';
 import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
+import { memo } from '../structures/memo.ts';
+import { completionsAt } from './completion.ts';
+import { hoverAt } from './hover.ts';
 import { type OpenTexts, Workspace } from './workspace.ts';
 
-/** A workspace over `files` in memory, recording every program it is asked to load. */
+/** The program of `files`, with `open` laid over them, over the shipped std. */
+function stdProgramOf(files: Files, open: OpenTexts, previous: Program | undefined): Program {
+  const texts = Object.entries(files).map(([key, text]) => [key, open.get(idOf(key)) ?? text]);
+  return programOf(Object.fromEntries(texts), {
+    previous,
+    roles: stdRoles(),
+    loaders: [stdlibLoader()],
+  });
+}
+
+/**
+ * A workspace over `files` in memory, recording every program it is asked to load, every program
+ * it makes a checker for, and the bodies each of those checkers checks itself.
+ */
 function workspaceOver(files: Files) {
   const loads: { readonly open: OpenTexts; readonly previous: Program | undefined }[] = [];
-  const workspace = new Workspace((open, previous) => {
-    loads.push({ open, previous });
-    const texts = Object.entries(files).map(([key, text]) => [key, open.get(idOf(key)) ?? text]);
-    return programOf(Object.fromEntries(texts), {
-      previous,
-      roles: stdRoles(),
-      loaders: [stdlibLoader()],
-    });
-  });
-  return { workspace, loads };
+  const checked = new Map<Program, FunctionDeclaration[]>();
+  const workspace = new Workspace(
+    (open, previous) => {
+      loads.push({ open, previous });
+      return stdProgramOf(files, open, previous);
+    },
+    (program, previous) => {
+      const bodies = memo(checked, program, () => [] as FunctionDeclaration[]);
+      return checkProgram(program, {
+        previous,
+        observe: (table, key) => {
+          if (table === 'bodies') {
+            bodies.push(key as FunctionDeclaration);
+          }
+        },
+      });
+    },
+  );
+  return { workspace, loads, checked };
 }
 
 describe('a workspace', () => {
@@ -68,5 +96,42 @@ describe('a workspace', () => {
       'StructDeclaration',
     ]);
     expect(workspace.diagnosticsOf(untitled)).toBeUndefined();
+  });
+
+  describe('checking a burst of edits', () => {
+    const main = idOf('main');
+    const files = {
+      main: 'fn f() -> int: 1 + 0\n\nfn g() -> int: f() * 3\n\nfn h(x: int) -> int: "x"\n',
+    };
+    const edited = (digit: number) => files.main.replace('1 + 0', `1 + ${digit}`);
+    const bodyOffset = files.main.indexOf('1 + 0');
+
+    it('re-checks only the edited body, with features asked between the edits', () => {
+      const { workspace, checked } = workspaceOver(files);
+      workspace.diagnosticsOf(main);
+      for (const digit of [1, 2, 3]) {
+        workspace.write(main, edited(digit));
+        workspace.treeOf(main);
+        hoverAt(workspace.program, main, bodyOffset);
+        completionsAt(workspace.program, main, bodyOffset);
+      }
+      const diagnosed = workspace.diagnosticsOf(main);
+      const last = workspace.program;
+      const declarations = last.modules.get(main)?.tree.root.items;
+      expect(checked.get(last)).toEqual([declarations?.[0]]);
+      const fresh = stdProgramOf(files, new Map([[main, edited(3)]]), undefined);
+      expect(diagnosed?.diagnostics).toEqual(diagnoseModule(fresh, main).diagnostics);
+      expect(diagnosed?.diagnostics).toHaveLength(1);
+    });
+
+    it('makes no checker for a query that reads syntax alone', () => {
+      const { workspace, checked } = workspaceOver(files);
+      workspace.diagnosticsOf(main);
+      workspace.write(main, edited(1));
+      const tree = workspace.treeOf(main);
+      expect(checked).toHaveLength(1);
+      expect(workspace.program.modules.get(main)?.tree).toBe(tree);
+      expect(checked).toHaveLength(2);
+    });
   });
 });
