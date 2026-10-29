@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'PA-01',
+    place: 'pattern',
     title: 'Start of a case pattern',
     src: ['  match d:\n    case ‸', '  match d:\n    case Approved{by}: 1\n    case ‸'],
     expect: {
@@ -19,6 +20,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-02',
+    place: 'pattern',
     title: 'Variants already covered come last',
     src: ['  match d:\n    case Approved{by}: 1\n    case ‸'],
     expect: {
@@ -31,6 +33,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-03',
+    place: 'pattern',
     title: 'Pattern fields',
     src: [
       '  match d:\n    case Rejected{‸',
@@ -43,6 +46,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-03b',
+    place: 'pattern',
     title: 'Pattern fields after a comma, space typed',
     src: ['  match d:\n    case Rejected{reason as why, ‸}'],
     trigger: ' ',
@@ -51,6 +55,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-04',
+    place: 'pattern',
     title: 'After a pattern field',
     src: ['  match d:\n    case Rejected{reason ‸'],
     expect: { has: ['as', 'is'], lacks: ['xs', 'plus'] },
@@ -58,6 +63,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-05',
+    place: 'declaredName',
     title: 'After as in a pattern',
     src: ['  match d:\n    case Rejected{reason as ‸'],
     expect: { none: true },
@@ -65,6 +71,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-06',
+    place: 'pattern',
     title: 'After is in a pattern',
     src: ['  match d:\n    case Rejected{reason is ‸'],
     expect: { has: ['_'], lacks: ['xs', 'plus', 'let'] },
@@ -72,6 +79,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-06b',
+    place: 'grammar',
     title: 'After == in a pattern',
     src: ['  match d:\n    case Rejected{reason == ‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let'] },
@@ -79,6 +87,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-07',
+    place: 'pattern',
     title: 'is outside match',
     src: ['  if r is ‸', '  const k = o is ‸'],
     expect: { has: ['Ok', 'Err', '_'], lacks: ['xs', 'let', 'plus'] },
@@ -86,6 +95,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-08',
+    place: 'pattern',
     title: 'Fields of Ok/Some in is',
     src: ['  if r is Ok{‸', '  if o is Some{‸'],
     trigger: '{',
@@ -94,6 +104,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-09',
+    place: 'pattern',
     title: 'Alternatives and nesting',
     src: ['  match d:\n    case Approved{by} | ‸', '  match o:\n    case Some{value is ‸'],
     expect: { lacks: ['xs', 'let', 'plus'] },
@@ -101,6 +112,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-10',
+    place: 'member',
     title: 'Qualified variants in a pattern',
     src: ['  match d:\n    case Decision.‸', '  match col:\n    case Color.‸'],
     trigger: '.',
@@ -108,6 +120,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-11',
+    place: 'pattern',
     title: 'Literals, tuples, arrays, ranges',
     src: [
       '  match n:\n    case ‸',
@@ -119,6 +132,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-12',
+    place: 'grammar',
     title: 'Guard',
     src: ['  match d:\n    case Approved{by} if ‸', '  match n:\n    case x if ‸'],
     expect: { has: ['xs'], lacks: ['let'] },
@@ -126,6 +140,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-13',
+    place: 'grammar',
     title: 'Arm of a match after :',
     src: ['  match d:\n    case Expired: ‸'],
     expect: { has: ['xs'], lacks: ['struct', 'enum', 'trait', 'import', 'extern', 'case'] },

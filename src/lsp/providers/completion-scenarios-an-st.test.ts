@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'AN-01',
+    place: 'annotation',
     title: 'Annotation name before a declaration',
     src: ['@‸\nstruct S:\n  a: int', '@‸\nfn g(): 1'],
     trigger: '@',
@@ -18,6 +19,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'AN-02',
+    place: 'annotation',
     title: 'Annotation after a field',
     src: ['struct S:\n  a: int @‸'],
     trigger: '@',
@@ -27,6 +29,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'AN-03',
+    place: 'annotation',
     title: 'Annotation on a statement',
     src: ['  @‸\n  await fetch("a")'],
     trigger: '@',
@@ -36,6 +39,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'AN-04',
+    place: 'annotation',
     title: 'Annotation fields',
     src: ['@Waypoint{‸', 'struct D:\n  reason: string\n  code: int\n@D{‸'],
     trigger: '{',
@@ -45,6 +49,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'AN-05',
+    place: 'annotation',
     title: 'No annotation in expressions',
     src: ['  let x = @‸'],
     trigger: '@',
@@ -53,6 +58,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-01',
+    place: 'grammar',
     title: 'Blank line in a function body',
     src: ['  ‸', '  let y = 1\n  ‸', '  if n:\n    1\n  ‸x'],
     expect: {
@@ -97,12 +103,14 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-02',
+    place: 'grammar',
     title: 'elif and else after an if block',
     src: ['  if n:\n    1\n  ‸', '  if n:\n    1\n  elif o:\n    2\n  ‸'],
     expect: { has: ['else', 'elif'] },
   },
   {
     id: 'ST-03',
+    place: 'grammar',
     title: 'else is offered nowhere else',
     src: ['  while n:\n    1\n  ‸', '  if n:\n    1\n  else:\n    2\n  ‸'],
     expect: { lacks: ['else', 'elif'] },
@@ -110,6 +118,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-04',
+    place: 'grammar',
     title: 'Inside a match body',
     src: ['  match d:\n    ‸'],
     expect: { has: ['case'], lacks: ['xs', 'let', 'plus', 'if'] },
@@ -117,6 +126,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-05',
+    place: 'grammar',
     title: 'Inside a select body',
     src: ['  select:\n    ‸', '  select:\n    case work(1) as v: v\n    ‸'],
     where: 'async',
@@ -125,12 +135,14 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-06',
+    place: 'grammar',
     title: 'Loop-only and async-only keywords',
     src: ['  while n:\n    ‸', '  for i in xs:\n    ‸'],
     expect: { has: ['break', 'continue'] },
   },
   {
     id: 'ST-06b',
+    place: 'grammar',
     title: 'await only where it may stand',
     src: ['  ‸'],
     where: 'async',
@@ -138,6 +150,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-07',
+    place: 'declaredName',
     title: 'Declaring names after let, const, for, hold',
     src: [
       '  let ‸',
@@ -153,6 +166,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-08',
+    place: 'grammar',
     title: 'After for x',
     src: ['  for x ‸'],
     expect: { has: ['in'], lacks: ['xs', 'let', 'plus'] },
@@ -160,6 +174,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-09',
+    place: 'grammar',
     title: 'After the iterable and a range',
     src: ['  for i in 0..10 ‸', '  for i in xs ‸'],
     expect: { lacks: ['xs', 'let', 'plus'] },
@@ -167,6 +182,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-10',
+    place: 'grammar',
     title: 'Value of for, while, if, match, return, drop, defer',
     src: [
       '  for i in ‸',
@@ -202,6 +218,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-11',
+    place: 'grammar',
     title: 'break and continue labels',
     src: [
       '  outer: for i in xs:\n    for j in xs:\n      break ‸',
@@ -212,6 +229,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-12',
+    place: 'grammar',
     title: 'hold( label',
     src: ['  outer: for i in xs:\n    hold(‸'],
     expect: { exact: ['outer'] },
@@ -219,6 +237,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-13',
+    place: 'grammar',
     title: 'spawn',
     src: ['  spawn ‸'],
     expect: { has: ['work', 'fetch'], lacks: ['xs', 'p', 'let', 'if'] },
@@ -226,6 +245,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-15',
+    place: 'grammar',
     title: 'After ; and inside { } blocks',
     src: ['  const a = 1; ‸', '  const a = { const b = 1; ‸ }', '  if n: { ‸ }'],
     expect: {
@@ -236,6 +256,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-16',
+    place: 'grammar',
     title: 'One-line body',
     src: ['  if n: ‸', '  while n: ‸', '  for i in xs: ‸'],
     expect: {
@@ -246,6 +267,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ST-17',
+    place: 'grammar',
     title: 'Assignment target',
     src: ['  p.first = ‸', '  xs[0] = ‸', '  n += ‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let', 'while', 'case'] },

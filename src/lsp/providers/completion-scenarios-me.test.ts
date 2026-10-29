@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'ME-01',
+    place: 'member',
     title: 'Value members',
     src: ['  p.‸'],
     trigger: '.',
@@ -24,6 +25,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-02',
+    place: 'member',
     title: 'Type statics',
     src: ['  Pair.‸'],
     trigger: '.',
@@ -31,6 +33,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-03',
+    place: 'member',
     title: 'Enum variants',
     src: ['  Decision.‸'],
     trigger: '.',
@@ -46,6 +49,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-04',
+    place: 'member',
     title: 'Namespaces',
     src: ['  time.‸'],
     trigger: '.',
@@ -53,6 +57,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-05',
+    place: 'member',
     title: 'Optional chain on a non-optional',
     src: ['  p?.‸'],
     trigger: '.',
@@ -60,6 +65,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-05b',
+    place: 'member',
     title: 'Optional chain',
     src: ['  po?.‸'],
     trigger: '.',
@@ -67,6 +73,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-06',
+    place: 'member',
     title: 'Shared structs: fields by ->, methods by .',
     src: ['  l->‸'],
     trigger: '>',
@@ -74,6 +81,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-06b',
+    place: 'member',
     title: 'Shared struct by dot',
     src: ['  l.‸'],
     trigger: '.',
@@ -81,6 +89,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-07',
+    place: 'member',
     title: 'Chains',
     src: [
       '  cfg.note?.‸',
@@ -97,6 +106,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-07b',
+    place: 'member',
     title: 'Chain members, concrete',
     src: ['  Pair.make().‸', '  xs.slice(0, 1).‸'],
     trigger: '.',
@@ -104,6 +114,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-08',
+    place: 'member',
     title: 'Collections',
     src: ['  xs.‸', '  m.‸'],
     trigger: '.',
@@ -111,18 +122,21 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-09',
+    place: 'member',
     title: 'Typing on',
     src: ['  p.fi‸', '  p.‸first', '  p.fi‸rst'],
     expect: { has: ['first', 'second'], lacks: ['let', 'xs'] },
   },
   {
     id: 'ME-10',
+    place: 'member',
     title: 'A member spelled like a keyword',
     src: ['  xs.in‸', '  p.is‸', '  m.for‸'],
     expect: { lacks: ['let', 'xs'] },
   },
   {
     id: 'ME-11',
+    place: 'member',
     title: 'Line-leading dot',
     src: ['  xs\n    .‸', '  xs\n    .slice(0, 1)\n    .‸'],
     trigger: '.',
@@ -131,6 +145,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-12',
+    place: 'member',
     title: 'Unresolved receiver',
     src: ['  nope.‸', '  p.nothing.‸', '  nope()?.‸'],
     trigger: '.',
@@ -138,6 +153,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-13',
+    place: 'member',
     title: 'Tuples',
     src: ['  const tp = (1, "a")\n  tp.‸'],
     trigger: '.',
@@ -146,6 +162,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-14',
+    place: 'member',
     title: 'Integer literal before a dot',
     src: ['  1.‸'],
     trigger: '.',
@@ -154,6 +171,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-14b',
+    place: 'member',
     title: 'Float literal before a dot',
     src: ['  3.14.‸'],
     trigger: '.',
@@ -161,6 +179,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-15',
+    place: 'member',
     title: 'Statics through a type parameter',
     src: ['fn g<T is Zero>(x: T) -> int:\n  T.‸'],
     trigger: '.',
@@ -170,6 +189,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-16',
+    place: 'member',
     title: 'Generic statics',
     src: ['  Inbox.‸', '  Array.‸'],
     trigger: '.',
@@ -177,6 +197,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-18',
+    place: 'grammar',
     title: 'Comparison >',
     src: ['  let b = n >‸', '  let b = n >=‸'],
     trigger: '>',
@@ -184,6 +205,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'ME-19',
+    place: 'grammar',
     title: 'Dot after ..',
     src: ['  let r = 0..‸', '  let s = [...‸'],
     trigger: '.',

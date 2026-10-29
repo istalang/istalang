@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { completionsAt, memberCompletionsAt } from './completion.ts';
-import { programAt } from './language-service.test-kit.ts';
+import { programAt } from '../language-service.test-kit.ts';
+import { completionsAt } from './index.ts';
 
 function names(...lines: readonly string[]): readonly string[] {
   const { program, module, offset } = programAt(...lines);
@@ -167,9 +167,9 @@ describe('completion', () => {
     expect(offered).toEqual(expect.arrayContaining(['total', 'count', 'f', 'fn', 'while']));
   });
 
-  it('answers members alone only where a member is written', () => {
+  it("answers a typed `>` only where it writes a member's `->`", () => {
     const { program, module, offset } = programAt('fn f(a: int) -> bool: a >‸ 1');
-    expect(memberCompletionsAt(program, module, offset)).toBeUndefined();
+    expect(completionsAt(program, module, offset, '>')).toEqual([]);
   });
 
   it("doesn't offer a block's name before its declaration", () => {

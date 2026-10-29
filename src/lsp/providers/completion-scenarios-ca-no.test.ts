@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'CA-01',
+    place: 'callArgument',
     title: 'First argument',
     src: ['  plus(‸', '  p.sum(‸', '  xs.push(‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let', 'while'] },
@@ -16,6 +17,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-02',
+    place: 'callArgument',
     title: 'Named-argument items',
     src: ['  plus(‸'],
     expect: { insert: [['a:', 'a: ']], has: ['a:', 'b:'] },
@@ -23,6 +25,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-03',
+    place: 'callArgument',
     title: 'After a comma in a call',
     src: ['  plus(1, ‸', '  plus(1,‸'],
     trigger: ',',
@@ -31,6 +34,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-03b',
+    place: 'callArgument',
     title: 'After ,  in a call (space typed)',
     src: ['  plus(1, ‸'],
     trigger: ' ',
@@ -39,6 +43,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-04',
+    place: 'callArgument',
     title: 'After a named argument',
     src: ['  plus(b: 2, ‸'],
     expect: { has: ['a:'], lacks: ['b:'] },
@@ -46,6 +51,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-05',
+    place: 'grammar',
     title: 'Value after name: ',
     src: ['  plus(b: ‸'],
     trigger: ' ',
@@ -54,6 +60,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-06',
+    place: 'callArgument',
     title: 'Nested calls',
     src: ['  plus(plus(1, ‸), ', '  plus(plus(1), ‸'],
     trigger: ',',
@@ -62,6 +69,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-07',
+    place: 'callArgument',
     title: 'Function-value call',
     src: ['  const f = fn(q: int): q\n  f(‸'],
     expect: { has: ['xs'], lacks: ['q:', 'let'] },
@@ -69,6 +77,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-08',
+    place: 'callArgument',
     title: 'Rest and spread',
     src: ['  logAll("a", ‸'],
     expect: { has: ['...', 'xs'] },
@@ -76,6 +85,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-09',
+    place: 'grammar',
     title: 'Reference arguments',
     src: ['  let z = 1\n  bump(&‸'],
     expect: { has: ['z'], lacks: ['n'] },
@@ -83,6 +93,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-10',
+    place: 'callArgument',
     title: 'Conversions and generic calls',
     src: ['  float(‸', '  json.stringify(‸'],
     expect: { has: ['xs'], lacks: ['let'] },
@@ -90,6 +101,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-11',
+    place: 'grammar',
     title: 'Call result is complete',
     src: ['  plus(1)‸', '  plus(1) ‸'],
     expect: { lacks: ['xs', 'plus', 'let'] },
@@ -97,6 +109,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CA-12',
+    place: 'callArgument',
     title: 'Unresolved callee',
     src: ['  nope(‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let'] },
@@ -104,6 +117,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-01',
+    place: 'nothing',
     title: 'Inside a comment',
     src: ['  # note ‸', '  const a = 1  # use ‸', '# top ‸'],
     expect: { none: true },
@@ -111,6 +125,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-02',
+    place: 'nothing',
     title: 'Inside a string',
     src: ['  const s = "ab‸"', "  const s = 'ab‸'", '  const s = "ab‸', '  const s = "a\\n‸"'],
     expect: { none: true },
@@ -118,6 +133,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-03',
+    place: 'nothing',
     title: 'Inside a number',
     src: ['  const a = 12‸', '  const a = 0x1‸', '  const a = 1_‸', '  const a = 3.1‸'],
     expect: { none: true },
@@ -125,6 +141,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-05',
+    place: 'member',
     title: 'Dot where no member can stand',
     src: ['  1 + p.‸', '  nope.‸', '  "a" .‸'],
     trigger: '.',
@@ -132,6 +149,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-06',
+    place: ['grammar', 'declaredName', 'grammar', 'declaredName'],
     title: 'Triggers outside their positions',
     src: ['  const a = [1, ‸', '  const f = fn(a, ‸', '  struct S { a: int, ‸', 'fn g(a: int, ‸'],
     trigger: ',',
@@ -139,6 +157,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-07',
+    place: 'grammar',
     title: 'After a closing bracket, adjacent',
     src: ['  plus(1)‸', '  xs[0]‸', '  [1]‸'],
     expect: { lacks: ['xs', 'plus', 'let'] },
@@ -146,6 +165,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-08',
+    place: 'grammar',
     title: 'Space trigger elsewhere',
     src: ['  const a = 1 ‸', '  if n: ‸', '  return ‸', 'fn g() ‸'],
     trigger: ' ',
@@ -154,6 +174,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-09',
+    place: 'grammar',
     title: 'Block-opening colon',
     src: ['  if n:‸', 'fn g():‸'],
     trigger: ':',

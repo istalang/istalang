@@ -6,13 +6,13 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { invalidPrograms, runPrograms } from '../../test/corpus/programs.ts';
-import { checkProgram } from '../compiler/checker/check.ts';
-import type { FieldsLiteral } from '../compiler/syntax/expressions/index.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
-import { nodesUnder } from '../compiler/syntax/tree.ts';
-import { fieldCompletionsAt } from './completion.ts';
-import { type MainProgram, mainProgram } from './language-service.test-kit.ts';
+import { invalidPrograms, runPrograms } from '../../../../test/corpus/programs.ts';
+import { checkProgram } from '../../../compiler/checker/check.ts';
+import type { FieldsLiteral } from '../../../compiler/syntax/expressions/index.ts';
+import { spanIn } from '../../../compiler/syntax/positions.ts';
+import { nodesUnder } from '../../../compiler/syntax/tree.ts';
+import { type MainProgram, mainProgram } from '../../language-service.test-kit.ts';
+import { completionsAt } from '../index.ts';
 
 /** A field unknown to the literal's type (5013), one left without a value (5014), or one given twice (5015). */
 const fieldMistakes = new Set([5013, 5014, 5015]);
@@ -33,7 +33,7 @@ function fieldMistakesOf({ main, literal }: LiteralSite): readonly number[] {
   const open = text.indexOf('{', spanIn(tree, literal.type.span).end) + 1;
   const close = end - 1;
   const emptied = mainProgram(`${text.slice(0, open)}${text.slice(close)}`);
-  const offered = fieldCompletionsAt(emptied.program, emptied.module, open) ?? [];
+  const offered = completionsAt(emptied.program, emptied.module, open, '{');
   const items = offered.map(({ name }) => `${name}: panic("")`).join(', ');
   const probed = mainProgram(`${text.slice(0, open)}${items}${text.slice(close)}`);
   const probedEnd = open + items.length + 1;

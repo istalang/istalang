@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'SC-01',
+    place: 'grammar',
     title: 'Parameters',
     src: ['  ‸'],
     expect: {
@@ -18,42 +19,49 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SC-02',
+    place: 'grammar',
     title: 'Locals declared above',
     src: ['  let a = 1\n  const b = 2\n  const (c, d2) = (1, 2)\n  ‸'],
     expect: { has: ['a', 'b', 'c', 'd2'] },
   },
   {
     id: 'SC-03',
+    place: 'grammar',
     title: 'Locals declared below',
     src: ['  ‸\n  let later = 1\n  later'],
     expect: { lacks: ['later'] },
   },
   {
     id: 'SC-04',
+    place: 'grammar',
     title: 'The variable being declared',
     src: ['  let y = ‸', '  const y = 1 + ‸'],
     expect: { lacks: ['y'] },
   },
   {
     id: 'SC-05',
+    place: 'grammar',
     title: 'After a nested block ends',
     src: ['  if n:\n    let inner = 1\n  ‸', '  { const inner = 1 }\n  ‸'],
     expect: { lacks: ['inner'] },
   },
   {
     id: 'SC-06',
+    place: 'grammar',
     title: 'Loop variable',
     src: ['  for i in xs:\n    ‸\n    1', '  for k, v in m:\n    ‸\n    1'],
     expect: { anyOf: ['i', 'k'] },
   },
   {
     id: 'SC-06b',
+    place: 'grammar',
     title: 'Loop variable after the loop',
     src: ['  for i in xs:\n    1\n  ‸'],
     expect: { lacks: ['i'] },
   },
   {
     id: 'SC-07',
+    place: 'grammar',
     title: 'Loop variable in its own iterable',
     src: ['  for i in ‸'],
     expect: { lacks: ['i'] },
@@ -61,18 +69,21 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SC-08',
+    place: 'grammar',
     title: 'Lambda parameters',
     src: ['  const f = fn(q): ‸', '  const f = fn q: ‸', '  const f = fn(q: int): { ‸ }'],
     expect: { has: ['q'] },
   },
   {
     id: 'SC-08b',
+    place: 'grammar',
     title: 'Lambda parameter outside',
     src: ['  const f = fn(q): q\n  ‸'],
     expect: { lacks: ['q'] },
   },
   {
     id: 'SC-09',
+    place: 'grammar',
     title: 'Match arm bindings',
     src: [
       '  match d:\n    case Approved{by}: ‸',
@@ -83,30 +94,35 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SC-09b',
+    place: 'grammar',
     title: 'Arm bindings stay in their arm',
     src: ['  match d:\n    case Approved{by}: 1\n    case Expired: ‸'],
     expect: { lacks: ['by'] },
   },
   {
     id: 'SC-10',
+    place: 'grammar',
     title: "Guard sees the arm's bindings",
     src: ['  match d:\n    case Rejected{reason as why} if ‸'],
     expect: { has: ['why'], lacks: ['reason'] },
   },
   {
     id: 'SC-11',
+    place: 'grammar',
     title: 'is binds on the right of and and in the body',
     src: ['  if r is Ok{value as y} and ‸', '  if r is Ok{value as y}:\n    ‸\n    1'],
     expect: { has: ['y'] },
   },
   {
     id: 'SC-11b',
+    place: 'grammar',
     title: 'is bindings are not there after or, or in else',
     src: ['  if r is Ok{value as y} or ‸', '  if r is Ok{value as y}:\n    1\n  else:\n    ‸'],
     expect: { lacks: ['y'] },
   },
   {
     id: 'SC-12',
+    place: 'grammar',
     title: 'Top-level names in any order',
     src: ['  ‸'],
     expect: {
@@ -128,25 +144,35 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SC-12b',
+    place: 'grammar',
     title: 'Declared below',
     src: ['  ‸\nfn later() -> int: 1\nstruct Late { a: int }'],
     expect: { has: ['later', 'Late'] },
   },
   {
     id: 'SC-13',
+    place: 'grammar',
     title: 'Local functions are not hoisted',
     src: ['  ‸\n  fn inner() -> int: 1'],
     expect: { lacks: ['inner'] },
   },
   {
     id: 'SC-13b',
+    place: 'grammar',
     title: 'Local functions below their declaration',
     src: ['  fn inner() -> int: 1\n  ‸'],
     expect: { has: ['inner'] },
   },
-  { id: 'SC-14', title: 'Own private names', src: ['  ‸'], expect: { has: ['_hidden'] } },
+  {
+    id: 'SC-14',
+    place: 'grammar',
+    title: 'Own private names',
+    src: ['  ‸'],
+    expect: { has: ['_hidden'] },
+  },
   {
     id: 'SC-14b',
+    place: 'member',
     title: "Other modules' private names",
     src: ['  time.‸'],
     trigger: '.',
@@ -154,18 +180,21 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SC-15',
+    place: 'grammar',
     title: 'Prelude and namespaces',
     src: ['  ‸'],
     expect: { has: ['Some', 'None', 'Ok', 'Err', 'panic', 'Array', 'Optional', 'Result', 'time'] },
   },
   {
     id: 'SC-16',
+    place: 'grammar',
     title: 'One entry per name',
     src: ['  const xs = [1]\n  ‸'],
     expect: { unique: true },
   },
   {
     id: 'SC-17',
+    place: 'grammar',
     title: 'self',
     src: ['fn Pair.double(self: Pair) -> int:\n  ‸'],
     where: 'top',
@@ -174,6 +203,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SC-18',
+    place: 'grammar',
     title: 'Type parameters as values',
     src: ['fn g<T>(x: T) -> int:\n  ‸'],
     where: 'top',
@@ -182,6 +212,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SC-19',
+    place: 'grammar',
     title: "Other functions' locals and parameters",
     src: ['fn other(zzz: int) -> int:\n  let qqq = 1\n  qqq\nfn g() -> int:\n  ‸'],
     where: 'top',
@@ -190,18 +221,21 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SC-20',
+    place: 'grammar',
     title: 'Comprehension variable',
     src: ['  const e = [for x in xs: ‸', '  const e = [for x in xs if ‸'],
     expect: { has: ['x'] },
   },
   {
     id: 'SC-21',
+    place: 'grammar',
     title: 'hold let',
     src: ['  hold let pending = 0\n  ‸'],
     expect: { has: ['pending'] },
   },
   {
     id: 'SC-22',
+    place: 'grammar',
     title: 'Imports in scope',
     src: ["import delay from 'time'\nfn g():\n  ‸", "import * as tm from 'time'\nfn g():\n  ‸"],
     where: 'top',

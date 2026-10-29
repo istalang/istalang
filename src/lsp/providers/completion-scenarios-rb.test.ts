@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'RB-01',
+    place: 'grammar',
     title: 'Empty function body at the end of the file',
     src: ['fn g(a: int):\n  ‸'],
     where: 'top',
@@ -17,6 +18,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-02',
+    place: 'grammar',
     title: 'Empty block in the middle',
     src: [
       '  if n:\n    ‸\n  0',
@@ -27,6 +29,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-02b',
+    place: 'grammar',
     title: 'Bindings in a freshly opened block',
     src: ['  for i in xs:\n    ‸\n  0', '  if r is Ok{value as y}:\n    ‸\n  0'],
     expect: { anyOf: ['i', 'y'] },
@@ -34,6 +37,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-03',
+    place: 'member',
     title: 'Trailing dot with code below',
     src: ['  p.‸\n  let y = 1\n  y', '  xs.‸\n  return 1'],
     trigger: '.',
@@ -41,6 +45,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-04',
+    place: 'literalField',
     title: 'Unclosed literal with code below',
     src: ['  Pair{first: 1, ‸\n  return 1'],
     trigger: ',',
@@ -48,6 +53,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-04b',
+    place: 'callArgument',
     title: 'Unclosed call with code below',
     src: ['  plus(1, ‸\n  return 1'],
     trigger: ',',
@@ -56,6 +62,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-05',
+    place: 'member',
     title: 'Errors elsewhere',
     src: [
       'fn broken(:\n  1\n\nfn g(xs: Array<int>) -> int:\n  xs.‸\n  0',
@@ -68,6 +75,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-06',
+    place: 'member',
     title: 'A type error in the same function',
     src: ['  const bad: string = 1\n  p.‸'],
     trigger: '.',
@@ -75,6 +83,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-07',
+    place: 'grammar',
     title: 'Empty file',
     src: ['‸'],
     where: 'empty',
@@ -83,6 +92,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-08',
+    place: 'member',
     title: 'Non-BMP characters before the cursor',
     src: ['  const s = "😀"; p.‸'],
     trigger: '.',
@@ -90,6 +100,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'RB-09',
+    place: 'member',
     title: 'CRLF line endings',
     src: ['  p.‸\n  0'],
     trigger: '.',

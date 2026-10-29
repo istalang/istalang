@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'LI-01',
+    place: 'literalField',
     title: 'Field names after {',
     src: ['  Pair{‸}', '  Pair{‸', '  Pair{ ‸'],
     trigger: '{',
@@ -21,6 +22,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-01b',
+    place: 'literalField',
     title: 'Field names after {, invoked',
     src: ['  Pair{‸}', '  Pair{fi‸}', '  Pair{ ‸ }'],
     expect: {
@@ -32,6 +34,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-02',
+    place: 'literalField',
     title: 'Fields after a comma',
     src: ['  Pair{first: 1, ‸}', '  Pair{first: 1,‸}'],
     trigger: ',',
@@ -40,6 +43,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-03',
+    place: 'literalField',
     title: 'Fields after ,  (space typed)',
     src: ['  Pair{first: 1, ‸}'],
     trigger: ' ',
@@ -48,6 +52,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-04',
+    place: 'literalField',
     title: 'Fields after {  (space typed)',
     src: ['  Pair{ ‸}'],
     trigger: ' ',
@@ -56,12 +61,14 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-05',
+    place: 'literalField',
     title: 'Typing on after a comma',
     src: ['  Pair{first: 1, s‸}', '  Pair{first: 1, ‸s}'],
     expect: { exact: ['second'] },
   },
   {
     id: 'LI-06',
+    place: 'literalField',
     title: 'Fields on a continuation line',
     src: [
       '  Pair{\n    first: 1,\n    ‸\n  }',
@@ -72,6 +79,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-07',
+    place: 'grammar',
     title: 'Value after field: ',
     src: ['  Pair{first: ‸}', '  Pair{second: 1, first: ‸}'],
     trigger: ' ',
@@ -80,6 +88,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-08',
+    place: 'literalField',
     title: 'Every field given',
     src: ['  Pair{first: 1, second: 2, ‸}', '  Pair{first: 1, second: 2,‸}'],
     trigger: ',',
@@ -87,6 +96,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-09',
+    place: 'literalField',
     title: 'Single-field struct: field or positional value',
     src: ['  UserId{‸}', '  const e: Result<int> = Ok{‸}'],
     trigger: '{',
@@ -94,6 +104,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-10',
+    place: 'literalField',
     title: 'Shorthand',
     src: ['  const first = 1\n  Pair{‸}', '  const first = 1\n  Pair{fi‸}'],
     expect: { insertTexts: [['first', ['first', 'first: ']]] },
@@ -101,6 +112,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-11',
+    place: 'grammar',
     title: 'Spread value',
     src: ['  Pair{...‸}'],
     expect: { has: ['p'], within: { labels: ['p'], k: 3 } },
@@ -108,6 +120,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-11b',
+    place: 'literalField',
     title: 'Fields after a spread',
     src: ['  Pair{...p, ‸}'],
     trigger: ',',
@@ -115,6 +128,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-12',
+    place: 'literalField',
     title: 'Spread as an item',
     src: ['  Pair{‸}'],
     trigger: '{',
@@ -123,6 +137,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-13',
+    place: 'literalField',
     title: 'Variant literals',
     src: [
       '  Decision.Rejected{‸}',
@@ -134,6 +149,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-14',
+    place: 'literalField',
     title: 'Optional and Result',
     src: ['  const e: Optional<int> = Some{‸}', '  const e: Result<int> = Err{‸}'],
     trigger: '{',
@@ -141,6 +157,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-15',
+    place: 'literalField',
     title: 'Shared struct',
     src: ['  new Lease{‸}', '  new Lease{name: "a", ‸}'],
     trigger: '{',
@@ -148,6 +165,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-16',
+    place: 'literalField',
     title: 'Defaults rank after required fields',
     src: ['  Opts{‸}'],
     expect: { before: [['zeta', 'alpha']] },
@@ -155,18 +173,21 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-17',
+    place: 'literalField',
     title: 'Nested literals',
     src: ['  Cfg{color: Color.Red, n: Pair{‸}}', '  Cfg{color: Color.Red, n: Pair{first: 1, ‸}}'],
     expect: { lacks: ['color', 'note'], has: ['second'] },
   },
   {
     id: 'LI-18',
+    place: 'literalField',
     title: 'Literal as an argument or element',
     src: ['  paint(Color.Red, Pair{‸}.first)', '  const a = [Pair{first: 1, ‸}]'],
     expect: { has: ['second'] },
   },
   {
     id: 'LI-19',
+    place: 'literalField',
     title: 'Generic struct',
     src: ['  Box<int>{‸}'],
     trigger: '{',
@@ -174,6 +195,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-19b',
+    place: 'literalField',
     title: 'Generic struct by expected type',
     src: ['  const b: Box<string> = Box{‸}'],
     trigger: '{',
@@ -181,6 +203,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-20',
+    place: 'literalField',
     title: 'Anonymous struct literal',
     src: ['  struct{‸}', '  const b: { sku: string; qty: int } = struct{‸}', '  struct{...p, ‸}'],
     trigger: '{',
@@ -188,6 +211,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-21',
+    place: 'literalField',
     title: 'Struct without fields',
     src: ['struct Marker\nfn g() -> int:\n  Marker{‸}\n  0'],
     trigger: '{',
@@ -196,12 +220,14 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-22',
+    place: 'literalField',
     title: 'Mid-word',
     src: ['  Pair{fi‸rst: 1}', '  Pair{first: 1, se‸cond: 2}'],
     expect: { has: ['second'], lacks: ['xs', 'plus'] },
   },
   {
     id: 'LI-23',
+    place: ['grammar', 'declaredName'],
     title: 'Not a literal: block, declaration braces',
     src: ['  const x = { ‸ }', 'struct S { ‸ }'],
     trigger: '{',
@@ -209,6 +235,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'LI-24',
+    place: 'literalField',
     title: 'Unknown type',
     src: ['  Nope{‸}', '  Nope{a: 1, ‸}'],
     trigger: '{',

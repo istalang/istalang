@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -39,6 +39,10 @@ tags: [reuse, language, modules, program, binder, names]
 - find what a name denotes and where each is declared, or what references and rename act on → `nameAt`, `declarationsOf`, `isSamePlace`, `NamePlace` (`src/language-service/navigation/declarations.ts`)
 - list every name of a program denoting a declaration, binder entities, fields, methods and statics alike (the one index of uses, per Program) → `namesDenoting`, `referencesAt` (`src/language-service/navigation/references.ts`)
 - rename a declaration across a program, or learn why it is refused → `renamingAt`, `renameEdits` (`src/language-service/navigation/rename.ts`)
+- read what an editor's cursor is writing: the name there, the token before it, and whether space parts them → `cursorAt`, `touchingBefore`, `Cursor` (`src/language-service/completion/cursor.ts`)
+- tell what the grammar admits at a cursor (a type, a declared name, a pattern, a call's argument, a member…) → `placeAt`, `Place` (`src/language-service/completion/place.ts`), which reads all but members and literal fields from a parse with a placeholder name there (`parsedPlaceAt`, `placeholder.ts`)
+- offer the names visible at a cursor and every keyword, as completion candidates → `visibleCandidates` (`src/language-service/completion/visible.ts`)
+- turn completion candidates into items, or an item into an LSP item → `present` (`src/language-service/completion/present.ts`), `completionItem` (`src/lsp/providers/completion.ts`)
 - read an LSP request's position as a module and offset, or write a name's place as an LSP location → `documentOffset`, `locationOf`, `rangeOf` (`src/lsp/locations.ts`)
 - get a module of a program, its tree and the program's checker, for an editor feature reading types → `checkedModule` (`src/language-service/checked-module.ts`)
 - find the module a namespace import loaded → `importedModule` (`src/language-service/namespaces.ts`)

@@ -6,15 +6,15 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { invalidPrograms, runPrograms } from '../../test/corpus/programs.ts';
-import { checkProgram } from '../compiler/checker/check.ts';
-import type { Program } from '../compiler/program/program.ts';
-import { isMethod } from '../compiler/syntax/declarations.ts';
-import type { MemberAccess } from '../compiler/syntax/expressions/index.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
-import { nodesAt, nodesUnder, parentOf } from '../compiler/syntax/tree.ts';
-import { completionsAt } from './completion.ts';
-import { type MainProgram, mainProgram, programAt } from './language-service.test-kit.ts';
+import { invalidPrograms, runPrograms } from '../../../../test/corpus/programs.ts';
+import { checkProgram } from '../../../compiler/checker/check.ts';
+import type { Program } from '../../../compiler/program/program.ts';
+import { isMethod } from '../../../compiler/syntax/declarations.ts';
+import type { MemberAccess } from '../../../compiler/syntax/expressions/index.ts';
+import { spanIn } from '../../../compiler/syntax/positions.ts';
+import { nodesAt, nodesUnder, parentOf } from '../../../compiler/syntax/tree.ts';
+import { type MainProgram, mainProgram, programAt } from '../../language-service.test-kit.ts';
+import { completionsAt } from '../index.ts';
 
 /**
  * What a call taking its receiver reports when its arguments, each `panic("")`, decide nothing:

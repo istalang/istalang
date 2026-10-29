@@ -9,6 +9,16 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'EX-01',
+    place: [
+      'grammar',
+      'grammar',
+      'grammar',
+      'grammar',
+      'grammar',
+      'grammar',
+      'grammar',
+      'callArgument',
+    ],
     title: 'Where an expression starts',
     src: [
       '  let x = ‸',
@@ -50,6 +60,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'EX-02',
+    place: 'grammar',
     title: 'After a complete operand',
     src: [
       '  let x = n ‸',
@@ -66,6 +77,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'EX-03',
+    place: 'grammar',
     title: 'After and, or, is, in, ??, ..',
     src: [
       '  let x = n and ‸',
@@ -80,6 +92,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'EX-04',
+    place: 'grammar',
     title: 'After await',
     src: ['  let x = await ‸'],
     where: 'async',
@@ -88,12 +101,14 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'EX-05',
+    place: 'grammar',
     title: 'After * and &',
     src: ['  let x = *‸', '  let y = plus(&‸'],
     expect: { has: ['l'] },
   },
   {
     id: 'EX-06',
+    place: 'grammar',
     title: 'Inside a block expression',
     src: ['  const a = { const b = 1; b + ‸ }'],
     expect: { has: ['b', 'xs'], lacks: ['let'] },
@@ -101,6 +116,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'EX-07',
+    place: 'grammar',
     title: 'Named lambda sees itself',
     src: ['  const fact = fn f(n: int) -> int: ‸'],
     expect: { has: ['f', 'n'] },

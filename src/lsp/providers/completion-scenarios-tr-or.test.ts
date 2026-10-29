@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'TR-01',
+    place: 'member',
     title: 'Members open on .',
     src: ['  p.‸'],
     trigger: '.',
@@ -16,6 +17,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-02',
+    place: 'member',
     title: 'Members open on the > of ->',
     src: ['  l->‸'],
     trigger: '>',
@@ -23,6 +25,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-03',
+    place: 'literalField',
     title: 'Fields open on { in a literal',
     src: ['  Pair{‸}'],
     trigger: '{',
@@ -30,6 +33,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-04',
+    place: 'literalField',
     title: 'Fields open on , in a literal',
     src: ['  Pair{first: 1,‸}'],
     trigger: ',',
@@ -37,6 +41,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-05',
+    place: 'literalField',
     title: '…and stay open when the space is typed',
     src: ['  Pair{first: 1, ‸}'],
     trigger: ' ',
@@ -45,6 +50,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-06',
+    place: 'grammar',
     title: 'Declared trigger characters',
     src: ['  ‸'],
     expect: { triggers: ['.', '>', '{', ',', ' ', '@', "'", '"', '/'] },
@@ -52,6 +58,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-07',
+    place: 'literalField',
     title: 'Invoked and trigger lists agree',
     src: [{ src: '  Pair{‸}' }, { src: '  Pair{‸}', trigger: '{' }],
     same: true,
@@ -59,6 +66,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-07b',
+    place: 'literalField',
     title: 'Invoked and trigger lists agree after a comma',
     src: [{ src: '  Pair{first: 1, ‸}' }, { src: '  Pair{first: 1,‸}', trigger: ',' }],
     same: true,
@@ -66,6 +74,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-08',
+    place: 'member',
     title: 'The list does not depend on the typed prefix',
     src: ['  p.‸', '  p.f‸', '  p.first‸'],
     same: true,
@@ -73,6 +82,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-08b',
+    place: 'literalField',
     title: 'Prefix independence in a literal',
     src: ['  Pair{first: 1, ‸}', '  Pair{first: 1, s‸}', '  Pair{first: 1, zzz‸}'],
     same: true,
@@ -80,6 +90,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-09',
+    place: 'literalField',
     title: 'Accepting a field re-opens a list',
     src: ['  Pair{‸}'],
     trigger: '{',
@@ -88,6 +99,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-10',
+    place: 'callArgument',
     title: 'Accepting a named argument re-opens a list',
     src: ['  plus(‸'],
     expect: { retrigger: ['a:'], has: ['a:'] },
@@ -95,6 +107,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-11',
+    place: 'member',
     title: 'Accepting a method opens signature help',
     src: ['  p.‸'],
     trigger: '.',
@@ -103,6 +116,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TR-12',
+    place: 'grammar',
     title: 'Commit characters',
     src: ['  Pair‸'],
     expect: { commit: [['time', '.']] },
@@ -110,6 +124,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'OR-01',
+    place: 'grammar',
     title: 'Names rank by nearness',
     src: ['  const loc = 1\n  ‸'],
     expect: {
@@ -126,6 +141,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'OR-02',
+    place: 'member',
     title: 'Members rank fields first, then methods',
     src: ['  p.‸'],
     trigger: '.',
@@ -133,6 +149,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'OR-03',
+    place: 'grammar',
     title: 'Kinds',
     src: ['  ‸'],
     expect: {
@@ -149,6 +166,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'OR-04',
+    place: 'grammar',
     title: 'Detail',
     src: ['  ‸'],
     expect: {
@@ -161,13 +179,27 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'OR-05',
+    place: 'grammar',
     title: 'Function insert text',
     src: ['  ‸'],
     expect: { insert: [['plus', 'plus($0)']] },
     fails: true,
   },
-  { id: 'OR-06', title: 'Docs on resolve', src: ['  ‸'], expect: { docs: true }, fails: true },
-  { id: 'OR-07', title: 'One entry per name', src: ['  ‸', '  p.‸'], expect: { unique: true } },
+  {
+    id: 'OR-06',
+    place: 'grammar',
+    title: 'Docs on resolve',
+    src: ['  ‸'],
+    expect: { docs: true },
+    fails: true,
+  },
+  {
+    id: 'OR-07',
+    place: ['grammar', 'member'],
+    title: 'One entry per name',
+    src: ['  ‸', '  p.‸'],
+    expect: { unique: true },
+  },
 ];
 
 describeScenarios('completion scenarios TR, OR', scenarios);

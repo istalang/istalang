@@ -6,7 +6,7 @@ import type { Program } from '../compiler/program/program.ts';
 import type { FunctionDeclaration } from '../compiler/syntax/declarations.ts';
 import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { memo } from '../structures/memo.ts';
-import { completionsAt } from './completion.ts';
+import { completionsAt } from './completion/index.ts';
 import { hoverAt } from './hover.ts';
 import { type OpenTexts, Workspace } from './workspace.ts';
 

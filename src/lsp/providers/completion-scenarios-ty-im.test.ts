@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'TY-01',
+    place: 'type',
     title: 'Parameter type',
     src: ['fn g(a: ‸', 'fn g(a: int, b: ‸'],
     where: 'top',
@@ -32,6 +33,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-02',
+    place: 'type',
     title: 'Return type',
     src: ['fn g() -> ‸', 'async fn g() -> ‸'],
     where: 'top',
@@ -40,6 +42,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-02b',
+    place: 'type',
     title: 'Return type, opened by typing > of ->',
     src: ['fn g() ->‸'],
     trigger: '>',
@@ -49,6 +52,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-03',
+    place: 'type',
     title: 'Annotated local',
     src: ['  let x: ‸', '  const x: ‸'],
     expect: { has: ['int', 'Pair', 'Array'], lacks: ['xs', 'plus', 'let', 'Red'] },
@@ -56,6 +60,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-04',
+    place: 'type',
     title: 'Struct field type',
     src: ['struct S:\n  a: ‸', 'struct S { a: int; b: ‸'],
     where: 'top',
@@ -64,6 +69,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-05',
+    place: 'type',
     title: 'Type argument',
     src: ['  let x: Array<‸', '  let x: Map<string, ‸', '  let x: Map<‸'],
     expect: { has: ['int', 'Pair', 'Array'], lacks: ['xs', 'plus', 'let'] },
@@ -71,6 +77,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-06',
+    place: 'type',
     title: 'Tuple, optional and function types',
     src: [
       '  let x: (int, ‸',
@@ -83,6 +90,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-07',
+    place: 'type',
     title: 'Anonymous struct type',
     src: ['  let x: { sku: ‸', '  let x: struct { sku: ‸', '  let x: Array<{ sku: string; qty: ‸'],
     expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
@@ -90,6 +98,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-08',
+    place: 'type',
     title: 'Type parameters in scope',
     src: ['fn g<T>(x: ‸', 'fn g<A, B>(x: A) -> ‸', 'struct Box2<T>:\n  v: ‸'],
     where: 'top',
@@ -97,6 +106,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-09',
+    place: 'type',
     title: 'Type parameters out of scope',
     src: ['fn g<T>(x: T) -> int: 1\nfn h(x: ‸'],
     where: 'top',
@@ -104,6 +114,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-10',
+    place: ['type', 'grammar'],
     title: 'Type parameter in the body of a generic',
     src: ['fn g<T>(x: T) -> int:\n  let y: ‸', 'fn g<T>(x: T) -> int:\n  let y = ‸'],
     where: 'top',
@@ -111,6 +122,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-11',
+    place: 'member',
     title: 'Qualified type',
     src: ['fn g(a: time.‸', '  let x: time.‸'],
     trigger: '.',
@@ -120,6 +132,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-12',
+    place: 'type',
     title: 'Alias target',
     src: ['type Other = ‸'],
     where: 'top',
@@ -128,6 +141,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-13',
+    place: 'type',
     title: 'Trait object',
     src: ['fn g(a: any ‸', 'fn g(a: Array<any ‸'],
     where: 'top',
@@ -136,6 +150,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-14',
+    place: 'type',
     title: 'Explicit type arguments at a call',
     src: ['  let q = Inbox.create<‸', '  let j = json.parse<‸'],
     expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
@@ -143,6 +158,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-15',
+    place: 'type',
     title: 'new takes a shared struct',
     src: ['  let x = new ‸', '  const x = new ‸'],
     expect: { has: ['Lease', 'Shared'], lacks: ['Pair', 'Color', 'plus', 'xs', 'let'] },
@@ -150,6 +166,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TY-16',
+    place: 'type',
     title: 'Self in a trait or method',
     src: ['trait Zero:\n  fn zero() -> ‸', 'fn Pair.sum2(self: ‸'],
     where: 'top',
@@ -158,6 +175,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-01',
+    place: 'import',
     title: 'Names before the path',
     src: ["import ‸ from 'time'"],
     where: 'top',
@@ -166,6 +184,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-02',
+    place: 'import',
     title: 'Another name after a comma',
     src: ["import Time, ‸ from 'time'"],
     where: 'top',
@@ -174,6 +193,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-03',
+    place: 'import',
     title: 'Import with no path yet',
     src: ['import ‸', 'import a, ‸'],
     where: 'top',
@@ -182,6 +202,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-04',
+    place: 'import',
     title: 'Word after imported names',
     src: ['import a ‸', 'import a, b ‸'],
     where: 'top',
@@ -190,6 +211,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-04b',
+    place: 'import',
     title: 'Word after *',
     src: ['import * ‸'],
     where: 'top',
@@ -198,6 +220,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-05',
+    place: 'import',
     title: 'Alias name',
     src: ['import * as ‸'],
     where: 'top',
@@ -206,6 +229,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-06',
+    place: 'import',
     title: 'Module specifier',
     src: ["import x from '‸'", 'import * as m from "‸"'],
     trigger: "'",
@@ -215,6 +239,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-07',
+    place: 'import',
     title: 'Relative specifier',
     src: ["import x from './‸'"],
     trigger: '/',
@@ -224,6 +249,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'IM-08',
+    place: 'grammar',
     title: 'Imported names are in scope',
     src: ["import delay from 'time'\nfn g():\n  ‸"],
     where: 'top',

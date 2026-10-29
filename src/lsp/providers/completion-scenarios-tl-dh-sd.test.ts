@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'TL-01',
+    place: 'grammar',
     title: 'Blank line between declarations',
     src: ['‸'],
     where: 'top',
@@ -57,6 +58,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TL-02',
+    place: 'grammar',
     title: 'Partly typed declaration keyword',
     src: ['fn‸', 'st‸'],
     where: 'top',
@@ -65,6 +67,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TL-03',
+    place: 'grammar',
     title: 'After async',
     src: ['async ‸'],
     where: 'top',
@@ -73,6 +76,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TL-04',
+    place: 'grammar',
     title: 'After shared',
     src: ['shared ‸'],
     where: 'top',
@@ -81,6 +85,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TL-05',
+    place: 'declaredName',
     title: 'After extern',
     src: ['extern ‸'],
     where: 'top',
@@ -89,6 +94,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TL-06',
+    place: 'declaredName',
     title: 'Top-level const name',
     src: ['const ‸'],
     where: 'top',
@@ -97,6 +103,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TL-07',
+    place: 'member',
     title: 'Dot after a name at top level',
     src: ['Pair.‸', 'p.‸'],
     trigger: '.',
@@ -105,6 +112,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'TL-08',
+    place: 'grammar',
     title: 'Top-level const value',
     src: ['const limit = ‸'],
     where: 'top',
@@ -129,6 +137,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'DH-01',
+    place: 'declaredName',
     title: 'Function name',
     src: ['fn ‸', 'async fn ‸'],
     where: 'top',
@@ -137,6 +146,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'DH-02',
+    place: 'member',
     title: 'Static function name after the type',
     src: ['fn Pair.‸'],
     trigger: '.',
@@ -145,6 +155,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'DH-03',
+    place: 'declaredName',
     title: 'Generic parameter name',
     src: ['fn g<‸', 'struct Box2<‸', 'enum E<A, ‸'],
     where: 'top',
@@ -153,6 +164,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'DH-04',
+    place: 'type',
     title: 'Generic bound',
     src: ['fn g<T is ‸', 'fn g<T is Shape & ‸'],
     where: 'top',
@@ -161,6 +173,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'DH-05',
+    place: 'declaredName',
     title: 'Parameter name',
     src: ['fn g(‸', 'fn g(a: int, ‸', 'async fn g(‸'],
     where: 'top',
@@ -169,6 +182,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'DH-06',
+    place: 'grammar',
     title: 'Parameter default',
     src: ['fn g(a: int, b = ‸', 'fn g(a: int, b: int = ‸'],
     where: 'top',
@@ -177,6 +191,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'DH-07',
+    place: 'declaredName',
     title: 'Parameter after ...',
     src: ['fn g(...‸'],
     where: 'top',
@@ -185,6 +200,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SD-01',
+    place: 'declaredName',
     title: 'Field name in a struct body',
     src: ['struct S:\n  ‸', 'struct S:\n  a: int\n  ‸', 'struct S { a: int; ‸'],
     where: 'top',
@@ -193,6 +209,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SD-02',
+    place: 'grammar',
     title: 'Field default',
     src: [
       'struct R:\n  times: int = 3\n  backoff = ‸\n  later: int = 1',
@@ -204,6 +221,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SD-03',
+    place: 'declaredName',
     title: 'Variant name',
     src: ['enum E:\n  ‸', 'enum E { A; ‸', 'enum E:\n  A\n  ‸'],
     where: 'top',
@@ -212,6 +230,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SD-03b',
+    place: 'type',
     title: 'Variant payload field',
     src: ['enum E:\n  A { x: ‸', 'enum E { A { x: int; y: ‸'],
     where: 'top',
@@ -220,6 +239,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SD-04',
+    place: 'declaredName',
     title: 'Declaring a name after struct, enum, trait, type',
     src: ['struct ‸', 'enum ‸', 'trait ‸', 'type ‸', 'shared struct ‸'],
     where: 'top',
@@ -228,6 +248,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SD-05',
+    place: ['declaredName', 'member'],
     title: 'Trait method header',
     src: ['trait Z:\n  fn ‸', 'trait Z:\n  fn Self.‸'],
     where: 'top',
@@ -236,6 +257,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SD-06',
+    place: 'type',
     title: 'Type default of a type parameter',
     src: ['enum E<T, R = ‸', 'struct B<T = ‸'],
     where: 'top',

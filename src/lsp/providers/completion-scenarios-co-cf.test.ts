@@ -9,6 +9,7 @@ import { describeScenarios, type Scenario } from './completion-scenarios.test-ki
 const scenarios: readonly Scenario[] = [
   {
     id: 'CO-01',
+    place: 'grammar',
     title: 'Array and map literals',
     src: [
       '  const a = [‸',
@@ -22,6 +23,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-02',
+    place: 'grammar',
     title: 'Spread',
     src: ['  const a = [...‸'],
     expect: { within: { labels: ['xs'], k: 3 } },
@@ -29,6 +31,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-03',
+    place: 'grammar',
     title: 'Tuples and ranges and slices',
     src: ['  const t = (1, ‸', '  const r = 0..‸', '  const s = xs[1..‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let', 'case'] },
@@ -36,6 +39,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-04',
+    place: 'grammar',
     title: 'Comprehension',
     src: ['  const e = [for x in xs if ‸', '  const e = [for x in xs: ‸'],
     expect: { has: ['x', 'xs'], lacks: ['let'] },
@@ -43,6 +47,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-04b',
+    place: 'declaredName',
     title: 'Comprehension binder',
     src: ['  const e = [for ‸'],
     expect: { none: true },
@@ -50,6 +55,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-05',
+    place: 'declaredName',
     title: 'Lambda parameters',
     src: ['  const f = fn(‸', '  const f = fn ‸'],
     expect: { none: true },
@@ -57,6 +63,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-06',
+    place: 'grammar',
     title: 'Lambda body',
     src: ['  const f = fn(q): ‸', '  const f = fn q: ‸'],
     expect: { has: ['q', 'xs'], lacks: ['let'] },
@@ -64,6 +71,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-06b',
+    place: 'type',
     title: 'Lambda annotation',
     src: ['  const f = fn(q: ‸'],
     expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
@@ -71,6 +79,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-07',
+    place: 'grammar',
     title: 'Template interpolation',
     src: ['  const s = `id ${‸}`', '  const s = `id ${n} and ${‸'],
     expect: { has: ['xs', 'n', 'plus'], lacks: ['let', 'case'] },
@@ -78,6 +87,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-08',
+    place: 'nothing',
     title: 'Template text',
     src: ['  const s = `id ‸`', '  const s = `${n} ‸ tail`'],
     expect: { none: true },
@@ -85,6 +95,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CO-09',
+    place: 'grammar',
     title: 'Index',
     src: ['  xs[‸]', '  m[‸]'],
     expect: { has: ['n'], lacks: ['let'] },
@@ -92,6 +103,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CF-01',
+    place: 'grammar',
     title: 'Condition',
     src: ['  if ‸', '  while ‸', '  if n > 1 and ‸'],
     expect: { has: ['xs', 'n', 'true'], lacks: ['let', 'for'] },
@@ -99,6 +111,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CF-02',
+    place: 'grammar',
     title: 'Scrutinee',
     src: ['  match ‸'],
     expect: { has: ['d', 'xs'], lacks: ['let', 'for'] },
@@ -106,6 +119,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CF-03',
+    place: 'grammar',
     title: 'Select case',
     src: ['  await select:\n    case ‸', '  select:\n    case work(1) as v: v\n    case ‸'],
     where: 'async',
@@ -114,6 +128,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CF-04',
+    place: 'grammar',
     title: 'After the awaited future',
     src: ['  select:\n    case work(1) ‸'],
     where: 'async',
@@ -122,6 +137,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CF-05',
+    place: 'declaredName',
     title: 'Binding after as',
     src: ['  select:\n    case work(1) as ‸', '  match d:\n    case Approved{by} as ‸'],
     where: 'async',
@@ -130,6 +146,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CF-06',
+    place: 'grammar',
     title: 'Result of await select',
     src: ['  const v = await select:\n    case work(1): 1\n    else: ‸'],
     where: 'async',
@@ -137,6 +154,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'CF-07',
+    place: 'grammar',
     title: 'Line-start case in a nested match',
     src: ['  match d:\n    case Approved{by}:\n      match o:\n        ‸'],
     expect: { has: ['case'], lacks: ['xs', 'let'] },
