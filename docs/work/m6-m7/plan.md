@@ -23,7 +23,7 @@ Details: `formatter.md` (M6), `language-service.md` (M7). Human decisions of 202
 | **7B** Service infrastructure | syntax position queries, binder uses and visible names, Q14, project loading outside `cli/` | — | no¹ |
 | **7A.1** Checker surface | Q3 (typed tables complete by type), what each identifier denotes, the body holding a node, the service queries, per-module diagnostics | — | no¹ |
 | **7A.2** P5 design | `incremental-checking.md`: mechanism, phases, budget; human approval | 7A.1 | — |
-| **7A.3…** P5 build | phases as the approved design defines them | 7A.2 | yes |
+| **7A.3–7A.7** P5 build | `incremental-checking.md`, Phases, in order 7A.3 → 7A.7 | 7A.2; 7A.5 also 7.2a and 7.2b | per phase |
 | **7.1** Server | `language-service/`, `lsp/`, `ista lsp`; diagnostics, symbols, folding, semantic tokens, formatting | 7B (and 6 for formatting) | yes |
 | **7.2a** Navigation | definition, references, rename | 7.1, 7A.1 | yes |
 | **7.2b** Types | hover, inlay hints, signature help, completion | 7.1, 7A.1 | yes |
@@ -36,6 +36,7 @@ Details: `formatter.md` (M6), `language-service.md` (M7). Human decisions of 202
 
 **Contracts:**
 - The Checker's public surface is additive only after 7A.1, so P5 never blocks a provider.
+- The syntax contract changes twice, in 7A.5 (`FunctionDeclaration` loses `body`) and 7A.6 (spans anchored to segments). Each migrates every caller and runs with no other branch open on syntax consumers (human, with the P5 design).
 - Each shared surface has one owner: `formatTree` (6), syntax and binder queries (7B), checker queries (7A.1), `ista/source` (7.1).
 - 6 imports source discovery from `cli/project.ts`, which 7B moves; the later merge updates the import.
 - The owner writes each contract into `architecture.md` when its phase merges.
