@@ -12,7 +12,7 @@ tags: [plan, m6, m7, formatter, lsp]
 
 Details: `formatter.md` (M6), `language-service.md` (M7). Human decisions of 2026-10-29: Q3 keeps the side tables, made total by type; P5 is built in M7; canonical format at width 100; Prettier's doc printer.
 
-**Process:** the work runs as parallel partitions, at most 3 forks at a time, each in a worktree. *Why:* M6 and M7 share no files except one seam, M7's formatting provider calling `formatTree`, and M7's infrastructure splits cleanly by layer.
+**Process:** the work runs as parallel partitions, each in a worktree; a phase starts as soon as its dependencies merge. *Why:* M6 and M7 share no files except one seam, M7's formatting provider calling `formatTree`, and M7's infrastructure splits cleanly by layer.
 - **Reviews.** One pi root reviewer reads every `docs/reuse` file and the code the plan touches. It reviews this plan first. After that, each phase forks it to review that phase's diff, and a last fork does the merge review.
 - **QA.** Every phase that changes behaviour gets a cold `qa`.
 - **Design gate.** P5's mechanism is not designed yet. Its first phase writes the design, and the human approves that design before any P5 code.
@@ -32,7 +32,7 @@ Details: `formatter.md` (M6), `language-service.md` (M7). Human decisions of 202
 ¹ These add queries without changing any behaviour. Their own property tests cover them, and so does the qa of 7.2a and 7.2b, which call them.
 ² The human checks it by installing the extension. A unit test covers how the client is configured.
 
-**Order:** the tech-lead first commits the layers (`language-service.md`, Phases), so no two branches edit one rule. Then 6, 7B and 7A.1. Next 7A.2 and 7.1, each as soon as its dependency merges. Last, 7.2a, 7.2b, 7.3 and P5's build, as slots free. P5's build goes first among them, since it is the riskiest.
+**Order:** the tech-lead first commits the layers (`language-service.md`, Phases), so no two branches edit one rule. Then 6, 7B and 7A.1. Next 7A.2 and 7.1, each as soon as its dependency merges. Last, 7.2a, 7.2b, 7.3 and P5's build, each as soon as its dependencies merge.
 
 **Contracts:**
 - The Checker's public surface is additive only after 7A.1, so P5 never blocks a provider.
