@@ -10,9 +10,10 @@
 
 import { globSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildProgram, type ModuleLoader, type Program } from '../compiler/program/program.ts';
-import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
+import { buildProgram, type Program } from '../compiler/program/program.ts';
+import { type StdSources, stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { fileLoader, locateFile, sourceExtension } from './file-loader.ts';
+import { diskFiles, type ProjectFiles } from './project-files.ts';
 
 /**
  * Never project sources: dependencies at any depth, and the project's vendored packages (§11).
@@ -34,22 +35,32 @@ export function findSources(directory: string, suffix: string): readonly string[
 
 export interface Project {
   readonly program: Program;
-  /** The given files that could not be read, as given. */
+  /** The given paths that name no file, as given. */
   readonly unreadable: readonly string[];
 }
 
-/** The program rooted at the given files, read from disk, with `std` for the std modules. */
+export interface ProjectOptions {
+  /** Where the project's texts come from: the disk, unless an editor lays its documents over it. */
+  readonly files?: ProjectFiles;
+  /** Std module sources in place of the shipped ones, for the loader and the roles alike. */
+  readonly std?: StdSources;
+}
+
+/** The program rooted at the files at `paths`, with the std modules. */
 export function loadProject(
   cwd: string,
-  files: readonly string[],
-  std: ModuleLoader = stdlibLoader(),
+  paths: readonly string[],
+  { files = diskFiles, std }: ProjectOptions = {},
 ): Project {
   const places = { projectRoot: cwd, cwd };
-  const roots = files.map((file) => ({ file, module: locateFile(resolve(cwd, file), places) }));
+  const roots = paths.map((path) => ({
+    path,
+    module: locateFile(resolve(cwd, path), places, files),
+  }));
   const program = buildProgram({
     roots: roots.flatMap(({ module }) => module ?? []),
-    loaders: [fileLoader(places), std],
-    roles: stdRoles(),
+    loaders: [fileLoader(places, files), stdlibLoader(std)],
+    roles: stdRoles(std),
   });
-  return { program, unreadable: roots.filter(({ module }) => !module).map(({ file }) => file) };
+  return { program, unreadable: roots.filter(({ module }) => !module).map(({ path }) => path) };
 }
