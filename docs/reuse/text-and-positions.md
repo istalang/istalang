@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 tags: [reuse, text, spans, positions, code-points]
 ---
 
@@ -19,6 +19,7 @@ tags: [reuse, text, spans, positions, code-points]
 - convert a UTF-16 offset to 0-based `{ line, column }` from `lineStarts` alone → `positionIn` (`src/text/line-map.ts`)
 - measure a line break (`\r\n`, `\n`, `\r`) at a UTF-16 offset → `lineBreakLength` (`src/text/line-map.ts`)
 - find where the line holding an offset starts, with no line map → `lineStartAt` (`src/text/line-map.ts`)
+- split a text into its lines, without their line breaks → `splitLines` (`src/text/line-map.ts`)
 - split a string into its Unicode code points → `codePoints` (`src/text/code-points.ts`)
 - count a string's Unicode code points without allocating an array → `codePointCount` (`src/text/code-points.ts`)
 - get the UTF-16 width (1 or 2) of the code point at a UTF-16 offset → `codePointWidth` (`src/text/code-points.ts`)
