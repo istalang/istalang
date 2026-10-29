@@ -1,6 +1,7 @@
 /**
- * A program of one module, `main.ista`, beside the std modules, checked, with its nodes found by
- * kind and text, so a lookup test names what it asks about as written.
+ * A program of one module, `main.ista`, and the modules it imports by key, beside the std modules,
+ * checked, with its nodes found by kind and text, so a lookup test names what it asks about as
+ * written.
  */
 
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
@@ -9,8 +10,8 @@ import type { Identifier } from '../../syntax/node.ts';
 import { nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import { checkProgram } from '../check.ts';
 
-export function checkedMain(text: string) {
-  const program = stdProgramOf({ 'main.ista': text });
+export function checkedMain(text: string, imported: Readonly<Record<string, string>> = {}) {
+  const program = stdProgramOf({ 'main.ista': text, ...imported });
   const module = idOf('main.ista');
   const tree = program.modules.get(module)?.tree;
   if (tree === undefined) {

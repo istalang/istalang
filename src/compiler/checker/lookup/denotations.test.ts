@@ -93,11 +93,42 @@ describe('what an identifier denotes', () => {
     expect(members?.statics.map(({ name }) => name.text)).toEqual(['zero', 'from']);
   });
 
+  it('answers a tag read from a value with the method its template calls', () => {
+    const tagged = checkedMain(
+      'struct Db { prefix: string }\nfn query(self: Db, parts: Array<string>, n: int) -> string: self.prefix\nfn main() -> string: Db{prefix: ">"}.query`a${1}`\n',
+    );
+    expect(tagged.checker.diagnosticsOf(tagged.module)).toEqual([]);
+    const call = tagged.checker.lookup.denotationsOf(tagged.module, tagged.named('query', 1));
+    expect(described(call)).toEqual(['function query: -']);
+  });
+
+  it('answers a hold naming its own function with that function', () => {
+    const held = checkedMain(
+      'async fn work(n: int):\n  for i in 0..n:\n    hold(work) _ = 1\nfn main(): 0\n',
+    );
+    expect(held.checker.diagnosticsOf(held.module)).toEqual([]);
+    const label = held.checker.lookup.denotationsOf(held.module, held.named('work', 1));
+    expect(described(label)).toEqual(['function work: -']);
+  });
+
   it('lists what the constraints on a type parameter require', () => {
     const t = checker.lookup.denotationsOf(module, named('t', 1))[0]?.type;
     const members = t && checker.lookup.membersOf(module, t);
     expect(members?.fields.map(({ name }) => name)).toEqual(['size']);
     expect(members?.methods.map(({ name }) => name.text)).toEqual(['measure']);
     expect(members?.statics.map(({ name }) => name.text)).toEqual(['unit']);
+  });
+});
+
+describe('what a function imported or named through a module denotes', () => {
+  it("is the module's own function, not a prelude function of that name", () => {
+    const lib = 'struct Note { text: string }\nfn read(self: Note) -> string: self.text\n';
+    const imported = checkedMain(
+      `import Note, read from 'lib'\nfn main() -> string: Note{text: "a"}.read()\n`,
+      { lib },
+    );
+    expect(
+      described(imported.checker.lookup.denotationsOf(imported.module, imported.named('read', 0))),
+    ).toEqual(['function read: -']);
   });
 });

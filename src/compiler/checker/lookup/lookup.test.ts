@@ -130,7 +130,7 @@ function chosenFor(
     ...(field === undefined && read === undefined
       ? []
       : [denotes((declared) => declared.kind === 'field' && declared.field.name === name.text)]),
-    ...(entity === undefined || isOverloadChosen ? [] : boundAs(checker, body, name, entity)),
+    ...(entity === undefined || isOverloadChosen ? [] : boundAs(body, name, entity)),
   ];
 }
 
@@ -142,14 +142,13 @@ function denotes(
 }
 
 function boundAs(
-  checker: Checker,
   body: CheckedBody,
   name: Identifier,
   entity: Entity,
 ): readonly ((denotation: Denotation) => boolean)[] {
   switch (entity.kind) {
     case 'functions': {
-      const overloads = checker.bindings.overloadsOf(entity);
+      const { overloads } = entity;
       return overloads.length === 0
         ? []
         : [

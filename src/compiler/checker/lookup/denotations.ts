@@ -15,7 +15,8 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Call, MemberAccess } from '../../syntax/expressions/index.ts';
 import { isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import { parentOf, type SyntaxNode } from '../../syntax/tree.ts';
+import type { Hold } from '../../syntax/statements.ts';
+import { nestsFunction, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../denotation.ts';
@@ -63,7 +64,8 @@ type NameHolder = Extract<
       | 'TemplateLiteral'
       | 'DeclaredField'
       | 'FieldDeclaration'
-      | 'FunctionDeclaration';
+      | 'FunctionDeclaration'
+      | 'Hold';
   }
 >;
 
@@ -95,6 +97,7 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
     site.name === node.name && site.body === undefined
       ? [functionDenotation(node, undefined)]
       : undefined,
+  Hold: (site, node) => (site.name === node.label ? heldFunction(site, node) : undefined),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
@@ -150,6 +153,9 @@ function memberDenotations(
   if (holder?.kind === 'Call' && holder.callee === access) {
     return calleeDenotations(site, holder);
   }
+  if (holder?.kind === 'TemplateLiteral' && isTagged(holder) && holder.tag === access) {
+    return calledAt(site, taggedCall(holder), undefined) ?? named(site);
+  }
   return calledAt(site, access, site.body?.typeOf(access)) ?? named(site);
 }
 
@@ -164,6 +170,19 @@ function calleeDenotations(site: NameSite, call: Call): readonly Denotation[] {
     return bound;
   }
   return bound.some(({ declared }) => declared.kind === 'type') ? [...bound, ...called] : called;
+}
+
+/**
+ * The function a `hold` holds until it ends, naming it (§7): checking records the scope a label
+ * names, so a label it recorded none for names the function holding the `hold`, when so named.
+ */
+function heldFunction(site: NameSite, hold: Hold): readonly Denotation[] {
+  const { checker, module, name, holders, body } = site;
+  if (body?.labels.heldUntil(hold) !== undefined) {
+    return [];
+  }
+  const own = holders.find(nestsFunction);
+  return own?.name?.text === name.text ? denotationsOf(checker, module, own.name) : [];
 }
 
 /** The parameter a named argument names, of the function its call resolved to. */
@@ -254,8 +273,7 @@ function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): rea
       ];
     case 'functions':
       return (
-        calledAt(site, name, type) ??
-        checker.bindings.overloadsOf(entity).map((each) => functionDenotation(each, type))
+        calledAt(site, name, type) ?? entity.overloads.map((each) => functionDenotation(each, type))
       );
     case 'type':
     case 'primitive':
