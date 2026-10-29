@@ -16,7 +16,7 @@ import { preludeModule } from '../../stdlib/stdlib-loader.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
 import { programModule } from '../program/program.ts';
-import { descendants } from '../syntax/tree.test-kit.ts';
+import { nodesUnder } from '../syntax/tree.ts';
 import {
   boundCorpus,
   boundReport,
@@ -279,7 +279,7 @@ describe('moduleOf', () => {
     const misplaced = boundCorpus().flatMap(({ program, modules }) => {
       const bindings = bindProgram(program);
       return modules.flatMap((module) => {
-        const names = new Set(descendants(programModule(program, module).tree.root));
+        const names = new Set(nodesUnder(programModule(program, module).tree.root));
         return resolvedNames(program, module).filter(({ entity }) => {
           const declaring = declaringName(entity);
           return declaring !== undefined && names.has(declaring)

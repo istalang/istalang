@@ -77,15 +77,25 @@ export function parentOf(tree: SyntaxTree, node: SyntaxNode): SyntaxNode | undef
 }
 
 function parentsUnder(root: SyntaxNode): ReadonlyMap<SyntaxNode, SyntaxNode> {
-  const parentOfChild = new Map<SyntaxNode, SyntaxNode>();
-  const pending = [root];
-  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
-    for (const child of childrenOf(node)) {
-      parentOfChild.set(child, node);
-      pending.push(child);
-    }
+  return new Map(
+    nodesUnder(root).flatMap((parent) =>
+      childrenOf(parent).map((child) => [child, parent] as const),
+    ),
+  );
+}
+
+/**
+ * `node` and every node under it, in source order, each before its children. Trees nest as deep as
+ * the parser allows, so the walk keeps its own stack.
+ */
+export function nodesUnder(node: SyntaxNode): readonly SyntaxNode[] {
+  const nodes: SyntaxNode[] = [];
+  const pending = [node];
+  for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+    nodes.push(next);
+    pending.push(...childrenOf(next).toReversed());
   }
-  return parentOfChild;
+  return nodes;
 }
 
 /**

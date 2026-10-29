@@ -15,8 +15,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { scan } from '../compiler/scanner/scan.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
-import { descendants, dump } from '../compiler/syntax/tree.test-kit.ts';
-import type { SyntaxNode } from '../compiler/syntax/tree.ts';
+import { dump } from '../compiler/syntax/tree.test-kit.ts';
+import { nodesUnder, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { encloses, type Span } from '../text/span.ts';
 import { nodesInBrackets } from './brackets.ts';
 import { commentTexts, formattableInputs, parseText } from './format.test-kit.ts';
@@ -43,7 +43,7 @@ function freeGaps(text: string): readonly Gap[] {
   const tree = parseText(text);
   const { tokens } = scan(tree.source);
   const inBrackets = nodesInBrackets(tree.root);
-  const nodes = descendants(tree.root);
+  const nodes = nodesUnder(tree.root);
   const isFree = (node: SyntaxNode | undefined): boolean =>
     node !== undefined && inBrackets.has(node);
   const deepestAt = (offset: number, edge: 'start' | 'end'): SyntaxNode | undefined =>

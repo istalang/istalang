@@ -15,7 +15,7 @@ import type { Call, Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
-import { childrenOf, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
+import { nodesUnder, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { type CheckedBody, type Checker, checkProgram } from '../check.ts';
 import type { Denotation } from '../denotation.ts';
@@ -47,10 +47,6 @@ const declarationKinds = new Set([
   'FunctionDeclaration',
   'VariableDeclaration',
 ]);
-
-function nodesOf(node: SyntaxNode): readonly SyntaxNode[] {
-  return [node, ...childrenOf(node).flatMap(nodesOf)];
-}
 
 /** Asks every query that may be asked of `node`; each answer is thrown away. */
 function askEverything(checker: Checker, module: ModuleId, node: SyntaxNode): void {
@@ -184,7 +180,7 @@ describe('lookup over the corpus', () => {
     }
     const checked = { checker, module, tree };
     const reported = [...checker.diagnosticsOf(module)];
-    const disagreeing = nodesOf(tree.root).flatMap((node) => disagreementsAt(checked, node));
+    const disagreeing = nodesUnder(tree.root).flatMap((node) => disagreementsAt(checked, node));
     expect(checker.diagnosticsOf(module)).toEqual(reported);
     expect(disagreeing).toEqual([]);
   });

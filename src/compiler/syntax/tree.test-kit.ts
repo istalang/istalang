@@ -1,4 +1,4 @@
-import { childrenOf, isNode, type SyntaxNode } from './tree.ts';
+import { childrenOf, isNode, nodesUnder, type SyntaxNode } from './tree.ts';
 
 function dumpField(name: string, value: unknown): string | undefined {
   if (value === undefined) {
@@ -53,14 +53,9 @@ export function dump(node: SyntaxNode): string {
   return `(${[node.kind, ...fields].join(' ')})`;
 }
 
-/** Every node of a tree, the root first. */
-export function descendants(node: SyntaxNode): readonly SyntaxNode[] {
-  return [node, ...childrenOf(node).flatMap(descendants)];
-}
-
 /** Where children stick out of their parent or overlap their siblings. Empty when well nested. */
 export function spanViolations(root: SyntaxNode): readonly string[] {
-  return descendants(root).flatMap((parent) => {
+  return nodesUnder(root).flatMap((parent) => {
     const children = childrenOf(parent);
     return children.flatMap((child, index) => {
       const previous = children[index - 1];
@@ -80,7 +75,7 @@ export function spanViolations(root: SyntaxNode): readonly string[] {
 
 /** Nodes that stand for an error: Missing, Invalid, and names the parser didn't find. */
 export function errorNodes(root: SyntaxNode): readonly SyntaxNode[] {
-  return descendants(root).filter(
+  return nodesUnder(root).filter(
     (node) =>
       node.kind === 'Missing' ||
       node.kind === 'Invalid' ||

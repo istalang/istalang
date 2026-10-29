@@ -15,7 +15,7 @@ import type { Files } from '../program/program.test-kit.ts';
 import { idOf, moduleAt, programOf } from '../program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import type { Identifier } from '../syntax/node.ts';
-import { descendants } from '../syntax/tree.test-kit.ts';
+import { nodesUnder } from '../syntax/tree.ts';
 import { bindProgram } from './bind.ts';
 import type { Entity } from './entities.ts';
 
@@ -54,7 +54,7 @@ export function boundReport(files: Files, key = Object.keys(files)[0] ?? ''): Re
 
 /** The identifiers spelled `text` in module `key`, in source order. */
 export function namesIn(program: Program, key: string, text: string): readonly Identifier[] {
-  return descendants(moduleAt(program, key).tree.root).filter(
+  return nodesUnder(moduleAt(program, key).tree.root).filter(
     (node): node is Identifier => node.kind === 'Identifier' && node.text === text,
   );
 }
@@ -100,7 +100,7 @@ export interface ResolvedName {
 /** Every name of `module` the binder resolved, in source order. */
 export function resolvedNames(program: Program, module: ModuleId): readonly ResolvedName[] {
   const bindings = bindProgram(program);
-  return descendants(programModule(program, module).tree.root).flatMap((name) => {
+  return nodesUnder(programModule(program, module).tree.root).flatMap((name) => {
     const entity = name.kind === 'Identifier' ? bindings.entityOf(module, name) : undefined;
     return name.kind === 'Identifier' && entity !== undefined ? [{ module, name, entity }] : [];
   });

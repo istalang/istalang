@@ -6,12 +6,8 @@
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import { checkProgram } from '../check.ts';
-
-function nodesOf(node: SyntaxNode): readonly SyntaxNode[] {
-  return [node, ...childrenOf(node).flatMap(nodesOf)];
-}
 
 export function checkedMain(text: string) {
   const program = stdProgramOf({ 'main.ista': text });
@@ -20,7 +16,7 @@ export function checkedMain(text: string) {
   if (tree === undefined) {
     throw new Error('main.ista was not loaded.');
   }
-  const nodes = nodesOf(tree.root);
+  const nodes = nodesUnder(tree.root);
   /** The `nth` identifier written as `text`, counting from 0 in source order. */
   const named = (written: string, nth = 0): Identifier => {
     const found = nodes.filter(

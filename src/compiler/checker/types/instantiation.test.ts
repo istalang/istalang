@@ -20,7 +20,7 @@ import {
 } from '../../syntax/expressions/index.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import { type For, tailExpressionOf } from '../../syntax/statements.ts';
-import { childrenOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import { type CheckedBody, checkProgram } from '../check.ts';
 import { namesBound } from '../checked-pattern.ts';
 import { instantiatedBody } from './instantiation.ts';
@@ -156,7 +156,7 @@ describe('a generic function instantiated as lowering reads it', () => {
         substitutionFor(generic.typeParameters, call.typeArguments),
         checker,
       );
-      const nodes = generic.body === undefined ? [] : nodesOf(generic.body);
+      const nodes = generic.body === undefined ? [] : nodesUnder(generic.body);
       return [instance.result, ...nodes.flatMap((node) => typedTablesAt(instance, node))]
         .flatMap((each) => valuesIn(each))
         .filter(
@@ -169,7 +169,3 @@ describe('a generic function instantiated as lowering reads it', () => {
     expect(leaking).toEqual([]);
   });
 });
-
-function nodesOf(node: SyntaxNode): readonly SyntaxNode[] {
-  return [node, ...childrenOf(node).flatMap(nodesOf)];
-}

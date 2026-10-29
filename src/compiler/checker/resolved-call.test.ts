@@ -9,7 +9,7 @@ import { runPrograms } from '../../../test/corpus/programs.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import { functionsOf } from '../syntax/field-defaults.ts';
-import { descendants } from '../syntax/tree.test-kit.ts';
+import { nodesUnder } from '../syntax/tree.ts';
 import { checkProgram } from './check.ts';
 
 describe('a checked body', () => {
@@ -22,7 +22,7 @@ describe('a checked body', () => {
       if (body === undefined || declaration.body === undefined) {
         return [];
       }
-      return descendants(declaration.body).filter(
+      return nodesUnder(declaration.body).filter(
         (node) => node.kind === 'Call' && body.resolved.has(node) === body.valueCalls.has(node),
       );
     });

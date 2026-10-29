@@ -18,7 +18,12 @@
 
 import type { Identifier } from '../compiler/syntax/node.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import {
+  childrenOf,
+  nodesUnder,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../compiler/syntax/tree.ts';
 import { lastIndexAtMost } from '../structures/sorted.ts';
 import { type LineMap, lineMapOf } from '../text/line-map.ts';
 import type { Span } from '../text/span.ts';
@@ -75,16 +80,10 @@ function bracketSpans(tokens: readonly Token[]): readonly Span[] {
 
 /** Indented blocks and item lists, which fold by layout rather than by brackets. */
 function layoutSpans({ root }: SyntaxTree, tokens: readonly Token[]): readonly Span[] {
-  const spans: Span[] = [];
-  const pending: SyntaxNode[] = [root];
-  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+  return nodesUnder(root).flatMap((node) => {
     const start = layoutStart(node, tokens);
-    if (start !== undefined) {
-      spans.push({ start, end: node.span.end });
-    }
-    pending.push(...childrenOf(node));
-  }
-  return spans;
+    return start === undefined ? [] : [{ start, end: node.span.end }];
+  });
 }
 
 type LayoutStarts = {

@@ -15,7 +15,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - assert reported diagnostic codes and span texts in any phase test → `reportedIn`, `reportedNothing`, `reportedOnce` (`src/diagnostics/diagnostic.test-kit.ts`)
 - scan source text in tests or list non-`end` tokens → `scanText`, `lexemes`, `kindsAndTexts`, `soleToken` (`src/compiler/scanner/scan.test-kit.ts`)
 - check scanner losslessness or malformed-line recovery → `losslessnessViolations`, `scanMalformed`, `scannedPast` (`src/compiler/scanner/scan.test-kit.ts`)
-- dump a `SyntaxNode` as an S-expression or list descendants → `dump`, `descendants` (`src/compiler/syntax/tree.test-kit.ts`)
+- dump a `SyntaxNode` as an S-expression → `dump` (`src/compiler/syntax/tree.test-kit.ts`)
 - read every corpus module, programs and module corpora alike → `corpusFiles` (`test/corpus/programs.ts`)
 - run a property over every corpus file and spec example that parses clean, or explain a line past the width → `formattableInputs`, `parseText`, `commentTexts`, `unexplainedLongLines` (`src/formatter/format.test-kit.ts`)
 - check syntax tree span nesting or list error nodes → `spanViolations`, `errorNodes` (`src/compiler/syntax/tree.test-kit.ts`)

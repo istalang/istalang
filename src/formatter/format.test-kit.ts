@@ -7,8 +7,7 @@ import { corpusFiles } from '../../test/corpus/programs.ts';
 import { specExamples } from '../../test/corpus/spec-examples.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import { scan } from '../compiler/scanner/scan.ts';
-import { descendants } from '../compiler/syntax/tree.test-kit.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { lineMapOf } from '../text/line-map.ts';
 import { createSourceText } from '../text/source-text.ts';
 import { textOf } from '../text/span.ts';
@@ -53,7 +52,7 @@ function linesOf(tree: SyntaxTree, start: number, end: number): readonly number[
 export function unexplainedLongLines(tree: SyntaxTree): readonly string[] {
   const inBrackets = nodesInBrackets(tree.root);
   const unbreakable = new Set(
-    descendants(tree.root)
+    nodesUnder(tree.root)
       .filter(
         (node) =>
           node.kind === 'NamedImport' ||

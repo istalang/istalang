@@ -19,6 +19,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - get the last identifier of a `QualifiedName` or check for a missing identifier → `lastName`, `isMissingName` (`src/compiler/syntax/node.ts`)
 - list a syntax node's direct children in source order (memoized per node) → `childrenOf`, `isNode` (`src/compiler/syntax/tree.ts`)
 - find a node's parent, or the nodes holding an offset from the root to the innermost → `parentOf`, `nodesAt` (`src/compiler/syntax/tree.ts`)
+- list a node and every node under it in source order, each before its children (explicit stack) → `nodesUnder` (`src/compiler/syntax/tree.ts`)
 - list direct children that run in the same function body (skipping nested functions) → `bodyChildrenOf`, `nestsFunction` (`src/compiler/syntax/tree.ts`)
 - look up operator precedence, associativity and meaning → `binaryOperators`, `unaryOperators`, `operatorLevels` (`src/compiler/syntax/operators.ts`)
 - classify operators or unwrap a compound assignment's operator → `isAssignmentOperator`, `compoundOperator` (`src/compiler/syntax/operators.ts`)

@@ -12,7 +12,7 @@
 import { isMethod } from '../../compiler/syntax/declarations.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../../compiler/syntax/node.ts';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { memo } from '../../structures/memo.ts';
 import type { SemanticType } from './semantic-types.ts';
 
@@ -97,8 +97,7 @@ export function nameTypesOf(tree: SyntaxTree): ReadonlyMap<number, SemanticType>
         found.set(start, found.get(start) ?? type);
       }
     };
-    const pending: SyntaxNode[] = [tree.root];
-    for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+    for (const node of nodesUnder(tree.root)) {
       const roleOf = rolesOf[node.kind] as ((node: SyntaxNode) => readonly Role[]) | undefined;
       for (const [identifier, type] of roleOf?.(node) ?? []) {
         name(identifier, type);
@@ -106,7 +105,6 @@ export function nameTypesOf(tree: SyntaxTree): ReadonlyMap<number, SemanticType>
       if (node.kind === 'Identifier') {
         name(node, 'variable');
       }
-      pending.push(...childrenOf(node));
     }
     return found;
   });

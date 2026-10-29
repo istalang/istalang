@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { FoldingRangeRequest } from 'vscode-languageserver/node';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { allTokensOf } from '../../language-service/tokens.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Span } from '../../text/span.ts';
@@ -36,10 +36,6 @@ const itemLists = new Set([
   'Select',
 ]);
 
-function descendants(node: SyntaxNode): readonly SyntaxNode[] {
-  return childrenOf(node).flatMap((child) => [child, ...descendants(child)]);
-}
-
 /**
  * Indented blocks, from the line of the `:` before them, docstrings or comments between; item
  * lists, a declaration's from the line naming it, below any annotation. A braced block is a
@@ -50,7 +46,7 @@ function layoutFoldables(
   lineOf: (offset: number) => number,
 ): readonly Foldable[] {
   const colons = allTokensOf(tree).filter((token) => token.kind === ':');
-  return descendants(tree.root).flatMap((node) => {
+  return nodesUnder(tree.root).flatMap((node) => {
     const named = itemLists.has(node.kind) && 'name' in node ? node.name : undefined;
     const indented = node.kind === 'Block' && tree.source.text[node.span.start] !== '{';
     const colon = indented

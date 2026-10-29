@@ -8,8 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import type { Block } from '../syntax/statements.ts';
-import { descendants } from '../syntax/tree.test-kit.ts';
-import { parentOf } from '../syntax/tree.ts';
+import { nodesUnder, parentOf } from '../syntax/tree.ts';
 import {
   boundCorpus,
   type CorpusProgram,
@@ -79,7 +78,7 @@ function blocksSeeingMoreThanBefore({ program, modules }: CorpusProgram): readon
     );
   };
   return modules.flatMap((module) =>
-    descendants(programModule(program, module).tree.root)
+    nodesUnder(programModule(program, module).tree.root)
       .filter((node): node is Block => node.kind === 'Block' && node.span.start < node.span.end)
       .filter((block) => seesMore(module, block))
       .map(({ span }) => `${module}:${span.start}`),

@@ -13,8 +13,14 @@ import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
 import type { Call } from './expressions/index.ts';
 import type { Identifier } from './node.ts';
-import { descendants } from './tree.test-kit.ts';
-import { childrenOf, nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from './tree.ts';
+import {
+  childrenOf,
+  nodesAt,
+  nodesUnder,
+  parentOf,
+  type SyntaxNode,
+  type SyntaxTree,
+} from './tree.ts';
 
 const at = (start: number, end: number) => ({ start, end });
 const name = (text: string, start: number): Identifier => ({
@@ -88,7 +94,7 @@ function positionViolations(tree: SyntaxTree): readonly string[] {
       violations.push(`the nodes at ${offset} are no path from the root`);
     }
   }
-  const missed = descendants(tree.root).filter(
+  const missed = nodesUnder(tree.root).filter(
     (node) => node.span.start < node.span.end && !nodesAt(tree, node.span.start).includes(node),
   );
   return [...violations, ...missed.map((node) => `${node.kind} at ${node.span.start} is missed`)];
@@ -96,7 +102,7 @@ function positionViolations(tree: SyntaxTree): readonly string[] {
 
 /** The nodes whose parent `parentOf` doesn't give as the node listing them as children. */
 function parentViolations(tree: SyntaxTree): readonly string[] {
-  const misplaced = descendants(tree.root).flatMap((node) =>
+  const misplaced = nodesUnder(tree.root).flatMap((node) =>
     childrenOf(node).filter((child) => parentOf(tree, child) !== node),
   );
   return [
