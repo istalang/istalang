@@ -15,7 +15,7 @@ import type { Files } from '../program/program.test-kit.ts';
 import { idOf, moduleAt, programOf } from '../program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import type { Identifier } from '../syntax/node.ts';
-import { nodesUnder } from '../syntax/tree.ts';
+import { nodesUnder, parentOf } from '../syntax/tree.ts';
 import { bindProgram } from './bind.ts';
 import type { Entity } from './entities.ts';
 
@@ -129,4 +129,27 @@ export function boundCorpus(): readonly CorpusProgram[] {
     { program: names, modules: [idOf('names/main'), idOf('names/lib')] },
     { program: std, modules: stdModules },
   ];
+}
+
+const bindingPatterns = new Set(['NamePattern', 'BindFieldPattern', 'AsPattern', 'RestPattern']);
+
+/**
+ * Whether `resolved` names its entity by looking it up: not a part after the head of a qualified
+ * name, which linking walks to; not a call only argument-dependent lookup can resolve; not an
+ * async function's name denoting its own call (§7); and not a name that declares.
+ */
+export function isLookedUp(program: Program, { module, name, entity }: ResolvedName): boolean {
+  const parent = parentOf(programModule(program, module).tree, name);
+  const isTail =
+    (parent?.kind === 'MemberAccess' && parent.member === name) ||
+    (parent !== undefined &&
+      'path' in parent &&
+      Array.isArray(parent.path) &&
+      parent.path.indexOf(name) > 0);
+  const isDeclaring =
+    declaringName(entity) === name ||
+    (entity.kind === 'variable' && bindingPatterns.has(parent?.kind ?? ''));
+  const isOwnCall = entity.kind === 'variable' && entity.owner.kind === 'OwnCall';
+  const findsNoOverload = entity.kind === 'functions' && entity.overloads.length === 0;
+  return !(isTail || isDeclaring || isOwnCall || findsNoOverload);
 }

@@ -11,8 +11,10 @@ import { wellKnown } from '../../../language/well-known.ts';
 import {
   type AnonymousStructType,
   type Constraint,
+  type FunctionType,
   isSharedValueType,
   type NominalType,
+  type ParameterSlot,
   type Type,
 } from './type.ts';
 
@@ -34,14 +36,8 @@ export function typeText(type: Type): string {
     case 'tuple':
       return `(${type.elements.map(typeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
     case 'function': {
-      const parameters = type.parameters.map(
-        (parameter) => `${parameter.reference ? '&' : ''}${typeText(parameter.type)}`,
-      );
-      if (type.pack !== undefined) {
-        parameters.push(`...${typeText(type.pack)}`);
-      }
-      const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
-      return `${prefix}fn(${parameters.join(', ')}) -> ${typeText(type.result)}`;
+      const { head, parameters, tail } = functionTypeParts(type);
+      return `${head}(${parameters.join(', ')})${tail}`;
     }
     case 'parameter':
       return type.declaration.kind === 'TraitDeclaration' ? 'Self' : type.declaration.name.text;
@@ -54,6 +50,31 @@ export function typeText(type: Type): string {
       return unhandled;
     }
   }
+}
+
+/**
+ * A function type's spelling in parts: what stands before its parameters, each parameter, and what
+ * follows them, for tools that mark one parameter (signature help).
+ */
+export function functionTypeParts(type: FunctionType): {
+  readonly head: string;
+  readonly parameters: readonly string[];
+  readonly tail: string;
+} {
+  const parameters = type.parameters.map(slotText);
+  if (type.pack !== undefined) {
+    parameters.push(`...${typeText(type.pack)}`);
+  }
+  return {
+    head: `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}fn`,
+    parameters,
+    tail: ` -> ${typeText(type.result)}`,
+  };
+}
+
+/** A parameter's type as written: `&T` for one passed by reference (§3.7). */
+export function slotText({ type, reference }: ParameterSlot): string {
+  return `${reference ? '&' : ''}${typeText(type)}`;
 }
 
 /**
