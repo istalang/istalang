@@ -30,6 +30,7 @@
 
 import type { Span } from '../../text/span.ts';
 import type { TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
+import { bracketClosers, type Closer, type Opener, openers } from './brackets.ts';
 
 /** What stands in for the next token where a line break ends the current construct. */
 interface LineBreak {
@@ -41,32 +42,6 @@ interface LineBreak {
 export type CursorToken = Token | LineBreak;
 
 export type CursorKind = CursorToken['kind'];
-
-/**
- * Each opener's closer. `<` is also the less-than operator, so it is not a bracket: line breaks
- * inside `<…>` follow the enclosing region, and recovery never skips it as a group.
- */
-export const openers = {
-  '(': { closer: ')', isBracket: true },
-  '[': { closer: ']', isBracket: true },
-  '{': { closer: '}', isBracket: true },
-  '<': { closer: '>', isBracket: false },
-} as const;
-
-export type Opener = keyof typeof openers;
-
-export type Closer = (typeof openers)[Opener]['closer'];
-
-/** Each bracket opener's closer: the groups recovery skips whole, which leaves out `<`. */
-const bracketClosers: ReadonlyMap<string, Closer> = new Map(
-  Object.entries(openers)
-    .filter(([, opener]) => opener.isBracket)
-    .map(([opener, { closer }]) => [opener, closer]),
-);
-
-export function isBracketOpener(kind: CursorKind): kind is Opener {
-  return bracketClosers.has(kind);
-}
 
 export interface CursorMark {
   readonly index: number;

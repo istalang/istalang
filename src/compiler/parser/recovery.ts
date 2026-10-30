@@ -19,7 +19,8 @@
 
 import type { Invalid } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
-import { type Closer, type CursorKind, isBracketOpener, type Opener, openers } from './cursor.ts';
+import { type Closer, isBracketOpener, type Opener, openers } from './brackets.ts';
+import type { CursorKind } from './cursor.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 
