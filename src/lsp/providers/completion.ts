@@ -26,6 +26,7 @@ import {
   rankKeys,
 } from '../../language-service/completion/item.ts';
 import { completionTriggers } from '../../language-service/completion/triggers.ts';
+import { importableStdModules } from '../../stdlib/stdlib-loader.ts';
 import { documentOffset } from '../locations.ts';
 import type { Provider } from './provider.ts';
 
@@ -36,12 +37,12 @@ export const completion: Provider = {
       const at = documentOffset(workspace, params);
       return at === undefined
         ? []
-        : completionsAt(
-            workspace.program,
-            at.module,
-            at.offset,
-            params.context?.triggerCharacter,
-          ).map(completionItem);
+        : completionsAt(workspace.program, at.module, at.offset, {
+            ...(params.context?.triggerCharacter === undefined
+              ? {}
+              : { trigger: params.context.triggerCharacter }),
+            stdModules: importableStdModules,
+          }).map(completionItem);
     });
   },
 };

@@ -33,7 +33,7 @@ function fieldMistakesOf({ main, literal }: LiteralSite): readonly number[] {
   const open = text.indexOf('{', spanIn(tree, literal.type.span).end) + 1;
   const close = end - 1;
   const emptied = mainProgram(`${text.slice(0, open)}${text.slice(close)}`);
-  const offered = completionsAt(emptied.program, emptied.module, open, '{');
+  const offered = completionsAt(emptied.program, emptied.module, open, { trigger: '{' });
   const items = offered
     .filter(({ kind }) => kind === 'field')
     .map(({ name }) => `${name}: panic("")`)

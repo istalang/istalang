@@ -230,7 +230,7 @@ describe('completion', () => {
 
   it("answers a typed `>` only where it writes a member's `->`", () => {
     const { program, module, offset } = programAt('fn f(a: int) -> bool: a >‸ 1');
-    expect(completionsAt(program, module, offset, '>')).toEqual([]);
+    expect(completionsAt(program, module, offset, { trigger: '>' })).toEqual([]);
   });
 
   it("doesn't offer a block's name before its declaration", () => {

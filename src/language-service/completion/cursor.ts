@@ -1,7 +1,8 @@
 /**
  * Where a completion request stands: the checked module, the offset, the character whose typing
  * asked (absent when the editor invoked completion), and the tokens right there, read once for
- * every place and provider.
+ * every place and provider; and the std modules the app ships, which an import may name though
+ * the program holds only those it loaded.
  *
  * A name being written may still spell a keyword (`in` on the way to `includes`), so it counts as
  * a name whatever the scanner made of it.
@@ -18,10 +19,20 @@ export interface Cursor extends CheckedModule {
   readonly name: Token | undefined;
   /** The token before that name, or before the cursor when it writes none. */
   readonly before: Token | undefined;
+  /** The names of the std modules an import may name, loaded or not. */
+  readonly stdModules: readonly string[];
 }
 
-/** The cursor at `offset` of `checked`, asked for by typing `trigger`, if any. */
-export function cursorAt(checked: CheckedModule, offset: number, trigger?: string): Cursor {
+/**
+ * The cursor at `offset` of `checked`, asked for by typing `trigger`, if any, where an import may
+ * name `stdModules`.
+ */
+export function cursorAt(
+  checked: CheckedModule,
+  offset: number,
+  trigger: string | undefined,
+  stdModules: readonly string[],
+): Cursor {
   const tokens = codeTokensOf(checked.tree);
   const last = tokens.findLastIndex(({ span }) => span.start < offset);
   const written = tokens[last];
@@ -35,6 +46,7 @@ export function cursorAt(checked: CheckedModule, offset: number, trigger?: strin
     trigger,
     name: isName ? written : undefined,
     before: isName ? tokens[last - 1] : written,
+    stdModules,
   };
 }
 

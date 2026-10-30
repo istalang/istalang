@@ -43,14 +43,25 @@ export function stdRoles(
   };
 }
 
-/** The loader of the std modules in `sources`, which no import names the prelude through. */
+/** The loader of the std modules in `sources`. */
 export function stdlibLoader(sources: StdSources = stdModuleSources): ModuleLoader {
-  const texts = new Map(Object.entries(sources));
-  texts.delete(languageModules.prelude);
+  const texts = importableSources(sources);
   return (name) => {
     const text = texts.get(name);
     return text === undefined ? undefined : located(name, text);
   };
+}
+
+/** The names of the shipped std modules an import may name, which an editor offers as paths. */
+export const importableStdModules: readonly string[] = [
+  ...importableSources(stdModuleSources).keys(),
+];
+
+/** The modules of `sources` an import may name: all but the prelude, which no import names. */
+function importableSources(sources: StdSources): ReadonlyMap<string, string> {
+  const texts = new Map(Object.entries(sources));
+  texts.delete(languageModules.prelude);
+  return texts;
 }
 
 /** The std module that plays a role, which bears the role's name: from `sources`, or shipped. */

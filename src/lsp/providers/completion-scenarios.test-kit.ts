@@ -204,7 +204,7 @@ function placesOf(scenario: Scenario): readonly PlaceKind[] {
     if (checked === undefined) {
       throw new Error(`${scenario.id}: the program holds no main module`);
     }
-    return placeAt(cursorAt(checked, at, trigger)).kind;
+    return placeAt(cursorAt(checked, at, trigger, [])).kind;
   });
 }
 

@@ -25,7 +25,7 @@ function placed(body: string) {
   if (checked === undefined) {
     throw new Error('no main module');
   }
-  const cursor = cursorAt(checked, offset);
+  const cursor = cursorAt(checked, offset, undefined, []);
   return { cursor, place: placeAt(cursor) };
 }
 

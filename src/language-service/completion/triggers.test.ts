@@ -28,7 +28,7 @@ function opensIn(trigger: string, line: string): boolean {
   if (checked === undefined) {
     throw new Error('the program holds no main module');
   }
-  const cursor = cursorAt(checked, offset, trigger);
+  const cursor = cursorAt(checked, offset, trigger, []);
   return placesOpenedAt(cursor)?.(placeAt(cursor)) ?? false;
 }
 

@@ -31,18 +31,26 @@ import { offerType } from './places/type.ts';
 import { present } from './present.ts';
 import { placesOpenedAt } from './triggers.ts';
 
-/** The completions for the name at `offset` of `module`, asked for by typing `trigger`, if any. */
+/** What a request says beyond where it stands. */
+export interface CompletionRequest {
+  /** The character whose typing asked; absent when the editor invoked completion. */
+  readonly trigger?: string;
+  /** The std modules the app ships, which an import may name; none when absent. */
+  readonly stdModules?: readonly string[];
+}
+
+/** The completions for the name at `offset` of `module`. */
 export function completionsAt(
   program: Program,
   module: ModuleId,
   offset: number,
-  trigger?: string,
+  { trigger, stdModules = [] }: CompletionRequest = {},
 ): readonly Completion[] {
   const checked = checkedModule(program, module);
   if (checked === undefined) {
     return [];
   }
-  const cursor = cursorAt(checked, offset, trigger);
+  const cursor = cursorAt(checked, offset, trigger, stdModules);
   const opens = placesOpenedAt(cursor);
   if (opens === undefined) {
     return [];

@@ -18,7 +18,7 @@ function placeIn(...lines: readonly string[]): PlaceKind {
   if (checked === undefined) {
     throw new Error('the program holds no main module');
   }
-  return placeAt(cursorAt(checked, offset)).kind;
+  return placeAt(cursorAt(checked, offset, undefined, [])).kind;
 }
 
 describe('the place a cursor is in', () => {

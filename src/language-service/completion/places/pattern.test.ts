@@ -67,7 +67,7 @@ function candidatesIn(text: string, offset: number): readonly Candidate[] {
   if (checked === undefined) {
     throw new Error('the program holds no main module');
   }
-  const cursor = cursorAt(checked, offset);
+  const cursor = cursorAt(checked, offset, undefined, []);
   const place = placeAt(cursor);
   return place.kind === 'pattern' ? offerPattern(cursor, place) : [];
 }
@@ -102,7 +102,9 @@ const fieldMistakes = new Set([5013, 5015]);
 function fieldMisfitsOf({ text, start, end, open, named }: (typeof fieldSites)[number]) {
   const close = end - 1;
   const emptied = mainProgram(text.slice(0, open) + text.slice(close));
-  const offered = completionsAt(emptied.program, emptied.module, open, '{').map(({ name }) => name);
+  const offered = completionsAt(emptied.program, emptied.module, open, { trigger: '{' }).map(
+    ({ name }) => name,
+  );
   const items = offered.map((name) => `${name} is _`).join(', ');
   const probed = text.slice(0, open) + items + text.slice(close);
   return [
