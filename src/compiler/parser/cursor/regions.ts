@@ -16,7 +16,10 @@ export interface Region {
   readonly ownsCloser: boolean;
   /** A block's column; undefined for any other region, entries in braces included. */
   readonly column: number | undefined;
-  /** Index of the token where a bracket no closer matches ends. */
+  /**
+   * Index of the token where a bracket no closer matches ends the region, or ends a region around
+   * it (`entered`).
+   */
   readonly until?: number | undefined;
 }
 
@@ -33,14 +36,14 @@ export function bracketRegion(start: number, closer: Closer, until: number | und
   return { lineBreaks: 'ignored', start, closer, ownsCloser: true, column: undefined, until };
 }
 
-/** `{…}` whose lines form a block at `column`, as a block expression's do. */
-export function blockBracesRegion(column: number): LineRegionShape {
-  return { lineBreaks: 'separate', closer: '}', ownsCloser: true, column };
+/** `{…}` whose lines form a block at `column`, as a block expression's do, up to `}` or `until`. */
+export function blockBracesRegion(column: number, until: number | undefined): LineRegionShape {
+  return { lineBreaks: 'separate', closer: '}', ownsCloser: true, column, until };
 }
 
-/** `{…}` whose entries are separated by `;` or line breaks, at any column. */
-export function entryBracesRegion(): LineRegionShape {
-  return { lineBreaks: 'separate', closer: '}', ownsCloser: true, column: undefined };
+/** `{…}` whose entries are separated by `;` or line breaks, at any column, up to `}` or `until`. */
+export function entryBracesRegion(until: number | undefined): LineRegionShape {
+  return { lineBreaks: 'separate', closer: '}', ownsCloser: true, column: undefined, until };
 }
 
 /** A block at `column`, ended by the closer of the region it sits in. */
@@ -56,4 +59,12 @@ export function unbracketedRegion(start: number): Region {
 /** Where a line break, after its first token, ends the region; `closer` is the one around it. */
 export function oneLineRegion(closer: Closer | undefined): LineRegionShape {
   return { lineBreaks: 'end', closer, ownsCloser: false, column: undefined };
+}
+
+/** `region` as entered inside `outer`: it ends no later than `outer` does. */
+export function entered(region: Region, outer: Region): Region {
+  const { until } = outer;
+  return until === undefined || (region.until !== undefined && region.until <= until)
+    ? region
+    : { ...region, until };
 }

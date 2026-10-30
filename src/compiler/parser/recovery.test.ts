@@ -170,6 +170,24 @@ describe('a bracket never closed', () => {
     );
   });
 
+  it.each([
+    ['entry braces', lines('struct Broken { a: int', '', 'fn g(): 2', '')],
+    ['block braces', lines('fn broken():', '  const x = {', '', 'fn g(): 2', '')],
+    [
+      'a bracket closed inside one never closed',
+      lines('fn broken(a: f(', '  g(1,', ')', 'fn g(): 2', ''),
+    ],
+  ])('ends at that line for %s too', (_, text) => {
+    const parsed = parseAs('module', text);
+    expect(dumpOf(parsed)).toContain(functionOf('g', bodyOf('2')));
+    expect(parsed.rest).toBe(0);
+  });
+
+  it('ends a region inside it where it ends, whatever closes that region later', () => {
+    const text = lines('fn f():', '  h(', '    g(1,', '  2', ')', '');
+    expect(dumpOf(parseAs('module', text))).toContain(expressionStatement('2'));
+  });
+
   it('leaves a bracket closed later taking in every line before its closer', () => {
     const text = lines('fn f():', '  g(1,', '2)', '  h()', '');
     expect(dumpClean('module', text)).toBe(moduleOf(functionOf('f', calls)));

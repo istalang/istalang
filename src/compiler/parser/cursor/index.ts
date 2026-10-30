@@ -13,7 +13,8 @@
  * Regions nest. A region also records the closer that ends it, so recovery knows which closing
  * brackets belong to enclosing constructs and must not be consumed. A region without a closer of
  * its own keeps the closer of the region it sits in, since that closer also ends it. A bracket no
- * closer matches ends where recovery decides (brackets.ts), as if at a line break.
+ * closer matches ends where recovery decides (brackets.ts), as at a line break no layout crosses,
+ * and so does every region inside it.
  *
  * There is one view of the stream: `token`, `kind`, `advance` and `eat` all stop at a line break,
  * as they stop at the end. The only way past a line break is `crossLineBreak`, which only the
@@ -36,6 +37,7 @@ import {
   blockBracesRegion,
   blockRegion,
   bracketRegion,
+  entered,
   entryBracesRegion,
   type LineRegionShape,
   oneLineRegion,
@@ -188,9 +190,11 @@ export class Cursor {
     return this.#tokens[low] ?? endOfNothing;
   }
 
-  /** At a line break: the token that starts the next line. */
+  /** At a line break layout may cross: the token that starts the next line. */
   get lineStart(): Token | undefined {
-    return this.#breaksLine(this.#index) ? this.#rawAt(this.#index) : undefined;
+    return this.#breaksLine(this.#index) && !this.#isPastEnd(this.#index)
+      ? this.#rawAt(this.#index)
+      : undefined;
   }
 
   /** Makes the next line's first token visible in the current region, at a line break. */
@@ -201,27 +205,27 @@ export class Cursor {
   /**
    * Skips a whole bracket group, the cursor at its opener. Inside the group line breaks don't
    * count, as in the group's own region, and skipping stops early at a closer of an enclosing
-   * region. It loops rather than recursing, so no depth of nesting can exhaust the stack.
+   * region; a group no closer matches ends where its region would. It loops rather than
+   * recursing, so no depth of nesting can exhaust the stack.
    */
   skipGroup(): void {
-    const pending: string[] = [];
-    let until = Number.POSITIVE_INFINITY;
+    const pending: Region[] = [];
     do {
       const { kind } = this.#rawAt(this.#index);
       const closer = bracketClosers.get(kind);
-      if (this.#index >= until) {
-        return;
-      }
       if (closer !== undefined) {
-        pending.push(closer);
-        until = Math.min(until, this.#unclosedEnds.get(this.#index + 1) ?? until);
-      } else if (pending.includes(kind)) {
-        pending.splice(pending.lastIndexOf(kind));
+        const own = bracketRegion(this.#index, closer, this.#unclosedEnds.get(this.#index + 1));
+        pending.push(entered(own, pending.at(-1) ?? this.#current));
+      } else if (pending.some((group) => group.closer === kind)) {
+        pending.splice(pending.findLastIndex((group) => group.closer === kind));
       } else if (kind === 'end' || this.closesAny(kind)) {
         return;
       }
       this.#remainder = undefined;
       this.#index += 1;
+      while (this.#index >= (pending.at(-1)?.until ?? Number.POSITIVE_INFINITY)) {
+        pending.pop();
+      }
     } while (pending.length > 0);
   }
 
@@ -261,12 +265,15 @@ export class Cursor {
 
   /** Runs `parse` inside `{…}` whose lines form a block at `column`, as a block expression's do. */
   withinBlockBraces<Result>(column: number, parse: () => Result): Result {
-    return this.#inLineRegion(blockBracesRegion(column), parse);
+    return this.#inLineRegion(
+      blockBracesRegion(column, this.#unclosedEnds.get(this.#index)),
+      parse,
+    );
   }
 
   /** Runs `parse` inside `{…}` whose entries are separated by `;` or line breaks, at any column. */
   withinEntryBraces<Result>(parse: () => Result): Result {
-    return this.#inLineRegion(entryBracesRegion(), parse);
+    return this.#inLineRegion(entryBracesRegion(this.#unclosedEnds.get(this.#index)), parse);
   }
 
   /** Runs `parse` inside a block at `column`, starting at the next token. */
@@ -302,7 +309,7 @@ export class Cursor {
   #inRegion<Result>(region: Region, parse: () => Result): Result {
     const outer = this.#current;
     this.#enclosing.push(outer);
-    this.#current = region;
+    this.#current = entered(region, outer);
     const result = parse();
     this.#enclosing.pop();
     this.#current = outer;
@@ -324,9 +331,14 @@ export class Cursor {
       return false;
     }
     return (
-      index >= (region.until ?? Number.POSITIVE_INFINITY) ||
+      this.#isPastEnd(index) ||
       (region.lineBreaks !== 'ignored' && index > region.start && token.firstOnLine)
     );
+  }
+
+  /** Whether `index` is at or past where a bracket no closer matches ends the current region. */
+  #isPastEnd(index: number): boolean {
+    return index >= (this.#current.until ?? Number.POSITIVE_INFINITY);
   }
 
   /** The token at `index` as the current region reads it: a glued `>…` closing `<…>` reads as `>`. */
