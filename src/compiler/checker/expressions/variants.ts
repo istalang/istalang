@@ -18,8 +18,8 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { chooseVariant, enumsExpected, sameEnum } from '../resolution/named.ts';
-import { optionalInner } from '../types/fit.ts';
+import { chooseVariant } from '../resolution/named.ts';
+import { enumsExpected, optionalInner, sameEnum } from '../types/fit.ts';
 import { typeArgumentsFor } from '../types/resolve-type.ts';
 import {
   errorType,

@@ -14,9 +14,19 @@
  *   constraints are among its own.
  * - Which nominal type is `Optional`, and whether a type meets a constraint, are the program's to
  *   say (`Fitting`).
+ * - The wrap is why a bare variant may be of an enum inside the optionals expected (§3.11): the
+ *   checker chooses among them, and completion offers them, by `enumsExpected` and `sameEnum`.
  */
 
-import { type AnyType, isAssignable, isPrimitive, type NominalEntity, type Type } from './type.ts';
+import type { EnumDeclaration } from '../../syntax/declarations.ts';
+import {
+  type AnyType,
+  isAssignable,
+  isPrimitive,
+  type NominalEntity,
+  type NominalType,
+  type Type,
+} from './type.ts';
 
 /** The entity of the prelude's `Optional`, or undefined in a program without the prelude. */
 export type OptionalEntity = NominalEntity | undefined;
@@ -155,4 +165,46 @@ export function optionalInner(type: Type, optional: OptionalEntity): Type | unde
 export function withoutOptionals(type: Type, optional: OptionalEntity): Type {
   const inner = optionalInner(type, optional);
   return inner === undefined ? type : withoutOptionals(inner, optional);
+}
+
+/**
+ * The nominal type of `declaration` that `expected` asks for, through any optionals wrapping it
+ * (§2); `Optional<T>` itself when `declaration` is `Optional`.
+ */
+export function sameEnum(
+  checker: { readonly optionalEntity: OptionalEntity },
+  expected: Type | undefined,
+  declaration: EnumDeclaration,
+): NominalType | undefined {
+  for (
+    let current = expected;
+    current !== undefined;
+    current = optionalInner(current, checker.optionalEntity)
+  ) {
+    if (current.kind === 'nominal' && current.entity.declaration === declaration) {
+      return current;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The enums a value of `expected` may be a variant of: its own, and those inside its optionals,
+ * outermost first, as `sameEnum` finds them.
+ */
+export function enumsExpected(
+  checker: { readonly optionalEntity: OptionalEntity },
+  expected: Type | undefined,
+): readonly EnumDeclaration[] {
+  const enums: EnumDeclaration[] = [];
+  for (
+    let current = expected;
+    current !== undefined;
+    current = optionalInner(current, checker.optionalEntity)
+  ) {
+    if (current.kind === 'nominal' && current.entity.declaration.kind === 'EnumDeclaration') {
+      enums.push(current.entity.declaration);
+    }
+  }
+  return enums;
 }

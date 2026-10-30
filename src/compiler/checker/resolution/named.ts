@@ -12,16 +12,9 @@ import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { optionalInner } from '../types/fit.ts';
+import { enumsExpected } from '../types/fit.ts';
 import { parameterType } from '../types/resolve-type.ts';
-import {
-  aliasedAs,
-  expectsError,
-  type NominalType,
-  nominalType,
-  primitiveType,
-  type Type,
-} from '../types/type.ts';
+import { aliasedAs, expectsError, nominalType, primitiveType, type Type } from '../types/type.ts';
 
 /**
  * The type a type named in value position denotes, as the owner of a static call or the target
@@ -90,48 +83,6 @@ export function chooseVariant(
   }
   context.recordVariant(at.name, chosen);
   return { enum: chosen.enum, variant: chosen.variant };
-}
-
-/**
- * The nominal type of `declaration` that `expected` asks for, through any optionals wrapping it
- * (§2); `Optional<T>` itself when `declaration` is `Optional`.
- */
-export function sameEnum(
-  checker: Pick<CheckerContext, 'optionalEntity'>,
-  expected: Type | undefined,
-  declaration: EnumDeclaration,
-): NominalType | undefined {
-  for (
-    let current = expected;
-    current !== undefined;
-    current = optionalInner(current, checker.optionalEntity)
-  ) {
-    if (current.kind === 'nominal' && current.entity.declaration === declaration) {
-      return current;
-    }
-  }
-  return undefined;
-}
-
-/**
- * The enums a value of `expected` may be a variant of: its own, and those inside its optionals,
- * outermost first, as `sameEnum` finds them.
- */
-export function enumsExpected(
-  checker: Pick<CheckerContext, 'optionalEntity'>,
-  expected: Type | undefined,
-): readonly EnumDeclaration[] {
-  const enums: EnumDeclaration[] = [];
-  for (
-    let current = expected;
-    current !== undefined;
-    current = optionalInner(current, checker.optionalEntity)
-  ) {
-    if (current.kind === 'nominal' && current.entity.declaration.kind === 'EnumDeclaration') {
-      enums.push(current.entity.declaration);
-    }
-  }
-  return enums;
 }
 
 /** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */
