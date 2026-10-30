@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
+import { typeText } from '../types/type-text.ts';
 import { checkedMain } from './lookup.test-kit.ts';
 
 const text = `const zero = 0
@@ -55,5 +56,24 @@ describe('the body holding a node', () => {
   it('is none for a signature or a declaring name', () => {
     expect(lookup.bodyHolding(module, named('a'))).toBeUndefined();
     expect(lookup.bodyHolding(module, named('Point'))).toBeUndefined();
+  });
+});
+
+describe('an annotation nothing takes', () => {
+  it('denotes the field a name in it gives, asked before anything else', () => {
+    const { checker, module, named } = checkedMain(
+      'struct Tag { text: string }\nfn f(): 1\n@Tag{text: "x"}\n',
+    );
+    const [denoted] = checker.lookup.denotationsOf(module, named('text', 1));
+    expect(denoted?.declared.kind).toBe('field');
+    expect(denoted?.type && typeText(denoted.type)).toBe('string');
+  });
+
+  it('denotes its names among the cases of a match', () => {
+    const { checker, module, named } = checkedMain(
+      'struct Tag { text: string }\nfn f(n: int) -> int:\n  match n:\n    @Tag{"a"}\n    case 1: 2\n    case _: 3\n',
+    );
+    const [denoted] = checker.lookup.denotationsOf(module, named('Tag', 1));
+    expect(denoted?.declared.kind).toBe('type');
   });
 });

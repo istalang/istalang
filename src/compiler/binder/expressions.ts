@@ -14,9 +14,11 @@ import {
   casesOf,
   type Expression,
   type FieldsLiteral,
+  type MatchCase,
   qualifiedPath,
+  type SelectCase,
 } from '../syntax/expressions/index.ts';
-import type { Identifier } from '../syntax/node.ts';
+import type { Identifier, Invalid } from '../syntax/node.ts';
 import { bindConditionValue, underBindings, underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import type { Scope } from './scope.ts';
@@ -111,6 +113,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   },
   Match: (binder, node, scope) => {
     bindExpression(binder, node.subject, scope);
+    bindRejectedAnnotations(binder, node.cases, scope);
     for (const matchCase of casesOf(node)) {
       underBindings(binder, matchCase, scope, {
         define: (bindings) =>
@@ -123,6 +126,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
     }
   },
   Select: (binder, node, scope) => {
+    bindRejectedAnnotations(binder, node.cases, scope);
     for (const selectCase of node.cases) {
       if (selectCase.kind === 'SelectCase') {
         bindExpression(binder, selectCase.future, scope);
@@ -144,6 +148,22 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   },
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/**
+ * Binds the annotations held by the Invalid items among a body's cases, where the parser takes
+ * none (§3.16): their values are still struct values written in the body's scope.
+ */
+function bindRejectedAnnotations(
+  binder: LocalBinder,
+  items: readonly (MatchCase | SelectCase | Invalid)[],
+  scope: Scope,
+): void {
+  for (const item of items) {
+    if (item.kind === 'Invalid') {
+      binder.annotations(item, scope);
+    }
+  }
+}
 
 export function bindExpression(binder: LocalBinder, node: Expression, scope: Scope): void {
   binder.enter(node, scope);
