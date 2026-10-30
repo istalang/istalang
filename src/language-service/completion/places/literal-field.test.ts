@@ -11,7 +11,7 @@ import { checkProgram } from '../../../compiler/checker/check.ts';
 import type { FieldsLiteral } from '../../../compiler/syntax/expressions/index.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree.ts';
-import { type MainProgram, mainProgram } from '../../language-service.test-kit.ts';
+import { type MainProgram, mainProgram, programAt } from '../../language-service.test-kit.ts';
 import { completionsAt } from '../index.ts';
 
 /** A field unknown to the literal's type (5013), one left without a value (5014), or one given twice (5015). */
@@ -74,4 +74,16 @@ describe('field completion offers exactly what a literal may set', () => {
       { numRuns: 30 },
     );
   }, 60_000);
+
+  it("leaves out a one-field struct's field once an item gives it by position", () => {
+    const fieldsOffered = (...lines: readonly string[]) => {
+      const { program, module, offset } = programAt('struct Box:', '  value: int', ...lines);
+      return completionsAt(program, module, offset)
+        .filter(({ kind }) => kind === 'field')
+        .map(({ name }) => name);
+    };
+    expect(fieldsOffered('fn t(v: int):', '  let b = Box{5, ‸}', '  0')).toEqual([]);
+    expect(fieldsOffered('fn t(v: int):', '  let b = Box{(v), ‸}', '  0')).toEqual([]);
+    expect(fieldsOffered('fn t(v: int):', '  let b = Box{‸}', '  0')).toEqual(['value']);
+  });
 });

@@ -112,18 +112,20 @@ function isCutShort({ tree }: PlaceholderParse, item: SyntaxNode, annotation: Sy
   );
 }
 
-/** A literal the cursor starts an item of: the path naming its struct, the fields it gives. */
+/** A literal the cursor starts an item of: the path naming its struct, the items before it. */
 interface UnreadLiteral {
   readonly path: readonly string[];
-  readonly given: ReadonlySet<string>;
+  /** The name each item before the cursor's gives its field by; undefined for one by position. */
+  readonly others: readonly (string | undefined)[];
   /** Whether the cursor's item follows the literal's `{`, as its first. */
   readonly opens: boolean;
 }
 
 /**
  * The annotation's literal whose `{` or `,` is right before the cursor's item: the innermost
- * bracket holding the cursor is its `{`, with the struct's name and an `@` before it. The fields
- * it gives are the names before a `:` among its items, brackets inside them passed over.
+ * bracket holding the cursor is its `{`, with the struct's name and an `@` before it. An item
+ * starting with a name and a `:` or `,` names its field, a spread none, and any other gives its
+ * value by position; brackets inside items are passed over.
  */
 function unreadLiteralAt({ tree, before, offset }: Cursor): UnreadLiteral | undefined {
   if (before?.kind !== '{' && before?.kind !== ',') {
@@ -142,19 +144,20 @@ function unreadLiteralAt({ tree, before, offset }: Cursor): UnreadLiteral | unde
   if (path === undefined) {
     return undefined;
   }
-  const given = new Set<string>();
+  const others: (string | undefined)[] = [];
   let startsItem = true;
   let index = opening + 1;
   for (let token = tokens[index]; token !== undefined && index < last; token = tokens[index]) {
     const next = tokens[index + 1]?.kind;
-    if (startsItem && token.kind === 'identifier' && (next === ':' || next === ',')) {
-      given.add(textOf(token));
+    if (startsItem && token.kind !== ',' && token.kind !== '...') {
+      const names = token.kind === 'identifier' && (next === ':' || next === ',');
+      others.push(names ? textOf(token) : undefined);
     }
     startsItem = token.kind === ',';
     const closing = closings.get(token);
     index = closing === undefined ? index + 1 : tokens.indexOf(closing) + 1;
   }
-  return { path, given, opens: before.kind === '{' };
+  return { path, others, opens: before.kind === '{' };
 }
 
 /**
@@ -210,6 +213,6 @@ function unwrittenFields(cursor: Cursor, literal: UnreadLiteral): readonly Candi
     return [];
   }
   const fields = checker.fieldsOf(nominalType(named, [])) ?? [];
-  const { given, opens } = literal;
-  return literalItems(cursor, { fields, given, opens, first: opens });
+  const { others, opens } = literal;
+  return literalItems(cursor, { fields, others, opens, first: opens });
 }

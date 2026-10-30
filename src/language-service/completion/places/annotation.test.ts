@@ -60,6 +60,8 @@ describe('completion in an annotation', () => {
     expect(names('@Pair{first, ‸')).toEqual(['second']);
     expect(names('@Pair{first: Pair{first: 1, second: 2}.first, ‸')).toEqual(['second']);
     expect(names('@Lease{‸')).toEqual([]);
+    expect(names('@json.JsonName{"n", ‸')).toEqual([]);
+    expect(names('@Pair{1, ‸')).toEqual(['first', 'second']);
   });
 
   it("offers a one-field struct's value unnamed too, its struct qualified or given types", () => {
