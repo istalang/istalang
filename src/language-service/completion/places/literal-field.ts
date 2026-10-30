@@ -11,6 +11,7 @@
  * only where it may stand, as the first item.
  */
 
+import type { FieldMember } from '../../../compiler/checker/types/type.ts';
 import type { FieldsLiteral } from '../../../compiler/syntax/expressions/index.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
 import { nodesAt, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
@@ -60,6 +61,31 @@ export function offerLiteralFields(
       each !== item && each.kind === 'FieldInitializer' ? [each.name.text] : [],
     ),
   );
+  const first = literal.items.every((each) => each === item);
+  return literalItems(cursor, { fields, given, opens, first });
+}
+
+/** What a literal's item may start with, as the literal's own braces and items say. */
+interface LiteralItemSlot {
+  /** The fields the literal builds. */
+  readonly fields: readonly FieldMember[];
+  /** The names of the fields its other items give. */
+  readonly given: ReadonlySet<string>;
+  /** Whether the item follows the literal's `{` rather than a `,`. */
+  readonly opens: boolean;
+  /** Whether no other item comes before it. */
+  readonly first: boolean;
+}
+
+/**
+ * The candidates for an item of a literal building `fields`: those not `given`, each after a
+ * variable that would write it as shorthand; the leading spread where the first item stands; and,
+ * after the `{` of a literal building one field, invoked, the values it may take unnamed.
+ */
+function literalItems(
+  cursor: Cursor,
+  { fields, given, opens, first }: LiteralItemSlot,
+): readonly Candidate[] {
   const visible = visibleCandidates(cursor);
   const offered = fields
     .filter(({ name }) => !given.has(name))
@@ -67,7 +93,7 @@ export function offerLiteralFields(
       ...shorthandFor(visible, field.name),
       { name: field.name, subject: { kind: 'field', field } },
     ]);
-  const startsItems = opens && fields.length > 0 && literal.items.every((each) => each === item);
+  const startsItems = opens && first && fields.length > 0;
   const takesValue = opens && fields.length === 1 && cursor.trigger === undefined;
   const values = takesValue ? visible.filter((candidate) => !isBareVariant(candidate)) : [];
   return [...offered, ...(startsItems ? [spread] : []), ...values];
