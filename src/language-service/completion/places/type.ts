@@ -7,7 +7,7 @@
  * parameter's bound (`T is ‸`) and after `any`. After `new`, only a shared struct is built (§3.18).
  */
 
-import type { Entity } from '../../../compiler/binder/entities.ts';
+import { type Entity, namesType } from '../../../compiler/binder/entities.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
@@ -37,10 +37,6 @@ const typeWords: readonly Word[] = ['fn', 'async', 'sendable', 'any'];
 /** The visible names `keeps`, with the namespaces, which may qualify one. */
 function namesWhere(cursor: Cursor, keeps: (entity: Entity) => boolean): readonly Candidate[] {
   return visibleNames(cursor, (entity) => entity.kind === 'namespace' || keeps(entity));
-}
-
-function namesType(entity: Entity): boolean {
-  return entity.kind === 'type' || entity.kind === 'primitive' || entity.kind === 'self';
 }
 
 function isDeclared(entity: Entity, kind: SyntaxNode['kind']): boolean {
