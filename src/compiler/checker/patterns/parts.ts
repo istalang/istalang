@@ -118,7 +118,7 @@ export function fieldPart<Step extends PartStep>(
   item: { readonly name: Identifier | undefined; readonly span: AnchoredSpan },
   part: ValuePart<Step | number>,
 ): { readonly index: number; readonly part: ValuePart<Step | number> } {
-  const index = fields === undefined ? -1 : itemField(item.name?.text, fields);
+  const index = fields === undefined ? -1 : itemField(item.name, fields);
   const field = fields?.[index];
   if (field !== undefined && item.name !== undefined) {
     scope.recordField(item.name, field);

@@ -19,7 +19,6 @@ import {
   type VariableEntity,
 } from '../../compiler/binder/entities.ts';
 import type { Checker } from '../../compiler/checker/check.ts';
-import { canAnnotate } from '../../compiler/checker/checked-annotation.ts';
 import { nominalType, type Type } from '../../compiler/checker/types/type.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
@@ -29,7 +28,6 @@ import { docstringOf } from '../docstrings.ts';
 import { importedModule } from '../namespaces.ts';
 import { signatureOf } from '../signatures.ts';
 import type { CompletionKind, RankGroup } from './item.ts';
-import { namesAnnotation } from './places/annotation.ts';
 import { called, constructed, documented, type Presenting, type Shown } from './presenting.ts';
 
 /** How `entity`, offered as `name`, shows. */
@@ -109,9 +107,7 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
       detail,
       ...documented(docstringOf(checker, { kind: 'type', entity })),
       commit: goesOn,
-      ...(presenting.place.kind === 'annotation' &&
-      namesAnnotation(presenting.cursor) &&
-      canAnnotate(entity)
+      ...(presenting.place.kind === 'annotation'
         ? constructed(
             presenting,
             name,

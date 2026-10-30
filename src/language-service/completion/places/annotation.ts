@@ -27,12 +27,7 @@ type AnnotationPlace = Extract<ParsedPlace, { readonly kind: 'annotation' }>;
 type PlaceholderParse = AnnotationPlace['parsed'];
 
 export function offerAnnotation(cursor: Cursor, { parsed }: AnnotationPlace): readonly Candidate[] {
-  return namesAnnotation(cursor) ? annotationNames(cursor, parsed) : [];
-}
-
-/** Whether `cursor`, at an annotation's place, writes its struct's name, right after the `@`. */
-export function namesAnnotation({ before }: Cursor): boolean {
-  return before?.kind === '@';
+  return cursor.before?.kind === '@' ? annotationNames(cursor, parsed) : [];
 }
 
 /**

@@ -19,6 +19,7 @@ import {
   type FieldsLiteral,
   itemName,
 } from '../../../compiler/syntax/expressions/index.ts';
+import type { Identifier } from '../../../compiler/syntax/node.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
 import { nodesAt, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import type { Candidate } from '../candidate.ts';
@@ -63,7 +64,7 @@ export function offerLiteralFields(
   const { checker, module } = cursor;
   const fields = checker.lookup.bodyHolding(module, literal)?.literalFieldsOf(literal) ?? [];
   const others = literal.items.flatMap((each) =>
-    each !== item && isFieldItem(each) ? [itemName(each)?.text] : [],
+    each !== item && isFieldItem(each) ? [itemName(each)] : [],
   );
   const first = literal.items.every((each) => each === item);
   return literalItems(cursor, { fields, others, opens, first });
@@ -78,7 +79,7 @@ interface LiteralItemSlot {
   /** The fields the literal builds. */
   readonly fields: readonly FieldMember[];
   /** The name each of its other items gives its field by; undefined for one given by position. */
-  readonly others: readonly (string | undefined)[];
+  readonly others: readonly (Identifier | undefined)[];
   /** Whether the item follows the literal's `{` rather than a `,`. */
   readonly opens: boolean;
   /** Whether no other item comes before it. */

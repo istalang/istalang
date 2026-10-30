@@ -270,7 +270,7 @@ function checkItem(
   }
   const { shape, inference, given } = items;
   const name = itemName(item);
-  const index = itemField(name?.text, shape.fields);
+  const index = itemField(name, shape.fields);
   const field = shape.fields[index];
   if (field !== undefined && name !== undefined) {
     context.recordField(name, field);
