@@ -7,10 +7,10 @@
  *
  * The placeholder's nearest enclosing node that decides a role names the place: a type, a
  * declared name, a pattern (a `case` or `is` pattern, which tests; a `let`, `for` or parameter
- * pattern declares names instead, as an `as` in any pattern does), a call's argument, an import,
- * an annotation. An expression inside one of these (a compared field's value, an argument's or a
- * field's value) is the grammar's again. A few positions
- * the parser can't tell apart from others are read from the tokens: `new` (a type follows), a line
+ * pattern declares names instead, as an `as` in any pattern does), a struct pattern's field, a
+ * call's argument, an import, an annotation. An expression inside one of these (a compared
+ * field's value, an argument's or a field's value) is the grammar's again. A few positions the
+ * parser can't tell apart from others are read from the tokens: `new` (a type follows), a line
  * opening with `import` or `@`, and a `<` touching a callee (type arguments, not a comparison).
  *
  * Comments, and the text of strings and numbers, take nothing.
@@ -18,6 +18,7 @@
 
 import { parse } from '../../compiler/parser/parse.ts';
 import { scan } from '../../compiler/scanner/scan.ts';
+import type { Identifier } from '../../compiler/syntax/node.ts';
 import type { Token, TokenKind } from '../../compiler/syntax/tokens.ts';
 import { extentIn, nodesAt, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { createSourceText } from '../../text/source-text.ts';
@@ -32,6 +33,7 @@ type ParsedPlaceKind =
   | 'declaredName'
   | 'callArgument'
   | 'pattern'
+  | 'patternField'
   | 'import'
   | 'annotation';
 
@@ -190,11 +192,22 @@ const roles: { readonly [Kind in SyntaxNode['kind']]?: Role<Extract<SyntaxNode, 
     Comprehension: holdsTargets,
     Binary: ({ parsed, node, child }) =>
       child === node.right && opensTypeArguments(parsed, node) ? 'type' : undefined,
-    BindFieldPattern: ({ node, child }) => (child === node.alias ? 'declaredName' : undefined),
-    CompareFieldPattern: ({ node, child }) => (child === node.value ? 'grammar' : undefined),
+    BindFieldPattern: ({ node, child }) =>
+      child === node.alias ? 'declaredName' : fieldRole(node, child),
+    CompareFieldPattern: ({ node, child }) =>
+      child === node.value ? 'grammar' : fieldRole(node, child),
+    NestedFieldPattern: ({ node, child }) => fieldRole(node, child),
     FieldInitializer: ({ node, child }) => (child === node.value ? 'grammar' : undefined),
   };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/** A struct pattern's item, where its field is named. */
+function fieldRole(
+  item: { readonly field: Identifier },
+  child: SyntaxNode | undefined,
+): ParsedPlaceKind | undefined {
+  return child === item.field ? 'patternField' : undefined;
+}
 
 /**
  * A call's argument written as the placeholder alone. `hold(name)` reads as a call until the

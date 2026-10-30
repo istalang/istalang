@@ -1,0 +1,167 @@
+/**
+ * The type a pattern being written matches (§3.11), read down from the type the `match` subject or
+ * the `is` operand has as checked: an alternative, a parenthesized or an `as` pattern matches its
+ * whole; a struct pattern's item, the field it names, among those of the variant or struct the
+ * pattern names (against an `any` value, the type it downcasts to); a nested field pattern, that
+ * field's type; a tuple's element, its element's; an array's item, its item's, and its rest the
+ * whole array.
+ *
+ * The patterns are read from the placeholder parse, which holds the one being written whole; the
+ * subject and a struct pattern's name end before the cursor, so the checked tree types the one and
+ * tells what the other denotes (checked-twin.ts).
+ */
+
+import type { Denotation } from '../../../compiler/checker/denotation.ts';
+import type { FieldMember, Type } from '../../../compiler/checker/types/type.ts';
+import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
+import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';
+import type { StructPattern } from '../../../compiler/syntax/patterns.ts';
+import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import { checkedTwinOf } from '../checked-twin.ts';
+import type { Cursor } from '../cursor.ts';
+import type { ParsedPlace } from '../placeholder.ts';
+
+type Parsed = ParsedPlace['parsed'];
+
+/** The type `pattern`, a node of `parsed`'s chain, matches; undefined where it isn't known. */
+export function matchedTypeOf(
+  cursor: Cursor,
+  parsed: Parsed,
+  pattern: SyntaxNode,
+): Type | undefined {
+  const { chain } = parsed;
+  const depth = chain.indexOf(pattern);
+  const links = chain
+    .slice(0, Math.max(depth, 0))
+    .map((node, index) => ({ node, child: chain[index + 1], parent: chain[index - 1] }));
+  return links.reduce<Type | undefined>((type, { node, child, parent }) => {
+    const step = steps[node.kind] as Step<SyntaxNode> | undefined;
+    return child === undefined ? undefined : step?.({ cursor, parsed, node, child, parent, type });
+  }, undefined);
+}
+
+/** The fields a struct pattern's items name: its variant's, or its struct's. */
+export function fieldsMatchedBy(
+  cursor: Cursor,
+  parsed: Parsed,
+  pattern: StructPattern,
+): readonly FieldMember[] {
+  const type = matchedTypeOf(cursor, parsed, pattern);
+  return type === undefined ? [] : fieldsOf(cursor, parsed, pattern, type);
+}
+
+/**
+ * The fields `pattern`'s items may name against a value of `type`, by what its name denotes as
+ * checked: a variant of `type`'s enum, which a bare name chooses by its name even before checking
+ * resolved it, or `type`'s own struct; against an `any` type, the type it downcasts to, a struct or
+ * a qualified variant's enum, neither generic (§3.10). `struct{…}` names `type`'s own fields. A trait's required fields are no pattern's (patterns/parts.ts).
+ */
+function fieldsOf(
+  cursor: Cursor,
+  parsed: Parsed,
+  pattern: StructPattern,
+  type: Type,
+): readonly FieldMember[] {
+  const { checker } = cursor;
+  if (pattern.type === undefined) {
+    return type.kind === 'any' ? [] : (checker.fieldsOf(type) ?? []);
+  }
+  const name = lastName(pattern.type.path);
+  const isBare = pattern.type.path.length === 1;
+  const denoted = denotationOf(cursor, parsed, name);
+  const own = type.kind === 'any' ? downcastTo(denoted, !isBare) : type;
+  const declared = denoted?.declared;
+  if (own?.kind !== 'nominal') {
+    return [];
+  }
+  if (declared?.kind === 'type') {
+    return declared.entity === own.entity ? (checker.fieldsOf(own) ?? []) : [];
+  }
+  const choosesVariant =
+    (isBare && type.kind !== 'any') ||
+    (declared?.kind === 'variant' && declared.entity.enum === own.entity.declaration);
+  return choosesVariant
+    ? (checker.variantsOf(own)?.find((variant) => variant.name === name.text)?.fields ?? [])
+    : [];
+}
+
+/** What `name`, written before the cursor, denotes as checked. */
+function denotationOf(cursor: Cursor, parsed: Parsed, name: Identifier): Denotation | undefined {
+  const checked = checkedTwinOf(cursor, parsed.tree, name);
+  return checked === undefined
+    ? undefined
+    : cursor.checker.lookup.denotationsOf(cursor.module, checked)[0];
+}
+
+/** The type a downcast to what `denoted` names tests for, where it names one (downcasts.ts). */
+function downcastTo(denoted: Denotation | undefined, isQualified: boolean): Type | undefined {
+  const declared = denoted?.declared;
+  const names =
+    (declared?.kind === 'type' && declared.entity.kind === 'type') ||
+    (declared?.kind === 'variant' && isQualified);
+  const type = denoted?.type;
+  return names && type?.kind === 'nominal' && type.entity.declaration.typeParameters.length === 0
+    ? type
+    : undefined;
+}
+
+/** A link of the chain: `node`, its `child` on the way to the pattern, and what `node` matches. */
+interface Link<Node extends SyntaxNode> {
+  readonly cursor: Cursor;
+  readonly parsed: Parsed;
+  readonly node: Node;
+  readonly child: SyntaxNode;
+  readonly parent: SyntaxNode | undefined;
+  readonly type: Type | undefined;
+}
+
+/** The type `link.child` matches; undefined where the child is no pattern, or isn't known. */
+type Step<Node extends SyntaxNode> = (link: Link<Node>) => Type | undefined;
+
+const whole: Step<SyntaxNode> = ({ type }) => type;
+
+/** What a subject before the cursor has, as checked. */
+function subjectType(
+  { cursor, parsed }: Link<SyntaxNode>,
+  subject: Extract<SyntaxNode, { kind: 'Match' | 'Is' }>['subject'],
+): Type | undefined {
+  const checked = checkedTwinOf(cursor, parsed.tree, subject);
+  return checked === undefined
+    ? undefined
+    : cursor.checker.lookup.bodyHolding(cursor.module, checked)?.typeOf(checked);
+}
+
+// biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
+const steps: { readonly [Kind in SyntaxNode['kind']]?: Step<Extract<SyntaxNode, { kind: Kind }>> } =
+  {
+    MatchCase: (link) =>
+      link.child === link.node.pattern && link.parent?.kind === 'Match'
+        ? subjectType(link, link.parent.subject)
+        : undefined,
+    Is: (link) =>
+      link.child === link.node.pattern ? subjectType(link, link.node.subject) : undefined,
+    OrPattern: whole,
+    ParenthesizedPattern: whole,
+    AsPattern: (link) => (link.child === link.node.pattern ? link.type : undefined),
+    TuplePattern: ({ node, child, type }) => {
+      const elements: readonly SyntaxNode[] = node.elements;
+      return type?.kind === 'tuple' ? type.elements[elements.indexOf(child)] : undefined;
+    },
+    ArrayPattern: ({ cursor, child, type }) => {
+      if (type === undefined || child.kind === 'RestPattern') {
+        return type;
+      }
+      return arrayElement(cursor.checker, type);
+    },
+    StructPattern: (link) => {
+      const { cursor, node, child, type } = link;
+      const item = node.fields.find((each) => each === child);
+      if (type === undefined || item === undefined || item.kind === 'Invalid') {
+        return;
+      }
+      return fieldsOf(cursor, link.parsed, node, type).find(({ name }) => name === item.field.text)
+        ?.type;
+    },
+    NestedFieldPattern: (link) => (link.child === link.node.pattern ? link.type : undefined),
+  };
+// biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

@@ -43,6 +43,8 @@ tags: [reuse, language, modules, program, binder, names]
 - find the call whose parentheses a cursor is inside, the argument it writes, the functions the call may call, and the parameter a written argument gives → `callAt`, `calleesOf`, `writtenParameter` (`src/language-service/call-at.ts`)
 - tell what the grammar admits at a cursor (a type, a declared name, a pattern, a call's argument, a member…) → `placeAt`, `Place` (`src/language-service/completion/place.ts`), which reads all but members and literal fields from a parse with a placeholder name there (`parsedPlaceAt`, `placeholder.ts`)
 - offer the names visible at a cursor and every keyword, as completion candidates → `visibleCandidates` (`src/language-service/completion/visible.ts`)
+- ask the checker about a node of completion's placeholder parse (one ending before the cursor) → `checkedTwinOf` (`src/language-service/completion/checked-twin.ts`)
+- the type a `case` or `is` pattern being written matches, or the fields its struct pattern names → `matchedTypeOf`, `fieldsMatchedBy` (`src/language-service/completion/places/matched-type.ts`)
 - turn completion candidates into items, or an item into an LSP item → `present` (`src/language-service/completion/present.ts`), `completionItem` (`src/lsp/providers/completion.ts`)
 - read an LSP request's position as a module and offset, or write a name's place as an LSP location → `documentOffset`, `locationOf`, `rangeOf` (`src/lsp/locations.ts`)
 - get a module of a program, its tree and the program's checker, for an editor feature reading types → `checkedModule` (`src/language-service/checked-module.ts`)

@@ -2,7 +2,9 @@
  * Completion over every corpus and std module, through the protocol: at every name the binder
  * resolved by looking it up in scope, the name is offered; at every member the identifier query
  * answers, after its `.`, `?.`, `->` or `?->`, or as a qualified name's later segment in a type or
- * a pattern, the member is offered.
+ * a pattern, the member is offered. A name inside an error the checker reports is aside: completion
+ * offers what fits where it is written, as a pattern offers what its subject may hold, not a type
+ * the subject can't be.
  */
 
 import { pathToFileURL } from 'node:url';
@@ -18,6 +20,7 @@ import { checkProgram } from '../../compiler/checker/check.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
+import { isError } from '../../diagnostics/diagnostic.ts';
 import {
   corpusClient,
   programDocuments as documents,
@@ -47,18 +50,25 @@ describe('completion over the corpus', () => {
         return node.kind === 'NamedType' || node.kind === 'NamePattern' ? node.path.slice(1) : [];
       })
       .filter((member) => checker.lookup.denotationsOf(module, member).length > 0);
+    const errors = checker.diagnosticsOf(module).filter(isError);
+    const inError = (name: Identifier) => {
+      const { start, end } = spanIn(tree, name.span);
+      return errors.some(({ span }) => span.start <= start && end <= span.end);
+    };
     const unoffered = await Promise.all(
-      [...scoped, ...members].map(async (name: Identifier) => {
-        const position = rangeOf(tree.source, spanIn(tree, name.span)).end;
-        const items = await client.connection.sendRequest(CompletionRequest.type, {
-          textDocument: { uri },
-          position,
-        });
-        const offered = (Array.isArray(items) ? items : (items?.items ?? [])).some(
-          ({ label }: CompletionItem) => label === name.text,
-        );
-        return offered ? [] : [`${position.line}:${position.character} ${name.text}`];
-      }),
+      [...scoped, ...members]
+        .filter((name) => !inError(name))
+        .map(async (name: Identifier) => {
+          const position = rangeOf(tree.source, spanIn(tree, name.span)).end;
+          const items = await client.connection.sendRequest(CompletionRequest.type, {
+            textDocument: { uri },
+            position,
+          });
+          const offered = (Array.isArray(items) ? items : (items?.items ?? [])).some(
+            ({ label }: CompletionItem) => label === name.text,
+          );
+          return offered ? [] : [`${position.line}:${position.character} ${name.text}`];
+        }),
     );
     expect(unoffered.flat()).toEqual([]);
   });

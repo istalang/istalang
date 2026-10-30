@@ -36,7 +36,7 @@ const kinds =
   (place) =>
     opened.includes(place.kind);
 
-const nameLists = kinds('literalField', 'pattern', 'annotation', 'callArgument', 'import');
+const nameLists = kinds('literalField', 'patternField', 'annotation', 'callArgument', 'import');
 
 const always =
   (places: PlaceTest): Opening =>

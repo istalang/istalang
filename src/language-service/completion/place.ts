@@ -23,6 +23,7 @@ import { type MemberPlace, memberPlaceAt } from './places/member.ts';
  * - `literalField`: a struct or variant literal's item names its field;
  * - `callArgument`: a call's argument starts, which a name may label;
  * - `pattern`: a pattern tested by `case` or `is`;
+ * - `patternField`: a struct pattern's item names its field;
  * - `import`, `annotation`: inside one.
  */
 export type Place = MemberPlace | LiteralFieldPlace | ParsedPlace;

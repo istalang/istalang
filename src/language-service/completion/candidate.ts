@@ -12,6 +12,8 @@ import type { FunctionDeclaration } from '../../compiler/syntax/declarations.ts'
 export interface Candidate {
   readonly name: string;
   readonly subject: Subject;
+  /** A value another case already tests, as a variant a `match` covers: ranked after the rest. */
+  readonly covered?: true;
 }
 
 /**

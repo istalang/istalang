@@ -26,6 +26,7 @@ import { offerLiteralFields } from './places/literal-field.ts';
 import { offerMembers } from './places/member.ts';
 import { offerNothing } from './places/nothing.ts';
 import { offerPattern } from './places/pattern.ts';
+import { offerPatternFields } from './places/pattern-field.ts';
 import { offerType } from './places/type.ts';
 import { present } from './present.ts';
 import { placesOpenedAt } from './triggers.ts';
@@ -62,6 +63,7 @@ const offers: Handlers<Cursor, Place, [], readonly Candidate[]> = {
   declaredName: offerDeclaredName,
   callArgument: offerCallArgument,
   pattern: offerPattern,
+  patternField: offerPatternFields,
   import: offerImport,
   annotation: offerAnnotation,
 };

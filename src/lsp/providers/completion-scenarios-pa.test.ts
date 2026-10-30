@@ -16,7 +16,6 @@ const scenarios: readonly Scenario[] = [
       has: ['Approved', 'Rejected', 'Expired', '_'],
       lacks: ['xs', 'p', 'plus', 'let', 'if', 'Red', 'and'],
     },
-    fails: true,
   },
   {
     id: 'PA-02',
@@ -33,7 +32,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-03',
-    place: 'pattern',
+    place: 'patternField',
     title: 'Pattern fields',
     src: [
       '  match d:\n    case Rejected{‸',
@@ -42,16 +41,14 @@ const scenarios: readonly Scenario[] = [
     ],
     trigger: '{',
     expect: { has: ['by'], lacks: ['xs', 'plus', 'let', 'Approved'] },
-    fails: true,
   },
   {
     id: 'PA-03b',
-    place: 'pattern',
+    place: 'patternField',
     title: 'Pattern fields after a comma, space typed',
     src: ['  match d:\n    case Rejected{reason as why, ‸}'],
     trigger: ' ',
     expect: { exact: ['by'] },
-    fails: true,
   },
   {
     id: 'PA-04',
@@ -59,7 +56,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After a pattern field',
     src: ['  match d:\n    case Rejected{reason ‸'],
     expect: { has: ['as', 'is'], lacks: ['xs', 'plus'] },
-    fails: true,
   },
   {
     id: 'PA-05',
@@ -75,7 +71,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After is in a pattern',
     src: ['  match d:\n    case Rejected{reason is ‸'],
     expect: { has: ['_'], lacks: ['xs', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'PA-06b',
@@ -90,17 +85,16 @@ const scenarios: readonly Scenario[] = [
     place: 'pattern',
     title: 'is outside match',
     src: ['  if r is ‸', '  const k = o is ‸'],
-    expect: { has: ['Ok', 'Err', '_'], lacks: ['xs', 'let', 'plus'] },
-    fails: true,
+    // `r` is a `Result` (`Ok`, `Err`), `o` an `int?` (`Some`, `None`): one expectation holds both.
+    expect: { has: ['_'], anyOf: ['Ok', 'Some'], lacks: ['xs', 'let', 'plus'] },
   },
   {
     id: 'PA-08',
-    place: 'pattern',
+    place: 'patternField',
     title: 'Fields of Ok/Some in is',
     src: ['  if r is Ok{‸', '  if o is Some{‸'],
     trigger: '{',
     expect: { has: ['value'], lacks: ['xs', 'plus'] },
-    fails: true,
   },
   {
     id: 'PA-09',
@@ -108,7 +102,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Alternatives and nesting',
     src: ['  match d:\n    case Approved{by} | ‸', '  match o:\n    case Some{value is ‸'],
     expect: { lacks: ['xs', 'let', 'plus'] },
-    fails: true,
   },
   {
     id: 'PA-10',
@@ -128,7 +121,6 @@ const scenarios: readonly Scenario[] = [
       '  match xs:\n    case [first, ...‸',
     ],
     expect: { lacks: ['xs', 'let', 'plus'] },
-    fails: true,
   },
   {
     id: 'PA-12',
