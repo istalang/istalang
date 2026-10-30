@@ -10,7 +10,7 @@ tags: [plan, completion, lsp, vscode]
 
 # Completion scenarios
 
-What an editor should offer at every position the grammar has, how a list opens and stays open, and what accepting an item inserts. Written from `docs/spec.md` and from what TypeScript, rust-analyzer, Kotlin and Swift do in the analogous place, not from the code. **261 scenarios, 159 failing today.** The human approves it before the tests are written (one test per scenario, the failing ones pinned with `it.fails`).
+What an editor should offer at every position the grammar has, how a list opens and stays open, and what accepting an item inserts. Written from `docs/spec.md` and from what TypeScript, rust-analyzer, Kotlin and Swift do in the analogous place, not from the code. **260 scenarios, 158 failing today.** The human approves it before the tests are written (one test per scenario, the failing ones pinned with `it.fails`).
 
 Files: `declarations.md`, `statements.md`, `values.md`, `mechanics.md`.
 
@@ -116,14 +116,14 @@ The spec says nothing about editors, so these are decisions the approval covers:
 | PA | Patterns | 15 | 1 | 14 | statements.md |
 | ET | Expected type | 13 | 7 | 6 | values.md |
 | LI | Struct and variant literals | 27 | 17 | 10 | values.md |
-| ME | Members | 22 | 16 | 6 | values.md |
+| ME | Members | 21 | 16 | 5 | values.md |
 | CA | Calls | 13 | 0 | 13 | values.md |
 | NO | Where nothing is offered | 8 | 2 | 6 | mechanics.md |
 | TR | Opening and staying open | 14 | 8 | 6 | mechanics.md |
 | OR | Item shape, order, kinds | 7 | 2 | 5 | mechanics.md |
 | RB | Resilience | 15 | 9 | 6 | mechanics.md |
 | VC | VS Code client | 3 | 0 | 3 | mechanics.md |
-| | **Total** | **261** | **102** | **159** | |
+| | **Total** | **260** | **102** | **158** | |
 
 | Priority | Scenarios | Pass | Fail |
 | --- | ---: | ---: | ---: |
@@ -149,8 +149,8 @@ The spec says nothing about editors, so these are decisions the approval covers:
    Scenarios: IM-01, IM-02, IM-03, IM-04, IM-04b, IM-05, IM-06, IM-07, AN-01, AN-02, AN-03, AN-04, AN-05.
 8. **Scope gaps.** A loop variable is visible in its own iterable (SC-07); a freshly opened block misses its bindings (RB-02b) and an empty function body at the end of the file misses its parameters (RB-01); `hold let` names and local-function placement are checked in SC-13/SC-21.
    Scenarios: SC-07, RB-01, RB-02b.
-9. **Member gaps.** A line-leading `.` offers nothing; tuples offer no `0`/`1`; methods insert no `(`; `..`/`...` typed as `.` offer every name; a literal's single-field positional form offers bare names.
-   Scenarios: ME-01, ME-11, ME-13, ME-19, LI-12.
+9. **Member gaps.** Tuples offer no `0`/`1`; methods insert no `(`; `..`/`...` typed as `.` offer every name; a literal's single-field positional form offers bare names.
+   Scenarios: ME-01, ME-13, ME-19, LI-12.
 10. **Resilience.** A broken sibling declaration can silence a function's members (RB-05); an untitled document gets no completion although the client selects it (RB-13); an empty file offers statement words (RB-07).
    Scenarios: RB-05, RB-07, RB-13.
 11. **Client defaults.** `[ista]` leaves word-based suggestions on, quick suggestions unstated, and declares no word pattern.

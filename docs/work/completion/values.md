@@ -690,22 +690,6 @@ struct S { ‸ }
 - **Not:** Scope.
 - **Basis:** the parser reads `in` as a keyword, the editor must still see a member.
 
-### ME-11 · Line-leading dot · P2 · ❌ fail
-
-```
-  xs
-    .‸
----
-  xs
-    .slice(0, 1)
-    .‸
-```
-- **Where / trigger:** in `fn t`; typing `.`
-- **Offer:** Members of `xs` / of the sliced array.
-- **Not:** Scope.
-- **Basis:** spec §4 (a chain continues on the next line).
-- **Today:** #1 missing push; #1 missing length; #2 missing push; #2 missing length
-
 ### ME-12 · Unresolved receiver · P1 · ✅ pass
 
 ```

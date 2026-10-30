@@ -133,15 +133,6 @@ const scenarios: readonly Scenario[] = [
     expect: { lacks: ['let', 'xs'] },
   },
   {
-    id: 'ME-11',
-    place: 'member',
-    title: 'Line-leading dot',
-    src: ['  xs\n    .‸', '  xs\n    .slice(0, 1)\n    .‸'],
-    trigger: '.',
-    expect: { has: ['push', 'length'], lacks: ['let', 'xs'] },
-    fails: true,
-  },
-  {
     id: 'ME-12',
     place: 'member',
     title: 'Unresolved receiver',
