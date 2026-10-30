@@ -180,6 +180,7 @@ describe('completion offers the words that go on after what is written', () => {
     ["a call's named argument", ['fn plus(a: int) -> int: a', 'fn f(n: int):', '  plus(a: n ‸)']],
     ['a name that is no modifier', ['fn f(sendable: int):', '  let x = sendable ‸', '  1']],
     ['a block, a name spelled `shared`', ['fn f(shared: int) -> int:', '  shared ‸', '  0']],
+    ["a broken item's later word spelled `shared`", ['x( shared ‸']],
   ])('after an operand in %s', (_title, lines) => {
     expect(names(...lines)).toEqual(infix);
   });

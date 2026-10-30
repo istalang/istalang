@@ -253,9 +253,8 @@ const standsAsModifier: Readonly<Record<Modifier, (tree: SyntaxTree, word: Token
 };
 
 /**
- * Whether `word` starts an item of a `holder` node, as the parser read the text holding it: the item
- * starts there, or holds nothing else there, as one its annotations open does (an item the parser
- * can't read keeps none of them, only the text they take).
+ * Whether `word` starts an item of a `holder` node, as the parser read the text holding it: the
+ * item's own first token, past the annotations it holds, an Invalid one's included.
  */
 function startsItemOf(holder: 'Module' | 'Block', tree: SyntaxTree, word: Token): boolean {
   const chain = nodesAt(tree, word.span.start);
@@ -264,9 +263,21 @@ function startsItemOf(holder: 'Module' | 'Block', tree: SyntaxTree, word: Token)
     return (
       node.kind === holder &&
       item !== undefined &&
-      (item === chain.at(-1) || extentIn(tree, item).start === word.span.start)
+      ownFirstToken(tree, item)?.span.start === word.span.start
     );
   });
+}
+
+/** The first token of `item`'s own text: its first not inside one of its annotations. */
+function ownFirstToken(tree: SyntaxTree, item: SyntaxNode): Token | undefined {
+  const annotations = ('annotations' in item ? item.annotations : undefined) ?? [];
+  const annotated = annotations.map((annotation) => extentIn(tree, annotation));
+  const { start } = extentIn(tree, item);
+  return codeTokensOf(tree).find(
+    ({ span }) =>
+      span.start >= start &&
+      !annotated.some((each) => each.start <= span.start && span.start < each.end),
+  );
 }
 
 /** The `hold` of `hold(label)` when `closing` is its `)`, which `let` or `const` follows. */
