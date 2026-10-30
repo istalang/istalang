@@ -364,6 +364,7 @@ fn g<T>(x: T) -> int:
 ```
 fn g(a: time.‸
 ---
+fn h():
   let x: time.‸
 ```
 - **Where / trigger:** top level; typing `.`

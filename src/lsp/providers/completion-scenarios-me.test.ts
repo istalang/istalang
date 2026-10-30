@@ -164,7 +164,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  1.‸'],
     trigger: '.',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'ME-14b',

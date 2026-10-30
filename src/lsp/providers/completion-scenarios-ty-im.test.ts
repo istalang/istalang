@@ -124,11 +124,10 @@ const scenarios: readonly Scenario[] = [
     id: 'TY-11',
     place: 'member',
     title: 'Qualified type',
-    src: ['fn g(a: time.‸', '  let x: time.‸'],
+    src: ['fn g(a: time.‸', 'fn h():\n  let x: time.‸'],
     trigger: '.',
     where: 'top',
     expect: { has: ['Time', 'Duration'], lacks: ['delay', 'now'] },
-    fails: true,
   },
   {
     id: 'TY-12',

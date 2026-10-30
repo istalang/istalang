@@ -150,6 +150,11 @@ export type Entity =
   | VariantsEntity
   | NamespaceEntity;
 
+/** Whether `entity` is a type, as a name written in a type must be. */
+export function namesType(entity: Entity): entity is TypeEntity | PrimitiveEntity | SelfEntity {
+  return entity.kind === 'type' || entity.kind === 'primitive' || entity.kind === 'self';
+}
+
 /** One name in a module that denotes an entity. */
 const variables = new WeakMap<Identifier, VariableEntity>();
 const ownCalls = new WeakMap<FunctionDeclaration | Lambda, VariableEntity>();

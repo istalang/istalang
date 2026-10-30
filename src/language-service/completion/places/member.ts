@@ -2,7 +2,9 @@
  * A member's place: after a member's operator (`.`, `?.`, `->`, `?->`), what the value before it
  * has: its fields, and the methods and statics a call through it may choose (checker
  * lookup/members.ts); after a namespace, what its module exports; after a type, its statics and
- * variants.
+ * variants. A qualified name offers only what its place takes: in a type, a namespace's types and
+ * nothing of a type's; naming what a literal builds or a pattern matches, a namespace's types and a
+ * type's variants.
  *
  * Only a member can follow a `.` or `?.`, so where none can stand there, as after a name on a line
  * of its own at the top level, the place is still a member's and nothing is offered: never the
@@ -11,9 +13,14 @@
  *
  * A link of an optional chain offers what the value its step works on has, as checking found it
  * (§4): the value inside after `?.`, and nothing after a `?.` on a value that isn't optional.
+ *
+ * A `.` typed right after an integer may start its fraction (`1.5`), so it opens no list; asked
+ * for, the integer's members are offered, since `2.toString()` calls one (§2).
  */
 
+import { type NamespaceEntity, namesType } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
+import type { Type } from '../../../compiler/checker/types/type.ts';
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations.ts';
 import { chainStepOf } from '../../../compiler/syntax/expressions/chains.ts';
 import {
@@ -22,6 +29,7 @@ import {
   qualifiedPath,
 } from '../../../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../../../compiler/syntax/node.ts';
+import type { NamePattern } from '../../../compiler/syntax/patterns.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
 import type { Token } from '../../../compiler/syntax/tokens.ts';
 import {
@@ -30,6 +38,7 @@ import {
   type SyntaxNode,
   type SyntaxTree,
 } from '../../../compiler/syntax/tree.ts';
+import type { NamedType } from '../../../compiler/syntax/types.ts';
 import { identifierAt } from '../../identifier-at.ts';
 import { importedModule } from '../../namespaces.ts';
 import type { Candidate } from '../candidate.ts';
@@ -38,12 +47,29 @@ import { type Cursor, touchingBefore } from '../cursor.ts';
 /**
  * Where a member is written: after a namespace or a type, `head` names it; after a value, `access`
  * reads it. A qualified name in a type or a pattern has a head alone; after a `.` where no member
- * can stand, neither is known.
+ * can stand, neither is known. `names` is what the member names: a value or a value's member, a
+ * type, or a struct or variant a literal builds or a pattern matches.
  */
 export interface MemberPlace {
   readonly kind: 'member';
   readonly head: Identifier | undefined;
   readonly access: MemberAccess | undefined;
+  readonly names: 'value' | 'type' | 'variant';
+}
+
+/** What builds or matches the struct or variant its NamedType names. */
+const namingVariants: ReadonlySet<string> = new Set([
+  'StructLiteral',
+  'NewStructLiteral',
+  'StructPattern',
+]);
+
+/** What the qualified name `holder` holds names. */
+function namedBy(tree: SyntaxTree, holder: NamedType | NamePattern): 'type' | 'variant' {
+  const parent = parentOf(tree, holder);
+  return holder.kind === 'NamePattern' || (parent !== undefined && namingVariants.has(parent.kind))
+    ? 'variant'
+    : 'type';
 }
 
 /** What a member's name is written right after (§4). */
@@ -77,6 +103,7 @@ export function memberPlaceAt(cursor: Cursor): MemberPlace | undefined {
       kind: 'member',
       head: undefined,
       access: undefined,
+      names: 'value',
     }
   );
 }
@@ -92,7 +119,7 @@ function unfinishedQualifierAt(tree: SyntaxTree, dot: Token): MemberPlace | unde
   const holder = head && parentOf(tree, head);
   const qualifies = holder?.kind === 'NamedType' || holder?.kind === 'NamePattern';
   return head !== undefined && qualifies && spanIn(tree, head.span).end === dot.span.start
-    ? { kind: 'member', head, access: undefined }
+    ? { kind: 'member', head, access: undefined, names: namedBy(tree, holder) }
     : undefined;
 }
 
@@ -107,44 +134,72 @@ function memberPlaceOf(
   };
   const isWritten = ({ span }: SyntaxNode) => span.from < span.to;
   if (node.kind === 'MemberAccess' && isWritten(node.target) && reaches(node.member)) {
-    return { kind: 'member', head: qualifiedPath(node)?.at(-2), access: node };
+    return { kind: 'member', head: qualifiedPath(node)?.at(-2), access: node, names: 'value' };
   }
   if (node.kind === 'NamedType' || node.kind === 'NamePattern') {
     const head = node.path[node.path.findIndex((name, index) => index > 0 && reaches(name)) - 1];
-    return head && { kind: 'member', head, access: undefined };
+    return head && { kind: 'member', head, access: undefined, names: namedBy(tree, node) };
   }
   return undefined;
 }
 
 export function offerMembers(
-  { checker, module, tree }: Cursor,
-  { head, access }: MemberPlace,
+  cursor: Cursor,
+  { head, access, names }: MemberPlace,
 ): readonly Candidate[] {
+  const { checker, module, tree } = cursor;
   const named = head === undefined ? [] : checker.lookup.denotationsOf(module, head);
   for (const { declared, type } of named) {
     if (declared.kind === 'namespace') {
-      const exported = importedModule(checker, declared.entity);
-      return exported === undefined
-        ? []
-        : [...checker.bindings.exportsOf(exported.id)].map(([name, entity]) => ({
-            name,
-            subject: { kind: 'entity', entity },
-          }));
+      return exportsNaming(checker, declared.entity, names);
     }
     if (declared.kind === 'type' && type !== undefined) {
-      const { statics, variants } = checker.lookup.membersOf(module, type);
-      return [
-        ...functionsThrough('type', statics),
-        ...variants.map(
-          (variant): Candidate => ({
-            name: variant.name,
-            subject: { kind: 'variant', variant, enum: type },
-          }),
-        ),
-      ];
+      return typeMembers(checker, module, type, names);
     }
   }
-  return access === undefined ? [] : valueMembers(checker, module, tree, access);
+  return access === undefined || startsFraction(cursor, access)
+    ? []
+    : valueMembers(checker, module, tree, access);
+}
+
+/** What `namespace`'s module exports; its types alone where no value is named. */
+function exportsNaming(
+  checker: Checker,
+  namespace: NamespaceEntity,
+  names: MemberPlace['names'],
+): readonly Candidate[] {
+  const exported = importedModule(checker, namespace);
+  const exports = exported === undefined ? [] : [...checker.bindings.exportsOf(exported.id)];
+  return exports
+    .filter(([, entity]) => names === 'value' || namesType(entity))
+    .map(([name, entity]) => ({ name, subject: { kind: 'entity', entity } }));
+}
+
+/** What a type has through its name: its variants, and for a value its statics too. */
+function typeMembers(
+  checker: Checker,
+  module: Cursor['module'],
+  type: Type,
+  names: MemberPlace['names'],
+): readonly Candidate[] {
+  if (names === 'type') {
+    return [];
+  }
+  const { statics, variants } = checker.lookup.membersOf(module, type);
+  return [
+    ...(names === 'value' ? functionsThrough('type', statics) : []),
+    ...variants.map(
+      (variant): Candidate => ({
+        name: variant.name,
+        subject: { kind: 'variant', variant, enum: type },
+      }),
+    ),
+  ];
+}
+
+/** Whether the `.` just typed reads after an integer, which it may be on the way to a float. */
+function startsFraction({ trigger }: Cursor, access: MemberAccess): boolean {
+  return trigger === '.' && access.target.kind === 'IntegerLiteral';
 }
 
 function valueMembers(
