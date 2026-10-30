@@ -65,7 +65,7 @@ The modules are project test modules over the shipped std. Each other open docum
 - Every member of a cycle answers the stand-in, whichever member was entered first. That keeps answers independent of the order of asking. It changes behaviour for invalid programs, in 7A.3.
 
 **Memory and the memo.**
-- A checker adopts only from the checker it was made from, and making it releases that checker's own `previous`. At most two revisions' tables are held. An entry the newest checker never asked for is recomputed if a later one asks.
+- A checker adopts only through the checker it was made from: that checker's entry, or, for a key it never asked for, the entry it would adopt itself. Making a checker releases that checker's own `previous`, so at most two revisions' tables are held and an entry the newest checker never asked for is recomputed if a later one asks. A tentative checker (an edit tried out and dropped, as completion's) releases nothing, so it adopts through a checker made and not yet asked from the one before.
 - `checkProgram` keeps the first checker made for a Program, since every checker of a Program answers alike. Tests compare against a checker made apart from that memo (test kit).
 - The Checker surface gains only the optional parameter.
 

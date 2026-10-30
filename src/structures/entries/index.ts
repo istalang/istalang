@@ -14,6 +14,9 @@
  *   instead. Everything before that read answered alike, so computing makes the same reads up to
  *   it: what replay did is neither wasted nor wrong. A read entry computed again and found equal
  *   ends the walk there (early cutoff), and the entries replay takes over join this revision.
+ * - A key a revision never asked for is taken over from what that revision would take it over from
+ *   itself: replay checks every read here, whichever revision made the entry, and a revision made
+ *   but not yet asked (a checker made just before an edit is tried out) holds nothing of its own.
  * - A cycle's members are the entries of a strongly connected component of what read what (Tarjan's
  *   algorithm, run as entries compute). A member answers its table's stand-in, which is also what
  *   reaching a running entry answers, so every member sees every other as its stand-in whichever
@@ -310,10 +313,16 @@ export class Entries<Note> {
     }
   }
 
-  /** The entry of `key` in the table named `name`, if a later revision may take it over. */
+  /**
+   * The entry of `key` in the table named `name` a later revision may take over: this revision's,
+   * or, for a key it never asked for, the one it would itself take over.
+   */
   #takeable(name: string, key: unknown): Entry<Note> | undefined {
     const entry = this.#tables.get(name)?.entries.get(key);
-    return entry === undefined || entry.running || entry.member ? undefined : entry;
+    if (entry === undefined) {
+      return this.#previous === undefined ? undefined : this.#previous.#takeable(name, key);
+    }
+    return entry.running || entry.member ? undefined : entry;
   }
 
   /** Closes the component made of the open entries from `depth` up. */

@@ -29,7 +29,14 @@ import { nodesUnder } from '../syntax/tree.ts';
 import { checkedApart } from './check.test-kit.ts';
 import { type Checker, checkProgram } from './check.ts';
 import { answersAt } from './lookup/lookup.test-kit.ts';
-import type { ProgramChecker } from './program-checker.ts';
+import type { CheckerOptions, ProgramChecker } from './program-checker.ts';
+
+/** The checker of the program `edited` builds after a revision's, made from `previous`. */
+type Route = (
+  edited: (before: Program) => Program,
+  previous: ProgramChecker,
+  observe: NonNullable<CheckerOptions['observe']>,
+) => ProgramChecker;
 
 /** Every node of `program`, numbered, so two checkers' answers name nodes alike. */
 function nodeNumbers(program: Program): ReadonlyMap<object, number> {
@@ -234,9 +241,33 @@ describe('a checker made after an earlier one', () => {
     },
   );
 
-  it.each(twoModules)(
-    'checks only the body edited in $name, when the edit changes no declaration or inferred result',
-    ({ files, edited }) => {
+  /**
+   * How the checker of an edit's program is made from the checker before: directly, or tentatively
+   * from a checker of the same text made from it and never asked, as completion makes its own
+   * while the edit's diagnostics wait (language-service/completion/expected.ts).
+   */
+  const routes: readonly { readonly route: string; readonly checker: Route }[] = [
+    {
+      route: 'made from it',
+      checker: (edited, previous, observe) =>
+        checkedApart(edited(previous.program), { previous, observe }),
+    },
+    {
+      route: 'made through a checker never asked',
+      checker: (edited, previous, observe) => {
+        const unasked = checkedApart(edited(previous.program), { previous });
+        return checkedApart(edited(unasked.program), {
+          previous: unasked,
+          tentative: true,
+          observe,
+        });
+      },
+    },
+  ];
+
+  it.each(twoModules.flatMap((each) => routes.map((route) => ({ ...each, ...route }))))(
+    'checks only the body edited in $name, $route, when the edit changes no declaration or inferred result',
+    ({ files, edited, checker }) => {
       const first = stdProgramOf(files);
       const previous = checkedApart(first);
       diagnosticsOf(previous, everyModule(first));
@@ -249,14 +280,15 @@ describe('a checker made after an earlier one', () => {
             return;
           }
           const checked: FunctionDeclaration[] = [];
-          const revision = checkedApart(stdProgramOf({ ...files, [edited]: edit.text }, first), {
+          const revision = checker(
+            (before) => stdProgramOf({ ...files, [edited]: edit.text }, before),
             previous,
-            observe: (table, key) => {
+            (table, key) => {
               if (table === 'bodies') {
                 checked.push(key as FunctionDeclaration);
               }
             },
-          });
+          );
           diagnosticsOf(revision, everyModule(revision.program));
           expect(checked).toEqual([edit.edited]);
         }),

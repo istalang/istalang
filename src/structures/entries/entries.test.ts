@@ -85,6 +85,30 @@ const edits = fc
 const notesOf = (revision: ReturnType<typeof graphRevision>, node: number) =>
   revision.table.notesFrom(node).toSorted();
 
+/**
+ * Whether a revision over `after` may compute `node` again, the revisions before it having
+ * computed `held`: only if none did, or it reaches a node the edit changed or a cycle. A cycle
+ * the edit makes passes through a changed node, so the graph before tells both.
+ */
+function mayComputeAfter(
+  { before, after }: { readonly before: Graph; readonly after: Graph },
+  held: ReadonlySet<number>,
+) {
+  const successorsIn = (graph: Graph, node: number) =>
+    graph.edges.filter(({ from }) => from === node).map(({ to }) => to);
+  const changed = nodes.filter(
+    (node) =>
+      before.labels[node] !== after.labels[node] ||
+      successorsIn(before, node).join() !== successorsIn(after, node).join(),
+  );
+  const onCycle = (node: number) => reachedFrom(before.edges, node).has(node);
+  return (node: number) =>
+    !held.has(node) ||
+    [node, ...reachedFrom(before.edges, node)].some(
+      (each) => changed.includes(each) || onCycle(each),
+    );
+}
+
 describe('entries', () => {
   it('compute each key once, in any order of asking, and answer alike', () => {
     fc.assert(
@@ -152,29 +176,44 @@ describe('entries', () => {
 
   it('compute again only what reaches a change, a cycle, or was never asked', () => {
     fc.assert(
-      fc.property(edits, asked, orders, ({ before, after }, first, order) => {
-        const previous = graphRevision(before);
+      fc.property(edits, asked, orders, (edit, first, order) => {
+        const previous = graphRevision(edit.before);
         for (const node of first) {
           previous.answer(node);
         }
-        const revision = graphRevision(after, previous.entries);
+        const revision = graphRevision(edit.after, previous.entries);
         for (const node of order) {
           revision.answer(node);
         }
-        const successorsIn = (graph: Graph, node: number) =>
-          graph.edges.filter(({ from }) => from === node).map(({ to }) => to);
-        const changed = nodes.filter(
-          (node) =>
-            before.labels[node] !== after.labels[node] ||
-            successorsIn(before, node).join() !== successorsIn(after, node).join(),
+        const mayCompute = mayComputeAfter(edit, new Set(previous.computed));
+        expect(revision.computed.filter((node) => !mayCompute(node))).toEqual([]);
+      }),
+    );
+  });
+
+  it('take over, through a revision that never asked for a key, what the one before it held', () => {
+    fc.assert(
+      fc.property(edits, asked, asked, orders, (edit, first, between, order) => {
+        const previous = graphRevision(edit.before);
+        for (const node of first) {
+          previous.answer(node);
+        }
+        const middle = graphRevision(edit.after, previous.entries);
+        for (const node of between) {
+          middle.answer(node);
+        }
+        const revision = graphRevision(edit.after, middle.entries);
+        const fresh = graphRevision(edit.after);
+        for (const node of order) {
+          expect(revision.answer(node)).toBe(fresh.answer(node));
+        }
+        for (const node of nodes) {
+          expect(notesOf(revision, node)).toEqual(notesOf(fresh, node));
+        }
+        const mayCompute = mayComputeAfter(
+          edit,
+          new Set([...previous.computed, ...middle.computed]),
         );
-        const computedBefore = new Set(previous.computed);
-        const onCycle = (node: number) => reachedFrom(before.edges, node).has(node);
-        const mayCompute = (node: number) =>
-          !computedBefore.has(node) ||
-          [node, ...reachedFrom(before.edges, node)].some(
-            (each) => changed.includes(each) || onCycle(each),
-          );
         expect(revision.computed.filter((node) => !mayCompute(node))).toEqual([]);
       }),
     );
