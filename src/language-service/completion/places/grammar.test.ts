@@ -138,6 +138,12 @@ describe('completion asks what encloses a position', () => {
     ],
     ['a default', ['fn g(a = ‸'], ['true', 'not'], ['await', 'spawn', 'select', 'new', 'let']],
     ["a function's body", ['fn f():', '  let x = ‸', '  1'], ['spawn', 'select', 'new'], ['await']],
+    [
+      'a statement an annotation above opens',
+      ['async fn f():', '  @Waypoint{"step"}', '  ‸', '  1'],
+      ['let', 'const', 'return'],
+      [],
+    ],
   ])('%s', (_title, lines, offered, notOffered) => {
     const offers = names(...lines);
     expect(offers).toEqual(expect.arrayContaining(offered));

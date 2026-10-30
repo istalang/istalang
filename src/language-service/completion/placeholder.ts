@@ -122,12 +122,15 @@ function touchesNumber({ before, name, offset }: Cursor): boolean {
   return name === undefined && before?.span.end === offset && numbers.has(before.kind);
 }
 
-/** Whether the first token of the cursor's line is `opener`, as a line holding an import is. */
+/**
+ * Whether the first token of the cursor's line is `opener`, as a line holding an import is; a
+ * line with no token before the cursor opens with nothing, whatever the lines above it hold.
+ */
 function lineOpensWith({ tree, offset }: Cursor, opener: TokenKind): boolean {
-  const tokens = codeTokensOf(tree);
-  return (
-    tokens.findLast(({ span, firstOnLine }) => firstOnLine && span.start < offset)?.kind === opener
+  const first = codeTokensOf(tree).findLast(
+    ({ span, firstOnLine }) => firstOnLine && span.start < offset,
   );
+  return first?.kind === opener && !tree.source.text.slice(first.span.start, offset).includes('\n');
 }
 
 /** `new` before the name: a shared struct's name follows (§3.1), read by the parser only with its `{`. */

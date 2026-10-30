@@ -51,11 +51,13 @@ const valuePlaces: ReadonlySet<PlaceKind> = new Set<PlaceKind>([
 export function presentingAt(cursor: Cursor, place: Place): Presenting {
   const end = cursor.name?.span.end ?? cursor.offset;
   const next = codeTokensOf(cursor.tree).find(({ span }) => span.start >= end);
+  const onLine =
+    next !== undefined && !cursor.tree.source.text.slice(end, next.span.start).includes('\n');
   return {
     cursor,
     place,
     writesValue: valuePlaces.has(place.kind),
-    follows: next === undefined || next.firstOnLine ? undefined : next.kind,
+    follows: onLine ? next.kind : undefined,
   };
 }
 

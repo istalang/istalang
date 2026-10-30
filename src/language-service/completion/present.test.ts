@@ -86,6 +86,7 @@ describe('what accepting an item writes', () => {
     const call = { insert: { kind: 'snippet', snippet: 'pl($0)' }, next: 'signatureHelp' };
     expect(insertOf('pl', 'fn t():', '  pl‸', '  (1, 2)')).toEqual(call);
     expect(insertOf('pl', 'fn t():', '  pl‸(1)')).toEqual({ insert: undefined, next: undefined });
+    expect(insertOf('pl', 'fn t():', '  ‸(1)')).toEqual({ insert: undefined, next: undefined });
     const braces = { insert: { kind: 'snippet', snippet: 'Rejected{$0}' }, next: 'completion' };
     expect(insertOf('Rejected', 'fn t():', '  Decision.‸', '  {', '    1', '  }')).toEqual(braces);
   });

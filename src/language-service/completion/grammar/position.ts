@@ -184,7 +184,8 @@ function unplacedIn(
 
 /**
  * The block's item the placeholder's name starts, written alone or first of an expression
- * (`to‸tal + count`): the outermost node starting where the name does, if a block holds it.
+ * (`to‸tal + count`): the outermost node whose own text starts where the name does, past its
+ * annotations, if a block holds it.
  */
 function itemStartedBy(
   { tree, chain }: Parse,
@@ -194,7 +195,7 @@ function itemStartedBy(
   let node = name;
   for (
     let holder = holderIn(chain, node);
-    holder !== undefined && holder.kind !== 'Block' && extentIn(tree, holder).start === start;
+    holder !== undefined && holder.kind !== 'Block' && ownStartOf(tree, holder) === start;
     holder = holderIn(chain, node)
   ) {
     node = holder;
@@ -260,16 +261,12 @@ function startsItemOf(holder: 'Module' | 'Block', tree: SyntaxTree, word: Token)
   const chain = nodesAt(tree, word.span.start);
   return chain.some((node, index) => {
     const item = chain[index + 1];
-    return (
-      node.kind === holder &&
-      item !== undefined &&
-      ownFirstToken(tree, item)?.span.start === word.span.start
-    );
+    return node.kind === holder && item !== undefined && ownStartOf(tree, item) === word.span.start;
   });
 }
 
-/** The first token of `item`'s own text: its first not inside one of its annotations. */
-function ownFirstToken(tree: SyntaxTree, item: SyntaxNode): Token | undefined {
+/** Where `item`'s own text starts: its first token not inside one of its annotations. */
+function ownStartOf(tree: SyntaxTree, item: SyntaxNode): number | undefined {
   const annotations = ('annotations' in item ? item.annotations : undefined) ?? [];
   const annotated = annotations.map((annotation) => extentIn(tree, annotation));
   const { start } = extentIn(tree, item);
@@ -277,7 +274,7 @@ function ownFirstToken(tree: SyntaxTree, item: SyntaxNode): Token | undefined {
     ({ span }) =>
       span.start >= start &&
       !annotated.some((each) => each.start <= span.start && span.start < each.end),
-  );
+  )?.span.start;
 }
 
 /** The `hold` of `hold(label)` when `closing` is its `)`, which `let` or `const` follows. */
