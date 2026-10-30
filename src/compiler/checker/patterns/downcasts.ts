@@ -26,8 +26,8 @@ export interface Downcast {
 }
 
 /**
- * The downcast `node` makes of a part of the `any` type `from`; undefined after a report, when it
- * names no type to downcast to.
+ * The downcast `node` makes of a part of the `any` type `from`; undefined when it names no type to
+ * downcast to.
  */
 export function downcastOf(
   context: BodyContext,
@@ -45,11 +45,17 @@ export function downcastOf(
   return { test: { kind: 'downcast', path, from, to }, part: { type: to, path: [...path, 0] } };
 }
 
-/** The type `node` names to downcast to: its struct's, or its variant's enum; undefined after a report. */
+/**
+ * The type `node` names to downcast to: its struct's, or its variant's enum. Undefined after a
+ * report, or when its name names nothing, which was reported where it was written.
+ */
 function namedTypeOf(context: BodyContext, node: StructPattern | NamePattern): Type | undefined {
   const path = node.kind === 'StructPattern' ? node.type?.path : node.path;
   const name = path === undefined ? undefined : lastName(path);
   const entity = name === undefined ? undefined : context.entityOf(name);
+  if (name !== undefined && entity === undefined) {
+    return undefined;
+  }
   const { checker } = context;
   const declared =
     entity?.kind === 'variant'

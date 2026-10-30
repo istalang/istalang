@@ -75,7 +75,8 @@ export function elementParts<Step extends PartStep>(
 
 /**
  * The fields of the struct a target at `span` takes apart: the value's own, when `named` names the
- * value's type or is absent (`struct{…}`). Undefined after a report, or for an error value. A
+ * value's type or is absent (`struct{…}`). Undefined after a report, for an error value, or when
+ * `named` names nothing, which was reported where it was written (a name missing or undeclared). A
  * target naming an enum variant could fail to match, so it is refused; a `match` case or `is`
  * takes a variant apart itself.
  */
@@ -90,7 +91,7 @@ export function structParts(
     scope.report(checkerDiagnostics.refutableTarget(span));
     return undefined;
   }
-  if (type.kind === 'error') {
+  if (type.kind === 'error' || (named !== undefined && entity === undefined)) {
     return undefined;
   }
   if (named !== undefined) {

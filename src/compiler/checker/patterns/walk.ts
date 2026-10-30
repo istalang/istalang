@@ -21,7 +21,7 @@
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { type Identifier, lastName } from '../../syntax/node.ts';
+import { type Identifier, isMissingName, lastName } from '../../syntax/node.ts';
 import type {
   ArrayPattern,
   NamePattern,
@@ -123,6 +123,10 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
     if (binds(walk, node)) {
       walk.bindings.push({ name, ...part });
       return anyShape;
+    }
+    // `a.` cut short, as code being typed leaves it, names nothing: the parser reported it.
+    if (isMissingName(lastName(node.path))) {
+      return;
     }
     return refutable(walk, node, part, (tests) => tests.reference(node, part));
   },
@@ -234,12 +238,17 @@ function declaringName(walk: Walk, name: Identifier): Identifier {
   return entity?.kind === 'variable' ? entity.name : name;
 }
 
-/** Whether two alternatives bind the same names, each with the same type. */
+/**
+ * Whether two alternatives bind the same names, each with the same type. A name bound at the error
+ * type was reported where its type went wrong, so it agrees with any.
+ */
 function sameNames(first: readonly PartBinding[], other: readonly PartBinding[]): boolean {
+  const agree = (one: Type, another: Type) =>
+    one.kind === 'error' || another.kind === 'error' || sameType(one, another);
   return (
     first.length === other.length &&
     first.every((binding) =>
-      other.some((each) => each.name === binding.name && sameType(each.type, binding.type)),
+      other.some((each) => each.name === binding.name && agree(each.type, binding.type)),
     )
   );
 }

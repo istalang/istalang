@@ -55,7 +55,7 @@ import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { spreadArgumentType } from './collections.ts';
-import { recordFieldRead } from './structs.ts';
+import { readsNothing, recordFieldRead } from './structs.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const misplaced = misplacedArgument(node.arguments);
@@ -79,6 +79,10 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
     case 'Identifier':
       return callEntity(context, call, callee.text, context.entityOf(callee));
     case 'MemberAccess': {
+      const nothing = readsNothing(context, call.node, callee);
+      if (nothing !== undefined) {
+        return nothing;
+      }
       const entity = context.entityOf(callee.member);
       if (entity !== undefined) {
         return callEntity(context, call, callee.member.text, entity);

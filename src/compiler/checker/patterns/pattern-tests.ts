@@ -57,7 +57,7 @@ export interface PatternTests {
   readonly array: (node: ArrayPattern, part: ValuePart) => ArrayPart | undefined;
   /** `1..=5`, `..0` on an int part. */
   readonly range: (node: RangePattern, part: ValuePart) => Leaf;
-  /** The downcast a struct pattern or referring name makes of an `any` part; undefined after a report. */
+  /** The downcast a struct pattern or referring name makes of an `any` part; undefined for none. */
   readonly downcast: (
     node: StructPattern | NamePattern,
     part: ValuePart & { readonly type: AnyType },

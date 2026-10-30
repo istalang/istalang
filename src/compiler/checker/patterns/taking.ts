@@ -49,7 +49,8 @@ export function takeTargets<Target, Step extends PartStep>(
 
 /**
  * Takes a value of `part` apart as `destructuring` says, each of its targets taking its part: a
- * tuple of exactly as many elements, or a struct value's fields (parts.ts).
+ * tuple of exactly as many elements, or a struct value's fields (parts.ts). A struct whose fields
+ * are unknown, after a report or for an error value, has no shape: it acts as a guard.
  */
 export function takeApart<Target, Step extends PartStep>(
   taking: Taking<Target, Step | number>,
@@ -63,7 +64,8 @@ export function takeApart<Target, Step extends PartStep>(
     return constructed(tupleKey, shapes);
   }
   const fields = structParts(taking.scope, destructuring.type, part.type, destructuring.span);
-  return constructed(structKey, takeFields(taking, destructuring.items, fields, part));
+  const shapes = takeFields(taking, destructuring.items, fields, part);
+  return fields === undefined ? undefined : constructed(structKey, shapes);
 }
 
 /**

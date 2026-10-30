@@ -271,6 +271,34 @@ describe("an Error's trace", () => {
   });
 });
 
+describe('a pattern naming nothing', () => {
+  const named = [
+    'trait Named:',
+    '  fn name(self: Self) -> string',
+    'fn name(self: Point) -> string: "p"',
+  ];
+
+  it.each([
+    ['a struct pattern cut short', 'Point', 'case Point.{x}: x\ncase _: 0', '{'],
+    ['a destructuring cut short', 'Point', 'const Point.{x} = value\nx', '{'],
+    ['a downcast cut short', 'any Named', 'case Point.{x}: x\ncase _: 0', '{'],
+    ['a downcast to a name cut short', 'any Named', 'case Point.: 1\ncase _: 0', ':'],
+  ])('reports %s at the missing name only', (_case, type, body, spanText) => {
+    const cases = body.startsWith('case') ? `match value:\n${indent(body)}` : body;
+    const text = [shapes, ...named, `fn f(value: ${type}) -> int:`, indent(cases), ''].join('\n');
+    expect(reported(text)).toEqual(reportedOnce(2001, spanText));
+  });
+
+  it.each([
+    ['a struct pattern', 'case Pont{x}: x\ncase _: 0'],
+    ['a destructuring', 'const Pont{x} = value\nx'],
+  ])('reports %s whose name is undeclared at the name only', (_case, body) => {
+    const cases = body.startsWith('case') ? `match value:\n${indent(body)}` : body;
+    const text = [shapes, 'fn f(value: Point) -> int:', indent(cases), ''].join('\n');
+    expect(reported(text)).toEqual(reportedOnce(4000, 'Pont'));
+  });
+});
+
 function indent(lines: string): string {
   return lines
     .split('\n')

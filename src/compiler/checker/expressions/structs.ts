@@ -24,13 +24,14 @@ import type { Entity } from '../../binder/entities.ts';
 import { isDeclaredStruct, isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { linkOperator } from '../../syntax/expressions/chains.ts';
 import {
+  type Expression,
   type FieldsLiteral,
   itemValue,
   type MemberAccess,
   type StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
-import { lastName } from '../../syntax/node.ts';
+import { isMissingName, lastName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { FieldSource } from '../check.ts';
@@ -43,7 +44,7 @@ import {
 import type { Accepts, BodyContext, FieldReadRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
-import { namedType } from '../resolution/named.ts';
+import { namedType, nameNodeOf } from '../resolution/named.ts';
 import { fieldOf } from '../traits/constraints.ts';
 import { optionalInner, withoutOptionals } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
@@ -249,6 +250,10 @@ export function checkMemberAccess(
   node: MemberAccess,
   expected: Type | undefined,
 ): Type {
+  const nothing = readsNothing(context, node, node);
+  if (nothing !== undefined) {
+    return nothing;
+  }
   const qualified = node.isOptional ? undefined : context.entityOf(node.member);
   if (qualified?.kind === 'variant') {
     return checkVariantName(context, node, qualified, expected);
@@ -278,6 +283,35 @@ export function checkMemberAccess(
   }
   recordFieldRead(context, node, field);
   return field.member.type;
+}
+
+/**
+ * The type of a member read by `link` (`access` itself, or a call through it) that names nothing
+ * for a reason already reported, so nothing more is: a name cut short (`x.`), which the parser
+ * reported, or one a namespace doesn't export, which the binder did. A value before a cut-short
+ * dot is checked all the same, for its own errors and for what tools ask of it; a type or a
+ * namespace before a plain `.` qualifies only. Undefined for any other member, still to check.
+ */
+export function readsNothing(
+  context: BodyContext,
+  link: Expression,
+  access: MemberAccess,
+): Type | undefined {
+  const qualifier = nameNodeOf(access.target);
+  const throughNamespace =
+    !access.isOptional &&
+    qualifier !== undefined &&
+    context.entityOf(qualifier)?.kind === 'namespace';
+  if (throughNamespace) {
+    return context.entityOf(access.member) === undefined ? errorType : undefined;
+  }
+  if (!isMissingName(access.member)) {
+    return undefined;
+  }
+  if (access.isOptional || namedType(context, access.target) === undefined) {
+    context.chains.target(context, link);
+  }
+  return errorType;
 }
 
 /** Records how `access` reads the field `found`, and the field its member's name names. */
