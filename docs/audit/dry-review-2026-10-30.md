@@ -38,8 +38,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 22. `src/compiler/lowering/boundary/` & `src/compiler/lowering/trait-objects/`
 - [x] 23. `src/compiler/lowering/expressions/` & `src/compiler/lowering/statements/`
 - [x] 24. `src/compiler/compile.ts`
-- [ ] 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter (`natives.ts`, `store.ts`, `refusal.ts`, `random-seed.ts`, `instance-state.ts`, `instance-group.ts`, `settle.ts`, `host.ts`, `values/`, `snapshot/`, `lifetimes/`, `interpreter/`)
-- [ ] 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
+- [x] 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter (`natives.ts`, `store.ts`, `refusal.ts`, `random-seed.ts`, `instance-state.ts`, `instance-group.ts`, `settle.ts`, `host.ts`, `values/`, `snapshot/`, `lifetimes/`, `interpreter/`)
+- [x] 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
 - [ ] 27. `src/stdlib/` — infrastructure & prelude (`std-sources.ts`, `stdlib-loader.ts`, `std-module.ts`, `std-modules.ts`, `natives.ts`, `native-values.ts`, `numeric.ts`, `positions.ts`, `ranges.ts`, `prelude/`)
 - [ ] 28. `src/stdlib/` — standard library modules (`collections/`, `crypto/`, `decimal/`, `fanout/`, `futures/`, `inbox/`, `json/`, `log/`, `math/`, `random/`, `regex/`, `rpc/`, `runtime/`, `strings/`, `testing/`, `time/`)
 - [ ] 29. `src/formatter/`
@@ -266,6 +266,25 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Double standard for diagnostic sorting between `diagnoseModule` (`src/compiler/compile.ts`) and `diagnosticsIn` (`src/compiler/checker/declarations/module-checks.ts`):**
   - `diagnosticsIn` (`module-checks.ts`) sorts diagnostics by `span.start`, then `span.end`, then `code`, then `compareOrdered(message)`, whereas `diagnoseModule` (`compile.ts`) sorts only by `first.span.start - second.span.start`.
+
+### 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter
+
+- **Redundant `definitionFormat.read` + `definitionFormat.write` round-trips in `programBinder` and `runTests` (`src/runtime/host.ts`, `src/runtime/testing/run-tests.ts`):**
+  - In `src/runtime/host.ts`, `programBinder` calls `definitionFormat.read(text)` and then `definitionFormat.write(definition)` just to compute `hash` before consulting `memo(bound, hash, ...)`. Because `storedInstance` calls `bind(definition)` on every `wake`, `inspect`, `fill`, `retry`, and `terminate`, every host operation re-decodes, re-validates (`checkReferences`), and re-encodes the entire `Definition` JSON even when it was already bound! And on `deploy(text)`, `definitionFormat.write(program.definition)` is called a second time when `isNew` is true.
+  - `runTests` (`src/runtime/testing/run-tests.ts`) repeats the same `definitionFormat.read(text)` + `definitionFormat.write(definition)` pair.
+- **Duplicate `call` capture/argument validation in `callProblems` (`src/runtime/snapshot/check.ts`) vs. `instruction-rules.ts` (`src/definition/instruction-rules.ts`):**
+  - `callProblems` in `snapshot/check.ts` re-implements the capture-count, parameter-count, and `takesReference` checks already in `closureProblem` and `argumentsProblem` (`src/definition/instruction-rules.ts`).
+- **Repeated `closureOf(v) ?? unreachable(...)` unpacking across 4 runtime modules (`src/runtime/interpreter/instructions.ts`, `lifetimes/disposal.ts`, `scheduler/mocks.ts`, `scheduler/native-calls.ts`):**
+  - `calledFunction` (`instructions.ts`), `callOf` (`disposal.ts`), `replacementOf` (`mocks.ts`), and `nativeInstancesOf.spawn` (`native-calls.ts`) each narrow a `Value` with `closureOf` and throw `unreachable` on non-closures.
+
+### 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
+
+- **`asHostValue`, `leaving`, and `arriving` duplicate recursive `Value` mapping on the JS stack (`src/runtime/scheduler/mocks.ts`; widens `Q29`):**
+  - `Q29` notes that `asHostValue` and `leaving` share the same walk. `arriving` in the same file is a third copy of the same composite `withChildValues(value, childValues(value).map(...))` walk, and all three recurse on the host JS call stack instead of an explicit stack (violating the one-way rule in `docs/reuse/structures-and-invariants.md`, since in-memory values within a segment can exceed `maximumDepth` before commit).
+- **Redundant multimap + `reachingMock` in `mocksOf` (`src/runtime/testing/world/index.ts`, `src/runtime/scheduler/mocks.ts`):**
+  - `mocksOf` groups `snapshot.objects` by `object.target` using `byTarget.set(object.target, [...(byTarget.get(object.target) ?? []), object])` and then calls `reachingMock(mocks)` (which picks the mock with the largest `id`). Because `snapshot.objects` is already in ascending `id` order (`snapshot.ts`), the last mock for each `target` in `snapshot.objects` is always `reachingMock`.
+- **Whole-heap disposable scan on commit (`P4`), encode-then-decode commit round-trip (`P1`), and module-global `decodedByStore` cache (`P7`) (`src/runtime/scheduler/instance/index.ts`, `wake.ts`, `instance-ends.ts`; tracked in `tracker.md`).**
+
 
 
 
