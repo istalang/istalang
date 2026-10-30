@@ -6,7 +6,8 @@
  * - An item ranks first when a value it writes fits the type expected at the place (expected.ts),
  *   then by where its name comes from (locals, the module, imports, the prelude, keywords), then
  *   by its presenter's priority. The first item that fits is preselected, so the list opens on it.
- * - A field written in a literal inserts `name: ` and asks for the next list, its value's (§3.1).
+ * - A field named in a literal or an annotation inserts `name: ` and asks for the next list, its
+ *   value's (§3.1).
  *   Its priority puts a field with no default first, as it must be given.
  * - Within a member's list, fields come before methods; a value another case already tests ranks
  *   after the rest.
@@ -24,7 +25,7 @@ import type { Cursor } from './cursor.ts';
 import { groupOf, shownEntity } from './entity-items.ts';
 import { expectedTypeAt } from './expected.ts';
 import { type Completion, lowestPriority, ranksBefore } from './item.ts';
-import type { Place } from './place.ts';
+import type { Place, PlaceKind } from './place.ts';
 import {
   called,
   constructed,
@@ -63,6 +64,9 @@ export function present(
 /** How far after the others a value another case covers ranks. */
 const coveredAfter = 500;
 
+/** Where a field's name is written with its value after it: a literal's or an annotation's item. */
+const givesValue: ReadonlySet<PlaceKind> = new Set<PlaceKind>(['literalField', 'annotation']);
+
 /** The literals a keyword writes, by the type of their value. */
 const keywordValues: ReadonlyMap<string, Type> = new Map([
   ['true', boolType],
@@ -90,7 +94,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
             priority: hasDefault(declared.node) ? 1 : 0,
             ...documented(docstringOf(checker, { kind: 'field', field })),
           }),
-      ...(place.kind === 'literalField'
+      ...(givesValue.has(place.kind)
         ? { insert: { kind: 'text', text: `${name}: ` }, next: 'completion' }
         : {}),
     };
