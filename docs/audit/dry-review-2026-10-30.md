@@ -46,8 +46,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 30. `src/project/`
 - [x] 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries (`workspace.ts`, `checked-module.ts`, `tokens.ts`, `identifier-at.ts`, `call-at.ts`, `signatures.ts`, `docstrings.ts`, `namespaces.ts`, `folding.ts`, `symbols.ts`, `hover.ts`, `inlay-hints.ts`, `signature-help.ts`, `navigation/`, `semantic-tokens/`)
 - [x] 32. `src/language-service/completion/` (including `grammar/` and `places/`)
-- [ ] 33. `src/lsp/` (including `providers/`)
-- [ ] 34. `src/cli/` (including `commands/`) & `src/vscode-client/`
+- [x] 33. `src/lsp/` (including `providers/`)
+- [x] 34. `src/cli/` (including `commands/`) & `src/vscode-client/`
 - [ ] 35. `docs/spec.md` — Cheat sheet, §1 Overview, §2 Lexical structure and types
 - [ ] 36. `docs/spec.md` — §3 Declarations
 - [ ] 37. `docs/spec.md` — §4 Expressions and control flow, §5 Persistence, §6 Slots and inboxes, §7 Lifetimes and disposal, §8 `select`
@@ -341,6 +341,22 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - Both slice `tree.source.text` from `before.span.end` to `name?.span.start ?? offset` and test `[...between].every(isInlineWhitespace)`. Placing `adjoinsBefore(cursor)` beside `touchingBefore(cursor)` in `completion/cursor.ts` unifies both.
 - **Duplicate `any` downcast target rules across `completion/places/matched-type.ts` (`downcastTo`), `completion/places/pattern.ts` (`mayRefer`), and `checker/patterns/downcasts.ts` (`namedTypeOf`).**
 - **Tracked completion items (`P13`–`P16`, `P19`, `Q34`, `Q35`, `B23`, `F14`, `F15`; tracked in `tracker.md`).**
+
+### 33. `src/lsp/` (including `providers/`)
+
+- **Second `Number.MAX_SAFE_INTEGER` column workaround for `LineMap` line bounds in `linesOf` (`src/lsp/providers/semantic-tokens.ts`, `src/text/line-map.ts`, `src/diagnostics/render.ts`):**
+  - `linesOf` in `semantic-tokens.ts` reconstructs each line's `[start, end)` bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`, repeating the same workaround as `renderDiagnostic` (`src/diagnostics/render.ts`) because `LineMap` does not expose its stored `#lineEnds`.
+- **Duplicate offset-to-LSP-`Position` conversion in `rangeOf` (`src/lsp/locations.ts`) and `inlayHints` (`src/lsp/providers/inlay-hints.ts`):**
+  - `rangeOf` and `inlayHints` both convert `lines.positionAt(offset)` to `{ line, character: column }`.
+- **Full-project `globSync`, `statSync`, and `readFileSync` on every editor keystroke in `projectProgramLoader` (`src/lsp/project-loader.ts`, `src/project/project.ts`, `src/compiler/program/program.ts`; widens `F11`):**
+  - On every edit, `projectProgramLoader` runs `findProjectSources(root)` (`globSync`), `locateFile` (`statSync` on every non-open file), and `buildProgram` (`readFileSync` on every non-open module).
+
+### 34. `src/cli/` (including `commands/`) & `src/vscode-client/`
+
+- **Quadruple `Definition` validation/serialization across `cli/commands/run.ts` (`test.ts`) and `runtime/host.ts` (`runtime/testing/run-tests.ts`):**
+  - `start` (`src/cli/commands/run.ts`) encodes `compilation.definition` via `definitionFormat.write(compilation.definition)` and passes `text` to `runtime.deploy(text)`, which calls `definitionFormat.read(text)`, then `definitionFormat.write(definition)` (in `programBinder`), and then `definitionFormat.write(program.definition)` (in `deploy`). `test` (`src/cli/commands/test.ts`) and `runTests` (`src/runtime/testing/run-tests.ts`) do the same encode-then-decode-then-encode sequence.
+- **Unexported `memoryStore` / `directoryStore` on package surface (`B7`) and VS Code client Windows / reload gaps (`F10`) (`src/cli/directory-store.ts`, `src/runtime/store.ts`, `src/vscode-client/`; tracked in `tracker.md`).**
+
 
 
 

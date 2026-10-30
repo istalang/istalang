@@ -55,7 +55,7 @@ tags: [reuse, language, modules, program, binder, names]
 - check an edit tried out without cutting the program's incremental history → `checkProgram(program, { previous, tentative: true })`
 - the docstring of what a name denotes → `docstringOf` (`src/language-service/docstrings.ts`)
 - the order completion items sort in → `rankKeys`, `ranksBefore` (`src/language-service/completion/item.ts`)
-- read an LSP request's position as a module and offset, or write a name's place as an LSP location → `documentOffset`, `locationOf`, `rangeOf` (`src/lsp/locations.ts`)
+- read an LSP request's URI/position/range as a module, offset or span, or write a place/span as an LSP location/range → `moduleIdOfUri`, `documentOffset`, `spanOf`, `locationOf`, `rangeOf` (`src/lsp/locations.ts`)
 - get a module of a program, its tree and the program's checker, for an editor feature reading types → `checkedModule` (`src/language-service/checked-module.ts`)
 - find the module a namespace import loaded → `importedModule` (`src/language-service/namespaces.ts`)
 - bind a `Program`'s names (memoized per `Program` and per `SyntaxTree`) → `bindProgram` (`src/compiler/binder/bind.ts`)
