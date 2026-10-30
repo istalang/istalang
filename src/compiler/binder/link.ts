@@ -43,6 +43,7 @@ import type {
   Entity,
   FunctionsEntity,
   NamespaceEntity,
+  TypeEntity,
   VariantEntity,
 } from './entities.ts';
 import { type FreeName, noOwnCall, type QualifiedPath } from './local-binder.ts';
@@ -358,14 +359,22 @@ class Linker {
 
   #resolvePath(id: ModuleId, links: ModuleLinks, { parts, inExpression }: QualifiedPath): void {
     const [head, ...rest] = parts;
+    let qualifier = head;
     let current = this.entityOf(id, head);
     for (const part of rest) {
-      current =
+      const next =
         current === undefined ? undefined : this.#member(current, part, inExpression, links);
-      if (current === undefined) {
+      if (next === undefined) {
+        // Outside an expression no check reads the parts before the last; in one, `x.y` reads a
+        // value's member, which the checker reports.
+        if (current !== undefined && !inExpression && !qualifies(current)) {
+          links.diagnostics.push(binderDiagnostics.qualifiesNothing(part.span, qualifier.text));
+        }
         return;
       }
-      links.resolved.set(part, current);
+      links.resolved.set(part, next);
+      qualifier = part;
+      current = next;
     }
   }
 
@@ -376,12 +385,12 @@ class Linker {
     inExpression: boolean,
     links: ModuleLinks,
   ): Entity | undefined {
+    if (!qualifies(current)) {
+      return;
+    }
     if (current.kind === 'namespace') {
       const module = this.#importedBy(current);
       return module === undefined ? undefined : this.#exported(module, part, links);
-    }
-    if (current.kind !== 'type' || current.declaration.kind !== 'EnumDeclaration') {
-      return;
     }
     const variant = this.#variantsOfEnum.get(current.declaration)?.get(part.text);
     if (variant === undefined && !inExpression) {
@@ -403,4 +412,14 @@ class Linker {
 /** What a module-local entity denotes once linked: an import's target, or the entity itself. */
 function resolvedImport(links: ModuleLinks, entity: LocalEntity | undefined): Entity | undefined {
   return entity?.kind === 'import' ? links.imports.get(entity) : entity;
+}
+
+/** Whether names may follow `entity` and a dot: a module's namespace, or an enum's variants. */
+function qualifies(
+  entity: Entity,
+): entity is NamespaceEntity | (TypeEntity & { readonly declaration: EnumDeclaration }) {
+  return (
+    entity.kind === 'namespace' ||
+    (entity.kind === 'type' && entity.declaration.kind === 'EnumDeclaration')
+  );
 }

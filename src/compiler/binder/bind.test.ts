@@ -102,6 +102,36 @@ describe('binding reports, once and at the name', () => {
       'Nothing',
     ],
     [
+      'a name after a struct, in a pattern',
+      'struct P { x: int }\nfn f(p: P) -> int:\n  match p:\n    case P.Q{x}: x\n    case _: 0',
+      d.qualifiesNothing,
+      'Q',
+    ],
+    [
+      'a name after a struct, in a literal',
+      'struct P { x: int }\nfn f() -> P:\n  P.Q{x: 1}',
+      d.qualifiesNothing,
+      'Q',
+    ],
+    [
+      'a name after a struct, in a type',
+      'struct P { x: int }\nconst p: P.Q = P{x: 1}',
+      d.qualifiesNothing,
+      'Q',
+    ],
+    [
+      'a name after a variant, in a type',
+      'enum C { A; B }\nfn f(c: C.A.B): c',
+      d.qualifiesNothing,
+      'B',
+    ],
+    [
+      'a name after a local, in a pattern',
+      'fn f(n: int) -> int:\n  match n:\n    case n.Q: 1\n    case _: 0',
+      d.qualifiesNothing,
+      'Q',
+    ],
+    [
       'an is binding after the expression that bound it',
       'fn f(r: Result<int>) -> int:\n  const ok = r is Ok{value} and value > 0\n  value',
       d.blockEnded,

@@ -86,4 +86,9 @@ export const binderDiagnostics = defineDiagnostics('binder', {
     code: 4017,
     message: () => "Nothing holds the call of 'main', so 'main.disposing()' would never resolve.",
   },
+  qualifiesNothing: {
+    code: 4018,
+    message: (name: string) =>
+      `'${name}' is no module's namespace or enum, so no name follows its '.'.`,
+  },
 });
