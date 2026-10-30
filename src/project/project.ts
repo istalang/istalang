@@ -10,7 +10,7 @@
 
 import { globSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildProgram, type Program } from '../compiler/program/program.ts';
+import { buildProgram, type LocatedModule, type Program } from '../compiler/program/program.ts';
 import { type StdSources, stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { fileLoader, locateFile, sourceExtension } from './file-loader.ts';
 import { diskFiles, type ProjectFiles } from './project-files.ts';
@@ -46,13 +46,15 @@ export interface ProjectOptions {
   readonly std?: StdSources;
   /** The program last loaded, whose unchanged trees the new one reuses: an editor's snapshot. */
   readonly previous?: Program | undefined;
+  /** Roots no file holds, such as an editor's unsaved buffers, loaded beside the paths. */
+  readonly buffers?: readonly LocatedModule[];
 }
 
 /** The program rooted at the files at `paths`, with the std modules. */
 export function loadProject(
   cwd: string,
   paths: readonly string[],
-  { files = diskFiles, std, previous }: ProjectOptions = {},
+  { files = diskFiles, std, previous, buffers = [] }: ProjectOptions = {},
 ): Project {
   const places = { projectRoot: cwd, cwd };
   const roots = paths.map((path) => ({
@@ -61,7 +63,7 @@ export function loadProject(
   }));
   const program = buildProgram(
     {
-      roots: roots.flatMap(({ module }) => module ?? []),
+      roots: [...roots.flatMap(({ module }) => module ?? []), ...buffers],
       loaders: [fileLoader(places, files), stdlibLoader(std)],
       roles: stdRoles(std),
     },

@@ -15,8 +15,8 @@
  *
  * Loading is a seam: the app decides which roots a project has and where the rest of its texts
  * come from, so this layer does no I/O and knows no protocol. A document the program doesn't hold
- * (an unsaved buffer, a std module shown read-only) still has a tree of its own, for the features
- * that read syntax alone.
+ * (a std module shown read-only) still has a tree of its own, for the features that read syntax
+ * alone.
  */
 
 import { type Checker, checkProgram } from '../compiler/checker/check.ts';

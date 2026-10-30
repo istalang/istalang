@@ -1,7 +1,7 @@
 /**
  * What every feature reading types asks of a program: one of its modules, that module's tree, and
  * the program's checker. A feature answers for a module the program holds; a document it doesn't
- * (an unsaved buffer) has syntax alone, which these features don't read.
+ * (a std module shown read-only) has syntax alone, which these features don't read.
  */
 
 import { type Checker, checkProgram } from '../compiler/checker/check.ts';

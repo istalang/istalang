@@ -15,6 +15,7 @@ import {
   type CompletionList,
   CompletionRequest,
   CompletionTriggerKind,
+  HoverRequest,
 } from 'vscode-languageserver/node';
 import { corpusDirectory } from '../../../test/corpus/programs.ts';
 import { identifierRunEnd, isIdentifierStart } from '../../compiler/scanner/characters.ts';
@@ -68,11 +69,17 @@ describe('completion scenarios over the protocol', () => {
     expect(labelsOf(reply)).toContain('first');
   });
 
-  it.fails('RB-13 an untitled document gets completion', async () => {
+  it('RB-13 an untitled document gets completion', async () => {
     const uri = 'untitled:Untitled-1';
     await use().open(uri, body);
     const reply = await use().connection.sendRequest(CompletionRequest.type, dotRequest(uri));
     expect(labelsOf(reply)).toContain('first');
+    const atParameter = { line: body.split('\n').indexOf('  p.'), character: 2 };
+    const hover = await use().connection.sendRequest(HoverRequest.type, {
+      textDocument: { uri },
+      position: atParameter,
+    });
+    expect(hover).not.toBeNull();
   });
 
   it('VC-01 [ista] turns word-based suggestions off', () => {
