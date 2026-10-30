@@ -20,9 +20,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 4. `src/diagnostics/`
 - [x] 5. `src/definition/` (including `instructions/`)
 - [x] 6. `src/compiler/syntax/` (including `expressions/`)
-- [ ] 7. `src/compiler/scanner/`
-- [ ] 8. `src/compiler/parser/` — machinery & shared parts (`parse.ts`, `parser.ts`, `grammar.ts`, `brackets.ts`, `held-bodies.ts`, `reuse.ts`, `recovery.ts`, `nesting.ts`, `annotations.ts`, `docstrings.ts`, `diagnostics.ts`, `cursor/`, `layout/`, `parts/`)
-- [ ] 9. `src/compiler/parser/` — grammar categories (`types.ts`, `patterns.ts`, `expressions/`, `statements/`, `declarations/`)
+- [x] 7. `src/compiler/scanner/`
+- [x] 8. `src/compiler/parser/` — machinery & shared parts (`parse.ts`, `parser.ts`, `grammar.ts`, `brackets.ts`, `held-bodies.ts`, `reuse.ts`, `recovery.ts`, `nesting.ts`, `annotations.ts`, `docstrings.ts`, `diagnostics.ts`, `cursor/`, `layout/`, `parts/`)
+- [x] 9. `src/compiler/parser/` — grammar categories (`types.ts`, `patterns.ts`, `expressions/`, `statements/`, `declarations/`)
 - [ ] 10. `src/compiler/program/`
 - [ ] 11. `src/compiler/binder/`
 - [ ] 12. `src/compiler/checker/` — root contracts, contexts & wiring (`check.ts`, `context.ts`, `program-inputs.ts`, `program-checker.ts`, `body-checker.ts`, `use-site.ts`, `resolved-call.ts`, `checked-pattern.ts`, `checked-field.ts`, `constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `struct-items.ts`, `denotation.ts`, `host-externs.ts`, `declaring-modules.ts`, `diagnostics/`)
@@ -110,5 +110,31 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `isUnnamedTarget` checks `bare.kind === 'Identifier' && bare.text === '_'` instead of calling `isUnnamed(bare.text)` (`src/language/naming.ts`).
 - **Missing `unparenthesizedType` helper for `TypeNode` (`src/compiler/syntax/types.ts`):**
   - `syntax/expressions/index.ts` exports `unparenthesized(node: Expression)` and `syntax/patterns.ts` exports `unparenthesizedPattern(node: Pattern)`, but `syntax/types.ts` keeps `ParenthesizedType` private and provides no `unparenthesizedType(node: TypeNode)` helper for callers inspecting type nodes.
+
+### 7. `src/compiler/scanner/`
+
+- **Bracket pairing re-scans the token stream instead of deriving from the scanner's pass (`src/compiler/scanner/scan.ts`, `src/compiler/parser/brackets.ts`, `src/language-service/tokens.ts`; widens `P17`):**
+  - `Scanner.#scanTokens` already walks every token in order and tracks brace depth (`braceChange`), yet `unclosedBracketEnds` (`src/compiler/parser/brackets.ts`) and `closingBracketsOf` (`src/language-service/tokens.ts`) re-walk the entire token array from scratch in `pairBrackets`.
+- **Repeated `[...run]` allocations in `scanRadixInteger` (`src/compiler/scanner/numbers.ts`):**
+  - `scanRadixInteger` spreads the ASCII identifier run `[...run]` twice (once for `.filter(radix.isDigit)` and once for `.findIndex(...)`) and adds the code-point index `invalidAt` to the UTF-16 offset `digitsStart`.
+
+### 8. `src/compiler/parser/` — machinery & shared parts
+
+- **Two hand-rolled binary searches duplicating `lastIndexAtMost` (`src/compiler/parser/brackets.ts`, `src/compiler/parser/cursor/index.ts`, `src/structures/sorted.ts`):**
+  - `lineOf` in `src/compiler/parser/brackets.ts` and `Cursor.lineHead` in `src/compiler/parser/cursor/index.ts` each write their own `while (low < high)` binary search loop (`Math.ceil((low + high) / 2)`), duplicating `lastIndexAtMost` (`src/structures/sorted.ts`).
+- **Duplicate node-field reflection walk in `bodiesHeldBy` (`src/compiler/parser/held-bodies.ts`, `src/compiler/syntax/tree.ts`):**
+  - `bodiesHeldBy` inspects `Object.values(node)` with `Array.isArray(value)` and `isNode` directly instead of sharing the field-child extraction in `src/compiler/syntax/tree.ts` (`fieldChildrenOf`).
+- **Repeated array-spreading multimap insertion in `SegmentReuse` (`src/compiler/parser/reuse.ts`):**
+  - `SegmentReuse.constructor` builds `#unused` with `this.#unused.set(run.text.text, [...(this.#unused.get(run.text.text) ?? []), run])`, repeating the same copying multimap pattern as `strongly-connected.ts` and `language/values.ts`.
+
+### 9. `src/compiler/parser/` — grammar categories
+
+- **Ad-hoc `'_'` string checks instead of `isUnnamed` (`src/compiler/parser/patterns.ts`, `src/compiler/parser/statements/variables.ts`, `src/language/naming.ts`):**
+  - `parseWildcard` (`patterns.ts`) and `startsHeldVariableAt` (`statements/variables.ts`) both test `parser.textOf(...) === '_'` directly instead of calling `isUnnamed` (`src/language/naming.ts`), just as `isUnnamedTarget` does in `syntax/statements.ts`.
+- **Duplicate `RangePattern` construction in `parseRangePattern` and `parseOpenRangePattern` (`src/compiler/parser/patterns.ts`):**
+  - Unlike `expressions/operators.ts` (where `parseOpenRange` and `rangeParselet` delegate to `parseRangeRest`), `parseRangePattern` and `parseOpenRangePattern` in `patterns.ts` duplicate the operator-kind check, `parseRangeBound`, and `RangePattern` node construction.
+- **Closed parselet dispatch tables duplicated in completion (`src/compiler/parser/`, `src/language-service/completion/grammar/words.ts`; tracked as `Q35`):**
+  - `typeParselets`/`wordParselets`, `patternParselets`, `prefixParselets`/`infixParselets`, `statementParselets`, and `topLevelParselets` are internal to `parser/`, forcing `completion/grammar/words.ts` to restate the keyword sets (`Q35`).
+
 
 
