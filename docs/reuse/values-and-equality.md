@@ -14,7 +14,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 
 - narrow a `Value` to composite, array, map or closure → `isComposite`, `elementsOf`, `mapValueOf`, `handleTarget`, `closureOf` (`src/definition/values.ts`)
 - make a handle to a heap object → `handleTo` (`src/definition/values.ts`)
-- read or replace a composite's children or depth → `childValues`, `withChildValues`, `handlesIn`, `depthOf`, `samePayload` (`src/definition/values.ts`)
+- read or replace a composite's children or depth, or get the maximum persisted value depth → `childValues`, `withChildValues`, `handlesIn`, `depthOf`, `maximumDepth`, `samePayload` (`src/definition/values.ts`)
 - read or build a struct or variant `Value` by declared name → `fieldValueOf`, `structOf`, `variantOf`, `variantShape` (`src/definition/declared-values.ts`)
 - build an `Optional`, `Result` (`Ok`, `Err`) or `Error` `Value` → `optionalOf`, `okOf`, `errOf`, `errorOf`, `okTypeOf` (`src/definition/declared-values.ts`)
 - look up a field's `TypeReference`, a type argument, or a named `TypeId` → `fieldTypeOf`, `typeArgumentOf`, `namedType`, `namedTypeOf` (`src/definition/declared-values.ts`)
