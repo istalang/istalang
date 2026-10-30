@@ -73,6 +73,7 @@ Time and memory: measured costs, quadratic paths, hot-path checks.
 | P16 | Completion asks `resultOf` of every visible function (details, expected-type fit), so a function with an inferred result has its body checked by each new checker until a diagnosed checker holds it. | small | none; can be done now | completion C2b report 2026-10-30 |
 | P17 | The parser's pre-pass for brackets left open (parser/brackets.ts `openAtEnd`) runs on every parse: about 0.36 ms on the 2,098-line module (~4% of a parse), a third of P10's ~1 ms edit margin. Lever: the scanner, which walks every character already, counts the brackets left open. | small | none; can be done now | completion C2g report 2026-10-30 |
 | P18 | Visibility (compiler/binder/visibility.ts `visibleAt`) filters every trailing note, one per statement, on each query; unmeasured on large modules (the corpus completion timings match before). | small | none; can be done now | completion C2g report 2026-10-30 |
+| P19 | A completion request takes ~33 ms median on the 2,098-line module (dist, after an edit, diagnostics waiting), over the 15 ms edit budget, with no breakdown measured. Profile it and add a completion bench beside `language-service/edit.bench.ts`; levers in P10, P14, P15, P16. | medium | none; can be done now | completion End fix E2 report 2026-10-30 |
 
 ### Code quality (Q)
 
