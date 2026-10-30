@@ -26,7 +26,7 @@ import type {
   WildcardPattern,
 } from '../syntax/patterns.ts';
 import type { NamedType } from '../syntax/types.ts';
-import type { CursorKind } from './cursor.ts';
+import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 import { literalFrom } from './parts/literals.ts';

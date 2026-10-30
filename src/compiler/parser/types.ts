@@ -13,7 +13,7 @@
 
 import { type ContextualWord, isContextualWord } from '../syntax/tokens.ts';
 import type { FunctionType, ReferenceType, RestType, TypeNode } from '../syntax/types.ts';
-import type { CursorKind } from './cursor.ts';
+import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 import { parseFunctionKeyword } from './parts/functions.ts';

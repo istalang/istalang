@@ -3,7 +3,7 @@
  */
 
 import type { Literal } from '../../syntax/expressions/index.ts';
-import type { CursorToken } from '../cursor.ts';
+import type { CursorToken } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
 
 /** The literal a token denotes, or undefined if it denotes none. */

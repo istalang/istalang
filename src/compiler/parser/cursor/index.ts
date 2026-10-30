@@ -29,9 +29,20 @@
  * crossed in the current region since the mark.
  */
 
-import type { Span } from '../../text/span.ts';
-import type { TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
-import { bracketClosers, type Closer, type Opener, openers } from './brackets.ts';
+import type { Span } from '../../../text/span.ts';
+import type { TemplateValue, Token, TokenKind } from '../../syntax/tokens.ts';
+import { bracketClosers, type Closer, type Opener, openers } from '../brackets.ts';
+import {
+  blockBracesRegion,
+  blockRegion,
+  bracketRegion,
+  entryBracesRegion,
+  type LineRegionShape,
+  oneLineRegion,
+  type Region,
+  topLevelRegion,
+  unbracketedRegion,
+} from './regions.ts';
 
 /** What stands in for the next token where a line break ends the current construct. */
 interface LineBreak {
@@ -50,35 +61,13 @@ export interface CursorMark {
   readonly regionStart: number;
 }
 
-interface Region {
-  /** What a line break does here: nothing (brackets), end the region, or separate items. */
-  readonly lineBreaks: 'ignored' | 'end' | 'separate';
-  /** Index of the first token that may start a line without reading as a break. */
-  start: number;
-  readonly closer: Closer | undefined;
-  /** Whether the closer is this region's own, rather than one it keeps from an enclosing region. */
-  readonly ownsCloser: boolean;
-  /** A block's column; undefined for any other region, entries in braces included. */
-  readonly column: number | undefined;
-  /** Index of the token where a bracket no closer matches ends. */
-  readonly until?: number | undefined;
-}
-
-type LineRegionShape = Omit<Region, 'start'>;
-
 export class Cursor {
   readonly #tokens: readonly Token[];
   /** Where each bracket no closer matches ends, by the index its region starts at. */
   readonly #unclosedEnds: ReadonlyMap<number, number>;
   /** The regions enclosing the current one, outermost first. */
   readonly #enclosing: Region[] = [];
-  #current: Region = {
-    lineBreaks: 'end',
-    start: 0,
-    closer: undefined,
-    ownsCloser: false,
-    column: undefined,
-  };
+  #current: Region = topLevelRegion();
   #index = 0;
   /** The `=` left of a `>=` whose `>` closed type arguments; it stands at `#index`. */
   #remainder: Token | undefined;
@@ -265,58 +254,34 @@ export class Cursor {
   within<Result>(opener: Opener, parse: () => Result): Result {
     const { closer, isBracket } = openers[opener];
     const region = isBracket
-      ? {
-          lineBreaks: 'ignored' as const,
-          start: this.#index,
-          closer,
-          ownsCloser: true,
-          column: undefined,
-          until: this.#unclosedEnds.get(this.#index),
-        }
+      ? bracketRegion(this.#index, closer, this.#unclosedEnds.get(this.#index))
       : { ...this.#current, closer, ownsCloser: true };
     return this.#inRegion(region, parse);
   }
 
   /** Runs `parse` inside `{…}` whose lines form a block at `column`, as a block expression's do. */
   withinBlockBraces<Result>(column: number, parse: () => Result): Result {
-    const shape = { lineBreaks: 'separate', closer: '}', ownsCloser: true, column } as const;
-    return this.#inLineRegion(shape, parse);
+    return this.#inLineRegion(blockBracesRegion(column), parse);
   }
 
   /** Runs `parse` inside `{…}` whose entries are separated by `;` or line breaks, at any column. */
   withinEntryBraces<Result>(parse: () => Result): Result {
-    const shape = {
-      lineBreaks: 'separate',
-      closer: '}',
-      ownsCloser: true,
-      column: undefined,
-    } as const;
-    return this.#inLineRegion(shape, parse);
+    return this.#inLineRegion(entryBracesRegion(), parse);
   }
 
   /** Runs `parse` inside a block at `column`, starting at the next token. */
   inBlock<Result>(column: number, parse: () => Result): Result {
-    const { closer } = this.#current;
-    return this.#inLineRegion({ lineBreaks: 'separate', closer, ownsCloser: false, column }, parse);
+    return this.#inLineRegion(blockRegion(this.#current.closer, column), parse);
   }
 
   /** Runs `parse` where line breaks are ignored, as in brackets, though no closer ends it. */
   ignoringLineBreaks<Result>(parse: () => Result): Result {
-    const region = {
-      lineBreaks: 'ignored',
-      start: this.#index,
-      closer: undefined,
-      ownsCloser: false,
-      column: undefined,
-    } as const;
-    return this.#inRegion(region, parse);
+    return this.#inRegion(unbracketedRegion(this.#index), parse);
   }
 
   /** Runs `parse` inside a region where a line break, after its first token, ends it. */
   onOneLine<Result>(parse: () => Result): Result {
-    const { closer } = this.#current;
-    const shape = { lineBreaks: 'end', closer, ownsCloser: false, column: undefined } as const;
-    return this.#inLineRegion(shape, parse);
+    return this.#inLineRegion(oneLineRegion(this.#current.closer), parse);
   }
 
   /** Whether `kind` closes a region enclosing the current one. */

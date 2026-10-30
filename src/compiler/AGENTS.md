@@ -9,7 +9,7 @@ One folder per phase. Phases share only contracts.
   - Pieces several categories share live in `parts/`, which imports no category.
   - dependency-cruiser enforces both rules.
   - The machinery is shared by all categories:
-    - `cursor.ts`: line breaks and regions
+    - `cursor/`: line breaks and regions (`regions.ts`: one shape per kind)
     - `layout.ts`: items separated by `;` or line breaks (blocks, braces of entries, the module), one-line bodies, annotations on items
     - `recovery.ts`: bracketed lists and recovery
     - `nesting.ts`: the nesting limit every recursive grammar entry goes through

@@ -20,7 +20,7 @@ import {
   type UnaryOperator,
   unaryOperators,
 } from '../../syntax/operators.ts';
-import type { CursorKind } from '../cursor.ts';
+import type { CursorKind } from '../cursor/index.ts';
 import { misplacedDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';
 import { parseLiteral, parseName, parseParenthesized } from './atoms.ts';

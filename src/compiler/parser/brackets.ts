@@ -1,5 +1,5 @@
 /**
- * The brackets the grammar pairs, and which of them group: what the cursor's regions (cursor.ts)
+ * The brackets the grammar pairs, and which of them group: what the cursor's regions (cursor/)
  * and recovery (recovery.ts) read as opening and closing, and where a bracket left open ends.
  */
 

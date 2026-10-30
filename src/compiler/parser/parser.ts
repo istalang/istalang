@@ -17,7 +17,7 @@
  *
  * Speculation settles two ambiguities: `name<…>(` against a comparison (§3.5), and `a, b = …`
  * against a comma that belongs to an enclosing call. An attempt that reports anything is undone
- * completely, cursor (cursor.ts) and diagnostics together, and while speculating, recovery gives
+ * completely, cursor (cursor/index.ts) and diagnostics together, and while speculating, recovery gives
  * up instead of skipping tokens. A failed guess therefore costs only the tokens a well-formed one
  * would have read.
  */
@@ -41,7 +41,7 @@ import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { unclosedBracketEnds } from './brackets.ts';
-import { Cursor } from './cursor.ts';
+import { Cursor } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 
 /** The entry point of each grammar category, wired in by grammar.ts. */

@@ -22,7 +22,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { isAssignmentOperator } from '../../syntax/operators.ts';
 import { destructures, isTarget, type Statement } from '../../syntax/statements.ts';
-import type { CursorKind } from '../cursor.ts';
+import type { CursorKind } from '../cursor/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { atLabel, parseFor, parseLabelled, parseWhile } from './loops.ts';

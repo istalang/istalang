@@ -4,7 +4,7 @@
  * Every bracketed construct in the grammar goes through `parseEnclosed` (or, for braces whose lines
  * matter, `parseEnclosedIn`), so trailing commas (§2), line-break rules (§2) and recovery
  * behave the same everywhere. A caller names only the opener; its closer comes from `openers`
- * (cursor.ts). The closer is consumed inside the construct's own region, so a closer on a line of
+ * (brackets.ts). The closer is consumed inside the construct's own region, so a closer on a line of
  * its own still closes it. Lists of items separated by `;` or line breaks are layout's (layout.ts).
  *
  * Recovery:
@@ -20,7 +20,7 @@
 import type { Invalid } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import { type Closer, isBracketOpener, type Opener, openers } from './brackets.ts';
-import type { CursorKind } from './cursor.ts';
+import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 
@@ -57,7 +57,7 @@ export function parseEnclosed<Value>(
 
 /**
  * `opener`, whatever `parseInner` reads, and the matching closer, inside the region `enter` opens
- * (cursor.ts): a bracket region, or the line-sensitive one of a block or entries in braces.
+ * (cursor/regions.ts): a bracket region, or the line-sensitive one of a block or entries in braces.
  */
 export function parseEnclosedIn<Value>(
   parser: Parser,

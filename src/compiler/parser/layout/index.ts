@@ -33,7 +33,7 @@ import type { Annotation } from '../../syntax/annotations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import { parseAnnotations, rejectAnnotations } from '../annotations.ts';
-import type { CursorKind } from '../cursor.ts';
+import type { CursorKind } from '../cursor/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { misplacedDocstring, parseDocstring, type WithDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';
@@ -122,7 +122,7 @@ export function parseItemEntries<Item extends SyntaxNode>(
 }
 
 /**
- * The items of the current list region (cursor.ts), up to the line where it ends. Items heading
+ * The items of the current list region (cursor/regions.ts), up to the line where it ends. Items heading
  * segments do so only in a block, where each stands on lines of its own, not in braces.
  */
 export function parseLines<Item extends SyntaxNode>(

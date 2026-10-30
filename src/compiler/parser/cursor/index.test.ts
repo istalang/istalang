@@ -6,9 +6,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createSourceText } from '../../text/source-text.ts';
-import { scan } from '../scanner/scan.ts';
-import { Cursor } from './cursor.ts';
+import { createSourceText } from '../../../text/source-text.ts';
+import { scan } from '../../scanner/scan.ts';
+import { Cursor } from './index.ts';
 
 function cursorOver(text: string): Cursor {
   return new Cursor(scan(createSourceText('test.ista', text)).tokens);

@@ -47,7 +47,7 @@ src/
     scanner/            text → tokens + comments + diagnostics
     parser/             tokens → SyntaxTree; parse.ts is the entry
       parser.ts grammar.ts                                       context, category wiring
-      cursor.ts brackets.ts layout/ recovery.ts nesting.ts       line regions, the brackets paired and where one never closed ends, blocks and bodies (layout/bodies.ts), lists, depth limit,
+      cursor/ brackets.ts layout/ recovery.ts nesting.ts         line regions, the brackets paired and where one never closed ends, blocks and bodies (layout/bodies.ts), lists, depth limit,
       annotations.ts                                             annotations,
       docstrings.ts                                              docstrings and where they stand
       parts/                                                     pieces every category may import; imports no category
