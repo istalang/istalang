@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
-import { dumpClean, field, int, named, reported } from './parse.test-kit.ts';
+import { dumpClean, dumpOf, field, int, named, parseAs, reported } from './parse.test-kit.ts';
 
 const { expected, misplacedReference, unclosedBracket } = parserDiagnostics;
 
@@ -83,6 +83,13 @@ describe('malformed types', () => {
     ['(A, B', unclosedBracket.code, '('],
   ])('reports %j once', (text, code, spanText) => {
     expect(reported('type', text)).toEqual(reportedOnce(code, spanText));
+  });
+});
+
+describe('a qualified type still being written', () => {
+  it('ends its path in a missing name after the dot, reported once', () => {
+    expect(dumpOf(parseAs('type', 'time.'))).toBe('(NamedType [time <missing name>] [])');
+    expect(reported('type', 'time.')).toEqual(reportedOnce(expected.code, ''));
   });
 });
 

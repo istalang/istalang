@@ -9,13 +9,15 @@ import type { Pattern } from '../../syntax/patterns.ts';
 import type { NamedType, TypeNode } from '../../syntax/types.ts';
 import type { Parser } from '../parser.ts';
 
-/** `a.b.C`: names joined by dots, starting at the first name. */
+/**
+ * `a.b.C`: names joined by dots, starting at the first name. A dot no name follows yet ends the
+ * path with a missing name, as a member access's does, so `time.` in a type is a qualifier still.
+ */
 export function parseQualifiedName(parser: Parser): QualifiedName {
   const { cursor } = parser;
   const first = parser.identifier();
   const rest: Identifier[] = [];
-  while (cursor.at('.') && cursor.kindAt(1) === 'identifier') {
-    cursor.advance();
+  while (cursor.eat('.') !== undefined) {
     rest.push(parser.identifier());
   }
   return [first, ...rest];

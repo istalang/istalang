@@ -31,7 +31,6 @@ import {
 import type { Identifier } from '../../../compiler/syntax/node.ts';
 import type { NamePattern } from '../../../compiler/syntax/patterns.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
-import type { Token } from '../../../compiler/syntax/tokens.ts';
 import {
   nodesAt,
   parentOf,
@@ -39,7 +38,6 @@ import {
   type SyntaxTree,
 } from '../../../compiler/syntax/tree.ts';
 import type { NamedType } from '../../../compiler/syntax/types.ts';
-import { identifierAt } from '../../identifier-at.ts';
 import { importedModule } from '../../namespaces.ts';
 import type { Candidate } from '../candidate.ts';
 import { type Cursor, touchingBefore } from '../cursor.ts';
@@ -95,31 +93,8 @@ export function memberPlaceAt(cursor: Cursor): MemberPlace | undefined {
       return place;
     }
   }
-  if (before === undefined || !memberOnlyOperators.has(before.kind)) {
-    return undefined;
-  }
-  return (
-    (before.kind === '.' ? unfinishedQualifierAt(tree, before) : undefined) ?? {
-      kind: 'member',
-      head: undefined,
-      access: undefined,
-      names: 'value',
-    }
-  );
-}
-
-/**
- * A qualifier whose name isn't written yet in a type or a pattern, `time.` in `t: time.` or
- * `Color.` in `case Color.:`: the parser ends the name before the `.` and reads the `.` apart from
- * it, as an invalid node or a member access of nothing, so the qualifier is the type's or the
- * pattern's name right before `dot`.
- */
-function unfinishedQualifierAt(tree: SyntaxTree, dot: Token): MemberPlace | undefined {
-  const head = identifierAt(tree, dot.span.start);
-  const holder = head && parentOf(tree, head);
-  const qualifies = holder?.kind === 'NamedType' || holder?.kind === 'NamePattern';
-  return head !== undefined && qualifies && spanIn(tree, head.span).end === dot.span.start
-    ? { kind: 'member', head, access: undefined, names: namedBy(tree, holder) }
+  return before !== undefined && memberOnlyOperators.has(before.kind)
+    ? { kind: 'member', head: undefined, access: undefined, names: 'value' }
     : undefined;
 }
 
