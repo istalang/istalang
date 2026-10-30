@@ -7,8 +7,9 @@
  * A module's canonical name is its path from the project root (program.ts), so the folder is found
  * among the project's modules by name: from the root, or for a relative path from the importer's
  * folder, which can't climb above the root, where no project module is. The editor loads every
- * project file into the program, so the program's modules are the project's. Std modules have
- * one-name paths and no folders; `testing` is a test module's alone (§10).
+ * project file into the program, so the program's modules are the project's; a module no path
+ * names (an editor's unsaved buffer, of an empty name) is none, and has no folder to climb from.
+ * Std modules have one-name paths and no folders; `testing` is a test module's alone (§10).
  */
 
 import { type ModuleId, type Program, programModule } from '../../../compiler/program/program.ts';
@@ -52,6 +53,9 @@ function folderOf(text: string, importer: string): readonly string[] | undefined
   if (path === undefined || path.climbs.length === 0) {
     return path?.names;
   }
+  if (importer === '') {
+    return undefined;
+  }
   const folder = importer.split('/').slice(0, -1);
   for (const climb of path.climbs) {
     if (climb === '..' && folder.pop() === undefined) {
@@ -64,6 +68,6 @@ function folderOf(text: string, importer: string): readonly string[] | undefined
 /** The paths from the project root, as names, of the project's modules but `importer`. */
 function projectPaths(program: Program, importer: ModuleId): readonly (readonly string[])[] {
   return [...program.modules.values()].flatMap(({ id, isStd, name }) =>
-    isStd || id === importer ? [] : [name.split('/')],
+    isStd || id === importer || name === '' ? [] : [name.split('/')],
   );
 }

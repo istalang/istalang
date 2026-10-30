@@ -4,7 +4,8 @@
  * one outside the project, is still checked.
  *
  * - An unsaved buffer (VS Code's `untitled:` documents) is a root of its own, a module no file
- *   holds: its imports name modules from the project root, as it has no folder to climb from.
+ *   holds and no import path names (its name is empty): its imports name modules from the
+ *   project root, as it has no folder to climb from.
  * - Any other document that isn't a file (a std module shown read-only) is left to the features
  *   that need no program, as the program holds that module under its own id already.
  *
@@ -44,5 +45,5 @@ function unsavedBuffers(open: OpenTexts): readonly LocatedModule[] {
 }
 
 function buffer(id: ModuleId, text: string): LocatedModule {
-  return { id, name: new URL(id).pathname, label: id, read: () => text };
+  return { id, name: '', label: id, read: () => text };
 }

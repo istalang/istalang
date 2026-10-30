@@ -52,8 +52,9 @@ export interface LocatedModule {
   readonly id: ModuleId;
   /**
    * The module's canonical name, which compiled code qualifies its declarations with: the import
-   * path that names it from anywhere (§3.13), such as `purchase/approve` or `time`. Unlike the
-   * label it never depends on where the toolchain runs, so a compiled program's identity doesn't.
+   * path that names it from anywhere (§3.13), such as `purchase/approve` or `time`; empty for one
+   * no path names, as an editor's unsaved buffer. Unlike the label it never depends on where the
+   * toolchain runs, so a compiled program's identity doesn't.
    */
   readonly name: string;
   /** How diagnostics name the module, such as its path from the working directory. */
