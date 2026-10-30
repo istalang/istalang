@@ -47,6 +47,8 @@ Language or toolchain features deferred by decision, not defects.
 | F9 | Loop and block labels aren't navigable: definition, references and rename skip them, since no declaration kind exists for labels. | small | — | phase 7.2a report 2026-10-29 |
 | F10 | VS Code client: Windows isn't served (`.bin/ista.cmd` needs a shell), and a changed `ista.server.path` takes effect only on reload. | small | — | phase 7.3 report 2026-10-29 |
 | F11 | The language server doesn't watch the disk (`workspace/didChangeWatchedFiles`): a file changed outside the editor is seen at the next edit. It serves only the first workspace folder. | medium | — | phase 7.1 report 2026-10-29 |
+| F14 | Completion ranks by a kind of value as well as a type: arrays first after `...` (CO-02), futures first after `await` (EX-04). The checker expects no type there, and ranking fits by type only. Both scenarios stay `it.fails`. | small | none; can be done now | completion C2a report 2026-10-30 |
+| F15 | After `&` in a call argument, completion offers only lets and reference parameters; a shared struct's handle or an indexable value may start the place too (spec §3.7), which needs types. | small | none; can be done now | completion C2a report 2026-10-30 |
 
 ### Performance (P)
 
@@ -86,6 +88,8 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q31 | Incremental == fresh holds only while the checker reads the program through `CheckerContext.inputs` and table contexts are decided by their keys. Nothing enforces either: a unit reading `checker.program` directly, or a context carrying a computed value, breaks it silently, and only revisions.test.ts would notice. Make both structural (no program on the contexts units see; contexts derived from keys). | medium | — | phase 7A.4 report 2026-10-29 |
 | Q32 | Which field a literal's item gives has two rules: completion reads `FieldInitializer` names only, the checker `patterns/struct-items.ts` `itemField` (a positional item counts there). Keep the checker's. | small | none; can be done now | completion fix 2026-10-30 |
 | Q33 | The member-completion soundness property can't probe a method taking another argument by `&` (it needs a place of the exact type), so such methods are left out of it. | small | none; can be done now | completion fix 2026-10-30 |
+| Q34 | A literal's single-field value form offers `visibleCandidates` (every keyword) instead of `expressionCandidates`, since literal-field.ts has no placeholder parse to read the body from. | small | none; can be done now | completion C2a report 2026-10-30 |
+| Q35 | completion/grammar/words.ts restates the parser's dispatch tables (parser internals are closed to completion); its property test holds the lists to the parser one way only (offered implies accepted). | small | none; can be done now | completion C2a report 2026-10-30 |
 
 ### Behaviour and correctness (B)
 
