@@ -1,7 +1,7 @@
 ---
 description: full-codebase DRY, generality, consistency, data-flow, modularity and spec audit at main @ a748669 — read before refactoring or planning debt paydown
 owner: tech-lead
-status: in-progress
+status: active
 applies_to: istalang
 last_verified: 2026-10-30
 last_updated: 2026-10-30
@@ -11,6 +11,58 @@ tags: [audit, dry-review, generality, consistency, architecture, spec]
 # DRY Review (`main @ a748669`)
 
 Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.md` against `docs/reuse/` and `docs/work/tracker.md`.
+
+## Ranked Summary
+
+1. **`[high]` Redundant `Definition` JSON encode/decode/validate round-trips on every host operation and CLI run (`src/runtime/host.ts:75`, `src/runtime/testing/run-tests.ts:36`, `src/cli/commands/run.ts:116`, `src/cli/commands/test.ts:71`)**
+   - `programBinder` (`src/runtime/host.ts:75–80`) runs `definitionFormat.read(text)` (including `checkReferences`) and then `definitionFormat.write(definition)` just to compute `hash` before consulting `memo(bound, hash, ...)`. Because `storedInstance` calls `bind(definition)` on every `wake`, `inspect`, `fill`, `retry`, and `terminate`, every host operation re-parses, re-validates, and re-serializes the entire `Definition` JSON even when it is already bound. On top of that, `cli/commands/run.ts:116` and `cli/commands/test.ts:71` serialize `compilation.definition` to text only for `deploy` / `runTests` to immediately re-parse and re-serialize it (four full passes on `ista run`).
+   - **Fix:** Key `programBinder`'s outer memo by the raw `text` string (or pass a pre-verified `{ definition, text, hash }` bundle from `compileProgram` / `definitionFormat`), computing `definitionFormat.read` and `definitionFormat.write` at most once per unique `Definition`.
+
+2. **`[high]` Unmemoized `extentIn(tree, node)` and repeated token re-scanning across parser and language service (`src/compiler/syntax/tree.ts:127`, `src/language-service/tokens.ts:24`, `src/compiler/parser/brackets.ts:34`; widens `B21`, `P17`)**
+   - Despite `src/compiler/syntax/tree.ts`'s banner stating that a node's extent is memoized on the immutable node or tree, `extentIn(tree, node)` (`src/compiler/syntax/tree.ts:127–135`) is unmemoized and walks down `childrenOf` and `lastChildOf` to the leaves on every call — including at every sibling tested by `nodesAt(tree, offset)` (`tree.ts:141–156`).
+   - Separately, `parse(source, scanned)` (`src/compiler/parser/parse.ts:28`) discards `scanned.tokens`, so `scannedOf(tree)` (`src/language-service/tokens.ts:24`) re-runs `scan(tree.source)` from scratch, and `pairBrackets` (`src/compiler/parser/brackets.ts:34`) re-walks the token stream a second time.
+   - **Fix:** Memoize `extentIn` per `(tree, node)` via `WeakMap` in `tree.ts`; retain `tokens` on `SyntaxTree` (or memoize `scan(source)` on `SourceText` as `lineMapOf` does) and compute bracket pairs once.
+
+3. **`[high]` Unmemoized transitive-read graph traversal in `notesOfReads` (`src/structures/entries/entry.ts:74`, `src/structures/entries/index.ts:95`; widens `P10`)**
+   - `notesOfReads(entry)` walks the full transitive `entry.reads` graph from scratch (allocating `seen = new Set`, `pending = [...entry.reads]`, and `notes = []`) on every call to `notesFrom(entry)`, `Entries.notesReached()`, and `#replays` (`case 'notes'`), even after an entry is closed (`!entry.running && !entry.open`) and multiple times within one computing entry.
+   - **Fix:** Memoize transitive notes on closed `Entry` nodes and track visited read subgraphs across `notesReached()` calls within an active computation.
+
+4. **`[high]` Three parallel static-function owner resolvers; `checkClashes` misses static overload clashes across type aliases (`src/compiler/checker/declarations/statics.ts:81`, `src/compiler/checker/rules/clashes.ts:121`, `src/language-service/completion/places/declared-name.ts:47`)**
+   - `StaticFunctions.#ownerOf` (`declarations/statics.ts:81–93`) unwraps `TypeAliasDeclaration` via `checker.aliasedType(owner)` so `fn Alias.f()` and `fn Target.f()` share one `StaticOwner`.
+   - `ownerKeyOf` (`rules/clashes.ts:121–131`) resolves `declaration.owner` separately using `checker.typeKeys.identityOf(entity.declaration)` *without* unwrapping `TypeAliasDeclaration`, so `checkClashes` misses overload clashes when one static function is declared on a type alias and another on the aliased type.
+   - `ownsStatics` (`completion/places/declared-name.ts:47–59`) defines a third list (`staticOwnerKinds`) that also omits `TypeAliasDeclaration`.
+   - **Fix:** Give static-owner resolution one home in the checker (`staticTargetOf` / `StaticFunctions`) and route `checkClashes` and `declared-name.ts` through it.
+
+5. **`[medium]` Three parallel call-checking pipelines across `resolveCall`, `implicitCall`, and `checkValueCall` (`src/compiler/checker/calls/resolve.ts:103`, `src/compiler/checker/resolution/implicit.ts:69`, `src/compiler/checker/closures/value-calls.ts:28`)**
+   - `resolveCall` (`complete` in `calls/resolve.ts:103–153`) and `implicitCall` (`resolution/implicit.ts:69–114`) duplicate the post-candidate pipeline (`choose`, `ambiguousCall` with `argumentListText`, `instantiate`, `fitArguments`, `callMade`, and result `substitute`), while `checkValueCall` (`closures/value-calls.ts:28–75`) duplicates the single-callee argument binding (`takenBy`), error reporting (`explain`), `fitArguments`, and `checkReferencedPlaces`.
+   - Likewise in lowering, `lowerSpawn` (`src/compiler/lowering/expressions/calls.ts:69–113`) duplicates callee/argument preparation from `lowerCall` and `lowerValueCall` (`calls.ts:27–67, 115–136`).
+   - **Fix:** Extract a shared resolved-application completion step in `checker/calls/` and a shared call-lowering preparation helper in `lowering/expressions/calls.ts`.
+
+6. **`[medium]` Double standards in well-known type recognition and bare generic nominal values (`src/compiler/checker/types/type-text.ts:61`, `src/compiler/checker/types/well-known.ts:74`, `src/compiler/checker/expressions/names.ts:91`, `src/compiler/checker/expressions/variants.ts:61`)**
+   - `nominalTypeText` (`types/type-text.ts:61`) checks `declaration.name.text === wellKnown.optional.name` by string instead of comparing `type.entity === checker.optionalEntity`, formatting any user-declared `enum Optional<T>` as `T?`. Meanwhile `optionalInner` (`types/fit.ts:57`) and `optionalArgument` (`types/well-known.ts:74`) provide two different functions to unwrap `T?`.
+   - `enumTypeFor` (`expressions/variants.ts:61–85`) unwraps optionals on `expected` (`sameEnum`) and fills default type arguments for bare generic enum variants, whereas `bareStructValue` (`expressions/names.ts:91–116`) neither unwraps optionals on `expected` nor fills default type arguments for bare fieldless generic structs.
+   - **Fix:** Route `nominalTypeText` and all `Optional<T>` unwrapping through `optionalInner` (`types/fit.ts`), and share the expected-nominal/default-type-argument resolution between `bareStructValue` and `enumTypeFor`.
+
+7. **`[medium]` Duplicate JSON serialization, depth checks, and recursive `Value` walks in `definition/` and `runtime/` (`src/definition/json-values.ts:89`, `src/definition/format.ts:44`, `src/runtime/scheduler/mocks.ts:104`; widens `Q29`)**
+   - `written` and `plainOfJson` in `src/definition/json-values.ts:89–162` duplicate the recursive fold over `Json` variants, and `written` hand-rolls a second canonical JSON serializer alongside `encodeJson` (`src/definition/codec.ts:24`). `defineFormat.read` (`src/definition/format.ts:44`) checks nesting depth *after* `decodeJson`, whereas `jsonOfText` (`json-values.ts:65`) checks `textDepth` *before* `decodeJson`.
+   - In `src/runtime/scheduler/mocks.ts:104–144`, `asHostValue`, `leaving`, and `arriving` are three copies of the same recursive `withChildValues(value, childValues(value).map(...))` traversal on the JS call stack (violating the explicit-stack rule in `docs/reuse/structures-and-invariants.md`).
+   - **Fix:** Serialize `Json` via `encodeJson(plainOfJson(...))`, run `textDepth` inside `decodeJson` (or `readEnvelope`) before `lossless-json` parses, and replace `asHostValue`/`leaving`/`arriving` with one iterative explicit-stack value mapper.
+
+8. **`[medium]` Why `DeclaringModules` (`Checker.moduleOf`) duplicates `Bindings.moduleOf`, plus parallel AST-to-member lookups (`src/compiler/checker/declaring-modules.ts:26`, `src/compiler/binder/link.ts:49`, `src/compiler/checker/rules/annotations.ts:175`, `src/compiler/checker/lookup/denotations.ts:103`; widens `Q30`)**
+   - `DeclaringModules` (`declaring-modules.ts:26–63`) exists alongside `Bindings.moduleOf` (`binder/link.ts:49`) because trait member `FunctionDeclaration`s and synthesized `FieldsFunction`s (`syntax/field-defaults.ts`) have no top-level `Entity` in `Bindings`, and `Checker.moduleOf` is queried with syntax nodes (`Declaration | VariableDeclaration`).
+   - Similarly, `Annotations.#fieldType` (`rules/annotations.ts:175–201`) and `declaredField` (`lookup/denotations.ts:103–138`) independently map a field syntax node to its enclosing declaration's `FieldMember`, and `variableType` (`expressions/names.ts:118`) and `declaredVariableType` (`lookup/denotations.ts:91`) independently resolve a `VariableEntity`'s type.
+   - **Fix:** Record declaration-to-module ownership once during binding (covering trait members and `FieldsFunction`s) and centralize `fieldMemberOf` and `variableTypeOf` on `Checker`.
+
+9. **`[medium]` Formatter exponential re-printing of huggable call arguments and duplicated `LineMap` / indentation / bracket helpers (`src/formatter/expressions.ts:198`, `src/formatter/bodies.ts:74`, `src/text/line-map.ts:27`, `src/diagnostics/render.ts:77`, `src/lsp/providers/semantic-tokens.ts:53`)**
+   - `callArguments` (`src/formatter/expressions.ts:198–221`) prints every argument in `bracketed(...)` and then, when the last argument is huggable, prints `front` and `last` a second time ($O(2^d)$ work on nested huggable calls).
+   - `LineMap` (`src/text/line-map.ts:27`) duplicates `splitLines` (`line-map.ts:92`) and hides `#lineEnds`, forcing both `renderDiagnostic` (`src/diagnostics/render.ts:77`) and `linesOf` (`src/lsp/providers/semantic-tokens.ts:53`) to pass `column: Number.MAX_SAFE_INTEGER` to `lines.offsetAt`.
+   - **Fix:** Reuse the already-printed argument `Doc`s in `callArguments`, and expose `lineSpan(line)` on `LineMap`.
+
+10. **`[medium]` Spec (`docs/spec.md`) internal contradictions and table/syntax drift (`docs/spec.md:178`, `docs/spec.md:457`, `docs/spec.md:616`, `docs/spec.md:694`, `docs/spec.md:752`, `docs/spec.md:919`, `docs/spec.md:1293`)**
+    - **§3.3 vs. §3.7 (`docs/spec.md:360`, `docs/spec.md:457`):** §3.3 states *"a by-value parameter can't be ... passed by `&`"*, while §3.7 says *"What can be referenced. A `let` variable or a parameter..."* where it means *"a `&` parameter"*.
+    - **§3.9 vs. §3.10 (`docs/spec.md:571–587`, `docs/spec.md:616`, `docs/spec.md:694–713`):** §3.10's Built-in traits table omits `Container`, `Powerable`, `Bitwise`, and `Shiftable` from §3.9, and §3.9 writes `Powerable<E = Self>` (1 type parameter) where `prelude.ista:281` declares `Powerable<E = Self, T = Self>`.
+    - **§9 (`docs/spec.md:1293`):** Writes `Err(Error{message, code: "panic", trace})` with parentheses instead of braces (`Err{Error{...}}`), violating §3.11.
+    - **§3.11 vs. §3.15 (`docs/spec.md:752`, `docs/spec.md:919`):** Splits the list of refutable patterns across two partial lists (`alternative, array pattern, range` in §3.11 vs. `literal, comparison, enum variant` in §3.15, with neither mentioning `any` downcast patterns from §3.10).
 
 ## Checklist
 
@@ -48,10 +100,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 32. `src/language-service/completion/` (including `grammar/` and `places/`)
 - [x] 33. `src/lsp/` (including `providers/`)
 - [x] 34. `src/cli/` (including `commands/`) & `src/vscode-client/`
-- [ ] 35. `docs/spec.md` — Cheat sheet, §1 Overview, §2 Lexical structure and types
-- [ ] 36. `docs/spec.md` — §3 Declarations
-- [ ] 37. `docs/spec.md` — §4 Expressions and control flow, §5 Persistence, §6 Slots and inboxes, §7 Lifetimes and disposal, §8 `select`
-- [ ] 38. `docs/spec.md` — §9 Program structure, §10 Testing, §11 Packages, §12 Examples, §13 Open questions, §14 Future work
+- [x] 35. `docs/spec.md` — Cheat sheet, §1 Overview, §2 Lexical structure and types
+- [x] 36. `docs/spec.md` — §3 Declarations
+- [x] 37. `docs/spec.md` — §4 Expressions and control flow, §5 Persistence, §6 Slots and inboxes, §7 Lifetimes and disposal, §8 `select`
+- [x] 38. `docs/spec.md` — §9 Program structure, §10 Testing, §11 Packages, §12 Examples, §13 Open questions, §14 Future work
 
 ---
 
@@ -356,6 +408,39 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Quadruple `Definition` validation/serialization across `cli/commands/run.ts` (`test.ts`) and `runtime/host.ts` (`runtime/testing/run-tests.ts`):**
   - `start` (`src/cli/commands/run.ts`) encodes `compilation.definition` via `definitionFormat.write(compilation.definition)` and passes `text` to `runtime.deploy(text)`, which calls `definitionFormat.read(text)`, then `definitionFormat.write(definition)` (in `programBinder`), and then `definitionFormat.write(program.definition)` (in `deploy`). `test` (`src/cli/commands/test.ts`) and `runTests` (`src/runtime/testing/run-tests.ts`) do the same encode-then-decode-then-encode sequence.
 - **Unexported `memoryStore` / `directoryStore` on package surface (`B7`) and VS Code client Windows / reload gaps (`F10`) (`src/cli/directory-store.ts`, `src/runtime/store.ts`, `src/vscode-client/`; tracked in `tracker.md`).**
+
+### 35. `docs/spec.md` — Cheat sheet, §1 Overview, §2 Lexical structure and types
+
+- **Reserved-name rules split between §2 (`docs/spec.md:163`) and §3.10 (`docs/spec.md:656`):**
+  - §2 (`docs/spec.md:163`) lists the 33 scanner keywords and the 8 contextual words (`type`, `shared`, `new`, `from`, `sendable`, `any`, `hold`, `by`), but does not mention that the primitive type names (`int`, `float`, `bool`, `string`, `unit`, `never`) and `Self` (§3.10) are also reserved against declaration naming (`isReservedDeclarationName` in `src/compiler/binder/naming.ts`).
+  - §2 (`docs/spec.md:163`) also says the 8 contextual words *"are keywords only in one position"*, even though the same sentence gives two positions for `sendable` (*"right after `extern` or before a function type's `fn` or `async`"*) and `hold` stands before `let`/`const`, `_ =`, and `hold(name)` (§3.4).
+- **Incomplete built-in/type overview table in §2 (`docs/spec.md:178–194`):**
+  - The Cheat Sheet (`docs/spec.md:27`) lists `WeakRef<T>` alongside `Array<T>  Map<K, V>  Range  Future<T>  Slot<T>  Shared<T>  WeakRef<T>  Instance<T>`, and the prose right above the §2 table (`docs/spec.md:174`) introduces `any T`, yet the §2 summary table (`docs/spec.md:178–194`) omits `WeakRef<T>`, `any Trait` types (§3.10), and `shared struct` types (§3.18, beyond `Shared<T>`).
+
+### 36. `docs/spec.md` — §3 Declarations
+
+- **Contradiction between §3.3 (`docs/spec.md:360`) and §3.7 (`docs/spec.md:457`) on whether a parameter can be referenced with `&`:**
+  - §3.3 (`docs/spec.md:360`) states: *"Parameters are immutable, as if declared `const` (§3.4): a by-value parameter can't be reassigned, changed in part or passed by `&`. Only a reference parameter (`&T`, §3.7) changes..."*
+  - §3.7 (`docs/spec.md:457`) then states: *"What can be referenced. A `let` variable or a parameter, a field or tuple element path of one (`&self.items`, `&t.0`)..."* before saying two sentences later *"A reference parameter passed on with `&` passes the same reference."* Saying *"a parameter"* in the first sentence contradicts §3.3; it means *"a `&` parameter"* (as enforced by `src/compiler/checker/calls/places.ts`).
+- **Incomplete Built-in traits table in §3.10 (`docs/spec.md:694–713`) vs. §3.9 (`docs/spec.md:571–587`, `616`) and `prelude.ista`:**
+  - §3.9's operator table (`docs/spec.md:571–587`) lists `Powerable`, `Bitwise`, `Shiftable`, and `Container`, but §3.10's Built-in traits summary table (`docs/spec.md:694–713`) omits all four (`Container` is absent from the table, and the operator row at `docs/spec.md:713` lists only `Addable, Subtractable, Multipliable, Divisible, FloorDivisible, Negatable, Comparable`).
+  - §3.9 (`docs/spec.md:616`) writes `Powerable<E = Self>` with one type parameter, whereas `src/stdlib/prelude/prelude.ista:281` declares `trait Powerable<E = Self, T = Self>` with two type parameters (matching `Iterable<T, C = Self>`, `Container<T, C = Self>`, and `Convertible<From, T = Self>`).
+- **Split and partial definition of irrefutable ("can't fail") patterns between §3.11 (`docs/spec.md:752`) and §3.15 (`docs/spec.md:919`):**
+  - §3.11 (`docs/spec.md:752`) states: *"Targets must always match. A declaration's or loop's target (§3.15) can't hold an alternative, an array pattern or a range, since each can fail; they belong in `match` and `is`."*
+  - §3.15 (`docs/spec.md:919`) states: *"A pattern that could fail (a literal, a comparison, an enum variant) is a compile error here; it belongs in `match` or `is`."*
+  - Each section lists only half of the refutable pattern forms, and neither mentions a type-narrowing pattern on an `any` value (§3.10). Defining irrefutable vs. refutable patterns in one place (§3.11) and referencing it from §3.15 removes the split enumeration.
+
+### 37. `docs/spec.md` — §4 Expressions and control flow, §5 Persistence, §6 Slots and inboxes, §7 Lifetimes and disposal, §8 `select`
+
+- **Restated must-use rules across §3.3 (`docs/spec.md:358`), §3.12 (`docs/spec.md:786`), §7 (`docs/spec.md:1141`), and §8 (`docs/spec.md:1265`):**
+  - The rule for what types must be used (`Future`, `Result`, and `Disposable`) and how to consume or discard them (`_ = expr`, `hold _ = expr`, `drop expr`) is stated in full in §7 (`docs/spec.md:1141`) and repeated for `Future` in §3.3 (`docs/spec.md:358`) and for `Result` in §3.12 (`docs/spec.md:786`). Cross-referencing §7 as the single list of must-use types keeps the rule in one home.
+
+### 38. `docs/spec.md` — §9 Program structure, §10 Testing, §11 Packages, §12 Examples, §13 Open questions, §14 Future work
+
+- **Invalid enum variant syntax in §9 (`docs/spec.md:1293`):**
+  - `docs/spec.md:1293` writes `Err(Error{message, code: "panic", trace})` with parentheses instead of braces (`Err{Error{message, code: "panic", trace}}` or `Err{error: Error{...}}`), contradicting §3.11 (*"Variants are declared with a field list ... and built like structs"* / *"It never clashes with construction, which uses braces"* in §3.10).
+- **Partial overlap between §3.8 stdlib JSON codecs (`docs/spec.md:505–510`) and §9's JSON mapping table (`docs/spec.md:1360–1375`):**
+  - §9's JSON mapping table (`docs/spec.md:1360–1375`) includes `Decimal | string` and `Time, Duration | ISO 8601, their toString (§3.8)` alongside language primitives and compiler-derived codecs, but omits `Zone`, `DateTime` (from `time`, which §3.8 says cross as text), and `Regex` (from `regex`, which §3.8 says crosses as its pattern text) — all of which use the exact same `json.encodeText` / `json.decodeText` mechanism described at `docs/spec.md:1352`. Grouping all text-codec stdlib types (`Decimal`, `Time`, `Duration`, `Zone`, `DateTime`, `Regex`) under one row in §9's table avoids two out-of-sync lists between §3.8 and §9.
 
 
 
