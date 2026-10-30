@@ -234,7 +234,6 @@ const scenarios: readonly Scenario[] = [
     src: ['trait Z:\n  fn ‸'],
     where: 'top',
     expect: { has: ['Self'], lacks: ['plus', 'xs', 'let'] },
-    fails: true,
   },
   {
     id: 'SD-05b',

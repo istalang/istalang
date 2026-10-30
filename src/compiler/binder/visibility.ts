@@ -17,12 +17,12 @@
  *
  * A node that stands for missing code, such as a default not yet written after `=`, holds no
  * offset: it is empty, and so are the nodes around it past their last token, a block past its last
- * statement among them. Code written after such a node, or after a block's last statement, with
- * nothing but blanks and comments between, still goes there: on the same line, or on a later line
- * indented deeper than the line its construct starts on, as a body's lines stand below their
- * header (§2). So a cursor there sees what that node or that block's end was bound in. Of those
- * standing together, the code goes into the first noted: the innermost block, or a `for`'s
- * iterable before its body.
+ * statement among them. Code written after such a node, or after a block's last statement or a
+ * trait's last member, with nothing but blanks and comments between, still goes there: on the same
+ * line, or on a later line indented deeper than the line its construct starts on, as a body's lines
+ * stand below their header (§2). So a cursor there sees what that node or that body's end was
+ * bound in. Of those standing together, the code goes into the first noted: the innermost block,
+ * or a `for`'s iterable before its body.
  */
 
 import { lineStartAt } from '../../text/line-map.ts';
@@ -36,7 +36,7 @@ interface NotedSnapshot {
   readonly snapshot: ScopeSnapshot;
 }
 
-/** A note code written after it may go on: an empty node's, or a block's after a statement. */
+/** A note code written after it may go on: an empty node's, or a body's after one of its items. */
 interface TrailingNote extends NotedSnapshot {
   readonly node: SyntaxNode;
 }
@@ -56,6 +56,9 @@ export interface Visibility {
   readonly namesAt: (tree: SyntaxTree, offset: number) => ReadonlyMap<string, LocalEntity>;
 }
 
+/** The nodes holding items, which note their scope after each: a block's statements, a trait's members. */
+const bodies: ReadonlySet<SyntaxNode['kind']> = new Set(['Block', 'TraitDeclaration']);
+
 /** Spaces, tabs, line breaks and comments alone: no code written. */
 const blank = /^(?:[ \t\r\n]|#[^\r\n]*(?=[\r\n]|$))*$/u;
 
@@ -65,7 +68,7 @@ const indentation = /^[ \t]*/u;
 /** Notes, while one tree is bound, the scope each node is bound in. */
 export class VisibilityNotes {
   readonly #noted = new Map<SyntaxNode, NotedSnapshot[]>();
-  /** The notes of empty nodes, and of blocks after a statement, which code after them may go on. */
+  /** The notes of empty nodes, and of bodies after an item, which code after them may go on. */
   readonly #trailing: TrailingNote[] = [];
 
   /** Notes that `node`, from where `start` starts on, is bound in `scope` as it is defined now. */
@@ -74,8 +77,8 @@ export class VisibilityNotes {
     const note = { start, snapshot: scope.snapshot() };
     noted.push(note);
     this.#noted.set(node, noted);
-    const afterStatement = node.kind === 'Block' && start !== node.span;
-    if (node.span.from === node.span.to || afterStatement) {
+    const afterItem = bodies.has(node.kind) && start !== node.span;
+    if (node.span.from === node.span.to || afterItem) {
       this.#trailing.push({ ...note, node });
     }
   }

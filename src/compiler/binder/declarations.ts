@@ -191,6 +191,10 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
       bindFunction(binder, member, inner);
     }
   }
+  const last = node.members.at(-1);
+  if (last !== undefined) {
+    binder.enter(node, inner, endOf(last.span));
+  }
 }
 
 /** The scope of a declaration's type parameters, which the whole declaration sees. */
