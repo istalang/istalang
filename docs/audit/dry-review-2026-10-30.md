@@ -40,8 +40,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 24. `src/compiler/compile.ts`
 - [x] 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter (`natives.ts`, `store.ts`, `refusal.ts`, `random-seed.ts`, `instance-state.ts`, `instance-group.ts`, `settle.ts`, `host.ts`, `values/`, `snapshot/`, `lifetimes/`, `interpreter/`)
 - [x] 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
-- [ ] 27. `src/stdlib/` — infrastructure & prelude (`std-sources.ts`, `stdlib-loader.ts`, `std-module.ts`, `std-modules.ts`, `natives.ts`, `native-values.ts`, `numeric.ts`, `positions.ts`, `ranges.ts`, `prelude/`)
-- [ ] 28. `src/stdlib/` — standard library modules (`collections/`, `crypto/`, `decimal/`, `fanout/`, `futures/`, `inbox/`, `json/`, `log/`, `math/`, `random/`, `regex/`, `rpc/`, `runtime/`, `strings/`, `testing/`, `time/`)
+- [x] 27. `src/stdlib/` — infrastructure & prelude (`std-sources.ts`, `stdlib-loader.ts`, `std-module.ts`, `std-modules.ts`, `natives.ts`, `native-values.ts`, `numeric.ts`, `positions.ts`, `ranges.ts`, `prelude/`)
+- [x] 28. `src/stdlib/` — standard library modules (`collections/`, `crypto/`, `decimal/`, `fanout/`, `futures/`, `inbox/`, `json/`, `log/`, `math/`, `random/`, `regex/`, `rpc/`, `runtime/`, `strings/`, `testing/`, `time/`)
 - [ ] 29. `src/formatter/`
 - [ ] 30. `src/project/`
 - [ ] 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries (`workspace.ts`, `checked-module.ts`, `tokens.ts`, `identifier-at.ts`, `call-at.ts`, `signatures.ts`, `docstrings.ts`, `namespaces.ts`, `folding.ts`, `symbols.ts`, `hover.ts`, `inlay-hints.ts`, `signature-help.ts`, `navigation/`, `semantic-tokens/`)
@@ -284,6 +284,24 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Redundant multimap + `reachingMock` in `mocksOf` (`src/runtime/testing/world/index.ts`, `src/runtime/scheduler/mocks.ts`):**
   - `mocksOf` groups `snapshot.objects` by `object.target` using `byTarget.set(object.target, [...(byTarget.get(object.target) ?? []), object])` and then calls `reachingMock(mocks)` (which picks the mock with the largest `id`). Because `snapshot.objects` is already in ascending `id` order (`snapshot.ts`), the last mock for each `target` in `snapshot.objects` is always `reachingMock`.
 - **Whole-heap disposable scan on commit (`P4`), encode-then-decode commit round-trip (`P1`), and module-global `decodedByStore` cache (`P7`) (`src/runtime/scheduler/instance/index.ts`, `wake.ts`, `instance-ends.ts`; tracked in `tracker.md`).**
+
+### 27. `src/stdlib/` — infrastructure & prelude
+
+- **`optionalValue` reads `Optional` by positional field index `0` (`src/stdlib/native-values.ts`, `src/definition/declared-values.ts`):**
+  - `optionalValue` returns `value.fields[0]` directly without checking the variant (`Some` vs. `None`) or field name, relying on `None` having no fields and `Some` having 1 field.
+- **Repeated optional `end` unwrapping in `arrayNatives.slice` and `stringsNatives.slice` (`src/stdlib/prelude/arrays.ts`, `src/stdlib/strings/natives.ts`, `src/stdlib/positions.ts`):**
+  - Both natives unwrap `const last = optionalValue(end); ... last === undefined ? undefined : int(last)` before calling `sliced` / `sliceBounds`.
+
+### 28. `src/stdlib/` — standard library modules
+
+- **Repeated `parseResult` native wrapper across `prelude/text-forms.ts`, `time/natives.ts`, `time/zones.ts`, and `decimal/natives.ts`:**
+  - Six `parse` natives (`int.parse`, `float.parse`, `bool.parse`, `Time.parse`, `Duration.parse`, `Zone.parse`, `DateTime.parse`, `Decimal.parse`) repeat `([source], context) => { const raw = text(source); ... return parseResult(context, raw, what, parsed); }`. Extracting `parsedNative(what, read)` in `src/stdlib/native-values.ts` gives all `Parsable` natives one home.
+- **Repeated `toJson` / `fromJson` forwarding pairs across `time.ista`, `decimal.ista`, and `regex.ista` (`src/stdlib/time/time.ista`, `decimal/decimal.ista`, `regex/regex.ista`):**
+  - Six types (`Time`, `Duration`, `Zone`, `DateTime`, `Decimal`, `Regex`) repeat the identical `fn toJson(self: T) -> json.Json: json.encodeText(self)` and `fn T.fromJson(value: json.Json, path: string) -> Result<T>: json.decodeText(value, path)` pair.
+- **Duplicate one-shot disposable holder retraction in `Revertible.holding` (`src/stdlib/inbox/inbox.ista`) and `FakeReceipts.revertibleSender` (`src/stdlib/testing/testing.ista`):**
+  - Both construct `const held = new Shared<R?>{value: ...}; fn retract(): held->value = none` to release a disposable when `retract()` is called.
+- **Missing outcome `encoder` on `runtime.isolate` and `testing.spawnCrashingEveryAwait` (`B4`), `lossless-json` duplicate-key refusal (`B5`), and per-arity `testing.setups` overloads (`F3`) (`src/stdlib/runtime/natives.ts`, `testing/natives.ts`, `testing/testing.ista`; tracked in `tracker.md`).**
+
 
 
 
