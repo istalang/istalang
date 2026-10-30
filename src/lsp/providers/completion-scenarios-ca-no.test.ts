@@ -29,7 +29,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  plus(1, ‸', '  plus(1,‸'],
     trigger: ',',
     expect: { has: ['b:'], lacks: ['a:'] },
-    fails: true,
   },
   {
     id: 'CA-03b',
@@ -38,7 +37,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  plus(1, ‸'],
     trigger: ' ',
     expect: { has: ['b:'], lacks: ['a:'] },
-    fails: true,
   },
   {
     id: 'CA-04',
@@ -62,7 +60,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  plus(plus(1, ‸), ', '  plus(plus(1), ‸'],
     trigger: ',',
     expect: { has: ['b:'] },
-    fails: true,
   },
   {
     id: 'CA-07',

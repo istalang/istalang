@@ -58,7 +58,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  plus(1, ‸\n  return 1'],
     trigger: ',',
     expect: { has: ['b:'] },
-    fails: true,
   },
   {
     id: 'RB-05',
