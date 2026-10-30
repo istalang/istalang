@@ -33,4 +33,12 @@ describe('folding', () => {
     const tree = treeOf('const x = f(', '  a[0,', '  2,', ')');
     expect(foldingRangesOf(tree)).toEqual([{ start: 0, end: 3 }]);
   });
+
+  it('folds the bracket a closer standing first on its line lines up with, as the parser does', () => {
+    const tree = treeOf('fn f():', '  h(', '    g(1,', '  )');
+    expect(foldingRangesOf(tree)).toEqual([
+      { start: 0, end: 3 },
+      { start: 1, end: 3 },
+    ]);
+  });
 });

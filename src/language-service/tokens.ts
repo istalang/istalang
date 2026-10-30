@@ -3,30 +3,33 @@
  * keywords, operators. Trees hold no tokens (syntax/node.ts), so they are scanned again, once per
  * tree.
  *
- * Brackets pair as the parser groups them (parser/cursor.ts `skipGroup`): a closing bracket closes
- * the innermost one open of its kind, and any open inside that one stay unclosed, so an unclosed
- * bracket, as in code being typed, pairs with nothing and leaves the pairs around it intact. A
- * closing bracket with none of its kind open is passed over.
+ * Brackets pair as the parser pairs them (parser/brackets.ts `pairBrackets`), so a feature sees
+ * the groups the parser read: an unclosed bracket, as in code being typed, pairs with nothing and
+ * leaves the pairs around it intact. A template's value pairs its own, as the parser reads it.
  *
  * The scanner nests a template's values' tokens in the template token. Features read them in
  * place, after the template, so a value's code is found like any other.
  */
 
+import { isBracketOpener, pairBrackets } from '../compiler/parser/brackets.ts';
 import { scan } from '../compiler/scanner/scan.ts';
-import type { Token } from '../compiler/syntax/tokens.ts';
+import type { ScanResult, Token } from '../compiler/syntax/tokens.ts';
 import type { SyntaxTree } from '../compiler/syntax/tree.ts';
 import { memo } from '../structures/memo.ts';
+import { lineMapOf } from '../text/line-map.ts';
 
+const scans = new WeakMap<SyntaxTree, ScanResult>();
 const flattened = new WeakMap<SyntaxTree, readonly Token[]>();
 const code = new WeakMap<SyntaxTree, readonly Token[]>();
 const closings = new WeakMap<SyntaxTree, ReadonlyMap<Token, Token>>();
 
-const openers: Readonly<Record<string, string>> = { ')': '(', ']': '[', '}': '{' };
-const openings = new Set(Object.values(openers));
-
 /** Every token of `tree`'s source in order, without the `end` tokens closing each list. */
 export function allTokensOf(tree: SyntaxTree): readonly Token[] {
-  return memo(flattened, tree, () => flatten(scan(tree.source).tokens));
+  return memo(flattened, tree, () => flatten(scannedOf(tree).tokens));
+}
+
+function scannedOf(tree: SyntaxTree): ScanResult {
+  return memo(scans, tree, () => scan(tree.source));
 }
 
 /**
@@ -42,25 +45,30 @@ export function codeTokensOf(tree: SyntaxTree): readonly Token[] {
 
 /** The bracket closing each opening bracket of `tree`'s code that one closes. */
 export function closingBracketsOf(tree: SyntaxTree): ReadonlyMap<Token, Token> {
-  return memo(closings, tree, () => pairedBrackets(codeTokensOf(tree)));
+  return memo(closings, tree, () => {
+    const lineMap = lineMapOf(tree.source);
+    return closingsIn(
+      scannedOf(tree).tokens,
+      (token) => lineMap.positionAt(token.span.start).column,
+    );
+  });
 }
 
-function pairedBrackets(tokens: readonly Token[]): ReadonlyMap<Token, Token> {
-  const open: Token[] = [];
-  const pairs = new Map<Token, Token>();
-  for (const token of tokens) {
-    const opener = openers[token.kind];
-    if (openings.has(token.kind)) {
-      open.push(token);
-    } else if (opener !== undefined) {
-      const innermost = open.findLastIndex((each) => each.kind === opener);
-      const [paired] = innermost === -1 ? [] : open.splice(innermost);
-      if (paired !== undefined) {
-        pairs.set(paired, token);
+/** The closing bracket of each opening one in `tokens`, and in their templates' values. */
+function closingsIn(
+  tokens: readonly Token[],
+  columnOf?: (token: Token) => number,
+): ReadonlyMap<Token, Token> {
+  const { partnerOf } = pairBrackets(tokens, columnOf);
+  return new Map(
+    tokens.flatMap((token, index): (readonly [Token, Token])[] => {
+      if (token.kind === 'template') {
+        return token.values.flatMap((value) => [...closingsIn(value.tokens)]);
       }
-    }
-  }
-  return pairs;
+      const closing = isBracketOpener(token.kind) ? tokens[partnerOf(index) ?? -1] : undefined;
+      return closing === undefined ? [] : [[token, closing]];
+    }),
+  );
 }
 
 function flatten(tokens: readonly Token[]): readonly Token[] {

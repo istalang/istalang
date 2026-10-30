@@ -25,10 +25,12 @@ import {
   block,
   bodyOf,
   type Category,
+  declaredField,
   dumpClean,
   dumpOf,
   expressionStatement,
   functionOf,
+  int,
   lines,
   moduleOf,
   parenFreeSoup,
@@ -186,6 +188,68 @@ describe('a bracket never closed', () => {
   it('ends a region inside it where it ends, whatever closes that region later', () => {
     const text = lines('fn f():', '  h(', '    g(1,', '  2', ')', '');
     expect(dumpOf(parseAs('module', text))).toContain(expressionStatement('2'));
+  });
+
+  it('closes the bracket a closer first on its line lines up with, the deeper one left open', () => {
+    const text = lines('fn f():', '  h(', '    g(1,', '  )', '');
+    expect(dumpOf(parseAs('module', text))).toBe(
+      moduleOf(functionOf('f', bodyOf('(Call h [] [(Call g [] [1])])'))),
+    );
+    expect(reported('module', text)).toEqual(
+      reportedOnce(parserDiagnostics.unclosedBracket.code, '('),
+    );
+  });
+
+  it('lines closers up level by level, each deeper bracket left open in turn', () => {
+    const text = lines('fn f():', '  h(', '    g(', '      k(1,', '    )', '  )', '');
+    expect(dumpOf(parseAs('module', text))).toBe(
+      moduleOf(functionOf('f', bodyOf('(Call h [] [(Call g [] [(Call k [] [1])])])'))),
+    );
+    expect(reported('module', text)).toEqual(
+      reportedOnce(parserDiagnostics.unclosedBracket.code, '('),
+    );
+  });
+
+  it.each([
+    [
+      'a group closed around it later',
+      lines('fn f():', '  [', '    b(', '      [', '        d(1,', '    ), x', '  ]', ''),
+      '(ArrayLiteral [(Call b [] [(ArrayLiteral [(Call d [] [1])])]) x])',
+    ],
+    [
+      'a group re-paired around it',
+      lines('fn f():', '  h(', '    g([', '      k(1,', '    )', '  )', ''),
+      '(Call h [] [(Call g [] [(ArrayLiteral [(Call k [] [1])])])])',
+    ],
+    [
+      'a group re-paired around one re-paired before',
+      lines('fn f():', '  h(', '    [', '      [1,', '    ],', '    g(2,', '  )', ''),
+      '(Call h [] [(ArrayLiteral [(ArrayLiteral [1])]) (Call g [] [2])])',
+    ],
+  ])('ends the brackets left open inside %s at its closer', (_, text, expression) => {
+    expect(dumpOf(parseAs('module', text))).toBe(moduleOf(functionOf('f', bodyOf(expression))));
+    expect(reported('module', text).codes).toEqual([
+      parserDiagnostics.unclosedBracket.code,
+      parserDiagnostics.unclosedBracket.code,
+    ]);
+  });
+
+  it.each([
+    [
+      'a block',
+      lines('fn f(): {', '  g(1,', '    2', '  h()', '}', ''),
+      expressionStatement('(Call h [] [])'),
+    ],
+    [
+      'a struct’s fields',
+      lines('struct S {', '  a: (int,', '  b: int', '}', ''),
+      declaredField('b', int),
+    ],
+  ])('ends at that line inside %s whose braces close later', (_, text, after) => {
+    expect(dumpOf(parseAs('module', text))).toContain(after);
+    expect(reported('module', text)).toEqual(
+      reportedOnce(parserDiagnostics.unclosedBracket.code, '('),
+    );
   });
 
   it('leaves a bracket closed later taking in every line before its closer', () => {
