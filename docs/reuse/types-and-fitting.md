@@ -61,7 +61,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - look up required functions or field types on a constrained type → `requirementsNamed`, `requiredFieldType` (`src/compiler/checker/traits/constraints.ts`)
 - check or resolve `any` conformance and witnesses → `meetsAny`, `reportUnmet`, `memberWitnesses` (`src/compiler/checker/resolution/trait-objects.ts`)
 - walk patterns or destructuring targets → `walkPattern`, `walkTargets` (`src/compiler/checker/patterns/walk.ts`)
-- find a struct item's field index → `itemField` (`src/compiler/checker/patterns/struct-items.ts`)
+- find a struct item's field index → `itemField` (`src/compiler/checker/struct-items.ts`)
 - take a tuple or struct target apart into its element or field parts → `takeTargets`, `takeApart`, `takeFields` (`src/compiler/checker/patterns/taking.ts`)
 - analyze `match` exhaustiveness → `analyze` (`src/compiler/checker/patterns/exhaustiveness.ts`)
 - list names bound by a checked pattern → `namesBound` (`src/compiler/checker/checked-pattern.ts`)

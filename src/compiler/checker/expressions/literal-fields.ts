@@ -3,7 +3,7 @@
  * and where each field's value comes from, which the checker records for later phases.
  *
  * - Every field is given exactly once, each value fitting the field's type, by the one rule of
- *   which field an item gives (patterns/struct-items.ts): by name, by the shorthand `first` for
+ *   which field an item gives (struct-items.ts): by name, by the shorthand `first` for
  *   `first: first`, or positionally when there is one field. With names alone, every field must
  *   be given, but for those with a default; a struct literal's leading spread gives the rest, and a
  *   positional value is the only item (the parser enforces that), so neither leaves fields to
@@ -44,9 +44,9 @@ import type { BodyContext, LiteralSources } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
-import { itemField } from '../patterns/struct-items.ts';
 import { callWithTypes } from '../resolution/silent-choice.ts';
 import type { FunctionCall, MadeCall } from '../resolved-call.ts';
+import { itemField } from '../struct-items.ts';
 import { constrainArguments, parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { errorType, type FieldMember, type ParameterKey, type Type } from '../types/type.ts';
@@ -270,7 +270,7 @@ function checkItem(
   }
   const { shape, inference, given } = items;
   const name = itemName(item);
-  const index = itemField(name, shape.fields);
+  const index = itemField(name?.text, shape.fields);
   const field = shape.fields[index];
   if (field !== undefined && name !== undefined) {
     context.recordField(name, field);

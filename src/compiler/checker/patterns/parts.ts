@@ -16,9 +16,9 @@ import type { NamedType } from '../../syntax/types.ts';
 import type { Checker } from '../check.ts';
 import type { PartStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { itemField } from '../struct-items.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { itemField } from './struct-items.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */
 export interface PatternScope {
@@ -110,7 +110,7 @@ export function structParts(
 
 /**
  * The part of a struct or variant value of `part` that the field `item` gives holds, among
- * `fields` (struct-items.ts); an item giving none is reported, and its part has the error type.
+ * `fields` (../struct-items.ts); an item giving none is reported, and its part has the error type.
  */
 export function fieldPart<Step extends PartStep>(
   scope: Pick<PatternScope, 'report' | 'recordField'>,
@@ -118,7 +118,7 @@ export function fieldPart<Step extends PartStep>(
   item: { readonly name: Identifier | undefined; readonly span: AnchoredSpan },
   part: ValuePart<Step | number>,
 ): { readonly index: number; readonly part: ValuePart<Step | number> } {
-  const index = fields === undefined ? -1 : itemField(item.name, fields);
+  const index = fields === undefined ? -1 : itemField(item.name?.text, fields);
   const field = fields?.[index];
   if (field !== undefined && item.name !== undefined) {
     scope.recordField(item.name, field);

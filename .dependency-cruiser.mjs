@@ -145,6 +145,7 @@ const checkerSurface = [
   'constant-form.ts',
   'json-form.ts',
   'checked-annotation.ts',
+  'struct-items.ts',
   'denotation.ts',
   'host-externs.ts',
   'types/type.ts',
