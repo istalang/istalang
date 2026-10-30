@@ -44,8 +44,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 28. `src/stdlib/` — standard library modules (`collections/`, `crypto/`, `decimal/`, `fanout/`, `futures/`, `inbox/`, `json/`, `log/`, `math/`, `random/`, `regex/`, `rpc/`, `runtime/`, `strings/`, `testing/`, `time/`)
 - [x] 29. `src/formatter/`
 - [x] 30. `src/project/`
-- [ ] 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries (`workspace.ts`, `checked-module.ts`, `tokens.ts`, `identifier-at.ts`, `call-at.ts`, `signatures.ts`, `docstrings.ts`, `namespaces.ts`, `folding.ts`, `symbols.ts`, `hover.ts`, `inlay-hints.ts`, `signature-help.ts`, `navigation/`, `semantic-tokens/`)
-- [ ] 32. `src/language-service/completion/` (including `grammar/` and `places/`)
+- [x] 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries (`workspace.ts`, `checked-module.ts`, `tokens.ts`, `identifier-at.ts`, `call-at.ts`, `signatures.ts`, `docstrings.ts`, `namespaces.ts`, `folding.ts`, `symbols.ts`, `hover.ts`, `inlay-hints.ts`, `signature-help.ts`, `navigation/`, `semantic-tokens/`)
+- [x] 32. `src/language-service/completion/` (including `grammar/` and `places/`)
 - [ ] 33. `src/lsp/` (including `providers/`)
 - [ ] 34. `src/cli/` (including `commands/`) & `src/vscode-client/`
 - [ ] 35. `docs/spec.md` — Cheat sheet, §1 Overview, §2 Lexical structure and types
@@ -318,6 +318,30 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 ### 30. `src/project/`
 
 - **`projectRoot` hard-coded to `cwd` (`src/project/project.ts`; tracked as `F1`).**
+
+### 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries
+
+- **Re-scanning `tree.source` in `scannedOf(tree)` instead of memoizing `scan` on `SourceText` or keeping tokens on `SyntaxTree` (`src/language-service/tokens.ts`, `src/compiler/scanner/scan.ts`):**
+  - `parse(source, scanned)` (`src/compiler/parser/parse.ts`) receives `scanned: ScanResult` and keeps `scanned.comments` and `scanned.diagnostics` on `SyntaxTree`, but drops `scanned.tokens`. As a result, `scannedOf(tree)` in `language-service/tokens.ts` has to re-run `scan(tree.source)` from scratch whenever any language-service feature requests tokens or bracket pairs. Memoizing `scan(source)` on the branded, immutable `SourceText` (as `lineMapOf(source)` does in `src/text/line-map.ts`) eliminates the duplicate scan.
+- **Manual `Owner.name` string formatting in `symbols.ts` and `signatures.ts` instead of `staticName` (`src/language-service/symbols.ts`, `src/language-service/signatures.ts`, `src/language/static-names.ts`):**
+  - Violating the one-way rule in `docs/reuse/modules-and-names.md` (*"Spell `Owner.name` with `staticName`"*), `symbolsOfDeclaration.FunctionDeclaration` (`symbols.ts`) formats `` `${owner.text}.${name.text}` `` directly, and `signatureOf` (`signatures.ts`) formats ``owner === undefined ? '' : `${owner.text}.` `` directly.
+- **`isName(text)` in `rename.ts` runs `createSourceText` + `scan` to validate an identifier (`src/language-service/navigation/rename.ts`, `src/compiler/scanner/characters.ts`):**
+  - `isName` constructs a `SourceText` and runs the full scanner instead of checking `isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)`.
+- **Rename missing JSON-codec fields and externs (`B19`), and inlay hints checking `type.kind !== 'error'` instead of `!mentionsError(type)` (`B20`) (`src/language-service/navigation/rename.ts`, `inlay-hints.ts`; tracked in `tracker.md`).**
+
+### 32. `src/language-service/completion/` (including `grammar/` and `places/`)
+
+- **Duplicate `ownsStatics` / `staticOwnerKinds` in `completion/places/declared-name.ts` vs. `isNominalEntity` (`src/compiler/checker/types/type.ts`):**
+  - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/declarations/statics.ts`).
+- **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/language/well-known.ts`):**
+  - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/language/well-known.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
+- **Duplicate `isChangeable` in `completion/places/grammar.ts` vs. `VariableScope.isChangeable` / `writtenByReference` (`src/language-service/completion/places/grammar.ts`, `src/compiler/checker/statements/variables.ts`, `declarations/signatures.ts`):**
+  - `isChangeable` in `completion/places/grammar.ts` re-implements `owner.kind === 'VariableDeclaration' && owner.isMutable` and `owner.kind === 'Parameter' && owner.type?.kind === 'ReferenceType'` (missing lambda parameters whose `&` reference comes from an expected function type).
+- **Duplicate inline-whitespace check between `goesOn` (`src/language-service/completion/triggers.ts`) and `adjoins` (`src/language-service/completion/grammar/position.ts`):**
+  - Both slice `tree.source.text` from `before.span.end` to `name?.span.start ?? offset` and test `[...between].every(isInlineWhitespace)`. Placing `adjoinsBefore(cursor)` beside `touchingBefore(cursor)` in `completion/cursor.ts` unifies both.
+- **Duplicate `any` downcast target rules across `completion/places/matched-type.ts` (`downcastTo`), `completion/places/pattern.ts` (`mayRefer`), and `checker/patterns/downcasts.ts` (`namedTypeOf`).**
+- **Tracked completion items (`P13`–`P16`, `P19`, `Q34`, `Q35`, `B23`, `F14`, `F15`; tracked in `tracker.md`).**
+
 
 
 
