@@ -302,11 +302,15 @@ export class LocalBinder {
     }
   }
 
-  /** Leaves the later parts of `parts` for linking, when its head may qualify them. */
+  /**
+   * Leaves the later parts of `parts` for linking, when its head may qualify them. A path still
+   * being written ends in a missing name (`time.Duration.`): the parts before it are linked.
+   */
   #qualifyLater(parts: QualifiedName, scope: Scope, inExpression: boolean): void {
-    const complete = !parts.some(isMissingName);
-    if (parts.length > 1 && complete && mayQualify(scope.lookup(parts[0].text))) {
-      this.#paths.push({ parts, inExpression });
+    const written = withoutMissingLast(parts);
+    const complete = !written.some(isMissingName);
+    if (written.length > 1 && complete && mayQualify(scope.lookup(written[0].text))) {
+      this.#paths.push({ parts: written, inExpression });
     }
   }
 
@@ -384,4 +388,11 @@ function mayQualify(head: LocalEntity | undefined): boolean {
     default:
       return false;
   }
+}
+
+/** `parts` without the missing name a path still being written ends in. */
+function withoutMissingLast(parts: QualifiedName): QualifiedName {
+  const [head, ...rest] = parts;
+  const last = rest.at(-1);
+  return last !== undefined && isMissingName(last) ? [head, ...rest.slice(0, -1)] : parts;
 }

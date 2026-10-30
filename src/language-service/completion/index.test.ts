@@ -77,6 +77,27 @@ describe('completion', () => {
     expect(names(json, 'fn f() -> int:', '  let j: json.‸ = 1', '  1')).toContain('Json');
   });
 
+  it("offers a namespace's type's statics and variants after its `.`", () => {
+    expect(names(time, 'fn f():', '  const d = time.Duration.‸', '  1')).toContain('parse');
+    const json = "import * as json from 'json'";
+    expect(names(json, 'fn f():', '  const j = json.Json.‸', '  1')).toContain('Null');
+  });
+
+  it("offers a namespace's types after its `.` in a pattern, and their variants after theirs", () => {
+    const json = "import * as json from 'json'";
+    const matching = (path: string) => [
+      json,
+      'fn f(j: json.Json) -> int:',
+      '  match j:',
+      `    case ${path}‸:`,
+      '      1',
+      '    case _: 2',
+    ];
+    expect(names(...matching('json.'))).toContain('Json');
+    expect(names(...matching('json.'))).not.toContain('parse');
+    expect(names(...matching('json.Json.'))).toContain('Null');
+  });
+
   it('offers a method taking `&self` only through a place', () => {
     expect(names('fn f() -> int:', '  let xs = [1]', '  xs.‸', '  1')).toContain('push');
     expect(names('fn f() -> int:', '  [1].‸', '  1')).not.toContain('push');
