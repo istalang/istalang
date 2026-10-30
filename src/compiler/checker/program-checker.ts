@@ -93,6 +93,12 @@ export interface CheckerOptions {
    * revisions' tables are held.
    */
   readonly previous?: ProgramChecker | undefined;
+  /**
+   * Whether no later snapshot is made from this one, as for an edit tried out and dropped: it
+   * takes over from `previous` keeping that checker's own previous, which later checkers still take
+   * over from.
+   */
+  readonly tentative?: boolean | undefined;
   /** Called each time an entry is computed rather than taken over: a seam for tests to count. */
   readonly observe?: ((table: string, key: unknown) => void) | undefined;
 }
@@ -123,8 +129,10 @@ export class ProgramChecker implements CheckerContext {
   readonly json: JsonForms;
   readonly lookup: Lookup;
 
-  constructor(program: Program, { previous, observe }: CheckerOptions = {}) {
-    previous?.entries.release();
+  constructor(program: Program, { previous, tentative = false, observe }: CheckerOptions = {}) {
+    if (!tentative) {
+      previous?.entries.release();
+    }
     this.program = program;
     const entries = new Entries<CheckerNote>({ previous: previous?.entries, observe });
     this.entries = entries;

@@ -166,6 +166,11 @@ export interface LabelResolution {
 export interface CheckedBody {
   /** The type of an expression of this body; undefined for one never checked. */
   readonly typeOf: (expression: Expression) => Type | undefined;
+  /**
+   * The type expected of the value `site` gives, where its context expects one (§2, §3.11): passed
+   * down to its check, or fitted to once checked; undefined where nothing is expected.
+   */
+  readonly expectedOf: (site: ValueSite) => Type | undefined;
   /** The function each call site of this body calls, or each function value names. */
   readonly resolved: ReadonlyMap<ResolvedSite, ResolvedCall>;
   /** The calls of function values, which call whatever their callee gives (§3.14). */
@@ -320,6 +325,8 @@ export interface Checker {
   readonly json: JsonFormQueries;
   /** Annotations, each checked once where its item stands (§3.16; rules/annotations.ts). */
   readonly annotations: AnnotationQueries;
+  /** How a value of type `found` fits where `expected` is, by implicit conversions (§2); undefined when it can't. */
+  readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
   /** What tools ask by position: what names denote, the body holding a node (lookup/). */
   readonly lookup: LookupQueries;
 }
@@ -333,16 +340,17 @@ export interface CheckProgramOptions {
    * wherever what they read answers alike (incremental-checking.md §1).
    */
   readonly previous?: Program | undefined;
+  readonly tentative?: CheckerOptions['tentative'];
   readonly observe?: CheckerOptions['observe'];
 }
 
 /** The checker of `program`, made once: every checker of one program answers alike. */
 export function checkProgram(
   program: Program,
-  { previous, observe }: CheckProgramOptions = {},
+  { previous, tentative, observe }: CheckProgramOptions = {},
 ): Checker {
   return memo(checkers, program, () => {
     const before = previous === undefined ? undefined : checkers.get(previous);
-    return new ProgramChecker(program, { previous: before, observe });
+    return new ProgramChecker(program, { previous: before, tentative, observe });
   });
 }

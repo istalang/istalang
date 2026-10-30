@@ -92,6 +92,7 @@ export class BodyChecker implements BodyContext {
   readonly fieldReads = new FieldReads();
   readonly labels = new LabelTargets();
   readonly #types = new Map<Expression, Type>();
+  readonly #expected = new Map<ValueSite, Type>();
   readonly #resolved = new Map<ResolvedSite, ResolvedCall>();
   readonly #valueCalls = new Set<Call>();
   readonly #candidates = new Map<ResolvedSite, readonly FunctionDeclaration[]>();
@@ -166,6 +167,9 @@ export class BodyChecker implements BodyContext {
   }
 
   expression(node: Expression, expected?: Type): Type {
+    if (expected !== undefined) {
+      this.#expected.set(node, expected);
+    }
     return this.#record(node, handlerOf(expressionHandlers, node)(this, node, expected));
   }
 
@@ -210,6 +214,7 @@ export class BodyChecker implements BodyContext {
   }
 
   fit(found: Type, expected: Type, site: ValueSite, at = site.span): void {
+    this.#expected.set(site, expected);
     const fit = this.#fitOf(found, expected, at);
     if (!isExact(fit)) {
       this.#fits.set(site, fit);
@@ -305,6 +310,7 @@ export class BodyChecker implements BodyContext {
   /** The CheckedBody of what was checked, producing `result`. */
   #checked(result: Type): CheckedBody {
     const types = this.#types;
+    const expected = this.#expected;
     const resolved = this.#resolved;
     const valueCalls = this.#valueCalls;
     const fits = this.#fits;
@@ -325,6 +331,7 @@ export class BodyChecker implements BodyContext {
     } = this;
     return {
       typeOf: (expression) => types.get(expression),
+      expectedOf: (site) => expected.get(site),
       resolved,
       valueCalls,
       madeCalls: () => [

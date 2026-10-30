@@ -40,6 +40,7 @@ export function instantiatedBody(
     read.kind === 'position' ? read : requiredFieldRead(checker, concrete(read.on), read.required);
   return {
     typeOf: (expression) => mapDefined(body.typeOf(expression), concrete),
+    expectedOf: (site) => mapDefined(body.expectedOf(site), concrete),
     resolved: body.resolved,
     valueCalls: body.valueCalls,
     madeCalls: body.madeCalls,
