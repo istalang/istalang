@@ -1,12 +1,8 @@
 /**
- * Loads the project's modules from disk, for import paths in the toolchain's syntax (§3.13).
- *
- * A path is names separated by `/`, with the `.ista` extension implied. One starting with `./` or
- * `../` goes from the importing file; any other goes from the project root. Anything else (an
- * empty name, a `.` or `..` after a name, an absolute path, a URL) names no file here. A name may
- * not hold `\` or `:` either, which some platforms read as separators or drive letters, so a path
- * can't escape its base. A module's id is its file's URL, so every path that reaches one file
- * names one module.
+ * Loads the project's modules from disk, for import paths in the toolchain's syntax (§3.13,
+ * language/import-paths.ts): one starting with `./` or `../` goes from the importing file, any
+ * other from the project root, and a path out of that syntax names no file here. A module's id is
+ * its file's URL, so every path that reaches one file names one module.
  *
  * Locating a file only checks that it is there; the loading core reads it once, when it loads the
  * module. A path to nothing, or to a directory, is simply not a module. Any other error is the
@@ -24,12 +20,11 @@ import {
   type ModuleLoader,
   moduleIdOf,
 } from '../compiler/program/program.ts';
+import { importPathOf } from '../language/import-paths.ts';
 import { isTestModulePath } from '../language/well-known.ts';
 import { diskFiles, type ProjectFiles } from './project-files.ts';
 
 export const sourceExtension = '.ista';
-
-const platformSeparator = /[\\:]/u;
 
 /** Where the project is, and where the toolchain runs, which labels are relative to. */
 export interface ProjectPlaces {
@@ -75,16 +70,12 @@ export function fileOfModule(id: ModuleId): string | undefined {
 
 /** The file a path names, or `undefined` when it isn't in the toolchain's syntax. */
 function filePathOf(path: string, importer: ModuleId, projectRoot: string): string | undefined {
-  const parts = path.split('/');
-  const leading = parts.findIndex((part) => part !== '.' && part !== '..');
-  const names = parts.slice(leading);
-  const isName = (part: string): boolean =>
-    part !== '' && part !== '.' && part !== '..' && !platformSeparator.test(part);
-  if (leading === -1 || !names.every(isName)) {
+  const read = importPathOf(path);
+  if (read === undefined || read.names.length === 0) {
     return;
   }
-  const base = leading === 0 ? projectRoot : directoryOf(importer);
-  const climbs = parts.slice(0, leading);
+  const { climbs, names } = read;
+  const base = climbs.length === 0 ? projectRoot : directoryOf(importer);
   return base === undefined ? undefined : `${resolve(base, ...climbs, ...names)}${sourceExtension}`;
 }
 
