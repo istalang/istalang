@@ -92,6 +92,24 @@ function misfitsOf({ text, start, end }: Site): readonly string[] {
   });
 }
 
+/**
+ * The word `site`'s pattern starts with, if the pattern start offers it there: a variant or a type
+ * named bare, the first name of a qualified one, `_` or a literal keyword. A camelCase bare name
+ * binds a variable (§3.11), which nothing offers, and a pattern its program rejects is aside.
+ */
+function startWordOf({ text, start, end }: Site): string | undefined {
+  const word = leadingWord.exec(text.slice(start, end))?.[0];
+  if (word === undefined || errorsIn(text, start, end).length > 0) {
+    return undefined;
+  }
+  const binds = camelCase.test(word) && !text.startsWith('.', start + word.length);
+  return binds && !patternKeywords.has(word) ? undefined : word;
+}
+
+const leadingWord = /^[A-Za-z_]\w*/u;
+const camelCase = /^[a-z]/u;
+const patternKeywords: ReadonlySet<string> = new Set(['true', 'false', 'none']);
+
 /** A field unknown to the pattern's type (5013), or one tested twice (5015). */
 const fieldMistakes = new Set([5013, 5015]);
 
@@ -120,6 +138,18 @@ describe('pattern completion offers what fits the matched value', () => {
     fc.assert(
       fc.property(fc.constantFrom(...patternSites), (site) => {
         expect(misfitsOf(site)).toEqual([]);
+      }),
+      { numRuns: 30 },
+    );
+  }, 60_000);
+
+  it('offering the word each corpus pattern starts with', () => {
+    fc.assert(
+      fc.property(fc.constantFrom(...patternSites), (site) => {
+        const word = startWordOf(site);
+        const emptied = site.text.slice(0, site.start) + site.text.slice(site.end);
+        const offered = candidatesIn(emptied, site.start).map(({ name }) => name);
+        expect(word === undefined || offered.includes(word)).toBe(true);
       }),
       { numRuns: 30 },
     );
