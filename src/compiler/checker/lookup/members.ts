@@ -1,7 +1,7 @@
 /**
  * What a value of a type has, by name, as a module sees it: its fields and variants as its layout
- * has them, or the fields its constraints require; the static functions a call through it may
- * choose, and its methods.
+ * has them, a tuple's elements as fields named by position (`t.0`, §3.15), or the fields its
+ * constraints require; the static functions a call through it may choose, and its methods.
  *
  * A method is found as a method call finds it (resolution/candidates.ts): by each name the module
  * sees at its top level, the type's own module exports, or its constraints require, with that
@@ -47,7 +47,7 @@ import {
   requiredFunctions,
   substituteConstraint,
 } from '../traits/constraints.ts';
-import type { FieldMember, ParameterKey, Type } from '../types/type.ts';
+import { type FieldMember, type ParameterKey, type Type, tupleElements } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { searchSite } from '../use-site.ts';
 
@@ -70,8 +70,12 @@ export function membersOf(
   };
 }
 
-/** A struct's fields, or those the constraints on `type` require, as a read finds each. */
+/** A struct's fields, a tuple's elements, or what the constraints on `type` require, as read. */
 function fieldsOf(checker: CheckerContext, type: Type): readonly FieldMember[] {
+  const elements = tupleElements(type);
+  if (elements !== undefined) {
+    return elements.map((element, index) => ({ name: String(index), type: element }));
+  }
   const required = knownConstraints(checker, type)
     .flatMap(({ trait }) => requiredFields(trait))
     .flatMap(({ name }) => fieldOf(checker, type, name.text)?.member ?? []);

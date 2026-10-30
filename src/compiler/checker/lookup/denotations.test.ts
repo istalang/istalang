@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Denotation } from '../denotation.ts';
+import { intType, stringType, tupleType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { checkedMain } from './lookup.test-kit.ts';
 
@@ -91,6 +92,14 @@ describe('what an identifier denotes', () => {
     expect(members?.fields.map(({ name }) => name)).toEqual(['first', 'second']);
     expect(members?.methods.map(({ name }) => name.text)).toEqual(['total']);
     expect(members?.statics.map(({ name }) => name.text)).toEqual(['zero', 'from']);
+  });
+
+  it("lists a tuple's elements by position as its fields", () => {
+    const members = checker.lookup.membersOf(module, tupleType([intType, stringType]));
+    expect(members.fields.map(({ name, type }) => `${name}: ${typeText(type)}`)).toEqual([
+      '0: int',
+      '1: string',
+    ]);
   });
 
   it('answers a tag read from a value with the method its template calls', () => {

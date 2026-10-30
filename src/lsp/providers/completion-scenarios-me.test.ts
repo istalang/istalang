@@ -156,7 +156,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  const tp = (1, "a")\n  tp.‸'],
     trigger: '.',
     expect: { has: ['0', '1'] },
-    fails: true,
   },
   {
     id: 'ME-14',
