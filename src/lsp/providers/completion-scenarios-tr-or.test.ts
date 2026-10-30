@@ -179,9 +179,10 @@ const scenarios: readonly Scenario[] = [
     id: 'OR-06',
     place: 'grammar',
     title: 'Docs on resolve',
-    src: ['  ‸'],
+    src: ['fn twice(n: int) -> int:\n  """Doubles `n`."""\n  n * 2\nfn g() -> int:\n  ‸'],
+    where: 'top',
+    tail: '\n  0\n',
     expect: { docs: true },
-    fails: true,
   },
   {
     id: 'OR-07',

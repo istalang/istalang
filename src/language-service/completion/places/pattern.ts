@@ -31,17 +31,18 @@ import { spanIn } from '../../../compiler/syntax/positions.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import type { Candidate } from '../candidate.ts';
 import { type Cursor, touchingBefore } from '../cursor.ts';
+import { expectedTypeAt } from '../expected.ts';
 import type { ParsedPlace } from '../placeholder.ts';
-import { matchedTypeOf } from './matched-type.ts';
 
 type PatternPlace = Extract<ParsedPlace, { readonly kind: 'pattern' }>;
 
 type Parsed = PatternPlace['parsed'];
 
-export function offerPattern(cursor: Cursor, { parsed }: PatternPlace): readonly Candidate[] {
+export function offerPattern(cursor: Cursor, place: PatternPlace): readonly Candidate[] {
+  const { parsed } = place;
   const [holder, innermost] = parsed.chain.slice(-2);
   if (holder?.kind === 'NamePattern') {
-    return patternStarts(cursor, parsed, holder);
+    return patternStarts(cursor, place, holder);
   }
   if (holder?.kind === 'StructPattern' && innermost?.kind === 'Invalid') {
     return followsFieldName(cursor, parsed, holder, innermost) ? keywordsNamed(['as', 'is']) : [];
@@ -49,11 +50,16 @@ export function offerPattern(cursor: Cursor, { parsed }: PatternPlace): readonly
   return followsWholePattern(cursor, parsed) ? keywordsNamed(['if', 'as']) : [];
 }
 
-function patternStarts(cursor: Cursor, parsed: Parsed, pattern: NamePattern): readonly Candidate[] {
+/** Where a pattern starts, by the type it matches: the type expected there (expected.ts). */
+function patternStarts(
+  cursor: Cursor,
+  place: PatternPlace,
+  pattern: NamePattern,
+): readonly Candidate[] {
   const { checker, module } = cursor;
-  const type = matchedTypeOf(cursor, parsed, pattern);
+  const type = expectedTypeAt(cursor, place);
   const known = type !== undefined && type.kind !== 'error';
-  const covered = variantsCovered(parsed, pattern);
+  const covered = variantsCovered(place.parsed, pattern);
   const variants = known
     ? checker.lookup.membersOf(module, type).variants.map(
         (variant): Candidate => ({

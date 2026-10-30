@@ -66,9 +66,10 @@ describe('the variants written bare', () => {
     return expectedVariants(cursor, place).map(({ name }) => name);
   };
 
-  it("are the expected enum's, inside any optional", () => {
+  it("are the expected enum's, then those of the enums inside its optionals", () => {
     expect(variants('  let c: Color = ‸')).toEqual(['Red', 'Green']);
-    expect(variants('  let c: Color? = ‸')).toEqual(['Red', 'Green']);
+    expect(variants('  let c: Color? = ‸')).toEqual(['Some', 'None', 'Red', 'Green']);
+    expect(variants('  let n: int? = ‸')).toEqual(['Some', 'None']);
   });
 
   it('are none where no enum is expected', () => {

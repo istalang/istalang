@@ -188,6 +188,46 @@ describe('completion', () => {
     expect(offered).toEqual(expect.arrayContaining(['total', 'count', 'f', 'fn', 'while']));
   });
 
+  it("documents an item with its declaration's docstring", () => {
+    const documented = [
+      'fn twice(n: int) -> int:',
+      '  """Doubles `n`."""',
+      '  n * 2',
+      '',
+      'struct Marker:',
+      '  """Marks a spot."""',
+      '  at: int',
+      '',
+    ];
+    const { program, module, offset } = programAt(...documented, 'fn f() -> int:', '  ‸', '  1');
+    const docs = completionsAt(program, module, offset)
+      .filter(({ name }) => ['twice', 'Marker', 'f'].includes(name))
+      .map(({ name, documentation }) => ({ name, documentation }));
+    expect(docs).toEqual([
+      { name: 'twice', documentation: 'Doubles `n`.' },
+      { name: 'Marker', documentation: 'Marks a spot.' },
+      { name: 'f', documentation: undefined },
+    ]);
+  });
+
+  it("writes a call's parentheses or a variant's braces only where none follow", () => {
+    const decision = ['enum Decision:', '  Approved { by: string }', '  Expired', ''];
+    const inserted = (...lines: readonly string[]) => {
+      const { program, module, offset } = programAt(...decision, ...lines);
+      return new Map(
+        completionsAt(program, module, offset).map(({ name, insert }) => [name, insert]),
+      );
+    };
+    const bare = inserted('fn f() -> Decision:', '  Decision.‸', '  Decision.Expired');
+    expect(bare.get('Approved')).toEqual({ kind: 'snippet', snippet: 'Approved{$0}' });
+    expect(bare.get('Expired')).toBeUndefined();
+    const braced = inserted('fn f() -> Decision:', '  Decision.Appr‸{by: "x"}');
+    expect(braced.get('Approved')).toBeUndefined();
+    const call = { kind: 'snippet', snippet: 'f($0)' };
+    expect(inserted('fn f() -> int:', '  f‸', '  1').get('f')).toEqual(call);
+    expect(inserted('fn f() -> int:', '  f‸()', '  1').get('f')).toBeUndefined();
+  });
+
   it("answers a typed `>` only where it writes a member's `->`", () => {
     const { program, module, offset } = programAt('fn f(a: int) -> bool: a >‸ 1');
     expect(completionsAt(program, module, offset, '>')).toEqual([]);

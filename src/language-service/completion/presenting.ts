@@ -4,11 +4,12 @@
  *
  * What accepting a callable or a variant with fields writes depends on the place alone: only
  * where a value or a pattern is written does a name open its parentheses or braces, never in an
- * import, a type or a declared name. A `(` already after the cursor is the call's own, so a
- * callable writes its name alone there.
+ * import, a type or a declared name. A `(` or `{` already after the cursor is the call's or the
+ * literal's own, so the name is written alone there.
  */
 
 import type { Type } from '../../compiler/checker/types/type.ts';
+import type { TokenKind } from '../../compiler/syntax/tokens.ts';
 import { codeTokensOf } from '../tokens.ts';
 import type { Cursor } from './cursor.ts';
 import type { Completion, RankGroup } from './item.ts';
@@ -20,8 +21,8 @@ export interface Presenting {
   readonly place: Place;
   /** Whether the place writes a value or a pattern, which a call or a variant's braces may open. */
   readonly writesValue: boolean;
-  /** Whether a `(` follows the name being written. */
-  readonly callFollows: boolean;
+  /** The kind of the token after the name being written, which may already open its call or braces. */
+  readonly follows: TokenKind | undefined;
 }
 
 /** What a presenter says of one item: everything but its name and its place in the list. */
@@ -50,7 +51,7 @@ export function presentingAt(cursor: Cursor, place: Place): Presenting {
     cursor,
     place,
     writesValue: valuePlaces.has(place.kind),
-    callFollows: next?.kind === '(',
+    follows: next?.kind,
   };
 }
 
@@ -58,19 +59,19 @@ export function presentingAt(cursor: Cursor, place: Place): Presenting {
  * Accepting a callable named `name`: its call, the cursor between the parentheses, and its
  * signature shown. A name is an identifier, so it holds nothing a snippet escapes.
  */
-export function called({ writesValue, callFollows }: Presenting, name: string): Partial<Shown> {
-  return writesValue && !callFollows
+export function called({ writesValue, follows }: Presenting, name: string): Partial<Shown> {
+  return writesValue && follows !== '('
     ? { insert: { kind: 'snippet', snippet: `${name}($0)` }, next: 'signatureHelp' }
     : { commit: ['('] };
 }
 
 /** Accepting a variant: with fields, its literal's braces, whose fields are listed next. */
 export function constructed(
-  { writesValue }: Presenting,
+  { writesValue, follows }: Presenting,
   name: string,
   hasFields: boolean,
 ): Partial<Shown> {
-  return writesValue && hasFields
+  return writesValue && hasFields && follows !== '{'
     ? { insert: { kind: 'snippet', snippet: `${name}{$0}` }, next: 'completion' }
     : {};
 }

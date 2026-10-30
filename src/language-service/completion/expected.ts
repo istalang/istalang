@@ -15,9 +15,9 @@
  * - A place is asked once per request, however many providers ask (memoized by the place).
  */
 
-import { type Checker, checkProgram } from '../../compiler/checker/check.ts';
+import { checkProgram } from '../../compiler/checker/check.ts';
+import { enumsExpected, sameEnum } from '../../compiler/checker/types/fit.ts';
 import type { Type } from '../../compiler/checker/types/type.ts';
-import { optionalArgument } from '../../compiler/checker/types/well-known.ts';
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import type { SyntaxTree } from '../../compiler/syntax/tree.ts';
@@ -36,17 +36,28 @@ export function expectedTypeAt(cursor: Cursor, place: Place): Type | undefined {
   return memo(expectations, place, () => handlerOf(expecters, place)(cursor, place));
 }
 
-/** The variants that may be written bare at `place`: the expected enum's, inside any optional. */
+/**
+ * The variants that may be written bare at `place`: those of the enums a value expected there may
+ * be a variant of, its own and those inside its optionals, outermost first, as checking chooses
+ * among them (§3.11); a name two of them share is the outermost's.
+ */
 export function expectedVariants(cursor: Cursor, place: Place): readonly Candidate[] {
+  const { checker } = cursor;
   const expected = expectedTypeAt(cursor, place);
-  const enumType = expected && withoutOptionals(cursor.checker, expected);
-  if (enumType?.kind !== 'nominal') {
-    return [];
-  }
-  return (cursor.checker.variantsOf(enumType) ?? []).map((variant) => ({
-    name: variant.name,
-    subject: { kind: 'variant', variant, enum: enumType },
-  }));
+  const candidates = enumsExpected(checker, expected).flatMap((declaration) => {
+    const enumType = sameEnum(checker, expected, declaration);
+    return enumType === undefined
+      ? []
+      : (checker.variantsOf(enumType) ?? []).map(
+          (variant): Candidate => ({
+            name: variant.name,
+            subject: { kind: 'variant', variant, enum: enumType },
+          }),
+        );
+  });
+  return candidates.filter(
+    ({ name }, index) => candidates.findIndex((each) => each.name === name) === index,
+  );
 }
 
 /** Whether `candidate` is a bare variant name, which only an expected enum admits (§3.11). */
@@ -129,10 +140,4 @@ function withTree(program: Program, module: ModuleId, tree: SyntaxTree): Program
   return loaded === undefined
     ? program
     : { ...program, modules: new Map(program.modules).set(module, { ...loaded, tree }) };
-}
-
-/** `type` with every optional around it taken off: `Color` for `Color??`. */
-function withoutOptionals(checker: Checker, type: Type): Type {
-  const inner = optionalArgument(checker, type);
-  return inner === undefined ? type : withoutOptionals(checker, inner);
 }

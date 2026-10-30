@@ -83,17 +83,12 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
       ...(value === undefined ? {} : { gives: [value] }),
     };
   },
-  field: ({ place, cursor: { checker } }, { field }, name) => {
+  field: ({ place }, { field }, name) => {
     const { declared } = field;
     return {
       kind: 'field',
       detail: typeText(field.type),
-      ...(declared === undefined
-        ? {}
-        : {
-            priority: hasDefault(declared.node) ? 1 : 0,
-            ...documented(docstringOf(checker, { kind: 'field', field })),
-          }),
+      ...(declared === undefined ? {} : { priority: hasDefault(declared.node) ? 1 : 0 }),
       ...(givesValue.has(place.kind)
         ? { insert: { kind: 'text', text: `${name}: ` }, next: 'completion' }
         : {}),
