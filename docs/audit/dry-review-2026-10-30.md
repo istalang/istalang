@@ -28,8 +28,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 12. `src/compiler/checker/` — root contracts, contexts & wiring (`check.ts`, `context.ts`, `program-inputs.ts`, `program-checker.ts`, `body-checker.ts`, `use-site.ts`, `resolved-call.ts`, `checked-pattern.ts`, `checked-field.ts`, `constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `struct-items.ts`, `denotation.ts`, `host-externs.ts`, `declaring-modules.ts`, `diagnostics/`)
 - [x] 13. `src/compiler/checker/types/`
 - [x] 14. `src/compiler/checker/inference/` & `src/compiler/checker/traits/`
-- [ ] 15. `src/compiler/checker/resolution/`
-- [ ] 16. `src/compiler/checker/calls/`
+- [x] 15. `src/compiler/checker/resolution/`
+- [x] 16. `src/compiler/checker/calls/`
 - [ ] 17. `src/compiler/checker/patterns/` & `src/compiler/checker/flow/`
 - [ ] 18. `src/compiler/checker/rules/` (including `rules/json-forms/`)
 - [ ] 19. `src/compiler/checker/declarations/` & `src/compiler/checker/closures/`
@@ -184,6 +184,23 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `infer.ts` defines a local `isPack(parameter: ParameterKey)` alongside `isPack(type: Type)` in `types/type.ts`.
 - **`unsafetyOf` manually resolves and substitutes trait fields instead of using `requiredFieldType` / `constraintSubstitution` (`src/compiler/checker/traits/any-types.ts`, `constraints.ts`):**
   - `unsafetyOf` (`any-types.ts`) manually builds `substitutionFor(trait.typeParameters, constraint.arguments)` and calls `checker.resolveType(checker.moduleOf(trait), field.type)` instead of calling `requiredFieldType(checker, constraint, field, parameterType(trait))` and `constraintSubstitution(constraint, parameterType(trait))` from `constraints.ts`.
+
+### 15. `src/compiler/checker/resolution/`
+
+- **Duplicated call-completion pipeline between `implicitCall` (`src/compiler/checker/resolution/implicit.ts`) and `resolveCall` (`src/compiler/checker/calls/resolve.ts`):**
+  - `implicitCall` and `resolveCall` (`complete`) both check for `error` argument types, run `choose`, report `checkerDiagnostics.ambiguousCall(..., argumentListText(...))` on `'several'`, call `instantiate(useSite(...), application, expected)`, call `fitArguments(context, request.arguments, filledTypes(...))`, build `callMade(application, instantiation)`, and return `substitute(application.signature.result(), instantiation.substitution)`.
+- **Duplicate entity-to-type dispatch in `entityType` (`src/compiler/checker/resolution/named.ts`) vs. `namedType` (`src/compiler/checker/types/resolve-type.ts`):**
+  - Both switch on `entity.kind` (`primitive`, `type`) and `entity.declaration.kind` (`TypeParameter`, `TypeAliasDeclaration`, `TraitDeclaration`, nominal declarations) to construct a `Type`, with `entityType` hard-coding `arguments: []` on `TypeAliasDeclaration` without filling default type parameters.
+- **Derived traits if-chain in `conform` (`src/compiler/checker/resolution/conformance.ts`; tracked as `Q7`):**
+  - `conform` branches on `isSendableTrait`, then `jsonDirectionOf` (`codecWitness`), before checking trait fields and functions (`Q7`).
+
+### 16. `src/compiler/checker/calls/`
+
+- **Second recursive walk over composite expressions in `inferNestedLambdas` (`src/compiler/checker/calls/lambda-arguments.ts`):**
+  - `inferNestedLambdas` and `branchBodiesOf` switch over `Lambda`, `BlockExpression`, `If`, `Match`, `Select`, `Tuple`, `ArrayLiteral`, and `MapLiteral`, duplicating the composite expected-type decomposition and branch collection already implemented for `Accepts` in `expressions/` and `rules/branches.ts`.
+- **Repeated `operands.join(' and ')` formatting for `operatorTypes` (`src/compiler/checker/calls/resolve.ts`, `resolution/implicit.ts`, `types/equality.ts`):**
+  - `explainNone` (`calls/resolve.ts`), `implicitOperatorCall` (`resolution/implicit.ts`), and `checkEqualSides` (`types/equality.ts`) each format operand type lists with `.join(' and ')` at the call site instead of `checkerDiagnostics.operatorTypes` formatting an array of operand strings.
+
 
 
 
