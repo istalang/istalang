@@ -16,7 +16,12 @@
 
 import { pathToFileURL } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { CompletionRequest, CompletionTriggerKind } from 'vscode-languageserver/node';
+import {
+  type CompletionItem,
+  type CompletionOptions,
+  CompletionRequest,
+  CompletionTriggerKind,
+} from 'vscode-languageserver/node';
 import { corpusDirectory } from '../../../test/corpus/programs.ts';
 import { checkedModule } from '../../language-service/checked-module.ts';
 import { cursorAt } from '../../language-service/completion/cursor.ts';
@@ -121,12 +126,30 @@ export function completionClient(): () => TestClient {
 
 let documents = 0;
 
-/** Opens `text` as a document of its own, asks for the list at its `‸`, closes it. */
+/**
+ * Opens `text` as a document of its own, asks for the list at its `‸` as the editor would, closes
+ * it. A typed character the server didn't declare asks nothing, so it opens no list.
+ */
 async function completeAt(
   client: TestClient,
   snippet: string,
   trigger: string | undefined,
 ): Promise<Answer> {
+  const options = client.initialized.capabilities.completionProvider ?? {};
+  const items = asks(options, trigger) ? await requestAt(client, snippet, trigger) : [];
+  return { items, labels: items.map(({ label }) => label), rank: rankIn(items), options };
+}
+
+/** Whether typing `trigger` asks for a list; invoking always does. */
+function asks(options: CompletionOptions, trigger: string | undefined): boolean {
+  return trigger === undefined || (options.triggerCharacters?.includes(trigger) ?? false);
+}
+
+async function requestAt(
+  client: TestClient,
+  snippet: string,
+  trigger: string | undefined,
+): Promise<readonly CompletionItem[]> {
   const at = snippet.indexOf(cursor);
   const text = snippet.slice(0, at) + snippet.slice(at + 1);
   const lines = text.slice(0, at).split('\n');
@@ -142,13 +165,7 @@ async function completeAt(
         : { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: trigger },
   });
   await client.close(uri);
-  const items = Array.isArray(reply) ? reply : (reply?.items ?? []);
-  return {
-    items,
-    labels: items.map(({ label }) => label),
-    rank: rankIn(items),
-    options: client.initialized.capabilities.completionProvider ?? {},
-  };
+  return Array.isArray(reply) ? reply : (reply?.items ?? []);
 }
 
 function opening(where: Scenario['where']): string {
@@ -197,11 +214,12 @@ async function problemsIn(client: TestClient, scenario: Scenario): Promise<strin
     scenario.src.map(async (variant) => {
       const { src, trigger } = variantOf(scenario, variant);
       const answer = await completeAt(client, documentOf(scenario, src), trigger);
+      const problems = problemsOf(answer, scenario.expect);
       const refused =
-        trigger !== undefined && !answer.options.triggerCharacters?.includes(trigger)
+        problems.length > 0 && !asks(answer.options, trigger)
           ? [`${JSON.stringify(trigger)} is not a trigger character`]
           : [];
-      return { answer, problems: [...refused, ...problemsOf(answer, scenario.expect)] };
+      return { answer, problems: [...refused, ...problems] };
     }),
   );
   const labelSets = answers.map(({ answer }) => JSON.stringify(answer.labels.toSorted()));

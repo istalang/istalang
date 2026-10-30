@@ -46,7 +46,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  Pair{first: 1, ‸}'],
     trigger: ' ',
     expect: { has: ['second'] },
-    fails: true,
   },
   {
     id: 'TR-06',
@@ -54,7 +53,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Declared trigger characters',
     src: ['  ‸'],
     expect: { triggers: ['.', '>', '{', ',', ' ', '@', "'", '"', '/'] },
-    fails: true,
   },
   {
     id: 'TR-07',

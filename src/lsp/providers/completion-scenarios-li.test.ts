@@ -48,7 +48,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  Pair{first: 1, ‸}'],
     trigger: ' ',
     expect: { exact: ['second'] },
-    fails: true,
   },
   {
     id: 'LI-04',
@@ -57,7 +56,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  Pair{ ‸}'],
     trigger: ' ',
     expect: { exact: ['first', 'second'] },
-    fails: true,
   },
   {
     id: 'LI-05',

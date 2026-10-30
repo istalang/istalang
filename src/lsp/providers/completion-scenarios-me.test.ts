@@ -210,7 +210,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  let r = 0..‸', '  let s = [...‸'],
     trigger: '.',
     expect: { none: true },
-    fails: true,
   },
 ];
 

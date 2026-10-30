@@ -39,7 +39,13 @@
       "[ista]": {
         "editor.insertSpaces": true,
         "editor.tabSize": 2,
-        "editor.detectIndentation": false
+        "editor.detectIndentation": false,
+        "editor.wordBasedSuggestions": "off",
+        "editor.quickSuggestions": {
+          "other": "on",
+          "comments": "off",
+          "strings": "off"
+        }
       }
     },
     "configuration": {

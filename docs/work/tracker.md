@@ -48,7 +48,6 @@ Language or toolchain features deferred by decision, not defects.
 | F10 | VS Code client: Windows isn't served (`.bin/ista.cmd` needs a shell), and a changed `ista.server.path` takes effect only on reload. | small | — | phase 7.3 report 2026-10-29 |
 | F11 | The language server doesn't watch the disk (`workspace/didChangeWatchedFiles`): a file changed outside the editor is seen at the next edit. It serves only the first workspace folder. | medium | — | phase 7.1 report 2026-10-29 |
 | F12 | Completion offers a literal's missing fields after its `{` or `,`, but a struct pattern's (`case Pair{‸}`) offers none. | small | none; can be done now | completion fix 2026-10-30 |
-| F13 | With no completion from the server (after a top-level `time.`, `main.`), VS Code still shows word-based suggestions unless `editor.wordBasedSuggestions` is off; the extension could default it off for `[ista]` (`configurationDefaults`). | easy | none; can be done now | completion fix 2026-10-30 |
 
 ### Performance (P)
 

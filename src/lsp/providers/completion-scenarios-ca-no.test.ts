@@ -54,7 +54,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  plus(b: ‸'],
     trigger: ' ',
     expect: { has: ['n', 'xs'], lacks: ['a:', 'b:'] },
-    fails: true,
   },
   {
     id: 'CA-06',
@@ -167,7 +166,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  const a = 1 ‸', '  if n: ‸', '  return ‸', 'fn g() ‸'],
     trigger: ' ',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'NO-09',
@@ -176,7 +174,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  if n:‸', 'fn g():‸'],
     trigger: ':',
     expect: { none: true },
-    fails: true,
   },
 ];
 

@@ -43,9 +43,7 @@ export function completionsAt(
   }
   const cursor = cursorAt(checked, offset, trigger);
   const place = placeAt(cursor);
-  return opensAt(trigger, place.kind)
-    ? present(cursor, handlerOf(offers, place)(cursor, place))
-    : [];
+  return opensAt(cursor, place) ? present(cursor, handlerOf(offers, place)(cursor, place)) : [];
 }
 
 /** What may be written at each kind of place; each kind's provider lives in places/. */
