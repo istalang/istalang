@@ -60,6 +60,7 @@ const kinds = {
   typeParameter: CompletionItemKind.TypeParameter,
   variant: CompletionItemKind.EnumMember,
   module: CompletionItemKind.Module,
+  folder: CompletionItemKind.Folder,
   keyword: CompletionItemKind.Keyword,
 } as const satisfies Record<CompletionKind, CompletionItemKind>;
 

@@ -22,6 +22,7 @@ export type CompletionKind =
   | 'typeParameter'
   | 'variant'
   | 'module'
+  | 'folder'
   | 'keyword';
 
 export interface Completion {

@@ -1,6 +1,7 @@
 /**
  * Completion over every corpus and std module, through the protocol: at every name the binder
- * resolved by looking it up in scope, the name is offered; at every member the identifier query
+ * resolved by looking it up in scope, the name is offered, unless checking rejects it as no
+ * annotation, which an annotation's place doesn't offer; at every member the identifier query
  * answers, after its `.`, `?.`, `->` or `?->`, or as a qualified name's later segment in a type or
  * a pattern, the member is offered. A name inside an error the checker reports is aside: completion
  * offers what fits where it is written, as a pattern offers what its subject may hold, not a type
@@ -17,6 +18,7 @@ import {
 import { corpusDirectory } from '../../../test/corpus/programs.ts';
 import { isLookedUp, resolvedNames } from '../../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../../compiler/checker/check.ts';
+import { checkerDiagnostics } from '../../compiler/checker/diagnostics/index.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
@@ -39,9 +41,14 @@ beforeAll(async () => {
 
 describe('completion over the corpus', () => {
   it.each(documents)('$uri', async ({ uri, module, tree }) => {
+    const notAnnotations = checker
+      .diagnosticsOf(module)
+      .filter(({ code }) => code === checkerDiagnostics.notAnnotation.code)
+      .map(({ span }) => span.start);
     const scoped = resolvedNames(program, module)
       .filter((resolved) => isLookedUp(program, resolved))
-      .map(({ name }) => name);
+      .map(({ name }) => name)
+      .filter((name) => !notAnnotations.includes(spanIn(tree, name.span).start));
     const members = nodesUnder(tree, tree.root)
       .flatMap((node) => {
         if (node.kind === 'MemberAccess') {

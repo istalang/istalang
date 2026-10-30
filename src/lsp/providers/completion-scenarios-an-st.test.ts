@@ -15,7 +15,6 @@ const scenarios: readonly Scenario[] = [
     trigger: '@',
     where: 'top',
     expect: { has: ['Pair', 'Waypoint'], lacks: ['plus', 'Color', 'let'] },
-    fails: true,
   },
   {
     id: 'AN-02',
@@ -25,7 +24,6 @@ const scenarios: readonly Scenario[] = [
     trigger: '@',
     where: 'top',
     expect: { has: ['Pair', 'Waypoint'], lacks: ['plus', 'let'] },
-    fails: true,
   },
   {
     id: 'AN-03',
@@ -35,7 +33,6 @@ const scenarios: readonly Scenario[] = [
     trigger: '@',
     where: 'async',
     expect: { has: ['Waypoint'], lacks: ['Pair', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'AN-04',
@@ -44,8 +41,7 @@ const scenarios: readonly Scenario[] = [
     src: ['@Waypoint{‸', 'struct D:\n  reason: string\n  code: int\n@D{‸'],
     trigger: '{',
     where: 'top',
-    expect: { anyOf: ['reason', 'value'] },
-    fails: true,
+    expect: { anyOf: ['reason', 'label'] },
   },
   {
     id: 'AN-05',
@@ -54,7 +50,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  let x = @‸'],
     trigger: '@',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'ST-01',

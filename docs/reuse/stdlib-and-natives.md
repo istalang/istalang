@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ---
 
@@ -13,7 +13,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ## Units
 
 - register a std module or build its extern keys → `stdModule`, `nativeKeysOf`, `knownTypeKey`, `NativeKeys` (`src/stdlib/std-module.ts`)
-- load std modules in the compiler, with sources laid over the shipped ones in tests → `stdlibLoader`, `stdRoles`, `preludeModule`, `StdSources`; a std module's shipped text by its `std:` id → `stdSourceOf` (`src/stdlib/stdlib-loader.ts`)
+- load std modules in the compiler, with sources laid over the shipped ones in tests → `stdlibLoader`, `stdRoles`, `preludeModule`, `StdSources`; a std module's shipped text by its `std:` id → `stdSourceOf`; the names an import may give a std module by → `importableStdModules` (`src/stdlib/stdlib-loader.ts`)
 - list every std module's source by name, or name a std module → `stdModuleSources`, `StdModuleName` (`src/stdlib/std-sources.ts`)
 - get the combined std natives table or the list of std module records → `stdNatives` (`src/stdlib/natives.ts`), `stdModules` (`src/stdlib/std-modules.ts`)
 - type a native function/table by the capabilities it uses, or throw a language panic → `Native`, `Natives`, `NativeContext`, `Panic` (`src/runtime/natives.ts`)

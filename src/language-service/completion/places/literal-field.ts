@@ -82,7 +82,7 @@ interface LiteralItemSlot {
  * variable that would write it as shorthand; the leading spread where the first item stands; and,
  * after the `{` of a literal building one field, invoked, the values it may take unnamed.
  */
-function literalItems(
+export function literalItems(
   cursor: Cursor,
   { fields, given, opens, first }: LiteralItemSlot,
 ): readonly Candidate[] {

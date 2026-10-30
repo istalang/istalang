@@ -124,6 +124,8 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
       ...constructed(presenting, name, variant.fields.length > 0),
     };
   },
+  modulePath: (_presenting, { to }) =>
+    to === 'module' ? { kind: 'module' } : { kind: 'folder', next: 'completion' },
 };
 
 /**

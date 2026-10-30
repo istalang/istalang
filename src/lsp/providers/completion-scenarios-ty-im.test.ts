@@ -180,7 +180,6 @@ const scenarios: readonly Scenario[] = [
     src: ["import ‸ from 'time'"],
     where: 'top',
     expect: { has: ['Time', 'Duration', 'delay'], lacks: ['plus', 'Pair', 'let', '_hidden'] },
-    fails: true,
   },
   {
     id: 'IM-02',
@@ -189,7 +188,6 @@ const scenarios: readonly Scenario[] = [
     src: ["import Time, ‸ from 'time'"],
     where: 'top',
     expect: { has: ['Duration'], lacks: ['Time', 'plus'] },
-    fails: true,
   },
   {
     id: 'IM-03',
@@ -198,7 +196,6 @@ const scenarios: readonly Scenario[] = [
     src: ['import ‸', 'import a, ‸'],
     where: 'top',
     expect: { lacks: ['plus', 'Pair', 'let', 'if'] },
-    fails: true,
   },
   {
     id: 'IM-04',
@@ -207,7 +204,6 @@ const scenarios: readonly Scenario[] = [
     src: ['import a ‸', 'import a, b ‸'],
     where: 'top',
     expect: { exact: ['from'] },
-    fails: true,
   },
   {
     id: 'IM-04b',
@@ -216,7 +212,6 @@ const scenarios: readonly Scenario[] = [
     src: ['import * ‸'],
     where: 'top',
     expect: { exact: ['as'] },
-    fails: true,
   },
   {
     id: 'IM-05',
@@ -225,7 +220,6 @@ const scenarios: readonly Scenario[] = [
     src: ['import * as ‸'],
     where: 'top',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'IM-06',
@@ -235,7 +229,6 @@ const scenarios: readonly Scenario[] = [
     trigger: "'",
     where: 'top',
     expect: { has: ['time', 'json', 'inbox', 'futures'], lacks: ['plus', 'let', 'testing'] },
-    fails: true,
   },
   {
     id: 'IM-07',
@@ -245,7 +238,6 @@ const scenarios: readonly Scenario[] = [
     trigger: '/',
     where: 'top',
     expect: { lacks: ['plus', 'let'], nonEmpty: true },
-    fails: true,
   },
   {
     id: 'IM-08',
