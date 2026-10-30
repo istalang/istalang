@@ -90,6 +90,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q33 | The member-completion soundness property can't probe a method taking another argument by `&` (it needs a place of the exact type), so such methods are left out of it. | small | none; can be done now | completion fix 2026-10-30 |
 | Q34 | A literal's single-field value form offers `visibleCandidates` (every keyword) instead of `expressionCandidates`, since literal-field.ts has no placeholder parse to read the body from. | small | none; can be done now | completion C2a report 2026-10-30 |
 | Q35 | completion/grammar/words.ts restates the parser's dispatch tables (parser internals are closed to completion); its property test holds the lists to the parser one way only (offered implies accepted). | small | none; can be done now | completion C2a report 2026-10-30 |
+| Q36 | An `Invalid` node now holds the annotations the parser rejected, and the binder binds them at each list site that skips `Invalid` items (module, blocks, fields, variants, match and select cases): a new list site must remember to, and every generic tree walker (semantic tokens, hover) sees those names. One binding rule for an `Invalid`'s annotations would remove the per-site duty. | small | none; can be done now | completion End fix E4 report 2026-10-30 |
 
 ### Behaviour and correctness (B)
 
