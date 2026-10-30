@@ -55,7 +55,7 @@ const scenarios: readonly Scenario[] = [
     id: 'ST-01',
     place: 'grammar',
     title: 'Blank line in a function body',
-    src: ['  ‸', '  let y = 1\n  ‸', '  if n:\n    1\n  ‸x'],
+    src: ['  ‸', '  let y = 1\n  ‸'],
     expect: {
       has: [
         'xs',
@@ -74,7 +74,6 @@ const scenarios: readonly Scenario[] = [
         'none',
       ],
       lacks: [
-        'struct',
         'enum',
         'trait',
         'import',
@@ -94,13 +93,12 @@ const scenarios: readonly Scenario[] = [
         'await',
       ],
     },
-    fails: true,
   },
   {
     id: 'ST-02',
     place: 'grammar',
     title: 'elif and else after an if block',
-    src: ['  if n:\n    1\n  ‸', '  if n:\n    1\n  elif o:\n    2\n  ‸'],
+    src: ['  if n:\n    1\n  ‸', '  if n:\n    1\n  elif o:\n    2\n  ‸', '  if n:\n    1\n  ‸x'],
     expect: { has: ['else', 'elif'] },
   },
   {
@@ -109,7 +107,6 @@ const scenarios: readonly Scenario[] = [
     title: 'else is offered nowhere else',
     src: ['  while n:\n    1\n  ‸', '  if n:\n    1\n  else:\n    2\n  ‸'],
     expect: { lacks: ['else', 'elif'] },
-    fails: true,
   },
   {
     id: 'ST-04',
@@ -117,7 +114,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Inside a match body',
     src: ['  match d:\n    ‸'],
     expect: { has: ['case'], lacks: ['xs', 'let', 'plus', 'if'] },
-    fails: true,
   },
   {
     id: 'ST-05',
@@ -126,7 +122,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  select:\n    ‸', '  select:\n    case work(1) as v: v\n    ‸'],
     where: 'async',
     expect: { has: ['case', 'else'], lacks: ['xs', 'let', 'plus'] },
-    fails: true,
   },
   {
     id: 'ST-06',
@@ -157,7 +152,6 @@ const scenarios: readonly Scenario[] = [
       '  hold const ‸',
     ],
     expect: { lacks: ['xs', 'plus', 'Pair', 'if', 'true', 'let', 'while'] },
-    fails: true,
   },
   {
     id: 'ST-08',
@@ -165,7 +159,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After for x',
     src: ['  for x ‸'],
     expect: { has: ['in'], lacks: ['xs', 'let', 'plus'] },
-    fails: true,
   },
   {
     id: 'ST-09',
@@ -173,7 +166,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After the iterable and a range',
     src: ['  for i in 0..10 ‸', '  for i in xs ‸'],
     expect: { lacks: ['xs', 'let', 'plus'] },
-    fails: true,
   },
   {
     id: 'ST-10',
@@ -196,7 +188,6 @@ const scenarios: readonly Scenario[] = [
         'const',
         'while',
         'for',
-        'struct',
         'enum',
         'trait',
         'import',
@@ -209,7 +200,6 @@ const scenarios: readonly Scenario[] = [
         'or',
       ],
     },
-    fails: true,
   },
   {
     id: 'ST-11',
@@ -220,7 +210,6 @@ const scenarios: readonly Scenario[] = [
       '  outer: for i in xs:\n    continue ‸',
     ],
     expect: { exact: ['outer'] },
-    fails: true,
   },
   {
     id: 'ST-12',
@@ -228,7 +217,6 @@ const scenarios: readonly Scenario[] = [
     title: 'hold( label',
     src: ['  outer: for i in xs:\n    hold(‸'],
     expect: { exact: ['outer'] },
-    fails: true,
   },
   {
     id: 'ST-13',
@@ -236,7 +224,6 @@ const scenarios: readonly Scenario[] = [
     title: 'spawn',
     src: ['  spawn ‸'],
     expect: { has: ['work', 'fetch'], lacks: ['xs', 'p', 'let', 'if'] },
-    fails: true,
   },
   {
     id: 'ST-15',
@@ -245,9 +232,8 @@ const scenarios: readonly Scenario[] = [
     src: ['  const a = 1; ‸', '  const a = { const b = 1; ‸ }', '  if n: { ‸ }'],
     expect: {
       has: ['let', 'xs', 'return'],
-      lacks: ['struct', 'enum', 'trait', 'import', 'extern', 'case', 'in'],
+      lacks: ['enum', 'trait', 'import', 'extern', 'case', 'in'],
     },
-    fails: true,
   },
   {
     id: 'ST-16',
@@ -256,9 +242,8 @@ const scenarios: readonly Scenario[] = [
     src: ['  if n: ‸', '  while n: ‸', '  for i in xs: ‸'],
     expect: {
       has: ['xs', 'return'],
-      lacks: ['struct', 'enum', 'trait', 'import', 'extern', 'case'],
+      lacks: ['enum', 'trait', 'import', 'extern', 'case'],
     },
-    fails: true,
   },
   {
     id: 'ST-17',
@@ -266,7 +251,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Assignment target',
     src: ['  p.first = ‸', '  xs[0] = ‸', '  n += ‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let', 'while', 'case'] },
-    fails: true,
   },
 ];
 

@@ -32,7 +32,10 @@ import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import type { Candidate } from '../candidate.ts';
 import { type Cursor, touchingBefore } from '../cursor.ts';
 import { expectedTypeAt } from '../expected.ts';
+import { wordCandidates } from '../grammar/words.ts';
 import type { ParsedPlace } from '../placeholder.ts';
+import { visibleNames } from '../visible.ts';
+import { patternStartedBy } from './matched-type.ts';
 
 type PatternPlace = Extract<ParsedPlace, { readonly kind: 'pattern' }>;
 
@@ -41,23 +44,14 @@ type Parsed = PatternPlace['parsed'];
 export function offerPattern(cursor: Cursor, place: PatternPlace): readonly Candidate[] {
   const { parsed } = place;
   const [holder, innermost] = parsed.chain.slice(-2);
-  if (holder?.kind === 'NamePattern') {
-    return patternStarts(cursor, place, holder);
-  }
-  const named = holder === undefined ? undefined : structPatternNamed(parsed, holder);
-  if (named !== undefined) {
-    return patternStarts(cursor, place, named);
+  const started = holder === undefined ? undefined : patternStartedBy(parsed.chain, holder);
+  if (started !== undefined) {
+    return patternStarts(cursor, place, started);
   }
   if (holder?.kind === 'StructPattern' && innermost?.kind === 'Invalid') {
-    return followsFieldName(cursor, parsed, holder, innermost) ? keywordsNamed(['as', 'is']) : [];
+    return followsFieldName(cursor, parsed, holder, innermost) ? wordCandidates(['as', 'is']) : [];
   }
-  return followsWholePattern(cursor, parsed) ? keywordsNamed(['if', 'as']) : [];
-}
-
-/** The struct pattern whose name `type` is (`case Ok‸{value}`), if it is one. */
-function structPatternNamed(parsed: Parsed, type: SyntaxNode): StructPattern | undefined {
-  const pattern = parsed.chain[parsed.chain.indexOf(type) - 1];
-  return pattern?.kind === 'StructPattern' && pattern.type === type ? pattern : undefined;
+  return followsWholePattern(cursor, parsed) ? wordCandidates(['if', 'as']) : [];
 }
 
 /** Where a pattern starts, by the type it matches: the type expected there (expected.ts). */
@@ -82,7 +76,7 @@ function patternStarts(
   return [
     ...variants,
     ...referringNames(cursor, type),
-    ...keywordsNamed(
+    ...wordCandidates(
       literalKeywords.flatMap(([name, fits]) => (!known || fits(checker, type) ? [name] : [])),
     ),
   ];
@@ -97,14 +91,8 @@ const literalKeywords: readonly (readonly [string, (checker: Checker, type: Type
 ];
 
 /** The visible names a pattern matching `type` may start with to refer. */
-function referringNames(
-  { checker, module, name, offset }: Cursor,
-  type: Type | undefined,
-): readonly Candidate[] {
-  const visible = checker.bindings.visibleAt(module, name?.span.start ?? offset);
-  return [...visible].flatMap(([named, entity]): Candidate[] =>
-    mayRefer(checker, entity, type) ? [{ name: named, subject: { kind: 'entity', entity } }] : [],
-  );
+function referringNames(cursor: Cursor, type: Type | undefined): readonly Candidate[] {
+  return visibleNames(cursor, (entity) => mayRefer(cursor.checker, entity, type));
 }
 
 /**
@@ -219,8 +207,4 @@ function isWhole(pattern: Pattern): boolean {
     pattern.end !== undefined ||
     (!pattern.isInclusive && pattern.start !== undefined)
   );
-}
-
-function keywordsNamed(names: readonly string[]): readonly Candidate[] {
-  return names.map((name): Candidate => ({ name, subject: { kind: 'keyword' } }));
 }

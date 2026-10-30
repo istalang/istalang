@@ -182,7 +182,10 @@ const scenarios: readonly Scenario[] = [
     place: 'grammar',
     title: 'Prelude and namespaces',
     src: ['  ‸'],
-    expect: { has: ['Some', 'None', 'Ok', 'Err', 'panic', 'Array', 'Optional', 'Result', 'time'] },
+    expect: {
+      has: ['panic', 'Array', 'Optional', 'Result', 'time'],
+      lacks: ['Some', 'None', 'Ok', 'Err'],
+    },
   },
   {
     id: 'SC-16',

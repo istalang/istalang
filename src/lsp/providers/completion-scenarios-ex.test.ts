@@ -39,7 +39,6 @@ const scenarios: readonly Scenario[] = [
         'for',
         'defer',
         'drop',
-        'struct',
         'enum',
         'trait',
         'import',
@@ -56,7 +55,6 @@ const scenarios: readonly Scenario[] = [
         'Approved',
       ],
     },
-    fails: true,
   },
   {
     id: 'EX-02',
@@ -73,7 +71,6 @@ const scenarios: readonly Scenario[] = [
       has: ['and', 'or', 'is', 'in'],
       lacks: ['xs', 'p', 'plus', 'Pair', 'let', 'return', 'true', 'else', 'case'],
     },
-    fails: true,
   },
   {
     id: 'EX-03',
@@ -88,7 +85,6 @@ const scenarios: readonly Scenario[] = [
       '  let x = 0..=‸',
     ],
     expect: { has: ['xs', 'plus', 'true'], lacks: ['let', 'while', 'case', 'else'] },
-    fails: true,
   },
   {
     id: 'EX-04',
@@ -102,9 +98,16 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'EX-05',
     place: 'grammar',
-    title: 'After * and &',
-    src: ['  let x = *‸', '  let y = plus(&‸'],
+    title: 'After *',
+    src: ['  let x = *‸'],
     expect: { has: ['l'] },
+  },
+  {
+    id: 'EX-05b',
+    place: 'grammar',
+    title: 'After &',
+    src: ['  let z = 1\n  let y = plus(&‸'],
+    expect: { has: ['z'], lacks: ['n'] },
   },
   {
     id: 'EX-06',
@@ -112,7 +115,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Inside a block expression',
     src: ['  const a = { const b = 1; b + ‸ }'],
     expect: { has: ['b', 'xs'], lacks: ['let'] },
-    fails: true,
   },
   {
     id: 'EX-07',

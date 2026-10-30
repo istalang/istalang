@@ -132,7 +132,7 @@ function lineOpensWith({ tree, offset }: Cursor, opener: TokenKind): boolean {
 }
 
 /** `new` before the name: a shared struct's name follows (§3.1), read by the parser only with its `{`. */
-function followsNew({ tree, before }: Cursor): boolean {
+export function followsNew({ tree, before }: Cursor): boolean {
   return (
     before?.kind === 'identifier' &&
     tree.source.text.slice(before.span.start, before.span.end) === 'new'

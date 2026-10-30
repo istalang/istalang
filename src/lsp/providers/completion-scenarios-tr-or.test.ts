@@ -149,12 +149,19 @@ const scenarios: readonly Scenario[] = [
       kind: [
         ['Pair', 'Struct'],
         ['Color', 'Enum'],
-        ['Shape', 'Interface'],
         ['plus', 'Function'],
         ['xs', 'Variable'],
         ['time', 'Module'],
       ],
     },
+  },
+  {
+    id: 'OR-03b',
+    place: 'type',
+    title: "A trait's kind",
+    src: ['fn g<T is ‸'],
+    where: 'top',
+    expect: { kind: [['Shape', 'Interface']] },
   },
   {
     id: 'OR-04',

@@ -62,6 +62,7 @@ const kinds = {
   module: CompletionItemKind.Module,
   folder: CompletionItemKind.Folder,
   keyword: CompletionItemKind.Keyword,
+  label: CompletionItemKind.Reference,
 } as const satisfies Record<CompletionKind, CompletionItemKind>;
 
 const followUps = {

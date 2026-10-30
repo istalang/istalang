@@ -29,7 +29,6 @@ const scenarios: readonly Scenario[] = [
       ],
       lacks: ['plus', 'paint', 'Red', 'Approved', 'let', 'if', 'true', 'none', 'while'],
     },
-    fails: true,
   },
   {
     id: 'TY-02',
@@ -38,7 +37,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn g() -> ‸', 'async fn g() -> ‸'],
     where: 'top',
     expect: { has: ['int', 'Pair', 'Future'], lacks: ['plus', 'let', 'Red'] },
-    fails: true,
   },
   {
     id: 'TY-02b',
@@ -48,7 +46,6 @@ const scenarios: readonly Scenario[] = [
     trigger: '>',
     where: 'top',
     expect: { has: ['int', 'Pair'], lacks: ['plus', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-03',
@@ -56,7 +53,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Annotated local',
     src: ['  let x: ‸', '  const x: ‸'],
     expect: { has: ['int', 'Pair', 'Array'], lacks: ['xs', 'plus', 'let', 'Red'] },
-    fails: true,
   },
   {
     id: 'TY-04',
@@ -65,7 +61,6 @@ const scenarios: readonly Scenario[] = [
     src: ['struct S:\n  a: ‸', 'struct S { a: int; b: ‸'],
     where: 'top',
     expect: { has: ['int', 'Pair', 'Array'], lacks: ['plus', 'Red', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-05',
@@ -73,7 +68,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Type argument',
     src: ['  let x: Array<‸', '  let x: Map<string, ‸', '  let x: Map<‸'],
     expect: { has: ['int', 'Pair', 'Array'], lacks: ['xs', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-06',
@@ -86,7 +80,6 @@ const scenarios: readonly Scenario[] = [
       '  let x: async fn(int) -> ‸',
     ],
     expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-07',
@@ -94,7 +87,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Anonymous struct type',
     src: ['  let x: { sku: ‸', '  let x: struct { sku: ‸', '  let x: Array<{ sku: string; qty: ‸'],
     expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-08',
@@ -136,7 +128,6 @@ const scenarios: readonly Scenario[] = [
     src: ['type Other = ‸'],
     where: 'top',
     expect: { has: ['int', 'Pair'], lacks: ['plus', 'Red', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-13',
@@ -145,7 +136,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn g(a: any ‸', 'fn g(a: Array<any ‸'],
     where: 'top',
     expect: { has: ['Shape'], lacks: ['Pair', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-14',
@@ -153,7 +143,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Explicit type arguments at a call',
     src: ['  let q = Inbox.create<‸', '  let j = json.parse<‸'],
     expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-15',
@@ -161,16 +150,22 @@ const scenarios: readonly Scenario[] = [
     title: 'new takes a shared struct',
     src: ['  let x = new ‸', '  const x = new ‸'],
     expect: { has: ['Lease', 'Shared'], lacks: ['Pair', 'Color', 'plus', 'xs', 'let'] },
-    fails: true,
   },
   {
     id: 'TY-16',
     place: 'type',
-    title: 'Self in a trait or method',
-    src: ['trait Zero:\n  fn zero() -> ‸', 'fn Pair.sum2(self: ‸'],
+    title: 'Self in a trait',
+    src: ['trait Zero:\n  fn zero() -> ‸'],
     where: 'top',
     expect: { has: ['Self'] },
-    fails: true,
+  },
+  {
+    id: 'TY-16b',
+    place: 'type',
+    title: 'No Self in a method',
+    src: ['fn Pair.sum2(self: ‸'],
+    where: 'top',
+    expect: { has: ['Pair'], lacks: ['Self'] },
   },
   {
     id: 'IM-01',

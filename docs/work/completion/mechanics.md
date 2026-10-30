@@ -326,10 +326,19 @@ What an item carries beyond its label: insert text, detail, kind, sort order, pr
   ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** Struct → Struct, enum → Enum, trait → Interface, alias → Class, primitive → Keyword, variant → EnumMember, function → Function, local → Variable, constant → Constant, namespace → Module, type parameter → TypeParameter.
+- **Offer:** Struct → Struct, enum → Enum, alias → Class, primitive → Keyword, variant → EnumMember, function → Function, local → Variable, constant → Constant, namespace → Module, type parameter → TypeParameter.
 - **Not:** Every type as Class.
 - **Basis:** LSP CompletionItemKind; VS Code icons.
-- **Today:** Pair kind 7 ≠ 22; Color kind 7 ≠ 13; Shape kind 7 ≠ 8
+- **Today:** Pair kind 7 ≠ 22; Color kind 7 ≠ 13
+
+### OR-03b · A trait's kind · P3 · new
+
+```
+fn g<T is ‸
+```
+- **Where / trigger:** top level; invoked, or typing on
+- **Offer:** Trait → Interface (`Shape`), where a trait is written; no trait starts a value (EX-01).
+- **Basis:** LSP CompletionItemKind; VS Code icons.
 
 ### OR-04 · Detail · P2 · ❌ fail
 

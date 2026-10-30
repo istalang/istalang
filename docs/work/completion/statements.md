@@ -23,14 +23,10 @@ The start of a statement and the words that follow statement keywords (§3.4, §
 ---
   let y = 1
   ‸
----
-  if n:
-    1
-  ‸x
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** Visible names (parameters, locals, the module's functions and types, namespaces), statement keywords `let const if for while match select return defer drop hold spawn`, expression keywords `true false none not fn new struct`.
-- **Not:** Declaration keywords `struct enum trait import extern`; clause words `case in is and or as`; `elif`/`else` unless an `if` block just ended (ST-02); bare enum variants (`Red`: no enum type is expected, §3.11); `break`/`continue` outside a loop; `await` outside an `async fn`.
+- **Offer:** Visible names (parameters, locals, the module's functions and types, namespaces), statement keywords `let const if for while match select return defer drop hold spawn`, expression keywords `true false none not fn new struct` (`struct{…}`, an anonymous struct, starts an expression).
+- **Not:** Declaration keywords `enum trait import extern`; clause words `case in is and or as`; `elif`/`else` unless an `if` block just ended (ST-02); bare enum variants (`Red`: no enum type is expected, §3.11); `break`/`continue` outside a loop; `await` outside an `async fn`.
 - **Accept:** The word or name alone.
 - **Basis:** spec §4, §3.11; TS offers only keywords the grammar accepts at the position.
 - **Today:** #1 unexpected struct; #1 unexpected enum; #1 unexpected trait; #1 unexpected import; #1 unexpected extern; #1 unexpected case; #1 unexpected in; #1 unexpected is; #1 unexpected and; #1 unexpected or; #1 unexpected as; #1 unexpe…
@@ -47,9 +43,13 @@ The start of a statement and the words that follow statement keywords (§3.4, §
   elif o:
     2
   ‸
+---
+  if n:
+    1
+  ‸x
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** Besides ST-01, `elif` (while the chain has no `else`) and `else`.
+- **Offer:** Besides ST-01, `elif` (while the chain has no `else`) and `else`, whatever follows the cursor on its line.
 - **Not:** `elif`/`else` when the previous block is not an `if` chain or already has `else`.
 - **Basis:** spec §4 (`if`/`elif`/`else`); the editor's offside rule puts them at the `if`'s indentation.
 
@@ -362,17 +362,25 @@ Where an expression starts, continues or is complete (§4).
 - **Basis:** spec §6; ranking by expected type, as TS ranks Promises after `await`.
 - **Today:** fetch ranks 56, not top 5; work ranks 182, not top 5
 
-### EX-05 · After `*` and `&` · P3 · ✅ pass
+### EX-05 · After `*` · P3 · ✅ pass
 
 ```
   let x = *‸
----
+```
+- **Where / trigger:** in `fn t`; invoked, or typing on
+- **Offer:** Shared-struct values (`l`) first.
+- **Basis:** spec §3.18.
+
+### EX-05b · After `&` · P3 · new
+
+```
+  let z = 1
   let y = plus(&‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** `*`: shared-struct values (`l`) first; `&`: assignable variables (`let`s).
-- **Not:** Constants, parameters for `&`.
-- **Basis:** spec §3.7, §3.18.
+- **Offer:** Variables that may change: `let`s (`z`) and reference parameters.
+- **Not:** Constants, by-value parameters (`n`).
+- **Basis:** spec §3.3 (a by-value parameter can't be passed by `&`), §3.7.
 
 ### EX-06 · Inside a block expression · P2 · ❌ fail
 
@@ -655,7 +663,8 @@ struct Late { a: int }
   ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** `Some None Ok Err panic Array Optional Result time` (the prelude needs no import).
+- **Offer:** `panic Array Optional Result time` (the prelude needs no import).
+- **Not:** The prelude's variants bare (`Some None Ok Err`): no enum type is expected (§3.11).
 - **Basis:** spec §3.8.
 
 ### SC-16 · One entry per name · P1 · ✅ pass

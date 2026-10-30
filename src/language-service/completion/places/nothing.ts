@@ -1,13 +1,10 @@
 /**
- * What a `nothing` place offers. A comment, or the text of a string or a number.
- *
- * It offers the names visible where the name being written starts, and every keyword (visible.ts).
+ * What a `nothing` place offers: nothing. A comment, or the text of a string or a number, holds
+ * no code, so no list opens there.
  */
 
 import type { Candidate } from '../candidate.ts';
-import type { Cursor } from '../cursor.ts';
-import { visibleCandidates } from '../visible.ts';
 
-export function offerNothing(cursor: Cursor): readonly Candidate[] {
-  return visibleCandidates(cursor);
+export function offerNothing(): readonly Candidate[] {
+  return [];
 }

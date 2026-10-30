@@ -18,7 +18,6 @@ const scenarios: readonly Scenario[] = [
       within: { labels: ['Red', 'Green', 'Blue', 'col'], k: 5 },
       preselect: 'col',
     },
-    fails: true,
   },
   {
     id: 'ET-02',
@@ -41,13 +40,12 @@ const scenarios: readonly Scenario[] = [
     title: 'Annotated declaration',
     src: ['  let c: Color = ‸', '  const c: Color = ‸'],
     expect: { has: ['Red', 'Green', 'Blue'], lacks: ['Approved'], preselect: 'col' },
-    fails: true,
   },
   {
     id: 'ET-05',
     place: 'grammar',
     title: 'Assignment',
-    src: ['  let c: Color = col\n  c = ‸', '  cfg.color = ‸'],
+    src: ['  let c: Color = col\n  c = ‸', '  let k = cfg\n  k.color = ‸'],
     expect: { has: ['Red', 'Green', 'Blue'] },
   },
   {
@@ -95,7 +93,6 @@ const scenarios: readonly Scenario[] = [
     title: 'No expected type, no bare variants',
     src: ['  let x = ‸', '  let x = [1, 2].map(fn v: ‸'],
     expect: { lacks: ['Red', 'Green', 'Blue', 'Approved', 'Rejected', 'Expired'] },
-    fails: true,
   },
   {
     id: 'ET-12',

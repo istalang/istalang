@@ -204,7 +204,8 @@ describe('completion', () => {
   it("offers the visible names in a field's value, written or not yet", () => {
     const valued = (items: string) => names(...pair, `fn f(count: int) -> Pair: Pair{${items}}`);
     expect(valued('first: co‸unt, second: 1')).toContain('count');
-    expect(valued('first: ‸')).toEqual(expect.arrayContaining(['count', 'while']));
+    expect(valued('first: ‸')).toEqual(expect.arrayContaining(['count', 'if']));
+    expect(valued('first: ‸')).not.toContain('while');
     expect(valued('first: ‸')).not.toContain('second');
     expect(valued('first: count + ‸, second: 2')).toContain('count');
   });

@@ -15,13 +15,29 @@ import type { Denotation } from '../../../compiler/checker/denotation.ts';
 import type { FieldMember, Type } from '../../../compiler/checker/types/type.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
 import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';
-import type { StructPattern } from '../../../compiler/syntax/patterns.ts';
+import type { NamePattern, StructPattern } from '../../../compiler/syntax/patterns.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import { checkedTwinOf } from '../checked-twin.ts';
 import type { Cursor } from '../cursor.ts';
+import { holderIn } from '../grammar/chain.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 
 type Parsed = ParsedPlace['parsed'];
+
+/**
+ * The pattern the placeholder's name starts, its holder in `chain` being `holder`: a bare name,
+ * or the struct pattern it names (`case Ok‸{value}`); undefined elsewhere.
+ */
+export function patternStartedBy(
+  chain: readonly SyntaxNode[],
+  holder: SyntaxNode,
+): NamePattern | StructPattern | undefined {
+  if (holder.kind === 'NamePattern') {
+    return holder;
+  }
+  const pattern = holderIn(chain, holder);
+  return pattern?.kind === 'StructPattern' && pattern.type === holder ? pattern : undefined;
+}
 
 /** The type `pattern`, a node of `parsed`'s chain, matches; undefined where it isn't known. */
 export function matchedTypeOf(

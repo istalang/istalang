@@ -13,7 +13,6 @@ const scenarios: readonly Scenario[] = [
     title: 'First argument',
     src: ['  plus(‸', '  p.sum(‸', '  xs.push(‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let', 'while'] },
-    fails: true,
   },
   {
     id: 'CA-02',
@@ -67,7 +66,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Function-value call',
     src: ['  const f = fn(q: int): q\n  f(‸'],
     expect: { has: ['xs'], lacks: ['q:', 'let'] },
-    fails: true,
   },
   {
     id: 'CA-08',
@@ -82,7 +80,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Reference arguments',
     src: ['  let z = 1\n  bump(&‸'],
     expect: { has: ['z'], lacks: ['n'] },
-    fails: true,
   },
   {
     id: 'CA-10',
@@ -90,7 +87,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Conversions and generic calls',
     src: ['  float(‸', '  json.stringify(‸'],
     expect: { has: ['xs'], lacks: ['let'] },
-    fails: true,
   },
   {
     id: 'CA-11',
@@ -98,7 +94,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Call result is complete',
     src: ['  plus(1)‸', '  plus(1) ‸'],
     expect: { lacks: ['xs', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'CA-12',
@@ -106,7 +101,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Unresolved callee',
     src: ['  nope(‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let'] },
-    fails: true,
   },
   {
     id: 'NO-01',
@@ -114,7 +108,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Inside a comment',
     src: ['  # note ‸', '  const a = 1  # use ‸', '# top ‸'],
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'NO-02',
@@ -122,7 +115,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Inside a string',
     src: ['  const s = "ab‸"', "  const s = 'ab‸'", '  const s = "ab‸', '  const s = "a\\n‸"'],
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'NO-03',
@@ -130,7 +122,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Inside a number',
     src: ['  const a = 12‸', '  const a = 0x1‸', '  const a = 1_‸', '  const a = 3.1‸'],
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'NO-05',
@@ -154,7 +145,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After a closing bracket, adjacent',
     src: ['  plus(1)‸', '  xs[0]‸', '  [1]‸'],
     expect: { lacks: ['xs', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'NO-08',

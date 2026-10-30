@@ -24,12 +24,16 @@ import {
 } from '../../call-at.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
-import { visibleCandidates } from '../visible.ts';
+import { expressionCandidates } from '../grammar/expression.ts';
+import type { ParsedPlace } from '../placeholder.ts';
 
-export function offerCallArgument(cursor: Cursor): readonly Candidate[] {
+export function offerCallArgument(
+  cursor: Cursor,
+  place: Extract<ParsedPlace, { readonly kind: 'callArgument' }>,
+): readonly Candidate[] {
   const at = callAt(cursor, cursor.offset);
   if (at === undefined) {
-    return visibleCandidates(cursor);
+    return expressionCandidates(cursor, place);
   }
   const { checker } = cursor;
   const callees = at.body.valueCalls.has(at.call) ? [] : calleesOf(at.body, at.call);
@@ -39,7 +43,7 @@ export function offerCallArgument(cursor: Cursor): readonly Candidate[] {
   }
   const spread =
     argumentParameterAt(cursor, cursor.offset)?.rest?.kind === 'array' ? [spreadCandidate] : [];
-  return [...names, ...spread, ...visibleCandidates(cursor)];
+  return [...names, ...spread, ...expressionCandidates(cursor, place)];
 }
 
 const spreadCandidate: Candidate = { name: '...', subject: { kind: 'keyword' } };

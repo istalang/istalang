@@ -79,7 +79,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  Pair{first: ‸}', '  Pair{second: 1, first: ‸}'],
     trigger: ' ',
     expect: { has: ['xs', 'plus', 'true'], lacks: ['let', 'second', 'first'] },
-    fails: true,
   },
   {
     id: 'LI-08',

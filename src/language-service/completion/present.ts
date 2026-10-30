@@ -126,6 +126,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
   },
   modulePath: (_presenting, { to }) =>
     to === 'module' ? { kind: 'module' } : { kind: 'folder', next: 'completion' },
+  label: () => ({ kind: 'label' }),
 };
 
 /**

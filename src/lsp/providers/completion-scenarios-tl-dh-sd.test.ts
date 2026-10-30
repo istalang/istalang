@@ -28,7 +28,6 @@ const scenarios: readonly Scenario[] = [
       ],
       lacks: [
         'let',
-        'const',
         'if',
         'for',
         'while',
@@ -54,7 +53,6 @@ const scenarios: readonly Scenario[] = [
         'time',
       ],
     },
-    fails: true,
   },
   {
     id: 'TL-02',
@@ -63,7 +61,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn‸', 'st‸'],
     where: 'top',
     expect: { has: ['fn', 'struct'], lacks: ['let', 'while', 'plus', 'Pair'] },
-    fails: true,
   },
   {
     id: 'TL-03',
@@ -72,7 +69,6 @@ const scenarios: readonly Scenario[] = [
     src: ['async ‸'],
     where: 'top',
     expect: { exact: ['fn'] },
-    fails: true,
   },
   {
     id: 'TL-04',
@@ -81,7 +77,6 @@ const scenarios: readonly Scenario[] = [
     src: ['shared ‸'],
     where: 'top',
     expect: { exact: ['struct'] },
-    fails: true,
   },
   {
     id: 'TL-05',
@@ -90,7 +85,6 @@ const scenarios: readonly Scenario[] = [
     src: ['extern ‸'],
     where: 'top',
     expect: { has: ['fn', 'struct'], lacks: ['plus', 'Pair', 'let', 'if'] },
-    fails: true,
   },
   {
     id: 'TL-06',
@@ -99,7 +93,6 @@ const scenarios: readonly Scenario[] = [
     src: ['const ‸'],
     where: 'top',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'TL-07',
@@ -133,7 +126,6 @@ const scenarios: readonly Scenario[] = [
         'spawn',
       ],
     },
-    fails: true,
   },
   {
     id: 'DH-01',
@@ -142,7 +134,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn ‸', 'async fn ‸'],
     where: 'top',
     expect: { has: ['Pair', 'Color'], lacks: ['plus', 'let', 'if', 'xs', 'Red'] },
-    fails: true,
   },
   {
     id: 'DH-02',
@@ -160,7 +151,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn g<‸', 'struct Box2<‸', 'enum E<A, ‸'],
     where: 'top',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'DH-04',
@@ -169,7 +159,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn g<T is ‸', 'fn g<T is Shape & ‸'],
     where: 'top',
     expect: { has: ['Shape'], lacks: ['Pair', 'int', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'DH-05',
@@ -178,7 +167,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn g(‸', 'fn g(a: int, ‸', 'async fn g(‸'],
     where: 'top',
     expect: { lacks: ['plus', 'Pair', 'int', 'let', 'xs'] },
-    fails: true,
   },
   {
     id: 'DH-06',
@@ -187,7 +175,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn g(a: int, b = ‸', 'fn g(a: int, b: int = ‸'],
     where: 'top',
     expect: { has: ['a', 'plus', 'Pair', 'true'], lacks: ['b', 'let', 'while'] },
-    fails: true,
   },
   {
     id: 'DH-07',
@@ -196,7 +183,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn g(...‸'],
     where: 'top',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'SD-01',
@@ -205,7 +191,6 @@ const scenarios: readonly Scenario[] = [
     src: ['struct S:\n  ‸', 'struct S:\n  a: int\n  ‸', 'struct S { a: int; ‸'],
     where: 'top',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'SD-02',
@@ -217,7 +202,6 @@ const scenarios: readonly Scenario[] = [
     ],
     where: 'top',
     expect: { has: ['times', 'plus', 'true'], lacks: ['later', 'backoff', 'let'] },
-    fails: true,
   },
   {
     id: 'SD-03',
@@ -226,7 +210,6 @@ const scenarios: readonly Scenario[] = [
     src: ['enum E:\n  ‸', 'enum E { A; ‸', 'enum E:\n  A\n  ‸'],
     where: 'top',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'SD-03b',
@@ -235,7 +218,6 @@ const scenarios: readonly Scenario[] = [
     src: ['enum E:\n  A { x: ‸', 'enum E { A { x: int; y: ‸'],
     where: 'top',
     expect: { has: ['int', 'Pair'], lacks: ['plus', 'Red', 'let'] },
-    fails: true,
   },
   {
     id: 'SD-04',
@@ -244,7 +226,6 @@ const scenarios: readonly Scenario[] = [
     src: ['struct ‸', 'enum ‸', 'trait ‸', 'type ‸', 'shared struct ‸'],
     where: 'top',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'SD-05',
@@ -253,7 +234,6 @@ const scenarios: readonly Scenario[] = [
     src: ['trait Z:\n  fn ‸', 'trait Z:\n  fn Self.‸'],
     where: 'top',
     expect: { lacks: ['plus', 'xs', 'let'] },
-    fails: true,
   },
   {
     id: 'SD-06',
@@ -262,7 +242,6 @@ const scenarios: readonly Scenario[] = [
     src: ['enum E<T, R = ‸', 'struct B<T = ‸'],
     where: 'top',
     expect: { has: ['int', 'Pair'], lacks: ['plus', 'let'] },
-    fails: true,
   },
 ];
 

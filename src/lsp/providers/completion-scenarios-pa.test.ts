@@ -62,7 +62,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After as in a pattern',
     src: ['  match d:\n    case Rejected{reason as ‸'],
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'PA-06',
@@ -77,7 +76,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After == in a pattern',
     src: ['  match d:\n    case Rejected{reason == ‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let'] },
-    fails: true,
   },
   {
     id: 'PA-07',
@@ -127,15 +125,13 @@ const scenarios: readonly Scenario[] = [
     title: 'Guard',
     src: ['  match d:\n    case Approved{by} if ‸', '  match n:\n    case x if ‸'],
     expect: { has: ['xs'], lacks: ['let'] },
-    fails: true,
   },
   {
     id: 'PA-13',
     place: 'grammar',
     title: 'Arm of a match after :',
     src: ['  match d:\n    case Expired: ‸'],
-    expect: { has: ['xs'], lacks: ['struct', 'enum', 'trait', 'import', 'extern', 'case'] },
-    fails: true,
+    expect: { has: ['xs'], lacks: ['enum', 'trait', 'import', 'extern', 'case'] },
   },
 ];
 

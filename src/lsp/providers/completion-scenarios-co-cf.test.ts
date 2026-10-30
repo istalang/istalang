@@ -19,7 +19,6 @@ const scenarios: readonly Scenario[] = [
       '  const a = [1, 2][‸',
     ],
     expect: { has: ['xs', 'plus', 'true'], lacks: ['let', 'while', 'case'] },
-    fails: true,
   },
   {
     id: 'CO-02',
@@ -35,7 +34,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Tuples and ranges and slices',
     src: ['  const t = (1, ‸', '  const r = 0..‸', '  const s = xs[1..‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let', 'case'] },
-    fails: true,
   },
   {
     id: 'CO-04',
@@ -43,7 +41,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Comprehension',
     src: ['  const e = [for x in xs if ‸', '  const e = [for x in xs: ‸'],
     expect: { has: ['x', 'xs'], lacks: ['let'] },
-    fails: true,
   },
   {
     id: 'CO-04b',
@@ -51,7 +48,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Comprehension binder',
     src: ['  const e = [for ‸'],
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'CO-05',
@@ -59,7 +55,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Lambda parameters',
     src: ['  const f = fn(‸', '  const f = fn ‸'],
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'CO-06',
@@ -67,7 +62,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Lambda body',
     src: ['  const f = fn(q): ‸', '  const f = fn q: ‸'],
     expect: { has: ['q', 'xs'], lacks: ['let'] },
-    fails: true,
   },
   {
     id: 'CO-06b',
@@ -75,7 +69,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Lambda annotation',
     src: ['  const f = fn(q: ‸'],
     expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
-    fails: true,
   },
   {
     id: 'CO-07',
@@ -83,7 +76,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Template interpolation',
     src: ['  const s = `id ${‸}`', '  const s = `id ${n} and ${‸'],
     expect: { has: ['xs', 'n', 'plus'], lacks: ['let', 'case'] },
-    fails: true,
   },
   {
     id: 'CO-08',
@@ -91,7 +83,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Template text',
     src: ['  const s = `id ‸`', '  const s = `${n} ‸ tail`'],
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'CO-09',
@@ -99,7 +90,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Index',
     src: ['  xs[‸]', '  m[‸]'],
     expect: { has: ['n'], lacks: ['let'] },
-    fails: true,
   },
   {
     id: 'CF-01',
@@ -107,7 +97,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Condition',
     src: ['  if ‸', '  while ‸', '  if n > 1 and ‸'],
     expect: { has: ['xs', 'n', 'true'], lacks: ['let', 'for'] },
-    fails: true,
   },
   {
     id: 'CF-02',
@@ -115,7 +104,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Scrutinee',
     src: ['  match ‸'],
     expect: { has: ['d', 'xs'], lacks: ['let', 'for'] },
-    fails: true,
   },
   {
     id: 'CF-03',
@@ -124,7 +112,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  await select:\n    case ‸', '  select:\n    case work(1) as v: v\n    case ‸'],
     where: 'async',
     expect: { has: ['fetch', 'work'], lacks: ['let', 'for'] },
-    fails: true,
   },
   {
     id: 'CF-04',
@@ -133,7 +120,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  select:\n    case work(1) ‸'],
     where: 'async',
     expect: { has: ['as'], lacks: ['xs', 'plus'] },
-    fails: true,
   },
   {
     id: 'CF-05',
@@ -142,7 +128,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  select:\n    case work(1) as ‸', '  match d:\n    case Approved{by} as ‸'],
     where: 'async',
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'CF-06',
@@ -158,7 +143,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Line-start case in a nested match',
     src: ['  match d:\n    case Approved{by}:\n      match o:\n        ‸'],
     expect: { has: ['case'], lacks: ['xs', 'let'] },
-    fails: true,
   },
 ];
 

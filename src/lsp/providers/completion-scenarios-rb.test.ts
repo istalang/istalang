@@ -84,7 +84,6 @@ const scenarios: readonly Scenario[] = [
     src: ['‸'],
     where: 'empty',
     expect: { has: ['fn', 'struct'], lacks: ['let', 'while'] },
-    fails: true,
   },
   {
     id: 'RB-08',

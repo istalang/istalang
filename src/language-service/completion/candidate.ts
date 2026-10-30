@@ -20,7 +20,7 @@ export interface Candidate {
  * What a candidate names: a binder entity (a visible name, a module's export), a keyword, a field,
  * a function reached through a value (a method) or a type (a static), a variant reached through
  * its enum, of type `enum`, a parameter a call's argument names, or what an import's path names: a
- * module, or a folder holding modules.
+ * module, or a folder holding modules; or the label of a loop or a block.
  */
 export type Subject =
   | { readonly kind: 'entity'; readonly entity: Entity }
@@ -33,4 +33,5 @@ export type Subject =
     }
   | { readonly kind: 'variant'; readonly variant: VariantMember; readonly enum: Type }
   | { readonly kind: 'argument'; readonly parameter: SignatureParameter }
-  | { readonly kind: 'modulePath'; readonly to: 'module' | 'folder' };
+  | { readonly kind: 'modulePath'; readonly to: 'module' | 'folder' }
+  | { readonly kind: 'label' };

@@ -23,7 +23,8 @@ export type CompletionKind =
   | 'variant'
   | 'module'
   | 'folder'
-  | 'keyword';
+  | 'keyword'
+  | 'label';
 
 export interface Completion {
   readonly name: string;

@@ -76,7 +76,8 @@ fn g() -> Color:
   let c: Color = col
   c = ‸
 ---
-  cfg.color = ‸
+  let k = cfg
+  k.color = ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** As ET-01 (the target's type).

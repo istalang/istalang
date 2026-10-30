@@ -138,7 +138,8 @@ const bindingPatterns = new Set(['NamePattern', 'BindFieldPattern', 'AsPattern',
 /**
  * Whether `resolved` names its entity by looking it up: not a part after the head of a qualified
  * name, which linking walks to; not a call only argument-dependent lookup can resolve; not an
- * async function's name denoting its own call (§7); and not a name that declares.
+ * async function's name denoting its own call (§7); and not a name that declares, every overload's
+ * own included.
  */
 export function isLookedUp(program: Program, { module, name, entity }: ResolvedName): boolean {
   const parent = parentOf(programModule(program, module).tree, name);
@@ -148,6 +149,7 @@ export function isLookedUp(program: Program, { module, name, entity }: ResolvedN
       parent.path.indexOf(name) > 0);
   const isDeclaring =
     declaringName(entity) === name ||
+    (entity.kind === 'functions' && entity.overloads.some((overload) => overload.name === name)) ||
     (entity.kind === 'variable' && bindingPatterns.has(parent?.kind ?? ''));
   const isOwnCall = entity.kind === 'variable' && entity.owner.kind === 'OwnCall';
   const findsNoOverload = entity.kind === 'functions' && entity.overloads.length === 0;

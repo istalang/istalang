@@ -424,18 +424,25 @@ fn g(a: Array<any ‸
 - **Basis:** spec §3.18 (`new` builds only shared structs).
 - **Today:** #1 unexpected Pair; #1 unexpected Color; #1 unexpected plus; #1 unexpected xs; #1 unexpected let; #2 unexpected Pair; #2 unexpected Color; #2 unexpected plus; #2 unexpected xs; #2 unexpected let
 
-### TY-16 · `Self` in a trait or method · P2 · ❌ fail
+### TY-16 · `Self` in a trait · P2 · ❌ fail
 
 ```
 trait Zero:
   fn zero() -> ‸
----
+```
+- **Where / trigger:** top level; invoked, or typing on
+- **Offer:** `Self` with the types of TY-01.
+- **Basis:** spec §3.10.
+
+### TY-16b · No `Self` in a method · P2 · new
+
+```
 fn Pair.sum2(self: ‸
 ```
 - **Where / trigger:** top level; invoked, or typing on
-- **Offer:** `Self` with the types of TY-01 (trait only; in a method header only the receiver type).
+- **Offer:** The types of TY-01, the receiver's (`Pair`) among them.
+- **Not:** `Self`, which only a trait declares.
 - **Basis:** spec §3.10.
-- **Today:** #2 missing Self
 
 ## SD: Struct, enum, trait and alias bodies
 
