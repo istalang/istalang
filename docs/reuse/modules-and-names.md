@@ -20,7 +20,7 @@ tags: [reuse, language, modules, program, binder, names]
 - build an extern key (`prelude.add(int, float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
 - build type descriptors for `nativeKey` → `namedKey`, `primitiveKey`, `functionKey`, `parameterKey` (`src/definition/extern-key.ts`)
 - mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)
-- look up a language-role module (`prelude`, `time`, `json`, `testing`) or declaration → `languageModules`, `wellKnown` (`src/language/well-known.ts`)
+- look up a language-role module (`prelude`, `time`, `json`, `testing`), the `std:` scheme, or a well-known declaration → `languageModules`, `stdScheme`, `wellKnown` (`src/language/well-known.ts`)
 - look up well-known variant names (`Optional`, `Result`, `Json`) → `optionalVariants`, `resultVariants`, `jsonVariants` (`src/language/well-known.ts`)
 - look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/language/well-known.ts`)
 - look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/language/well-known.ts`)

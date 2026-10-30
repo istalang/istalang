@@ -14,10 +14,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ## Checklist
 
-- [ ] 1. `src/structures/` (including `entries/`)
-- [ ] 2. `src/language/`
-- [ ] 3. `src/text/`
-- [ ] 4. `src/diagnostics/`
+- [x] 1. `src/structures/` (including `entries/`)
+- [x] 2. `src/language/`
+- [x] 3. `src/text/`
+- [x] 4. `src/diagnostics/`
 - [ ] 5. `src/definition/` (including `instructions/`)
 - [ ] 6. `src/compiler/syntax/` (including `expressions/`)
 - [ ] 7. `src/compiler/scanner/`
@@ -56,3 +56,34 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 ---
 
 ## Findings by Unit
+
+### 1. `src/structures/` (including `entries/`)
+
+- **Duplicate prefix-tree (trie) implementations: `TupleSet` (`src/structures/entries/tuple-set.ts`) vs. `SequenceMemo` (`src/structures/memo.ts`):**
+  - `SequenceMemo` and `TupleSet` both implement prefix trees keyed by a sequence of items (`for (const item of items)` walking down `node.next`). `SequenceMemo` uses `memo(node.next, item, ...)` over `WeakMap` and stores `found?: { readonly value: Value }`, while `TupleSet` hand-rolls the lookup/insert (`let next = prefix.next.get(item); if (next === undefined) ...`) over `Map` and stores `added: boolean` — bypassing `memo` (`src/structures/memo.ts`) and duplicating the trie traversal.
+- **Unmemoized, repeated transitive-read graph traversal in `notesOfReads` (`src/structures/entries/entry.ts`, `index.ts`; widens `P10`):**
+  - `notesOfReads(entry)` walks the full transitive `entry.reads` graph from scratch (allocating `seen = new Set`, `pending = [...entry.reads]`, and `notes = []`) on every call to `notesFrom(entry)`, `Entries.notesReached()`, and `#replays` (`case 'notes'`). Even after an entry finishes computing (`!entry.running && !entry.open`), its transitive notes are never memoized on the `Entry`, and multiple `notesReached()` calls within one computing entry re-walk the entire subgraph already visited.
+- **Quadratic array-spreading multimap construction in `Components` (`src/structures/strongly-connected.ts`):**
+  - `Components.constructor` builds adjacency lists with `this.#successors.set(from, [...(this.#successors.get(from) ?? []), to])`, copying the entire neighbor array on every edge ($O(d^2)$ in out-degree) instead of pushing onto a mutable array or using a shared group-by helper (the same pattern recurs in `ValueSemantics.#tableOf` and `#carryTable` in `src/language/values.ts`).
+
+### 2. `src/language/`
+
+- **Double standard for case classification in `followsConvention` vs. `bindsInPattern` (`src/language/naming.ts`):**
+  - The banner states that both functions *"read the same first letter, so they share this module"*. Yet `followsConvention` tests `shapes.type` (`/^[A-Z][A-Za-z0-9]*$/u`) and `shapes.value` (`/^[a-z][A-Za-z0-9]*$/u`), while `bindsInPattern` computes `const first = withoutPrivacy(name).charAt(0); return first !== first.toUpperCase()`. Because `'' !== ''.toUpperCase()` and `'1' !== '1'.toUpperCase()` are `false`, `bindsInPattern('_')` and `bindsInPattern('_1')` return `false` (classifying them as non-binding variant/type names), disagreeing with `followsConvention(..., 'type')`.
+- **`ValueSemantics.withoutEntry` drops the cached hash table and `partSteps` over-allocates (`src/language/values.ts`; widens `P8`):**
+  - `withEntry` carries/updates `#tables` via `#carryTable` (whose full-map copy and bucket spread are tracked in `P8`), whereas `withoutEntry` discards `#tables` completely, forcing the next lookup after a removal to re-hash/re-index the entire map in `#tableOf`.
+  - In addition, `partSteps` allocates `shape.map.entries.flat()`, then `.toReversed()`, then `.map(...)`, and spreads `[join, ...]` on every uncached composite/map hash, instead of pushing `visit` steps onto `steps` in reverse order directly.
+
+### 3. `src/text/`
+
+- **Three overlapping UTF-16 ↔ code-point stepping loops (`src/text/code-points.ts`):**
+  - `utf16Offset(s, position)`, `codePointsAt(s)`, and `codePointSlice(s, start, end)` each write their own `codePointWidth(s, offset)` stepping loop. `codePointPositions(s)` provides a stateful monotonic UTF-16-offset → code-point-index cursor, and `codePointsAt(s)` already embeds a bidirectional code-point-index ↔ UTF-16-offset cursor internally; extracting that bidirectional cursor as `utf16Offsets(s): (position: number) => number` would let `utf16Offset`, `codePointSlice`, and `codePointsAt` share one stepping implementation.
+- **Duplicate line-break scanning in `splitLines` and `LineMap`, and hidden `#lineEnds` (`src/text/line-map.ts`, `src/diagnostics/render.ts`):**
+  - `splitLines(text)` and `new LineMap(text)` run identical `while (offset < text.length)` loops calling `lineBreakLength(text, offset)` to find every line's `[start, end)` bounds.
+  - Although `LineMap` computes and stores `#lineStarts` and `#lineEnds`, it exposes no `lineSpan(line)` or `lineText(source, line)` method, forcing `renderDiagnostic` (`src/diagnostics/render.ts`) to reconstruct a line's bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`.
+
+### 4. `src/diagnostics/`
+
+- **Workaround for missing `LineMap` line-span query in `renderDiagnostic` (`src/diagnostics/render.ts`):**
+  - Covered under Unit 3 (`LineMap`): `renderDiagnostic` passes `Number.MAX_SAFE_INTEGER` as a synthetic column to `lines.offsetAt` to recover `#lineEnds[line]`.
+
