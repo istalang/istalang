@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-25
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 tags: [tracker]
 ---
 
@@ -22,6 +22,7 @@ tags: [tracker]
 | Language features (`docs/work/language-features/plan.md`) | done |
 | M6 Formatter | done |
 | M7 Language service and LSP | done (the human's VS Code install check pending) |
+| Completion (`docs/work/completion/plan.md`) | done (264 of 266 scenarios; CO-02, EX-04 in F14) |
 | M8 Packages | planned |
 
 ## Filed

@@ -1,7 +1,7 @@
 ---
 description: plan for making editor completion meet the approved scenario catalogue — read before forking, implementing or examining any completion phase
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-10-30
 last_updated: 2026-10-30
