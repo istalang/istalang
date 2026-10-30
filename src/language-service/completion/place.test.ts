@@ -44,6 +44,16 @@ describe('the place a cursor is in', () => {
     expect(placeIn(...decision, ...cases, '    case Approved{by as ‸', '  0')).toBe('declaredName');
   });
 
+  it("is nothing in a comment, even after a member's `.` or a literal's `{`", () => {
+    const pair = ['struct Pair:', '  first: int', ''];
+    expect(placeIn(...pair, 'fn f() -> Pair: Pair{ # a‸', '  first: 1}')).toBe('nothing');
+    expect(placeIn(...pair, 'fn f(p: Pair) -> int: p. # a‸', '  first')).toBe('nothing');
+  });
+
+  it("is nothing in a docstring's text", () => {
+    expect(placeIn('"""A module, ‸documented."""', '', 'fn f() -> int: 1')).toBe('nothing');
+  });
+
   it('reads a line by its first token, not by how a name there is spelled', () => {
     expect(placeIn('fn f(imports: int) -> int:', '  imports + ‸', '  0')).toBe('grammar');
     expect(placeIn("import ‸ from 'time'")).toBe('import');

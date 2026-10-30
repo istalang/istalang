@@ -5,15 +5,17 @@
  * and code being typed, broken or unfinished, is read the way the parser recovers it. The
  * placeholder joins any name half written at the cursor, a keyword's spelling included.
  *
- * The placeholder's nearest enclosing node that decides a role names the place: a type, a
- * declared name, a pattern (a `case` or `is` pattern, which tests; a `let`, `for` or parameter
- * pattern declares names instead, as an `as` in any pattern does), a struct pattern's field, a
- * call's argument, an import, an annotation. An expression inside one of these (a compared
- * field's value, an argument's or a field's value) is the grammar's again. A few positions the
- * parser can't tell apart from others are read from the tokens: `new` (a type follows), a line
- * opening with `import` or `@`, and a `<` touching a callee (type arguments, not a comparison).
+ * The placeholder's nearest enclosing node that decides a role names the place: a type (but for
+ * a literal's or a struct pattern's name, which the tree holds as one and which writes a value or
+ * a pattern), a declared name, a pattern (a `case` or `is` pattern, which tests; a `let`, `for` or
+ * parameter pattern declares names instead, as an `as` in any pattern does), a struct pattern's
+ * field, a call's argument, an import, an annotation. An expression inside one of these (a
+ * compared field's value, an argument's or a field's value) is the grammar's again. A few positions the
+ * parser can't tell apart from others are read from the tokens: `new` (a type follows), `async`
+ * (only `fn` follows, where the parser reads a lambda's parameter), a line opening with `import` or
+ * `@`, and a `<` touching a callee (type arguments, not a comparison).
  *
- * Comments, and the text of strings and numbers, take nothing.
+ * The text of strings, docstrings and numbers takes nothing, as a comment does (place.ts).
  */
 
 import { parse } from '../../compiler/parser/parse.ts';
@@ -25,9 +27,8 @@ import { createSourceText } from '../../text/source-text.ts';
 import { codeTokensOf } from '../tokens.ts';
 import type { Cursor } from './cursor.ts';
 
-/** The places this reading decides: all but a member's and a literal field's. */
+/** The places this reading decides with code around them: all but a member's and a literal field's. */
 type ParsedPlaceKind =
-  | 'nothing'
   | 'grammar'
   | 'type'
   | 'declaredName'
@@ -56,25 +57,33 @@ export type ParsedPlace = {
   readonly [Kind in ParsedPlaceKind]: { readonly kind: Kind; readonly parsed: PlaceholderParse };
 }[ParsedPlaceKind];
 
+/** Where no code is written: a comment, or the text of a string, a docstring or a number. */
+export interface NothingPlace {
+  readonly kind: 'nothing';
+}
+
+export const nothingPlace: NothingPlace = { kind: 'nothing' };
+
 /** A name no program writes by chance; its value is never read. */
 const placeholder = 'completionPlaceholder';
 
 /** The place at `cursor`, as the parser reads a name written there. */
-export function parsedPlaceAt(cursor: Cursor): ParsedPlace {
+export function parsedPlaceAt(cursor: Cursor): ParsedPlace | NothingPlace {
   const parsed = placeholderParse(cursor);
-  return { kind: kindAt(cursor, parsed), parsed };
+  const kind = kindAt(cursor, parsed);
+  return kind === 'nothing' ? nothingPlace : { kind, parsed };
 }
 
-function kindAt(cursor: Cursor, parsed: PlaceholderParse): ParsedPlaceKind {
-  if (isInComment(cursor)) {
-    return 'nothing';
-  }
+function kindAt(cursor: Cursor, parsed: PlaceholderParse): ParsedPlaceKind | 'nothing' {
   const { chain } = parsed;
   if (chain.some(isImport) || lineOpensWith(cursor, 'import')) {
     return 'import';
   }
   if (isLiteralText(chain.at(-1)) || touchesNumber(cursor)) {
     return 'nothing';
+  }
+  if (cursor.before?.kind === 'async') {
+    return 'grammar';
   }
   return (
     roleOf(parsed) ??
@@ -92,7 +101,8 @@ function placeholderParse({ tree, offset }: Cursor): PlaceholderParse {
   return { tree: parsed, tokens: scanned.tokens, chain: nodesAt(parsed, offset), offset };
 }
 
-function isInComment({ tree, offset }: Cursor): boolean {
+/** Whether the cursor is in a comment, which holds no code whatever surrounds it. */
+export function isInComment({ tree, offset }: Cursor): boolean {
   return tree.comments.some(({ span }) => span.start < offset && offset <= span.end);
 }
 
@@ -100,9 +110,11 @@ function isImport(node: SyntaxNode): boolean {
   return node.kind === 'NamedImport' || node.kind === 'NamespaceImport';
 }
 
-/** The placeholder fell inside a string's or a template's text, not in code. */
+/** The placeholder fell inside a string's, a template's or a docstring's text, not in code. */
 function isLiteralText(node: SyntaxNode | undefined): boolean {
-  return node?.kind === 'StringLiteral' || node?.kind === 'TemplateText';
+  return (
+    node?.kind === 'StringLiteral' || node?.kind === 'TemplateText' || node?.kind === 'Docstring'
+  );
 }
 
 const numbers: ReadonlySet<string> = new Set(['integer', 'float', 'duration']);
@@ -131,12 +143,17 @@ function followsNew({ tree, before }: Cursor): boolean {
 function roleOf(parsed: PlaceholderParse): ParsedPlaceKind | undefined {
   const { chain } = parsed;
   const innermost = chain.at(-1);
-  const links = chain.map((node, index) => ({ node, child: chain[index + 1] }));
-  for (const { node, child } of links.toReversed()) {
+  const links = chain.map((node, index) => ({
+    node,
+    child: chain[index + 1],
+    holder: chain[index - 1],
+  }));
+  for (const { node, child, holder } of links.toReversed()) {
     const role = roleIn({
       parsed,
       node,
       child,
+      holder,
       innermost: child !== undefined && child === innermost,
     });
     if (role !== undefined) {
@@ -147,13 +164,14 @@ function roleOf(parsed: PlaceholderParse): ParsedPlaceKind | undefined {
 }
 
 /**
- * A node on the way to the placeholder, and its child on that way: `innermost` when the child is
- * the placeholder's own node.
+ * A node on the way to the placeholder, its child on that way and the node holding it:
+ * `innermost` when the child is the placeholder's own node.
  */
 interface Link<Node extends SyntaxNode> {
   readonly parsed: PlaceholderParse;
   readonly node: Node;
   readonly child: SyntaxNode | undefined;
+  readonly holder: SyntaxNode | undefined;
   readonly innermost: boolean;
 }
 
@@ -166,11 +184,36 @@ function roleIn(link: Link<SyntaxNode>): ParsedPlaceKind | undefined {
     return 'declaredName';
   }
   if (typeNodeKinds.has(node.kind)) {
-    return 'type';
+    return builtNameRole(link) ?? 'type';
   }
   const role = roles[node.kind] as Role<SyntaxNode> | undefined;
   return role?.(link);
 }
+
+/**
+ * The name a struct or variant literal builds, or a struct pattern tests, which the tree holds as
+ * a written type: a value is written there (`Ok‸{(v)}`), or a pattern (`case Ok‸{value}`). A
+ * struct pattern a declaration destructures with names a type (`const Pair‸{first} = p`).
+ */
+function builtNameRole({ parsed, node, holder }: Link<SyntaxNode>): ParsedPlaceKind | undefined {
+  if (holder?.kind === 'StructLiteral' && holder.type === node) {
+    return 'grammar';
+  }
+  return holder?.kind === 'StructPattern' && holder.type === node && isTested(parsed, holder)
+    ? 'pattern'
+    : undefined;
+}
+
+/** Whether `pattern` is tested, by a `case` or an `is`, rather than declaring names. */
+function isTested({ chain }: PlaceholderParse, pattern: SyntaxNode): boolean {
+  const owner = chain
+    .slice(0, chain.indexOf(pattern))
+    .findLast(({ kind }) => testers.has(kind) || declarers.has(kind));
+  return owner !== undefined && testers.has(owner.kind);
+}
+
+const testers: ReadonlySet<string> = new Set(['MatchCase', 'Is']);
+const declarers: ReadonlySet<string> = new Set(['VariableDeclaration', 'For', 'Comprehension']);
 
 const holdsTargets: Role<
   Extract<SyntaxNode, { kind: 'VariableDeclaration' | 'For' | 'Comprehension' }>
@@ -211,13 +254,14 @@ function fieldRole(
 
 /**
  * A call's argument written as the placeholder alone. `hold(name)` reads as a call until the
- * `let`, `const` or `_` after it: its label is no argument.
+ * `let`, `const` or `_` after it: its label is no argument. A name the parser could make no
+ * argument of, after another with no comma between, goes on after that one: the grammar's.
  */
 function argumentRole(
   call: Extract<SyntaxNode, { kind: 'Call' }>,
   child: SyntaxNode | undefined,
 ): ParsedPlaceKind | undefined {
-  if (!call.arguments.some((argument) => argument === child)) {
+  if (child?.kind === 'Invalid' || !call.arguments.some((argument) => argument === child)) {
     return undefined;
   }
   const { callee } = call;
@@ -277,7 +321,11 @@ const declaringKinds: ReadonlySet<string> = new Set([
   'Lambda',
 ]);
 
+/** Whether `node` declares `child`, or names with it the type a static function is declared on. */
 function declaresName(node: SyntaxNode, child: SyntaxNode): boolean {
+  if (node.kind === 'FunctionDeclaration' && node.owner === child) {
+    return true;
+  }
   return declaringKinds.has(node.kind) && 'name' in node && node.name === child;
 }
 

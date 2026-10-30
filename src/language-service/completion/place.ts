@@ -5,11 +5,18 @@
  * Members and literal fields are read from the tree as it stands, since their providers need its
  * nodes; every other place from a parse with a placeholder name at the cursor (placeholder.ts),
  * which the place carries for its provider to read the construct around the cursor.
- * A member's place comes first, as a `.` admits nothing else.
+ * A comment comes first, as it holds no code whatever surrounds it, and needs no parse; then a
+ * member's place, as a `.` admits nothing else.
  */
 
 import type { Cursor } from './cursor.ts';
-import { type ParsedPlace, parsedPlaceAt } from './placeholder.ts';
+import {
+  isInComment,
+  type NothingPlace,
+  nothingPlace,
+  type ParsedPlace,
+  parsedPlaceAt,
+} from './placeholder.ts';
 import { type LiteralFieldPlace, literalFieldPlaceAt } from './places/literal-field.ts';
 import { type MemberPlace, memberPlaceAt } from './places/member.ts';
 
@@ -26,10 +33,13 @@ import { type MemberPlace, memberPlaceAt } from './places/member.ts';
  * - `patternField`: a struct pattern's item names its field;
  * - `import`, `annotation`: inside one.
  */
-export type Place = MemberPlace | LiteralFieldPlace | ParsedPlace;
+export type Place = MemberPlace | LiteralFieldPlace | ParsedPlace | NothingPlace;
 
 export type PlaceKind = Place['kind'];
 
 export function placeAt(cursor: Cursor): Place {
+  if (isInComment(cursor)) {
+    return nothingPlace;
+  }
   return memberPlaceAt(cursor) ?? literalFieldPlaceAt(cursor) ?? parsedPlaceAt(cursor);
 }

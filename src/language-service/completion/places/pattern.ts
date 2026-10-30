@@ -2,7 +2,7 @@
  * What a `pattern` place offers: where a pattern a `case` or an `is` tests is written (§3.11),
  * read from the placeholder parse, which holds the pattern being written whole.
  *
- * - Where a pattern starts, what it may refer to, never a variable, since a bare camelCase name
+ * - Where a pattern starts, or a struct pattern's name is written, what it may refer to, never a variable, since a bare camelCase name
  *   binds one: the variants of the type it matches, bare; that type's own name and the namespaces,
  *   which qualify a variant, a struct or a constant, and against an `any` type the types a downcast
  *   may name; `_`; and the literal keywords a value of the type may equal (`true` and `false` a
@@ -44,17 +44,27 @@ export function offerPattern(cursor: Cursor, place: PatternPlace): readonly Cand
   if (holder?.kind === 'NamePattern') {
     return patternStarts(cursor, place, holder);
   }
+  const named = holder === undefined ? undefined : structPatternNamed(parsed, holder);
+  if (named !== undefined) {
+    return patternStarts(cursor, place, named);
+  }
   if (holder?.kind === 'StructPattern' && innermost?.kind === 'Invalid') {
     return followsFieldName(cursor, parsed, holder, innermost) ? keywordsNamed(['as', 'is']) : [];
   }
   return followsWholePattern(cursor, parsed) ? keywordsNamed(['if', 'as']) : [];
 }
 
+/** The struct pattern whose name `type` is (`case Ok‸{value}`), if it is one. */
+function structPatternNamed(parsed: Parsed, type: SyntaxNode): StructPattern | undefined {
+  const pattern = parsed.chain[parsed.chain.indexOf(type) - 1];
+  return pattern?.kind === 'StructPattern' && pattern.type === type ? pattern : undefined;
+}
+
 /** Where a pattern starts, by the type it matches: the type expected there (expected.ts). */
 function patternStarts(
   cursor: Cursor,
   place: PatternPlace,
-  pattern: NamePattern,
+  pattern: NamePattern | StructPattern,
 ): readonly Candidate[] {
   const { checker, module } = cursor;
   const type = expectedTypeAt(cursor, place);
@@ -123,7 +133,10 @@ function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boo
  * The variants the unguarded cases of a `match` take whole, when `pattern` stands at its case's
  * top, past alternatives, parentheses and `as` only; none elsewhere.
  */
-function variantsCovered({ chain }: Parsed, pattern: NamePattern): ReadonlySet<string> {
+function variantsCovered(
+  { chain }: Parsed,
+  pattern: NamePattern | StructPattern,
+): ReadonlySet<string> {
   const depth = chain.indexOf(pattern);
   const caseDepth = chain.slice(0, depth).findLastIndex(({ kind }) => kind === 'MatchCase');
   const match = chain[caseDepth - 1];
