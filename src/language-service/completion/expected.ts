@@ -29,6 +29,7 @@ import type { Candidate } from './candidate.ts';
 import type { Cursor } from './cursor.ts';
 import type { Place } from './place.ts';
 import type { ParsedPlace } from './placeholder.ts';
+import { matchedTypeOf } from './places/matched-type.ts';
 
 /** The type expected of what `cursor` writes at `place`; undefined where nothing is expected. */
 export function expectedTypeAt(cursor: Cursor, place: Place): Type | undefined {
@@ -60,7 +61,10 @@ const expectations = new WeakMap<Place, Type | undefined>();
 
 const nothingExpected = () => undefined;
 
-/** What each kind of place expects; a value is written only where the grammar or an argument is. */
+/**
+ * What each kind of place expects: a value is written where the grammar or an argument is, and a
+ * pattern starts where its matched value is tested.
+ */
 const expecters: Handlers<Cursor, Place, [], Type | undefined> = {
   grammar: expectedOfValue,
   callArgument: expectedOfValue,
@@ -69,7 +73,8 @@ const expecters: Handlers<Cursor, Place, [], Type | undefined> = {
   nothing: nothingExpected,
   type: nothingExpected,
   declaredName: nothingExpected,
-  pattern: nothingExpected,
+  pattern: expectedOfPatternStart,
+  patternField: nothingExpected,
   import: nothingExpected,
   annotation: nothingExpected,
 };
@@ -91,6 +96,12 @@ function expectedOfValue(cursor: Cursor, { parsed }: ParsedPlace): Type | undefi
   const holder = parsed.chain.at(-2);
   const isArgument = holder?.kind === 'Call' || holder?.kind === 'NamedArgument';
   return checked ?? (isArgument ? argumentParameterAt(cursor, cursor.offset)?.type : undefined);
+}
+
+/** Where a pattern starts, the type it matches (places/matched-type.ts); its variants fit. */
+function expectedOfPatternStart(cursor: Cursor, { parsed }: ParsedPlace): Type | undefined {
+  const holder = parsed.chain.at(-2);
+  return holder?.kind === 'NamePattern' ? matchedTypeOf(cursor, parsed, holder) : undefined;
 }
 
 /** The name the cursor writes as the program's tree holds it, which its own checker answers for. */

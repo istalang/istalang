@@ -48,6 +48,7 @@ describe('the type expected where a value is written', () => {
     ['a named argument', '  paint(n: ‸', 'int'],
     ["a literal's field inside an argument", '  paint(Cfg{note: ‸', 'string'],
     ['a name already written', '  let c: Color = co‸l', 'Color'],
+    ["a `match` case's pattern", '  match col:\n    case ‸', 'Color'],
   ])('is the checker’s at %s', (_construct, body, expected) => {
     expect(expectedAt(body)).toBe(expected);
   });

@@ -28,7 +28,6 @@ const scenarios: readonly Scenario[] = [
         ['Expired', 'Approved'],
       ],
     },
-    fails: true,
   },
   {
     id: 'PA-03',

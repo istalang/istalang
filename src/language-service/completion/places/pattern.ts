@@ -19,6 +19,7 @@ import type { Checker } from '../../../compiler/checker/check.ts';
 import {
   boolType,
   isNominalEntity,
+  nominalType,
   sameType,
   type Type,
 } from '../../../compiler/checker/types/type.ts';
@@ -53,15 +54,17 @@ function patternStarts(cursor: Cursor, parsed: Parsed, pattern: NamePattern): re
   const type = matchedTypeOf(cursor, parsed, pattern);
   const known = type !== undefined && type.kind !== 'error';
   const covered = variantsCovered(parsed, pattern);
-  const variants = known ? checker.lookup.membersOf(module, type).variants : [];
+  const variants = known
+    ? checker.lookup.membersOf(module, type).variants.map(
+        (variant): Candidate => ({
+          name: variant.name,
+          subject: { kind: 'variant', variant, enum: type },
+          ...(covered.has(variant.name) ? { covered: true } : {}),
+        }),
+      )
+    : [];
   return [
-    ...variants.map(
-      (variant): Candidate => ({
-        name: variant.name,
-        subject: { kind: 'variant', variant },
-        ...(covered.has(variant.name) ? { covered: true } : {}),
-      }),
-    ),
+    ...variants,
     ...referringNames(cursor, type),
     ...keywordsNamed(
       literalKeywords.flatMap(([name, fits]) => (!known || fits(checker, type) ? [name] : [])),
@@ -84,24 +87,30 @@ function referringNames(
 ): readonly Candidate[] {
   const visible = checker.bindings.visibleAt(module, name?.span.start ?? offset);
   return [...visible].flatMap(([named, entity]): Candidate[] =>
-    mayRefer(entity, type) ? [{ name: named, subject: { kind: 'entity', entity } }] : [],
+    mayRefer(checker, entity, type) ? [{ name: named, subject: { kind: 'entity', entity } }] : [],
   );
 }
 
 /**
  * A namespace, which qualifies what it exports; `type`'s own name; and against an `any` type, a
- * type a downcast may name, one without type parameters (§3.10).
+ * type a downcast may name: one without type parameters that meets its constraints, as only such a
+ * type is ever inside it (§3.10).
  */
-function mayRefer(entity: Entity, type: Type | undefined): boolean {
+function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boolean {
   if (entity.kind === 'namespace') {
     return true;
   }
   if (entity.kind !== 'type' || type === undefined) {
     return false;
   }
-  return type.kind === 'any'
-    ? isNominalEntity(entity) && entity.declaration.typeParameters.length === 0
-    : type.kind === 'nominal' && entity === type.entity;
+  if (type.kind !== 'any') {
+    return type.kind === 'nominal' && entity === type.entity;
+  }
+  return (
+    isNominalEntity(entity) &&
+    entity.declaration.typeParameters.length === 0 &&
+    checker.fitOf(nominalType(entity, []), type) !== undefined
+  );
 }
 
 /**

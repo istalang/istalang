@@ -181,12 +181,13 @@ describe('a pattern place', () => {
     expect(covered).toEqual(['Approved']);
   });
 
-  it('offers the types a downcast may name against an `any` value', () => {
+  it('offers the types a downcast may name against an `any` value, those meeting its traits', () => {
     const labels = labelsAt(
       'trait Named:',
       '  fn name(self: Self) -> string',
       '',
       'struct Marker',
+      'struct Plain',
       'struct Box<T> { value: T }',
       'fn name(self: Marker) -> string: "marker"',
       'fn name<T>(self: Box<T>) -> string: "box"',
@@ -197,6 +198,7 @@ describe('a pattern place', () => {
     );
     expect(labels).toContain('Marker');
     expect(labels).not.toContain('Box');
+    expect(labels).not.toContain('Plain');
   });
 
   it("offers a struct's fields, but those its pattern names, in its braces", () => {
