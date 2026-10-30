@@ -252,13 +252,19 @@ const standsAsModifier: Readonly<Record<Modifier, (tree: SyntaxTree, word: Token
   not: (tree, word) => !word.firstOnLine && endsOperand(tokenBefore(tree, word)),
 };
 
-/** Whether `word` starts an item of a `holder` node, as the parser read the text holding it. */
+/**
+ * Whether `word` starts an item of a `holder` node, as the parser read the text holding it: the item
+ * starts there, or holds nothing else there, as one its annotations open does (an item the parser
+ * can't read keeps none of them, only the text they take).
+ */
 function startsItemOf(holder: 'Module' | 'Block', tree: SyntaxTree, word: Token): boolean {
   const chain = nodesAt(tree, word.span.start);
   return chain.some((node, index) => {
     const item = chain[index + 1];
     return (
-      node.kind === holder && item !== undefined && extentIn(tree, item).start === word.span.start
+      node.kind === holder &&
+      item !== undefined &&
+      (item === chain.at(-1) || extentIn(tree, item).start === word.span.start)
     );
   });
 }

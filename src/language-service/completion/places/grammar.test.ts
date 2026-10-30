@@ -192,6 +192,7 @@ describe('completion offers the words that go on after what is written', () => {
     ['`not` after an operand', ['fn f(n: int):', '  let x = n not ‸', '  1'], ['in']],
     ['`sendable` in a type', ['type F = sendable ‸'], ['fn', 'async']],
     ["`sendable` in a parameter's type", ['fn f(cb: sendable ‸'], ['fn', 'async']],
+    ['`shared` below an annotation', ['@Ann', 'shared ‸'], ['struct']],
     ['`sendable` with `fn` begun', ['type F = sendable fn‸'], ['fn', 'async']],
     ['`sendable` with `async` begun', ['type F = sendable async‸'], ['fn', 'async']],
     ["a comprehension's target", ['fn f(xs: Array<int>):', '  const e = [for x ‸]'], ['in']],
