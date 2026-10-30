@@ -9,7 +9,6 @@
  * parameters' names.
  */
 
-import { localFunctionOf } from '../compiler/binder/entities.ts';
 import type { Checker } from '../compiler/checker/check.ts';
 import type { Denotation } from '../compiler/checker/denotation.ts';
 import type { Type } from '../compiler/checker/types/type.ts';
@@ -22,6 +21,7 @@ import { nodesAt, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import type { TypeNode } from '../compiler/syntax/types.ts';
 import type { Span } from '../text/span.ts';
 import { type CheckedModule, checkedModule } from './checked-module.ts';
+import { docstringOf } from './docstrings.ts';
 import { identifierAt } from './identifier-at.ts';
 import { importedModule } from './namespaces.ts';
 import { signatureOf } from './signatures.ts';
@@ -79,7 +79,7 @@ function nameHover({ checker, module, tree }: CheckedModule, name: Identifier): 
     span: spanIn(tree, name.span),
     code: denotations.flatMap((denotation) => denotationLines(checker, name, denotation)),
     doc: denotations
-      .map(({ declared }) => docOf(checker, declared))
+      .map(({ declared }) => docstringOf(checker, declared))
       .find((doc) => doc !== undefined),
   };
 }
@@ -119,27 +119,5 @@ function denotationLines(
       return [`(module) ${importedModule(checker, declared.entity)?.name ?? name.text}`];
     default:
       return [typed(declared.kind)];
-  }
-}
-
-/** The docstring of what `declared` names, for the declarations that may have one (§2). */
-function docOf(checker: Checker, declared: Denotation['declared']): string | undefined {
-  switch (declared.kind) {
-    case 'function':
-      return declared.declaration.doc?.value;
-    case 'type': {
-      const { entity } = declared;
-      return entity.kind === 'type' && 'doc' in entity.declaration
-        ? entity.declaration.doc?.value
-        : undefined;
-    }
-    case 'namespace':
-      return importedModule(checker, declared.entity)?.tree.root.doc?.value;
-    case 'variable': {
-      const local = localFunctionOf(declared.entity);
-      return local?.kind === 'FunctionDeclaration' ? local.doc?.value : undefined;
-    }
-    default:
-      return undefined;
   }
 }
