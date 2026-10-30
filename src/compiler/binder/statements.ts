@@ -16,7 +16,7 @@ import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { type Expression, unparenthesized } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
-import { endOf } from '../syntax/positions.ts';
+import { type AnchoredSpan, endOf } from '../syntax/positions.ts';
 import {
   type Block,
   destructures,
@@ -24,6 +24,7 @@ import {
   targetParts,
   type VariableDeclaration,
 } from '../syntax/statements.ts';
+import { bodyOf } from '../syntax/tree.ts';
 import { underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
@@ -93,9 +94,16 @@ export function bindBlock(binder: LocalBinder, block: Block, parent: Scope): voi
   for (const statement of statements) {
     binder.annotations(statement, scope);
     handlerOf(statementHandlers, statement)(binder, statement, scope);
-    binder.enter(block, scope, endOf(statement.span));
+    binder.enter(block, scope, endOf(spanThrough(binder, statement)));
   }
   scope.end();
+}
+
+/** What `statement` spans, a local function's body included, which its own span leaves out. */
+function spanThrough(binder: LocalBinder, statement: Statement): AnchoredSpan {
+  const body =
+    statement.kind === 'FunctionDeclaration' ? bodyOf(binder.tree, statement) : undefined;
+  return body?.span ?? statement.span;
 }
 
 /** A variable declaration's type and initializer, bound before its names exist. */

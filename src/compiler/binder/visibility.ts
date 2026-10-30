@@ -16,22 +16,29 @@
  * module's top level is visible.
  *
  * A node that stands for missing code, such as a default not yet written after `=`, holds no
- * offset: it is empty, and so are the nodes around it past their last token. A cursor after it with
- * nothing written between is where that code goes, so it sees what the empty node was bound in: on
- * the node's line, or on a later line indented deeper, as a body not written yet stands below its
- * header (§2). Of empty nodes standing together, the code goes into the first: a `for`'s iterable
- * before its body.
+ * offset: it is empty, and so are the nodes around it past their last token, a block past its last
+ * statement among them. Code written after such a node, or after a block's last statement, with
+ * nothing but blanks and comments between, still goes there: on the same line, or on a later line
+ * indented deeper than the line its construct starts on, as a body's lines stand below their
+ * header (§2). So a cursor there sees what that node or that block's end was bound in. Of those
+ * standing together, the code goes into the first noted: the innermost block, or a `for`'s
+ * iterable before its body.
  */
 
 import { lineStartAt } from '../../text/line-map.ts';
 import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
-import { nodesAt, type SyntaxNode, type SyntaxTree } from '../syntax/tree.ts';
+import { nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from '../syntax/tree.ts';
 import { type LocalEntity, Scope, type ScopeSnapshot } from './scope.ts';
 
 /** A scope state, noted for a node from where `start` starts on. */
 interface NotedSnapshot {
   readonly start: AnchoredSpan;
   readonly snapshot: ScopeSnapshot;
+}
+
+/** A note code written after it may go on: an empty node's, or a block's after a statement. */
+interface TrailingNote extends NotedSnapshot {
+  readonly node: SyntaxNode;
 }
 
 /** A note with its start as a text offset, for comparing with a cursor's. */
@@ -49,8 +56,8 @@ export interface Visibility {
   readonly namesAt: (tree: SyntaxTree, offset: number) => ReadonlyMap<string, LocalEntity>;
 }
 
-/** Spaces, tabs and line breaks alone: nothing written. */
-const blank = /^[ \t\r\n]*$/u;
+/** Spaces, tabs, line breaks and comments alone: no code written. */
+const blank = /^(?:[ \t\r\n]|#[^\r\n]*(?=[\r\n]|$))*$/u;
 
 /** The spaces and tabs a line opens with. */
 const indentation = /^[ \t]*/u;
@@ -58,8 +65,8 @@ const indentation = /^[ \t]*/u;
 /** Notes, while one tree is bound, the scope each node is bound in. */
 export class VisibilityNotes {
   readonly #noted = new Map<SyntaxNode, NotedSnapshot[]>();
-  /** The notes of empty nodes, from their position on. */
-  readonly #empty: NotedSnapshot[] = [];
+  /** The notes of empty nodes, and of blocks after a statement, which code after them may go on. */
+  readonly #trailing: TrailingNote[] = [];
 
   /** Notes that `node`, from where `start` starts on, is bound in `scope` as it is defined now. */
   note(node: SyntaxNode, scope: Scope, start = node.span): void {
@@ -67,22 +74,23 @@ export class VisibilityNotes {
     const note = { start, snapshot: scope.snapshot() };
     noted.push(note);
     this.#noted.set(node, noted);
-    if (node.span.from === node.span.to) {
-      this.#empty.push(note);
+    const afterStatement = node.kind === 'Block' && start !== node.span;
+    if (node.span.from === node.span.to || afterStatement) {
+      this.#trailing.push({ ...note, node });
     }
   }
 
   /** The visibility the notes give, with `topLevel` outside every noted node. */
   visibility(topLevel: ScopeSnapshot): Visibility {
     const noted = this.#noted;
-    const empty = this.#empty;
+    const trailing = this.#trailing;
     return {
       namesAt: (tree, offset) => {
         const placed = (notes: readonly NotedSnapshot[]): readonly PlacedSnapshot[] =>
           notes.map(({ start, snapshot }) => ({ from: spanIn(tree, start).start, snapshot }));
-        const fills = ({ from }: PlacedSnapshot) => goesInto(tree.source.text, offset, from);
-        // Reversed, so of empty nodes standing together the first noted wins.
-        const missing = latestStarted(placed(empty).filter(fills).toReversed(), offset);
+        const goingOn = trailing.filter((note) => goesOn(tree, offset, note));
+        // Reversed, so of notes standing together the first noted wins.
+        const missing = latestStarted(placed(goingOn).toReversed(), offset);
         const started = (node: SyntaxNode) => latestStarted(placed(noted.get(node) ?? []), offset);
         const found =
           missing ??
@@ -109,14 +117,20 @@ function latestStarted(
 }
 
 /**
- * Whether code written at `offset` goes into the empty node standing at `from`: nothing is written
- * between them, and a later line stands deeper than the node's.
+ * Whether code written at `offset` goes on where `note` starts: no code is written between them,
+ * and a later line stands deeper than the one its node's construct starts on.
  */
-function goesInto(text: string, offset: number, from: number): boolean {
+function goesOn(tree: SyntaxTree, offset: number, { node, start }: TrailingNote): boolean {
+  const { text } = tree.source;
+  const from = spanIn(tree, start).start;
+  if (from > offset || !blank.test(text.slice(from, offset))) {
+    return false;
+  }
   const lineStart = lineStartAt(text, offset);
+  const construct = parentOf(tree, node) ?? node;
   return (
-    blank.test(text.slice(from, offset)) &&
-    (lineStart <= from || offset - lineStart > indentationAt(text, from))
+    lineStart <= from ||
+    offset - lineStart > indentationAt(text, spanIn(tree, construct.span).start)
   );
 }
 

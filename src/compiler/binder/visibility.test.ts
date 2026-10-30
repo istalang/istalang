@@ -149,6 +149,27 @@ const spots: readonly (readonly [string, string, readonly string[], readonly str
     ['xs'],
     ['x'],
   ],
+  [
+    "a blank line after a body's last statement, at the end of the file",
+    'fn f(a: int):\n  let b = 1\n  ‸',
+    ['a', 'b'],
+    [],
+  ],
+  [
+    "a blank line after a nested body's last statement, at its column",
+    'fn f(a: int) -> int:\n  if a > 0:\n    let b = 1\n    ‸\n  0\n',
+    ['a', 'b'],
+    [],
+  ],
+  [
+    "a blank line after a nested body, at its header's column",
+    'fn f(a: int) -> int:\n  if a > 0:\n    let b = 1\n  ‸\n  0\n',
+    ['a'],
+    ['b'],
+  ],
+  ['a body below a header over two lines', 'fn f(a: int,\n     b: int):\n  ‸', ['a', 'b'], []],
+  ['a body below a header a comment ends', 'fn f(a: int):  # to do\n  ‸', ['a'], []],
+  ['a body below a comment', 'fn f(a: int):\n  # to do\n  ‸', ['a'], []],
   ['a missing comprehension condition', 'fn f(xs: Array<int>): [for x in xs if ‸: x]\n', ['x'], []],
   [
     "a blank line before a `select` case's body",
