@@ -81,9 +81,15 @@ const scenarios: readonly Scenario[] = [
     id: 'PA-07',
     place: 'pattern',
     title: 'is outside match',
-    src: ['  if r is ‸', '  const k = o is ‸'],
-    // `r` is a `Result` (`Ok`, `Err`), `o` an `int?` (`Some`, `None`): one expectation holds both.
-    expect: { has: ['_'], anyOf: ['Ok', 'Some'], lacks: ['xs', 'let', 'plus'] },
+    src: ['  if r is ‸'],
+    expect: { has: ['_', 'Ok', 'Err'], lacks: ['xs', 'let', 'plus'] },
+  },
+  {
+    id: 'PA-07b',
+    place: 'pattern',
+    title: 'is on an optional',
+    src: ['  const k = o is ‸'],
+    expect: { has: ['_', 'Some', 'None'], lacks: ['xs', 'let', 'plus'] },
   },
   {
     id: 'PA-08',

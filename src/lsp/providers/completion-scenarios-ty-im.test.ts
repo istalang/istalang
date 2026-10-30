@@ -219,7 +219,7 @@ const scenarios: readonly Scenario[] = [
     id: 'IM-06',
     place: 'import',
     title: 'Module specifier',
-    src: ["import x from '‸'", 'import * as m from "‸"'],
+    src: ["import x from '‸'", { src: 'import * as m from "‸"', trigger: '"' }],
     trigger: "'",
     where: 'top',
     expect: { has: ['time', 'json', 'inbox', 'futures'], lacks: ['plus', 'let', 'testing'] },

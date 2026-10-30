@@ -16,7 +16,7 @@ Conventions, fixture and legend: `scenarios.md`. Status is ✅ when the probe's 
 
 Positions with no valid completion: the list is empty, whatever opened it. (An empty list is also the only answer a server can give to the client's word-based fallback, VC-01.)
 
-### NO-01 · Inside a comment · P1 · ❌ fail
+### NO-01 · Inside a comment · P1 · ✅ pass
 
 ```
   # note ‸
@@ -29,9 +29,8 @@ Positions with no valid completion: the list is empty, whatever opened it. (An e
 - **Offer:** Nothing.
 - **Not:** Everything.
 - **Basis:** spec §2 (`#` comments); TS offers nothing in comments.
-- **Today:** #1 offered 184: Red,Green,Blue,Approved,Rej…; #2 offered 185: Red,Green,Blue,Approved,Rej…; #3 offered 184: Red,Green,Blue,Approved,Rej…
 
-### NO-02 · Inside a string · P1 · ❌ fail
+### NO-02 · Inside a string · P1 · ✅ pass
 
 ```
   const s = "ab‸"
@@ -46,9 +45,8 @@ Positions with no valid completion: the list is empty, whatever opened it. (An e
 - **Offer:** Nothing.
 - **Not:** Everything.
 - **Basis:** spec §2; VS Code's `editor.quickSuggestions.strings` is off, but invoked/trigger requests reach the server.
-- **Today:** #1 offered 184: Red,Green,Blue,Approved,Rej…; #2 offered 184: Red,Green,Blue,Approved,Rej…; #3 offered 185: Red,Green,Blue,Approved,Rej…; #4 offered 184: Red,Green,Blue,Approved,Rej…
 
-### NO-03 · Inside a number · P2 · ❌ fail
+### NO-03 · Inside a number · P2 · ✅ pass
 
 ```
   const a = 12‸
@@ -63,7 +61,6 @@ Positions with no valid completion: the list is empty, whatever opened it. (An e
 - **Offer:** Nothing (a duration suffix `5d` is typed: `ms s m h d`, P3 optional).
 - **Not:** Names.
 - **Basis:** a name glued to a number is no token.
-- **Today:** #1 offered 185: Red,Green,Blue,Approved,Rej…; #2 offered 185: Red,Green,Blue,Approved,Rej…; #3 offered 185: Red,Green,Blue,Approved,Rej…; #4 offered 185: Red,Green,Blue,Approved,Rej…
 
 ### NO-05 · Dot where no member can stand · P1 · ✅ pass
 
@@ -108,9 +105,9 @@ fn g(a: int, ‸
 - **Offer:** Nothing.
 - **Not:** Names.
 - **Basis:** a name glued to `)` is no token.
-- **Today:** #1 unexpected xs; #1 unexpected plus; #1 unexpected let; #2 unexpected xs; #2 unexpected plus; #2 unexpected let; #3 unexpected xs; #3 unexpected plus; #3 unexpected let
+- **Today:** #1 offered 5: or, and, in, not, is…; #2 offered 5: or, and, in, not, is…; #3 offered 5: or, and, in, not, is…
 
-### NO-08 · Space trigger elsewhere · P1 · ❌ fail
+### NO-08 · Space trigger elsewhere · P1 · ✅ pass
 
 ```
   const a = 1 ‸
@@ -125,9 +122,8 @@ fn g() ‸
 - **Offer:** Nothing: a typed space opens a list only where LI-03/CA-03b/LI-07 say; everywhere else it must stay silent.
 - **Not:** Anything.
 - **Basis:** a trigger character that opens noise everywhere would pop a list after every space.
-- **Today:** #1 ' ' is not a trigger character; #1 offered 185: Red,Green,Blue,Approved,Rej…; #2 ' ' is not a trigger character; #2 offered 184: Red,Green,Blue,Approved,Rej…; #3 ' ' is not a trigger character; #3 offered 184: Red,Green,Blue…
 
-### NO-09 · Block-opening colon · P3 · ❌ fail
+### NO-09 · Block-opening colon · P3 · ✅ pass
 
 ```
   if n:‸
@@ -138,7 +134,6 @@ fn g():‸
 - **Offer:** Nothing.
 - **Not:** Everything.
 - **Basis:** spec §4.
-- **Today:** #1 ':' is not a trigger character; #1 offered 184: Red,Green,Blue,Approved,Rej…; #2 ':' is not a trigger character; #2 offered 173: Red,Green,Blue,Approved,Rej…
 
 ## TR: Opening and staying open
 
@@ -180,7 +175,7 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 - **Offer:** LI-02.
 - **Basis:** as TR-01.
 
-### TR-05 · …and stay open when the space is typed · P1 · ❌ fail
+### TR-05 · …and stay open when the space is typed · P1 · ✅ pass
 
 ```
   Pair{first: 1, ‸}
@@ -188,9 +183,8 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 - **Where / trigger:** in `fn t`; typing ` `
 - **Offer:** LI-03: the server declares ` ` as a trigger character.
 - **Basis:** VS Code closes a list on a non-word character that is not a trigger.
-- **Today:** ' ' is not a trigger character
 
-### TR-06 · Declared trigger characters · P1 · ❌ fail
+### TR-06 · Declared trigger characters · P1 · ✅ pass
 
 ```
   ‸
@@ -198,7 +192,6 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** The server declares `.`, `>`, `{`, `,`, ` `, `@`, `'`, `"`, `/` (`:` and `(` are not needed: the field item re-triggers, signature help owns `(`).
 - **Basis:** LSP CompletionOptions.triggerCharacters.
-- **Today:** not declared: ' ' '@' ''' '"' '/'
 
 ### TR-07 · Invoked and trigger lists agree · P1 · ✅ pass
 
@@ -252,7 +245,7 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 - **Not:** Server-side filtering.
 - **Basis:** as TR-08.
 
-### TR-09 · Accepting a field re-opens a list · P1 · ❌ fail
+### TR-09 · Accepting a field re-opens a list · P1 · ✅ pass
 
 ```
   Pair{‸}
@@ -260,9 +253,8 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 - **Where / trigger:** in `fn t`; typing `{`
 - **Offer:** The item has `command: editor.action.triggerSuggest` (LI-01).
 - **Basis:** LSP `CompletionItem.command`; used by TS/RA/clangd to chain completions.
-- **Today:** first doesn't re-trigger; second doesn't re-trigger
 
-### TR-10 · Accepting a named argument re-opens a list · P1 · ❌ fail
+### TR-10 · Accepting a named argument re-opens a list · P1 · ✅ pass
 
 ```
   plus(‸
@@ -270,9 +262,8 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** As TR-09 for `a: `.
 - **Basis:** as TR-09.
-- **Today:** missing a:
 
-### TR-11 · Accepting a method opens signature help · P3 · ❌ fail
+### TR-11 · Accepting a method opens signature help · P3 · ✅ pass
 
 ```
   p.‸
@@ -280,9 +271,8 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 - **Where / trigger:** in `fn t`; typing `.`
 - **Offer:** The method inserts `sum($0)` with `command: editor.action.triggerParameterHints` (when it has parameters).
 - **Basis:** VS Code convention (TS `completeFunctionCalls`, RA `callable.snippets`).
-- **Today:** no parameter-hints command
 
-### TR-12 · Commit characters · P3 · ❌ fail
+### TR-12 · Commit characters · P3 · ✅ pass
 
 ```
   Pair‸
@@ -291,13 +281,12 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 - **Offer:** Types, namespaces, variables commit on `.`; functions/methods on `(` unless their insert text holds it; field and argument names (which insert `: `) commit on nothing.
 - **Not:** A commit character that mangles the inserted text.
 - **Basis:** LSP `commitCharacters`, VS Code `acceptSuggestionOnCommitCharacter`.
-- **Today:** `time` has no `.` commit character
 
 ## OR: Item shape, order, kinds
 
 What an item carries beyond its label: insert text, detail, kind, sort order, preselect.
 
-### OR-01 · Names rank by nearness · P1 · ❌ fail
+### OR-01 · Names rank by nearness · P1 · ✅ pass
 
 ```
   const loc = 1
@@ -308,7 +297,6 @@ What an item carries beyond its label: insert text, detail, kind, sort order, pr
 - **Not:** Keywords above names; prelude noise above the file's own names.
 - **Order:** `loc`, `xs` … before `plus`, `Pair` … before `Array`, `Some` … before `fn`, `while`.
 - **Basis:** VS Code sorts by `sortText`, then label; TS (location priority), RA (relevance).
-- **Today:** xs ranks after plus; plus ranks after Array; plus ranks after fn
 
 ### OR-02 · Members rank fields first, then methods · P3 · ✅ pass
 
@@ -320,7 +308,7 @@ What an item carries beyond its label: insert text, detail, kind, sort order, pr
 - **Order:** `first`, `second`, then `sum`.
 - **Basis:** RA, Kotlin.
 
-### OR-03 · Kinds · P3 · ❌ fail
+### OR-03 · Kinds · P3 · ✅ pass
 
 ```
   ‸
@@ -329,9 +317,8 @@ What an item carries beyond its label: insert text, detail, kind, sort order, pr
 - **Offer:** Struct → Struct, enum → Enum, alias → Class, primitive → Keyword, variant → EnumMember, function → Function, local → Variable, constant → Constant, namespace → Module, type parameter → TypeParameter.
 - **Not:** Every type as Class.
 - **Basis:** LSP CompletionItemKind; VS Code icons.
-- **Today:** Pair kind 7 ≠ 22; Color kind 7 ≠ 13
 
-### OR-03b · A trait's kind · P3 · new
+### OR-03b · A trait's kind · P3 · ✅ pass
 
 ```
 fn g<T is ‸
@@ -340,7 +327,7 @@ fn g<T is ‸
 - **Offer:** Trait → Interface (`Shape`), where a trait is written; no trait starts a value (EX-01).
 - **Basis:** LSP CompletionItemKind; VS Code icons.
 
-### OR-04 · Detail · P2 · ❌ fail
+### OR-04 · Detail · P2 · ✅ pass
 
 ```
   ‸
@@ -349,9 +336,8 @@ fn g<T is ‸
 - **Offer:** Variables show their type (`xs` → `Array<int>`), functions their signature, types their kind.
 - **Not:** Missing detail.
 - **Basis:** LSP `detail`; hover knows the types.
-- **Today:** xs detail undefined ≠ "Array<int>"; p detail undefined ≠ "Pair"
 
-### OR-05 · Function insert text · P3 · ❌ fail
+### OR-05 · Function insert text · P3 · ✅ pass
 
 ```
   ‸
@@ -359,17 +345,19 @@ fn g<T is ‸
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** `plus` inserts `plus($0)`; with an existing `(` after the cursor, `plus`.
 - **Basis:** RA `callable.snippets`, TS `completeFunctionCalls`.
-- **Today:** plus inserts "plus" ≠ "plus($0)"
 
-### OR-06 · Docs on resolve · P3 · ❌ fail
+### OR-06 · Docs on resolve · P3 · ✅ pass
 
 ```
+fn twice(n: int) -> int:
+  """Doubles `n`."""
+  n * 2
+fn g() -> int:
   ‸
 ```
-- **Where / trigger:** in `fn t`; invoked, or typing on
+- **Where / trigger:** top level; invoked, or typing on
 - **Offer:** Items carry the declaration's doc comment (`resolveProvider` and `completionItem/resolve`, or `documentation`).
 - **Basis:** LSP resolve; hover already shows docstrings.
-- **Today:** no docs, no resolveProvider
 
 ### OR-07 · One entry per name · P2 · ✅ pass
 
@@ -387,7 +375,7 @@ fn g<T is ‸
 
 Completion mid-edit, in broken code, on odd text, and over the protocol.
 
-### RB-01 · Empty function body at the end of the file · P1 · ❌ fail
+### RB-01 · Empty function body at the end of the file · P1 · ✅ pass
 
 ```
 fn g(a: int):
@@ -396,7 +384,6 @@ fn g(a: int):
 - **Where / trigger:** top level; invoked, or typing on
 - **Offer:** ST-01 with `a`.
 - **Basis:** the moment right after typing the header: spec §3.3.
-- **Today:** missing a
 
 ### RB-02 · Empty block in the middle · P1 · ✅ pass
 
@@ -418,7 +405,7 @@ fn g(a: int):
 - **Offer:** ST-01 (the names around).
 - **Basis:** a block is freshly opened at the moment of typing.
 
-### RB-02b · Bindings in a freshly opened block · P1 · ❌ fail
+### RB-02b · Bindings in a freshly opened block · P1 · ✅ pass
 
 ```
   for i in xs:
@@ -432,7 +419,6 @@ fn g(a: int):
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** `i` / `y`.
 - **Basis:** as RB-02.
-- **Today:** #1 binding missing; #2 binding missing
 
 ### RB-03 · Trailing dot with code below · P1 · ✅ pass
 
@@ -460,7 +446,7 @@ fn g(a: int):
 - **Not:** Scope.
 - **Basis:** as RB-03.
 
-### RB-04b · Unclosed call with code below · P1 · ❌ fail
+### RB-04b · Unclosed call with code below · P1 · ✅ pass
 
 ```
   plus(1, ‸
@@ -470,9 +456,8 @@ fn g(a: int):
 - **Offer:** CA-03.
 - **Not:** Scope.
 - **Basis:** as RB-03.
-- **Today:** missing b:
 
-### RB-05 · Errors elsewhere · P1 · ❌ fail
+### RB-05 · Errors elsewhere · P1 · ✅ pass
 
 ```
 fn broken(:
@@ -492,7 +477,6 @@ fn g(p: Pair) -> int:
 - **Where / trigger:** top level; typing `.`
 - **Offer:** The members, as in a clean file.
 - **Basis:** a broken declaration must not turn completion off.
-- **Today:** #1 nothing offered
 
 ### RB-06 · A type error in the same function · P1 · ✅ pass
 
@@ -504,7 +488,7 @@ fn g(p: Pair) -> int:
 - **Offer:** ME-01.
 - **Basis:** as RB-05.
 
-### RB-07 · Empty file · P2 · ❌ fail
+### RB-07 · Empty file · P2 · ✅ pass
 
 ```
 ‸
@@ -513,7 +497,6 @@ fn g(p: Pair) -> int:
 - **Offer:** TL-01's declaration keywords.
 - **Not:** TL-01's.
 - **Basis:** TL-01.
-- **Today:** unexpected let; unexpected while
 
 ### RB-08 · Non-BMP characters before the cursor · P2 · ✅ pass
 
@@ -561,31 +544,28 @@ fn g(p: Pair) -> int:
 - **Offer:** Completion works in a document with no file (`untitled:` URI).
 - **Not:** Nothing offered.
 - **Basis:** the client selects `untitled` documents (extension.ts documentSelector).
-- **Today:** offered []
+- **Today:** an `untitled:` document gets no completion (nor hover): its module is not read as a document of the project
 
 ## VC: VS Code client
 
 `.vscode/extensions/ista` and its settings.
 
-### VC-01 · Word-based suggestions off · P1 · ❌ fail
+### VC-01 · Word-based suggestions off · P1 · ✅ pass
 
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** `[ista]` sets `editor.wordBasedSuggestions` to `off`, so a position with an empty list (NO group) shows nothing instead of the file's words.
 - **Not:** Words of the file offered where the server offers none.
 - **Basis:** VS Code: word-based suggestions fill in when the language server gives no items.
-- **Today:** [ista] editor.wordBasedSuggestions is undefined
 
-### VC-02 · Suggestions on typing · P2 · ❌ fail
+### VC-02 · Suggestions on typing · P2 · ✅ pass
 
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** `[ista]` states `editor.quickSuggestions` (on for code, off in strings and comments) so that no user setting makes lists open inside strings or comments.
 - **Basis:** VS Code settings.
-- **Today:** [ista] editor.quickSuggestions unset
 
-### VC-03 · Word pattern · P3 · ❌ fail
+### VC-03 · Word pattern · P3 · ✅ pass
 
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** The language configuration declares `wordPattern` as `[A-Za-z_][A-Za-z0-9_]*`, so the client filters and replaces whole identifiers.
 - **Basis:** VS Code `wordPattern`.
-- **Today:** no wordPattern
 

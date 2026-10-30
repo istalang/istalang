@@ -229,11 +229,20 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'SD-05',
-    place: ['declaredName', 'member'],
+    place: 'declaredName',
     title: 'Trait method header',
-    src: ['trait Z:\n  fn ‸', 'trait Z:\n  fn Self.‸'],
+    src: ['trait Z:\n  fn ‸'],
     where: 'top',
-    expect: { lacks: ['plus', 'xs', 'let'] },
+    expect: { has: ['Self'], lacks: ['plus', 'xs', 'let'] },
+    fails: true,
+  },
+  {
+    id: 'SD-05b',
+    place: 'member',
+    title: 'After Self in a trait method header',
+    src: ['trait Z:\n  fn Self.‸'],
+    where: 'top',
+    expect: { none: true },
   },
   {
     id: 'SD-06',

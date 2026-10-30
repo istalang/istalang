@@ -178,9 +178,9 @@ const scenarios: readonly Scenario[] = [
     id: 'ME-16',
     place: 'member',
     title: 'Generic statics',
-    src: ['  Inbox.‸', '  Array.‸'],
+    src: ['  Slot.‸'],
     trigger: '.',
-    expect: { lacks: ['let', 'xs'] },
+    expect: { has: ['create'], lacks: ['let', 'xs'] },
   },
   {
     id: 'ME-18',

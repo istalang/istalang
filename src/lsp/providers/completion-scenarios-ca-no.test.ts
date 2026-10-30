@@ -91,9 +91,9 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'CA-11',
     place: 'grammar',
-    title: 'Call result is complete',
-    src: ['  plus(1)‸', '  plus(1) ‸'],
-    expect: { lacks: ['xs', 'plus', 'let'] },
+    title: 'Call result is complete, a space after',
+    src: ['  plus(1) ‸'],
+    expect: { has: ['and', 'or', 'is', 'in'], lacks: ['xs', 'plus', 'let'] },
   },
   {
     id: 'CA-12',
@@ -144,7 +144,8 @@ const scenarios: readonly Scenario[] = [
     place: 'grammar',
     title: 'After a closing bracket, adjacent',
     src: ['  plus(1)‸', '  xs[0]‸', '  [1]‸'],
-    expect: { lacks: ['xs', 'plus', 'let'] },
+    expect: { none: true },
+    fails: true,
   },
   {
     id: 'NO-08',

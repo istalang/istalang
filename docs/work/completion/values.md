@@ -16,7 +16,7 @@ Conventions, fixture and legend: `scenarios.md`. Status is ✅ when the probe's 
 
 Where the spec gives a position an expected type (§3.11 qualified names, §3.1), the items that fit come first.
 
-### ET-01 · Field value · P1 · ❌ fail
+### ET-01 · Field value · P1 · ✅ pass
 
 ```
   Cfg{color: ‸
@@ -29,9 +29,8 @@ Where the spec gives a position an expected type (§3.11 qualified names, §3.1)
 - **Accept:** `Red` inserts `Red`.
 - **Order:** Locals and parameters of type `Color` (`col`, `cfg.color`-style), then the variants, then `Color`, then everything else; the first is preselected.
 - **Basis:** spec §3.11 (bare variants where an enum type is expected: "a field"); TS `isRecommended`/preselect, RA expected-type ranking, Kotlin smart completion.
-- **Today:** #1 unexpected Approved; #1 Red ranks 136, not top 5; #1 Green ranks 72, not top 5; #1 Blue ranks 16, not top 5; #1 col ranks 25, not top 5; #1 preselect is undefined, not col; #2 unexpected Approved; #2 Red ranks 136, not top 5…
 
-### ET-02 · Call argument · P1 · ❌ fail
+### ET-02 · Call argument · P1 · ✅ pass
 
 ```
   paint(‸
@@ -43,7 +42,6 @@ Where the spec gives a position an expected type (§3.11 qualified names, §3.1)
 - **Not:** Variants of an enum not expected (`Red` at the `int`).
 - **Order:** Matching type first.
 - **Basis:** spec §3.11 ("an argument"); signature help already knows the parameter.
-- **Today:** #1 nothing preselected; #2 nothing preselected
 
 ### ET-03 · `return` · P1 · ✅ pass
 
@@ -58,7 +56,7 @@ fn g() -> Color:
 - **Offer:** As ET-01 for the return type `Color` (at the second snippet's tail position too, whose last expression is the value).
 - **Basis:** spec §3.11 ("a `return`").
 
-### ET-04 · Annotated declaration · P1 · ❌ fail
+### ET-04 · Annotated declaration · P1 · ✅ pass
 
 ```
   let c: Color = ‸
@@ -68,7 +66,6 @@ fn g() -> Color:
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** As ET-01.
 - **Basis:** spec §3.11 ("an annotated variable").
-- **Today:** #1 unexpected Approved; #1 preselect is undefined, not col; #2 unexpected Approved; #2 preselect is undefined, not col
 
 ### ET-05 · Assignment · P2 · ✅ pass
 
@@ -130,7 +127,7 @@ fn g() -> Color:
 - **Offer:** Values of the payload field's type first.
 - **Basis:** spec §3.11.
 
-### ET-10 · Boolean expectation · P3 · ❌ fail
+### ET-10 · Boolean expectation · P3 · ✅ pass
 
 ```
   let b: bool = ‸
@@ -141,9 +138,8 @@ fn g() -> Color:
 - **Offer:** `true`, `false` ranked first among keywords; bool locals before.
 - **Order:** Matching type first.
 - **Basis:** TS/Kotlin rank by expected type.
-- **Today:** #1 true ranks 173, not top 4; #1 false ranks 55, not top 4; #2 true ranks 173, not top 4; #2 false ranks 55, not top 4
 
-### ET-11 · No expected type, no bare variants · P1 · ❌ fail
+### ET-11 · No expected type, no bare variants · P1 · ✅ pass
 
 ```
   let x = ‸
@@ -154,7 +150,6 @@ fn g() -> Color:
 - **Offer:** EX-01 without bare variants (`Red`, `Approved`, `Some`, `None`, `Ok`, `Err` are not valid bare).
 - **Not:** Bare variants.
 - **Basis:** spec §3.11 ("A bare variant with no enum type expected is a compile error").
-- **Today:** #1 unexpected Red; #1 unexpected Green; #1 unexpected Blue; #1 unexpected Approved; #1 unexpected Rejected; #1 unexpected Expired; #2 unexpected Red; #2 unexpected Green; #2 unexpected Blue; #2 unexpected Approved; #2 unexpecte…
 
 ### ET-12 · Default parameter · P2 · ✅ pass
 
@@ -165,7 +160,7 @@ fn g(c: Color = ‸
 - **Offer:** As ET-01.
 - **Basis:** spec §3.3.
 
-### ET-13 · Call result chosen by expected type · P3 · ❌ fail
+### ET-13 · Call result chosen by expected type · P3 · ✅ pass
 
 ```
   let x: int = ‸
@@ -174,13 +169,12 @@ fn g(c: Color = ‸
 - **Offer:** Names of type `int` (locals `n`, functions returning `int`: `paint`, `sum`) before others.
 - **Order:** Matching type first.
 - **Basis:** TS/RA.
-- **Today:** n ranks 105, not top 3
 
 ## LI: Struct and variant literals
 
 §3.1, §3.11, §3.18: the field names of a literal, and everything inside it.
 
-### LI-01 · Field names after `{` · P1 · ❌ fail
+### LI-01 · Field names after `{` · P1 · ✅ pass
 
 ```
   Pair{‸}
@@ -194,9 +188,8 @@ fn g(c: Color = ‸
 - **Not:** Scope names, keywords, fields of other types.
 - **Accept:** `first: ` — the name, the colon and one space; the item re-triggers completion (`command: editor.action.triggerSuggest`), so the value list (LI-07) opens at once.
 - **Basis:** spec §3.1; Swift/Kotlin insert the label with its separator, RA's record-field completion inserts `name: `; LSP `CompletionItem.command`.
-- **Today:** #1 first inserts "first" ≠ "first: "; #1 first doesn't re-trigger; #1 second doesn't re-trigger; #2 first inserts "first" ≠ "first: "; #2 first doesn't re-trigger; #2 second doesn't re-trigger; #3 first inserts "first" ≠ "first…
 
-### LI-01b · Field names after `{`, invoked · P1 · ❌ fail
+### LI-01b · Field names after `{`, invoked · P1 · ✅ pass
 
 ```
   Pair{‸}
@@ -210,9 +203,8 @@ fn g(c: Color = ‸
 - **Not:** As LI-01 (but see LI-09 for single-field structs).
 - **Accept:** As LI-01.
 - **Basis:** as LI-01.
-- **Today:** #1 first inserts "first" ≠ "first: "; #2 first inserts "first" ≠ "first: "; #3 first inserts "first" ≠ "first: "
 
-### LI-02 · Fields after a comma · P1 · ❌ fail
+### LI-02 · Fields after a comma · P1 · ✅ pass
 
 ```
   Pair{first: 1, ‸}
@@ -224,9 +216,8 @@ fn g(c: Color = ‸
 - **Not:** `first`; scope names.
 - **Accept:** `second: `, re-triggering.
 - **Basis:** spec §3.1.
-- **Today:** #1 second inserts "second" ≠ "second: "; #1 second doesn't re-trigger; #2 second inserts "second" ≠ "second: "; #2 second doesn't re-trigger
 
-### LI-03 · Fields after `, ` (space typed) · P1 · ❌ fail
+### LI-03 · Fields after `, ` (space typed) · P1 · ✅ pass
 
 ```
   Pair{first: 1, ‸}
@@ -235,9 +226,8 @@ fn g(c: Color = ‸
 - **Offer:** As LI-02: **the list is requested again when the space is typed**, so it stays open (the widget would otherwise close, as the space is no word character).
 - **Not:** As LI-02.
 - **Basis:** VS Code closes the widget on a non-word character unless it is a trigger character; LSP `triggerCharacters` may hold ` `.
-- **Today:** ' ' is not a trigger character
 
-### LI-04 · Fields after `{ ` (space typed) · P2 · ❌ fail
+### LI-04 · Fields after `{ ` (space typed) · P2 · ✅ pass
 
 ```
   Pair{ ‸}
@@ -246,7 +236,6 @@ fn g(c: Color = ‸
 - **Offer:** As LI-01.
 - **Not:** As LI-01.
 - **Basis:** as LI-03.
-- **Today:** ' ' is not a trigger character
 
 ### LI-05 · Typing on after a comma · P1 · ✅ pass
 
@@ -282,7 +271,7 @@ fn g(c: Color = ‸
 - **Not:** Scope names.
 - **Basis:** spec §3.1, formatted literals break one field per line.
 
-### LI-07 · Value after `field: ` · P1 · ❌ fail
+### LI-07 · Value after `field: ` · P1 · ✅ pass
 
 ```
   Pair{first: ‸}
@@ -293,7 +282,6 @@ fn g(c: Color = ‸
 - **Offer:** The expression start (EX-01) ranked by the field's type (ET-01…).
 - **Not:** Field names (a value is expected, not a field); statement keywords.
 - **Basis:** LI-01's command opens it; typing `: ` by hand opens it with the space trigger.
-- **Today:** #1 ' ' is not a trigger character; #1 unexpected let; #2 ' ' is not a trigger character; #2 unexpected let
 
 ### LI-08 · Every field given · P2 · ✅ pass
 
@@ -320,7 +308,7 @@ fn g(c: Color = ‸
 - **Accept:** Field: `id: `. Variable: `(u)` with the parentheses.
 - **Basis:** spec §3.1 ("as long as that value isn't a bare name … wrap it in parentheses").
 
-### LI-10 · Shorthand · P2 · ❌ fail
+### LI-10 · Shorthand · P2 · ✅ pass
 
 ```
   const first = 1
@@ -335,9 +323,8 @@ fn g(c: Color = ‸
 - **Accept:** The name alone (`Pair{first}`).
 - **Order:** Shorthand first.
 - **Basis:** spec §3.1 (`Pair{first, second}`); RA offers shorthand fields for matching locals.
-- **Today:** #1 items for first insert ["first"], want both "first" and "first: "; #2 items for first insert ["first"], want both "first" and "first: "
 
-### LI-11 · Spread value · P2 · ❌ fail
+### LI-11 · Spread value · P2 · ✅ pass
 
 ```
   Pair{...‸}
@@ -346,7 +333,6 @@ fn g(c: Color = ‸
 - **Offer:** Values of the literal's type first (`p`, `Pair.make()`).
 - **Order:** Values of type `Pair` first.
 - **Basis:** spec §3.1 (`Req{...req, amount: 0}`).
-- **Today:** p ranks 120, not top 3
 
 ### LI-11b · Fields after a spread · P2 · ✅ pass
 
@@ -359,7 +345,7 @@ fn g(c: Color = ‸
 - **Accept:** `first: `.
 - **Basis:** spec §3.1.
 
-### LI-12 · Spread as an item · P3 · ❌ fail
+### LI-12 · Spread as an item · P3 · ✅ pass
 
 ```
   Pair{‸}
@@ -369,7 +355,6 @@ fn g(c: Color = ‸
 - **Not:** `...` after a field.
 - **Accept:** `...`
 - **Basis:** spec §3.1.
-- **Today:** missing ...
 
 ### LI-13 · Variant literals · P1 · ✅ pass
 
@@ -411,7 +396,7 @@ fn g(c: Color = ‸
 - **Order:** Fields without a default first.
 - **Basis:** spec §3.18, §3.1 defaults.
 
-### LI-16 · Defaults rank after required fields · P3 · ❌ fail
+### LI-16 · Defaults rank after required fields · P3 · ✅ pass
 
 ```
   Opts{‸}
@@ -420,7 +405,6 @@ fn g(c: Color = ‸
 - **Offer:** `zeta` (required) and `alpha` (has a default).
 - **Order:** `zeta` before `alpha`, though the label order says otherwise.
 - **Basis:** rank by "must give" first; Swift orders required arguments first.
-- **Today:** zeta ranks after alpha
 
 ### LI-17 · Nested literals · P1 · ✅ pass
 
@@ -531,7 +515,7 @@ struct S { ‸ }
 
 §4, §3.7, §3.18: what follows `.`, `?.`, `->`, `?->` and a qualifier.
 
-### ME-01 · Value members · P1 · ❌ fail
+### ME-01 · Value members · P1 · ✅ pass
 
 ```
   p.‸
@@ -541,7 +525,6 @@ struct S { ‸ }
 - **Not:** Statics (`make`), keywords, scope names.
 - **Accept:** Field: the name. Method: `sum($0)`, cursor inside the parentheses.
 - **Basis:** spec §3.7; TS/RA.
-- **Today:** sum inserts "sum" ≠ "sum($0)"
 
 ### ME-02 · Type statics · P1 · ✅ pass
 
@@ -554,7 +537,7 @@ struct S { ‸ }
 - **Accept:** `make($0)`.
 - **Basis:** spec §3.7.
 
-### ME-03 · Enum variants · P1 · ❌ fail
+### ME-03 · Enum variants · P1 · ✅ pass
 
 ```
   Decision.‸
@@ -564,7 +547,6 @@ struct S { ‸ }
 - **Not:** Scope.
 - **Accept:** A variant with fields inserts `Approved{$0}`; one without, `Expired`.
 - **Basis:** spec §3.11.
-- **Today:** Approved inserts "Approved" ≠ "Approved{$0}"
 
 ### ME-04 · Namespaces · P1 · ✅ pass
 
@@ -705,7 +687,7 @@ struct S { ‸ }
 - **Not:** Scope.
 - **Basis:** what is unknown has no members.
 
-### ME-13 · Tuples · P3 · ❌ fail
+### ME-13 · Tuples · P3 · ✅ pass
 
 ```
   const tp = (1, "a")
@@ -715,9 +697,8 @@ struct S { ‸ }
 - **Offer:** `0`, `1` with element types.
 - **Not:** Scope.
 - **Basis:** spec §3.15.
-- **Today:** missing 0; missing 1
 
-### ME-14 · Integer literal before a dot · P3 · ❌ fail
+### ME-14 · Integer literal before a dot · P3 · ✅ pass
 
 ```
   1.‸
@@ -726,7 +707,6 @@ struct S { ‸ }
 - **Offer:** Nothing (`1.` starts a float).
 - **Not:** Scope.
 - **Basis:** spec §2 lexical.
-- **Today:** offered 1: toString……
 
 ### ME-14b · Float literal before a dot · P3 · ✅ pass
 
@@ -752,14 +732,12 @@ fn g<T is Zero>(x: T) -> int:
 ### ME-16 · Generic statics · P2 · ✅ pass
 
 ```
-  Inbox.‸
----
-  Array.‸
+  Slot.‸
 ```
 - **Where / trigger:** in `fn t`; typing `.`
 - **Offer:** Statics (`create`).
 - **Not:** Scope.
-- **Basis:** guide §2.9.
+- **Basis:** guide §2.9 (`Slot.create<int>()`; `Inbox` needs its import).
 
 ### ME-18 · Comparison `>` · P1 · ✅ pass
 
@@ -773,7 +751,7 @@ fn g<T is Zero>(x: T) -> int:
 - **Not:** Scope.
 - **Basis:** spec §4.
 
-### ME-19 · Dot after `..` · P2 · ❌ fail
+### ME-19 · Dot after `..` · P2 · ✅ pass
 
 ```
   let r = 0..‸
@@ -784,13 +762,12 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** Nothing for `..`/`...` typed as a trigger `.`: the operator is not a member access.
 - **Not:** Members of the previous operand.
 - **Basis:** spec §2 (`..`, `...`).
-- **Today:** #1 offered 184: Red,Green,Blue,Approved,Rej…; #2 offered 184: Red,Green,Blue,Approved,Rej…
 
 ## CA: Calls
 
 §3.3, §3.7: arguments, named arguments, the receiver.
 
-### CA-01 · First argument · P1 · ❌ fail
+### CA-01 · First argument · P1 · ✅ pass
 
 ```
   plus(‸
@@ -804,9 +781,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Not:** Statement keywords.
 - **Accept:** `a: ` re-triggering the value list.
 - **Basis:** spec §3.3 (named arguments); Kotlin/Swift offer argument labels.
-- **Today:** #1 unexpected let; #1 unexpected while; #2 unexpected let; #2 unexpected while; #3 unexpected let; #3 unexpected while
 
-### CA-02 · Named-argument items · P1 · ❌ fail
+### CA-02 · Named-argument items · P1 · ✅ pass
 
 ```
   plus(‸
@@ -815,9 +791,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** `a:` and `b:` as items (detail `int`), inserting `a: `.
 - **Accept:** `a: `, re-triggering.
 - **Basis:** spec §3.3 (`add(1, b: 2)`).
-- **Today:** missing a:; missing b:; missing a:
 
-### CA-03 · After a comma in a call · P1 · ❌ fail
+### CA-03 · After a comma in a call · P1 · ✅ pass
 
 ```
   plus(1, ‸
@@ -828,9 +803,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** The parameters not given yet (`b:`); on the space trigger likewise.
 - **Not:** `a:`.
 - **Basis:** spec §3.3.
-- **Today:** #1 missing b:; #2 missing b:
 
-### CA-03b · After `, ` in a call (space typed) · P1 · ❌ fail
+### CA-03b · After `, ` in a call (space typed) · P1 · ✅ pass
 
 ```
   plus(1, ‸
@@ -839,9 +813,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** As CA-03: the list stays open.
 - **Not:** As CA-03.
 - **Basis:** as LI-03.
-- **Today:** ' ' is not a trigger character; missing b:
 
-### CA-04 · After a named argument · P2 · ❌ fail
+### CA-04 · After a named argument · P2 · ✅ pass
 
 ```
   plus(b: 2, ‸
@@ -850,9 +823,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** Only the remaining named parameters (`a:`); no positional names.
 - **Not:** `b:`.
 - **Basis:** spec §3.3 (positional arguments come first).
-- **Today:** missing a:
 
-### CA-05 · Value after `name: ` · P1 · ❌ fail
+### CA-05 · Value after `name: ` · P1 · ✅ pass
 
 ```
   plus(b: ‸
@@ -861,9 +833,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** EX-01, `int`-typed first.
 - **Not:** `a:`, `b:`.
 - **Basis:** as LI-07.
-- **Today:** ' ' is not a trigger character
 
-### CA-06 · Nested calls · P2 · ❌ fail
+### CA-06 · Nested calls · P2 · ✅ pass
 
 ```
   plus(plus(1, ‸), 
@@ -874,9 +845,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** Each call's own parameters.
 - **Not:** The other call's.
 - **Basis:** signature help follows the same rule.
-- **Today:** #1 missing b:; #2 missing b:
 
-### CA-07 · Function-value call · P2 · ❌ fail
+### CA-07 · Function-value call · P2 · ✅ pass
 
 ```
   const f = fn(q: int): q
@@ -886,9 +856,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** EX-01 (a function value's parameters have no names to offer).
 - **Not:** Named-argument items.
 - **Basis:** spec §3.14.
-- **Today:** unexpected let
 
-### CA-08 · Rest and spread · P3 · ❌ fail
+### CA-08 · Rest and spread · P3 · ✅ pass
 
 ```
   logAll("a", ‸
@@ -896,9 +865,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** EX-01 and `...` (spread into the rest parameter).
 - **Basis:** spec §3.3.
-- **Today:** missing ...
 
-### CA-09 · Reference arguments · P3 · ❌ fail
+### CA-09 · Reference arguments · P3 · ✅ pass
 
 ```
   let z = 1
@@ -908,9 +876,8 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** `let` variables.
 - **Not:** Constants, parameters.
 - **Basis:** spec §3.7.
-- **Today:** unexpected n
 
-### CA-10 · Conversions and generic calls · P3 · ❌ fail
+### CA-10 · Conversions and generic calls · P3 · ✅ pass
 
 ```
   float(‸
@@ -921,22 +888,18 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** EX-01.
 - **Not:** Statement keywords.
 - **Basis:** spec §3.10.
-- **Today:** #1 unexpected let; #2 unexpected let
 
-### CA-11 · Call result is complete · P2 · ❌ fail
+### CA-11 · Call result is complete, a space after · P2 · ✅ pass
 
 ```
-  plus(1)‸
----
   plus(1) ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** Case 2: EX-02's infix words. Case 1: nothing.
-- **Not:** Names.
+- **Offer:** EX-02's infix words (`and or is in`).
+- **Not:** Names. (The unspaced case is NO-07.)
 - **Basis:** spec §4.
-- **Today:** #1 unexpected xs; #1 unexpected plus; #1 unexpected let; #2 unexpected xs; #2 unexpected plus; #2 unexpected let
 
-### CA-12 · Unresolved callee · P2 · ❌ fail
+### CA-12 · Unresolved callee · P2 · ✅ pass
 
 ```
   nope(‸
@@ -945,5 +908,4 @@ fn g<T is Zero>(x: T) -> int:
 - **Offer:** EX-01.
 - **Not:** Named-argument items.
 - **Basis:** a typo must not turn completion off.
-- **Today:** unexpected let
 

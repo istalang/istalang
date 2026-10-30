@@ -16,7 +16,7 @@ Conventions, fixture and legend: `scenarios.md`. Status is ✅ when the probe's 
 
 Where a declaration starts or continues. A file holds declarations only (§3), so no statement and no value stands here.
 
-### TL-01 · Blank line between declarations · P1 · ❌ fail
+### TL-01 · Blank line between declarations · P1 · ✅ pass
 
 ```
 ‸
@@ -26,9 +26,8 @@ Where a declaration starts or continues. A file holds declarations only (§3), s
 - **Not:** Statement keywords (`if for while return let match …`), expression keywords (`true none not`), clause words (`case else in is and or as`), every name (`Pair`, `plus`, `Red`).
 - **Accept:** The keyword alone.
 - **Basis:** spec §3 (a program consists only of top-level declarations); TS offers only declaration keywords at module level, RA only item keywords.
-- **Today:** missing type; missing shared; unexpected let; unexpected const; unexpected if; unexpected for; unexpected while; unexpected match; unexpected select; unexpected return; unexpected defer; unexpected drop; unexpected true; unexpe…
 
-### TL-02 · Partly typed declaration keyword · P1 · ❌ fail
+### TL-02 · Partly typed declaration keyword · P1 · ✅ pass
 
 ```
 fn‸
@@ -39,9 +38,8 @@ st‸
 - **Offer:** Same as TL-01 (the client filters by the typed prefix).
 - **Not:** As TL-01.
 - **Basis:** LSP: filtering is the client's job; server returns the position's full set.
-- **Today:** #1 unexpected let; #1 unexpected while; #1 unexpected plus; #1 unexpected Pair; #2 unexpected let; #2 unexpected while; #2 unexpected plus; #2 unexpected Pair
 
-### TL-03 · After `async` · P1 · ❌ fail
+### TL-03 · After `async` · P1 · ✅ pass
 
 ```
 async ‸
@@ -50,9 +48,8 @@ async ‸
 - **Offer:** `fn` only.
 - **Not:** Everything else.
 - **Basis:** spec §3.3 (`async fn`) is the only declaration `async` starts.
-- **Today:** offered [Red,Green,Blue,Approved,Rejected,Expired,Some,None] ≠ [fn]
 
-### TL-04 · After `shared` · P1 · ❌ fail
+### TL-04 · After `shared` · P1 · ✅ pass
 
 ```
 shared ‸
@@ -61,9 +58,8 @@ shared ‸
 - **Offer:** `struct` only.
 - **Not:** Everything else.
 - **Basis:** spec §3.18.
-- **Today:** offered [Red,Green,Blue,Approved,Rejected,Expired,Some,None] ≠ [struct]
 
-### TL-05 · After `extern` · P2 · ❌ fail
+### TL-05 · After `extern` · P2 · ✅ pass
 
 ```
 extern ‸
@@ -72,9 +68,8 @@ extern ‸
 - **Offer:** `fn`, `struct`; the rest names the extern (no list).
 - **Not:** Values, types, statement keywords.
 - **Basis:** spec §3.6 (`extern fn`, `extern name: Type`, `extern struct`).
-- **Today:** unexpected plus; unexpected Pair; unexpected let; unexpected if
 
-### TL-06 · Top-level `const` name · P1 · ❌ fail
+### TL-06 · Top-level `const` name · P1 · ✅ pass
 
 ```
 const ‸
@@ -83,7 +78,6 @@ const ‸
 - **Offer:** Nothing: the name is declared here.
 - **Not:** Everything.
 - **Basis:** declaring position; TS/RA offer nothing where a binding name is written.
-- **Today:** offered 171: Red,Green,Blue,Approved,Rej…
 
 ### TL-07 · Dot after a name at top level · P1 · ✅ pass
 
@@ -97,7 +91,7 @@ p.‸
 - **Not:** Scope names (the existing guarantee).
 - **Basis:** spec §3.
 
-### TL-08 · Top-level const value · P2 · ❌ fail
+### TL-08 · Top-level const value · P2 · ✅ pass
 
 ```
 const limit = ‸
@@ -106,13 +100,12 @@ const limit = ‸
 - **Offer:** Names a compile-time constant may use: top-level constants, functions (lambda values), types and their variants as constructors, literals keywords `true false none`.
 - **Not:** Statement keywords, clause words, `await`, `spawn`.
 - **Basis:** spec §3 (compile-time computable const).
-- **Today:** unexpected let; unexpected const; unexpected for; unexpected while; unexpected select; unexpected return; unexpected defer; unexpected drop; unexpected case; unexpected else; unexpected await; unexpected spawn
 
 ## DH: Declaration headers
 
 The names, generics and parameters of `fn`, and what follows `async`, `shared`, `extern`.
 
-### DH-01 · Function name · P2 · ❌ fail
+### DH-01 · Function name · P2 · ✅ pass
 
 ```
 fn ‸
@@ -124,7 +117,6 @@ async fn ‸
 - **Not:** Values, functions, keywords, variants.
 - **Accept:** The type name, no punctuation (the client types `.`).
 - **Basis:** spec §3.7 (statics), declaring position.
-- **Today:** #1 unexpected plus; #1 unexpected let; #1 unexpected if; #1 unexpected Red; #2 unexpected plus; #2 unexpected let; #2 unexpected if; #2 unexpected Red
 
 ### DH-02 · Static function name after the type · P2 · ✅ pass
 
@@ -136,7 +128,7 @@ fn Pair.‸
 - **Not:** Existing statics (`make`), fields, variants.
 - **Basis:** declaring position (`fn Pair.make` is declaring `make`).
 
-### DH-03 · Generic parameter name · P1 · ❌ fail
+### DH-03 · Generic parameter name · P1 · ✅ pass
 
 ```
 fn g<‸
@@ -149,9 +141,8 @@ enum E<A, ‸
 - **Offer:** Nothing: type parameters are declared.
 - **Not:** Everything.
 - **Basis:** declaring position.
-- **Today:** #1 offered 172: Red,Green,Blue,Approved,Rej…; #2 offered 172: Red,Green,Blue,Approved,Rej…; #3 offered 172: Red,Green,Blue,Approved,Rej…
 
-### DH-04 · Generic bound · P1 · ❌ fail
+### DH-04 · Generic bound · P1 · ✅ pass
 
 ```
 fn g<T is ‸
@@ -163,9 +154,8 @@ fn g<T is Shape & ‸
 - **Not:** Value names, non-trait types (`Pair`, `int`), keywords.
 - **Accept:** The trait name.
 - **Basis:** spec §3.5, §3.10 (`T is Addable & Monoid`).
-- **Today:** #1 unexpected Pair; #1 unexpected int; #1 unexpected plus; #1 unexpected let; #2 unexpected Pair; #2 unexpected int; #2 unexpected plus; #2 unexpected let
 
-### DH-05 · Parameter name · P1 · ❌ fail
+### DH-05 · Parameter name · P1 · ✅ pass
 
 ```
 fn g(‸
@@ -175,12 +165,11 @@ fn g(a: int, ‸
 async fn g(‸
 ```
 - **Where / trigger:** top level; invoked, or typing on
-- **Offer:** Nothing but `self` (first parameter) and the `...` rest marker: parameters are declared.
+- **Offer:** Nothing but `self` (first parameter): parameters are declared (`...` is typed, not completed).
 - **Not:** Values, types, functions, keywords.
 - **Basis:** declaring position; spec §3.3, §3.7.
-- **Today:** #1 unexpected plus; #1 unexpected Pair; #1 unexpected int; #1 unexpected let; #2 unexpected plus; #2 unexpected Pair; #2 unexpected int; #2 unexpected let; #3 unexpected plus; #3 unexpected Pair; #3 unexpected int; #3 unexpecte…
 
-### DH-06 · Parameter default · P2 · ❌ fail
+### DH-06 · Parameter default · P2 · ✅ pass
 
 ```
 fn g(a: int, b = ‸
@@ -191,9 +180,8 @@ fn g(a: int, b: int = ‸
 - **Offer:** Expression start (EX-01), where the parameters before `b` are visible (a default may use them), and the module's names.
 - **Not:** Parameters declared at or after `b`; statement keywords.
 - **Basis:** spec §3.3 (defaults run in the declaring module's scope and may use earlier parameters).
-- **Today:** #1 unexpected let; #1 unexpected while; #2 unexpected let; #2 unexpected while
 
-### DH-07 · Parameter after `...` · P3 · ❌ fail
+### DH-07 · Parameter after `...` · P3 · ✅ pass
 
 ```
 fn g(...‸
@@ -202,13 +190,12 @@ fn g(...‸
 - **Offer:** Nothing: the rest parameter's name is declared.
 - **Not:** Everything.
 - **Basis:** declaring position.
-- **Today:** offered 172: Red,Green,Blue,Approved,Rej…
 
 ## TY: Type positions
 
 Every place the grammar wants a type (§2, §3.5, §3.14).
 
-### TY-01 · Parameter type · P1 · ❌ fail
+### TY-01 · Parameter type · P1 · ✅ pass
 
 ```
 fn g(a: ‸
@@ -220,9 +207,8 @@ fn g(a: int, b: ‸
 - **Not:** Values, functions, variants, statement/clause keywords, `true false none`.
 - **Accept:** The type name; a generic type does not add `<`.
 - **Basis:** spec §2, §3.5; TS offers only types in type position, RA only types and traits.
-- **Today:** #1 unexpected plus; #1 unexpected paint; #1 unexpected Red; #1 unexpected Approved; #1 unexpected let; #1 unexpected if; #1 unexpected true; #1 unexpected none; #1 unexpected while; #2 unexpected plus; #2 unexpected paint; #2 u…
 
-### TY-02 · Return type · P1 · ❌ fail
+### TY-02 · Return type · P1 · ✅ pass
 
 ```
 fn g() -> ‸
@@ -233,9 +219,8 @@ async fn g() -> ‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §3.3.
-- **Today:** #1 unexpected plus; #1 unexpected let; #1 unexpected Red; #2 unexpected plus; #2 unexpected let; #2 unexpected Red
 
-### TY-02b · Return type, opened by typing `>` of `->` · P2 · ❌ fail
+### TY-02b · Return type, opened by typing `>` of `->` · P2 · ✅ pass
 
 ```
 fn g() ->‸
@@ -244,9 +229,8 @@ fn g() ->‸
 - **Offer:** As TY-01 (the `>` trigger is not only for `->` member access).
 - **Not:** As TY-01.
 - **Basis:** LSP trigger characters; `->` is both a member operator and a result-type arrow, so the position decides.
-- **Today:** missing int; missing Pair
 
-### TY-03 · Annotated local · P1 · ❌ fail
+### TY-03 · Annotated local · P1 · ✅ pass
 
 ```
   let x: ‸
@@ -257,9 +241,8 @@ fn g() ->‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §3.4.
-- **Today:** #1 unexpected xs; #1 unexpected plus; #1 unexpected let; #1 unexpected Red; #2 unexpected xs; #2 unexpected plus; #2 unexpected let; #2 unexpected Red
 
-### TY-04 · Struct field type · P1 · ❌ fail
+### TY-04 · Struct field type · P1 · ✅ pass
 
 ```
 struct S:
@@ -271,9 +254,8 @@ struct S { a: int; b: ‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §3.1.
-- **Today:** #1 unexpected plus; #1 unexpected Red; #1 unexpected let; #2 unexpected plus; #2 unexpected Red; #2 unexpected let
 
-### TY-05 · Type argument · P1 · ❌ fail
+### TY-05 · Type argument · P1 · ✅ pass
 
 ```
   let x: Array<‸
@@ -286,9 +268,8 @@ struct S { a: int; b: ‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §3.5.
-- **Today:** #1 unexpected xs; #1 unexpected plus; #1 unexpected let; #2 unexpected xs; #2 unexpected plus; #2 unexpected let; #3 unexpected xs; #3 unexpected plus; #3 unexpected let
 
-### TY-06 · Tuple, optional and function types · P2 · ❌ fail
+### TY-06 · Tuple, optional and function types · P2 · ✅ pass
 
 ```
   let x: (int, ‸
@@ -303,9 +284,8 @@ struct S { a: int; b: ‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §2, §3.14, §3.15.
-- **Today:** #1 unexpected xs; #1 unexpected plus; #1 unexpected let; #2 unexpected xs; #2 unexpected plus; #2 unexpected let; #3 unexpected xs; #3 unexpected plus; #3 unexpected let; #4 unexpected xs; #4 unexpected plus; #4 unexpected let
 
-### TY-07 · Anonymous struct type · P2 · ❌ fail
+### TY-07 · Anonymous struct type · P2 · ✅ pass
 
 ```
   let x: { sku: ‸
@@ -318,7 +298,6 @@ struct S { a: int; b: ‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §3.1 (anonymous structs).
-- **Today:** #1 unexpected xs; #1 unexpected plus; #1 unexpected let; #2 unexpected xs; #2 unexpected plus; #2 unexpected let; #3 unexpected xs; #3 unexpected plus; #3 unexpected let
 
 ### TY-08 · Type parameters in scope · P1 · ✅ pass
 
@@ -359,7 +338,7 @@ fn g<T>(x: T) -> int:
 - **Offer:** `T` (a type in the first snippet; in the second, `T` as the head of a static call `T.zero()`).
 - **Basis:** spec §3.5, §3.10.
 
-### TY-11 · Qualified type · P1 · ❌ fail
+### TY-11 · Qualified type · P1 · ✅ pass
 
 ```
 fn g(a: time.‸
@@ -371,9 +350,8 @@ fn h():
 - **Offer:** The types the module exports (`Time`, `Duration`).
 - **Not:** Functions and values of the module (`delay`, `now`).
 - **Basis:** spec §3.13; TS offers only types after `ns.` in type position.
-- **Today:** #1 unexpected delay; #1 unexpected now; #2 missing Time; #2 missing Duration
 
-### TY-12 · Alias target · P1 · ❌ fail
+### TY-12 · Alias target · P1 · ✅ pass
 
 ```
 type Other = ‸
@@ -382,9 +360,8 @@ type Other = ‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §3.17.
-- **Today:** unexpected plus; unexpected Red; unexpected let
 
-### TY-13 · Trait object · P2 · ❌ fail
+### TY-13 · Trait object · P2 · ✅ pass
 
 ```
 fn g(a: any ‸
@@ -395,9 +372,8 @@ fn g(a: Array<any ‸
 - **Offer:** Traits (`Shape`).
 - **Not:** Non-trait types, values.
 - **Basis:** spec §3.10 (`any Notifier`).
-- **Today:** #1 unexpected Pair; #1 unexpected plus; #1 unexpected let; #2 unexpected Pair; #2 unexpected plus; #2 unexpected let
 
-### TY-14 · Explicit type arguments at a call · P2 · ❌ fail
+### TY-14 · Explicit type arguments at a call · P2 · ✅ pass
 
 ```
   let q = Inbox.create<‸
@@ -408,9 +384,8 @@ fn g(a: Array<any ‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §3.5, §9 (`json.parse<T>(s)`).
-- **Today:** #1 unexpected xs; #1 unexpected plus; #1 unexpected let; #2 unexpected xs; #2 unexpected plus; #2 unexpected let
 
-### TY-15 · `new` takes a shared struct · P1 · ❌ fail
+### TY-15 · `new` takes a shared struct · P1 · ✅ pass
 
 ```
   let x = new ‸
@@ -422,9 +397,8 @@ fn g(a: Array<any ‸
 - **Not:** Plain structs, enums, values, keywords.
 - **Accept:** The type name; `{` is typed by the user.
 - **Basis:** spec §3.18 (`new` builds only shared structs).
-- **Today:** #1 unexpected Pair; #1 unexpected Color; #1 unexpected plus; #1 unexpected xs; #1 unexpected let; #2 unexpected Pair; #2 unexpected Color; #2 unexpected plus; #2 unexpected xs; #2 unexpected let
 
-### TY-16 · `Self` in a trait · P2 · ❌ fail
+### TY-16 · `Self` in a trait · P2 · ✅ pass
 
 ```
 trait Zero:
@@ -434,7 +408,7 @@ trait Zero:
 - **Offer:** `Self` with the types of TY-01.
 - **Basis:** spec §3.10.
 
-### TY-16b · No `Self` in a method · P2 · new
+### TY-16b · No `Self` in a method · P2 · ✅ pass
 
 ```
 fn Pair.sum2(self: ‸
@@ -448,7 +422,7 @@ fn Pair.sum2(self: ‸
 
 §3.1, §3.10, §3.11, §3.17.
 
-### SD-01 · Field name in a struct body · P1 · ❌ fail
+### SD-01 · Field name in a struct body · P1 · ✅ pass
 
 ```
 struct S:
@@ -464,9 +438,8 @@ struct S { a: int; ‸
 - **Offer:** Nothing: the field's name is declared (`@` annotation lines aside, AN-01).
 - **Not:** Everything.
 - **Basis:** declaring position.
-- **Today:** #1 offered 172: Red,Green,Blue,Approved,Rej…; #2 offered 172: Red,Green,Blue,Approved,Rej…; #3 offered 172: Red,Green,Blue,Approved,Rej…
 
-### SD-02 · Field default · P2 · ❌ fail
+### SD-02 · Field default · P2 · ✅ pass
 
 ```
 struct R:
@@ -480,9 +453,8 @@ struct R { times: int = 3; backoff: int = ‸
 - **Offer:** Expression start (EX-01) where the fields **before** it are visible (`times`), plus the module's names.
 - **Not:** Fields after it (`later`), the field itself; statement keywords.
 - **Basis:** spec §3.1 (a default may use the fields before it).
-- **Today:** #1 unexpected let; #2 unexpected let
 
-### SD-03 · Variant name · P1 · ❌ fail
+### SD-03 · Variant name · P1 · ✅ pass
 
 ```
 enum E:
@@ -498,9 +470,8 @@ enum E:
 - **Offer:** Nothing: the variant is declared.
 - **Not:** Everything.
 - **Basis:** declaring position, spec §3.11.
-- **Today:** #1 offered 172: Red,Green,Blue,Approved,Rej…; #2 offered 173: Red,Green,Blue,Approved,Rej…; #3 offered 173: Red,Green,Blue,Approved,Rej…
 
-### SD-03b · Variant payload field · P1 · ❌ fail
+### SD-03b · Variant payload field · P1 · ✅ pass
 
 ```
 enum E:
@@ -512,9 +483,8 @@ enum E { A { x: int; y: ‸
 - **Offer:** As TY-01 (a payload field has a type).
 - **Not:** As TY-01.
 - **Basis:** spec §3.11.
-- **Today:** #1 unexpected plus; #1 unexpected Red; #1 unexpected let; #2 unexpected plus; #2 unexpected Red; #2 unexpected let
 
-### SD-04 · Declaring a name after `struct`, `enum`, `trait`, `type` · P1 · ❌ fail
+### SD-04 · Declaring a name after `struct`, `enum`, `trait`, `type` · P1 · ✅ pass
 
 ```
 struct ‸
@@ -531,24 +501,30 @@ shared struct ‸
 - **Offer:** Nothing.
 - **Not:** Everything.
 - **Basis:** declaring position.
-- **Today:** #1 offered 171: Red,Green,Blue,Approved,Rej…; #2 offered 171: Red,Green,Blue,Approved,Rej…; #3 offered 171: Red,Green,Blue,Approved,Rej…; #4 offered 171: Red,Green,Blue,Approved,Rej…; #5 offered 171: Red,Green,Blue,Approved,Rej…
 
 ### SD-05 · Trait method header · P3 · ❌ fail
 
 ```
 trait Z:
   fn ‸
----
+```
+- **Where / trigger:** top level; invoked, or typing on
+- **Offer:** `Self` (a static is written `fn Self.zero()`).
+- **Not:** Values.
+- **Basis:** spec §3.10.
+- **Today:** missing Self
+
+### SD-05b · After `Self` in a trait method header · P3 · ✅ pass
+
+```
 trait Z:
   fn Self.‸
 ```
 - **Where / trigger:** top level; invoked, or typing on
-- **Offer:** First: `Self` (a static is `fn Self.zero()`); after `Self.`: nothing.
-- **Not:** Values.
-- **Basis:** spec §3.10.
-- **Today:** #1 unexpected plus; #1 unexpected let
+- **Offer:** Nothing: the static's own name is declared.
+- **Basis:** declaring position, spec §3.10.
 
-### SD-06 · Type default of a type parameter · P3 · ❌ fail
+### SD-06 · Type default of a type parameter · P3 · ✅ pass
 
 ```
 enum E<T, R = ‸
@@ -559,13 +535,12 @@ struct B<T = ‸
 - **Offer:** As TY-01.
 - **Not:** As TY-01.
 - **Basis:** spec §3.5, §3.11.
-- **Today:** #1 unexpected plus; #1 unexpected let; #2 unexpected plus; #2 unexpected let
 
 ## IM: Imports
 
 §3.13: names, aliases and module specifiers.
 
-### IM-01 · Names before the path · P1 · ❌ fail
+### IM-01 · Names before the path · P1 · ✅ pass
 
 ```
 import ‸ from 'time'
@@ -575,9 +550,8 @@ import ‸ from 'time'
 - **Not:** Local names, keywords, a module's `_private` names.
 - **Accept:** The name; commas are typed.
 - **Basis:** spec §3.13; TS offers a module's exports in `import {‸} from "m"`.
-- **Today:** missing Time; missing Duration; missing delay; unexpected plus; unexpected Pair; unexpected let; unexpected _hidden
 
-### IM-02 · Another name after a comma · P1 · ❌ fail
+### IM-02 · Another name after a comma · P1 · ✅ pass
 
 ```
 import Time, ‸ from 'time'
@@ -586,9 +560,8 @@ import Time, ‸ from 'time'
 - **Offer:** As IM-01 minus `Time`.
 - **Not:** `Time`.
 - **Basis:** as IM-01.
-- **Today:** missing Duration; unexpected plus
 
-### IM-03 · Import with no path yet · P2 · ❌ fail
+### IM-03 · Import with no path yet · P2 · ✅ pass
 
 ```
 import ‸
@@ -599,9 +572,8 @@ import a, ‸
 - **Offer:** Nothing: what the module exports is unknown until its path is written (the keyword `from` comes after a name, IM-04).
 - **Not:** Local values, types, statement keywords.
 - **Basis:** the module is unknown until the path is written.
-- **Today:** #1 unexpected plus; #1 unexpected Pair; #1 unexpected let; #1 unexpected if; #2 unexpected plus; #2 unexpected Pair; #2 unexpected let; #2 unexpected if
 
-### IM-04 · Word after imported names · P2 · ❌ fail
+### IM-04 · Word after imported names · P2 · ✅ pass
 
 ```
 import a ‸
@@ -613,9 +585,8 @@ import a, b ‸
 - **Not:** Everything else.
 - **Accept:** The word.
 - **Basis:** spec §3.13 grammar.
-- **Today:** #1 offered [Red,Green,Blue,Approved,Rejected,Expired,Some,None] ≠ [from]; #2 offered [Red,Green,Blue,Approved,Rejected,Expired,Some,None] ≠ [from]
 
-### IM-04b · Word after `*` · P2 · ❌ fail
+### IM-04b · Word after `*` · P2 · ✅ pass
 
 ```
 import * ‸
@@ -625,9 +596,8 @@ import * ‸
 - **Not:** Everything else.
 - **Accept:** The word.
 - **Basis:** spec §3.13 grammar.
-- **Today:** offered [Red,Green,Blue,Approved,Rejected,Expired,Some,None] ≠ [as]
 
-### IM-05 · Alias name · P1 · ❌ fail
+### IM-05 · Alias name · P1 · ✅ pass
 
 ```
 import * as ‸
@@ -636,23 +606,21 @@ import * as ‸
 - **Offer:** Nothing: the alias is declared.
 - **Not:** Everything.
 - **Basis:** declaring position.
-- **Today:** offered 171: Red,Green,Blue,Approved,Rej…
 
-### IM-06 · Module specifier · P1 · ❌ fail
+### IM-06 · Module specifier · P1 · ✅ pass
 
 ```
 import x from '‸'
 ---
-import * as m from "‸"
+import * as m from "‸"   ⟵ typing "\""
 ```
-- **Where / trigger:** top level; typing `'`
+- **Where / trigger:** top level; typing `'` (the second variant, `"`)
 - **Offer:** Std modules (`time math decimal strings json regex crypto random log runtime inbox collections futures rpc fanout`) and the project's files (`purchase/approve`), relative ones when `./`-prefixed.
 - **Not:** Names, keywords; `testing` outside a `*.test.ista`.
 - **Accept:** The path text, inside the quotes.
 - **Basis:** spec §3.13, §2.12; LSP: `'`, `"` and `/` as triggers; TS completes module specifiers.
-- **Today:** #1 ''' is not a trigger character; #1 missing json; #1 missing inbox; #1 missing futures; #1 unexpected plus; #1 unexpected let; #2 ''' is not a trigger character; #2 missing json; #2 missing inbox; #2 missing futures; #2 unexp…
 
-### IM-07 · Relative specifier · P2 · ❌ fail
+### IM-07 · Relative specifier · P2 · ✅ pass
 
 ```
 import x from './‸'
@@ -661,7 +629,6 @@ import x from './‸'
 - **Offer:** The `.ista` files beside this one, without the extension, and sub-folders (each followed by `/` re-triggering).
 - **Not:** This file itself; names.
 - **Basis:** spec §3.13 (`./helper`); LSP trigger `/`.
-- **Today:** '/' is not a trigger character; unexpected plus; unexpected let
 
 ### IM-08 · Imported names are in scope · P1 · ✅ pass
 
@@ -679,7 +646,7 @@ fn g():
 
 §3.16.
 
-### AN-01 · Annotation name before a declaration · P2 · ❌ fail
+### AN-01 · Annotation name before a declaration · P2 · ✅ pass
 
 ```
 @‸
@@ -694,9 +661,8 @@ fn g(): 1
 - **Not:** Values, enums, keywords.
 - **Accept:** A single-field annotation inserts `Name{$0}`, a fieldless one just `Name`.
 - **Basis:** spec §3.16 (any struct is an annotation); LSP trigger `@`.
-- **Today:** #1 '@' is not a trigger character; #1 unexpected plus; #1 unexpected Color; #1 unexpected let; #2 '@' is not a trigger character; #2 unexpected plus; #2 unexpected Color; #2 unexpected let
 
-### AN-02 · Annotation after a field · P2 · ❌ fail
+### AN-02 · Annotation after a field · P2 · ✅ pass
 
 ```
 struct S:
@@ -706,9 +672,8 @@ struct S:
 - **Offer:** As AN-01.
 - **Not:** As AN-01.
 - **Basis:** spec §3.16.
-- **Today:** '@' is not a trigger character; unexpected plus; unexpected let
 
-### AN-03 · Annotation on a statement · P2 · ❌ fail
+### AN-03 · Annotation on a statement · P2 · ✅ pass
 
 ```
   @‸
@@ -718,13 +683,10 @@ struct S:
 - **Offer:** `Waypoint` only (§3.16: statements take only `@Waypoint`).
 - **Not:** Other structs.
 - **Basis:** spec §3.16, §10.
-- **Today:** '@' is not a trigger character; unexpected Pair; unexpected plus; unexpected let
 
-### AN-04 · Annotation fields · P2 · ❌ fail
+### AN-04 · Annotation fields · P2 · ✅ pass
 
 ```
-@Waypoint{‸
----
 struct D:
   reason: string
   code: int
@@ -735,9 +697,18 @@ struct D:
 - **Not:** Other names.
 - **Accept:** As LI-01.
 - **Basis:** spec §3.16 reuses the struct-literal rules.
-- **Today:** #1 fields not offered; #2 fields not offered
 
-### AN-05 · No annotation in expressions · P3 · ❌ fail
+### AN-04b · The prelude annotation's field · P2 · ✅ pass
+
+```
+@Waypoint{‸
+```
+- **Where / trigger:** top level; typing `{`
+- **Offer:** `label: `, the one field of the prelude's `Waypoint`.
+- **Not:** Other names.
+- **Basis:** spec §3.16 (`Waypoint` has a single `string` field), as AN-04.
+
+### AN-05 · No annotation in expressions · P3 · ✅ pass
 
 ```
   let x = @‸
@@ -746,5 +717,4 @@ struct D:
 - **Offer:** Nothing.
 - **Not:** Everything.
 - **Basis:** spec §3.16 (annotations stand before declarations and statements).
-- **Today:** '@' is not a trigger character; offered 184: Red,Green,Blue,Approved,Rej…
 
