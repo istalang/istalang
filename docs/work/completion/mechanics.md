@@ -92,7 +92,7 @@ fn g(a: int, ‸
 - **Not:** Scope names.
 - **Basis:** LSP trigger only narrows where its meaning is known.
 
-### NO-07 · After a closing bracket, adjacent · P3 · ❌ fail
+### NO-07 · After a closing bracket, adjacent · P3 · ✅ pass
 
 ```
   plus(1)‸
@@ -105,7 +105,6 @@ fn g(a: int, ‸
 - **Offer:** Nothing.
 - **Not:** Names.
 - **Basis:** a name glued to `)` is no token.
-- **Today:** #1 offered 5: or, and, in, not, is…; #2 offered 5: or, and, in, not, is…; #3 offered 5: or, and, in, not, is…
 
 ### NO-08 · Space trigger elsewhere · P1 · ✅ pass
 
@@ -538,13 +537,12 @@ fn g(p: Pair) -> int:
 - **Not:** A stale snapshot.
 - **Basis:** LSP full sync.
 
-### RB-13 · Unsaved (untitled) document · P2 · ❌ fail
+### RB-13 · Unsaved (untitled) document · P2 · ✅ pass
 
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** Completion works in a document with no file (`untitled:` URI).
 - **Not:** Nothing offered.
 - **Basis:** the client selects `untitled` documents (extension.ts documentSelector).
-- **Today:** an `untitled:` document gets no completion (nor hover): its module is not read as a document of the project
 
 ## VC: VS Code client
 

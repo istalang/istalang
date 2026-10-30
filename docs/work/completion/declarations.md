@@ -502,7 +502,7 @@ shared struct ‸
 - **Not:** Everything.
 - **Basis:** declaring position.
 
-### SD-05 · Trait method header · P3 · ❌ fail
+### SD-05 · Trait method header · P3 · ✅ pass
 
 ```
 trait Z:
@@ -512,7 +512,6 @@ trait Z:
 - **Offer:** `Self` (a static is written `fn Self.zero()`).
 - **Not:** Values.
 - **Basis:** spec §3.10.
-- **Today:** missing Self
 
 ### SD-05b · After `Self` in a trait method header · P3 · ✅ pass
 

@@ -10,7 +10,7 @@ tags: [plan, completion, lsp, vscode]
 
 # Completion scenarios
 
-What an editor should offer at every position the grammar has, how a list opens and stays open, and what accepting an item inserts. Written from `docs/spec.md` and from what TypeScript, rust-analyzer, Kotlin and Swift do in the analogous place, not from the code. **266 scenarios, 5 failing** at the End re-probe of the completion plan (2026-10-30); written at 260 and 158 failing, approved by the human before the tests. One test per scenario, the unmet ones pinned with `it.fails`.
+What an editor should offer at every position the grammar has, how a list opens and stays open, and what accepting an item inserts. Written from `docs/spec.md` and from what TypeScript, rust-analyzer, Kotlin and Swift do in the analogous place, not from the code. **266 scenarios, 2 failing** after the End fixes (re-probed 2026-10-30); written at 260 and 158 failing, approved by the human before the tests. One test per scenario, the unmet ones pinned with `it.fails`.
 
 Files: `declarations.md`, `statements.md`, `values.md`, `mechanics.md`.
 
@@ -105,7 +105,7 @@ The spec says nothing about editors, so these are decisions the approval covers:
 | TL | Top level | 8 | 8 | 0 | declarations.md |
 | DH | Declaration headers | 7 | 7 | 0 | declarations.md |
 | TY | Type positions | 18 | 18 | 0 | declarations.md |
-| SD | Struct, enum, trait and alias bodies | 8 | 7 | 1 | declarations.md |
+| SD | Struct, enum, trait and alias bodies | 8 | 8 | 0 | declarations.md |
 | IM | Imports | 9 | 9 | 0 | declarations.md |
 | AN | Annotations | 6 | 6 | 0 | declarations.md |
 | ST | Statements | 17 | 17 | 0 | statements.md |
@@ -118,27 +118,24 @@ The spec says nothing about editors, so these are decisions the approval covers:
 | LI | Struct and variant literals | 27 | 27 | 0 | values.md |
 | ME | Members | 21 | 21 | 0 | values.md |
 | CA | Calls | 13 | 13 | 0 | values.md |
-| NO | Where nothing is offered | 8 | 7 | 1 | mechanics.md |
+| NO | Where nothing is offered | 8 | 8 | 0 | mechanics.md |
 | TR | Opening and staying open | 14 | 14 | 0 | mechanics.md |
 | OR | Item shape, order, kinds | 8 | 8 | 0 | mechanics.md |
-| RB | Resilience | 15 | 14 | 1 | mechanics.md |
+| RB | Resilience | 15 | 15 | 0 | mechanics.md |
 | VC | VS Code client | 3 | 3 | 0 | mechanics.md |
-| | **Total** | **266** | **261** | **5** | |
+| | **Total** | **266** | **264** | **2** | |
 
 | Priority | Scenarios | Pass | Fail |
 | --- | ---: | ---: | ---: |
 | P1 | 147 | 147 | 0 |
-| P2 | 81 | 78 | 3 |
-| P3 | 38 | 36 | 2 |
+| P2 | 81 | 79 | 2 |
+| P3 | 38 | 38 | 0 |
 
-## Unmet at the End re-probe
+## Unmet
 
 - **CO-02, EX-04** (filed as F14): an array spread's operand and an `await`'s operand are not ranked by the type they take (`xs` ranks 12th, `fetch` 18th).
-- **NO-07**: right after a `)`, `]` with no space, the infix words (`and or in not is`) are still offered; nothing should be, since a word glued to the bracket is no token.
-- **SD-05**: `fn ‸` in a trait body offers nothing; it should offer `Self`, which starts a static's header.
-- **RB-13**: an `untitled:` document gets no completion, and no hover either: the workspace does not read it as a project document.
 
-Earlier gaps (one list for every position, label-only items, undeclared triggers, unused expected type, patterns, call arguments, imports and annotations, scope, members, resilience, client defaults) are met; tracker F12 and F13 close with PA and VC.
+Every other scenario is met; tracker F12 and F13 close with PA and VC.
 
 ## Not probed
 
