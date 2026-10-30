@@ -21,7 +21,7 @@
 import { parse } from '../../compiler/parser/parse.ts';
 import { scan } from '../../compiler/scanner/scan.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
-import type { Token, TokenKind } from '../../compiler/syntax/tokens.ts';
+import type { TokenKind } from '../../compiler/syntax/tokens.ts';
 import { extentIn, nodesAt, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { createSourceText } from '../../text/source-text.ts';
 import { codeTokensOf } from '../tokens.ts';
@@ -45,7 +45,6 @@ type ParsedPlaceKind =
  */
 interface PlaceholderParse {
   readonly tree: SyntaxTree;
-  readonly tokens: readonly Token[];
   /** The nodes holding the placeholder, from the root to the innermost. */
   readonly chain: readonly SyntaxNode[];
   /** Where the placeholder starts: the cursor's offset. */
@@ -98,7 +97,7 @@ function placeholderParse({ tree, offset }: Cursor): PlaceholderParse {
   const source = createSourceText(path, text.slice(0, offset) + placeholder + text.slice(offset));
   const scanned = scan(source);
   const parsed = parse(source, scanned, tree);
-  return { tree: parsed, tokens: scanned.tokens, chain: nodesAt(parsed, offset), offset };
+  return { tree: parsed, chain: nodesAt(parsed, offset), offset };
 }
 
 /** Whether the cursor is in a comment, which holds no code whatever surrounds it. */
@@ -284,7 +283,7 @@ function caseRole({
     return 'grammar';
   }
   const patternEnd = extentIn(parsed.tree, node.pattern).end;
-  const opensArm = parsed.tokens.some(
+  const opensArm = codeTokensOf(parsed.tree).some(
     ({ kind, span }) => kind === ':' && span.start >= patternEnd && span.end <= parsed.offset,
   );
   if (opensArm) {

@@ -3,9 +3,11 @@
  * and the tokens before it where the parser can't tell.
  *
  * - Off a line's start, the tokens before the cursor decide first: after a modifier, only its
- *   follower may come (`async fn`, `hold let`); after a `for`'s target, its `in`; after an
- *   operand, what goes on after one. The parser cut off whatever it could not finish there (a
- *   header before its `:`, a guard, a template's `${…}`, a call's argument), so its tree can't.
+ *   follower may come (`async fn`, `hold let`); after a `for`'s or a comprehension's target, its
+ *   `in`; after an operand, what goes on after one, once a space parts them, and nothing right
+ *   against it (`plus(1)‸`), where a word would be glued to the operand. The parser cut off
+ *   whatever it could not finish there (a header before its `:`, a guard, a template's `${…}`, a
+ *   call's argument), so its tree can't.
  * - A name the parser can't place (an `Invalid` node) stands in a `match` or `select` body, which
  *   holds only cases, or in a line of a module or a block.
  * - A name starting a block's item, first on its line or after `;`, `:` or `{`, starts a
@@ -26,7 +28,7 @@ import {
   type SyntaxTree,
 } from '../../../compiler/syntax/tree.ts';
 import { codeTokensOf } from '../../tokens.ts';
-import type { Cursor } from '../cursor.ts';
+import { type Cursor, touchingBefore } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { holderIn } from './chain.ts';
 import { type Surroundings, surroundingsOf } from './surroundings.ts';
@@ -82,14 +84,22 @@ function wordsAfter(
   parent: SyntaxNode,
   node: SyntaxNode,
 ): readonly Word[] | undefined {
-  const modifier = modifierBefore(cursor);
+  const modifier = modifierBefore(cursor, parsed);
   if (modifier !== undefined) {
     return followers[modifier];
   }
-  if (parent.kind === 'For' && parent.iterable === node && !writesIn(parsed, parent)) {
+  if (iteratesOver(parent, node) && !writesIn(parsed, parent)) {
     return ['in'];
   }
-  return endsOperand(cursor.before) ? goingOn(cursor) : undefined;
+  if (!endsOperand(cursor.before)) {
+    return undefined;
+  }
+  return touchingBefore(cursor) === undefined ? goingOn(cursor) : [];
+}
+
+/** Whether `node` is the iterable of `parent`, a `for` loop or a comprehension. */
+function iteratesOver(parent: SyntaxNode, node: SyntaxNode): boolean {
+  return (parent.kind === 'For' || parent.kind === 'Comprehension') && parent.iterable === node;
 }
 
 /** What a name held as `node` by `parent` may be, where it starts no item. */
@@ -213,8 +223,11 @@ function adjoins({ tree, before, name, offset }: Cursor): boolean {
   return before !== undefined && [...between].every(isInlineWhitespace);
 }
 
-/** The modifier right before the cursor, if the word there stands as one. */
-function modifierBefore({ tree, before }: Cursor): Modifier | undefined {
+/**
+ * The modifier right before the cursor, if the word there stands as one in the placeholder's
+ * parse, which reads it alike whatever name is begun after it (`sendable fn‸` as `sendable ‸`).
+ */
+function modifierBefore({ before }: Cursor, { tree }: Parse): Modifier | undefined {
   if (before === undefined) {
     return undefined;
   }
@@ -228,25 +241,24 @@ function isModifier(text: string): text is Modifier {
 }
 
 /**
- * Where each modifier is one, read from the tree the cursor's text makes: `async` anywhere;
- * `shared` starting a module's item; `hold` starting a block's item; `sendable` read as a type;
- * `not` after an operand, starting `not in`.
+ * Where each modifier is one: `async` anywhere; `shared` starting a module's item; `hold` starting
+ * a block's item; `sendable` read as a type; `not` after an operand, starting `not in`.
  */
 const standsAsModifier: Readonly<Record<Modifier, (tree: SyntaxTree, word: Token) => boolean>> = {
   async: () => true,
-  shared: (_tree, word) => word.firstOnLine,
-  hold: startsBlockItem,
+  shared: (tree, word) => startsItemOf('Module', tree, word),
+  hold: (tree, word) => startsItemOf('Block', tree, word),
   sendable: (tree, word) => nodesAt(tree, word.span.start).some(({ kind }) => kind === 'NamedType'),
   not: (tree, word) => !word.firstOnLine && endsOperand(tokenBefore(tree, word)),
 };
 
-/** Whether `word` starts an item of a block, as the parser read the text holding it. */
-function startsBlockItem(tree: SyntaxTree, word: Token): boolean {
+/** Whether `word` starts an item of a `holder` node, as the parser read the text holding it. */
+function startsItemOf(holder: 'Module' | 'Block', tree: SyntaxTree, word: Token): boolean {
   const chain = nodesAt(tree, word.span.start);
   return chain.some((node, index) => {
     const item = chain[index + 1];
     return (
-      node.kind === 'Block' && item !== undefined && extentIn(tree, item).start === word.span.start
+      node.kind === holder && item !== undefined && extentIn(tree, item).start === word.span.start
     );
   });
 }
@@ -267,8 +279,7 @@ function heldLabelOf(tree: SyntaxTree, closing: Token): Token | undefined {
 }
 
 function tokenBefore(tree: SyntaxTree, token: Token): Token | undefined {
-  const tokens = codeTokensOf(tree);
-  return tokens[tokens.indexOf(token) - 1];
+  return codeTokensOf(tree).findLast(({ span }) => span.end <= token.span.start);
 }
 
 /** Whether `token` is an operand's last: a name, a literal, a closing bracket, `?` or `!`. */
@@ -339,9 +350,9 @@ function endsInOpenIf(tree: SyntaxTree, node: SyntaxNode): boolean {
 }
 
 /** Whether `loop`'s `in` is written before the cursor. */
-function writesIn({ tree, tokens, offset }: Parse, loop: SyntaxNode): boolean {
+function writesIn({ tree, offset }: Parse, loop: SyntaxNode): boolean {
   const { start } = extentIn(tree, loop);
-  return tokens.some(
+  return codeTokensOf(tree).some(
     ({ kind, span }) => kind === 'in' && span.start >= start && span.end <= offset,
   );
 }

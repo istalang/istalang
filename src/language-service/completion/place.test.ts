@@ -31,6 +31,11 @@ describe('the place a cursor is in', () => {
     expect(placeIn(...decision, ...guarded, '  0')).toBe('grammar');
   });
 
+  it("is the grammar's in a case's arm inside a template's value", () => {
+    const templated = ['fn f(d: Decision) -> string:', '  const s = `${match d: case Expired: ‸}`'];
+    expect(placeIn(...decision, ...templated, '  s')).toBe('grammar');
+  });
+
   it("is the grammar's in a field's value inside an annotation", () => {
     const annotated = ['struct D:', '  reason: string', '', '@D{reason: ‸}', 'fn f(): 1'];
     expect(placeIn(...annotated)).toBe('grammar');

@@ -179,6 +179,7 @@ describe('completion offers the words that go on after what is written', () => {
     ["a call's argument", ['fn plus(a: int) -> int: a', 'fn f(n: int):', '  plus(n ‸)']],
     ["a call's named argument", ['fn plus(a: int) -> int: a', 'fn f(n: int):', '  plus(a: n ‸)']],
     ['a name that is no modifier', ['fn f(sendable: int):', '  let x = sendable ‸', '  1']],
+    ['a block, a name spelled `shared`', ['fn f(shared: int) -> int:', '  shared ‸', '  0']],
   ])('after an operand in %s', (_title, lines) => {
     expect(names(...lines)).toEqual(infix);
   });
@@ -191,6 +192,9 @@ describe('completion offers the words that go on after what is written', () => {
     ['`not` after an operand', ['fn f(n: int):', '  let x = n not ‸', '  1'], ['in']],
     ['`sendable` in a type', ['type F = sendable ‸'], ['fn', 'async']],
     ["`sendable` in a parameter's type", ['fn f(cb: sendable ‸'], ['fn', 'async']],
+    ['`sendable` with `fn` begun', ['type F = sendable fn‸'], ['fn', 'async']],
+    ['`sendable` with `async` begun', ['type F = sendable async‸'], ['fn', 'async']],
+    ["a comprehension's target", ['fn f(xs: Array<int>):', '  const e = [for x ‸]'], ['in']],
     ['`extern sendable`', ['extern sendable ‸'], ['struct']],
     ['a range', ['fn f():', '  let r = 0..10 ‸', '  1'], ['or', 'and', 'in', 'not', 'is', 'by']],
     [
@@ -212,6 +216,8 @@ describe('completion where a name is declared', () => {
     ["a trait's function's first parameter", ['trait T:', '  fn g(‸'], ['self']],
     ["a local function's first parameter", ['fn f():', '  fn local(‸'], []],
     ["a static function's first parameter", [...pair, 'fn Pair.zero(‸'], []],
+    ["a static function's name, its type written", [...pair, 'fn Pair. ‸'], []],
+    ["a trait's function's name", ['trait T:', '  fn ‸'], ['Self']],
   ])('%s', (_title, lines, offered) => {
     expect(names(...lines)).toEqual(offered);
   });
@@ -227,6 +233,12 @@ it("completion offers a static's types where its type is written before its name
   const offers = names(...pair, 'fn first(p: Pair) -> int: p.first', 'fn Pa‸ir.zero() -> int: 1');
   expect(offers).toEqual(expect.arrayContaining(['Pair', 'int']));
   expect(offers).not.toContain('first');
+});
+
+it("completion offers an operand after a comprehension's `in` inside a template's value", () => {
+  const offers = names('fn f(xs: Array<int>):', '  const s = `${[for x in ‸: x]}`', '  1');
+  expect(offers).toEqual(expect.arrayContaining(['xs', 'not']));
+  expect(offers).not.toContain('in');
 });
 
 describe('completion offers `elif` and `else` after an `if` chain still open', () => {

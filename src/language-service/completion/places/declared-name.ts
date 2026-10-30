@@ -30,9 +30,7 @@ export function offerDeclaredName(
   const holder = declaring === undefined ? undefined : holderIn(chain, declaring);
   switch (declaring?.kind) {
     case 'FunctionDeclaration':
-      return declaring.name === name || declaring.owner === name
-        ? staticOwners(cursor, holder)
-        : [];
+      return namesOwner(declaring, name) ? staticOwners(cursor, holder) : [];
     case 'ExternConstantDeclaration':
       return wordCandidates(externWords);
     case 'ExternStructDeclaration':
@@ -47,6 +45,16 @@ export function offerDeclaredName(
     default:
       return [];
   }
+}
+
+/**
+ * Whether `name` may name the type `declaration` is a static of: its owner, or its name while no
+ * owner is written (`fn Pair. ‸` declares the static's own name).
+ */
+function namesOwner(declaration: FunctionDeclaration, name: SyntaxNode | undefined): boolean {
+  return (
+    declaration.owner === name || (declaration.owner === undefined && declaration.name === name)
+  );
 }
 
 /** `extern sendable ‸`: the parser takes the name for an extern struct's, whose `struct` is to come. */

@@ -111,11 +111,12 @@ function expectedOfValue(cursor: Cursor, { parsed }: ParsedPlace): Type | undefi
     return undefined;
   }
   const written = writtenName(cursor);
+  const value = valueNamedBy(parsed.chain, placeholder);
   const checked =
     written === undefined
-      ? expectedOfPlaceholder(cursor, parsed.tree, valueNamedBy(parsed.chain, placeholder))
+      ? expectedOfPlaceholder(cursor, parsed.tree, value)
       : expectedOfWritten(cursor, written);
-  const holder = parsed.chain.at(-2);
+  const holder = holderIn(parsed.chain, value);
   const isArgument = holder?.kind === 'Call' || holder?.kind === 'NamedArgument';
   return checked ?? (isArgument ? argumentParameterAt(cursor, cursor.offset)?.type : undefined);
 }

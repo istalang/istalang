@@ -10,6 +10,7 @@ const declarations = [
   'enum Color { Red; Green }',
   'struct Cfg { color: Color; n: int; note: string }',
   'fn paint(c: Color, n: int) -> int: n',
+  'fn show(cfg: Cfg) -> int: cfg.n',
   '',
 ];
 
@@ -48,6 +49,7 @@ describe('the type expected where a value is written', () => {
     ['a named argument', '  paint(n: ‸', 'int'],
     ["a literal's field inside an argument", '  paint(Cfg{note: ‸', 'string'],
     ['a name already written', '  let c: Color = co‸l', 'Color'],
+    ["an argument's literal, its name being written", '  show(Cf‸{n: 1})', 'Cfg'],
     ["a `match` case's pattern", '  match col:\n    case ‸', 'Color'],
   ])('is the checker’s at %s', (_construct, body, expected) => {
     expect(expectedAt(body)).toBe(expected);

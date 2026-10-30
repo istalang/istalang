@@ -145,7 +145,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After a closing bracket, adjacent',
     src: ['  plus(1)‸', '  xs[0]‸', '  [1]‸'],
     expect: { none: true },
-    fails: true,
   },
   {
     id: 'NO-08',
