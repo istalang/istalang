@@ -4,11 +4,13 @@
  * surface (check.ts) and lowering depend on this model without depending on how they are checked.
  */
 
+import type { TypeEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { Annotatable, Annotation } from '../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { Statement } from '../syntax/statements.ts';
+import { bodyChildrenOf, type SyntaxNode } from '../syntax/tree.ts';
 import type { CheckedBody } from './check.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { FieldMember, NominalType } from './types/type.ts';
@@ -27,6 +29,30 @@ export interface CheckedAnnotation {
   readonly node: Annotation;
   readonly type: NominalType;
   readonly form: ConstantForm;
+}
+
+/** Whether what `entity` declares may annotate (§3.16): a struct, not a shared or an extern one. */
+export function canAnnotate(entity: TypeEntity): boolean {
+  return entity.declaration.kind === 'StructDeclaration';
+}
+
+/**
+ * Where a statement of a body stands: a local function's annotations mean what a function's do,
+ * and any other statement's whether it waits, at an `await` or `select` of its own rather than in
+ * a function it nests.
+ */
+export function statementPlace(statement: Statement): AnnotationPlace {
+  return statement.kind === 'FunctionDeclaration'
+    ? { kind: 'function' }
+    : { kind: 'statement', waits: waits(statement) };
+}
+
+function waits(node: SyntaxNode): boolean {
+  return (
+    node.kind === 'Await' ||
+    (node.kind === 'Select' && node.awaits) ||
+    bodyChildrenOf(node).some(waits)
+  );
 }
 
 /** What later phases ask of annotations: an item's, a field's, and a statement's waypoint. */

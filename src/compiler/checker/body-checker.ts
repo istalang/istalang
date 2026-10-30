@@ -30,6 +30,7 @@ import type { Block, Statement, VariableDeclaration } from '../syntax/statements
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
+import { statementPlace } from './checked-annotation.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
 import { inferLambda } from './closures/lambdas.ts';
@@ -46,7 +47,6 @@ import { CheckedPatterns } from './patterns/matching.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { reportUnmet } from './resolution/trait-objects.ts';
 import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
-import { statementPlace } from './rules/annotations.ts';
 import { checkDisposeUses } from './rules/disposal.ts';
 import { checkDropped } from './rules/dropped.ts';
 import { Iterations } from './rules/iteration.ts';

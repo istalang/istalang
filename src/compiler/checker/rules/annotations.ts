@@ -28,10 +28,14 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Invalid, NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Statement } from '../../syntax/statements.ts';
-import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
-import type { AnnotationPlace, CheckedAnnotation } from '../checked-annotation.ts';
+import {
+  type AnnotationPlace,
+  type CheckedAnnotation,
+  canAnnotate,
+  statementPlace,
+} from '../checked-annotation.ts';
 import { sameForm } from '../constant-form.ts';
 import type { AnnotationChecks, CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -250,7 +254,7 @@ export class Annotations implements AnnotationChecks {
     if (type.kind === 'error') {
       return undefined;
     }
-    if (type.kind !== 'nominal' || type.entity.declaration.kind !== 'StructDeclaration') {
+    if (type.kind !== 'nominal' || !canAnnotate(type.entity)) {
       checker.report(module, checkerDiagnostics.notAnnotation(node.value.span, typeText(type)));
       return undefined;
     }
@@ -327,25 +331,6 @@ function placeText(place: Placed): string {
       return unhandled;
     }
   }
-}
-
-/**
- * Where a statement of a body stands: a local function's annotations mean what a function's do,
- * and any other statement's whether it waits, at an `await` or `select` of its own rather than in
- * a function it nests.
- */
-export function statementPlace(statement: Statement): AnnotationPlace {
-  return statement.kind === 'FunctionDeclaration'
-    ? { kind: 'function' }
-    : { kind: 'statement', waits: waits(statement) };
-}
-
-function waits(node: SyntaxNode): boolean {
-  return (
-    node.kind === 'Await' ||
-    (node.kind === 'Select' && node.awaits) ||
-    bodyChildrenOf(node).some(waits)
-  );
 }
 
 /** Whether `item` declares the field `node`: a struct's own, or one of its variants'. */
