@@ -71,4 +71,23 @@ export interface Rank {
 /** The groups, in the order they are offered. */
 export const rankGroups = ['local', 'module', 'imported', 'prelude', 'keyword'] as const;
 
-type RankGroup = (typeof rankGroups)[number];
+export type RankGroup = (typeof rankGroups)[number];
+
+/** Highest priority a rank may hold. */
+export const lowestPriority = 999;
+
+/**
+ * What a rank orders by, most significant first: fitting, then group (absent counts as the
+ * first), then priority. Items whose keys tie order by name.
+ */
+export function rankKeys({ fitsExpected, group, priority = 0 }: Rank): readonly number[] {
+  return [fitsExpected ? 0 : 1, group === undefined ? 0 : rankGroups.indexOf(group), priority];
+}
+
+/** Whether `a` comes before `b` in a list: by their ranks' keys, then by name. */
+export function ranksBefore(a: Completion, b: Completion): boolean {
+  const keysOf = ({ rank }: Completion) => (rank === undefined ? [] : rankKeys(rank));
+  const [keysA, keysB] = [keysOf(a), keysOf(b)];
+  const differing = keysA.findIndex((key, index) => key !== keysB[index]);
+  return differing === -1 ? a.name < b.name : (keysA[differing] ?? 0) < (keysB[differing] ?? 0);
+}

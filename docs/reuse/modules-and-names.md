@@ -46,6 +46,11 @@ tags: [reuse, language, modules, program, binder, names]
 - ask the checker about a node of completion's placeholder parse (one ending before the cursor) → `checkedTwinOf` (`src/language-service/completion/checked-twin.ts`)
 - the type a `case` or `is` pattern being written matches, or the fields its struct pattern names → `matchedTypeOf`, `fieldsMatchedBy` (`src/language-service/completion/places/matched-type.ts`)
 - turn completion candidates into items, or an item into an LSP item → `present` (`src/language-service/completion/present.ts`), `completionItem` (`src/lsp/providers/completion.ts`)
+- the type expected where a cursor writes a value, and the variants that may be written bare there → `expectedTypeAt`, `expectedVariants`, `isBareVariant` (`src/language-service/completion/expected.ts`)
+- the type expected of a value in a checked body → `CheckedBody.expectedOf`; whether a type fits another → `Checker.fitOf` (`src/compiler/checker/check.ts`)
+- check an edit tried out without cutting the program's incremental history → `checkProgram(program, { previous, tentative: true })`
+- the docstring of what a name denotes → `docstringOf` (`src/language-service/docstrings.ts`)
+- the order completion items sort in → `rankKeys`, `ranksBefore` (`src/language-service/completion/item.ts`)
 - read an LSP request's position as a module and offset, or write a name's place as an LSP location → `documentOffset`, `locationOf`, `rangeOf` (`src/lsp/locations.ts`)
 - get a module of a program, its tree and the program's checker, for an editor feature reading types → `checkedModule` (`src/language-service/checked-module.ts`)
 - find the module a namespace import loaded → `importedModule` (`src/language-service/namespaces.ts`)

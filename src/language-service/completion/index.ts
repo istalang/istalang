@@ -50,7 +50,7 @@ export function completionsAt(
   const place = placeAt(cursor);
   // Typed, as Biome infers a call of the narrowed `opens` as never truthy.
   const opened: boolean = opens(place);
-  return opened ? present(cursor, handlerOf(offers, place)(cursor, place)) : [];
+  return opened ? present(cursor, place, handlerOf(offers, place)(cursor, place)) : [];
 }
 
 /** What may be written at each kind of place; each kind's provider lives in places/. */

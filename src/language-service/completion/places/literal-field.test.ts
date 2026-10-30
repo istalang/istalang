@@ -34,7 +34,10 @@ function fieldMistakesOf({ main, literal }: LiteralSite): readonly number[] {
   const close = end - 1;
   const emptied = mainProgram(`${text.slice(0, open)}${text.slice(close)}`);
   const offered = completionsAt(emptied.program, emptied.module, open, '{');
-  const items = offered.map(({ name }) => `${name}: panic("")`).join(', ');
+  const items = offered
+    .filter(({ kind }) => kind === 'field')
+    .map(({ name }) => `${name}: panic("")`)
+    .join(', ');
   const probed = mainProgram(`${text.slice(0, open)}${items}${text.slice(close)}`);
   const probedEnd = open + items.length + 1;
   return checkProgram(probed.program)

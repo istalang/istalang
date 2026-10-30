@@ -1,0 +1,81 @@
+/**
+ * What every subject's presenter works from and says (present.ts): the request, read once, and
+ * an item's own part of the list, before the list ranks it.
+ *
+ * What accepting a callable or a variant with fields writes depends on the place alone: only
+ * where a value or a pattern is written does a name open its parentheses or braces, never in an
+ * import, a type or a declared name. A `(` already after the cursor is the call's own, so a
+ * callable writes its name alone there.
+ */
+
+import type { Type } from '../../compiler/checker/types/type.ts';
+import { codeTokensOf } from '../tokens.ts';
+import type { Cursor } from './cursor.ts';
+import type { Completion, RankGroup } from './item.ts';
+import type { Place, PlaceKind } from './place.ts';
+
+/** A request as presenters read it. */
+export interface Presenting {
+  readonly cursor: Cursor;
+  readonly place: Place;
+  /** Whether the place writes a value or a pattern, which a call or a variant's braces may open. */
+  readonly writesValue: boolean;
+  /** Whether a `(` follows the name being written. */
+  readonly callFollows: boolean;
+}
+
+/** What a presenter says of one item: everything but its name and its place in the list. */
+export interface Shown extends Omit<Completion, 'name' | 'rank' | 'preselect'> {
+  /** Where a name a scope offers comes from. */
+  readonly group?: RankGroup;
+  /** Its order within its group; absent counts as 0. */
+  readonly priority?: number;
+  /** The types of the values accepting it writes: a variable's, a call's result, a variant's enum. */
+  readonly gives?: readonly Type[];
+}
+
+const valuePlaces: ReadonlySet<PlaceKind> = new Set<PlaceKind>([
+  'grammar',
+  'callArgument',
+  'member',
+  'literalField',
+  'pattern',
+]);
+
+/** The request at `cursor` in `place`, as presenters read it. */
+export function presentingAt(cursor: Cursor, place: Place): Presenting {
+  const end = cursor.name?.span.end ?? cursor.offset;
+  const next = codeTokensOf(cursor.tree).find(({ span }) => span.start >= end);
+  return {
+    cursor,
+    place,
+    writesValue: valuePlaces.has(place.kind),
+    callFollows: next?.kind === '(',
+  };
+}
+
+/**
+ * Accepting a callable named `name`: its call, the cursor between the parentheses, and its
+ * signature shown. A name is an identifier, so it holds nothing a snippet escapes.
+ */
+export function called({ writesValue, callFollows }: Presenting, name: string): Partial<Shown> {
+  return writesValue && !callFollows
+    ? { insert: { kind: 'snippet', snippet: `${name}($0)` }, next: 'signatureHelp' }
+    : { commit: ['('] };
+}
+
+/** Accepting a variant: with fields, its literal's braces, whose fields are listed next. */
+export function constructed(
+  { writesValue }: Presenting,
+  name: string,
+  hasFields: boolean,
+): Partial<Shown> {
+  return writesValue && hasFields
+    ? { insert: { kind: 'snippet', snippet: `${name}{$0}` }, next: 'completion' }
+    : {};
+}
+
+/** An item's documentation, where the docstring is there. */
+export function documented(doc: string | undefined): Pick<Shown, 'documentation'> {
+  return doc === undefined ? {} : { documentation: doc };
+}

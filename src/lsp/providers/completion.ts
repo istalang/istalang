@@ -21,8 +21,9 @@ import {
   type CompletionKind,
   type FollowUp,
   type Insertion,
+  lowestPriority,
   type Rank,
-  rankGroups,
+  rankKeys,
 } from '../../language-service/completion/item.ts';
 import { completionTriggers } from '../../language-service/completion/triggers.ts';
 import { documentOffset } from '../locations.ts';
@@ -90,14 +91,11 @@ function insertion(insert: Insertion): Pick<CompletionItem, 'insertText' | 'inse
     : { insertText: insert.snippet, insertTextFormat: InsertTextFormat.Snippet };
 }
 
-/** Digits of each numeric part of a `sortText`, so every item's parts line up. */
-const groupDigits = 2;
-const priorityDigits = 3;
+/** Digits of each key of a `sortText`: fitting, group and priority, so every item's keys line up. */
+const keyDigits = [1, 2, String(lowestPriority).length] as const;
 
-/** Fitting items first, then by group, priority and name. */
-function sortText({ fitsExpected, group, priority = 0 }: Rank, name: string): string {
-  const groupIndex = group === undefined ? 0 : rankGroups.indexOf(group);
-  const groupPart = String(groupIndex).padStart(groupDigits, '0');
-  const priorityPart = String(priority).padStart(priorityDigits, '0');
-  return `${fitsExpected ? 0 : 1}${groupPart}${priorityPart}${name}`;
+/** The rank's keys, then the name. */
+function sortText(rank: Rank, name: string): string {
+  const keys = rankKeys(rank).map((key, index) => String(key).padStart(keyDigits[index] ?? 0, '0'));
+  return `${keys.join('')}${name}`;
 }

@@ -26,7 +26,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Call argument',
     src: ['  paint(‸', '  paint(Color.Red, ‸'],
     expect: { has: ['col'], anyPreselect: true },
-    fails: true,
   },
   {
     id: 'ET-03',
@@ -89,7 +88,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Boolean expectation',
     src: ['  let b: bool = ‸', '  if ‸'],
     expect: { within: { labels: ['true', 'false'], k: 4 } },
-    fails: true,
   },
   {
     id: 'ET-11',
@@ -113,7 +111,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Call result chosen by expected type',
     src: ['  let x: int = ‸'],
     expect: { within: { labels: ['n'], k: 3 } },
-    fails: true,
   },
 ];
 

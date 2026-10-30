@@ -7,6 +7,14 @@ function names(...lines: readonly string[]): readonly string[] {
   return completionsAt(program, module, offset).map(({ name }) => name);
 }
 
+/** The fields offered, leaving out what else a literal's item may start with. */
+function fields(...lines: readonly string[]): readonly string[] {
+  const { program, module, offset } = programAt(...lines);
+  return completionsAt(program, module, offset)
+    .filter(({ kind }) => kind === 'field')
+    .map(({ name }) => name);
+}
+
 const time = "import * as time from 'time'";
 
 const pair = [
@@ -80,12 +88,12 @@ describe('completion', () => {
   });
 
   it("offers the fields a struct literal doesn't give yet, where an item's name stands", () => {
-    const literal = (items: string) => names(...pair, `fn f() -> Pair: Pair{${items}}`);
+    const literal = (items: string) => fields(...pair, `fn f() -> Pair: Pair{${items}}`);
     expect(literal('‸')).toEqual(['first', 'second']);
     expect(literal('first: 1, ‸')).toEqual(['second']);
     expect(literal('first: 1, se‸')).toEqual(['second']);
     expect(literal('fi‸rst: 1, second: 2')).toEqual(['first']);
-    expect(names(time, 'fn f() -> int:', '  const d = time.DateTime{‸}', '  1')).toEqual([
+    expect(fields(time, 'fn f() -> int:', '  const d = time.DateTime{‸}', '  1')).toEqual([
       'year',
       'month',
       'day',
@@ -98,15 +106,15 @@ describe('completion', () => {
 
   it("offers each literal its own fields when nested, and a shorthand's name counts as given", () => {
     const outer = ['struct Wrap:', '  inner: Pair', '  tag: int', ''];
-    const nested = (items: string) => names(...pair, ...outer, `fn f() -> Wrap: Wrap{${items}}`);
+    const nested = (items: string) => fields(...pair, ...outer, `fn f() -> Wrap: Wrap{${items}}`);
     expect(nested('inner: Pair{‸}, tag: 1')).toEqual(['first', 'second']);
     expect(nested('inner: Pair{first: 1}, ‸')).toEqual(['tag']);
-    expect(names(...pair, 'fn f(first: int) -> Pair: Pair{first, ‸}')).toEqual(['second']);
-    expect(names(...pair, 'fn f() -> Pair: Pair{second: 2, fir‸st}')).toEqual(['first']);
+    expect(fields(...pair, 'fn f(first: int) -> Pair: Pair{first, ‸}')).toEqual(['second']);
+    expect(fields(...pair, 'fn f() -> Pair: Pair{second: 2, fir‸st}')).toEqual(['first']);
   });
 
   it('offers the fields of a literal not closed yet, at the end of the text', () => {
-    const typed = (line: string) => names(...pair, 'fn f() -> Pair:', line);
+    const typed = (line: string) => fields(...pair, 'fn f() -> Pair:', line);
     expect(typed('  Pair{‸')).toEqual(['first', 'second']);
     expect(typed('  Pair{first: 1,‸')).toEqual(['second']);
     expect(typed('  Pair{first: 1, ‸')).toEqual(['second']);
@@ -115,11 +123,22 @@ describe('completion', () => {
 
   it("offers a field's name on a line of its own, or spelled as a keyword so far", () => {
     const multiline = ['fn f() -> Pair:', '  Pair{', '    first: 1,', '    se‸', '  }'];
-    expect(names(...pair, ...multiline)).toEqual(['second']);
+    expect(fields(...pair, ...multiline)).toEqual(['second']);
     const before = ['fn f() -> Pair:', '  Pair{', '    fi‸', '    second: 2', '  }'];
-    expect(names(...pair, ...before)).toContain('first');
+    expect(fields(...pair, ...before)).toContain('first');
     const slot = ['struct Slot:', '  index: int', '  inbox: string', ''];
-    expect(names(...slot, 'fn f() -> Slot: Slot{in‸}')).toEqual(['index', 'inbox']);
+    expect(fields(...slot, 'fn f() -> Slot: Slot{in‸}')).toEqual(['index', 'inbox']);
+  });
+
+  it('offers the leading spread where the first item stands, and a variable as its field shorthand', () => {
+    expect(names(...pair, 'fn f() -> Pair: Pair{‸}')).toContain('...');
+    expect(names(...pair, 'fn f(p: Pair) -> Pair: Pair{...p, ‸}')).not.toContain('...');
+    const { program, module, offset } = programAt(...pair, 'fn f(first: int) -> Pair: Pair{‸}');
+    const firsts = completionsAt(program, module, offset).filter(({ name }) => name === 'first');
+    expect(firsts.map(({ kind, insert }) => ({ kind, insert }))).toEqual([
+      { kind: 'variable', insert: undefined },
+      { kind: 'field', insert: { kind: 'text', text: 'first: ' } },
+    ]);
   });
 
   it('offers nothing where a field of a literal with no known fields would stand', () => {
@@ -129,9 +148,11 @@ describe('completion', () => {
   it("details each field with its type as the literal's type arguments make it", () => {
     const box = ['struct Box<T>:', '  value: T', '  count: int', ''];
     const { program, module, offset } = programAt(...box, 'fn f() -> Box<int>: Box<int>{‸}');
-    expect(completionsAt(program, module, offset)).toEqual([
-      { name: 'value', kind: 'field', detail: 'int' },
-      { name: 'count', kind: 'field', detail: 'int' },
+    const offered = completionsAt(program, module, offset);
+    expect(offered.map(({ name, detail }) => ({ name, detail }))).toEqual([
+      { name: 'value', detail: 'int' },
+      { name: 'count', detail: 'int' },
+      { name: '...', detail: undefined },
     ]);
   });
 
@@ -149,9 +170,9 @@ describe('completion', () => {
       '  Rejected { by: string; reason: string }',
       '',
     ];
-    expect(names(...decision, 'fn f() -> Decision: Rejected{by: "x", ‸}')).toEqual(['reason']);
+    expect(fields(...decision, 'fn f() -> Decision: Rejected{by: "x", ‸}')).toEqual(['reason']);
     const counter = ['shared struct Counter:', '  count: int', '  label: string = "counted"', ''];
-    expect(names(...counter, 'fn f() -> Counter: new Counter{‸}')).toEqual(['count', 'label']);
+    expect(fields(...counter, 'fn f() -> Counter: new Counter{‸}')).toEqual(['count', 'label']);
   });
 
   it("offers the visible names in a field's value, written or not yet", () => {

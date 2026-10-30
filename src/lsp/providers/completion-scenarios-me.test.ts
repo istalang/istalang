@@ -21,7 +21,6 @@ const scenarios: readonly Scenario[] = [
         ['sum', 'sum($0)'],
       ],
     },
-    fails: true,
   },
   {
     id: 'ME-02',
@@ -45,7 +44,6 @@ const scenarios: readonly Scenario[] = [
         ['Expired', 'Expired'],
       ],
     },
-    fails: true,
   },
   {
     id: 'ME-04',

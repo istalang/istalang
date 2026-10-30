@@ -109,6 +109,7 @@ describe('a workspace', () => {
     it('re-checks only the edited body, with features asked between the edits', () => {
       const { workspace, checked } = workspaceOver(files);
       workspace.diagnosticsOf(main);
+      const checkedBefore = new Set(checked.get(workspace.program));
       for (const digit of [1, 2, 3]) {
         workspace.write(main, edited(digit));
         workspace.treeOf(main);
@@ -118,7 +119,11 @@ describe('a workspace', () => {
       const diagnosed = workspace.diagnosticsOf(main);
       const last = workspace.program;
       const declarations = last.modules.get(main)?.tree.root.items;
-      expect(checked.get(last)).toEqual([declarations?.[0]]);
+      // A body no checker had checked yet, such as a std function's whose result completion shows, is checked once.
+      const rechecked = checked
+        .get(last)
+        ?.filter((body) => checkedBefore.has(body) || body === declarations?.[0]);
+      expect(rechecked).toEqual([declarations?.[0]]);
       const fresh = stdProgramOf(files, new Map([[main, edited(3)]]), undefined);
       expect(diagnosed?.diagnostics).toEqual(diagnoseModule(fresh, main).diagnostics);
       expect(diagnosed?.diagnostics).toHaveLength(1);

@@ -136,7 +136,10 @@ export function offerMembers(
       return [
         ...functionsThrough('type', statics),
         ...variants.map(
-          (variant): Candidate => ({ name: variant.name, subject: { kind: 'variant', variant } }),
+          (variant): Candidate => ({
+            name: variant.name,
+            subject: { kind: 'variant', variant, enum: type },
+          }),
         ),
       ];
     }

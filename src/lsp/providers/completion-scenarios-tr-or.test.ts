@@ -93,7 +93,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  Pair{‸}'],
     trigger: '{',
     expect: { retrigger: ['first', 'second'], has: ['first'] },
-    fails: true,
   },
   {
     id: 'TR-10',
@@ -109,7 +108,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  p.‸'],
     trigger: '.',
     expect: { has: ['sum'], command: [['sum', 'editor.action.triggerParameterHints']] },
-    fails: true,
   },
   {
     id: 'TR-12',
@@ -117,7 +115,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Commit characters',
     src: ['  Pair‸'],
     expect: { commit: [['time', '.']] },
-    fails: true,
   },
   {
     id: 'OR-01',
@@ -134,7 +131,6 @@ const scenarios: readonly Scenario[] = [
         ['Array', 'while'],
       ],
     },
-    fails: true,
   },
   {
     id: 'OR-02',
@@ -159,7 +155,6 @@ const scenarios: readonly Scenario[] = [
         ['time', 'Module'],
       ],
     },
-    fails: true,
   },
   {
     id: 'OR-04',
@@ -172,7 +167,6 @@ const scenarios: readonly Scenario[] = [
         ['p', 'Pair'],
       ],
     },
-    fails: true,
   },
   {
     id: 'OR-05',
@@ -180,7 +174,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Function insert text',
     src: ['  ‸'],
     expect: { insert: [['plus', 'plus($0)']] },
-    fails: true,
   },
   {
     id: 'OR-06',

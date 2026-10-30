@@ -5,7 +5,10 @@
  *
  * Right after its `{`, a literal building one field also takes that field's value without its name
  * (§3.1), so a value may stand there too, and the visible names are offered beside the field when
- * completion is invoked; typing the `{` asks for fields alone.
+ * completion is invoked, bare variants aside, as no enum is expected of a name there; typing the
+ * `{` asks for fields alone. A visible variable named like a field
+ * not given yet is offered too, as the shorthand writing both (`Pair{first}`); the leading spread
+ * only where it may stand, as the first item.
  */
 
 import type { FieldsLiteral } from '../../../compiler/syntax/expressions/index.ts';
@@ -13,6 +16,7 @@ import { spanIn } from '../../../compiler/syntax/positions.ts';
 import { nodesAt, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
+import { isBareVariant } from '../expected.ts';
 import { visibleCandidates } from '../visible.ts';
 
 /**
@@ -56,9 +60,28 @@ export function offerLiteralFields(
       each !== item && each.kind === 'FieldInitializer' ? [each.name.text] : [],
     ),
   );
+  const visible = visibleCandidates(cursor);
   const offered = fields
     .filter(({ name }) => !given.has(name))
-    .map((field): Candidate => ({ name: field.name, subject: { kind: 'field', field } }));
+    .flatMap((field): readonly Candidate[] => [
+      ...shorthandFor(visible, field.name),
+      { name: field.name, subject: { kind: 'field', field } },
+    ]);
+  const startsItems = opens && fields.length > 0 && literal.items.every((each) => each === item);
   const takesValue = opens && fields.length === 1 && cursor.trigger === undefined;
-  return takesValue ? [...offered, ...visibleCandidates(cursor)] : offered;
+  const values = takesValue ? visible.filter((candidate) => !isBareVariant(candidate)) : [];
+  return [...offered, ...(startsItems ? [spread] : []), ...values];
+}
+
+/** The leading spread, `...value`, which only the first item may be (§3.1). */
+const spread: Candidate = { name: '...', subject: { kind: 'keyword' } };
+
+/** A variable named like the field `name`, which writes the field as shorthand, `Pair{first}`. */
+function shorthandFor(visible: readonly Candidate[], name: string): readonly Candidate[] {
+  return visible.filter(
+    (candidate) =>
+      candidate.name === name &&
+      candidate.subject.kind === 'entity' &&
+      candidate.subject.entity.kind === 'variable',
+  );
 }

@@ -18,7 +18,6 @@ const scenarios: readonly Scenario[] = [
       insert: [['first', 'first: ']],
       retrigger: ['first', 'second'],
     },
-    fails: true,
   },
   {
     id: 'LI-01b',
@@ -30,7 +29,6 @@ const scenarios: readonly Scenario[] = [
       insert: [['first', 'first: ']],
       lacks: ['xs', 'plus', 'let'],
     },
-    fails: true,
   },
   {
     id: 'LI-02',
@@ -39,7 +37,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  Pair{first: 1, ‸}', '  Pair{first: 1,‸}'],
     trigger: ',',
     expect: { exact: ['second'], insert: [['second', 'second: ']], retrigger: ['second'] },
-    fails: true,
   },
   {
     id: 'LI-03',
@@ -55,7 +52,7 @@ const scenarios: readonly Scenario[] = [
     title: 'Fields after {  (space typed)',
     src: ['  Pair{ ‸}'],
     trigger: ' ',
-    expect: { exact: ['first', 'second'] },
+    expect: { has: ['first', 'second'], lacks: ['xs', 'plus', 'let'] },
   },
   {
     id: 'LI-05',
@@ -106,7 +103,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Shorthand',
     src: ['  const first = 1\n  Pair{‸}', '  const first = 1\n  Pair{fi‸}'],
     expect: { insertTexts: [['first', ['first', 'first: ']]] },
-    fails: true,
   },
   {
     id: 'LI-11',
@@ -114,7 +110,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Spread value',
     src: ['  Pair{...‸}'],
     expect: { has: ['p'], within: { labels: ['p'], k: 3 } },
-    fails: true,
   },
   {
     id: 'LI-11b',
@@ -131,7 +126,6 @@ const scenarios: readonly Scenario[] = [
     src: ['  Pair{‸}'],
     trigger: '{',
     expect: { has: ['...'] },
-    fails: true,
   },
   {
     id: 'LI-13',
@@ -167,7 +161,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Defaults rank after required fields',
     src: ['  Opts{‸}'],
     expect: { before: [['zeta', 'alpha']] },
-    fails: true,
   },
   {
     id: 'LI-17',

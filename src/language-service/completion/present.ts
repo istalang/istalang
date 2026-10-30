@@ -1,49 +1,112 @@
 /**
- * How each candidate shows: its kind and detail, derived from what it names, one presenter per
- * subject kind, so a subject added to the candidate model can't go unpresented. How a list ranks,
- * what an item inserts and what follows its acceptance belong here too, never to the providers,
- * which only say what may be written.
+ * How each candidate shows, ranks and inserts: one presenter per subject kind, so a subject added
+ * to the candidate model can't go unpresented, and the list's order decided once, here, never by
+ * the providers, which only say what may be written.
+ *
+ * - An item ranks first when a value it writes fits the type expected at the place (expected.ts),
+ *   then by where its name comes from (locals, the module, imports, the prelude, keywords), then
+ *   by its presenter's priority. The first item that fits is preselected, so the list opens on it.
+ * - A field written in a literal inserts `name: ` and asks for the next list, its value's (§3.1).
+ *   Its priority puts a field with no default first, as it must be given.
+ * - Within a member's list, fields come before methods; a value another case already tests ranks
+ *   after the rest.
  */
 
-import type { Entity } from '../../compiler/binder/entities.ts';
+import type { Checker } from '../../compiler/checker/check.ts';
+import { boolType, type Type } from '../../compiler/checker/types/type.ts';
 import { slotText, typeText } from '../../compiler/checker/types/type-text.ts';
+import { hasDefault } from '../../compiler/syntax/declarations.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { docstringOf } from '../docstrings.ts';
 import { signatureOf } from '../signatures.ts';
 import type { Candidate, Subject } from './candidate.ts';
 import type { Cursor } from './cursor.ts';
-import type { Completion, CompletionKind } from './item.ts';
+import { groupOf, shownEntity } from './entity-items.ts';
+import { expectedTypeAt } from './expected.ts';
+import { type Completion, lowestPriority, ranksBefore } from './item.ts';
+import type { Place } from './place.ts';
+import {
+  called,
+  constructed,
+  documented,
+  type Presenting,
+  presentingAt,
+  type Shown,
+} from './presenting.ts';
 
-/** The completions `candidates` make at `cursor`, in their order. */
-export function present(cursor: Cursor, candidates: readonly Candidate[]): readonly Completion[] {
-  return candidates.map(({ name, subject }) => ({
-    name,
-    ...handlerOf(presenters, subject)(cursor, subject),
-  }));
+/** The completions `candidates` make at `cursor` in `place`, in their order. */
+export function present(
+  cursor: Cursor,
+  place: Place,
+  candidates: readonly Candidate[],
+): readonly Completion[] {
+  const presenting = presentingAt(cursor, place);
+  const expected = expectedTypeAt(cursor, place);
+  const items = candidates.map(({ name, subject, covered }): Completion => {
+    const {
+      group,
+      priority = 0,
+      gives = [],
+      ...shown
+    } = handlerOf(presenters, subject)(presenting, subject, name);
+    const fitsExpected = gives.some((type) => fits(cursor.checker, type, expected));
+    const ranked = covered === true ? Math.min(priority + coveredAfter, lowestPriority) : priority;
+    return {
+      name,
+      ...shown,
+      rank: { fitsExpected, ...(group === undefined ? {} : { group }), priority: ranked },
+    };
+  });
+  return withFirstPreselected(items);
 }
 
-type Shown = Omit<Completion, 'name' | 'rank' | 'preselect'>;
+/** How far after the others a value another case covers ranks. */
+const coveredAfter = 500;
 
-const entityKinds = {
-  variable: 'variable',
-  functions: 'function',
-  type: 'type',
-  primitive: 'type',
-  self: 'type',
-  variant: 'variant',
-  variants: 'variant',
-  namespace: 'module',
-} as const satisfies Record<Entity['kind'], CompletionKind>;
+/** The literals a keyword writes, by the type of their value. */
+const keywordValues: ReadonlyMap<string, Type> = new Map([
+  ['true', boolType],
+  ['false', boolType],
+]);
 
-const presenters: Handlers<Cursor, Subject, [], Shown> = {
-  entity: (_cursor, { entity }) => ({ kind: entityKinds[entity.kind] }),
-  keyword: () => ({ kind: 'keyword' }),
-  field: (_cursor, { field }) => ({ kind: 'field', detail: typeText(field.type) }),
-  function: ({ checker }, { declaration, through }) => ({
-    kind: through === 'value' ? 'method' : 'function',
-    detail: signatureOf(checker, declaration).label,
-  }),
-  variant: () => ({ kind: 'variant' }),
-  argument: (_cursor, { parameter }) => ({
+const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
+  entity: (presenting, { entity }, name) => shownEntity(presenting, entity, name),
+  keyword: (_presenting, _subject, name) => {
+    const value = keywordValues.get(name);
+    return {
+      kind: 'keyword',
+      group: 'keyword',
+      ...(value === undefined ? {} : { gives: [value] }),
+    };
+  },
+  field: ({ place, cursor: { checker } }, { field }, name) => {
+    const { declared } = field;
+    return {
+      kind: 'field',
+      detail: typeText(field.type),
+      ...(declared === undefined
+        ? {}
+        : {
+            priority: hasDefault(declared.node) ? 1 : 0,
+            ...documented(docstringOf(checker, { kind: 'field', field })),
+          }),
+      ...(place.kind === 'literalField'
+        ? { insert: { kind: 'text', text: `${name}: ` }, next: 'completion' }
+        : {}),
+    };
+  },
+  function: (presenting, { declaration, through }, name) => {
+    const { checker } = presenting.cursor;
+    return {
+      kind: through === 'value' ? 'method' : 'function',
+      detail: signatureOf(checker, declaration).label,
+      ...documented(docstringOf(checker, { kind: 'function', declaration })),
+      priority: 1,
+      gives: [checker.resultOf(declaration)],
+      ...called(presenting, name),
+    };
+  },
+  argument: (_presenting, { parameter }) => ({
     kind: 'variable',
     detail: slotText(parameter),
     insert: {
@@ -52,4 +115,41 @@ const presenters: Handlers<Cursor, Subject, [], Shown> = {
     },
     next: 'completion',
   }),
+  variant: (presenting, { variant, enum: type }, name) => {
+    const { checker, module } = presenting.cursor;
+    return {
+      kind: 'variant',
+      detail: typeText(type),
+      ...(type.kind === 'nominal' ? { group: groupOf(checker, module, type.entity) } : {}),
+      gives: [type],
+      ...constructed(presenting, name, variant.fields.length > 0),
+    };
+  },
 };
+
+/**
+ * Whether a value of `found` fits where `expected` is. An erroneous type fits nothing, and `never`,
+ * which fits everywhere, tells nothing about where it belongs.
+ */
+function fits(checker: Checker, found: Type, expected: Type | undefined): boolean {
+  return (
+    expected !== undefined &&
+    expected.kind !== 'error' &&
+    found.kind !== 'error' &&
+    !(found.kind === 'primitive' && found.name === 'never') &&
+    checker.fitOf(found, expected) !== undefined
+  );
+}
+
+/** `items` with the first of those fitting the expected type preselected. */
+function withFirstPreselected(items: readonly Completion[]): readonly Completion[] {
+  const best = items
+    .filter(({ rank }) => rank?.fitsExpected === true)
+    .reduce<Completion | undefined>(
+      (first, item) => (first === undefined || ranksBefore(item, first) ? item : first),
+      undefined,
+    );
+  return best === undefined
+    ? items
+    : items.map((item) => (item === best ? { ...item, preselect: true } : item));
+}
