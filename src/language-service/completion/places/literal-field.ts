@@ -91,7 +91,7 @@ interface LiteralItemSlot {
  * stands; and, after the `{` of a literal building one field, invoked, the values it may take
  * unnamed.
  */
-export function literalItems(
+function literalItems(
   cursor: Cursor,
   { fields, others, opens, first }: LiteralItemSlot,
 ): readonly Candidate[] {

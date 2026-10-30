@@ -40,11 +40,6 @@ export function codeTokensOf(tree: SyntaxTree): readonly Token[] {
   );
 }
 
-/** Whether `token` is an opening bracket: `(`, `[` or `{`. */
-export function opensBracket(token: Token): boolean {
-  return openings.has(token.kind);
-}
-
 /** The bracket closing each opening bracket of `tree`'s code that one closes. */
 export function closingBracketsOf(tree: SyntaxTree): ReadonlyMap<Token, Token> {
   return memo(closings, tree, () => pairedBrackets(codeTokensOf(tree)));

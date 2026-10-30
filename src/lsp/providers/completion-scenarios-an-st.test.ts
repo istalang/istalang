@@ -43,7 +43,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'AN-04',
-    place: 'annotation',
+    place: 'literalField',
     title: 'Annotation fields',
     src: ['struct D:\n  reason: string\n  code: int\n@D{‸'],
     trigger: '{',
@@ -52,7 +52,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'AN-04b',
-    place: 'annotation',
+    place: 'literalField',
     title: "The prelude annotation's field",
     src: ['@Waypoint{‸'],
     trigger: '{',

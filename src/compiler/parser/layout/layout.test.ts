@@ -184,6 +184,15 @@ describe('annotations', () => {
     );
   });
 
+  it('stay, with nothing to apply to, in the Invalid node covering them', () => {
+    const parsed = parseAs('module', lines('fn f(): 1', '@A{x: 1}'));
+    const last = (parsed.node as Module).items.at(-1);
+    expect(last?.kind).toBe('Invalid');
+    expect(last?.annotations?.map((annotation) => dump(parsed, annotation))).toEqual([
+      '(Annotation (StructLiteral (NamedType [A] []) [(FieldInitializer x 1)]))',
+    ]);
+  });
+
   it("widen their item's span over them, a function's over its header", () => {
     const parsed = parseAs('module', lines('@A', 'fn f(): 1'));
     const [item] = (parsed.node as Module).items;

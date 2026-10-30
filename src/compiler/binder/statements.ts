@@ -91,10 +91,12 @@ export function bindBlock(binder: LocalBinder, block: Block, parent: Scope): voi
     }
   }
   binder.enter(block, scope);
-  for (const statement of statements) {
+  for (const statement of block.statements) {
     binder.annotations(statement, scope);
-    handlerOf(statementHandlers, statement)(binder, statement, scope);
-    binder.enter(block, scope, endOf(spanThrough(binder, statement)));
+    if (statement.kind !== 'Invalid') {
+      handlerOf(statementHandlers, statement)(binder, statement, scope);
+      binder.enter(block, scope, endOf(spanThrough(binder, statement)));
+    }
   }
   scope.end();
 }

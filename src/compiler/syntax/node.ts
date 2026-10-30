@@ -10,11 +10,14 @@
  * Errors are part of the tree, so every phase always gets a complete one:
  * - `Missing` stands where the grammar required something that isn't there. Its span is empty.
  * - `Invalid` covers tokens the parser skipped to recover. It sits in the list where they appeared.
+ *   Annotations nothing can take (§3.16) stay in the one covering them, so their values are still
+ *   bound and checked, as an editor completes inside one before its item is written.
  * - A required name that is absent is an Identifier with empty text, so name fields never need a
  *   union check.
  * The parser reports a diagnostic for each of them.
  */
 
+import type { Annotatable } from './annotations.ts';
 import type { AnchoredSpan } from './positions.ts';
 
 export interface NodeOf<Kind extends string> {
@@ -42,4 +45,4 @@ export function isMissingName(name: Identifier): boolean {
 
 export type Missing = NodeOf<'Missing'>;
 
-export type Invalid = NodeOf<'Invalid'>;
+export interface Invalid extends NodeOf<'Invalid'>, Annotatable {}

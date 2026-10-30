@@ -43,7 +43,9 @@ export function bindModule(tree: SyntaxTree): ModuleBindings {
     const { scope, ...moduleScope } = defineModuleScope(binder, tree.root, universe());
     const topLevel = scope.snapshot();
     for (const item of tree.root.items) {
-      if (item.kind !== 'Invalid') {
+      if (item.kind === 'Invalid') {
+        binder.annotations(item, scope);
+      } else {
         bindDeclaration(binder, item, scope);
       }
     }

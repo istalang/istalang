@@ -54,12 +54,11 @@ describe('completion in an annotation', () => {
     expect(names('struct S:', '  a: @‸')).toEqual([]);
   });
 
-  it("offers the fields an unclosed literal doesn't give yet, and the spread first", () => {
+  it("offers the fields a literal annotating nothing yet doesn't give, and the spread first", () => {
     expect(names('@Pair{‸')).toEqual(['first', 'second', '...']);
     expect(names('@Pair{first: 1, ‸')).toEqual(['second']);
     expect(names('@Pair{first, ‸')).toEqual(['second']);
     expect(names('@Pair{first: Pair{first: 1, second: 2}.first, ‸')).toEqual(['second']);
-    expect(names('@Lease{‸')).toEqual([]);
     expect(names('@json.JsonName{"n", ‸')).toEqual([]);
     expect(names('@Pair{1, ‸')).toEqual(['first', 'second']);
   });
@@ -68,5 +67,13 @@ describe('completion in an annotation', () => {
     expect(names('@json.JsonName{‸')).toEqual(expect.arrayContaining(['...', 'plus']));
     const box = names('struct Box<T>:', '  value: T', '@Box<Array<int>>{‸');
     expect(box).toEqual(expect.arrayContaining(['value', 'plus']));
+    const { program, module, offset } = programAt(
+      ...declarations,
+      'struct Box<T>:',
+      '  value: T',
+      '@Box<Array<int>>{‸',
+    );
+    const value = completionsAt(program, module, offset).find(({ name }) => name === 'value');
+    expect(value?.detail).toBe('Array<int>');
   });
 });

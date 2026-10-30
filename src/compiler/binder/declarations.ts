@@ -169,8 +169,8 @@ export function bindDeclaration(binder: LocalBinder, node: Declaration, scope: S
 function bindEnum(binder: LocalBinder, node: EnumDeclaration, scope: Scope): void {
   const inner = typeParameterScope(binder, node, scope);
   for (const variant of node.variants) {
+    binder.annotations(variant, inner);
     if (variant.kind === 'Variant') {
-      binder.annotations(variant, inner);
       bindFields(binder, variant.fields, inner);
       bindFieldDefaults(binder, variant, fieldsFunctionOf(node, variant), inner);
     }

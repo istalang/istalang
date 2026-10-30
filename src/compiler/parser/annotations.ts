@@ -7,8 +7,9 @@
  *
  * Attaching adds the annotations to an item already parsed, and widens its span over them, so no
  * item parser has to know about annotations. It makes the item anew, so a function's body, which
- * the tree holds by its function (syntax/tree.ts), moves to the function made. Annotations nothing can take are reported and kept as
- * an Invalid node; where that is, layout decides (layout.ts).
+ * the tree holds by its function (syntax/tree.ts), moves to the function made. Annotations nothing
+ * can take are reported and kept in an Invalid node, which holds them; where that is, layout
+ * decides (layout.ts).
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -55,7 +56,7 @@ export function attachAnnotations<Item extends SyntaxNode & Annotatable>(
 ): Item | Invalid {
   const span = spanCovering(item.span, ...annotations.map((annotation) => annotation.span));
   if (item.kind === 'Invalid') {
-    return { kind: 'Invalid', span };
+    return { kind: 'Invalid', span, annotations };
   }
   const annotated = { ...item, span, annotations };
   if (item.kind === 'FunctionDeclaration' && annotated.kind === 'FunctionDeclaration') {
@@ -64,7 +65,7 @@ export function attachAnnotations<Item extends SyntaxNode & Annotatable>(
   return annotated;
 }
 
-/** Annotations that can't apply to anything: reported once, and kept as an Invalid node. */
+/** Annotations that can't apply to anything: reported once, and kept in an Invalid node. */
 export function rejectAnnotations(
   parser: Parser,
   annotations: readonly Annotation[],
@@ -77,5 +78,5 @@ export function rejectAnnotations(
   }
   const span = spanAcross(first.span, last.span);
   parser.report(diagnostic(parser.textSpanOf(span)));
-  return [{ kind: 'Invalid', span }];
+  return [{ kind: 'Invalid', span, annotations }];
 }

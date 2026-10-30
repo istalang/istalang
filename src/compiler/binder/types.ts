@@ -62,8 +62,8 @@ export function bindFields(
     declared.map((field) => field.name),
     'value',
   );
-  for (const field of declared) {
-    if (field.type !== undefined) {
+  for (const field of fields) {
+    if (field.kind !== 'Invalid' && field.type !== undefined) {
       bindType(binder, field.type, scope);
     }
     binder.annotations(field, scope);
