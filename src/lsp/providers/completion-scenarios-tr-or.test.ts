@@ -189,7 +189,7 @@ const scenarios: readonly Scenario[] = [
     src: ['fn twice(n: int) -> int:\n  """Doubles `n`."""\n  n * 2\nfn g() -> int:\n  ‸'],
     where: 'top',
     tail: '\n  0\n',
-    expect: { docs: true },
+    expect: { docs: 'twice' },
   },
   {
     id: 'OR-07',

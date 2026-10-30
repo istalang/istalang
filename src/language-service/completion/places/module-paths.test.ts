@@ -1,13 +1,18 @@
 /**
  * The module paths completion offers in an import's path, in a project the file loader reads: by
  * one name from the importer's folder or the project root, the std modules where a path starts,
- * and, over any text written so far, hostile included, modules that load by the path they complete
- * and folders that go on with more.
+ * and, over any text written so far, hostile included, exactly the modules that load by the path
+ * they complete, the importer aside, and the folders that go on with more.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { buildProgram, type ModuleId, type Program } from '../../../compiler/program/program.ts';
+import {
+  buildProgram,
+  type LocatedModule,
+  type ModuleId,
+  type Program,
+} from '../../../compiler/program/program.ts';
 import { fileLoader, locateFile, moduleIdOfFile } from '../../../project/file-loader.ts';
 import type { ProjectFiles } from '../../../project/project-files.ts';
 import { importableStdModules, stdlibLoader, stdRoles } from '../../../stdlib/stdlib-loader.ts';
@@ -59,10 +64,42 @@ function offeredAt(
   return completionsAt(previous, module, offset, { stdModules: importableStdModules });
 }
 
+const importerId = moduleIdOfFile(fileOf('purchase/approve'));
+
+/** The module `path`, written in the module `purchase/approve`, names, as a loader finds it. */
+function loaded(path: string): LocatedModule | undefined {
+  return loaders.map((load) => load(path, importerId)).find((module) => module !== undefined);
+}
+
 /** Whether `path`, written in the module `purchase/approve`, names a module a loader finds. */
 function loads(path: string): boolean {
-  const importer = moduleIdOfFile(fileOf('purchase/approve'));
-  return loaders.some((load) => load(path, importer) !== undefined);
+  return loaded(path) !== undefined;
+}
+
+/** Every name a path may go on with here: the project's folders and modules, and the std's. */
+const nextNames = [
+  ...new Set([...project.flatMap((name) => name.split('/')), ...importableStdModules, 'prelude']),
+];
+
+/** Whether `path` names a module an import of `purchase/approve` may name: not itself, nor the prelude. */
+function namesImportable(path: string): boolean {
+  const module = loaded(path);
+  return (
+    module !== undefined &&
+    module.id !== importerId &&
+    (module.isStd !== true || importableStdModules.includes(module.name))
+  );
+}
+
+/** Whether `path` is a folder holding a project module, at any depth: the module loads through it. */
+function holdsModule(path: string): boolean {
+  return project.some((name) => {
+    const parts = name.split('/');
+    const id = moduleIdOfFile(fileOf(name));
+    return parts.some(
+      (_part, start) => start > 0 && loaded(`${path}/${parts.slice(start).join('/')}`)?.id === id,
+    );
+  });
 }
 
 const names = (written: string, importer?: string) =>
@@ -127,6 +164,21 @@ describe('module paths in an import', () => {
         numRuns: 60,
         examples: [['./'], ['../'], [''], ['//'], ['http://[/'], ['/'], ['purchase/../'], ['a:b/']],
       },
+    );
+  });
+
+  it('offer, over any text written, every module that loads by one name more, and its folders', () => {
+    fc.assert(
+      fc.property(writtenTexts, (text) => {
+        const folder = text.slice(0, text.lastIndexOf('/') + 1);
+        const offered = names(text);
+        const expected = nextNames.flatMap((name) => [
+          ...(namesImportable(`${folder}${name}`) && name !== 'testing' ? [name] : []),
+          ...(holdsModule(`${folder}${name}`) ? [`${name}/`] : []),
+        ]);
+        expect(expected.filter((name) => !offered.includes(name))).toEqual([]);
+      }),
+      { numRuns: 60, examples: [['./'], ['../'], [''], ['purchase/'], ['./rules/']] },
     );
   });
 });

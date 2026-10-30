@@ -45,8 +45,8 @@ export interface Expect {
   readonly lacksKinds?: readonly (keyof typeof CompletionItemKind)[];
   /** Trigger characters the server must declare. */
   readonly triggers?: readonly string[];
-  /** Items carry documentation, or the server resolves it. */
-  readonly docs?: true;
+  /** The item of this label carries its declaration's documentation (the server resolves none). */
+  readonly docs?: string;
 }
 
 type Rank = (label: string) => number;
@@ -184,8 +184,10 @@ const checks: {
     want
       .filter((character) => !options.triggerCharacters?.includes(character))
       .map((character) => `trigger ${JSON.stringify(character)} not declared`),
-  docs: ({ items, options }) =>
-    options.resolveProvider || items.some((item) => item.documentation) ? [] : ['no documentation'],
+  docs: ({ items }, want: string) =>
+    items.find(({ label }) => label === want)?.documentation === undefined
+      ? [`${want} carries no documentation`]
+      : [],
 };
 
 export function problemsOf(answer: Answer, expected: Expect): string[] {

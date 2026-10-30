@@ -356,7 +356,7 @@ fn g() -> int:
   ‸
 ```
 - **Where / trigger:** top level; invoked, or typing on
-- **Offer:** Items carry the declaration's doc comment (`resolveProvider` and `completionItem/resolve`, or `documentation`).
+- **Offer:** `twice` carries its declaration's doc comment (`documentation`; the server resolves no item).
 - **Basis:** LSP resolve; hover already shows docstrings.
 
 ### OR-07 · One entry per name · P2 · ✅ pass
