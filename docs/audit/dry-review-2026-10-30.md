@@ -42,8 +42,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
 - [x] 27. `src/stdlib/` — infrastructure & prelude (`std-sources.ts`, `stdlib-loader.ts`, `std-module.ts`, `std-modules.ts`, `natives.ts`, `native-values.ts`, `numeric.ts`, `positions.ts`, `ranges.ts`, `prelude/`)
 - [x] 28. `src/stdlib/` — standard library modules (`collections/`, `crypto/`, `decimal/`, `fanout/`, `futures/`, `inbox/`, `json/`, `log/`, `math/`, `random/`, `regex/`, `rpc/`, `runtime/`, `strings/`, `testing/`, `time/`)
-- [ ] 29. `src/formatter/`
-- [ ] 30. `src/project/`
+- [x] 29. `src/formatter/`
+- [x] 30. `src/project/`
 - [ ] 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries (`workspace.ts`, `checked-module.ts`, `tokens.ts`, `identifier-at.ts`, `call-at.ts`, `signatures.ts`, `docstrings.ts`, `namespaces.ts`, `folding.ts`, `symbols.ts`, `hover.ts`, `inlay-hints.ts`, `signature-help.ts`, `navigation/`, `semantic-tokens/`)
 - [ ] 32. `src/language-service/completion/` (including `grammar/` and `places/`)
 - [ ] 33. `src/lsp/` (including `providers/`)
@@ -301,6 +301,24 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate one-shot disposable holder retraction in `Revertible.holding` (`src/stdlib/inbox/inbox.ista`) and `FakeReceipts.revertibleSender` (`src/stdlib/testing/testing.ista`):**
   - Both construct `const held = new Shared<R?>{value: ...}; fn retract(): held->value = none` to release a disposable when `retract()` is called.
 - **Missing outcome `encoder` on `runtime.isolate` and `testing.spawnCrashingEveryAwait` (`B4`), `lossless-json` duplicate-key refusal (`B5`), and per-arity `testing.setups` overloads (`F3`) (`src/stdlib/runtime/natives.ts`, `testing/natives.ts`, `testing/testing.ista`; tracked in `tracker.md`).**
+
+### 29. `src/formatter/`
+
+- **Three separate implementations of leading-space indentation counting (`src/formatter/literals.ts`, `src/compiler/binder/visibility.ts`, `src/compiler/scanner/multi-line.ts`):**
+  - `lineIndentation` (`formatter/literals.ts`), `indentationAt` (`binder/visibility.ts`), and `leadingSpaceCount` (`scanner/multi-line.ts`) each match leading spaces with a regex on a line slice, and `literals.ts` (`lineIndentation`) and `comments.ts` (`describeComment`) compute `offset - columnOf(source, offset)` instead of calling `lineStartAt(source.text, offset)` (`src/text/line-map.ts`).
+- **Duplicate bracketed-child classification between `formatter/bodies.ts` (`bracketKinds`, `unbracketedChildren`) and `formatter/brackets.ts` (`inBracketsUnder`):**
+  - `unbracketedChildren` (`bodies.ts`) and `inBracketsUnder` (`brackets.ts`) independently list which node kinds (`ArrayLiteral`, `MapLiteral`, `Comprehension`, `Tuple`, `Parenthesized`, `StructLiteral`, `NewStructLiteral`) and which child positions (`Call.callee`, `Index.target`) stand inside vs. outside brackets.
+- **Literal `?.`, `->`, and `?->` strings in `formatter/expressions.ts` instead of `linkOperator` (`src/formatter/expressions.ts`, `src/compiler/syntax/expressions/chains.ts`):**
+  - Violating the one-way rule in `docs/reuse/syntax-and-trees.md` (*"its operator is spelled by `linkOperator`/`optionalOperatorOf` (`chains.ts`), never as a literal"*), `link(...)` and the `Dereference` printer in `formatter/expressions.ts` spell `'?.` and `node.isOptional ? '?->' : '->'` as string literals.
+- **Double printing of call arguments in `callArguments` (`src/formatter/expressions.ts`):**
+  - `callArguments` first builds `const expanded = bracketed(printer, node, ['(', ')'], node.arguments)` (which calls `printer.print` on every argument) and then, when the last argument is huggable, calls `front.map((argument) => printer.print(argument))` and `printer.print(last)` a second time ($O(2^d)$ work on nested huggable calls).
+- **Duplicate tree-descent loop in `surroundingsOf` (`src/formatter/comment-placement.ts`) vs. `nodesAt` (`src/compiler/syntax/tree.ts`):**
+  - `surroundingsOf` descends `childrenOf(tree, ...).find(encloserOf(tree, comment))` from `tree.root`, duplicating `nodesAt(tree, comment.span.start)`.
+
+### 30. `src/project/`
+
+- **`projectRoot` hard-coded to `cwd` (`src/project/project.ts`; tracked as `F1`).**
+
 
 
 
