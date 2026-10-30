@@ -14,7 +14,14 @@ const scenarios: readonly Scenario[] = [
     src: ['@‸\nstruct S:\n  a: int', '@‸\nfn g(): 1'],
     trigger: '@',
     where: 'top',
-    expect: { has: ['Pair', 'Waypoint'], lacks: ['plus', 'Color', 'let'] },
+    expect: {
+      has: ['Pair', 'Waypoint'],
+      lacks: ['plus', 'Color', 'let'],
+      insert: [
+        ['Pair', 'Pair{$0}'],
+        ['Waypoint', 'Waypoint{$0}'],
+      ],
+    },
   },
   {
     id: 'AN-02',

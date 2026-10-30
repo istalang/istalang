@@ -27,7 +27,7 @@ Where the spec gives a position an expected type (§3.11 qualified names, §3.1)
 - **Offer:** The expected enum's variants bare (`Red Green Blue`, detail `Color`), the enum `Color`, then the rest of EX-01.
 - **Not:** Variants of enums that are not expected (`Approved`).
 - **Accept:** `Red` inserts `Red`.
-- **Order:** Locals and parameters of type `Color` (`col`, `cfg.color`-style), then the variants, then `Color`, then everything else; the first is preselected.
+- **Order:** Locals and parameters of type `Color` (`col`, `cfg.color`-style), then the variants in declaration order, then `Color`, then everything else; the first is preselected, as a local or the module's own.
 - **Basis:** spec §3.11 (bare variants where an enum type is expected: "a field"); TS `isRecommended`/preselect, RA expected-type ranking, Kotlin smart completion.
 
 ### ET-02 · Call argument · P1 · ✅ pass

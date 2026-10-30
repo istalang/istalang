@@ -5,12 +5,16 @@
  *
  * - An item ranks first when a value it writes fits the type expected at the place (expected.ts),
  *   then by where its name comes from (locals, the module, imports, the prelude, keywords), then
- *   by its presenter's priority. The first item that fits is preselected, so the list opens on it.
+ *   by its presenter's priority, then in its declaration's order (an enum's variants as declared).
+ * - The first item that fits is preselected, so the list opens on it, but only one of the code
+ *   being written, a local or the module's, or a place's own (a member, a field, an argument):
+ *   a prelude or imported name fitting by its type alone is no guess worth accepting with Enter.
  * - A field named in a literal or an annotation inserts `name: ` and asks for the next list, its
  *   value's (§3.1).
  *   Its priority puts a field with no default first, as it must be given.
- * - Within a member's list, fields come before methods; a value another case already tests ranks
- *   after the rest.
+ * - Within a member's list, fields and variants come before methods, a variant reached through its
+ *   enum being no name a scope offers, of no group; a value another case already tests ranks after
+ *   the rest.
  */
 
 import type { Checker } from '../../compiler/checker/check.ts';
@@ -24,7 +28,7 @@ import type { Candidate, Subject } from './candidate.ts';
 import type { Cursor } from './cursor.ts';
 import { groupOf, shownEntity } from './entity-items.ts';
 import { expectedTypeAt } from './expected.ts';
-import { type Completion, lowestPriority, ranksBefore } from './item.ts';
+import { type Completion, lowestPriority, type RankGroup, ranksBefore } from './item.ts';
 import type { Place, PlaceKind } from './place.ts';
 import {
   called,
@@ -47,6 +51,7 @@ export function present(
     const {
       group,
       priority = 0,
+      order,
       gives = [],
       ...shown
     } = handlerOf(presenters, subject)(presenting, subject, name);
@@ -55,7 +60,12 @@ export function present(
     return {
       name,
       ...shown,
-      rank: { fitsExpected, ...(group === undefined ? {} : { group }), priority: ranked },
+      rank: {
+        fitsExpected,
+        ...(group === undefined ? {} : { group }),
+        priority: ranked,
+        ...(order === undefined ? {} : { order: Math.min(order, lowestPriority) }),
+      },
     };
   });
   return withFirstPreselected(items);
@@ -116,10 +126,16 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
   }),
   variant: (presenting, { variant, enum: type }, name) => {
     const { checker, module } = presenting.cursor;
+    const bare = presenting.place.kind !== 'member';
     return {
       kind: 'variant',
       detail: typeText(type),
-      ...(type.kind === 'nominal' ? { group: groupOf(checker, module, type.entity) } : {}),
+      ...(type.kind === 'nominal'
+        ? {
+            ...(bare ? { group: groupOf(checker, module, type.entity) } : {}),
+            order: checker.variantsOf(type)?.findIndex((each) => each.name === variant.name) ?? 0,
+          }
+        : {}),
       gives: [type],
       ...constructed(presenting, name, variant.fields.length > 0),
     };
@@ -143,10 +159,13 @@ function fits(checker: Checker, found: Type, expected: Type | undefined): boolea
   );
 }
 
-/** `items` with the first of those fitting the expected type preselected. */
+/** The groups whose fitting items may be preselected; an item of no group is a place's own. */
+const guessedFrom: ReadonlySet<RankGroup | undefined> = new Set([undefined, 'local', 'module']);
+
+/** `items` with the first of those fitting the expected type preselected, of the groups guessed from. */
 function withFirstPreselected(items: readonly Completion[]): readonly Completion[] {
   const best = items
-    .filter(({ rank }) => rank?.fitsExpected === true)
+    .filter(({ rank }) => rank?.fitsExpected === true && guessedFrom.has(rank.group))
     .reduce<Completion | undefined>(
       (first, item) => (first === undefined || ranksBefore(item, first) ? item : first),
       undefined,

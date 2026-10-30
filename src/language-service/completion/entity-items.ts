@@ -8,6 +8,9 @@
  *   variants a bare name may denote).
  * - A name that reads as a value or a type commits on `.`, the one character that goes on with it.
  * - A method named bare gives no value that fits: its value is reached through a receiver.
+ * - An annotation's struct, named after its `@`, opens its literal's braces where it has fields
+ *   (§3.16), as nothing but its value can follow it there; elsewhere a type's name may go on with
+ *   a `.` as well.
  */
 
 import {
@@ -16,7 +19,8 @@ import {
   type VariableEntity,
 } from '../../compiler/binder/entities.ts';
 import type { Checker } from '../../compiler/checker/check.ts';
-import type { Type } from '../../compiler/checker/types/type.ts';
+import { canAnnotate } from '../../compiler/checker/checked-annotation.ts';
+import { nominalType, type Type } from '../../compiler/checker/types/type.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
 import { isMethod } from '../../compiler/syntax/declarations.ts';
@@ -25,6 +29,7 @@ import { docstringOf } from '../docstrings.ts';
 import { importedModule } from '../namespaces.ts';
 import { signatureOf } from '../signatures.ts';
 import type { CompletionKind, RankGroup } from './item.ts';
+import { namesAnnotation } from './places/annotation.ts';
 import { called, constructed, documented, type Presenting, type Shown } from './presenting.ts';
 
 /** How `entity`, offered as `name`, shows. */
@@ -96,13 +101,23 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
       ...called(presenting, name),
     };
   },
-  type: ({ cursor: { checker } }, entity) => {
+  type: (presenting, entity, name) => {
+    const { checker } = presenting.cursor;
     const [kind, detail] = typeKinds[entity.declaration.kind];
     return {
       kind,
       detail,
       ...documented(docstringOf(checker, { kind: 'type', entity })),
       commit: goesOn,
+      ...(presenting.place.kind === 'annotation' &&
+      namesAnnotation(presenting.cursor) &&
+      canAnnotate(entity)
+        ? constructed(
+            presenting,
+            name,
+            (checker.fieldsOf(nominalType(entity, []))?.length ?? 0) > 0,
+          )
+        : {}),
     };
   },
   primitive: () => ({ kind: 'keyword', commit: goesOn }),
@@ -110,6 +125,7 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
   variant: (presenting, { enum: declaration, variant }, name) => ({
     kind: 'variant',
     detail: declaration.name.text,
+    order: declaration.variants.indexOf(variant),
     ...constructed(presenting, name, variant.fields.length > 0),
   }),
   variants: () => ({ kind: 'variant' }),

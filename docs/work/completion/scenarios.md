@@ -95,7 +95,7 @@ The spec says nothing about editors, so these are decisions the approval covers:
 - A trigger-opened list equals the invoked one (TR-07), so the server may declare many trigger characters; the position decides whether anything is returned (NO-08).
 - Space (` `) is a trigger character, answered only after a literal's `{` or `,`, a call's `,`, or a field/argument's `: `.
 - Accepting a field or a named argument inserts `name: ` and asks for the next list.
-- An item ranks by relevance bucket (locals, module, imports, prelude, keywords), and at an expected type, matching items come first and the best is preselected.
+- An item ranks by relevance bucket (locals, module, imports, prelude, keywords), and at an expected type, matching items come first; the best is preselected only when it is a local or the module's own (or a member, a field, an argument), never a prelude or imported name. An enum's variants rank in the order it declares them (`Ok` before `Err`, `Some` before `None`).
 - A bare enum variant is offered only where an enum type is expected (spec §3.11); elsewhere the enum name is.
 
 ## Summary

@@ -57,7 +57,8 @@ export type FollowUp = 'completion' | 'signatureHelp';
 
 /**
  * Where an item stands in its list: items fitting the type expected where they are written come
- * first, then by group, nearest first, then by priority, lowest first; within a rank, by name.
+ * first, then by group, nearest first, then by priority, lowest first, then in the order their
+ * declarations give them; within a rank, by name.
  */
 export interface Rank {
   readonly fitsExpected: boolean;
@@ -68,6 +69,11 @@ export interface Rank {
    * before a method, a variant no case covers yet before a covered one. Absent counts as 0.
    */
   readonly priority?: number;
+  /**
+   * Its place among kin a declaration lists in an order of their own, from 0 to 999: an enum's
+   * variants, as their enum declares them. Absent counts as 0, leaving the name to decide.
+   */
+  readonly order?: number;
 }
 
 /** The groups, in the order they are offered. */
@@ -75,15 +81,25 @@ export const rankGroups = ['local', 'module', 'imported', 'prelude', 'keyword'] 
 
 export type RankGroup = (typeof rankGroups)[number];
 
-/** Highest priority a rank may hold. */
+/** Highest priority, or order, a rank may hold. */
 export const lowestPriority = 999;
 
 /**
  * What a rank orders by, most significant first: fitting, then group (absent counts as the
- * first), then priority. Items whose keys tie order by name.
+ * first), then priority, then order. Items whose keys tie order by name.
  */
-export function rankKeys({ fitsExpected, group, priority = 0 }: Rank): readonly number[] {
-  return [fitsExpected ? 0 : 1, group === undefined ? 0 : rankGroups.indexOf(group), priority];
+export function rankKeys({
+  fitsExpected,
+  group,
+  priority = 0,
+  order = 0,
+}: Rank): readonly number[] {
+  return [
+    fitsExpected ? 0 : 1,
+    group === undefined ? 0 : rankGroups.indexOf(group),
+    priority,
+    order,
+  ];
 }
 
 /** Whether `a` comes before `b` in a list: by their ranks' keys, then by name. */

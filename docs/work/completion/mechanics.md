@@ -284,7 +284,7 @@ How a list opens (invoked, trigger characters, typing on) and what the server mu
 
 ## OR: Item shape, order, kinds
 
-What an item carries beyond its label: insert text, detail, kind, sort order, preselect.
+What an item carries beyond its label: insert text, detail, kind, sort order, preselect. Only a fitting local or module item, or a place's own (a member, a field, an argument), is preselected; a prelude or imported one never is. An enum's variants rank as their enum declares them.
 
 ### OR-01 · Names rank by nearness · P1 · ✅ pass
 

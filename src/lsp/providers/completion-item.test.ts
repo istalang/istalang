@@ -16,18 +16,20 @@ const ranked = fc.record({
       fitsExpected: fc.boolean(),
       group: fc.constantFrom(...rankGroups),
       priority: fc.integer({ min: 0, max: 999 }),
+      order: fc.integer({ min: 0, max: 999 }),
     },
     { requiredKeys: ['fitsExpected'] },
   ),
 });
 
-/** The order a rank promises: fitting items first, then by group, priority and name. */
+/** The order a rank promises: fitting items first, then by group, priority, order and name. */
 function byRank(a: { name: string; rank: Rank }, b: { name: string; rank: Rank }): number {
   const groupOf = ({ group }: Rank) => (group === undefined ? 0 : rankGroups.indexOf(group));
   return (
     Number(b.rank.fitsExpected) - Number(a.rank.fitsExpected) ||
     groupOf(a.rank) - groupOf(b.rank) ||
     (a.rank.priority ?? 0) - (b.rank.priority ?? 0) ||
+    (a.rank.order ?? 0) - (b.rank.order ?? 0) ||
     (a.name < b.name ? -1 : Number(a.name > b.name))
   );
 }

@@ -4,8 +4,9 @@
  *
  * What accepting a callable or a variant with fields writes depends on the place alone: only
  * where a value or a pattern is written does a name open its parentheses or braces, never in an
- * import, a type or a declared name. A `(` or `{` already after the cursor is the call's or the
- * literal's own, so the name is written alone there.
+ * import, a type or a declared name; an annotation is a struct's value. A `(` or `{` already after
+ * the cursor on its line is the call's or the literal's own, so the name is written alone there;
+ * one on a later line starts a statement of its own (a tuple, a block).
  */
 
 import type { Type } from '../../compiler/checker/types/type.ts';
@@ -21,7 +22,7 @@ export interface Presenting {
   readonly place: Place;
   /** Whether the place writes a value or a pattern, which a call or a variant's braces may open. */
   readonly writesValue: boolean;
-  /** The kind of the token after the name being written, which may already open its call or braces. */
+  /** The kind of the token after the name being written on its line, which may open its call or braces. */
   readonly follows: TokenKind | undefined;
 }
 
@@ -31,6 +32,8 @@ export interface Shown extends Omit<Completion, 'name' | 'rank' | 'preselect'> {
   readonly group?: RankGroup;
   /** Its order within its group; absent counts as 0. */
   readonly priority?: number;
+  /** Its place among kin its declaration orders (`Rank.order`). */
+  readonly order?: number;
   /** The types of the values accepting it writes: a variable's, a call's result, a variant's enum. */
   readonly gives?: readonly Type[];
 }
@@ -41,6 +44,7 @@ const valuePlaces: ReadonlySet<PlaceKind> = new Set<PlaceKind>([
   'member',
   'literalField',
   'pattern',
+  'annotation',
 ]);
 
 /** The request at `cursor` in `place`, as presenters read it. */
@@ -51,7 +55,7 @@ export function presentingAt(cursor: Cursor, place: Place): Presenting {
     cursor,
     place,
     writesValue: valuePlaces.has(place.kind),
-    follows: next?.kind,
+    follows: next === undefined || next.firstOnLine ? undefined : next.kind,
   };
 }
 
