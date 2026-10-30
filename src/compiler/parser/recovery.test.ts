@@ -22,8 +22,15 @@ import { dump, errorNodes, spanViolations } from '../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { operatorTree, printFull } from './expressions/precedence.test-kit.ts';
 import {
+  block,
+  bodyOf,
   type Category,
+  dumpClean,
   dumpOf,
+  expressionStatement,
+  functionOf,
+  lines,
+  moduleOf,
   parenFreeSoup,
   parseAs,
   reported,
@@ -140,5 +147,31 @@ describe('recovery stays inside its brackets', () => {
     const parsed = parseAs('expression', 'f(a ], b)');
     expect(dumpOf(parsed)).toBe('(Call f [] [a ! b])');
     expect(parsed.rest).toBe(0);
+  });
+});
+
+describe('a bracket never closed', () => {
+  const calls = block(
+    expressionStatement('(Call g [] [1 2])'),
+    expressionStatement('(Call h [] [])'),
+  );
+
+  it('ends before the first later line that stands no deeper than its opener’s', () => {
+    const parsed = parseAs('module', lines('fn broken(:', '  1', '', 'fn g(): 2', ''));
+    expect(dumpOf(parsed)).toContain(functionOf('g', bodyOf('2')));
+    expect(parsed.rest).toBe(0);
+  });
+
+  it('keeps the deeper lines below its opener, and is reported once', () => {
+    const text = lines('fn f():', '  g(1,', '    2', '  h()', '');
+    expect(dumpOf(parseAs('module', text))).toBe(moduleOf(functionOf('f', calls)));
+    expect(reported('module', text)).toEqual(
+      reportedOnce(parserDiagnostics.unclosedBracket.code, '('),
+    );
+  });
+
+  it('leaves a bracket closed later taking in every line before its closer', () => {
+    const text = lines('fn f():', '  g(1,', '2)', '  h()', '');
+    expect(dumpClean('module', text)).toBe(moduleOf(functionOf('f', calls)));
   });
 });

@@ -12,7 +12,8 @@
  *   (layout.ts). Entries in braces, `{ a: int; b: int }`, have no column: every line continues.
  * Regions nest. A region also records the closer that ends it, so recovery knows which closing
  * brackets belong to enclosing constructs and must not be consumed. A region without a closer of
- * its own keeps the closer of the region it sits in, since that closer also ends it.
+ * its own keeps the closer of the region it sits in, since that closer also ends it. A bracket no
+ * closer matches ends where recovery decides (brackets.ts), as if at a line break.
  *
  * There is one view of the stream: `token`, `kind`, `advance` and `eat` all stop at a line break,
  * as they stop at the end. The only way past a line break is `crossLineBreak`, which only the
@@ -59,12 +60,16 @@ interface Region {
   readonly ownsCloser: boolean;
   /** A block's column; undefined for any other region, entries in braces included. */
   readonly column: number | undefined;
+  /** Index of the token where a bracket no closer matches ends. */
+  readonly until?: number | undefined;
 }
 
 type LineRegionShape = Omit<Region, 'start'>;
 
 export class Cursor {
   readonly #tokens: readonly Token[];
+  /** Where each bracket no closer matches ends, by the index its region starts at. */
+  readonly #unclosedEnds: ReadonlyMap<number, number>;
   /** The regions enclosing the current one, outermost first. */
   readonly #enclosing: Region[] = [];
   #current: Region = {
@@ -80,9 +85,17 @@ export class Cursor {
   readonly #origin: number;
   readonly inTemplateValue: boolean;
 
-  /** `tokens` must end with the `end` token, as a ScanResult's or `templateValue`'s do. */
-  constructor(tokens: readonly Token[], templateValue?: TemplateValue) {
+  /**
+   * `tokens` must end with the `end` token, as a ScanResult's or `templateValue`'s do;
+   * `unclosedEnds` are theirs as brackets.ts finds them.
+   */
+  constructor(
+    tokens: readonly Token[],
+    templateValue?: TemplateValue,
+    unclosedEnds: ReadonlyMap<number, number> = new Map(),
+  ) {
     this.#tokens = tokens;
+    this.#unclosedEnds = unclosedEnds;
     this.#origin = templateValue === undefined ? 0 : templateValue.span.start + 2;
     this.inTemplateValue = templateValue !== undefined;
   }
@@ -203,11 +216,16 @@ export class Cursor {
    */
   skipGroup(): void {
     const pending: string[] = [];
+    let until = Number.POSITIVE_INFINITY;
     do {
       const { kind } = this.#rawAt(this.#index);
       const closer = bracketClosers.get(kind);
+      if (this.#index >= until) {
+        return;
+      }
       if (closer !== undefined) {
         pending.push(closer);
+        until = Math.min(until, this.#unclosedEnds.get(this.#index + 1) ?? until);
       } else if (pending.includes(kind)) {
         pending.splice(pending.lastIndexOf(kind));
       } else if (kind === 'end' || this.closesAny(kind)) {
@@ -253,6 +271,7 @@ export class Cursor {
           closer,
           ownsCloser: true,
           column: undefined,
+          until: this.#unclosedEnds.get(this.#index),
         }
       : { ...this.#current, closer, ownsCloser: true };
     return this.#inRegion(region, parse);
@@ -336,11 +355,12 @@ export class Cursor {
   #breaksLine(index: number): boolean {
     const region = this.#current;
     const token = this.#rawAt(index);
+    if (token.kind === 'end') {
+      return false;
+    }
     return (
-      region.lineBreaks !== 'ignored' &&
-      index > region.start &&
-      token.firstOnLine &&
-      token.kind !== 'end'
+      index >= (region.until ?? Number.POSITIVE_INFINITY) ||
+      (region.lineBreaks !== 'ignored' && index > region.start && token.firstOnLine)
     );
   }
 

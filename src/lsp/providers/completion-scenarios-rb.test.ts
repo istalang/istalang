@@ -68,7 +68,6 @@ const scenarios: readonly Scenario[] = [
     trigger: '.',
     where: 'top',
     expect: { nonEmpty: true },
-    fails: true,
   },
   {
     id: 'RB-06',
