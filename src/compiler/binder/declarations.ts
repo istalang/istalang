@@ -38,7 +38,7 @@ import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
 import { selfEntity, typeEntity, variableEntity } from './entities.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
-import { bindTargets, bindVariableValue } from './statements.ts';
+import { bindTargets, bindVariableValue, spanThrough } from './statements.ts';
 import { bindFields } from './types.ts';
 
 export function bindFunction(
@@ -192,9 +192,7 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
     }
   }
   const last = node.members.at(-1);
-  if (last !== undefined) {
-    binder.enter(node, inner, endOf(last.span));
-  }
+  binder.enter(node, inner, endOf(last === undefined ? node.span : spanThrough(binder, last)));
 }
 
 /** The scope of a declaration's type parameters, which the whole declaration sees. */

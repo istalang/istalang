@@ -24,7 +24,7 @@ import {
   targetParts,
   type VariableDeclaration,
 } from '../syntax/statements.ts';
-import { bodyOf } from '../syntax/tree.ts';
+import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
 import { underCondition, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
@@ -99,11 +99,10 @@ export function bindBlock(binder: LocalBinder, block: Block, parent: Scope): voi
   scope.end();
 }
 
-/** What `statement` spans, a local function's body included, which its own span leaves out. */
-function spanThrough(binder: LocalBinder, statement: Statement): AnchoredSpan {
-  const body =
-    statement.kind === 'FunctionDeclaration' ? bodyOf(binder.tree, statement) : undefined;
-  return body?.span ?? statement.span;
+/** What `item` spans, a function's body included, which its own span leaves out. */
+export function spanThrough(binder: LocalBinder, item: SyntaxNode): AnchoredSpan {
+  const body = item.kind === 'FunctionDeclaration' ? bodyOf(binder.tree, item) : undefined;
+  return body?.span ?? item.span;
 }
 
 /** A variable declaration's type and initializer, bound before its names exist. */

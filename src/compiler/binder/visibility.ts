@@ -56,8 +56,22 @@ export interface Visibility {
   readonly namesAt: (tree: SyntaxTree, offset: number) => ReadonlyMap<string, LocalEntity>;
 }
 
-/** The nodes holding items, which note their scope after each: a block's statements, a trait's members. */
-const bodies: ReadonlySet<SyntaxNode['kind']> = new Set(['Block', 'TraitDeclaration']);
+/**
+ * The nodes holding items, which note their scope after each, by the construct whose header their
+ * items stand below: a block's statements stand below what holds the block, a trait's members
+ * below the trait's own.
+ */
+const bodies: Readonly<
+  Record<
+    'Block' | 'TraitDeclaration',
+    (tree: SyntaxTree, node: SyntaxNode) => SyntaxNode | undefined
+  >
+> = {
+  // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
+  Block: parentOf,
+  TraitDeclaration: (_tree, node) => node,
+  // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+};
 
 /** Spaces, tabs, line breaks and comments alone: no code written. */
 const blank = /^(?:[ \t\r\n]|#[^\r\n]*(?=[\r\n]|$))*$/u;
@@ -77,7 +91,7 @@ export class VisibilityNotes {
     const note = { start, snapshot: scope.snapshot() };
     noted.push(note);
     this.#noted.set(node, noted);
-    const afterItem = bodies.has(node.kind) && start !== node.span;
+    const afterItem = isBody(node) && start !== node.span;
     if (node.span.from === node.span.to || afterItem) {
       this.#trailing.push({ ...note, node });
     }
@@ -130,11 +144,20 @@ function goesOn(tree: SyntaxTree, offset: number, { node, start }: TrailingNote)
     return false;
   }
   const lineStart = lineStartAt(text, offset);
-  const construct = parentOf(tree, node) ?? node;
+  const construct = constructOf(tree, node);
   return (
     lineStart <= from ||
     offset - lineStart > indentationAt(text, spanIn(tree, construct.span).start)
   );
+}
+
+/** The construct whose header code going on at `node` stands below: an empty node's holder, a body's. */
+function constructOf(tree: SyntaxTree, node: SyntaxNode): SyntaxNode {
+  return (isBody(node) ? bodies[node.kind] : parentOf)(tree, node) ?? node;
+}
+
+function isBody(node: SyntaxNode): node is Extract<SyntaxNode, { kind: keyof typeof bodies }> {
+  return Object.hasOwn(bodies, node.kind);
 }
 
 /** The width of the spaces opening the line `offset` is on, up to `offset`. */

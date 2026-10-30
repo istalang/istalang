@@ -97,6 +97,13 @@ const spots: readonly (readonly [string, string, readonly string[], readonly str
   ],
   ['a line past a trait', 'trait Boxed<T>:\n  fn get(self) -> T\n‸', [], ['Self', 'T']],
   [
+    "a line below a trait's default method",
+    'trait Boxed<T>:\n  fn get(self) -> int:\n    1\n  ‸',
+    ['Self', 'T'],
+    [],
+  ],
+  ['a trait with no member yet', 'trait Boxed<T>:\n  ‸', ['Self', 'T'], []],
+  [
     "a blank line before an `if` body's first statement",
     'fn f(o: int?) -> int:\n  if o is Some{value}:\n    ‸\n    value\n  else:\n    0\n',
     ['o', 'value'],
