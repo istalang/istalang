@@ -11,11 +11,13 @@ import {
   bodyOf,
   declaredField,
   dumpClean,
+  dumpOf,
   field,
   int,
   lines,
   moduleOf,
   named,
+  parseAs,
   reported,
 } from '../parse.test-kit.ts';
 
@@ -38,8 +40,19 @@ describe('imports', () => {
   it.each([
     ['import a from m', 'm'],
     ['import a', ''],
+    ["import from 'time'", 'from'],
+    ["import a, from 'time'", 'from'],
+    ["import in from 'time'", 'in'],
   ])('reports a malformed import once: %s', (text, spanText) => {
     expect(reported('module', text)).toEqual(reportedOnce(expected.code, spanText));
+  });
+
+  it.each([
+    ["import from 'time'", '(NamedImport [<missing name>] "time")'],
+    ["import a, from 'time'", '(NamedImport [a <missing name>] "time")'],
+    ["import in from 'time'", '(NamedImport [<missing name>] "time")'],
+  ])('reads the path of %s, whose name is still being written', (text, tree) => {
+    expect(dumpOf(parseAs('module', text))).toBe(moduleOf(tree));
   });
 });
 

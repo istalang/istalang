@@ -1,8 +1,7 @@
 /**
- * Names: qualified names (`Pair`, `time.Duration`) and the named types built from them, lists of
- * imported names, and the targets that bind names. Types, patterns and struct literals name a type
- * this way, and loops, comprehensions and variables all bind through targets, so each rule lives
- * here once.
+ * Names: qualified names (`Pair`, `time.Duration`) and the named types built from them, and the
+ * targets that bind names. Types, patterns and struct literals name a type this way, and loops,
+ * comprehensions and variables all bind through targets, so each rule lives here once.
  */
 
 import type { Identifier, QualifiedName } from '../../syntax/node.ts';
@@ -32,15 +31,6 @@ export function parseTargets(parser: Parser): Pattern[] {
     targets.push(parser.pattern());
   }
   return targets;
-}
-
-/** `a, b`: the names an import lists. */
-export function parseNames(parser: Parser, what: string): Identifier[] {
-  const names = [parser.identifier(what)];
-  while (parser.cursor.eat(',') !== undefined) {
-    names.push(parser.identifier(what));
-  }
-  return names;
 }
 
 /** A named type spanning from its first name to the last token consumed. */
