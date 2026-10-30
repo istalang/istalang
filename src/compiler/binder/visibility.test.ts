@@ -124,6 +124,31 @@ const spots: readonly (readonly [string, string, readonly string[], readonly str
     ['value'],
     [],
   ],
+  [
+    'a missing loop iterable, which sees no loop variable',
+    'fn f(xs: Array<int>) -> int:\n  for x in ‸\n  0\n',
+    ['xs'],
+    ['x'],
+  ],
+  [
+    'a loop body not written yet, on the line below its header',
+    'fn f(xs: Array<int>) -> int:\n  for x in xs:\n    ‸\n  0\n',
+    ['x', 'xs'],
+    [],
+  ],
+  [
+    'an `if` body not written yet, on the line below its header',
+    'fn f(o: int?) -> int:\n  if o is Some{value}:\n    ‸\n  0\n',
+    ['o', 'value'],
+    [],
+  ],
+  ['a function body not written yet, at the end of the file', 'fn f(a: int):\n  ‸', ['a'], []],
+  [
+    'the line after a body not written yet, at its header’s column',
+    'fn f(xs: Array<int>) -> int:\n  for x in xs:\n  ‸\n  0\n',
+    ['xs'],
+    ['x'],
+  ],
   ['a missing comprehension condition', 'fn f(xs: Array<int>): [for x in xs if ‸: x]\n', ['x'], []],
   [
     "a blank line before a `select` case's body",

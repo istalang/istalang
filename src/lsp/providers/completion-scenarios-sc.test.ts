@@ -65,7 +65,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Loop variable in its own iterable',
     src: ['  for i in ‸'],
     expect: { lacks: ['i'] },
-    fails: true,
   },
   {
     id: 'SC-08',

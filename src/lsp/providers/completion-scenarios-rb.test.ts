@@ -14,7 +14,6 @@ const scenarios: readonly Scenario[] = [
     src: ['fn g(a: int):\n  ‸'],
     where: 'top',
     expect: { has: ['a', 'plus'] },
-    fails: true,
   },
   {
     id: 'RB-02',
@@ -33,7 +32,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Bindings in a freshly opened block',
     src: ['  for i in xs:\n    ‸\n  0', '  if r is Ok{value as y}:\n    ‸\n  0'],
     expect: { anyOf: ['i', 'y'] },
-    fails: true,
   },
   {
     id: 'RB-03',

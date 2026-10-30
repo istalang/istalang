@@ -16,11 +16,14 @@
  * module's top level is visible.
  *
  * A node that stands for missing code, such as a default not yet written after `=`, holds no
- * offset: it is empty, and so are the nodes around it past their last token. A cursor on the
- * blank stretch of line after it is where that code goes, so it sees what the empty node was bound
- * in.
+ * offset: it is empty, and so are the nodes around it past their last token. A cursor after it with
+ * nothing written between is where that code goes, so it sees what the empty node was bound in: on
+ * the node's line, or on a later line indented deeper, as a body not written yet stands below its
+ * header (§2). Of empty nodes standing together, the code goes into the first: a `for`'s iterable
+ * before its body.
  */
 
+import { lineStartAt } from '../../text/line-map.ts';
 import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
 import { nodesAt, type SyntaxNode, type SyntaxTree } from '../syntax/tree.ts';
 import { type LocalEntity, Scope, type ScopeSnapshot } from './scope.ts';
@@ -46,8 +49,11 @@ export interface Visibility {
   readonly namesAt: (tree: SyntaxTree, offset: number) => ReadonlyMap<string, LocalEntity>;
 }
 
-/** Spaces and tabs alone: a stretch of one line with nothing written on it. */
-const blankStretch = /^[ \t]*$/u;
+/** Spaces, tabs and line breaks alone: nothing written. */
+const blank = /^[ \t\r\n]*$/u;
+
+/** The spaces and tabs a line opens with. */
+const indentation = /^[ \t]*/u;
 
 /** Notes, while one tree is bound, the scope each node is bound in. */
 export class VisibilityNotes {
@@ -74,9 +80,9 @@ export class VisibilityNotes {
       namesAt: (tree, offset) => {
         const placed = (notes: readonly NotedSnapshot[]): readonly PlacedSnapshot[] =>
           notes.map(({ start, snapshot }) => ({ from: spanIn(tree, start).start, snapshot }));
-        const isBlankUpTo = ({ from }: PlacedSnapshot) =>
-          blankStretch.test(tree.source.text.slice(from, offset));
-        const missing = latestStarted(placed(empty).filter(isBlankUpTo), offset);
+        const fills = ({ from }: PlacedSnapshot) => goesInto(tree.source.text, offset, from);
+        // Reversed, so of empty nodes standing together the first noted wins.
+        const missing = latestStarted(placed(empty).filter(fills).toReversed(), offset);
         const started = (node: SyntaxNode) => latestStarted(placed(noted.get(node) ?? []), offset);
         const found =
           missing ??
@@ -90,7 +96,7 @@ export class VisibilityNotes {
   }
 }
 
-/** Of `notes`, the one started last by `offset`; of two starting together, the later noted. */
+/** Of `notes`, the one started last by `offset`; of two starting together, the later in `notes`. */
 function latestStarted(
   notes: readonly PlacedSnapshot[],
   offset: number,
@@ -100,4 +106,21 @@ function latestStarted(
       note.from <= offset && (latest === undefined || note.from >= latest.from) ? note : latest,
     undefined,
   );
+}
+
+/**
+ * Whether code written at `offset` goes into the empty node standing at `from`: nothing is written
+ * between them, and a later line stands deeper than the node's.
+ */
+function goesInto(text: string, offset: number, from: number): boolean {
+  const lineStart = lineStartAt(text, offset);
+  return (
+    blank.test(text.slice(from, offset)) &&
+    (lineStart <= from || offset - lineStart > indentationAt(text, from))
+  );
+}
+
+/** The width of the spaces opening the line `offset` is on, up to `offset`. */
+function indentationAt(text: string, offset: number): number {
+  return indentation.exec(text.slice(lineStartAt(text, offset), offset))?.[0].length ?? 0;
 }
