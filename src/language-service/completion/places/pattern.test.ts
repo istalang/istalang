@@ -1,7 +1,8 @@
 /**
  * Completion in a pattern offers what fits the value it matches: every start it offers for a
- * corpus `case` or `is` pattern, written there, makes no error in it, and every corpus struct
- * pattern, emptied, offers the fields it named and none it can't name. Examples hold the positions
+ * corpus `case` or `is` pattern, written there, makes no error in it, and the word the pattern
+ * starts with is among them; every corpus struct pattern, emptied, offers the fields it named and
+ * none it can't name. Examples hold the positions
  * the scenario catalogue doesn't: around a whole pattern, inside tuples, arrays and fields, against
  * an `any` value, and the variants other cases already cover.
  */
@@ -93,22 +94,29 @@ function misfitsOf({ text, start, end }: Site): readonly string[] {
 }
 
 /**
- * The word `site`'s pattern starts with, if the pattern start offers it there: a variant or a type
- * named bare, the first name of a qualified one, `_` or a literal keyword. A camelCase bare name
- * binds a variable (§3.11), which nothing offers, and a pattern its program rejects is aside.
+ * The word `site`'s pattern starts with, if a pattern start offers it: a variant or a type named
+ * bare, the first name of a qualified one, `_` or a literal keyword. A camelCase bare name binds a
+ * variable (§3.11), which nothing offers.
  */
 function startWordOf({ text, start, end }: Site): string | undefined {
   const word = leadingWord.exec(text.slice(start, end))?.[0];
-  if (word === undefined || errorsIn(text, start, end).length > 0) {
-    return undefined;
-  }
-  const binds = camelCase.test(word) && !text.startsWith('.', start + word.length);
-  return binds && !patternKeywords.has(word) ? undefined : word;
+  const binds =
+    word !== undefined &&
+    camelCase.test(word) &&
+    !patternKeywords.has(word) &&
+    !text.startsWith('.', start + word.length);
+  return binds ? undefined : word;
 }
 
 const leadingWord = /^[A-Za-z_]\w*/u;
 const camelCase = /^[a-z]/u;
 const patternKeywords: ReadonlySet<string> = new Set(['true', 'false', 'none']);
+
+/** The corpus patterns starting with a word a pattern start offers, with that word. */
+const wordSites = patternSites.flatMap((site) => {
+  const word = startWordOf(site);
+  return word === undefined ? [] : [{ site, word }];
+});
 
 /** A field unknown to the pattern's type (5013), or one tested twice (5015). */
 const fieldMistakes = new Set([5013, 5015]);
@@ -145,11 +153,10 @@ describe('pattern completion offers what fits the matched value', () => {
 
   it('offering the word each corpus pattern starts with', () => {
     fc.assert(
-      fc.property(fc.constantFrom(...patternSites), (site) => {
-        const word = startWordOf(site);
+      fc.property(fc.constantFrom(...wordSites), ({ site, word }) => {
+        fc.pre(errorsIn(site.text, site.start, site.end).length === 0);
         const emptied = site.text.slice(0, site.start) + site.text.slice(site.end);
-        const offered = candidatesIn(emptied, site.start).map(({ name }) => name);
-        expect(word === undefined || offered.includes(word)).toBe(true);
+        expect(candidatesIn(emptied, site.start).map(({ name }) => name)).toContain(word);
       }),
       { numRuns: 30 },
     );
