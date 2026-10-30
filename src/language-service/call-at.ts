@@ -10,7 +10,7 @@
  *   and name, against each function it chose among.
  */
 
-import type { CheckedBody } from '../compiler/checker/check.ts';
+import type { CheckedBody, SignatureParameter } from '../compiler/checker/check.ts';
 import { type FunctionDeclaration, isMethod } from '../compiler/syntax/declarations.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
@@ -51,6 +51,26 @@ export function calleesOf(body: CheckedBody, call: Call): readonly FunctionDecla
       ...body.candidatesAt(call),
     ]),
   ];
+}
+
+/**
+ * The parameter the argument at `offset` gives, of the function its call resolved to, else of the
+ * first it chose among; undefined in a function value's call, or where no parameter takes it.
+ */
+export function argumentParameterAt(
+  checked: CheckedModule,
+  offset: number,
+): SignatureParameter | undefined {
+  const at = callAt(checked, offset);
+  if (at === undefined || at.body.valueCalls.has(at.call)) {
+    return undefined;
+  }
+  const [callee] = calleesOf(at.body, at.call);
+  const slot = callee && writtenParameter(callee, at.call, at.argument);
+  const node = slot === undefined ? undefined : callee?.parameters[slot];
+  return (
+    callee && checked.checker.parametersOf(callee).find((parameter) => parameter.node === node)
+  );
 }
 
 /**

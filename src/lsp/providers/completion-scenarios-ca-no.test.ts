@@ -21,7 +21,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Named-argument items',
     src: ['  plus(‸'],
     expect: { insert: [['a:', 'a: ']], has: ['a:', 'b:'] },
-    fails: true,
   },
   {
     id: 'CA-03',
@@ -47,7 +46,6 @@ const scenarios: readonly Scenario[] = [
     title: 'After a named argument',
     src: ['  plus(b: 2, ‸'],
     expect: { has: ['a:'], lacks: ['b:'] },
-    fails: true,
   },
   {
     id: 'CA-05',
@@ -81,7 +79,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Rest and spread',
     src: ['  logAll("a", ‸'],
     expect: { has: ['...', 'xs'] },
-    fails: true,
   },
   {
     id: 'CA-09',

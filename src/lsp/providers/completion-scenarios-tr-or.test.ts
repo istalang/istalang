@@ -103,7 +103,6 @@ const scenarios: readonly Scenario[] = [
     title: 'Accepting a named argument re-opens a list',
     src: ['  plus(‸'],
     expect: { retrigger: ['a:'], has: ['a:'] },
-    fails: true,
   },
   {
     id: 'TR-11',

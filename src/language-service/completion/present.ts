@@ -6,7 +6,7 @@
  */
 
 import type { Entity } from '../../compiler/binder/entities.ts';
-import { typeText } from '../../compiler/checker/types/type-text.ts';
+import { slotText, typeText } from '../../compiler/checker/types/type-text.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { signatureOf } from '../signatures.ts';
 import type { Candidate, Subject } from './candidate.ts';
@@ -21,7 +21,7 @@ export function present(cursor: Cursor, candidates: readonly Candidate[]): reado
   }));
 }
 
-type Shown = Pick<Completion, 'kind' | 'detail'>;
+type Shown = Omit<Completion, 'name' | 'rank' | 'preselect'>;
 
 const entityKinds = {
   variable: 'variable',
@@ -43,4 +43,13 @@ const presenters: Handlers<Cursor, Subject, [], Shown> = {
     detail: signatureOf(checker, declaration).label,
   }),
   variant: () => ({ kind: 'variant' }),
+  argument: (_cursor, { parameter }) => ({
+    kind: 'variable',
+    detail: slotText(parameter),
+    insert: {
+      kind: 'text',
+      text: `${parameter.node.name.text}: ${parameter.reference ? '&' : ''}`,
+    },
+    next: 'completion',
+  }),
 };

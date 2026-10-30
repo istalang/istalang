@@ -5,7 +5,7 @@
  */
 
 import type { Entity } from '../../compiler/binder/entities.ts';
-import type { VariantMember } from '../../compiler/checker/check.ts';
+import type { SignatureParameter, VariantMember } from '../../compiler/checker/check.ts';
 import type { FieldMember } from '../../compiler/checker/types/type.ts';
 import type { FunctionDeclaration } from '../../compiler/syntax/declarations.ts';
 
@@ -16,8 +16,8 @@ export interface Candidate {
 
 /**
  * What a candidate names: a binder entity (a visible name, a module's export), a keyword, a field,
- * a function reached through a value (a method) or a type (a static), or a variant reached through
- * its enum.
+ * a function reached through a value (a method) or a type (a static), a variant reached through
+ * its enum, or a parameter a call's argument names.
  */
 export type Subject =
   | { readonly kind: 'entity'; readonly entity: Entity }
@@ -28,4 +28,5 @@ export type Subject =
       readonly declaration: FunctionDeclaration;
       readonly through: 'value' | 'type';
     }
-  | { readonly kind: 'variant'; readonly variant: VariantMember };
+  | { readonly kind: 'variant'; readonly variant: VariantMember }
+  | { readonly kind: 'argument'; readonly parameter: SignatureParameter };
