@@ -9,7 +9,7 @@ import { checkedModule } from '../checked-module.ts';
 import { programAt } from '../language-service.test-kit.ts';
 import { cursorAt } from './cursor.ts';
 import { placeAt } from './place.ts';
-import { opensAt } from './triggers.ts';
+import { placesOpenedAt } from './triggers.ts';
 
 const fixture = [
   'struct Pair:',
@@ -29,7 +29,7 @@ function opensIn(trigger: string, line: string): boolean {
     throw new Error('the program holds no main module');
   }
   const cursor = cursorAt(checked, offset, trigger);
-  return opensAt(cursor, placeAt(cursor));
+  return placesOpenedAt(cursor)?.(placeAt(cursor)) ?? false;
 }
 
 describe('a typed trigger character', () => {
@@ -37,12 +37,14 @@ describe('a typed trigger character', () => {
     ['.', '  s.‸'],
     ['.', "import x from '.‸'"],
     ['>', '  s->‸'],
+    ['>', '  s?->‸'],
     ['>', 'fn g() ->‸'],
     ['{', '  Pair{‸}'],
     [',', '  Pair{first: 1,‸}'],
     [',', '  plus(1,‸'],
     [',', 'import a,‸'],
     [' ', '  Pair{ ‸}'],
+    [' ', '  Pair{  ‸}'],
     [' ', '  Pair{first: 1, ‸}'],
     [' ', '  Pair{first: ‸}'],
     [' ', '  plus(1, ‸'],
@@ -66,6 +68,11 @@ describe('a typed trigger character', () => {
     [' ', '  if n > 0: ‸'],
     [' ', '  return ‸'],
     [' ', '  plus( ‸'],
+    [' ', '  Pair{ # a ‸'],
+    [' ', '  Pair{\n  ‸}'],
+    [' ', '  Pair{first:\n  ‸}'],
+    ['{', '  Pair{ # {‸'],
+    [',', '  Pair{ # ,‸'],
     [' ', '  const x: ‸'],
     ["'", "  const q = '‸'"],
     ['/', '  const d = n /‸'],

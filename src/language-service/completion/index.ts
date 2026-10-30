@@ -28,7 +28,7 @@ import { offerNothing } from './places/nothing.ts';
 import { offerPattern } from './places/pattern.ts';
 import { offerType } from './places/type.ts';
 import { present } from './present.ts';
-import { opensAt } from './triggers.ts';
+import { placesOpenedAt } from './triggers.ts';
 
 /** The completions for the name at `offset` of `module`, asked for by typing `trigger`, if any. */
 export function completionsAt(
@@ -42,8 +42,14 @@ export function completionsAt(
     return [];
   }
   const cursor = cursorAt(checked, offset, trigger);
+  const opens = placesOpenedAt(cursor);
+  if (opens === undefined) {
+    return [];
+  }
   const place = placeAt(cursor);
-  return opensAt(cursor, place) ? present(cursor, handlerOf(offers, place)(cursor, place)) : [];
+  // Typed, as Biome infers a call of the narrowed `opens` as never truthy.
+  const opened: boolean = opens(place);
+  return opened ? present(cursor, handlerOf(offers, place)(cursor, place)) : [];
 }
 
 /** What may be written at each kind of place; each kind's provider lives in places/. */
