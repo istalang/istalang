@@ -98,6 +98,11 @@ describe('completion', () => {
     expect(names(...matching('json.Json.'))).toContain('Null');
   });
 
+  it('offers no variant after a type `new` builds', () => {
+    const decision = ['enum Decision:', '  Approved', '  Expired', ''];
+    expect(names(...decision, 'fn f():', '  const d = new Decision.Ap‸{}', '  1')).toEqual([]);
+  });
+
   it('offers a method taking `&self` only through a place', () => {
     expect(names('fn f() -> int:', '  let xs = [1]', '  xs.‸', '  1')).toContain('push');
     expect(names('fn f() -> int:', '  [1].‸', '  1')).not.toContain('push');

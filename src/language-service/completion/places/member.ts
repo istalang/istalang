@@ -55,12 +55,8 @@ export interface MemberPlace {
   readonly names: 'value' | 'type' | 'variant';
 }
 
-/** What builds or matches the struct or variant its NamedType names. */
-const namingVariants: ReadonlySet<string> = new Set([
-  'StructLiteral',
-  'NewStructLiteral',
-  'StructPattern',
-]);
+/** What builds or matches the struct or variant its NamedType names; `new` builds no variant. */
+const namingVariants: ReadonlySet<string> = new Set(['StructLiteral', 'StructPattern']);
 
 /** What the qualified name `holder` holds names. */
 function namedBy(tree: SyntaxTree, holder: NamedType | NamePattern): 'type' | 'variant' {
