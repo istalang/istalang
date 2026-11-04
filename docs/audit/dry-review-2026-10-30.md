@@ -66,6 +66,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
     - **§3.9 vs. §3.10 (`docs/spec.md:571–587`, `docs/spec.md:616`, `docs/spec.md:694–713`):** §3.10's Built-in traits table omits `Container`, `Powerable`, `Bitwise`, and `Shiftable` from §3.9, and §3.9 writes `Powerable<E = Self>` (1 type parameter) where `prelude.ista:281` declares `Powerable<E = Self, T = Self>`.
     - **§9 (`docs/spec.md:1293`):** Writes `Err(Error{message, code: "panic", trace})` with parentheses instead of braces (`Err{Error{...}}`), violating §3.11.
     - **§3.11 vs. §3.15 (`docs/spec.md:752`, `docs/spec.md:919`):** Splits the list of refutable patterns across two partial lists (`alternative, array pattern, range` in §3.11 vs. `literal, comparison, enum variant` in §3.15, with neither mentioning `any` downcast patterns from §3.10).
+   - **Done** (`fast-wins`): §3.7 says a `&` parameter; §3.9 writes `Powerable<E = Self, T = Self>`; §3.10's table gains `Container`, `Powerable`, `Bitwise` and `Shiftable`; §9 writes `Err{Error{…}}`. The refutable-pattern split (§3.11 vs §3.15) stays open.
 
 ## Checklist
 
@@ -451,15 +452,18 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - §2 (`docs/spec.md:163`) also says the 8 contextual words *"are keywords only in one position"*, even though the same sentence gives two positions for `sendable` (*"right after `extern` or before a function type's `fn` or `async`"*) and `hold` stands before `let`/`const`, `_ =`, and `hold(name)` (§3.4).
 - **Incomplete built-in/type overview table in §2 (`docs/spec.md:178–194`):**
   - The Cheat Sheet (`docs/spec.md:27`) lists `WeakRef<T>` alongside `Array<T>  Map<K, V>  Range  Future<T>  Slot<T>  Shared<T>  WeakRef<T>  Instance<T>`, and the prose right above the §2 table (`docs/spec.md:174`) introduces `any T`, yet the §2 summary table (`docs/spec.md:178–194`) omits `WeakRef<T>`, `any Trait` types (§3.10), and `shared struct` types (§3.18, beyond `Shared<T>`).
+  - **Done** (`fast-wins`): The §2 table gains `WeakRef<T>`, shared struct types and `any` types.
 
 ### 36. `docs/spec.md` — §3 Declarations
 
 - **Contradiction between §3.3 (`docs/spec.md:360`) and §3.7 (`docs/spec.md:457`) on whether a parameter can be referenced with `&`:**
   - §3.3 (`docs/spec.md:360`) states: *"Parameters are immutable, as if declared `const` (§3.4): a by-value parameter can't be reassigned, changed in part or passed by `&`. Only a reference parameter (`&T`, §3.7) changes..."*
   - §3.7 (`docs/spec.md:457`) then states: *"What can be referenced. A `let` variable or a parameter, a field or tuple element path of one (`&self.items`, `&t.0`)..."* before saying two sentences later *"A reference parameter passed on with `&` passes the same reference."* Saying *"a parameter"* in the first sentence contradicts §3.3; it means *"a `&` parameter"* (as enforced by `src/compiler/checker/calls/places.ts`).
+  - **Done** (`fast-wins`): §3.7 says "a `&` parameter".
 - **Incomplete Built-in traits table in §3.10 (`docs/spec.md:694–713`) vs. §3.9 (`docs/spec.md:571–587`, `616`) and `prelude.ista`:**
   - §3.9's operator table (`docs/spec.md:571–587`) lists `Powerable`, `Bitwise`, `Shiftable`, and `Container`, but §3.10's Built-in traits summary table (`docs/spec.md:694–713`) omits all four (`Container` is absent from the table, and the operator row at `docs/spec.md:713` lists only `Addable, Subtractable, Multipliable, Divisible, FloorDivisible, Negatable, Comparable`).
   - §3.9 (`docs/spec.md:616`) writes `Powerable<E = Self>` with one type parameter, whereas `src/stdlib/prelude/prelude.ista:281` declares `trait Powerable<E = Self, T = Self>` with two type parameters (matching `Iterable<T, C = Self>`, `Container<T, C = Self>`, and `Convertible<From, T = Self>`).
+  - **Done** (`fast-wins`): The table gains a `Container` row, and `Powerable`, `Bitwise` and `Shiftable` join the operator row; §3.9 writes `Powerable<E = Self, T = Self>`.
 - **Split and partial definition of irrefutable ("can't fail") patterns between §3.11 (`docs/spec.md:752`) and §3.15 (`docs/spec.md:919`):**
   - §3.11 (`docs/spec.md:752`) states: *"Targets must always match. A declaration's or loop's target (§3.15) can't hold an alternative, an array pattern or a range, since each can fail; they belong in `match` and `is`."*
   - §3.15 (`docs/spec.md:919`) states: *"A pattern that could fail (a literal, a comparison, an enum variant) is a compile error here; it belongs in `match` or `is`."*
@@ -474,6 +478,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Invalid enum variant syntax in §9 (`docs/spec.md:1293`):**
   - `docs/spec.md:1293` writes `Err(Error{message, code: "panic", trace})` with parentheses instead of braces (`Err{Error{message, code: "panic", trace}}` or `Err{error: Error{...}}`), contradicting §3.11 (*"Variants are declared with a field list ... and built like structs"* / *"It never clashes with construction, which uses braces"* in §3.10).
+  - **Done** (`fast-wins`): Now `Err{Error{message, code: "panic", trace}}`.
 - **Partial overlap between §3.8 stdlib JSON codecs (`docs/spec.md:505–510`) and §9's JSON mapping table (`docs/spec.md:1360–1375`):**
   - §9's JSON mapping table (`docs/spec.md:1360–1375`) includes `Decimal | string` and `Time, Duration | ISO 8601, their toString (§3.8)` alongside language primitives and compiler-derived codecs, but omits `Zone`, `DateTime` (from `time`, which §3.8 says cross as text), and `Regex` (from `regex`, which §3.8 says crosses as its pattern text) — all of which use the exact same `json.encodeText` / `json.decodeText` mechanism described at `docs/spec.md:1352`. Grouping all text-codec stdlib types (`Decimal`, `Time`, `Duration`, `Zone`, `DateTime`, `Regex`) under one row in §9's table avoids two out-of-sync lists between §3.8 and §9.
 
