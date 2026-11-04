@@ -91,6 +91,13 @@ describe('exhaustiveness', () => {
     ['a variant listed twice', 'Color', 'case Red: "r"\ncase Red: "again"\ncase _: "o"', 'Red'],
     ['a guarded case covered before it', 'bool', 'case _: "any"\ncase b if b: "t"', 'b'],
     ['an array no length is left for', 'Array<int>', 'case [..._]: "any"\ncase [x]: "one"', '[x]'],
+    ['a negated zero after zero', 'int', 'case 0: "z"\ncase -0: "again"\ncase _: "o"', '-0'],
+    [
+      'a negated float zero after zero',
+      'float',
+      'case 0.0: "z"\ncase -0.0: "again"\ncase _: "o"',
+      '-0.0',
+    ],
     [
       'alternatives covered before them',
       'Color',

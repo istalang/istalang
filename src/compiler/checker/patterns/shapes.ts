@@ -14,6 +14,7 @@
 
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Checker } from '../check.ts';
 import { type FieldMember, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -75,17 +76,12 @@ function literalKey(node: Expression): string | undefined {
   switch (node.kind) {
     case 'BooleanLiteral':
       return String(node.value);
-    case 'IntegerLiteral':
-    case 'FloatLiteral':
-      return `${node.kind}:${node.value}`;
     case 'StringLiteral':
       return `${node.kind}:${node.value}`;
-    case 'Unary': {
-      const operand = node.operator === '-' ? literalKey(node.operand) : undefined;
-      return operand === undefined ? undefined : `-${operand}`;
+    default: {
+      const number = signedNumberOf(node);
+      return number === undefined ? undefined : `${number.kind}:${number.value}`;
     }
-    default:
-      return undefined;
   }
 }
 

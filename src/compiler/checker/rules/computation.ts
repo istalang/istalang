@@ -32,6 +32,7 @@ import type {
   Spread,
   StructLiteral,
 } from '../../syntax/expressions/index.ts';
+import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import { constantTextOf } from '../../syntax/expressions/templates.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
@@ -116,10 +117,12 @@ class Computation {
       }
       case 'Parenthesized':
         return this.of(node.expression);
-      case 'Unary':
-        return node.operator === '-' && isNumberLiteral(node.operand)
-          ? negated(this.of(node.operand))
-          : refused(node);
+      case 'Unary': {
+        const number = signedNumberOf(node);
+        return number === undefined
+          ? refused(node)
+          : computed({ kind: 'primitive', value: number.value });
+      }
       case 'Identifier': {
         const constant = this.#scope.valueNamed(node);
         if (constant === undefined) {
@@ -401,21 +404,4 @@ function computed(form: ConstantForm): Outcome {
 }
 function refused(part: NodeOf<string>): Outcome {
   return { kind: 'refused', part, why: 'form' };
-}
-/** A number literal, possibly parenthesized: what compile time negates. */
-function isNumberLiteral(node: Expression): boolean {
-  if (node.kind === 'Parenthesized') {
-    return isNumberLiteral(node.expression);
-  }
-  return node.kind === 'IntegerLiteral' || node.kind === 'FloatLiteral';
-}
-
-function negated(operand: Outcome): Outcome {
-  if (operand.kind !== 'computed') {
-    return operand;
-  }
-  const { value } = operand.form.kind === 'primitive' ? operand.form : { value: undefined };
-  return typeof value === 'bigint' || typeof value === 'number'
-    ? computed({ kind: 'primitive', value: -value })
-    : unknown;
 }

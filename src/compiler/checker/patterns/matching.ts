@@ -25,6 +25,7 @@ import { arrayPatternFunctions, optionalVariants } from '../../../language/well-
 import type { VariantNaming } from '../../binder/entities.ts';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import { lastName } from '../../syntax/node.ts';
 import { binaryOperators, isImplicitOperator, type Relation } from '../../syntax/operators.ts';
 import type {
@@ -178,13 +179,8 @@ function rangeLeaf(context: BodyContext, node: RangePattern, part: ValuePart): L
 
 /** The int a range pattern's bound writes: a literal, negated or not (the parser allows no other). */
 function intValueOf(bound: LiteralPattern): bigint | undefined {
-  const { value } = bound;
-  if (value.kind === 'IntegerLiteral') {
-    return value.value;
-  }
-  return value.kind === 'Unary' && value.operator === '-' && value.operand.kind === 'IntegerLiteral'
-    ? -value.operand.value
-    : undefined;
+  const number = signedNumberOf(bound.value);
+  return number?.kind === 'IntegerLiteral' ? number.value : undefined;
 }
 
 /** The function every ordering calls (§3.9). */
