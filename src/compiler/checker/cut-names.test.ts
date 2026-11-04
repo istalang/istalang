@@ -80,6 +80,14 @@ describe('a name cut short', () => {
   });
 });
 
+describe('a pattern whose type is cut short', () => {
+  it("binds its names at the error type, so an or-pattern's alternatives still agree", () => {
+    const cut = cuts.find(({ text, from, at }) => text.slice(from, at + 1) === 'B.{');
+    expect(cut).toBeDefined();
+    expect(cut === undefined ? [] : reportedAtCut(cut)).toEqual([]);
+  });
+});
+
 describe('a name a namespace does not export', () => {
   it.each([
     ['read', 'time.missing'],

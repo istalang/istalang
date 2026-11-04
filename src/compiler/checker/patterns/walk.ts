@@ -165,7 +165,8 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 
 /**
  * `node` matched at `part`, what it selects of the part first (selections.ts). A part already in
- * error, or a selection refused, was reported where it arose; it takes anything, for exhaustiveness.
+ * error, or a selection refused, was reported where it arose; it takes anything, for exhaustiveness,
+ * and a refused one still binds its names, at the error type (`bindAtError`).
  */
 function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
   const node =
@@ -179,6 +180,7 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
       ? undefined
       : selectionOf(walk.scope, walk.tests, node, part);
   if (selection === 'refused') {
+    bindAtError(walk, node, part);
     // A downcast is a guard however it goes, the types inside an `any` type being an open set.
     const shape = part.type.kind === 'any' ? undefined : anyShape;
     return { shape, part: { type: errorType, path: part.path } };
@@ -334,17 +336,34 @@ function refutable(
 
 /**
  * A construct that could fail to match, standing in a target, which must always match: reported
- * once, its names bound at the error type to the part it stands at, so each use of them resolves
- * with nothing more to report. Nothing inside it is taken apart, so a target's parts are fields and
- * tuple elements only.
+ * once, its names bound at the error type (`bindAtError`). Nothing inside it is taken apart, so a
+ * target's parts are fields and tuple elements only.
  */
 function refused(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shape {
   walk.scope.report(checkerDiagnostics.refutableTarget(node.span));
-  const names = new Set(targetNames(node).map((name) => declaringName(walk, name)));
+  bindAtError(walk, node, part);
+  return anyShape;
+}
+
+/**
+ * Binds each name `node` binds at the error type, to the part it stands at: what a pattern that
+ * isn't taken apart, refused where it stands or naming nothing, binds, so each use of its names
+ * resolves with nothing more to report, and an or-pattern's alternatives still agree on them. In a
+ * case, a bare name the binder didn't make a variable refers to something, so it binds nothing.
+ */
+function bindAtError(walk: Walk, node: Pattern | PatternPart, part: ValuePart): void {
+  const names = new Set(
+    targetNames(node).flatMap((name) => {
+      const entity = walk.scope.entityOf(name);
+      if (entity?.kind === 'variable') {
+        return [entity.name];
+      }
+      return walk.tests === undefined ? [name] : [];
+    }),
+  );
   for (const name of names) {
     walk.bindings.push({ name, type: errorType, path: part.path });
   }
-  return anyShape;
 }
 
 /** From the first of `targets` to the last; the parser reads at least one. */
