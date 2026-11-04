@@ -18,9 +18,8 @@
  * and most are answered without reading the place, which parses the module again.
  */
 
-import { isInlineWhitespace } from '../../compiler/scanner/characters.ts';
 import type { TokenKind } from '../../compiler/syntax/tokens.ts';
-import { type Cursor, touchingBefore } from './cursor.ts';
+import { adjoinsBefore, type Cursor, touchingBefore } from './cursor.ts';
 import type { Place, PlaceKind } from './place.ts';
 
 /** Whether a list opens in a place. */
@@ -77,11 +76,9 @@ const goingOn: ReadonlyMap<TokenKind, PlaceTest> = new Map([
  * What goes on after the token before the cursor, with only spaces between on the cursor's line:
  * not across a comment or a line break.
  */
-const goesOn: Opening = ({ tree, name, before, offset }) => {
-  const between = before === undefined ? '' : tree.source.text.slice(before.span.end, offset);
-  return before !== undefined && name === undefined && [...between].every(isInlineWhitespace)
-    ? goingOn.get(before.kind)
-    : undefined;
+const goesOn: Opening = (cursor) => {
+  const before = cursor.name === undefined ? adjoinsBefore(cursor) : undefined;
+  return before === undefined ? undefined : goingOn.get(before.kind);
 };
 
 const opens: ReadonlyMap<string, Opening> = new Map([

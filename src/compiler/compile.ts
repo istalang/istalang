@@ -11,7 +11,7 @@
  */
 
 import type { Definition } from '../definition/definition.ts';
-import { type Diagnostic, isError } from '../diagnostics/diagnostic.ts';
+import { compareDiagnostics, type Diagnostic, isError } from '../diagnostics/diagnostic.ts';
 import { entryFunction } from '../language/well-known.ts';
 import { memo } from '../structures/memo.ts';
 import type { SourceText } from '../text/source-text.ts';
@@ -43,7 +43,7 @@ export function diagnose(program: Program): ReadonlyMap<ModuleId, ModuleDiagnost
   );
 }
 
-/** One module's diagnostics from every phase, sorted by position; an editor asks per document. */
+/** One module's diagnostics from every phase, in their order (`compareDiagnostics`); an editor asks per document. */
 export function diagnoseModule(program: Program, id: ModuleId): ModuleDiagnostics {
   const modules = memo(diagnosedModules, program, () => new Map<ModuleId, ModuleDiagnostics>());
   return memo(modules, id, () => {
@@ -55,7 +55,7 @@ export function diagnoseModule(program: Program, id: ModuleId): ModuleDiagnostic
         ...diagnostics,
         ...bindProgram(program).diagnosticsOf(id),
         ...(isStd ? [] : checkProgram(program).diagnosticsOf(id)),
-      ].sort((first, second) => first.span.start - second.span.start),
+      ].sort(compareDiagnostics),
     };
   });
 }

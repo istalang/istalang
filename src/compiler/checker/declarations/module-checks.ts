@@ -9,8 +9,7 @@
  * code and message for the same reason.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { compareOrdered } from '../../../language/order.ts';
+import { compareDiagnostics, type Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Declaration } from '../../syntax/declarations.ts';
@@ -88,11 +87,5 @@ function diagnosticsIn(
         ? [diagnosticIn(tree, note.diagnostic)]
         : [],
     )
-    .sort(
-      (first, second) =>
-        first.span.start - second.span.start ||
-        first.span.end - second.span.end ||
-        first.code - second.code ||
-        compareOrdered(first.message, second.message),
-    );
+    .sort(compareDiagnostics);
 }

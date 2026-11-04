@@ -270,12 +270,14 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `inferNestedLambdas` and `branchBodiesOf` switch over `Lambda`, `BlockExpression`, `If`, `Match`, `Select`, `Tuple`, `ArrayLiteral`, and `MapLiteral`, duplicating the composite expected-type decomposition and branch collection already implemented for `Accepts` in `expressions/` and `rules/branches.ts`.
 - **Repeated `operands.join(' and ')` formatting for `operatorTypes` (`src/compiler/checker/calls/resolve.ts`, `resolution/implicit.ts`, `types/equality.ts`):**
   - `explainNone` (`calls/resolve.ts`), `implicitOperatorCall` (`resolution/implicit.ts`), and `checkEqualSides` (`types/equality.ts`) each format operand type lists with `.join(' and ')` at the call site instead of `checkerDiagnostics.operatorTypes` formatting an array of operand strings.
+  - **Done** (`fast-wins`): `operatorTypes` takes the operand list and joins it.
 
 ### 17. `src/compiler/checker/patterns/` & `src/compiler/checker/flow/`
 
 - **Manual `MatchCase` / `SelectCase` filtering in `FlowWalk` (`src/compiler/checker/flow/forward.ts`, `src/compiler/syntax/expressions/index.ts`):**
   - `constructs.Match` in `flow/forward.ts` writes `node.cases.filter((each) => each.kind === 'MatchCase')` instead of calling `casesOf(node)` (`src/compiler/syntax/expressions/index.ts`).
   - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/expressions.ts`, `checker/calls/lambda-arguments.ts`, `checker/expressions/select.ts`, and `lowering/expressions/select.ts` each filter `each.kind === 'SelectCase'` by hand.
+  - **Done** (`fast-wins`): `FlowWalk` calls `casesOf`; `selectCasesOf` beside it serves the five select sites.
 - **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/patterns/matching.ts`, `patterns/shapes.ts`, `rules/computation.ts`):**
   - `intValueOf` (`patterns/matching.ts`), `literalKey` (`patterns/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).
   - **Done** (`fast-wins`): `intValueOf`, `literalKey` and `Computation.#own` read through `signedNumberOf` (`syntax/expressions/numbers.ts`); `-0` keys as `0`, so `case -0` after `case 0` is unreachable (`patterns.test.ts`).
@@ -287,6 +289,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`fast-wins`): `bindLoopTargets` is gone; declarations, `for` and comprehensions call `declareTargets`, which moved to `checker/patterns/targets.ts` because `rules/` sits beneath `statements/` in the checker layers.
 - **Duplicate string-field extraction in `Annotations.jsonNameOf` vs. `Annotations.#textOf` (`src/compiler/checker/rules/annotations.ts`):**
   - `jsonNameOf(field)` manually extracts `named?.form.kind === 'struct' ? named.form.fields[0] : undefined` and checks `value?.kind === 'primitive' && typeof value.value === 'string'`, duplicating `this.#textOf(this.ofField(field), 'jsonName') ?? field.name` right below it.
+  - **Done** (`fast-wins`): `jsonNameOf` reads through `#textOf`.
 - **Double `defaultWitness` resolution for `@JsonSkip` fields (`src/compiler/checker/rules/annotations.ts`, `src/compiler/checker/rules/json-forms/index.ts`; widens `Q9`):**
   - `Annotations.#problem` resolves `defaultWitness(searchSite(this.#seams.checker), held)` to validate `@JsonSkip` on a field, and `JsonForms.#field` resolves `defaultWitness(searchSite(checker), field.type)` a second time to populate `JsonField.skipped`.
 
@@ -339,6 +342,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Double standard for diagnostic sorting between `diagnoseModule` (`src/compiler/compile.ts`) and `diagnosticsIn` (`src/compiler/checker/declarations/module-checks.ts`):**
   - `diagnosticsIn` (`module-checks.ts`) sorts diagnostics by `span.start`, then `span.end`, then `code`, then `compareOrdered(message)`, whereas `diagnoseModule` (`compile.ts`) sorts only by `first.span.start - second.span.start`.
+  - **Done** (`fast-wins`): Both sort with `compareDiagnostics` (`diagnostics/diagnostic.ts`).
 
 ### 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter
 
@@ -357,6 +361,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `Q29` notes that `asHostValue` and `leaving` share the same walk. `arriving` in the same file is a third copy of the same composite `withChildValues(value, childValues(value).map(...))` walk, and all three recurse on the host JS call stack instead of an explicit stack (violating the one-way rule in `docs/reuse/structures-and-invariants.md`, since in-memory values within a segment can exceed `maximumDepth` before commit).
 - **Redundant multimap + `reachingMock` in `mocksOf` (`src/runtime/testing/world/index.ts`, `src/runtime/scheduler/mocks.ts`):**
   - `mocksOf` groups `snapshot.objects` by `object.target` using `byTarget.set(object.target, [...(byTarget.get(object.target) ?? []), object])` and then calls `reachingMock(mocks)` (which picks the mock with the largest `id`). Because `snapshot.objects` is already in ascending `id` order (`snapshot.ts`), the last mock for each `target` in `snapshot.objects` is always `reachingMock`.
+  - **Done** (`fast-wins`): `mocksOf` maps each target to its last mock in `snapshot.objects`, which ascend by id.
 - **Whole-heap disposable scan on commit (`P4`), encode-then-decode commit round-trip (`P1`), and module-global `decodedByStore` cache (`P7`) (`src/runtime/scheduler/instance/index.ts`, `wake.ts`, `instance-ends.ts`; tracked in `tracker.md`).**
 
 ### 27. `src/stdlib/` — infrastructure & prelude
@@ -418,6 +423,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `isChangeable` in `completion/places/grammar.ts` re-implements `owner.kind === 'VariableDeclaration' && owner.isMutable` and `owner.kind === 'Parameter' && owner.type?.kind === 'ReferenceType'` (missing lambda parameters whose `&` reference comes from an expected function type).
 - **Duplicate inline-whitespace check between `goesOn` (`src/language-service/completion/triggers.ts`) and `adjoins` (`src/language-service/completion/grammar/position.ts`):**
   - Both slice `tree.source.text` from `before.span.end` to `name?.span.start ?? offset` and test `[...between].every(isInlineWhitespace)`. Placing `adjoinsBefore(cursor)` beside `touchingBefore(cursor)` in `completion/cursor.ts` unifies both.
+  - **Done** (`fast-wins`): `adjoinsBefore(cursor)` in `completion/cursor.ts` serves both.
 - **Duplicate `any` downcast target rules across `completion/places/matched-type.ts` (`downcastTo`), `completion/places/pattern.ts` (`mayRefer`), and `checker/patterns/downcasts.ts` (`namedTypeOf`).**
 - **Tracked completion items (`P13`–`P16`, `P19`, `Q34`, `Q35`, `B23`, `F14`, `F15`; tracked in `tracker.md`).**
 

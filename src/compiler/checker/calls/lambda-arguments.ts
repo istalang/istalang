@@ -16,6 +16,7 @@ import {
   casesOf,
   type Expression,
   type Lambda,
+  selectCasesOf,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
@@ -131,7 +132,7 @@ function branchBodiesOf(
     case 'Match':
       return casesOf(node).map(({ body }) => body);
     case 'Select': {
-      const cases = node.cases.flatMap((each) => (each.kind === 'SelectCase' ? [each.body] : []));
+      const cases = selectCasesOf(node).map(({ body }) => body);
       return node.elseClause === undefined ? cases : [...cases, node.elseClause.body];
     }
     default: {

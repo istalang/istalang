@@ -8,6 +8,7 @@
  * a name whatever the scanner made of it.
  */
 
+import { isInlineWhitespace } from '../../compiler/scanner/characters.ts';
 import { isKeyword, type Token } from '../../compiler/syntax/tokens.ts';
 import type { CheckedModule } from '../checked-module.ts';
 import { codeTokensOf } from '../tokens.ts';
@@ -53,4 +54,15 @@ export function cursorAt(
 /** The token right before what the cursor writes; undefined when space parts them. */
 export function touchingBefore({ name, before, offset }: Cursor): Token | undefined {
   return before?.span.end === (name?.span.start ?? offset) ? before : undefined;
+}
+
+/**
+ * The token before what the cursor writes when only spaces and tabs part them, so the cursor goes
+ * on from it; undefined across a line break, a comment or a template's text, whose text and `${`
+ * are no tokens of their own.
+ */
+export function adjoinsBefore({ tree, name, before, offset }: Cursor): Token | undefined {
+  const between =
+    before === undefined ? '' : tree.source.text.slice(before.span.end, name?.span.start ?? offset);
+  return [...between].every(isInlineWhitespace) ? before : undefined;
 }

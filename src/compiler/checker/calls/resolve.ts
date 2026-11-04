@@ -235,9 +235,7 @@ function explainNone(
       checkerDiagnostics.operatorTypes(
         site.span,
         name,
-        request.arguments
-          .map(({ type }) => (type === undefined ? '_' : typeText(type)))
-          .join(' and '),
+        request.arguments.map(({ type }) => (type === undefined ? '_' : typeText(type))),
       ),
     );
   } else {

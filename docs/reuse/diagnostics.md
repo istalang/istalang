@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-10-29
+last_updated: 2026-11-04
 tags: [reuse, diagnostics, errors, testing]
 ---
 
@@ -15,6 +15,7 @@ tags: [reuse, diagnostics, errors, testing]
 - declare a phase's diagnostic catalog with typed message factories and code checks → `defineDiagnostics` (`src/diagnostics/catalog.ts`)
 - look up a phase's 1000-code block → `codeBlocks`, `codeBlockSize`, `DiagnosticPhase` (`src/diagnostics/code-blocks.ts`)
 - test whether a `Diagnostic` is an error (stops compilation) vs a warning → `isError`, `Diagnostic`, `Severity` (`src/diagnostics/diagnostic.ts`)
+- list diagnostics in their one order: position, then code and message → `compareDiagnostics` (`src/diagnostics/diagnostic.ts`)
 - format one `Diagnostic` with `path:line:column` header, source line and caret → `renderDiagnostic` (`src/diagnostics/render.ts`)
 - write all module diagnostics with an error and warning summary count → `reportDiagnostics` (`src/cli/report.ts`)
 - report command-line paths that name no file → `reportUnreadable` (`src/cli/report.ts`)

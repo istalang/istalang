@@ -17,6 +17,7 @@ import {
   type MatchCase,
   qualifiedPath,
   type SelectCase,
+  selectCasesOf,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
 import { bindConditionValue, underBindings, underCondition, underLoop } from './flow.ts';
@@ -127,20 +128,18 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   },
   Select: (binder, node, scope) => {
     bindRejectedAnnotations(binder, node.cases, scope);
-    for (const selectCase of node.cases) {
-      if (selectCase.kind === 'SelectCase') {
-        bindExpression(binder, selectCase.future, scope);
-        const name = selectCase.binding;
-        const define = (bindings: Scope) => {
-          if (name !== undefined) {
-            binder.declareVariable(bindings, name, selectCase);
-          }
-        };
-        underBindings(binder, selectCase, scope, {
-          define,
-          body: (bindings) => binder.walk.block(binder, selectCase.body, bindings),
-        });
-      }
+    for (const selectCase of selectCasesOf(node)) {
+      bindExpression(binder, selectCase.future, scope);
+      const name = selectCase.binding;
+      const define = (bindings: Scope) => {
+        if (name !== undefined) {
+          binder.declareVariable(bindings, name, selectCase);
+        }
+      };
+      underBindings(binder, selectCase, scope, {
+        define,
+        body: (bindings) => binder.walk.block(binder, selectCase.body, bindings),
+      });
     }
     if (node.elseClause !== undefined) {
       binder.walk.block(binder, node.elseClause.body, scope);

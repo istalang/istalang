@@ -124,11 +124,7 @@ export class Annotations implements AnnotationChecks {
 
   /** The name a field has in JSON (§9): its `@JsonName`, or its own. */
   jsonNameOf(field: FieldMember): string {
-    const named = this.#knownOn(field, 'jsonName');
-    const value = named?.form.kind === 'struct' ? named.form.fields[0] : undefined;
-    return value?.kind === 'primitive' && typeof value.value === 'string'
-      ? value.value
-      : field.name;
+    return this.#textOf(this.ofField(field), 'jsonName') ?? field.name;
   }
 
   /** The name `statement`'s `@Waypoint` gives where it waits (§10); undefined without one. */

@@ -33,7 +33,6 @@ import type { Answered } from '../../scheduler/futures.ts';
 import { inspection } from '../../scheduler/inspect.ts';
 import { storedSnapshot } from '../../scheduler/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
-import { reachingMock } from '../../scheduler/mocks.ts';
 import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/test-world.ts';
 import {
   type Advance,
@@ -315,23 +314,22 @@ export class World implements TestWorld {
   }
 }
 
-/** The mock each target's calls reach in `snapshot`, memoized on it. */
+/**
+ * The mock each target's calls reach in `snapshot`, memoized on it: its newest, which is its last,
+ * since a snapshot's objects ascend by id.
+ */
 function mocksOf(
   memory: WeakMap<Snapshot, ReadonlyMap<FunctionId, number>>,
   snapshot: Snapshot,
 ): ReadonlyMap<FunctionId, number> {
-  return memo(memory, snapshot, () => {
-    const byTarget = new Map<FunctionId, { readonly id: number }[]>();
-    for (const object of snapshot.objects) {
-      if (object.kind === 'mock') {
-        byTarget.set(object.target, [...(byTarget.get(object.target) ?? []), object]);
-      }
-    }
-    return new Map(
-      [...byTarget].flatMap(([target, mocks]) => {
-        const reached = reachingMock(mocks);
-        return reached === undefined ? [] : [[target, reached.id]];
-      }),
-    );
-  });
+  return memo(
+    memory,
+    snapshot,
+    () =>
+      new Map(
+        snapshot.objects.flatMap((object) =>
+          object.kind === 'mock' ? [[object.target, object.id] as const] : [],
+        ),
+      ),
+  );
 }

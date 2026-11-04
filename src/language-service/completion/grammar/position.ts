@@ -16,7 +16,6 @@
  *   kind of name: a label, a function to spawn, a place a call's argument passes by reference.
  */
 
-import { isInlineWhitespace } from '../../../compiler/scanner/characters.ts';
 import type { Identifier, Invalid } from '../../../compiler/syntax/node.ts';
 import type { LabelledScope } from '../../../compiler/syntax/statements.ts';
 import { isKeyword, type Token } from '../../../compiler/syntax/tokens.ts';
@@ -28,7 +27,7 @@ import {
   type SyntaxTree,
 } from '../../../compiler/syntax/tree.ts';
 import { codeTokensOf } from '../../tokens.ts';
-import { type Cursor, touchingBefore } from '../cursor.ts';
+import { adjoinsBefore, type Cursor, touchingBefore } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { holderIn } from './chain.ts';
 import { type Surroundings, surroundingsOf } from './surroundings.ts';
@@ -62,7 +61,9 @@ export function grammarPositionAt(cursor: Cursor, { parsed }: GrammarPlace): Gra
   }
   const startsLine = startsItem(cursor);
   const after =
-    startsLine || !adjoins(cursor) ? undefined : wordsAfter(cursor, parsed, parent, node);
+    startsLine || adjoinsBefore(cursor) === undefined
+      ? undefined
+      : wordsAfter(cursor, parsed, parent, node);
   if (after !== undefined) {
     return words(after);
   }
@@ -213,16 +214,6 @@ function startsItem({ tree, before, name, offset }: Cursor): boolean {
 }
 
 const itemOpeners: ReadonlySet<string> = new Set([';', ':', '{']);
-
-/**
- * Whether only spaces part the token before from what the cursor writes, so that token is what
- * the cursor goes on from: a template's text and its `${` are no tokens of their own.
- */
-function adjoins({ tree, before, name, offset }: Cursor): boolean {
-  const between =
-    before === undefined ? '' : tree.source.text.slice(before.span.end, name?.span.start ?? offset);
-  return before !== undefined && [...between].every(isInlineWhitespace);
-}
 
 /**
  * The modifier right before the cursor, if the word there stands as one in the placeholder's

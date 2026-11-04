@@ -11,6 +11,7 @@
  * (compiler/syntax/positions.ts); it leaves the phase with the text span that becomes.
  */
 
+import { compareOrdered } from '../language/order.ts';
 import type { Span } from '../text/span.ts';
 
 export type Severity = 'error' | 'warning';
@@ -20,6 +21,19 @@ export interface Diagnostic<Where = Span> {
   readonly severity: Severity;
   readonly message: string;
   readonly span: Where;
+}
+
+/**
+ * The order diagnostics are listed in: by position, then code and message, so one source always
+ * lists its diagnostics alike, whichever phase found each first.
+ */
+export function compareDiagnostics(first: Diagnostic, second: Diagnostic): number {
+  return (
+    first.span.start - second.span.start ||
+    first.span.end - second.span.end ||
+    first.code - second.code ||
+    compareOrdered(first.message, second.message)
+  );
 }
 
 /** Whether `diagnostic` is an error: what fails a check and stops a program from compiling. */

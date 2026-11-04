@@ -20,6 +20,7 @@ import {
   type Expression,
   type Select,
   type SelectCase,
+  selectCasesOf,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import { ownCallerOf } from '../closures/own-calls.ts';
@@ -35,14 +36,12 @@ import { reportWait } from './await.ts';
 export function checkSelect(context: BodyContext, node: Select, expected: Type | undefined): Type {
   reportForm(context, node);
   const branches = new Branches(context, expected);
-  for (const selectCase of node.cases) {
-    if (selectCase.kind === 'SelectCase') {
-      checkCaseFuture(context, selectCase);
-      if (watchesOwnDisposal(context, selectCase.future)) {
-        context.functions.current.cleanup(() => branches.add(selectCase.body));
-      } else {
-        branches.add(selectCase.body);
-      }
+  for (const selectCase of selectCasesOf(node)) {
+    checkCaseFuture(context, selectCase);
+    if (watchesOwnDisposal(context, selectCase.future)) {
+      context.functions.current.cleanup(() => branches.add(selectCase.body));
+    } else {
+      branches.add(selectCase.body);
     }
   }
   if (node.elseClause !== undefined) {
@@ -97,7 +96,7 @@ function checkCaseFuture(context: BodyContext, selectCase: SelectCase): void {
 
 /** A `select` takes what its cases and its `else` agree on. */
 export function selectAccepts(context: BodyContext, node: Select): Accepts | undefined {
-  const cases = node.cases.flatMap((each) => (each.kind === 'SelectCase' ? [each.body] : []));
+  const cases = selectCasesOf(node).map(({ body }) => body);
   const elseBody = node.elseClause?.body;
   return branchesAccepts(context, elseBody === undefined ? cases : [...cases, elseBody]);
 }

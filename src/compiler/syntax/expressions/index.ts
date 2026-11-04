@@ -359,6 +359,11 @@ export interface SelectCase extends NodeOf<'SelectCase'> {
   readonly body: Block;
 }
 
+/** A `select`'s cases, without the invalid ones the parser reported. */
+export function selectCasesOf(node: Select): readonly SelectCase[] {
+  return node.cases.filter((each) => each.kind === 'SelectCase');
+}
+
 export type Expression =
   | Identifier
   | Literal

@@ -137,8 +137,7 @@ export function implicitOperatorCall(
     operator,
     candidates: topLevelCandidates(context.checker, context.module, meaning.function, types),
     arguments: operands.map((operand) => ({ ...operand, passing: 'value' })),
-    failure: () =>
-      checkerDiagnostics.operatorTypes(span, operator, types.map(typeText).join(' and ')),
+    failure: () => checkerDiagnostics.operatorTypes(span, operator, types.map(typeText)),
   });
 }
 

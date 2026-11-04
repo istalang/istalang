@@ -25,9 +25,11 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { chainStepOf, isOptionallyChained } from '../../syntax/expressions/chains.ts';
 import {
+  casesOf,
   type Expression,
   type MatchCase,
   type SelectCase,
+  selectCasesOf,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
@@ -346,18 +348,8 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   Range: children,
   BlockExpression: children,
   If: (walk, node, state) => walk.conditional(node.branches, node.elseClause?.body, state),
-  Match: (walk, node, state) =>
-    walk.match(
-      node.subject,
-      node.cases.filter((each) => each.kind === 'MatchCase'),
-      state,
-    ),
-  Select: (walk, node, state) =>
-    walk.select(
-      node.cases.filter((each) => each.kind === 'SelectCase'),
-      node.elseClause?.body,
-      state,
-    ),
+  Match: (walk, node, state) => walk.match(node.subject, casesOf(node), state),
+  Select: (walk, node, state) => walk.select(selectCasesOf(node), node.elseClause?.body, state),
   Missing: (_, __, state) => state,
   Invalid: (_, __, state) => state,
   Block: children,

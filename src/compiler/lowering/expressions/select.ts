@@ -13,7 +13,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { Select, SelectCase } from '../../syntax/expressions/index.ts';
+import { type Select, type SelectCase, selectCasesOf } from '../../syntax/expressions/index.ts';
 import type { Block } from '../../syntax/statements.ts';
 import type { Label, SelectCaseCode } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
@@ -22,9 +22,10 @@ import { bindTargets } from '../statements/variables.ts';
 
 export function lowerSelect(context: FunctionContext, node: Select): Register {
   const { code } = context;
-  const cases = node.cases
-    .filter((each) => each.kind === 'SelectCase')
-    .map((selectCase) => ({ selectCase, code: caseCode(context, selectCase) }));
+  const cases = selectCasesOf(node).map((selectCase) => ({
+    selectCase,
+    code: caseCode(context, selectCase),
+  }));
   if (cases.length === 0 && node.elseClause !== undefined) {
     return context.block(node.elseClause.body);
   }

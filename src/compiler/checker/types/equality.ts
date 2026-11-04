@@ -47,6 +47,6 @@ export function checkEqualSides(
       return;
     }
   }
-  const types = `${typeText(left.type)} and ${typeText(right.type)}`;
+  const types = [typeText(left.type), typeText(right.type)];
   context.report(checkerDiagnostics.operatorTypes(at.span, at.operator, types));
 }

@@ -94,7 +94,8 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   },
   operatorTypes: {
     code: 5016,
-    message: (operator: string, operands: string) => `'${operator}' isn't defined for ${operands}.`,
+    message: (operator: string, operands: readonly string[]) =>
+      `'${operator}' isn't defined for ${operands.join(' and ')}.`,
   },
   outsideLoop: {
     code: 5017,
