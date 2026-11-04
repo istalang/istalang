@@ -20,6 +20,8 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens.ts`)
 - list the words a grammar position dispatches on: a declaration's, a statement's, an operand's, a type's or a pattern's start, what goes on after an operand, and what follows each modifier → `declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers` (`src/compiler/syntax/grammar-words.ts`); what a module's item starts with → `moduleItemWords` (`src/compiler/syntax/placement.ts`)
 - key a parser table by those words, checked both ways by type, read a contextual word's parselet, or ask whether a modifier's follower comes next → `StartParselets`, `WordParselets`, `wordParseletAt`, `followsModifier` (`src/compiler/parser/word-parselets.ts`)
+- parse a grammar whose operators bind at a few fixed levels, as patterns and types do → `leveledGrammar`, `LeveledParselet` (`src/compiler/parser/parts/levels.ts`)
+- read the literal a token denotes, the literal at the cursor, or a negative number where a literal stands alone → `literalFrom`, `parseLiteral`, `parseNegativeLiteral`, `Negatable` (`src/compiler/parser/parts/literals.ts`)
 - get the last identifier of a `QualifiedName` or check for a missing identifier → `lastName`, `isMissingName` (`src/compiler/syntax/node.ts`)
 - list a syntax node's direct children in source order, its field children alone, or a function's body → `childrenOf`, `fieldChildrenOf`, `bodyOf`, `isNode` (`src/compiler/syntax/tree.ts`)
 - check whether an item may stand in a module or a block → `allowedInModule`, `allowedInBlock` (`src/compiler/syntax/placement.ts`)

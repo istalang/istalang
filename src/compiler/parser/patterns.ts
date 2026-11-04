@@ -17,7 +17,6 @@
  */
 
 import { isUnnamed } from '../../language/naming.ts';
-import { unreachable } from '../../structures/unreachable.ts';
 import type { PatternWord } from '../syntax/grammar-words.ts';
 import { isComparisonOperator, operatorLevels, tighterLevel } from '../syntax/operators.ts';
 import type {
@@ -31,7 +30,13 @@ import type { NamedType } from '../syntax/types.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
-import { literalFrom } from './parts/literals.ts';
+import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
+import {
+  literalFrom,
+  type Negatable,
+  parseLiteral,
+  parseNegativeLiteral,
+} from './parts/literals.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
 import { afterStructKeyword } from './parts/structs.ts';
 import { parseDelimited, parseGroup } from './recovery.ts';
@@ -54,17 +59,17 @@ const patternLevels = ['alternatives', 'range'] as const;
 
 type PatternLevel = (typeof patternLevels)[number];
 
-/** How a pattern is extended by an operator after it, at the operator's level. */
-interface InfixPatternParselet {
-  readonly level: PatternLevel;
-  readonly parse: (parser: Parser, left: Pattern) => Pattern;
-}
+/** A minus stands before any number in a pattern, as in an expression. */
+const negatableNumbers: Negatable = {
+  kinds: new Set(['integer', 'float', 'duration']),
+  expected: 'a number after the minus',
+};
 
 const patternParselets: Partial<Record<CursorKind, PatternParselet>> = {
   identifier: parseNamedPattern,
   struct: parseAnonymousStructPattern,
   '(': parseTuplePattern,
-  '-': parseNegativeLiteral,
+  '-': (parser) => literalPattern(parseNegativeLiteral(parser, negatableNumbers)),
   '[': parseArrayPattern,
   '..': parseOpenRangePattern,
   '..=': parseOpenRangePattern,
@@ -77,24 +82,14 @@ const patternParselets: Partial<Record<CursorKind, PatternParselet>> = {
   none: parseLiteralPattern,
 } satisfies StartParselets<PatternWord, PatternParselet>;
 
-const infixPatternParselets: Partial<Record<CursorKind, InfixPatternParselet>> = {
+const infixPatternParselets: Partial<Record<CursorKind, LeveledParselet<PatternLevel, Pattern>>> = {
   '|': { level: 'alternatives', parse: parseOrPattern },
   '..': { level: 'range', parse: parseRangePattern },
   '..=': { level: 'range', parse: parseRangePattern },
 };
 
-/** A pattern whose operators all bind at least as tightly as `minLevel`. */
-function parsePatternAt(parser: Parser, minLevel: PatternLevel): Pattern {
-  let pattern = parsePrimaryPattern(parser);
-  for (
-    let infix = infixPatternParselets[parser.cursor.kind];
-    infix !== undefined && patternLevels.indexOf(infix.level) >= patternLevels.indexOf(minLevel);
-    infix = infixPatternParselets[parser.cursor.kind]
-  ) {
-    pattern = infix.parse(parser, pattern);
-  }
-  return pattern;
-}
+/** A pattern whose operators all bind at least as tightly as a level. */
+const parsePatternAt = leveledGrammar(patternLevels, parsePrimaryPattern, infixPatternParselets);
 
 function parsePrimaryPattern(parser: Parser): Pattern {
   const parselet = patternParselets[parser.cursor.kind];
@@ -249,27 +244,9 @@ function parseTuplePattern(parser: Parser): Pattern {
 }
 
 function parseLiteralPattern(parser: Parser): Pattern {
-  const literal = literalFrom(parser, parser.cursor.token);
-  if (literal === undefined) {
-    return unreachable('A literal pattern starts at a literal token.');
-  }
-  parser.cursor.advance();
-  return { kind: 'LiteralPattern', span: literal.span, value: literal };
+  return literalPattern(parseLiteral(parser));
 }
 
-/** `-1`: only a numeric literal may follow the minus. */
-function parseNegativeLiteral(parser: Parser): Pattern {
-  const { start } = parser.cursor.advance().span;
-  const { kind } = parser.cursor;
-  const operand =
-    kind === 'integer' || kind === 'float' || kind === 'duration'
-      ? literalFrom(parser, parser.cursor.advance())
-      : undefined;
-  const value = operand ?? parser.missing('a number after the minus');
-  const span = parser.spanFrom(start);
-  return {
-    kind: 'LiteralPattern',
-    span,
-    value: { kind: 'Unary', span, operator: '-', operand: value },
-  };
+function literalPattern(value: LiteralPattern['value']): Pattern {
+  return { kind: 'LiteralPattern', span: value.span, value };
 }

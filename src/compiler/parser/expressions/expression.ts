@@ -26,8 +26,9 @@ import {
 import type { CursorKind } from '../cursor/index.ts';
 import { misplacedDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';
+import { parseLiteral } from '../parts/literals.ts';
 import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
-import { parseLiteral, parseParenthesized } from './atoms.ts';
+import { parseParenthesized } from './atoms.ts';
 import { parseBlockExpression, parseIf, parseMatch, parseSelect } from './branches.ts';
 import { parseCollection } from './collections.ts';
 import { parseLambda } from './lambdas.ts';
