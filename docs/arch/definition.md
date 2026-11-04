@@ -149,7 +149,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Construct (spec) | Lowered to |
 | --- | --- |
 | `struct` declaration, indented or one-line (§3.1) | a `struct` type entry per instantiation, fields in declaration order |
-| Anonymous struct type, `struct { … }`, an indented field block (§3.1) | a `struct` type entry of its own; two anonymous structs are never the same entry |
+| Anonymous struct type, a shape: `struct { … }`, an indented field block (§3.1) | a nameless `struct` type entry, one per shape: every place writing equal fields shares it, its fields in name order |
 | Recursive types (§3.1) | type references by index, so a type can name itself through the table |
 | `enum` declaration, `T?`, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation, with, for `json.Json`, its `role`; `Error` is a `struct` entry |
 | `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable`, `disposal` (§7) and, for `Future`, its `role` |

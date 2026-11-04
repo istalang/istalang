@@ -34,6 +34,10 @@ describe('completion in an annotation', () => {
     }
   });
 
+  it("offers nothing on a shape's field, which takes no annotation (§3.16)", () => {
+    expect(names('fn f(p: { id: Int @‸ }) -> Int: 1')).toEqual([]);
+  });
+
   it("offers `Waypoint` alone on a statement that waits, and a local function's structs", () => {
     expect(names('async fn t():', '  @‸', '  await t()')).toEqual(['Waypoint']);
     expect(names('async fn t():', '  await t() @‸')).toEqual(['Waypoint']);

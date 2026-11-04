@@ -4,9 +4,10 @@
  * as any alias names its type, so `E.Red` is `Color.Red` for `type E = Color`.
  *
  * An alias is followed by the name its type is written with, through other aliases, each looked up
- * where it is declared; the binder resolves no types, so an alias written as anything but a name (a
- * `T?`, a tuple) stands for no enum here. An alias reached twice is a cycle, which the checker
- * reports (§3.17), and qualifies nothing.
+ * where it is declared; the binder resolves no types, so an alias written as anything but a plain
+ * name (a `T?`, a tuple, an enum given type arguments), or with type parameters of its own, which a
+ * name could be, stands for no enum here: a variant qualified by it would drop what its arguments
+ * say. An alias reached twice is a cycle, which the checker reports (§3.17), and qualifies nothing.
  */
 
 import type { ModuleId } from '../../program/program.ts';
@@ -47,7 +48,11 @@ function aliasedEntity(
 ): Entity | undefined {
   const module = lookup.moduleOf(alias);
   const written = unparenthesizedType(declaration.type);
-  if (module === undefined || written.kind !== 'NamedType') {
+  const isPlainName =
+    written.kind === 'NamedType' &&
+    written.typeArguments.length === 0 &&
+    declaration.typeParameters.length === 0;
+  if (module === undefined || !isPlainName) {
     return undefined;
   }
   const [head, ...rest] = written.path;

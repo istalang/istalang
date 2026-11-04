@@ -64,6 +64,16 @@ describe('renaming', () => {
     expect(refusalOf(program, named('main', 'width'))).toBeUndefined();
   });
 
+  it('refuses a field a shared struct and a struct share, the one spreading into the other (§3.18)', () => {
+    const { program, named } = navigable({
+      main: 'shared struct Lease { name: String }\nstruct Plain { name: String }\nstruct Other { size: Int }\nshared struct Cell { size: Int }\nshared struct Lone { count: Int }\n',
+    });
+    for (const use of [named('main', 'name'), named('main', 'name', 1), named('main', 'size')]) {
+      expect(refusalOf(program, use)).toContain('shape');
+    }
+    expect(refusalOf(program, named('main', 'count'))).toBeUndefined();
+  });
+
   it('refuses what std declares', () => {
     const { program, named } = navigable({ main: 'fn f() -> Int?: Some{value: 1}\n' });
     expect(refusalOf(program, named('main', 'Some'))).toContain('std:prelude');

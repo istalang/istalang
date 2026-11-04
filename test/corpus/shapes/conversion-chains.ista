@@ -1,0 +1,31 @@
+# outcome: "hi10 hi10 none | hello 10 | 1hi hi1"
+# A struct's value converted for the method a call chooses is converted after an optional chain
+# unwraps it (§2, §4), at the chain's start or past a link. A spread into a shared struct reads
+# each field by name from the shape it spreads, whatever order the declaration lists them in
+# (§3.18), and a struct's spread into a generic literal infers its type arguments through the
+# conversion (§3.5).
+
+type Point = { a: String; z: Int }
+struct Pixel { z: Int; a: String }
+struct Holder { p: Pixel }
+
+fn norm(self: Point) -> String:
+  self.a + self.z
+
+shared struct Counter { z: Int; a: String }
+
+type Pair<A, B> = { a: A; z: B }
+struct Boxed { z: String; a: Int }
+shared struct SharedBox<A, B> { a: A; z: B }
+
+async fn main():
+  const p: Pixel? = Pixel{z: 10, a: "hi"}
+  const h: Holder? = Holder{p: Pixel{z: 10, a: "hi"}}
+  const missing: Pixel? = none
+  const chained = (p?.norm() ?? "none") + " " + (h?.p.norm() ?? "none") + " " + (missing?.norm() ?? "none")
+  const c1 = new Counter{z: 10, a: "hello"}
+  const c2 = new Counter{...*c1}
+  const b = Boxed{z: "hi", a: 1}
+  const pair = Pair{...b}
+  const shared = new SharedBox{...b}
+  chained + " | " + c2->a + " " + c2->z + " | " + pair.a + pair.z + " " + shared->z + shared->a

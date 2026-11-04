@@ -1,0 +1,15 @@
+# error: 5012 at 13:23
+# error: 5104 at 15:6
+# A literal through an alias builds only a shape (§3.17): an alias of a struct declaration is no
+# struct to build, so its arguments can't be dropped. An alias qualifies a variant only when it
+# names an enum plainly, with no type arguments of its own or given, which the variant would drop
+# (a pattern's qualifier is the binder's: bind.test.ts).
+
+struct Box<T> { value: T }
+type IntBox = Box<Int>
+enum Color { Red; Green }
+type Id<Color> = Color
+
+fn box() -> Box<Int>: IntBox{value: 1}
+fn red() -> Color:
+  Id.Red

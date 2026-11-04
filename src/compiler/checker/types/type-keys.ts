@@ -106,5 +106,5 @@ function shapeKeyOf(
 export const typeKeys: TypeKeys = {
   identityOf,
   typeKey,
-  shapeKey: (type) => shapeKeyOf(type, undefined),
+  shapeKey: (type) => memo(ownKeys, type, () => shapeKeyOf(type, undefined)) as ShapeKey,
 };

@@ -1,9 +1,9 @@
 /**
  * What a literal naming a type builds (§3.1, §3.17): a declared struct, with the type arguments
- * written or expected; or, through an alias, the struct type the alias stands for. An alias of a
- * declared struct decides the struct's type arguments by its own; an alias of a shape builds the
- * shape, its own type parameters inferred from the values as a generic struct's are, so a generic
- * alias names a family of shapes a literal picks one of (structs.ts checks the literal).
+ * written or expected; or, through an alias of a shape, the shape, the alias's own type parameters
+ * inferred from the values as a generic struct's are, so a generic alias names a family of shapes
+ * a literal picks one of (structs.ts checks the literal). An alias names a struct declaration only
+ * as a type: its literal names the struct itself.
  */
 
 import type { Entity } from '../../binder/entities.ts';
@@ -27,9 +27,7 @@ export type Built =
 
 /**
  * What a literal naming `entity` builds: a declared struct, with the type arguments written or
- * expected; through an alias, the struct type it stands for, its own arguments deciding the
- * struct's, and a shape inferring the alias's from the values as a generic struct does. Undefined
- * for anything else.
+ * expected, or the shape an alias names; undefined for anything else.
  */
 export function builtThrough(
   context: BodyContext,
@@ -55,18 +53,7 @@ export function builtThrough(
       declaration,
       arguments: typeArguments,
     });
-  if (aliased.kind === 'anonymous') {
-    return { kind: 'shape', shape: { owner: declaration, known, fields: aliased.fields, typeOf } };
-  }
-  const struct = aliased.kind === 'nominal' ? aliased.entity.declaration : undefined;
-  if (aliased.kind !== 'nominal' || struct === undefined || !isDeclaredStruct(struct)) {
-    return undefined;
-  }
-  const built = known === undefined ? undefined : typeOf(known);
-  return {
-    kind: 'declared',
-    entity: aliased.entity,
-    struct,
-    known: built?.kind === 'nominal' ? built.arguments : undefined,
-  };
+  return aliased.kind === 'anonymous'
+    ? { kind: 'shape', shape: { owner: declaration, known, fields: aliased.fields, typeOf } }
+    : undefined;
 }

@@ -47,6 +47,10 @@ function annotationNames(cursor: Cursor, parsed: PlaceholderParse): readonly Can
     return [];
   }
   const holder = chain[itemIndex - 1];
+  if (holder?.kind === 'StructType') {
+    // A shape's field takes no annotation (§3.16).
+    return [];
+  }
   const statement =
     holder?.kind === 'Block' ? holder.statements.find((each) => each === item) : undefined;
   const takes = statement === undefined ? 'struct' : waypointOrStruct(statement);

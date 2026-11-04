@@ -94,7 +94,6 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q34 | A literal's single-field value form offers `visibleCandidates` (every keyword) instead of `expressionCandidates`, since literal-field.ts has no placeholder parse to read the body from. | small | none; can be done now | completion C2a report 2026-10-30 |
 | Q35 | completion/grammar/words.ts restates the parser's dispatch tables (parser internals are closed to completion); its property test holds the lists to the parser one way only (offered implies accepted). | small | none; can be done now | completion C2a report 2026-10-30 |
 | Q36 | An `Invalid` node now holds the annotations the parser rejected, and the binder binds them at each list site that skips `Invalid` items (module, blocks, fields, variants, match and select cases): a new list site must remember to, and every generic tree walker (semantic tokens, hover) sees those names. One binding rule for an `Invalid`'s annotations would remove the per-site duty. | small | none; can be done now | completion End fix E4 report 2026-10-30 |
-| Q37 | `checker/rules/computation.ts` is 407 lines, over the 400-line limit; it becomes `computation/index.ts` with its parts beside it. | small | none; can be done now | fast-wins report 2026-11-04 |
 | Q38 | `compiler/checker/context.ts` (437) is over the 400-line limit; it becomes `context/index.ts` with its parts beside it. | small | none; can be done now | proposal 1 report 2026-11-04 |
 
 ### Behaviour and correctness (B)

@@ -5,9 +5,9 @@
  *
  * The branches agree on a type as every producer of one value does (agreement.ts): the expected
  * type decides when there is one, else the first branch with a value. Without an expected type,
- * that first branch's type is what later branches are expected to have, so `if c: struct{a: 1}
- * else: struct{a: 2}` builds one anonymous type, not two (§3.1). Branches are added one at a time,
- * so a construct checks what comes before each body (a condition, a pattern) in source order.
+ * that first branch's type is what later branches are expected to have. Branches are added one at
+ * a time, so a construct checks what comes before each body (a condition, a pattern) in source
+ * order.
  * Passed to a call that decides their type (§3.5), they take what their tails agree on.
  */
 

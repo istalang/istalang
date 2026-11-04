@@ -40,7 +40,7 @@ import type { Accepts, BodyContext, CheckerContext, Enclosing, Returns } from '.
 import { checkerDiagnostics } from './diagnostics/index.ts';
 import { CollectionForms } from './expressions/collections.ts';
 import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/expressions.ts';
-import { StructLiterals } from './expressions/literal-fields.ts';
+import { StructLiterals } from './expressions/literal-sources.ts';
 import { OptionalChains } from './expressions/optionals.ts';
 import { FieldReads } from './expressions/structs.ts';
 import { CheckedPatterns } from './patterns/matching.ts';

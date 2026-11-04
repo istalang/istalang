@@ -2,8 +2,8 @@
  * Building structs and reading their fields (§3.1).
  *
  * - A struct literal names its type, or with `struct{…}` takes it: from the expected type when
- *   that is a struct, else from a leading spread's value, else it is a fresh anonymous struct
- *   whose fields are the named items, each typed by its value.
+ *   that is a struct, else from a leading spread's value, else it is the shape of its named items,
+ *   each typed by its value. A literal through an alias of a shape builds the shape (§3.17).
  * - Its items are checked by the path variants share (literal-fields.ts), so a generic struct's
  *   type arguments are written, expected, spread or inferred alike. A literal naming a variant
  *   builds that variant (variants.ts).
@@ -138,7 +138,7 @@ function checkNew(context: BodyContext, node: NamedLiteral, isShared: boolean): 
   }
 }
 
-/** `struct{…}`: the expected struct, a leading spread's struct, or else a fresh anonymous struct. */
+/** `struct{…}`: the expected struct, a leading spread's struct, or else the shape of its items. */
 function checkAnonymousLiteral(
   context: BodyContext,
   node: StructLiteral,

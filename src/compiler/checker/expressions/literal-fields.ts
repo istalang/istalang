@@ -12,10 +12,11 @@
  * - A generic type's arguments are written, taken from the expected type or the spread value when
  *   it is the same type, or inferred from the values (§3.5): a value whose field type is already
  *   known is checked against it, any other is checked on its own and matched. Defaults fill what
- *   is left; anything still open can't be inferred. An anonymous struct has no type parameters.
- * - What each field's value comes from is recorded per literal, in declaration order, so lowering
- *   and compile time read it rather than reading the items again. A literal with a mistake in its
- *   items has no record: nothing compiles it.
+ *   is left; anything still open can't be inferred. A shape has no type parameters, but an alias
+ *   naming one may (§3.17), and a literal through it infers them as a struct's.
+ * - What each field's value comes from is recorded per literal, in declaration order
+ *   (literal-sources.ts), so lowering and compile time read it rather than reading the items
+ *   again. A literal with a mistake in its items has no record: nothing compiles it.
  * - A field left out with names alone takes its default (§3.1), from that field's default of the
  *   function the declaration's fields read as (syntax/field-defaults.ts), instantiated with the
  *   literal's type arguments, its constraints met where the literal is. A spread gives every
@@ -40,19 +41,19 @@ import {
 } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { FieldSource } from '../check.ts';
-import type { BodyContext, LiteralSources } from '../context.ts';
+import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { completeInference } from '../inference/complete.ts';
 import { Inference } from '../inference/infer.ts';
 import { callWithTypes } from '../resolution/silent-choice.ts';
-import type { FunctionCall, MadeCall } from '../resolved-call.ts';
+import type { FunctionCall } from '../resolved-call.ts';
 import { itemField } from '../struct-items.ts';
 import { constrainArguments, parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { errorType, type FieldMember, type ParameterKey, type Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
+import { type LiteralGiven, sourcesOf } from './literal-sources.ts';
 
 /**
  * What a literal builds: its fields as declared, how to name its type from type arguments, and
@@ -75,38 +76,6 @@ export interface LiteralShape {
 export interface LiteralSpread {
   readonly node: Spread;
   readonly type?: Type;
-}
-
-/**
- * The struct literals of one body, each with the fields it builds and where their values come
- * from.
- */
-export class StructLiterals implements LiteralSources {
-  readonly #sources = new Map<FieldsLiteral, readonly FieldSource[]>();
-  readonly #fields = new Map<FieldsLiteral, readonly FieldMember[]>();
-
-  record(literal: FieldsLiteral, sources: readonly FieldSource[]): void {
-    this.#sources.set(literal, sources);
-  }
-
-  recordFields(literal: FieldsLiteral, fields: readonly FieldMember[]): void {
-    this.#fields.set(literal, fields);
-  }
-
-  sourcesOf(literal: FieldsLiteral): readonly FieldSource[] | undefined {
-    return this.#sources.get(literal);
-  }
-
-  fieldsOf(literal: FieldsLiteral): readonly FieldMember[] | undefined {
-    return this.#fields.get(literal);
-  }
-
-  /** The calls of the defaults the literals leave their fields to, each at its literal. */
-  made(): readonly MadeCall[] {
-    return [...this.#sources].flatMap(([site, sources]) =>
-      sources.flatMap((source) => (source.kind === 'default' ? [{ site, call: source.call }] : [])),
-    );
-  }
 }
 
 /** A field given a value: the value, its type, and the field's type as declared. */
@@ -132,7 +101,7 @@ export function checkLiteralFields(
   const decided = decidedArguments(shape, parameters);
   const inference = new Inference(parameters, context.checker.fitting, decided);
   if (spreadType !== undefined) {
-    inference.matchExactly(spreadOf(shape, parameters.map(parameterType)), spreadType);
+    inference.match(spreadOf(shape, parameters.map(parameterType)), spreadType);
   }
   const items: LiteralItems = { node, shape, inference, given: new Map(), fits: true };
   for (const item of node.items) {
@@ -157,11 +126,29 @@ export function checkLiteralFields(
   const defaulted =
     spread === undefined ? defaultCalls(context, shape, items.given, completed.typeArguments) : [];
   reportMissing(context, items, type);
-  const sources = sourcesOf(shape, items.given, spread, defaulted);
+  const sources = sourcesOf({
+    fields: shape.fields,
+    given: new Map([...items.given].map(([index, { node: value }]) => [index, value])),
+    spread:
+      spread === undefined
+        ? undefined
+        : spreadGiven(context, spread, spreadOf(shape, completed.typeArguments)),
+    defaulted,
+  });
   if (items.fits && sources !== undefined) {
     context.literals.record(node, sources);
   }
   return type;
+}
+
+/** What a literal's leading `spread` gives: its value, and the fields of `type`, the type it spreads. */
+function spreadGiven(
+  context: BodyContext,
+  spread: LiteralSpread,
+  type: Type,
+): LiteralGiven['spread'] {
+  const names = (context.checker.fieldsOf(type) ?? []).map(({ name }) => name);
+  return { from: spread.node.expression, names };
 }
 
 /**
@@ -343,43 +330,6 @@ function reportMissing(
 function declaresDefault({ fields }: LiteralShape, index: number): boolean {
   const declared = fields[index]?.declared?.node;
   return declared !== undefined && hasDefault(declared);
-}
-
-/**
- * Each field's source in declaration order, the spread giving the rest, or else its default's
- * call; undefined if one has none.
- */
-function sourcesOf(
-  { fields }: LiteralShape,
-  given: ReadonlyMap<number, GivenField>,
-  spread: LiteralSpread | undefined,
-  defaulted: readonly (FunctionCall | undefined)[],
-): readonly FieldSource[] | undefined {
-  const sources: FieldSource[] = [];
-  for (const index of fields.keys()) {
-    const source = sourceOf(index, given.get(index)?.node, spread, defaulted[index]);
-    if (source === undefined) {
-      return undefined;
-    }
-    sources.push(source);
-  }
-  return sources;
-}
-
-/** Where field `index` gets its value: the literal's `value`, the spread, or its default. */
-function sourceOf(
-  index: number,
-  value: Expression | undefined,
-  spread: LiteralSpread | undefined,
-  defaulted: FunctionCall | undefined,
-): FieldSource | undefined {
-  if (value !== undefined) {
-    return { kind: 'value', value };
-  }
-  if (spread !== undefined) {
-    return { kind: 'spread', from: spread.node.expression, index };
-  }
-  return defaulted === undefined ? undefined : { kind: 'default', call: defaulted };
 }
 
 /**

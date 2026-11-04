@@ -15,9 +15,8 @@
  *   one could change which traits a type meets; and a parameter named `self`, which makes its
  *   function a method (§3.7). A new name of that kind is refused for the same reason;
  * - a field of a shape, which is one type with every shape of its fields wherever written (§3.1),
- *   and a field of a struct whose field names a shape of the program also has, which its value or
- *   `*x` may fit: renaming one place would part it from the others, so the names say no more than
- *   what fields a shape has, and a field of either kind is renamed nowhere;
+ *   and a field of a struct or shared struct whose field names another writer of that shape has,
+ *   which its value or `*x` may fit (§3.18): renaming one place would part it from the others;
  * - a new name that isn't one, is the unnamed `_` or a built-in type's (§2), or changes the old
  *   name's privacy (§3.13) or case (§2), which also decides what a bare name in a pattern does
  *   (§3.11).
@@ -42,6 +41,7 @@ import {
   isPrivate,
   isUnnamed,
 } from '../../language/naming.ts';
+import { compareOrdered } from '../../language/order.ts';
 import { codecFunctions, entryFunction, receiverParameter } from '../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { memo } from '../../structures/memo.ts';
@@ -244,8 +244,10 @@ function namesCalledByName(program: Program): ReadonlySet<string> {
 }
 
 /**
- * Whether the field declared at `at` belongs to a shape, or to a struct whose field names a shape or
- * `struct{…}` literal of the program also has (§3.1, §3.18).
+ * Whether the field declared at `at` belongs to a shape, or to a declaration whose fields' names
+ * another writer of a shape also has (§3.1, §3.18): a struct, whose value converts into its shape,
+ * against a `{…}` type, a `struct{…}` literal or a shared struct, whose `*x` is one; a shared
+ * struct against any of those, or against a struct, whose value may write its `*x`.
  */
 function sharesShape(program: Program, at: NamePlace): boolean {
   const { tree } = programModule(program, at.module);
@@ -254,37 +256,61 @@ function sharesShape(program: Program, at: NamePlace): boolean {
   if (holder?.kind === 'StructType') {
     return true;
   }
-  return (
-    (holder?.kind === 'StructDeclaration' || holder?.kind === 'SharedStructDeclaration') &&
-    shapesWritten(program).has(fieldsKey(holder.fields))
-  );
+  if (holder?.kind !== 'StructDeclaration' && holder?.kind !== 'SharedStructDeclaration') {
+    return false;
+  }
+  const writers = shapeWriters(program).get(fieldsKey(holder.fields));
+  return holder.kind === 'StructDeclaration'
+    ? (writers?.shapes ?? 0) > 0
+    : (writers?.shapes ?? 0) > 1 || (writers?.structs ?? 0) > 0;
 }
 
-const writtenShapes = new WeakMap<Program, ReadonlySet<string>>();
+/** How many of a program's writers have one set of field names: shapes, and struct declarations. */
+interface Writers {
+  shapes: number;
+  structs: number;
+}
 
-/** The field names of every shape a program writes, a `{…}` type or a `struct{…}` literal, as keys. */
-function shapesWritten(program: Program): ReadonlySet<string> {
-  return memo(writtenShapes, program, () => {
-    const keys = new Set<string>();
+const writersByProgram = new WeakMap<Program, ReadonlyMap<string, Writers>>();
+
+/**
+ * The writers of each set of field names in a program, by its key: `{…}` types, `struct{…}`
+ * literals with nothing named before them and shared structs as shapes, struct declarations apart.
+ */
+function shapeWriters(program: Program): ReadonlyMap<string, Writers> {
+  return memo(writersByProgram, program, () => {
+    const writers = new Map<string, Writers>();
     for (const { tree } of program.modules.values()) {
       const pending: SyntaxNode[] = [tree.root];
       for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
-        if (node.kind === 'StructType') {
-          keys.add(fieldsKey(node.fields));
-        } else if (node.kind === 'StructLiteral' && node.type === undefined) {
-          keys.add(
-            namesKey(
-              node.items.flatMap((item) =>
-                item.kind === 'FieldInitializer' ? [item.name.text] : [],
-              ),
-            ),
-          );
+        const writer = writerOf(node);
+        if (writer !== undefined) {
+          memo(writers, writer.key, () => ({ shapes: 0, structs: 0 }))[writer.kind] += 1;
         }
         pending.push(...childrenOf(tree, node));
       }
     }
-    return keys;
+    return writers;
   });
+}
+
+/** The field names `node` writes a shape or a struct declaration with, as a key; undefined for others. */
+function writerOf(node: SyntaxNode): { key: string; kind: keyof Writers } | undefined {
+  switch (node.kind) {
+    case 'StructType':
+    case 'SharedStructDeclaration':
+      return { key: fieldsKey(node.fields), kind: 'shapes' };
+    case 'StructDeclaration':
+      return { key: fieldsKey(node.fields), kind: 'structs' };
+    case 'StructLiteral': {
+      const named = node.items.flatMap((item) =>
+        item.kind === 'FieldInitializer' ? [item.name.text] : [],
+      );
+      return node.type === undefined ? { key: namesKey(named), kind: 'shapes' } : undefined;
+    }
+    default:
+      return undefined;
+  }
 }
 
 /** The names of written fields as one key, as `namesKey` makes it. */
@@ -294,7 +320,7 @@ function fieldsKey(fields: readonly (Field | Invalid)[]): string {
 
 /** A set of field names as one key, in the name order a shape keeps them. */
 function namesKey(names: readonly string[]): string {
-  return names.toSorted().join(',');
+  return names.toSorted(compareOrdered).join(',');
 }
 
 /** How `use` is spelled once its target is renamed to `newName`: a shorthand spelled out. */

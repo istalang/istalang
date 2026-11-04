@@ -128,6 +128,18 @@ describe('binding reports, once and at the name', () => {
       'B',
     ],
     [
+      'a name after a generic alias of an enum, in a pattern (§3.17)',
+      'enum Color { Red; Green }\ntype Id<Color> = Color\nfn f(c: Color) -> Int:\n  match c:\n    case Id.Green: 1\n    case _: 2',
+      d.qualifiesNothing,
+      'Green',
+    ],
+    [
+      'a name after an alias of an enum given type arguments, in a pattern (§3.17)',
+      'type IntResult = Result<Int, String>\nfn f(r: Result<Int, String>) -> Int:\n  match r:\n    case IntResult.Ok{value}: value\n    case _: 2',
+      d.qualifiesNothing,
+      'Ok',
+    ],
+    [
       'a name after a local, in a pattern',
       'fn f(n: Int) -> Int:\n  match n:\n    case n.Q: 1\n    case _: 0',
       d.qualifiesNothing,

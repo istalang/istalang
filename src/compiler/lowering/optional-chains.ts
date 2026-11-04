@@ -7,9 +7,10 @@
  *   a `?.` or `?->` meets `None`, which jumps straight to the chain's end. Inner links are
  *   lowered as links, working on the value carried along, so nothing between them is ever
  *   wrapped.
- * - A link reads its target through `target`: a chained target is lowered as a link, and a `?.`
- *   or `?->` switches on the value, carrying on with the value inside `Some`. What each link works
- *   on is the checker's record (`chainOf`), so nothing here re-derives a type.
+ * - A link reads its target through `target`: lowered by its handler, a chained target as a link,
+ *   and a `?.` or `?->` switches on the value, carrying on with the value inside `Some`, which is
+ *   then fitted as the checker fitted it. What each link works on is the checker's record
+ *   (`chainOf`), so nothing here re-derives a type.
  */
 
 import type { Register } from '../../definition/operands.ts';
@@ -62,22 +63,24 @@ export class OptionalChains {
     return result;
   }
 
-  /** The register the step of `link` works on: its target's value, the value inside after `?.`. */
+  /**
+   * The register the step of `link` works on: its target's value, the value inside after `?.`,
+   * made to fit as the checker fitted what the step works on (a receiver converted for the method
+   * a call chose, §2), which is the value inside after `?.`, never the optional around it.
+   */
   target(context: FunctionContext, link: Expression): Register {
     const step = chainStepOf(link);
     if (step === undefined) {
       unreachable(`A ${link.kind} is no link; lowering asked the wrong node.`);
     }
     const { body } = context;
-    const value =
-      body.chainOf(step.target) === undefined
-        ? context.expression(step.target)
-        : this.#link(step.target);
+    const value = this.#link(step.target);
+    const fit = body.fitAt(step.target);
     const base = body.chainOf(link)?.base;
-    const none = this.#ends.at(-1);
     if (!isOptionalStep(step)) {
-      return value;
+      return context.fitted(value, base ?? context.typeOf(step.target), fit, step.target);
     }
+    const none = this.#ends.at(-1);
     if (base === undefined || none === undefined) {
       unreachable(`A '?.' at ${link.span.from} is outside a chain; lowering lost track of it.`);
     }
@@ -86,6 +89,6 @@ export class OptionalChains {
     const isSome = variantTestOf(context.checker, value, optional, optionalVariants.some);
     branchOnVariant(context, isSome, { matched: some, otherwise: none }, link.span);
     context.code.place(some);
-    return payloadOf(context, value, link.span);
+    return context.fitted(payloadOf(context, value, link.span), base, fit, step.target);
   }
 }

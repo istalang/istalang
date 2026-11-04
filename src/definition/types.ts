@@ -13,8 +13,8 @@
  * Every entry is fully instantiated: `Pair<Int, String>` and `Pair<Int, Int>` are two entries,
  * and a reference never contains a type parameter. An entry is identified by its module-qualified
  * declared `name` and its `arguments`, so the runtime recognizes `time.Time` or `prelude.Optional`
- * whatever they are instantiated with. An anonymous struct has no name and an entry of its own,
- * since two of them are always different types (spec §3.1).
+ * whatever they are instantiated with. A shape (an anonymous struct type) has no name: it has one
+ * entry however many places write it, its fields in name order (spec §3.1).
  *
  * Only extern entries can be disposable (spec §7), and each says how: not at all, by the runtime
  * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Lease)` makes a
