@@ -77,8 +77,9 @@ export class SynthesizedCode implements CodeContext {
     return buildVariant(this, { type, name }, fields, this.span);
   }
 
-  struct(type: NominalType | AnonymousStructType, fields: readonly Register[]): Register {
-    return construct(this, type, fields, this.span);
+  /** A struct of `type`, each field taken by its name from `named` (structs.ts). */
+  struct(type: NominalType | AnonymousStructType, named: ReadonlyMap<string, Register>): Register {
+    return construct(this, type, named, this.span);
   }
 
   array(items: readonly Register[]): Register {

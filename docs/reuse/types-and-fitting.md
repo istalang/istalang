@@ -17,7 +17,8 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - get `errorType`, build a primitive type, or test for a primitive → `errorType`, `primitiveType`, `isPrimitive` (`src/compiler/checker/types/type.ts`); a value expected of the error type reports nothing more → `expectsError`
 - build or inspect tuple types → `tupleType`, `tupleElements` (`src/compiler/checker/types/type.ts`)
 - build or inspect nominal types → `nominalType`, `isNominalEntity` (`src/compiler/checker/types/type.ts`)
-- build a shape (an anonymous struct type, the value behind a shared struct included), its fields in name order → `shapeType`, `byFieldName` (`src/compiler/checker/types/type.ts`); never write `{ kind: 'anonymous', … }` by hand
+- build a shape (an anonymous struct type, the value behind a shared struct included), its fields in name order → `shapeType` (`src/compiler/checker/types/type.ts`); never write `{ kind: 'anonymous', … }` by hand
+- a struct's fields as laid out, nominal or shape, in name order (§3.1 "Field order") → `checker.fieldsOf` (`src/compiler/checker/declarations/layout.ts`); as declared, in declaration order, which only evaluation follows (a literal's sources, defaults) → `declaredFieldsOf`; any list of fields in that one order → `inFieldOrder`; values given by field name laid out in a struct's order, and back → `laidOut`, `namedValues` (`src/compiler/checker/types/type.ts`)
 - the shape a nominal struct's value converts into (none for an annotated field) → `Fitting.shapeOf` (`src/compiler/checker/types/fit.ts`), answered by `Layouts.nominalShapeOf` (`src/compiler/checker/declarations/layout.ts`); the conversion is a `Fit` of kind `shape`, ranked with `reshapes`
 - the field a field's declaring node declares, given its owner (a struct, an enum, a shape's `{…}` type, a trait) → `declaredFieldOf` (`src/compiler/checker/types/declared-fields.ts`)
 - the type an extern or top-level constant's declaration gives it, outside any body → `declaredOutsideBodies` (`src/compiler/checker/expressions/names.ts`)
@@ -89,3 +90,4 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - Recognize well-known types by binder entity via `src/compiler/checker/types/well-known.ts`, never by declaration name string; an optional is a union holding `None` (`optionalInner`, `unions.ts`).
 - Key types and identities through `checker.typeKeys` (`src/compiler/checker/types/type-keys.ts`), whose numbers are the module's, alike in every checker; never write those numbers into lowering's output.
 - Every pattern goes through `src/compiler/checker/patterns/walk.ts`, and every body flow rule goes through `flowThrough` (`flow/forward.ts`).
+- A struct's fields are laid out in name order alone (`fieldsOf`, `inFieldOrder`); a value built field by field in another order takes its layout by the fields' names (`laidOut`), never by position.

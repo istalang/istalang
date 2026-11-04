@@ -35,7 +35,8 @@ export function lowerFieldlessVariant(
 /** `Rejected{by: "legal"}`: built from the same fields as a struct literal (structs.ts). */
 export function lowerVariantLiteral(context: FunctionContext, node: StructLiteral): Register {
   const name = node.type === undefined ? '' : lastName(node.type.path).text;
-  return emitVariant(context, node, name, literalFields(context, node));
+  const fields = literalFields(context, node).map(({ register }) => register);
+  return emitVariant(context, node, name, fields);
 }
 
 /** The enum value in `register` tested for one of its variants, the `variant`-th. */

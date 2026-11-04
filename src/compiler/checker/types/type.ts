@@ -10,7 +10,7 @@
  * - An anonymous struct (§3.1) is its shape: its field names and their types, wherever and in
  *   whatever order it is written, so two with the same fields are one type. It carries its fields,
  *   since it has no declaration to derive them from, always in name order (`shapeType`), the one
- *   order a shape has. Where it was written (`origin`) is only its spelling, for tools to locate it:
+ *   order every struct lays its fields out in (`inFieldOrder`). Where it was written (`origin`) is only its spelling, for tools to locate it:
  *   the value behind a shared struct (§3.18) is the shape of the shared struct's fields, written at
  *   its declaration.
  * - A literal type (§2) is the one value of a `String`, `Int` or `Bool` literal: `"draft"`, `-1`,
@@ -148,9 +148,42 @@ export interface AnonymousStructType extends WrittenThrough {
   readonly fields: readonly FieldMember[];
 }
 
-/** Fields in name order, as JSON orders keys (§3.1, §9): the one order a shape keeps them in. */
-export function byFieldName(first: { readonly name: string }, second: { readonly name: string }) {
-  return compareOrdered(first.name, second.name);
+/**
+ * `fields` in the one order every struct lays its fields out in, nominal or shape: by name, as JSON
+ * orders keys (§3.1 "Field order", §9). Declaration order is what evaluation follows, and only it:
+ * a default sees the fields declared before it, and a literal evaluates its fields as written.
+ */
+export function inFieldOrder<Named extends { readonly name: string }>(
+  fields: readonly Named[],
+): readonly Named[] {
+  return fields.toSorted((first, second) => compareOrdered(first.name, second.name));
+}
+
+/**
+ * The values of a struct's `fields`, in its layout, each taken by its field's name from `named`:
+ * how a value given field by field in another order, a literal's in declaration order or another
+ * struct type's, takes its own type's layout (§3.1).
+ */
+export function laidOut<Value>(
+  fields: readonly FieldMember[],
+  named: ReadonlyMap<string, Value>,
+): Value[] {
+  return fields.map(
+    ({ name }) => named.get(name) ?? unreachable(`No value is given for the field '${name}'.`),
+  );
+}
+
+/** The values of a struct laid out as `fields`, each by its field's name: `laidOut`'s inverse. */
+export function namedValues<Value>(
+  fields: readonly FieldMember[],
+  values: readonly Value[],
+): ReadonlyMap<string, Value> {
+  return new Map(
+    values.map((value, index) => [
+      fields[index]?.name ?? unreachable(`No field is laid out at position ${index}.`),
+      value,
+    ]),
+  );
 }
 
 /** The shape of `fields`, written at `origin`: its fields in name order (§3.1). */
@@ -158,7 +191,7 @@ export function shapeType(
   origin: AnonymousStructType['origin'],
   fields: readonly FieldMember[],
 ): AnonymousStructType {
-  return { kind: 'anonymous', origin, fields: [...fields].sort(byFieldName) };
+  return { kind: 'anonymous', origin, fields: inFieldOrder(fields) };
 }
 
 /** A parameter of a function type: its type, and whether it takes a reference (§3.7). */

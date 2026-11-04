@@ -92,7 +92,7 @@ An indexed element is no step of a place, so every call a program makes is a `ca
 | `null` (unit), boolean, string | the same |
 | `bigint` (`Int`) | a JSON integer |
 | `number` (`Float`) | `{kind: 'float', value}`; NaN, ±Infinity and -0 as strings |
-| tuple, struct, variant, array, map, closure | `{kind, …}` with child values; structs and variants by type index, fields in declaration order |
+| tuple, struct, variant, array, map, closure | `{kind, …}` with child values; structs and variants by type index, a struct's fields in name order (§3.1 "Field order"), a variant's in declaration order |
 | extern value | `{kind: 'extern', type, payload}`; the payload is plain JSON, which `==` and map keys compare by its canonical text (codec.ts) |
 | handle | `{kind: 'handle', object}`; never in a constant |
 
@@ -148,7 +148,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 
 | Construct (spec) | Lowered to |
 | --- | --- |
-| `struct` declaration, indented or one-line (§3.1) | a `struct` type entry per instantiation, fields in declaration order |
+| `struct` declaration, indented or one-line (§3.1) | a `struct` type entry per instantiation, its fields in name order, as a shape's |
 | Anonymous struct type, a shape: `struct { … }`, an indented field block (§3.1) | a nameless `struct` type entry, one per shape: every place writing equal fields shares it, its fields in name order |
 | Recursive types (§3.1) | type references by index, so a type can name itself through the table |
 | `enum` declaration, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation, with, for `json.Json`, its `role`; `Error` is a `struct` entry |
@@ -166,7 +166,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Map literal (§2) | `map` for a `Map`: a spread of a map is a spread entry, which copies its entries, and any other spread the loop `for` runs, each `(key, value)` item an entry added with `map` to what the entries before it built; for another `IndexAssignable`+`Default` type, a call to `default`, then a `setIndex` call per entry, and for a spread the loop `for` runs, with a `setIndex` call per item |
 | Tuple, `()` (§3.15) | `tuple`; `()` is the unit constant |
 | Range `a..b`, `a..=b`, open ends, `by` a step (§2, §3.8) | `struct` of prelude `Range`, its `step` 1 unless `by` gives one; `..=` calls the prelude's `_inclusiveEnd(end, step)` to store the end one past the written one in the step's direction |
-| Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | `struct`, fields in declaration order; a field left to its default from a `call` to its default's entry, given the fields before it |
+| Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | the fields evaluated as written, then each left out, in declaration order, from a `call` to its default's entry, given the fields declared before it; `struct` takes them by name into its type's layout |
 | Updated copy `T{...r, f: v}` (§3.1) | the spread value once, `field` for each field not given, then `struct` |
 | Struct without fields, written bare (§3.1) | `struct` with no fields; a constant when it is one |
 | Enum variant (§3.11) | `variant`; a variant without fields may be a constant |

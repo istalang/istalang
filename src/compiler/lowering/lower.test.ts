@@ -149,9 +149,9 @@ describe('lowering', () => {
     );
     expect(boxTypes.map((type) => [type.kind, type.name])).toEqual([
       ['struct', 'main.Box'],
-      ['enum', 'prelude.Optional'],
       ['extern', 'prelude.Array'],
       ['extern', 'prelude.Slot'],
+      ['enum', 'prelude.Optional'],
     ]);
     const disposals = boxTypes.flatMap((type) =>
       type.kind === 'extern' ? [[type.name, type.disposal.kind]] : [],

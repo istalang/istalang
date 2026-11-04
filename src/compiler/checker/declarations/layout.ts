@@ -7,8 +7,13 @@
  * no fields of the struct type itself, so `x.f` and patterns never see them, and `*x` reads them as
  * the shape of those fields (§3.18), the same type as any shape of them.
  *
- * - As declared: field types resolved in the declaring module, once per declaration; a field that
- *   would make the type's instantiation endless reads as the error type (type-expansion.ts).
+ * - As declared (`declaredFieldsOf`): field types resolved in the declaring module, once per
+ *   declaration, in declaration order, which only evaluation follows: a literal's sources and the
+ *   defaults, each seeing the fields before it. A field that would make the type's instantiation
+ *   endless reads as the error type (type-expansion.ts).
+ * - As laid out (`fieldsOf`): in name order, as every struct's fields are, nominal or shape (§3.1
+ *   "Field order", `inFieldOrder`), so positions, the Definition's entry, patterns, codecs and a
+ *   struct's conversion into its shape all follow one order.
  * - As instantiated: substituted for a nominal type's arguments, derived on demand from the
  *   declared layout and never stored per instantiation (types/type.ts).
  *
@@ -17,6 +22,7 @@
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
+import { memo } from '../../../structures/memo.ts';
 import type {
   DeclaredStruct,
   EnumDeclaration,
@@ -34,6 +40,7 @@ import {
   type AnonymousStructType,
   errorType,
   type FieldMember,
+  inFieldOrder,
   type NominalType,
   shapeType,
   type Type,
@@ -59,6 +66,8 @@ export class Layouts {
   readonly #fields: EntryTable<CheckerNote, DeclaredStruct, readonly FieldMember[]>;
   readonly #variants: EntryTable<CheckerNote, EnumDeclaration, readonly VariantMember[]>;
   readonly #expansion: TypeExpansion;
+  /** Each struct's declared fields in name order, keyed by the declared list they sort. */
+  readonly #laidOut = new WeakMap<readonly FieldMember[], readonly FieldMember[]>();
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
@@ -87,8 +96,8 @@ export class Layouts {
   }
 
   /**
-   * The fields of a struct type, nominal or anonymous, substituted for its type arguments;
-   * undefined for another type, a shared struct included.
+   * The fields of a struct type, nominal or anonymous, in name order, substituted for its type
+   * arguments; undefined for another type, a shared struct included.
    */
   fieldsOf(type: Type): readonly FieldMember[] | undefined {
     if (type.kind === 'anonymous') {
@@ -98,9 +107,12 @@ export class Layouts {
       return undefined;
     }
     const { declaration } = type.entity;
-    return declaration.kind === 'StructDeclaration'
-      ? instantiated(this.declaredFieldsOf(declaration), substitutionOf(type))
-      : undefined;
+    if (declaration.kind !== 'StructDeclaration') {
+      return undefined;
+    }
+    const declared = this.declaredFieldsOf(declaration);
+    const laidOut = memo(this.#laidOut, declared, () => inFieldOrder(declared));
+    return instantiated(laidOut, substitutionOf(type));
   }
 
   /**
@@ -146,6 +158,7 @@ export class Layouts {
     }));
   }
 
+  /** A struct's fields as declared, in declaration order, the order evaluation follows. */
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
     return this.#fields.get(declaration);
   }

@@ -94,7 +94,9 @@ export class Decoder {
       code.code.place(matched);
       code.return(
         this.#ok(
-          code.variant(type, variant.name, this.#fields(variant.fields, { object: fields, path })),
+          code.variant(type, variant.name, [
+            ...this.#fields(variant.fields, { object: fields, path }).values(),
+          ]),
         ),
       );
       code.code.place(next);
@@ -139,29 +141,33 @@ export class Decoder {
   }
 
   /**
-   * Each field's value, read from `object` at `path` by its codec or, when skipped, its type's
-   * `default()`.
+   * Each field's value by its name, in the order of `fields`, read from `object` at `path` by its
+   * codec or, when skipped, its type's `default()`.
    */
   #fields(
     fields: readonly JsonField[],
     { object, path }: { readonly object: Register; readonly path: Register },
-  ): readonly Register[] {
+  ): ReadonlyMap<string, Register> {
+    return new Map(fields.map((field) => [field.name, this.#field(field, { object, path })]));
+  }
+
+  /** `field`'s value, as `#fields` reads it. */
+  #field(
+    field: JsonField,
+    { object, path }: { readonly object: Register; readonly path: Register },
+  ): Register {
     const code = this.#code;
-    return fields.map((field) => {
-      if (field.skipped !== undefined) {
-        return code.call(closeCall(field.skipped, undefined), []);
-      }
-      const key = code.constant(field.key);
-      const at = code.call(this.#helper(codecHelpers.fieldPath), [path, key]);
-      const json = field.optional
-        ? code.call(this.#helper(codecHelpers.optionalField), [object, key])
-        : this.#passed(code.call(this.#helper(codecHelpers.field), [object, key, path]));
-      const decode =
-        field.codec === undefined
-          ? this.#codec(field.type)
-          : closeCall(field.codec.read, undefined);
-      return this.#passed(code.call(decode, [json, at]));
-    });
+    if (field.skipped !== undefined) {
+      return code.call(closeCall(field.skipped, undefined), []);
+    }
+    const key = code.constant(field.key);
+    const at = code.call(this.#helper(codecHelpers.fieldPath), [path, key]);
+    const json = field.optional
+      ? code.call(this.#helper(codecHelpers.optionalField), [object, key])
+      : this.#passed(code.call(this.#helper(codecHelpers.field), [object, key, path]));
+    const decode =
+      field.codec === undefined ? this.#codec(field.type) : closeCall(field.codec.read, undefined);
+    return this.#passed(code.call(decode, [json, at]));
   }
 
   /** The value an `Ok` in `result` holds; an `Err` is returned as this codec's own. */

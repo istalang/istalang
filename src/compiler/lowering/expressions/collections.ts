@@ -151,8 +151,12 @@ export function lowerRange(context: FunctionContext, node: Range): Register {
   if (range.kind !== 'nominal') {
     unreachable("A range isn't the prelude's Range; the checker should have said so.");
   }
-  const ends = [start, end].map((value) => optionalInt(context, span, value));
-  return construct(context, range, [...ends, step], span);
+  const fields = new Map([
+    ['start', optionalInt(context, span, start)],
+    ['end', optionalInt(context, span, end)],
+    ['step', step],
+  ]);
+  return construct(context, range, fields, span);
 }
 
 export function lowerIndex(context: FunctionContext, node: Index): Register {

@@ -1,9 +1,9 @@
 /**
  * Where each field of a struct or variant literal gets its value (§3.1), recorded per literal for
  * lowering and compile time (literal-fields.ts checks the items): an item's value, the leading
- * spread, or the field's default. A spread's value has the type the literal spreads, which for a
- * shared struct is its value's shape, whose fields are in name order rather than the declaration's
- * (§3.18), so a field is read from the spread by its name's position there.
+ * spread, or the field's default, each naming its field. The sources follow declaration order,
+ * which evaluation follows, while a spread's value is laid out in name order, as every struct is
+ * (§3.1 "Field order"), so a field is read from the spread by its name's position there.
  */
 
 import type { Expression, FieldsLiteral } from '../../syntax/expressions/index.ts';
@@ -66,16 +66,16 @@ export function sourcesOf({
   defaulted,
 }: LiteralGiven): readonly FieldSource[] | undefined {
   const sources: FieldSource[] = [];
-  for (const [index, { name }] of fields.entries()) {
+  for (const [index, { name: field }] of fields.entries()) {
     const value = given.get(index);
-    const spreadIndex = spread?.names.indexOf(name) ?? -1;
+    const spreadIndex = spread?.names.indexOf(field) ?? -1;
     const call = defaulted[index];
     if (value !== undefined) {
-      sources.push({ kind: 'value', value });
+      sources.push({ field, kind: 'value', value });
     } else if (spread !== undefined && spreadIndex >= 0) {
-      sources.push({ kind: 'spread', from: spread.from, index: spreadIndex });
+      sources.push({ field, kind: 'spread', from: spread.from, index: spreadIndex });
     } else if (spread === undefined && call !== undefined) {
-      sources.push({ kind: 'default', call });
+      sources.push({ field, kind: 'default', call });
     } else {
       return undefined;
     }

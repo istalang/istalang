@@ -105,14 +105,17 @@ export interface VariantMember {
 }
 
 /**
- * Where a struct literal's field gets its value (§3.1): an expression of the literal, the field of
- * that position in its leading spread's value, or its default: `call`'s default for that field, of
- * the function the fields read as, computed from the fields before it (syntax/field-defaults.ts).
+ * Where a struct literal's field, named `field`, gets its value (§3.1): an expression of the
+ * literal, the field of that position in its leading spread's value, or its default: `call`'s
+ * default for that field, of the function the fields read as, computed from the fields before it
+ * (syntax/field-defaults.ts). A literal's sources come in declaration order, the order evaluation
+ * follows; its value takes its type's layout by the fields' names (`laidOut`).
  */
-export type FieldSource =
+export type FieldSource = { readonly field: string } & (
   | { readonly kind: 'value'; readonly value: Expression }
   | { readonly kind: 'spread'; readonly from: Expression; readonly index: number }
-  | { readonly kind: 'default'; readonly call: FunctionCall };
+  | { readonly kind: 'default'; readonly call: FunctionCall }
+);
 
 /**
  * A link of an optional chain (§4): the type its own step works on (the value inside, after

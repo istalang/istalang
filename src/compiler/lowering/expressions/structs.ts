@@ -1,22 +1,25 @@
 /**
  * Building structs and reading their fields (§3.1). A literal's values are evaluated in source
- * order and stored in its type's declaration order, each field from where the checker recorded it
- * comes from (`sourcesOf`); a field the literal doesn't give is read from its leading spread,
- * evaluated once, or else computed by the call to its default the checker recorded, given the
- * fields before it, in declaration order. A field read names the field by its index.
+ * order, then each field taken from where the checker recorded it comes from (`sourcesOf`), in
+ * declaration order: a field the literal doesn't give is read from its leading spread, evaluated
+ * once, or else computed by the call to its default the checker recorded, given the fields before
+ * it. A struct is then built by its fields' names into its type's layout, name order (§3.1 "Field
+ * order", `laidOut`), so nothing that builds one depends on the order it has its values in. A
+ * field read names the field by its index.
  *
  * `new X{…}` builds the value behind a shared struct the same way, as the shape its fields make,
- * each field placed by name since a shape keeps them in name order, and puts it in a new cell,
- * whose handle is the shared struct's value (§3.18).
+ * and puts it in a new cell, whose handle is the shared struct's value (§3.18).
  */
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FieldSource } from '../../checker/check.ts';
-import type {
-  AnonymousStructType,
-  NominalType,
-  StructValueType,
+import {
+  type AnonymousStructType,
+  laidOut,
+  type NominalType,
+  namedValues,
+  type StructValueType,
 } from '../../checker/types/type.ts';
 import {
   type Expression,
@@ -32,7 +35,8 @@ import { emitCall } from '../emit-call.ts';
 import { defaultEntryOf } from '../instances.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
-  return construct(context, structTypeOf(context, node), literalFields(context, node), node.span);
+  const fields = namedFields(literalFields(context, node));
+  return construct(context, structTypeOf(context, node), fields, node.span);
 }
 
 export function lowerNewStructLiteral(context: FunctionContext, node: NewStructLiteral): Register {
@@ -43,11 +47,22 @@ export function lowerNewStructLiteral(context: FunctionContext, node: NewStructL
       `'new' at ${node.span.from} builds no shared struct; the checker should have said so.`,
     );
   }
-  const value = constructByName(context, sharedValue, namedLiteralFields(context, node), node.span);
+  const value = construct(
+    context,
+    sharedValue,
+    namedFields(literalFields(context, node)),
+    node.span,
+  );
   const dst = context.code.allocate();
   const cellType = context.tables.types.index(type);
   context.code.emit({ kind: 'newCell', span: node.span, dst, type: cellType, value });
   return dst;
+}
+
+/** A literal's field, by its name, and the register holding its value. */
+interface LiteralField {
+  readonly field: string;
+  readonly register: Register;
 }
 
 /**
@@ -55,7 +70,7 @@ export function lowerNewStructLiteral(context: FunctionContext, node: NewStructL
  * in source order, then each field taken from its value, read from the spread, or computed by its
  * default.
  */
-export function literalFields(context: FunctionContext, node: FieldsLiteral): Register[] {
+export function literalFields(context: FunctionContext, node: FieldsLiteral): LiteralField[] {
   const sources = context.body.sourcesOf(node);
   if (sources === undefined) {
     unreachable(
@@ -69,22 +84,19 @@ export function literalFields(context: FunctionContext, node: FieldsLiteral): Re
       values.set(value, context.expression(value));
     }
   }
-  const fields: Register[] = [];
+  const fields: LiteralField[] = [];
   for (const source of sources) {
-    fields.push(fieldOf(context, { node, values }, source, fields));
+    const earlier = fields.map(({ register }) => register);
+    fields.push({
+      field: source.field,
+      register: fieldOf(context, { node, values }, source, earlier),
+    });
   }
   return fields;
 }
 
-/**
- * The registers of a literal's fields by name: a shared struct's literal gives its declaration's
- * fields, in declaration order for its defaults, while the value behind it is their shape, in name
- * order (§3.18).
- */
-function namedLiteralFields(context: FunctionContext, node: FieldsLiteral): Map<string, Register> {
-  const declared = context.body.literalFieldsOf(node) ?? [];
-  const registers = literalFields(context, node);
-  return new Map(declared.map((field, index) => [field.name, registers[index] as Register]));
+function namedFields(fields: readonly LiteralField[]): ReadonlyMap<string, Register> {
+  return new Map(fields.map(({ field, register }) => [field, register]));
 }
 
 /** A literal with its items' values evaluated, which its fields are taken from. */
@@ -125,7 +137,7 @@ function fieldOf(
 
 /** A struct without fields, written bare (§3.1). */
 export function lowerBareStruct(context: FunctionContext, node: Expression): Register {
-  return construct(context, structTypeOf(context, node), [], node.span);
+  return construct(context, structTypeOf(context, node), new Map(), node.span);
 }
 
 /** Whether `a.b` reads a field, rather than naming a namespace's or a type's member (names.ts). */
@@ -160,22 +172,23 @@ export function lowerFieldRead(
   }
 }
 
-/** Builds a struct of `type` from `fields`, in declaration order. */
+/** Builds a struct of `type`, each of its fields taken by its name from `named`. */
 export function construct(
   context: CodeContext,
   type: NominalType | AnonymousStructType,
-  fields: readonly Register[],
+  named: ReadonlyMap<string, Register>,
   span: AnchoredSpan,
 ): Register {
   const dst = context.code.allocate();
   const index = context.tables.types.index(type);
-  context.code.emit({ kind: 'struct', span, dst, type: index, fields: [...fields] });
+  const fields = laidOut(context.checker.fieldsOf(type) ?? [], named);
+  context.code.emit({ kind: 'struct', span, dst, type: index, fields });
   return dst;
 }
 
 /**
  * `value`, a struct of `from`, built anew as a struct of `to`, each field taken by its name: a
- * nominal struct's value as its shape (§3.1), whose fields are in name order.
+ * nominal struct's value as its shape (§3.1).
  */
 export function rebuiltAs(
   context: FunctionContext,
@@ -184,23 +197,8 @@ export function rebuiltAs(
   span: AnchoredSpan,
 ): Register {
   const fields = context.checker.fieldsOf(from) ?? [];
-  const named = new Map(
-    fields.map(({ name }, index) => [name, context.code.field(value, index, span)] as const),
-  );
-  return constructByName(context, to, named, span);
-}
-
-/** Builds a struct of `type`, each of its fields taken by name from `named`. */
-function constructByName(
-  context: FunctionContext,
-  type: NominalType | AnonymousStructType,
-  named: ReadonlyMap<string, Register>,
-  span: AnchoredSpan,
-): Register {
-  const fields = (context.checker.fieldsOf(type) ?? []).map(
-    ({ name }) => named.get(name) ?? unreachable(`No register holds the field '${name}'.`),
-  );
-  return construct(context, type, fields, span);
+  const values = fields.map((_, index) => context.code.field(value, index, span));
+  return construct(context, to, namedValues(fields, values), span);
 }
 
 /** The struct type the checker gave `node`, declared or anonymous. */

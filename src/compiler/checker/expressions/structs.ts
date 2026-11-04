@@ -28,9 +28,9 @@ import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { builtFrom } from '../types/expected.ts';
 import {
-  byFieldName,
   errorType,
   type FieldMember,
+  inFieldOrder,
   type NominalEntity,
   type NominalType,
   shapeType,
@@ -206,7 +206,7 @@ function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
         given.push({
           name: item.name.text,
           field: { name: item.name.text, type },
-          source: { kind: 'value', value },
+          source: { field: item.name.text, kind: 'value', value },
         });
       }
     } else if (item.kind !== 'Invalid') {
@@ -215,7 +215,7 @@ function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
       fits = false;
     }
   }
-  const ordered = given.toSorted(byFieldName);
+  const ordered = inFieldOrder(given);
   if (fits) {
     context.literals.record(
       node,

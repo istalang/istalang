@@ -1,8 +1,8 @@
 # outcome: ["round trip","none, unknown fields ignored","$.items[0].qty: expected an integer, found a string","$.id: missing","$.shape.type: names no variant 'Square'","$.pair: expected 2 elements, found 1","$.due: 'P1Y' is not an ISO 8601 duration.","$.tags.x: 'x' is not an Int.","$.items[0].qty: expected an integer, found a number","json","123456789012345678901234567890","skipped 7"]
 # Reading JSON back by the declared type (§9): what stringify writes parses to an equal value, a
-# missing optional field is none and an unknown one is ignored, and every mismatch is an Err whose
-# message names the path of the part that doesn't fit; text that isn't JSON is an Err with code
-# json. A @JsonBigInt field reads the string of digits it was written as, and a @JsonSkip field
+# missing optional field is none and an unknown one is ignored, and a mismatch is an Err whose
+# message names the path of the first part that doesn't fit, a struct's fields read in name order
+# (§3.1); text that isn't JSON is an Err with code json. A @JsonBigInt field reads the string of digits it was written as, and a @JsonSkip field
 # reads back as its type's default().
 
 import * as json from 'json'
@@ -67,13 +67,13 @@ async fn main() -> Future<Array<String>>:
   [
     roundTrip,
     lenient,
-    failure("{\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":\"2\"}]}"),
-    failure("{\"items\":[]}"),
+    failure("{\"due\":\"PT1S\",\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":\"2\"}]}"),
+    failure("{\"due\":\"PT1S\",\"items\":[]}"),
     failure(order("{}", "Square", "[1,true]", "PT1S", "")),
     failure(order("{}", "Dot", "[1]", "PT1S", "")),
     failure(order("{}", "Dot", "[1,true]", "P1Y", "")),
     failure(order("{\"x\":1}", "Dot", "[1,true]", "PT1S", "")),
-    failure("{\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":1.5}]}"),
+    failure("{\"due\":\"PT1S\",\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":1.5}]}"),
     notJson,
     big,
     skipped,

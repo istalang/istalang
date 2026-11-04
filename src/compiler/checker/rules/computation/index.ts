@@ -44,6 +44,7 @@ import type { FunctionCall } from '../../resolved-call.ts';
 import { isExact } from '../../types/fit.ts';
 import { instantiatedBody } from '../../types/instantiation.ts';
 import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
+import { laidOut } from '../../types/type.ts';
 import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown } from './forms.ts';
 
 /** What the walk reads: layouts, field defaults, the constant or annotation checked, and others. */
@@ -158,7 +159,10 @@ class Computation {
       : refused(node);
   }
 
-  /** A struct in any literal form, its fields in declaration order; `new`'s cell is refused. */
+  /**
+   * A struct in any literal form, its fields computed in declaration order, then laid out by name
+   * (§3.1 "Field order"); `new`'s cell is refused.
+   */
   #struct(node: StructLiteral): Outcome {
     const sources = node.items.some((item) => item.kind === 'Invalid')
       ? undefined
@@ -170,22 +174,23 @@ class Computation {
     if (type?.kind === 'nominal' && type.entity.declaration.kind === 'EnumDeclaration') {
       return refused(node);
     }
+    const fields = type === undefined ? undefined : this.#scope.checker.fieldsOf(type);
     if (
       type === undefined ||
-      this.#scope.checker.fieldsOf(type) === undefined ||
+      fields === undefined ||
       (type.kind !== 'nominal' && type.kind !== 'anonymous')
     ) {
       return unknown;
     }
-    const forms: ConstantForm[] = [];
+    const forms = new Map<string, ConstantForm>();
     for (const source of sources) {
-      const part = this.#field(node, source, forms);
+      const part = this.#field(node, source, [...forms.values()]);
       if (part.kind !== 'computed') {
         return part;
       }
-      forms.push(part.form);
+      forms.set(source.field, part.form);
     }
-    return computed({ kind: 'struct', type, fields: forms });
+    return computed({ kind: 'struct', type, fields: laidOut(fields, forms) });
   }
 
   /** A field of `literal` from `source`; a refused default is reported at `literal`. */

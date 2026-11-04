@@ -11,6 +11,7 @@ import type { NodeOf } from '../../../syntax/node.ts';
 import type { ConstantForm } from '../../constant-form.ts';
 import type { CheckerContext } from '../../context.ts';
 import type { Fit } from '../../types/fit.ts';
+import { laidOut, namedValues } from '../../types/type.ts';
 
 /** How computing a part of an initializer went: computed, refused (`form` or `endless`), or already in error. */
 export type Outcome =
@@ -51,12 +52,8 @@ export function fittedForm(
       if (form.kind !== 'struct') {
         return unreachable("Only a struct's value converts into its shape.");
       }
-      const names = (checker.fieldsOf(form.type) ?? []).map(({ name }) => name);
-      const fields = conversion.to.fields.map(
-        ({ name }) =>
-          form.fields[names.indexOf(name)] ?? unreachable(`No field '${name}' is computed.`),
-      );
-      return { kind: 'struct', type: conversion.to, fields };
+      const named = namedValues(checker.fieldsOf(form.type) ?? [], form.fields);
+      return { kind: 'struct', type: conversion.to, fields: laidOut(conversion.to.fields, named) };
     }
     case 'any':
     case 'async':
