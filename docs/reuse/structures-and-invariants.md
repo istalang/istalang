@@ -20,7 +20,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 - push an active item onto a work stack for the duration of a callback and pop in `finally` → `withPushed` (`src/structures/stack.ts`)
 - push an iterable onto an explicit stack without overflowing the JS call stack → `pushAll` (`src/structures/stack.ts`)
 - keep a group of items per key, adding them one at a time → `addToGroup` (`src/structures/groups.ts`); group a whole list by a key every item has → `Map.groupBy`
-- find the last of items kept in ascending order whose key is at most a value, by bisection → `lastIndexAtMost` (`src/structures/sorted.ts`)
+- find the last of items kept in ascending order whose key is at most a value, by bisection → `lastIndexAtMost` (`src/structures/sorted.ts`); never a `while (low < high)` loop of your own
 - find strongly connected components or test whether an edge lies on a cycle → `stronglyConnected`, `GraphEdge` (`src/structures/strongly-connected.ts`)
 - fail on a broken toolchain invariant → `unreachable`, `Unreachable` (`src/structures/unreachable.ts`)
 

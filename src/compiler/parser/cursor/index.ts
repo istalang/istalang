@@ -30,6 +30,7 @@
  * crossed in the current region since the mark.
  */
 
+import { lastIndexAtMost } from '../../../structures/sorted.ts';
 import type { Span } from '../../../text/span.ts';
 import type { TemplateValue, Token, TokenKind } from '../../syntax/tokens.ts';
 import { bracketClosers, type Closer, type Opener, openers } from '../brackets.ts';
@@ -174,20 +175,14 @@ export class Cursor {
 
   /** The first token on the line where `offset` falls, whose column is the line's indentation. */
   lineHead(offset: number): Token {
-    let low = 0;
-    let high = this.#tokens.length - 1;
-    while (low < high) {
-      const middle = Math.ceil((low + high) / 2);
-      if ((this.#tokens[middle]?.span.start ?? 0) <= offset) {
-        low = middle;
-      } else {
-        high = middle - 1;
-      }
+    let head = Math.max(
+      lastIndexAtMost(this.#tokens, (token) => token.span.start, offset),
+      0,
+    );
+    while (head > 0 && this.#tokens[head]?.firstOnLine === false) {
+      head -= 1;
     }
-    while (low > 0 && this.#tokens[low]?.firstOnLine === false) {
-      low -= 1;
-    }
-    return this.#tokens[low] ?? endOfNothing;
+    return this.#tokens[head] ?? endOfNothing;
   }
 
   /** At a line break layout may cross: the token that starts the next line. */

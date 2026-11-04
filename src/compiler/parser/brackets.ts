@@ -5,6 +5,7 @@
  * (language-service/tokens.ts), so its features see the groups the parser read.
  */
 
+import { lastIndexAtMost } from '../../structures/sorted.ts';
 import type { Token } from '../syntax/tokens.ts';
 
 /**
@@ -238,17 +239,7 @@ function linesOf(tokens: readonly Token[], columnOf: (token: Token) => number): 
 
 /** The line the token at `index` stands on, as an index into `lines`; -1 before the first. */
 function lineOf({ heads }: Lines, index: number): number {
-  let low = -1;
-  let high = heads.length - 1;
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-    if ((heads[middle] ?? 0) <= index) {
-      low = middle;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return low;
+  return lastIndexAtMost(heads, (head) => head, index);
 }
 
 /** A token list's brackets as `pairBrackets` pairs them so far, and its lines. */
