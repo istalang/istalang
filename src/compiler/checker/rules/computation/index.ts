@@ -5,9 +5,9 @@
  * value converted to or from a one-element tuple, §3.15), structs in every literal form (a spread
  * copying a computed struct's fields), a struct without fields written bare, arrays and maps of
  * `Map`, lambdas, which capture nothing at the top level (§3.14), and other top-level constants;
- * anything else, a map literal of another type, a shared struct's `new`, an enum variant, or a
- * value needing an optional wrap, an `any` conversion or an async function fit among them, is
- * refused where it stands.
+ * a struct's value converted into its shape (§3.1); anything else, a map literal of another type,
+ * a shared struct's `new`, an enum variant, or a value needing an optional wrap, an `any`
+ * conversion or an async function fit among them, is refused where it stands (forms.ts).
  *
  * A spread spreads only an array or a map compile time built itself: its elements, or its entries
  * as tuples. Anything else iterable is iterated by `iterate` when the program runs, and computing
@@ -20,10 +20,9 @@
  * needing itself, which would never be finished, so it is refused as endless.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { VariableOwner } from '../../binder/entities.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { VariableOwner } from '../../../binder/entities.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -31,20 +30,21 @@ import type {
   MapLiteral,
   Spread,
   StructLiteral,
-} from '../../syntax/expressions/index.ts';
-import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
-import { constantTextOf } from '../../syntax/expressions/templates.ts';
-import type { Identifier, NodeOf } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
-import type { CheckedBody, CheckedConstant, FieldSource } from '../check.ts';
-import { type ConstantForm, durationForm, formSemantics } from '../constant-form.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { FunctionCall } from '../resolved-call.ts';
-import { isExact } from '../types/fit.ts';
-import { instantiatedBody } from '../types/instantiation.ts';
-import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
+} from '../../../syntax/expressions/index.ts';
+import { signedNumberOf } from '../../../syntax/expressions/numbers.ts';
+import { constantTextOf } from '../../../syntax/expressions/templates.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { VariableDeclaration } from '../../../syntax/statements.ts';
+import type { CheckedBody, CheckedConstant, FieldSource } from '../../check.ts';
+import { type ConstantForm, durationForm, formSemantics } from '../../constant-form.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { FunctionCall } from '../../resolved-call.ts';
+import { isExact } from '../../types/fit.ts';
+import { instantiatedBody } from '../../types/instantiation.ts';
+import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
+import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown } from './forms.ts';
 
 /** What the walk reads: layouts, field defaults, the constant or annotation checked, and others. */
 export interface ComputationScope {
@@ -56,14 +56,6 @@ export interface ComputationScope {
   readonly checked: CheckedBody;
   readonly valueNamed: (name: Identifier) => CheckedConstant | undefined;
 }
-
-/** How computing a part of an initializer went: computed, refused (`form` or `endless`), or already in error. */
-export type Outcome =
-  | { readonly kind: 'computed'; readonly form: ConstantForm }
-  | { readonly kind: 'refused'; readonly part: NodeOf<string>; readonly why: 'form' | 'endless' }
-  | { readonly kind: 'unknown' };
-
-const unknown: Outcome = { kind: 'unknown' };
 
 /** What compile time makes of `initializer`. */
 export function computeConstant(initializer: Expression, scope: ComputationScope): Outcome {
@@ -150,27 +142,8 @@ class Computation {
 
   /** Applies the implicit conversion recorded at `node`, or refuses one only the runtime makes. */
   #fitted(node: Expression, form: ConstantForm): Outcome {
-    const { conversion, wraps } = this.#scope.checked.fitAt(node);
-    if (wraps > 0) {
-      return refused(node);
-    }
-    switch (conversion.kind) {
-      case 'none':
-        return computed(form);
-      case 'tupled':
-        return computed({ kind: 'tuple', elements: [form] });
-      case 'untupled': {
-        const [element] = form.kind === 'tuple' && form.elements.length === 1 ? form.elements : [];
-        return computed(element ?? unreachable('Only a one-element tuple is untupled.'));
-      }
-      case 'any':
-      case 'async':
-        return refused(node);
-      default: {
-        const unhandled: never = conversion;
-        return unhandled;
-      }
-    }
+    const converted = fittedForm(form, this.#scope.checked.fitAt(node), this.#scope.checker);
+    return converted === undefined ? refused(node) : computed(converted);
   }
 
   /** A lambda's function value, when it captures nothing: a closure of no captures. */
@@ -380,28 +353,4 @@ class Computation {
       ? computed({ kind: 'struct', type, fields: [] })
       : refused(node);
   }
-}
-
-/** The items a spread of `form`, an array or a map, gives: its elements, or its entries as tuples. */
-function itemsOf(form: ConstantForm): readonly ConstantForm[] {
-  switch (form.kind) {
-    case 'array':
-      return form.elements;
-    case 'map':
-      return form.entries.map(([key, value]) => ({ kind: 'tuple', elements: [key, value] }));
-    default:
-      return [];
-  }
-}
-
-/** The key and value of a `(key, value)` tuple, a map literal's item. */
-function pairOf(item: ConstantForm): (readonly [ConstantForm, ConstantForm])[] {
-  const [key, value] = item.kind === 'tuple' ? item.elements : [];
-  return key === undefined || value === undefined ? [] : [[key, value]];
-}
-function computed(form: ConstantForm): Outcome {
-  return { kind: 'computed', form };
-}
-function refused(part: NodeOf<string>): Outcome {
-  return { kind: 'refused', part, why: 'form' };
 }

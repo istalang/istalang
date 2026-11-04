@@ -26,7 +26,7 @@ import type { TargetBinding } from '../checked-pattern.ts';
 import { formAt, sameForm } from '../constant-form.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { computeConstant, refusalOf } from '../rules/computation.ts';
+import { computeConstant, refusalOf } from '../rules/computation/index.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 

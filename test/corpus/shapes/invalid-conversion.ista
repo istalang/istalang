@@ -1,0 +1,22 @@
+# error: 5001 at 22:7
+# error: 5001 at 22:21
+# error: 5001 at 22:36
+# error: 5001 at 22:52
+# A struct's value converts into its shape only as a whole value, once (§3.1): never inside a
+# collection or another struct, never from a shape into a struct, and never for a struct with an
+# annotated field, whose shape would drop what the annotation says.
+
+import JsonName from 'json'
+
+type Point = { x: Int; y: Int }
+struct Pixel { x: Int; y: Int }
+struct Named { x: Int @JsonName{"X"}; y: Int }
+struct Outer { p: Pixel }
+
+fn all(points: Array<Point>) -> Int: points.length()
+fn one(p: Pixel) -> Int: p.x
+fn shape(p: Point) -> Int: p.x
+fn nested(o: { p: Point }) -> Int: o.p.x
+
+fn f(pixels: Array<Pixel>, point: Point, named: Named, outer: Outer) -> Int:
+  all(pixels) + one(point) + shape(named) + nested(outer)

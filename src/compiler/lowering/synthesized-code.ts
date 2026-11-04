@@ -7,7 +7,9 @@
  *
  * Its registers are its parameters, in order, then its captures, then temporaries; it holds no
  * cells. A parameter it takes by `&`, as a dispatch does for a method's `&self` (§3.10), holds a
- * reference already, which it passes on by `&` as it is or into a part of it.
+ * reference already, which it passes on by `&` as it is or into a part of it (`passedOn`). It
+ * builds structs, tuples and `==` with the helpers code with a body uses, so each instruction has
+ * one writer.
  */
 
 import type { CodeFunction } from '../../definition/functions.ts';
@@ -15,6 +17,7 @@ import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import { resultVariants } from '../../language/well-known.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { AnonymousStructType, NominalType } from '../checker/types/type.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
@@ -22,6 +25,9 @@ import { CodeWriter } from './code-writer.ts';
 import { emitConstant } from './constants.ts';
 import type { CodeContext } from './context.ts';
 import { emitCall, emitFunctionCall } from './emit-call.ts';
+import { equal } from './expressions/operators.ts';
+import { construct } from './expressions/structs.ts';
+import { tupleOf } from './expressions/tuples.ts';
 import { branchOnVariant, buildVariant, payloadOf, variantTestOf } from './expressions/variants.ts';
 import type { ClosedCall } from './instances.ts';
 import type { DefinitionTables, EntryHeader } from './tables.ts';
@@ -69,15 +75,7 @@ export class SynthesizedCode implements CodeContext {
   }
 
   struct(type: NominalType | AnonymousStructType, fields: readonly Register[]): Register {
-    const dst = this.code.allocate();
-    this.code.emit({
-      kind: 'struct',
-      span: this.span,
-      dst,
-      type: this.tables.types.index(type),
-      fields: [...fields],
-    });
-    return dst;
+    return construct(this, type, fields, this.span);
   }
 
   array(items: readonly Register[]): Register {
@@ -95,15 +93,23 @@ export class SynthesizedCode implements CodeContext {
   }
 
   tuple(elements: readonly Register[]): Register {
-    const dst = this.code.allocate();
-    this.code.emit({ kind: 'tuple', span: this.span, dst, elements: [...elements] });
-    return dst;
+    return tupleOf(this, elements, this.span);
   }
 
   equal(left: Register, right: Register): Register {
-    const dst = this.code.allocate();
-    this.code.emit({ kind: 'equal', span: this.span, dst, left, right });
-    return dst;
+    return equal(this, this.span, [left, right]);
+  }
+
+  /**
+   * Its parameter `index` as it passes it on: one it takes by `&`, as `references` says, by `&`,
+   * as it is or into its part at `path`; any other by value.
+   */
+  passedOn(index: number, references: readonly boolean[], path: readonly number[] = []): Argument {
+    const register =
+      this.parameters[index] ?? unreachable(`Synthesized code has no parameter ${index}.`);
+    return references[index] === true
+      ? { kind: 'reference', place: { register, path: [...path] } }
+      : { kind: 'value', register };
   }
 
   /** Field `index` of the struct, variant or tuple in `value`. */

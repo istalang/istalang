@@ -1,6 +1,7 @@
 /**
  * A value made to fit where the checker found it fits (§2, checker/types/fit.ts): converted once,
- * into an `any` type, a plain function made async, or between a one-element tuple and its element,
+ * into an `any` type, a struct's value rebuilt as its shape (§3.1), a plain function made async, or
+ * between a one-element tuple and its element,
  * then wrapped into as many optionals as the fit says. The checker records the fit per value, so
  * this is the one place lowering acts on it, and no handler needs to know about conversions.
  */
@@ -10,9 +11,10 @@ import { optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ValueSite } from '../../checker/check.ts';
 import { type Fit, singleElement } from '../../checker/types/fit.ts';
-import type { FunctionType, Type } from '../../checker/types/type.ts';
+import type { FunctionType, NominalType, Type } from '../../checker/types/type.ts';
 import { madeAsync } from '../async-fits.ts';
 import type { FunctionContext } from '../context.ts';
+import { rebuiltAs } from '../expressions/structs.ts';
 import { tupleOf } from '../expressions/tuples.ts';
 import { buildVariant } from '../expressions/variants.ts';
 import type { BodyOwner } from '../instances.ts';
@@ -73,6 +75,11 @@ function convertedValue(
       const value = madeAsync(context, { ...where, type: plain }, typed.value);
       return { value, type: { ...plain, isAsync: true } };
     }
+    case 'shape': {
+      const { to } = conversion;
+      const from = structTypeOf(typed.type);
+      return { value: rebuiltAs(context, typed.value, { from, to }, site.span), type: to };
+    }
     case 'tupled':
       return {
         value: tupleOf(context, [typed.value], site.span),
@@ -90,6 +97,14 @@ function convertedValue(
       return unhandled;
     }
   }
+}
+
+/** `type`, whose value the checker converted into a shape, so a nominal struct. */
+function structTypeOf(type: Type): NominalType {
+  if (type.kind !== 'nominal') {
+    unreachable(`Only a struct's value converts into a shape, not a ${type.kind} type's.`);
+  }
+  return type;
 }
 
 /** `type`, which the checker made async to fit, so a function type. */

@@ -22,7 +22,8 @@ tags: [reuse, lowering, definition, ir, instructions]
 - close a `FunctionCall` or a trait witness call → `closeFunctionCall`, `closeWitness` (`src/compiler/lowering/instances.ts`)
 - build root, filling or default `FunctionInstance`s → `rootInstance`, `takingPassed`, `defaultEntryOf`, `substitutionOf` (`src/compiler/lowering/instances.ts`)
 - allocate registers, place labels, and emit jumps, branches or instructions → `CodeWriter` (`src/compiler/lowering/code-writer.ts`), via `context.code`
-- write code with no syntax behind it (codecs, host wrappers, `any` dispatch, async fits) → `SynthesizedCode` (`src/compiler/lowering/synthesized-code.ts`)
+- write code with no syntax behind it (codecs, host wrappers, `any` dispatch, async fits) → `SynthesizedCode` (`src/compiler/lowering/synthesized-code.ts`); pass its parameters on, those it takes by `&` by `&` (into a part too) → `SynthesizedCode.passedOn`
+- build a struct, a tuple or `==` from registers, with a body or without → `construct`, `tupleOf`, `equal` (`src/compiler/lowering/expressions/structs.ts`, `tuples.ts`, `operators.ts`, all on `CodeContext`); a struct's value rebuilt as another struct type, its fields by name (a nominal value as its shape, §3.1) → `rebuiltAs` (`src/compiler/lowering/expressions/structs.ts`)
 - emit a direct or closed `call` instruction → `emitCall`, `emitFunctionCall`, `referenceTo` (`src/compiler/lowering/emit-call.ts`)
 - emit a call recorded at a call site or implicit construct → `emitCallAt`, `emitImplicitCall` (`src/compiler/lowering/emit-call.ts`)
 - emit the cursor loop of a `for`, comprehension or non-copied spread → `cursorOf`, `emitLoop`, `emitLoopOver` (`src/compiler/lowering/iteration.ts`)
@@ -31,7 +32,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - a variable's register → `VariableRegisters.registerOf` (`src/compiler/lowering/statements/variables.ts`); allocate a cell → `cellRegister` (`src/compiler/lowering/places.ts`)
 - read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/check.ts`)
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/patterns.ts`)
-- build an enum variant or look up a variant's index → `buildVariant`, `variantIndexOf`, `isEnum` (`src/compiler/lowering/expressions/variants.ts`)
+- build an enum variant by its declared name → `buildVariant`, `isEnum` (`src/compiler/lowering/expressions/variants.ts`); in synthesized code, `SynthesizedCode.variant`
 - test or branch on an enum variant or read variant field 0 → `variantTestOf`, `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`)
 - convert a value into an `any` variant → `convertedIntoAny` (`src/compiler/lowering/trait-objects/trait-objects.ts`)
 - wrap a plain function value as an `async` closure → `madeAsync` (`src/compiler/lowering/async-fits.ts`)

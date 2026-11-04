@@ -106,13 +106,20 @@ describe('an instantiated body', () => {
   });
 });
 
-/** Every value `value` holds, outside syntax: a node keeps no type of its instance. */
+/**
+ * Every value `value` holds, outside syntax: a node keeps no type of its instance. Nor does where a
+ * field is declared, which keeps its type there, before any substitution (types/type.ts
+ * `FieldMember`), as a shape written in the generic function's own signature does.
+ */
 function valuesIn(value: unknown, seen = new Set<unknown>()): readonly unknown[] {
   if (typeof value !== 'object' || value === null || seen.has(value) || 'span' in value) {
     return [];
   }
   seen.add(value);
-  return [value, ...Object.values(value).flatMap((each) => valuesIn(each, seen))];
+  const held = Object.entries(value).flatMap(([key, each]) =>
+    key === 'declared' ? [] : valuesIn(each, seen),
+  );
+  return [value, ...held];
 }
 
 /** What each typed table of `body` records at `node`. */

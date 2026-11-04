@@ -3,8 +3,9 @@
  * declaration takes, which mention the type parameters still to be found.
  *
  * - Matching is exact, except at the top of a match, where a `T` may fill a `T?` (§2), a plain
- *   function an async one (§3.14), and a one-element tuple and its element each other (§3.15): a
- *   conversion applies to a whole value, never inside a collection or a function type.
+ *   function an async one (§3.14), a one-element tuple and its element each other (§3.15), and a
+ *   nominal struct's fields a shape, `T` of `{ x: T; y: T }` bound to `Int` by a `Pixel` (§3.1, §3.5):
+ *   a conversion applies to a whole value, never inside a collection or a function type.
  * - A pack binds only what can stand for one, a tuple, `Unit` or a pack (§3.5); a function type's
  *   pack binds to the parameters past the fixed ones (types/type.ts, `sameShape`).
  * - A shape matches a shape of the same field names, field by field, in the name order both keep.
@@ -63,6 +64,7 @@ export class Inference {
     return (
       matchConversion(given, declared, {
         optional: this.#fitting.optional,
+        shapeOf: this.#fitting.shapeOf,
         exact: (target, source) => this.#matchAtTop(target, source),
         meetsAny: (source, target) => this.#convertsInto(target, source),
       }) !== undefined

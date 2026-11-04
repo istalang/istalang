@@ -10,7 +10,6 @@ import { codecHelpers, jsonVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
-import { variantIndexOf } from '../expressions/variants.ts';
 import { closeCall } from '../instances.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
 import { codecCall } from './codec-calls.ts';
@@ -80,7 +79,7 @@ export class Encoder {
       const label = labels[index];
       if (label !== undefined) {
         code.code.place(label);
-        const tag = code.constant(this.#text(variant.name));
+        const tag = this.#variant(jsonVariants.text, [code.constant(variant.name)]);
         code.return(
           this.#object(variant.fields, (field) => code.field(value, field), [
             [code.constant(variantTagKey), tag],
@@ -115,16 +114,5 @@ export class Encoder {
 
   #variant(name: string, fields: readonly Register[]): Register {
     return this.#code.variant(this.#json, name, fields);
-  }
-
-  /** `Json.Text{name}`, as a constant. */
-  #text(name: string) {
-    const { checker, tables } = this.#code;
-    return {
-      kind: 'variant' as const,
-      type: tables.types.index(this.#json),
-      variant: variantIndexOf(checker, this.#json, jsonVariants.text),
-      fields: [name],
-    };
   }
 }

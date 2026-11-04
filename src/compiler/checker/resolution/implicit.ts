@@ -28,16 +28,12 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, ImplicitRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
-import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { useSite } from '../use-site.ts';
-import { argumentListText, filledTypes, fitArguments } from './argument-fit.ts';
+import { applyCall } from './applied-call.ts';
 import type { CallArgument } from './call-arguments.ts';
 import { callMade } from './calls-made.ts';
 import { type Candidate, topLevelCandidates } from './candidates.ts';
-import { choose } from './choice.ts';
-import { instantiate } from './conformance.ts';
 
 /** The implicit calls of one body, by construct and role. */
 export class ImplicitCalls implements ImplicitRecord {
@@ -146,37 +142,18 @@ export function implicitOperatorCall(
  * or undefined after reporting why no call could be made.
  */
 export function implicitCall(context: BodyContext, request: ImplicitRequest): Type | undefined {
-  if (request.arguments.some(({ type }) => type?.kind === 'error')) {
+  const applied = applyCall(context, {
+    span: request.span ?? request.node.span,
+    name: request.operator ?? request.candidates[0]?.declaration.name.text ?? request.role,
+    candidates: request.candidates,
+    arguments: request.arguments,
+    expected: request.expected,
+    none: () => context.report(request.failure()),
+  });
+  if (applied === undefined) {
     return undefined;
   }
-  const span = request.span ?? request.node.span;
-  const choice = choose(context.checker, request.candidates, request.arguments, undefined);
-  if (choice.kind === 'several') {
-    const name =
-      request.operator ??
-      request.candidates[0]?.declaration.name.text ??
-      unreachable('An ambiguous implicit call has at least two candidates.');
-    context.report(
-      checkerDiagnostics.ambiguousCall(span, name, argumentListText(request.arguments)),
-    );
-    return undefined;
-  }
-  if (choice.kind === 'none') {
-    context.report(request.failure());
-    return undefined;
-  }
-  const { application } = choice;
-  const site = useSite(context.checker, context.module, span);
-  const instantiation = instantiate(site, application, request.expected);
-  if (instantiation === undefined) {
-    return undefined;
-  }
-  fitArguments(
-    context,
-    request.arguments,
-    filledTypes(application, instantiation, request.arguments.length),
-  );
-  const call = callMade(application, instantiation);
-  context.implicit.record(request.node, request.role, call);
-  return substitute(application.signature.result(), instantiation.substitution);
+  const { application, instantiation } = applied;
+  context.implicit.record(request.node, request.role, callMade(application, instantiation));
+  return applied.result;
 }

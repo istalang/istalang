@@ -42,25 +42,104 @@ import { spreadArray } from './collections.ts';
 import { lowerFieldRead, readsField } from './structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
-  if (context.body.valueCalls.has(node)) {
-    return lowerValueCall(context, node);
+  const { target, passed, arguments: given } = preparedCall(context, node, 'asWritten');
+  const { span } = node;
+  const dst =
+    target.kind === 'function'
+      ? emitFunctionCall(context, { span, call: target.call, arguments: given })
+      : emitCall(context, { span, callee: target, arguments: given });
+  leaveAll(passed);
+  return dst;
+}
+
+/**
+ * `spawn f(args)` (§9): what the call would run, the function the checker resolved, taking its
+ * arguments as passed so the new instance computes any defaults, or the value of a sendable
+ * function type; and its arguments, a method's receiver first, all by value; its value is the new
+ * instance's `Instance<T>`. The codec the checker found writing `T`, if any, closed within this
+ * instance, is the new instance's encoder, so its outcome reaches its host as JSON.
+ */
+export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
+  const spawned = unparenthesized(node.call);
+  if (spawned.kind !== 'Call') {
+    unreachable('A spawn of no call checked clean.');
   }
-  const called = context.callAt(node);
-  const parameterAt = parametersByArgument(context, called);
-  const byReference = (index: number) => parameterAt(index)?.reference === true;
+  const { target, arguments: given } = preparedCall(context, spawned, 'byValue');
+  const callee: Callee =
+    target.kind === 'function'
+      ? { kind: 'function', function: context.tables.callIndex(target.call) }
+      : target;
+  const instance = context.typeOf(node);
+  if (instance.kind !== 'nominal') {
+    unreachable('A spawn checked clean is an Instance<T>.');
+  }
+  const encoderCall = context.body.implicitCallOf(node, 'encodeOutcome');
+  const encoder =
+    encoderCall === undefined ? undefined : context.tables.callIndex(context.closed(encoderCall));
+  const dst = context.code.allocate();
+  context.code.emit({
+    kind: 'spawn',
+    span: node.span,
+    dst,
+    type: context.tables.types.index(instance),
+    callee,
+    arguments: given.map((argument) => {
+      if (argument.kind !== 'value') {
+        unreachable('A spawned call passes everything by value; the checker refuses references.');
+      }
+      return argument.register;
+    }),
+    ...(encoder !== undefined && { encoder }),
+  });
+  return dst;
+}
+
+/** What a call calls: the function the checker resolved, or the value of its callee (§3.14). */
+type CallTarget =
+  | { readonly kind: 'function'; readonly call: ClosedCall }
+  | { readonly kind: 'value'; readonly register: Register };
+
+/** A call ready to emit: what it calls, its arguments as passed, and how each is passed. */
+interface PreparedCall {
+  readonly target: CallTarget;
+  readonly passed: readonly PassedArgument[];
+  readonly arguments: readonly Argument[];
+}
+
+/**
+ * What `node` calls and passes, evaluated in the order written: a function value's callee first,
+ * then its arguments, each as written; a resolved function's receiver, then its arguments, by `&`
+ * where their parameters take one, or all by value for a spawn (§9).
+ */
+function preparedCall(
+  context: FunctionContext,
+  node: Call,
+  references: 'asWritten' | 'byValue',
+): PreparedCall {
+  if (context.body.valueCalls.has(node)) {
+    const register = valueCallee(context, node);
+    const passed = passedArguments(context, node, packsOnly);
+    return {
+      target: { kind: 'value', register },
+      passed,
+      arguments: valueArguments(context, node, passed),
+    };
+  }
+  const call = context.callAt(node);
+  const parameterAt = parametersByArgument(context, call);
+  const byReference = (index: number) =>
+    references === 'asWritten' && parameterAt(index)?.reference === true;
   const receiver = receiverOf(context, node, receiverAt(context, node), byReference(0));
   const passed = passedArguments(context, node, {
     receiver,
     byReference,
     spreadFills: (index) => restKindAt(parameterAt, index),
   });
-  const dst = emitFunctionCall(context, {
-    span: node.span,
-    call: called,
+  return {
+    target: { kind: 'function', call },
+    passed,
     arguments: passed.map(({ argument }) => argument),
-  });
-  leaveAll(passed);
-  return dst;
+  };
 }
 
 /** The receiver the method call `node` was written on (§3.7); undefined for any other call. */
@@ -88,22 +167,6 @@ function receiverOf(
 }
 
 /**
- * A call of the function value `node.callee` evaluates to. A field's, `x.f(…)`, is read from the
- * value the call works on, since the call, not the access, is the link of an optional chain.
- */
-function lowerValueCall(context: FunctionContext, node: Call): Register {
-  const callee = valueCallee(context, node);
-  const passed = passedArguments(context, node, packsOnly);
-  const dst = emitCall(context, {
-    span: node.span,
-    callee: { kind: 'value', register: callee },
-    arguments: valueArguments(context, node, passed),
-  });
-  leaveAll(passed);
-  return dst;
-}
-
-/**
  * The function value a value call calls; `f?.()` calls the one inside `f`, and `x.f(…)` the field
  * read from `x` (a namespace's constant `ns.f(…)` is read as a name).
  */
@@ -115,66 +178,6 @@ function valueCallee(context: FunctionContext, node: Call): Register {
   return callee.kind === 'MemberAccess' && readsField(context, callee)
     ? lowerFieldRead(context, callee, node)
     : context.expression(callee);
-}
-
-/**
- * `spawn f(args)` (§9): what the call would run, the function the checker resolved, taking its
- * arguments as passed so the new instance computes any defaults, or the value of a sendable
- * function type; and its arguments, a method's receiver first, all by value; its value is the new
- * instance's `Instance<T>`. The codec the checker found writing `T`, if any, closed within this
- * instance, is the new instance's encoder, so its outcome reaches its host as JSON.
- */
-export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
-  const spawned = unparenthesized(node.call);
-  if (spawned.kind !== 'Call') {
-    unreachable('A spawn of no call checked clean.');
-  }
-  const called = context.body.valueCalls.has(spawned) ? undefined : context.callAt(spawned);
-  const value: Callee | undefined =
-    called === undefined ? { kind: 'value', register: valueCallee(context, spawned) } : undefined;
-  const written = receiverAt(context, spawned);
-  const receiver = written === undefined ? undefined : argumentOf(context, written, false);
-  const parameterAt = called === undefined ? undefined : parametersByArgument(context, called);
-  const passing: Passing =
-    parameterAt === undefined
-      ? packsOnly
-      : {
-          receiver,
-          byReference: () => false,
-          spreadFills: (index) => restKindAt(parameterAt, index),
-        };
-  const copied = passedArguments(context, spawned, passing);
-  const callee: Callee = value ?? {
-    kind: 'function',
-    function: context.tables.callIndex(called ?? unreachable('A spawn calls nothing.')),
-  };
-  const arguments_ =
-    called === undefined
-      ? valueArguments(context, spawned, copied)
-      : copied.map(({ argument }) => argument);
-  const instance = context.typeOf(node);
-  if (instance.kind !== 'nominal') {
-    unreachable('A spawn checked clean is an Instance<T>.');
-  }
-  const encoderCall = context.body.implicitCallOf(node, 'encodeOutcome');
-  const encoder =
-    encoderCall === undefined ? undefined : context.tables.callIndex(context.closed(encoderCall));
-  const dst = context.code.allocate();
-  context.code.emit({
-    kind: 'spawn',
-    span: node.span,
-    dst,
-    type: context.tables.types.index(instance),
-    callee,
-    arguments: arguments_.map((argument) => {
-      if (argument.kind !== 'value') {
-        unreachable('A spawned call passes everything by value; the checker refuses references.');
-      }
-      return argument.register;
-    }),
-    ...(encoder !== undefined && { encoder }),
-  });
-  return dst;
 }
 
 /** An argument as the call passes it, and for a place copied in, how it is written back. */

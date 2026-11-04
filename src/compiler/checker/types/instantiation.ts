@@ -11,12 +11,7 @@ import type { CheckedBody, Checker } from '../check.ts';
 import { type FieldRead, requiredFieldRead } from '../checked-field.ts';
 import type { CheckedPattern, PatternTest } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
-import {
-  type Substitution,
-  substitute,
-  substituteAny,
-  substituteFunction,
-} from './substitution.ts';
+import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
 import type { FieldMember, Type } from './type.ts';
 
 /**
@@ -31,10 +26,7 @@ export function instantiatedBody(
   checker: Pick<Checker, 'fieldsOf'>,
 ): CheckedBody {
   const concrete = (type: Type) => substitute(type, substitution);
-  const concreteFit = (fit: Fit): Fit =>
-    fit.conversion.kind === 'any'
-      ? { ...fit, conversion: { kind: 'any', to: substituteAny(fit.conversion.to, substitution) } }
-      : fit;
+  const concreteFit = (fit: Fit) => substitutedFit(fit, substitution);
   const concreteField = (field: FieldMember) => ({ ...field, type: concrete(field.type) });
   const concreteRead = (read: FieldRead): FieldRead =>
     read.kind === 'position' ? read : requiredFieldRead(checker, concrete(read.on), read.required);
@@ -60,7 +52,7 @@ export function instantiatedBody(
     inCell: body.inCell,
     functionOf: (node) =>
       mapDefined(body.functionOf(node), (checked) => ({
-        type: substituteFunction(checked.type, substitution),
+        type: substituteKept(checked.type, substitution),
         parameters: checked.parameters.map((parameter) => ({
           ...parameter,
           type: concrete(parameter.type),
@@ -129,4 +121,19 @@ function instantiatedPattern(checked: CheckedPattern, substitution: Substitution
       type: substitute(binding.type, substitution),
     })),
   };
+}
+
+/** `fit` as one instantiation makes it: the type a conversion converts into, substituted. */
+function substitutedFit({ conversion, wraps }: Fit, substitution: Substitution): Fit {
+  switch (conversion.kind) {
+    case 'any':
+      return { wraps, conversion: { kind: 'any', to: substituteAny(conversion.to, substitution) } };
+    case 'shape':
+      return {
+        wraps,
+        conversion: { kind: 'shape', to: substituteKept(conversion.to, substitution) },
+      };
+    default:
+      return { wraps, conversion };
+  }
 }

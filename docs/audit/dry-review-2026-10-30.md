@@ -40,6 +40,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - `resolveCall` (`complete` in `calls/resolve.ts:103–153`) and `implicitCall` (`resolution/implicit.ts:69–114`) duplicate the post-candidate pipeline (`choose`, `ambiguousCall` with `argumentListText`, `instantiate`, `fitArguments`, `callMade`, and result `substitute`), while `checkValueCall` (`closures/value-calls.ts:28–75`) duplicates the single-callee argument binding (`takenBy`), error reporting (`explain`), `fitArguments`, and `checkReferencedPlaces`.
    - Likewise in lowering, `lowerSpawn` (`src/compiler/lowering/expressions/calls.ts:69–113`) duplicates callee/argument preparation from `lowerCall` and `lowerValueCall` (`calls.ts:27–67, 115–136`).
    - **Fix:** Extract a shared resolved-application completion step in `checker/calls/` and a shared call-lowering preparation helper in `lowering/expressions/calls.ts`.
+   - **Done** (`p2-structural`): `applyCall` (`resolution/applied-call.ts`) chooses, reports an ambiguity or the caller's `none`, instantiates, fits the arguments and gives the result, for `resolveCall` and `implicitCall` alike, so P2's conversion is fitted (`fitArguments`) and ranked (`choice.ts`) in one place for every call; `checkValueCall`, which chooses nothing, fits through the same `fitArguments` and explains through the same `explain`. In lowering, `preparedCall` (`lowering/expressions/calls.ts`) evaluates the callee and arguments for `lowerCall` and `lowerSpawn` (which passes all by value).
 
 6. **`[medium]` Double standards in well-known type recognition and bare generic nominal values (`src/compiler/checker/types/type-text.ts:61`, `src/compiler/checker/types/well-known.ts:74`, `src/compiler/checker/expressions/names.ts:91`, `src/compiler/checker/expressions/variants.ts:61`)**
    - `nominalTypeText` (`types/type-text.ts:61`) checks `declaration.name.text === wellKnown.optional.name` by string instead of comparing `type.entity === checker.optionalEntity`, formatting any user-declared `enum Optional<T>` as `T?`. Meanwhile `optionalInner` (`types/fit.ts:57`) and `optionalArgument` (`types/well-known.ts:74`) provide two different functions to unwrap `T?`.
@@ -264,6 +265,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Duplicated call-completion pipeline between `implicitCall` (`src/compiler/checker/resolution/implicit.ts`) and `resolveCall` (`src/compiler/checker/calls/resolve.ts`):**
   - `implicitCall` and `resolveCall` (`complete`) both check for `error` argument types, run `choose`, report `checkerDiagnostics.ambiguousCall(..., argumentListText(...))` on `'several'`, call `instantiate(useSite(...), application, expected)`, call `fitArguments(context, request.arguments, filledTypes(...))`, build `callMade(application, instantiation)`, and return `substitute(application.signature.result(), instantiation.substitution)`.
+  - **Done** (`p2-structural`): see Ranked Summary item 5.
 - **Duplicate entity-to-type dispatch in `entityType` (`src/compiler/checker/resolution/named.ts`) vs. `namedType` (`src/compiler/checker/types/resolve-type.ts`):**
   - Both switch on `entity.kind` (`primitive`, `type`) and `entity.declaration.kind` (`TypeParameter`, `TypeAliasDeclaration`, `TraitDeclaration`, nominal declarations) to construct a `Type`, with `entityType` hard-coding `arguments: []` on `TypeAliasDeclaration` without filling default type parameters.
   - **Done** (`p2-structural`): both go through `typeOfEntity` (`types/resolve-type.ts`), given the arguments each finds: a written type's, defaults filled, or none for a name in a value's place, which names a generic declaration, an alias too, as a whole.
@@ -310,6 +312,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `Expansion.#reachedFrom` and `TypeExpansion.#reachedFrom` implement the identical DFS worklist traversal (`visited`, `pending`, `edges`) before passing the collected edges to `endlessEdges` (`types/expansion-edges.ts`).
 - **Third parallel call-checking pipeline in `checkValueCall` (`src/compiler/checker/closures/value-calls.ts`, `calls/resolve.ts`):**
   - `checkValueCall` duplicates the error-argument guard, `takenBy` invocation, `explain` reporting, `fitArguments`, and `checkReferencedPlaces` of `resolveCall` (`calls/resolve.ts`).
+  - **Done** (`p2-structural`): see Ranked Summary item 5; a value call has one callee and chooses nothing, so it takes `takenBy` directly and shares the rest by calling the same units.
 
 ### 20. `src/compiler/checker/expressions/`, `src/compiler/checker/statements/` & `src/compiler/checker/lookup/`
 
@@ -328,8 +331,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **`SynthesizedCode` duplicates instruction builders (`struct`, `tuple`, `equal`) instead of sharing `CodeContext` helpers (`src/compiler/lowering/synthesized-code.ts`, `expressions/structs.ts`, `expressions/tuples.ts`, `expressions/operators.ts`):**
   - `SynthesizedCode` delegates `variant`, `constant`, and `call` to shared `CodeContext` helpers (`buildVariant`, `emitConstant`, `emitCall`), but re-implements `struct`, `tuple`, and `equal` because `construct` (`expressions/structs.ts`), `tupleOf` (`expressions/tuples.ts`), and `equal` (`expressions/operators.ts`) are typed as taking `FunctionContext` despite only using `CodeContext`.
+  - **Done** (`p2-structural`): the three take `CodeContext`, and `SynthesizedCode` delegates to them.
 - **Duplicate parameter-forwarding logic in `asyncFitEntry`, `fillingEntry`, and `dispatchEntry` (`src/compiler/lowering/async-fits.ts`, `filling-entry.ts`, `trait-objects/trait-objects.ts`):**
   - `asyncFitEntry` and `fillingEntry` both map `code.parameters.map((register, index) => references[index] === true ? referenceTo(register) : register)`, and `dispatchEntry` defines its own `passed(register, path, index)` helper for the same reference-forwarding pattern.
+  - **Done** (`p2-structural`): `SynthesizedCode.passedOn(index, references, path?)` is the one rule; all three call it.
 - **Quadratic array-spreading multimap in `CodeWriter.#refer` (`src/compiler/lowering/code-writer.ts`):**
   - `CodeWriter.#refer` appends forward-jump patches with `this.#patches.set(label.id, [...(this.#patches.get(label.id) ?? []), patch])`, copying the patch array on every branch targeting the same unplaced label.
   - **Done** (`fast-wins`): Uses `addToGroup` (unit 1).
@@ -338,12 +343,14 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **`Encoder.#text` builds a `Json.Text` variant by positional array literal (`src/compiler/lowering/boundary/encoder.ts`, `src/definition/declared-values.ts`):**
   - Violating the one-way rule in `docs/reuse/values-and-equality.md` (build variants by declared name, never by positional index), `Encoder.#text` constructs `{ kind: 'variant', type: tables.types.index(this.#json), variant: variantIndexOf(checker, this.#json, jsonVariants.text), fields: [name] }` directly.
+  - **Done** (`p2-structural`): the tag is built by name, through the encoder's `#variant` (`SynthesizedCode.variant`); `#text` is gone.
 - **`DerivedForm` lacks its `Type`, and `derivedCodecEntry` dispatches on function name (`src/compiler/lowering/boundary/codecs.ts`, `encoder.ts`, `decoder.ts`; tracked as `Q9`).**
 
 ### 23. `src/compiler/lowering/expressions/` & `src/compiler/lowering/statements/`
 
 - **Duplicated callee/argument preparation between `lowerCall` / `lowerValueCall` and `lowerSpawn` (`src/compiler/lowering/expressions/calls.ts`):**
   - `lowerSpawn` re-implements the `valueCalls.has(...)` branch, `valueCallee`, `receiverAt`, `parametersByArgument`, `Passing` construction, `passedArguments`, and `valueArguments` already in `lowerCall` and `lowerValueCall`.
+  - **Done** (`p2-structural`): see Ranked Summary item 5 (`preparedCall`).
 - **Repeated `Result` / `Optional` variant branch-and-unwrap boilerplate (`src/compiler/lowering/expressions/propagate.ts`, `unwrap.ts`, `nullish.ts`, `optional-chains.ts`, `iteration.ts`, `synthesized-code.ts`):**
   - `lowerPropagate` (`expressions/propagate.ts`) is an open-coded copy of `SynthesizedCode.ok` (`synthesized-code.ts`), and `lowerUnwrap`, `lowerNullish`, `OptionalChains.target`, and `emitLoop` each repeat the `newLabel` + `variantTestOf` + `branchOnVariant` + `place` + `payloadOf` sequence for `Optional.Some`.
 

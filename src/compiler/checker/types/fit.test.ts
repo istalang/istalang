@@ -24,7 +24,7 @@ const checker = checkProgram(stdProgramOf({ main: '' }));
 const optional = checker.optionalOf(unitType).entity;
 
 /** Fitting in a program no `any` type is met in. */
-const fitting = { optional, meetsAny: () => false };
+const fitting = { optional, meetsAny: () => false, shapeOf: () => undefined };
 
 /** How many wraps make `found` fit `expected`; undefined when nothing does. */
 function wrapsToFit(found: Type, expected: Type): number | undefined {

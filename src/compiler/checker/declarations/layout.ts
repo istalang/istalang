@@ -119,6 +119,20 @@ export class Layouts {
     return shapeType(declaration, fields);
   }
 
+  /**
+   * The shape a value of `type`, a nominal struct, converts into (§3.1): its fields, substituted
+   * for its type arguments, as a shape written at its declaration; undefined for another type, or
+   * a struct with an annotated field, whose shape would drop what the annotation says.
+   */
+  nominalShapeOf(type: Type): AnonymousStructType | undefined {
+    if (type.kind !== 'nominal' || type.entity.declaration.kind !== 'StructDeclaration') {
+      return undefined;
+    }
+    const fields = this.fieldsOf(type) ?? [];
+    const annotated = fields.some((field) => (field.declared?.node.annotations?.length ?? 0) > 0);
+    return annotated ? undefined : shapeType(type.entity.declaration, fields);
+  }
+
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
   variantsOf(type: NominalType): readonly VariantMember[] | undefined {
     const { declaration } = type.entity;

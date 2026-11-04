@@ -18,6 +18,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - build or inspect tuple types → `tupleType`, `tupleElements` (`src/compiler/checker/types/type.ts`)
 - build or inspect nominal types → `nominalType`, `isNominalEntity` (`src/compiler/checker/types/type.ts`)
 - build a shape (an anonymous struct type, the value behind a shared struct included), its fields in name order → `shapeType`, `byFieldName` (`src/compiler/checker/types/type.ts`); never write `{ kind: 'anonymous', … }` by hand
+- the shape a nominal struct's value converts into (none for an annotated field) → `Fitting.shapeOf` (`src/compiler/checker/types/fit.ts`), answered by `Layouts.nominalShapeOf` (`src/compiler/checker/declarations/layout.ts`); the conversion is a `Fit` of kind `shape`, ranked with `reshapes`
 - the field a field's declaring node declares, given its owner (a struct, an enum, a shape's `{…}` type, a trait) → `declaredFieldOf` (`src/compiler/checker/types/declared-fields.ts`)
 - the type an extern or top-level constant's declaration gives it, outside any body → `declaredOutsideBodies` (`src/compiler/checker/expressions/names.ts`)
 - inspect or attach variadic type packs on function types → `isPack`, `fillsPack`, `withPack`, `packRestSlot` (`src/compiler/checker/types/type.ts`)

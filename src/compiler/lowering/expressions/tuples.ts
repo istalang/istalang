@@ -6,7 +6,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { FunctionContext } from '../context.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
 
 export function lowerTuple(context: FunctionContext, node: Tuple): Register {
   const elements = node.elements.map((element) => context.expression(element));
@@ -15,7 +15,7 @@ export function lowerTuple(context: FunctionContext, node: Tuple): Register {
 
 /** The tuple of `elements`' values: the unit constant of none (§3.15). */
 export function tupleOf(
-  context: FunctionContext,
+  context: CodeContext,
   elements: readonly Register[],
   span: AnchoredSpan,
 ): Register {

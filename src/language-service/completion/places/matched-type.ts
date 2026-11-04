@@ -70,8 +70,9 @@ export function fieldsMatchedBy(
 /**
  * The fields `pattern`'s items may name against a value of `type`, by what its name denotes as
  * checked: a variant of `type`'s enum, which a bare name chooses by its name even before checking
- * resolved it, or `type`'s own struct; against an `any` type, the type it downcasts to, a struct or
- * a qualified variant's enum, neither generic (§3.10). `struct{…}` names `type`'s own fields. A trait's required fields are no pattern's (patterns/parts.ts).
+ * resolved it, or `type`'s own struct, a shape an alias names among them (§3.17); against an `any`
+ * type, the type it downcasts to, a struct, a shape or a qualified variant's enum, none generic
+ * (§3.10). `struct{…}` names `type`'s own fields. A trait's required fields are no pattern's (patterns/parts.ts).
  */
 function fieldsOf(
   cursor: Cursor,
@@ -84,20 +85,40 @@ function fieldsOf(
     return type.kind === 'any' ? [] : (checker.fieldsOf(type) ?? []);
   }
   const name = lastName(pattern.type.path);
-  const isBare = pattern.type.path.length === 1;
-  const denoted = denotationOf(cursor, parsed, name);
+  const declared = denotationOf(cursor, parsed, name)?.declared;
   const own = type.kind === 'any' ? downcastOf(cursor, parsed, name, type) : type;
-  const declared = denoted?.declared;
-  if (own?.kind !== 'nominal') {
+  if (own === undefined) {
     return [];
   }
   if (declared?.kind === 'type') {
     return namesOwnType(checker, declared.entity, own) ? (checker.fieldsOf(own) ?? []) : [];
   }
-  const choosesVariant =
-    (isBare && type.kind !== 'any') ||
-    (declared?.kind === 'variant' && declared.entity.enum === own.entity.declaration);
-  return choosesVariant
+  const choosesByName = pattern.type.path.length === 1 && type.kind !== 'any';
+  return variantFieldsOf(checker, own, { name, declared, choosesByName });
+}
+
+/**
+ * The fields of the variant `name` of `own`'s enum: one a bare name chooses by its name, against a
+ * value of the enum (`choosesByName`), or one a qualified name denotes, of that enum.
+ */
+function variantFieldsOf(
+  checker: Cursor['checker'],
+  own: Type,
+  {
+    name,
+    declared,
+    choosesByName,
+  }: {
+    readonly name: Identifier;
+    readonly declared: Denotation['declared'] | undefined;
+    readonly choosesByName: boolean;
+  },
+): readonly FieldMember[] {
+  if (own.kind !== 'nominal') {
+    return [];
+  }
+  const isDenoted = declared?.kind === 'variant' && declared.entity.enum === own.entity.declaration;
+  return choosesByName || isDenoted
     ? (checker.variantsOf(own)?.find((variant) => variant.name === name.text)?.fields ?? [])
     : [];
 }

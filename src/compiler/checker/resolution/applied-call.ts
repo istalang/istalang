@@ -1,0 +1,83 @@
+/**
+ * A call applied: chosen among its candidates, instantiated with its constraints met, and its
+ * arguments fitted to what they fill (§3.5, §3.7). Written calls (calls/resolve.ts) and the calls the
+ * language makes (implicit.ts) apply through here, each saying how a call nothing takes is
+ * reported and recording what it made; so choosing, ranking the implicit conversions
+ * (choice.ts) and fitting an argument, its conversion and wraps included (argument-fit.ts), each
+ * happen in one place for every call.
+ *
+ * - An argument of the error type was reported already, so the call reports nothing more.
+ * - A call several candidates take alike is ambiguous, named as `name` says.
+ */
+
+import type { Expression } from '../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { BodyContext } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { substitute } from '../types/substitution.ts';
+import type { Type } from '../types/type.ts';
+import { useSite } from '../use-site.ts';
+import { argumentListText, filledTypes, fitArguments } from './argument-fit.ts';
+import type { CallArgument, Inapplicability } from './call-arguments.ts';
+import type { Candidate } from './candidates.ts';
+import { type Application, choose } from './choice.ts';
+import { type Instantiation, instantiate } from './conformance.ts';
+
+/** A call to apply: where it stands, how reports name it, what it may call and is given. */
+export interface CallApplication {
+  readonly span: AnchoredSpan;
+  /** The function's name, or the operator, as an ambiguity names the call. */
+  readonly name: string;
+  readonly candidates: readonly Candidate[];
+  readonly arguments: readonly (CallArgument & { readonly node?: Expression | undefined })[];
+  readonly typeArguments?: readonly Type[] | undefined;
+  /** The type the call is to give, which may decide its type arguments. */
+  readonly expected?: Type | undefined;
+  /** Reports why no candidate takes the arguments, given each one's reason. */
+  readonly none: (reasons: readonly Inapplicability[]) => void;
+  /** Checks what the chosen function decides before it is instantiated, as lambdas' bodies. */
+  readonly chosen?: (application: Application) => void;
+}
+
+/** A call made: what was chosen and instantiated, and what it gives. */
+export interface AppliedCall {
+  readonly application: Application;
+  readonly instantiation: Instantiation;
+  readonly result: Type;
+}
+
+/** Applies `request`; undefined after reporting why it can't be made. */
+export function applyCall(context: BodyContext, request: CallApplication): AppliedCall | undefined {
+  if (request.arguments.some(({ type }) => type?.kind === 'error')) {
+    return undefined;
+  }
+  const choice = choose(
+    context.checker,
+    request.candidates,
+    request.arguments,
+    request.typeArguments,
+  );
+  if (choice.kind === 'several') {
+    const list = argumentListText(request.arguments);
+    context.report(checkerDiagnostics.ambiguousCall(request.span, request.name, list));
+    return undefined;
+  }
+  if (choice.kind === 'none') {
+    request.none(choice.reasons);
+    return undefined;
+  }
+  const { application } = choice;
+  request.chosen?.(application);
+  const site = useSite(context.checker, context.module, request.span);
+  const instantiation = instantiate(site, application, request.expected);
+  if (instantiation === undefined) {
+    return undefined;
+  }
+  const count = request.arguments.length;
+  fitArguments(context, request.arguments, filledTypes(application, instantiation, count));
+  return {
+    application,
+    instantiation,
+    result: substitute(application.signature.result(), instantiation.substitution),
+  };
+}

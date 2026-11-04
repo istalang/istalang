@@ -44,7 +44,6 @@ import type {
   EnumDeclaration,
   ExternStructDeclaration,
   Field,
-  SharedStructDeclaration,
   TraitDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
@@ -133,12 +132,13 @@ export interface FieldMember {
 
 /**
  * A struct without a name, its shape (§3.1): introduced by a `{…}` type, by a `struct{…}` literal
- * with nothing to take a type from, or by a shared struct as the value behind it (§3.18). Its
- * fields are in name order; `origin` is where it was written, which no relation reads.
+ * with nothing to take a type from, by a shared struct as the value behind it (§3.18), or by a
+ * struct as the shape its value converts into. Its fields are in name order; `origin` is where it
+ * was written, which no relation reads.
  */
 export interface AnonymousStructType extends WrittenThrough {
   readonly kind: 'anonymous';
-  readonly origin: StructType | StructLiteral | SharedStructDeclaration;
+  readonly origin: StructType | StructLiteral | DeclaredStruct;
   readonly fields: readonly FieldMember[];
 }
 

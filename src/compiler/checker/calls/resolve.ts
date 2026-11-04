@@ -1,8 +1,8 @@
 /**
- * Resolving a call in a body (§3.3, §3.7, §3.9): its arguments choose among the candidates
- * (resolution/choice.ts), the choice is instantiated with its constraints met
- * (resolution/conformance.ts), and
- * the call is recorded for lowering with its arguments fitted, so their implicit wraps are too.
+ * Resolving a call in a body (§3.3, §3.7, §3.9): applied as every call is (resolution/applied-call.ts),
+ * chosen, instantiated with its constraints met and its arguments fitted, so their implicit
+ * conversions are too, then recorded for lowering with what only a written call has: its receiver,
+ * the places it changes, and a report about a call nothing takes.
  *
  * - An argument whose type the chosen function decides (`none`, a bare variant, a lambda with an
  *   untyped parameter, an empty `[]`, a literal holding one) is checked only after choosing,
@@ -26,18 +26,17 @@ import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { argumentListText, filledTypes, fitArguments } from '../resolution/argument-fit.ts';
+import { applyCall } from '../resolution/applied-call.ts';
+import { argumentListText } from '../resolution/argument-fit.ts';
 import { argumentSlotsOf, type BindingFailure } from '../resolution/binding.ts';
 import type { CallArgument, Inapplicability, Passing } from '../resolution/call-arguments.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import type { Candidate } from '../resolution/candidates.ts';
-import { type Application, choose } from '../resolution/choice.ts';
-import { type Instantiation, instantiate } from '../resolution/conformance.ts';
+import type { Application } from '../resolution/choice.ts';
+import type { Instantiation } from '../resolution/conformance.ts';
 import type { ResolvedSite } from '../resolved-call.ts';
-import { substitute } from '../types/substitution.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { useSite } from '../use-site.ts';
 import { checkDecidedLambdas } from './lambda-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from './places.ts';
 
@@ -75,79 +74,51 @@ export interface CallRequest {
 
 /** Resolves `request`, recording the call; what it yields, or the error type after a report. */
 export function resolveCall(context: BodyContext, request: CallRequest): Type {
+  const { site, receiver } = request;
   context.recordCandidates(
-    request.site,
+    site,
     request.candidates.map(({ declaration }) => declaration),
   );
   const written = request.arguments;
-  if (written.some(({ type }) => type?.kind === 'error')) {
-    return errorType;
-  }
-  const callArguments = written.map(callArgumentOf);
-  const choice = choose(context.checker, request.candidates, callArguments, request.typeArguments);
-  switch (choice.kind) {
-    case 'chosen':
-      return complete(context, request, choice.application);
-    case 'several':
-      context.report(
-        checkerDiagnostics.ambiguousCall(
-          request.site.span,
-          request.name,
-          argumentListText(written),
-        ),
-      );
-      return errorType;
-    case 'none': {
+  const applied = applyCall(context, {
+    span: site.span,
+    name: request.name,
+    candidates: request.candidates,
+    arguments: written.map((argument) => ({ ...callArgumentOf(argument), node: argument.node })),
+    typeArguments: request.typeArguments,
+    expected: request.expected,
+    none: (reasons) => {
       const hint = request.hint?.();
       if (hint === undefined) {
-        explainNone(context, request, choice.reasons);
+        explainNone(context, request, reasons);
       } else {
         context.report(hint);
       }
-      return errorType;
-    }
-    default: {
-      const unhandled: never = choice;
-      return unhandled;
-    }
+    },
+    chosen: (chosen) => checkDecidedLambdas(context, written, chosen),
+  });
+  if (applied === undefined) {
+    return errorType;
   }
+  const { application, instantiation } = applied;
+  const { signature } = application;
+  recordChosen(context, { site, application, instantiation, receiver });
+  if (receiver !== undefined && signature.parameters[0]?.reference === true) {
+    changeReceiver(context, receiver);
+  }
+  const slots = argumentSlotsOf(signature.parameters, application.binding);
+  checkReferencedPlaces(context, written, {
+    name: request.name,
+    isAsync: signature.declaration.isAsync,
+    slots: written.map((_, index) => slots.get(index) ?? { reference: false }),
+  });
+  return applied.result;
 }
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
   const { type, passing, accepts, name, isSpread } = argument;
   return { type, passing, accepts, name: name?.text, isSpread, exact: isSpread === true };
-}
-
-function complete(context: BodyContext, request: CallRequest, application: Application): Type {
-  const { site } = request;
-  checkDecidedLambdas(context, request.arguments, application);
-  const instantiation = instantiate(
-    useSite(context.checker, context.module, site.span),
-    application,
-    request.expected,
-  );
-  if (instantiation === undefined) {
-    return errorType;
-  }
-  const { signature } = application;
-  const slots = argumentSlotsOf(signature.parameters, application.binding);
-  fitArguments(
-    context,
-    request.arguments,
-    filledTypes(application, instantiation, request.arguments.length),
-  );
-  const { receiver } = request;
-  recordChosen(context, { site, application, instantiation, receiver });
-  if (receiver !== undefined && signature.parameters[0]?.reference === true) {
-    changeReceiver(context, receiver);
-  }
-  checkReferencedPlaces(context, request.arguments, {
-    name: request.name,
-    isAsync: signature.declaration.isAsync,
-    slots: request.arguments.map((_, index) => slots.get(index) ?? { reference: false }),
-  });
-  return substitute(signature.result(), instantiation.substitution);
 }
 
 /** A chosen function, instantiated, at the site calling it or naming it as a value. */

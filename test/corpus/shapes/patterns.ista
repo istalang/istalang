@@ -1,0 +1,22 @@
+# outcome: "7 shape 1 pixel 3"
+# A pattern may name an alias of a shape (§3.11): against a value of the shape it takes it apart;
+# against an `any` value it matches one whose own type is that shape, while a nominal value inside
+# keeps its own type, so the shape's pattern doesn't match it.
+
+type Point = { x: Int; y: Int }
+struct Pixel { x: Int; y: Int }
+
+fn sum(p: Point) -> Int:
+  match p:
+    case Point{x, y}: x + y
+
+fn which(v: any Sendable) -> String:
+  match v:
+    case Point{x}: "shape " + x
+    case Pixel{x}: "pixel " + x
+    case _: "other"
+
+async fn main():
+  const shape: any Sendable = struct{x: 1, y: 2}
+  const pixel: any Sendable = Pixel{x: 3, y: 4}
+  "" + sum(struct{y: 2, x: 5}) + " " + which(shape) + " " + which(pixel)

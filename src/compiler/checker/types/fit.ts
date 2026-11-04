@@ -1,17 +1,20 @@
 /**
- * Fitting a value where a type is expected (§2, §3.10, §3.14, §3.15): the same type, a value
- * converted into an `any` type its type meets, a plain function made async where an async function
- * of its parameters and result is expected, a one-element tuple and its element each where the
- * other is expected, or a `T` wrapped into `T?`. These are the language's implicit conversions.
+ * Fitting a value where a type is expected (§2, §3.1, §3.10, §3.14, §3.15): the same type, a value
+ * converted into an `any` type its type meets, a nominal struct's value into its equal shape, a
+ * plain function made async where an async function of its parameters and result is expected, a
+ * one-element tuple and its element each where the other is expected, or a `T` wrapped into `T?`.
+ * These are the language's implicit conversions.
  *
  * - The wrap applies as often as the expected type nests optionals, so an `Int` fits an `Int??` by
  *   two wraps. A value that is already optional fits its own optional type without one: `Int?`
  *   fits `Int?`, never `Int??` by wrapping `Int?` when an exact fit exists.
- * - A value is converted into an `any` type, made async, or converted between a one-element tuple
- *   and its element, only where that type itself is expected, so the conversion comes first and at
- *   most once: an `Email` fits `(any Notifier)?` by a conversion, then a wrap, and an
- *   `Array<fn()>` is never an `Array<async fn()>`. An `any` type converts into another whose
- *   constraints are among its own.
+ * - A value is converted into an `any` type or a shape, made async, or converted between a
+ *   one-element tuple and its element, only where that type itself is expected, so the conversion
+ *   comes first and at most once: an `Email` fits `(any Notifier)?` by a conversion, then a wrap,
+ *   and an `Array<fn()>` is never an `Array<async fn()>`, nor an `Array<Pixel>` an
+ *   `Array<{ x: Int; y: Int }>`. An `any` type converts into another whose constraints are among
+ *   its own. A nominal struct's value converts into a shape its fields are, as the program says
+ *   (`Fitting.shapeOf`); a shape never converts into a nominal struct.
  * - Which nominal type is `Optional`, and whether a type meets a constraint, are the program's to
  *   say (`Fitting`).
  * - The wrap is why a bare variant may be of an enum inside the optionals expected (§3.11): the
@@ -21,6 +24,7 @@
 import type { EnumDeclaration } from '../../syntax/declarations.ts';
 import { isAssignable } from './identity.ts';
 import {
+  type AnonymousStructType,
   type AnyType,
   isPrimitive,
   type NominalEntity,
@@ -32,13 +36,14 @@ import {
 export type OptionalEntity = NominalEntity | undefined;
 
 /**
- * What converts a value itself, before any wrap: nothing, the conversion into an `any` type, a
- * plain function made async, a value made a one-element tuple (`tupled`), or a one-element tuple's
- * element taken out (`untupled`).
+ * What converts a value itself, before any wrap: nothing, the conversion into an `any` type or of a
+ * nominal struct's value into a shape, a plain function made async, a value made a one-element tuple
+ * (`tupled`), or a one-element tuple's element taken out (`untupled`).
  */
 type Conversion =
   | { readonly kind: 'none' }
   | { readonly kind: 'any'; readonly to: AnyType }
+  | { readonly kind: 'shape'; readonly to: AnonymousStructType }
   | { readonly kind: 'async' }
   | { readonly kind: 'tupled' }
   | { readonly kind: 'untupled' };
@@ -52,10 +57,14 @@ export interface Fit {
 /** The fit of a value that has the expected type. */
 export const exactFit: Fit = { conversion: { kind: 'none' }, wraps: 0 };
 
-/** What fitting needs of the program: its `Optional`, and whether a type meets an `any` type's constraints. */
+/**
+ * What fitting needs of the program: its `Optional`, whether a type meets an `any` type's
+ * constraints, and the shape a nominal struct's value converts into, if any (§3.1).
+ */
 export interface Fitting {
   readonly optional: OptionalEntity;
   readonly meetsAny: (found: Type, target: AnyType) => boolean;
+  readonly shapeOf: (found: Type) => AnonymousStructType | undefined;
 }
 
 /** How `matchConversion` compares leaf types and checks `any` conformance. */
@@ -95,6 +104,12 @@ export function matchConversion(
       ? { conversion: { kind: 'any', to: expected }, wraps: 0 }
       : undefined;
   }
+  if (expected.kind === 'anonymous') {
+    const shape = rules.shapeOf(found);
+    return shape !== undefined && rules.exact(expected, shape)
+      ? { conversion: { kind: 'shape', to: expected }, wraps: 0 }
+      : undefined;
+  }
   const inner = optionalInner(expected, rules.optional);
   if (inner === undefined) {
     return undefined;
@@ -125,10 +140,13 @@ export function singleElement(type: Type): Type | undefined {
   return type.kind === 'tuple' && type.elements.length === 1 ? type.elements[0] : undefined;
 }
 
-/** Whether `fit` changes a value's own shape, as a call taking it as it is wouldn't (§3.7). */
+/**
+ * Whether `fit` changes a value's own shape, as a call taking it as it is wouldn't (§3.7): made
+ * async, a one-element tuple and its element, or a nominal struct's value as its shape.
+ */
 export function reshapes(fit: Fit): boolean {
   const { kind } = fit.conversion;
-  return kind === 'async' || kind === 'tupled' || kind === 'untupled';
+  return kind === 'async' || kind === 'tupled' || kind === 'untupled' || kind === 'shape';
 }
 
 /**

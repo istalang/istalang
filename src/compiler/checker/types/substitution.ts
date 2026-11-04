@@ -11,9 +11,9 @@ import {
   type AnyType,
   aliasedAs,
   errorType,
-  type FunctionType,
   type ParameterKey,
   type Type,
+  type TypeParameterType,
 } from './type.ts';
 import { mapChildren } from './type-parts.ts';
 
@@ -66,8 +66,11 @@ export function substituteAny(type: AnyType, substitution: Substitution): AnyTyp
   );
 }
 
-/** A function type with `substitution` applied, still a function type. */
-export function substituteFunction(type: FunctionType, substitution: Substitution): FunctionType {
+/** A type that is no type parameter with `substitution` applied, still of its kind. */
+export function substituteKept<Kept extends Exclude<Type, TypeParameterType>>(
+  type: Kept,
+  substitution: Substitution,
+): Kept {
   return asWritten(
     type,
     mapChildren(type, (child) => substitute(child, substitution)),

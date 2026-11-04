@@ -13,7 +13,11 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FieldSource } from '../../checker/check.ts';
-import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
+import type {
+  AnonymousStructType,
+  NominalType,
+  StructValueType,
+} from '../../checker/types/type.ts';
 import {
   type Expression,
   type FieldsLiteral,
@@ -23,7 +27,7 @@ import {
   type StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { FunctionContext } from '../context.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { defaultEntryOf } from '../instances.ts';
 
@@ -158,7 +162,7 @@ export function lowerFieldRead(
 
 /** Builds a struct of `type` from `fields`, in declaration order. */
 export function construct(
-  context: FunctionContext,
+  context: CodeContext,
   type: NominalType | AnonymousStructType,
   fields: readonly Register[],
   span: AnchoredSpan,
@@ -167,6 +171,23 @@ export function construct(
   const index = context.tables.types.index(type);
   context.code.emit({ kind: 'struct', span, dst, type: index, fields: [...fields] });
   return dst;
+}
+
+/**
+ * `value`, a struct of `from`, built anew as a struct of `to`, each field taken by its name: a
+ * nominal struct's value as its shape (§3.1), whose fields are in name order.
+ */
+export function rebuiltAs(
+  context: FunctionContext,
+  value: Register,
+  { from, to }: { readonly from: StructValueType; readonly to: StructValueType },
+  span: AnchoredSpan,
+): Register {
+  const fields = context.checker.fieldsOf(from) ?? [];
+  const named = new Map(
+    fields.map(({ name }, index) => [name, context.code.field(value, index, span)] as const),
+  );
+  return constructByName(context, to, named, span);
 }
 
 /** Builds a struct of `type`, each of its fields taken by name from `named`. */

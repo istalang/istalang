@@ -45,7 +45,7 @@ import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
 import { searchSite } from '../use-site.ts';
-import { computeConstant, refusalOf } from './computation.ts';
+import { computeConstant, refusalOf } from './computation/index.ts';
 
 /** The annotations the toolchain itself reads. */
 const known = {

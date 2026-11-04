@@ -16,6 +16,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - look up top-level functions in a module (prelude joined) → `namedInModule` (`src/compiler/checker/resolution/candidates.ts`)
 - look up call candidates with ADL and type-parameter requirements → `topLevelCandidates`, `callCandidates` (`src/compiler/checker/resolution/candidates.ts`)
 - keep the methods a call through a member access may mean, `&self` ones only through a place → `callableThrough` (`src/compiler/checker/resolution/candidates.ts`)
+- apply a call: choose among candidates, report ambiguity or a caller's `none`, instantiate, fit the arguments (conversions and wraps), give the result → `applyCall` (`src/compiler/checker/resolution/applied-call.ts`); written calls (`resolveCall`) and implicit ones (`implicitCall`) both go through it, and add only what they record
 - look up static or trait witness candidates → `staticCandidates`, `staticTargetOf`, `witnessCandidates` (`src/compiler/checker/resolution/candidates.ts`)
 - list the modules a module sees (its own, its imports, the prelude), or every static function on a type they declare → `modulesSeenFrom`, `staticFunctionsAmong` (`src/compiler/checker/resolution/candidates.ts`)
 - bind call or function-value arguments to parameter slots → `bindArguments`, `bindValue`, `positionalCounts` (`src/compiler/checker/resolution/binding.ts`)

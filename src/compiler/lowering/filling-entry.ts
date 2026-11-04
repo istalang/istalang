@@ -15,7 +15,6 @@ import type { CodeFunction } from '../../definition/functions.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { type Binding, parameterOfArgument } from '../checker/resolved-call.ts';
 import type { CodeContext } from './context.ts';
-import { referenceTo } from './emit-call.ts';
 import { callOfFilling, type FunctionInstance } from './instances.ts';
 import { SynthesizedCode } from './synthesized-code.ts';
 
@@ -39,9 +38,7 @@ export function fillingEntry(
   const code = new SynthesizedCode(context, declaration.name.span, passed.length);
   const result = code.call(
     callOfFilling(instance, binding),
-    code.parameters.map((register, index) =>
-      passed[index] === true ? referenceTo(register) : register,
-    ),
+    code.parameters.map((_, index) => code.passedOn(index, passed)),
   );
   const { isAsync } = declaration;
   code.return(isAsync ? code.await(result) : result);

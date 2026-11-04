@@ -27,7 +27,7 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { FunctionContext } from '../context.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitCallAt, emitFunctionCall } from '../emit-call.ts';
 import { lowerNullish } from './nullish.ts';
 
@@ -101,7 +101,7 @@ function compared(
 
 /** Whether `left` and `right` are `==`, or `!=` when `isNegated`. */
 export function equal(
-  context: FunctionContext,
+  context: CodeContext,
   span: AnchoredSpan,
   [left, right]: readonly [Register, Register],
   isNegated = false,
@@ -137,7 +137,7 @@ function operands(context: FunctionContext, node: Binary): [Register, Register] 
   return [context.expression(node.left), context.expression(node.right)];
 }
 
-function negated(context: FunctionContext, src: Register, span: AnchoredSpan): Register {
+function negated(context: CodeContext, src: Register, span: AnchoredSpan): Register {
   const dst = context.code.allocate();
   context.code.emit({ kind: 'not', span, dst, src });
   return dst;

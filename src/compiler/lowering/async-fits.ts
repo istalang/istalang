@@ -10,7 +10,7 @@ import type { CodeFunction } from '../../definition/functions.ts';
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { CodeContext } from './context.ts';
-import { emitCall, referenceTo } from './emit-call.ts';
+import { emitCall } from './emit-call.ts';
 import type { AsyncFit } from './instances.ts';
 import { SynthesizedCode } from './synthesized-code.ts';
 
@@ -37,9 +37,7 @@ export function asyncFitEntry(
   const result = emitCall(code, {
     span: code.span,
     callee: { kind: 'value', register: plain },
-    arguments: code.parameters.map((register, index) =>
-      references[index] === true ? referenceTo(register) : register,
-    ),
+    arguments: code.parameters.map((_, index) => code.passedOn(index, references)),
   });
   code.return(result);
   return code.entry(context.tables.asyncFitHeader(fit), true, references);

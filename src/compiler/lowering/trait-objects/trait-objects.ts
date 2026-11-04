@@ -13,7 +13,6 @@
  */
 
 import type { FunctionDefinition } from '../../../definition/functions.ts';
-import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/checked-field.ts';
@@ -72,15 +71,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   if (receiver === undefined) {
     unreachable(`'${required.name.text}' is called through any without its receiver.`);
   }
-  const passed = (
-    register: Register,
-    path: readonly number[],
-    index: number,
-  ): Register | Argument =>
-    references[index] === true
-      ? { kind: 'reference', place: { register, path: [...path] } }
-      : register;
-  const rest = others.map((register, index) => passed(register, [], index + 1));
+  const rest = others.map((_, index) => code.passedOn(index + 1, references));
   switchOverMembers(code, on, receiver, (type) => {
     const witness = checker.memberWitnesses(on, constraint, type)[member];
     if (witness === undefined) {
@@ -88,7 +79,8 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
         `${spelledType(checker, type)} meets ${spelledType(checker, on)} without '${required.name.text}'.`,
       );
     }
-    const self = references[0] === true ? passed(receiver, [0], 0) : code.field(receiver, 0);
+    const self =
+      references[0] === true ? code.passedOn(0, references, [0]) : code.field(receiver, 0);
     const result = code.call(closeWitness(witness, dispatch), [self, ...rest]);
     code.return(required.isAsync ? code.await(result) : result);
   });

@@ -16,7 +16,7 @@ import type { CodeContext, FunctionContext } from '../context.ts';
 import { literalFields } from './structs.ts';
 
 /** The index of the variant `name` of the enum `type`. */
-export function variantIndexOf(checker: Checker, type: NominalType, name: string): number {
+function variantIndexOf(checker: Checker, type: NominalType, name: string): number {
   const index = (checker.variantsOf(type) ?? []).findIndex((variant) => variant.name === name);
   if (index < 0) {
     unreachable(`No variant '${name}'; the checker should have said so.`);

@@ -283,6 +283,7 @@ export class ProgramChecker implements CheckerContext {
     return {
       optional: this.optionalEntity,
       meetsAny: (type, target) => meetsAny(this, type, target),
+      shapeOf: (type) => this.#layouts.nominalShapeOf(type),
     };
   }
 
