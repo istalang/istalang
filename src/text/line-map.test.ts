@@ -30,6 +30,8 @@ describe('line map (§2)', () => {
           const map = new LineMap(text);
           expect(map.lineCount).toBe(lines.length + 1);
           expect(splitLines(text)).toEqual([...lines.map(([line]) => line), lastLine]);
+          const spans = Array.from({ length: map.lineCount }, (_, line) => map.lineSpan(line));
+          expect(spans.map(({ start, end }) => text.slice(start, end))).toEqual(splitLines(text));
           let offset = 0;
           for (const [lineIndex, line] of [...lines.map(([l]) => l), lastLine].entries()) {
             for (let column = 0; column <= line.length; column += 1) {
@@ -61,6 +63,8 @@ describe('line map (§2)', () => {
     expect(map.offsetAt({ line: 1, column: 99 })).toBe(6);
     expect(map.offsetAt({ line: 9, column: 0 })).toBe(6);
     expect(map.offsetAt({ line: -1, column: 5 })).toBe(0);
+    expect(map.lineSpan(9)).toEqual({ start: 6, end: 6 });
+    expect(map.lineSpan(-1)).toEqual({ start: 0, end: 0 });
   });
 
   it('derives one line map per source object', () => {

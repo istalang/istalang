@@ -16,6 +16,7 @@
 import { memo } from '../structures/memo.ts';
 import { lastIndexAtMost } from '../structures/sorted.ts';
 import type { SourceText } from './source-text.ts';
+import type { Span } from './span.ts';
 
 export interface Position {
   readonly line: number;
@@ -39,19 +40,25 @@ export function lineBreakLength(text: string, offset: number): number {
 
 /** The lines of `text`, without their line breaks; one more than it has breaks. */
 export function splitLines(text: string): string[] {
-  const lines: string[] = [];
-  let lineStart = 0;
+  const { starts, ends } = lineBounds(text);
+  return starts.map((start, line) => text.slice(start, ends[line]));
+}
+
+/** Where each line of `text` starts, and where its content ends, before its line break. */
+function lineBounds(text: string): { readonly starts: number[]; readonly ends: number[] } {
+  const starts = [0];
+  const ends: number[] = [];
   let offset = 0;
   while (offset < text.length) {
     const breakLength = lineBreakLength(text, offset);
     if (breakLength > 0) {
-      lines.push(text.slice(lineStart, offset));
-      lineStart = offset + breakLength;
+      ends.push(offset);
+      starts.push(offset + breakLength);
     }
     offset += Math.max(breakLength, 1);
   }
-  lines.push(text.slice(lineStart));
-  return lines;
+  ends.push(text.length);
+  return { starts, ends };
 }
 
 /** Where the line holding `offset` starts: just past the line break before it, or 0. */
@@ -70,18 +77,7 @@ export class LineMap {
   readonly #length: number;
 
   constructor(text: string) {
-    const starts = [0];
-    const ends: number[] = [];
-    let offset = 0;
-    while (offset < text.length) {
-      const breakLength = lineBreakLength(text, offset);
-      if (breakLength > 0) {
-        ends.push(offset);
-        starts.push(offset + breakLength);
-      }
-      offset += Math.max(breakLength, 1);
-    }
-    ends.push(text.length);
+    const { starts, ends } = lineBounds(text);
     this.#lineStarts = starts;
     this.#lineEnds = ends;
     this.#length = text.length;
@@ -106,18 +102,21 @@ export class LineMap {
    * (before the break), and a line past the last one means the end of the text.
    */
   offsetAt(position: Position): number {
-    if (position.line < 0) {
-      return 0;
-    }
-    if (position.line >= this.lineCount) {
-      return this.#length;
-    }
-    const lineEnd = this.#lineEnds[position.line] ?? this.#length;
-    return Math.min(this.#startOf(position.line) + Math.max(position.column, 0), lineEnd);
+    const { start, end } = this.lineSpan(position.line);
+    return Math.min(start + Math.max(position.column, 0), end);
   }
 
-  #startOf(line: number): number {
-    return this.#lineStarts[line] ?? this.#length;
+  /**
+   * The text line `line` holds, without its line break. As for `offsetAt`, a line before the first
+   * is empty at the start of the text, and a line past the last at its end.
+   */
+  lineSpan(line: number): Span {
+    return line < 0
+      ? { start: 0, end: 0 }
+      : {
+          start: this.#lineStarts[line] ?? this.#length,
+          end: this.#lineEnds[line] ?? this.#length,
+        };
   }
 }
 

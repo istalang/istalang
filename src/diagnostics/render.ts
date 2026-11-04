@@ -10,15 +10,16 @@
 
 import { lineMapOf } from '../text/line-map.ts';
 import type { SourceText } from '../text/source-text.ts';
+import { textOf } from '../text/span.ts';
 import type { Diagnostic } from './diagnostic.ts';
 
 /** A diagnostic as a header line plus a two-line excerpt of the source. */
 export function renderDiagnostic(source: SourceText, diagnostic: Diagnostic): string {
   const lines = lineMapOf(source);
   const { line, column } = lines.positionAt(diagnostic.span.start);
-  const lineStart = lines.offsetAt({ line, column: 0 });
-  const lineEnd = lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER });
-  const lineText = source.text.slice(lineStart, lineEnd);
+  const lineSpan = lines.lineSpan(line);
+  const lineEnd = lineSpan.end;
+  const lineText = textOf(source, lineSpan);
   const underlined = Math.min(diagnostic.span.end, lineEnd) - diagnostic.span.start;
   const indent = lineText.slice(0, column).replace(/[^\t]/gu, ' ');
   const number = String(line + 1);

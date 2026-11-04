@@ -47,8 +47,9 @@ function linesOf(lines: LineMap, span: Span): readonly Span[] {
   const last = lines.positionAt(span.end).line;
   const pieces: Span[] = [];
   for (let line = first; line <= last; line += 1) {
-    const start = Math.max(span.start, lines.offsetAt({ line, column: 0 }));
-    const end = Math.min(span.end, lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER }));
+    const bounds = lines.lineSpan(line);
+    const start = Math.max(span.start, bounds.start);
+    const end = Math.min(span.end, bounds.end);
     if (end > start) {
       pieces.push({ start, end });
     }

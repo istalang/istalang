@@ -59,7 +59,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - `callArguments` (`src/formatter/expressions.ts:198–221`) prints every argument in `bracketed(...)` and then, when the last argument is huggable, prints `front` and `last` a second time ($O(2^d)$ work on nested huggable calls).
    - `LineMap` (`src/text/line-map.ts:27`) duplicates `splitLines` (`line-map.ts:92`) and hides `#lineEnds`, forcing both `renderDiagnostic` (`src/diagnostics/render.ts:77`) and `linesOf` (`src/lsp/providers/semantic-tokens.ts:53`) to pass `column: Number.MAX_SAFE_INTEGER` to `lines.offsetAt`.
    - **Fix:** Reuse the already-printed argument `Doc`s in `callArguments`, and expose `lineSpan(line)` on `LineMap`.
-   - **Done** (`fast-wins`): Formatter part: `TreePrinter.print` keeps each node's doc, so `callArguments` (and `body`, which printed a hugged block twice too) reuse what they printed. `formatter/format.bench.ts`, calls hugging their last argument 16 deep: 458 ms → 0.39 ms mean. The `LineMap` part is unit 3's.
+   - **Done** (`fast-wins`): Formatter part: `TreePrinter.print` keeps each node's doc, so `callArguments` (and `body`, which printed a hugged block twice too) reuse what they printed. `formatter/format.bench.ts`, calls hugging their last argument 16 deep: 458 ms → 0.39 ms mean. The `LineMap` part is done under unit 3.
 
 10. **`[medium]` Spec (`docs/spec.md`) internal contradictions and table/syntax drift (`docs/spec.md:178`, `docs/spec.md:457`, `docs/spec.md:616`, `docs/spec.md:694`, `docs/spec.md:752`, `docs/spec.md:919`, `docs/spec.md:1293`)**
     - **§3.3 vs. §3.7 (`docs/spec.md:360`, `docs/spec.md:457`):** §3.3 states *"a by-value parameter can't be ... passed by `&`"*, while §3.7 says *"What can be referenced. A `let` variable or a parameter..."* where it means *"a `&` parameter"*.
@@ -137,11 +137,13 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate line-break scanning in `splitLines` and `LineMap`, and hidden `#lineEnds` (`src/text/line-map.ts`, `src/diagnostics/render.ts`):**
   - `splitLines(text)` and `new LineMap(text)` run identical `while (offset < text.length)` loops calling `lineBreakLength(text, offset)` to find every line's `[start, end)` bounds.
   - Although `LineMap` computes and stores `#lineStarts` and `#lineEnds`, it exposes no `lineSpan(line)` or `lineText(source, line)` method, forcing `renderDiagnostic` (`src/diagnostics/render.ts`) to reconstruct a line's bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`.
+  - **Done** (`fast-wins`): `splitLines` and `LineMap` share one scan (`lineBounds`); `LineMap.lineSpan(line)` exposes a line's bounds, which `offsetAt` reads too.
 
 ### 4. `src/diagnostics/`
 
 - **Workaround for missing `LineMap` line-span query in `renderDiagnostic` (`src/diagnostics/render.ts`):**
   - Covered under Unit 3 (`LineMap`): `renderDiagnostic` passes `Number.MAX_SAFE_INTEGER` as a synthetic column to `lines.offsetAt` to recover `#lineEnds[line]`.
+  - **Done** (`fast-wins`): `renderDiagnostic` reads `lines.lineSpan(line)`.
 
 ### 5. `src/definition/` (including `instructions/`)
 
@@ -414,6 +416,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Second `Number.MAX_SAFE_INTEGER` column workaround for `LineMap` line bounds in `linesOf` (`src/lsp/providers/semantic-tokens.ts`, `src/text/line-map.ts`, `src/diagnostics/render.ts`):**
   - `linesOf` in `semantic-tokens.ts` reconstructs each line's `[start, end)` bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`, repeating the same workaround as `renderDiagnostic` (`src/diagnostics/render.ts`) because `LineMap` does not expose its stored `#lineEnds`.
+  - **Done** (`fast-wins`): `linesOf` reads `lines.lineSpan(line)`.
 - **Duplicate offset-to-LSP-`Position` conversion in `rangeOf` (`src/lsp/locations.ts`) and `inlayHints` (`src/lsp/providers/inlay-hints.ts`):**
   - `rangeOf` and `inlayHints` both convert `lines.positionAt(offset)` to `{ line, character: column }`.
 - **Full-project `globSync`, `statSync`, and `readFileSync` on every editor keystroke in `projectProgramLoader` (`src/lsp/project-loader.ts`, `src/project/project.ts`, `src/compiler/program/program.ts`; widens `F11`):**

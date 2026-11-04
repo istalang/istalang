@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-29
+last_updated: 2026-11-04
 tags: [reuse, text, spans, positions, code-points]
 ---
 
@@ -16,6 +16,7 @@ tags: [reuse, text, spans, positions, code-points]
 - slice the source text under a `Span` → `textOf` (`src/text/span.ts`)
 - test whether one `Span` lies wholly inside another → `encloses` (`src/text/span.ts`)
 - convert between UTF-16 offsets and 0-based `{ line, column }` on a `SourceText` → `lineMapOf`, `LineMap`, `Position` (`src/text/line-map.ts`)
+- find the span of one line's text, without its line break → `LineMap.lineSpan` (`src/text/line-map.ts`); never `offsetAt` with a column past the line's end
 - convert a UTF-16 offset to 0-based `{ line, column }` from `lineStarts` alone → `positionIn` (`src/text/line-map.ts`)
 - measure a line break (`\r\n`, `\n`, `\r`) at a UTF-16 offset → `lineBreakLength` (`src/text/line-map.ts`)
 - find where the line holding an offset starts, with no line map → `lineStartAt` (`src/text/line-map.ts`)
