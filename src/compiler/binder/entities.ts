@@ -150,6 +150,16 @@ export type Entity =
   | VariantsEntity
   | NamespaceEntity;
 
+/** Whether names may follow `entity` and a dot: a module's namespace, or an enum's variants. */
+export function qualifies(
+  entity: Entity,
+): entity is NamespaceEntity | (TypeEntity & { readonly declaration: EnumDeclaration }) {
+  return (
+    entity.kind === 'namespace' ||
+    (entity.kind === 'type' && entity.declaration.kind === 'EnumDeclaration')
+  );
+}
+
 /** Whether `entity` is a type, as a name written in a type must be. */
 export function namesType(entity: Entity): entity is TypeEntity | PrimitiveEntity | SelfEntity {
   return entity.kind === 'type' || entity.kind === 'primitive' || entity.kind === 'self';

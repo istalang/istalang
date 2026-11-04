@@ -37,6 +37,7 @@ import { binderDiagnostics } from './diagnostics.ts';
 import {
   localFunctionOf,
   ownCallEntity,
+  qualifies,
   type VariableEntity,
   type VariableOwner,
   type VariantsEntity,
@@ -380,16 +381,7 @@ function functionsNamed(
  * whatever a name declared nowhere here turns out to be once linked.
  */
 function mayQualify(head: LocalEntity | undefined): boolean {
-  switch (head?.kind) {
-    case undefined:
-    case 'import':
-    case 'namespace':
-      return true;
-    case 'type':
-      return head.declaration.kind === 'EnumDeclaration';
-    default:
-      return false;
-  }
+  return head === undefined || head.kind === 'import' || qualifies(head);
 }
 
 /** `parts` without the missing name a path still being written ends in. */

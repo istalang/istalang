@@ -38,13 +38,13 @@ import type { Identifier } from '../syntax/node.ts';
 import { type AnchoredSpan, diagnosticIn } from '../syntax/positions.ts';
 import { bindModule, type ModuleBindings } from './bind-module.ts';
 import { binderDiagnostics } from './diagnostics.ts';
-import type {
-  Bindings,
-  Entity,
-  FunctionsEntity,
-  NamespaceEntity,
-  TypeEntity,
-  VariantEntity,
+import {
+  type Bindings,
+  type Entity,
+  type FunctionsEntity,
+  type NamespaceEntity,
+  qualifies,
+  type VariantEntity,
 } from './entities.ts';
 import { type FreeName, noOwnCall, type QualifiedPath } from './local-binder.ts';
 import type { ImportPlaceholder, LocalEntity } from './scope.ts';
@@ -412,14 +412,4 @@ class Linker {
 /** What a module-local entity denotes once linked: an import's target, or the entity itself. */
 function resolvedImport(links: ModuleLinks, entity: LocalEntity | undefined): Entity | undefined {
   return entity?.kind === 'import' ? links.imports.get(entity) : entity;
-}
-
-/** Whether names may follow `entity` and a dot: a module's namespace, or an enum's variants. */
-function qualifies(
-  entity: Entity,
-): entity is NamespaceEntity | (TypeEntity & { readonly declaration: EnumDeclaration }) {
-  return (
-    entity.kind === 'namespace' ||
-    (entity.kind === 'type' && entity.declaration.kind === 'EnumDeclaration')
-  );
 }
