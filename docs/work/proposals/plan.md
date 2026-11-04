@@ -22,7 +22,7 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 | Proposal | Status |
 | --- | --- |
 | 1 Type names | done, `43d9b81` |
-| 2 Structural types | done, branch `p2-structural`, with its debt items (Q30 left open) |
+| 2 Structural types | done, `b6de118`, with its debt items (Q30 left open) |
 | 3 Union types | waiting on 2 |
 | 4 Computed types | waiting on 3 |
 
@@ -67,6 +67,8 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 
 P1's report adds: `None` goes into `primitiveNames`, and generic patterns on unions extend `PatternType`'s `generic` case.
 
+P2's report adds: a generic alias's static owners are keyed by the alias's own parameters, so a family is reached only through that alias. `Optional` as an alias owning `T?`'s statics needs a family matched against concrete types, an addition with nothing blocking it.
+
 **Before P4**
 
 | Item | Audit | Why P4 needs it | Status |
@@ -74,6 +76,7 @@ P1's report adds: `None` goes into `primitiveNames`, and generic patterns on uni
 | `bindLoopTargets` copied `declareTargets` | unit 18 | field loops | done, fast wins |
 | `Expansion` and `TypeExpansion` run the same graph walk | unit 19 | type `match` recursion | open |
 | The formatter lists bracketed children twice (`bodies.ts`, `brackets.ts`) | unit 29 | mapped types, struct comprehensions | open |
+| Nominal structs keep declaration-order layout; only shapes are in name order (P2's deviation, unobservable today) | P2 report | field loops, comprehensions and rest patterns must visit name order (P2's field-order rule) | open |
 
 ## Fast wins (done, `60f153f`)
 
