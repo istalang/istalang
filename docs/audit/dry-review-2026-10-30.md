@@ -264,6 +264,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`fast-wins`): `infer.ts` asks `types/type.ts`'s `isPack` of `parameterType(parameter)`.
 - **`unsafetyOf` manually resolves and substitutes trait fields instead of using `requiredFieldType` / `constraintSubstitution` (`src/compiler/checker/traits/any-types.ts`, `constraints.ts`):**
   - `unsafetyOf` (`any-types.ts`) manually builds `substitutionFor(trait.typeParameters, constraint.arguments)` and calls `checker.resolveType(checker.moduleOf(trait), field.type)` instead of calling `requiredFieldType(checker, constraint, field, parameterType(trait))` and `constraintSubstitution(constraint, parameterType(trait))` from `constraints.ts`.
+  - **Done** (`p3-unions`): object safety is one exported rule, `objectUnsafety` (`traits/object-safety.ts`), reading a trait's fields and functions through `requiredFieldType` and `constraintSubstitution` with the trait's own `Self`; `any` types ask it (`any-types.ts`), and so will a union meeting a trait through its members (proposal 3, §6).
 
 ### 15. `src/compiler/checker/resolution/`
 

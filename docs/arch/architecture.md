@@ -68,8 +68,8 @@ src/
                                                                  is its fields in name order), written types resolved, rules over types and the
                                                                  diagnostics they make, a checked body read through a substitution, the type a
                                                                  name names in a value's place or a pattern (named-types.ts)
-      inference/ traits/                                         inference of type arguments; constraints, the derived `Sendable`, and
-                                                                 `any` types with their object safety (any-types.ts)
+      inference/ traits/                                         inference of type arguments; constraints, the derived `Sendable`,
+                                                                 `any` types, and the object safety they need (object-safety.ts)
       resolution/                                                what a call or a name may mean (applied-call.ts: every call chosen, instantiated
                                                                  and fitted in one place): candidates and ADL, choice, conformance and
                                                                  witnesses, the calls a construct makes, a type or variant named as a value
