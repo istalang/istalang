@@ -1,9 +1,11 @@
 /**
  * Deploying a Definition (§5): it is stored once by hash, however many times a runtime deploys it,
- * and a fresh runtime on the same store still gets it written when its store lacks it.
+ * and a fresh runtime on the same store still gets it written when its store lacks it. A deploy
+ * refused before it stored the Definition stores it when tried again, and a text is read once,
+ * though the store gives back its canonical text.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { subsetDefinition, subsetOutcome } from '../../test/definitions/subset.ts';
 import { definitionFormat } from '../definition/definition.ts';
 import { stdNatives } from '../stdlib/natives.ts';
@@ -28,5 +30,36 @@ describe('deploying a Definition', () => {
     testRuntime({ natives: stdNatives, store: one }).runtime.deploy(text);
     testRuntime({ natives: stdNatives, store: two }).runtime.deploy(text);
     expect([one.definitions.length, two.definitions.length]).toEqual([1, 1]);
+  });
+
+  it('writes it when deployed again after a deploy that failed before writing it', () => {
+    const store = recordingStore();
+    let failing = true;
+    const flaky = {
+      ...store,
+      readExterns: () => {
+        if (failing) {
+          failing = false;
+          throw new Error('The store is unavailable.');
+        }
+        return store.readExterns();
+      },
+    };
+    const { runtime } = testRuntime({ natives: stdNatives, store: flaky });
+    expect(() => runtime.deploy(text)).toThrow('The store is unavailable.');
+    const program = runtime.deploy(text);
+    expect(store.definitions).toEqual([program.hash]);
+  });
+
+  it('reads a text once, though the store gives back its canonical text', () => {
+    const reads = vi.spyOn(definitionFormat, 'readCanonical');
+    try {
+      const { runtime } = testRuntime({ natives: stdNatives });
+      runtime.deploy(` ${text}`).start('spaced');
+      runtime.inspect('spaced');
+      expect(reads).toHaveBeenCalledTimes(1);
+    } finally {
+      reads.mockRestore();
+    }
   });
 });

@@ -4,8 +4,8 @@
  *
  * - A Definition arrives as its persisted text, the form the store keeps. Deploying reads and
  *   validates all of it, binds every extern to its native and stores it by hash, so a Definition
- *   that couldn't run is refused before anything runs. A Definition this runtime already bound is
- *   in the store already, so deploying it again writes nothing.
+ *   that couldn't run is refused before anything runs. A runtime writes each Definition once, after
+ *   its externs are recorded, so deploying it again writes nothing.
  * - An instance lives in the store between calls; the options it starts with (`crashEveryAwait`,
  *   §10) hold for its whole life. Starting or waking one advances it as far as it goes without
  *   waiting, committing every segment (scheduler/wake.ts), and says where it stands: waiting
@@ -136,12 +136,14 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
   }
   const bind = programBinder(seams);
   const stored = (instance: string) => storedInstance(seams.store, bind, instance);
+  const written = new Set<string>();
   return {
     deploy: (text) => {
-      const { program, firstText } = bind(text);
+      const { program, canonical } = bind(text);
       recordExternSignatures(seams.store, program.definition);
-      if (firstText !== undefined) {
-        seams.store.writeDefinition(program.hash, firstText);
+      if (!written.has(program.hash)) {
+        seams.store.writeDefinition(program.hash, canonical);
+        written.add(program.hash);
       }
       return program;
     },
@@ -202,34 +204,30 @@ interface BoundProgram extends DeployedProgram, LoadedDefinition {
   readonly terminate: (snapshot: PanickedSnapshot) => Advanced;
 }
 
-/**
- * A Definition text bound to its program, with the program's canonical text when this bound its
- * hash for the first time, for a deploy to store.
- */
+/** A Definition text bound to its program, with the canonical text the store keeps. */
 interface Binding {
   readonly program: BoundProgram;
-  readonly firstText: string | undefined;
+  readonly canonical: string;
 }
 
 /**
  * Reads and binds Definition texts: each text is read, validated and written back once, and each
  * hash bound once, since every operation on a stored instance binds the text its snapshot names.
- * It writes nothing.
+ * The canonical text finds its binding too, as the store gives that text back. It writes nothing.
  */
 function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'host' | 'seed'>) {
-  const byHash = new Map<string, BoundProgram>();
-  const byText = new Map<string, BoundProgram>();
-  return (text: string): Binding => {
-    const known = byText.get(text);
-    if (known !== undefined) {
-      return { program: known, firstText: undefined };
-    }
-    const { value: definition, hash, text: canonical } = definitionFormat.readCanonical(text);
-    const firstText = byHash.has(hash) ? undefined : canonical;
-    const program = memo(byHash, hash, () => boundProgram(seams, definition, hash));
-    byText.set(text, program);
-    return { program, firstText };
-  };
+  const byHash = new Map<string, Binding>();
+  const byText = new Map<string, Binding>();
+  return (text: string): Binding =>
+    memo(byText, text, () => {
+      const { value: definition, hash, text: canonical } = definitionFormat.readCanonical(text);
+      const binding = memo(byHash, hash, () => ({
+        program: boundProgram(seams, definition, hash),
+        canonical,
+      }));
+      byText.set(binding.canonical, binding);
+      return binding;
+    });
 }
 
 /** `definition`, bound to its natives and able to start and resume its instances. */
