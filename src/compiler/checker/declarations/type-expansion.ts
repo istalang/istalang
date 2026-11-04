@@ -23,7 +23,7 @@ import {
 } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { type ArgumentEdge, argumentEdges, endlessEdges } from '../types/expansion-edges.ts';
+import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from '../types/expansion-edges.ts';
 import type { ParameterKey } from '../types/type.ts';
 import { nominalsIn } from '../types/type-parts.ts';
 
@@ -65,7 +65,11 @@ export class TypeExpansion {
 
   #endlessFields(declaration: FieldedDeclaration): ReadonlySet<DeclaredField> {
     const endless = new Set(
-      endlessEdges(this.#reachedFrom(declaration))
+      endlessEdgesFrom(
+        [declaration],
+        (each) => this.#edges.get(each),
+        (edge) => edge.reached,
+      )
         .filter((edge) => edge.declaration === declaration)
         .map((edge) => edge.field),
     );
@@ -77,22 +81,6 @@ export class TypeExpansion {
       );
     }
     return endless;
-  }
-
-  /** The edges of `root`'s fields, and of every generic type those edges reach. */
-  #reachedFrom(root: FieldedDeclaration): readonly FieldEdge[] {
-    const visited = new Set<FieldedDeclaration>();
-    const pending = [root];
-    const edges: FieldEdge[] = [];
-    for (let declaration = pending.pop(); declaration !== undefined; declaration = pending.pop()) {
-      if (!visited.has(declaration)) {
-        visited.add(declaration);
-        const own = this.#edges.get(declaration);
-        edges.push(...own);
-        pending.push(...own.map((edge) => edge.reached));
-      }
-    }
-    return edges;
   }
 
   #fieldEdges(declaration: FieldedDeclaration): readonly FieldEdge[] {

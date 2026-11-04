@@ -29,7 +29,7 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FunctionCall, ResolvedCall } from '../resolved-call.ts';
-import { type ArgumentEdge, argumentEdges, endlessEdges } from '../types/expansion-edges.ts';
+import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from '../types/expansion-edges.ts';
 import type { ParameterKey } from '../types/type.ts';
 
 /** An edge of the graph, made by a call in `caller`'s code to `callee`, wherever it stands. */
@@ -66,7 +66,11 @@ export class Expansion {
       name: 'endless expansions',
       compute: (module) => {
         const own = this.#ownGeneric(module);
-        return endlessEdges(this.#reachedFrom(own)).filter((edge) => own.has(edge.caller));
+        return endlessEdgesFrom(
+          own,
+          (caller) => this.#edges.get(caller),
+          ({ callee }) => (this.#isNode(callee) ? callee : undefined),
+        ).filter((edge) => own.has(edge.caller));
       },
       equal: sameEdges,
     });
@@ -111,22 +115,6 @@ export class Expansion {
         checkerDiagnostics.expandingInstantiation(site.span, caller.name.text),
       );
     }
-  }
-
-  /** The edges of `roots`, and of every generic function those edges lead to. */
-  #reachedFrom(roots: ReadonlySet<FunctionDeclaration>): readonly Edge[] {
-    const visited = new Set<FunctionDeclaration>();
-    const pending = [...roots];
-    const edges: Edge[] = [];
-    for (let caller = pending.pop(); caller !== undefined; caller = pending.pop()) {
-      if (!visited.has(caller)) {
-        visited.add(caller);
-        const own = this.#edges.get(caller);
-        edges.push(...own);
-        pending.push(...own.map((edge) => edge.callee).filter((callee) => this.#isNode(callee)));
-      }
-    }
-    return edges;
   }
 }
 

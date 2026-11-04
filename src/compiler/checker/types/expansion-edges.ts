@@ -9,8 +9,13 @@
  * nested inside the argument rather than being the whole of it. Instantiation is endless exactly
  * when a cycle holds an expanding edge. Functions find their uses in their calls (rules/
  * expansion.ts), types in their fields (declarations/type-expansion.ts).
+ *
+ * Each user knows its graph only node by node (a function's calls, a type's fields), so the
+ * verdict walks from the nodes it judges to what their edges reach (`endlessEdgesFrom`), and the
+ * user says what its nodes are, their edges, and the node an edge leads to.
  */
 
+import { edgesReachedFrom } from '../../../structures/reachable.ts';
 import { stronglyConnected } from '../../../structures/strongly-connected.ts';
 import {
   type TypeParameter,
@@ -44,8 +49,17 @@ export function argumentEdges(
   });
 }
 
-/** The edges of `edges` that make instantiation endless: the expanding ones on a cycle. */
-export function endlessEdges<Edge extends ArgumentEdge>(edges: readonly Edge[]): readonly Edge[] {
+/**
+ * The edges that make instantiation endless, the expanding ones on a cycle, among those of `roots`
+ * and of every node their edges lead to: `targetOf` gives the node an edge's use reaches, or
+ * undefined for one outside the graph.
+ */
+export function endlessEdgesFrom<Node, Edge extends ArgumentEdge>(
+  roots: Iterable<Node>,
+  edgesOf: (node: Node) => readonly Edge[],
+  targetOf: (edge: Edge) => Node | undefined,
+): readonly Edge[] {
+  const edges = edgesReachedFrom(roots, edgesOf, targetOf);
   const componentOf = stronglyConnected(edges);
   return edges.filter((edge) => edge.expanding && componentOf(edge.from) === componentOf(edge.to));
 }

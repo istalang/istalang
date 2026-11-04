@@ -318,6 +318,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`p2-structural`): see Ranked Summary item 4.
 - **Duplicate reachable-edges graph walk in `Expansion` and `TypeExpansion` (`src/compiler/checker/rules/expansion.ts`, `declarations/type-expansion.ts`):**
   - `Expansion.#reachedFrom` and `TypeExpansion.#reachedFrom` implement the identical DFS worklist traversal (`visited`, `pending`, `edges`) before passing the collected edges to `endlessEdges` (`types/expansion-edges.ts`).
+  - **Done** (`p4-computed`): `endlessEdgesFrom` (`types/expansion-edges.ts`) walks from the judged nodes through `edgesReachedFrom` (`structures/reachable.ts`); each user supplies its nodes' edges and the node an edge leads to.
 - **Third parallel call-checking pipeline in `checkValueCall` (`src/compiler/checker/closures/value-calls.ts`, `calls/resolve.ts`):**
   - `checkValueCall` duplicates the error-argument guard, `takenBy` invocation, `explain` reporting, `fitArguments`, and `checkReferencedPlaces` of `resolveCall` (`calls/resolve.ts`).
   - **Done** (`p2-structural`): see Ranked Summary item 5; a value call has one callee and chooses nothing, so it takes `takenBy` directly and shares the rest by calling the same units.

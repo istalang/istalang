@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [reuse, structures, memo, kind-table, invariants]
 ---
 
@@ -22,6 +22,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 - keep a group of items per key, adding them one at a time → `addToGroup` (`src/structures/groups.ts`); group a whole list by a key every item has → `Map.groupBy`
 - find the last of items kept in ascending order whose key is at most a value, by bisection → `lastIndexAtMost` (`src/structures/sorted.ts`); never a `while (low < high)` loop of your own
 - find strongly connected components or test whether an edge lies on a cycle → `stronglyConnected`, `GraphEdge` (`src/structures/strongly-connected.ts`)
+- collect the edges a graph known node by node reaches from some roots, each node's edges once → `edgesReachedFrom` (`src/structures/reachable.ts`)
 - fail on a broken toolchain invariant → `unreachable`, `Unreachable` (`src/structures/unreachable.ts`)
 
 ## One-way rules
