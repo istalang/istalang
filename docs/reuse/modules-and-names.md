@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-30
+last_updated: 2026-11-04
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -76,5 +76,6 @@ tags: [reuse, language, modules, program, binder, names]
 ## One-way rules
 
 - Never spell a language-known module, declaration, variant, annotation or protocol function as a string literal; import it from `src/language/well-known.ts`.
+- Ask whether a name is the unnamed `_` with `isUnnamed`, and whether a bare pattern name binds with `bindsInPattern` (`src/language/naming.ts`); never compare against `'_'` or test a letter's case by hand.
 - Spell `Owner.name` with `staticName`, `module.name` with `qualifiedName`, and extern keys with `externKey` (`src/definition/extern-key.ts`).
 - `Program` loading does no I/O and imposes no path syntax; only `src/compiler/compile.ts` coordinates phases after `buildProgram`.

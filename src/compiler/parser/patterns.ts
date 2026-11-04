@@ -16,6 +16,7 @@
  * matched value; after a field it renames the field, so a field's own `as` is read first.
  */
 
+import { isUnnamed } from '../../language/naming.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { isComparisonOperator, operatorLevels, tighterLevel } from '../syntax/operators.ts';
 import type {
@@ -129,7 +130,7 @@ function parseRestPattern(parser: Parser): RestPattern {
 /** `_`, binding nothing, when the cursor stands at it. */
 function parseWildcard(parser: Parser): WildcardPattern | undefined {
   const { cursor } = parser;
-  return cursor.at('identifier') && parser.textOf(cursor.token) === '_'
+  return cursor.at('identifier') && isUnnamed(parser.textOf(cursor.token))
     ? { kind: 'WildcardPattern', span: parser.anchor(cursor.advance().span) }
     : undefined;
 }

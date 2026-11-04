@@ -25,10 +25,12 @@ export function isUnnamed(name: string): boolean {
   return name === '_';
 }
 
-/** Whether a bare name in a pattern binds a new variable rather than naming a variant. */
+/**
+ * Whether a bare name in a pattern binds a new variable rather than naming a variant: every name
+ * binds but one whose first letter is a type's.
+ */
 export function bindsInPattern(name: string): boolean {
-  const first = withoutPrivacy(name).charAt(0);
-  return first !== first.toUpperCase();
+  return !shapes.type.test(withoutPrivacy(name).charAt(0));
 }
 
 /** Whether a top-level name is private to its module, which never exports it (§3.13). */

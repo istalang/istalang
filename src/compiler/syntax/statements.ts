@@ -14,6 +14,7 @@
  * variable that holds the value until the block ends (§3.4).
  */
 
+import { isUnnamed } from '../../language/naming.ts';
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
 import { type Expression, itemName, itemValue, unparenthesized } from './expressions/index.ts';
@@ -147,7 +148,7 @@ export function droppedName(node: Drop): Identifier | undefined {
 /** Whether an assignment's target is `_`, which names no place but holds the value (§7). */
 export function isUnnamedTarget(target: Expression): boolean {
   const bare = unparenthesized(target);
-  return bare.kind === 'Identifier' && bare.text === '_';
+  return bare.kind === 'Identifier' && isUnnamed(bare.text);
 }
 
 /** Whether an assignment's target is `_` or takes a value apart into one. */

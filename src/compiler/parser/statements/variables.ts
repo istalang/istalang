@@ -6,6 +6,7 @@
  * An initializer is always required. A missing one is reported and stands as a Missing node.
  */
 
+import { isUnnamed } from '../../../language/naming.ts';
 import type { Hold, VariableDeclaration } from '../../syntax/statements.ts';
 import type { Parser } from '../parser.ts';
 import { parseTargets } from '../parts/names.ts';
@@ -23,7 +24,9 @@ function startsHeldVariableAt(parser: Parser, ahead: number): boolean {
   return (
     next.kind === 'let' ||
     next.kind === 'const' ||
-    (next.kind === 'identifier' && parser.textOf(next) === '_' && cursor.kindAt(ahead + 1) === '=')
+    (next.kind === 'identifier' &&
+      isUnnamed(parser.textOf(next)) &&
+      cursor.kindAt(ahead + 1) === '=')
   );
 }
 

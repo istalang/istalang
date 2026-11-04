@@ -20,7 +20,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { Convention } from '../../language/naming.ts';
+import { type Convention, isUnnamed } from '../../language/naming.ts';
 import { entryFunction } from '../../language/well-known.ts';
 import { memo, SequenceMemo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
@@ -178,10 +178,10 @@ export class LocalBinder {
 
   /** Resolves a use of `name`, or leaves it free for linking. */
   use(name: Identifier, scope: Scope, role: Role): void {
-    if (isMissingName(name) || (name.text === '_' && role === 'assignment')) {
+    if (isMissingName(name) || (isUnnamed(name.text) && role === 'assignment')) {
       return;
     }
-    if (name.text === '_') {
+    if (isUnnamed(name.text)) {
       this.report(binderDiagnostics.unnamedRead(name.span));
       return;
     }
@@ -248,7 +248,7 @@ export class LocalBinder {
     if (convention !== undefined) {
       this.checkConvention(name, convention);
     }
-    if (name.text === '_') {
+    if (isUnnamed(name.text)) {
       return false;
     }
     const defined = scope.define(name.text, entity);
