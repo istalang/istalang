@@ -1,0 +1,50 @@
+# outcome: "3 7 | 10 20 | 2 | red 0 | green 4"
+# An alias of a shape names it (§3.17): it builds the shape before `{`, takes static functions for
+# it, whichever alias of the shape they are declared through, and a generic one names a family. An
+# alias of an enum qualifies its variants.
+
+type Point = { x: Int; y: Int }
+type Spot = { y: Int; x: Int }
+type Pair<A, B> = { first: A; second: B }
+
+fn Point.origin() -> Point:
+  Point{x: 0, y: 0}
+
+fn Spot.of(x: Int, y: Int) -> Spot:
+  struct{x, y}
+
+fn Pair.of<A, B>(first: A, second: B) -> Pair<A, B>:
+  Pair{first, second}
+
+fn sum(p: { x: Int; y: Int }) -> Int:
+  p.x + p.y
+
+enum Color:
+  Red
+  Green
+
+type Hue = Color
+type Tint = Hue
+
+enum Figure:
+  Square{side: Int}
+  Dot
+
+type Form = Figure
+
+fn area(f: Form) -> Int:
+  match f:
+    case Form.Square{side}: side * side
+    case Form.Dot: 0
+
+fn name(c: Hue) -> String:
+  match c:
+    case Hue.Red: "red"
+    case Tint.Green: "green"
+
+async fn main():
+  const a = Point{x: 1, y: 2}
+  const b = Point.of(3, 4)
+  const p = Pair.of(10, 20)
+  const q = Pair<Int, Int>{first: 1, second: 1}
+  "" + sum(a) + " " + sum(b) + " | " + p.first + " " + p.second + " | " + (q.first + q.second) + " | " + name(Hue.Red) + " " + Spot.origin().x + " | " + name(Tint.Green) + " " + area(Form.Square{side: 2})

@@ -13,8 +13,9 @@
  *   argument-dependent lookup finds (§3.13), so it denotes a function set with no overloads of its
  *   own, and the checker reports it when lookup finds none. Anything else is reported with the
  *   reason its scopes noted, or as undeclared.
- * - A qualified name walks through modules and enums part by part, and stops at the first part
- *   that is neither: what follows is a member, the checker's to resolve. In an expression, a part
+ * - A qualified name walks through modules and enums part by part, an alias of an enum as the enum
+ *   (qualifiers.ts), and stops at the first part that is neither: what follows is a member, the
+ *   checker's to resolve. In an expression, a part
  *   an enum lacks may be a static function (`Color.default()`), so only a pattern or type reports
  *   it as a missing variant.
  *
@@ -30,26 +31,28 @@
  * to what an import brought in; the Linker runs both passes as it is made, in that order.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { addToGroup } from '../../structures/groups.ts';
-import { memo, SequenceMemo } from '../../structures/memo.ts';
-import { isTestModule, type ModuleId, type Program, programModule } from '../program/program.ts';
-import type { EnumDeclaration, FunctionDeclaration, Module } from '../syntax/declarations.ts';
-import type { Identifier } from '../syntax/node.ts';
-import { type AnchoredSpan, diagnosticIn } from '../syntax/positions.ts';
-import { bindModule, type ModuleBindings } from './bind-module.ts';
-import { binderDiagnostics } from './diagnostics.ts';
-import {
-  type Bindings,
-  type Entity,
-  type FunctionsEntity,
-  type NamespaceEntity,
-  qualifies,
-  type VariantEntity,
-} from './entities.ts';
-import { type FreeName, noOwnCall, type QualifiedPath } from './local-binder.ts';
-import { undeclaredName } from './naming.ts';
-import type { ImportPlaceholder, LocalEntity } from './scope.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { addToGroup } from '../../../structures/groups.ts';
+import { memo, SequenceMemo } from '../../../structures/memo.ts';
+import { isTestModule, type ModuleId, type Program, programModule } from '../../program/program.ts';
+import type { EnumDeclaration, FunctionDeclaration, Module } from '../../syntax/declarations.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import { diagnosticIn } from '../../syntax/positions.ts';
+import { bindModule, type ModuleBindings } from '../bind-module.ts';
+import { binderDiagnostics } from '../diagnostics.ts';
+import type {
+  Bindings,
+  Entity,
+  FunctionsEntity,
+  NamespaceEntity,
+  Qualifier,
+  VariantEntity,
+} from '../entities.ts';
+import { type FreeName, noOwnCall, type QualifiedPath } from '../local-binder.ts';
+import { undeclaredName } from '../naming.ts';
+import { type ModuleLinks, resolvedImport } from './module-links.ts';
+import { type AliasLookup, qualifierOf } from './qualifiers.ts';
+import { checkTestImports, meetPrelude } from './top-level-rules.ts';
 
 /**
  * Per module, the empty function set each called name no scope defines denotes. It is kept while
@@ -57,18 +60,6 @@ import type { ImportPlaceholder, LocalEntity } from './scope.ts';
  * body keeps it, and everything the checker took over about it.
  */
 const unseenFunctions = new SequenceMemo<Module['items'][number], Map<string, FunctionsEntity>>();
-
-interface ModuleLinks {
-  /** The module linked. */
-  readonly module: ModuleId;
-  readonly local: ModuleBindings;
-  /** Free names and the later parts of qualified names. */
-  readonly resolved: Map<Identifier, Entity>;
-  readonly imports: Map<ImportPlaceholder, Entity>;
-  /** Names that linking found denote nothing, though their tree resolved them or left them free. */
-  readonly refused: Set<Identifier>;
-  readonly diagnostics: Diagnostic<AnchoredSpan>[];
-}
 
 export function link(program: Program): Bindings {
   const linker = new Linker(program);
@@ -208,27 +199,8 @@ class Linker {
         links.imports.set(placeholder, entity);
       }
     }
-    this.#meetPrelude(id, links);
-    this.#checkTestImports(id, links);
-  }
-
-  /**
-   * Only a test module may import `testing`, or another test module, so production code can
-   * never install a mock (§10).
-   */
-  #checkTestImports(id: ModuleId, links: ModuleLinks): void {
-    const module = this.#program.modules.get(id);
-    if (module === undefined || isTestModule(this.#program, id)) {
-      return;
-    }
-    for (const [declaration, imported] of module.imports) {
-      if (imported === this.#program.roles.testing || isTestModule(this.#program, imported)) {
-        const target = this.#program.modules.get(imported);
-        links.diagnostics.push(
-          binderDiagnostics.testImport(declaration.path.span, target?.name ?? imported),
-        );
-      }
-    }
+    meetPrelude(links, this.#preludeFor(id));
+    checkTestImports(this.#program, id, links);
   }
 
   /** Resolves a module's free names, then the later parts of its qualified names. */
@@ -292,22 +264,6 @@ class Linker {
     return entity;
   }
 
-  /**
-   * Top-level names may not reuse the prelude's, except functions, declared or imported, which
-   * join its overloads. An import that failed to resolve was reported already.
-   */
-  #meetPrelude(id: ModuleId, links: ModuleLinks): void {
-    const prelude = this.#preludeFor(id);
-    for (const [text, { name, entity }] of links.local.topLevel) {
-      const preludeEntity = prelude?.exports.get(text);
-      const linked = resolvedImport(links, entity);
-      const joins = linked?.kind === 'functions' && preludeEntity?.kind === 'functions';
-      if (preludeEntity !== undefined && linked !== undefined && !joins) {
-        links.diagnostics.push(binderDiagnostics.preludeClash(name.span, text));
-      }
-    }
-  }
-
   /** The prelude's bindings as module `id` sees them: every module but the prelude itself. */
   #preludeFor(id: ModuleId): ModuleBindings | undefined {
     const { prelude } = this.#program.roles;
@@ -367,7 +323,7 @@ class Linker {
       if (next === undefined) {
         // Outside an expression no check reads the parts before the last; in one, `x.y` reads a
         // value's member, which the checker reports.
-        if (current !== undefined && !inExpression && !qualifies(current)) {
+        if (current !== undefined && !inExpression && this.#qualifierOf(current) === undefined) {
           links.diagnostics.push(binderDiagnostics.qualifiesNothing(part.span, qualifier.text));
         }
         return;
@@ -385,20 +341,35 @@ class Linker {
     inExpression: boolean,
     links: ModuleLinks,
   ): Entity | undefined {
-    if (!qualifies(current)) {
+    const qualifier = this.#qualifierOf(current);
+    if (qualifier === undefined) {
       return;
     }
-    if (current.kind === 'namespace') {
-      const module = this.#importedBy(current);
+    if (qualifier.kind === 'namespace') {
+      const module = this.#importedBy(qualifier);
       return module === undefined ? undefined : this.#exported(module, part, links);
     }
-    const variant = this.#variantsOfEnum.get(current.declaration)?.get(part.text);
+    const variant = this.#variantsOfEnum.get(qualifier.declaration)?.get(part.text);
     if (variant === undefined && !inExpression) {
-      const enumName = current.declaration.name.text;
+      const enumName = qualifier.declaration.name.text;
       links.diagnostics.push(binderDiagnostics.missingVariant(part.span, enumName, part.text));
     }
     return variant;
   }
+
+  /** What `entity` qualifies a name's next part through, an alias the enum it stands for. */
+  #qualifierOf(entity: Entity): Qualifier | undefined {
+    return qualifierOf(this.#aliasLookup, entity);
+  }
+
+  readonly #aliasLookup: AliasLookup = {
+    moduleOf: (entity) => this.moduleOf(entity),
+    topLevelNamed: (module, name) => this.topLevelNamed(module, name),
+    exportOf: (namespace, name) => {
+      const module = this.#importedBy(namespace);
+      return module === undefined ? undefined : this.#locals.get(module)?.exports.get(name);
+    },
+  };
 
   /** The module a namespace's import loaded. */
   #importedBy(namespace: NamespaceEntity): ModuleId | undefined {
@@ -407,9 +378,4 @@ class Linker {
       ? undefined
       : this.#program.modules.get(importer)?.imports.get(namespace.declaration);
   }
-}
-
-/** What a module-local entity denotes once linked: an import's target, or the entity itself. */
-function resolvedImport(links: ModuleLinks, entity: LocalEntity | undefined): Entity | undefined {
-  return entity?.kind === 'import' ? links.imports.get(entity) : entity;
 }

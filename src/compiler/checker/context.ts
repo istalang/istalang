@@ -17,7 +17,6 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { PrimitiveName } from '../../language/primitives.ts';
 import type { LanguageModule } from '../../language/well-known.ts';
 import type { Entries } from '../../structures/entries/index.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
@@ -75,14 +74,9 @@ import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-patte
 import type { JsonCodecs } from './json-form.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
 import type { Fit, Fitting, OptionalEntity } from './types/fit.ts';
+import type { StaticOwner } from './types/named-types.ts';
 import type { Substitution } from './types/substitution.ts';
-import type {
-  Constraint,
-  FieldMember,
-  FunctionType,
-  NominalDeclaration,
-  Type,
-} from './types/type.ts';
+import type { Constraint, FieldMember, FunctionType, Type } from './types/type.ts';
 
 /** That `typeArguments` gives `parameter` an argument at `at`, which must meet its constraints. */
 export interface ConstraintCheck {
@@ -191,9 +185,6 @@ export interface CheckerContext extends Checker {
     typeArguments: Substitution,
   ) => void;
 }
-
-/** What a static function is declared on: a declared type, or a primitive by name (§3.7). */
-export type StaticOwner = NominalDeclaration | PrimitiveName;
 
 export interface BodyContext {
   readonly checker: CheckerContext;

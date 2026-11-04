@@ -1,0 +1,33 @@
+/**
+ * What linking found for one module (index.ts): its free names and the later parts of its qualified
+ * names resolved, its imports' targets, the names it refused, and what it reported. The linker's
+ * parts share it, so none keeps a second record of what a name of a module denotes.
+ */
+
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { ModuleId } from '../../program/program.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { ModuleBindings } from '../bind-module.ts';
+import type { Entity } from '../entities.ts';
+import type { ImportPlaceholder, LocalEntity } from '../scope.ts';
+
+export interface ModuleLinks {
+  /** The module linked. */
+  readonly module: ModuleId;
+  readonly local: ModuleBindings;
+  /** Free names and the later parts of qualified names. */
+  readonly resolved: Map<Identifier, Entity>;
+  readonly imports: Map<ImportPlaceholder, Entity>;
+  /** Names that linking found denote nothing, though their tree resolved them or left them free. */
+  readonly refused: Set<Identifier>;
+  readonly diagnostics: Diagnostic<AnchoredSpan>[];
+}
+
+/** What a module-local entity denotes once linked: an import's target, or the entity itself. */
+export function resolvedImport(
+  links: ModuleLinks,
+  entity: LocalEntity | undefined,
+): Entity | undefined {
+  return entity?.kind === 'import' ? links.imports.get(entity) : entity;
+}

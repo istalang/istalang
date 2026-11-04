@@ -71,7 +71,7 @@ tags: [reuse, language, modules, program, binder, names]
 - find the hidden variable an async function holds its own call in, which its name before a `.` reads (§7) → `Bindings.ownCallOf` (`src/compiler/binder/entities.ts`)
 - check whether a `VariableEntity` is the own name of a local `fn` or named `Lambda` → `localFunctionOf` (`src/compiler/binder/entities.ts`)
 - tell an entity that is a type, as a name in a type must be, from the rest → `namesType` (`src/compiler/binder/entities.ts`)
-- ask whether names may follow an entity and a dot (a namespace, or an enum's variants) → `qualifies` (`src/compiler/binder/entities.ts`)
+- ask whether names may follow an entity and a dot (a namespace, or an enum's variants) → `qualifies`, `Qualifier`, and `isAlias` for an alias that may stand for one (`src/compiler/binder/entities.ts`); once linked, what an entity qualifies through, an alias of an enum the enum → `qualifierOf` (`src/compiler/binder/link/qualifiers.ts`)
 - collect all phase diagnostics or compile a program or its tests to a `Definition` → `diagnose`, `compileProgram`, `compileTests` (`src/compiler/compile.ts`)
 
 ## One-way rules

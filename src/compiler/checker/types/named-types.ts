@@ -1,56 +1,78 @@
 /**
  * The type a name names where a type is written in a value's place: as a static function's owner
- * or a conversion's target (§3.10), and in a pattern (§3.11). The checker's patterns
- * (patterns/matching.ts, patterns/downcasts.ts) and the editor's (completion) read the same rules
- * here, so what a pattern may name and what it then matches can't drift apart.
+ * or a conversion's target (§3.10), and in a pattern (§3.11); and what static functions on a type
+ * are declared on (§3.7, §3.17). The checker's patterns (patterns/matching.ts,
+ * patterns/downcasts.ts), its static functions (declarations/statics.ts, rules/clashes.ts,
+ * resolution/candidates.ts) and the editor's completion read the same rules here, so what a name
+ * may name and what it then means can't drift apart.
  *
- * - A pattern gives no type arguments, so it names a generic type only as a whole: against a value
- *   of that type it matches every instance, but against an `any` value, whose own type is one
- *   instance, it names none. A generic alias stands for no one type, so it names none either.
+ * - A name in a value's place gives no type arguments, so it names a generic type only as a whole:
+ *   against a value of that type it matches every instance, but against an `any` value, whose own
+ *   type is one instance, it names none. A generic alias stands for no one type, so it names none
+ *   either.
  * - An alias names the type it stands for; a trait, a type parameter, `Self` and `Never`, which no
  *   value has, name no type a value is tested for.
+ * - Static functions are declared on a nominal type's declaration, a primitive, or a shape (§3.17),
+ *   whichever alias names it; a generic alias of a shape names the family its parameters make,
+ *   keyed by them, so its static functions are reached through it.
  * - An `any` type holds a type whose values convert into it (types/fit.ts), the conversion's own
  *   rule, so what a pattern may name there and what may be converted in agree.
  * - Against an `any` value, a variant qualified by its enum names the enum, whose value is then
  *   tested for the variant; a bare variant name is chosen by the expected enum, so it names none.
  */
 
+import type { PrimitiveName } from '../../../language/primitives.ts';
 import { type Entity, typeEntity } from '../../binder/entities.ts';
-import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
+import type { ModuleId } from '../../program/program.ts';
+import type { FunctionDeclaration, TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
 import { sameType } from './identity.ts';
-import { parameterType } from './resolve-type.ts';
-import {
-  type AnyType,
-  aliasedAs,
-  isPrimitive,
-  type NominalDeclaration,
-  nominalType,
-  primitiveType,
-  type Type,
-} from './type.ts';
+import { typeOfEntity } from './resolve-type.ts';
+import { type AnyType, isPrimitive, type NominalDeclaration, type Type } from './type.ts';
+import { type ShapeKey, typeKeys } from './type-keys.ts';
 
 type Aliases = Pick<Checker, 'aliasedType'>;
 
-/** The type `entity` names, a trait's none: a declared type with no type arguments given. */
+/**
+ * The type `entity` names, a trait's none: a declared type or an alias with no type arguments
+ * given, so a generic one stands as a whole, with its own parameters where they are written.
+ */
 export function entityType(checker: Aliases, entity: Entity | undefined): Type | undefined {
-  if (entity?.kind === 'primitive') {
-    return primitiveType(entity.name);
-  }
-  if (entity?.kind !== 'type') {
-    return undefined;
-  }
-  const { declaration } = entity;
-  switch (declaration.kind) {
-    case 'TypeParameter':
-      return parameterType(declaration);
-    case 'TypeAliasDeclaration':
-      return aliasedAs(checker.aliasedType(declaration), { declaration, arguments: [] });
-    case 'TraitDeclaration':
-      return undefined;
+  return entity === undefined ? undefined : typeOfEntity(checker, entity, () => []);
+}
+
+/**
+ * What static functions are declared on (§3.7, §3.17): a nominal type's declaration, a primitive's
+ * name, or a shape's key, which no primitive's name is.
+ */
+export type StaticOwner = NominalDeclaration | PrimitiveName | ShapeKey;
+
+/** What static functions on `type` are declared on; undefined for a type that has none. */
+export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
+  switch (type?.kind) {
+    case 'primitive':
+      return type.name;
+    case 'nominal':
+      return type.entity.declaration;
+    case 'anonymous':
+      return typeKeys.shapeKey(type);
     default:
-      return nominalType(entity, []);
+      return undefined;
   }
+}
+
+/**
+ * What the static function `declaration` of `module` is declared on: the type its owner names, an
+ * alias the type it stands for; undefined for any other function, or an owner with none.
+ */
+export function declaredOwnerOf(
+  checker: Pick<Checker, 'aliasedType' | 'bindings'>,
+  module: ModuleId,
+  declaration: FunctionDeclaration,
+): StaticOwner | undefined {
+  return declaration.owner === undefined
+    ? undefined
+    : staticOwnerOf(entityType(checker, checker.bindings.entityOf(module, declaration.owner)));
 }
 
 /** The type a pattern naming an entity tests a value for. */

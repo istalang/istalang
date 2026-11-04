@@ -35,6 +35,7 @@ import type { SyntaxNode, SyntaxTree } from '../syntax/tree.ts';
 import type { NamedType, TypeNode } from '../syntax/types.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import {
+  isAlias,
   localFunctionOf,
   ownCallEntity,
   qualifies,
@@ -378,10 +379,10 @@ function functionsNamed(
 
 /**
  * Whether a name's later parts can be resolved by name: through a module or an enum, or through
- * whatever a name declared nowhere here turns out to be once linked.
+ * whatever a name declared nowhere here, or an alias, turns out to be once linked.
  */
 function mayQualify(head: LocalEntity | undefined): boolean {
-  return head === undefined || head.kind === 'import' || qualifies(head);
+  return head === undefined || head.kind === 'import' || qualifies(head) || isAlias(head);
 }
 
 /** `parts` without the missing name a path still being written ends in. */

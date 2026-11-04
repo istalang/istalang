@@ -11,6 +11,8 @@
  * A static function (`Duration.zero()`, `T.zero()`) is chosen among those declared on its type
  * and visible where it is called: in the calling module, the type's module, the prelude, or a
  * module the caller imports (§3.7); on a type parameter, among its constraints' static requirements.
+ * A shape has no module (§3.13), so argument-dependent lookup finds nothing for it, and its static
+ * functions are those the caller sees (§3.17).
  *
  * A witness of a trait's requirement (§3.10) is chosen among the functions declared beside the
  * types it takes, which argument-dependent lookup finds, or beside the trait, never among what the
@@ -23,8 +25,9 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import { isPlace } from '../../syntax/expressions/places.ts';
-import type { CheckerContext, StaticOwner } from '../context.ts';
+import type { CheckerContext } from '../context.ts';
 import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
+import { type StaticOwner, staticOwnerOf } from '../types/named-types.ts';
 import type { Type } from '../types/type.ts';
 import { anyTypesIn, parametersIn } from '../types/type-parts.ts';
 
@@ -34,9 +37,16 @@ export interface Candidate {
   readonly requirement?: Requirement;
 }
 
-/** What a static call is made through: a declared type or primitive, or a type parameter. */
+/**
+ * What a static call is made through: a declared type, a primitive or a shape, with the module
+ * declaring it, which a shape has none of; or a type parameter.
+ */
 export type StaticTarget =
-  | { readonly kind: 'owner'; readonly owner: StaticOwner; readonly module: ModuleId }
+  | {
+      readonly kind: 'owner';
+      readonly owner: StaticOwner;
+      readonly module: ModuleId | undefined;
+    }
   | { readonly kind: 'parameter'; readonly parameter: TypeParameter };
 
 /**
@@ -163,7 +173,8 @@ export function staticFunctionsAmong(
   modules: readonly ModuleId[],
   target: Extract<StaticTarget, { readonly kind: 'owner' }>,
 ): readonly FunctionDeclaration[] {
-  return [...new Set([...modules, target.module])].flatMap((each) =>
+  const declaring = target.module === undefined ? [] : [target.module];
+  return [...new Set([...modules, ...declaring])].flatMap((each) =>
     checker.staticFunctionsIn(each, target.owner),
   );
 }
@@ -191,7 +202,10 @@ function exportedFunctions(
   return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
 }
 
-/** The module declaring `type`: a nominal type's own, a primitive's the prelude; none for others. */
+/**
+ * The module declaring `type`: a nominal type's own, a primitive's the prelude; none for others,
+ * a shape among them (§3.13).
+ */
 function declaringModule(checker: CheckerContext, type: Type): ModuleId | undefined {
   const target = staticTargetOf(checker, type);
   return target?.kind === 'owner' ? target.module : undefined;
@@ -223,30 +237,21 @@ function requirementCandidates(
 
 /** What static calls through `type` look at; undefined for a type with no static functions. */
 export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarget | undefined {
-  switch (type.kind) {
-    case 'primitive': {
-      const prelude = checker.inputs.role('prelude');
-      return prelude === undefined
-        ? undefined
-        : { kind: 'owner', owner: type.name, module: prelude };
-    }
-    case 'nominal': {
-      const owner = type.entity.declaration;
-      return { kind: 'owner', owner, module: checker.moduleOf(owner) };
-    }
-    case 'parameter':
-      return type.declaration.kind === 'TypeParameter'
-        ? { kind: 'parameter', parameter: type.declaration }
-        : undefined;
-    case 'anonymous':
-    case 'tuple':
-    case 'function':
-    case 'any':
-    case 'error':
-      return undefined;
-    default: {
-      const unhandled: never = type;
-      return unhandled;
-    }
+  if (type.kind === 'parameter') {
+    return type.declaration.kind === 'TypeParameter'
+      ? { kind: 'parameter', parameter: type.declaration }
+      : undefined;
   }
+  const owner = staticOwnerOf(type);
+  if (owner === undefined) {
+    return undefined;
+  }
+  if (type.kind === 'nominal') {
+    return { kind: 'owner', owner, module: checker.moduleOf(type.entity.declaration) };
+  }
+  if (type.kind === 'primitive') {
+    const prelude = checker.inputs.role('prelude');
+    return prelude === undefined ? undefined : { kind: 'owner', owner, module: prelude };
+  }
+  return { kind: 'owner', owner, module: undefined };
 }

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-25
-last_updated: 2026-10-30
+last_updated: 2026-11-04
 tags: [tracker]
 ---
 
@@ -94,7 +94,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q35 | completion/grammar/words.ts restates the parser's dispatch tables (parser internals are closed to completion); its property test holds the lists to the parser one way only (offered implies accepted). | small | none; can be done now | completion C2a report 2026-10-30 |
 | Q36 | An `Invalid` node now holds the annotations the parser rejected, and the binder binds them at each list site that skips `Invalid` items (module, blocks, fields, variants, match and select cases): a new list site must remember to, and every generic tree walker (semantic tokens, hover) sees those names. One binding rule for an `Invalid`'s annotations would remove the per-site duty. | small | none; can be done now | completion End fix E4 report 2026-10-30 |
 | Q37 | `checker/rules/computation.ts` is 407 lines, over the 400-line limit; it becomes `computation/index.ts` with its parts beside it. | small | none; can be done now | fast-wins report 2026-11-04 |
-| Q38 | Three files over the 400-line limit: `compiler/binder/link.ts` (415), `compiler/checker/context.ts` (437) and `compiler/checker/types/type.ts` (419); each becomes `name/index.ts` with its parts beside it. | small | none; can be done now | proposal 1 report 2026-11-04 |
+| Q38 | `compiler/checker/context.ts` (437) is over the 400-line limit; it becomes `context/index.ts` with its parts beside it. | small | none; can be done now | proposal 1 report 2026-11-04 |
 
 ### Behaviour and correctness (B)
 
@@ -121,5 +121,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B22 | Whether a name is a method is decided by name only for a member read (structs.ts `noField`, 5504 "is a method: call it") and a call's 5214, while completion and the members query judge by the receiver: `x.filter` on an int reports "'filter' is a method", and `x.filter(f)` reports 5001 at the receiver, not 5214. One rule for all three changes diagnostics. | medium | none; can be done now | completion fix 2026-10-30 |
 | B23 | Completion items carry no replace range, so the editor's word decides what an accepted item replaces: in an import path the word stops at `-` or `.`, and accepting `completion-scenario-1` after `completion-sc` may replace only `sc`. Needs a text-edit range in the item model and its LSP mapping. | small | none; can be done now | completion C2f report 2026-10-30 |
 | B24 | `parse.bench.ts` fails before timing anything: its spec-example input no longer parses clean (1001 "Unexpected character '…'", 624 diagnostics). Filter the placeholder examples (spec-examples.ts `isPlaceholder`) or the ones holding '…'. | small | none; can be done now | completion End fix E1 report 2026-10-30 |
-| B25 | An alias of an enum (`alias E = Color`) doesn't qualify its variants: `E.Red` failed silently before, and outside an expression now reports 4018. Whether an alias qualifies is a spec question. | small | the human's spec wording | completion End fix E1 report 2026-10-30 |
 | B26 | Semantic tokens are syntax-only in patterns: `Int` in `case Int` (a type pattern) shows as a variable, as a struct name in a pattern did before. The checker knows what a pattern's name names (`checker/types/named-types.ts`). | small | none; can be done now | proposal 1 report 2026-11-04 |

@@ -1,8 +1,8 @@
 /**
  * Static functions by the type they are declared on (§3.7): `fn Duration.zero()` belongs to
- * `Duration`, not to an overload set of `zero`. Each module's are indexed once, by the declaration
- * of the type, or the primitive's name, that the owner resolves to where it is written; an owner
- * that is an alias belongs to the type the alias stands for.
+ * `Duration`, not to an overload set of `zero`. Each module's are indexed once, by what their owner
+ * names where it is written, as types/named-types.ts keys it: an alias's owner is the type it
+ * stands for, a shape among them (§3.17).
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
@@ -10,8 +10,8 @@ import { sameEntries, sameItems } from '../../../structures/equality.ts';
 import { addToGroup } from '../../../structures/groups.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { CheckerContext, CheckerNote, StaticOwner } from '../context.ts';
-import { isNominalEntity } from '../types/type.ts';
+import type { CheckerContext, CheckerNote } from '../context.ts';
+import { declaredOwnerOf, type StaticOwner } from '../types/named-types.ts';
 
 export class StaticFunctions {
   readonly #checker: CheckerContext;
@@ -40,34 +40,11 @@ export class StaticFunctions {
     const items = this.#checker.inputs.itemsOf(module);
     const statics = declaredFunctions({ items }).filter((declared) => declared.owner !== undefined);
     for (const item of statics) {
-      const owner = this.#ownerOf(module, item);
+      const owner = declaredOwnerOf(this.#checker, module, item);
       if (owner !== undefined) {
         addToGroup(index, owner, item);
       }
     }
     return index;
-  }
-
-  #ownerOf(module: ModuleId, declaration: FunctionDeclaration): StaticOwner | undefined {
-    const checker = this.#checker;
-    const entity =
-      declaration.owner === undefined
-        ? undefined
-        : checker.bindings.entityOf(module, declaration.owner);
-    if (entity?.kind === 'primitive') {
-      return entity.name;
-    }
-    if (entity?.kind !== 'type') {
-      return undefined;
-    }
-    const { declaration: owner } = entity;
-    if (owner.kind === 'TypeAliasDeclaration') {
-      const aliased = checker.aliasedType(owner);
-      if (aliased.kind === 'primitive') {
-        return aliased.name;
-      }
-      return aliased.kind === 'nominal' ? aliased.entity.declaration : undefined;
-    }
-    return isNominalEntity(entity) ? entity.declaration : undefined;
   }
 }

@@ -27,6 +27,7 @@ import {
   type EnumDeclaration,
   type FunctionDeclaration,
   hasDefault,
+  type TypeAliasDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import {
@@ -55,10 +56,11 @@ import { typeText } from '../types/type-text.ts';
 
 /**
  * What a literal builds: its fields as declared, how to name its type from type arguments, and
- * the generic declaration they belong to, absent for an anonymous struct.
+ * the generic declaration they belong to: a struct's or a variant's enum, an alias of a shape for
+ * a shape it names (§3.17), absent for any other shape.
  */
 export interface LiteralShape {
-  readonly owner: DeclaredStruct | EnumDeclaration | undefined;
+  readonly owner: DeclaredStruct | EnumDeclaration | TypeAliasDeclaration | undefined;
   /** The function the declaration's fields read as when one has a default (§3.1). */
   readonly defaults?: FunctionDeclaration | undefined;
   /** The type arguments already decided, written or expected. */
@@ -169,7 +171,7 @@ export function checkLiteralFields(
 export function knownArguments(
   context: BodyContext,
   typeNode: NamedType,
-  owner: DeclaredStruct | EnumDeclaration,
+  owner: Exclude<LiteralShape['owner'], undefined>,
   expected: Type | undefined,
 ): readonly Type[] | undefined {
   if (typeNode.typeArguments.length === 0) {
@@ -185,6 +187,10 @@ function argumentsFor(
   owner: LiteralShape['owner'],
   type: Type | undefined,
 ): readonly Type[] | undefined {
+  const alias = type?.alias;
+  if (alias !== undefined && alias.declaration === owner) {
+    return alias.arguments;
+  }
   return type?.kind === 'nominal' && type.entity.declaration === owner ? type.arguments : undefined;
 }
 

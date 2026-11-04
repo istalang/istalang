@@ -51,7 +51,7 @@ import type {
   SignatureParameter,
   VariantMember,
 } from './check.ts';
-import type { CheckerContext, CheckerNote, ProgramInputs, StaticOwner } from './context.ts';
+import type { CheckerContext, CheckerNote, ProgramInputs } from './context.ts';
 import { Aliases } from './declarations/aliases.ts';
 import { ConstantChecks } from './declarations/constants.ts';
 import { FunctionChecks } from './declarations/functions.ts';
@@ -71,6 +71,7 @@ import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
 import { resolveAnyType } from './traits/any-types.ts';
 import { type Fit, type Fitting, fitOf, type OptionalEntity } from './types/fit.ts';
+import type { StaticOwner } from './types/named-types.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
 import type { Substitution } from './types/substitution.ts';
 import {

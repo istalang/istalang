@@ -150,14 +150,20 @@ export type Entity =
   | VariantsEntity
   | NamespaceEntity;
 
-/** Whether names may follow `entity` and a dot: a module's namespace, or an enum's variants. */
-export function qualifies(
-  entity: Entity,
-): entity is NamespaceEntity | (TypeEntity & { readonly declaration: EnumDeclaration }) {
+/** What names may follow and a dot: a module's namespace, or an enum's variants. */
+export type Qualifier = NamespaceEntity | (TypeEntity & { readonly declaration: EnumDeclaration });
+
+/** Whether `entity` is a qualifier itself; an alias may stand for one (binder/link/qualifiers.ts). */
+export function qualifies(entity: Entity): entity is Qualifier {
   return (
     entity.kind === 'namespace' ||
     (entity.kind === 'type' && entity.declaration.kind === 'EnumDeclaration')
   );
+}
+
+/** Whether `entity` is an alias, which may stand for a qualifier once linked (§3.17). */
+export function isAlias(entity: Entity): boolean {
+  return entity.kind === 'type' && entity.declaration.kind === 'TypeAliasDeclaration';
 }
 
 /** Whether `entity` is a type, as a name written in a type must be. */

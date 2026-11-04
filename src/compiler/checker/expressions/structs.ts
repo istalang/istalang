@@ -20,7 +20,6 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { Entity } from '../../binder/entities.ts';
 import { isDeclaredStruct, isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
 import { linkOperator } from '../../syntax/expressions/chains.ts';
 import {
@@ -52,19 +51,14 @@ import {
   byFieldName,
   errorType,
   type FieldMember,
-  isNominalEntity,
   type NominalEntity,
   type NominalType,
   shapeType,
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import {
-  checkLiteralFields,
-  knownArguments,
-  type LiteralShape,
-  type LiteralSpread,
-} from './literal-fields.ts';
+import { checkLiteralFields, type LiteralShape, type LiteralSpread } from './literal-fields.ts';
+import { builtThrough } from './literal-types.ts';
 import { entityValueType } from './names.ts';
 import { checkVariantLiteral, checkVariantName, variantsAccepted } from './variants.ts';
 
@@ -90,7 +84,10 @@ function leadingSpread(node: FieldsLiteral): LiteralSpread | undefined {
   return first?.kind === 'Spread' ? { node: first } : undefined;
 }
 
-/** A literal naming a variant or a declared struct, with `new` or not. */
+/**
+ * A literal naming a variant or a declared struct, with `new` or not, or an alias of a struct type,
+ * which builds the type it stands for (§3.17).
+ */
 export function checkNamedLiteral(
   context: BodyContext,
   node: NamedLiteral,
@@ -99,20 +96,28 @@ export function checkNamedLiteral(
   const typeNode = node.type;
   const name = lastName(typeNode.path);
   const entity = context.entityOf(name);
-  checkNew(context, node, entity);
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
+    checkNew(context, node, false);
     return checkVariantLiteral(context, node, entity, expected);
   }
   if (entity === undefined) {
     return errorType;
   }
-  if (entity.kind !== 'type' || !isNominalEntity(entity) || !isDeclaredStruct(entity.declaration)) {
+  const built = builtThrough(context, node, entity, expected);
+  checkNew(
+    context,
+    node,
+    built?.kind === 'declared' && built.struct.kind === 'SharedStructDeclaration',
+  );
+  if (built === undefined) {
     context.report(checkerDiagnostics.notStruct(typeNode.span, name.text));
     return errorType;
   }
-  const known = knownArguments(context, typeNode, entity.declaration, expected);
-  const shape = declaredShape(context, entity, known);
-  if (shape.fields.length === 0 && entity.declaration.kind === 'StructDeclaration') {
+  if (built.kind === 'shape') {
+    return checkLiteralFields(context, node, built.shape, leadingSpread(node));
+  }
+  const shape = declaredShape(context, built.entity, built.known);
+  if (shape.fields.length === 0 && built.struct.kind === 'StructDeclaration') {
     context.report(checkerDiagnostics.bareStruct(node.span, name.text));
     checkValuesAlone(context, node);
     return shape.typeOf([]);
@@ -124,11 +129,7 @@ export function checkNamedLiteral(
  * Reports a literal of a shared struct without `new`, or `new` before another type (§3.18); the
  * literal is checked as written all the same.
  */
-function checkNew(context: BodyContext, node: NamedLiteral, entity: Entity | undefined): void {
-  if (entity === undefined) {
-    return;
-  }
-  const isShared = entity.kind === 'type' && entity.declaration.kind === 'SharedStructDeclaration';
+function checkNew(context: BodyContext, node: NamedLiteral, isShared: boolean): void {
   const name = lastName(node.type.path).text;
   if (isShared && node.kind === 'StructLiteral') {
     context.report(checkerDiagnostics.sharedNeedsNew(node.type.span, name));

@@ -34,6 +34,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - `ownerKeyOf` (`rules/clashes.ts:121–131`) resolves `declaration.owner` separately using `checker.typeKeys.identityOf(entity.declaration)` *without* unwrapping `TypeAliasDeclaration`, so `checkClashes` misses overload clashes when one static function is declared on a type alias and another on the aliased type.
    - `ownsStatics` (`completion/places/declared-name.ts:47–59`) defines a third list (`staticOwnerKinds`) that also omits `TypeAliasDeclaration`.
    - **Fix:** Give static-owner resolution one home in the checker (`staticTargetOf` / `StaticFunctions`) and route `checkClashes` and `declared-name.ts` through it.
+   - **Done** (`p2-structural`): `staticOwnerOf` and `declaredOwnerOf` (`types/named-types.ts`) are the one home: `StaticFunctions`, `checkClashes` (grouping by owner, so an alias's statics clash with its type's), `staticTargetOf` and completion's declared names all read them. `typeOfEntity` (`types/resolve-type.ts`) is the one dispatch from a name to its type, which `namedType` and `entityType` share. An alias of a shape owns statics as the shape (§3.17).
 
 5. **`[medium]` Three parallel call-checking pipelines across `resolveCall`, `implicitCall`, and `checkValueCall` (`src/compiler/checker/calls/resolve.ts:103`, `src/compiler/checker/resolution/implicit.ts:69`, `src/compiler/checker/closures/value-calls.ts:28`)**
    - `resolveCall` (`complete` in `calls/resolve.ts:103–153`) and `implicitCall` (`resolution/implicit.ts:69–114`) duplicate the post-candidate pipeline (`choose`, `ambiguousCall` with `argumentListText`, `instantiate`, `fitArguments`, `callMade`, and result `substitute`), while `checkValueCall` (`closures/value-calls.ts:28–75`) duplicates the single-callee argument binding (`takenBy`), error reporting (`explain`), `fitArguments`, and `checkReferencedPlaces`.
@@ -264,6 +265,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `implicitCall` and `resolveCall` (`complete`) both check for `error` argument types, run `choose`, report `checkerDiagnostics.ambiguousCall(..., argumentListText(...))` on `'several'`, call `instantiate(useSite(...), application, expected)`, call `fitArguments(context, request.arguments, filledTypes(...))`, build `callMade(application, instantiation)`, and return `substitute(application.signature.result(), instantiation.substitution)`.
 - **Duplicate entity-to-type dispatch in `entityType` (`src/compiler/checker/resolution/named.ts`) vs. `namedType` (`src/compiler/checker/types/resolve-type.ts`):**
   - Both switch on `entity.kind` (`primitive`, `type`) and `entity.declaration.kind` (`TypeParameter`, `TypeAliasDeclaration`, `TraitDeclaration`, nominal declarations) to construct a `Type`, with `entityType` hard-coding `arguments: []` on `TypeAliasDeclaration` without filling default type parameters.
+  - **Done** (`p2-structural`): both go through `typeOfEntity` (`types/resolve-type.ts`), given the arguments each finds: a written type's, defaults filled, or none for a name in a value's place, which names a generic declaration, an alias too, as a whole.
 - **Derived traits if-chain in `conform` (`src/compiler/checker/resolution/conformance.ts`; tracked as `Q7`):**
   - `conform` branches on `isSendableTrait`, then `jsonDirectionOf` (`codecWitness`), before checking trait fields and functions (`Q7`).
 
@@ -302,6 +304,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `StaticFunctions.#ownerOf` (`declarations/statics.ts`) unwraps `TypeAliasDeclaration` via `checker.aliasedType(owner)` so `fn Duration.zero()` and `fn MyDuration.zero()` (for `type MyDuration = Duration`) index under the same `StaticOwner`.
   - `ownerKeyOf` (`rules/clashes.ts`) resolves `declaration.owner` separately using `checker.typeKeys.identityOf(entity.declaration)` without unwrapping `TypeAliasDeclaration`, so `checkClashes` misses overload clashes when one static function is declared through a type alias.
   - Both duplicate `entityType(checker, entity)` (`resolution/named.ts`) + `staticTargetOf(checker, type)` (`resolution/candidates.ts`).
+  - **Done** (`p2-structural`): see Ranked Summary item 4.
 - **Duplicate reachable-edges graph walk in `Expansion` and `TypeExpansion` (`src/compiler/checker/rules/expansion.ts`, `declarations/type-expansion.ts`):**
   - `Expansion.#reachedFrom` and `TypeExpansion.#reachedFrom` implement the identical DFS worklist traversal (`visited`, `pending`, `edges`) before passing the collected edges to `endlessEdges` (`types/expansion-edges.ts`).
 - **Third parallel call-checking pipeline in `checkValueCall` (`src/compiler/checker/closures/value-calls.ts`, `calls/resolve.ts`):**
@@ -419,6 +422,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Duplicate `ownsStatics` / `staticOwnerKinds` in `completion/places/declared-name.ts` vs. `isNominalEntity` (`src/compiler/checker/types/type.ts`):**
   - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/declarations/statics.ts`).
+  - **Done** (`p2-structural`): `staticOwners` asks `staticOwnerOf(entityType(…))` (`types/named-types.ts`), so an alias, of a shape too, is offered.
 - **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/language/well-known.ts`):**
   - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/language/well-known.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
   - **Done** (`fast-wins`): `receiver` names `receiverParameter`.

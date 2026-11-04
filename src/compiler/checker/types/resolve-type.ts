@@ -27,6 +27,7 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import type { Entity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import {
   type Field,
@@ -218,9 +219,33 @@ function namedType(resolution: Resolution, node: NamedType): Type {
   const { checker, module } = resolution;
   const name = lastName(node.path);
   const entity = checker.bindings.entityOf(module, name);
-  switch (entity?.kind) {
-    case undefined:
-      return errorType;
+  if (entity === undefined) {
+    return errorType;
+  }
+  const type = typeOfEntity(checker, entity, (declaration) =>
+    argumentsOf(resolution, node, declaration),
+  );
+  if (type === undefined) {
+    checker.report(module, checkerDiagnostics.notType(node.span, name.text));
+  }
+  return type ?? errorType;
+}
+
+/**
+ * The type `entity` names, given the arguments `typeArgumentsOf` finds for a generic declaration: a
+ * primitive, `Self` or a type parameter, a nominal type, or an alias as the type it stands for,
+ * written through it (§3.17); the error type when `typeArgumentsOf` finds none, and undefined for what
+ * names no type, a trait among them. The one dispatch from a name to its type, whether written in a
+ * type (`namedType`) or in a value's place (named-types.ts).
+ */
+export function typeOfEntity(
+  checker: Pick<CheckerContext, 'aliasedType'>,
+  entity: Entity,
+  typeArgumentsOf: (
+    declaration: NominalDeclaration | TypeAliasDeclaration,
+  ) => readonly Type[] | undefined,
+): Type | undefined {
+  switch (entity.kind) {
     case 'primitive':
       return primitiveType(entity.name);
     case 'self':
@@ -230,37 +255,29 @@ function namedType(resolution: Resolution, node: NamedType): Type {
       switch (declaration.kind) {
         case 'TypeParameter':
           return parameterType(declaration);
-        case 'StructDeclaration':
-        case 'SharedStructDeclaration':
-        case 'EnumDeclaration':
-        case 'ExternStructDeclaration': {
-          const typeArguments = argumentsOf(resolution, node, declaration);
-          return typeArguments === undefined ? errorType : nominalType(entity, typeArguments);
-        }
-        case 'TypeAliasDeclaration': {
-          const typeArguments = argumentsOf(resolution, node, declaration);
-          return typeArguments === undefined
-            ? errorType
-            : aliasedAs(
-                substitute(
-                  checker.aliasedType(declaration),
-                  substitutionFor(declaration.typeParameters, typeArguments),
-                ),
-                { declaration, arguments: typeArguments },
-              );
-        }
         case 'TraitDeclaration':
-          checker.report(module, checkerDiagnostics.notType(node.span, name.text));
-          return errorType;
+          return undefined;
+        case 'TypeAliasDeclaration': {
+          const typeArguments = typeArgumentsOf(declaration);
+          if (typeArguments === undefined) {
+            return errorType;
+          }
+          // No arguments name a generic alias as a whole, its own parameters standing in it.
+          const aliased = checker.aliasedType(declaration);
+          const type =
+            typeArguments.length === 0
+              ? aliased
+              : substitute(aliased, substitutionFor(declaration.typeParameters, typeArguments));
+          return aliasedAs(type, { declaration, arguments: typeArguments });
+        }
         default: {
-          const unhandled: never = declaration;
-          return unhandled;
+          const typeArguments = typeArgumentsOf(declaration);
+          return typeArguments === undefined ? errorType : nominalType(entity, typeArguments);
         }
       }
     }
     default:
-      checker.report(module, checkerDiagnostics.notType(node.span, name.text));
-      return errorType;
+      return undefined;
   }
 }
 

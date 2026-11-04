@@ -20,32 +20,40 @@
  * smallest number both take decides.
  *
  * A module's functions are compared with each other and with the prelude's of the same name, which
- * they join (§3.13); a clash is reported at the later declaration.
+ * they join (§3.13); a static function with the others declared on what its owner names, as
+ * types/named-types.ts keys it, so an alias's are its type's (§3.17). A clash is reported at the
+ * later declaration.
  */
 
-import { staticName } from '../../../language/static-names.ts';
 import { addToGroup } from '../../../structures/groups.ts';
+import { memo } from '../../../structures/memo.ts';
 import type { ModuleId } from '../../program/program.ts';
 import {
   declaredFunctions,
   type FunctionDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
-import type { Identifier } from '../../syntax/node.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { positionalCounts } from '../resolution/binding.ts';
 import { signatureOf } from '../resolution/choice.ts';
 import { withoutOptionals } from '../types/fit.ts';
+import { declaredOwnerOf, type StaticOwner } from '../types/named-types.ts';
 import type { ParameterKey, RestSlot, Type } from '../types/type.ts';
 import { mentionsError } from '../types/type-parts.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
-  const groups = new Map<string, FunctionDeclaration[]>();
-  for (const item of declaredFunctions({ items: checker.inputs.itemsOf(module) })) {
-    const group = groupOf(checker, module, item);
-    const earlier = groups.get(group) ?? [];
+  const groups = new Map<StaticOwner | undefined, Map<string, FunctionDeclaration[]>>();
+  const functions = declaredFunctions({ items: checker.inputs.itemsOf(module) });
+  // A static function whose owner names no type with statics belongs to none, so clashes with none.
+  const owned = functions.flatMap((item) => {
+    const owner = declaredOwnerOf(checker, module, item);
+    return item.owner !== undefined && owner === undefined ? [] : [{ item, owner }];
+  });
+  for (const { item, owner } of owned) {
+    const group = memo(groups, owner, () => new Map<string, FunctionDeclaration[]>());
+    const earlier = group.get(item.name.text) ?? [];
     const shape = shapeOf(checker, item);
     const clashing = [...earlier, ...preludeOverloads(checker, module, item)].some((other) =>
       clash(shape, shapeOf(checker, other)),
@@ -53,31 +61,8 @@ export function checkClashes(checker: CheckerContext, module: ModuleId): void {
     if (clashing) {
       checker.report(module, checkerDiagnostics.overloadClash(item.name.span, item.name.text));
     }
-    addToGroup(groups, group, item);
+    addToGroup(group, item.name.text, item);
   }
-}
-
-/** Which functions `declaration` may clash with: its name, and its type for a static function. */
-function groupOf(
-  checker: CheckerContext,
-  module: ModuleId,
-  declaration: FunctionDeclaration,
-): string {
-  if (declaration.owner === undefined) {
-    return declaration.name.text;
-  }
-  return staticName(ownerKeyOf(checker, module, declaration.owner), declaration.name.text);
-}
-
-/** The type a static function's owner names, as a key: its declaration, or the primitive. */
-function ownerKeyOf(checker: CheckerContext, module: ModuleId, owner: Identifier): string {
-  const entity = checker.bindings.entityOf(module, owner);
-  if (entity?.kind === 'primitive') {
-    return entity.name;
-  }
-  return entity?.kind === 'type'
-    ? `#${checker.typeKeys.identityOf(entity.declaration)}`
-    : owner.text;
 }
 
 function preludeOverloads(

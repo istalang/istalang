@@ -15,7 +15,7 @@
 import { memo } from '../../structures/memo.ts';
 import type { Program } from '../program/program.ts';
 import type { Bindings } from './entities.ts';
-import { link } from './link.ts';
+import { link } from './link/index.ts';
 
 const linked = new WeakMap<Program, Bindings>();
 

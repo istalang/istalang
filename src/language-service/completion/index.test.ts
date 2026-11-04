@@ -48,6 +48,25 @@ describe('completion', () => {
     ]);
   });
 
+  it("offers an alias's statics and variants, and an alias of a shape as a static's owner (§3.17)", () => {
+    const point = ['type Point = { x: Int; y: Int }', 'type Spot = { y: Int; x: Int }', ''];
+    const origin = 'fn Point.origin() -> Point: Point{x: 0, y: 0}';
+    expect(names(...point, origin, 'fn f() -> Spot: Spot.or‸igin()')).toContain('origin');
+    const color = ['enum Color:', '  Red', '  Green', 'type Hue = Color', ''];
+    expect(names(...color, 'fn f() -> Color: Hue.R‸ed')).toEqual(['Red', 'Green']);
+    expect(
+      names(
+        ...color,
+        'fn f(c: Hue) -> Int:',
+        '  match c:',
+        '    case Hue.‸:',
+        '      1',
+        '    case _: 2',
+      ),
+    ).toEqual(['Red', 'Green']);
+    expect(names(...point, 'fn Poi‸')).toContain('Point');
+  });
+
   it('offers what a shared struct holds after `->` and `?->`, before a member is written', () => {
     const counter = ['shared struct Counter:', '  count: Int', ''];
     expect(names(...counter, 'fn f(c: Counter) -> Int:', '  c->‸', '  1')).toEqual(['count']);

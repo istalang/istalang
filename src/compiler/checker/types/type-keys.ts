@@ -19,7 +19,7 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { ParameterKey, Type } from './type.ts';
+import type { AnonymousStructType, ParameterKey, Type } from './type.ts';
 
 /** Every identity numbered so far; an object no longer reachable lets its number go. */
 const identities = new WeakMap<object, number>();
@@ -34,7 +34,12 @@ export interface TypeKeys {
   readonly identityOf: (object: object) => number;
   /** The key of `type`. Type parameters in `positions` are keyed by their position there. */
   readonly typeKey: (type: Type, positions?: ReadonlyMap<ParameterKey, number>) => string;
+  /** The key of a shape, `typeKey`'s, which starts with `{`, as no other type's does. */
+  readonly shapeKey: (type: AnonymousStructType) => ShapeKey;
 }
+
+/** A shape's key (`TypeKeys.shapeKey`). */
+export type ShapeKey = `{${string}`;
 
 function identityOf(object: object): number {
   return memo(identities, object, () => {
@@ -63,7 +68,7 @@ function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
     case 'nominal':
       return `#${identityOf(type.entity)}<${type.arguments.map(key).join(',')}>`;
     case 'anonymous':
-      return `{${type.fields.map((field) => `${field.name}:${key(field.type)}`).join(',')}}`;
+      return shapeKeyOf(type, positions);
     case 'tuple':
       return `(${type.elements.map(key).join(',')})`;
     case 'function': {
@@ -90,5 +95,16 @@ function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
   }
 }
 
+function shapeKeyOf(
+  type: AnonymousStructType,
+  positions: ReadonlyMap<ParameterKey, number> | undefined,
+): ShapeKey {
+  return `{${type.fields.map((field) => `${field.name}:${typeKey(field.type, positions)}`).join(',')}}`;
+}
+
 /** The one numbering of identities every checker keys types by. */
-export const typeKeys: TypeKeys = { identityOf, typeKey };
+export const typeKeys: TypeKeys = {
+  identityOf,
+  typeKey,
+  shapeKey: (type) => shapeKeyOf(type, undefined),
+};
