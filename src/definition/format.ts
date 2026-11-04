@@ -40,12 +40,22 @@ interface Persisted {
   readonly hash: string;
 }
 
+/** A text read and written back: its value, its canonical text and that text's hash. */
+interface Canonical<Value> extends Persisted {
+  readonly value: Value;
+}
+
 export interface Format<Body extends z.ZodType> {
   readonly name: string;
   readonly version: number;
   /** Decodes and validates a text; throws FormatError on any mismatch. */
   readonly read: (text: string) => z.output<Body>;
   readonly write: (value: z.output<Body>) => Persisted;
+  /**
+   * Reads a text and writes its value back, for a reader that keys what it read by its hash; throws
+   * FormatError as `read` does.
+   */
+  readonly readCanonical: (text: string) => Canonical<z.output<Body>>;
 }
 
 const envelope = z.strictObject({ format: z.unknown(), version: z.unknown(), body: z.unknown() });
@@ -56,7 +66,7 @@ export function defineFormat<Body extends z.ZodType>(
   version: number,
   body: Body,
 ): Format<Body> {
-  return {
+  const persisted: Format<Body> = {
     name,
     version,
     read(text) {
@@ -85,7 +95,12 @@ export function defineFormat<Body extends z.ZodType>(
       const text = encodeJson({ format: name, version, body: result.data });
       return { text, hash: contentHash(text) };
     },
+    readCanonical(text) {
+      const value = persisted.read(text);
+      return { value, ...persisted.write(value) };
+    },
   };
+  return persisted;
 }
 
 /** Refuses a body nesting deeper than `maximumTextDepth`, which the codecs can't walk. */

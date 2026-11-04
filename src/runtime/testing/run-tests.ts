@@ -73,8 +73,7 @@ export function* runTests(
   text: string,
   options: TestRunOptions,
 ): Generator<bigint | TestReport, void, undefined> {
-  const definition = definitionFormat.read(text);
-  const { hash } = definitionFormat.write(definition);
+  const { value: definition, hash } = definitionFormat.readCanonical(text);
   const tests = definition.tests ?? unreachable('This Definition was not built to run tests.');
   const run: RunInWorld = function* (call, title) {
     const deadline = options.now() + options.timeout;

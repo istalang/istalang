@@ -138,10 +138,10 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
   const stored = (instance: string) => storedInstance(seams.store, bind, instance);
   return {
     deploy: (text) => {
-      const { program, isNew } = bind(text);
+      const { program, firstText } = bind(text);
       recordExternSignatures(seams.store, program.definition);
-      if (isNew) {
-        seams.store.writeDefinition(program.hash, definitionFormat.write(program.definition).text);
+      if (firstText !== undefined) {
+        seams.store.writeDefinition(program.hash, firstText);
       }
       return program;
     },
@@ -202,20 +202,33 @@ interface BoundProgram extends DeployedProgram, LoadedDefinition {
   readonly terminate: (snapshot: PanickedSnapshot) => Advanced;
 }
 
-/** A Definition text bound to its program, and whether this was the first time. */
+/**
+ * A Definition text bound to its program, with the program's canonical text when this bound its
+ * hash for the first time, for a deploy to store.
+ */
 interface Binding {
   readonly program: BoundProgram;
-  readonly isNew: boolean;
+  readonly firstText: string | undefined;
 }
 
-/** Reads and binds Definition texts, once per hash; it writes nothing. */
+/**
+ * Reads and binds Definition texts: each text is read, validated and written back once, and each
+ * hash bound once, since every operation on a stored instance binds the text its snapshot names.
+ * It writes nothing.
+ */
 function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'host' | 'seed'>) {
-  const bound = new Map<string, BoundProgram>();
+  const byHash = new Map<string, BoundProgram>();
+  const byText = new Map<string, BoundProgram>();
   return (text: string): Binding => {
-    const definition = definitionFormat.read(text);
-    const { hash } = definitionFormat.write(definition);
-    const isNew = !bound.has(hash);
-    return { program: memo(bound, hash, () => boundProgram(seams, definition, hash)), isNew };
+    const known = byText.get(text);
+    if (known !== undefined) {
+      return { program: known, firstText: undefined };
+    }
+    const { value: definition, hash, text: canonical } = definitionFormat.readCanonical(text);
+    const firstText = byHash.has(hash) ? undefined : canonical;
+    const program = memo(byHash, hash, () => boundProgram(seams, definition, hash));
+    byText.set(text, program);
+    return { program, firstText };
   };
 }
 
