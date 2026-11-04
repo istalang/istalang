@@ -1,0 +1,18 @@
+# outcome: "draft!|sent?|a!|7"
+# A value put into a union an instantiation collapses (§2, §3.5): `T | "draft" | "sent"` with
+# `T = String` is `String`, so a value of the literals goes in as their base, whether a function
+# gives it back or `?` passes its error on.
+
+fn wrap<T>(x: "draft" | "sent") -> T | "draft" | "sent": x
+fn wrapOne<T>(x: "sent") -> T | "sent": x
+fn step<E>(r: Result<Int, "a" | "b">) -> Result<Int, E | "a" | "b">: Ok{value: r?}
+
+fn passed(r: Result<Int, String>) -> String:
+  match r:
+    case Err{error}: error + "!"
+    case Ok{value}: `${value}`
+
+async fn main() -> Future<String>:
+  const p1 = `${wrap<String>("draft") + "!"}|${wrapOne<String>("sent") + "?"}`
+  const p2 = `${passed(step<String>(Err{error: "a"}))}|${passed(step<String>(Ok{value: 7}))}`
+  `${p1}|${p2}`

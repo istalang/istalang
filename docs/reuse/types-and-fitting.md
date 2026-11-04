@@ -78,7 +78,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - which members of a union a name, type arguments, a literal or a tuple, array or `struct{…}` pattern selects (the checker's and completion's one rule) → `membersNamed`, `variantOwners`, `instancesWith`, `literalMembers`, `kindMembers` (`src/compiler/checker/types/named-types.ts`)
 - what an or-pattern's alternatives bind and select between them → `sameNames`, `partSelected` (`src/compiler/checker/patterns/alternatives.ts`); an array pattern's items → `takeArray` (`patterns/arrays.ts`)
 - the literal type a literal written in place has (a string, a Bool, a maybe negated integer) → `writtenLiteral` (`src/compiler/checker/types/unions.ts`); the type it has where a type is expected → `literalOrBase`, or against a parameter still inferred → `Inference.literalType`
-- the union a member parameter (`T in U`) stands for one member of → `CheckerContext.memberUnionOf` (`src/compiler/checker/context.ts`), `Fitting.memberUnionOf` where fitting reads it
+- the union a member parameter (`T in U`) stands for one member of → `CheckerContext.memberUnionOf` (`src/compiler/checker/context.ts`), `Fitting.memberUnionOf` where fitting reads it; whether a type, one naming type parameters included, may stand for one, inferred or written → `isOneMember`, and checked with a report → `standsForMember` (`src/compiler/checker/types/member-arguments.ts`)
 - list names bound by a checked pattern → `namesBound` (`src/compiler/checker/checked-pattern.ts`)
 - run forward data-flow analysis over a body → `flowThrough`, `FlowRule` (`src/compiler/checker/flow/forward.ts`)
 

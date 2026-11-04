@@ -1,11 +1,15 @@
-# error: 5131 at 14:3
-# error: 5001 at 14:36
-# error: 5001 at 14:56
-# error: 5131 at 16:13
-# error: 5131 at 17:17
-# error: 5131 at 17:29
+# error: 5131 at 18:3
+# error: 5131 at 18:26
+# error: 5131 at 18:43
+# error: 5131 at 20:13
+# error: 5131 at 21:17
+# error: 5131 at 21:29
+# error: 5131 at 23:39
+# error: 5131 at 24:15
+# error: 5131 at 25:17
 # A member parameter stands for exactly one member of its union (§3.5): a type argument written
-# for it, to a call or to a type, is one member, never several nor a type outside the union.
+# for it, to a call or to a type, is one member, never several nor a type outside the union, nor a
+# type parameter that could be any type.
 
 fn pick<S in "a" | "b">(s: S) -> String: s
 struct Entry<K in "a" | "b"> { k: K }
@@ -15,3 +19,7 @@ fn calls() -> String:
 
 fn entry(e: Entry<String>) -> String: e.k
 fn entries() -> Entry<"c">: Entry<"c">{k: "c"}
+
+fn generic<T>(x: Array<T>) -> String: pick<Array<T>>(x)
+fn open<T>(e: Entry<T>) -> T: e.k
+fn nested<T>(e: Entry<Array<T>>): ()

@@ -203,14 +203,23 @@ function collapsedSteps(
   );
 }
 
-/** `fit` as one instantiation makes it: the type a conversion converts into, substituted. */
+/**
+ * `fit` as one instantiation makes it: the type a conversion converts into, substituted. A union
+ * the value goes into may collapse into one type (§3.5): a value that went in as a member then is
+ * a value of that type already, its own or a literal of it, which is its base's value; one that
+ * went in member by member was a union of that type's literals, or that type, taken as its base.
+ */
 function substitutedFit({ conversion, into }: Fit, substitution: Substitution): Fit {
-  const union = into === undefined ? undefined : substitute(into.union, substitution);
-  const member = into?.member === undefined ? undefined : substitute(into.member, substitution);
-  return {
-    conversion: substitutedConversion(conversion, substitution),
-    into: union?.kind === 'union' ? { union, member } : undefined,
-  };
+  const substituted = substitutedConversion(conversion, substitution);
+  if (into === undefined) {
+    return { conversion: substituted };
+  }
+  const union = substitute(into.union, substitution);
+  const member = into.member === undefined ? undefined : substitute(into.member, substitution);
+  if (union.kind === 'union') {
+    return { conversion: substituted, into: { union, member } };
+  }
+  return { conversion: member === undefined ? { kind: 'base' } : substituted };
 }
 
 function substitutedConversion(conversion: Fit['conversion'], substitution: Substitution) {
