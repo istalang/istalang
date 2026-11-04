@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-10-29
+last_updated: 2026-11-04
 tags: [reuse, checker, types, fitting, patterns, flow]
 ---
 
@@ -61,7 +61,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - map or list constraints on a parameter or `any` → `constraintSubstitution`, `substituteConstraint`, `knownConstraints`, `constraintOn` (`src/compiler/checker/traits/constraints.ts`)
 - look up required functions or field types on a constrained type → `requirementsNamed`, `requiredFieldType` (`src/compiler/checker/traits/constraints.ts`)
 - check or resolve `any` conformance and witnesses → `meetsAny`, `reportUnmet`, `memberWitnesses` (`src/compiler/checker/resolution/trait-objects.ts`)
-- walk patterns or destructuring targets → `walkPattern`, `walkTargets` (`src/compiler/checker/patterns/walk.ts`)
+- walk patterns or destructuring targets → `walkPattern`, `walkTargets` (`src/compiler/checker/patterns/walk.ts`); declare a declaration's, `for`'s or comprehension's targets in a body → `declareTargets` (`src/compiler/checker/patterns/targets.ts`)
 - find a struct item's field index → `itemField` (`src/compiler/checker/struct-items.ts`)
 - take a tuple or struct target apart into its element or field parts → `takeTargets`, `takeApart`, `takeFields` (`src/compiler/checker/patterns/taking.ts`)
 - analyze `match` exhaustiveness → `analyze` (`src/compiler/checker/patterns/exhaustiveness.ts`)

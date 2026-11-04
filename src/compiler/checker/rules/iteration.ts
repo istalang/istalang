@@ -21,8 +21,7 @@ import type { For } from '../../syntax/statements.ts';
 import type { Iteration, IterationForm } from '../check.ts';
 import type { BodyContext, CheckerContext, IterationRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { bodyScope } from '../patterns/parts.ts';
-import { walkTargets } from '../patterns/walk.ts';
+import { declareTargets } from '../patterns/targets.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall } from '../resolution/implicit.ts';
 import { optionalInner } from '../types/fit.ts';
@@ -94,7 +93,7 @@ export function iteratedItem(
 
 /** Checks a `for` or a comprehension running over its iterable, binding its targets to each item. */
 export function checkLoopOver(context: BodyContext, node: For | Comprehension): void {
-  bindLoopTargets(context, node, checkIterated(context, node, node.iterable));
+  declareTargets(context, node, checkIterated(context, node, node.iterable) ?? errorType);
 }
 
 /** The item a cursor of `type` gives: `T` of `fn() -> T?`; undefined for any other type. */
@@ -102,17 +101,4 @@ function cursorItem(checker: CheckerContext, type: Type): Type | undefined {
   return type.kind === 'function' && type.parameters.length === 0 && !type.isAsync
     ? optionalInner(type.result, checker.optionalEntity)
     : undefined;
-}
-
-/** Binds the targets of a `for` or a comprehension to each item, of type `item` (§3.15). */
-function bindLoopTargets(
-  context: BodyContext,
-  node: For | Comprehension,
-  item: Type | undefined,
-): void {
-  const bindings = walkTargets(bodyScope(context), node.targets, item ?? errorType);
-  for (const { name, type } of bindings) {
-    context.variables.declare(name, type);
-  }
-  context.variables.recordTargets(node, bindings);
 }

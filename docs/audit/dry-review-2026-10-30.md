@@ -269,6 +269,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Duplicate target binding in `bindLoopTargets` (`src/compiler/checker/rules/iteration.ts`) vs. `declareTargets` (`src/compiler/checker/statements/variables.ts`):**
   - `bindLoopTargets` in `rules/iteration.ts` (`walkTargets(bodyScope(context), node.targets, ...)` followed by `context.variables.declare` and `context.variables.recordTargets`) is an exact copy of `declareTargets` in `statements/variables.ts`.
+  - **Done** (`fast-wins`): `bindLoopTargets` is gone; declarations, `for` and comprehensions call `declareTargets`, which moved to `checker/patterns/targets.ts` because `rules/` sits beneath `statements/` in the checker layers.
 - **Duplicate string-field extraction in `Annotations.jsonNameOf` vs. `Annotations.#textOf` (`src/compiler/checker/rules/annotations.ts`):**
   - `jsonNameOf(field)` manually extracts `named?.form.kind === 'struct' ? named.form.fields[0] : undefined` and checks `value?.kind === 'primitive' && typeof value.value === 'string'`, duplicating `this.#textOf(this.ofField(field), 'jsonName') ?? field.name` right below it.
 - **Double `defaultWitness` resolution for `@JsonSkip` fields (`src/compiler/checker/rules/annotations.ts`, `src/compiler/checker/rules/json-forms/index.ts`; widens `Q9`):**

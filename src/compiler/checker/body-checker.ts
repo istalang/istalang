@@ -44,6 +44,7 @@ import { StructLiterals } from './expressions/literal-fields.ts';
 import { OptionalChains } from './expressions/optionals.ts';
 import { FieldReads } from './expressions/structs.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
+import { declareTargets } from './patterns/targets.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { reportUnmet } from './resolution/trait-objects.ts';
 import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
@@ -53,7 +54,7 @@ import { Iterations } from './rules/iteration.ts';
 import { checkTestingCalls } from './rules/testing-calls.ts';
 import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
-import { declareTargets, VariableScope } from './statements/variables.ts';
+import { VariableScope } from './statements/variables.ts';
 import { exactFit, type Fit, isExact } from './types/fit.ts';
 import {
   errorType,

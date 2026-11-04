@@ -3,8 +3,7 @@
  *
  * - A declaration's type is its annotation, which the initializer must fit, or else the
  *   initializer's own type, widened for a `let`, which later values may replace
- *   (types/widening.ts). Its targets take that value apart (patterns/walk.ts), each name declared
- *   with its part's type.
+ *   (types/widening.ts). Its targets take that value apart (patterns/targets.ts).
  * - A `let` that nothing reassigns or changes gets a warning once the whole body has been seen
  *   (§3.4), so the body's VariableScope keeps which ones were, as assignments and places note
  *   them (assignments.ts, calls/places.ts).
@@ -22,8 +21,7 @@ import type { AssignedPart, SignatureParameter } from '../check.ts';
 import type { TargetBinding, TargetOwner } from '../checked-pattern.ts';
 import type { BodyContext, Variables } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { bodyScope } from '../patterns/parts.ts';
-import { walkTargets } from '../patterns/walk.ts';
+import { declareTargets } from '../patterns/targets.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { widened } from '../types/widening.ts';
 import { checkHoldScope } from './loops.ts';
@@ -138,13 +136,4 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
   const initial = context.expect(node.initializer, declared);
   const held = declared ?? (node.isMutable ? widened(initial) : initial);
   declareTargets(context, node, held);
-}
-
-/** Takes a value of `type` apart into `node`'s targets, declaring each name with its part's type. */
-export function declareTargets(context: BodyContext, node: VariableDeclaration, type: Type): void {
-  const bindings = walkTargets(bodyScope(context), node.targets, type);
-  for (const { name, type: part } of bindings) {
-    context.variables.declare(name, part);
-  }
-  context.variables.recordTargets(node, bindings);
 }
