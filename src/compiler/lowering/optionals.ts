@@ -8,11 +8,15 @@
  * - Reading one tests whether it is `none` and, where it isn't, carries on with it as the type the
  *   reader asks for: what remains without `None`, or the optional itself, as `a ?? b` gives when
  *   `b` is optional too.
+ * - An instantiation may collapse an optional (§3.5): `T?` with `T = None` is `None`, whose one
+ *   value is always absent, and with `T = Int?` is `Int?`, which a value of `T` is already, so it
+ *   goes in as it is.
  */
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { noneType, type Type, type UnionType } from '../checker/types/type.ts';
+import { sameType } from '../checker/types/identity.ts';
+import { isPrimitive, noneType, type Type, type UnionType } from '../checker/types/type.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Label } from './code-writer.ts';
 import { emitConstant } from './constants.ts';
@@ -33,14 +37,16 @@ export function noneOf(context: CodeContext, type: Type, span: AnchoredSpan): Re
     : emitConstant(context, null, span);
 }
 
-/** `value` put into the optional type `optional` (§2). */
+/** `value` put into the optional type `optional` (§2), unless it is a value of it already. */
 export function someOf(
   context: CodeContext,
   optional: Type,
   value: TypedValue,
   span: AnchoredSpan,
 ): Register {
-  return intoUnion(context, value, optionalType(optional), span);
+  return sameType(value.type, optional)
+    ? value.register
+    : intoUnion(context, value, optionalType(optional), span);
 }
 
 /** Where the optional `read` reads isn't `none`, carries on with it as `read.to`; else jumps to `absent`. */
@@ -50,6 +56,10 @@ export function presentOrJump(
   absent: Label,
   span: AnchoredSpan,
 ): Register {
+  if (isPrimitive(read.type, 'None')) {
+    context.code.jump(absent, span);
+    return read.register;
+  }
   const optional = { register: read.register, type: optionalType(read.type) };
   jumpIfMember(context, { value: optional, member: noneType }, absent, span);
   return outOfUnion(context, optional, read.to, span);
@@ -76,7 +86,7 @@ export function presentOr(
   return inside;
 }
 
-/** `type`, which the checker made sure is optional: a union holding `None`. */
+/** `type`, an optional the checker made sure of, not collapsed into `None`: a union holding it. */
 function optionalType(type: Type): UnionType {
   if (type.kind !== 'union') {
     unreachable(`Expected an optional, not a ${type.kind} type; the checker should have said so.`);

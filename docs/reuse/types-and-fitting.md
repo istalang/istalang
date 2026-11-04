@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [reuse, checker, types, fitting, patterns, flow]
 ---
 
@@ -37,7 +37,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - keep a program-wide checker result (cached, cycle-aware, its diagnostics kept with it) → `checker.entries.table()` (`EntryTable`, `src/structures/entries/index.ts`); report through `checker.report`, inside an entry
 - read a module's diagnostics, or check one top-level item whole before reading what checking decided in it → `checker.diagnosticsOf`, `checker.checkItem` (`src/compiler/checker/declarations/module-checks.ts`)
 - guard a recursive walk over a type's parts (`Sendable`, JSON codecs, `heldType`) against cycles → `TypeCycle` (`src/compiler/checker/types/type-cycle.ts`); never a visited set of your own
-- build or apply a type substitution → `substitutionFor`, `substitute`, `substituteAny`, `substituteFunction` (`src/compiler/checker/types/substitution.ts`)
+- build or apply a type substitution → `substitutionFor`, `substitute`, `substituteAny`, `substituteKept` (`src/compiler/checker/types/substitution.ts`)
 - view a `CheckedBody` with all recorded types substituted for one instantiation → `instantiatedBody` (`src/compiler/checker/types/instantiation.ts`)
 - build or unwrap `Future<T>` or `Array<T>`, → `futureOf`, `futureArgument`, `arrayOf`, `arrayElement` (`src/compiler/checker/types/well-known.ts`)
 - build or unwrap any well-known type (`src/language/well-known.ts`) → `wellKnownOf`, `wellKnownArguments` (`src/compiler/checker/types/well-known.ts`)

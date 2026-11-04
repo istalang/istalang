@@ -84,6 +84,13 @@ export class CodeWriter {
     return dst;
   }
 
+  /** Whether the values in `left` and `right` are equal, by the built-in `equal`; its register. */
+  equal(left: Register, right: Register, span: AnchoredSpan): Register {
+    const dst = this.allocate();
+    this.emit({ kind: 'equal', span, dst, left, right });
+    return dst;
+  }
+
   /** Reads the part of the value in `src` at `path`, field and element positions; its register. */
   readPath(src: Register, path: readonly number[], span: AnchoredSpan): Register {
     return path.reduce((current, index) => this.field(current, index, span), src);

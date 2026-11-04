@@ -28,7 +28,7 @@ path):
   (`checker/resolution/candidates.ts`), which is how the `json` module's codecs are found from
   every module without an import. `encode`, `decode`, `stringify` and `parse` are generic code
   over the traits.
-- A struct, an enum, a tuple, a host type, a literal type or a union of literals of one base
+- A struct, an enum, a tuple, a host type, a literal type or a union of literals
   declaring neither codec, beside it or in the `json` module, has both derived. A union crosses
   only so or as `T | None`, through the `json` module's codecs of `T?`: any other union's member
   would need a tag JSON doesn't carry, so it has neither (spec §9). The checker decides its derived form once (`checker/rules/json-forms/`,

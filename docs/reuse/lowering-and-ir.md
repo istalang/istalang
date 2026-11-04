@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -28,14 +28,14 @@ tags: [reuse, lowering, definition, ir, instructions]
 - emit a call recorded at a call site or implicit construct → `emitCallAt`, `emitImplicitCall` (`src/compiler/lowering/emit-call.ts`)
 - emit the cursor loop of a `for`, comprehension or non-copied spread → `cursorOf`, `emitLoop`, `emitLoopOver` (`src/compiler/lowering/iteration.ts`)
 - enter an assigned or `&`-referenced place → `enterAssigned`, `enterReferenced` (`src/compiler/lowering/places.ts`)
-- read one field of a value, or its part along field and element positions → `CodeWriter.field`, `CodeWriter.readPath` (`src/compiler/lowering/code-writer.ts`)
+- read one field of a value, or its part along field and element positions → `CodeWriter.field`, `CodeWriter.readPath` (`src/compiler/lowering/code-writer.ts`); compare two registers with the built-in `equal` → `CodeWriter.equal`, or `equal` (`operators.ts`) for `!=` too
 - a variable's register → `VariableRegisters.registerOf` (`src/compiler/lowering/statements/variables.ts`); allocate a cell → `cellRegister` (`src/compiler/lowering/places.ts`)
 - read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/check.ts`)
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/patterns.ts`)
 - build an enum variant by its declared name → `buildVariant`, `isEnum` (`src/compiler/lowering/expressions/variants.ts`); in synthesized code, `SynthesizedCode.variant`
 - branch on an enum variant, or read variant field 0 → `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`); carry on with a variant's one field where a value holds it, else run what leaves → `payloadOr`
 - build `none` or put a value into `T?`, or read a `T?` where it isn't `none` → `noneOf`, `someOf`, `presentOrJump`, `presentOr` (`src/compiler/lowering/optionals.ts`)
-- put a value into a union, take one out as a member or a narrower union, write a union of literals as its base, test its members, write something per member's value → `intoUnion`, `outOfUnion`, `asBase`, `branchOnMembers`, `jumpIfMember`, `oneValueIn`, `eachMember` (`src/compiler/lowering/unions.ts`); a union's variants in order and the one holding a member → `TypeTable.unionMembers`, `unionVariant`; never build a union's variant by hand
+- put a value into a union, take one out as a member or a narrower union (or, where an instantiation collapsed it, as literals merged into its base), write a union of literals as its base, test its members, write something per member's value → `intoUnion`, `outOfUnion`, `asBase`, `branchOnMembers`, `jumpIfMember`, `oneValueIn`, `eachMember` (`src/compiler/lowering/unions.ts`); a union's variants in order and the one holding a member → `TypeTable.unionMembers`, `unionVariant`; never build a union's variant by hand
 - convert a value, a union's member by member, into an `any` variant → `convertedIntoAny`; dispatch a required function over an `any` value's or a union's members → `dispatchEntry`, keyed by its `Dispatch` (`src/compiler/lowering/trait-objects/trait-objects.ts`)
 - wrap a plain function value as an `async` closure → `madeAsync` (`src/compiler/lowering/async-fits.ts`)
 - call the codec writing or reading a type, closed within an instance → `codecCall` (`src/compiler/lowering/boundary/codec-calls.ts`)

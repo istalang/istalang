@@ -202,8 +202,9 @@ export class Inference {
   /**
    * Matches a union against a type it must equal (§3.5): the members it writes without a type
    * parameter take theirs among `given`'s, and its one member with type parameters takes what is
-   * left, `Never` when nothing is, which binds nothing. A union whose members with type parameters
-   * are several takes what is left only member by member, in the order written.
+   * left. Where nothing is, it binds nothing, so `none` given for a `T?` leaves `T` to be found
+   * elsewhere. A union whose members with type parameters are several takes what is left only
+   * member by member, in the order written.
    */
   #matchUnion(declared: UnionType, given: Type): boolean {
     const open = declared.members.filter((member) => this.#mentionsUnknown(member));
@@ -213,9 +214,12 @@ export class Inference {
       return false;
     }
     const left = givenMembers.filter((each) => !fixed.some((member) => sameType(each, member)));
+    if (left.length === 0) {
+      return true;
+    }
     const [only] = open;
     if (open.length <= 1) {
-      return only === undefined ? left.length === 0 : this.#matchExact(only, unionOf(left));
+      return only !== undefined && this.#matchExact(only, unionOf(left));
     }
     return (
       open.length === left.length &&

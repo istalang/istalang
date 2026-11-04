@@ -106,8 +106,7 @@ export function equal(
   [left, right]: readonly [Register, Register],
   isNegated = false,
 ): Register {
-  const dst = context.code.allocate();
-  context.code.emit({ kind: 'equal', span, dst, left, right });
+  const dst = context.code.equal(left, right, span);
   return isNegated ? negated(context, dst, span) : dst;
 }
 

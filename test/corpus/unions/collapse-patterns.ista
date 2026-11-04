@@ -1,0 +1,30 @@
+# outcome: "draft|other|other|sent|other|42|7"
+# A pattern on a union an instantiation collapses (§3.5, §3.11): a name bound to literals merged into
+# their base gets the literal its value equals, whether a member is left beside the base or the
+# base is all there is; and a member test collapsing in one alternative of an or-pattern leaves the
+# parts the other alternatives read as they are.
+
+struct Box<T> { value: Int }
+struct A<T> { inner: Box<T> | Box<Int> }
+struct B { pair: (Int, Int) }
+
+fn beside<T>(x: T | Int | "draft" | "sent") -> String:
+  match x:
+    case "draft" | "sent" as d: d
+    case _: "other"
+
+fn alone<T>(x: T | "draft" | "sent") -> String:
+  match x:
+    case "draft" | "sent" as d: d
+    case _: "other"
+
+fn pick<T>(x: A<T> | B) -> Int:
+  match x:
+    case A{inner is Box<Int>{value as n}} | B{pair is (n, _)}: n + 1
+    case _: 0
+
+async fn main() -> Future<String>:
+  const p1 = `${beside<String>("draft")}|${beside<String>("x")}|${beside<String>(3)}`
+  const p2 = `${alone<String>("sent")}|${alone<String>("y")}`
+  const p3 = `${pick<Int>(B{pair: (41, 99)})}|${pick<Int>(A<Int>{inner: Box<Int>{value: 6}})}`
+  `${p1}|${p2}|${p3}`

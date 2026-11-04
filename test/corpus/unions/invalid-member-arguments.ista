@@ -1,0 +1,17 @@
+# error: 5131 at 14:3
+# error: 5001 at 14:36
+# error: 5001 at 14:56
+# error: 5131 at 16:13
+# error: 5131 at 17:17
+# error: 5131 at 17:29
+# A member parameter stands for exactly one member of its union (§3.5): a type argument written
+# for it, to a call or to a type, is one member, never several nor a type outside the union.
+
+fn pick<S in "a" | "b">(s: S) -> String: s
+struct Entry<K in "a" | "b"> { k: K }
+
+fn calls() -> String:
+  pick<"a" | "b">("a") + pick<"c">("c") + pick<String>("a")
+
+fn entry(e: Entry<String>) -> String: e.k
+fn entries() -> Entry<"c">: Entry<"c">{k: "c"}

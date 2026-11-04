@@ -15,6 +15,7 @@ import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CheckerContext, CheckerNote, ConstraintCheck } from '../context.ts';
 import { resolveConstraints, substituteConstraint } from '../traits/constraints.ts';
+import { standsForMember } from '../types/member-arguments.ts';
 import type { Substitution } from '../types/substitution.ts';
 import type { Constraint } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
@@ -105,6 +106,7 @@ export class TypeParameters {
     if (argument === undefined) {
       return;
     }
+    standsForMember(useSite(this.#checker, module, at), parameter, argument, typeArguments);
     for (const constraint of this.constraintsOf(parameter)) {
       meets(
         useSite(this.#checker, module, at),

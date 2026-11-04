@@ -135,6 +135,11 @@ export const genericTemplates = {
     message: (name: string, union: string, traits: readonly string[]) =>
       `'${name}' on ${union} could be what any of ${traits.join(', ')} requires, each a trait it meets; convert the value into the 'any' type of the one meant, then call it (§3.10).`,
   },
+  notMemberArgument: {
+    code: 5131,
+    message: (parameter: string, union: string, found: string) =>
+      `'${parameter}' stands for one member of ${union}, which ${found} isn't (§3.5).`,
+  },
   severalMembersArgument: {
     code: 5130,
     message: (parameter: string, union: string, found: string) =>

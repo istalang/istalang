@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -151,14 +151,15 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `struct` declaration, indented or one-line (§3.1) | a `struct` type entry per instantiation, fields in declaration order |
 | Anonymous struct type, a shape: `struct { … }`, an indented field block (§3.1) | a nameless `struct` type entry, one per shape: every place writing equal fields shares it, its fields in name order |
 | Recursive types (§3.1) | type references by index, so a type can name itself through the table |
-| `enum` declaration, `T?`, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation, with, for `json.Json`, its `role`; `Error` is a `struct` entry |
+| `enum` declaration, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation, with, for `json.Json`, its `role`; `Error` is a `struct` entry |
+| Union `A \| B`, `T?`, literal types (§2) | an `enum` type entry per union, one variant per member, ordered by its spelled name: a member with values holds the field `value`, a literal or `None` member nothing (lowering/unions.ts); `T \| None` is named `prelude.Optional` with the argument `T`; a lone literal type is its base's value |
 | `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable`, `disposal` (§7) and, for `Future`, its `role` |
 | `shared struct X` (§3.18) | an `extern` type entry per instantiation, never sendable, with its `disposal` and the `shared` role; the value behind it is an anonymous struct entry of its fields |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
 | `any A & B` (§3.10) | an `enum` entry named after the type, one variant per type converted into it, each with the one field `value`; a conversion is `variant`, or, from another `any` type, a call to an entry converting variant by variant; a call through a trait, or a required field's read, is a call to an entry that `switch`es over every variant and calls that type's function or reads its field, passing a `&self` receiver on by `&` into the variant; a downcast pattern is a `switch` on the type's variant, with `otherwise` for the rest |
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
 | `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; derived codecs are compiled from the checker's derived forms, which read them |
-| Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` an `Optional` variant |
+| Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` the `None` variant of the optional expected, or `null` where `None` itself is |
 | Template (§2) | without values, its text's `constant`; otherwise each value's `toString` call, in order, an `array` of the non-empty texts and those, and a call to the prelude's `join` with `""`; a tagged template is the call it stands for, its texts an `array` of constants |
 | Docstring (§2) | nothing: tools read it from the tree |
 | Array literal and spread (§2) | `array` with item and spread elements; a spread of an array is a spread element, which copies it, and any other spread the loop `for` runs over its operand, each item appended with `array` to what the elements before it built |
@@ -169,7 +170,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Updated copy `T{...r, f: v}` (§3.1) | the spread value once, `field` for each field not given, then `struct` |
 | Struct without fields, written bare (§3.1) | `struct` with no fields; a constant when it is one |
 | Enum variant (§3.11) | `variant`; a variant without fields may be a constant |
-| Implicit wrap of `T` into `T?` (§2) | `variant` `Some` |
+| A value put into a union, `T` into `T?` among them (§2) | `variant` of the member it goes into; a union put into a wider one, a `switch` building the wider one's variant per member |
 | A one-element tuple and its element converted into each other (§3.15) | `tuple` of the one value; a `field` read of element 0 |
 | `fn`, `async fn`, methods, static functions (§3.3, §3.7) | function-table entries; a method's `self` is its first parameter |
 | Overloads (§3.7) | distinct entries; calls name one |
@@ -209,8 +210,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Comprehension (§4) | the loop `for` runs, appending each kept value with `array`, the last array spread first |
 | `match`, patterns, guards (§3.11, §4) | `switch` on the variant, then `field` and `move` for bindings, `equal` or `compare` for comparisons, `branch` for guards; an array pattern `call`s the prelude's `length` (and `compare` against its fixed count, with a rest), then `_patternItem` and `_patternRest` for its items; a range pattern `call`s `compare` at each bound; an or-pattern tries each alternative's tests in turn, `move`s which one matched into a register, and once every test passed binds from that alternative after `equal` and `branch` on it |
 | `x is P` (§3.11) | the same tests, producing a boolean |
-| `?.`, `??` (§4) | `switch` on `Optional` |
-| `x!` (§4) | `switch` on `Optional`: `Some` gives its payload, `None` calls the prelude's `panic`, which never returns |
+| `?.`, `??` (§4) | `switch` on the optional's variants (lowering/optionals.ts) |
+| `x!` (§4) | `switch` on the optional's variants: a member's gives its value, `None`'s calls the prelude's `panic`, which never returns |
 | `e?` on `Result` (§3.12) | `switch` on `Result`; the `Err` path returns a new `Err` of the function's own `Result` type, holding the same error |
 | `panic(m)` (§3.12) | a call to prelude `panic` |
 | Building an `Error` (§3.12) | `struct`, with `trace` from its default's entry, which calls a prelude extern that formats the frames' spans through the modules' line starts, leaving out the entry's own, marked `givesDefault` |

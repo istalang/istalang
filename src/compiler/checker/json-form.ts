@@ -66,17 +66,19 @@ export type DerivedForm =
   | { readonly kind: 'enum'; readonly type: NominalType; readonly variants: readonly JsonVariant[] }
   | { readonly kind: 'tuple'; readonly type: TupleType }
   /**
-   * A literal type, or a union of literals of one base (§2): written as its base, through the
-   * base's codec, and read back only as one of its `literals`.
+   * A literal type, or a union of literals (§2): each written as its base, through the base's
+   * codec, and read back only as one of its literals, by the codec of each base in `groups` in turn.
    */
-  | {
-      readonly kind: 'literals';
-      readonly type: Type;
-      readonly base: Type;
-      readonly literals: readonly LiteralType[];
-    }
+  | { readonly kind: 'literals'; readonly type: Type; readonly groups: readonly LiteralGroup[] }
+
   /** A host type: whatever JSON its host gave it, handed back unchanged (§9). */
   | { readonly kind: 'host'; readonly type: NominalType };
+
+/** The literals of a literals form that share a base, which reads them all. */
+interface LiteralGroup {
+  readonly base: Type;
+  readonly literals: readonly LiteralType[];
+}
 
 /** What later phases ask of codecs: a derived form, a type's codec, a json-module helper call. */
 export interface JsonFormQueries {

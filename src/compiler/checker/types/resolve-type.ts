@@ -310,7 +310,10 @@ export function constrainArguments(
 ): void {
   const parameters = typeParametersOf(declaration.typeParameters);
   const substitution = substitutionFor(declaration.typeParameters, typeArguments);
-  for (const parameter of parameters.filter((each) => each.constraints.length > 0)) {
+  const checked = parameters.filter(
+    (each) => each.constraints.length > 0 || each.memberOf !== undefined,
+  );
+  for (const parameter of checked) {
     checker.constrainLater(module, at, parameter, substitution);
   }
 }

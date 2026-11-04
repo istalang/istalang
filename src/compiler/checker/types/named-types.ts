@@ -41,7 +41,7 @@ import {
   tupleElements,
 } from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
-import { baseOf, optionalInner } from './unions.ts';
+import { baseOf, hasMember, optionalInner } from './unions.ts';
 import { arrayElement } from './well-known.ts';
 
 type Aliases = Pick<Checker, 'aliasedType'>;
@@ -183,9 +183,10 @@ type MemberNaming = Pick<Checker, 'aliasedType' | 'variantsOf'>;
 
 /**
  * The members of a union a pattern naming `entity` selects (§3.11): the enums declaring a variant
- * it names, bare or qualified; the member of a type it names, else every literal member of that
- * base (`case String as s` against `Status | Int`); every member instantiating a generic type it
- * names. Anything else, a constant's name among them, selects none here.
+ * it names, bare or qualified; the member of a type it names, else the members of a union it names
+ * where the union holds them all (`case Status as s` against `Status | Int`), else every literal
+ * member of that base (`case String as s` against `Status | Int`); every member instantiating a
+ * generic type it names. Anything else, a constant's name among them, selects none here.
  */
 export function membersNamed(
   checker: MemberNaming,
@@ -222,8 +223,12 @@ function typeMembers(checker: Aliases, entity: Entity, members: readonly Type[])
   switch (named.kind) {
     case 'type': {
       const own = members.filter((member) => sameType(member, named.type));
-      return own.length > 0
-        ? own
+      if (own.length > 0) {
+        return own;
+      }
+      const inside = members.filter((member) => hasMember(named.type, member));
+      return named.type.kind === 'union' && inside.length === named.type.members.length
+        ? inside
         : members.filter(
             (member) => member.kind === 'literal' && sameType(baseOf(member), named.type),
           );

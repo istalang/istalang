@@ -196,28 +196,36 @@ function intoAnyMember(
 /** A member of `expected` that `member`, a member of a union found, goes into; or undefined. */
 function intoMember(member: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
   return (
-    expected.members.find((each) => rules.exact(each, member)) ??
+    ownMember(member, expected, rules) ??
     (member.kind === 'literal' && hasMember(expected, baseOf(member)) ? baseOf(member) : undefined)
   );
 }
 
 /**
+ * The member of `expected` that is `found`'s own type: one written without a type parameter, else
+ * one written with one that takes it, so inference binds a parameter only to what the others
+ * don't take (§3.5).
+ */
+function ownMember(found: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
+  const isGeneric = (member: Type) => parametersIn(member).length > 0;
+  return (
+    expected.members.find((member) => !isGeneric(member) && rules.exact(member, found)) ??
+    expected.members.find((member) => isGeneric(member) && rules.exact(member, found))
+  );
+}
+
+/**
  * The members of the union `expected` that a value of `found`, no union, goes into, with how it
- * converts: its own type's member, else a member written with a type parameter that takes it,
- * else each member it converts into.
+ * converts: its own type's member (`ownMember`), else each member it converts into.
  */
 function membersTaking(
   found: Type,
   expected: UnionType,
   rules: ConversionRules,
 ): readonly { readonly member: Type; readonly conversion: Conversion }[] {
-  const exact = { kind: 'none' } as const;
-  const isGeneric = (member: Type) => parametersIn(member).length > 0;
-  const own =
-    expected.members.find((member) => !isGeneric(member) && rules.exact(member, found)) ??
-    expected.members.find((member) => isGeneric(member) && rules.exact(member, found));
+  const own = ownMember(found, expected, rules);
   if (own !== undefined) {
-    return [{ member: own, conversion: exact }];
+    return [{ member: own, conversion: { kind: 'none' } }];
   }
   return expected.members.flatMap((member) => {
     const conversion = convertedInto(found, member, rules);

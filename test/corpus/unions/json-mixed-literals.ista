@@ -1,0 +1,16 @@
+# outcome: "[\"a\",1,true]|1|a|true|$: expected \"a\", 1 or true, found 2"
+# A union of literals of several bases crosses as JSON as its literals too (§6, §9): each written
+# as its base writes it, and read back by each base's codec in turn, then only as one of them.
+
+import * as json from 'json'
+
+type Mixed = "a" | 1 | true
+
+fn read(text: String) -> String:
+  match json.parse<Mixed>(text):
+    case Ok{value}: `${value}`
+    case Err{error}: error.message
+
+async fn main() -> Future<String>:
+  const written: Array<Mixed> = ["a", 1, true]
+  `${json.stringify(written)}|${read("1")}|${read("\"a\"")}|${read("true")}|${read("2")}`

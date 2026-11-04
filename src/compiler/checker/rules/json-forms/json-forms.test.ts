@@ -1,7 +1,7 @@
 /**
  * Which types cross as JSON (§3.10, §9): those with codecs, declared or derived. A struct, an enum,
  * a tuple and a recursive type derive theirs from what they hold, and a literal type or a union of
- * literals of one base its literals; a type declaring one codec has the other neither derived nor
+ * literals its literals; a type declaring one codec has the other neither derived nor
  * otherwise; a function, a handle, a map whose keys aren't Stringable and a union that is neither
  * optional nor of literals have none.
  */
@@ -64,7 +64,7 @@ describe('a type crossing as JSON', () => {
     ['1 | -1 | 42', true, true],
     ['("draft" | "sent")?', true, true],
     ['Point | None', true, true],
-    ['"a" | 1', false, false],
+    ['"a" | 1', true, true],
     ['Int | String', false, false],
     ['Point | Shape', false, false],
     ['Int | String | None', false, false],
@@ -119,7 +119,7 @@ describe('a union crossing as JSON', () => {
     ].join('\n');
     const [unmet] = diagnosedAt(stdProgramOf({ 'main.ista': main }), 'main.ista').diagnostics;
     expect(unmet?.message).toBe(
-      "Int | String doesn't satisfy Encodable: it needs a JSON form, which a union has only as an optional or as literals of one type.",
+      "Int | String doesn't satisfy Encodable: it needs a JSON form, which a union has only as an optional or as literals.",
     );
   });
 });

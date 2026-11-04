@@ -116,12 +116,12 @@ export type FieldSource =
 
 /**
  * A link of an optional chain (§4): the type its own step works on (the value inside, after
- * `?.`), and whether the chain, if it ends at this link, wraps its value into `T?`, which it
- * doesn't when the value already is optional.
+ * `?.`), and the value it carries along the chain, which the chain, if it ends at this link,
+ * wraps into its `T?` unless it is optional already. An instantiation may make it so (§3.5).
  */
 export interface ChainLink {
   readonly base: Type;
-  readonly wraps: boolean;
+  readonly carried: Type;
 }
 
 /**

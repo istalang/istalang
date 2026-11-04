@@ -1,0 +1,19 @@
+# outcome: "true:3"
+# Inference against a union holding a type parameter (§3.5): the members written without one take
+# theirs among a union given, whichever order they are written in, and the parameter what is left.
+
+fn keep<T>(x: T | Int | String) -> T | Int | String: x
+fn first<T>(x: T | Int) -> T | Int: x
+
+async fn main() -> Future<String>:
+  const v: Int | Bool = true
+  const w: Bool | Int = 3
+  const a = keep(v)
+  const b = first(w)
+  const t = match a:
+    case Bool as y: `${y}`
+    case _: "?"
+  const n = match b:
+    case Int as i: `${i}`
+    case _: "?"
+  `${t}:${n}`

@@ -35,7 +35,7 @@ export function selectionOf(
       : undefined;
   }
   const union = unionPart(part);
-  if (union === undefined || !selectsMember(scope, node)) {
+  if (union === undefined || !selectsMember(scope, node, part)) {
     return undefined;
   }
   return memberTaken(scope, node, part, union) ?? 'refused';

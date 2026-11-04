@@ -38,6 +38,7 @@ import {
   substituteConstraint,
 } from '../traits/constraints.ts';
 import { sameType } from '../types/identity.ts';
+import { standsForMember } from '../types/member-arguments.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { type Constraint, errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -115,6 +116,9 @@ function witnessesOf(
   const witnesses = new Map<TypeParameter, readonly (readonly ResolvedCall[])[]>();
   for (const [index, parameter] of parameters.entries()) {
     const argument = typeArguments[index] ?? errorType;
+    if (!standsForMember(site, parameter, argument, substitution)) {
+      return 'failed';
+    }
     const met: (readonly ResolvedCall[])[] = [];
     for (const constraint of site.checker.constraintsOf(parameter)) {
       const mapped = substituteConstraint(constraint, substitution);

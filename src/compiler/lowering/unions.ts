@@ -8,6 +8,9 @@
  * - Out of a union, where a test has made sure which members it can be: the one member's value, or
  *   the union of those members, variant by variant. A member with one value, a literal or `none`,
  *   holds nothing, so its value is that one value, written as a constant.
+ * - An instantiation may merge literals into their base (§3.5): `T | "a" | "b"` with `T = String`
+ *   is `String`, or a union holding `String`. A value of the base taken as a union of those
+ *   literals is compared with each, a test having made sure it is one.
  * - A literal type on its own is its base's value, so taking it as its base changes nothing; a
  *   union of literals is a tag, whose literal is written variant by variant.
  */
@@ -69,23 +72,28 @@ export function intoUnion(
 
 /**
  * `value`, of the union `value.type`, as `to`: one of its members, a union of some of them, or the
- * union itself. A test made sure the value is one of `to`'s members.
+ * union itself. A test made sure the value is one of `to`'s members. Where an instantiation
+ * collapsed the union into one type, `to` is that type or literals merged into it.
  */
 export function outOfUnion(
   context: CodeContext,
-  value: UnionValue,
+  value: TypedValue,
   to: Type,
   span: AnchoredSpan,
 ): Register {
-  if (sameType(to, value.type)) {
-    return value.register;
+  const { register, type } = value;
+  if (sameType(to, type)) {
+    return register;
+  }
+  if (type.kind !== 'union') {
+    return to.kind === 'union' ? literalIn(context, value, to, span) : register;
   }
   if (to.kind === 'union') {
-    return remapped(context, value, to, span);
+    return remapped(context, { register, type }, to, span);
   }
   return hasOneValue(to)
     ? emitConstant(context, oneValueOf(to), span)
-    : context.code.field(value.register, 0, span);
+    : context.code.field(register, 0, span);
 }
 
 /**
@@ -173,8 +181,9 @@ function memberValue(
 
 /**
  * `value` as a value of `to`, variant by variant: each member of `value.type` goes into the member
- * of `to` it is, or its literal into its base. A member `to` lacks is one a test ruled out, so its
- * variant never runs (`eachVariant`).
+ * of `to` it is, its literal into its base, or a base into the literal of it `to` holds that it
+ * equals. A member `to` takes none of is one a test ruled out, so its variant never runs
+ * (`eachVariant`).
  */
 function remapped(
   context: CodeContext,
@@ -190,17 +199,60 @@ function remapped(
   };
   return eachVariant(context, value, span, {
     each: (member) => {
-      const target = targetOf(member) ?? unreachable('Only a member kept is written.');
-      if (hasOneValue(target)) {
+      const target = targetOf(member);
+      if (target !== undefined && hasOneValue(target)) {
         return memberValue(context, { union: to, member: target, fields: [] }, span);
       }
       const inside = hasOneValue(member)
         ? emitConstant(context, oneValueOf(member), span)
         : context.code.field(value.register, 0, span);
-      return memberValue(context, { union: to, member: target, fields: [inside] }, span);
+      return target === undefined
+        ? literalIn(context, { register: inside, type: member }, to, span)
+        : memberValue(context, { union: to, member: target, fields: [inside] }, span);
     },
-    runs: (member) => targetOf(member) !== undefined,
+    runs: (member) => targetOf(member) !== undefined || literalsOf(to, member).length > 0,
   });
+}
+
+/** The literal members of `union` whose base is `base`. */
+function literalsOf(union: UnionType, base: Type): readonly LiteralType[] {
+  return union.members.filter(
+    (member): member is LiteralType => member.kind === 'literal' && sameType(baseOf(member), base),
+  );
+}
+
+/**
+ * `value`, of a base, as the literal member of `to` it equals, which a test made sure it is: each
+ * but the last is compared with it, and the last is what is left.
+ */
+function literalIn(
+  context: CodeContext,
+  value: TypedValue,
+  to: UnionType,
+  span: AnchoredSpan,
+): Register {
+  const { code } = context;
+  const result = code.allocate();
+  const end = code.newLabel();
+  const literals = literalsOf(to, value.type);
+  if (literals.length === 0) {
+    unreachable('A value is taken only as literals of its own base.');
+  }
+  for (const [index, literal] of literals.entries()) {
+    const next = code.newLabel();
+    if (index < literals.length - 1) {
+      const equals = code.newLabel();
+      const constant = emitConstant(context, literalValue(literal), span);
+      code.branch(code.equal(value.register, constant, span), equals, next, span);
+      code.place(equals);
+    }
+    const built = memberValue(context, { union: to, member: literal, fields: [] }, span);
+    code.emit({ kind: 'move', span, dst: result, src: built });
+    code.jump(end, span);
+    code.place(next);
+  }
+  code.place(end);
+  return result;
 }
 
 /**

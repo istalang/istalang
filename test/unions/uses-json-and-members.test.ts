@@ -177,19 +177,27 @@ describe('JSON codecs for `T | None`, `T??`, and literal unions (§6, §9)', () 
     ).toBe('"sent"|draft|err|-1|42|0|null|7');
   });
 
+  it('encodes `None` itself, which a `none` leaves no `T?` to fill, as null', () => {
+    expect(
+      runMain(
+        'String',
+        'const n: None = none\n  `${json.stringify(n)}|${json.stringify(Holder{n: none})}`',
+        ["import * as json from 'json'", 'struct Holder { n: None }'],
+      ),
+    ).toBe('null|{"n":null}');
+  });
+
   it('refuses non-optional, non-literal unions as Encodable or Decodable', () => {
     expect(
       codesOf(
         "import * as json from 'json'",
         ...commonDecls,
-        'fn bad(u: Int | String, c: Contact, mixed: "a" | 1):',
+        'fn bad(u: Int | String, c: Contact):',
         '  _ = json.stringify(u)',
         '  _ = json.stringify(c)',
-        '  _ = json.stringify(mixed)',
         '  _ = json.parse<Int | String>("1")',
       ),
     ).toEqual([
-      checkerDiagnostics.notConforming.code,
       checkerDiagnostics.notConforming.code,
       checkerDiagnostics.notConforming.code,
       checkerDiagnostics.notConforming.code,

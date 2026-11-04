@@ -29,9 +29,9 @@ import { typeText } from '../types/type-text.ts';
 import { optionalInner, optionalOf } from '../types/unions.ts';
 
 /**
- * The links of optional chains in one body: what each one's step works on, the value it carries
- * along its chain, and whether the chain wraps that value if it ends there. A link's step is read
- * from syntax (`chainStepOf`); whether an expression is a link is decided here.
+ * The links of optional chains in one body: what each one's step works on, and the value it
+ * carries along its chain, which the chain wraps if it ends there. A link's step is read from
+ * syntax (`chainStepOf`); whether an expression is a link is decided here.
  *
  * A link's handler reads its target through `target` and nothing else: every expression's type
  * passes through `linked` (BodyChecker.expression), so no link kind can leave its chain unrecorded.
@@ -71,10 +71,9 @@ export class OptionalChains implements Chains {
     if (base === undefined) {
       return value;
     }
-    const wraps = value.kind !== 'error' && optionalInner(value) === undefined;
     this.#carried.set(node, value);
-    this.#links.set(node, { base, wraps });
-    return wraps ? optionalOf(value) : value;
+    this.#links.set(node, { base, carried: value });
+    return value.kind === 'error' || optionalInner(value) !== undefined ? value : optionalOf(value);
   }
 
   chainOf(link: Expression): ChainLink | undefined {

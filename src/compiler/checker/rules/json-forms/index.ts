@@ -6,10 +6,11 @@
  *
  * - A struct is an object of its fields, an enum the same with a tag naming the variant
  *   (`variantTagKey`), a tuple an array, a host type whatever JSON its host gave it, and a literal
- *   type or a union of literals of one base its literal, as its base writes it.
- * - A union crosses only as `T | None`, through the json module's codecs of `T?`, or as literals of
- *   one base: which member a value of any other union is would need a tag of its own, and how codecs
- *   read an untagged member is left open until codecs move into the language (§14).
+ *   type or a union of literals its literal, as its base writes it, read back by each base's codec
+ *   in turn: a literal's JSON says which it is.
+ * - A union crosses only as `T | None`, through the json module's codecs of `T?`, or as literals:
+ *   which member a value of any other union is would need a tag of its own, and how codecs read an
+ *   untagged member is left open until codecs move into the language (§14).
  * - What a struct, an enum or a tuple holds crosses through its own codecs, which are coherent
  *   witnesses (§3.10), so a derived codec is the same wherever its type is used.
  * - A codec declared for a type is a witness found as any is: beside the type, or in the json
@@ -52,6 +53,7 @@ import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { sameType } from '../../types/identity.ts';
 import type {
   FieldMember,
+  LiteralType,
   NominalType,
   StructValueType,
   Type,
@@ -71,8 +73,7 @@ import type { Annotations } from '../annotations.ts';
 const handleHasNoForm = 'a JSON form, which no handle has: it stays in its instance';
 
 /** Why a union other than an optional or a union of literals has no codec (§9). */
-const unionHasNoForm =
-  'a JSON form, which a union has only as an optional or as literals of one type';
+const unionHasNoForm = 'a JSON form, which a union has only as an optional or as literals';
 
 /** What the unit needs beside the checker: field annotations. */
 export interface JsonFormSeams {
@@ -180,7 +181,7 @@ export class JsonForms implements JsonCodecs {
       case 'any':
         return { kind: 'none', reason: "a JSON form, which no 'any' type has" };
       case 'literal':
-        return { kind: 'literals', type, base: baseOf(type), literals: [type] };
+        return { kind: 'literals', type, groups: [{ base: baseOf(type), literals: [type] }] };
       case 'union':
         return literalsForm(type) ?? { kind: 'none', reason: unionHasNoForm };
       case 'primitive':
@@ -297,17 +298,23 @@ export class JsonForms implements JsonCodecs {
   }
 }
 
-/** The form of `union` when its members are literals of one base; undefined otherwise. */
+/** The form of `union` when its members are literals, grouped by base; undefined otherwise. */
 function literalsForm(union: UnionType): DerivedForm | undefined {
   const literals = union.members.filter((member) => member.kind === 'literal');
-  const [first] = literals;
-  if (first === undefined || literals.length < union.members.length) {
+  if (literals.length < union.members.length) {
     return undefined;
   }
-  const base = baseOf(first);
-  return literals.every((literal) => sameType(baseOf(literal), base))
-    ? { kind: 'literals', type: union, base, literals }
-    : undefined;
+  const groups: { base: Type; literals: LiteralType[] }[] = [];
+  for (const literal of literals) {
+    const base = baseOf(literal);
+    const group = groups.find((each) => sameType(each.base, base));
+    if (group === undefined) {
+      groups.push({ base, literals: [literal] });
+    } else {
+      group.literals.push(literal);
+    }
+  }
+  return { kind: 'literals', type: union, groups };
 }
 
 /** The parts a derived codec writes and reads through their own types' codecs. */
@@ -324,7 +331,7 @@ function partsOf(form: Exclude<DerivedForm, { kind: 'host' }>): readonly Part[] 
     case 'tuple':
       return form.type.elements.map((type, index) => ({ name: `element ${index}`, type }));
     case 'literals':
-      return [{ name: 'base', type: form.base }];
+      return form.groups.map(({ base }) => ({ name: 'base', type: base }));
     default: {
       const unhandled: never = form;
       return unhandled;

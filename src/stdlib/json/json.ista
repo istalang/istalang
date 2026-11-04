@@ -91,6 +91,9 @@ fn toJson(self: String) -> Json: Text{value: self}
 
 fn toJson(self: Unit) -> Json: Null
 
+# A `none` given for a `T?` leaves `T` unknown (§3.5), so `None` writes its own `null`.
+fn toJson(self: None) -> Json: Null
+
 fn toJson(self: Json) -> Json: self
 
 # A function giving `Never` gives no value, so its outcome is never written, yet it has a codec.

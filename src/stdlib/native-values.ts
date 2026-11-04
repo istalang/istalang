@@ -1,8 +1,9 @@
 /**
  * The values std natives receive and return, as the runtime holds them: an `Int` is a bigint, a
  * `Float` a number, a `String` a string, a struct its fields in declaration order, an array its
- * elements, an optional the `Some` or `None` variant of its declared type, told apart by whether
- * it has a field, and a value of an extern type the runtime implements its type and a payload.
+ * elements, an optional the variant of its declared union holding its member, or its `None`
+ * variant, told apart by name (`optionalValueOf`), and a value of an extern type the runtime
+ * implements its type and a payload.
  *
  * An argument of another shape is a bug in lowering or loading, never in the program, so reading
  * one throws a TypeError rather than panicking.
@@ -124,9 +125,14 @@ export function optionalInt(
   return inside === undefined ? undefined : int(inside);
 }
 
-/** An optional of the extern's declared result type: `Some` of `value`, or `None` without one. */
+/**
+ * An optional of the extern's declared result type: its member holding `value`, or its `None`
+ * without one. A `T?` whose `T` is `None` is `None` itself (§3.5), whose one value is `null`.
+ */
 export function resultOptional(context: NativeContext, value: Value | undefined): Value {
-  return optionalOf(context.types, declaredResult(context), value);
+  return context.resultType === undefined
+    ? null
+    : optionalOf(context.types, context.resultType, value);
 }
 
 /** `Ok` of `value`, of the extern's declared `Result` type (§3.12). */

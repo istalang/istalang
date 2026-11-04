@@ -1,0 +1,16 @@
+# outcome: "true|true|true|draft:sent"
+# A literal type's value is its base's (§2), so a value of a literal type, or of a union of
+# literals, converted into an `any` type holds its base's value: a downcast to the base finds it.
+
+type Status = "draft" | "sent"
+
+fn isString(x: any Stringable) -> Bool: x is String
+fn text(x: any Stringable) -> String:
+  match x:
+    case String as s: s
+    case _: "?"
+
+async fn main() -> Future<String>:
+  const s: Status = "draft"
+  const l: "sent" = "sent"
+  `${isString(s)}|${isString(l)}|${isString("x")}|${text(s)}:${text(l)}`

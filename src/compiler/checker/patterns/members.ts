@@ -12,7 +12,8 @@
  *   instantiate is given its type arguments, written in full, since the member names them all
  *   (`case Box<Int>{value}`), and several shapes having the fields are named through their
  *   aliases (`case Point as p`). A type's name a member enum's variant shares is qualified too.
- * - What binds the selection has the members selected that earlier cases left (`leftOf`).
+ * - What binds the selection has the members selected that earlier cases left (`leftOf`), through
+ *   the alias the pattern names when that is all of them.
  */
 
 import type { Entity } from '../../binder/entities.ts';
@@ -77,9 +78,10 @@ export function memberTaken(
   const [only] = selected;
   if (only === undefined || selected.length > 1) {
     const alternatives = selected.map((member) => memberShape(member, anyShape));
+    const left = leftOf(part, selected);
     return {
       test,
-      part: { type: leftOf(part, selected), path: part.path, narrowedFrom: union },
+      part: { type: asNamed(scope, node, left), path: part.path, narrowedFrom: union },
       decided: true,
       shapeOf: () => ({ kind: 'or', alternatives }),
     };
@@ -107,10 +109,14 @@ export function leftOf(part: ValuePart, selected: readonly Type[]): Type {
 }
 
 /**
- * Whether `node`, a pattern that may fail and doesn't bind, selects a member of a union: any but a
- * name naming the part's own type, which matches every value of it.
+ * Whether `node`, a pattern that may fail and doesn't bind, selects a member of `part`'s union: any
+ * but a name naming the part's own type, which matches every value of it.
  */
-export function selectsMember(scope: PatternScope, node: Pattern | PatternPart): boolean {
+export function selectsMember(
+  scope: PatternScope,
+  node: Pattern | PatternPart,
+  part: ValuePart,
+): boolean {
   switch (node.kind) {
     case 'LiteralPattern':
     case 'RangePattern':
@@ -120,18 +126,33 @@ export function selectsMember(scope: PatternScope, node: Pattern | PatternPart):
       return true;
     case 'NamePattern': {
       const name = lastName(node.path);
-      return !(isMissingName(name) || namesOwn(scope, node));
+      return !(isMissingName(name) || namesOwn(scope, node, part));
     }
     default:
       return false;
   }
 }
 
-/** Whether a name pattern names its part's own type, a union, as an alias of it does. */
-function namesOwn(scope: PatternScope, node: NamePattern): boolean {
+/**
+ * Whether a name pattern names `part`'s own type, a union, as an alias of it does; an alias of
+ * another union, or of the part's union before earlier cases narrowed it, selects its members.
+ */
+function namesOwn(scope: PatternScope, node: NamePattern, part: ValuePart): boolean {
+  const named = namedType(scope, node);
+  return named?.kind === 'union' && sameType(named, part.type);
+}
+
+/** `type`, as the type `node` names where it is that type, so what binds it keeps its alias. */
+function asNamed(scope: PatternScope, node: Pattern | PatternPart, type: Type): Type {
+  const named = node.kind === 'NamePattern' ? namedType(scope, node) : undefined;
+  return named !== undefined && sameType(named, type) ? named : type;
+}
+
+/** The one type a name pattern names, as patternTypeOf says; undefined when it names none. */
+function namedType(scope: PatternScope, node: NamePattern): Type | undefined {
   const entity = scope.entityOf(lastName(node.path));
   const named = entity === undefined ? undefined : patternTypeOf(scope, entity);
-  return named?.kind === 'type' && named.type.kind === 'union';
+  return named?.kind === 'type' ? named.type : undefined;
 }
 
 /** Whether a name pattern that refers names a type, rather than a variant or a constant. */

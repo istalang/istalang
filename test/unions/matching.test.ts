@@ -101,6 +101,17 @@ describe('matching on unions and literal types (§3, §5)', () => {
     ).toBe('sent:7');
   });
 
+  it('binds the alias a pattern names when it selects all of the alias union’s members', () => {
+    const lines = [
+      ...matchDecls,
+      'fn split(x: Status | Int) -> String:',
+      '  match x:',
+      '    case Status as ‸s: s',
+      '    case Int as n: String(n)',
+    ];
+    expect(hoverCodeAt(...lines)).toEqual(['(variable) s: Status']);
+  });
+
   it('matches bare variants through enum members, and requires qualification when ambiguous', () => {
     expect(
       runMain('String', 'show(Approved{by: "legal"}) + ":" + show(Expired) + ":" + show(9)', [

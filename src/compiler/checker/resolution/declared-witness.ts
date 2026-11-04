@@ -4,9 +4,11 @@
  * taking the type only once wrapped into an optional is one for the optional. Conformance builds
  * on it (conformance.ts); a derived codec or default may stand only where none is declared.
  *
- * A lone literal type's value is its base's (§2), so a parameter of a literal type is taken as its
- * base: `"draft"` meets `Stringable` with `String`'s `toString`. A requirement giving `Self` still
- * gives the base, which is no literal, so it isn't met that way.
+ * A lone literal type's value is its base's (§2), so a parameter of a literal type taken by value
+ * is taken as its base: `"draft"` meets `Stringable` with `String`'s `toString`. Through `&` a place
+ * has its type exactly (§3.7), and the base's function could write any value of the base there,
+ * so a `&Self` parameter stays the literal. A requirement giving `Self` still gives the base, which
+ * is no literal, so it isn't met that way either.
  */
 
 import type { CheckerContext } from '../context.ts';
@@ -55,7 +57,7 @@ export function chooseWitnessAmong(
 ): Choice {
   const callArguments = required.parameters.map(
     ({ type: each, reference }): CallArgument => ({
-      type: each.kind === 'literal' ? baseOf(each) : each,
+      type: !reference && each.kind === 'literal' ? baseOf(each) : each,
       passing: reference ? 'reference' : 'value',
       exact: true,
     }),

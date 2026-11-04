@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-25
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [tracker]
 ---
 
@@ -52,6 +52,10 @@ Language or toolchain features deferred by decision, not defects.
 | F14 | Completion ranks by a kind of value as well as a type: arrays first after `...` (CO-02), futures first after `await` (EX-04). The checker expects no type there, and ranking fits by type only. Both scenarios stay `it.fails`. | small | none; can be done now | completion C2a report 2026-10-30 |
 | F15 | After `&` in a call argument, completion offers only lets and reference parameters; a shared struct's handle or an indexable value may start the place too (spec §3.7), which needs types. | small | none; can be done now | completion C2a report 2026-10-30 |
 | F16 | Rename refuses a shape's field, and a struct's whose field names a shape of the program also has (navigation/rename.ts): a shape is one type wherever written (§3.1), so renaming one writer would part it from the others. Renaming every writer of the shape, and every read through any of them, would lift the refusal. | medium | none; can be done now | p2-structural 2026-11-04 |
+| F17 | A generic struct, array or map literal passed as an argument has a type of its own and takes part in choosing (§3.5), so it is never built from the chosen parameter: `f(Box{value: 3})` against `f(b: Box<Int?>)`, `f(E{k: "a"})` against `E<"a">` and `f(["a"])` against `Array<"a" \| "b">` are refused (5001), while `const b: Box<Int?> = Box{value: 3}` checks; it was so before proposal 3, which makes it show more. Decided (the human): such an argument counts its own type and also takes a parameter it could be built as, checked once against the chosen one; two overloads both taking it is an ambiguous call; and two overloads whose parameters include one another at any depth (`Box<3>` within `Box<Int?>`, `Array<"a">` within `Array<String>`) clash (§3.7, as `T` and `T?` do). Touches AcceptedPart, the literal accepts handlers, applicability, argument fitting, clashes.ts and §3.5/§3.7. | medium | none; can be done now | p3-unions 2026-11-05 (QA) |
+| F18 | A union flattens the aliases written in it (§2), so `case String as s` against `Status \| Int` gives `s` the literals of `Status`, printed `"draft" \| "sent" \| "failed"` rather than `Status` (proposal 3 §5 says `Status`). Printing the alias needs a union to keep the groups its members were written in, as text only. | small | none; can be done now | p3-unions 2026-11-05 |
+| F19 | A call on a union through a trait (§3.10) finds only traits whose type parameters all have defaults, so `for x in u` over a union of iterables doesn't work (`Iterable<T>`); a trait's required fields can't be met through members either. | medium | none; can be done now | p3-unions 2026-11-05 |
+| F20 | A union converts into a wider union's `any` member only as a whole: `Email \| Int` doesn't go into `any Named \| Int` member by member. | small | none; can be done now | p3-unions 2026-11-05 |
 
 ### Performance (P)
 
@@ -93,6 +97,8 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q34 | A literal's single-field value form offers `visibleCandidates` (every keyword) instead of `expressionCandidates`, since literal-field.ts has no placeholder parse to read the body from. | small | none; can be done now | completion C2a report 2026-10-30 |
 | Q36 | An `Invalid` node now holds the annotations the parser rejected, and the binder binds them at each list site that skips `Invalid` items (module, blocks, fields, variants, match and select cases): a new list site must remember to, and every generic tree walker (semantic tokens, hover) sees those names. One binding rule for an `Invalid`'s annotations would remove the per-site duty. | small | none; can be done now | completion End fix E4 report 2026-10-30 |
 | Q38 | `compiler/checker/context.ts` (437) is over the 400-line limit; it becomes `context/index.ts` with its parts beside it. | small | none; can be done now | proposal 1 report 2026-11-04 |
+| Q39 | `compiler/syntax/expressions/index.ts` (413) is over the 400-line limit, as it was before proposal 3. | small | none; can be done now | p3-unions 2026-11-05 |
+| Q40 | Completion's `places/matched-type.ts` restates the checker's pattern walk (tuple elements, array items, struct and variant fields, downcasts, and now a union's member selection); the checked body could record what each pattern node matched, as it records a literal's fields, and completion read it from its placeholder check. | medium | none; can be done now | p3-unions 2026-11-05 |
 
 ### Behaviour and correctness (B)
 
@@ -120,3 +126,6 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B23 | Completion items carry no replace range, so the editor's word decides what an accepted item replaces: in an import path the word stops at `-` or `.`, and accepting `completion-scenario-1` after `completion-sc` may replace only `sc`. Needs a text-edit range in the item model and its LSP mapping. | small | none; can be done now | completion C2f report 2026-10-30 |
 | B24 | `parse.bench.ts` fails before timing anything: its spec-example input no longer parses clean (1001 "Unexpected character '…'", 624 diagnostics). Filter the placeholder examples (spec-examples.ts `isPlaceholder`) or the ones holding '…'. | small | none; can be done now | completion End fix E1 report 2026-10-30 |
 | B26 | Semantic tokens are syntax-only in patterns: `Int` in `case Int` (a type pattern) shows as a variable, as a struct name in a pattern did before. The checker knows what a pattern's name names (`checker/types/named-types.ts`). | small | none; can be done now | proposal 1 report 2026-11-04 |
+| B27 | A call on a union looks for the requirement in the traits visible at the call (§3.10), and "visible" is every trait an imported module exports, not only those imported by name or through a namespace: knowing that needs an input mapping a namespace to its module. | small | none; can be done now | p3-unions 2026-11-05 |
+| B28 | A written type argument outside a member parameter's union is reported as 5131 for types and for a union argument, but `pick<"c">("c")` and `pick<String>("a")` report 5001 at the argument: choosing fails on the argument before the membership check runs. | small | none; can be done now | p3-unions 2026-11-05 |
+| B29 | A member parameter (`T in U`) of a local function isn't resolved, as a local function's constraints aren't (no item module). | small | none; can be done now | p3-unions 2026-11-05 |

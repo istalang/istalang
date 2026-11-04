@@ -11,9 +11,10 @@ import { codecHelpers, jsonVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
+import { baseOf } from '../../checker/types/unions.ts';
 import { closeCall } from '../instances.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
-import { asBase } from '../unions.ts';
+import { eachMember, type TypedValue } from '../unions.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The body of `_toJson<T>`, written into `code`. */
@@ -51,16 +52,27 @@ export class Encoder {
       case 'enum':
         this.#enum(form, value);
         return;
-      case 'literals': {
-        const base = asBase(code, { register: value, type: form.type }, code.span);
-        code.return(code.call(this.#codec(form.base), [base]));
+      case 'literals':
+        code.return(this.#literal(form.type, value));
         return;
-      }
       default: {
         const unhandled: never = form;
         unreachable(`No encoder for ${JSON.stringify(unhandled)}.`);
       }
     }
+  }
+
+  /**
+   * A literal's JSON, as its base's codec writes its value: a lone literal type is its base's value
+   * already (§2), and a union of literals' member is written by its own literal's base.
+   */
+  #literal(type: Type, value: Register): Register {
+    const code = this.#code;
+    const write = (literal: TypedValue) =>
+      code.call(this.#codec(baseOf(literal.type)), [literal.register]);
+    return type.kind === 'union'
+      ? eachMember(code, { register: value, type }, code.span, write)
+      : write({ register: value, type });
   }
 
   /** The codec writing `type`. */

@@ -3,12 +3,12 @@
  * `a?.b.c`.
  *
  * - A chain is lowered from its last link, the only one lowered as an expression: its result
- *   register gets the chain's value, wrapped into `Some` unless already optional, or `None` when
- *   a `?.` or `?->` meets `None`, which jumps straight to the chain's end. Inner links are
- *   lowered as links, working on the value carried along, so nothing between them is ever
- *   wrapped.
+ *   register gets the chain's value, put into the chain's optional unless a value of it already
+ *   (`someOf`), or `none` when a `?.` or `?->` meets `none`, which jumps straight to the chain's
+ *   end. Inner links are lowered as links, working on the value carried along, so nothing between
+ *   them is ever wrapped.
  * - A link reads its target through `target`: lowered by its handler, a chained target as a link,
- *   and a `?.` or `?->` switches on the value, carrying on with the value inside `Some`, which is
+ *   and a `?.` or `?->` switches on the value, carrying on with the value beside `none`, which is
  *   then fitted as the checker fitted it. What each link works on is the checker's record
  *   (`chainOf`), so nothing here re-derives a type.
  */
@@ -16,7 +16,7 @@
 import type { Register } from '../../definition/operands.ts';
 import { withPushed } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { optionalInner, optionalOf } from '../checker/types/unions.ts';
+import { optionalOf } from '../checker/types/unions.ts';
 import { chainStepOf, isOptionalStep } from '../syntax/expressions/chains.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
 import type { Label } from './code-writer.ts';
@@ -41,10 +41,8 @@ export class OptionalChains {
     const none = code.newLabel();
     const end = code.newLabel();
     const value = withPushed(this.#ends, none, () => this.#link(link));
-    const wrapped =
-      context.body.chainOf(link)?.wraps === true
-        ? someOf(context, type, { register: value, type: optionalInner(type) ?? type }, link.span)
-        : value;
+    const carried = context.body.chainOf(link)?.carried ?? type;
+    const wrapped = someOf(context, type, { register: value, type: carried }, link.span);
     code.emit({ kind: 'move', span: link.span, dst: result, src: wrapped });
     code.jump(end, link.span);
     code.place(none);

@@ -11,6 +11,7 @@ import type { CheckedBody, Checker } from '../check.ts';
 import { type FieldRead, requiredFieldRead } from '../checked-field.ts';
 import type { CheckedPattern, PartStep, PatternTest } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
+import { sameType } from './identity.ts';
 import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
 import type { FieldMember, Type } from './type.ts';
 import { membersOf } from './unions.ts';
@@ -69,7 +70,10 @@ export function instantiatedBody(
     patternOf: (pattern) =>
       mapDefined(body.patternOf(pattern), (checked) => instantiatedPattern(checked, substitution)),
     chainOf: (link) =>
-      mapDefined(body.chainOf(link), (chained) => ({ ...chained, base: concrete(chained.base) })),
+      mapDefined(body.chainOf(link), (chained) => ({
+        base: concrete(chained.base),
+        carried: concrete(chained.carried),
+      })),
     fieldReadOf: (access) => mapDefined(body.fieldReadOf(access), concreteRead),
     declaredTypeOf: (name) => mapDefined(body.declaredTypeOf(name), concrete),
     namedFieldOf: (name) => mapDefined(body.namedFieldOf(name), concreteField),
@@ -92,12 +96,11 @@ function mapDefined<T, R>(value: T | undefined, f: (defined: T) => R): R | undef
  * A union a member test tests may collapse (§3.5): `T | Int` with `T = Int` is `Int`. Its value is
  * then the member's own value, with no variant around it, so every path into the member's value
  * at the test's part loses the step into the variant (`collapsedSteps`), and a name narrowed from
- * it reads the value as it is.
+ * it reads the value as it is. A test in one alternative of an `or` reads only that alternative's
+ * parts, so its collapse shortens paths there alone.
  */
 function instantiatedPattern(checked: CheckedPattern, substitution: Substitution): CheckedPattern {
-  const substituted = substitutedPattern(checked, substitution);
-  const collapsed = collapsedParts(substituted);
-  return collapsed.length === 0 ? substituted : withoutVariantSteps(substituted, collapsed);
+  return withoutVariantSteps(substitutedPattern(checked, substitution), []);
 }
 
 /** `checked` with its types substituted, as `instantiatedPattern` says. */
@@ -137,33 +140,27 @@ function substitutedPattern(checked: CheckedPattern, substitution: Substitution)
   return {
     tests: checked.tests.map(instantiatedTest),
     bindings: checked.bindings.map(({ narrowedFrom, ...binding }) => {
-      const union = narrowedFrom === undefined ? undefined : concrete(narrowedFrom);
+      const type = concrete(binding.type);
+      const from = narrowedFrom === undefined ? undefined : concrete(narrowedFrom);
       return {
         ...binding,
-        type: concrete(binding.type),
-        narrowedFrom: union?.kind === 'union' ? union : undefined,
+        type,
+        narrowedFrom: from === undefined || sameType(from, type) ? undefined : from,
       };
     }),
   };
 }
 
-/** The paths of the parts whose union a member test tests collapsed into one type. */
-function collapsedParts(checked: CheckedPattern): readonly (readonly PartStep[])[] {
-  return checked.tests.flatMap((patternTest) => {
-    if (patternTest.kind === 'or') {
-      return patternTest.alternatives.flatMap(collapsedParts);
-    }
-    return patternTest.kind === 'member' && patternTest.union.kind !== 'union'
-      ? [patternTest.path]
-      : [];
-  });
-}
-
-/** `checked` with each path into a member's value at a `collapsed` part reading the part itself. */
+/**
+ * `checked` with each path into a member's value at a collapsed part reading the part itself: the
+ * parts `outer` collapsed, and those its own member tests did, which an alternative of its `or`
+ * tests sees beside its own.
+ */
 function withoutVariantSteps(
   checked: CheckedPattern,
-  collapsed: readonly (readonly PartStep[])[],
+  outer: readonly (readonly PartStep[])[],
 ): CheckedPattern {
+  const collapsed = [...outer, ...collapsedParts(checked)];
   const path = (steps: readonly PartStep[]) => collapsedSteps(steps, collapsed);
   return {
     tests: checked.tests.map((patternTest) =>
@@ -178,6 +175,13 @@ function withoutVariantSteps(
     ),
     bindings: checked.bindings.map((binding) => ({ ...binding, path: path(binding.path) })),
   };
+}
+
+/** The paths of the parts whose union one of `checked`'s own member tests collapsed into one type. */
+function collapsedParts(checked: CheckedPattern): readonly (readonly PartStep[])[] {
+  return checked.tests.flatMap((patternTest) =>
+    patternTest.kind === 'member' && patternTest.union.kind !== 'union' ? [patternTest.path] : [],
+  );
 }
 
 /**

@@ -9,7 +9,7 @@ import type { Identifier } from '../syntax/node.ts';
 import type { Relation } from '../syntax/operators.ts';
 import type { ArrayPattern, CompareFieldPattern, LiteralPattern } from '../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../syntax/statements.ts';
-import type { AnyType, Type, UnionType } from './types/type.ts';
+import type { AnyType, Type } from './types/type.ts';
 
 /**
  * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, or a select
@@ -49,8 +49,11 @@ export interface PartBinding {
   readonly type: Type;
   /** The steps from the whole value to the part, outermost first. */
   readonly path: readonly PartStep[];
-  /** The union the part's value is of, when `type` holds only some of its members (§3.11). */
-  readonly narrowedFrom?: UnionType | undefined;
+  /**
+   * The type the part's value is of, when `type` holds only some of its values (§3.11): a union
+   * as checked, or what an instantiation collapsed it into (§3.5), whose literals `type` may be.
+   */
+  readonly narrowedFrom?: Type | undefined;
 }
 
 /**

@@ -1,0 +1,23 @@
+# outcome: "sent|3|d|sent|other"
+# A pattern naming a union through its alias (§3.11) selects the alias's members: against a wider
+# union holding them all, and against the alias's own union once earlier cases narrowed it.
+
+type Status = "draft" | "sent"
+
+fn wide(x: Status | Int) -> String:
+  match x:
+    case Status as s: s
+    case Int as n: `${n}`
+
+fn rest(x: Status) -> String:
+  match x:
+    case "draft": "d"
+    case Status as s: s
+
+fn named(x: Status | Int) -> String:
+  match x:
+    case Status: "status"
+    case _: "other"
+
+async fn main() -> Future<String>:
+  `${wide("sent")}|${wide(3)}|${rest("draft")}|${rest("sent")}|${named(4)}`

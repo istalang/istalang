@@ -4,10 +4,11 @@
  * switches over every variant, calling the function each type meets the trait with. A call on a
  * union through a trait its members meet (§6) switches over the union's variants alike.
  *
- * - A conversion from a concrete type builds its variant. From another `any` type, whose
- *   constraints include the target's, it calls an entry converting variant by variant; from the
- *   same `any` type, it is the value itself. From a union, each member's value converts as a value
- *   of that member, so a value of `A | B` inside an `any` type is an `A` or a `B`.
+ * - A conversion from a concrete type builds its variant, a literal type's its base's, whose value
+ *   it is (§2), so a downcast to the base finds it. From another `any` type, whose constraints
+ *   include the target's, it calls an entry converting variant by variant; from the same `any`
+ *   type, it is the value itself. From a union, each member's value converts as a value of that
+ *   member, so a value of `A | B` inside an `any` type is an `A` or a `B`.
  * - A dispatch entry takes what the required function takes, its receiver first, and is async
  *   when the function is, awaiting the call it makes. On a union, a member with one value (a
  *   literal, `none`) holds nothing, so its function gets that value; on the one type a union
@@ -23,7 +24,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/checked-field.ts';
 import { sameType } from '../../checker/types/identity.ts';
 import type { AnyType, Type } from '../../checker/types/type.ts';
-import { hasOneValue } from '../../checker/types/unions.ts';
+import { baseOf, hasOneValue } from '../../checker/types/unions.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
@@ -65,7 +66,7 @@ export function convertedIntoAny(
   }
   const dst = code.allocate();
   const type = tables.types.anyIndex(to);
-  const variant = tables.types.anyVariant(to, from);
+  const variant = tables.types.anyVariant(to, baseOf(from));
   code.emit({ kind: 'variant', span, dst, type, variant, fields: [value] });
   return dst;
 }

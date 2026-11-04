@@ -103,8 +103,9 @@ export class Decoder {
   }
 
   /**
-   * The literal the base's value read is, each compared in order, else an `Err` naming them: a
-   * union of literals' member holds nothing, and a lone literal type is its base's value (§2).
+   * The literal the value read is: each base's codec reads it in turn, a base that can't moving on
+   * to the next, and the value read is compared with that base's literals, else an `Err` naming
+   * them all. A union of literals' member holds nothing; a lone literal type is its base's value (§2).
    */
   #literals(
     form: Extract<DerivedForm, { kind: 'literals' }>,
@@ -112,20 +113,28 @@ export class Decoder {
     path: Register,
   ): void {
     const code = this.#code;
-    const { type, literals } = form;
-    const value = this.#passed(code.call(this.#codec(form.base), [json, path]));
-    for (const literal of literals) {
-      const matched = code.code.newLabel();
+    const { type, groups } = form;
+    const none = code.code.newLabel();
+    for (const group of groups) {
       const next = code.code.newLabel();
-      const equal = code.equal(value, code.constant(literalValue(literal)));
-      code.code.branch(equal, matched, next, code.span);
-      code.code.place(matched);
-      code.return(
-        this.#ok(type.kind === 'union' ? oneValueIn(code, type, literal, code.span) : value),
-      );
+      const read = code.call(this.#codec(group.base), [json, path]);
+      const value = code.ok(read, this.#result, () => code.code.jump(next, code.span));
+      for (const literal of group.literals) {
+        const matched = code.code.newLabel();
+        const other = code.code.newLabel();
+        const equal = code.equal(value, code.constant(literalValue(literal)));
+        code.code.branch(equal, matched, other, code.span);
+        code.code.place(matched);
+        code.return(
+          this.#ok(type.kind === 'union' ? oneValueIn(code, type, literal, code.span) : value),
+        );
+        code.code.place(other);
+      }
+      code.code.jump(none, code.span);
       code.code.place(next);
     }
-    const spelled = code.constant(literalsText(literals));
+    code.code.place(none);
+    const spelled = code.constant(literalsText(groups.flatMap(({ literals }) => literals)));
     code.return(code.call(this.#helper(codecHelpers.notAmong, [type]), [json, path, spelled]));
   }
 

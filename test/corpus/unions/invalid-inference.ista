@@ -1,0 +1,15 @@
+# error: 5100 at 13:3
+# error: 5100 at 14:3
+# error: 5100 at 15:3
+# Inference against a union holding a type parameter (§3.5): a value its members written without
+# one take whole leaves nothing for the parameter, which then is found from nothing, as `none`
+# given for a `T?` binds nothing.
+
+fn opt<T>(x: T?) -> T?: x
+fn either<T>(x: T | Int) -> T | Int: x
+
+fn calls():
+  const n: None = none
+  opt(n)
+  opt(none)
+  either(42)
