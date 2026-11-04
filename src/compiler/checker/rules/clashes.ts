@@ -24,6 +24,7 @@
  */
 
 import { staticName } from '../../../language/static-names.ts';
+import { addToGroup } from '../../../structures/groups.ts';
 import type { ModuleId } from '../../program/program.ts';
 import {
   declaredFunctions,
@@ -52,7 +53,7 @@ export function checkClashes(checker: CheckerContext, module: ModuleId): void {
     if (clashing) {
       checker.report(module, checkerDiagnostics.overloadClash(item.name.span, item.name.text));
     }
-    groups.set(group, [...earlier, item]);
+    addToGroup(groups, group, item);
   }
 }
 

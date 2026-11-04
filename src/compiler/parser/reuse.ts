@@ -21,6 +21,7 @@
  *   the new parse's.
  */
 
+import { addToGroup } from '../../structures/groups.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { lineStartAt } from '../../text/line-map.ts';
 import type { FunctionDeclaration, Module, TraitDeclaration } from '../syntax/declarations.ts';
@@ -77,7 +78,7 @@ class SegmentReuse {
     this.bases = new Map(fresh.bases);
     for (const run of runsOf(previous, previous.root.items)) {
       if (run.text !== undefined) {
-        this.#unused.set(run.text.text, [...(this.#unused.get(run.text.text) ?? []), run]);
+        addToGroup(this.#unused, run.text.text, run);
       }
     }
   }

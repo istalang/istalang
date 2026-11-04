@@ -31,6 +31,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import { addToGroup } from '../../structures/groups.ts';
 import { memo, SequenceMemo } from '../../structures/memo.ts';
 import { isTestModule, type ModuleId, type Program, programModule } from '../program/program.ts';
 import type { EnumDeclaration, FunctionDeclaration, Module } from '../syntax/declarations.ts';
@@ -264,7 +265,7 @@ class Linker {
       this.#variantsOfEnum.set(declaration, variants);
       for (const [name, variant] of variants) {
         this.#owners.set(variant, id);
-        this.#variantsByName.set(name, [...this.variantsNamed(name), variant]);
+        addToGroup(this.#variantsByName, name, variant);
       }
     }
   }

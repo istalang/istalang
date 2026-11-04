@@ -120,6 +120,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `notesOfReads(entry)` walks the full transitive `entry.reads` graph from scratch (allocating `seen = new Set`, `pending = [...entry.reads]`, and `notes = []`) on every call to `notesFrom(entry)`, `Entries.notesReached()`, and `#replays` (`case 'notes'`). Even after an entry finishes computing (`!entry.running && !entry.open`), its transitive notes are never memoized on the `Entry`, and multiple `notesReached()` calls within one computing entry re-walk the entire subgraph already visited.
 - **Quadratic array-spreading multimap construction in `Components` (`src/structures/strongly-connected.ts`):**
   - `Components.constructor` builds adjacency lists with `this.#successors.set(from, [...(this.#successors.get(from) ?? []), to])`, copying the entire neighbor array on every edge ($O(d^2)$ in out-degree) instead of pushing onto a mutable array or using a shared group-by helper (the same pattern recurs in `ValueSemantics.#tableOf` and `#carryTable` in `src/language/values.ts`).
+  - **Done** (`fast-wins`): `Components`, `SegmentReuse`, `Linker.#index`, `CodeWriter.#refer`, `StaticFunctions.#index`, `checkClashes` and the LSP rename's `workspaceEdit` fill their groups with `addToGroup` (`structures/groups.ts`); `functionSets` uses `Map.groupBy`. `#tableOf` pushes in place by hand, since `language/` imports nothing. `#carryTable` keeps its copy: the old map keeps its bucket (persistent update, `P8`). `mocksOf` is unit 26's.
 
 ### 2. `src/language/`
 
@@ -186,6 +187,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `bodiesHeldBy` inspects `Object.values(node)` with `Array.isArray(value)` and `isNode` directly instead of sharing the field-child extraction in `src/compiler/syntax/tree.ts` (`fieldChildrenOf`).
 - **Repeated array-spreading multimap insertion in `SegmentReuse` (`src/compiler/parser/reuse.ts`):**
   - `SegmentReuse.constructor` builds `#unused` with `this.#unused.set(run.text.text, [...(this.#unused.get(run.text.text) ?? []), run])`, repeating the same copying multimap pattern as `strongly-connected.ts` and `language/values.ts`.
+  - **Done** (`fast-wins`): Uses `addToGroup` (unit 1).
 
 ### 9. `src/compiler/parser/` — grammar categories
 
@@ -216,6 +218,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `Q36` notes that list sites skipping `Invalid` items must remember to bind their rejected annotations (`bindModule`, `bindBlock`, `bindRejectedAnnotations` in `expressions.ts`). In `bindTrait` (`declarations.ts`), `bindFields` binds annotations on non-function members (including `Invalid` only because `Invalid !== 'FunctionDeclaration'`), which is fragile and implicit compared to a single generic rule for `Invalid` annotations.
 - **Repeated array-spreading multimaps in `functionSets` and `Linker.#index` (`src/compiler/binder/module-scope.ts`, `src/compiler/binder/link.ts`):**
   - `functionSets` (`sets.set(name, [...(sets.get(name) ?? []), declared])`) and `Linker.#index` (`this.#variantsByName.set(name, [...this.variantsNamed(name), variant])`) repeat the copying multimap pattern.
+  - **Done** (`fast-wins`): `functionSets` uses `Map.groupBy` (`functionsEntity` takes the name it is grouped by); `Linker.#index` uses `addToGroup` (unit 1).
 
 ### 12. `src/compiler/checker/` — root contracts, contexts & wiring
 
@@ -316,6 +319,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `asyncFitEntry` and `fillingEntry` both map `code.parameters.map((register, index) => references[index] === true ? referenceTo(register) : register)`, and `dispatchEntry` defines its own `passed(register, path, index)` helper for the same reference-forwarding pattern.
 - **Quadratic array-spreading multimap in `CodeWriter.#refer` (`src/compiler/lowering/code-writer.ts`):**
   - `CodeWriter.#refer` appends forward-jump patches with `this.#patches.set(label.id, [...(this.#patches.get(label.id) ?? []), patch])`, copying the patch array on every branch targeting the same unplaced label.
+  - **Done** (`fast-wins`): Uses `addToGroup` (unit 1).
 
 ### 22. `src/compiler/lowering/boundary/` & `src/compiler/lowering/trait-objects/`
 

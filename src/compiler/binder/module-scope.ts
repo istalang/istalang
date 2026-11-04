@@ -175,13 +175,13 @@ function ownNames(
 
 /** A set per name of the top-level functions; static functions belong to their type instead. */
 function functionSets(module: Module): ReadonlyMap<string, FunctionsEntity> {
-  const sets = new Map<string, [FunctionDeclaration, ...FunctionDeclaration[]]>();
-  for (const declared of declaredFunctions(module)) {
-    if (declared.owner === undefined) {
-      sets.set(declared.name.text, [...(sets.get(declared.name.text) ?? []), declared]);
-    }
-  }
-  return new Map([...sets].map(([name, overloads]) => [name, functionsEntity(overloads)] as const));
+  const sets = Map.groupBy(
+    declaredFunctions(module).filter((declared) => declared.owner === undefined),
+    (declared) => declared.name.text,
+  );
+  return new Map(
+    [...sets].map(([name, overloads]) => [name, functionsEntity(name, overloads)] as const),
+  );
 }
 
 function variantsOf(

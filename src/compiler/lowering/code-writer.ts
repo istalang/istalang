@@ -14,6 +14,7 @@
 
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Register } from '../../definition/operands.ts';
+import { addToGroup } from '../../structures/groups.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { type AnchoredSpan, type SegmentBases, spanIn } from '../syntax/positions.ts';
 
@@ -227,7 +228,7 @@ export class CodeWriter {
   #refer(label: Label, patch: (position: number) => void): void {
     const position = this.#placed.get(label.id);
     if (position === undefined) {
-      this.#patches.set(label.id, [...(this.#patches.get(label.id) ?? []), patch]);
+      addToGroup(this.#patches, label.id, patch);
     } else {
       patch(position);
     }

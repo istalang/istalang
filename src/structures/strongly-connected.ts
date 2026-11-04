@@ -7,6 +7,8 @@
  * the runtime walks graphs of heap objects with it (runtime/lifetimes/).
  */
 
+import { addToGroup } from './groups.ts';
+
 /** An edge of the graph, from one node to another. */
 export interface GraphEdge<Node> {
   readonly from: Node;
@@ -30,7 +32,7 @@ class Components<Node> {
 
   constructor(edges: readonly GraphEdge<Node>[]) {
     for (const { from, to } of edges) {
-      this.#successors.set(from, [...(this.#successors.get(from) ?? []), to]);
+      addToGroup(this.#successors, from, to);
       this.#successors.set(to, this.#successors.get(to) ?? []);
     }
     for (const node of this.#successors.keys()) {

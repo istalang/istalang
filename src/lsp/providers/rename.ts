@@ -20,6 +20,7 @@ import {
   renamingAt,
 } from '../../language-service/navigation/rename.ts';
 import type { Workspace } from '../../language-service/workspace.ts';
+import { addToGroup } from '../../structures/groups.ts';
 import { documentOffset, locationOf, rangeOf } from '../locations.ts';
 import type { Provider } from './provider.ts';
 
@@ -67,10 +68,10 @@ function failed({ reason }: Refusal): ResponseError {
 }
 
 function workspaceEdit(program: Program, edits: readonly NameEdit[]): WorkspaceEdit {
-  const changes: Record<string, TextEdit[]> = {};
+  const changes = new Map<string, TextEdit[]>();
   for (const { module, span, text } of edits) {
     const range = rangeOf(programModule(program, module).tree.source, span);
-    changes[module] = [...(changes[module] ?? []), { range, newText: text }];
+    addToGroup(changes, module, { range, newText: text });
   }
-  return { changes };
+  return { changes: Object.fromEntries(changes) };
 }

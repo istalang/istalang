@@ -210,15 +210,12 @@ export function namespaceEntity(declaration: NamespaceImport): NamespaceEntity {
   return memo(namespaces, declaration, () => ({ kind: 'namespace', declaration }));
 }
 
-/** The top-level functions `overloads`, all of one name, as one set. */
+/** The top-level functions `overloads`, all named `name`, as one set. */
 export function functionsEntity(
-  overloads: readonly [FunctionDeclaration, ...FunctionDeclaration[]],
+  name: string,
+  overloads: readonly FunctionDeclaration[],
 ): FunctionsEntity {
-  return functionSets.get(overloads, () => ({
-    kind: 'functions',
-    name: overloads[0].name.text,
-    overloads,
-  }));
+  return functionSets.get(overloads, () => ({ kind: 'functions', name, overloads }));
 }
 
 /** The names of a whole program, bound. */

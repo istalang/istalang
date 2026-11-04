@@ -7,6 +7,7 @@
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameEntries, sameItems } from '../../../structures/equality.ts';
+import { addToGroup } from '../../../structures/groups.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote, StaticOwner } from '../context.ts';
@@ -41,7 +42,7 @@ export class StaticFunctions {
     for (const item of statics) {
       const owner = this.#ownerOf(module, item);
       if (owner !== undefined) {
-        index.set(owner, [...(index.get(owner) ?? []), item]);
+        addToGroup(index, owner, item);
       }
     }
     return index;

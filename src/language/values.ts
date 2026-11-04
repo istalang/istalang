@@ -215,7 +215,12 @@ export class ValueSemantics<Value> {
     const table = new Map<number, number[]>();
     map.entries.forEach(([key], position) => {
       const hash = this.#hashOf(key);
-      table.set(hash, [...(table.get(hash) ?? []), position]);
+      const bucket = table.get(hash);
+      if (bucket === undefined) {
+        table.set(hash, [position]);
+      } else {
+        bucket.push(position);
+      }
     });
     this.#tables.set(map, table);
     return table;

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-10-29
+last_updated: 2026-11-04
 tags: [reuse, structures, memo, kind-table, invariants]
 ---
 
@@ -19,6 +19,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 - compare results item by item, entry by entry, member by member or property by property → `sameItems`, `sameEntries`, `sameMembers`, `sameProperties`, `Equality` (`src/structures/equality.ts`)
 - push an active item onto a work stack for the duration of a callback and pop in `finally` → `withPushed` (`src/structures/stack.ts`)
 - push an iterable onto an explicit stack without overflowing the JS call stack → `pushAll` (`src/structures/stack.ts`)
+- keep a group of items per key, adding them one at a time → `addToGroup` (`src/structures/groups.ts`); group a whole list by a key every item has → `Map.groupBy`
 - find the last of items kept in ascending order whose key is at most a value, by bisection → `lastIndexAtMost` (`src/structures/sorted.ts`)
 - find strongly connected components or test whether an edge lies on a cycle → `stronglyConnected`, `GraphEdge` (`src/structures/strongly-connected.ts`)
 - fail on a broken toolchain invariant → `unreachable`, `Unreachable` (`src/structures/unreachable.ts`)
@@ -27,5 +28,6 @@ tags: [reuse, structures, memo, kind-table, invariants]
 
 - Open dispatches over node or instruction kinds use `Handlers` (`src/structures/kind-table.ts`), never `switch` with `default` (`docs/arch/architecture.md`).
 - Derived caches use `memo` (`src/structures/memo.ts`) keyed by immutable input; never store a copy or invalidate by hand (`docs/arch/architecture.md`).
+- A group is filled in place (`addToGroup`, `Map.groupBy`), never copied to append one item (`[...group, item]`), which makes filling it quadratic; only a persistent update, whose old map keeps its group, copies it.
 - Recursive walks over unbounded values or heap graphs use an explicit stack (`pushAll`, `stronglyConnected`), never the JS call stack.
 - Broken invariant → `unreachable`; invalid host call/text → `Refusal` / `FormatError`; language runtime failure → `Panic` or `Result`.
