@@ -272,7 +272,7 @@ export class Futures {
   }
 }
 
-/** What a `first` resolves with: the winner's position and value, as an `(int, T)`. */
+/** What a `first` resolves with: the winner's position and value, as an `(Int, T)`. */
 function positioned(position: number, value: Value): Value {
   return { kind: 'tuple', elements: [BigInt(position), value] };
 }

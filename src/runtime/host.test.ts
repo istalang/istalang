@@ -17,7 +17,7 @@ import { testRuntime } from './runtime.test-kit.ts';
 
 const subsetText = definitionFormat.write(subsetDefinition).text;
 const innermostLocation = /\(main:6:\d+\)$/u;
-const missingKeys = /prelude\.compare\(int, int\).*prelude\.add\(int, int\)/u;
+const missingKeys = /prelude\.compare\(Int, Int\).*prelude\.add\(Int, Int\)/u;
 
 /** `state`, which must be a finished instance's. */
 function finished(state: InstanceState): Finished {
@@ -48,7 +48,7 @@ describe('the runtime', () => {
   it('turns a panic into the outcome, with a trace from the innermost frame out', () => {
     const natives = {
       ...stdNatives,
-      'prelude.subtract(int, int)': () => {
+      'prelude.subtract(Int, Int)': () => {
         throw new Panic('no subtraction today');
       },
     };
@@ -68,7 +68,7 @@ describe('the runtime', () => {
   it('gives an encoded outcome as JSON or its text, refusing one with no JSON', () => {
     const test = testRuntime();
     const program = test.runtime.deploy(
-      compiledText('async fn main() -> Future<(float, int)>: (0.0 / 0.0, 12345678901234567890)'),
+      compiledText('async fn main() -> Future<(Float, Int)>: (0.0 / 0.0, 12345678901234567890)'),
     );
     const state = finished(program.start('i').state);
     expect(program.outcome(state)).toEqual([null, 12345678901234567890n]);
@@ -83,8 +83,8 @@ describe('the runtime', () => {
     const program = test.runtime.deploy(
       compiledText(
         [
-          'fn answer() -> int: 42',
-          'fn handle() -> Instance<int>: spawn answer()',
+          'fn answer() -> Int: 42',
+          'fn handle() -> Instance<Int>: spawn answer()',
           'async fn main():',
           '  spawn answer()',
           '  spawn handle()',
@@ -101,7 +101,7 @@ describe('the runtime', () => {
 
   it("encodes the root's outcome before what its frame holds is disposed, so a defer's panic is traced from main", () => {
     const program = testRuntime().runtime.deploy(
-      compiledText('async fn main() -> Future<int>:\n  defer fn(): panic("boom")\n  42'),
+      compiledText('async fn main() -> Future<Int>:\n  defer fn(): panic("boom")\n  42'),
     );
     const { state } = program.start('i');
     expect(state).toMatchObject({ kind: 'panicked', message: 'boom' });
@@ -123,7 +123,7 @@ describe('the runtime', () => {
   it('lets an error a native throws for any other reason propagate', () => {
     const natives = {
       ...stdNatives,
-      'prelude.add(int, int)': () => {
+      'prelude.add(Int, Int)': () => {
         throw new RangeError('a bug in the native');
       },
     };

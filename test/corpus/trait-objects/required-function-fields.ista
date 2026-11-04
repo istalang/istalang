@@ -3,14 +3,14 @@
 # `any` value, as a struct's own is (§3.10, §3.14).
 
 trait Runs:
-  run: fn(int) -> int
+  run: fn(Int) -> Int
 
-struct Step { run: fn(int) -> int }
+struct Step { run: fn(Int) -> Int }
 
-fn apply<T is Runs>(value: T, n: int) -> int:
+fn apply<T is Runs>(value: T, n: Int) -> Int:
   value.run(n)
 
 async fn main():
-  const one = Step{run: fn(n: int): n + 1}
-  const two: any Runs = Step{run: fn(n: int): n + 2}
+  const one = Step{run: fn(n: Int): n + 1}
+  const two: any Runs = Step{run: fn(n: Int): n + 2}
   (apply(one, 2), two.run(3), apply(two, 5))

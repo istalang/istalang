@@ -13,9 +13,9 @@
 # `?->` reads through an optional shared struct only, and a value read through it is a copy, so a
 # method taking `&self` isn't called through it (§4).
 
-struct Tally { count: int }
+struct Tally { count: Int }
 
-shared struct Counter { count: int }
+shared struct Counter { count: Int }
 
 struct Holder { counter: Counter = new Counter{count: 0} }
 
@@ -33,5 +33,5 @@ async fn main():
   const missing = bare?->count
   const maybe: Tally? = plain
   const inner = maybe?->count
-  const log: Shared<Array<int>>? = new Shared{value: [1]}
+  const log: Shared<Array<Int>>? = new Shared{value: [1]}
   log?->value.push(2)

@@ -24,7 +24,7 @@ import {
 const { expected, topLevelStatement, externWithBody } = parserDiagnostics;
 
 const typeParameter = (name: string): string => `(TypeParameter ${name} [] _)`;
-const string = named('string');
+const string = named('String');
 
 describe('imports', () => {
   it.each([
@@ -60,25 +60,25 @@ describe('type declarations', () => {
   it.each([
     ['struct Marker', '(StructDeclaration Marker [] [])'],
     [
-      'struct Req { id: int; value: string }',
+      'struct Req { id: Int; value: String }',
       `(StructDeclaration Req [] [${declaredField('id', int)} ${declaredField('value', string)}])`,
     ],
     [
       lines(
         'struct Response:',
-        '    id: string',
+        '    id: String',
         '    data:',
-        '        value: int',
-        '        result: string',
+        '        value: Int',
+        '        result: String',
       ),
       `(StructDeclaration Response [] [${declaredField('id', string)} ${declaredField('data', `(StructType [${field('value', int)} ${field('result', string)}])`)}])`,
     ],
     [
-      'struct Node<T is Sendable & Comparable = int> { value: T }',
+      'struct Node<T is Sendable & Comparable = Int> { value: T }',
       `(StructDeclaration Node [(TypeParameter T [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}])`,
     ],
     [
-      lines('enum Decision:', '    Approved { by: string }', '    Expired'),
+      lines('enum Decision:', '    Approved { by: String }', '    Expired'),
       `(EnumDeclaration Decision [] [(Variant Approved [${declaredField('by', string)}]) (Variant Expired [])])`,
     ],
     [
@@ -90,12 +90,12 @@ describe('type declarations', () => {
         'trait Monoid:',
         '    fn Self.zero() -> Self',
         '    fn add(left: Self, right: Self) -> Self',
-        '    value: int',
+        '    value: Int',
       ),
       `(TraitDeclaration Monoid [] [(FunctionDeclaration Self zero [] [] ${named('Self')} _) (FunctionDeclaration _ add [] [(Parameter left ${named('Self')} _) (Parameter right ${named('Self')} _)] ${named('Self')} _) ${field('value', int)}])`,
     ],
     [
-      'type Entries<T> = Array<(string, T)>',
+      'type Entries<T> = Array<(String, T)>',
       `(TypeAliasDeclaration Entries [${typeParameter('T')}] (NamedType [Array] [(TupleType [${string} ${named('T')}])]))`,
     ],
     [
@@ -103,25 +103,25 @@ describe('type declarations', () => {
       `(TypeAliasDeclaration Entries [${typeParameter('T')}] (NamedType [Array] [${named('T')}]))`,
     ],
     [
-      lines('shared struct Inbox<T>:', '    backlog: Array<T>', '    queued: int = 0'),
+      lines('shared struct Inbox<T>:', '    backlog: Array<T>', '    queued: Int = 0'),
       `(SharedStructDeclaration Inbox [${typeParameter('T')}] [${declaredField('backlog', `(NamedType [Array] [${named('T')}])`)} ${declaredField('queued', int, '0')}])`,
     ],
     ['shared struct Token', '(SharedStructDeclaration Token [] [])'],
     [
-      lines('struct Retry:', '    times: int = 3', '    backoff = times * 2'),
+      lines('struct Retry:', '    times: Int = 3', '    backoff = times * 2'),
       `(StructDeclaration Retry [] [${declaredField('times', int, '3')} ${declaredField('backoff', '_', '(Binary times * 2)')}])`,
     ],
     [
-      'enum Shape { Circle { r: float = 1.0 } }',
-      `(EnumDeclaration Shape [] [(Variant Circle [${declaredField('r', named('float'), '1')}])])`,
+      'enum Shape { Circle { r: Float = 1.0 } }',
+      `(EnumDeclaration Shape [] [(Variant Circle [${declaredField('r', named('Float'), '1')}])])`,
     ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));
   });
 
   it.each([
-    ['struct S { data: { n: int = 1 } }', '1'],
-    ['trait T { n: int = 1 }', '1'],
+    ['struct S { data: { n: Int = 1 } }', '1'],
+    ['trait T { n: Int = 1 }', '1'],
   ])('reports a default outside a declaration once: %s', (text, spanText) => {
     expect(reported('module', text)).toEqual(
       reportedOnce(parserDiagnostics.misplacedFieldDefault.code, spanText),
@@ -138,7 +138,7 @@ describe('type declarations', () => {
 describe('externs and functions', () => {
   it.each([
     [
-      'extern fn chargeCard(id: string) -> Result<string>',
+      'extern fn chargeCard(id: String) -> Result<String>',
       `(FunctionDeclaration isExtern _ chargeCard [] [(Parameter id ${string} _)] (NamedType [Result] [${string}]) _)`,
     ],
     [
@@ -154,7 +154,7 @@ describe('externs and functions', () => {
       'fn Duration.zero() -> Duration: Duration{value: 0}',
       `(FunctionDeclaration Duration zero [] [] ${named('Duration')} ${bodyOf(`(StructLiteral ${named('Duration')} [(FieldInitializer value 0)])`)})`,
     ],
-    ['const limit: int = 50_000', `(VariableDeclaration _ [(NamePattern [limit])] ${int} 50000)`],
+    ['const limit: Int = 50_000', `(VariableDeclaration _ [(NamePattern [limit])] ${int} 50000)`],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));
   });

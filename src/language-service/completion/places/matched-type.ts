@@ -12,7 +12,8 @@
  */
 
 import type { Denotation } from '../../../compiler/checker/denotation.ts';
-import type { FieldMember, Type } from '../../../compiler/checker/types/type.ts';
+import { downcastTargetOf, namesOwnType } from '../../../compiler/checker/types/named-types.ts';
+import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
 import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';
 import type { NamePattern, StructPattern } from '../../../compiler/syntax/patterns.ts';
@@ -85,13 +86,13 @@ function fieldsOf(
   const name = lastName(pattern.type.path);
   const isBare = pattern.type.path.length === 1;
   const denoted = denotationOf(cursor, parsed, name);
-  const own = type.kind === 'any' ? downcastTo(denoted, !isBare) : type;
+  const own = type.kind === 'any' ? downcastOf(cursor, parsed, name, type) : type;
   const declared = denoted?.declared;
   if (own?.kind !== 'nominal') {
     return [];
   }
   if (declared?.kind === 'type') {
-    return declared.entity === own.entity ? (checker.fieldsOf(own) ?? []) : [];
+    return namesOwnType(checker, declared.entity, own) ? (checker.fieldsOf(own) ?? []) : [];
   }
   const choosesVariant =
     (isBare && type.kind !== 'any') ||
@@ -109,16 +110,21 @@ function denotationOf(cursor: Cursor, parsed: Parsed, name: Identifier): Denotat
     : cursor.checker.lookup.denotationsOf(cursor.module, checked)[0];
 }
 
-/** The type a downcast to what `denoted` names tests for, where it names one (downcasts.ts). */
-function downcastTo(denoted: Denotation | undefined, isQualified: boolean): Type | undefined {
-  const declared = denoted?.declared;
-  const names =
-    (declared?.kind === 'type' && declared.entity.kind === 'type') ||
-    (declared?.kind === 'variant' && isQualified);
-  const type = denoted?.type;
-  return names && type?.kind === 'nominal' && type.entity.declaration.typeParameters.length === 0
-    ? type
-    : undefined;
+/**
+ * The type a downcast of a value of `from` to `name`, written before the cursor, tests for
+ * (named-types.ts).
+ */
+function downcastOf(
+  cursor: Cursor,
+  parsed: Parsed,
+  name: Identifier,
+  from: AnyType,
+): Type | undefined {
+  const checked = checkedTwinOf(cursor, parsed.tree, name);
+  const entity =
+    checked === undefined ? undefined : cursor.checker.bindings.entityOf(cursor.module, checked);
+  const target = entity === undefined ? undefined : downcastTargetOf(cursor.checker, entity, from);
+  return target?.kind === 'type' ? target.type : undefined;
 }
 
 /** A link of the chain: `node`, its `child` on the way to the pattern, and what `node` matches. */

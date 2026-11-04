@@ -3,10 +3,10 @@
 
 trait Counter:
   fn bump(self: &Self)
-  fn count(self: Self) -> int
+  fn count(self: Self) -> Int
 
-struct Ones { n: int }
-struct Tens { n: int }
+struct Ones { n: Int }
+struct Tens { n: Int }
 
 fn bump(self: &Ones):
   self.n += 1
@@ -14,10 +14,10 @@ fn bump(self: &Ones):
 fn bump(self: &Tens):
   self.n += 10
 
-fn count(self: Ones) -> int:
+fn count(self: Ones) -> Int:
   self.n
 
-fn count(self: Tens) -> int:
+fn count(self: Tens) -> Int:
   self.n
 
 fn bumped(counter: &any Counter):

@@ -17,9 +17,9 @@ import {
   valueArgument as v,
 } from './fixture-kit.ts';
 
-export const subsetSource = `struct Point { x: int; y: int }
+export const subsetSource = `struct Point { x: Int; y: Int }
 
-fn fib(n: int) -> int:
+fn fib(n: Int) -> Int:
   if n < 2:
     return n
   fib(n - 1) + fib(n - 2)
@@ -61,19 +61,19 @@ export const subsetDefinition: Definition = {
   functions: [
     externFunction({
       module: 1,
-      key: 'prelude.compare(int, int)',
+      key: 'prelude.compare(Int, Int)',
       parameters: [int, int],
       result: int,
     }),
     externFunction({
       module: 1,
-      key: 'prelude.add(int, int)',
+      key: 'prelude.add(Int, Int)',
       parameters: [int, int],
       result: int,
     }),
     externFunction({
       module: 1,
-      key: 'prelude.subtract(int, int)',
+      key: 'prelude.subtract(Int, Int)',
       parameters: [int, int],
       result: int,
     }),
@@ -81,7 +81,7 @@ export const subsetDefinition: Definition = {
       kind: 'code',
       name: 'main.fib',
       module: 0,
-      span: at('fn fib(n: int) -> int'),
+      span: at('fn fib(n: Int) -> Int'),
       async: false,
       givesDefault: false,
       parameters: [{ reference: false }],

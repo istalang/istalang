@@ -28,8 +28,8 @@ function startedServer(root: string) {
 
 describe('ista lsp', () => {
   it('serves the project it runs in, and exits cleanly once shut down', async () => {
-    const text = "import helper from 'lib'\n\nfn main() -> int: helper()\n";
-    const root = tempProject({ 'main.ista': text, 'lib.ista': 'fn helper() -> int: 1\n' });
+    const text = "import helper from 'lib'\n\nfn main() -> Int: helper()\n";
+    const root = tempProject({ 'main.ista': text, 'lib.ista': 'fn helper() -> Int: 1\n' });
     const uri = pathToFileURL(`${root}/main.ista`).href;
     const { client, exited } = startedServer(root);
     const { capabilities } = await client.sendRequest(InitializeRequest.type, initializeParams);

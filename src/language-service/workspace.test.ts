@@ -49,9 +49,9 @@ function workspaceOver(files: Files) {
 
 describe('a workspace', () => {
   it('loads its program once for every change, however often it is asked', () => {
-    const { workspace, loads } = workspaceOver({ main: 'fn main() -> int: 1\n' });
+    const { workspace, loads } = workspaceOver({ main: 'fn main() -> Int: 1\n' });
     expect(workspace.program).toBe(workspace.program);
-    workspace.write(idOf('main'), 'fn main() -> int: 2\n');
+    workspace.write(idOf('main'), 'fn main() -> Int: 2\n');
     expect(workspace.program).toBe(workspace.program);
     expect(loads).toHaveLength(2);
   });
@@ -69,8 +69,8 @@ describe('a workspace', () => {
   });
 
   it('serves the open text of a document, and its file once it closes', () => {
-    const { workspace } = workspaceOver({ main: 'fn main() -> int: 1\n' });
-    workspace.write(idOf('main'), 'fn main() -> int: "one"\n');
+    const { workspace } = workspaceOver({ main: 'fn main() -> Int: 1\n' });
+    workspace.write(idOf('main'), 'fn main() -> Int: "one"\n');
     expect(workspace.diagnosticsOf(idOf('main'))?.diagnostics).toHaveLength(1);
     workspace.close(idOf('main'));
     expect(workspace.diagnosticsOf(idOf('main'))?.diagnostics).toEqual([]);
@@ -78,10 +78,10 @@ describe('a workspace', () => {
   });
 
   it('keeps its program when a document is written with the text it has', () => {
-    const { workspace, loads } = workspaceOver({ main: 'fn main() -> int: 1\n' });
-    workspace.write(idOf('main'), 'fn main() -> int: 1\n');
+    const { workspace, loads } = workspaceOver({ main: 'fn main() -> Int: 1\n' });
+    workspace.write(idOf('main'), 'fn main() -> Int: 1\n');
     const first = workspace.program;
-    workspace.write(idOf('main'), 'fn main() -> int: 1\n');
+    workspace.write(idOf('main'), 'fn main() -> Int: 1\n');
     expect(workspace.program).toBe(first);
     expect(loads).toHaveLength(1);
   });
@@ -90,7 +90,7 @@ describe('a workspace', () => {
     const { workspace } = workspaceOver({ main: '' });
     const untitled = idOf('untitled');
     expect(workspace.treeOf(untitled)).toBeUndefined();
-    workspace.write(untitled, 'struct Pair:\n  first: int\n');
+    workspace.write(untitled, 'struct Pair:\n  first: Int\n');
     expect(workspace.treeOf(untitled)).toBe(workspace.treeOf(untitled));
     expect(workspace.treeOf(untitled)?.root.items.map((item) => item.kind)).toEqual([
       'StructDeclaration',
@@ -101,7 +101,7 @@ describe('a workspace', () => {
   describe('checking a burst of edits', () => {
     const main = idOf('main');
     const files = {
-      main: 'fn f() -> int: 1 + 0\n\nfn g() -> int: f() * 3\n\nfn h(x: int) -> int: "x"\n',
+      main: 'fn f() -> Int: 1 + 0\n\nfn g() -> Int: f() * 3\n\nfn h(x: Int) -> Int: "x"\n',
     };
     const edited = (digit: number) => files.main.replace('1 + 0', `1 + ${digit}`);
     const bodyOffset = files.main.indexOf('1 + 0');

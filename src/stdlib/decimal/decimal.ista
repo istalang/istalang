@@ -12,77 +12,77 @@ import Rounding from 'math'
 
 extern sendable struct Decimal
 
-extern fn Decimal.from(value: int) -> Decimal
+extern fn Decimal.from(value: Int) -> Decimal
 
-extern fn int.from(value: Decimal) -> int # truncates toward zero
-extern fn float.from(value: Decimal) -> float # the nearest float
+extern fn Int.from(value: Decimal) -> Int # truncates toward zero
+extern fn Float.from(value: Decimal) -> Float # the nearest float
 
 # The text of a value has no exponent, no zeros ending its fraction and no `-0`: `-12.5`. `parse`
 # reads an optional `-`, digits and an optional fraction, so a text's length bounds its value's.
-extern fn toString(self: Decimal) -> string
-extern fn Decimal.parse(text: string) -> Result<Decimal>
+extern fn toString(self: Decimal) -> String
+extern fn Decimal.parse(text: String) -> Result<Decimal>
 
 # Exactly `places` digits after the point: `-12.50`.
-extern fn toFixed(self: Decimal, places: int, mode: Rounding = Rounding.HalfEven) -> string
+extern fn toFixed(self: Decimal, places: Int, mode: Rounding = Rounding.HalfEven) -> String
 
 fn toJson(self: Decimal) -> json.Json: json.encodeText(self)
-fn Decimal.fromJson(value: json.Json, path: string) -> Result<Decimal>: json.decodeText(value, path)
+fn Decimal.fromJson(value: json.Json, path: String) -> Result<Decimal>: json.decodeText(value, path)
 
 # `+`, `-` and `*` are exact.
 extern fn add(left: Decimal, right: Decimal) -> Decimal
-extern fn add(left: Decimal, right: int) -> Decimal
-extern fn add(left: int, right: Decimal) -> Decimal
+extern fn add(left: Decimal, right: Int) -> Decimal
+extern fn add(left: Int, right: Decimal) -> Decimal
 extern fn subtract(left: Decimal, right: Decimal) -> Decimal
-extern fn subtract(left: Decimal, right: int) -> Decimal
-extern fn subtract(left: int, right: Decimal) -> Decimal
+extern fn subtract(left: Decimal, right: Int) -> Decimal
+extern fn subtract(left: Int, right: Decimal) -> Decimal
 extern fn multiply(left: Decimal, right: Decimal) -> Decimal
-extern fn multiply(left: Decimal, right: int) -> Decimal
-extern fn multiply(left: int, right: Decimal) -> Decimal
+extern fn multiply(left: Decimal, right: Int) -> Decimal
+extern fn multiply(left: Int, right: Decimal) -> Decimal
 extern fn negate(value: Decimal) -> Decimal
 
 # `/` rounds half to even to 34 significant digits, as IEEE 754's decimal128 does; `divide` with
 # `places` rounds the exact quotient to that many digits after the point. There is no infinite
 # Decimal, so every division by zero panics.
 extern fn divide(left: Decimal, right: Decimal) -> Decimal
-extern fn divide(left: Decimal, right: int) -> Decimal
-extern fn divide(left: int, right: Decimal) -> Decimal
+extern fn divide(left: Decimal, right: Int) -> Decimal
+extern fn divide(left: Int, right: Decimal) -> Decimal
 extern fn divide(
   left: Decimal,
   right: Decimal,
-  places: int,
+  places: Int,
   mode: Rounding = Rounding.HalfEven,
 ) -> Decimal
 extern fn divide(
   left: Decimal,
-  right: int,
-  places: int,
+  right: Int,
+  places: Int,
   mode: Rounding = Rounding.HalfEven,
 ) -> Decimal
 extern fn divide(
-  left: int,
+  left: Int,
   right: Decimal,
-  places: int,
+  places: Int,
   mode: Rounding = Rounding.HalfEven,
 ) -> Decimal
 
 # As on ints, `a == (a // b) * b + a % b`, and `%` takes the divisor's sign (§3.9).
 extern fn floorDivide(left: Decimal, right: Decimal) -> Decimal
-extern fn floorDivide(left: Decimal, right: int) -> Decimal
-extern fn floorDivide(left: int, right: Decimal) -> Decimal
+extern fn floorDivide(left: Decimal, right: Int) -> Decimal
+extern fn floorDivide(left: Int, right: Decimal) -> Decimal
 extern fn remainder(left: Decimal, right: Decimal) -> Decimal
-extern fn remainder(left: Decimal, right: int) -> Decimal
-extern fn remainder(left: int, right: Decimal) -> Decimal
+extern fn remainder(left: Decimal, right: Int) -> Decimal
+extern fn remainder(left: Int, right: Decimal) -> Decimal
 
-extern fn compare(left: Decimal, right: Decimal) -> int
-extern fn compare(left: Decimal, right: int) -> int
-extern fn compare(left: int, right: Decimal) -> int
+extern fn compare(left: Decimal, right: Decimal) -> Int
+extern fn compare(left: Decimal, right: Int) -> Int
+extern fn compare(left: Int, right: Decimal) -> Int
 
 extern fn abs(self: Decimal) -> Decimal
 
-extern fn round(self: Decimal, places: int = 0, mode: Rounding = Rounding.HalfEven) -> Decimal
+extern fn round(self: Decimal, places: Int = 0, mode: Rounding = Rounding.HalfEven) -> Decimal
 
 fn floor(self: Decimal) -> Decimal: self.round(0, Rounding.Floor)
 fn ceil(self: Decimal) -> Decimal: self.round(0, Rounding.Ceiling)
 
 # Exact for an exponent of at least 0; a negative one divides as `/` does.
-extern fn power(base: Decimal, exponent: int) -> Decimal
+extern fn power(base: Decimal, exponent: Int) -> Decimal

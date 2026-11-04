@@ -1,14 +1,14 @@
 # panic: no verdict for p-1
-# `panic` stops the instance at once (§3.12): it has type `never`, so it fits where any value is
+# `panic` stops the instance at once (§3.12): it has type `Never`, so it fits where any value is
 # expected, such as a `match` case or the right side of `??`.
 
 enum Verdict { Approved; Rejected }
 
-fn decided(id: string, verdict: Verdict?) -> string:
+fn decided(id: String, verdict: Verdict?) -> String:
   match verdict:
     case Some{value is Approved}: "approved"
     case Some{value is Rejected}: "rejected"
     case None: panic("no verdict for " + id)
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   decided("p-1", none)

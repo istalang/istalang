@@ -2,7 +2,7 @@
 # A program's own type takes the bitwise operators through `Bitwise` (§3.9), as a set of flags.
 
 struct Flags:
-  bits: int
+  bits: Int
 
 fn bitAnd(left: Flags, right: Flags) -> Flags: Flags{left.bits & right.bits}
 fn bitOr(left: Flags, right: Flags) -> Flags: Flags{left.bits | right.bits}
@@ -11,7 +11,7 @@ fn bitNot(value: Flags) -> Flags: Flags{~value.bits}
 
 fn either<T is Bitwise>(left: T, right: T) -> T: left | right
 
-async fn main() -> Future<(int, int, bool)>:
+async fn main() -> Future<(Int, Int, Bool)>:
   const read = Flags{1}
   const write = Flags{2}
   const both = either(read, write)

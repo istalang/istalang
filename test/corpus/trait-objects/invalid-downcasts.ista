@@ -8,28 +8,28 @@
 # a `match` that covers only some of its types, an open set, without `case _`.
 
 trait Named:
-  fn name(self: Self) -> string
+  fn name(self: Self) -> String
 
-struct Email { to: string }
-struct Plain { text: string }
+struct Email { to: String }
+struct Plain { text: String }
 struct Box<T> { value: T }
 
-fn name(self: Email) -> string: self.to
-fn name<T>(self: Box<T>) -> string: "box"
+fn name(self: Email) -> String: self.to
+fn name<T>(self: Box<T>) -> String: "box"
 
-fn describe(x: any Named) -> string:
+fn describe(x: any Named) -> String:
   match x:
     case Email{to}:
       to
 
-fn never(x: any Named) -> bool:
+fn never(x: any Named) -> Bool:
   x is Plain{}
 
-fn generic(x: any Named) -> bool:
+fn generic(x: any Named) -> Bool:
   x is Box{}
 
-fn literal(x: any Named) -> bool:
+fn literal(x: any Named) -> Bool:
   x is "a"
 
-fn anonymous(x: any Named) -> bool:
+fn anonymous(x: any Named) -> Bool:
   x is struct{to}

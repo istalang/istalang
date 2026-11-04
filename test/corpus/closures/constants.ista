@@ -5,13 +5,13 @@
 
 const limit = 10
 
-const isLarge = fn(amount: int): amount > limit
+const isLarge = fn(amount: Int): amount > limit
 
-const ops = [fn(x: int): x + 1, fn(x: int): x * 2]
+const ops = [fn(x: Int): x + 1, fn(x: Int): x * 2]
 
-const fact: fn(int) -> int = fn me(n): if n < 2: 1 else: n * me(n - 1)
+const fact: fn(Int) -> Int = fn me(n): if n < 2: 1 else: n * me(n - 1)
 
 async fn main():
   const same = isLarge == isLarge
   const other = ops[0] == ops[1]
-  string(isLarge(11)) + " " + string(isLarge(3)) + " " + string(ops[1](4)) + " " + string(fact(5)) + " " + string(same) + " " + string(other)
+  String(isLarge(11)) + " " + String(isLarge(3)) + " " + String(ops[1](4)) + " " + String(fact(5)) + " " + String(same) + " " + String(other)

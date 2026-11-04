@@ -13,7 +13,7 @@ struct Envelope<T is Sendable>:
 fn sum2<T is Monoid>(a: T, b: T) -> T:
   T.zero() + a + b
 
-fn open(envelope: Envelope<Slot<int>>) -> int:
+fn open(envelope: Envelope<Slot<Int>>) -> Int:
   1
 
 async fn main():

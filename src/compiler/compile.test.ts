@@ -103,9 +103,9 @@ describe('the corpus', () => {
 describe('diagnostics, whatever order modules are asked in', () => {
   const lib = [
     'struct Sealed<X is Sendable> { value: X }',
-    'struct Box<T, U = Sealed<Slot<int>>> { first: T }',
+    'struct Box<T, U = Sealed<Slot<Int>>> { first: T }',
   ].join('\n');
-  const main = "import Box from 'lib'\nfn first(box: Box<int>) -> int: box.first";
+  const main = "import Box from 'lib'\nfn first(box: Box<Int>) -> Int: box.first";
 
   /** The codes each module reports, by module key. */
   function codes(program: Program, keys: readonly string[]): Record<string, readonly number[]> {

@@ -3,7 +3,7 @@
  * type, and the rule that makes a block an expression.
  *
  * A block's value is its last statement's: an expression statement has its expression's type,
- * `return`, `break` and `continue` have `never`, and any other statement `unit` (§4). Only the last
+ * `return`, `break` and `continue` have `Never`, and any other statement `Unit` (§4). Only the last
  * statement's expression sees the type the block is expected to have.
  */
 

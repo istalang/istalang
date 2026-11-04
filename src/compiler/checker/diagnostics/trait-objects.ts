@@ -27,7 +27,7 @@ export const traitObjectTemplates = {
   notDowncast: {
     code: 5155,
     message: () =>
-      "An 'any' value is matched by a pattern naming its own type: a struct, a variant qualified by its enum, or '_'.",
+      "An 'any' value is matched by a pattern naming its value's own type: a type, a variant qualified by its enum, or '_'.",
   },
   requiredFieldChanged: {
     code: 5152,

@@ -46,10 +46,10 @@ describe('panicOf', () => {
 
 describe('requireFrameDepth', () => {
   it.each([
-    ['synchronous', 'fn loop(n: int) -> int: loop(n + 1)\nasync fn main(): loop(0)'],
+    ['synchronous', 'fn loop(n: Int) -> Int: loop(n + 1)\nasync fn main(): loop(0)'],
     [
       'eager async',
-      'async fn loop(n: int) -> Future<int>: await loop(n + 1)\nasync fn main(): await loop(0)',
+      'async fn loop(n: Int) -> Future<Int>: await loop(n + 1)\nasync fn main(): await loop(0)',
     ],
   ])('panics an instance whose %s recursion exceeds the frame limit', (_, source) => {
     expect(startToEnd(testRuntime(), compiledText(source))).toMatchObject({

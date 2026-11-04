@@ -9,7 +9,7 @@ import { mainGives } from './prelude.test-kit.ts';
 
 /** The string `main` gives, returning `expression` beside `declarations`. */
 function appended(expression: string, declarations = ''): unknown {
-  return mainGives('string', expression, declarations);
+  return mainGives('String', expression, declarations);
 }
 
 describe('appending to a string', () => {
@@ -24,7 +24,7 @@ describe('appending to a string', () => {
 
   it("appends a program's own Stringable type, a float and a bool on either side", () => {
     const money =
-      'struct Money { cents: int }\nfn toString(self: Money) -> string: string(self.cents) + "c"';
+      'struct Money { cents: Int }\nfn toString(self: Money) -> String: String(self.cents) + "c"';
     expect(
       appended('Money{cents: 5} + " and " + 1.5 + ", " + (true + "") + Money{cents: 2}', money),
     ).toBe('5c and 1.5, true2c');

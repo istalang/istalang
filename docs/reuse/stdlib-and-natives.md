@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-30
+last_updated: 2026-11-04
 tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ---
 
@@ -19,13 +19,13 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - type a native function/table by the capabilities it uses, or throw a language panic → `Native`, `Natives`, `NativeContext`, `Panic` (`src/runtime/natives.ts`)
 - request futures, slots, weak refs or resources in a native's context → `WithFutures`, `WithSlots`, `WithWeakSide`, `WithResources` (`src/runtime/natives.ts`)
 - request random, logs, instances or testing in a native's context → `WithRandom`, `WithLogs`, `WithInstances`, `WithTesting` (`src/runtime/natives.ts`)
-- generate the four `int`/`float` overloads of a binary native or throw division by zero → `numeric`, `asFloat`, `divisionByZero` (`src/stdlib/numeric.ts`)
+- generate the four `Int`/`Float` overloads of a binary native or throw division by zero → `numeric`, `asFloat`, `divisionByZero` (`src/stdlib/numeric.ts`)
 - map `math.Rounding` variants to float rounding functions → `roundingType`, `floatRoundings` (`src/stdlib/math/rounding.ts`)
 - map `math.Rounding` variants to decimal.js rounding modes → `decimalRoundings` (`src/stdlib/decimal/arithmetic.ts`)
 - validate or compute sequence indices, `at(i)`, or `slice(start, end)` → `checkedIndex`, `atPosition`, `sliceBounds`, `sliced` (`src/stdlib/positions.ts`)
 - select or replace sequence items by a prelude `Range` → `selectionOf`, `selected`, `replaced` (`src/stdlib/positions.ts`)
 - read a prelude `Range`, require both ends, count steps, or test membership → `rangeOf`, `bounded`, `countOf`, `reaches`, `textOf` (`src/stdlib/ranges.ts`)
-- format or parse primitive values (`int`, `float`, `bool`) as text → `primitiveText`, `readPrimitive` (`src/stdlib/prelude/text-forms.ts`)
+- format or parse primitive values (`Int`, `Float`, `Bool`) as text → `primitiveText`, `readPrimitive` (`src/stdlib/prelude/text-forms.ts`)
 - format or parse ISO 8601 `Time` and `Duration` texts → `timeText`, `readTime`, `durationText`, `readDuration` (`src/stdlib/time/iso.ts`)
 - draw a uniform random `bigint` below a bound from a 32-byte draw source → `uniformBelow` (`src/stdlib/random/natives.ts`)
 - implement `Encodable`/`Decodable` in `.ista` for a `Stringable`/`Parsable` type → `json.encodeText`, `json.decodeText` (`src/stdlib/json/json.ista`)

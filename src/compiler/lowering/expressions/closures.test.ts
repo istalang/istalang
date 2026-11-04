@@ -24,9 +24,9 @@ function entryNamed(definition: Definition, name: string): CodeFunction {
 }
 
 const counter = [
-  'fn makeCounter(start: int) -> fn() -> int:',
+  'fn makeCounter(start: Int) -> fn() -> Int:',
   '  let count = start',
-  '  fn next() -> int:',
+  '  fn next() -> Int:',
   '    count += 1',
   '    count',
   '  next',
@@ -48,10 +48,10 @@ describe('lowering closures', () => {
 
   it('gives a named nested function its own closure, and a top-level function value none', () => {
     const definition = compiled([
-      'fn inc(n: int) -> int: n + 1',
-      'fn twice(f: fn(int) -> int, x: int) -> int: f(f(x))',
-      'fn down() -> int:',
-      '  fn count(n: int) -> int: if n == 0: 0 else: count(n - 1)',
+      'fn inc(n: Int) -> Int: n + 1',
+      'fn twice(f: fn(Int) -> Int, x: Int) -> Int: f(f(x))',
+      'fn down() -> Int:',
+      '  fn count(n: Int) -> Int: if n == 0: 0 else: count(n - 1)',
       '  count(3) + twice(inc, 1)',
       'async fn main(): down()',
     ]);
@@ -67,7 +67,7 @@ describe('lowering closures', () => {
 
   it("releases a loop body's variables at its end and on leaving it, but not a function body's", () => {
     const definition = compiled([
-      'fn loop() -> int:',
+      'fn loop() -> Int:',
       '  let total = 0',
       '  while total < 3:',
       '    let step = 1',

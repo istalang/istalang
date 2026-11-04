@@ -1,12 +1,12 @@
 # The second module of the names corpus: what main.ista imports.
 
-struct Shape { radius: int }
+struct Shape { radius: Int }
 
 fn circle() -> Shape:
   Shape{radius: 1}
 
-fn helper(shape: Shape) -> int:
+fn helper(shape: Shape) -> Int:
   shape.radius + _internal()
 
-fn _internal() -> int:
+fn _internal() -> Int:
   0

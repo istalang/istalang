@@ -12,19 +12,19 @@
 
 import Suite, Test from 'testing'
 
-extern fn fetch() -> int
+extern fn fetch() -> Int
 
 shared struct Box:
-  n: int
+  n: Int
 
 @Suite{"async"}
 async fn asyncSuite() -> Future<Array<Test>>: []
 
 @Suite{"takes"}
-fn takes(n: int) -> Array<Test>: []
+fn takes(n: Int) -> Array<Test>: []
 
 @Suite{"gives"}
-fn gives() -> Array<int>: []
+fn gives() -> Array<Int>: []
 
 @Suite{"calls an extern"}
 fn callsExtern() -> Array<Test>:
@@ -35,7 +35,7 @@ fn callsExtern() -> Array<Test>:
 fn makesShared() -> Array<Test>: _with(new Box{n: 1})
 
 @Suite{"makes a slot"}
-fn makesSlot() -> Array<Test>: _of(Slot.create<int>())
+fn makesSlot() -> Array<Test>: _of(Slot.create<Int>())
 
 struct Bag {}
 extern fn Bag.default() -> Bag
@@ -49,4 +49,4 @@ fn callsImplicitExtern() -> Array<Test>:
 fn fine() -> Array<Test>: [Case{title: "t", body: async fn(): { drop fetch(); () }}]
 
 fn _with(box: Box) -> Array<Test>: []
-fn _of(slot: Slot<int>) -> Array<Test>: []
+fn _of(slot: Slot<Int>) -> Array<Test>: []

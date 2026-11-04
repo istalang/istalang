@@ -27,16 +27,16 @@ const mainStuck = /instance \S+ waits on nothing that can wake it/u;
 const program = [
   "import Decodable from 'json'",
   'struct Order:',
-  '  id: string',
-  '  amount: int',
+  '  id: String',
+  '  amount: Int',
   '',
   'extern sendable struct Queue<T is Sendable>',
   'extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>',
   'extern fn orders() -> Queue<Order>',
-  'extern fn charge(id: string, amount: int) -> Result<string>',
-  'extern limit: int',
+  'extern fn charge(id: String, amount: Int) -> Result<String>',
+  'extern limit: Int',
   '',
-  'async fn main() -> Future<string>:',
+  'async fn main() -> Future<String>:',
   '  const order = await orders().receive()',
   '  if order.amount > limit:',
   '    return "too much"',
@@ -52,7 +52,7 @@ function host(order: string, charge: string): string {
     'export default {',
     "  'main.orders()': () => 'orders',",
     `  'main.receive(main.Queue<T>)': (queue) => new Promise((resolve) => setTimeout(() => resolve(${order}), 5)),`,
-    `  'main.charge(string, int)': (id, amount) => ${charge},`,
+    `  'main.charge(String, Int)': (id, amount) => ${charge},`,
     "  'main.limit': () => 100,",
     '};',
     '',
@@ -104,11 +104,11 @@ const specHost = [
   '};',
   'export default {',
   "  'main.purchaseRequests': () => 'requests',",
-  "  'main.announcements(string)': (user) => user,",
-  "  'main.reviewQueue(string)': (role) => role,",
-  "  'main.notifications(string)': (role) => role,",
-  "  'main.verdicts(string)': (id) => 'verdicts ' + id,",
-  "  'main.cancels(string)': (id) => 'cancels ' + id,",
+  "  'main.announcements(String)': (user) => user,",
+  "  'main.reviewQueue(String)': (role) => role,",
+  "  'main.notifications(String)': (role) => role,",
+  "  'main.verdicts(String)': (id) => 'verdicts ' + id,",
+  "  'main.cancels(String)': (id) => 'cancels ' + id,",
   "  'main.send(main.Queue<T>, T)': (queue) => log('durable ' + queue),",
   '  [sendRevertible]: (queue, message) => {',
   "    const token = queue + ':' + (message.text ?? message.purchaseId);",
@@ -117,7 +117,7 @@ const specHost = [
   '  },',
   "  'main.dispose(main.Sent)': (token) => log('retract ' + token),",
   "  'main.receive(main.Queue<T>)': next,",
-  "  'main.chargeCard(string, int)': (id, amount) => {",
+  "  'main.chargeCard(String, Int)': (id, amount) => {",
   "    log('charge ' + id + ' ' + amount);",
   "    return { type: 'Ok', value: 'r-' + id + '-' + amount };",
   '  },',
@@ -206,7 +206,7 @@ describe('ista run --host', () => {
     });
     const run = await ista(root, 'run', 'main.ista', '--host', 'host.mjs');
     expect(run.code).toBe(1);
-    expect(run.err).toContain('main.charge(string, int)');
+    expect(run.err).toContain('main.charge(String, Int)');
   });
 
   it.each(unfitHostModules)(
@@ -227,16 +227,16 @@ describe('ista run --host', () => {
   it('reads constants through a namespace import as their own module reads them', async () => {
     const root = project({
       'limits.ista': [
-        'extern ceiling: int',
+        'extern ceiling: Int',
         'const floor = 4',
         'struct Band:',
-        '  low: int',
+        '  low: Int',
         'const band = Band{low: 2}',
         '',
       ].join('\n'),
       'main.ista': [
         "import * as limits from 'limits'",
-        'async fn main() -> Future<int>:',
+        'async fn main() -> Future<Int>:',
         '  const band = limits.band',
         '  limits.floor + limits.ceiling + band.low + limits.band.low',
         '',
@@ -254,18 +254,18 @@ describe('ista run --host', () => {
     const root = project({
       'main.ista': [
         'struct Found:',
-        '  name: string?',
-        'extern fn note(text: string)',
-        'extern fn lookup() -> int?',
+        '  name: String?',
+        'extern fn note(text: String)',
+        'extern fn lookup() -> Int?',
         'extern fn found() -> Found',
-        'async fn main() -> Future<bool>:',
+        'async fn main() -> Future<Bool>:',
         '  note("a")',
         '  lookup() == none and found().name == none',
         '',
       ].join('\n'),
       'host.mjs': [
         'export default {',
-        "  'main.note(string)': () => {},",
+        "  'main.note(String)': () => {},",
         "  'main.lookup()': () => undefined,",
         "  'main.found()': () => ({ name: undefined }),",
         '};',
@@ -282,15 +282,15 @@ describe('ista run --host', () => {
   it('keeps waiting on the promises still pending after one of them fails', async () => {
     const root = project({
       'main.ista': [
-        'extern fn later(name: string) -> Future<string>',
-        'async fn main() -> Future<string>:',
+        'extern fn later(name: String) -> Future<String>',
+        'async fn main() -> Future<String>:',
         '  _ = later("fail")',
         '  await later("ok")',
         '',
       ].join('\n'),
       'host.mjs': [
         'export default {',
-        "  'main.later(string)': (name) =>",
+        "  'main.later(String)': (name) =>",
         "    name === 'fail'",
         "      ? Promise.reject(new Error('no'))",
         "      : new Promise((resolve) => setTimeout(() => resolve('fine'), 30)),",
@@ -302,7 +302,7 @@ describe('ista run --host', () => {
     expect(run).toEqual({
       code: 0,
       out: '"fine"\n',
-      err: "ista: the host's main.later(string) failed: Error: no\n",
+      err: "ista: the host's main.later(String) failed: Error: no\n",
     });
   });
 
@@ -321,7 +321,7 @@ describe('ista run --host', () => {
   it("runs spec §12.1's purchase in place, to the outcome its charge gives", async () => {
     const { run, ...logged } = await runSpec([
       ...specCode('12.1 Purchase approval', (code) => !code.includes('spawn purchase')),
-      'async fn main() -> Future<string>:',
+      'async fn main() -> Future<String>:',
       '    await purchase(PurchaseRequest{id: "p1", item: "laptop", amount: 900})',
     ]);
     expect(run).toEqual({ code: 0, out: '"paid: r-p1-900"\n', err: '' });
@@ -336,7 +336,7 @@ describe('ista run --host', () => {
       ...specCode('12.3 Broadcast with expiry').map((code) =>
         code.replace("import * as time from 'time'\n", ''),
       ),
-      'async fn main() -> Future<string>:',
+      'async fn main() -> Future<String>:',
       '    await announce("hello", ["ann", "bob"], 10ms)',
       '    "done"',
     ]);

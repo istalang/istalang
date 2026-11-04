@@ -43,7 +43,7 @@ describe('top-level constants defined through themselves', () => {
 });
 
 describe('a default reaching its own function while its types wait on it', () => {
-  const text = 'fn f(x: int = 1, y = f(1, 2)) -> int: x\nfn g() -> int: f(1, 2)';
+  const text = 'fn f(x: Int = 1, y = f(1, 2)) -> Int: x\nfn g() -> Int: f(1, 2)';
 
   it('is reported once, at the function, whose calls still take its parameters', () => {
     expect(reported(text)).toEqual({ codes: [reports.defaultCycle.code], spanTexts: ['f'] });

@@ -7,6 +7,6 @@ export const templateTemplates = {
   notStringable: {
     code: 5060,
     message: (type: string) =>
-      `A template writes each value as text with its toString, and no 'toString' takes ${type} and gives a string (§2).`,
+      `A template writes each value as text with its toString, and no 'toString' takes ${type} and gives a String (§2).`,
   },
 };

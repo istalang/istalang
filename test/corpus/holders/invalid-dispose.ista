@@ -9,9 +9,9 @@
 # value can't escape it: `self` is used only as `*self`, through `->`, or passed to an extern. A
 # `Shared` is the prelude's shared struct, so only the prelude could declare its `dispose`.
 
-struct Plain { n: int }
+struct Plain { n: Int }
 
-shared struct Lease { name: string }
+shared struct Lease { name: String }
 
 shared struct Holder { lease: Lease }
 

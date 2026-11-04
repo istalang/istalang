@@ -11,15 +11,15 @@
 type First = Second
 type Second = First
 
-fn window(start = 0, end: int) -> int:
+fn window(start = 0, end: Int) -> Int:
   end
 
 struct Box<T>:
   value: T
 
-fn nest<T>(value: T) -> int:
+fn nest<T>(value: T) -> Int:
   nest(Box{value: value})
 
 async fn main():
   const n = nowhere(1)
-  dispose(Slot.create<int>())
+  dispose(Slot.create<Int>())

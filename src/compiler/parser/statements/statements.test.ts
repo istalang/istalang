@@ -25,13 +25,13 @@ const { expected, invalidAssignmentTarget, compoundDestructuring, declarationInB
 describe('variables', () => {
   it.each([
     ['let count = 0', '(VariableDeclaration _ isMutable [(NamePattern [count])] _ 0)'],
-    ['const limit: int = 50_000', `(VariableDeclaration _ [(NamePattern [limit])] ${int} 50000)`],
+    ['const limit: Int = 50_000', `(VariableDeclaration _ [(NamePattern [limit])] ${int} 50000)`],
     [
       'let a, b = (1, "x")',
       '(VariableDeclaration _ isMutable [(NamePattern [a]) (NamePattern [b])] _ (Tuple [1 "x"]))',
     ],
     [
-      'let xs: Array<int>= []',
+      'let xs: Array<Int>= []',
       `(VariableDeclaration _ isMutable [(NamePattern [xs])] (NamedType [Array] [${int}]) (ArrayLiteral []))`,
     ],
   ])('parses %s', (text, tree) => {
@@ -144,11 +144,11 @@ describe('keyword statements', () => {
 describe('fn and async at the start of a statement', () => {
   it.each([
     [
-      'fn add(a: int, b = 1): a + b',
+      'fn add(a: Int, b = 1): a + b',
       `(FunctionDeclaration _ add [] [(Parameter a ${int} _) (Parameter b _ 1)] _ ${bodyOf('(Binary a + b)')})`,
     ],
     [
-      'async fn f() -> Future<int>: await g()',
+      'async fn f() -> Future<Int>: await g()',
       `(FunctionDeclaration isAsync _ f [] [] (NamedType [Future] [${int}]) ${bodyOf('(Await (Call g [] []))')})`,
     ],
     ['fn(x): x * 2', '(ExpressionStatement (Lambda _ [(Parameter x _ _)] _ (Binary x * 2)))'],
@@ -166,11 +166,11 @@ describe('fn and async at the start of a statement', () => {
 describe('declarations only the top level allows', () => {
   it.each([
     ['import a from "m"'],
-    ['struct S { a: int }'],
+    ['struct S { a: Int }'],
     ['enum E { A; B }'],
-    ['trait T { value: int }'],
-    ['extern x: int'],
-    ['type Id = string'],
+    ['trait T { value: Int }'],
+    ['extern x: Int'],
+    ['type Id = String'],
     ['fn Duration.zero(): 1'],
     ['extern fn f()'],
     ['trait T:\n        fn m()'],

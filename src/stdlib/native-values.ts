@@ -1,6 +1,6 @@
 /**
- * The values std natives receive and return, as the runtime holds them: an `int` is a bigint, a
- * `float` a number, a `string` a string, a struct its fields in declaration order, an array its
+ * The values std natives receive and return, as the runtime holds them: an `Int` is a bigint, a
+ * `Float` a number, a `String` a string, a struct its fields in declaration order, an array its
  * elements, an optional the `Some` or `None` variant of its declared type, told apart by whether
  * it has a field, and a value of an extern type the runtime implements its type and a payload.
  *

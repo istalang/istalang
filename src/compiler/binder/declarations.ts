@@ -17,6 +17,7 @@
  *   around the function, which inside a trait includes `Self`.
  */
 
+import { selfType } from '../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import {
   type Declaration,
@@ -179,7 +180,7 @@ function bindEnum(binder: LocalBinder, node: EnumDeclaration, scope: Scope): voi
 
 function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): void {
   const inner = Scope.nested(scope);
-  inner.define('Self', selfEntity(node));
+  inner.define(selfType, selfEntity(node));
   defineTypeParameters(binder, node.typeParameters, inner);
   binder.enter(node, inner);
   const fields = node.members.filter((member) => member.kind !== 'FunctionDeclaration');

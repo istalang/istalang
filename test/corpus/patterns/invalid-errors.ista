@@ -6,8 +6,8 @@
 # required. `drop` discards a value; dropping a variable releases it (§7).
 
 struct Note:
-  message: string
-  trace: string
+  message: String
+  trace: String
 
 const failure = Error{message: "m", code: "c"}
 

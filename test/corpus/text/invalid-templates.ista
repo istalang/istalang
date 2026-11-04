@@ -7,15 +7,15 @@
 # tagged template is a call, so its values must fit the tag's parameters; a template with values
 # isn't computed at compile time (§3).
 struct Opaque:
-  x: int
+  x: Int
 
 struct Odd:
-  x: int
+  x: Int
 
-fn toString(self: Odd) -> int:
+fn toString(self: Odd) -> Int:
   self.x
 
-fn tag(parts: Array<string>, value: int) -> string:
+fn tag(parts: Array<String>, value: Int) -> String:
   parts[0]
 
 const computed = `a ${1}`

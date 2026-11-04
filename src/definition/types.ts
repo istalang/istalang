@@ -10,7 +10,7 @@
  * - the declared parameter and result types of externs, which drive the boundary conversion
  * - extern types, and how an instantiation is disposed
  *
- * Every entry is fully instantiated: `Pair<int, string>` and `Pair<int, int>` are two entries,
+ * Every entry is fully instantiated: `Pair<Int, String>` and `Pair<Int, Int>` are two entries,
  * and a reference never contains a type parameter. An entry is identified by its module-qualified
  * declared `name` and its `arguments`, so the runtime recognizes `time.Time` or `prelude.Optional`
  * whatever they are instantiated with. An anonymous struct has no name and an entry of its own,
@@ -133,7 +133,7 @@ const disposal = z.discriminatedUnion('kind', [
  */
 const externRole = z.enum(['shared', 'cell', 'future', 'instance']);
 
-/** A type the runtime or host implements, such as `prelude.Array<int>` or a host `Queue<T>`. */
+/** A type the runtime or host implements, such as `prelude.Array<Int>` or a host `Queue<T>`. */
 const external = z.strictObject({
   kind: z.literal('extern'),
   ...identity,

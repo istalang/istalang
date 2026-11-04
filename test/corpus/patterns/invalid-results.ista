@@ -6,26 +6,26 @@
 # `?` takes a Result apart (§3.12): never an optional, and only inside a function whose own Result
 # holds the same error type, declared or inferred. A Result must be used.
 
-struct Failure { reason: string }
+struct Failure { reason: String }
 
-fn parse(text: string) -> Result<int>:
+fn parse(text: String) -> Result<Int>:
   Ok{1}
 
-fn fromOptional(n: int?) -> Result<int>:
+fn fromOptional(n: Int?) -> Result<Int>:
   Ok{n?}
 
-fn notResult() -> int:
+fn notResult() -> Int:
   parse("a")?
 
-fn otherError() -> Result<int, Failure>:
+fn otherError() -> Result<Int, Failure>:
   const value = parse("a")?
   Ok{value}
 
-fn inferred(text: string):
+fn inferred(text: String):
   const value = parse(text)?
   Result.Ok{value * 2}
 
-fn inferredNotResult(text: string):
+fn inferredNotResult(text: String):
   const value = parse(text)?
   value
 

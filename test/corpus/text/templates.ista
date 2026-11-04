@@ -3,13 +3,13 @@
 # own `toString`, a type parameter's requirement and an `any Stringable` all work; a multi-line
 # one loses the line its backtick ends and the indentation its lines share (§2).
 struct Point:
-  x: int
-  y: int
+  x: Int
+  y: Int
 
-fn toString(self: Point) -> string:
+fn toString(self: Point) -> String:
   `(${self.x}, ${self.y})`
 
-fn describe<T is Stringable>(value: T, of: any Stringable) -> string:
+fn describe<T is Stringable>(value: T, of: any Stringable) -> String:
   `x is ${value} of ${of}`
 
 const constant = `between`

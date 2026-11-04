@@ -171,10 +171,10 @@
       "patterns": [
         {
           "name": "support.type.primitive.ista",
-          "match": "\\b(int|float|bool|string|unit|never)\\b"
+          "match": "\\b(Int|Float|Bool|String|Unit|Never)\\b"
         },
         {
-          "comment": "Every non-primitive type name, and every variant, is PascalCase (spec §2).",
+          "comment": "Every type name, primitives included, and every variant is PascalCase (spec §2); the primitives match first.",
           "name": "entity.name.type.ista",
           "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
         }

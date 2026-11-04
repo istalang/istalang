@@ -45,12 +45,12 @@ describe('function-table names', () => {
       main: [
         "import * as a from 'a'",
         "import * as b from 'b'",
-        'fn show<T>(value: T, times: int = 1) -> int: times',
-        'async fn main() -> Future<int>:',
-        '  show(a.Money{cents: 1}) + show(b.Money{cents: 2}, 2) + show<int?>(none)',
+        'fn show<T>(value: T, times: Int = 1) -> Int: times',
+        'async fn main() -> Future<Int>:',
+        '  show(a.Money{cents: 1}) + show(b.Money{cents: 2}, 2) + show<Int?>(none)',
       ].join('\n'),
-      a: 'struct Money { cents: int }',
-      b: 'struct Money { cents: int }',
+      a: 'struct Money { cents: Int }',
+      b: 'struct Money { cents: Int }',
     });
     const names = compiledDefinition(program, 'main').functions.map(({ name }) => name);
     expect(names).toEqual(
@@ -58,7 +58,7 @@ describe('function-table names', () => {
         'main.show<a.Money>/times',
         'main.show<a.Money>',
         'main.show<b.Money>',
-        'main.show<prelude.Optional<int>>/times',
+        'main.show<prelude.Optional<Int>>/times',
       ]),
     );
     expect(names.filter((name) => arityName.test(name))).toEqual([]);
@@ -69,9 +69,9 @@ describe('default entries', () => {
   it("mark exactly the entries giving a parameter's or a field's default", () => {
     const program = stdProgramOf({
       main: [
-        'struct Retry { tries: int = 3; backoff: int = tries * 2 }',
-        'fn wait(retry: Retry = Retry{}, times: int = 1) -> int: retry.backoff * times',
-        'async fn main() -> Future<int>:',
+        'struct Retry { tries: Int = 3; backoff: Int = tries * 2 }',
+        'fn wait(retry: Retry = Retry{}, times: Int = 1) -> Int: retry.backoff * times',
+        'async fn main() -> Future<Int>:',
         '  wait()',
       ].join('\n'),
     });
@@ -96,20 +96,20 @@ describe('extern keys', () => {
     const program = stdProgramOf({
       'shop/main': [
         "import Point from 'geometry'",
-        'extern fn place(at: Point) -> int',
-        'extern fn place(at: int?) -> int',
+        'extern fn place(at: Point) -> Int',
+        'extern fn place(at: Int?) -> Int',
         'extern fn fill<T>(items: &Array<T>, item: T)',
-        'extern fn now() -> int',
-        'extern fn log(level: string, ...parts: Array<string>)',
+        'extern fn now() -> Int',
+        'extern fn log(level: String, ...parts: Array<String>)',
       ].join('\n'),
-      geometry: 'struct Point { x: int; y: int }\nextern fn place(at: Point) -> int',
+      geometry: 'struct Point { x: Int; y: Int }\nextern fn place(at: Point) -> Int',
     });
     expect(externKeys(program, 'shop/main')).toEqual([
       'shop/main.place(geometry.Point)',
-      'shop/main.place(prelude.Optional<int>)',
+      'shop/main.place(prelude.Optional<Int>)',
       'shop/main.fill(&prelude.Array<T>, T)',
       'shop/main.now()',
-      'shop/main.log(string, ...prelude.Array<string>)',
+      'shop/main.log(String, ...prelude.Array<String>)',
     ]);
     expect(externKeys(program, 'geometry')).toEqual(['geometry.place(geometry.Point)']);
   });
@@ -119,7 +119,7 @@ describe('lowering', () => {
   it("qualifies names with each module's canonical name", () => {
     const program = stdProgramOf({
       'purchase/approve': "import twice from 'lib/math'\nasync fn main(): twice(2)",
-      'lib/math': 'fn twice(n: int) -> int: n * 2',
+      'lib/math': 'fn twice(n: Int) -> Int: n * 2',
     });
     const names = compiledDefinition(program, 'purchase/approve').functions.map(
       (entry) => entry.name,
@@ -136,7 +136,7 @@ describe('lowering', () => {
   it('lays out every kind of type a struct holds, extern types disposed as their dispose says', () => {
     const program = stdProgramOf({
       main: [
-        'struct Box { size: int?; items: Array<int>; next: Slot<int> }',
+        'struct Box { size: Int?; items: Array<Int>; next: Slot<Int> }',
         'async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });
@@ -168,7 +168,7 @@ describe('lowering', () => {
         "import Encodable from 'json'",
         'extern struct Lease<T is Sendable>',
         'extern fn dispose<T is Encodable>(self: Lease<T>)',
-        'extern fn lease() -> Lease<int>',
+        'extern fn lease() -> Lease<Int>',
         'async fn main(): { const held = lease(); 1 }',
       ].join('\n'),
     });
@@ -177,7 +177,7 @@ describe('lowering', () => {
     const disposal = lease?.kind === 'extern' ? lease.disposal : undefined;
     expect(disposal?.kind).toBe('function');
     const dispose = disposal?.kind === 'function' ? functions[disposal.function] : undefined;
-    expect(dispose?.name).toBe('main.dispose<int>');
+    expect(dispose?.name).toBe('main.dispose<Int>');
     const natives = functions.flatMap((entry) => (entry.kind === 'extern' ? [entry.key] : []));
     expect(natives).toContain('main.dispose(main.Lease<T>)');
   });
@@ -185,7 +185,7 @@ describe('lowering', () => {
   it('stores a constant once, computed in its own module even when another imports it', () => {
     const program = stdProgramOf({
       main: "import limits from 'lib'\nasync fn main(): limits.high + limits.high",
-      lib: 'struct Limits { high: int }\nconst base = 7\nconst limits = Limits{high: base}',
+      lib: 'struct Limits { high: Int }\nconst base = 7\nconst limits = Limits{high: base}',
     });
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();
@@ -202,12 +202,12 @@ describe('lowering', () => {
     const program = stdProgramOf({
       main: [
         "import * as lib from 'lib'",
-        'async fn main() -> Future<int>:',
+        'async fn main() -> Future<Int>:',
         '  match await spawn lib.twice(1).result():',
         '    case Ok{value}: lib.twice(20) + value',
         '    case Err{error}: 0',
       ].join('\n'),
-      lib: 'const twice = fn(x: int) -> int: x * 2',
+      lib: 'const twice = fn(x: Int) -> Int: x * 2',
     });
     const test = testRuntime();
     const deployed = test.runtime.deploy(
@@ -219,9 +219,9 @@ describe('lowering', () => {
   it('gives a variable passed by & a cell, typed as the _Cell<T> it is created as', () => {
     const program = stdProgramOf({
       main: [
-        'fn bump(n: &int):',
+        'fn bump(n: &Int):',
         '  n += 1',
-        'fn twice(start: int) -> int:',
+        'fn twice(start: Int) -> Int:',
         '  let kept = 0',
         '  let passed = start',
         '  bump(&passed)',
@@ -250,10 +250,10 @@ describe('lowering', () => {
     const program = stdProgramOf({
       main: [
         'shared struct Counter:',
-        '  count: int',
-        'fn bump(n: &int):',
+        '  count: Int',
+        'fn bump(n: &Int):',
         '  n += 1',
-        'async fn main() -> Future<int>:',
+        'async fn main() -> Future<Int>:',
         '  let n = 0',
         '  bump(&n)',
         '  const counter = new Counter{count: n}',
@@ -273,7 +273,7 @@ describe('lowering', () => {
       main: [
         "import * as json from 'json'",
         'enum Shape { Dot }',
-        'async fn main() -> Future<string>: json.stringify<Array<Shape>>([Dot])',
+        'async fn main() -> Future<String>: json.stringify<Array<Shape>>([Dot])',
       ].join('\n'),
     });
     const enums = compiledDefinition(program, 'main').types.flatMap((type) =>
@@ -302,7 +302,7 @@ describe('lowering', () => {
 
   it('lowers a select with only an else to its else body', () => {
     const program = stdProgramOf({
-      main: ['async fn main() -> Future<int>:', '  select:', '    else: 42'].join('\n'),
+      main: ['async fn main() -> Future<Int>:', '  select:', '    else: 42'].join('\n'),
     });
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();

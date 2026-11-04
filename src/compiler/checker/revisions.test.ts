@@ -345,26 +345,26 @@ describe('a checker made after an earlier one', () => {
     {
       name: "a field's annotation, whose field's type an alias elsewhere changes",
       main: "import JsonBigInt from 'json'\nimport Id from 'lib'\nstruct Order:\n  id: Id @JsonBigInt\n",
-      before: 'type Id = int\n',
-      after: 'type Id = string\n',
+      before: 'type Id = Int\n',
+      after: 'type Id = String\n',
     },
     {
       name: 'a signature naming an alias whose declaration is made anew',
       main: "import Id from 'lib'\nfn f(x: Id) -> Id: x\n",
-      before: 'type Id = int\n',
-      after: '# the alias, declared again\ntype Id = int\n',
+      before: 'type Id = Int\n',
+      after: '# the alias, declared again\ntype Id = Int\n',
     },
     {
       name: 'an alias ignoring its argument, a type made anew',
-      main: "import Foo from 'lib'\ntype Ignored<T> = int\nfn f(x: Ignored<Foo>) -> int: x\n",
-      before: 'struct Foo:\n  a: int\n',
-      after: '# the struct, declared again\nstruct Foo:\n  a: int\n',
+      main: "import Foo from 'lib'\ntype Ignored<T> = Int\nfn f(x: Ignored<Foo>) -> Int: x\n",
+      before: 'struct Foo:\n  a: Int\n',
+      after: '# the struct, declared again\nstruct Foo:\n  a: Int\n',
     },
     {
       name: "a type's JSON form naming an alias made anew",
-      main: "import Id from 'lib'\nstruct Box:\n  id: Id\nfn f(box: Box) -> string: box.toJson()\n",
-      before: 'type Id = int\n',
-      after: '# the alias, declared again\ntype Id = int\n',
+      main: "import Id from 'lib'\nstruct Box:\n  id: Id\nfn f(box: Box) -> String: box.toJson()\n",
+      before: 'type Id = Int\n',
+      after: '# the alias, declared again\ntype Id = Int\n',
     },
   ])('answers $name as a checker made afresh', ({ main, before, after }) => {
     const { incremental, fresh } = afterLibEdit(main, before, after);
@@ -373,7 +373,7 @@ describe('a checker made after an earlier one', () => {
 
   it('counts only functions with a body among the bodies it checks', () => {
     const { checked } = bodiesChecked({
-      files: { 'main.ista': 'extern fn host(x: int) -> int\nfn f(x: int) -> int: host(x)\n' },
+      files: { 'main.ista': 'extern fn host(x: Int) -> Int\nfn f(x: Int) -> Int: host(x)\n' },
       edited: 'main.ista',
       edits: [{ kind: 'append', item: 0 }],
     });

@@ -7,17 +7,17 @@
 # a container and its element, or an element and its own container as `&self`. Places of different
 # variables, and one variable twice without elements, are fine.
 
-struct Point { x: int; y: int }
+struct Point { x: Int; y: Int }
 
-fn swap(first: &int, second: &int):
+fn swap(first: &Int, second: &Int):
   const kept = first
   first = second
   second = kept
 
-fn keep(points: &Array<Point>, x: &int):
+fn keep(points: &Array<Point>, x: &Int):
   x = points.length()
 
-fn copyFrom(self: &Point, other: &int):
+fn copyFrom(self: &Point, other: &Int):
   self.x = other
 
 async fn main():

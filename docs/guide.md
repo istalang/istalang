@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-28
+last_updated: 2026-11-04
 tags: [language, guide]
 ---
 
@@ -26,7 +26,7 @@ The spec, `docs/spec.md`, is the source of truth; `§` numbers point into it.
 Istalang is a Python-shaped, statically typed language for **durable workflows**: programs that wait for days on a person, a timer or another system, and survive restarts while they wait. At every `await` the runtime saves the program's whole state, so it can resume from that line later, even on another machine. The program reaches the outside world only through functions the host provides, declared `extern`.
 
 ```python
-async fn remindLater(role: string):
+async fn remindLater(role: String):
     await time.delay(1d)              # saved here; resumes a day later, even after a restart
     notifications(role).send(Notice{text: "Reminder"})
 ```
@@ -53,19 +53,19 @@ async fn remindLater(role: string):
 ```python
 import * as time from 'time'
 
-struct PurchaseRequest { id: string; amount: int }
-struct Verdict { role: string; ok: bool }
+struct PurchaseRequest { id: String; amount: Int }
+struct Verdict { role: String; ok: Bool }
 
 extern purchaseRequests: Queue<PurchaseRequest>          # provided by the host
-extern fn verdicts(id: string) -> Queue<Verdict>
-extern fn chargeCard(id: string, amount: int) -> Result<string>
+extern fn verdicts(id: String) -> Queue<Verdict>
+extern fn chargeCard(id: String, amount: Int) -> Result<String>
 
 async fn main():                                         # the one entry point
     while true:
         const req = await purchaseRequests.receive()     # saved; may wait for weeks
         spawn purchase(req)                              # each purchase is its own instance
 
-async fn purchase(req: PurchaseRequest) -> Future<string>:
+async fn purchase(req: PurchaseRequest) -> Future<String>:
     const deadline = time.delay(5d)                      # a timer, running from now
     const verdict = await select:                        # whichever comes first
         case verdicts(req.id).receive() as v: v
@@ -82,16 +82,16 @@ async fn purchase(req: PurchaseRequest) -> Future<string>:
 ### 2.2 Syntax, types, variables (§2, §3.4)
 
 ```python statements
-const limit: int = 50_000      # immutable, deeply
-let count = 0                  # mutable, inferred int
+const limit: Int = 50_000      # immutable, deeply
+let count = 0                  # mutable, inferred Int
 count += 1
 const a, b = (1, "x")          # destructuring
 ```
 
 | Type | Notes |
 | --- | --- |
-| `int` `float` `bool` `string` | `int` never overflows; `string` counts Unicode code points |
-| `unit`, `never` | `unit` is `()`, the type of statements; `never` is the type of `return` and `panic` |
+| `Int` `Float` `Bool` `String` | `Int` never overflows; `String` counts Unicode code points |
+| `Unit`, `Never` | `Unit` is `()`, the type of statements; `Never` is the type of `return` and `panic` |
 | `T?` | optional; empty is `none`; a `T` is wrapped into a `T?` automatically |
 | `(A, B)` | tuple: `t.0`, `t.1` |
 | `Array<T>`, `Map<K, V>`, `Range` | values, copied like structs |
@@ -107,9 +107,9 @@ Names: types are `PascalCase` and everything else is `camelCase`, and the compil
 
 ```python
 struct Order:
-    id: string
-    items: Array<{ sku: string; qty: int }>     # anonymous struct type
-    retries: int = 3                            # field default
+    id: String
+    items: Array<{ sku: String; qty: Int }>     # anonymous struct type
+    retries: Int = 3                            # field default
 
 const o = Order{id: "o1", items: [struct{sku: "a", qty: 2}]}
 const o2 = Order{...o, retries: 5}              # updated copy; o is untouched
@@ -117,8 +117,8 @@ const id = "o2"
 const o3 = Order{id, items: []}                 # id is short for id: id
 
 enum Decision:
-    Approved { by: string }
-    Rejected { by: string; reason: string }
+    Approved { by: String }
+    Rejected { by: String; reason: String }
     Expired
 ```
 
@@ -130,8 +130,8 @@ enum Decision:
 
 ```python statements
 shared struct Lease:
-    name: string
-    renewals: int = 0
+    name: String
+    renewals: Int = 0
 
 fn renew(self: Lease):
     self->renewals += 1          # every copy of the handle sees it
@@ -147,25 +147,25 @@ const snapshot = *lease          # a plain copy of the fields
 ### 2.4 Functions (§3.3, §3.7, §3.14)
 
 ```python
-fn add(a: int, b = 1): a + b                      # default parameter; return type inferred
-fn log(level: string, ...parts: Array<string>): … # rest parameter
-fn area(self: Circle) -> float: …                 # a method: first parameter is self
+fn add(a: Int, b = 1): a + b                      # default parameter; return type inferred
+fn log(level: String, ...parts: Array<String>): … # rest parameter
+fn area(self: Circle) -> Float: …                 # a method: first parameter is self
 fn push<T>(self: &Stack<T>, item: T): …           # &self lets the method change its receiver
 fn Duration.zero() -> Duration: …                 # static function, called Duration.zero()
-async fn fetch(id: string) -> Future<User>: …     # may await; inside it, return a User
+async fn fetch(id: String) -> Future<User>: …     # may await; inside it, return a User
 ```
 
 - **Overloading.** Functions are told apart by parameter types, never by return type.
 - **References.** A caller writes `&x` to let a function change its variable. A reference lives only for the call: it can't be stored or returned.
 
   ```python statements
-  fn bump(n: &int): n += 1
+  fn bump(n: &Int): n += 1
   let x = 1
   bump(&x)                 # x is 2
   ```
 
 - **Lambdas.** `fn(x): x * 2` and `fn x: x > 0`; several statements go in a block, `fn(m): { log(m); save(m) }`. A closure shares the `let`s it captures and copies the `const`s.
-- **Conversions.** `float(3)`, `int(3.7)` (3) and `string(42)` can't fail. Fallible ones return a `Result`, such as `int.parse("42")`.
+- **Conversions.** `Float(3)`, `Int(3.7)` (3) and `String(42)` can't fail. Fallible ones return a `Result`, such as `Int.parse("42")`.
 
 ### 2.5 Generics, traits, operators (§3.5, §3.9, §3.10)
 
@@ -207,12 +207,12 @@ const text = match decision:          # must cover every variant, or end with ca
 if r is Ok{value as y} and y > 0: use(y)                  # a pattern outside match
 ```
 
-Inside a pattern's braces: `field` binds it, `field as name` renames it, `field == expr` compares it, and `field is Pattern` nests a pattern.
+Inside a pattern's braces: `field` binds it, `field as name` renames it, `field == expr` compares it, and `field is Pattern` nests a pattern. A bare type name tests a value's type: `case Int as n` takes the ints out of an `any Stringable`.
 
 ### 2.7 Errors (§3.12)
 
 ```python
-async fn pay(req: Req) -> Future<Result<string>>:
+async fn pay(req: Req) -> Future<Result<String>>:
     const receipt = chargeCard(req.id, req.amount)?   # on Err, return the Err from pay
     Ok{(receipt)}
 ```
@@ -265,7 +265,7 @@ defer fn(): log("exited")   # runs when the block ends, however it ends
 ```
 
 ```python
-async fn approve(req: Req, roles: Array<string>) -> Future<string>:
+async fn approve(req: Req, roles: Array<String>) -> Future<String>:
     for role in roles:
         hold _ = reviewQueue(role).sendRevertible(req) # kept until approve returns
     …
@@ -344,13 +344,13 @@ fn suite() -> Array<Test>: [
 **Construction and patterns**
 - `Ok{value}` means *the field named `value`*, never "the variable `value` positionally". Write `Ok{(value)}` or `Ok{value: value}`. Patterns have no positional form at all: `case Ok{value as receipt}`.
 - A bare variant needs an expected enum type. Otherwise qualify it: `Decision.Expired`.
-- An empty `[]` or `[:]` needs an expected type: `let xs: Array<int> = []`.
-- In a pattern, a bare camelCase name **binds** a new variable. To compare against a constant, use a guard (`case n if n == limit`).
-- A literal pattern isn't wrapped into an optional. Against an `int?`, write `case Some{value == 1}`.
+- An empty `[]` or `[:]` needs an expected type: `let xs: Array<Int> = []`.
+- In a pattern, a bare camelCase name **binds** a new variable, and a PascalCase one refers to a variant or a type. To compare against a constant, use a guard (`case n if n == limit`).
+- A literal pattern isn't wrapped into an optional. Against an `Int?`, write `case Some{value == 1}`.
 
 **Numbers**
-- `/` always yields a `float`; `//` is integer floor division. `x // 0` and `x % 0` panic, while `x / 0` gives an infinity.
-- `int(3.7)` is 3, and `int` of NaN or an infinity panics.
+- `/` always yields a `Float`; `//` is integer floor division. `x // 0` and `x % 0` panic, while `x / 0` gives an infinity.
+- `Int(3.7)` is 3, and `Int` of NaN or an infinity panics.
 - `1.5h` is an error; write `90m`.
 
 **Functions**

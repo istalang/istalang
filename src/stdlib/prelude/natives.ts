@@ -3,7 +3,7 @@
  * `externKey` gives their declarations (prelude.ista declares them; docs/arch/definition.md,
  * "Externs").
  *
- * - `int` is a bigint, so integer arithmetic is exact at any size (§2); mixing an int with a float
+ * - `Int` is a bigint, so integer arithmetic is exact at any size (§2); mixing an int with a float
  *   converts the int, and `/` always divides as floats.
  * - `//` floors and `%` takes the divisor's sign, so `a == (a // b) * b + a % b` holds (§3.9).
  * - `/` divides as IEEE 754 does, so dividing by zero gives an infinity or NaN (§2); `//` and `%`
@@ -12,7 +12,7 @@
  * - The bitwise operators are a bigint's, which act on an unbounded two's complement as Python's
  *   ints do.
  * - `compare` on floats subtracts, so infinities compare as expected; see `sign` for NaN.
- * - `int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
+ * - `Int(x)` truncates toward zero; a NaN or an infinity has no int, so it panics (§3.12).
  * - `_trace()` runs as `Error`'s `trace` default, in the entry a literal leaving the field out
  *   calls (§3.1), so it takes its caller's trace, without that entry's frame: an `Error`'s trace
  *   starts where it is built.
@@ -53,16 +53,16 @@ export const preludeNatives = (
   ...weakNatives(keys),
   ...textFormNatives(keys),
   ...arithmeticNatives(keys),
-  [keys.of('compare', 'string', 'string')]: ([left, right]) =>
+  [keys.of('compare', 'String', 'String')]: ([left, right]) =>
     sign(compareOrdered(text(left), text(right))),
-  [keys.of('add', 'string', 'string')]: ([left, right]) => text(left) + text(right),
-  [keys.of('panic', 'string')]: ([message]) => {
+  [keys.of('add', 'String', 'String')]: ([left, right]) => text(left) + text(right),
+  [keys.of('panic', 'String')]: ([message]) => {
     throw new Panic(text(message));
   },
   [keys.of('_trace')]: (_, context) => context.callerTrace(),
 });
 
-/** The operators and conversions over `int` and `float` (§2, §3.9, §3.10). */
+/** The operators and conversions over `Int` and `Float` (§2, §3.9, §3.10). */
 const arithmeticNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   ...numeric(
     keys,
@@ -94,30 +94,30 @@ const arithmeticNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     (left, right) => sign(compareOrdered(left, right)),
     (left, right) => sign(left - right),
   ),
-  [keys.of('floorDivide', 'int', 'int')]: ([left, right]) =>
+  [keys.of('floorDivide', 'Int', 'Int')]: ([left, right]) =>
     floorDivide(int(left), nonZero(int(right))),
-  [keys.of('remainder', 'int', 'int')]: ([left, right]) => {
+  [keys.of('remainder', 'Int', 'Int')]: ([left, right]) => {
     const dividend = int(left);
     const by = nonZero(int(right));
     return dividend - floorDivide(dividend, by) * by;
   },
   ...numeric(keys, 'power', intPower, (base, exponent) => base ** exponent),
   ...bitwiseNatives(keys),
-  [keys.of('negate', 'int')]: ([value]) => -int(value),
-  [keys.of('negate', 'float')]: ([value]) => -float(value),
-  [keys.ofStatic('float', conversionFunction, 'int')]: ([value]) => Number(int(value)),
-  [keys.ofStatic('int', conversionFunction, 'float')]: ([value]) => truncated(float(value)),
+  [keys.of('negate', 'Int')]: ([value]) => -int(value),
+  [keys.of('negate', 'Float')]: ([value]) => -float(value),
+  [keys.ofStatic('Float', conversionFunction, 'Int')]: ([value]) => Number(int(value)),
+  [keys.ofStatic('Int', conversionFunction, 'Float')]: ([value]) => truncated(float(value)),
 });
 
 // biome-ignore-start lint/suspicious/noBitwiseOperators: these are the language's bitwise operators.
 /** `&`, `|`, `^`, `~` and the shifts on ints (§3.9). */
 const bitwiseNatives = (keys: NativeKeys): Natives<NativeContext> => ({
-  [keys.of('bitAnd', 'int', 'int')]: ([left, right]) => int(left) & int(right),
-  [keys.of('bitOr', 'int', 'int')]: ([left, right]) => int(left) | int(right),
-  [keys.of('bitXor', 'int', 'int')]: ([left, right]) => int(left) ^ int(right),
-  [keys.of('bitNot', 'int')]: ([value]) => ~int(value),
-  [keys.of('shiftLeft', 'int', 'int')]: ([value, count]) => int(value) << shiftCount(count),
-  [keys.of('shiftRight', 'int', 'int')]: ([value, count]) => int(value) >> shiftCount(count),
+  [keys.of('bitAnd', 'Int', 'Int')]: ([left, right]) => int(left) & int(right),
+  [keys.of('bitOr', 'Int', 'Int')]: ([left, right]) => int(left) | int(right),
+  [keys.of('bitXor', 'Int', 'Int')]: ([left, right]) => int(left) ^ int(right),
+  [keys.of('bitNot', 'Int')]: ([value]) => ~int(value),
+  [keys.of('shiftLeft', 'Int', 'Int')]: ([value, count]) => int(value) << shiftCount(count),
+  [keys.of('shiftRight', 'Int', 'Int')]: ([value, count]) => int(value) >> shiftCount(count),
 });
 // biome-ignore-end lint/suspicious/noBitwiseOperators: these are the language's bitwise operators.
 

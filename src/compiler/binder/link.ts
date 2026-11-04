@@ -6,7 +6,7 @@
  * - Only a test module may import `testing`, or another test module (§10).
  * - The prelude is every module's outer scope. Reusing one of its names at the top level is an
  *   error, except for a function, declared or imported, which joins the prelude's overloads of its
- *   name, as a module's `fn add(left: Time, right: Duration)` joins the prelude's `add(int, float)`
+ *   name, as a module's `fn add(left: Time, right: Duration)` joins the prelude's `add(Int, Float)`
  *   (§3.9).
  * - A name still free after the prelude may be a variant that only the expected type identifies,
  *   if some enum of the program has a variant by that name. A called name may name functions only
@@ -48,6 +48,7 @@ import {
   type VariantEntity,
 } from './entities.ts';
 import { type FreeName, noOwnCall, type QualifiedPath } from './local-binder.ts';
+import { undeclaredName } from './naming.ts';
 import type { ImportPlaceholder, LocalEntity } from './scope.ts';
 
 /**
@@ -328,12 +329,10 @@ class Linker {
       ended: binderDiagnostics.blockEnded,
       underOr: binderDiagnostics.boundUnderOr,
     } as const;
-    const unexplained =
-      role === 'assignment'
-        ? binderDiagnostics.assignmentToUndeclared
-        : binderDiagnostics.undeclared;
     links.diagnostics.push(
-      (miss === undefined ? unexplained : explained[miss])(name.span, name.text),
+      miss === undefined
+        ? undeclaredName(name, role === 'assignment')
+        : explained[miss](name.span, name.text),
     );
   }
 

@@ -49,7 +49,7 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   },
   ifWithoutElse: {
     code: 5006,
-    message: (found: string) => `An 'if' without 'else' must have type unit, not ${found}.`,
+    message: (found: string) => `An 'if' without 'else' must have type Unit, not ${found}.`,
   },
   recursiveReturnType: {
     code: 5007,

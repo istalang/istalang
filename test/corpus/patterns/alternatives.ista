@@ -3,36 +3,36 @@
 # alternative binds the same names, from whichever matched first (§3.11).
 
 enum Shape:
-  Circle { radius: int }
-  Square { side: int }
-  Triangle { base: int }
+  Circle { radius: Int }
+  Square { side: Int }
+  Triangle { base: Int }
 
-fn size(n: int) -> string:
+fn size(n: Int) -> String:
   match n:
     case 1 | 2: "small"
     case _: "big"
 
-fn kind(value: int?) -> string:
+fn kind(value: Int?) -> String:
   match value:
     case none | Some{value == 0}: "nothing"
     case _: "some"
 
-fn measure(shape: Shape) -> int:
+fn measure(shape: Shape) -> Int:
   match shape:
     case Circle{radius as n} | Square{side as n}: n
     case Triangle{base}: base + 1
 
-fn other(pair: (int, int)) -> int:
+fn other(pair: (Int, Int)) -> Int:
   match pair:
     case (x, 0) | (0, x): x
     case _: -1
 
-fn flagged(pair: (int, bool)) -> int:
+fn flagged(pair: (Int, Bool)) -> Int:
   match pair:
     case (1 | 2, true): 2
     case _: 0
 
-async fn main() -> Future<(string, string, string, string, int, int, int, int, int, bool)>:
+async fn main() -> Future<(String, String, String, String, Int, Int, Int, Int, Int, Bool)>:
   const square: Shape = Square{4}
   (size(2), size(3), kind(Some{0}), kind(Some{1}), measure(Circle{3}), measure(Triangle{3}),
     other((5, 0)), other((0, 7)), flagged((1, true)), square is Circle{radius as n} | Square{side as n} and n == 4)

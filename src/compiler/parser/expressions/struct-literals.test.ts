@@ -71,9 +71,9 @@ describe('the type before the braces', () => {
     ['m.Pair{a: 1}', literal('(NamedType [m Pair] [])', '(FieldInitializer a 1)')],
     ['Decision.Expired{}', literal('(NamedType [Decision Expired] [])', '')],
     [
-      'Pair<int, string>{first: 1}',
+      'Pair<Int, String>{first: 1}',
       literal(
-        `(NamedType [Pair] [${named('int')} ${named('string')}])`,
+        `(NamedType [Pair] [${named('Int')} ${named('String')}])`,
         '(FieldInitializer first 1)',
       ),
     ],
@@ -104,8 +104,8 @@ describe('new (§3.18)', () => {
   it.each([
     ['new Inbox{queued: 0}', created(named('Inbox'), '(FieldInitializer queued 0)')],
     [
-      'new Shared<int>{value: 1}',
-      created(`(NamedType [Shared] [${named('int')}])`, '(FieldInitializer value 1)'),
+      'new Shared<Int>{value: 1}',
+      created(`(NamedType [Shared] [${named('Int')}])`, '(FieldInitializer value 1)'),
     ],
     ['new m.Box{...*other}', created('(NamedType [m Box] [])', '(Spread (Dereference * other))')],
     ['new Inbox{}.send(1)', `(Call (MemberAccess ${created(named('Inbox'), '')} send) [] [1])`],

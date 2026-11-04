@@ -4,13 +4,13 @@
 import Suite, Test, test, assert, assertEq from 'testing'
 import * as runtime from 'runtime'
 
-fn ownId() -> string: runtime.id()
+fn ownId() -> String: runtime.id()
 
-fn ownVersion() -> string: runtime.version()
+fn ownVersion() -> String: runtime.version()
 
-fn three() -> int: 3
+fn three() -> Int: 3
 
-fn broken() -> int: panic("broken")
+fn broken() -> Int: panic("broken")
 
 @Suite{"runtime"}
 fn suite() -> Array<Test>: [

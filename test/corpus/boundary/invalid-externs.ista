@@ -14,15 +14,15 @@ import Encodable, Decodable from 'json'
 
 extern struct Connection
 
-extern fn run(task: fn() -> int)
+extern fn run(task: fn() -> Int)
 
-extern fn later() -> Future<fn() -> int>
+extern fn later() -> Future<fn() -> Int>
 
-extern fn bump(count: &int)
+extern fn bump(count: &Int)
 
 extern fn keep<T>(value: T)
 
-extern slot: Slot<int>
+extern slot: Slot<Int>
 
 extern fn open() -> Connection
 
@@ -32,4 +32,4 @@ extern fn receive<T is Decodable>() -> Future<T>
 
 async fn main():
   send(1)
-  await receive<string>()
+  await receive<String>()

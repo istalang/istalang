@@ -15,7 +15,7 @@ import { testRuntime } from './runtime.test-kit.ts';
 const text = compiledText(`
 import * as strings from 'strings'
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let items = [5, 3, 9, 1]
   items.sort()
   strings.format("{} items, first {}", items.length().toString(), items[0].toString())

@@ -9,24 +9,24 @@
 
 enum Json:
   Null
-  Bool { value: bool }
-  Integer { value: int }
-  Number { value: float }
-  Text { value: string }
+  Boolean { value: Bool }
+  Integer { value: Int }
+  Number { value: Float }
+  Text { value: String }
   List { items: Array<Json> }
-  Object { fields: Map<string, Json> }
+  Object { fields: Map<String, Json> }
 
 # Each implies Sendable (§3.10): a value read from JSON is a copy, so it may go anywhere.
 trait Encodable:
   fn toJson(self: Self) -> Json
 
 trait Decodable:
-  fn Self.fromJson(json: Json, path: string) -> Result<Self>
+  fn Self.fromJson(json: Json, path: String) -> Result<Self>
 
 # Annotations on fields (§3.16): the name a field has in JSON, a field left out of it, and an int
 # written as a string of its digits, for readers that would round a large number.
 struct JsonName:
-  name: string
+  name: String
 
 struct JsonSkip
 
@@ -36,9 +36,9 @@ fn encode<T is Encodable>(value: T) -> Json: value.toJson()
 
 fn decode<T is Decodable>(json: Json) -> Result<T>: T.fromJson(json, "$")
 
-fn stringify<T is Encodable>(value: T) -> string: _write(value.toJson())
+fn stringify<T is Encodable>(value: T) -> String: _write(value.toJson())
 
-fn parse<T is Decodable>(text: string) -> Result<T>:
+fn parse<T is Decodable>(text: String) -> Result<T>:
   match _read(text):
     case Ok{value}: T.fromJson(value, "$")
     case Err{error}: Err{error: _error(error)}
@@ -47,7 +47,7 @@ fn parse<T is Decodable>(text: string) -> Result<T>:
 # such as `Time` and `Duration`: a type declares its own as one call to each.
 fn encodeText<T is Stringable>(value: T) -> Json: Text{value: value.toString()}
 
-fn decodeText<T is Parsable>(json: Json, path: string) -> Result<T>:
+fn decodeText<T is Parsable>(json: Json, path: String) -> Result<T>:
   match json:
     case Text{value}: _parsed(T.parse(value), path)
     case _: _mismatch(json, path, "a string")
@@ -57,7 +57,7 @@ fn decodeText<T is Parsable>(json: Json, path: string) -> Result<T>:
 # Decodable, which imply Sendable.
 extern fn _toJson<T>(value: T) -> Json
 
-extern fn _fromJson<T>(json: Json, path: string) -> Result<T>
+extern fn _fromJson<T>(json: Json, path: String) -> Result<T>
 
 # What crosses from the host (§9). A result, or an extern constant's value, that doesn't fit is a
 # bug in the host, so it panics the instance; JSON a host starts an instance with, or fills a
@@ -72,29 +72,29 @@ fn _hostInput<T>(read: Result<T>) -> T:
     case Ok{value}: value
     case Err{error}: _refuse(error.message)
 
-extern fn _refuse(message: string) -> never
+extern fn _refuse(message: String) -> Never
 
 # JSON text: written as JavaScript's JSON.stringify writes it, and read with integers kept exact.
-extern fn _write(json: Json) -> string
+extern fn _write(json: Json) -> String
 
-extern fn _read(text: string) -> Result<Json, string>
+extern fn _read(text: String) -> Result<Json, String>
 
 # Writing. A float JSON can't hold, NaN or an infinity, is written as null, as JavaScript does; an
 # object's keys are sorted when it is written, so equal values give the same JSON.
-fn toJson(self: int) -> Json: Integer{value: self}
+fn toJson(self: Int) -> Json: Integer{value: self}
 
-extern fn toJson(self: float) -> Json
+extern fn toJson(self: Float) -> Json
 
-fn toJson(self: bool) -> Json: Bool{value: self}
+fn toJson(self: Bool) -> Json: Boolean{value: self}
 
-fn toJson(self: string) -> Json: Text{value: self}
+fn toJson(self: String) -> Json: Text{value: self}
 
-fn toJson(self: unit) -> Json: Null
+fn toJson(self: Unit) -> Json: Null
 
 fn toJson(self: Json) -> Json: self
 
-# A function giving `never` gives no value, so its outcome is never written, yet it has a codec.
-fn toJson(self: never) -> Json: self
+# A function giving `Never` gives no value, so its outcome is never written, yet it has a codec.
+fn toJson(self: Never) -> Json: self
 
 fn toJson<T is Encodable>(self: Array<T>) -> Json: List{items: [for each in self: each.toJson()]}
 
@@ -106,42 +106,42 @@ fn toJson<T is Encodable>(self: T?) -> Json:
 fn toJson<K is Stringable, V is Encodable>(self: Map<K, V>) -> Json:
   _object([for key, each in self: (key.toString(), each.toJson())])
 
-extern fn _object(fields: Array<(string, Json)>) -> Json
+extern fn _object(fields: Array<(String, Json)>) -> Json
 
-fn _encodeBigInt(value: int) -> Json: Text{value: string(value)}
+fn _encodeBigInt(value: Int) -> Json: Text{value: String(value)}
 
 extern fn _encodeHandle<T>(value: T) -> Json
 
 # Reading. Each takes the path of the JSON it reads, which a failure names: `$.items[2].amount`.
-fn int.fromJson(json: Json, path: string) -> Result<int>:
+fn Int.fromJson(json: Json, path: String) -> Result<Int>:
   match json:
     case Integer{value}: Ok{(value)}
     case _: _mismatch(json, path, "an integer")
 
-fn float.fromJson(json: Json, path: string) -> Result<float>:
+fn Float.fromJson(json: Json, path: String) -> Result<Float>:
   match json:
-    case Integer{value}: Ok{(float(value))}
+    case Integer{value}: Ok{(Float(value))}
     case Number{value}: Ok{(value)}
     case _: _mismatch(json, path, "a number")
 
-fn bool.fromJson(json: Json, path: string) -> Result<bool>:
+fn Bool.fromJson(json: Json, path: String) -> Result<Bool>:
   match json:
-    case Bool{value}: Ok{(value)}
+    case Boolean{value}: Ok{(value)}
     case _: _mismatch(json, path, "a boolean")
 
-fn string.fromJson(json: Json, path: string) -> Result<string>:
+fn String.fromJson(json: Json, path: String) -> Result<String>:
   match json:
     case Text{value}: Ok{(value)}
     case _: _mismatch(json, path, "a string")
 
-fn unit.fromJson(json: Json, path: string) -> Result<unit>:
+fn Unit.fromJson(json: Json, path: String) -> Result<Unit>:
   match json:
     case Null: Ok{(())}
     case _: _mismatch(json, path, "null")
 
-fn Json.fromJson(json: Json, path: string) -> Result<Json>: Ok{(json)}
+fn Json.fromJson(json: Json, path: String) -> Result<Json>: Ok{(json)}
 
-fn Array.fromJson<T is Decodable>(json: Json, path: string) -> Result<Array<T>>:
+fn Array.fromJson<T is Decodable>(json: Json, path: String) -> Result<Array<T>>:
   match json:
     case List{items}:
       let decoded: Array<T> = []
@@ -149,12 +149,12 @@ fn Array.fromJson<T is Decodable>(json: Json, path: string) -> Result<Array<T>>:
       Ok{(decoded)}
     case _: _mismatch(json, path, "an array")
 
-fn Optional.fromJson<T is Decodable>(json: Json, path: string) -> Result<T?>:
+fn Optional.fromJson<T is Decodable>(json: Json, path: String) -> Result<T?>:
   match json:
     case Null: Ok{(none)}
     case _: Ok{(T.fromJson(json, path)?)}
 
-fn Map.fromJson<K is Parsable, V is Decodable>(json: Json, path: string) -> Result<Map<K, V>>:
+fn Map.fromJson<K is Parsable, V is Decodable>(json: Json, path: String) -> Result<Map<K, V>>:
   match json:
     case Object{fields}:
       let decoded: Map<K, V> = [:]
@@ -164,65 +164,65 @@ fn Map.fromJson<K is Parsable, V is Decodable>(json: Json, path: string) -> Resu
       Ok{(decoded)}
     case _: _mismatch(json, path, "an object")
 
-fn _decodeBigInt(json: Json, path: string) -> Result<int>:
+fn _decodeBigInt(json: Json, path: String) -> Result<Int>:
   match json:
     case Integer{value}: Ok{(value)}
-    case Text{value}: _parsed(int.parse(value), path)
+    case Text{value}: _parsed(Int.parse(value), path)
     case _: _mismatch(json, path, "an integer")
 
-extern fn _decodeHandle<T>(json: Json, path: string) -> Result<T>
+extern fn _decodeHandle<T>(json: Json, path: String) -> Result<T>
 
 # The parts derived codecs of structs, enums and tuples are made of.
-fn _fields(json: Json, path: string) -> Result<Map<string, Json>>:
+fn _fields(json: Json, path: String) -> Result<Map<String, Json>>:
   match json:
     case Object{fields}: Ok{(fields)}
     case _: _mismatch(json, path, "an object")
 
-fn _field(fields: Map<string, Json>, name: string, path: string) -> Result<Json>:
+fn _field(fields: Map<String, Json>, name: String, path: String) -> Result<Json>:
   match fields.get(name):
     case Some{value}: Ok{(value)}
     case None: _failure(_fieldPath(path, name), "missing")
 
-fn _optionalField(fields: Map<string, Json>, name: string) -> Json: fields.get(name) ?? Null
+fn _optionalField(fields: Map<String, Json>, name: String) -> Json: fields.get(name) ?? Null
 
-fn _tag(fields: Map<string, Json>, key: string, path: string) -> Result<string>:
-  string.fromJson(_field(fields, key, path)?, _fieldPath(path, key))
+fn _tag(fields: Map<String, Json>, key: String, path: String) -> Result<String>:
+  String.fromJson(_field(fields, key, path)?, _fieldPath(path, key))
 
-fn _unknownVariant<T>(tag: string, key: string, path: string) -> Result<T>:
+fn _unknownVariant<T>(tag: String, key: String, path: String) -> Result<T>:
   _failure(_fieldPath(path, key), "names no variant '" + tag + "'")
 
-fn _elements(json: Json, path: string, count: int) -> Result<Array<Json>>:
+fn _elements(json: Json, path: String, count: Int) -> Result<Array<Json>>:
   match json:
     case List{items}:
       if items.length() == count: Ok{(items)}
       else: _failure(path, "expected " + count + " elements, found " + items.length())
     case _: _mismatch(json, path, "an array")
 
-fn _element(items: Array<Json>, index: int) -> Json: items[index]
+fn _element(items: Array<Json>, index: Int) -> Json: items[index]
 
-fn _fieldPath(path: string, name: string) -> string: path + "." + name
+fn _fieldPath(path: String, name: String) -> String: path + "." + name
 
-fn _elementPath(path: string, index: int) -> string: path + "[" + index + "]"
+fn _elementPath(path: String, index: Int) -> String: path + "[" + index + "]"
 
-fn _parsed<T>(read: Result<T>, path: string) -> Result<T>:
+fn _parsed<T>(read: Result<T>, path: String) -> Result<T>:
   match read:
     case Ok{value}: Ok{(value)}
     case Err{error}: _failure(path, error.message)
 
-fn _mismatch<T>(json: Json, path: string, expected: string) -> Result<T>:
+fn _mismatch<T>(json: Json, path: String, expected: String) -> Result<T>:
   _failure(path, "expected " + expected + ", found " + _kind(json))
 
-fn _failure<T>(path: string, message: string) -> Result<T>: Err{
+fn _failure<T>(path: String, message: String) -> Result<T>: Err{
   error: _error(path + ": " + message),
 }
 
 # The Error every read of JSON fails with.
-fn _error(message: string) -> Error: Error{message: message, code: "json"}
+fn _error(message: String) -> Error: Error{message: message, code: "json"}
 
-fn _kind(json: Json) -> string:
+fn _kind(json: Json) -> String:
   match json:
     case Null: "null"
-    case Bool{}: "a boolean"
+    case Boolean{}: "a boolean"
     case Integer{}: "an integer"
     case Number{}: "a number"
     case Text{}: "a string"

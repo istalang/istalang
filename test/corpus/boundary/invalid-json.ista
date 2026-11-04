@@ -12,27 +12,27 @@
 import * as json from 'json'
 
 struct Point:
-  x: int
+  x: Int
 
 struct Label:
-  text: string
+  text: String
 
 fn toJson(self: Label) -> json.Json:
   json.encode(self.text)
 
 enum Event:
-  Typed { type: string }
+  Typed { type: String }
 
 fn uses():
-  const add = fn(n: int): n + 1
+  const add = fn(n: Int): n + 1
   _ = json.stringify(add)
   _ = json.stringify([Point{x: 1}: 1])
-  const nested: int?? = none
+  const nested: Int?? = none
   _ = json.stringify(nested)
   const event: Event = Typed{type: "t"}
   _ = json.stringify(event)
   _ = json.stringify(Label{text: "ok"})
   drop json.parse<Label>("\"ok\"")
 
-async fn main() -> Future<fn() -> int>:
+async fn main() -> Future<fn() -> Int>:
   fn(): 1

@@ -13,24 +13,24 @@ enum Level:
   Warn
   Error
 
-extern fn write(level: Level, message: string, fields: json.Json)
+extern fn write(level: Level, message: String, fields: json.Json)
 
-fn debug(message: string): write(Level.Debug, message, _noFields())
+fn debug(message: String): write(Level.Debug, message, _noFields())
 
-fn debug<F is Encodable>(message: string, fields: F):
+fn debug<F is Encodable>(message: String, fields: F):
   write(Level.Debug, message, json.encode(fields))
 
-fn info(message: string): write(Level.Info, message, _noFields())
+fn info(message: String): write(Level.Info, message, _noFields())
 
-fn info<F is Encodable>(message: string, fields: F): write(Level.Info, message, json.encode(fields))
+fn info<F is Encodable>(message: String, fields: F): write(Level.Info, message, json.encode(fields))
 
-fn warn(message: string): write(Level.Warn, message, _noFields())
+fn warn(message: String): write(Level.Warn, message, _noFields())
 
-fn warn<F is Encodable>(message: string, fields: F): write(Level.Warn, message, json.encode(fields))
+fn warn<F is Encodable>(message: String, fields: F): write(Level.Warn, message, json.encode(fields))
 
-fn error(message: string): write(Level.Error, message, _noFields())
+fn error(message: String): write(Level.Error, message, _noFields())
 
-fn error<F is Encodable>(message: string, fields: F):
+fn error<F is Encodable>(message: String, fields: F):
   write(Level.Error, message, json.encode(fields))
 
 # A record without fields has an empty object, so a host reads every record's fields one way.

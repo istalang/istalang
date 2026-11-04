@@ -1,7 +1,7 @@
 # The prelude: what every module sees without importing it (spec §3.8, §3.10, §3.12, §3.13).
 #
 # Built-in types the runtime implements are extern declarations, the same mechanism programs use
-# (§3.6). Primitive types (int, float, bool, string, unit, never) are part of the language, not
+# (§3.6). Primitive types (Int, Float, Bool, String, Unit, Never) are part of the language, not
 # declared here. Functions and methods each type offers arrive with the features that use them.
 
 extern sendable struct Array<T>
@@ -16,19 +16,19 @@ extern sendable struct Instance<T>
 extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>>
 
 extern fn Slot.create<T>() -> Slot<T>
-extern fn put<T>(self: Slot<T>, value: T) -> Future<unit>
+extern fn put<T>(self: Slot<T>, value: T) -> Future<Unit>
 extern fn take<T>(self: Slot<T>) -> Future<T>
 extern fn read<T>(self: Slot<T>) -> Future<T>
 
 # Weak references (§7): `WeakRef(x)` is the one weak reference to `x`, which holds nothing.
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
-extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
+extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit>
 
 # An async call's handle, a weak reference to the call, which the function's own name is before a
 # `.` (§7): `worker.disposing()` is the future that resolves when the call is disposed.
 extern struct _Call
-extern fn disposing(self: _Call) -> Future<unit>
+extern fn disposing(self: _Call) -> Future<Unit>
 
 # A Shared value (§3.8) is a shared struct of any one value (§3.18): `new Shared{value: v}` makes
 # one, and `x->value` reads and writes it, for every copy.
@@ -56,54 +56,54 @@ enum Result<T, E = Error>:
   Err { error: E }
 
 struct Error:
-  message: string
-  code: string
-  trace: string = _trace()
+  message: String
+  code: String
+  trace: String = _trace()
 
 struct Range:
-  start: int?
-  end: int?
-  step: int = 1
+  start: Int?
+  end: Int?
+  step: Int = 1
 
 # The end `..=` stores: one past the written end in the step's direction, so every range is
 # half-open (§3.8).
-fn _inclusiveEnd(end: int, step: int) -> int:
+fn _inclusiveEnd(end: Int, step: Int) -> Int:
   if step < 0: end - 1
   else: end + 1
 
-extern fn panic(message: string) -> never
+extern fn panic(message: String) -> Never
 
 # Collections (§3.8, §3.9, §3.10). Indexing panics outside the bounds, while `at` and `get` return an
 # optional, and `at` and `slice` count a negative index from the end, as JavaScript does. A string
 # counts code points. Methods taking a function are code, below, since only code calls one.
-extern fn length<T>(self: Array<T>) -> int
-extern fn at<T>(self: Array<T>, index: int) -> T?
+extern fn length<T>(self: Array<T>) -> Int
+extern fn at<T>(self: Array<T>, index: Int) -> T?
 extern fn push<T>(self: &Array<T>, item: T)
 extern fn pop<T>(self: &Array<T>) -> T?
-extern fn slice<T>(self: Array<T>, start: int = 0, end: int? = none) -> Array<T>
-extern fn indexOf<T>(self: Array<T>, item: T) -> int
-extern fn lastIndexOf<T>(self: Array<T>, item: T) -> int
-extern fn includes<T>(self: Array<T>, item: T) -> bool
-extern fn includes(self: Range, value: int) -> bool
+extern fn slice<T>(self: Array<T>, start: Int = 0, end: Int? = none) -> Array<T>
+extern fn indexOf<T>(self: Array<T>, item: T) -> Int
+extern fn lastIndexOf<T>(self: Array<T>, item: T) -> Int
+extern fn includes<T>(self: Array<T>, item: T) -> Bool
+extern fn includes(self: Range, value: Int) -> Bool
 extern fn reverse<T>(self: &Array<T>)
 extern fn flat<T>(self: Array<Array<T>>) -> Array<T>
-extern fn join(self: Array<string>, separator: string) -> string
-extern fn index<T>(self: Array<T>, key: int) -> T
+extern fn join(self: Array<String>, separator: String) -> String
+extern fn index<T>(self: Array<T>, key: Int) -> T
 extern fn index<T>(self: Array<T>, key: Range) -> Array<T>
-extern fn setIndex<T>(self: &Array<T>, key: int, value: T)
+extern fn setIndex<T>(self: &Array<T>, key: Int, value: T)
 extern fn setIndex<T>(self: &Array<T>, key: Range, value: Array<T>)
 extern fn Array.default<T>() -> Array<T>
 
 # What an array pattern reads once its length test passed (§3.11): the item `offset` from the start,
 # or from the end when negative, and the items between the first `before` and the last `after`.
-extern fn _patternItem<T>(self: Array<T>, offset: int) -> T
-extern fn _patternRest<T>(self: Array<T>, before: int, after: int) -> Array<T>
+extern fn _patternItem<T>(self: Array<T>, offset: Int) -> T
+extern fn _patternRest<T>(self: Array<T>, before: Int, after: Int) -> Array<T>
 
-extern fn size<K, V>(self: Map<K, V>) -> int
+extern fn size<K, V>(self: Map<K, V>) -> Int
 extern fn get<K, V>(self: Map<K, V>, key: K) -> V?
-extern fn has<K, V>(self: Map<K, V>, key: K) -> bool
-extern fn includes<K, V>(self: Map<K, V>, key: K) -> bool # as `has`, for `in`
-extern fn delete<K, V>(self: &Map<K, V>, key: K) -> bool
+extern fn has<K, V>(self: Map<K, V>, key: K) -> Bool
+extern fn includes<K, V>(self: Map<K, V>, key: K) -> Bool # as `has`, for `in`
+extern fn delete<K, V>(self: &Map<K, V>, key: K) -> Bool
 extern fn keys<K, V>(self: Map<K, V>) -> Array<K>
 extern fn values<K, V>(self: Map<K, V>) -> Array<V>
 extern fn entries<K, V>(self: Map<K, V>) -> Array<(K, V)>
@@ -111,39 +111,39 @@ extern fn index<K, V>(self: Map<K, V>, key: K) -> V
 extern fn setIndex<K, V>(self: &Map<K, V>, key: K, value: V)
 extern fn Map.default<K, V>() -> Map<K, V>
 
-extern fn length(self: string) -> int
-extern fn at(self: string, index: int) -> string?
-extern fn includes(self: string, search: string) -> bool
-extern fn index(self: string, key: int) -> string
-extern fn index(self: string, key: Range) -> string
+extern fn length(self: String) -> Int
+extern fn at(self: String, index: Int) -> String?
+extern fn includes(self: String, search: String) -> Bool
+extern fn index(self: String, key: Int) -> String
+extern fn index(self: String, key: Range) -> String
 
 # Methods taking a function (§3.8), with JavaScript's names. Each calls its function on the items in
 # order, a search only until it finds one.
 fn map<T, U>(self: Array<T>, f: fn(T) -> U) -> Array<U>: [for item in self: f(item)]
 
-fn filter<T>(self: Array<T>, keep: fn(T) -> bool) -> Array<T>: [
+fn filter<T>(self: Array<T>, keep: fn(T) -> Bool) -> Array<T>: [
   for item in self if keep(item): item
 ]
 
 fn flatMap<T, U>(self: Array<T>, f: fn(T) -> Array<U>) -> Array<U>: self.map(f).flat()
 
-fn find<T>(self: Array<T>, test: fn(T) -> bool) -> T?: self._itemAt(self.findIndex(test))
+fn find<T>(self: Array<T>, test: fn(T) -> Bool) -> T?: self._itemAt(self.findIndex(test))
 
-fn findLast<T>(self: Array<T>, test: fn(T) -> bool) -> T?: self._itemAt(self.findLastIndex(test))
+fn findLast<T>(self: Array<T>, test: fn(T) -> Bool) -> T?: self._itemAt(self.findLastIndex(test))
 
-fn findIndex<T>(self: Array<T>, test: fn(T) -> bool) -> int:
+fn findIndex<T>(self: Array<T>, test: fn(T) -> Bool) -> Int:
   for position in 0..self.length():
     if test(self[position]): return position
   -1
 
-fn findLastIndex<T>(self: Array<T>, test: fn(T) -> bool) -> int:
+fn findLastIndex<T>(self: Array<T>, test: fn(T) -> Bool) -> Int:
   let position = self.length() - 1
   while position >= 0 and not test(self[position]): position -= 1
   position
 
-fn some<T>(self: Array<T>, test: fn(T) -> bool) -> bool: self.findIndex(test) >= 0
+fn some<T>(self: Array<T>, test: fn(T) -> Bool) -> Bool: self.findIndex(test) >= 0
 
-fn every<T>(self: Array<T>, test: fn(T) -> bool) -> bool: not self.some(fn(item): not test(item))
+fn every<T>(self: Array<T>, test: fn(T) -> Bool) -> Bool: not self.some(fn(item): not test(item))
 
 fn reduce<T, A>(self: Array<T>, f: fn(A, T) -> A, initial: A) -> A:
   let result = initial
@@ -154,7 +154,7 @@ fn reduce<T, A>(self: Array<T>, f: fn(A, T) -> A, initial: A) -> A:
 # first.
 fn sort<T is Comparable>(self: &Array<T>): self.sort(fn(left, right): compare(left, right))
 
-fn sort<T>(self: &Array<T>, order: fn(T, T) -> int): self = _sorted(self, order)
+fn sort<T>(self: &Array<T>, order: fn(T, T) -> Int): self = _sorted(self, order)
 
 fn Map.groupBy<K, T>(items: Array<T>, key: fn(T) -> K) -> Map<K, Array<T>>:
   let groups: Map<K, Array<T>> = [:]
@@ -164,17 +164,17 @@ fn Map.groupBy<K, T>(items: Array<T>, key: fn(T) -> K) -> Map<K, Array<T>>:
   groups
 
 # The item at `position`, which a search found, or none for the -1 of a search that found none.
-fn _itemAt<T>(self: Array<T>, position: int) -> T?:
+fn _itemAt<T>(self: Array<T>, position: Int) -> T?:
   if position < 0: none
   else: self[position]
 
-fn _sorted<T>(items: Array<T>, order: fn(T, T) -> int) -> Array<T>:
+fn _sorted<T>(items: Array<T>, order: fn(T, T) -> Int) -> Array<T>:
   if items.length() <= 1: return items
   const middle = items.length() // 2
   _merged(_sorted(items[..middle], order), _sorted(items[middle..], order), order)
 
 # `left` and `right`, each sorted, merged into one sorted array; `left`'s items go first on a tie.
-fn _merged<T>(left: Array<T>, right: Array<T>, order: fn(T, T) -> int) -> Array<T>:
+fn _merged<T>(left: Array<T>, right: Array<T>, order: fn(T, T) -> Int) -> Array<T>:
   let merged: Array<T> = []
   let fromLeft = 0
   let fromRight = 0
@@ -196,18 +196,18 @@ fn iterate<T>(self: Array<T>) -> fn() -> T?: _cursor(self.length(), fn(position)
 fn iterate<K, V>(self: Map<K, V>) -> fn() -> (K, V)?:
   _cursor(self.size(), fn(position): self._entryAt(position))
 
-fn iterate(self: Range) -> fn() -> int?:
+fn iterate(self: Range) -> fn() -> Int?:
   const start, step, count = self._steps()
   _cursor(count, fn(position): start + position * step)
 
 # A range's start, its step and how many ints it reaches; one without both ends panics.
-extern fn _steps(self: Range) -> (int, int, int)
+extern fn _steps(self: Range) -> (Int, Int, Int)
 
 # A string's cursor steps over its code points by where each starts in its UTF-16 text, so reading
 # the next one never counts from the start.
-fn iterate(self: string) -> fn() -> string?:
+fn iterate(self: String) -> fn() -> String?:
   let offset = 0
-  fn next() -> string?:
+  fn next() -> String?:
     if self._characterAt(offset) is Some{value is (character, after)}:
       offset = after
       return character
@@ -215,7 +215,7 @@ fn iterate(self: string) -> fn() -> string?:
   next
 
 # The cursor of `count` items, the item at each position read by `item`.
-fn _cursor<T>(count: int, item: fn(int) -> T) -> fn() -> T?:
+fn _cursor<T>(count: Int, item: fn(Int) -> T) -> fn() -> T?:
   let position = 0
   fn next() -> T?:
     if position == count: return none
@@ -224,85 +224,85 @@ fn _cursor<T>(count: int, item: fn(int) -> T) -> fn() -> T?:
   next
 
 # The entry at `position` in a map's own order.
-extern fn _entryAt<K, V>(self: Map<K, V>, position: int) -> (K, V)
+extern fn _entryAt<K, V>(self: Map<K, V>, position: Int) -> (K, V)
 
 # The code point starting at UTF-16 `offset` in a string, and the offset after it; none at the end.
-extern fn _characterAt(self: string, offset: int) -> (string, int)?
+extern fn _characterAt(self: String, offset: Int) -> (String, Int)?
 
 # Where the running frames are, innermost first, from the code that called for the value: the
 # default of an `Error`'s `trace`, which runs in an entry of its own (§3.1, §3.12).
-extern fn _trace() -> string
+extern fn _trace() -> String
 
 # Operators on primitives (§3.9). They are built in: the runtime implements each, and declaring
 # them here lets an operator resolve like any other call. Mixed operands are overloads, as a
 # program's own are: mixing int and float gives a float, and `/` always gives a float.
-extern fn add(left: int, right: int) -> int
-extern fn add(left: float, right: float) -> float
-extern fn add(left: int, right: float) -> float
-extern fn add(left: float, right: int) -> float
-extern fn add(left: string, right: string) -> string
-extern fn subtract(left: int, right: int) -> int
-extern fn subtract(left: float, right: float) -> float
-extern fn subtract(left: int, right: float) -> float
-extern fn subtract(left: float, right: int) -> float
-extern fn multiply(left: int, right: int) -> int
-extern fn multiply(left: float, right: float) -> float
-extern fn multiply(left: int, right: float) -> float
-extern fn multiply(left: float, right: int) -> float
-extern fn divide(left: int, right: int) -> float
-extern fn divide(left: float, right: float) -> float
-extern fn divide(left: int, right: float) -> float
-extern fn divide(left: float, right: int) -> float
-extern fn floorDivide(left: int, right: int) -> int
-extern fn remainder(left: int, right: int) -> int
+extern fn add(left: Int, right: Int) -> Int
+extern fn add(left: Float, right: Float) -> Float
+extern fn add(left: Int, right: Float) -> Float
+extern fn add(left: Float, right: Int) -> Float
+extern fn add(left: String, right: String) -> String
+extern fn subtract(left: Int, right: Int) -> Int
+extern fn subtract(left: Float, right: Float) -> Float
+extern fn subtract(left: Int, right: Float) -> Float
+extern fn subtract(left: Float, right: Int) -> Float
+extern fn multiply(left: Int, right: Int) -> Int
+extern fn multiply(left: Float, right: Float) -> Float
+extern fn multiply(left: Int, right: Float) -> Float
+extern fn multiply(left: Float, right: Int) -> Float
+extern fn divide(left: Int, right: Int) -> Float
+extern fn divide(left: Float, right: Float) -> Float
+extern fn divide(left: Int, right: Float) -> Float
+extern fn divide(left: Float, right: Int) -> Float
+extern fn floorDivide(left: Int, right: Int) -> Int
+extern fn remainder(left: Int, right: Int) -> Int
 # An int to an int power stays an int, which a negative exponent can't; a float operand makes the
 # result a float.
-extern fn power(base: int, exponent: int) -> int
-extern fn power(base: float, exponent: float) -> float
-extern fn power(base: int, exponent: float) -> float
-extern fn power(base: float, exponent: int) -> float
+extern fn power(base: Int, exponent: Int) -> Int
+extern fn power(base: Float, exponent: Float) -> Float
+extern fn power(base: Int, exponent: Float) -> Float
+extern fn power(base: Float, exponent: Int) -> Float
 # The bitwise operators work on an int's two's complement of unbounded width, as Python's do, so
 # `~x` is `-x - 1` and `>>` rounds toward negative infinity; a negative shift count panics.
-extern fn bitAnd(left: int, right: int) -> int
-extern fn bitOr(left: int, right: int) -> int
-extern fn bitXor(left: int, right: int) -> int
-extern fn bitNot(value: int) -> int
-extern fn shiftLeft(value: int, count: int) -> int
-extern fn shiftRight(value: int, count: int) -> int
-extern fn negate(value: int) -> int
-extern fn negate(value: float) -> float
-extern fn compare(left: int, right: int) -> int
-extern fn compare(left: float, right: float) -> int
-extern fn compare(left: int, right: float) -> int
-extern fn compare(left: float, right: int) -> int
-extern fn compare(left: string, right: string) -> int
+extern fn bitAnd(left: Int, right: Int) -> Int
+extern fn bitOr(left: Int, right: Int) -> Int
+extern fn bitXor(left: Int, right: Int) -> Int
+extern fn bitNot(value: Int) -> Int
+extern fn shiftLeft(value: Int, count: Int) -> Int
+extern fn shiftRight(value: Int, count: Int) -> Int
+extern fn negate(value: Int) -> Int
+extern fn negate(value: Float) -> Float
+extern fn compare(left: Int, right: Int) -> Int
+extern fn compare(left: Float, right: Float) -> Int
+extern fn compare(left: Int, right: Float) -> Int
+extern fn compare(left: Float, right: Int) -> Int
+extern fn compare(left: String, right: String) -> Int
 
-# Conversions (§3.10): only the ones that can't fail are written T(x). `int(x)` truncates toward
+# Conversions (§3.10): only the ones that can't fail are written T(x). `Int(x)` truncates toward
 # zero; a float that is no number (NaN, an infinity) has no int, which is a bug, so it panics.
-# `string(x)` is `toString`, the one place a type says how it is written; a whole float keeps its
+# `String(x)` is `toString`, the one place a type says how it is written; a whole float keeps its
 # `.0`, so `1.0` never reads as the int `1`. `parse` reads back what `toString` writes, and fails
 # with a Result, since text from outside may be anything.
-extern fn float.from(value: int) -> float
-extern fn int.from(value: float) -> int
+extern fn Float.from(value: Int) -> Float
+extern fn Int.from(value: Float) -> Int
 
-fn string.from<T is Stringable>(value: T) -> string: value.toString()
+fn String.from<T is Stringable>(value: T) -> String: value.toString()
 
 # Adding any Stringable value to a string, on either side, appends the text its `toString` writes.
-fn add<T is Stringable>(left: string, right: T) -> string: left + right.toString()
+fn add<T is Stringable>(left: String, right: T) -> String: left + right.toString()
 
-fn add<T is Stringable>(left: T, right: string) -> string: left.toString() + right
+fn add<T is Stringable>(left: T, right: String) -> String: left.toString() + right
 
-extern fn toString(self: int) -> string
-extern fn toString(self: float) -> string
-extern fn toString(self: bool) -> string
+extern fn toString(self: Int) -> String
+extern fn toString(self: Float) -> String
+extern fn toString(self: Bool) -> String
 
-fn toString(self: string) -> string: self
+fn toString(self: String) -> String: self
 
-extern fn int.parse(text: string) -> Result<int>
-extern fn float.parse(text: string) -> Result<float>
-extern fn bool.parse(text: string) -> Result<bool>
+extern fn Int.parse(text: String) -> Result<Int>
+extern fn Float.parse(text: String) -> Result<Float>
+extern fn Bool.parse(text: String) -> Result<Bool>
 
-fn string.parse(text: string) -> Result<string>: Ok{(text)}
+fn String.parse(text: String) -> Result<String>: Ok{(text)}
 
 trait Sendable
 
@@ -314,7 +314,7 @@ trait Iterable<T, C = Self>:
 
 # What `item in c` asks (§3.9).
 trait Container<T, C = Self>:
-  fn includes(self: C, item: T) -> bool
+  fn includes(self: C, item: T) -> Bool
 
 trait Indexable<K, V, C = Self>:
   fn index(self: C, key: K) -> V
@@ -347,7 +347,7 @@ trait FloorDivisible<T = Self>:
 trait Negatable<T = Self>:
   fn negate(value: T) -> T
 
-# The exponent may have a type of its own: a Decimal is `Powerable<int>`.
+# The exponent may have a type of its own: a Decimal is `Powerable<Int>`.
 trait Powerable<E = Self, T = Self>:
   fn power(base: T, exponent: E) -> T
 
@@ -359,18 +359,18 @@ trait Bitwise<T = Self>:
   fn bitNot(value: T) -> T
 
 trait Shiftable<T = Self>:
-  fn shiftLeft(value: T, count: int) -> T
-  fn shiftRight(value: T, count: int) -> T
+  fn shiftLeft(value: T, count: Int) -> T
+  fn shiftRight(value: T, count: Int) -> T
 
 trait Comparable<T = Self>:
-  fn compare(left: T, right: T) -> int
+  fn compare(left: T, right: T) -> Int
 
 trait Stringable:
-  fn toString(self: Self) -> string
+  fn toString(self: Self) -> String
 
 trait Parsable:
-  fn Self.parse(text: string) -> Result<Self>
+  fn Self.parse(text: String) -> Result<Self>
 
 # Names the suspension point of the statement it annotates, for tests and operators (§10).
 struct Waypoint:
-  label: string
+  label: String

@@ -1,7 +1,7 @@
 /**
  * Loops and labels (§3.4, §4): `while`, `for`, the `break` and `continue` that leave their bodies,
  * blocks labelled for `hold`, and the names labels give. A loop or labelled block is a statement
- * of type `unit`; its body runs for its effects, so the body's value is discarded. What a `for`
+ * of type `Unit`; its body runs for its effects, so the body's value is discarded. What a `for`
  * runs over, and how, is the rule of iteration (rules/iteration.ts).
  *
  * Each `break`, `continue` and `hold(name)` is resolved here, once, and recorded (`LabelTargets`). A
@@ -41,7 +41,7 @@ export function checkLabelledBlock(context: BodyContext, node: LabelledBlock): T
   return unitType;
 }
 
-/** `break` or `continue`: `never`, leaving the innermost loop or the one its label names. */
+/** `break` or `continue`: `Never`, leaving the innermost loop or the one its label names. */
 export function checkLoopExit(context: BodyContext, node: Break | Continue): Type {
   const keyword = node.kind === 'Break' ? 'break' : 'continue';
   const { label } = node;

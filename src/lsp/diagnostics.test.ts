@@ -71,18 +71,18 @@ describe('the diagnostics an open document gets', () => {
 
   it('follow a change to a module they import', async () => {
     const root = tempProject({
-      'lib.ista': 'fn helper() -> int: 1\n',
-      'main.ista': "import helper from 'lib'\n\nfn main() -> int: helper()\n",
+      'lib.ista': 'fn helper() -> Int: 1\n',
+      'main.ista': "import helper from 'lib'\n\nfn main() -> Int: helper()\n",
     });
     const client = await connectedClient(root);
     const main = uriOf(join(root, 'main.ista'));
     const lib = uriOf(join(root, 'lib.ista'));
     const clean = client.nextDiagnostics(main);
-    await client.open(main, "import helper from 'lib'\n\nfn main() -> int: helper()\n");
-    await client.open(lib, 'fn helper() -> int: 1\n');
+    await client.open(main, "import helper from 'lib'\n\nfn main() -> Int: helper()\n");
+    await client.open(lib, 'fn helper() -> Int: 1\n');
     expect(await clean).toEqual([]);
     const afterRename = client.nextDiagnostics(main);
-    await client.change(lib, 'fn renamed() -> int: 1\n');
+    await client.change(lib, 'fn renamed() -> Int: 1\n');
     expect((await afterRename).length).toBeGreaterThan(0);
   });
 
@@ -94,20 +94,20 @@ describe('the diagnostics an open document gets', () => {
     client.connection.onNotification(PublishDiagnosticsNotification.type, (params) => {
       published.push(params);
     });
-    await client.open(uri, 'fn main() -> int: "one"\n');
+    await client.open(uri, 'fn main() -> Int: "one"\n');
     await client.connection.sendRequest(ShutdownRequest.type);
     await setTimeout(100);
     expect(published).toEqual([]);
   });
 
   it('are cleared when it closes, and its file is read from disk again', async () => {
-    const root = tempProject({ 'main.ista': 'fn main() -> int: 1\n' });
+    const root = tempProject({ 'main.ista': 'fn main() -> Int: 1\n' });
     const uri = uriOf(join(root, 'main.ista'));
     const client = await connectedClient(root);
     const broken = client.nextDiagnostics(uri);
-    await client.open(uri, 'fn main() -> int: "one"\n');
+    await client.open(uri, 'fn main() -> Int: "one"\n');
     expect(await broken).toEqual(
-      checkedMain(tempProject({ 'main.ista': 'fn main() -> int: "one"\n' })),
+      checkedMain(tempProject({ 'main.ista': 'fn main() -> Int: "one"\n' })),
     );
     const cleared = client.nextDiagnostics(uri);
     await client.close(uri);

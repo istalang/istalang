@@ -5,7 +5,7 @@
 import * as time from 'time'
 
 struct Cart:
-  items: Array<int>
+  items: Array<Int>
 
 async fn grow(cart: Cart):
   let mine = cart
@@ -13,13 +13,13 @@ async fn grow(cart: Cart):
   mine.items.push(200)
   await time.delay(1ms)
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let cart = Cart{items: [1, 2]}
   spawn grow(cart)
   cart.items.push(3)
   await time.delay(5ms)
   const counter = 7
   const peek = fn(): counter
-  const sent: sendable fn() -> int = fn(): 1
+  const sent: sendable fn() -> Int = fn(): 1
   spawn sent()
-  string(cart.items.length()) + " " + string(cart.items[1]) + " " + string(peek())
+  String(cart.items.length()) + " " + String(cart.items[1]) + " " + String(peek())

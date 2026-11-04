@@ -3,9 +3,9 @@
 # a value apart by tuple and struct patterns at any depth, and assignments to tuples and structs
 # of places, element assignment among them.
 
-struct Pair { first: int; second: int }
+struct Pair { first: Int; second: Int }
 
-fn ordered(a: int, b: int) -> (int, int):
+fn ordered(a: Int, b: Int) -> (Int, Int):
   if a < b: (a, b) else: (b, a)
 
 async fn main():

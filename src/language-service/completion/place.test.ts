@@ -10,7 +10,7 @@ import { programAt } from '../language-service.test-kit.ts';
 import { cursorAt } from './cursor.ts';
 import { type PlaceKind, placeAt } from './place.ts';
 
-const decision = ['enum Decision:', '  Approved { by: string }', '  Expired', ''];
+const decision = ['enum Decision:', '  Approved { by: String }', '  Expired', ''];
 
 function placeIn(...lines: readonly string[]): PlaceKind {
   const { program, module, offset } = programAt(...lines);
@@ -24,7 +24,7 @@ function placeIn(...lines: readonly string[]): PlaceKind {
 describe('the place a cursor is in', () => {
   it("is the grammar's in a guard written before the case's `:`", () => {
     const guarded = [
-      'fn f(d: Decision, a: bool) -> int:',
+      'fn f(d: Decision, a: Bool) -> Int:',
       '  match d:',
       '    case Approved{by} if a ‸',
     ];
@@ -32,17 +32,17 @@ describe('the place a cursor is in', () => {
   });
 
   it("is the grammar's in a case's arm inside a template's value", () => {
-    const templated = ['fn f(d: Decision) -> string:', '  const s = `${match d: case Expired: ‸}`'];
+    const templated = ['fn f(d: Decision) -> String:', '  const s = `${match d: case Expired: ‸}`'];
     expect(placeIn(...decision, ...templated, '  s')).toBe('grammar');
   });
 
   it("is the grammar's in a field's value inside an annotation", () => {
-    const annotated = ['struct D:', '  reason: string', '', '@D{reason: ‸}', 'fn f(): 1'];
+    const annotated = ['struct D:', '  reason: String', '', '@D{reason: ‸}', 'fn f(): 1'];
     expect(placeIn(...annotated)).toBe('grammar');
   });
 
   it('declares a name after `as`, in a pattern or a field pattern', () => {
-    const cases = ['fn f(d: Decision) -> int:', '  match d:'];
+    const cases = ['fn f(d: Decision) -> Int:', '  match d:'];
     expect(placeIn(...decision, ...cases, '    case Approved{by} as ‸', '  0')).toBe(
       'declaredName',
     );
@@ -50,22 +50,22 @@ describe('the place a cursor is in', () => {
   });
 
   it("is nothing in a comment, even after a member's `.` or a literal's `{`", () => {
-    const pair = ['struct Pair:', '  first: int', ''];
+    const pair = ['struct Pair:', '  first: Int', ''];
     expect(placeIn(...pair, 'fn f() -> Pair: Pair{ # a‸', '  first: 1}')).toBe('nothing');
-    expect(placeIn(...pair, 'fn f(p: Pair) -> int: p. # a‸', '  first')).toBe('nothing');
+    expect(placeIn(...pair, 'fn f(p: Pair) -> Int: p. # a‸', '  first')).toBe('nothing');
   });
 
   it("is nothing in a docstring's text", () => {
-    expect(placeIn('"""A module, ‸documented."""', '', 'fn f() -> int: 1')).toBe('nothing');
+    expect(placeIn('"""A module, ‸documented."""', '', 'fn f() -> Int: 1')).toBe('nothing');
   });
 
   it('reads a line by its first token, not by how a name there is spelled', () => {
-    expect(placeIn('fn f(imports: int) -> int:', '  imports + ‸', '  0')).toBe('grammar');
+    expect(placeIn('fn f(imports: Int) -> Int:', '  imports + ‸', '  0')).toBe('grammar');
     expect(placeIn("import ‸ from 'time'")).toBe('import');
   });
 
   it("reads the cursor's own line, not the line before a blank one", () => {
-    expect(placeIn("import * as time from 'time'", '‸', 'fn f() -> int: 1')).toBe('grammar');
+    expect(placeIn("import * as time from 'time'", '‸', 'fn f() -> Int: 1')).toBe('grammar');
     expect(placeIn('async fn f():', '  @Waypoint{"step"}', '  ‸', '  1')).toBe('grammar');
   });
 });

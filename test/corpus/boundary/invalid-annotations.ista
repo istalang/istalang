@@ -20,26 +20,26 @@ import JsonName, JsonSkip, JsonBigInt from 'json'
 const limit = 3
 
 struct Note:
-  text: string
+  text: String
 
-fn named() -> string:
+fn named() -> String:
   "x"
 
 @JsonName{"f"}
-fn misplaced() -> int:
+fn misplaced() -> Int:
   1
 
 struct Bad:
-  a: int @limit
-  b: int @JsonSkip
-  c: string @JsonBigInt
-  d: int @JsonName{"x"} @JsonName{"y"}
-  e: int @JsonName{"x"}
-  f: int @JsonName{named()}
+  a: Int @limit
+  b: Int @JsonSkip
+  c: String @JsonBigInt
+  d: Int @JsonName{"x"} @JsonName{"y"}
+  e: Int @JsonName{"x"}
+  f: Int @JsonName{named()}
 
 @Note{"a struct"}
 struct Annotated:
-  g: int @Note{"kept for tools"}
+  g: Int @Note{"kept for tools"}
 
 async fn main():
   @Waypoint{"nowhere"}
@@ -52,5 +52,5 @@ async fn main():
   const y = await runtime()
   x + polled + y
 
-async fn runtime() -> Future<int>:
+async fn runtime() -> Future<Int>:
   2

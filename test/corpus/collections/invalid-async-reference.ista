@@ -5,18 +5,18 @@
 # future before its callee ends, so no element may be passed by `&` to an async function (§3.7),
 # whether written `&`, taken as `&self`, or passed to an async function value.
 
-struct Job { runs: int }
+struct Job { runs: Int }
 
 async fn run(self: &Job):
   self.runs += 1
 
-async fn bump(value: &int):
+async fn bump(value: &Int):
   value += 1
 
 async fn main():
   let counts = [1]
   let jobs = [Job{runs: 0}]
-  const later: async fn(&int) -> unit = bump
+  const later: async fn(&Int) -> Unit = bump
   await bump(&counts[0])
   await jobs[0].run()
   await later(&counts[0])

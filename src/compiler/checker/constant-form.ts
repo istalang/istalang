@@ -12,7 +12,7 @@ import { type NominalType, type StructValueType, sameType } from './types/type.t
 import { sameTypeSpelled } from './types/type-parts.ts';
 
 /**
- * A primitive (`unit` is `null`), a struct of a struct type with its fields in declaration order,
+ * A primitive (`Unit` is `null`), a struct of a struct type with its fields in declaration order,
  * a tuple, an array, a map with its entries in order and no two keys equal, or a lambda that
  * captures nothing (§3.14), with the constant whose value checked it (`Checker.constantBodyOf`).
  */

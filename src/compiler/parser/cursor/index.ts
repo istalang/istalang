@@ -9,7 +9,7 @@
  *   Python statement does.
  * - In a list of items, a line break separates items, one or more to a line. A block's lines must
  *   start at its column, and layout decides from the next line's column whether the block goes on
- *   (layout.ts). Entries in braces, `{ a: int; b: int }`, have no column: every line continues.
+ *   (layout.ts). Entries in braces, `{ a: Int; b: Int }`, have no column: every line continues.
  * Regions nest. A region also records the closer that ends it, so recovery knows which closing
  * brackets belong to enclosing constructs and must not be consumed. A region without a closer of
  * its own keeps the closer of the region it sits in, since that closer also ends it. A bracket no
@@ -23,7 +23,7 @@
  * region would.
  *
  * Inside `<…>`, a token starting with `>` (`>=`, `>>`, `>>=`) reads as `>`: the scanner can't know
- * that `Array<int>= []` or `Array<Array<int>>` closes type arguments there. Consuming that `>`
+ * that `Array<Int>= []` or `Array<Array<Int>>` closes type arguments there. Consuming that `>`
  * leaves the rest (`=`, `>`, `>=`) behind as the next token, which may close another `<…>` in turn.
  *
  * `mark` and `reset` undo speculation completely: the position, a split, and a line break

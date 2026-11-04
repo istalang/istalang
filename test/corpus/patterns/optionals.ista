@@ -7,51 +7,51 @@
 # `a ?? b` is the value inside `a`, else `b`, which runs only then; with a `T?` on the right it
 # gives a `T?`, so `a ?? b ?? c` reads left to right.
 
-struct Address { city: string; zip: int? }
+struct Address { city: String; zip: Int? }
 
-struct Person { name: string; address: Address? }
+struct Person { name: String; address: Address? }
 
-struct Verdict { role: string }
+struct Verdict { role: String }
 
-struct Team { members: Array<string> }
+struct Team { members: Array<String> }
 
-struct Hooks { onDone: (fn(int) -> int)? }
+struct Hooks { onDone: (fn(Int) -> Int)? }
 
-fn length(self: Address) -> int:
+fn length(self: Address) -> Int:
   5
 
-fn roleOf(verdict: Verdict?) -> string:
+fn roleOf(verdict: Verdict?) -> String:
   verdict?.role ?? "none"
 
-fn neverCalled() -> int:
+fn neverCalled() -> Int:
   panic("'??' evaluated its right side")
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const someone = Person{name: "a", address: Address{city: "x", zip: 42}}
   const nobody = Person{name: "b", address: none}
-  const counted: int? = someone.address?.length()
-  const zip: int? = someone.address?.zip
-  const missingZip: int? = nobody.address?.zip
-  const seven: int? = 7
-  const first: int? = none
-  const second: int? = 9
-  const chained: int? = first ?? second ?? 3
-  const both: int? = first ?? none
+  const counted: Int? = someone.address?.length()
+  const zip: Int? = someone.address?.zip
+  const missingZip: Int? = nobody.address?.zip
+  const seven: Int? = 7
+  const first: Int? = none
+  const second: Int? = 9
+  const chained: Int? = first ?? second ?? 3
+  const both: Int? = first ?? none
   const team: Team? = Team{members: ["ada", "bo"]}
   const noTeam: Team? = none
   const hooks = Hooks{onDone: fn(n): n * 2}
   const noHooks = Hooks{onDone: none}
   const maybeHooks: Hooks? = hooks
-  const names: Array<string>? = ["x", "y"]
-  const noNames: Array<string>? = none
-  const pair: (int, int)? = (1, 2)
-  const noPair: (int, int)? = none
-  (roleOf(Verdict{role: "legal"}) + "|" + roleOf(none) + "|" + string(counted ?? 0)
-    + "|" + (nobody.address?.city ?? "-") + "|" + string(zip ?? 0)
-    + "|" + string(seven ?? neverCalled()) + "|" + string(chained ?? 0)
-    + "|" + (if both == none: "none" else: "some") + "|" + string(missingZip ?? 0)
+  const names: Array<String>? = ["x", "y"]
+  const noNames: Array<String>? = none
+  const pair: (Int, Int)? = (1, 2)
+  const noPair: (Int, Int)? = none
+  (roleOf(Verdict{role: "legal"}) + "|" + roleOf(none) + "|" + String(counted ?? 0)
+    + "|" + (nobody.address?.city ?? "-") + "|" + String(zip ?? 0)
+    + "|" + String(seven ?? neverCalled()) + "|" + String(chained ?? 0)
+    + "|" + (if both == none: "none" else: "some") + "|" + String(missingZip ?? 0)
     + "|" + (team?.members[1] ?? "-") + "|" + (noTeam?.members[1] ?? "-")
-    + "|" + string(hooks.onDone?.(4) ?? 0) + "|" + string(noHooks.onDone?.(neverCalled()) ?? 0)
-    + "|" + string(maybeHooks?.onDone?.(5) ?? 0) + "|" + (names?.[1] ?? "-")
-    + "|" + (noNames?.[neverCalled()] ?? "-") + "|" + string(pair?.1 ?? 0)
-    + "|" + string(noPair?.0 ?? 0))
+    + "|" + String(hooks.onDone?.(4) ?? 0) + "|" + String(noHooks.onDone?.(neverCalled()) ?? 0)
+    + "|" + String(maybeHooks?.onDone?.(5) ?? 0) + "|" + (names?.[1] ?? "-")
+    + "|" + (noNames?.[neverCalled()] ?? "-") + "|" + String(pair?.1 ?? 0)
+    + "|" + String(noPair?.0 ?? 0))

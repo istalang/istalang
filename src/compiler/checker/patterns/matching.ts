@@ -8,10 +8,10 @@
  *   is `Optional`'s `None`.
  * - A field compared with `==` or `!=` follows `==`'s rule (types/equality.ts); any other
  *   comparison calls `compare`.
- * - A name that refers is a variant without fields, tested like one; a struct without fields,
- *   whose value is the only one of its type, so it matches with no test; or a top-level constant
- *   (named qualified, since a bare camelCase name binds), compared with `==` and acting as a guard
- *   for exhaustiveness.
+ * - A name that refers is a variant without fields, tested like one; a type, a struct without
+ *   fields among them, which matches every value of the part's own type with no test, as `_`
+ *   does (named-types.ts); or a top-level constant (named qualified, since a bare camelCase name
+ *   binds), compared with `==` and acting as a guard for exhaustiveness.
  * - A struct pattern naming a variant tests that variant, then takes its fields apart. The part's
  *   enum is the expected type, so a bare variant name is enough (§3.11).
  * - An array pattern tests its part's length, then reads its items and rest, all through prelude
@@ -22,8 +22,7 @@
  */
 
 import { arrayPatternFunctions, optionalVariants } from '../../../language/well-known.ts';
-import type { VariantNaming } from '../../binder/entities.ts';
-import type { StructDeclaration } from '../../syntax/declarations.ts';
+import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import { lastName } from '../../syntax/node.ts';
@@ -41,9 +40,10 @@ import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pa
 import type { BodyContext, PatternRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
-import { chooseVariant, fieldlessStructOf, nameNodeOf } from '../resolution/named.ts';
+import { chooseVariant, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
 import { checkEqualSides, comparable } from '../types/equality.ts';
+import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
 import {
   errorType,
   intType,
@@ -54,9 +54,10 @@ import {
 import { typeText } from '../types/type-text.ts';
 import { arrayElement } from '../types/well-known.ts';
 import { downcastOf } from './downcasts.ts';
-import { bodyScope, type ValuePart } from './parts.ts';
+import { anyShape } from './exhaustiveness.ts';
+import { bodyScope, otherTypeNamed, type ValuePart } from './parts.ts';
 import type { ArrayPart, Leaf, PatternTests, VariantPart } from './pattern-tests.ts';
-import { literalShape, nullaryShape, structKey } from './shapes.ts';
+import { literalShape, nullaryShape } from './shapes.ts';
 import { type WalkedPattern, walkPattern } from './walk.ts';
 
 /** The patterns of one body as checked, for lowering. */
@@ -144,7 +145,7 @@ function rangeLeaf(context: BodyContext, node: RangePattern, part: ValuePart): L
   if (part.type.kind === 'error' || types.some((type) => type.kind === 'error')) {
     return failed;
   }
-  const notInt = [part.type, ...types].find((type) => !isPrimitive(type, 'int'));
+  const notInt = [part.type, ...types].find((type) => !isPrimitive(type, 'Int'));
   if (notInt !== undefined) {
     context.report(checkerDiagnostics.notIntRangePattern(node.span, typeText(notInt)));
     return failed;
@@ -262,9 +263,8 @@ function reference(context: BodyContext, node: NamePattern, part: ValuePart): Le
     }
     return chosen === undefined ? failed : variantLeaf(chosen);
   }
-  const struct = entity === undefined ? undefined : fieldlessStructOf(context.checker, entity);
-  if (struct !== undefined) {
-    return structValueLeaf(context, node, struct, part);
+  if (entity !== undefined && patternTypeOf(context.checker, entity).kind !== 'none') {
+    return typeLeaf(context, node, entity, part);
   }
   const constant = context.checker.constantNamed(context.module, name);
   if (constant === undefined) {
@@ -288,24 +288,20 @@ function reference(context: BodyContext, node: NamePattern, part: ValuePart): Le
 }
 
 /**
- * The struct without fields `declaration`, named at `node`: it matches a part of its type, which
- * gives its type arguments, so nothing is inferred.
+ * A type pattern, the type `entity` named at `node`: it matches every value of its part, which
+ * must be of that type, so nothing is tested and it covers the type (§3.11). A generic type takes
+ * its type arguments from the part; a generic alias stands for no one type, so it names none.
  */
-function structValueLeaf(
-  context: BodyContext,
-  node: NamePattern,
-  declaration: StructDeclaration,
-  part: ValuePart,
-): Leaf {
+function typeLeaf(context: BodyContext, node: NamePattern, entity: Entity, part: ValuePart): Leaf {
   if (part.type.kind === 'error') {
     return failed;
   }
-  if (part.type.kind !== 'nominal' || part.type.entity.declaration !== declaration) {
-    const found = declaration.name.text;
-    context.report(checkerDiagnostics.typeMismatch(node.span, typeText(part.type), found));
-    return failed;
+  if (namesOwnType(context.checker, entity, part.type)) {
+    return { tests: [], shape: anyShape };
   }
-  return { tests: [], shape: nullaryShape(structKey) };
+  const named = { span: node.span, name: lastName(node.path) };
+  context.report(otherTypeNamed(context.checker, entity, named, part.type));
+  return failed;
 }
 
 /**

@@ -168,7 +168,7 @@ const scenarios: readonly Scenario[] = [
     id: 'ME-15',
     place: 'member',
     title: 'Statics through a type parameter',
-    src: ['fn g<T is Zero>(x: T) -> int:\n  T.‸'],
+    src: ['fn g<T is Zero>(x: T) -> Int:\n  T.‸'],
     trigger: '.',
     where: 'top',
     tail: '\n  0\n',

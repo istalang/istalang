@@ -11,7 +11,7 @@
  *   kept in this block
  * - otherwise the block ends, and the enclosing construct carries on.
  * Within a line, items are separated by `;`. A module is the block at column 0, so its first line
- * is held to that column too. Entries in braces (`struct Req { id: int; value: string }`) are the
+ * is held to that column too. Entries in braces (`struct Req { id: Int; value: String }`) are the
  * same list without a column: every line continues it until the `}`.
  *
  * `elif` and `else` continue an `if` on its line, or first on a later line at the column where the
@@ -111,7 +111,7 @@ export function parseBlockBraces<Item extends SyntaxNode>(
   return parseEnclosedIn(parser, '{', enter, () => parseLines(parser, rules));
 }
 
-/** `{ a: int; b: int }`: `rules` items separated by `;` or line breaks, at any column. */
+/** `{ a: Int; b: Int }`: `rules` items separated by `;` or line breaks, at any column. */
 export function parseItemEntries<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
@@ -230,7 +230,7 @@ function annotate<Item extends SyntaxNode>(
 
 const { danglingAnnotation, misplacedAnnotation } = parserDiagnostics;
 
-/** Consumes any `;`, since empty items are allowed (`{ a: int; }`); whether there was one. */
+/** Consumes any `;`, since empty items are allowed (`{ a: Int; }`); whether there was one. */
 function skipSemicolons(parser: Parser): boolean {
   let skipped = false;
   while (parser.cursor.eat(';') !== undefined) {

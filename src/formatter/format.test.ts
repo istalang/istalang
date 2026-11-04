@@ -99,14 +99,14 @@ describe('the canonical style', () => {
     expect(
       formatText(
         lines(
-          'fn f(a: int) -> int:',
+          'fn f(a: Int) -> Int:',
           '        return a',
           `fn g(): call(${long}, ${long}, ${long})`,
         ),
       ),
     ).toBe(
       lines(
-        'fn f(a: int) -> int: return a',
+        'fn f(a: Int) -> Int: return a',
         'fn g():',
         '  call(',
         `    ${long},`,
@@ -133,8 +133,8 @@ describe('the canonical style', () => {
   });
 
   it('prints struct declarations indented, and anonymous struct types in braces', () => {
-    expect(formatText('struct Req { id: int; data: struct { v: int } }\n')).toBe(
-      lines('struct Req:', '  id: int', '  data: { v: int }'),
+    expect(formatText('struct Req { id: Int; data: struct { v: Int } }\n')).toBe(
+      lines('struct Req:', '  id: Int', '  data: { v: Int }'),
     );
   });
 
@@ -146,11 +146,11 @@ describe('the canonical style', () => {
 
   it('keeps a comment after a header on its line, and one ending a body in that body', () => {
     const text = lines(
-      'fn f(a: int): # about f',
+      'fn f(a: Int): # about f',
       '  g(a)',
       '  # still in f',
       '',
-      'fn g(b: int): b',
+      'fn g(b: Int): b',
     );
     expect(formatText(text)).toBe(text);
   });
@@ -158,7 +158,7 @@ describe('the canonical style', () => {
   it('keeps a comment closing a list of members or cases in that list, after its comments', () => {
     const text = lines(
       'struct S:',
-      '  a: int # on a',
+      '  a: Int # on a',
       '  # end of S',
       'fn f():',
       '  match x:',
@@ -219,7 +219,7 @@ describe('the canonical style', () => {
 
   it("lets an operand outside brackets break its own lines at the run's indentation", () => {
     const text = lines(
-      'fn f(a: bool) -> int:',
+      'fn f(a: Bool) -> Int:',
       '  const x = 1 + if a:',
       '    const y = 2',
       '    y',

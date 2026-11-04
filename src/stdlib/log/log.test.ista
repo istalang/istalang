@@ -7,7 +7,7 @@ import * as log from 'log'
 import Level from 'log'
 import * as json from 'json'
 
-fn ignored(level: Level, message: string, fields: json.Json): ()
+fn ignored(level: Level, message: String, fields: json.Json): ()
 
 @Suite{"log"}
 fn suite() -> Array<Test>: [

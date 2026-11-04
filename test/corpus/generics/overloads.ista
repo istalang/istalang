@@ -2,26 +2,26 @@
 # A concrete function beats a generic one; written type arguments choose the generic one (§3.7).
 # A free function may take a value or a reference to one, since `&` at the call tells them apart.
 
-fn show<T>(value: T) -> string:
+fn show<T>(value: T) -> String:
   "generic"
 
-fn show(value: int) -> string:
+fn show(value: Int) -> String:
   "int"
 
-fn scale(value: int, factor: int) -> int:
+fn scale(value: Int, factor: Int) -> Int:
   value * factor
 
-fn scale(value: float, factor: int) -> float:
+fn scale(value: Float, factor: Int) -> Float:
   value * factor
 
-struct Counter { count: int }
+struct Counter { count: Int }
 
-fn read(counter: Counter) -> int:
+fn read(counter: Counter) -> Int:
   counter.count
 
-fn read(counter: &Counter) -> int:
+fn read(counter: &Counter) -> Int:
   counter.count
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const counter = Counter{count: 1}
-  show(5) + " " + show<int>(5) + " " + show("x") + " " + scale(1, 5) + " " + scale(1.0, 5) + " " + read(counter)
+  show(5) + " " + show<Int>(5) + " " + show("x") + " " + scale(1, 5) + " " + scale(1.0, 5) + " " + read(counter)

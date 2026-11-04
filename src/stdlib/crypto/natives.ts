@@ -41,12 +41,12 @@ export const cryptoNatives = (keys: NativeKeys): Natives<NativeContext> => {
   const hashType = keys.type('Hash');
   const encodingType = keys.type('Encoding');
   return {
-    [keys.of('hash', hashType, 'string', encodingType)]: ([algorithm, data, encoding], context) =>
+    [keys.of('hash', hashType, 'String', encodingType)]: ([algorithm, data, encoding], context) =>
       createHash(variantEntry(context, algorithm, algorithms))
         .update(text(data))
         .digest()
         .toString(variantEntry(context, encoding, encodings)),
-    [keys.of('hmac', hashType, 'string', 'string', encodingType)]: (
+    [keys.of('hmac', hashType, 'String', 'String', encodingType)]: (
       [algorithm, key, data, encoding],
       context,
     ) =>
@@ -54,14 +54,14 @@ export const cryptoNatives = (keys: NativeKeys): Natives<NativeContext> => {
         .update(text(data))
         .digest()
         .toString(variantEntry(context, encoding, encodings)),
-    [keys.of('timingSafeEqual', 'string', 'string')]: ([a, b]) => {
+    [keys.of('timingSafeEqual', 'String', 'String')]: ([a, b]) => {
       const left = Buffer.from(text(a));
       const right = Buffer.from(text(b));
       return left.length === right.length && timingSafeEqual(left, right);
     },
-    [keys.of('encode', 'string', encodingType)]: ([source, encoding], context) =>
+    [keys.of('encode', 'String', encodingType)]: ([source, encoding], context) =>
       Buffer.from(text(source)).toString(variantEntry(context, encoding, encodings)),
-    [keys.of('decode', 'string', encodingType)]: ([source, encoding], context) => {
+    [keys.of('decode', 'String', encodingType)]: ([source, encoding], context) => {
       const name = variantEntry(context, encoding, encodings);
       const encoded = text(source);
       const bytes = Buffer.from(encoded, name);

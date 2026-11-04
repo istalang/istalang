@@ -4,7 +4,7 @@ import type { ModuleId } from '../../compiler/program/program.ts';
 import { type DeclaredAt, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
 import { navigable, placeOf } from './navigation.test-kit.ts';
 
-const pair = 'struct Pair:\n  first: int\n  second: int\n';
+const pair = 'struct Pair:\n  first: Int\n  second: Int\n';
 
 type Navigable = ReturnType<typeof navigable>['program'];
 
@@ -26,8 +26,8 @@ function declaredAt(program: ReturnType<typeof navigable>['program'], use: NameP
 describe('the declarations a name denotes', () => {
   it('are declared where the declaring name stands, in another module too', () => {
     const { program, named } = navigable({
-      main: "import tally from 'lib'\nfn main() -> int: tally(1)\n",
-      lib: 'fn tally(x: int) -> int: x\n',
+      main: "import tally from 'lib'\nfn main() -> Int: tally(1)\n",
+      lib: 'fn tally(x: Int) -> Int: x\n',
     });
     expect(declaredAt(program, named('main', 'tally', 1))).toEqual([
       placeOf(program, named('lib', 'tally')),
@@ -36,7 +36,7 @@ describe('the declarations a name denotes', () => {
 
   it("are a field's, read or named in a literal or a pattern", () => {
     const { program, named } = navigable({
-      main: `${pair}fn f(p: Pair) -> int:\n  match Pair{first: p.first, second: 2}:\n    case Pair{first == 1}: 1\n    case Pair{first as x}: x\n`,
+      main: `${pair}fn f(p: Pair) -> Int:\n  match Pair{first: p.first, second: 2}:\n    case Pair{first == 1}: 1\n    case Pair{first as x}: x\n`,
     });
     const field = placeOf(program, named('main', 'first'));
     for (const nth of [1, 2, 3, 4]) {
@@ -46,7 +46,7 @@ describe('the declarations a name denotes', () => {
 
   it('are a field and a variable for a shorthand', () => {
     const { program, named } = navigable({
-      main: `${pair}fn f(first: int) -> Pair: Pair{first, second: 2}\n`,
+      main: `${pair}fn f(first: Int) -> Pair: Pair{first, second: 2}\n`,
     });
     expect(new Set(declaredAt(program, named('main', 'first', 2)))).toEqual(
       new Set([
@@ -58,7 +58,7 @@ describe('the declarations a name denotes', () => {
 
   it("are a method's, called on a value", () => {
     const { program, named } = navigable({
-      main: `${pair}fn sum(self: Pair) -> int: self.first + self.second\nfn f(p: Pair) -> int: p.sum()\n`,
+      main: `${pair}fn sum(self: Pair) -> Int: self.first + self.second\nfn f(p: Pair) -> Int: p.sum()\n`,
     });
     expect(declaredAt(program, named('main', 'sum', 1))).toEqual([
       placeOf(program, named('main', 'sum')),
@@ -66,7 +66,7 @@ describe('the declarations a name denotes', () => {
   });
 
   it('are in std for what std declares', () => {
-    const { program, named } = navigable({ main: 'fn f() -> int?: Some{value: 1}\n' });
+    const { program, named } = navigable({ main: 'fn f() -> Int?: Some{value: 1}\n' });
     const [declared] = declaredAround(
       program,
       idOf('main'),
@@ -76,13 +76,13 @@ describe('the declarations a name denotes', () => {
   });
 
   it('are none for a primitive type, and where no name stands', () => {
-    const { program, named } = navigable({ main: 'fn f(x: int) -> int: x\n' });
-    expect(declaredAt(program, named('main', 'int'))).toEqual([]);
+    const { program, named } = navigable({ main: 'fn f(x: Int) -> Int: x\n' });
+    expect(declaredAt(program, named('main', 'Int'))).toEqual([]);
     expect(declaredAround(program, idOf('main'), 'fn'.length)).toEqual([]);
   });
 
   it('are found from right after the name, as after typing it', () => {
-    const { program, named } = navigable({ main: 'fn f(x: int) -> int: x\n' });
+    const { program, named } = navigable({ main: 'fn f(x: Int) -> Int: x\n' });
     const use = named('main', 'x', 1);
     const after = declaredAround(program, use.module, spanOfUse(program, use).end);
     expect(after.map(({ at }) => placeOf(program, at))).toEqual([

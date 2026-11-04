@@ -14,21 +14,21 @@ enum Encoding:
   Base64
   Base64Url # unpadded, as JWT writes it
 
-extern fn hash(algorithm: Hash, data: string, encoding: Encoding = Encoding.Hex) -> string
+extern fn hash(algorithm: Hash, data: String, encoding: Encoding = Encoding.Hex) -> String
 
 extern fn hmac(
   algorithm: Hash,
-  key: string,
-  data: string,
+  key: String,
+  data: String,
   encoding: Encoding = Encoding.Hex,
-) -> string
+) -> String
 
 # Takes the same time whatever two strings of one length hold; strings of different lengths are
 # unequal at once.
-extern fn timingSafeEqual(a: string, b: string) -> bool
+extern fn timingSafeEqual(a: String, b: String) -> Bool
 
-extern fn encode(text: string, encoding: Encoding) -> string
+extern fn encode(text: String, encoding: Encoding) -> String
 
 # Fails on text that isn't the encoding's canonical form (hex in either case), or whose bytes
 # aren't UTF-8.
-extern fn decode(text: string, encoding: Encoding) -> Result<string>
+extern fn decode(text: String, encoding: Encoding) -> Result<String>

@@ -3,14 +3,14 @@
 # a type parameter or an `any` value, its type arguments meet them where the call is.
 
 trait Shower:
-  fn show<U is Stringable>(self: Self, u: U) -> string
+  fn show<U is Stringable>(self: Self, u: U) -> String
 
-struct Box { label: string }
+struct Box { label: String }
 
-fn show<U is Stringable>(self: Box, u: U) -> string:
-  self.label + string(u)
+fn show<U is Stringable>(self: Box, u: U) -> String:
+  self.label + String(u)
 
-fn viaParameter<T is Shower>(x: T) -> string:
+fn viaParameter<T is Shower>(x: T) -> String:
   x.show(5)
 
 async fn main():

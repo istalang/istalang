@@ -11,25 +11,25 @@ enum Holder:
   Empty
   Full { marker: Marker }
 
-fn plain(m: Marker) -> string:
+fn plain(m: Marker) -> String:
   match m:
     case Marker: "marker"
 
-fn nested(slot: Holder) -> string:
+fn nested(slot: Holder) -> String:
   match slot:
     case Full{marker is Marker}: "full"
     case Empty: "empty"
 
-fn generic(b: Box<int>) -> string:
+fn generic(b: Box<Int>) -> String:
   match b:
     case Box: "box"
 
-fn inTuple(pair: (Marker, bool)) -> string:
+fn inTuple(pair: (Marker, Bool)) -> String:
   match pair:
     case (Marker, true): "pair"
     case (Marker, false): "other"
 
-async fn main() -> Future<string>:
-  const box: Box<int> = Box
+async fn main() -> Future<String>:
+  const box: Box<Int> = Box
   const parts = [plain(Marker), nested(Full{marker: Marker}), nested(Empty), generic(box), inTuple((Marker, true))]
   parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4]

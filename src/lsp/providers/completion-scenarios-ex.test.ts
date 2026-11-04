@@ -120,7 +120,7 @@ const scenarios: readonly Scenario[] = [
     id: 'EX-07',
     place: 'grammar',
     title: 'Named lambda sees itself',
-    src: ['  const fact = fn f(n: int) -> int: ‸'],
+    src: ['  const fact = fn f(n: Int) -> Int: ‸'],
     expect: { has: ['f', 'n'] },
   },
 ];

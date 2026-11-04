@@ -44,7 +44,7 @@ describe('ista run', () => {
   });
 
   it('prints a struct outcome as an object keyed by field name', async () => {
-    const text = 'struct P { x: int; y: string }\nasync fn main(): P{y: "b", x: 1}\n';
+    const text = 'struct P { x: Int; y: String }\nasync fn main(): P{y: "b", x: 1}\n';
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({ code: 0, out: '{"x":1,"y":"b"}\n', err: '' });
   });
@@ -58,7 +58,7 @@ describe('ista run', () => {
   it('writes each committed log record to the error stream as a line of JSON', async () => {
     const text = [
       "import * as log from 'log'",
-      'async fn main() -> Future<int>:',
+      'async fn main() -> Future<Int>:',
       '  log.warn("careful", struct{n: 2})',
       '  1',
     ].join('\n');
@@ -92,14 +92,14 @@ describe('ista run', () => {
     );
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
-    expect(run.err).toContain("main.ista:2:3: error 5016: '-' isn't defined for int and string.");
+    expect(run.err).toContain("main.ista:2:3: error 5016: '-' isn't defined for Int and String.");
   });
 
   it.each([
-    ['no main at all', 'fn helper() -> int: 1\n'],
+    ['no main at all', 'fn helper() -> Int: 1\n'],
     ['a generic main', 'async fn main<T>(): 1\n'],
-    ['a main that is not async', 'fn main() -> int: 1\n'],
-    ['a main that takes parameters', 'async fn main(n: int): n\n'],
+    ['a main that is not async', 'fn main() -> Int: 1\n'],
+    ['a main that takes parameters', 'async fn main(n: Int): n\n'],
   ])('refuses an entry with %s', async (_case, text) => {
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({

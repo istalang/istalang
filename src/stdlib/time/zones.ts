@@ -71,7 +71,7 @@ export const zoneNatives = (keys: NativeKeys): Natives<NativeContext> => {
   const dateTimeType = keys.type('DateTime');
   return {
     [keys.of('utc')]: (_, context) => resultExtern(context, utcId),
-    [keys.ofStatic('Zone', 'parse', 'string')]: ([source], context) => {
+    [keys.ofStatic('Zone', 'parse', 'String')]: ([source], context) => {
       const id = canonicalZone(text(source));
       const zone = id === undefined ? undefined : okExtern(context, id);
       return parseResult(context, text(source), 'an IANA time zone', zone);
@@ -79,14 +79,14 @@ export const zoneNatives = (keys: NativeKeys): Natives<NativeContext> => {
     [keys.of('toString', zoneType)]: ([zone]) => textPayloadOf(zone),
     [keys.of('toString', dateTimeType)]: ([dateTime], context) =>
       plainOf(context, dateTime).toString(),
-    [keys.ofStatic('DateTime', 'parse', 'string')]: ([source], context) => {
+    [keys.ofStatic('DateTime', 'parse', 'String')]: ([source], context) => {
       const read = readPlain(text(source));
       const dateTime = read === undefined ? undefined : okStruct(context, fieldsOf(read));
       return parseResult(context, text(source), 'an ISO 8601 date and time', dateTime);
     },
     [keys.of('weekday', dateTimeType)]: ([dateTime], context) =>
       BigInt(plainOf(context, dateTime).dayOfWeek),
-    [keys.of('addDays', dateTimeType, 'int')]: ([dateTime, days], context) => {
+    [keys.of('addDays', dateTimeType, 'Int')]: ([dateTime, days], context) => {
       const plain = plainOf(context, dateTime);
       const later = withinRange(`The date ${int(days)} days after ${plain}`, () =>
         plain.add({ days: Number(int(days)) }),

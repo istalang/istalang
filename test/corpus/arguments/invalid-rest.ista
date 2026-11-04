@@ -7,19 +7,19 @@
 # error: 5001 at 30:15
 # A rest parameter is the last, an Array<T> with no default; a spread fills only a rest parameter,
 # and a function value takes none (§3.3).
-fn first(...xs: Array<int>, y: int) -> int:
+fn first(...xs: Array<Int>, y: Int) -> Int:
   y
 
-fn wrong(...xs: int) -> int:
+fn wrong(...xs: Int) -> Int:
   xs
 
-fn defaulted(...xs: Array<int> = [1]) -> int:
+fn defaulted(...xs: Array<Int> = [1]) -> Int:
   xs.length()
 
-fn fixed(a: int) -> int:
+fn fixed(a: Int) -> Int:
   a
 
-fn sum(...xs: Array<int>) -> int:
+fn sum(...xs: Array<Int>) -> Int:
   xs.length()
 
 fn main():

@@ -3,12 +3,12 @@
 # evaluating each operand once and stopping at the first comparison that fails (§3.9); a generic one
 # goes through `Comparable`.
 
-fn ordered<T is Comparable>(low: T, middle: T, high: T) -> bool:
+fn ordered<T is Comparable>(low: T, middle: T, high: T) -> Bool:
   low <= middle < high
 
-async fn main() -> Future<(bool, bool, bool, bool, bool, bool, bool, int)>:
+async fn main() -> Future<(Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int)>:
   let calls = 0
-  fn counted(value: int) -> int:
+  fn counted(value: Int) -> Int:
     calls += 1
     value
   const rising = 1 < 2 <= 2

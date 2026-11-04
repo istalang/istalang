@@ -1,18 +1,18 @@
 /**
  * The key that binds an extern function-table entry to its native (docs/arch/definition.md,
  * "Externs"): the declaring module's canonical name, the function's declared name, and its
- * declared parameter types, `prelude.add(int, float)`.
+ * declared parameter types, `prelude.add(Int, Float)`.
  *
  * - Keys are persisted inside Definitions and matched against host tables, so they are an
  *   identity, never a message. Their types are rendered here and nowhere else: every named type is
- *   module-qualified (`prelude.Optional<int>`, never `int?`), so two modules' `Point`s never share
+ *   module-qualified (`prelude.Optional<Int>`, never `Int?`), so two modules' `Point`s never share
  *   a key, and no wording elsewhere can change one.
  * - Types are the declared ones, type parameters included (`prelude.push(&prelude.Array<T>, T)`),
  *   so every instantiation of a generic extern shares one native while overloads differ.
  * - Lowering builds keys from declarations, and natives from their own tables, both through
  *   `externKey`, so the two can't drift apart. A natives table spells its types with the builders
  *   below.
- * - A rest parameter is spelled with its `...`, `strings.format(string, ...prelude.Array<string>)`:
+ * - A rest parameter is spelled with its `...`, `strings.format(String, ...prelude.Array<String>)`:
  *   its native takes the array the call collects (§3.3).
  * - An extern constant has no parameters to tell overloads apart, so its key is its qualified
  *   name alone: `purchase.approvalDeadline` (§9).

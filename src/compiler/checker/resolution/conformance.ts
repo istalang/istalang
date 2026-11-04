@@ -17,8 +17,8 @@
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument
- *   decides comes from it: `Array.default<T>()` meets `Self.default()` for `Array<int>` with `T`
- *   as `int`.
+ *   decides comes from it: `Array.default<T>()` meets `Self.default()` for `Array<Int>` with `T`
+ *   as `Int`.
  * - A witness search that fails is reported once, as the constraint not met, so searching itself
  *   reports nothing (`UseSite.report`). A search can recurse without end, when a witness needs
  *   the same constraint again for a type as large or larger; it is bounded, and one that reaches

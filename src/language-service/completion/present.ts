@@ -146,7 +146,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
 };
 
 /**
- * Whether a value of `found` fits where `expected` is. An erroneous type fits nothing, and `never`,
+ * Whether a value of `found` fits where `expected` is. An erroneous type fits nothing, and `Never`,
  * which fits everywhere, tells nothing about where it belongs.
  */
 function fits(checker: Checker, found: Type, expected: Type | undefined): boolean {
@@ -154,7 +154,7 @@ function fits(checker: Checker, found: Type, expected: Type | undefined): boolea
     expected !== undefined &&
     expected.kind !== 'error' &&
     found.kind !== 'error' &&
-    !(found.kind === 'primitive' && found.name === 'never') &&
+    !(found.kind === 'primitive' && found.name === 'Never') &&
     checker.fitOf(found, expected) !== undefined
   );
 }

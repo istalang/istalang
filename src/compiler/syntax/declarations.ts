@@ -155,7 +155,7 @@ export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable,
   readonly variants: readonly (Variant | Invalid)[];
 }
 
-/** `Expired`, or `Rejected { by: string; reason: string }`. */
+/** `Expired`, or `Rejected { by: String; reason: String }`. */
 export interface Variant extends NodeOf<'Variant'>, Annotatable {
   readonly name: Identifier;
   readonly fields: readonly (DeclaredField | Invalid)[];

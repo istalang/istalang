@@ -41,8 +41,8 @@ export type Edit =
 
 /** Items an edit appends: a function, a struct, and an enum whose variants others may name bare. */
 const appended = [
-  'fn appended(x: int) -> int: x + 1',
-  'struct Appended:\n  a: int',
+  'fn appended(x: Int) -> Int: x + 1',
+  'struct Appended:\n  a: Int',
   'enum Appended:\n  None\n  Some\n  Red',
 ];
 

@@ -3,8 +3,8 @@
 # constants built from other constants, each computed while compiling.
 
 struct Limits:
-  low: int
-  high: int
+  low: Int
+  high: Int
 
 const base = 40
 const limits = Limits{low: -2, high: base}

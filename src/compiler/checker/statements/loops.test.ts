@@ -3,7 +3,7 @@ import { reportedNothing, reportedOnce } from '../../../diagnostics/diagnostic.t
 import { inFunction, reported } from '../check.test-kit.ts';
 import { checkerDiagnostics as reports } from '../diagnostics/index.ts';
 
-const started = 'async fn job() -> Future<int>: 1\n\n';
+const started = 'async fn job() -> Future<Int>: 1\n\n';
 
 describe('labels', () => {
   it.each([
@@ -63,10 +63,10 @@ describe('labels', () => {
 
 describe('iterate', () => {
   const unmetConstraint = [
-    'struct P { x: int }',
+    'struct P { x: Int }',
     'struct Wrap<T> { inner: T }',
-    'fn iterate<T is Comparable>(self: Wrap<T>) -> fn() -> int?:',
-    '  fn next() -> int?: none',
+    'fn iterate<T is Comparable>(self: Wrap<T>) -> fn() -> Int?:',
+    '  fn next() -> Int?: none',
     '  next',
     'fn subject(w: Wrap<P>):',
   ];

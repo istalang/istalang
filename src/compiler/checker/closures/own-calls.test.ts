@@ -20,8 +20,8 @@ import { checkProgram } from '../check.ts';
 /** `worker`, whose `select` waits on its own `disposing()` and then runs `cleanup`. */
 function cleaningUp(cleanup: string): string {
   return [
-    'async fn tick() -> Future<int>: 1',
-    'async fn worker() -> Future<int>:',
+    'async fn tick() -> Future<Int>: 1',
+    'async fn worker() -> Future<Int>:',
     '  await select:',
     '    case worker.disposing():',
     `      ${cleanup}`,
@@ -37,9 +37,9 @@ describe('a disposing() case', () => {
 
   it('is only the case on disposing() itself, not on another method of the call', () => {
     const other = [
-      'async fn tick() -> Future<int>: 1',
-      'async fn other<T>(self: T) -> Future<int>: 1',
-      'async fn worker() -> Future<int>:',
+      'async fn tick() -> Future<Int>: 1',
+      'async fn other<T>(self: T) -> Future<Int>: 1',
+      'async fn worker() -> Future<Int>:',
       '  await select:',
       '    case worker.other() as m:',
       '      await tick()',
@@ -59,8 +59,8 @@ describe('the call disposing() watches', () => {
   it("is the enclosing function's, captured by every function nested between", () => {
     const program = stdProgramOf({
       'main.ista': [
-        'async fn worker() -> Future<unit>:',
-        '  fn helper() -> Future<unit>:',
+        'async fn worker() -> Future<Unit>:',
+        '  fn helper() -> Future<Unit>:',
         '    const watch = fn(): worker.disposing()',
         '    watch()',
         '  await helper()',
@@ -86,7 +86,7 @@ describe('the call disposing() watches', () => {
 
   it("is what the function's own name reads before a '.', with disposing() a method on it", () => {
     const program = stdProgramOf({
-      'main.ista': ['async fn worker() -> Future<unit>:', '  await worker.disposing()'].join('\n'),
+      'main.ista': ['async fn worker() -> Future<Unit>:', '  await worker.disposing()'].join('\n'),
     });
     const checker = checkProgram(program);
     const worker = program.modules.get(idOf('main.ista'))?.tree.root

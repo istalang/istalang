@@ -11,18 +11,18 @@ import type { HostCall, HostExterns } from './host-natives.ts';
 
 const program = compiledText(
   [
-    'extern fn slow(name: string) -> Future<int>',
-    'extern fn gate() -> Future<int>',
-    'extern limit: int',
+    'extern fn slow(name: String) -> Future<Int>',
+    'extern fn gate() -> Future<Int>',
+    'extern limit: Int',
     '',
-    'async fn dropped() -> Future<int>:',
+    'async fn dropped() -> Future<Int>:',
     '  const abandoned = slow("a")',
     '  drop abandoned',
     '  await gate()',
     '',
-    'async fn readLimit() -> Future<int>: limit',
+    'async fn readLimit() -> Future<Int>: limit',
     '',
-    'async fn twice() -> Future<int>:',
+    'async fn twice() -> Future<Int>:',
     '  const first = slow("a")',
     '  await gate() + await first',
     '',
@@ -32,7 +32,7 @@ const program = compiledText(
 
 function hostOf(overrides: HostExterns = {}): HostExterns {
   return {
-    'main.slow(string)': ([name], call: HostCall) => call.pending(`slow ${String(name)}`),
+    'main.slow(String)': ([name], call: HostCall) => call.pending(`slow ${String(name)}`),
     'main.gate()': (_args, call: HostCall) => call.pending('gate'),
     'main.limit': () => 'not an int',
     ...overrides,

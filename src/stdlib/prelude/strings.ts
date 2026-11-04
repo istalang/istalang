@@ -23,8 +23,8 @@ const range = knownTypeKey(wellKnown.range);
 const what = 'a string';
 
 export const stringNatives = (keys: NativeKeys): Natives<NativeContext> => ({
-  [keys.of('length', 'string')]: ([s]) => BigInt(codePointCount(text(s))),
-  [keys.of('at', 'string', 'int')]: ([s, index], context) => {
+  [keys.of('length', 'String')]: ([s]) => BigInt(codePointCount(text(s))),
+  [keys.of('at', 'String', 'Int')]: ([s, index], context) => {
     const whole = text(s);
     const position = atPosition(int(index), codePointCount(whole));
     return resultOptional(
@@ -32,19 +32,19 @@ export const stringNatives = (keys: NativeKeys): Natives<NativeContext> => ({
       position === undefined ? undefined : codePointAtPosition(whole, position),
     );
   },
-  [keys.of('includes', 'string', 'string')]: ([s, search]) => text(s).includes(text(search)),
-  [keys.of('index', 'string', 'int')]: ([s, index]) => {
+  [keys.of('includes', 'String', 'String')]: ([s, search]) => text(s).includes(text(search)),
+  [keys.of('index', 'String', 'Int')]: ([s, index]) => {
     const whole = text(s);
     return codePointAtPosition(whole, checkedIndex(int(index), codePointCount(whole), what));
   },
-  [keys.of('index', 'string', range)]: ([s, span], context) => {
+  [keys.of('index', 'String', range)]: ([s, span], context) => {
     const whole = text(s);
     const selection = selectionOf(rangeOf(context, span), codePointCount(whole), what);
     return selection.kind === 'span'
       ? codePointSlice(whole, selection.start, selection.end)
       : selection.positions.map(codePointsAt(whole)).join('');
   },
-  [keys.of('_characterAt', 'string', 'int')]: ([s, offset], context) => {
+  [keys.of('_characterAt', 'String', 'Int')]: ([s, offset], context) => {
     const whole = text(s);
     const start = Number(int(offset));
     const point = whole.codePointAt(start);

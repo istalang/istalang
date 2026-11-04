@@ -19,11 +19,11 @@ import { checkProgram } from '../check.ts';
 
 const helpers = [
   'fn apply<T, U>(value: T, f: fn(T) -> U) -> U: f(value)',
-  'fn twice(f: fn(int) -> int, x: int) -> int: f(f(x))',
-  'fn inc(n: int) -> int: n + 1',
-  'fn pick(n: int) -> int: n',
-  'fn pick(s: string) -> string: s',
-  'struct Op { run: fn(int) -> int }',
+  'fn twice(f: fn(Int) -> Int, x: Int) -> Int: f(f(x))',
+  'fn inc(n: Int) -> Int: n + 1',
+  'fn pick(n: Int) -> Int: n',
+  'fn pick(s: String) -> String: s',
+  'struct Op { run: fn(Int) -> Int }',
 ].join('\n');
 
 /**
@@ -80,7 +80,7 @@ describe('captures across modules', () => {
   it('never take a top-level name, though another module declares it where the body stands', () => {
     const padding = `# ${'x'.repeat(100)}`;
     const other = `${padding}\nconst limit = 10`;
-    const main = `import limit from 'other.ista'\nfn f() -> int:\n  const read = fn(): limit\n  const pad = "${'x'.repeat(other.length)}"\n  read()`;
+    const main = `import limit from 'other.ista'\nfn f() -> Int:\n  const read = fn(): limit\n  const pad = "${'x'.repeat(other.length)}"\n  read()`;
     const program = stdProgramOf({ 'main.ista': main, 'other.ista': other });
     const checker = checkProgram(program);
     const f = program.modules.get(idOf('main.ista'))?.tree.root.items[1] as FunctionDeclaration;
@@ -92,46 +92,46 @@ describe('captures across modules', () => {
 
 describe('closures accept', () => {
   it.each([
-    ['a typed lambda', 'fn f() -> int:\n  const g = fn(x: int): x * 2\n  g(3)'],
-    ['a one-parameter lambda without parentheses', 'fn f() -> int: twice(fn x: x + 1, 1)'],
-    ['a lambda typed by a generic call', 'fn f() -> string: apply(2, fn n: string(n))'],
+    ['a typed lambda', 'fn f() -> Int:\n  const g = fn(x: Int): x * 2\n  g(3)'],
+    ['a one-parameter lambda without parentheses', 'fn f() -> Int: twice(fn x: x + 1, 1)'],
+    ['a lambda typed by a generic call', 'fn f() -> String: apply(2, fn n: String(n))'],
     [
       'a block lambda',
-      'fn f() -> int:\n  const g = fn(n: int): { const m = n * 2; m + 1 }\n  g(1)',
+      'fn f() -> Int:\n  const g = fn(n: Int): { const m = n * 2; m + 1 }\n  g(1)',
     ],
     [
       'a named lambda calling itself, typed by its expected type',
-      'fn f() -> int:\n  const fact: fn(int) -> int = fn me(n): if n < 2: 1 else: n * me(n - 1)\n  fact(5)',
+      'fn f() -> Int:\n  const fact: fn(Int) -> Int = fn me(n): if n < 2: 1 else: n * me(n - 1)\n  fact(5)',
     ],
     [
       'a local function with a declared result calling itself',
-      'fn f() -> int:\n  fn down(n: int) -> int: if n == 0: 0 else: down(n - 1)\n  down(3)',
+      'fn f() -> Int:\n  fn down(n: Int) -> Int: if n == 0: 0 else: down(n - 1)\n  down(3)',
     ],
-    ['a top-level function as a value', 'fn f() -> int: twice(inc, 1)'],
-    ['an overload chosen by the expected type', 'fn f() -> int: twice(pick, 1)'],
+    ['a top-level function as a value', 'fn f() -> Int: twice(inc, 1)'],
+    ['an overload chosen by the expected type', 'fn f() -> Int: twice(pick, 1)'],
     [
       'a function-typed field, called directly and through parentheses',
-      'fn f(op: Op) -> int: op.run(1) + (op.run)(2)',
+      'fn f(op: Op) -> Int: op.run(1) + (op.run)(2)',
     ],
     [
       'an async lambda awaited through its value',
-      'async fn f() -> Future<int>:\n  const later = async fn(n: int): n + 1\n  await later(1)',
+      'async fn f() -> Future<Int>:\n  const later = async fn(n: Int): n + 1\n  await later(1)',
     ],
     [
       'a lambda parameter taking a reference from its expected type, changed through it',
-      'fn bump(f: fn(&int) -> int) -> int:\n  let n = 1\n  f(&n)\n  n\nfn f() -> int: bump(fn(x): { x += 1; x })',
+      'fn bump(f: fn(&Int) -> Int) -> Int:\n  let n = 1\n  f(&n)\n  n\nfn f() -> Int: bump(fn(x): { x += 1; x })',
     ],
     [
       'a lambda typed by the optional function type it is wrapped into',
-      'fn f() -> int:\n  const g: (fn(int) -> int)?? = fn(n): n * 2\n  if g is Some{value is Some{value as h}}: h(1) else: 0',
+      'fn f() -> Int:\n  const g: (fn(Int) -> Int)?? = fn(n): n * 2\n  if g is Some{value is Some{value as h}}: h(1) else: 0',
     ],
     [
       'a lambda passed for an optional function parameter',
-      'fn maybe(g: (fn(int) -> int)?, x: int) -> int: if g is Some{value as h}: h(x) else: x\nfn f() -> int: maybe(fn(n): n + 1, 1)',
+      'fn maybe(g: (fn(Int) -> Int)?, x: Int) -> Int: if g is Some{value as h}: h(x) else: x\nfn f() -> Int: maybe(fn(n): n + 1, 1)',
     ],
     [
       'a let shared with a closure and changed on both sides',
-      'fn f() -> int:\n  let count = 0\n  const bump = fn(): { count += 1; count }\n  count += 10\n  bump()',
+      'fn f() -> Int:\n  let count = 0\n  const bump = fn(): { count += 1; count }\n  count += 10\n  bump()',
     ],
   ])('%s', (_case, body) => {
     expect(reported(`${helpers}\n${body}`)).toEqual(reportedNothing);

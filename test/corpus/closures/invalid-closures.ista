@@ -22,22 +22,22 @@
 # called, not taken as a value; `x.f()` naming both a field and a method is ambiguous. Only a
 # function is called, with its parameters' number and types, a reference's exactly.
 
-struct Op { run: fn(int) -> int }
+struct Op { run: fn(Int) -> Int }
 
-fn run(self: Op, n: int) -> int: n
+fn run(self: Op, n: Int) -> Int: n
 
-fn double(self: int) -> int: self * 2
+fn double(self: Int) -> Int: self * 2
 
-fn pick(n: int) -> int: n
+fn pick(n: Int) -> Int: n
 
-fn pick(s: string) -> string: s
+fn pick(s: String) -> String: s
 
-async fn subject(r: &int, op: Op, n: int):
-  const d = fn(x: int = 1): x
+async fn subject(r: &Int, op: Op, n: Int):
+  const d = fn(x: Int = 1): x
   fn g<T>(x: T) -> T: x
-  fn h(...xs: int): 0
+  fn h(...xs: Int): 0
   const untyped = fn(x): x
-  fn again(k: int):
+  fn again(k: Int):
     if k > 0: again(k - 1)
   const reads = fn(): r + 1
   while n > 0:
@@ -51,20 +51,20 @@ async fn subject(r: &int, op: Op, n: int):
   const arity = (op.run)(1, 2)
   const typed = (op.run)("a")
 
-async fn later(n: int) -> Future<int>: n
+async fn later(n: Int) -> Future<Int>: n
 
-fn bumped(f: fn(&int) -> int) -> int:
+fn bumped(f: fn(&Int) -> Int) -> Int:
   let n = 1
   f(&n)
 
-fn inferred() -> int:
+fn inferred() -> Int:
   bumped(fn(x): { const g = fn(): x; g() })
 
-fn clear(r: &int?):
+fn clear(r: &Int?):
   r = none
 
-fn throughValue() -> int:
+fn throughValue() -> Int:
   let x = 1
-  const f: fn(&int?) -> unit = clear
+  const f: fn(&Int?) -> Unit = clear
   f(&x)
   x

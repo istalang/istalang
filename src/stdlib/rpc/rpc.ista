@@ -31,7 +31,7 @@ fn call<P, R>(self: Method<P, R>, message: P) -> Future<Result<R>>:
   _replyTo(self->_calls.sendRevertible(_Call{message, reply: new _Reply<R>{slot}}), slot)
 
 # Serves the method's calls one at a time, in the order they arrived, until it is disposed.
-async fn onMessage<P, R>(self: Method<P, R>, handler: async fn(P) -> R) -> Future<unit>:
+async fn onMessage<P, R>(self: Method<P, R>, handler: async fn(P) -> R) -> Future<Unit>:
   while true:
     const call = await self->_calls.receive()
     const reply = await handler(call.message)

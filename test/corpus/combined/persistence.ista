@@ -4,24 +4,24 @@
 import * as time from 'time'
 import * as runtime from 'runtime'
 
-struct Acc { items: Array<int>; seen: Map<string, int> }
+struct Acc { items: Array<Int>; seen: Map<String, Int> }
 
-fn makeCounter(start: int) -> fn() -> int:
+fn makeCounter(start: Int) -> fn() -> Int:
   let count = start
-  fn next() -> int:
+  fn next() -> Int:
     count += 1
     count
 
   next
 
-fn check(r: Result<int>) -> Result<int>:
+fn check(r: Result<Int>) -> Result<Int>:
   const v = r?
   Ok{(v * 2)}
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const next = makeCounter(10)
   let acc = Acc{items: [], seen: [:]}
-  const adder = fn(n: int): { acc.items.push(n); acc.seen[string(n)] = next(); acc.items.length() }
+  const adder = fn(n: Int): { acc.items.push(n); acc.seen[String(n)] = next(); acc.items.length() }
   adder(1)
   await time.delay(10ms)
   adder(2)
@@ -31,5 +31,5 @@ async fn main() -> Future<string>:
   const r = match check(Ok{(adder(3))}):
     case Ok{value}: value
     case Err{error}: -1
-  const keys = [for k, v in acc.seen.entries() if v > 10: k + "=" + string(v)]
-  string(acc.items.length()) + "|" + string(tail.length()) + "|" + string(next()) + "|" + string(r) + "|" + string(keys.length())
+  const keys = [for k, v in acc.seen.entries() if v > 10: k + "=" + String(v)]
+  String(acc.items.length()) + "|" + String(tail.length()) + "|" + String(next()) + "|" + String(r) + "|" + String(keys.length())

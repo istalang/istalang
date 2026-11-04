@@ -5,7 +5,7 @@
 # A tuple's element is named by a position it has (§3.1), and a tuple target names each element
 # once (§3.15).
 
-fn subject(n: int):
+fn subject(n: Int):
   const y = n.0
   const z = (1, 2).2
   const a, b = (1, 2, 3)

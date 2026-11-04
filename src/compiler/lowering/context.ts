@@ -54,7 +54,7 @@ export interface FunctionContext {
   readonly expression: (node: Expression) => Register;
   /**
    * `value`, of `type`, given at `site`, converted as `fit` says (§2, §3.10, §3.14): the one place a
-   * value the checker found converted is, whether an expression's, an assigned part's or a `unit`
+   * value the checker found converted is, whether an expression's, an assigned part's or a `Unit`
    * with no expression.
    */
   readonly fitted: (value: Register, type: Type, fit: Fit, site: ValueSite) => Register;

@@ -14,23 +14,23 @@ function hints(...lines: readonly string[]): readonly string[] {
 describe('inlay hints', () => {
   it('type each name a declaration leaves untyped, destructured ones included', () => {
     expect(
-      hints('fn f() -> int:', '  let (a, b) = (1, "s")', '  const c: int = a', '  a + c'),
-    ).toEqual(['  let (a: int', '  let (a, b: string']);
+      hints('fn f() -> Int:', '  let (a, b) = (1, "s")', '  const c: Int = a', '  a + c'),
+    ).toEqual(['  let (a: Int', '  let (a, b: String']);
   });
 
   it("type a for's targets and a lambda's untyped parameters", () => {
     expect(
       hints(
-        'fn f(items: Array<int>) -> int:',
+        'fn f(items: Array<Int>) -> Int:',
         '  for item in items:',
         '    drop item',
-        '  const g: fn(int, int) -> int = fn(x, y: int): x + y',
+        '  const g: fn(Int, Int) -> Int = fn(x, y: Int): x + y',
         '  g(1, 2)',
       ),
-    ).toEqual(['  for item: int', '  const g: fn(int, int) -> int = fn(x: int']);
+    ).toEqual(['  for item: Int', '  const g: fn(Int, Int) -> Int = fn(x: Int']);
   });
 
   it('give none for a name whose type checking failed to find', () => {
-    expect(hints('fn f() -> int:', '  let a = missing', '  1')).toEqual([]);
+    expect(hints('fn f() -> Int:', '  let a = missing', '  1')).toEqual([]);
   });
 });

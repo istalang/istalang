@@ -94,7 +94,7 @@ interface Parenthesized extends NodeOf<'Parenthesized'> {
 
 type LiteralItem = FieldInitializer | PositionalInitializer | Spread | Invalid;
 
-/** `Pair{…}`, `m.Pair<int>{…}`, or `struct{…}` when `type` is undefined. */
+/** `Pair{…}`, `m.Pair<Int>{…}`, or `struct{…}` when `type` is undefined. */
 export interface StructLiteral extends NodeOf<'StructLiteral'> {
   readonly type: NamedType | undefined;
   readonly items: readonly LiteralItem[];

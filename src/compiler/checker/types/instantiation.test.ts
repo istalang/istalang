@@ -33,7 +33,7 @@ import { typeText } from './type-text.ts';
 describe('an instantiated body', () => {
   it("gives a loop's cursor the item type of its instantiation", () => {
     const text =
-      'fn count<T>(xs: Array<T>) -> int:\n  let n = 0\n  for x in xs:\n    n += 1\n  n\n';
+      'fn count<T>(xs: Array<T>) -> Int:\n  let n = 0\n  for x in xs:\n    n += 1\n  n\n';
     const program = stdProgramOf({ 'main.ista': text });
     const checker = checkProgram(program);
     const { tree } = programModule(program, idOf('main.ista'));
@@ -45,7 +45,7 @@ describe('an instantiated body', () => {
       instantiatedBody(body, substitutionFor(count.typeParameters, [intType]), checker).iterationOf(
         loop,
       );
-    expect(form?.kind === 'cursor' && typeText(form.item)).toBe('int');
+    expect(form?.kind === 'cursor' && typeText(form.item)).toBe('Int');
   });
 
   it("gives the names an or-pattern's alternatives bind the types of its instantiation", () => {
@@ -72,15 +72,15 @@ describe('an instantiated body', () => {
       instantiatedBody(body, substitutionFor(first.typeParameters, [intType]), checker).patternOf(
         alternatives.pattern,
       );
-    expect(checked && namesBound(checked).map(({ type }) => typeText(type))).toEqual(['int']);
+    expect(checked && namesBound(checked).map(({ type }) => typeText(type))).toEqual(['Int']);
   });
 
   it('resolves a field read through a type parameter for the type standing for it', () => {
     const text = [
       'trait Sized:',
-      '  size: int',
-      'struct Box { label: string; size: int }',
-      'fn sizeOf<T is Sized>(value: T) -> int:',
+      '  size: Int',
+      'struct Box { label: String; size: Int }',
+      'fn sizeOf<T is Sized>(value: T) -> Int:',
       '  value.size',
       'fn kinds(box: Box, sized: any Sized):',
       '  ()',

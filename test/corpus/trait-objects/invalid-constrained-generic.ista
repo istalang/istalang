@@ -4,12 +4,12 @@
 # constraints, whether through a type parameter or an `any` value (§3.5, §3.10).
 
 trait Shower:
-  fn show<U is Stringable>(self: Self, u: U) -> string
+  fn show<U is Stringable>(self: Self, u: U) -> String
 
 struct Plain {}
 
-fn viaParameter<T is Shower>(x: T) -> string:
+fn viaParameter<T is Shower>(x: T) -> String:
   x.show(Plain)
 
-fn viaAny(x: any Shower) -> string:
+fn viaAny(x: any Shower) -> String:
   x.show(Plain)

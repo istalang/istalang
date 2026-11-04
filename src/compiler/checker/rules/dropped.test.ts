@@ -63,7 +63,7 @@ describe('dropped variables', () => {
       lines(
         'let t = "a"',
         'drop t',
-        'const u: string? = none',
+        'const u: String? = none',
         'const k = u?.at({ t = "b"; 0 })',
         'const j = t.length()',
       ),
@@ -104,9 +104,9 @@ describe('the rules over a whole body', () => {
   const dropping = '{ const t = "a"; drop t; t.length() }';
   const unchanged = '{ let t = 1; t }';
   const bodies = (value: string) => [
-    ['a function', `fn f() -> int: ${value}`],
-    ['a parameter default', `fn f(a: int = ${value}) -> int: a`],
-    ['a field default', `struct S { a: int = ${value} }`],
+    ['a function', `fn f() -> Int: ${value}`],
+    ['a parameter default', `fn f(a: Int = ${value}) -> Int: a`],
+    ['a field default', `struct S { a: Int = ${value} }`],
   ];
 
   it.each(bodies(dropping))('find a dropped variable used in %s', (_body, text) => {

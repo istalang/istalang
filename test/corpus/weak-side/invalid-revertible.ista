@@ -5,11 +5,11 @@
 
 import Inbox from 'inbox'
 
-async fn main() -> Future<unit>:
-  const box = Inbox.create<int>()
+async fn main() -> Future<Unit>:
+  const box = Inbox.create<Int>()
   box.sendRevertible(1)
   const weak = WeakRef(box)
   _ = spawn keep(weak)
 
-async fn keep(weak: WeakRef<Inbox<int>>) -> Future<unit>:
+async fn keep(weak: WeakRef<Inbox<Int>>) -> Future<Unit>:
   drop weak.deref()

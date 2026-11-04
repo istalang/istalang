@@ -13,16 +13,16 @@ import { placesOpenedAt } from './triggers.ts';
 
 const fixture = [
   'struct Pair:',
-  '  first: int',
-  '  second: int',
+  '  first: Int',
+  '  second: Int',
   '',
-  'fn plus(a: int, b = 1): a + b',
+  'fn plus(a: Int, b = 1): a + b',
   '',
 ];
 
 function opensIn(trigger: string, line: string): boolean {
   const atTop = !line.startsWith(' ');
-  const body = atTop ? [line] : ['fn t(n: int, s: string) -> int:', line, '  0'];
+  const body = atTop ? [line] : ['fn t(n: Int, s: String) -> Int:', line, '  0'];
   const { program, module, offset } = programAt(...fixture, ...body);
   const checked = checkedModule(program, module);
   if (checked === undefined) {
@@ -60,10 +60,10 @@ describe('a typed trigger character', () => {
   it.each([
     ['.', '  const r = 0..‸'],
     ['>', '  const b = n >‸'],
-    ['>', '  const x: Array<int>‸ = []'],
+    ['>', '  const x: Array<Int>‸ = []'],
     ['{', '  const x = {‸}'],
     [',', '  const a = [1,‸'],
-    [',', 'fn g(a: int,‸'],
+    [',', 'fn g(a: Int,‸'],
     [' ', '  const a = 1 ‸'],
     [' ', '  if n > 0: ‸'],
     [' ', '  return ‸'],

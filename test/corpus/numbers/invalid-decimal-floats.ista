@@ -5,7 +5,7 @@
 # a Decimal avoids (§3.8, §3.9).
 import Decimal from 'decimal'
 
-fn mixed(price: Decimal) -> bool:
+fn mixed(price: Decimal) -> Bool:
   const total = price + 1.5
   const converted = Decimal(2.5)
   price < 0.5

@@ -6,7 +6,7 @@
  *   binds one: the variants of the type it matches, bare; that type's own name and the namespaces,
  *   which qualify a variant, a struct or a constant, and against an `any` type the types a downcast
  *   may name; `_`; and the literal keywords a value of the type may equal (`true` and `false` a
- *   `bool`, `none` an optional), all of them where the type isn't known, as a literal pattern has
+ *   `Bool`, `none` an optional), all of them where the type isn't known, as a literal pattern has
  *   the matched value's own type. A variant another case of the `match` already takes whole is
  *   marked covered, for ranking.
  * - After a struct pattern item's field name, `as` or `is`; a comparison is an operator.
@@ -16,13 +16,8 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
-import {
-  boolType,
-  isNominalEntity,
-  nominalType,
-  sameType,
-  type Type,
-} from '../../../compiler/checker/types/type.ts';
+import { downcastTargetOf, namesOwnType } from '../../../compiler/checker/types/named-types.ts';
+import { boolType, sameType, type Type } from '../../../compiler/checker/types/type.ts';
 import { optionalArgument } from '../../../compiler/checker/types/well-known.ts';
 import { casesOf } from '../../../compiler/syntax/expressions/index.ts';
 import { lastName } from '../../../compiler/syntax/node.ts';
@@ -96,25 +91,21 @@ function referringNames(cursor: Cursor, type: Type | undefined): readonly Candid
 }
 
 /**
- * A namespace, which qualifies what it exports; `type`'s own name; and against an `any` type, a
- * type a downcast may name: one without type parameters that meets its constraints, as only such a
- * type is ever inside it (§3.10).
+ * A namespace, which qualifies what it exports; a name of `type` itself, which matches every value
+ * of it; and against an `any` type, a type a downcast may name, one it may hold, as only such a
+ * type is ever inside it (§3.10; named-types.ts).
  */
 function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boolean {
   if (entity.kind === 'namespace') {
     return true;
   }
-  if (entity.kind !== 'type' || type === undefined) {
+  if (type === undefined) {
     return false;
   }
-  if (type.kind !== 'any') {
-    return type.kind === 'nominal' && entity === type.entity;
+  if (namesOwnType(checker, entity, type)) {
+    return true;
   }
-  return (
-    isNominalEntity(entity) &&
-    entity.declaration.typeParameters.length === 0 &&
-    checker.fitOf(nominalType(entity, []), type) !== undefined
-  );
+  return type.kind === 'any' && downcastTargetOf(checker, entity, type).kind === 'type';
 }
 
 /**

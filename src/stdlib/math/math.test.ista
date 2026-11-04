@@ -9,7 +9,7 @@ import * as time from 'time'
 const ties = [-2.5, -1.5, -0.5, 0.4, 0.5, 1.5, 2.5, 2.6, -2.6]
 
 # Each mode's results for `ties`, in order.
-fn roundings() -> Array<(Rounding, Array<float>)>: [
+fn roundings() -> Array<(Rounding, Array<Float>)>: [
   (Rounding.Floor, [-3.0, -2.0, -1.0, 0.0, 0.0, 1.0, 2.0, 2.0, -3.0]),
   (Rounding.Ceiling, [-2.0, -1.0, 0.0, 1.0, 1.0, 2.0, 3.0, 3.0, -2.0]),
   (Rounding.TowardZero, [-2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 2.0, -2.0]),
@@ -18,7 +18,7 @@ fn roundings() -> Array<(Rounding, Array<float>)>: [
   (Rounding.HalfAwayFromZero, [-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 3.0, -3.0]),
 ]
 
-fn isNaN(x: float) -> bool: x != x
+fn isNaN(x: Float) -> Bool: x != x
 
 fn emptyClamp(): 5.clamp(3, 1)
 
@@ -51,7 +51,7 @@ fn suite() -> Array<Test>: [
       const infinity = 1.0 / 0.0
       assert(isNaN(math.round(0.0 / 0.0)))
       assertEq([math.floor(infinity), math.ceil(-infinity)], [infinity, -infinity])
-      assertEq(int(math.floor(-2.5)), -3)
+      assertEq(Int(math.floor(-2.5)), -3)
     }),
     test("leaves a float too large for a fraction as it is", fn(): {
       assertEq(math.round(4503599627370497.0), 4503599627370497.0)

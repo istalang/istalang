@@ -20,23 +20,23 @@ import type { HostCall, HostExterns } from './host-natives.ts';
 const program = compiledText(
   [
     'struct Order:',
-    '  id: string',
-    '  amount: int',
+    '  id: String',
+    '  amount: Int',
     '',
-    'extern fn approval(id: string) -> Future<bool>',
-    'extern seed: int',
+    'extern fn approval(id: String) -> Future<Bool>',
+    'extern seed: Int',
     '',
-    'fn total(orders: Array<Order>, rate: float) -> float:',
+    'fn total(orders: Array<Order>, rate: Float) -> Float:',
     '  let sum = 0.0',
     '  for order in orders:',
-    '    sum += float(order.amount) * rate',
+    '    sum += Float(order.amount) * rate',
     '  sum',
     '',
-    'async fn decide(order: Order) -> Future<string>:',
+    'async fn decide(order: Order) -> Future<String>:',
     '  const first = seed',
     '  @Waypoint{"approval"}',
     '  const approved = await approval(order.id)',
-    '  if approved: order.id + " " + string(first) + "/" + string(seed) else: "no"',
+    '  if approved: order.id + " " + String(first) + "/" + String(seed) else: "no"',
     '',
     'async fn main(): 0',
   ].join('\n'),
@@ -47,7 +47,7 @@ function counting(): { readonly host: HostExterns; readonly reads: () => number 
   let reads = 0;
   return {
     host: {
-      'main.approval(string)': ([id], call: HostCall) => call.pending(`approve ${String(id)}`),
+      'main.approval(String)': ([id], call: HostCall) => call.pending(`approve ${String(id)}`),
       'main.seed': () => {
         reads += 1;
         return reads;
@@ -62,14 +62,14 @@ describe('the host API', () => {
     const test = testRuntime({ host: counting().host });
     const deployed = test.runtime.deploy(program);
     expect(deployed.starts).toEqual(
-      expect.arrayContaining(['main.main()', 'main.total(prelude.Array<main.Order>, float)']),
+      expect.arrayContaining(['main.main()', 'main.total(prelude.Array<main.Order>, Float)']),
     );
     const orders = [
       { id: 'a', amount: 2 },
       { id: 'b', amount: 3 },
     ];
     const started = deployed.start('t', {
-      function: 'main.total(prelude.Array<main.Order>, float)',
+      function: 'main.total(prelude.Array<main.Order>, Float)',
       arguments: [orders, 1.5],
     });
     expect(runToEnd(test, 't', started)).toEqual({ kind: 'finished', outcome: '7.5' });
@@ -78,7 +78,7 @@ describe('the host API', () => {
   it("refuses a start whose JSON doesn't fit, or names no startable function, storing nothing", () => {
     const test = testRuntime({ host: counting().host });
     const deployed = test.runtime.deploy(program);
-    const key = 'main.total(prelude.Array<main.Order>, float)';
+    const key = 'main.total(prelude.Array<main.Order>, Float)';
     expect(() => deployed.start('a', { function: key, arguments: [[{ id: 'a' }], 1] })).toThrow(
       expect.objectContaining({
         reason: 'unfitJson',
@@ -134,8 +134,8 @@ describe('the host API', () => {
     const retried = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn ready() -> bool',
-        'async fn main() -> Future<int>:',
+        'extern fn ready() -> Bool',
+        'async fn main() -> Future<Int>:',
         '  if not ready():',
         '    panic("not ready")',
         '  time.now().value',
@@ -175,9 +175,9 @@ describe('the host API', () => {
   it("keeps a spawned instance's name the runtime's, and its call the committing run's", () => {
     const spawning = compiledText(
       [
-        'extern fn pick() -> int',
-        'fn child(n: int) -> int: n',
-        'async fn main() -> Future<int>:',
+        'extern fn pick() -> Int',
+        'fn child(n: Int) -> Int: n',
+        'async fn main() -> Future<Int>:',
         '  spawn child(pick())',
         '  0',
       ].join('\n'),
@@ -214,16 +214,16 @@ describe('the host API', () => {
   it('refuses a deploy that declares an extern its host already provides with another type', () => {
     const declaring = (type: string) =>
       compiledText(
-        `extern limit: ${type}\nextern fn check(n: int) -> bool\nasync fn main(): limit`,
+        `extern limit: ${type}\nextern fn check(n: Int) -> Bool\nasync fn main(): limit`,
       );
-    const host = { 'main.limit': () => 1, 'main.check(int)': () => true };
+    const host = { 'main.limit': () => 1, 'main.check(Int)': () => true };
     const store = recordingStore();
-    testRuntime({ store, host }).runtime.deploy(declaring('int'));
-    expect(() => testRuntime({ store, host }).runtime.deploy(declaring('int'))).not.toThrow();
-    expect(() => testRuntime({ store, host }).runtime.deploy(declaring('string'))).toThrow(
+    testRuntime({ store, host }).runtime.deploy(declaring('Int'));
+    expect(() => testRuntime({ store, host }).runtime.deploy(declaring('Int'))).not.toThrow();
+    expect(() => testRuntime({ store, host }).runtime.deploy(declaring('String'))).toThrow(
       expect.objectContaining({
         reason: 'externChanged',
-        message: expect.stringContaining('main.limit: string'),
+        message: expect.stringContaining('main.limit: String'),
       }),
     );
   });
@@ -232,8 +232,8 @@ describe('the host API', () => {
     const waiting = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn approval() -> Future<bool>',
-        'async fn main() -> Future<bool>:',
+        'extern fn approval() -> Future<Bool>',
+        'async fn main() -> Future<Bool>:',
         '  const approved = await approval()',
         '  await time.at(time.now())',
         '  approved',
@@ -253,9 +253,9 @@ describe('the host API', () => {
   it('retries a panic in the segment a fill ran, filling the future again', () => {
     const filled = compiledText(
       [
-        'extern fn approval() -> Future<bool>',
-        'extern fn ready() -> bool',
-        'async fn main() -> Future<bool>:',
+        'extern fn approval() -> Future<Bool>',
+        'extern fn ready() -> Bool',
+        'async fn main() -> Future<Bool>:',
         '  const approved = await approval()',
         '  if not ready():',
         '    panic("not ready")',
@@ -287,15 +287,15 @@ describe('the host API', () => {
   it('gives a host every int as a bigint, and takes back a bigint or a whole number for one', () => {
     const given: unknown[] = [];
     const host: HostExterns = {
-      'main.echo(int, float)': ([count, rate]) => {
+      'main.echo(Int, Float)': ([count, rate]) => {
         given.push(count, rate);
         return [count, 2];
       },
     };
     const echoing = compiledText(
       [
-        'extern fn echo(count: int, rate: float) -> Array<int>',
-        'async fn main() -> Future<Array<int>>: echo(12345678901234567890, 1.5)',
+        'extern fn echo(count: Int, rate: Float) -> Array<Int>',
+        'async fn main() -> Future<Array<Int>>: echo(12345678901234567890, 1.5)',
       ].join('\n'),
     );
     const test = testRuntime({ host });

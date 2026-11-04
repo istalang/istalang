@@ -34,7 +34,7 @@ const importTime = "import * as time from 'time'";
 
 describe('checking reports', () => {
   it.each([
-    ['a value of the wrong type', 'const x: int = "a"', reports.typeMismatch, '"a"'],
+    ['a value of the wrong type', 'const x: Int = "a"', reports.typeMismatch, '"a"'],
     ['a condition that is not bool', 'while n:\n  break', reports.typeMismatch, 'n'],
     ['an operator no function takes', 'n - "a"', reports.operatorTypes, 'n - "a"'],
     ['== across types', 'c == n', reports.operatorTypes, 'c == n'],
@@ -51,7 +51,7 @@ describe('checking reports', () => {
     ['break outside a loop', 'break', reports.outsideLoop, 'break'],
     ['assigning to a function', 'f = 1', reports.notAssignable, 'f'],
     ['a type used as a value', 'Point', reports.notValue, 'Point'],
-    ['a literal of a type that is not a struct', 'int{}', reports.notStruct, 'int'],
+    ['a literal of a type that is not a struct', 'Int{}', reports.notStruct, 'Int'],
     ['a field the struct lacks', 'Point{x: 1, y: 2, z: 3}', reports.unknownField, 'z'],
     ['a field given twice', 'Point{x: 1, x: 2, y: 3}', reports.repeatedField, 'x'],
     ['a missing field', 'Point{x: 1}', reports.missingField, 'Point'],
@@ -59,7 +59,7 @@ describe('checking reports', () => {
     ['a trait used as a type', 'const x: Comparable = 1', reports.notType, 'Comparable'],
     ['a spread with no rest parameter to fill', 'f(...[1])', reports.spreadWithoutRest, '[1]'],
   ])('%s', (_case, body, report, spanText) => {
-    expect(reported(`${inFunction(body)}\nfn f() -> int: 1\n`)).toEqual(
+    expect(reported(`${inFunction(body)}\nfn f() -> Int: 1\n`)).toEqual(
       reportedOnce(report.code, spanText),
     );
   });
@@ -67,29 +67,29 @@ describe('checking reports', () => {
   it.each([
     [
       'a call with the wrong number of arguments',
-      'fn f(a: int) -> int: a\nfn g(): f(1, 2)',
+      'fn f(a: Int) -> Int: a\nfn g(): f(1, 2)',
       reports.argumentCount,
       'f(1, 2)',
     ],
     [
       'an argument of the wrong type',
-      'fn f(a: int) -> int: a\nfn g(): f("a")',
+      'fn f(a: Int) -> Int: a\nfn g(): f("a")',
       reports.typeMismatch,
       '"a"',
     ],
     [
       'arguments no overload takes',
-      'fn f(a: int): a\nfn f(a: string): a\nfn g(): f(true)',
+      'fn f(a: Int): a\nfn f(a: String): a\nfn g(): f(true)',
       reports.noMatchingOverload,
       'f(true)',
     ],
     [
       'arguments several overloads take',
-      'fn f(a: int): a\nfn f(a: string): a\nfn g(): f(panic("x"))',
+      'fn f(a: Int): a\nfn f(a: String): a\nfn g(): f(panic("x"))',
       reports.ambiguousCall,
       'f(panic("x"))',
     ],
-    ['recursion without a declared result', 'fn f(n: int): f(n)', reports.recursiveReturnType, 'f'],
+    ['recursion without a declared result', 'fn f(n: Int): f(n)', reports.recursiveReturnType, 'f'],
     [
       'a top-level constant computed by a call',
       'fn g(): 1\nconst x = g()',
@@ -104,41 +104,47 @@ describe('checking reports', () => {
     ],
     [
       'a top-level constant computed by a branch, inside a struct',
-      'struct P { x: int }\nconst p = P{x: if true: 1 else: 2}',
+      'struct P { x: Int }\nconst p = P{x: if true: 1 else: 2}',
       reports.notConstant,
       'if true: 1 else: 2',
     ],
     [
       'a top-level constant not fitting its annotation',
-      'const x: int = "one"',
+      'const x: Int = "one"',
       reports.typeMismatch,
       '"one"',
     ],
     [
       "an extern the host implements taking a function, which isn't Encodable",
-      'extern fn run(f: fn() -> int)',
+      'extern fn run(f: fn() -> Int)',
       reports.notConforming,
-      'f: fn() -> int',
+      'f: fn() -> Int',
     ],
     [
       'a returned value of the wrong type',
-      'fn f() -> int:\n  return "a"',
+      'fn f() -> Int:\n  return "a"',
       reports.typeMismatch,
       '"a"',
     ],
-    ['a body of the wrong type', 'fn f() -> int:\n  "a"', reports.typeMismatch, '"a"'],
+    ['a body of the wrong type', 'fn f() -> Int:\n  "a"', reports.typeMismatch, '"a"'],
     [
       'returns that disagree on an inferred result',
-      'fn f(c: bool):\n  if c:\n    return 1\n  "a"',
+      'fn f(c: Bool):\n  if c:\n    return 1\n  "a"',
       reports.typeMismatch,
       '"a"',
     ],
-    ['an async result that is not a Future', 'async fn f() -> int: 1', reports.asyncResult, 'int'],
+    ['an async result that is not a Future', 'async fn f() -> Int: 1', reports.asyncResult, 'Int'],
+    [
+      'a conversion spelled lowercase',
+      'fn f() -> Int: int(1.5)',
+      reports.lowercaseConversion,
+      'int(1.5)',
+    ],
     [
       'a type with too few type arguments',
-      'struct Pair<A, B> { first: A; second: B }\nfn f(p: Pair<int>): 1',
+      'struct Pair<A, B> { first: A; second: B }\nfn f(p: Pair<Int>): 1',
       reports.typeArgumentCount,
-      'Pair<int>',
+      'Pair<Int>',
     ],
     [
       'a namespace called as a function',
@@ -166,15 +172,15 @@ describe('checking reports', () => {
     ],
     [
       'a future discarded by a loop body',
-      `${importTime}\nfn f(c: bool):\n  while c:\n    time.delay(1s)`,
+      `${importTime}\nfn f(c: Bool):\n  while c:\n    time.delay(1s)`,
       reports.unusedValue,
       'time.delay(1s)',
     ],
     [
       'an extern the host implements taking a reference, which JSON cannot write back',
-      'extern fn bump(n: &int)',
+      'extern fn bump(n: &Int)',
       reports.hostReference,
-      'n: &int',
+      'n: &Int',
     ],
   ])('%s', (_case, text, report, spanText) => {
     expect(reported(text, { 'other.ista': '' })).toEqual(reportedOnce(report.code, spanText));
@@ -187,31 +193,31 @@ describe('checking accepts', () => {
     ...corpusTexts.map((text, index) => [`run corpus program ${index}`, text]),
     [
       'never wherever a value is expected',
-      'fn f(c: bool) -> int:\n  const x: int = if c: 1 else: panic("x")\n  x',
+      'fn f(c: Bool) -> Int:\n  const x: Int = if c: 1 else: panic("x")\n  x',
     ],
     [
       'an if without else whose branches leave',
-      'fn f(c: bool) -> int:\n  if c:\n    return 1\n  2',
+      'fn f(c: Bool) -> Int:\n  if c:\n    return 1\n  2',
     ],
-    ['a compound assignment', 'fn f() -> float:\n  let x = 1.5\n  x += 2\n  x'],
+    ['a compound assignment', 'fn f() -> Float:\n  let x = 1.5\n  x += 2\n  x'],
     [
       'a generic struct with its arguments',
-      'struct Box<T> { value: T }\nfn f(b: Box<int>) -> int: b.value',
+      'struct Box<T> { value: T }\nfn f(b: Box<Int>) -> Int: b.value',
     ],
-    ['a prelude type with a default argument', 'fn f(r: Result<int>) -> Result<int, Error>: r'],
+    ['a prelude type with a default argument', 'fn f(r: Result<Int>) -> Result<Int, Error>: r'],
     [
       'awaiting an async call and a std extern',
-      `${importTime}\nasync fn g() -> Future<int>: 1\nasync fn f() -> Future<int>:\n  await time.at(time.now())\n  await g()`,
+      `${importTime}\nasync fn g() -> Future<Int>: 1\nasync fn f() -> Future<Int>:\n  await time.at(time.now())\n  await g()`,
     ],
-    ['a future returned to the caller', `${importTime}\nfn f() -> Future<unit>: time.delay(1s)`],
+    ['a future returned to the caller', `${importTime}\nfn f() -> Future<Unit>: time.delay(1s)`],
     [
       'a future returned through parentheses, a block, an if and a return',
-      `${importTime}\nfn f(c: bool) -> Future<unit>:\n  if c:\n    return (time.delay(1s))\n  { const d = 2s; if c: time.delay(d) else: time.delay(3s) }`,
+      `${importTime}\nfn f(c: Bool) -> Future<Unit>:\n  if c:\n    return (time.delay(1s))\n  { const d = 2s; if c: time.delay(d) else: time.delay(3s) }`,
     ],
-    ['a duration literal without importing time', 'fn f() -> int:\n  const d = 5d\n  d.value'],
+    ['a duration literal without importing time', 'fn f() -> Int:\n  const d = 5d\n  d.value'],
     [
       'top-level constants used by functions and by each other',
-      'struct P { x: int; y: int }\nconst origin = P{x: zero, y: -1}\nconst zero = 0\nfn f() -> int: origin.x + origin.y',
+      'struct P { x: Int; y: Int }\nconst origin = P{x: zero, y: -1}\nconst zero = 0\nfn f() -> Int: origin.x + origin.y',
     ],
     [
       "a duration literal typed as time's Duration",
@@ -231,8 +237,8 @@ describe('checking accepts', () => {
 
 describe('recursion without declared results', () => {
   const files = {
-    'a.ista': "import g from 'b.ista'\nfn f(n: int): g(n)\n",
-    'b.ista': "import f from 'a.ista'\nfn g(n: int): f(n)\n",
+    'a.ista': "import g from 'b.ista'\nfn f(n: Int): g(n)\n",
+    'b.ista': "import f from 'a.ista'\nfn g(n: Int): f(n)\n",
   };
 
   it('is reported at every function of the cycle, whichever module is checked first', () => {
@@ -253,11 +259,11 @@ describe('recursion without declared results', () => {
 
 describe('top-level constants hold only what compile time computes', () => {
   it.each([
-    ['a call', 'fn one() -> int: 1\nconst x = one()', 'one()', reports.notConstant],
+    ['a call', 'fn one() -> Int: 1\nconst x = one()', 'one()', reports.notConstant],
     ['a tuple element', 'const t = (1, 2)\nconst x = t.0', 't.0', reports.notConstant],
     [
       'a map literal of a type other than Map, which calls its functions',
-      'struct Bag {}\nfn Bag.default() -> Bag: Bag\nfn setIndex(self: &Bag, key: int, value: int):\n  return\nconst b: Bag = [1: 1]',
+      'struct Bag {}\nfn Bag.default() -> Bag: Bag\nfn setIndex(self: &Bag, key: Int, value: Int):\n  return\nconst b: Bag = [1: 1]',
       '[1: 1]',
       reports.notConstant,
     ],

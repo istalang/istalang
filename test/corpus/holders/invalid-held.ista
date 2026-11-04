@@ -6,19 +6,19 @@
 # value of a type parameter constrained to be Disposable is disposable. A recursive type holding
 # none of them may be discarded.
 
-struct Pending { job: Future<int> }
+struct Pending { job: Future<Int> }
 
-enum Outcome { Done{result: Result<int>}; Idle }
+enum Outcome { Done{result: Result<Int>}; Idle }
 
-struct Chain { value: int; rest: Chain? }
+struct Chain { value: Int; rest: Chain? }
 
-async fn work() -> Future<int>: 1
+async fn work() -> Future<Int>: 1
 
 fn outcome() -> Outcome: Idle
 
 fn chain() -> Chain: Chain{value: 1, rest: none}
 
-fn keep<T is Disposable>(value: T) -> int:
+fn keep<T is Disposable>(value: T) -> Int:
   value
   1
 

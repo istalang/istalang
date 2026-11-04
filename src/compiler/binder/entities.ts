@@ -10,7 +10,7 @@
  *   set's overloads with the prelude's joined, a bare variant's candidates.
  * - Values and types share one namespace per scope. Naming conventions keep them apart (types are
  *   PascalCase, values camelCase), and a type in value position is how `Duration.zero()`,
- *   `float(3)` and `T.zero()` are written.
+ *   `Float(3)` and `T.zero()` are written.
  * - A local function is a variable whose owner is its declaration: the spec defines it as a `const`
  *   bound to a lambda. Only top-level functions form overload sets.
  * - A bare name that names no declaration may still be an enum variant, which the expected type

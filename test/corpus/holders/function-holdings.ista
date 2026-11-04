@@ -7,14 +7,14 @@
 
 import * as time from 'time'
 
-fn note(log: Shared<Array<string>>, text: string):
+fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
-async fn sleeper(id: int, log: Shared<Array<string>>):
-  defer fn(): note(log, "stopped " + string(id))
+async fn sleeper(id: Int, log: Shared<Array<String>>):
+  defer fn(): note(log, "stopped " + String(id))
   await time.delay(1h)
 
-async fn a(log: Shared<Array<string>>):
+async fn a(log: Shared<Array<String>>):
   hold let h = sleeper(1, log)
   h = sleeper(2, log)
   note(log, "reassigned")
@@ -25,7 +25,7 @@ async fn a(log: Shared<Array<string>>):
   _ = sleeper(5, log)
   note(log, "end a")
 
-async fn withHeader(log: Shared<Array<string>>):
+async fn withHeader(log: Shared<Array<String>>):
   if sleeper(8, log) is _:
     note(log, "body")
   const arr = [sleeper(10, log), sleeper(11, log)]
@@ -40,8 +40,8 @@ async fn withHeader(log: Shared<Array<string>>):
   drop copy
   note(log, "copy dropped")
 
-async fn main() -> Future<string>:
-  const empty: Array<string> = []
+async fn main() -> Future<String>:
+  const empty: Array<String> = []
   const log = new Shared{value: empty}
   await a(log)
   await withHeader(log)

@@ -4,30 +4,30 @@
 # call reach the container only at its end, so a closure sharing the container still sees the old
 # element then. A shared struct's value and its elements are copied in the same way (§3.9).
 
-fn swap(first: &int, second: &int):
+fn swap(first: &Int, second: &Int):
   const kept = first
   first = second
   second = kept
 
-fn bumpTwice(value: &int):
+fn bumpTwice(value: &Int):
   value += 1
   value += 1
 
-fn setThenPeek(value: &int, peek: fn() -> int) -> int:
+fn setThenPeek(value: &Int, peek: fn() -> Int) -> Int:
   value = 5
   peek()
 
-fn show(xs: Array<int>) -> string:
-  "[" + [for x in xs: string(x)].join(", ") + "]"
+fn show(xs: Array<Int>) -> String:
+  "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let xs = [1, 2]
   let ys = [3]
   swap(&xs[0], &ys[0])
   let counts = ["a": 1]
   bumpTwice(&counts["a"])
   let m = ["a": 1]
-  const peek = fn() -> int: m["a"]
+  const peek = fn() -> Int: m["a"]
   const seen = setThenPeek(&m["a"], peek)
   const shared = new Shared{value: [1, 2]}
   shared->value[0] = 5
@@ -36,9 +36,9 @@ async fn main() -> Future<string>:
   grid[0][1] += 7
   const parts = [
     show(xs),
-    string(counts["a"]),
-    string(seen),
-    string(m["a"]),
+    String(counts["a"]),
+    String(seen),
+    String(m["a"]),
     show(shared->value),
     "[" + [for row in grid: show(row)].join(", ") + "]",
   ]

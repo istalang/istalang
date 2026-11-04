@@ -2,7 +2,7 @@
  * The rule that several producers of one value agree on its type (§4): the branches of an `if`, a
  * body's tail and its `return`s, or the items of a collection literal. The expected type decides
  * when there is one; otherwise the first producer with a value does, widened (types/widening.ts)
- * when only its widening fits them all, and `never` (a branch that leaves) fits anything.
+ * when only its widening fits them all, and `Never` (a branch that leaves) fits anything.
  *
  * Without an expected type, a producer that doesn't fit is reported by the caller's own
  * diagnostic, which names what disagrees; with one, or when it fits only by the implicit wrap into
@@ -44,7 +44,7 @@ export function agreedType(
   fits: (found: Type, decided: Type) => Fit | undefined,
   expected?: Type,
 ): Agreement {
-  const first = produced.find(({ type }) => !isPrimitive(type, 'never'))?.type;
+  const first = produced.find(({ type }) => !isPrimitive(type, 'Never'))?.type;
   const target = expected ?? first;
   const decided = target === undefined ? undefined : firstOrWidened(target, produced, fits);
   return {

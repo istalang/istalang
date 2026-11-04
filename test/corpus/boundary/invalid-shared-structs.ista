@@ -4,10 +4,10 @@
 # A shared struct (§3.18) has an identity of its own, which stays in its instance: it has no JSON
 # form, so no extern a host implements takes or gives one, a `Shared` or a module's own alike (§3.6).
 
-shared struct Counter { count: int }
+shared struct Counter { count: Int }
 
 extern fn counter() -> Counter
-extern fn shared() -> Shared<int>
+extern fn shared() -> Shared<Int>
 extern fn bump(c: Counter)
 
 async fn main(): 0

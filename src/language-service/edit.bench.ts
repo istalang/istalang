@@ -90,7 +90,7 @@ const fixtures = [
   {
     title: 'a 2,098-line module',
     text: repeated(decimalTests, decimalCopies),
-    from: 'string(d3(x).round(2, mode))',
+    from: 'String(d3(x).round(2, mode))',
     budget: 15,
   },
 ];

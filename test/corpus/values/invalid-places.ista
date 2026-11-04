@@ -18,9 +18,9 @@
 # callee takes a reference, of exactly its type (a receiver `&self` takes too), and only as an
 # argument.
 
-struct Point { x: int; y: int }
+struct Point { x: Int; y: Int }
 
-fn grow(self: &Point, by: int):
+fn grow(self: &Point, by: Int):
   self.x += by
 
 fn clear(self: &Point?):
@@ -29,14 +29,14 @@ fn clear(self: &Point?):
 fn reset(o: &Point?):
   o = none
 
-fn bump(n: &int):
+fn bump(n: &Int):
   n += 1
 
-fn plain(n: int) -> int: n
+fn plain(n: Int) -> Int: n
 
 fn makePoint() -> Point: Point{x: 0, y: 0}
 
-fn subject(n: int):
+fn subject(n: Int):
   const p = Point{x: 1, y: 2}
   p.x = 3
   const t = (1, 2)

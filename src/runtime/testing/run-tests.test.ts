@@ -12,7 +12,7 @@ describe('the runner', () => {
 async fn passes():
   ()
 
-async fn fails() -> Future<unit>:
+async fn fails() -> Future<Unit>:
   panic("on purpose")
 
 @Suite{"first"}
@@ -78,7 +78,7 @@ fn marks() -> Array<Test>: [
 async fn passes():
   ()
 
-fn title() -> string: "at " + time.now().value
+fn title() -> String: "at " + time.now().value
 
 @Suite{"changing"}
 fn changing() -> Array<Test>: [test(title(), passes)]
@@ -102,7 +102,7 @@ fn suite() -> Array<Test>: broken()
 describe('spawned instances', () => {
   it('are watched through idle, reaches, waitingAt, state and result', () => {
     const source = testModule(`
-async fn sleeper(days: int) -> Future<string>:
+async fn sleeper(days: Int) -> Future<String>:
   @Waypoint{"sleeping"}
   await time.delay(Duration{value: days * 1000})
   "woke"
@@ -125,8 +125,8 @@ fn watches() -> Array<Test>: [test("watched", watched)]
 
   it("aren't idle while a segment of theirs calls the test's mocks", () => {
     const source = testModule(`
-fn first() -> int: 1
-fn second() -> int: 2
+fn first() -> Int: 1
+fn second() -> Int: 2
 
 async fn wakesAndCalls():
   await time.delay(1s)
@@ -154,7 +154,7 @@ fn suite() -> Array<Test>: [test("after calls", idleAfterCalls)]
 
   it('fail the test at once when one panics, naming the instance', () => {
     const source = testModule(`
-async fn breaks() -> Future<unit>:
+async fn breaks() -> Future<Unit>:
   panic("broken")
 
 async fn starts():
@@ -171,7 +171,7 @@ fn panics() -> Array<Test>: [test("starts", starts)]
 
   it('fail no test with a panic some instance waits for, which reads it as an Err', () => {
     const source = testModule(`
-async fn breaks() -> Future<int>:
+async fn breaks() -> Future<Int>:
   panic("broken")
 
 async fn awaited():
@@ -186,15 +186,15 @@ fn awaitedPanics() -> Array<Test>: [test("awaited", awaited)]
 
   it('run each segment twice before committing it with spawnCrashingEveryAwait', () => {
     const source = testModule(`
-extern fn effect(n: int) -> int
+extern fn effect(n: Int) -> Int
 
-async fn twice() -> Future<int>:
+async fn twice() -> Future<Int>:
   const n = effect(1)
   await time.delay(1s)
   n
 
 async fn crashing():
-  const effects = mock(effect, fn(n: int): n)
+  const effects = mock(effect, fn(n: Int): n)
   drop await testing.spawnCrashingEveryAwait(twice).result()
   assertEq(effects.calls().length(), 2)
 
@@ -210,9 +210,9 @@ describe('handles', () => {
     const source = testModule(`
 extern sendable struct Queue
 extern fn open() -> Queue
-extern fn name(queue: Queue) -> string
+extern fn name(queue: Queue) -> String
 
-async fn opens() -> Future<string>:
+async fn opens() -> Future<String>:
   name(open())
 
 async fn handles():
@@ -238,7 +238,7 @@ extern fn open() -> Queue
 async fn openAsync() -> Future<Queue>:
   open()
 
-async fn opensAndLets() -> Future<unit>:
+async fn opensAndLets() -> Future<Unit>:
   drop open()
 
 async fn unmockedDispose():
@@ -272,14 +272,14 @@ fn suite() -> Array<Test>: [test("unmocked", unmockedDispose), test("mocked", mo
     const source = testModule(`
 extern struct Sent
 extern fn dispose(self: Sent)
-extern fn post(n: int) -> Sent
+extern fn post(n: Int) -> Sent
 
-async fn posts() -> Future<unit>:
+async fn posts() -> Future<Unit>:
   hold _ = post(1)
   hold _ = post(2)
 
 async fn handedOut():
-  hold _ = mock(post, fn(n: int): handle<Sent>())
+  hold _ = mock(post, fn(n: Int): handle<Sent>())
   const disposed = mock(dispose, fn(given: Sent): ())
   drop await spawn posts().result()
   assertEq(disposed.calls().length(), 2)
@@ -294,13 +294,13 @@ fn suite() -> Array<Test>: [test("handed out", handedOut)]
 describe('a failing test', () => {
   it('fails on an extern no mock replaces, on waiting forever, and on waiting past its timeout', () => {
     const source = testModule(`
-extern fn charge(amount: int) -> string
+extern fn charge(amount: Int) -> String
 
 async fn unmocked():
   drop charge(1)
 
 async fn forever():
-  drop await Slot.create<int>().take()
+  drop await Slot.create<Int>().take()
 
 async fn tooLong():
   await time.delay(10s)

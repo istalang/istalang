@@ -3,9 +3,9 @@
 # A field read through an `any` value can't change: only the value's own type has it (§3.10).
 
 trait Sized:
-  size: int
+  size: Int
 
-struct Box { size: int }
+struct Box { size: Int }
 
 async fn main():
   let item: any Sized = Box{size: 1}

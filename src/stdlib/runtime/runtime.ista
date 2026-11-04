@@ -5,12 +5,12 @@
 # waiting (§5).
 
 # The instance's name, as its host gave it or as its parent's spawn made it (§9).
-extern fn id() -> string
+extern fn id() -> String
 
 # The content hash of the program the instance runs, fixed for its life (§5).
-extern fn version() -> string
+extern fn version() -> String
 
-extern fn commit() -> Future<unit>
+extern fn commit() -> Future<Unit>
 
 # Runs `f` as an instance of its own and waits for its end (§9): `f`'s result, or its panic as an
 # `Err`. The panic also terminates that instance at once, disposing what it holds, so no operator

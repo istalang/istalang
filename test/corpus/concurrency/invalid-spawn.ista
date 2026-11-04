@@ -14,18 +14,18 @@ import Inbox from 'inbox'
 import * as time from 'time'
 
 struct Job:
-  box: Inbox<int>
+  box: Inbox<Int>
 
 struct Id:
-  value: int
+  value: Int
 
-fn bump(n: &int):
+fn bump(n: &Int):
   n += 1
 
-fn run(self: Job) -> int:
+fn run(self: Job) -> Int:
   1
 
-fn show(self: Id) -> int:
+fn show(self: Id) -> Int:
   self.value
 
 async fn main():
@@ -37,11 +37,11 @@ async fn main():
   spawn counting()
   const maybe: Id? = none
   spawn maybe?.show()
-  spawn takesBox(Inbox.create<int>())
-  _ = spawn Job{box: Inbox.create<int>()}.run()
+  spawn takesBox(Inbox.create<Int>())
+  _ = spawn Job{box: Inbox.create<Int>()}.run()
 
 fn doubled<T is Addable & Sendable>(x: T):
   spawn add(x, x)
 
-fn takesBox(box: Inbox<int>):
+fn takesBox(box: Inbox<Int>):
   _ = box

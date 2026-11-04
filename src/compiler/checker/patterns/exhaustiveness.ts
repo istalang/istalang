@@ -6,8 +6,8 @@
  *   That keeps this module free of syntax and of the checker, so it is tested on its own against
  *   brute-force enumeration.
  * - A type's constructors come from `Signature`: every variant of an enum, `true` and `false`, the
- *   one shape of a tuple or struct. A type with no finite set of constructors, such as `int` or
- *   `string`, is covered only by a pattern that takes anything, whatever literals the cases list.
+ *   one shape of a tuple or struct. A type with no finite set of constructors, such as `Int` or
+ *   `String`, is covered only by a pattern that takes anything, whatever literals the cases list.
  * - An or-pattern is its alternatives, each a row of its own wherever it stands.
  * - An array's constructors are its lengths, which are endless, so from a length no pattern can
  *   tell apart from longer ones on, they are one constructor (the Rust compiler's way). Its

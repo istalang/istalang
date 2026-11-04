@@ -6,31 +6,31 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-fn note(log: Shared<Array<string>>, entry: string):
+fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
 
-async fn worker(jobs: Inbox<int>, acks: Inbox<int>, log: Shared<Array<string>>) -> Future<unit>:
+async fn worker(jobs: Inbox<Int>, acks: Inbox<Int>, log: Shared<Array<String>>) -> Future<Unit>:
   let handled = 0
   while true:
     await select:
       case jobs.receive() as job:
         handled += 1
-        note(log, "job " + string(job))
+        note(log, "job " + String(job))
         acks.send(job)
       case worker.disposing():
-        note(log, "flushed " + string(handled))
+        note(log, "flushed " + String(handled))
     note(log, "pass")
   ()
 
-async fn idle(log: Shared<Array<string>>) -> Future<unit>:
+async fn idle(log: Shared<Array<String>>) -> Future<Unit>:
   await time.delay(1d)
   note(log, "never: idle was stopped")
 
-async fn main() -> Future<string>:
-  const empty: Array<string> = []
+async fn main() -> Future<String>:
+  const empty: Array<String> = []
   const log = new Shared{value: empty}
-  const jobs = Inbox.create<int>()
-  const acks = Inbox.create<int>()
+  const jobs = Inbox.create<Int>()
+  const acks = Inbox.create<Int>()
   {
     const running = worker(jobs, acks, log)
     const waiting = idle(log)

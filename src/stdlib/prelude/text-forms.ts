@@ -1,6 +1,6 @@
 /**
  * How the primitives are written as text and read back (§3.10, `Stringable` and `Parsable`): what
- * `toString`, `string(x)` and appending to a string spell, and what `parse` accepts.
+ * `toString`, `String(x)` and appending to a string spell, and what `parse` accepts.
  *
  * - A float keeps its `.0` when whole, so `1.0` never reads as the int `1`; NaN and the infinities
  *   are spelled as JavaScript spells them, so `parse` reads every text `toString` writes.
@@ -33,12 +33,14 @@ export function primitiveText(value: Value | undefined): string {
   return String(value);
 }
 
+// biome-ignore-start lint/style/useNamingConvention: the keys are the primitive types' names (§2).
 const readers = {
-  int: (source: string) => (intSyntax.test(source) ? BigInt(source) : undefined),
-  float: (source: string) => (floatSyntax.test(source) ? Number(source) : floatWords.get(source)),
-  bool: (source: string) =>
+  Int: (source: string) => (intSyntax.test(source) ? BigInt(source) : undefined),
+  Float: (source: string) => (floatSyntax.test(source) ? Number(source) : floatWords.get(source)),
+  Bool: (source: string) =>
     source === 'true' || source === 'false' ? source === 'true' : undefined,
 } as const satisfies Partial<Record<PrimitiveName, (source: string) => Value | undefined>>;
+// biome-ignore-end lint/style/useNamingConvention: the keys are the primitive types' names (§2).
 
 /** A primitive type `parse` reads. */
 export type ParsedPrimitive = keyof typeof readers;
@@ -50,14 +52,14 @@ export function readPrimitive(type: ParsedPrimitive, source: string): Value | un
 
 export const textFormNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   ...Object.fromEntries(
-    (['int', 'float', 'bool'] as const).map((type) => [
+    (['Int', 'Float', 'Bool'] as const).map((type) => [
       keys.of('toString', type),
       ([value]: readonly Value[]) => primitiveText(value),
     ]),
   ),
   ...Object.fromEntries(
     (Object.keys(readers) as ParsedPrimitive[]).map((type) => [
-      keys.ofStatic(type, 'parse', 'string'),
+      keys.ofStatic(type, 'parse', 'String'),
       (([source], context) =>
         parseResult(
           context,
@@ -70,5 +72,5 @@ export const textFormNatives = (keys: NativeKeys): Natives<NativeContext> => ({
 });
 
 function articled(type: ParsedPrimitive): string {
-  return type === 'int' ? 'an int' : `a ${type}`;
+  return type === 'Int' ? 'an Int' : `a ${type}`;
 }

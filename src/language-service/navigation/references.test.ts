@@ -12,8 +12,8 @@ import { namesDenoting, referencesAt } from './references.ts';
 describe('the references of a declaration', () => {
   it('are every name of a field: declared, read, named in a literal, a pattern or a target, in any module', () => {
     const { program, named } = navigable({
-      main: "import Pair from 'lib'\nfn f(p: Pair) -> int:\n  let q = Pair{first: p.first, second: 2}\n  q.first = 3\n  match q:\n    case Pair{first == 1}: 1\n    case _: 0\n",
-      lib: 'struct Pair:\n  first: int\n  second: int\n',
+      main: "import Pair from 'lib'\nfn f(p: Pair) -> Int:\n  let q = Pair{first: p.first, second: 2}\n  q.first = 3\n  match q:\n    case Pair{first == 1}: 1\n    case _: 0\n",
+      lib: 'struct Pair:\n  first: Int\n  second: Int\n',
     });
     const declaring = named('lib', 'first');
     const expected = [declaring, ...[0, 1, 2, 3].map((nth) => named('main', 'first', nth))];
@@ -28,7 +28,7 @@ describe('the references of a declaration', () => {
 
   it("are a method's declaration and its calls", () => {
     const { program, named } = navigable({
-      main: 'struct Box:\n  value: int\nfn get(self: Box) -> int: self.value\nfn f(b: Box) -> int: b.get() + get(b)\n',
+      main: 'struct Box:\n  value: Int\nfn get(self: Box) -> Int: self.value\nfn f(b: Box) -> Int: b.get() + get(b)\n',
     });
     const found = referencesAt(
       program,
@@ -41,7 +41,7 @@ describe('the references of a declaration', () => {
   });
 
   it('say which name declares it', () => {
-    const { program, named } = navigable({ main: 'fn f(x: int) -> int: x + x\n' });
+    const { program, named } = navigable({ main: 'fn f(x: Int) -> Int: x + x\n' });
     const use = named('main', 'x', 2);
     const found = referencesAt(program, use.module, spanOfUse(program, use).start);
     expect(found.filter(({ declares }) => declares).map((each) => placeOf(program, each))).toEqual([

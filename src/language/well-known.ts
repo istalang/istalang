@@ -163,7 +163,7 @@ export const optionalVariants = { some: 'Some', none: 'None' } as const;
 /** The variants of `json.Json` (§9): JSON held as a value, by its kind. */
 export const jsonVariants = {
   null: 'Null',
-  bool: 'Bool',
+  boolean: 'Boolean',
   integer: 'Integer',
   number: 'Number',
   text: 'Text',
@@ -198,6 +198,9 @@ export const entryFunction = 'main';
 
 /** What a method's first parameter is named, which makes it one (§3.7). */
 export const receiverParameter = 'self';
+
+/** What a trait calls the type meeting it (§3.10). */
+export const selfType = 'Self';
 
 /** The end `..=` stores, one past the written end in the step's direction (§3.8). */
 export const inclusiveEndFunction = '_inclusiveEnd';

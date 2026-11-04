@@ -15,15 +15,15 @@ const leasing = compiledText(
   [
     'extern struct Lease',
     '',
-    'extern fn open(name: string) -> Lease',
-    'extern fn describe(lease: Lease) -> string',
+    'extern fn open(name: String) -> Lease',
+    'extern fn describe(lease: Lease) -> String',
     'extern fn release(lease: Lease)',
-    'extern fn approval() -> Future<string>',
+    'extern fn approval() -> Future<String>',
     '',
     'fn dispose(self: Lease):',
     '  release(self)',
     '',
-    'async fn main() -> Future<string>:',
+    'async fn main() -> Future<String>:',
     '  const lease = open("a")',
     '  const note = await approval()',
     '  note + describe(lease)',
@@ -35,7 +35,7 @@ function leasingHost(): { readonly host: HostExterns; readonly released: unknown
   const released: unknown[] = [];
   return {
     host: {
-      'main.open(string)': ([name]) => ({ id: name }),
+      'main.open(String)': ([name]) => ({ id: name }),
       'main.describe(main.Lease)': ([lease]) => (lease as { id: string }).id,
       'main.release(main.Lease)': ([lease]) => {
         released.push(lease);
@@ -51,15 +51,15 @@ const terminated = compiledText(
   [
     'extern struct Lease',
     '',
-    'extern fn open(name: string) -> Lease',
-    'extern fn describe(lease: Lease) -> string',
+    'extern fn open(name: String) -> Lease',
+    'extern fn describe(lease: Lease) -> String',
     'extern fn release(lease: Lease)',
-    'extern fn approval() -> Future<bool>',
+    'extern fn approval() -> Future<Bool>',
     '',
     'fn dispose(self: Lease):',
     '  release(self)',
     '',
-    'async fn main() -> Future<string>:',
+    'async fn main() -> Future<String>:',
     '  const first = open("plain")',
     '  const second = open("refusing")',
     '  if not await approval():',
@@ -104,7 +104,7 @@ describe('a disposable host type', () => {
   it("is disposed by its host when the host implements its 'dispose'", () => {
     const disposed: unknown[] = [];
     const host: HostExterns = {
-      'main.open(string)': ([name]) => ({ id: name }),
+      'main.open(String)': ([name]) => ({ id: name }),
       'main.dispose(main.Lease)': ([lease]) => {
         disposed.push(lease);
         return null;
@@ -113,7 +113,7 @@ describe('a disposable host type', () => {
     const program = compiledText(
       [
         'extern struct Lease',
-        'extern fn open(name: string) -> Lease',
+        'extern fn open(name: String) -> Lease',
         'extern fn dispose(self: Lease)',
         'async fn main(): { const lease = open("b"); 1 }',
       ].join('\n'),
@@ -127,7 +127,7 @@ describe('a disposable host type', () => {
   it('is retracted by its host once the Revertible holding it is released', () => {
     const calls: unknown[][] = [];
     const host: HostExterns = {
-      'main.announcements(string)': ([user]) => ({ queue: user }),
+      'main.announcements(String)': ([user]) => ({ queue: user }),
       'main._sendRevertible(main.Queue<T>, T)': (given) => {
         calls.push(['send', ...given]);
         return { message: 7n };
@@ -147,13 +147,13 @@ describe('a disposable host type', () => {
         'extern struct Sent',
         'extern fn dispose(self: Sent)',
         'extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent',
-        'extern fn announcements(user: string) -> Queue<string>',
-        'extern fn gate() -> Future<unit>',
+        'extern fn announcements(user: String) -> Queue<String>',
+        'extern fn gate() -> Future<Unit>',
         '',
         'fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:',
         '  Revertible.holding(_sendRevertible(self, msg))',
         '',
-        'async fn main() -> Future<int>:',
+        'async fn main() -> Future<Int>:',
         '  hold _ = announcements("ann").sendRevertible("hello")',
         '  await gate()',
         '  1',

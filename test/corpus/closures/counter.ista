@@ -3,19 +3,19 @@
 # `count` of the call that made it, a copy of the closure shares that count, and a change made
 # outside after the closure was made is seen inside it. Each call of `makeCounter` has its own.
 
-fn makeCounter(start: int) -> fn() -> int:
+fn makeCounter(start: Int) -> fn() -> Int:
   let count = start
-  fn next() -> int:
+  fn next() -> Int:
     count += 1
     count
   next
 
-fn shared() -> string:
+fn shared() -> String:
   let total = 0
-  const add = fn(n: int): { total += n; total }
+  const add = fn(n: Int): { total += n; total }
   const first = add(1)
   total += 10
-  string(first) + " " + string(add(2))
+  String(first) + " " + String(add(2))
 
 async fn main():
   const next = makeCounter(0)
@@ -24,4 +24,4 @@ async fn main():
   const b = alias()
   const other = makeCounter(2)
   const c = next()
-  string(a) + " " + string(b) + " " + string(c) + " | " + string(other()) + " | " + shared()
+  String(a) + " " + String(b) + " " + String(c) + " | " + String(other()) + " | " + shared()

@@ -50,33 +50,33 @@ const compiled = new LRUCache<string, RE2JS | string>({ max: 256 });
 export const regexNatives = (keys: NativeKeys): Natives<NativeContext> => {
   const regex = keys.type(regexTypeName);
   return {
-    [keys.ofStatic(regexTypeName, 'parse', 'string')]: ([source], context) => {
+    [keys.ofStatic(regexTypeName, 'parse', 'String')]: ([source], context) => {
       const pattern = text(source);
       const program = compile(pattern);
       return typeof program === 'string'
         ? parseFailure(context, invalidPattern(pattern, program))
         : resultOk(context, okStruct(context, { pattern }));
     },
-    [keys.of('test', regex, 'string')]: ([pattern, s], context) =>
+    [keys.of('test', regex, 'String')]: ([pattern, s], context) =>
       programOf(context, pattern).test(text(s)),
-    [keys.of('find', regex, 'string')]: ([pattern, s], context) => {
+    [keys.of('find', regex, 'String')]: ([pattern, s], context) => {
       const whole = text(s);
       const [found] = programOf(context, pattern).matchAll(whole);
       const build = matchBuilder(context.types, resultTypeArgument(context, 0), whole);
       return resultOptional(context, found === undefined ? undefined : build(found));
     },
-    [keys.of('findAll', regex, 'string')]: ([pattern, s], context) => {
+    [keys.of('findAll', regex, 'String')]: ([pattern, s], context) => {
       const whole = text(s);
       const build = matchBuilder(context.types, resultTypeArgument(context, 0), whole);
       return arrayOf([...programOf(context, pattern).matchAll(whole)].map(build));
     },
-    [keys.of('replace', regex, 'string', 'string')]: ([pattern, s, replacement], context) =>
+    [keys.of('replace', regex, 'String', 'String')]: ([pattern, s, replacement], context) =>
       programOf(context, pattern).matcher(text(s)).replaceFirst(text(replacement)),
-    [keys.of('replaceAll', regex, 'string', 'string')]: ([pattern, s, replacement], context) =>
+    [keys.of('replaceAll', regex, 'String', 'String')]: ([pattern, s, replacement], context) =>
       programOf(context, pattern).matcher(text(s)).replaceAll(text(replacement)),
-    [keys.of('split', regex, 'string')]: ([pattern, s], context) =>
+    [keys.of('split', regex, 'String')]: ([pattern, s], context) =>
       arrayOf(split(programOf(context, pattern), text(s))),
-    [keys.of('escape', 'string')]: ([s]) => RE2JS.quote(text(s)),
+    [keys.of('escape', 'String')]: ([s]) => RE2JS.quote(text(s)),
   };
 };
 

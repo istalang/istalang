@@ -2,18 +2,18 @@
 # A program's own `index` and `setIndex` may recurse through elements as deep as any other
 # function: each element step is an ordinary call (§3.9).
 
-struct Tree { children: Array<Tree>; value: int }
+struct Tree { children: Array<Tree>; value: Int }
 
-fn index(self: Tree, depth: int) -> int:
+fn index(self: Tree, depth: Int) -> Int:
   if depth == 0: self.value else: self.children[0][depth - 1]
 
-fn setIndex(self: &Tree, depth: int, value: int) -> unit:
+fn setIndex(self: &Tree, depth: Int, value: Int) -> Unit:
   if depth == 0:
     self.value = value
   else:
     self.children[0][depth - 1] = value
 
-async fn main() -> Future<int>:
+async fn main() -> Future<Int>:
   let tree = Tree{children: [], value: 0}
   for _ in 0..3000:
     tree = Tree{children: [tree], value: 0}

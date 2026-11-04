@@ -16,19 +16,19 @@ const inputs = [
   'fn f(): {\n  # c\n}\n',
   'const x = [\n  # c\n]\n',
   'fn f(): foo( # c\n  a, b)\n',
-  'struct S { # c\n  a: int }\n',
+  'struct S { # c\n  a: Int }\n',
   'enum E { # c\n  A; B }\n',
   'fn f(): g( # c\n  1, fn(): {\n    a\n    b\n  })\n',
   '# only\n\n# comments\n',
   '@Suite{"s"}\n# comment\nfn f(): 1\n',
   'fn f():\n  @Waypoint{"w"}\n  # comment\n  const x = 1\n  x\n',
-  'async fn main(\n  # c\n) -> Future<int>: 1\n',
-  'fn f(x: int\n  # c\n) -> int: x\n',
+  'async fn main(\n  # c\n) -> Future<Int>: 1\n',
+  'fn f(x: Int\n  # c\n) -> Int: x\n',
   'const a = [await # c\n  f(x)]\n',
   'const a = [not await\n  # c\n  x]\n',
   'const a = [... # c\n  xs]\n',
-  'fn double(x:\n  # c\n  int) -> int: x\n',
-  'type F = (async fn(int) ->\n  # c\n  int)\n',
+  'fn double(x:\n  # c\n  int) -> Int: x\n',
+  'type F = (async fn(Int) ->\n  # c\n  int)\n',
   'const a = [for x in xs:\n  # c\n  x]\n',
 ];
 
@@ -47,7 +47,7 @@ describe('a comment where the corpus has none', () => {
 
 const unusualPlaces = [
   'fn f(a: # c\n  int): a\n',
-  'fn f(a # c\n  : int): a\n',
+  'fn f(a # c\n  : Int): a\n',
   'const s = struct {a: # c\n  1, # d\n  b: 2}\n',
 ];
 

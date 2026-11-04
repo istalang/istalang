@@ -1,4 +1,4 @@
-# outcome: ["round trip","none, unknown fields ignored","$.items[0].qty: expected an integer, found a string","$.id: missing","$.shape.type: names no variant 'Square'","$.pair: expected 2 elements, found 1","$.due: 'P1Y' is not an ISO 8601 duration.","$.tags.x: 'x' is not an int.","$.items[0].qty: expected an integer, found a number","json","123456789012345678901234567890","skipped 7"]
+# outcome: ["round trip","none, unknown fields ignored","$.items[0].qty: expected an integer, found a string","$.id: missing","$.shape.type: names no variant 'Square'","$.pair: expected 2 elements, found 1","$.due: 'P1Y' is not an ISO 8601 duration.","$.tags.x: 'x' is not an Int.","$.items[0].qty: expected an integer, found a number","json","123456789012345678901234567890","skipped 7"]
 # Reading JSON back by the declared type (§9): what stringify writes parses to an equal value, a
 # missing optional field is none and an unknown one is ignored, and every mismatch is an Err whose
 # message names the path of the part that doesn't fit; text that isn't JSON is an Err with code
@@ -10,44 +10,44 @@ import * as time from 'time'
 import JsonBigInt, JsonSkip from 'json'
 
 struct Item:
-  sku: string
-  qty: int
+  sku: String
+  qty: Int
 
 enum Shape:
-  Circle { radius: float }
+  Circle { radius: Float }
   Dot
 
 struct Order:
-  id: string
+  id: String
   items: Array<Item>
-  note: string?
-  tags: Map<int, int>
+  note: String?
+  tags: Map<Int, Int>
   shape: Shape
-  pair: (int, bool)
+  pair: (Int, Bool)
   due: time.Duration
 
 struct Big:
-  value: int @JsonBigInt
+  value: Int @JsonBigInt
 
 struct Counter:
-  count: int
+  count: Int
 
 fn Counter.default() -> Counter:
   Counter{count: 7}
 
 struct Tally:
-  name: string
+  name: String
   counter: Counter @JsonSkip
 
-fn failure(text: string) -> string:
+fn failure(text: String) -> String:
   match json.parse<Order>(text):
     case Ok{value}: "parsed " + value.id
     case Err{error}: error.message
 
-fn order(tags: string, shape: string, pair: string, due: string, extra: string) -> string:
+fn order(tags: String, shape: String, pair: String, due: String, extra: String) -> String:
   "{\"id\":\"o1\",\"items\":[],\"tags\":" + tags + ",\"shape\":{\"type\":\"" + shape + "\"},\"pair\":" + pair + ",\"due\":\"" + due + "\"" + extra + "}"
 
-async fn main() -> Future<Array<string>>:
+async fn main() -> Future<Array<String>>:
   const original = Order{id: "o1", items: [Item{sku: "a", qty: 2}], note: "n", tags: [10: 1], shape: Circle{radius: 1.5}, pair: (3, true), due: 90m}
   const roundTrip = match json.parse<Order>(json.stringify(original)):
     case Ok{value}: if value == original: "round trip" else: "changed"
@@ -59,7 +59,7 @@ async fn main() -> Future<Array<string>>:
     case Ok{value}: value.id
     case Err{error}: error.code
   const big = match json.parse<Big>("{\"value\":\"123456789012345678901234567890\"}"):
-    case Ok{value}: string(value.value)
+    case Ok{value}: String(value.value)
     case Err{error}: error.message
   const skipped = match json.parse<Tally>("{\"name\":\"t\",\"counter\":{\"count\":1}}"):
     case Ok{value}: "skipped " + value.counter.count

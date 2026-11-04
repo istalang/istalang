@@ -174,8 +174,8 @@ describe('pattern completion offers what fits the matched value', () => {
 
 const decision = [
   'enum Decision:',
-  '  Approved { by: string }',
-  '  Rejected { by: string; reason: string }',
+  '  Approved { by: String }',
+  '  Rejected { by: String; reason: String }',
   '  Expired',
   '',
 ];
@@ -187,7 +187,7 @@ function labelsAt(...lines: readonly string[]): readonly string[] {
 
 describe('a pattern place', () => {
   it('offers a guard or a binding of the whole after a whole pattern, a space between', () => {
-    const cases = [...decision, 'fn f(d: Decision, n: int) -> int:'];
+    const cases = [...decision, 'fn f(d: Decision, n: Int) -> Int:'];
     expect(labelsAt(...cases, '  match d:', '    case Approved{by} ‸')).toEqual(['if', 'as']);
     expect(labelsAt(...cases, '  match d:', '    case Approved{by}‸')).toEqual([]);
     expect(labelsAt(...cases, '  match n:', '    case 0..= ‸')).toEqual([]);
@@ -197,8 +197,8 @@ describe('a pattern place', () => {
 
   it("reads the type a tuple's element, an array's item or a nested field matches", () => {
     const nested = (subject: string, pattern: string) =>
-      labelsAt(...decision, `fn f(x: ${subject}) -> int:`, '  match x:', `    case ${pattern}`);
-    expect(nested('(int, Decision)', '(_, ‸')).toContain('Approved');
+      labelsAt(...decision, `fn f(x: ${subject}) -> Int:`, '  match x:', `    case ${pattern}`);
+    expect(nested('(Int, Decision)', '(_, ‸')).toContain('Approved');
     expect(nested('Array<Decision>', '[‸')).toContain('Approved');
     expect(nested('Decision?', 'Some{value is ‸')).toContain('Approved');
   });
@@ -206,7 +206,7 @@ describe('a pattern place', () => {
   it('marks the variants unguarded cases take whole as covered', () => {
     const marked = [
       ...decision,
-      'fn f(d: Decision, a: bool) -> int:',
+      'fn f(d: Decision, a: Bool) -> Int:',
       '  match d:',
       '    case Approved{by}: 1',
       '    case Rejected{reason == "late"}: 2',
@@ -223,25 +223,56 @@ describe('a pattern place', () => {
   it('offers the types a downcast may name against an `any` value, those meeting its traits', () => {
     const labels = labelsAt(
       'trait Named:',
-      '  fn name(self: Self) -> string',
+      '  fn name(self: Self) -> String',
       '',
       'struct Marker',
       'struct Plain',
       'struct Box<T> { value: T }',
-      'fn name(self: Marker) -> string: "marker"',
-      'fn name<T>(self: Box<T>) -> string: "box"',
+      'fn name(self: Marker) -> String: "marker"',
+      'fn name<T>(self: Box<T>) -> String: "box"',
       '',
-      'fn f(x: any Named) -> int:',
+      'fn f(x: any Named) -> Int:',
       '  match x:',
       '    case ‸',
     );
     expect(labels).toContain('Marker');
     expect(labels).not.toContain('Box');
     expect(labels).not.toContain('Plain');
+    expect(labels).not.toContain('Never');
+  });
+
+  it("offers the primitives and aliases a type pattern may name: meeting an `any` value's traits, or the type matched", () => {
+    const named = [
+      'trait Named:',
+      '  fn name(self: Self) -> String',
+      '',
+      'type Count = Int',
+      'fn name(self: Int) -> String: "int"',
+      '',
+    ];
+    const onAny = labelsAt(...named, 'fn f(x: any Named) -> Int:', '  match x:', '    case ‸');
+    expect(onAny).toEqual(expect.arrayContaining(['Int', 'Count']));
+    expect(onAny).not.toContain('String');
+    const onInt = labelsAt(...named, 'fn f(x: Int) -> Int:', '  match x:', '    case ‸');
+    expect(onInt).toEqual(expect.arrayContaining(['Int', 'Count']));
+    expect(onInt).not.toContain('Bool');
+  });
+
+  it("offers the fields of the struct an alias names in a pattern's braces", () => {
+    const aliased = [
+      'struct Item { n: Int }',
+      'type MyItem = Item',
+      'fn toString(self: Item) -> String: "item"',
+      '',
+    ];
+    const onItem = ['fn f(x: Item) -> Int:', '  match x:', '    case MyItem{‸'];
+    expect(labelsAt(...aliased, ...onItem)).toEqual(['n']);
+    const onAny = ['fn f(x: any Stringable) -> Int:', '  match x:', '    case MyItem{‸'];
+    expect(labelsAt(...aliased, ...onAny)).toEqual(['n']);
   });
 
   it("offers a struct's fields, but those its pattern names, in its braces", () => {
-    const struct = ['struct Pair:', '  first: int', '  second: int', '', 'fn f(p: Pair) -> int:'];
+    const struct = ['struct Pair:', '  first: Int', '  second: Int', '', 'fn f(p: Pair) -> Int:'];
     expect(labelsAt(...struct, '  match p:', '    case Pair{first, ‸')).toEqual(['second']);
     expect(labelsAt(...struct, '  match p:', '    case struct{‸')).toEqual(['first', 'second']);
   });
@@ -249,12 +280,12 @@ describe('a pattern place', () => {
   it("offers no fields in braces naming what the matched value can't be", () => {
     const struct = [
       'struct Pair:',
-      '  first: int',
-      '  second: int',
+      '  first: Int',
+      '  second: Int',
       '',
       'enum Color { Red; Green }',
     ];
-    const cases = [...struct, ...decision, 'fn f(p: Pair, d: Decision) -> int:'];
+    const cases = [...struct, ...decision, 'fn f(p: Pair, d: Decision) -> Int:'];
     expect(labelsAt(...cases, '  match p:', '    case Wrong{‸')).toEqual([]);
     expect(labelsAt(...cases, '  match p:', '    case Some{‸')).toEqual([]);
     expect(labelsAt(...cases, '  match d:', '    case Color.Rejected{‸')).toEqual([]);
@@ -269,12 +300,12 @@ describe('a pattern place', () => {
   it("offers a downcast's fields against an `any` value, where it may downcast", () => {
     const named = [
       'trait HasId:',
-      '  id: string',
+      '  id: String',
       '',
-      'struct User { id: string; name: string }',
-      'struct Box<T> { id: string; value: T }',
+      'struct User { id: String; name: String }',
+      'struct Box<T> { id: String; value: T }',
       ...decision,
-      'fn f(x: any HasId) -> int:',
+      'fn f(x: any HasId) -> Int:',
       '  match x:',
     ];
     expect(labelsAt(...named, '    case User{‸')).toEqual(['id', 'name']);

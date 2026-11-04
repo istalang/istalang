@@ -7,7 +7,7 @@
 # a call through a namespace looks only in that module (§3.13).
 import * as time from 'time'
 
-struct Money { cents: int }
+struct Money { cents: Int }
 
 fn add(left: Money, right: Money) -> Money:
   Money{cents: left.cents + right.cents}
@@ -19,7 +19,7 @@ fn same<T>(first: T, second: T) -> T:
   first
 
 async fn main():
-  const a = identity<int, string>(1)
-  const b = add<int>(Money{cents: 1}, Money{cents: 2})
+  const a = identity<Int, String>(1)
+  const b = add<Int>(Money{cents: 1}, Money{cents: 2})
   const c = same(1, "x")
   const d = time.add(Money{cents: 1}, Money{cents: 2})

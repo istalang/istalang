@@ -69,7 +69,7 @@ const scenarios: readonly Scenario[] = [
     src: [
       '  const cs: Array<Color> = [‸',
       '  const cs: Array<Color> = [Color.Red, ‸',
-      '  const cm: Map<string, Color> = ["a": ‸',
+      '  const cm: Map<String, Color> = ["a": ‸',
     ],
     expect: { has: ['Red', 'Green', 'Blue'] },
   },
@@ -84,7 +84,7 @@ const scenarios: readonly Scenario[] = [
     id: 'ET-10',
     place: 'grammar',
     title: 'Boolean expectation',
-    src: ['  let b: bool = ‸', '  if ‸'],
+    src: ['  let b: Bool = ‸', '  if ‸'],
     expect: { within: { labels: ['true', 'false'], k: 4 } },
   },
   {
@@ -106,7 +106,7 @@ const scenarios: readonly Scenario[] = [
     id: 'ET-13',
     place: 'grammar',
     title: 'Call result chosen by expected type',
-    src: ['  let x: int = ‸'],
+    src: ['  let x: Int = ‸'],
     expect: { within: { labels: ['n'], k: 3 } },
   },
 ];

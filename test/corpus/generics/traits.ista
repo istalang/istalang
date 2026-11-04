@@ -5,7 +5,7 @@
 # (§3.1).
 
 struct Money:
-  cents: int
+  cents: Int
 
 struct Pair<A, B>:
   first: A
@@ -19,12 +19,12 @@ trait Monoid:
   fn add(left: Self, right: Self) -> Self
 
 trait Priced:
-  cents: int
+  cents: Int
 
 trait Pairable:
   fn pairWith<U>(self: Self, other: U) -> Pair<Self, U>
 
-fn int.zero() -> int:
+fn Int.zero() -> Int:
   0
 
 fn Money.zero() -> Money:
@@ -42,13 +42,13 @@ fn sum3<T is Monoid>(a: T, b: T, c: T) -> T:
   total = total + b
   total + c
 
-fn priceOf<T is Priced>(item: T) -> int:
+fn priceOf<T is Priced>(item: T) -> Int:
   item.cents
 
-fn tagged<T is Pairable>(item: T) -> Pair<T, string>:
+fn tagged<T is Pairable>(item: T) -> Pair<T, String>:
   pairWith(item, "cents")
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const money = sum3(Money{cents: 5}, Money{cents: 10}, Money{cents: 15})
-  const sealed: Envelope<Pair<Money, int>> = Envelope{value: Pair{first: money, second: 1}}
-  string(sum3(1, 2, 3)) + " " + string(money.cents) + " " + string(priceOf(Money{cents: 7})) + " " + tagged(money).second + " " + string(sealed.value.first.cents)
+  const sealed: Envelope<Pair<Money, Int>> = Envelope{value: Pair{first: money, second: 1}}
+  String(sum3(1, 2, 3)) + " " + String(money.cents) + " " + String(priceOf(Money{cents: 7})) + " " + tagged(money).second + " " + String(sealed.value.first.cents)

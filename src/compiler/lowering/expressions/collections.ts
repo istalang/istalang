@@ -249,7 +249,7 @@ function lowerDeclaredLiteral(
   return result;
 }
 
-/** An `int?` of a range's end: `Some` of its value, or `None` when it is left out. */
+/** An `Int?` of a range's end: `Some` of its value, or `None` when it is left out. */
 function optionalInt(
   context: FunctionContext,
   span: AnchoredSpan,

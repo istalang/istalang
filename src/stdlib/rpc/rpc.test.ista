@@ -7,15 +7,15 @@ import * as rpc from 'rpc'
 import * as runtime from 'runtime'
 
 # Whether `reply` is the `Err` of a call let go without a reply.
-fn unanswered<R>(reply: Result<R>) -> bool: reply is Err{error} and error.code == "unanswered"
+fn unanswered<R>(reply: Result<R>) -> Bool: reply is Err{error} and error.code == "unanswered"
 
 # Two calls to a handler that waits at a gate opened once per call: the replies, and what the
 # handler logged.
-async fn servingTwoCalls() -> Future<(Array<Result<int>>, Array<string>)>:
-  const method = rpc.create<int, int>()
-  const gate = Slot.create<unit>()
-  let log: Array<string> = []
-  hold _ = method.onMessage(async fn(n: int): {
+async fn servingTwoCalls() -> Future<(Array<Result<Int>>, Array<String>)>:
+  const method = rpc.create<Int, Int>()
+  const gate = Slot.create<Unit>()
+  let log: Array<String> = []
+  hold _ = method.onMessage(async fn(n: Int): {
     log.push("start " + n)
     await gate.take()
     log.push("end " + n)
@@ -31,8 +31,8 @@ async fn servingTwoCalls() -> Future<(Array<Result<int>>, Array<string>)>:
 @Suite{"rpc"}
 fn rpcSuite() -> Array<Test>: [
   test("replies with what the handler returns", async fn(): {
-    const double = rpc.create<int, int>()
-    hold _ = double.onMessage(fn(n: int): n * 2)
+    const double = rpc.create<Int, Int>()
+    hold _ = double.onMessage(fn(n: Int): n * 2)
     assertEq(await double.call(21), Ok{(42)})
   }),
   ...runAndReRun(
@@ -41,31 +41,31 @@ fn rpcSuite() -> Array<Test>: [
     ([Ok{(1)}, Ok{(2)}], ["start 1", "end 1", "start 2", "end 2"]),
   ),
   test("shares the calls among its servers, each call going to one", async fn(): {
-    const method = rpc.create<int, string>()
-    hold _ = method.onMessage(fn(n: int): "a" + n)
-    hold _ = method.onMessage(fn(n: int): "b" + n)
+    const method = rpc.create<Int, String>()
+    hold _ = method.onMessage(fn(n: Int): "a" + n)
+    hold _ = method.onMessage(fn(n: Int): "b" + n)
     await runtime.commit()
     const (first, second) = (method.call(1), method.call(2))
     assertEq([await first, await second], [Ok{("a1")}, Ok{("b2")}])
   }),
   test("fails a call whose server is disposed while handling it", async fn(): {
-    const method = rpc.create<int, int>()
-    const never = Slot.create<int>()
-    const server = method.onMessage(async fn(n: int): await never.take())
+    const method = rpc.create<Int, Int>()
+    const never = Slot.create<Int>()
+    const server = method.onMessage(async fn(n: Int): await never.take())
     const reply = method.call(1)
     await runtime.commit()
     drop server
     assert(unanswered(await reply))
   }),
   test("fails a call still queued when its method dies", async fn(): {
-    const reply = rpc.create<int, int>().call(1)
+    const reply = rpc.create<Int, Int>().call(1)
     assert(unanswered(await reply))
   }),
   test("withdraws a call its caller lets go of before a server takes it", async fn(): {
-    const method = rpc.create<int, int>()
-    let served: Array<int> = []
+    const method = rpc.create<Int, Int>()
+    let served: Array<Int> = []
     drop method.call(1)
-    hold _ = method.onMessage(fn(n: int): { served.push(n); n })
+    hold _ = method.onMessage(fn(n: Int): { served.push(n); n })
     assertEq(await method.call(2), Ok{(2)})
     assertEq(served, [2])
   }),

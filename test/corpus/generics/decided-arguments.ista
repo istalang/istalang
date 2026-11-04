@@ -6,71 +6,71 @@
 # overloads asks what such an argument can take; a generic function's type arguments it leaves
 # open come from the type the call is expected to have, and a conversion's from those written.
 
-fn count(xs: Array<int>) -> int: xs.length()
+fn count(xs: Array<Int>) -> Int: xs.length()
 
-fn sum(fs: Array<fn(int) -> int>) -> int:
+fn sum(fs: Array<fn(Int) -> Int>) -> Int:
   let total = 0
   for f in fs:
     total = total + f(1)
   total
 
-fn applied(pair: (int, fn(int) -> int)) -> int: pair.1(pair.0)
+fn applied(pair: (Int, fn(Int) -> Int)) -> Int: pair.1(pair.0)
 
-fn present(pair: (int?, int?)) -> int: (pair.0 ?? 0) + (pair.1 ?? 0)
+fn present(pair: (Int?, Int?)) -> Int: (pair.0 ?? 0) + (pair.1 ?? 0)
 
-fn kind(xs: Array<int>) -> string: "array"
+fn kind(xs: Array<Int>) -> String: "array"
 
-fn kind(n: int) -> string: "int"
+fn kind(n: Int) -> String: "int"
 
-fn shape(m: Map<string, int>) -> string: "map"
+fn shape(m: Map<String, Int>) -> String: "map"
 
-fn shape(p: (int, int?)) -> string: "tuple"
+fn shape(p: (Int, Int?)) -> String: "tuple"
 
 fn same<T>(value: T) -> T: value
 
 fn samePair<T>(left: T, right: T) -> T: right
 
-fn applyTuple<T, U>(x: T, pair: (int, fn(T) -> U)) -> U: pair.1(x)
+fn applyTuple<T, U>(x: T, pair: (Int, fn(T) -> U)) -> U: pair.1(x)
 
 fn applyFirst<T, U>(x: T, fs: Array<fn(T) -> U>) -> U: fs[0](x)
 
 fn applyOptional<T, U>(x: T, f: (fn(T) -> U)?) -> U?:
   f?.(x)
 
-fn picked(n: int) -> int:
+fn picked(n: Int) -> Int:
   present(match n:
     case _: (none, n))
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const flag = true
   const n = 3
-  const maybe: int? = n
-  const names = new Shared<Array<string>>{value: []}
-  const kept: (int, int?) = same((1, none))
-  let assignedItems: Array<int> = [1]
-  let assignedOption: int? = 5
+  const maybe: Int? = n
+  const names = new Shared<Array<String>>{value: []}
+  const kept: (Int, Int?) = same((1, none))
+  let assignedItems: Array<Int> = [1]
+  let assignedOption: Int? = 5
   let assignedCount = 0
   (assignedItems, assignedCount) = ([], 1)
   assignedOption, assignedCount = (none, 2)
   const parts = [
-    string(count([])),
-    string(sum([fn(x): x + 1, fn x: x * 2])),
-    string(applied((5, fn(x): x + 1))),
-    string(present((1, none))),
-    string(present(if flag: (none, 2) else: (1, none))),
-    string(picked(n)),
-    string(count({ const unused = n; [] })),
-    string(same([maybe, none]).length()),
+    String(count([])),
+    String(sum([fn(x): x + 1, fn x: x * 2])),
+    String(applied((5, fn(x): x + 1))),
+    String(present((1, none))),
+    String(present(if flag: (none, 2) else: (1, none))),
+    String(picked(n)),
+    String(count({ const unused = n; [] })),
+    String(same([maybe, none]).length()),
     kind([]),
     shape([:]),
     shape((1, none)),
-    string(names->value.length()),
-    string(kept.0),
-    string(samePair<Array<string?>>([], ["a", none]).length()),
-    string(applyTuple(3, (1, fn x: x * 2))),
-    string(applyFirst(3, [fn x: x + 1, fn x: x * 2])),
-    string(applyOptional(3, if flag: fn x: x * 3 else: fn x: x + 1) ?? 0),
-    string(assignedItems.length()),
-    string((assignedOption ?? 0) * assignedCount),
+    String(names->value.length()),
+    String(kept.0),
+    String(samePair<Array<String?>>([], ["a", none]).length()),
+    String(applyTuple(3, (1, fn x: x * 2))),
+    String(applyFirst(3, [fn x: x + 1, fn x: x * 2])),
+    String(applyOptional(3, if flag: fn x: x * 3 else: fn x: x + 1) ?? 0),
+    String(assignedItems.length()),
+    String((assignedOption ?? 0) * assignedCount),
   ]
   parts.join(" ")

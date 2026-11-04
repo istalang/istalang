@@ -3,32 +3,32 @@
 import helper, Shape from 'names/lib'
 import * as lib from 'names/lib'
 
-const limit: int = 50_000
+const limit: Int = 50_000
 
-extern approvalLimit: int
-extern fn chargeCard(id: string, amount: int) -> Result<string>
+extern approvalLimit: Int
+extern fn chargeCard(id: String, amount: Int) -> Result<String>
 extern sendable struct Queue<T is Sendable>
 extern fn receive<T is Sendable>(self: Queue<T>) -> Future<T>
 
-struct Note { text: string }
+struct Note { text: String }
 
 struct Pair<A, B>:
   first: A
   second: B @Note{"kept for the formatter"}
   meta:
-    tag: string
+    tag: String
 
-struct Money { cents: int }
+struct Money { cents: Int }
 
 enum Verdict:
-  Approved { by: string }
-  Rejected { by: string; reason: string }
+  Approved { by: String }
+  Rejected { by: String; reason: String }
   Expired
 
 trait Zero:
   fn Self.zero() -> Self
 
-type Entries<T> = Array<(string, T)>
+type Entries<T> = Array<(String, T)>
 
 fn Money.zero() -> Money:
   Money{cents: 0}
@@ -36,7 +36,7 @@ fn Money.zero() -> Money:
 fn add(left: Money, right: Money) -> Money:
   Money{cents: left.cents + right.cents}
 
-fn read(self: Note) -> string:
+fn read(self: Note) -> String:
   self.text
 
 fn sum<T is Zero & Addable>(xs: Array<T>) -> T:
@@ -48,11 +48,11 @@ fn sum<T is Zero & Addable>(xs: Array<T>) -> T:
 fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
   Pair{first: p.second, second: p.first, meta: struct{tag: p.meta.tag}}
 
-fn window(start: int, end: int = start + 10) -> int:
+fn window(start: Int, end: Int = start + 10) -> Int:
   end - start
 
 @Note{"matches every verdict"}
-fn describe(v: Verdict) -> string:
+fn describe(v: Verdict) -> String:
   match v:
     case Approved{by}:
       "approved by " + by
@@ -63,25 +63,25 @@ fn describe(v: Verdict) -> string:
     case _:
       "unknown"
 
-fn positives(results: Array<Result<int>>) -> Array<int>:
+fn positives(results: Array<Result<Int>>) -> Array<Int>:
   [for r in results if r is Ok{value} and value > 0: value]
 
-fn counter(start: int) -> fn() -> int:
+fn counter(start: Int) -> fn() -> Int:
   let count = start
-  fn next() -> int:
+  fn next() -> Int:
     count += 1
     count
   next
 
-fn countdown(n: int) -> int:
-  fn loop(left: int) -> int: if left > 0: loop(left - 1) else: 0
+fn countdown(n: Int) -> Int:
+  fn loop(left: Int) -> Int: if left > 0: loop(left - 1) else: 0
   loop(n)
 
-fn factorial() -> int:
-  const fact = fn f(n: int) -> int: if n < 2: 1 else: n * f(n - 1)
+fn factorial() -> Int:
+  const fact = fn f(n: Int) -> Int: if n < 2: 1 else: n * f(n - 1)
   fact(5)
 
-fn pairs(p: (int, int)) -> int:
+fn pairs(p: (Int, Int)) -> Int:
   const a, b = p
   match p:
     case (x, _) if x > a:
@@ -89,10 +89,10 @@ fn pairs(p: (int, int)) -> int:
     case _:
       0
 
-fn note(n: int) -> int:
+fn note(n: Int) -> Int:
   n
 
-async fn watch(box: Queue<int>, stop: Future<unit>) -> Future<int>:
+async fn watch(box: Queue<Int>, stop: Future<Unit>) -> Future<Int>:
   let seen = 0
   defer fn(): note(seen)
   while seen < limit:
@@ -104,7 +104,7 @@ async fn watch(box: Queue<int>, stop: Future<unit>) -> Future<int>:
     seen += got
   seen
 
-fn uses() -> Entries<int>:
+fn uses() -> Entries<Int>:
   const zero = Money.zero()
   const money = zero + Money{cents: approvalLimit}
   const shape: Shape = lib.circle()
@@ -112,7 +112,7 @@ fn uses() -> Entries<int>:
   const verdict: Verdict = Expired
   const first = 1
   const short = Pair{first, second: "y", meta: struct{tag: "u"}}
-  const optional: int? = none
+  const optional: Int? = none
   _ = chargeCard("id", limit)
   drop [money, zero]
   drop [verdict, describe(verdict)]

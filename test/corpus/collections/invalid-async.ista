@@ -2,15 +2,15 @@
 # A collection runs its `index` and `setIndex` at once, inside the place or literal that needs
 # them, so neither may be async (§3.9).
 
-struct Bag { values: Map<string, int> }
+struct Bag { values: Map<String, Int> }
 
 fn Bag.default() -> Bag:
   Bag{values: [:]}
 
-fn index(self: Bag, key: string) -> int:
+fn index(self: Bag, key: String) -> Int:
   self.values[key]
 
-async fn setIndex(self: &Bag, key: string, value: int):
+async fn setIndex(self: &Bag, key: String, value: Int):
   self.values[key] = value
 
 async fn main():

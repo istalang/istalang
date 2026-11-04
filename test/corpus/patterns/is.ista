@@ -3,29 +3,29 @@
 # the body of an `if` or `while`, and the right side of an `and` (§3.11).
 
 enum Shape:
-  Circle { radius: int }
-  Square { side: int }
+  Circle { radius: Int }
+  Square { side: Int }
 
-fn radius(shape: Shape) -> string:
+fn radius(shape: Shape) -> String:
   if shape is Circle{radius}:
-    string(radius)
+    String(radius)
   else:
     "none"
 
-fn classify(r: Result<int>) -> string:
+fn classify(r: Result<Int>) -> String:
   if r is Ok{value as y} and y > 10:
-    "big " + string(y)
+    "big " + String(y)
   else:
     "small"
 
-fn countdown(start: int) -> int:
-  let current: int? = start
+fn countdown(start: Int) -> Int:
+  let current: Int? = start
   let steps = 0
   while current is Some{value} and value > 0:
     steps += 1
     current = if value > 1: value - 1 else: none
   steps
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   (radius(Circle{radius: 7}) + "|" + radius(Square{side: 2}) + "|" + classify(Ok{12})
-    + "|" + classify(Err{Error{message: "x", code: "y"}}) + "|" + string(countdown(3)))
+    + "|" + classify(Err{Error{message: "x", code: "y"}}) + "|" + String(countdown(3)))

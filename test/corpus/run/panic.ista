@@ -1,7 +1,7 @@
 # panic: Division by zero.
 # A bug panics the instance (§3.12); the trace names where each frame stood.
 
-fn ratio(a: int, b: int) -> int:
+fn ratio(a: Int, b: Int) -> Int:
   a // b
 
 async fn main():

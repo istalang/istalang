@@ -1,7 +1,7 @@
 /**
  * Templates (§2).
  *
- * - An untagged template is a `string`. Each value is written as text by its `toString`, found as
+ * - An untagged template is a `String`. Each value is written as text by its `toString`, found as
  *   an operator's function is (resolution/implicit.ts), so a program's types, a type parameter's
  *   requirement and an `any Stringable` all take part; its texts and values are then joined by the
  *   prelude's `join`. A template without values is its text.

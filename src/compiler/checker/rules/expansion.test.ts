@@ -36,7 +36,7 @@ function programMaking(made: readonly Call[]): { text: string; lines: Map<Call, 
   const text: string[] = [];
   const lines = new Map<Call, number>();
   for (let index = 0; index < functionCount; index += 1) {
-    text.push(`fn f${index}<T>(x: T) -> int:`);
+    text.push(`fn f${index}<T>(x: T) -> Int:`);
     for (const call of made.filter(({ from }) => from === index)) {
       lines.set(call, text.length + 1);
       text.push(`  const c${lines.size} = f${call.to}(${call.expanding ? '[x]' : 'x'})`);
@@ -98,8 +98,8 @@ describe('endless instantiation', () => {
 
   it("checks no body a module's own generic functions don't reach", () => {
     const program = stdProgramOf({
-      main: "import helper from 'lib'\nfn useIt() -> int: helper()",
-      lib: 'fn helper() -> int: 1\nfn grow<T>(x: T) -> int:\n  grow([x])',
+      main: "import helper from 'lib'\nfn useIt() -> Int: helper()",
+      lib: 'fn helper() -> Int: 1\nfn grow<T>(x: T) -> Int:\n  grow([x])',
     });
     const checker = checkProgram(program);
     const bodyOf = vi.spyOn(checker, 'bodyOf');

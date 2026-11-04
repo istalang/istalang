@@ -3,7 +3,7 @@
 import * as runtime from 'runtime'
 import * as time from 'time'
 
-fn soon() -> Future<unit>:
+fn soon() -> Future<Unit>:
   time.delay(1ms)
 
 async fn main():

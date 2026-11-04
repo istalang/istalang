@@ -28,7 +28,7 @@ export interface NativeKeys {
   readonly type: (name: string, ...typeArguments: readonly WrittenType[]) => KeyType;
   /** Function `name` taking `parameters`: `time.at(time.Time)`. */
   readonly of: (name: string, ...parameters: readonly NativeParameter[]) => string;
-  /** Static function `name` of type `owner` taking `parameters`: `time.Time.parse(string)`. */
+  /** Static function `name` of type `owner` taking `parameters`: `time.Time.parse(String)`. */
   readonly ofStatic: (
     owner: string,
     name: string,

@@ -17,7 +17,7 @@ struct PurchaseEnv:
   verdicts: FakeQueue<Queue<Verdict>, Verdict>
   cancels: FakeQueue<Queue<Cancel>, Cancel>
   notices: FakeQueue<Queue<Notice>, Notice>
-  charges: Mock<fn(string, int) -> Result<string>>
+  charges: Mock<fn(String, Int) -> Result<String>>
 
 async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
   await withClock(async fn(clock): {
@@ -27,7 +27,7 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
       verdicts: FakeQueue<Queue<Verdict>, Verdict>{make: handle},
       cancels: FakeQueue<Queue<Cancel>, Cancel>{make: handle},
       notices: FakeQueue<Queue<Notice>, Notice>{make: handle},
-      charges: mock(app.chargeCard, fn(id: string, amount: int) -> Result<string>: Ok{value: "r-" + id + "-" + amount}),
+      charges: mock(app.chargeCard, fn(id: String, amount: Int) -> Result<String>: Ok{value: "r-" + id + "-" + amount}),
     }
     hold _ = mock(app.reviewQueue, env.reviews.open)
     hold _ = mock(app.verdicts, env.verdicts.open)
@@ -44,7 +44,7 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
 
 const laptop = PurchaseRequest{id: "p1", item: "laptop", amount: 900}
 
-fn approveAll(env: PurchaseEnv, roles: Array<string>):
+fn approveAll(env: PurchaseEnv, roles: Array<String>):
   for role in roles:
     env.verdicts.post("p1", Verdict{role, ok: true, comment: ""})
 

@@ -2,24 +2,24 @@
 # A tagged template is the call it stands for: `tag(texts, values…)` through a function, a method or
 # a function value, so the tag's parameters decide what its values must be (§2).
 struct Query:
-  text: string
-  count: int
+  text: String
+  count: Int
 
-fn sql(parts: Array<string>, ...values: Array<any Stringable>) -> Query:
+fn sql(parts: Array<String>, ...values: Array<any Stringable>) -> Query:
   Query{text: parts.join("?"), count: values.length()}
 
-fn greet(parts: Array<string>, name: string) -> string:
+fn greet(parts: Array<String>, name: String) -> String:
   parts[0] + name + parts[1]
 
 struct Db:
-  prefix: string
+  prefix: String
 
-fn query(self: Db, parts: Array<string>, ...values: Array<int>) -> string:
+fn query(self: Db, parts: Array<String>, ...values: Array<Int>) -> String:
   self.prefix + parts.join("$")
 
 async fn main():
   const id = 7
   const q = sql`select ${id} from ${"t"}`
   const db = Db{prefix: ">"}
-  const pair = fn(parts: Array<string>, first: int, second: int): `[${first}, ${second}]`
+  const pair = fn(parts: Array<String>, first: Int, second: Int): `[${first}, ${second}]`
   [`${q.text}|${q.count}`, greet`hi ${"x"}!`, db.query`a${1}b${2}`, pair`${1}${2}`]

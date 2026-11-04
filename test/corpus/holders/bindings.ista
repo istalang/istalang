@@ -6,17 +6,17 @@
 
 import * as time from 'time'
 
-fn note(log: Shared<Array<string>>, text: string):
+fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
-async fn sleeper(id: int, log: Shared<Array<string>>):
-  defer fn(): note(log, "stopped " + string(id))
+async fn sleeper(id: Int, log: Shared<Array<String>>):
+  defer fn(): note(log, "stopped " + String(id))
   await time.delay(1h)
 
-fn maybe(id: int, log: Shared<Array<string>>) -> Future<unit>?:
+fn maybe(id: Int, log: Shared<Array<String>>) -> Future<Unit>?:
   sleeper(id, log)
 
-async fn bindings(log: Shared<Array<string>>):
+async fn bindings(log: Shared<Array<String>>):
   match maybe(1, log):
     case Some{value}:
       note(log, "in case")
@@ -32,8 +32,8 @@ async fn bindings(log: Shared<Array<string>>):
     id += 1
   note(log, "after while")
 
-async fn main() -> Future<string>:
-  const empty: Array<string> = []
+async fn main() -> Future<String>:
+  const empty: Array<String> = []
   const log = new Shared{value: empty}
   await bindings(log)
   log->value.join(", ")

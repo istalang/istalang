@@ -11,7 +11,7 @@
 # nor take the function's name, a block's label means nothing after the block, and no name
 # crosses into a nested function.
 
-fn labels(xs: Array<int>):
+fn labels(xs: Array<Int>):
   for x in xs: break missing
   batch:
     for x in xs: continue batch

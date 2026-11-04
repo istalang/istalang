@@ -8,7 +8,7 @@ import type { Invalid } from '../../syntax/node.ts';
 import type { Parser } from '../parser.ts';
 import { parseDelimited } from '../recovery.ts';
 
-/** `(a: int, b = 1, ...rest: Array<T>)`, starting at the `(`. */
+/** `(a: Int, b = 1, ...rest: Array<T>)`, starting at the `(`. */
 export function parseParameters(parser: Parser): readonly (Parameter | Invalid)[] {
   return parseDelimited(parser, '(', () => parseParameter(parser)).items;
 }

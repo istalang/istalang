@@ -64,7 +64,7 @@ const scenarios: readonly Scenario[] = [
     id: 'CA-07',
     place: 'callArgument',
     title: 'Function-value call',
-    src: ['  const f = fn(q: int): q\n  f(‸'],
+    src: ['  const f = fn(q: Int): q\n  f(‸'],
     expect: { has: ['xs'], lacks: ['q:', 'let'] },
   },
   {
@@ -85,7 +85,7 @@ const scenarios: readonly Scenario[] = [
     id: 'CA-10',
     place: 'callArgument',
     title: 'Conversions and generic calls',
-    src: ['  float(‸', '  json.stringify(‸'],
+    src: ['  Float(‸', '  json.stringify(‸'],
     expect: { has: ['xs'], lacks: ['let'] },
   },
   {
@@ -135,7 +135,7 @@ const scenarios: readonly Scenario[] = [
     id: 'NO-06',
     place: ['grammar', 'declaredName', 'grammar', 'declaredName'],
     title: 'Triggers outside their positions',
-    src: ['  const a = [1, ‸', '  const f = fn(a, ‸', '  struct S { a: int, ‸', 'fn g(a: int, ‸'],
+    src: ['  const a = [1, ‸', '  const f = fn(a, ‸', '  struct S { a: Int, ‸', 'fn g(a: Int, ‸'],
     trigger: ',',
     expect: { none: true },
   },

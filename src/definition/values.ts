@@ -2,12 +2,12 @@
  * Values as they are persisted: constants in a Definition, and the heap and registers in a
  * snapshot.
  *
- * In memory an `int` is a bigint and a `float` is a number (docs/arch/architecture.md), so the
+ * In memory an `Int` is a bigint and a `Float` is a number (docs/arch/architecture.md), so the
  * decoded shapes carry no tags for them. JSON can't tell 2 from 2.0, so on disk a float is tagged
  * `{kind: 'float'}` while an integer stays a plain JSON integer: integers are far more common in
  * workflow state. A tagged float also carries what JSON numbers can't (NaN, ±Infinity, -0).
  *
- * `unit` is `null`. Composite values reference types, functions and heap objects by index into
+ * `Unit` is `null`. Composite values reference types, functions and heap objects by index into
  * the Definition's tables and the snapshot's object list (definition.md, "Values").
  *
  * A handle (a slot, future, shared cell or other heap object) exists only inside a running
@@ -29,7 +29,7 @@ const specialFloats = ['NaN', 'Infinity', '-Infinity', '-0'] as const;
 
 type SpecialFloat = (typeof specialFloats)[number];
 
-/** A language `int`: any JSON integer on disk, a bigint in memory. */
+/** A language `Int`: any JSON integer on disk, a bigint in memory. */
 export const integer = z.codec(z.union([z.int(), z.bigint()]), z.bigint(), {
   decode: (onDisk) => BigInt(onDisk),
   encode: (inMemory) => inMemory,

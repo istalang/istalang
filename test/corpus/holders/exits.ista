@@ -6,17 +6,17 @@
 
 import * as time from 'time'
 
-fn note(log: Shared<Array<string>>, text: string):
+fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
-async fn sleeper(id: int, log: Shared<Array<string>>):
-  defer fn(): note(log, "stopped " + string(id))
+async fn sleeper(id: Int, log: Shared<Array<String>>):
+  defer fn(): note(log, "stopped " + String(id))
   await time.delay(1h)
 
-fn early(log: Shared<Array<string>>, n: int) -> int:
+fn early(log: Shared<Array<String>>, n: Int) -> Int:
   defer fn(): note(log, "d-early")
   for i in 0..5:
-    defer fn(): note(log, "iter " + string(i))
+    defer fn(): note(log, "iter " + String(i))
     if i == n:
       break
   while true:
@@ -25,13 +25,13 @@ fn early(log: Shared<Array<string>>, n: int) -> int:
       return 5
   0
 
-async fn viaReturn(log: Shared<Array<string>>) -> Future<int>:
+async fn viaReturn(log: Shared<Array<String>>) -> Future<Int>:
   const s = sleeper(1, log)
   if true:
     return 3
   4
 
-async fn selecting(log: Shared<Array<string>>):
+async fn selecting(log: Shared<Array<String>>):
   await select:
     case time.delay(1ms):
       note(log, "timer")
@@ -39,12 +39,12 @@ async fn selecting(log: Shared<Array<string>>):
       note(log, "never")
   note(log, "after select")
 
-async fn main() -> Future<string>:
-  const empty: Array<string> = []
+async fn main() -> Future<String>:
+  const empty: Array<String> = []
   const log = new Shared{value: empty}
   const r = early(log, 2)
-  note(log, "r=" + string(r))
+  note(log, "r=" + String(r))
   const v = await viaReturn(log)
-  note(log, "v=" + string(v))
+  note(log, "v=" + String(v))
   await selecting(log)
   log->value.join(", ")

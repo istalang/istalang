@@ -22,7 +22,7 @@ const levels = {
 // biome-ignore-end lint/style/useNamingConvention: the keys are the enum's variant names.
 
 export const logNatives = (keys: NativeKeys): Natives<NativeContext & WithLogs> => ({
-  [keys.of('write', keys.type('Level'), 'string', knownTypeKey(wellKnown.json))]: (
+  [keys.of('write', keys.type('Level'), 'String', knownTypeKey(wellKnown.json))]: (
     [level, message, fields],
     context,
   ) => {

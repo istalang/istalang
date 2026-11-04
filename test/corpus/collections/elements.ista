@@ -2,15 +2,15 @@
 # Elements are places (§3.7, §3.9): assigned whole, in part through a field, nested, compounded,
 # passed by `&`, and changed by a method taking `&self`. A copy taken before is untouched (§3.1).
 
-struct Item { count: int }
+struct Item { count: Int }
 
-fn bump(value: &int):
+fn bump(value: &Int):
   value += 1
 
-fn show(xs: Array<int>) -> string:
-  "[" + [for x in xs: string(x)].join(", ") + "]"
+fn show(xs: Array<Int>) -> String:
+  "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let xs = [1, 2]
   const before = xs
   xs[0] = 10
@@ -20,7 +20,7 @@ async fn main() -> Future<string>:
   grid[0][1] = 7
   let counts = ["a": 2]
   counts["a"] += 1
-  let lists: Map<string, Array<int>> = ["x": [1, 2]]
+  let lists: Map<String, Array<Int>> = ["x": [1, 2]]
   lists["x"].push(3)
   lists["y"] = []
   lists["y"].push(4)
@@ -28,12 +28,12 @@ async fn main() -> Future<string>:
   bump(&n[0])
   const parts = [
     show(xs),
-    string(items[0].count),
+    String(items[0].count),
     "[" + [for row in grid: show(row)].join(", ") + "]",
-    string(counts["a"]),
+    String(counts["a"]),
     show(lists["x"]),
     show(lists["y"]),
-    string(n[0]),
+    String(n[0]),
     show(before),
   ]
   parts.join(" ")

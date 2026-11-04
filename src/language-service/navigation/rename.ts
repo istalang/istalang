@@ -14,8 +14,9 @@
  *   name (`main`, the JSON codecs): a type meets a trait through such names (§3.10), so renaming
  *   one could change which traits a type meets; and a parameter named `self`, which makes its
  *   function a method (§3.7). A new name of that kind is refused for the same reason;
- * - a new name that isn't one, is the unnamed `_`, or changes the old name's privacy (§3.13) or
- *   case (§2), which also decides what a bare name in a pattern does (§3.11).
+ * - a new name that isn't one, is the unnamed `_` or a built-in type's (§2), or changes the old
+ *   name's privacy (§3.13) or case (§2), which also decides what a bare name in a pattern does
+ *   (§3.11).
  */
 
 import {
@@ -32,6 +33,7 @@ import {
   bindsInPattern,
   type Convention,
   followsConvention,
+  isBuiltInTypeName,
   isPrivate,
   isUnnamed,
 } from '../../language/naming.ts';
@@ -156,6 +158,9 @@ function newNameRefusal(
   const old = at.name.text;
   if (!isName(newName) || isUnnamed(newName)) {
     return `\`${newName}\` is not a name a declaration can have.`;
+  }
+  if (isBuiltInTypeName(newName)) {
+    return `\`${newName}\` names a built-in type, which no declaration can take (§2).`;
   }
   if (meansMore(program, declared, newName)) {
     return meaningRefusal(newName);

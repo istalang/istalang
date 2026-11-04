@@ -3,25 +3,25 @@
 # returns, a loop body's at the end of each iteration, `continue` included. Several run in
 # reverse, last first. What the function returns is computed before its defers run.
 
-fn note(log: Shared<Array<string>>, text: string):
+fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
-fn blocks(log: Shared<Array<string>>) -> int:
+fn blocks(log: Shared<Array<String>>) -> Int:
   defer fn(): note(log, "outer")
   if true:
     defer fn(): note(log, "inner")
     note(log, "body")
   for i in 0..3:
-    defer fn(): note(log, "iteration " + string(i))
+    defer fn(): note(log, "iteration " + String(i))
     if i == 1:
       continue
-    note(log, "ran " + string(i))
+    note(log, "ran " + String(i))
   defer fn(): note(log, "last")
   note(log, "returning")
   7
 
-async fn main() -> Future<string>:
-  const empty: Array<string> = []
+async fn main() -> Future<String>:
+  const empty: Array<String> = []
   const log = new Shared{value: empty}
   const result = blocks(log)
-  string(result) + ": " + log->value.join(", ")
+  String(result) + ": " + log->value.join(", ")

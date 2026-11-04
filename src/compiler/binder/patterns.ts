@@ -7,7 +7,7 @@
  * apart is what stops a pattern from seeing its own bindings.
  *
  * In a `match` case, a bare name binds a new variable when it is camelCase and refers to a variant
- * or a struct without fields when it is PascalCase (naming.ts), and each binding is owned by the
+ * or a type when it is PascalCase (naming.ts), and each binding is owned by the
  * pattern node that binds it. A declaration's or loop's target only binds, so there a bare name
  * always binds (naming.ts then reports a PascalCase one), and every binding is owned by the
  * declaration, which says whether it is a `let` or a `const`. A qualified name always refers.

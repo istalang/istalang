@@ -1,6 +1,6 @@
 # outcome: "12 6.0 8 8 2"
 # Each instantiation calls what its own type has (§3.10), through generic calls nested in generic
-# calls: `T.zero()` and `+` inside `quad<T>` reach `int`'s, `float`'s and `Money`'s functions.
+# calls: `T.zero()` and `+` inside `quad<T>` reach `Int`'s, `Float`'s and `Money`'s functions.
 
 trait Monoid:
   fn Self.zero() -> Self
@@ -11,10 +11,10 @@ struct Pair<A, B>:
   b: B
 
 struct Money:
-  cents: int
+  cents: Int
 
-fn int.zero() -> int: 0
-fn float.zero() -> float: 0.0
+fn Int.zero() -> Int: 0
+fn Float.zero() -> Float: 0.0
 fn Money.zero() -> Money: Money{cents: 0}
 fn add(left: Money, right: Money) -> Money: Money{cents: left.cents + right.cents}
 
@@ -23,5 +23,5 @@ fn quad<T is Monoid>(x: T) -> T: twice(twice(x)) + T.zero()
 fn wrap<T>(x: T) -> Pair<T, T>: Pair{a: x, b: x}
 fn sumPair<T is Monoid>(p: Pair<T, T>) -> T: p.a + p.b
 
-async fn main() -> Future<string>:
-  string(quad(3)) + " " + string(quad(1.5)) + " " + string(quad(Money{cents: 2}).cents) + " " + string(sumPair(wrap(4))) + " " + string(sumPair<Money>(wrap(Money{cents: 1})).cents)
+async fn main() -> Future<String>:
+  String(quad(3)) + " " + String(quad(1.5)) + " " + String(quad(Money{cents: 2}).cents) + " " + String(sumPair(wrap(4))) + " " + String(sumPair<Money>(wrap(Money{cents: 1})).cents)

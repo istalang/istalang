@@ -7,22 +7,22 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-async fn announce(boxes: Array<Inbox<string>>, text: string, visibleFor: time.Duration):
+async fn announce(boxes: Array<Inbox<String>>, text: String, visibleFor: time.Duration):
   for box in boxes:
     hold _ = box.sendRevertible(text)
   await time.delay(visibleFor)
 
-fn next(box: Inbox<string>) -> string:
+fn next(box: Inbox<String>) -> String:
   select:
     case box.receive() as message:
       message
     else:
       "nothing"
 
-async fn main() -> Future<string>:
-  const a = Inbox.create<string>()
-  const b = Inbox.create<string>()
-  const alone = Inbox.create<string>()
+async fn main() -> Future<String>:
+  const a = Inbox.create<String>()
+  const b = Inbox.create<String>()
+  const alone = Inbox.create<String>()
   a.send("durable")
   const announcing = announce([a, b, alone], "sale", 5ms)
   const got = await b.receive()

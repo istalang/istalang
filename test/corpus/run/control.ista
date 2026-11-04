@@ -2,7 +2,7 @@
 # `if`/`elif`/`else` as expressions, `while` with `break` and `continue`, and `and`/`or` that skip
 # their right side (§4, §3.9): the division by zero on a skipped side never runs.
 
-fn size(n: int) -> string:
+fn size(n: Int) -> String:
   if n < 10: "small" elif n < 100: "medium" else: "large"
 
 async fn main():

@@ -15,9 +15,9 @@ describe('fieldsFunctionOf', () => {
   it('qualifies enum variant field-default functions with their enum name', () => {
     const main = [
       'enum Shape:',
-      '  Circle { r: int = 1 }',
+      '  Circle { r: Int = 1 }',
       'enum Icon:',
-      '  Circle { r: int = 2 }',
+      '  Circle { r: Int = 2 }',
       'async fn main() -> Future<(Shape, Icon)>:',
       '  (Shape.Circle{}, Icon.Circle{})',
     ].join('\n');
@@ -30,8 +30,8 @@ describe('fieldsFunctionOf', () => {
   it("names a struct's default entries after the struct and the field", () => {
     const main = [
       'struct Retry:',
-      '  times: int = 3',
-      '  label: string',
+      '  times: Int = 3',
+      '  label: String',
       'async fn main() -> Future<Retry>: Retry{label: "a"}',
     ].join('\n');
     const names = compiledDefinition(stdProgramOf({ main }), 'main').functions.map(
@@ -45,9 +45,9 @@ describe('fieldsFunctionOf', () => {
       'module',
       [
         'struct Retry:',
-        '  times: int = 3',
+        '  times: Int = 3',
         'enum Shape:',
-        '  Circle { r: int = 1 }',
+        '  Circle { r: Int = 1 }',
         'fn f(): 1',
       ].join('\n'),
     );
@@ -64,7 +64,7 @@ describe('fieldsFunctionOf', () => {
   it('walks as a node whose children are its parameters, never its owner', () => {
     const parsed = parseAs(
       'module',
-      ['struct Retry:', '  times: int = 3', 'enum Shape:', '  Circle { r: int = 1 }'].join('\n'),
+      ['struct Retry:', '  times: Int = 3', 'enum Shape:', '  Circle { r: Int = 1 }'].join('\n'),
     );
     const root = parsed.node;
     if (root.kind !== 'Module') {

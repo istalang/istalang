@@ -3,19 +3,19 @@
 # own: a part a destructuring assignment writes, a compound assignment's result, the unit of a
 # bare `return`, and the unit of a block ending in a statement.
 
-struct Pair { first: int?; second: int }
+struct Pair { first: Int?; second: Int }
 
-struct Count { n: int }
+struct Count { n: Int }
 
-fn add(left: Count?, right: int) -> Count:
+fn add(left: Count?, right: Int) -> Count:
   Count{n: (left?.n ?? 0) + right}
 
-fn early(stop: bool) -> unit?:
+fn early(stop: Bool) -> Unit?:
   if stop:
     return
   none
 
-fn finished() -> unit?:
+fn finished() -> Unit?:
   let n = 0
   n += 1
 
@@ -26,7 +26,7 @@ fn kept<T>(value: T) -> T?:
   held
 
 async fn main():
-  let a: int? = none
+  let a: Int? = none
   let b = 0
   a, b = (1, 2)
   let p = Pair{first: none, second: 0}

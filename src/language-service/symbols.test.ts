@@ -13,7 +13,7 @@ function outline(symbols: readonly DocumentSymbol[]): readonly unknown[] {
 
 describe('the outline', () => {
   it('names a static function as it is called, and selects its own name', () => {
-    const tree = treeOf('struct Pair:', '  first: int', 'fn Pair.make() -> Pair: Pair{first: 1}');
+    const tree = treeOf('struct Pair:', '  first: Int', 'fn Pair.make() -> Pair: Pair{first: 1}');
     const [pair, make] = symbolsOf(tree);
     expect(outline([pair, make].flatMap((symbol) => symbol ?? []))).toEqual([
       ['Pair', 'struct', [['first', 'field']]],
@@ -46,11 +46,11 @@ describe('the outline', () => {
   it("nests a variant's fields under it, and a trait's requirements under the trait", () => {
     const tree = treeOf(
       'enum Shape:',
-      '  Circle{radius: int}',
+      '  Circle{radius: Int}',
       '  Empty',
       'trait Sized:',
-      '  size: int',
-      '  fn area(self) -> int',
+      '  size: Int',
+      '  fn area(self) -> Int',
     );
     expect(outline(symbolsOf(tree))).toEqual([
       [
@@ -73,7 +73,7 @@ describe('the outline', () => {
   });
 
   it('leaves out a declaration whose name the parser did not find', () => {
-    expect(outline(symbolsOf(treeOf('struct :', '  a: int', 'fn f(): 1')))).toEqual([
+    expect(outline(symbolsOf(treeOf('struct :', '  a: Int', 'fn f(): 1')))).toEqual([
       ['f', 'function'],
     ]);
   });

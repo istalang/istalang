@@ -14,17 +14,17 @@ describe('primitive text forms', () => {
   it('read back every int, float and bool as written', () => {
     fc.assert(
       fc.property(fc.bigInt(), (value) => {
-        expect(readPrimitive('int', primitiveText(value))).toBe(value);
+        expect(readPrimitive('Int', primitiveText(value))).toBe(value);
       }),
     );
     fc.assert(
       fc.property(fc.double(), (value) => {
         // JavaScript writes -0 as 0, and so does toString.
-        expect(readPrimitive('float', primitiveText(value))).toBe(Object.is(value, -0) ? 0 : value);
+        expect(readPrimitive('Float', primitiveText(value))).toBe(Object.is(value, -0) ? 0 : value);
       }),
     );
     for (const value of [true, false]) {
-      expect(readPrimitive('bool', primitiveText(value))).toBe(value);
+      expect(readPrimitive('Bool', primitiveText(value))).toBe(value);
     }
   });
 
@@ -32,7 +32,7 @@ describe('primitive text forms', () => {
     fc.assert(
       fc.property(fc.integer(), (whole) => {
         expect(primitiveText(whole)).toMatch(wholeFloat);
-        expect(readPrimitive('int', primitiveText(whole))).toBeUndefined();
+        expect(readPrimitive('Int', primitiveText(whole))).toBeUndefined();
       }),
     );
   });
@@ -40,16 +40,16 @@ describe('primitive text forms', () => {
   it('refuse any other text without throwing', () => {
     fc.assert(
       fc.property(fc.string(), (source) => {
-        const int = readPrimitive('int', source);
+        const int = readPrimitive('Int', source);
         expect(int === undefined || intSyntax.test(source)).toBe(true);
-        const bool = readPrimitive('bool', source);
+        const bool = readPrimitive('Bool', source);
         expect(bool === undefined || source === 'true' || source === 'false').toBe(true);
-        expect(() => readPrimitive('float', source)).not.toThrow();
+        expect(() => readPrimitive('Float', source)).not.toThrow();
       }),
     );
     for (const source of ['', ' 1', '1 ', '0x10', '1_000', 'True', '1e', '--1', 'nan']) {
-      expect(readPrimitive('int', source)).toBeUndefined();
-      expect(readPrimitive('float', source)).toBeUndefined();
+      expect(readPrimitive('Int', source)).toBeUndefined();
+      expect(readPrimitive('Float', source)).toBeUndefined();
     }
   });
 });

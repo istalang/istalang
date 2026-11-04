@@ -6,7 +6,7 @@ import Inbox from 'inbox'
 @Suite{"inbox › pending"}
 fn pending() -> Array<Test>: [
   test("gives the waiting messages, oldest first, without receiving them", async fn(): {
-    const box = Inbox.create<int>()
+    const box = Inbox.create<Int>()
     assertEq(box.pending(), [])
     box.send(1)
     box.send(2)
@@ -15,7 +15,7 @@ fn pending() -> Array<Test>: [
     assertEq(box.pending(), [2])
   }),
   test("leaves out a retracted message", fn(): {
-    const box = Inbox.create<int>()
+    const box = Inbox.create<Int>()
     const held = box.sendRevertible(1)
     box.send(2)
     drop held

@@ -1,13 +1,13 @@
 /**
  * How a type reads in messages (and M7's hovers): the way a programmer would write it,
- * `Pair<int, string>`, `int?`, `fn(int) -> bool`.
+ * `Pair<Int, String>`, `Int?`, `fn(Int) -> Bool`.
  *
  * Nominal types print their declared name without a module: inside a message the source location
  * already says where. A type written through an alias reads as the alias, with its arguments
  * (§3.17), as the programmer wrote it.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
+import { selfType, wellKnown } from '../../../language/well-known.ts';
 import {
   type AnonymousStructType,
   type Constraint,
@@ -40,7 +40,7 @@ export function typeText(type: Type): string {
       return `${head}(${parameters.join(', ')})${tail}`;
     }
     case 'parameter':
-      return type.declaration.kind === 'TraitDeclaration' ? 'Self' : type.declaration.name.text;
+      return type.declaration.kind === 'TraitDeclaration' ? selfType : type.declaration.name.text;
     case 'any':
       return `any ${type.constraints.map(constraintText).join(' & ')}`;
     case 'error':
@@ -79,7 +79,7 @@ export function slotText({ type, reference }: ParameterSlot): string {
 
 /**
  * A constraint of an `any` type as written: its trait's own `Self`, standing for each value's own
- * type, is the default it came from, so trailing ones are left out (`Iterable<int>`).
+ * type, is the default it came from, so trailing ones are left out (`Iterable<Int>`).
  */
 function constraintText({ trait, arguments: typeArguments }: Constraint): string {
   const isOwnSelf = (type: Type | undefined) =>

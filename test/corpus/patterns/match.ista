@@ -4,19 +4,19 @@
 # cases agree on its type, and the first case that matches decides.
 
 enum Decision:
-  Approved { by: string }
-  Rejected { by: string; reason: string }
+  Approved { by: String }
+  Rejected { by: String; reason: String }
   Expired
 
-struct Verdict { role: string; ok: bool }
+struct Verdict { role: String; ok: Bool }
 
-struct Point { x: int; y: int }
+struct Point { x: Int; y: Int }
 
 enum Status { Pending; Shipped; Lost }
 
-struct Order { id: int; status: Status }
+struct Order { id: Int; status: Status }
 
-fn describe(decision: Decision) -> string:
+fn describe(decision: Decision) -> String:
   match decision:
     case Approved{by}:
       "approved by " + by
@@ -25,7 +25,7 @@ fn describe(decision: Decision) -> string:
     case Expired:
       "expired"
 
-fn approver(verdict: Decision?) -> string:
+fn approver(verdict: Decision?) -> String:
   match verdict:
     case Some{value is Approved{by as who}} if who == "cfo":
       who
@@ -34,7 +34,7 @@ fn approver(verdict: Decision?) -> string:
     case _:
       "nobody"
 
-fn size(n: int) -> string:
+fn size(n: Int) -> String:
   match n:
     case 0:
       "zero"
@@ -45,40 +45,40 @@ fn size(n: int) -> string:
     case _:
       "large"
 
-fn where(p: Point) -> string:
+fn where(p: Point) -> String:
   const text = match p:
     case Point{x == 0, y == 0}:
       "origin"
     case Point{x == 0, y as d}:
-      "on axis " + string(d)
+      "on axis " + String(d)
     case Point{y == 0} as q:
-      "on axis " + string(q.x)
+      "on axis " + String(q.x)
     case _:
       "elsewhere"
   "(" + text + ")"
 
-fn pair(t: (int, int)) -> string:
+fn pair(t: (Int, Int)) -> String:
   match t:
     case (a, b):
-      "(" + string(a) + ", " + string(b) + ")"
+      "(" + String(a) + ", " + String(b) + ")"
 
-fn answer(flag: bool) -> string:
+fn answer(flag: Bool) -> String:
   match flag:
     case true: "yes"
     case false: "no"
 
-fn first(words: (string, string)) -> string:
+fn first(words: (String, String)) -> String:
   match words:
     case ("a", _): "first"
     case (_, "b"): "second"
     case _: "neither"
 
-fn tracking(order: Order) -> string:
+fn tracking(order: Order) -> String:
   match order:
     case Order{status == Shipped}: "shipped"
     case _: "other"
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   (describe(Approved{by: "legal"}) + "|" + describe(Rejected{by: "legal", reason: "no contract"})
     + "|" + describe(Expired) + "|" + approver(Decision.Approved{by: "cfo"}) + "|" + size(3)
     + "|" + size(40) + "|" + size(0) + "|" + where(Point{x: 0, y: 0})

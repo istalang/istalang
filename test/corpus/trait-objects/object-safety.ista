@@ -10,7 +10,7 @@
 # is static, and no field is built from Self (§3.10). Its traits are a set of traits.
 
 trait Same:
-  fn same(self: Self, other: Self) -> bool
+  fn same(self: Self, other: Self) -> Bool
 
 trait Zero:
   fn Self.zero() -> Self
@@ -19,13 +19,13 @@ trait Copied:
   fn copied(self: Self) -> Self
 
 trait Counted:
-  fn count(n: int) -> int
+  fn count(n: Int) -> Int
 
 trait Linked:
   next: Self?
 
 trait Named:
-  fn name(self: Self) -> string
+  fn name(self: Self) -> String
 
 fn same(x: any Same):
   ()
@@ -45,11 +45,11 @@ fn linked(x: any Linked):
 fn twice(x: any Named & Named):
   ()
 
-fn number(x: any int):
+fn number(x: any Int):
   ()
 
 fn comparable(x: any Comparable):
   ()
 
-fn iterable(x: any Iterable<int>):
+fn iterable(x: any Iterable<Int>):
   ()

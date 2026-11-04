@@ -61,7 +61,7 @@ its instance is numbered by, so its native sees only JSON:
 
 - The wrapper encodes each argument, calls the native entry, and reads the result
   (`boundary/inbound.ts`): a result that doesn't decode panics the instance (`_hostResult`).
-- The native entry keeps the declared key (`purchase.chargeCard(string, int)`), so a host binds by
+- The native entry keeps the declared key (`purchase.chargeCard(String, Int)`), so a host binds by
   the signature it was written against, and carries its `declaredType` (the result), which the
   runtime holds the host to across deploys (`runtime/boundary/extern-signatures.ts`).
 - An extern returning `Future<T>` hands back a future the host names with a token of its own. The

@@ -29,8 +29,8 @@ import { sliceBounds } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { formatted } from './format.ts';
 
-const optionalInt = knownTypeKey(wellKnown.optional, 'int');
-const strings = knownTypeKey(wellKnown.array, 'string');
+const optionalInt = knownTypeKey(wellKnown.optional, 'Int');
+const strings = knownTypeKey(wellKnown.array, 'String');
 
 const graphemeSegmenter = new Intl.Segmenter('und', { granularity: 'grapheme' });
 
@@ -41,21 +41,21 @@ export const stringsNatives = (keys: NativeKeys): Natives<NativeContext> => ({
 });
 
 const reading = (keys: NativeKeys): Natives<NativeContext> => ({
-  [keys.of('indexOf', 'string', 'string', 'int')]: ([s, search, from]) => {
+  [keys.of('indexOf', 'String', 'String', 'Int')]: ([s, search, from]) => {
     const whole = text(s);
     return position(whole, whole.indexOf(text(search), utf16Offset(whole, Number(int(from)))));
   },
-  [keys.of('lastIndexOf', 'string', 'string')]: ([s, search]) => {
+  [keys.of('lastIndexOf', 'String', 'String')]: ([s, search]) => {
     const whole = text(s);
     return position(whole, whole.lastIndexOf(text(search)));
   },
-  [keys.of('startsWith', 'string', 'string')]: ([s, prefix]) => text(s).startsWith(text(prefix)),
-  [keys.of('endsWith', 'string', 'string')]: ([s, suffix]) => text(s).endsWith(text(suffix)),
-  [keys.of('utf16Length', 'string')]: ([s]) => BigInt(text(s).length),
+  [keys.of('startsWith', 'String', 'String')]: ([s, prefix]) => text(s).startsWith(text(prefix)),
+  [keys.of('endsWith', 'String', 'String')]: ([s, suffix]) => text(s).endsWith(text(suffix)),
+  [keys.of('utf16Length', 'String')]: ([s]) => BigInt(text(s).length),
 });
 
 const splitting = (keys: NativeKeys): Natives<NativeContext> => ({
-  [keys.of('slice', 'string', 'int', optionalInt)]: ([s, start, end]) => {
+  [keys.of('slice', 'String', 'Int', optionalInt)]: ([s, start, end]) => {
     const whole = text(s);
     const last = optionalValue(end);
     const bounds = sliceBounds(
@@ -65,30 +65,30 @@ const splitting = (keys: NativeKeys): Natives<NativeContext> => ({
     );
     return codePointSlice(whole, bounds.start, bounds.end);
   },
-  [keys.of('split', 'string', 'string')]: ([s, separator]) => {
+  [keys.of('split', 'String', 'String')]: ([s, separator]) => {
     const by = text(separator);
     return arrayOf(by === '' ? codePoints(text(s)) : text(s).split(by));
   },
-  [keys.of('trim', 'string')]: ([s]) => text(s).trim(),
-  [keys.of('trimStart', 'string')]: ([s]) => text(s).trimStart(),
-  [keys.of('trimEnd', 'string')]: ([s]) => text(s).trimEnd(),
-  [keys.of('graphemes', 'string')]: ([s]) =>
+  [keys.of('trim', 'String')]: ([s]) => text(s).trim(),
+  [keys.of('trimStart', 'String')]: ([s]) => text(s).trimStart(),
+  [keys.of('trimEnd', 'String')]: ([s]) => text(s).trimEnd(),
+  [keys.of('graphemes', 'String')]: ([s]) =>
     arrayOf([...graphemeSegmenter.segment(text(s))].map(({ segment }) => segment)),
 });
 
 const building = (keys: NativeKeys): Natives<NativeContext> => ({
-  [keys.of('padStart', 'string', 'int', 'string')]: ([s, length, fill]) =>
+  [keys.of('padStart', 'String', 'Int', 'String')]: ([s, length, fill]) =>
     padding(text(s), int(length), text(fill)) + text(s),
-  [keys.of('padEnd', 'string', 'int', 'string')]: ([s, length, fill]) =>
+  [keys.of('padEnd', 'String', 'Int', 'String')]: ([s, length, fill]) =>
     text(s) + padding(text(s), int(length), text(fill)),
-  [keys.of('repeat', 'string', 'int')]: ([s, count]) => repeated(text(s), int(count)),
-  [keys.of('replace', 'string', 'string', 'string')]: ([s, search, replacement]) =>
+  [keys.of('repeat', 'String', 'Int')]: ([s, count]) => repeated(text(s), int(count)),
+  [keys.of('replace', 'String', 'String', 'String')]: ([s, search, replacement]) =>
     replacedFirst(text(s), text(search), text(replacement)),
-  [keys.of('replaceAll', 'string', 'string', 'string')]: ([s, search, replacement]) =>
+  [keys.of('replaceAll', 'String', 'String', 'String')]: ([s, search, replacement]) =>
     replacedAll(text(s), text(search), text(replacement)),
-  [keys.of('toUpperCase', 'string')]: ([s]) => text(s).toUpperCase(),
-  [keys.of('toLowerCase', 'string')]: ([s]) => text(s).toLowerCase(),
-  [keys.of('format', 'string', restKey(strings))]: ([template, values]) =>
+  [keys.of('toUpperCase', 'String')]: ([s]) => text(s).toUpperCase(),
+  [keys.of('toLowerCase', 'String')]: ([s]) => text(s).toLowerCase(),
+  [keys.of('format', 'String', restKey(strings))]: ([template, values]) =>
     formatted(text(template), elementsOf(values).map(text)),
 });
 

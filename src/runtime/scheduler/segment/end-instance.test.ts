@@ -11,11 +11,11 @@ import { testRuntime } from '../../runtime.test-kit.ts';
 
 const program = compiledText(
   [
-    'extern fn note(text: string)',
-    'extern fn approval() -> Future<bool>',
-    'extern fn gate() -> Future<int>',
+    'extern fn note(text: String)',
+    'extern fn approval() -> Future<Bool>',
+    'extern fn gate() -> Future<Int>',
     '',
-    'async fn child() -> Future<int>:',
+    'async fn child() -> Future<Int>:',
     '  await select:',
     '    case child.disposing():',
     '      note("child cleaned up")',
@@ -23,7 +23,7 @@ const program = compiledText(
     '    case gate():',
     '      1',
     '',
-    'async fn main() -> Future<int>:',
+    'async fn main() -> Future<Int>:',
     '  const running = child()',
     '  if not await approval():',
     '    panic("refused")',
@@ -35,7 +35,7 @@ describe('terminating an instance', () => {
   it("runs the cleanup of a call its root held, as that call's disposal", () => {
     const notes: unknown[] = [];
     const host: HostExterns = {
-      'main.note(string)': ([text]) => {
+      'main.note(String)': ([text]) => {
         notes.push(text);
         return null;
       },

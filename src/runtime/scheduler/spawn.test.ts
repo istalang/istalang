@@ -19,10 +19,10 @@ import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 /** `main` spawning two children that each wait before giving their outcome. */
 const spawningMain = [
   "import * as time from 'time'",
-  'async fn child(n: int) -> Future<int>:',
+  'async fn child(n: Int) -> Future<Int>:',
   '  await time.delay(10ms)',
   '  n * 2',
-  'async fn main() -> Future<int>:',
+  'async fn main() -> Future<Int>:',
   '  spawn child(1)',
   '  await time.delay(1ms)',
   '  spawn child(2)',
@@ -97,9 +97,9 @@ describe('spawning an instance', () => {
   it("carries a sendable closure's captures into the child", () => {
     const text = compiledText(
       [
-        'async fn main() -> Future<int>:',
+        'async fn main() -> Future<Int>:',
         '  const base = 40',
-        '  const add = fn(n: int): base + n',
+        '  const add = fn(n: Int): base + n',
         '  spawn add(2)',
         '  0',
       ].join('\n'),

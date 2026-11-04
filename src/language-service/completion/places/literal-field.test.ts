@@ -77,13 +77,13 @@ describe('field completion offers exactly what a literal may set', () => {
 
   it("leaves out a one-field struct's field once an item gives it by position", () => {
     const fieldsOffered = (...lines: readonly string[]) => {
-      const { program, module, offset } = programAt('struct Box:', '  value: int', ...lines);
+      const { program, module, offset } = programAt('struct Box:', '  value: Int', ...lines);
       return completionsAt(program, module, offset)
         .filter(({ kind }) => kind === 'field')
         .map(({ name }) => name);
     };
-    expect(fieldsOffered('fn t(v: int):', '  let b = Box{5, ‸}', '  0')).toEqual([]);
-    expect(fieldsOffered('fn t(v: int):', '  let b = Box{(v), ‸}', '  0')).toEqual([]);
-    expect(fieldsOffered('fn t(v: int):', '  let b = Box{‸}', '  0')).toEqual(['value']);
+    expect(fieldsOffered('fn t(v: Int):', '  let b = Box{5, ‸}', '  0')).toEqual([]);
+    expect(fieldsOffered('fn t(v: Int):', '  let b = Box{(v), ‸}', '  0')).toEqual([]);
+    expect(fieldsOffered('fn t(v: Int):', '  let b = Box{‸}', '  0')).toEqual(['value']);
   });
 });

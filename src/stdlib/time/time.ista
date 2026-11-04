@@ -8,45 +8,45 @@
 import * as json from 'json'
 
 struct Duration:
-  value: int
+  value: Int
 
 struct Time:
-  value: int
+  value: Int
 
 extern fn now() -> Time
 
-extern fn at(time: Time) -> Future<unit>
+extern fn at(time: Time) -> Future<Unit>
 
 fn add(left: Time, right: Duration) -> Time: Time{value: left.value + right.value}
 
 fn add(left: Duration, right: Duration) -> Duration: Duration{value: left.value + right.value}
 
-fn multiply(left: Duration, right: int) -> Duration: Duration{value: left.value * right} # Duration * int
+fn multiply(left: Duration, right: Int) -> Duration: Duration{value: left.value * right} # Duration * int
 
-fn delay(duration: Duration) -> Future<unit>: at(now() + duration)
+fn delay(duration: Duration) -> Future<Unit>: at(now() + duration)
 
 # Times and durations are ordered as the milliseconds they hold (§3.10 `Comparable`).
-fn compare(left: Time, right: Time) -> int: compare(left.value, right.value)
+fn compare(left: Time, right: Time) -> Int: compare(left.value, right.value)
 
-fn compare(left: Duration, right: Duration) -> int: compare(left.value, right.value)
+fn compare(left: Duration, right: Duration) -> Int: compare(left.value, right.value)
 
 # ISO 8601 text (§3.8, §9): a time as JavaScript's Date.toJSON writes it, a duration as
 # Temporal.Duration does. Both are Stringable and Parsable, and cross as JSON as that text.
-extern fn toString(self: Time) -> string
+extern fn toString(self: Time) -> String
 
-extern fn toString(self: Duration) -> string
+extern fn toString(self: Duration) -> String
 
-extern fn Time.parse(text: string) -> Result<Time>
+extern fn Time.parse(text: String) -> Result<Time>
 
-extern fn Duration.parse(text: string) -> Result<Duration>
+extern fn Duration.parse(text: String) -> Result<Duration>
 
 fn toJson(self: Time) -> json.Json: json.encodeText(self)
 
 fn toJson(self: Duration) -> json.Json: json.encodeText(self)
 
-fn Time.fromJson(value: json.Json, path: string) -> Result<Time>: json.decodeText(value, path)
+fn Time.fromJson(value: json.Json, path: String) -> Result<Time>: json.decodeText(value, path)
 
-fn Duration.fromJson(value: json.Json, path: string) -> Result<Duration>:
+fn Duration.fromJson(value: json.Json, path: String) -> Result<Duration>:
   json.decodeText(value, path)
 
 # Time zones (§3.8). A zone is an IANA name, a DateTime what a wall clock reads, with no zone. The
@@ -59,40 +59,40 @@ extern sendable struct Zone
 extern fn utc() -> Zone
 
 struct DateTime:
-  year: int
-  month: int
-  day: int
-  hour: int = 0
-  minute: int = 0
-  second: int = 0
-  millisecond: int = 0
+  year: Int
+  month: Int
+  day: Int
+  hour: Int = 0
+  minute: Int = 0
+  second: Int = 0
+  millisecond: Int = 0
 
 # Reads an IANA name in any case; a fixed offset, such as `+01:00`, is no IANA zone.
-extern fn Zone.parse(id: string) -> Result<Zone>
+extern fn Zone.parse(id: String) -> Result<Zone>
 
 # The canonical id: `Europe/Berlin`.
-extern fn toString(self: Zone) -> string
+extern fn toString(self: Zone) -> String
 
 fn toJson(self: Zone) -> json.Json: json.encodeText(self)
 
-fn Zone.fromJson(value: json.Json, path: string) -> Result<Zone>: json.decodeText(value, path)
+fn Zone.fromJson(value: json.Json, path: String) -> Result<Zone>: json.decodeText(value, path)
 
 # As Temporal.PlainDateTime writes it: `2026-10-25T13:00:00`, a fraction of a second only when
 # there is one.
-extern fn toString(self: DateTime) -> string
+extern fn toString(self: DateTime) -> String
 
-extern fn DateTime.parse(text: string) -> Result<DateTime>
+extern fn DateTime.parse(text: String) -> Result<DateTime>
 
 fn toJson(self: DateTime) -> json.Json: json.encodeText(self)
 
-fn DateTime.fromJson(value: json.Json, path: string) -> Result<DateTime>:
+fn DateTime.fromJson(value: json.Json, path: String) -> Result<DateTime>:
   json.decodeText(value, path)
 
 # 1 for Monday up to 7 for Sunday (ISO 8601).
-extern fn weekday(self: DateTime) -> int
+extern fn weekday(self: DateTime) -> Int
 
 # `days` calendar days later, at the same wall-clock time, so it survives a change of offset.
-extern fn addDays(self: DateTime, days: int) -> DateTime
+extern fn addDays(self: DateTime, days: Int) -> DateTime
 
 # What a wall clock in `zone` reads at this time.
 extern fn inZone(self: Time, zone: Zone) -> DateTime
@@ -102,4 +102,4 @@ extern fn inZone(self: Time, zone: Zone) -> DateTime
 extern fn Time.of(dateTime: DateTime, zone: Zone) -> Time
 
 # ISO 8601 with `zone`'s offset, `2026-10-25T13:00:00.000+01:00`, which `Time.parse` reads.
-extern fn format(self: Time, zone: Zone) -> string
+extern fn format(self: Time, zone: Zone) -> String

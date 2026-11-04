@@ -6,17 +6,17 @@
 # an extern's types may not contain one (§9); and a function value capturing a `let`, which is a
 # `Shared`, has a plain function type, which doesn't fit where a sendable one is expected.
 
-struct Handler { run: sendable fn(int) -> int }
+struct Handler { run: sendable fn(Int) -> Int }
 
-extern fn register(f: sendable fn(int) -> int)
+extern fn register(f: sendable fn(Int) -> Int)
 
 extern fn handlers() -> Array<Handler>
 
 fn uses():
   let count = 0
-  const f: sendable fn() -> int = fn(): count
+  const f: sendable fn() -> Int = fn(): count
   sent(fn(): count)
   count += 1
 
-fn sent(f: sendable fn() -> int):
+fn sent(f: sendable fn() -> Int):
   _ = f

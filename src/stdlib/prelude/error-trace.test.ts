@@ -12,7 +12,7 @@ const declarations = [
   'fn failure() -> Error:',
   '  Error{message: "m", code: "c"}',
   '',
-  'fn traced() -> string:',
+  'fn traced() -> String:',
   '  failure().trace',
   '',
 ].join('\n');
@@ -31,7 +31,7 @@ const frameLines = [
 const builtInDefaults = [
   'struct Job:',
   '  failure: Error = Error{message: "m", code: "c"}',
-  '  number: Result<int> = int.parse("x")',
+  '  number: Result<Int> = Int.parse("x")',
   'fn made() -> Job:',
   '  Job{}',
   '',
@@ -55,13 +55,13 @@ function linesOf(outcome: unknown): readonly unknown[] {
 
 describe("an Error's trace", () => {
   it('names each frame, innermost first, at the line and column it stands at', () => {
-    expect(linesOf(mainGives('string', 'traced()', declarations))).toEqual(
+    expect(linesOf(mainGives('String', 'traced()', declarations))).toEqual(
       frameLines.map((line) => expect.stringMatching(line)),
     );
   });
 
   it("built in a default, starts at the default's line, as a panic there would", () => {
-    expect(linesOf(mainGives('string', 'made().failure.trace', builtInDefaults))).toEqual([
+    expect(linesOf(mainGives('String', 'made().failure.trace', builtInDefaults))).toEqual([
       expect.stringMatching(failureLine),
       expect.stringMatching(madeLine),
       expect.stringMatching(mainLine),
@@ -70,7 +70,7 @@ describe("an Error's trace", () => {
 
   it("built by a native in a default, starts at the default's line, as a panic there would", () => {
     const read = 'match made().number:\n    case Ok{value}: ""\n    case Err{error}: error.trace';
-    expect(linesOf(mainGives('string', read, builtInDefaults))).toEqual([
+    expect(linesOf(mainGives('String', read, builtInDefaults))).toEqual([
       expect.stringMatching(numberLine),
       expect.stringMatching(madeLine),
       expect.stringMatching(mainMatchLine),

@@ -5,19 +5,19 @@
  * - Matching is exact, except at the top of a match, where a `T` may fill a `T?` (§2), a plain
  *   function an async one (§3.14), and a one-element tuple and its element each other (§3.15): a
  *   conversion applies to a whole value, never inside a collection or a function type.
- * - A pack binds only what can stand for one, a tuple, `unit` or a pack (§3.5); a function type's
+ * - A pack binds only what can stand for one, a tuple, `Unit` or a pack (§3.5); a function type's
  *   pack binds to the parameters past the fixed ones (types/type.ts, `sameShape`).
  * - The types found for a parameter must agree, whatever order the arguments come in: a later
  *   one fits the bound type (a conversion included), or the bound type fits it, which then binds, so
- *   `same(o, 2)` and `same(2, o)` both bind `T` to `int?` for `o: int?`. Two types neither fits
+ *   `same(o, 2)` and `same(2, o)` both bind `T` to `Int?` for `o: Int?`. Two types neither fits
  *   conflict, and inference fails for that parameter.
  * - Only the top of a match converts. Anywhere else, inside a type or where a value must have its
  *   type exactly (a reference, a spread's items, a witness), the type found is the parameter's
  *   own: a bound type there must be the same, and once found there it never widens, so
- *   `set(o, &n)` and `set(&n, o)` conflict for `n: int`, as a wrapped `n` couldn't be its place.
- * - The error type fits anything and binds nothing, so one mistake is reported once. `never` fits
+ *   `set(o, &n)` and `set(&n, o)` conflict for `n: Int`, as a wrapped `n` couldn't be its place.
+ * - The error type fits anything and binds nothing, so one mistake is reported once. `Never` fits
  *   anything too and binds nothing while matching; a parameter it alone met where a value must
- *   have its type exactly is `never` only once the expected result and defaults have had their say
+ *   have its type exactly is `Never` only once the expected result and defaults have had their say
  *   (complete.ts, `bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
  */
 
@@ -45,7 +45,7 @@ export class Inference {
   /** The parameters a type was found for where it must be theirs exactly, which never widen. */
   readonly #pinned = new Set<ParameterKey>();
   readonly #conflicts = new Set<ParameterKey>();
-  /** The parameters `never` met where a value must have its type exactly. */
+  /** The parameters `Never` met where a value must have its type exactly. */
   readonly #metNever = new Set<ParameterKey>();
 
   constructor(unknowns: Iterable<ParameterKey>, fitting: Fitting, known?: Substitution) {
@@ -101,7 +101,7 @@ export class Inference {
     }
   }
 
-  /** Binds `never` to each parameter only `never` met, once nothing else is left to bind it. */
+  /** Binds `Never` to each parameter only `Never` met, once nothing else is left to bind it. */
   bindNeverWhereOpen(): void {
     for (const parameter of this.#metNever) {
       this.bindIfOpen(parameter, neverType);
@@ -172,7 +172,7 @@ export class Inference {
         declared,
         given,
         (part, other) => this.#matchExact(part, other),
-        (part, other) => this.#matchExact(part, other) || isPrimitive(other, 'never'),
+        (part, other) => this.#matchExact(part, other) || isPrimitive(other, 'Never'),
       )
     );
   }
@@ -212,10 +212,10 @@ export class Inference {
 
   /**
    * Binds `parameter` where `given` is its type exactly, pinning it: the type bound is the same.
-   * `never` fits whatever is bound, so it binds nothing, but is noted for completion.
+   * `Never` fits whatever is bound, so it binds nothing, but is noted for completion.
    */
   #bindExactly(parameter: ParameterKey, given: Type): boolean {
-    if (isPrimitive(given, 'never') && !isPack(parameterType(parameter))) {
+    if (isPrimitive(given, 'Never') && !isPack(parameterType(parameter))) {
       this.#metNever.add(parameter);
       return true;
     }

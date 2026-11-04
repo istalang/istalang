@@ -6,21 +6,21 @@
 import Inbox from 'inbox'
 
 struct Status:
-  text: string
+  text: String
 
 struct Command:
-  n: int
+  n: Int
 
-async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> Future<string>:
+async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> Future<String>:
   while true:
     await select:
       case mine.receive() as command:
-        parent.deref()?.send(Status{text: "pong:" + string(command.n)})
+        parent.deref()?.send(Status{text: "pong:" + String(command.n)})
       case parent.disposed():
         return "child saw the inbox go"
   "never"
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const commands = Inbox.create<Command>()
   let replies = ""
   const running = {

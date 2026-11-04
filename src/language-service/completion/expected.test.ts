@@ -8,9 +8,9 @@ import { placeAt } from './place.ts';
 
 const declarations = [
   'enum Color { Red; Green }',
-  'struct Cfg { color: Color; n: int; note: string }',
-  'fn paint(c: Color, n: int) -> int: n',
-  'fn show(cfg: Cfg) -> int: cfg.n',
+  'struct Cfg { color: Color; n: Int; note: String }',
+  'fn paint(c: Color, n: Int) -> Int: n',
+  'fn show(cfg: Cfg) -> Int: cfg.n',
   '',
 ];
 
@@ -45,9 +45,9 @@ describe('the type expected where a value is written', () => {
     ['a comparison', '  let b = col == ‸', 'Color'],
     ['a literal spread', '  const c = Cfg{...‸', 'Cfg'],
     ["a call's argument", '  paint(‸', 'Color'],
-    ["a call's later argument", '  paint(Color.Red, ‸', 'int'],
-    ['a named argument', '  paint(n: ‸', 'int'],
-    ["a literal's field inside an argument", '  paint(Cfg{note: ‸', 'string'],
+    ["a call's later argument", '  paint(Color.Red, ‸', 'Int'],
+    ['a named argument', '  paint(n: ‸', 'Int'],
+    ["a literal's field inside an argument", '  paint(Cfg{note: ‸', 'String'],
     ['a name already written', '  let c: Color = co‸l', 'Color'],
     ["an argument's literal, its name being written", '  show(Cf‸{n: 1})', 'Cfg'],
     ["a `match` case's pattern", '  match col:\n    case ‸', 'Color'],
@@ -71,7 +71,7 @@ describe('the variants written bare', () => {
   it("are the expected enum's, then those of the enums inside its optionals", () => {
     expect(variants('  let c: Color = ‸')).toEqual(['Red', 'Green']);
     expect(variants('  let c: Color? = ‸')).toEqual(['Some', 'None', 'Red', 'Green']);
-    expect(variants('  let n: int? = ‸')).toEqual(['Some', 'None']);
+    expect(variants('  let n: Int? = ‸')).toEqual(['Some', 'None']);
   });
 
   it('are none where no enum is expected', () => {

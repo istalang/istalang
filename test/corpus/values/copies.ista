@@ -5,9 +5,9 @@
 # variable leaves the copy as it was at the call; nested tuples copy deeply; top-level constants
 # destructure into constants of their own.
 
-struct P { x: int; y: int }
+struct P { x: Int; y: Int }
 
-struct W { p: P; n: (int, int) }
+struct W { p: P; n: (Int, Int) }
 
 const base = (1, P{x: 2, y: 3})
 
@@ -20,7 +20,7 @@ fn resetWhole(w: &W):
   w.p = P{x: -1, y: -1}
   w.n = (7, 7)
 
-fn both(a: &int, b: &int):
+fn both(a: &Int, b: &Int):
   a += 1
   b += 10
 

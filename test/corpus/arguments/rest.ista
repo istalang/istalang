@@ -3,25 +3,25 @@
 # spread among them spreading anything iterable (§3.3); named, it takes a whole array. Fixed arity
 # beats a rest parameter (§3.7). A function with a rest parameter, named as a value, takes the
 # array as one argument (§3.14).
-fn sum(...numbers: Array<int>) -> int:
+fn sum(...numbers: Array<Int>) -> Int:
   let total = 0
   for each in numbers:
     total += each
   total
 
-fn words(first: string = "", ...rest: Array<string>) -> int:
+fn words(first: String = "", ...rest: Array<String>) -> Int:
   rest.length()
 
-fn pick(x: int) -> int: 1
-fn pick(...xs: Array<int>) -> int: 2
+fn pick(x: Int) -> Int: 1
+fn pick(...xs: Array<Int>) -> Int: 2
 
-fn count<T>(...items: Array<T>) -> int:
+fn count<T>(...items: Array<T>) -> Int:
   items.length()
 
-fn apply(f: fn(string, Array<string>) -> int, xs: Array<string>) -> int:
+fn apply(f: fn(String, Array<String>) -> Int, xs: Array<String>) -> Int:
   f("", xs)
 
-async fn main() -> Future<Array<int>>:
+async fn main() -> Future<Array<Int>>:
   const more = ["c", "d"]
   [
     sum(), sum(1), sum(1, 2), sum(...[1, 2], 3),

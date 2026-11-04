@@ -12,41 +12,41 @@
 # `?.[` for an index and `?.(` for a call, whatever the value inside then takes. A prefix `*` has
 # no such form, so it is only refused.
 
-shared struct Counter { count: int }
+shared struct Counter { count: Int }
 
-struct Pair { a: int }
+struct Pair { a: Int }
 
-struct Box { c: Counter?; t: (int, int)?; xs: Array<int>?; f: (fn(int) -> int)?; p: Pair? }
+struct Box { c: Counter?; t: (Int, Int)?; xs: Array<Int>?; f: (fn(Int) -> Int)?; p: Pair? }
 
-fn size(self: Pair) -> int:
+fn size(self: Pair) -> Int:
   1
 
-fn whole(b: Box) -> int:
+fn whole(b: Box) -> Int:
   const value = *b.c
   0
 
-fn behind(b: Box) -> int:
+fn behind(b: Box) -> Int:
   b.c.count
 
-fn element(b: Box) -> int:
+fn element(b: Box) -> Int:
   b.t.0
 
-fn indexed(b: Box) -> int:
+fn indexed(b: Box) -> Int:
   b.xs[0]
 
-fn called(b: Box) -> int:
+fn called(b: Box) -> Int:
   b.f(1)
 
-fn method(b: Box) -> int:
+fn method(b: Box) -> Int:
   b.p.size()
 
-fn field(b: Box) -> int:
+fn field(b: Box) -> Int:
   b.p.a
 
-fn through(c: Counter?) -> int?:
+fn through(c: Counter?) -> Int?:
   c?.count
 
-fn unknown(b: Box) -> int:
+fn unknown(b: Box) -> Int:
   b.p.zzz
 
 async fn main(): 0

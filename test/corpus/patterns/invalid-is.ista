@@ -5,18 +5,18 @@
 # only where the match is known to have succeeded: never after the `if`, and never through `or`.
 
 enum Shape:
-  Circle { radius: int }
-  Square { side: int }
+  Circle { radius: Int }
+  Square { side: Int }
 
-fn literal(n: int) -> bool:
+fn literal(n: Int) -> Bool:
   n is "one"
 
-fn afterIf(shape: Shape) -> int:
+fn afterIf(shape: Shape) -> Int:
   if shape is Circle{radius}:
     return radius
   radius
 
-fn throughOr(shape: Shape, wide: bool) -> int:
+fn throughOr(shape: Shape, wide: Bool) -> Int:
   if shape is Circle{radius} or wide:
     radius
   else:

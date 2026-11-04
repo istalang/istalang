@@ -1,8 +1,8 @@
 /**
- * The `<` and `>` tokens enclosing a list of types (`Map<K, V>`, `fn f<T>`, `f<int>()`): brackets
+ * The `<` and `>` tokens enclosing a list of types (`Map<K, V>`, `fn f<T>`, `f<Int>()`): brackets
  * there, not the comparisons the same tokens are elsewhere. Only the tree knows which they are, by
  * the lists it holds: the token before a list's first type opens it, and the first token ending
- * past its last type closes it. One `>>` token can close two lists at once (`Array<Array<int>>`).
+ * past its last type closes it. One `>>` token can close two lists at once (`Array<Array<Int>>`).
  */
 
 import { spanIn } from '../../compiler/syntax/positions.ts';

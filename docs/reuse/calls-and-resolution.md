@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-29
+last_updated: 2026-11-04
 tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ---
 
@@ -43,7 +43,8 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - check aliasing of `&` arguments or destructuring places → `checkReferencedPlaces`, `checkDistinctPlaces` (`src/compiler/checker/calls/places.ts`)
 - mark a method receiver changed → `changeReceiver` (`src/compiler/checker/calls/places.ts`); test if a variable may change → `context.variables.isChangeable` (`src/compiler/checker/statements/variables.ts`)
 - resolve a type or fieldless struct in value/pattern position → `namedType`, `nameNodeOf`, `fieldlessStructOf` (`src/compiler/checker/resolution/named.ts`)
-- the type a binder entity names (a declared type with no arguments, a primitive, an alias) → `entityType` (`src/compiler/checker/resolution/named.ts`)
+- the type a binder entity names (a declared type with no arguments, a primitive, an alias) → `entityType` (`src/compiler/checker/types/named-types.ts`)
+- the type a pattern naming an entity tests for, what it downcasts an `any` value to, or whether it names a value's own type → `patternTypeOf`, `downcastTargetOf`, `namesOwnType` (`src/compiler/checker/types/named-types.ts`); the checker's patterns and completion both read them, never their own copy
 - choose a bare or qualified enum variant against an expected type → `chooseVariant` (`src/compiler/checker/resolution/named.ts`)
 - check `for`/comprehension/spread iteration → `checkIterated`, `iteratedItem`, `checkLoopOver` (`src/compiler/checker/rules/iteration.ts`)
 

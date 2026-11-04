@@ -110,7 +110,7 @@ export function enclosed(
   ]);
 }
 
-/** Fields in braces: `{ a: int; b: int }` on one line, else one field per line. */
+/** Fields in braces: `{ a: Int; b: Int }` on one line, else one field per line. */
 export function fieldList(
   printer: Printer,
   owner: SyntaxNode,

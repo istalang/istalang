@@ -19,7 +19,7 @@ import {
   keyTypeText,
 } from '../../definition/extern-key.ts';
 import { staticName } from '../../language/static-names.ts';
-import { qualifiedName } from '../../language/well-known.ts';
+import { qualifiedName, selfType } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type } from '../checker/types/type.ts';
@@ -119,7 +119,7 @@ function passingOf(parameter: KeyedParameter): 'value' | 'reference' | 'rest' {
   return parameter.node?.isRest === true ? 'rest' : 'value';
 }
 
-/** `type` spelled as keys spell it: module-qualified, without sugar (`prelude.Optional<int>`). */
+/** `type` spelled as keys spell it: module-qualified, without sugar (`prelude.Optional<Int>`). */
 export function spelledType(checker: Checker, type: Type): string {
   return keyTypeText(keyType(checker, type));
 }
@@ -131,7 +131,7 @@ function keyType(checker: Checker, type: Type): KeyType {
     case 'parameter':
       return {
         kind: 'parameter',
-        name: type.declaration.kind === 'TraitDeclaration' ? 'Self' : type.declaration.name.text,
+        name: type.declaration.kind === 'TraitDeclaration' ? selfType : type.declaration.name.text,
       };
     case 'any':
       return {

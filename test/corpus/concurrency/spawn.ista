@@ -7,15 +7,15 @@
 import * as time from 'time'
 
 struct Order:
-  id: int
-  items: Array<string>
+  id: Int
+  items: Array<String>
 
-fn total(self: Order) -> int:
+fn total(self: Order) -> Int:
   self.items.length()
 
-async fn ship(order: Order) -> Future<string>:
+async fn ship(order: Order) -> Future<String>:
   await time.delay(1ms)
-  string(order.id) + ":" + order.items.join(",")
+  String(order.id) + ":" + order.items.join(",")
 
 fn echo<T>(value: T) -> T:
   value
@@ -24,17 +24,17 @@ fn startAll(order: Order):
   spawn ship(order)
   spawn order.total()
 
-async fn main() -> Future<int>:
+async fn main() -> Future<Int>:
   const order = Order{id: 7, items: ["a", "b"]}
   startAll(order)
-  spawn echo<string>("hi")
+  spawn echo<String>("hi")
   const bonus = 10
-  const priced = fn(n: int): n + bonus
+  const priced = fn(n: Int): n + bonus
   spawn priced(order.id)
-  fn named(times: int) -> int:
+  fn named(times: Int) -> Int:
     times * bonus
   spawn named(2)
-  const stored: sendable fn(int) -> int = priced
+  const stored: sendable fn(Int) -> Int = priced
   spawn stored(1)
   await time.delay(2ms)
   3

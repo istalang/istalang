@@ -10,7 +10,7 @@
  *   computes. A value that isn't a struct is no annotation.
  * - What an annotation means decides where it may stand: the json module's on fields
  *   (`@JsonSkip` only on a field whose type is `Default`, which it reads back as, as found where
- *   the field is declared; `@JsonBigInt` only on an `int`),
+ *   the field is declared; `@JsonBigInt` only on an `Int`),
  *   `@Waypoint` on a statement that waits, `@Suite` on a function (rules/suites.ts says which),
  *   and any other struct on fields and functions, kept for tools. The same annotation twice on one item says nothing new, so it is an error.
  * - Fields of one struct or variant that end up with the same JSON name are reported where they
@@ -297,7 +297,7 @@ const placements: Record<
     if (place.kind !== 'field') {
       return 'elsewhere';
     }
-    return place.type.kind === 'primitive' && place.type.name === 'int'
+    return place.type.kind === 'primitive' && place.type.name === 'Int'
       ? undefined
       : (at) => checkerDiagnostics.bigIntNotInt(at, typeText(place.type));
   },

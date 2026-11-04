@@ -1,39 +1,39 @@
-# outcome: ["42","1.0","-0.5","true","2026-10-25T12:00:00.000Z","PT1H30M","-7","false","90000","1792929600000","'4x' is not an int.","parse"]
-# Stringable and Parsable (§3.10): string(x) is toString, a whole float keeps its .0, a Time and a
+# outcome: ["42","1.0","-0.5","true","2026-10-25T12:00:00.000Z","PT1H30M","-7","false","90000","1792929600000","'4x' is not an Int.","parse"]
+# Stringable and Parsable (§3.10): String(x) is toString, a whole float keeps its .0, a Time and a
 # Duration are ISO 8601 (§3.8), and parse reads back what toString writes, failing with a Result
 # whose Error has code parse.
 
 import * as time from 'time'
 
-fn read(parsed: Result<int>) -> string:
+fn read(parsed: Result<Int>) -> String:
   match parsed:
-    case Ok{value}: string(value)
+    case Ok{value}: String(value)
     case Err{error}: error.message
 
-async fn main() -> Future<Array<string>>:
+async fn main() -> Future<Array<String>>:
   const due = match time.Duration.parse("PT1M30S"):
-    case Ok{value}: string(value.value)
+    case Ok{value}: String(value.value)
     case Err{error}: error.message
   const at = match time.Time.parse("2026-10-25T14:00:00+02:00"):
-    case Ok{value}: string(value.value)
+    case Ok{value}: String(value.value)
     case Err{error}: error.message
-  const flag = match bool.parse("false"):
-    case Ok{value}: string(value)
+  const flag = match Bool.parse("false"):
+    case Ok{value}: String(value)
     case Err{error}: error.message
-  const code = match int.parse("4x"):
-    case Ok{value}: string(value)
+  const code = match Int.parse("4x"):
+    case Ok{value}: String(value)
     case Err{error}: error.code
   [
-    string(42),
-    string(1.0),
+    String(42),
+    String(1.0),
     (-0.5).toString(),
     true.toString(),
     time.Time{value: 1792929600000}.toString(),
-    string(90m),
-    read(int.parse("-7")),
+    String(90m),
+    read(Int.parse("-7")),
     flag,
     due,
     at,
-    read(int.parse("4x")),
+    read(Int.parse("4x")),
     code,
   ]

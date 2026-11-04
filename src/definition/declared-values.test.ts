@@ -1,6 +1,6 @@
 /**
  * Values built through their declarations: the fields given by name land in declared order,
- * whatever order they are given in and whatever they hold, `unit`'s `null` included; a field left
+ * whatever order they are given in and whatever they hold, `Unit`'s `null` included; a field left
  * out fails loudly.
  */
 
@@ -10,7 +10,7 @@ import { fieldValueOf, structOf, variantOf } from './declared-values.ts';
 import type { TypeDefinition } from './types.ts';
 import { valueArbitrary } from './values.test-kit.ts';
 
-const unitType = { kind: 'primitive', name: 'unit' } as const;
+const unitType = { kind: 'primitive', name: 'Unit' } as const;
 
 const types: readonly TypeDefinition[] = [
   {

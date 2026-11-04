@@ -3,12 +3,12 @@
 # a struct's at its own position or an `any` value's through its value's own type (§3.5, §3.10).
 
 trait Sized:
-  size: int
+  size: Int
 
-struct Box { label: string; size: int }
-struct Pair { size: int; first: string }
+struct Box { label: String; size: Int }
+struct Pair { size: Int; first: String }
 
-fn sizeOf<T is Sized>(value: T) -> int:
+fn sizeOf<T is Sized>(value: T) -> Int:
   value.size
 
 async fn main():

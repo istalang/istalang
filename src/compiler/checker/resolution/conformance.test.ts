@@ -32,10 +32,10 @@ function unmet(text: string, others: Readonly<Record<string, string>> = {}): boo
 
 /** Field types, each with a value of that type. */
 const fieldTypes = [
-  ['int', '1'],
-  ['string', '"a"'],
-  ['int?', 'none'],
-  ['(int, int)', '(1, 2)'],
+  ['Int', '1'],
+  ['String', '"a"'],
+  ['Int?', 'none'],
+  ['(Int, Int)', '(1, 2)'],
 ] as const;
 
 const fields = fc.record({
@@ -53,8 +53,8 @@ describe('a required field', () => {
         const text = [
           `trait Priced { ${required.name}: ${required.type[0]} }`,
           `struct Item { ${field} }`,
-          'fn priceOf<T is Priced>(item: T) -> int: 1',
-          'fn main() -> int:',
+          'fn priceOf<T is Priced>(item: T) -> Int: 1',
+          'fn main() -> Int:',
           `  const item: ${type} = ${isNamed ? 'Item' : 'struct'}{${declared.name}: ${value}}`,
           '  priceOf(item)',
         ].join('\n');
@@ -78,21 +78,21 @@ describe('a required function', () => {
   it.each([
     [
       'is met by a static and a prelude function in scope',
-      'fn int.zero() -> int: 0',
+      'fn Int.zero() -> Int: 0',
       'sum(1, 2)',
       false,
     ],
     ['is unmet when no function of its name is visible', '', 'sum(1, 2)', true],
     [
       'is unmet by a function giving another result',
-      'fn int.zero() -> string: "0"',
+      'fn Int.zero() -> String: "0"',
       'sum(1, 2)',
       true,
     ],
     [
       'is unmet by a function taking the type only wrapped into an optional',
       [
-        'struct Money { cents: int }',
+        'struct Money { cents: Int }',
         'fn Money.zero() -> Money: Money{cents: 0}',
         'fn add<T>(left: T?, right: T?) -> T: panic("unreached")',
       ].join('\n'),
@@ -101,38 +101,38 @@ describe('a required function', () => {
     ],
     [
       "is met by a type parameter's own constraint",
-      'fn int.zero() -> int: 0\nfn twice<U is Monoid>(a: U) -> U: sum(a, a)',
+      'fn Int.zero() -> Int: 0\nfn twice<U is Monoid>(a: U) -> U: sum(a, a)',
       'twice(1)',
       false,
     ],
   ])('%s', (_, declared, call, isUnmet) => {
-    expect(unmet(`${monoid}\n${declared}\nfn main() -> int: ${call}`)).toBe(isUnmet);
+    expect(unmet(`${monoid}\n${declared}\nfn main() -> Int: ${call}`)).toBe(isUnmet);
   });
 
   it('is met through the module declaring the trait, without importing the functions', () => {
     const lib = [
       'trait Named:',
-      '  fn name(self: Self) -> string',
+      '  fn name(self: Self) -> String',
       '  fn Self.anonymous() -> Self',
-      'fn name(self: int) -> string: "int"',
-      'fn int.anonymous() -> int: 0',
+      'fn name(self: Int) -> String: "int"',
+      'fn Int.anonymous() -> Int: 0',
     ].join('\n');
     const main = [
       "import Named from 'lib'",
-      'fn named<T is Named>(value: T) -> string: value.name()',
-      'fn main() -> string: named(1)',
+      'fn named<T is Named>(value: T) -> String: value.name()',
+      'fn main() -> String: named(1)',
     ].join('\n');
     expect(unmet(main, { lib })).toBe(false);
   });
 
   it('is met through the module declaring the type, without importing the functions', () => {
     const lib = [
-      'struct Money { cents: int }',
+      'struct Money { cents: Int }',
       'fn Money.zero() -> Money: Money{cents: 0}',
       'fn add(left: Money, right: Money) -> Money: Money{cents: left.cents + right.cents}',
     ].join('\n');
     const call = 'sum(Money{cents: 1}, Money{cents: 2}).cents';
-    const main = `import Money from 'lib'\n${monoid}\nfn main() -> int: ${call}`;
+    const main = `import Money from 'lib'\n${monoid}\nfn main() -> Int: ${call}`;
     expect(unmet(main, { lib })).toBe(false);
   });
 
@@ -149,12 +149,12 @@ describe('a required function', () => {
         'fn add(left: Money, right: Money) -> Money: Money{cents: left.cents + right.cents}';
       const placed = (module: string) =>
         [zeroIn === module ? zero : '', addIn === module ? add : ''].join('\n');
-      const money = `struct Money { cents: int }\n${placed('money')}`;
+      const money = `struct Money { cents: Int }\n${placed('money')}`;
       const main = [
         "import Money from 'money'",
         "import sum from 'monoid'",
         placed('main'),
-        'fn main() -> int: sum(Money{cents: 1}, Money{cents: 2}).cents',
+        'fn main() -> Int: sum(Money{cents: 1}, Money{cents: 2}).cents',
       ].join('\n');
       expect(unmet(main, { money, monoid })).toBe(isUnmet);
     },
@@ -170,17 +170,17 @@ describe('a required static function', () => {
     (declaredIn, isUnmet) => {
       const from = 'fn Money.from(value: Dec) -> Money: Money{cents: value.units}';
       const placed = (module: string) => (declaredIn === module ? from : '');
-      const dec = `import Money from 'money'\nstruct Dec { units: int }\n${placed('dec')}`;
+      const dec = `import Money from 'money'\nstruct Dec { units: Int }\n${placed('dec')}`;
       const main = [
         "import Money from 'money'",
         "import Dec from 'dec'",
         placed('main'),
         'fn convert<T is Convertible<Dec>>(value: Dec) -> T: T(value)',
-        'fn main() -> int:',
+        'fn main() -> Int:',
         '  const money: Money = convert(Dec{units: 2})',
         '  money.cents',
       ].join('\n');
-      expect(unmet(main, { money: 'struct Money { cents: int }', dec })).toBe(isUnmet);
+      expect(unmet(main, { money: 'struct Money { cents: Int }', dec })).toBe(isUnmet);
     },
   );
 });
@@ -188,23 +188,23 @@ describe('a required static function', () => {
 describe('Sendable', () => {
   const declarations = [
     'struct Envelope<T is Sendable> { value: T }',
-    'struct Money { cents: int }',
-    'struct Handler { run: fn() -> int }',
+    'struct Money { cents: Int }',
+    'struct Handler { run: fn() -> Int }',
     'struct Tree { children: Array<Tree> }',
   ].join('\n');
 
   it.each([
-    ['int', true],
-    ['(int, string)', true],
+    ['Int', true],
+    ['(Int, String)', true],
     ['Money', true],
     ['Tree', true],
-    ['int?', true],
+    ['Int?', true],
     ['Handler', false],
-    ['fn() -> int', false],
-    ['Array<fn() -> int>', false],
-    ['Slot<int>', false],
+    ['fn() -> Int', false],
+    ['Array<fn() -> Int>', false],
+    ['Slot<Int>', false],
   ])('holds for %s: %s', (type, isSendable) => {
-    const text = `${declarations}\nfn open(envelope: Envelope<${type}>) -> int: 1`;
+    const text = `${declarations}\nfn open(envelope: Envelope<${type}>) -> Int: 1`;
     expect(unmet(text)).toBe(!isSendable);
   });
 
@@ -221,11 +221,11 @@ describe('declared witness constraints and typed calls', () => {
   it('reports the unmet constraint on a declared witness instead of reporting the witness missing', () => {
     const text = [
       'import * as json from "json"',
-      'struct Point { x: int; y: int }',
+      'struct Point { x: Int; y: Int }',
       'struct Box<T> { value: T }',
       'fn toJson<T is Stringable>(self: Box<T>) -> json.Json:',
       '  json.encodeText(self.value)',
-      'fn main() -> string:',
+      'fn main() -> String:',
       '  json.stringify(Box{value: Point{x: 1, y: 2}})',
     ].join('\n');
     const diagnostics = stdProgramOf({ 'main.ista': text });

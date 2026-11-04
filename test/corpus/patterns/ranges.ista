@@ -2,7 +2,7 @@
 # A range pattern matches an int between its bounds, either open: `..` leaves its end out, `..=`
 # takes it in; it acts as a guard, so the match still ends with `case _` (§3.11).
 
-fn grade(score: int) -> string:
+fn grade(score: Int) -> String:
   match score:
     case ..0: "negative"
     case 0..=59: "fail"
@@ -10,5 +10,5 @@ fn grade(score: int) -> string:
     case 90..: "great"
     case _: "unreachable"
 
-async fn main() -> Future<(string, string, string, string, string)>:
+async fn main() -> Future<(String, String, String, String, String)>:
   (grade(-3), grade(59), grade(60), grade(89), grade(90))

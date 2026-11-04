@@ -39,11 +39,11 @@ export const timeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutur
   },
   [keys.of('toString', durationType)]: ([duration], context) =>
     durationText(millisecondsOf(context, duration)),
-  [keys.ofStatic(wellKnown.time.name, 'parse', 'string')]: parsedStruct(
+  [keys.ofStatic(wellKnown.time.name, 'parse', 'String')]: parsedStruct(
     'an ISO 8601 time',
     readTime,
   ),
-  [keys.ofStatic(wellKnown.duration.name, 'parse', 'string')]: parsedStruct(
+  [keys.ofStatic(wellKnown.duration.name, 'parse', 'String')]: parsedStruct(
     'an ISO 8601 duration',
     readDuration,
   ),

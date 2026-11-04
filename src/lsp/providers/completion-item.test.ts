@@ -75,14 +75,14 @@ describe('completion items', () => {
     const call: Completion = {
       name: 'plus',
       kind: 'function',
-      detail: 'fn plus(a: int, b = 1) -> int',
+      detail: 'fn plus(a: Int, b = 1) -> Int',
       insert: { kind: 'snippet', snippet: 'plus($0)' },
       next: 'signatureHelp',
     };
     expect(completionItem(call)).toEqual({
       label: 'plus',
       kind: CompletionItemKind.Function,
-      detail: 'fn plus(a: int, b = 1) -> int',
+      detail: 'fn plus(a: Int, b = 1) -> Int',
       insertText: 'plus($0)',
       insertTextFormat: InsertTextFormat.Snippet,
       command: { title: 'Signature help', command: 'editor.action.triggerParameterHints' },

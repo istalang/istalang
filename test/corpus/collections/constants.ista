@@ -8,9 +8,9 @@ const names = ["a": "first", "b": "second"]
 const nested = [[1, 2], [3, 4]]
 const more = [...primes, 7]
 const lookup = [...names, "c": "third", "a": "again"]
-const empty: Map<string, int> = []
+const empty: Map<String, Int> = []
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let copy = primes
   copy[0] = 9
   copy.push(7)
@@ -18,13 +18,13 @@ async fn main() -> Future<string>:
   for i in 1..4:
     total += i
   const parts = [
-    string(primes.length()),
-    string(primes[0]),
+    String(primes.length()),
+    String(primes[0]),
     if names["b"] == "second": "b" else: "?",
-    string(nested[1][1]),
-    string(total + copy.length() - 2 - 1),
-    string(more.length() + empty.size() - 2),
-    string(lookup.size()),
-    "[" + [for x in nested[0]: string(x)].join(", ") + "]",
+    String(nested[1][1]),
+    String(total + copy.length() - 2 - 1),
+    String(more.length() + empty.size() - 2),
+    String(lookup.size()),
+    "[" + [for x in nested[0]: String(x)].join(", ") + "]",
   ]
   parts.join(" ")

@@ -14,9 +14,9 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 
 /** A type to write values of, and how source writes it. */
 type Shape =
-  | { readonly kind: 'int' | 'string' | 'bool' }
+  | { readonly kind: 'Int' | 'String' | 'Bool' }
   | { readonly kind: 'array'; readonly item: Shape }
-  | { readonly kind: 'map'; readonly key: 'int' | 'string'; readonly value: Shape }
+  | { readonly kind: 'map'; readonly key: 'Int' | 'String'; readonly value: Shape }
   | { readonly kind: 'tuple'; readonly elements: readonly Shape[] };
 
 function typeText(shape: Shape): string {
@@ -35,10 +35,10 @@ function typeText(shape: Shape): string {
 const shapes: fc.Arbitrary<Shape> = fc.letrec<{ shape: Shape }>((tie) => ({
   shape: fc.oneof(
     { depthSize: 'small', withCrossShrink: true },
-    fc.constantFrom<Shape>({ kind: 'int' }, { kind: 'string' }, { kind: 'bool' }),
+    fc.constantFrom<Shape>({ kind: 'Int' }, { kind: 'String' }, { kind: 'Bool' }),
     tie('shape').map((item): Shape => ({ kind: 'array', item })),
     fc
-      .record({ key: fc.constantFrom('int' as const, 'string' as const), value: tie('shape') })
+      .record({ key: fc.constantFrom('Int' as const, 'String' as const), value: tie('shape') })
       .map((parts): Shape => ({ kind: 'map', ...parts })),
     fc.array(tie('shape'), { minLength: 2, maxLength: 3 }).map(
       (elements): Shape => ({
@@ -52,11 +52,11 @@ const shapes: fc.Arbitrary<Shape> = fc.letrec<{ shape: Shape }>((tie) => ({
 /** Source text of a value of `shape`; few distinct keys, so maps repeat them. */
 function valueText(shape: Shape): fc.Arbitrary<string> {
   switch (shape.kind) {
-    case 'int':
+    case 'Int':
       return fc.integer({ min: -3, max: 3 }).map(String);
-    case 'string':
+    case 'String':
       return fc.constantFrom('"a"', '"b"', "'c'");
-    case 'bool':
+    case 'Bool':
       return fc.boolean().map(String);
     case 'array': {
       const item = valueText(shape.item);
@@ -104,7 +104,7 @@ describe('computed constants', () => {
         const main = [
           `const computed: ${type} = ${value}`,
           '',
-          'async fn main() -> Future<bool>:',
+          'async fn main() -> Future<Bool>:',
           `  const local: ${type} = ${value}`,
           '  computed == local',
         ].join('\n');
@@ -119,14 +119,14 @@ describe('computed constants', () => {
 
   it('apply one-element tuple conversions recorded on the initializer and its parts', () => {
     const main = [
-      'const tupled: (int,) = 3',
-      'const untupled: int = (4,)',
-      'const nested: Array<(int,)> = [5, (6,)]',
+      'const tupled: (Int,) = 3',
+      'const untupled: Int = (4,)',
+      'const nested: Array<(Int,)> = [5, (6,)]',
       '',
-      'async fn main() -> Future<bool>:',
-      '  const localTupled: (int,) = 3',
-      '  const localUntupled: int = (4,)',
-      '  const localNested: Array<(int,)> = [5, (6,)]',
+      'async fn main() -> Future<Bool>:',
+      '  const localTupled: (Int,) = 3',
+      '  const localUntupled: Int = (4,)',
+      '  const localNested: Array<(Int,)> = [5, (6,)]',
       '  (tupled, untupled, nested) == (localTupled, localUntupled, localNested)',
     ].join('\n');
     expect(startToEnd(testRuntime(), compiledText(main))).toEqual({
@@ -136,13 +136,13 @@ describe('computed constants', () => {
   });
 
   it.each([
-    ['an optional wrap', 'const x: int? = 1', '1'],
-    ['an enum variant literal', 'const x: int? = Some{1}', 'Some{1}'],
-    ['a plain function made async', 'const f: async fn() -> int = fn(): 1', 'fn(): 1'],
+    ['an optional wrap', 'const x: Int? = 1', '1'],
+    ['an enum variant literal', 'const x: Int? = Some{1}', 'Some{1}'],
+    ['a plain function made async', 'const f: async fn() -> Int = fn(): 1', 'fn(): 1'],
     ['a value converted into an any type', 'trait Named {}\nconst a: any Named = 1', '1'],
     [
       'a spread whose items are wrapped',
-      'const xs = [1]\nconst ys: Array<int?> = [...xs]',
+      'const xs = [1]\nconst ys: Array<Int?> = [...xs]',
       '...xs',
     ],
   ])('refuse %s, which compile time does not compute', (_case, text, spanText) => {
@@ -150,7 +150,7 @@ describe('computed constants', () => {
   });
 
   it('do not report 5026 on top of 5218 for a shared struct written without new', () => {
-    expect(reported('shared struct Box { n: int }\nconst b = Box{n: 1}')).toEqual(
+    expect(reported('shared struct Box { n: Int }\nconst b = Box{n: 1}')).toEqual(
       reportedOnce(checkerDiagnostics.sharedNeedsNew.code, 'Box'),
     );
   });

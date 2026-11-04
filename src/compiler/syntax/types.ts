@@ -1,7 +1,7 @@
 /**
  * Type nodes: what may follow `:` in a declaration, or sit between `<…>` (spec §2, §3).
  *
- * A NamedType is a possibly qualified name with type arguments: `int`, `Self`, `Pair<A, B>`,
+ * A NamedType is a possibly qualified name with type arguments: `Int`, `Self`, `Pair<A, B>`,
  * `time.Duration`. Whether the name exists and what it means is the checker's business. The
  * struct type keeps no record of whether `struct` was written before `{`, because the spec makes
  * the two spellings the same type and lets the formatter pick one (§3.1). The indented field block
@@ -51,7 +51,7 @@ interface AnyType extends NodeOf<'AnyType'> {
   readonly traits: readonly TypeNode[];
 }
 
-/** An anonymous struct: `{ sku: string; qty: int }` or `struct { … }`. */
+/** An anonymous struct: `{ sku: String; qty: Int }` or `struct { … }`. */
 export interface StructType extends NodeOf<'StructType'> {
   readonly fields: readonly (FieldDeclaration | Invalid)[];
 }

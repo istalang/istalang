@@ -2,9 +2,9 @@
  * Operator expressions (§3.9).
  *
  * - An operator's meaning (syntax/operators.ts) decides how it is checked. Arithmetic, negation,
- *   the orderings and `in` call functions (calls/operators.ts); an ordering is `bool` whatever
+ *   the orderings and `in` call functions (calls/operators.ts); an ordering is `Bool` whatever
  *   `compare` returns, since lowering turns its int into the relation. `item in c` calls
- *   `includes(c, item)`, which must give a `bool`.
+ *   `includes(c, item)`, which must give a `Bool`.
  * - A chain `a < b == c`, `in` and `not in` included, compares each operand with the next, each
  *   operand checked once. Its orderings' `compare` and its memberships' `includes` calls are
  *   implicit, at their right operands, since the chain is one node.
@@ -12,7 +12,7 @@
  *   optional for one of them; the first and the last may be, as in a single comparison.
  * - `==` and `!=` are built in for every type and can't be overloaded (types/equality.ts). The
  *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
- * - `and`, `or` and `not` take and give `bool`; they short-circuit, so they are never calls.
+ * - `and`, `or` and `not` take and give `Bool`; they short-circuit, so they are never calls.
  * - `??` works on optionals (optionals.ts).
  */
 
@@ -129,10 +129,10 @@ function checkLinkCall(
   }
 }
 
-/** `includes` must give a `bool`, since `in` is one. */
+/** `includes` must give a `Bool`, since `in` is one. */
 function expectBool(context: BodyContext, result: Type, span: AnchoredSpan): void {
-  if (result.kind !== 'error' && !isPrimitive(result, 'bool')) {
-    context.report(checkerDiagnostics.typeMismatch(span, 'bool', typeText(result)));
+  if (result.kind !== 'error' && !isPrimitive(result, 'Bool')) {
+    context.report(checkerDiagnostics.typeMismatch(span, 'Bool', typeText(result)));
   }
 }
 

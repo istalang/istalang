@@ -4,7 +4,7 @@
  *
  * - A constraint names a trait, with its type arguments resolved and defaults filled, where `Self`
  *   stands for the constrained parameter: `T is Addable` is `Addable<T>`. After `any`, `Self` stays
- *   the trait's own, standing for each value's type: `any Iterable<int>` is `Iterable<int, Self>`.
+ *   the trait's own, standing for each value's type: `any Iterable<Int>` is `Iterable<Int, Self>`.
  * - A requirement is one function of a constraint's trait, with the trait's parameters and its
  *   `Self` mapped for that constraint. Requirements are numbered by constraint and by the trait's
  *   order of functions (`RequirementOrigin`), which is how a call to one and the witness that

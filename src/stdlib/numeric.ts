@@ -14,10 +14,10 @@ import { float, int } from './native-values.ts';
 import type { NativeKeys } from './std-module.ts';
 
 const numericPairs = [
-  ['int', 'int'],
-  ['float', 'float'],
-  ['int', 'float'],
-  ['float', 'int'],
+  ['Int', 'Int'],
+  ['Float', 'Float'],
+  ['Int', 'Float'],
+  ['Float', 'Int'],
 ] as const;
 
 /**
@@ -33,7 +33,7 @@ export function numeric(
   return Object.fromEntries(
     numericPairs.map(([left, right]): [string, Native<NativeContext>] => [
       keys.of(name, left, right),
-      left === 'int' && right === 'int'
+      left === 'Int' && right === 'Int'
         ? ([a, b]) => onInts(int(a), int(b))
         : ([a, b]) => onFloats(asFloat(a), asFloat(b)),
     ]),

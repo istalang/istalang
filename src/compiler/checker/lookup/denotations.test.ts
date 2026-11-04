@@ -4,23 +4,23 @@ import { intType, stringType, tupleType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { checkedMain } from './lookup.test-kit.ts';
 
-const text = `struct Pair { first: int; second: int }
+const text = `struct Pair { first: Int; second: Int }
 fn Pair.zero() -> Pair: Pair{first: 0, second: 0}
-fn total(self: Pair) -> int: self.first + self.second
-fn sum(a: int, b: int = 1) -> int: a + b
-fn main() -> int:
+fn total(self: Pair) -> Int: self.first + self.second
+fn sum(a: Int, b: Int = 1) -> Int: a + b
+fn main() -> Int:
   const first = 1
   const p = Pair{first, second: 2}
   match p:
     case Pair{first, second as s}: sum(first, b: s)
     case _: p.total()
-fn Pair.from(n: int) -> Pair: Pair{first: n, second: n}
+fn Pair.from(n: Int) -> Pair: Pair{first: n, second: n}
 fn converted() -> Pair: Pair(3)
 trait Measured:
-  size: int
-  fn measure(self: Self) -> int
+  size: Int
+  fn measure(self: Self) -> Int
   fn Self.unit() -> Self
-fn measuredSize<T is Measured>(t: T) -> int: t.size + t.measure()
+fn measuredSize<T is Measured>(t: T) -> Int: t.size + t.measure()
 `;
 
 /** The name a declaration is declared with, or its kind where it has none to show. */
@@ -51,20 +51,20 @@ describe('what an identifier denotes', () => {
     described(checker.lookup.denotationsOf(module, named(name, nth)));
 
   it('answers a shorthand with its field and its variable', () => {
-    expect(at('first', 4)).toEqual(['field first: int', 'variable first: int']);
-    expect(at('first', 5)).toEqual(['field first: int', 'variable first: int']);
+    expect(at('first', 4)).toEqual(['field first: Int', 'variable first: Int']);
+    expect(at('first', 5)).toEqual(['field first: Int', 'variable first: Int']);
   });
 
   it("answers a field's declaring name, a read and a literal's name with the field", () => {
-    expect(at('first', 0)).toEqual(['field first: int']);
-    expect(at('first', 1)).toEqual(['field first: int']);
-    expect(at('first', 2)).toEqual(['field first: int']);
+    expect(at('first', 0)).toEqual(['field first: Int']);
+    expect(at('first', 1)).toEqual(['field first: Int']);
+    expect(at('first', 2)).toEqual(['field first: Int']);
   });
 
   it('answers a call, a method call and a named argument with what the call resolved to', () => {
     expect(at('sum', 1)).toEqual(['function sum: -']);
     expect(at('total', 1)).toEqual(['function total: -']);
-    expect(at('b', 2)).toEqual(['variable b: int']);
+    expect(at('b', 2)).toEqual(['variable b: Int']);
   });
 
   it("answers a static's and a trait's function by its declaring name", () => {
@@ -77,13 +77,13 @@ describe('what an identifier denotes', () => {
   });
 
   it("answers a parameter's declaring name with its signature's type", () => {
-    expect(at('a', 0)).toEqual(['variable a: int']);
+    expect(at('a', 0)).toEqual(['variable a: Int']);
   });
 
   it('answers a written type with the type it denotes', () => {
     const written = first('NamedType');
     const type = written && checker.lookup.typeOfNode(module, written);
-    expect(type && typeText(type)).toBe('int');
+    expect(type && typeText(type)).toBe('Int');
   });
 
   it('lists the fields, methods and static functions of a type', () => {
@@ -97,14 +97,14 @@ describe('what an identifier denotes', () => {
   it("lists a tuple's elements by position as its fields", () => {
     const members = checker.lookup.membersOf(module, tupleType([intType, stringType]));
     expect(members.fields.map(({ name, type }) => `${name}: ${typeText(type)}`)).toEqual([
-      '0: int',
-      '1: string',
+      '0: Int',
+      '1: String',
     ]);
   });
 
   it('answers a tag read from a value with the method its template calls', () => {
     const tagged = checkedMain(
-      'struct Db { prefix: string }\nfn query(self: Db, parts: Array<string>, n: int) -> string: self.prefix\nfn main() -> string: Db{prefix: ">"}.query`a${1}`\n',
+      'struct Db { prefix: String }\nfn query(self: Db, parts: Array<String>, n: Int) -> String: self.prefix\nfn main() -> String: Db{prefix: ">"}.query`a${1}`\n',
     );
     expect(tagged.checker.diagnosticsOf(tagged.module)).toEqual([]);
     const call = tagged.checker.lookup.denotationsOf(tagged.module, tagged.named('query', 1));
@@ -113,7 +113,7 @@ describe('what an identifier denotes', () => {
 
   it('answers a hold naming its own function with that function', () => {
     const held = checkedMain(
-      'async fn work(n: int):\n  for i in 0..n:\n    hold(work) _ = 1\nfn main(): 0\n',
+      'async fn work(n: Int):\n  for i in 0..n:\n    hold(work) _ = 1\nfn main(): 0\n',
     );
     expect(held.checker.diagnosticsOf(held.module)).toEqual([]);
     const label = held.checker.lookup.denotationsOf(held.module, held.named('work', 1));
@@ -131,9 +131,9 @@ describe('what an identifier denotes', () => {
 
 describe('what a function imported or named through a module denotes', () => {
   it("is the module's own function, not a prelude function of that name", () => {
-    const lib = 'struct Note { text: string }\nfn read(self: Note) -> string: self.text\n';
+    const lib = 'struct Note { text: String }\nfn read(self: Note) -> String: self.text\n';
     const imported = checkedMain(
-      `import Note, read from 'lib'\nfn main() -> string: Note{text: "a"}.read()\n`,
+      `import Note, read from 'lib'\nfn main() -> String: Note{text: "a"}.read()\n`,
       { lib },
     );
     expect(

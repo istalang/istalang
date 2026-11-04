@@ -5,11 +5,11 @@
 # `let` lives in a cell of its own, but a Shared value captured by a `const` is still one handle
 # (§3.14).
 
-struct User { name: string; email: string }
+struct User { name: String; email: String }
 
-struct Pair { first: int; second: int }
+struct Pair { first: Int; second: Int }
 
-fn rename(user: Shared<User>, name: string):
+fn rename(user: Shared<User>, name: String):
   user->value.name = name
 
 async fn main():
@@ -22,8 +22,8 @@ async fn main():
   counts->value = Pair{...counts->value, second: counts->value.second}
   const total = counts->value.first + counts->value.second
   const other = new Shared{value: User{name: "Ares K", email: "a@x"}}
-  const same = string(alias == u) + " " + string(other == u)
+  const same = String(alias == u) + " " + String(other == u)
   const tally = new Shared{value: 0}
   const bump = fn(): { tally->value += 1; tally->value }
   const ignored = bump() + bump()
-  shown + " | " + string(total) + " | " + same + " | " + string(bump())
+  shown + " | " + String(total) + " | " + same + " | " + String(bump())

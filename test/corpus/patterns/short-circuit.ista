@@ -4,44 +4,44 @@
 # is `none` as a whole. Each skipped part panics, so running it fails the program. `is` bindings
 # flow through a `while` condition and its `and` into the body.
 
-struct Inner { v: int; name: string? }
-struct Outer { inner: Inner?; n: int }
+struct Inner { v: Int; name: String? }
+struct Outer { inner: Inner?; n: Int }
 
-fn boom() -> int:
+fn boom() -> Int:
   panic("right side evaluated")
 
-fn step(n: int) -> Result<int>:
+fn step(n: Int) -> Result<Int>:
   if n > 2: Err{Error{message: "big", code: "x"}} else: Ok{(n)}
 
-fn failsEarly(n: int) -> Result<int>:
+fn failsEarly(n: Int) -> Result<Int>:
   const a = step(n)?
   panic("ran after an early return")
 
-fn chain(o: Outer?) -> int?:
+fn chain(o: Outer?) -> Int?:
   o?.inner?.v
 
-fn chainName(o: Outer?) -> string?:
+fn chainName(o: Outer?) -> String?:
   o?.inner?.name
 
-fn nested(o: Outer?) -> int:
+fn nested(o: Outer?) -> Int:
   o?.inner?.v ?? 7
 
-fn three() -> int?:
+fn three() -> Int?:
   3
 
-fn countdown() -> int:
-  let i: int? = 3
+fn countdown() -> Int:
+  let i: Int? = 3
   let total = 0
   while i is Some{value as k} and k > 0:
     total += k
     i = if k > 1: k - 1 else: none
   total
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const full = Outer{inner: Inner{v: 4, name: "z"}, n: 1}
   const part = Outer{inner: Inner{v: 4, name: none}, n: 1}
   const empty = Outer{inner: none, n: 1}
-  (string(failsEarly(5) is Err{}) + "|" + string(chain(full) ?? -1) + "|"
-    + string(chain(empty) ?? -1) + "|" + string(chain(none) ?? -1) + "|" + (chainName(full) ?? "-")
-    + "|" + (chainName(part) ?? "-") + "|" + string(nested(empty)) + "|"
-    + string(three() ?? boom()) + "|" + string(countdown()))
+  (String(failsEarly(5) is Err{}) + "|" + String(chain(full) ?? -1) + "|"
+    + String(chain(empty) ?? -1) + "|" + String(chain(none) ?? -1) + "|" + (chainName(full) ?? "-")
+    + "|" + (chainName(part) ?? "-") + "|" + String(nested(empty)) + "|"
+    + String(three() ?? boom()) + "|" + String(countdown()))

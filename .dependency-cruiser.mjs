@@ -149,6 +149,7 @@ const checkerSurface = [
   'denotation.ts',
   'host-externs.ts',
   'types/type.ts',
+  'types/named-types.ts',
   'types/substitution.ts',
   'types/fit.ts',
   'types/type-keys.ts',

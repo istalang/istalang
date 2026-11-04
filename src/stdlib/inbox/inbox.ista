@@ -19,21 +19,21 @@
 # anywhere, so retracting it changes nothing.
 
 struct Queued<T>:
-  number: int
+  number: Int
   message: T
 
 shared struct Inbox<T>:
   slot: Slot<T>
   # the number of the message the inbox last moved into the slot
-  slotted: int? = none
+  slotted: Int? = none
   backlog: Array<Queued<T>> = []
   # how many messages were ever queued, which numbers the next
-  queued: int = 0
+  queued: Int = 0
 
 # A revertible message's holder: disposing it calls `retract`, which the queue that made it
 # supplies, so every queue, the host's included (§3.6), hands out this one type.
 shared struct Revertible<T>:
-  retract: fn() -> unit
+  retract: fn() -> Unit
 
 # A holder whose retraction lets go of `resource`, which disposes it: how a queue the host provides
 # hands out a revertible send, a disposable host type its host retracts (§3.6).
@@ -72,7 +72,7 @@ fn dispose<T>(self: Inbox<T>): ()
 fn dispose<T>(self: Revertible<T>): self->retract()
 
 # Queues `message` behind the others; its number.
-fn _queue<T>(self: Inbox<T>, message: T) -> int:
+fn _queue<T>(self: Inbox<T>, message: T) -> Int:
   const number = self->queued
   self->backlog.push(Queued{number, message})
   self->queued += 1
@@ -88,7 +88,7 @@ fn _fill<T>(self: Inbox<T>):
     self->backlog = self->backlog[1..]
 
 # Removes message `number` from the inbox, if the inbox is still there and the message unread.
-fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: int):
+fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):
   if inbox.deref() is Some{value as box}:
     box->backlog = [for queued in box->backlog if queued.number != number: queued]
     if box->slotted == number and _settles(box->slot.take()):
@@ -97,7 +97,7 @@ fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: int):
 
 # Whether `operation` settles at once. One that doesn't is let go with the parameter, and a slot
 # operation let go does nothing (§6), so a `take` that doesn't settle consumes nothing.
-fn _settles<T>(operation: Future<T>) -> bool:
+fn _settles<T>(operation: Future<T>) -> Bool:
   select:
     case operation: true
     else: false

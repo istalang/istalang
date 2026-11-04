@@ -7,7 +7,7 @@ export const collectionTemplates = {
   emptyCollection: {
     code: 5300,
     message: (literal: string) =>
-      `An empty '${literal}' needs an expected type; annotate it, as in 'let xs: Array<int> = []'.`,
+      `An empty '${literal}' needs an expected type; annotate it, as in 'let xs: Array<Int> = []'.`,
   },
   itemTypes: {
     code: 5301,

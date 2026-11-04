@@ -14,22 +14,22 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 const declarations = [
   "import Encodable, Decodable, Json from 'json'",
   "import * as time from 'time'",
-  'struct Point { x: int }',
+  'struct Point { x: Int }',
   'struct Tree { children: Array<Tree> }',
   'enum Shape:',
-  '  Circle { radius: float }',
+  '  Circle { radius: Float }',
   '  Dot',
-  'struct Label { text: string }',
+  'struct Label { text: String }',
   'fn toJson(self: Label) -> Json: Text{value: self.text}',
   'struct Tagged { label: Label }',
-  'fn writes<T is Encodable>() -> int: 1',
-  'fn reads<T is Decodable>() -> int: 1',
+  'fn writes<T is Encodable>() -> Int: 1',
+  'fn reads<T is Decodable>() -> Int: 1',
 ].join('\n');
 
 /** Whether `type` is Encodable, and whether it is Decodable. */
 function crossing(type: string): { readonly writes: boolean; readonly reads: boolean } {
   const meets = (check: string): boolean => {
-    const { codes } = reported(`${declarations}\nfn main() -> int: ${check}<${type}>()`);
+    const { codes } = reported(`${declarations}\nfn main() -> Int: ${check}<${type}>()`);
     if (codes.some((code) => code !== checkerDiagnostics.notConforming.code)) {
       throw new Error(`Unexpected diagnostics ${codes.join(', ')} for ${type}`);
     }
@@ -40,23 +40,23 @@ function crossing(type: string): { readonly writes: boolean; readonly reads: boo
 
 describe('a type crossing as JSON', () => {
   it.each([
-    ['int', true, true],
-    ['unit', true, true],
+    ['Int', true, true],
+    ['Unit', true, true],
     ['Json', true, true],
     ['Point', true, true],
     ['Tree', true, true],
     ['Shape', true, true],
-    ['(int, Point)', true, true],
+    ['(Int, Point)', true, true],
     ['Array<Tree>?', true, true],
-    ['Map<int, Shape>', true, true],
+    ['Map<Int, Shape>', true, true],
     ['time.Duration', true, true],
     ['Label', true, false],
     ['Tagged', true, false],
     ['Array<Label>', true, false],
-    ['int??', false, false],
-    ['fn() -> int', false, false],
-    ['Map<Point, int>', false, false],
-    ['Slot<int>', false, false],
+    ['Int??', false, false],
+    ['fn() -> Int', false, false],
+    ['Map<Point, Int>', false, false],
+    ['Slot<Int>', false, false],
   ])('%s writes: %s, reads: %s', (type, writes, reads) => {
     expect(crossing(type)).toEqual({ writes, reads });
   });
@@ -67,10 +67,10 @@ describe('a codec found only by import', () => {
     const main = [
       "import Encodable, Decodable from 'json'",
       "import toJson from 'codecs.ista'",
-      'struct Point { x: int }',
-      'fn writes<T is Encodable>() -> int: 1',
-      'fn reads<T is Decodable>() -> int: 1',
-      'fn main() -> int: writes<Point>() + reads<Point>()',
+      'struct Point { x: Int }',
+      'fn writes<T is Encodable>() -> Int: 1',
+      'fn reads<T is Decodable>() -> Int: 1',
+      'fn main() -> Int: writes<Point>() + reads<Point>()',
     ].join('\n');
     const codecs = [
       "import Json from 'json'",
@@ -85,16 +85,16 @@ describe('a codec declared with another result', () => {
   it('is no codec, and says what it gives', () => {
     const main = [
       "import Encodable from 'json'",
-      'struct Point { x: int }',
-      'fn toJson(self: Point) -> string: "point"',
-      'fn writes<T is Encodable>() -> int: 1',
-      'fn main() -> int: writes<Point>()',
+      'struct Point { x: Int }',
+      'fn toJson(self: Point) -> String: "point"',
+      'fn writes<T is Encodable>() -> Int: 1',
+      'fn main() -> Int: writes<Point>()',
     ].join('\n');
     const [unmet, ...rest] = diagnosedAt(
       stdProgramOf({ 'main.ista': main }),
       'main.ista',
     ).diagnostics;
     expect([unmet?.code, rest]).toEqual([checkerDiagnostics.notConforming.code, []]);
-    expect(unmet?.message).toContain("'toJson' giving Json, where the one declared gives string");
+    expect(unmet?.message).toContain("'toJson' giving Json, where the one declared gives String");
   });
 });

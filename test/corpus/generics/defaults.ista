@@ -3,11 +3,11 @@
 # parameters before it, and a parameter with a default may take its type from it.
 import Duration from 'time'
 
-fn window(start: int, end: int = start + 10) -> int:
+fn window(start: Int, end: Int = start + 10) -> Int:
   end
 
-fn retry(times = 3, backoff: Duration = 1s) -> string:
+fn retry(times = 3, backoff: Duration = 1s) -> String:
   "retry " + times + " " + backoff.value
 
-async fn main() -> Future<string>:
-  string(window(3)) + " " + string(window(5, 15)) + " " + retry() + " " + retry(5) + " " + retry(5, 2s)
+async fn main() -> Future<String>:
+  String(window(3)) + " " + String(window(5, 15)) + " " + retry() + " " + retry(5) + " " + retry(5, 2s)

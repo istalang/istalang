@@ -15,8 +15,8 @@ import {
 } from './exhaustiveness.ts';
 
 /**
- * Small types whose values can be listed: `bool`, enums of such types, tuples of them, arrays of
- * `bool`, and `int`, which has no finite signature; its values are the literals cases use, plus one
+ * Small types whose values can be listed: `Bool`, enums of such types, tuples of them, arrays of
+ * `Bool`, and `Int`, which has no finite signature; its values are the literals cases use, plus one
  * no case names. An array's values are every array of each length below the one past which the
  * analysis takes arrays as one constructor, and every such long array's items it can see.
  */
@@ -146,7 +146,7 @@ function builtPatternOf(type: TestType): fc.Arbitrary<Shape> {
     );
 }
 
-/** A random array pattern over `bool` items. */
+/** A random array pattern over `Bool` items. */
 function arrayPatterns(): fc.Arbitrary<Shape> {
   const items = fc.array(patternOf(bool), { maxLength: 2 });
   return fc.record({

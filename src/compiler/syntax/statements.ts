@@ -206,7 +206,7 @@ export interface While extends NodeOf<'While'>, Annotatable {
 
 /**
  * `batch:` then an indented block: a block a `hold(batch)` inside it names, holding until it ends
- * (§3.4). A statement of type `unit`; `break` and `continue` name loops only.
+ * (§3.4). A statement of type `Unit`; `break` and `continue` name loops only.
  */
 export interface LabelledBlock extends NodeOf<'LabelledBlock'>, Annotatable {
   readonly label: Identifier;
@@ -245,8 +245,8 @@ export type StatementPart = Hold;
 
 /**
  * The expression whose value is the block's (§4): its last statement's, when that is an
- * expression statement. A block ending in any other statement, or empty, has none, and is `unit`
- * or `never`.
+ * expression statement. A block ending in any other statement, or empty, has none, and is `Unit`
+ * or `Never`.
  */
 export function tailExpressionOf(block: Block): Expression | undefined {
   const last = block.statements.at(-1);

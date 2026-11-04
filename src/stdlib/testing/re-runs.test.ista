@@ -6,7 +6,7 @@ import Encodable from 'json'
 
 # Two tests of `scenario`, run as it is and with every segment re-run, each expecting `expected`.
 fn runAndReRun<R is Encodable & Sendable>(
-  title: string,
+  title: String,
   scenario: sendable async fn() -> R,
   expected: R,
 ) -> Array<Test>: [

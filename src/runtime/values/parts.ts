@@ -40,7 +40,7 @@ function childAt(value: Value, index: number): Value {
   if (index >= parts.length) {
     unreachable(`No field ${index}; loading and checking rule this out.`);
   }
-  // `unit` is `null`, so presence is the index, not the value.
+  // `Unit` is `null`, so presence is the index, not the value.
   return parts[index] as Value;
 }
 

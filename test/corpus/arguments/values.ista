@@ -1,15 +1,15 @@
 # outcome: [11,12,3]
 # A function with defaults, named as a value of a shorter type, computes its defaults at each call;
 # one with a rest parameter takes the array as one argument (§3.14).
-fn window(start: int, end: int = start + 10) -> int:
+fn window(start: Int, end: Int = start + 10) -> Int:
   end
 
-fn count(first: int, ...more: Array<int>) -> int:
+fn count(first: Int, ...more: Array<Int>) -> Int:
   more.length() + 1
 
-fn applied(f: fn(int, Array<int>) -> int) -> int:
+fn applied(f: fn(Int, Array<Int>) -> Int) -> Int:
   f(0, [1, 2])
 
-async fn main() -> Future<Array<int>>:
-  const shorter: fn(int) -> int = window
+async fn main() -> Future<Array<Int>>:
+  const shorter: fn(Int) -> Int = window
   [shorter(1), shorter(2), applied(count)]

@@ -5,49 +5,49 @@
 # meets, and a constant computes a default that compile time can.
 
 struct Retry:
-  times: int = 3
+  times: Int = 3
   backoff = times * 2
-  limit: int = backoff + times
+  limit: Int = backoff + times
 
 struct Box<T is Default>:
   items: T = T.default()
-  size: int
+  size: Int
 
 enum Shape:
-  Circle { r: float = 1.5 }
-  Square { side: int }
+  Circle { r: Float = 1.5 }
+  Square { side: Int }
 
 struct Limits:
-  low: int = 1
-  high: int = 10
+  low: Int = 1
+  high: Int = 10
 
 const wide = Limits{high: 100}
 
 struct Holder<T>:
   items: Array<T> = []
-  label: string = "held"
+  label: String = "held"
 
-const holder = Holder<int>{}
+const holder = Holder<Int>{}
 
-fn radius(shape: Shape) -> float:
+fn radius(shape: Shape) -> Float:
   match shape:
     case Circle{r}: r
-    case Square{side}: float(side) / 2.0
+    case Square{side}: Float(side) / 2.0
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const plain = Retry{}
   const spread = Retry{...plain, times: 10}
-  const box = Box<Array<int>>{size: 4}
+  const box = Box<Array<Int>>{size: 4}
   const circle: Shape = Circle{}
   [
-    string(plain.times),
-    string(plain.backoff),
-    string(plain.limit),
-    string(spread.backoff),
-    string(box.items.length()),
-    string(box.size),
-    string(radius(circle)),
-    string(wide.low),
-    string(wide.high),
-    string(holder.items.length()),
+    String(plain.times),
+    String(plain.backoff),
+    String(plain.limit),
+    String(spread.backoff),
+    String(box.items.length()),
+    String(box.size),
+    String(radius(circle)),
+    String(wide.low),
+    String(wide.high),
+    String(holder.items.length()),
   ].join(" ")

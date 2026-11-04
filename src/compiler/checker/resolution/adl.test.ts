@@ -16,7 +16,7 @@ function codesOf(files: Readonly<Record<string, string>>): readonly number[] {
   return reportedIn(source, diagnostics).codes;
 }
 
-const money = 'struct Money { cents: int }';
+const money = 'struct Money { cents: Int }';
 const addMoney = 'fn add(left: Money, right: Money) -> Money: left';
 const use = (imports: string, body: string) =>
   `${imports}\nasync fn main():\n  const a = Money{cents: 1}\n  ${body}\n`;

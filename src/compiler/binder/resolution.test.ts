@@ -19,7 +19,7 @@ import { bindProgram } from './bind.ts';
 import { bindModule } from './bind-module.ts';
 import type { Entity } from './entities.ts';
 
-const lib = 'struct Shape { radius: int }\nfn helper(): 1\nenum Color { Red; Green }';
+const lib = 'struct Shape { radius: Int }\nfn helper(): 1\nenum Color { Red; Green }';
 
 interface Case {
   readonly source: string;
@@ -33,19 +33,19 @@ interface Case {
 
 const cases: Readonly<Record<string, Case>> = {
   'a parameter default sees an earlier parameter': {
-    source: 'fn window(start: int, end: int = start + 10): end',
+    source: 'fn window(start: Int, end: Int = start + 10): end',
     name: 'start',
     use: 1,
     declaredAt: 0,
   },
   'an inner block shadows from its declaration on': {
-    source: 'fn f() -> int:\n  const x = 1\n  if true:\n    const x = 2\n    drop x\n  x',
+    source: 'fn f() -> Int:\n  const x = 1\n  if true:\n    const x = 2\n    drop x\n  x',
     name: 'x',
     use: 2,
     declaredAt: 1,
   },
   'the outer name returns once the inner block ends': {
-    source: 'fn f() -> int:\n  const x = 1\n  if true:\n    const x = 2\n    drop x\n  x',
+    source: 'fn f() -> Int:\n  const x = 1\n  if true:\n    const x = 2\n    drop x\n  x',
     name: 'x',
     use: 3,
     declaredAt: 0,
@@ -57,86 +57,86 @@ const cases: Readonly<Record<string, Case>> = {
     declaredAt: 0,
   },
   'an is binding flows into the if body': {
-    source: 'fn f(r: Result<int>) -> int:\n  if r is Ok{value as v}:\n    v\n  else:\n    0',
+    source: 'fn f(r: Result<Int>) -> Int:\n  if r is Ok{value as v}:\n    v\n  else:\n    0',
     name: 'v',
     use: 1,
     declaredAt: 0,
   },
   'an is binding flows across and': {
-    source: 'fn f(r: Result<int>) -> bool: r is Ok{value} and value > 0',
+    source: 'fn f(r: Result<Int>) -> Bool: r is Ok{value} and value > 0',
     name: 'value',
     use: 1,
     declaredAt: 0,
   },
   'a comprehension condition flows into its body': {
-    source: 'fn f(rs: Array<Result<int>>) -> Array<int>: [for r in rs if r is Ok{value}: value]',
+    source: 'fn f(rs: Array<Result<Int>>) -> Array<Int>: [for r in rs if r is Ok{value}: value]',
     name: 'value',
     use: 1,
     declaredAt: 0,
   },
   'a guard sees its case bindings': {
-    source: 'fn f(p: (int, int)) -> int:\n  match p:\n    case (a, b) if a > b: a\n    case _: 0',
+    source: 'fn f(p: (Int, Int)) -> Int:\n  match p:\n    case (a, b) if a > b: a\n    case _: 0',
     name: 'a',
     use: 1,
     declaredAt: 0,
   },
   'a select case binds its value': {
-    source: 'async fn f(g: Future<int>) -> Future<int>:\n  await select:\n    case g as got: got',
+    source: 'async fn f(g: Future<Int>) -> Future<Int>:\n  await select:\n    case g as got: got',
     name: 'got',
     use: 1,
     declaredAt: 0,
   },
   'a named lambda calls itself': {
     source:
-      'fn f() -> int:\n  const fact = fn self(n: int) -> int: if n < 2: 1 else: n * self(n - 1)\n  fact(3)',
+      'fn f() -> Int:\n  const fact = fn self(n: Int) -> Int: if n < 2: 1 else: n * self(n - 1)\n  fact(3)',
     name: 'self',
     use: 1,
     declaredAt: 0,
   },
   'a local function calls itself': {
-    source: 'fn f() -> int:\n  fn loop(n: int) -> int: if n > 0: loop(n - 1) else: 0\n  loop(3)',
+    source: 'fn f() -> Int:\n  fn loop(n: Int) -> Int: if n > 0: loop(n - 1) else: 0\n  loop(3)',
     name: 'loop',
     use: 1,
     declaredAt: 0,
   },
   'a struct shorthand reads the variable': {
-    source: 'struct P { first: int }\nfn f(first: int) -> P: P{first}',
+    source: 'struct P { first: Int }\nfn f(first: Int) -> P: P{first}',
     name: 'first',
     use: 2,
     declaredAt: 1,
   },
   'a struct target binds its field name': {
-    source: 'struct P { first: int }\nfn f(p: P) -> int:\n  const P{first} = p\n  first',
+    source: 'struct P { first: Int }\nfn f(p: P) -> Int:\n  const P{first} = p\n  first',
     name: 'first',
     use: 2,
     declaredAt: 1,
   },
   'a renamed field target binds the new name': {
-    source: 'struct P { first: int }\nfn f(p: P) -> int:\n  const struct{first as one} = p\n  one',
+    source: 'struct P { first: Int }\nfn f(p: P) -> Int:\n  const struct{first as one} = p\n  one',
     name: 'one',
     use: 1,
     declaredAt: 0,
   },
   'a nested tuple target binds every name': {
-    source: 'fn f(t: ((int, int), int)) -> int:\n  let (a, b), c = t\n  b',
+    source: 'fn f(t: ((Int, Int), Int)) -> Int:\n  let (a, b), c = t\n  b',
     name: 'b',
     use: 1,
     declaredAt: 0,
   },
   'a struct target in an assignment assigns the shorthand variable': {
-    source: 'struct P { first: int }\nfn f(p: P):\n  let first = 0\n  P{first} = p',
+    source: 'struct P { first: Int }\nfn f(p: P):\n  let first = 0\n  P{first} = p',
     name: 'first',
     use: 2,
     declaredAt: 1,
   },
   'a top-level constant destructures': {
-    source: 'const lo, hi = (1, 2)\nfn f() -> int: hi',
+    source: 'const lo, hi = (1, 2)\nfn f() -> Int: hi',
     name: 'hi',
     use: 1,
     declaredAt: 0,
   },
   'a top-level function is found before its declaration': {
-    source: 'fn f() -> int: g()\nfn g() -> int: 1',
+    source: 'fn f() -> Int: g()\nfn g() -> Int: 1',
     name: 'g',
     use: 0,
     declaredAt: 1,
@@ -154,7 +154,7 @@ const cases: Readonly<Record<string, Case>> = {
     declaredAt: 0,
   },
   'a static function owner': {
-    source: 'struct Money { cents: int }\nfn Money.zero() -> Money: Money{cents: 0}',
+    source: 'struct Money { cents: Int }\nfn Money.zero() -> Money: Money{cents: 0}',
     name: 'Money',
     use: 1,
     declaredAt: 0,
@@ -166,14 +166,14 @@ const cases: Readonly<Record<string, Case>> = {
     declaredAt: 0,
   },
   'an imported function': {
-    source: "import helper from 'lib'\nfn f() -> int: helper()",
+    source: "import helper from 'lib'\nfn f() -> Int: helper()",
     name: 'helper',
     use: 1,
     declaredAt: 0,
     module: 'lib',
   },
   'a namespace member': {
-    source: "import * as m from 'lib'\nfn f(s: m.Shape) -> int: s.radius",
+    source: "import * as m from 'lib'\nfn f(s: m.Shape) -> Int: s.radius",
     name: 'Shape',
     use: 0,
     declaredAt: 0,
@@ -202,8 +202,8 @@ describe('what a name denotes', () => {
     entityOfName(preludeProgramOf({ main: source, lib }), 'main', name, use)?.kind;
 
   it.each([
-    ['a primitive type', 'fn f(x: int): x', 'int', 'primitive'],
-    ['a prelude type', 'fn f(r: Result<int>): r', 'Result', 'type'],
+    ['a primitive type', 'fn f(x: Int): x', 'Int', 'primitive'],
+    ['a prelude type', 'fn f(r: Result<Int>): r', 'Result', 'type'],
     ['Self in a trait', 'trait Zero:\n  fn Self.zero() -> Self', 'Self', 'self'],
     ['a namespace', "import * as m from 'lib'\nfn f(): m.helper()", 'm', 'namespace'],
     [
@@ -214,19 +214,19 @@ describe('what a name denotes', () => {
     ],
     [
       'a PascalCase name in a pattern',
-      'fn f(o: int?) -> int:\n  match o:\n    case None: 0\n    case _: 1',
+      'fn f(o: Int?) -> Int:\n  match o:\n    case None: 0\n    case _: 1',
       'None',
       'variants',
     ],
     [
       'a PascalCase declaration target, which binds',
-      'fn f(t: (int, int)):\n  const Lo, _ = t',
+      'fn f(t: (Int, Int)):\n  const Lo, _ = t',
       'Lo',
       'variable',
     ],
     [
       'a camelCase name in a pattern',
-      'fn f(p: (int, int)) -> int:\n  match p:\n    case (a, _): a',
+      'fn f(p: (Int, Int)) -> Int:\n  match p:\n    case (a, _): a',
       'a',
       'variable',
     ],
@@ -235,8 +235,8 @@ describe('what a name denotes', () => {
   });
 
   it('a module function named like a prelude one overloads it, seen the same way everywhere', () => {
-    const book = 'struct Book { title: string }\nfn read(self: Book) -> string: self.title';
-    const main = "import * as books from 'books'\nfn f(b: books.Book) -> string: books.read(b)";
+    const book = 'struct Book { title: String }\nfn read(self: Book) -> String: self.title';
+    const main = "import * as books from 'books'\nfn f(b: books.Book) -> String: books.read(b)";
     const program = preludeProgramOf({ main, books: book });
     const inBooks = entityOfName(program, 'books', 'read', 0);
     const throughNamespace = entityOfName(program, 'main', 'read', 0);
@@ -254,11 +254,11 @@ describe('what a name denotes', () => {
 
   it('keeps every entity of an unchanged module across snapshots', () => {
     const files = {
-      main: 'struct Book { title: string }\nfn read(self: Book) -> string: self.title\nenum V { A; B }\nfn g() -> V: A',
-      other: 'fn x() -> int: 1',
+      main: 'struct Book { title: String }\nfn read(self: Book) -> String: self.title\nenum V { A; B }\nfn g() -> V: A',
+      other: 'fn x() -> Int: 1',
     };
     const before = preludeProgramOf(files);
-    const after = preludeProgramOf({ ...files, other: 'fn x() -> int: 2' }, before);
+    const after = preludeProgramOf({ ...files, other: 'fn x() -> Int: 2' }, before);
     for (const [name, use] of [
       ['read', 0],
       ['A', 1],
@@ -270,14 +270,14 @@ describe('what a name denotes', () => {
   });
 
   it('a member of a value is left to the checker', () => {
-    const source = 'struct P { x: int }\nfn f(p: P) -> int: p.x';
+    const source = 'struct P { x: Int }\nfn f(p: P) -> Int: p.x';
     expect(kindOf(source, 'x', 1)).toBeUndefined();
   });
 });
 
 describe("a function's name before a '.'", () => {
   const worker = [
-    'async fn worker() -> Future<unit>:',
+    'async fn worker() -> Future<Unit>:',
     '  await worker.disposing()',
     '  const later = fn(): worker.disposing()',
   ].join('\n');

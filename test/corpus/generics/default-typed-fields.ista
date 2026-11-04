@@ -11,8 +11,8 @@ struct A<T>:
   b = B<T>{x: 1, a: Opt.None}
 
 struct B<U>:
-  x: int
+  x: Int
   a: Opt<A<U>>
 
-async fn main() -> Future<int>:
-  A<string>{}.b.x
+async fn main() -> Future<Int>:
+  A<String>{}.b.x

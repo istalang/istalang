@@ -52,7 +52,7 @@ describe('line breaks', () => {
 
 describe('a >= closing type arguments', () => {
   it('reads as > inside <…> and leaves its = behind', () => {
-    const cursor = cursorOver('<int>= x');
+    const cursor = cursorOver('<Int>= x');
     cursor.advance();
     cursor.within('<', () => {
       cursor.advance();

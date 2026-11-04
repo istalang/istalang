@@ -22,6 +22,11 @@ export const genericTemplates = {
     code: 5103,
     message: (name: string) => `No function '${name}' is visible here.`,
   },
+  lowercaseConversion: {
+    code: 5126,
+    message: (name: string, primitive: string) =>
+      `No function '${name}' is visible here; type names are PascalCase, so did you mean '${primitive}'?`,
+  },
   noStaticFunction: {
     code: 5104,
     message: (type: string, name: string) => `${type} has no static function '${name}'.`,

@@ -14,11 +14,11 @@ import { compiledDefinition, compiledText } from '../../compile.test-kit.ts';
 
 const named = [
   'trait Named:',
-  '  fn name(self: Self) -> string',
-  'struct Email { to: string }',
-  'struct Sms { number: string }',
-  'fn name(self: Email) -> string: self.to',
-  'fn name(self: Sms) -> string: self.number',
+  '  fn name(self: Self) -> String',
+  'struct Email { to: String }',
+  'struct Sms { number: String }',
+  'fn name(self: Email) -> String: self.to',
+  'fn name(self: Sms) -> String: self.number',
 ];
 
 function compiled(lines: readonly string[]): Definition {

@@ -4,27 +4,27 @@
 # meeting it may take more parameters, each with a default it computes; and a rest parameter
 # reaches it as one array.
 trait Shape:
-  fn area(self: Self, scale: int, offset: int) -> int
-  fn count(self: Self, ...parts: Array<int>) -> int
+  fn area(self: Self, scale: Int, offset: Int) -> Int
+  fn count(self: Self, ...parts: Array<Int>) -> Int
 
-struct Square { side: int }
+struct Square { side: Int }
 
-fn area(self: Square, scale: int, offset: int, extra: int = 0) -> int:
+fn area(self: Square, scale: Int, offset: Int, extra: Int = 0) -> Int:
   self.side * scale + offset + extra
 
-fn count(self: Square, ...parts: Array<int>) -> int:
+fn count(self: Square, ...parts: Array<Int>) -> Int:
   parts.length()
 
-fn measure<T is Shape>(shape: T) -> int:
+fn measure<T is Shape>(shape: T) -> Int:
   shape.area(offset: 1, scale: 10)
 
-fn measureLater<T is Shape>(shape: T) -> int:
+fn measureLater<T is Shape>(shape: T) -> Int:
   shape.area(10, offset: 5)
 
-fn counted<T is Shape>(shape: T) -> int:
+fn counted<T is Shape>(shape: T) -> Int:
   shape.count(1, ...[2, 3])
 
-async fn main() -> Future<Array<int>>:
+async fn main() -> Future<Array<Int>>:
   const square = Square{side: 2}
   const any: any Shape = square
   [measure(square), any.area(offset: 1, scale: 10), measureLater(square), counted(square), any.count(...[7])]

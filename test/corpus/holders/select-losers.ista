@@ -8,24 +8,24 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-async fn produce(box: Inbox<int>, ticks: Inbox<unit>):
+async fn produce(box: Inbox<Int>, ticks: Inbox<Unit>):
   for i in 0..5:
     await ticks.receive()
     box.send(i)
 
-async fn consume(box: Inbox<int>, ticks: Inbox<unit>, count: int) -> Future<string>:
-  let received: Array<string> = []
+async fn consume(box: Inbox<Int>, ticks: Inbox<Unit>, count: Int) -> Future<String>:
+  let received: Array<String> = []
   let timeouts = 0
   while received.length() < count:
     await select:
       case box.receive() as message:
-        received.push(string(message))
+        received.push(String(message))
       case time.delay(1ms):
         timeouts += 1
         ticks.send(())
-  received.join(" ") + " | " + string(timeouts >= count)
+  received.join(" ") + " | " + String(timeouts >= count)
 
-async fn survives() -> Future<bool>:
+async fn survives() -> Future<Bool>:
   const later = time.delay(5ms)
   await select:
     case later:
@@ -38,9 +38,9 @@ async fn survives() -> Future<bool>:
     case time.delay(1h):
       false
 
-async fn main() -> Future<string>:
-  const box = Inbox.create<int>()
-  const ticks = Inbox.create<unit>()
+async fn main() -> Future<String>:
+  const box = Inbox.create<Int>()
+  const ticks = Inbox.create<Unit>()
   _ = produce(box, ticks)
   const consumed = await consume(box, ticks, 5)
-  consumed + " | " + string(await survives())
+  consumed + " | " + String(await survives())

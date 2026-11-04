@@ -8,7 +8,7 @@ import * as json from 'json'
 import repeat from 'strings'
 
 # Whether `pattern` parses: its Err's message, or "ok".
-fn parsed(pattern: string) -> string:
+fn parsed(pattern: String) -> String:
   match Regex.parse(pattern):
     case Ok{}: "ok"
     case Err{error}: error.message
@@ -45,7 +45,7 @@ fn suite() -> Array<Test>: [
       assert(not Regex{"a.b"}.test("a\nb"))
     }),
     test("a regex is its pattern's text, in JSON too", fn(): {
-      assertEq(string(Regex{"a+"}), "a+")
+      assertEq(String(Regex{"a+"}), "a+")
       assertEq(json.stringify(Regex{"a+"}), "\"a+\"")
       assert(json.parse<Regex>("\"a+\"") is Ok{value is Regex{pattern is "a+"}})
       assert(json.parse<Regex>("\"(\"") is Err{})
@@ -65,7 +65,7 @@ fn suite() -> Array<Test>: [
       const found = date().find("😀 on 2026-10")
       assert(found is Some{value is Match{text is "2026-10", index is 5}})
       if found is Some{value as m}:
-        const captures: Array<string?> = ["2026", "10", none, none]
+        const captures: Array<String?> = ["2026", "10", none, none]
         assertEq(m.captures, captures)
         assertEq(m.named, ["year": "2026", "month": "10"])
     }),
@@ -76,7 +76,7 @@ fn suite() -> Array<Test>: [
       const all = date().findAll("2026-10-27, 😀1999-01")
       assertEq([for m in all: m.text], ["2026-10-27", "1999-01"])
       assertEq([for m in all: m.index], [0, 13])
-      const days: Array<string?> = ["27", none]
+      const days: Array<String?> = ["27", none]
       assertEq([for m in all: m.named.get("day")], days)
       assertEq(Regex{"x"}.findAll("abc").length(), 0)
     }),

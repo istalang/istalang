@@ -1,69 +1,57 @@
-# error: 5400 at 21:9
-# error: 5109 at 27:10
-# error: 5402 at 32:10
-# error: 5001 at 37:10
-# error: 5001 at 42:10
-# error: 5001 at 47:10
-# error: 5402 at 56:10
-# error: 5001 at 61:10
-# error: 5001 at 68:10
+# error: 5400 at 19:9
+# error: 5109 at 25:10
+# error: 5001 at 30:10
+# error: 5001 at 35:10
+# error: 5001 at 40:10
+# error: 5001 at 49:10
+# error: 5001 at 56:10
 # A `match` must cover every value of its subject's type (§3.11, §4): a missing variant is
 # reported at the subject. A pattern mirrors construction, so a variant with fields takes braces;
-# a referring name is a variant, a struct without fields or a constant; a literal has the part's
+# a referring name is a variant, the part's own type or a constant; a literal has the part's
 # own type, never wrapped into an optional; and a struct pattern names the value's own type.
 
 enum Decision:
-  Approved { by: string }
-  Rejected { by: string; reason: string }
+  Approved { by: String }
+  Rejected { by: String; reason: String }
   Expired
 
-fn missing(decision: Decision) -> string:
+fn missing(decision: Decision) -> String:
   match decision:
     case Approved{by}: by
     case Expired: "expired"
 
-fn bare(decision: Decision) -> string:
+fn bare(decision: Decision) -> String:
   match decision:
     case Approved: "approved"
     case _: "other"
 
-fn typeName(decision: Decision) -> string:
-  match decision:
-    case Decision: "a type"
-    case _: "other"
-
-fn wrongLiteral(n: int) -> string:
+fn wrongLiteral(n: Int) -> String:
   match n:
     case "one": "string"
     case _: "other"
 
-fn unwrapped(n: int?) -> string:
+fn unwrapped(n: Int?) -> String:
   match n:
     case 1: "one"
     case _: "other"
 
-fn otherStruct(decision: Decision) -> string:
+fn otherStruct(decision: Decision) -> String:
   match decision:
     case Error{message}: message
     case _: "other"
 
-struct Point { x: int; y: int }
+struct Point { x: Int; y: Int }
 
 struct Marker
 
-fn structWithFields(p: Point) -> string:
-  match p:
-    case Point: "point"
-    case _: "other"
-
-fn otherMarker(decision: Decision) -> string:
+fn otherMarker(decision: Decision) -> String:
   match decision:
     case Marker: "marker"
     case _: "other"
 
 struct Box<T>
 
-fn otherBox(decision: Decision) -> string:
+fn otherBox(decision: Decision) -> String:
   match decision:
     case Box: "box"
     case _: "other"

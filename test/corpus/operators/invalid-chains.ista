@@ -7,7 +7,7 @@
 # needs an `includes` taking the container and the item (§3.9). An operand between two links is
 # compared on both sides, so it isn't wrapped into an optional for one.
 
-fn f(x: int, y: int, flag: bool, maybe: int?) -> bool:
+fn f(x: Int, y: Int, flag: Bool, maybe: Int?) -> Bool:
   _ = 1 < "a" < 2
   _ = x < y == flag
   _ = maybe == x < y

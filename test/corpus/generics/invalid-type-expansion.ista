@@ -35,33 +35,33 @@ struct Tree<T>:
   children: Array<Tree<T>>
   pairs: Array<(Tree<T>, Tree<T>)>
 
-fn made() -> Wrapped<int>:
-  Wrapped<int>{value: 1, next: none, grows: none}
+fn made() -> Wrapped<Int>:
+  Wrapped<Int>{value: 1, next: none, grows: none}
 
-fn bare() -> Chain<int>:
+fn bare() -> Chain<Int>:
   Deeper{head: 1, tail: End}
 
-fn qualified() -> Chain<int>:
+fn qualified() -> Chain<Int>:
   Chain.Deeper{head: 1, tail: Chain.End}
 
-async fn main() -> Future<int>:
+async fn main() -> Future<Int>:
   made()
-  Tree<int>{value: 1, children: [], pairs: []}.value
+  Tree<Int>{value: 1, children: [], pairs: []}.value
 
 # A value given to a field the expansion error-typed reports nothing more, however much it needs
 # the field's type to mean anything: an empty collection, a generic struct without fields, a
 # function named among overloads, or a nested function's untyped parameter.
 struct Marker<T>
 
-fn scaled(x: int) -> int: x
-fn scaled(x: string) -> string: x
+fn scaled(x: Int) -> Int: x
+fn scaled(x: String) -> String: x
 
 struct Endless<T>:
   items: Array<Endless<(T,)>>
-  entries: Map<string, Endless<(T,)>>
+  entries: Map<String, Endless<(T,)>>
   marker: Marker<Endless<(T,)>>
-  named: fn(Endless<(T,)>) -> int
-  nested: fn(Endless<(T,)>) -> int
+  named: fn(Endless<(T,)>) -> Int
+  nested: fn(Endless<(T,)>) -> Int
 
-fn endless() -> Endless<int>:
-  Endless<int>{items: [], entries: [:], marker: Marker, named: scaled, nested: fn(x): 0}
+fn endless() -> Endless<Int>:
+  Endless<Int>{items: [], entries: [:], marker: Marker, named: scaled, nested: fn(x): 0}

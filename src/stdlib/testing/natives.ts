@@ -48,7 +48,7 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
     ) => context.instances.spawn(given(entry), declaredResult(context), { crashEveryAwait: true }),
     [ofInstance('idle')]: ([handle], context) =>
       context.testing.watch(instanceNameOf(handle), { kind: 'idle' }),
-    [ofInstance('reaches', 'string')]: ([handle, label], context) =>
+    [ofInstance('reaches', 'String')]: ([handle, label], context) =>
       context.testing.watch(instanceNameOf(handle), { kind: 'waypoint', label: text(label) }),
     [ofInstance('waitingAt')]: ([handle], context) =>
       arrayOf(

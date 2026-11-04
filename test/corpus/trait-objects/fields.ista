@@ -2,10 +2,10 @@
 # A field a trait requires is read through an `any` value from the value's own type (§3.10).
 
 trait Sized:
-  size: int
+  size: Int
 
-struct Box { size: int; label: string }
-struct Pair { first: string; size: int }
+struct Box { size: Int; label: String }
+struct Pair { first: String; size: Int }
 
 async fn main():
   const items: Array<any Sized> = [Box{size: 1, label: "a"}, Pair{first: "b", size: 2}]

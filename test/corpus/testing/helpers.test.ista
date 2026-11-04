@@ -12,18 +12,18 @@ import mock, handle from 'testing'
 extern struct Queue
 extern fn dispose(self: Queue)
 
-fn greet(name: string) -> string: name
+fn greet(name: String) -> String: name
 
 async fn targets():
   const named = greet
-  hold _ = mock(named, fn(name: string): name)
-  hold _ = mock(fn(name: string): name, fn(name: string): name)
-  const n: int = handle<int>()
-  hold _ = mock(greet, fn(name: string): name)
+  hold _ = mock(named, fn(name: String): name)
+  hold _ = mock(fn(name: String): name, fn(name: String): name)
+  const n: Int = handle<Int>()
+  hold _ = mock(greet, fn(name: String): name)
   const q: Queue = handle<Queue>()
-  const future: Future<int> = handle<Future<int>>()
+  const future: Future<Int> = handle<Future<Int>>()
   hold _ = mock(dispose, fn(queue: Queue): ())
-  const disposer: fn(Queue) -> unit = dispose
+  const disposer: fn(Queue) -> Unit = dispose
   drop n
   drop q
   drop disposer

@@ -8,22 +8,22 @@ import * as runtime from 'runtime'
 # 2^64: a draw from a range this wide needs more than one draw's worth of a 64-bit source.
 const twoTo64 = 18_446_744_073_709_551_616
 
-extern fn seen(value: int)
+extern fn seen(value: Int)
 
-extern fn seenText(value: string)
+extern fn seenText(value: String)
 
-fn ignored(value: int): ()
+fn ignored(value: Int): ()
 
-fn ignoredText(value: string): ()
+fn ignoredText(value: String): ()
 
-fn zero(range: Range) -> int: 0
+fn zero(range: Range) -> Int: 0
 
 async fn drawsThenCommits():
   seen(random.integer(0..1_000_000_000_000))
   await runtime.commit()
 
 # What an instance that finished gave; a panic when it didn't.
-fn finishedWith(outcome: Result<string>) -> string:
+fn finishedWith(outcome: Result<String>) -> String:
   match outcome:
     case Ok{value}: value
     case Err{error}: panic(error.message)
@@ -36,11 +36,11 @@ async fn spawnsThenDraws():
   seenText(finishedWith(await first.result()) + " " + finishedWith(await second.result()))
   await runtime.commit()
 
-async fn drawsUuid() -> Future<string>: random.uuid()
+async fn drawsUuid() -> Future<String>: random.uuid()
 
-fn emptyRange() -> int: random.integer(3..3)
+fn emptyRange() -> Int: random.integer(3..3)
 
-fn openRange() -> int: random.integer(3..)
+fn openRange() -> Int: random.integer(3..)
 
 @Suite{"random"}
 fn suite() -> Array<Test>: [

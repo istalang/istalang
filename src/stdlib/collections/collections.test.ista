@@ -5,24 +5,24 @@ import WeakMap from 'collections'
 import Inbox from 'inbox'
 import * as runtime from 'runtime'
 
-type Boxes = WeakMap<Inbox<int>, Inbox<int>>
+type Boxes = WeakMap<Inbox<Int>, Inbox<Int>>
 
 # Weak references to an entry's key and value, which tell when each is let go of.
 struct Watched:
-  key: WeakRef<Inbox<int>>
-  value: WeakRef<Inbox<int>>
+  key: WeakRef<Inbox<Int>>
+  value: WeakRef<Inbox<Int>>
 
 # Sets an entry of `map` for the key `holder` holds, to a value only the map holds.
-fn entryOf(map: Boxes, holder: Shared<Inbox<int>?>) -> Watched:
+fn entryOf(map: Boxes, holder: Shared<Inbox<Int>?>) -> Watched:
   if holder->value is Some{value as key}:
-    const value = Inbox.create<int>()
+    const value = Inbox.create<Int>()
     map.set(key, value)
     return Watched{key: WeakRef(key), value: WeakRef(value)}
   panic("The holder holds no key.")
 
-async fn evictedAcrossSnapshots() -> Future<string>:
+async fn evictedAcrossSnapshots() -> Future<String>:
   const map: Boxes = WeakMap.create()
-  const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+  const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
   const watched = entryOf(map, holder)
   await runtime.commit()
   assert(watched.value.deref() is Some{})
@@ -33,9 +33,9 @@ async fn evictedAcrossSnapshots() -> Future<string>:
 @Suite{"collections › WeakMap"}
 fn weakMap() -> Array<Test>: [
   test("gives what was set for a key, and none for another", fn(): {
-    const map = WeakMap.create<Inbox<int>, string>()
-    const key = Inbox.create<int>()
-    const other = Inbox.create<int>()
+    const map = WeakMap.create<Inbox<Int>, String>()
+    const key = Inbox.create<Int>()
+    const other = Inbox.create<Int>()
     map.set(key, "a")
     assertEq(map.get(key), "a")
     assert(map.has(key) and key in map)
@@ -43,15 +43,15 @@ fn weakMap() -> Array<Test>: [
     assert(not map.has(other) and other not in map)
   }),
   test("setting a key again replaces its value", fn(): {
-    const map = WeakMap.create<Inbox<int>, string>()
-    const key = Inbox.create<int>()
+    const map = WeakMap.create<Inbox<Int>, String>()
+    const key = Inbox.create<Int>()
     map.set(key, "a")
     map.set(key, "b")
     assertEq(map.get(key), "b")
   }),
   test("delete says whether the map held the key", fn(): {
-    const map = WeakMap.create<Inbox<int>, string>()
-    const key = Inbox.create<int>()
+    const map = WeakMap.create<Inbox<Int>, String>()
+    const key = Inbox.create<Int>()
     map.set(key, "a")
     assert(map.delete(key))
     assert(not map.has(key))
@@ -59,21 +59,21 @@ fn weakMap() -> Array<Test>: [
   }),
   test("keeps an entry while its key lives", async fn(): {
     const map: Boxes = WeakMap.create()
-    const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+    const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
     await runtime.commit()
     assert(watched.value.deref() is Some{})
   }),
   test("holds no key", fn(): {
     const map: Boxes = WeakMap.create()
-    const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+    const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
     holder->value = none
     assert(watched.key.deref() is None)
   }),
   test("lets go of an entry and its value once its key is disposed", async fn(): {
     const map: Boxes = WeakMap.create()
-    const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+    const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
     holder->value = none
     await watched.value.disposed()
@@ -81,7 +81,7 @@ fn weakMap() -> Array<Test>: [
   }),
   test("deleting an entry lets go of its value", async fn(): {
     const map: Boxes = WeakMap.create()
-    const holder = new Shared<Inbox<int>?>{value: Inbox.create<int>()}
+    const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
     if holder->value is Some{value as key}: assert(map.delete(key))
     await watched.value.disposed()

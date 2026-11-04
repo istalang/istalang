@@ -4,15 +4,15 @@
 
 import * as runtime from 'runtime'
 
-fn stock(item: string) -> int:
+fn stock(item: String) -> Int:
   if item == "":
     panic("no stock")
   item.length()
 
-async fn checked(item: string) -> Future<string>:
+async fn checked(item: String) -> Future<String>:
   match await runtime.isolate(fn(): stock(item)):
     case Ok{value}: "Ok " + value
     case Err{error}: "Err " + error.code + ": " + error.message
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   await checked("") + "; " + await checked("pen")

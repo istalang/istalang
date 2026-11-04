@@ -17,7 +17,7 @@ export const patternTemplates = {
   notPatternName: {
     code: 5402,
     message: (name: string) =>
-      `'${name}' names no variant, struct without fields or constant, so a pattern can't compare with it.`,
+      `'${name}' names no variant, type or constant, so a pattern can't compare with it.`,
   },
   propagateNeedsResult: {
     code: 5403,
@@ -65,11 +65,16 @@ export const patternTemplates = {
   notIntRangePattern: {
     code: 5414,
     message: (found: string) =>
-      `A range pattern matches an int between int literals, not ${found} (§3.11).`,
+      `A range pattern matches an Int between Int literals, not ${found} (§3.11).`,
   },
   emptyRangePattern: {
     code: 5415,
-    message: () => 'This range pattern matches no int: its end is not past its start.',
+    message: () => 'This range pattern matches no Int: its end is not past its start.',
+  },
+  genericAliasPattern: {
+    code: 5416,
+    message: (name: string) =>
+      `'${name}' is a generic alias, which stands for no one type without its type arguments, and a pattern gives none; name the type it stands for.`,
   },
   insideOptional: {
     code: 5409,

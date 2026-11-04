@@ -53,7 +53,7 @@ export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     context.write(0, withEntry(mapValueOf(m), k ?? null, v ?? null));
     return null;
   },
-  [keys.of('_entryAt', map, 'int')]: ([m, position]) => {
+  [keys.of('_entryAt', map, 'Int')]: ([m, position]) => {
     const { entries } = mapValueOf(m);
     return entryTuple(
       entries[checkedIndex(int(position), entries.length, 'a map')] ?? [null, null],

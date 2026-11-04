@@ -20,12 +20,12 @@ describe('lambda forms', () => {
       `(Lambda isAsync _ [${param('msg')}] _ (Await (Call handle [] [msg])))`,
     ],
     [
-      'fn(x: int, y: int) -> int: x * y',
+      'fn(x: Int, y: Int) -> Int: x * y',
       `(Lambda _ [${param('x', int)} ${param('y', int)}] ${int} (Binary x * y))`,
     ],
-    ['fn f(n: int) -> int: n', `(Lambda f [${param('n', int)}] ${int} n)`],
+    ['fn f(n: Int) -> Int: n', `(Lambda f [${param('n', int)}] ${int} n)`],
     [
-      'fn(a, b = 1, ...rest: Array<int>,): a',
+      'fn(a, b = 1, ...rest: Array<Int>,): a',
       `(Lambda _ [${param('a')} ${param('b', '_', '1')} (Parameter isRest rest (NamedType [Array] [${int}]) _)] _ a)`,
     ],
     [

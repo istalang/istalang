@@ -4,25 +4,25 @@ import Inbox, Revertible from 'inbox'
 import * as time from 'time'
 
 struct Holder:
-    box: Inbox<int>
-    me: int
+    box: Inbox<Int>
+    me: Int
 
-async fn watcher(log: Inbox<string>, name: string, w: WeakRef<Inbox<int>>):
+async fn watcher(log: Inbox<String>, name: String, w: WeakRef<Inbox<Int>>):
     await w.disposed()
     log.send(name + " gone")
 
-async fn main() -> Future<Array<string>>:
-    const log = Inbox.create<string>()
+async fn main() -> Future<Array<String>>:
+    const log = Inbox.create<String>()
     let hs: Array<Holder> = []
-    let w1: WeakRef<Inbox<int>>? = none
-    let wd: Future<unit>? = none
+    let w1: WeakRef<Inbox<Int>>? = none
+    let wd: Future<Unit>? = none
     if true:
-        const a = Inbox.create<int>()
+        const a = Inbox.create<Int>()
         hs.push(Holder{box: a, me: 1})
         const wa = WeakRef(a)
         wd = watcher(log, "a", wa)
         w1 = wa
-        const b = Inbox.create<int>()
+        const b = Inbox.create<Int>()
         const r1 = b.sendRevertible(5)
         _ = watcher(log, "b", WeakRef(b))
         log.send("end of block")
@@ -33,9 +33,9 @@ async fn main() -> Future<Array<string>>:
     await time.delay(5ms)
     const x = w1 == none
     log.send("w1 none: " + x.toString())
-    let out: Array<string> = []
+    let out: Array<String> = []
     while true:
-        const more: bool = select:
+        const more: Bool = select:
             case log.receive() as s:
                 out.push(s)
                 true

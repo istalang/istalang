@@ -2,16 +2,16 @@
 # A plain function fits where an async one of its parameters and result is expected, made async
 # where it is passed or assigned: calling it gives a future already resolved (§3.14). A named
 # function, a lambda, one the call decides, and one wrapped into an optional all fit.
-fn double(x: int) -> int: x * 2
+fn double(x: Int) -> Int: x * 2
 
-async fn twice(f: async fn(int) -> int, x: int) -> Future<int>:
+async fn twice(f: async fn(Int) -> Int, x: Int) -> Future<Int>:
   await f(await f(x))
 
 async fn generic<T>(f: async fn() -> T) -> Future<T>:
   await f()
 
-async fn main() -> Future<Array<int>>:
-  const plain = fn(x: int) -> int: x + 1
-  const g: async fn(int) -> int = double
-  const h: (async fn(int) -> int)? = plain
+async fn main() -> Future<Array<Int>>:
+  const plain = fn(x: Int) -> Int: x + 1
+  const g: async fn(Int) -> Int = double
+  const h: (async fn(Int) -> Int)? = plain
   [await twice(double, 3), await twice(plain, 3), await twice(fn x: x * 10, 1), await g(5), await generic(fn(): 7), await (h ?? g)(1)]

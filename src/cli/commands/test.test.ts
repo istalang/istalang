@@ -24,7 +24,7 @@ function suiteModule(title: string): string {
     "import Suite, Test, test, skip from 'testing'",
     'async fn passes():',
     '  ()',
-    'async fn fails() -> Future<unit>:',
+    'async fn fails() -> Future<Unit>:',
     '  panic("on purpose")',
     `@Suite{"${title}"}`,
     'fn suite() -> Array<Test>: [',
@@ -95,7 +95,7 @@ describe('ista test', () => {
       out: '',
       err: 'ista: no test found.\n',
     });
-    const broken = await ista(project({ 'a.test.ista': 'fn f() -> int: "text"' }), 'test');
+    const broken = await ista(project({ 'a.test.ista': 'fn f() -> Int: "text"' }), 'test');
     expect(broken.code).toBe(1);
     expect(broken.out).toBe('');
     expect(broken.err).toContain('error 5001');
@@ -116,8 +116,8 @@ describe('ista test', () => {
     const root = project({
       'a.test.ista': [
         "import Suite, Test, test from 'testing'",
-        'fn inner() -> unit: panic("trace me")',
-        'async fn fails() -> Future<unit>:',
+        'fn inner() -> Unit: panic("trace me")',
+        'async fn fails() -> Future<Unit>:',
         '  inner()',
         '@Suite{"s"}',
         'fn suite() -> Array<Test>: [test("t", fails)]',
@@ -137,7 +137,7 @@ describe('ista test', () => {
         "import Suite, Test, test from 'testing'",
         "import * as log from 'log'",
         "import * as runtime from 'runtime'",
-        'async fn fails() -> Future<unit>:',
+        'async fn fails() -> Future<Unit>:',
         '  log.info("kept", struct{n: 1})',
         '  await runtime.commit()',
         '  log.info("lost")',
@@ -161,7 +161,7 @@ describe('ista test', () => {
   it('refuses a non-test module that imports a test module, running nothing', async () => {
     const root = project({
       'a.test.ista': passingModule('a'),
-      'prod.ista': "import Suite from './a.test'\nfn y() -> int: 1",
+      'prod.ista': "import Suite from './a.test'\nfn y() -> Int: 1",
     });
     const run = await ista(root, 'check');
     expect(run.code).toBe(1);

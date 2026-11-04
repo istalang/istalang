@@ -4,7 +4,8 @@
  *
  * - A tuple pattern takes a tuple of exactly its size; a struct pattern a struct value, its own
  *   type named or taken with `struct{…}`, as a `struct{…}` literal takes the expected type (§3.1).
- *   A generic struct is named without its arguments: the value has them.
+ *   A name names the value's type as a type pattern's does (types/named-types.ts): through an
+ *   alias, and a generic struct without its arguments, which the value has.
  * - A part of a value already in error has the error type, so each mistake is reported once.
  */
 
@@ -17,12 +18,14 @@ import type { Checker } from '../check.ts';
 import type { PartStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { itemField } from '../struct-items.ts';
+import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */
 export interface PatternScope {
   readonly fieldsOf: Checker['fieldsOf'];
+  readonly aliasedType: Checker['aliasedType'];
   readonly entityOf: (name: Identifier) => Entity | undefined;
   readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
   /** Records the field an item's name names. */
@@ -32,11 +35,12 @@ export interface PatternScope {
 /** The body as a pattern reads it. */
 export function bodyScope(
   context: Pick<PatternScope, 'entityOf' | 'report' | 'recordField'> & {
-    readonly checker: Pick<Checker, 'fieldsOf'>;
+    readonly checker: Pick<Checker, 'fieldsOf' | 'aliasedType'>;
   },
 ): PatternScope {
   return {
     fieldsOf: (type) => context.checker.fieldsOf(type),
+    aliasedType: (alias) => context.checker.aliasedType(alias),
     entityOf: (name) => context.entityOf(name),
     report: (diagnostic) => context.report(diagnostic),
     recordField: (name, field) => context.recordField(name, field),
@@ -94,19 +98,32 @@ export function structParts(
   if (type.kind === 'error' || (named !== undefined && entity === undefined)) {
     return undefined;
   }
-  if (named !== undefined) {
-    const name = lastName(named.path);
-    const declaration = entity?.kind === 'type' ? entity.declaration : undefined;
-    if (type.kind !== 'nominal' || declaration !== type.entity.declaration) {
-      scope.report(checkerDiagnostics.typeMismatch(named.span, name.text, typeText(type)));
-      return undefined;
-    }
+  if (named !== undefined && entity !== undefined && !namesOwnType(scope, entity, type)) {
+    scope.report(
+      otherTypeNamed(scope, entity, { span: named.span, name: lastName(named.path) }, type),
+    );
+    return undefined;
   }
   const fields = scope.fieldsOf(type);
   if (fields === undefined) {
     scope.report(checkerDiagnostics.notStructValue(span, typeText(type)));
   }
   return fields;
+}
+
+/**
+ * Why a pattern naming `entity`, as `name` at `span`, doesn't name `type`, the value's own: a
+ * generic alias names no one type, and anything else names another type than the value's.
+ */
+export function otherTypeNamed(
+  scope: Pick<PatternScope, 'aliasedType'>,
+  entity: Entity,
+  { span, name }: { readonly span: AnchoredSpan; readonly name: Identifier },
+  type: Type,
+): Diagnostic<AnchoredSpan> {
+  return patternTypeOf(scope, entity).kind === 'genericAlias'
+    ? checkerDiagnostics.genericAliasPattern(span, name.text)
+    : checkerDiagnostics.typeMismatch(span, typeText(type), name.text);
 }
 
 /**

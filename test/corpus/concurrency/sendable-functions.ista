@@ -4,32 +4,32 @@
 # may follow, the type is widened to the plain function type: a `let` without a written type, and
 # producers of one value that disagree, such as the items of an array literal or an if's branches.
 
-fn applied(f: fn(int) -> int, n: int) -> int:
+fn applied(f: fn(Int) -> Int, n: Int) -> Int:
   f(n)
 
-fn sent(f: sendable fn(int) -> int, n: int) -> int:
+fn sent(f: sendable fn(Int) -> Int, n: Int) -> Int:
   f(n)
 
-fn reassigned() -> int:
+fn reassigned() -> Int:
   let counter = 0
-  let current = fn(n: int): n + 1
-  current = fn(n: int): n + counter
+  let current = fn(n: Int): n + 1
+  current = fn(n: Int): n + counter
   counter = 1
   current(2)
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const base = 10
-  const add = fn(n: int): n + base
+  const add = fn(n: Int): n + base
   let seen = 20
-  const mixed = [fn(n: int): n + 1, fn(n: int): n + seen]
-  const nested = [[fn(n: int): n + 1], [fn(n: int): n + seen]]
-  const pairs = [(1, fn(n: int): n + 1), (2, fn(n: int): n + seen)]
-  const branchedPair = if base > 5: (1, fn(n: int): n * 0) else: (2, fn(n: int): n + seen)
-  const panicking: fn(int) -> int = fn(n: int): panic(string(n))
-  const picked = if base > 5: fn(n: int): n * 0 else: fn(n: int): n + seen
+  const mixed = [fn(n: Int): n + 1, fn(n: Int): n + seen]
+  const nested = [[fn(n: Int): n + 1], [fn(n: Int): n + seen]]
+  const pairs = [(1, fn(n: Int): n + 1), (2, fn(n: Int): n + seen)]
+  const branchedPair = if base > 5: (1, fn(n: Int): n * 0) else: (2, fn(n: Int): n + seen)
+  const panicking: fn(Int) -> Int = fn(n: Int): panic(String(n))
+  const picked = if base > 5: fn(n: Int): n * 0 else: fn(n: Int): n + seen
   seen += 1
-  const items = string(mixed[0](1)) + " " + string(mixed[1](1))
-  const nestedItems = string(nested[0][0](1)) + " " + string(nested[1][0](1))
-  const pairItems = string(pairs[0].1(1)) + " " + string(pairs[1].1(1))
+  const items = String(mixed[0](1)) + " " + String(mixed[1](1))
+  const nestedItems = String(nested[0][0](1)) + " " + String(nested[1][0](1))
+  const pairItems = String(pairs[0].1(1)) + " " + String(pairs[1].1(1))
   const kept = if false: panicking(1) else: branchedPair.1(3)
-  string(reassigned()) + " | " + string(applied(add, 1)) + " | " + items + " | " + string(sent(fn(n: int): n, 5)) + " | " + string(picked(3)) + " | " + nestedItems + " | " + pairItems + " | " + string(kept)
+  String(reassigned()) + " | " + String(applied(add, 1)) + " | " + items + " | " + String(sent(fn(n: Int): n, 5)) + " | " + String(picked(3)) + " | " + nestedItems + " | " + pairItems + " | " + String(kept)

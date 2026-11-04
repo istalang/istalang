@@ -2,10 +2,10 @@
 # Ranges (§2, §3.8, §3.9): half-open and inclusive, open at either end when slicing, iterated when
 # both ends are given, and replacing a span of an array with an array of another length.
 
-fn show(xs: Array<int>) -> string:
-  "[" + [for x in xs: string(x)].join(", ") + "]"
+fn show(xs: Array<Int>) -> String:
+  "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let total = 0
   for i in 0..5:
     total += i
@@ -19,14 +19,14 @@ async fn main() -> Future<string>:
   for _ in 5..2:
     backwards += 1
   const parts = [
-    string(total),
-    string(inclusive),
+    String(total),
+    String(inclusive),
     show([for i in 3..3: i]),
     show(copy),
     show([1, 2, 3][..]),
     show([4, 5, 6][1..]),
     show(xs),
     show([1, 2, 3, 4][2..]),
-    string(backwards),
+    String(backwards),
   ]
   parts.join(" ")

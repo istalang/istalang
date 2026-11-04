@@ -42,16 +42,16 @@ interface Source {
 const crossModuleCycle = {
   a: [
     "import g from 'b'",
-    'fn f(n: int):',
+    'fn f(n: Int):',
     '  if n > 0:',
-    '    const x: bool = g(n - 1)',
+    '    const x: Bool = g(n - 1)',
     '  return "none"',
   ].join('\n'),
   b: [
     "import f from 'a'",
-    'fn g(n: int):',
+    'fn g(n: Int):',
     '  if n > 0:',
-    '    const y: bool = f(n - 1)',
+    '    const y: Bool = f(n - 1)',
     '  return 1',
   ].join('\n'),
 };
@@ -156,13 +156,13 @@ describe('a checker', () => {
   it('answers a cycle alike whichever member is asked first', () => {
     const program = stdProgramOf({
       'main.ista': [
-        'fn f(n: int):',
+        'fn f(n: Int):',
         '  if n > 0:',
-        '    const x: bool = g(n - 1)',
+        '    const x: Bool = g(n - 1)',
         '  return "none"',
-        'fn g(n: int):',
+        'fn g(n: Int):',
         '  if n > 0:',
-        '    const y: bool = f(n - 1)',
+        '    const y: Bool = f(n - 1)',
         '  return 1',
       ].join('\n'),
     });

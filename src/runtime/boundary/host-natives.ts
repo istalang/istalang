@@ -49,7 +49,7 @@ interface HostPending {
 /** An extern a host implements, against JSON. */
 type HostExtern = (arguments_: readonly unknown[], call: HostCall) => unknown;
 
-/** A host's externs, by key: `purchase.chargeCard(string, int)`, `purchase.approvalDeadline`. */
+/** A host's externs, by key: `purchase.chargeCard(String, Int)`, `purchase.approvalDeadline`. */
 export type HostExterns = Readonly<Record<string, HostExtern>>;
 
 /** `host` as natives, by the same keys. */

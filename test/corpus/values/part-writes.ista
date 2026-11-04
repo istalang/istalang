@@ -7,58 +7,58 @@
 import * as time from 'time'
 
 shared struct Counter:
-  a: int
-  b: int
+  a: Int
+  b: Int
 
 struct P:
-  a: int
-  b: int
+  a: Int
+  b: Int
 
 shared struct Board:
   rows: Array<P>
-  touched: int
+  touched: Int
 
-fn bumpB(c: Counter) -> int:
+fn bumpB(c: Counter) -> Int:
   c->b += 1
   10
 
-fn setBoth(x: &int, c: Counter):
+fn setBoth(x: &Int, c: Counter):
   c->b = 5
   x = 7
 
-fn compound() -> string:
+fn compound() -> String:
   const c = new Counter{a: 0, b: 0}
   c->a += bumpB(c)
   show(c->a, c->b)
 
-fn desugared() -> string:
+fn desugared() -> String:
   const c = new Counter{a: 0, b: 0}
   c->a = c->a + bumpB(c)
   show(c->a, c->b)
 
-fn referenced() -> string:
+fn referenced() -> String:
   const c = new Counter{a: 0, b: 0}
   setBoth(&c->a, c)
   show(c->a, c->b)
 
-fn element() -> string:
+fn element() -> String:
   let xs = [P{a: 0, b: 0}]
-  fn g() -> int:
+  fn g() -> Int:
     xs[0].b = 1
     10
   xs[0].a += g()
   show(xs[0].a, xs[0].b)
 
-fn nested() -> string:
+fn nested() -> String:
   const board = new Board{rows: [P{a: 0, b: 0}], touched: 0}
-  fn g() -> int:
+  fn g() -> Int:
     board->rows[0].b = 1
     board->touched = 1
     10
   board->rows[0].a += g()
-  show(board->rows[0].a, board->rows[0].b) + " " + string(board->touched)
+  show(board->rows[0].a, board->rows[0].b) + " " + String(board->touched)
 
-async fn later() -> Future<int>:
+async fn later() -> Future<Int>:
   await time.delay(10ms)
   1
 
@@ -69,15 +69,15 @@ async fn writeB(c: Counter):
 async fn bumpLater(c: Counter):
   c->a += await later()
 
-async fn awaited() -> Future<string>:
+async fn awaited() -> Future<String>:
   const c = new Counter{a: 0, b: 0}
   const w = writeB(c)
   await bumpLater(c)
   await w
   show(c->a, c->b)
 
-fn show(a: int, b: int) -> string:
-  string(a) + " " + string(b)
+fn show(a: Int, b: Int) -> String:
+  String(a) + " " + String(b)
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   [compound(), desugared(), referenced(), element(), nested(), await awaited()].join("|")

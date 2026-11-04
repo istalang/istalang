@@ -3,7 +3,7 @@
  * traits and type aliases.
  *
  * Structs, enums and traits list their members the same way: an indented block after `:`, or
- * braces on one line (`struct Req { id: int; value: string }`, `enum Color { Red; Green }`). A
+ * braces on one line (`struct Req { id: Int; value: String }`, `enum Color { Red; Green }`). A
  * struct may also have no member list at all. One helper reads all three, with each declaration
  * supplying how a member is parsed.
  */
@@ -114,7 +114,7 @@ function parseMembers<
   return { value: items, doc: parseDocstringBelow(parser, headerStart), segmentsStart: undefined };
 }
 
-/** `Expired`, or `Rejected { by: string; reason: string }`. */
+/** `Expired`, or `Rejected { by: String; reason: String }`. */
 function parseVariant(parser: Parser): Variant {
   const name = parser.identifier('a variant name');
   const fields = parser.cursor.at('{') ? parseItemEntries(parser, declaredFieldRules).value : [];

@@ -4,21 +4,21 @@
 # scope (§3.9, §3.13).
 
 struct Money:
-  cents: int
+  cents: Int
 
 fn Money.zero() -> Money:
   Money{cents: 0}
 
-fn Money.from(cents: int) -> Money:
+fn Money.from(cents: Int) -> Money:
   Money{cents: cents}
 
 fn add(left: Money, right: Money) -> Money:
   Money{cents: left.cents + right.cents}
 
-fn compare(left: Money, right: Money) -> int:
+fn compare(left: Money, right: Money) -> Int:
   left.cents - right.cents
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const total = Money.zero() + Money(250) + Money(5)
-  const half: float = float(25) / 2
-  string(total.cents) + " " + string(float(3)) + " " + string(int(3.7)) + " " + string(int(-3.7)) + " " + string(half) + " " + string(Money(1) < total)
+  const half: Float = Float(25) / 2
+  String(total.cents) + " " + String(Float(3)) + " " + String(Int(3.7)) + " " + String(Int(-3.7)) + " " + String(half) + " " + String(Money(1) < total)

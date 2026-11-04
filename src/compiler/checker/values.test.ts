@@ -12,16 +12,16 @@ import { diagnosedAt } from '../compile.test-kit.ts';
 import { inFunction, reported } from './check.test-kit.ts';
 import { checkerDiagnostics as reports } from './diagnostics/index.ts';
 
-const pair = 'struct Pair { first: int; second: int }';
+const pair = 'struct Pair { first: Int; second: Int }';
 const apartFromChanging = /apart from the names that change/u;
-const one = 'struct Id { value: string }';
+const one = 'struct Id { value: String }';
 const methods = [
-  'fn grow(self: &Point, by: int):\n  self.x += by',
-  'fn sum(self: Point) -> int: self.x + self.y',
-  'fn bump(n: &int):\n  n += 1',
+  'fn grow(self: &Point, by: Int):\n  self.x += by',
+  'fn sum(self: Point) -> Int: self.x + self.y',
+  'fn bump(n: &Int):\n  n += 1',
 ].join('\n');
 
-/** `body` in a function beside `Pair`, `Id` and a few methods and functions on `Point` and `int`. */
+/** `body` in a function beside `Pair`, `Id` and a few methods and functions on `Point` and `Int`. */
 function inProgram(body: string): string {
   return `${pair}\n${one}\nstruct Empty\n${methods}\n${inFunction(body)}`;
 }
@@ -73,7 +73,7 @@ describe('values accept', () => {
     ],
     [
       'an anonymous struct type taking a literal',
-      'const v: { a: int; b: string } = struct{a: 1, b: s}\nconst w = v.b',
+      'const v: { a: Int; b: String } = struct{a: 1, b: s}\nconst w = v.b',
     ],
     [
       'destructuring at any depth',
@@ -98,12 +98,12 @@ describe('values accept', () => {
   });
 
   it('a reference parameter passed on and changed through', () => {
-    const text = 'fn bump(n: &int):\n  n += 1\nfn twice(n: &int):\n  bump(&n)\n  bump(&n)';
+    const text = 'fn bump(n: &Int):\n  n += 1\nfn twice(n: &Int):\n  bump(&n)\n  bump(&n)';
     expect(reported(text)).toEqual(reportedNothing);
   });
 
   it('a top-level constant destructured, each name its part', () => {
-    const text = `${pair}\nconst lo, Pair{second as hi} = (1, Pair{first: 2, second: 3})\nfn f() -> int: lo + hi`;
+    const text = `${pair}\nconst lo, Pair{second as hi} = (1, Pair{first: 2, second: 3})\nfn f() -> Int: lo + hi`;
     expect(reported(text)).toEqual(reportedNothing);
   });
 });

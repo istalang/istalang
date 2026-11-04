@@ -43,7 +43,7 @@ import {
   type VariantsEntity,
   variableEntity,
 } from './entities.ts';
-import { conventionViolation } from './naming.ts';
+import { namingViolation } from './naming.ts';
 import type { LocalEntity, Miss, Scope, ScopeSnapshot } from './scope.ts';
 import { type Visibility, VisibilityNotes } from './visibility.ts';
 
@@ -283,7 +283,7 @@ export class LocalBinder {
   }
 
   checkConvention(name: Identifier, convention: Convention): void {
-    const violation = conventionViolation(name, convention);
+    const violation = namingViolation(name, convention);
     if (violation !== undefined) {
       this.report(violation);
     }

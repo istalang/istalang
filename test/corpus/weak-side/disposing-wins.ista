@@ -5,20 +5,20 @@
 
 import Inbox from 'inbox'
 
-fn note(log: Shared<Array<string>>, entry: string):
+fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
 
-async fn worker(jobs: Inbox<int>, log: Shared<Array<string>>) -> Future<unit>:
+async fn worker(jobs: Inbox<Int>, log: Shared<Array<String>>) -> Future<Unit>:
   await select:
     case jobs.receive() as job:
-      note(log, "job " + string(job))
+      note(log, "job " + String(job))
     case worker.disposing():
       note(log, "cleaned up")
 
-async fn main() -> Future<string>:
-  const empty: Array<string> = []
+async fn main() -> Future<String>:
+  const empty: Array<String> = []
   const log = new Shared{value: empty}
-  const jobs = Inbox.create<int>()
+  const jobs = Inbox.create<Int>()
   {
     const running = worker(jobs, log)
     jobs.send(3)

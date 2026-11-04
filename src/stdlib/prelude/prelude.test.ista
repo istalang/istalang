@@ -5,14 +5,14 @@
 import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
 
 struct Item:
-  name: string
-  rank: int
+  name: String
+  rank: Int
 
-fn byRank(left: Item, right: Item) -> int: left.rank - right.rank
+fn byRank(left: Item, right: Item) -> Int: left.rank - right.rank
 
-fn isEven(n: int) -> bool: n % 2 == 0
+fn isEven(n: Int) -> Bool: n % 2 == 0
 
-fn panicsOnThree(n: int) -> bool:
+fn panicsOnThree(n: Int) -> Bool:
   if n == 3: panic("three")
   false
 
@@ -38,7 +38,7 @@ fn arrays() -> Array<Test>: [
     test("reduce folds from the initial value, which an empty array gives back", fn(): {
       assertEq([1, 2, 3].reduce(fn(sum, n): sum + n, 0), 6)
       assertEq([1, 2].reduce(fn(text, n): text + n, ">"), ">12")
-      const empty: Array<int> = []
+      const empty: Array<Int> = []
       assertEq(empty.reduce(fn(sum, n): sum + n, 7), 7)
     }),
   ]),
@@ -62,7 +62,7 @@ fn arrays() -> Array<Test>: [
       assert(not [1, 3].some(isEven))
       assert([2, 4].every(isEven))
       assert(not [2, 3].every(isEven))
-      const empty: Array<int> = []
+      const empty: Array<Int> = []
       assert(not empty.some(isEven))
       assert(empty.every(isEven))
     }),
@@ -100,7 +100,7 @@ fn arrays() -> Array<Test>: [
       assertEq(items.map(fn(item): item.name), ["c", "d", "a", "b"])
     }),
     test("sort leaves an empty array and a single item alone", fn(): {
-      let empty: Array<int> = []
+      let empty: Array<Int> = []
       empty.sort()
       assertEq(empty, [])
       let one = [5]
@@ -124,7 +124,7 @@ fn maps() -> Array<Test>: [
     assertEq(groups.size(), 2)
   }),
   test("Map.groupBy of no items is empty", fn(): {
-    const groups = Map.groupBy([], fn(n: int): n)
+    const groups = Map.groupBy([], fn(n: Int): n)
     assertEq(groups.size(), 0)
   }),
   test("includes a key exactly when it has one", fn(): {
@@ -133,11 +133,11 @@ fn maps() -> Array<Test>: [
   }),
 ]
 
-fn zeroStep() -> bool: 1 in 0..5 by 0
+fn zeroStep() -> Bool: 1 in 0..5 by 0
 
-fn openStart() -> bool: 1 in ..5 by 2
+fn openStart() -> Bool: 1 in ..5 by 2
 
-fn openEnd() -> int:
+fn openEnd() -> Int:
   let total = 0
   for i in 3..: total += i
   total
@@ -168,7 +168,7 @@ fn ranges() -> Array<Test>: [
 ]
 
 # A string doubled until it outgrows what the runtime can hold.
-fn doubledForever() -> string:
+fn doubledForever() -> String:
   let doubled = "x"
   for _ in 0..64: doubled = doubled + doubled
   doubled
@@ -183,11 +183,11 @@ fn limits() -> Array<Test>: [
   }),
 ]
 
-fn negativePower() -> int: 2 ** -1
+fn negativePower() -> Int: 2 ** -1
 
-fn negativeShift() -> int: 1 << -1
+fn negativeShift() -> Int: 1 << -1
 
-fn cubed<T is Powerable<int>>(x: T) -> T: x ** 3
+fn cubed<T is Powerable<Int>>(x: T) -> T: x ** 3
 
 @Suite{"prelude › numbers"}
 fn numbers() -> Array<Test>: [
@@ -226,9 +226,9 @@ fn numbers() -> Array<Test>: [
   ]),
 ]
 
-fn answers() -> int: 42
+fn answers() -> Int: 42
 
-fn breaks() -> int: panic("broken")
+fn breaks() -> Int: panic("broken")
 
 @Suite{"prelude › instances"}
 fn instances() -> Array<Test>: [

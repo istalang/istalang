@@ -2,7 +2,7 @@
 # Integers stay exact at any size; `//` floors and `%` follows the divisor's sign (§2, §3.9);
 # mixing int and float gives a float, and `/` always does, dividing by zero as IEEE 754 does.
 
-fn describe(a: int, b: int) -> string:
+fn describe(a: Int, b: Int) -> String:
   "" + (a + b) + " " + a // b + " " + a % b + " " + -a % b
 
 async fn main():

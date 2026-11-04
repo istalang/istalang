@@ -171,16 +171,16 @@ describe('block expressions', () => {
 
 describe('annotations', () => {
   it('apply to the next item from a line of their own, and to their own line before or after', () => {
-    const text = lines('struct S:', '    @A', '    @B x: int @C', '    y: int');
+    const text = lines('struct S:', '    @A', '    @B x: Int @C', '    y: Int');
     expect(dumpClean('module', text)).toBe(
-      '(Module [(StructDeclaration S [] [(DeclaredField x (NamedType [int] []) _ [(Annotation A) (Annotation B) (Annotation C)]) (DeclaredField y (NamedType [int] []) _)])])',
+      '(Module [(StructDeclaration S [] [(DeclaredField x (NamedType [Int] []) _ [(Annotation A) (Annotation B) (Annotation C)]) (DeclaredField y (NamedType [Int] []) _)])])',
     );
   });
 
   it('wait on their own line for the next entry in braces, as in an indented block', () => {
-    const text = lines('struct S {', '    @A', '    x: int', '}');
+    const text = lines('struct S {', '    @A', '    x: Int', '}');
     expect(dumpClean('module', text)).toBe(
-      '(Module [(StructDeclaration S [] [(DeclaredField x (NamedType [int] []) _ [(Annotation A)])])])',
+      '(Module [(StructDeclaration S [] [(DeclaredField x (NamedType [Int] []) _ [(Annotation A)])])])',
     );
   });
 
@@ -223,9 +223,9 @@ describe('layout errors', () => {
     ['a top-level statement', 'a = 1', topLevelStatement, 'a = 1'],
     [
       'a declaration inside a block',
-      lines('fn f():', '    struct S { a: int }'),
+      lines('fn f():', '    struct S { a: Int }'),
       declarationInBlock,
-      'struct S { a: int }',
+      'struct S { a: Int }',
     ],
     [
       'an annotation followed by nothing',

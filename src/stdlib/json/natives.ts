@@ -52,7 +52,7 @@ const json = knownTypeKey(wellKnown.json);
 export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResources> => ({
   [keys.of('_write', json)]: ([value], context) =>
     jsonText(given(value), jsonTypeOf(context.types)),
-  [keys.of('_read', 'string')]: ([source], context) => {
+  [keys.of('_read', 'String')]: ([source], context) => {
     try {
       return resultOk(context, jsonOfText(text(source), jsonTypeOf(context.types)));
     } catch (error) {
@@ -62,14 +62,14 @@ export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResou
       return resultErr(context, `Not JSON: ${error.message}`);
     }
   },
-  [keys.of('_refuse', 'string')]: ([message]) => {
+  [keys.of('_refuse', 'String')]: ([message]) => {
     throw new Refusal('unfitJson', text(message));
   },
-  [keys.of('toJson', 'float')]: ([value], context) =>
+  [keys.of('toJson', 'Float')]: ([value], context) =>
     jsonOfPlain(Number.isFinite(float(value)) ? float(value) : null, jsonTypeOf(context.types)),
   [keys.of(
     '_object',
-    knownTypeKey(wellKnown.array, { kind: 'tuple', elements: [primitiveKey('string'), json] }),
+    knownTypeKey(wellKnown.array, { kind: 'tuple', elements: [primitiveKey('String'), json] }),
   )]: ([fields], context) => {
     const entries = elementsOf(fields).map((pair): [string, Value] => [
       text(elementOf(pair, 0)),
@@ -79,7 +79,7 @@ export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResou
   },
   [keys.of(codecHelpers.encodeHandle, parameterKey('T'))]: ([value], context) =>
     jsonOfPlain(hostPayloadOf(given(value), context), jsonTypeOf(context.types)),
-  [keys.of(codecHelpers.decodeHandle, json, 'string')]: ([value], context) => {
+  [keys.of(codecHelpers.decodeHandle, json, 'String')]: ([value], context) => {
     const type = context.typeArguments[0] ?? unreachable(`${context.name} reads no host type.`);
     const payload = plainOfJson(given(value), jsonTypeOf(context.types));
     return resultOk(

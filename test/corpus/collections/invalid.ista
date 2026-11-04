@@ -13,7 +13,7 @@
 # constant (§3.4), a map literal of a type with no `default()` (§2), a map spread of non-pairs, and
 # indexing with a key no `index` takes (§3.9).
 
-struct Point { x: int }
+struct Point { x: Int }
 
 async fn main():
   const empty = []

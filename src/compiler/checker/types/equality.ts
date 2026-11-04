@@ -14,11 +14,11 @@ import { typeText } from './type-text.ts';
 
 /**
  * Whether `==` and `!=` may compare values of these types (§3.9): one type on both sides. The
- * error type compares with anything, so one mistake is reported once, and so does `never`, which a
+ * error type compares with anything, so one mistake is reported once, and so does `Never`, which a
  * side that doesn't produce a value has.
  */
 export function comparable(first: Type, second: Type): boolean {
-  const unchecked = (type: Type) => type.kind === 'error' || isPrimitive(type, 'never');
+  const unchecked = (type: Type) => type.kind === 'error' || isPrimitive(type, 'Never');
   return unchecked(first) || unchecked(second) || sameType(first, second);
 }
 

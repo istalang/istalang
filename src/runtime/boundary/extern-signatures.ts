@@ -5,7 +5,7 @@
  * differ under one key is a function's result or a constant's type, which a host provides against.
  *
  * What it remembers is a text in its store (runtime/store.ts), in a format of its own: each key's
- * type as keys spell types, `purchase.chargeCard(string, int)` → `prelude.Result<string>`.
+ * type as keys spell types, `purchase.chargeCard(String, Int)` → `prelude.Result<String>`.
  */
 
 import { z } from 'zod';

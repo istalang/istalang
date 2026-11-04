@@ -6,7 +6,7 @@
 # A prefix directly before `**`'s left operand reads either way, so it needs parentheses; bitwise
 # operators and shifts take ints only (§3.9).
 
-fn f(x: float, n: int) -> int:
+fn f(x: Float, n: Int) -> Int:
   _ = -n ** 2
   _ = x & 1.0
   _ = n << 1.5

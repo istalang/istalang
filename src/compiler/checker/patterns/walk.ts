@@ -34,6 +34,7 @@ import { targetNames, unparenthesizedPattern } from '../../syntax/patterns.ts';
 import { type AnchoredSpan, spanAcross } from '../../syntax/positions.ts';
 import type { PartBinding, PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { namesOwnType } from '../types/named-types.ts';
 import { type AnyType, errorType, sameType, type Type } from '../types/type.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
@@ -155,22 +156,33 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
   const node =
     written.kind === 'ParenthesizedPattern' ? unparenthesizedPattern(written.pattern) : written;
-  if (part.type.kind === 'any' && isDowncasting(walk, node)) {
+  if (part.type.kind === 'any' && isDowncasting(walk, node, part.type)) {
     return takeDowncast(walk, node, { ...part, type: part.type });
   }
   const shape = handlerOf(patternHandlers, node)(walk, node, part);
   return { shape: part.type.kind === 'error' ? anyShape : shape, part };
 }
 
-/** Whether `node`, against an `any` part, names a type to downcast to (downcasts.ts). */
+/**
+ * Whether `node`, against a part of the `any` type `type`, names a type to downcast to
+ * (downcasts.ts): not a name naming `type` itself, which matches every value of it.
+ */
 function isDowncasting(
   walk: Walk,
   node: Pattern | PatternPart,
+  type: AnyType,
 ): node is StructPattern | NamePattern {
   if (walk.tests === undefined) {
     return false;
   }
-  return node.kind === 'StructPattern' || (node.kind === 'NamePattern' && !binds(walk, node));
+  if (node.kind !== 'NamePattern') {
+    return node.kind === 'StructPattern';
+  }
+  if (binds(walk, node)) {
+    return false;
+  }
+  const entity = walk.scope.entityOf(lastName(node.path));
+  return entity === undefined || !namesOwnType(walk.scope, entity, type);
 }
 
 /**

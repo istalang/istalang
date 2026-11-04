@@ -11,8 +11,8 @@ import { diagnosedAt } from '../../compile.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
 const bag = [
-  'struct Bag { n: int }',
-  'fn setIndex(self: &Bag, key: int, value: int):',
+  'struct Bag { n: Int }',
+  'fn setIndex(self: &Bag, key: Int, value: Int):',
   '  self.n = value',
 ].join('\n');
 

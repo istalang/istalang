@@ -5,7 +5,7 @@
  * - a function's name, plain or through a namespace (`m.f()`), which looks only in that module,
  *   with no argument-dependent lookup (§3.13);
  * - a type and a static function (`Duration.zero()`, `T.zero()`, `time.Duration.zero()`);
- * - a type alone, a conversion (`float(3)`), which calls the type's static `from` (§3.10).
+ * - a type alone, a conversion (`Float(3)`), which calls the type's static `from` (§3.10).
  *
  * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
  *   its name where the call is written and through the receiver's type (argument-dependent

@@ -13,7 +13,11 @@ import type { LanguageModule, WellKnownDeclaration } from '../../language/well-k
 import { memo } from '../../structures/memo.ts';
 import type { Bindings, Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
-import type { Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
+import type {
+  Declaration,
+  FunctionDeclaration,
+  TypeAliasDeclaration,
+} from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
   Call,
@@ -132,7 +136,7 @@ export interface AssignedPart {
 }
 
 /**
- * A node giving a value where one is expected (§2): an expression, the `unit` a bare `return`, or
+ * A node giving a value where one is expected (§2): an expression, the `Unit` a bare `return`, or
  * a block with no tail expression, gives, or an array literal's spread, each of whose items fits
  * alike.
  */
@@ -329,6 +333,8 @@ export interface Checker {
   readonly annotations: AnnotationQueries;
   /** How a value of type `found` fits where `expected` is, by implicit conversions (§2); undefined when it can't. */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
+  /** The type an alias stands for, its own type parameters left open (§3.17). */
+  readonly aliasedType: (alias: TypeAliasDeclaration) => Type;
   /** What tools ask by position: what names denote, the body holding a node (lookup/). */
   readonly lookup: LookupQueries;
 }

@@ -4,7 +4,7 @@ import { treeOf } from './language-service.test-kit.ts';
 
 describe('folding', () => {
   it('folds an indented block from the line its colon stands on, past comments before it', () => {
-    const tree = treeOf('fn f(', '  a: int,', ') -> int:', '  # first', '  const b = a', '  b');
+    const tree = treeOf('fn f(', '  a: Int,', ') -> Int:', '  # first', '  const b = a', '  b');
     expect(foldingRangesOf(tree)).toEqual([
       { start: 0, end: 2 },
       { start: 2, end: 5 },
@@ -20,7 +20,7 @@ describe('folding', () => {
   });
 
   it('folds a declaration from the line naming it, below its annotations', () => {
-    const tree = treeOf('@Note{"x"}', 'struct Pair:', '  first: int', '  second: int');
+    const tree = treeOf('@Note{"x"}', 'struct Pair:', '  first: Int', '  second: Int');
     expect(foldingRangesOf(tree)).toEqual([{ start: 1, end: 3 }]);
   });
 

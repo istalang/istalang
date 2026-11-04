@@ -30,7 +30,7 @@ describe('a cursor', () => {
           { length: Math.max(0, end - start) },
           (_, offset) => start + offset,
         );
-        expect(mainGives('Array<int>', `[for i in ${start}..${end}: i]`)).toEqual(ints);
+        expect(mainGives('Array<Int>', `[for i in ${start}..${end}: i]`)).toEqual(ints);
       }),
       { numRuns: 10 },
     );
@@ -44,20 +44,20 @@ describe('a cursor', () => {
       '  if i == 3: break',
       'last',
     ];
-    expect(mainGives('int', body.join('\n  '))).toBe(3);
+    expect(mainGives('Int', body.join('\n  '))).toBe(3);
   });
 
   it("gives a string's code points, astral ones whole", () => {
     fc.assert(
       fc.property(fc.string({ unit: 'binary', maxLength: 6 }), (text) => {
-        expect(mainGives('Array<string>', `[for c in ${literalOf(text)}: c]`)).toEqual([...text]);
+        expect(mainGives('Array<String>', `[for c in ${literalOf(text)}: c]`)).toEqual([...text]);
       }),
       { numRuns: 10 },
     );
   });
 
   it("gives a map's entries in its order", () => {
-    expect(mainGives('Array<string>', '[for k, v in ["b": 1, "a": 2]: k + v]')).toEqual([
+    expect(mainGives('Array<String>', '[for k, v in ["b": 1, "a": 2]: k + v]')).toEqual([
       'b1',
       'a2',
     ]);
@@ -72,23 +72,23 @@ describe('a cursor', () => {
       '  seen += 1',
       'seen',
     ];
-    expect(mainGives('int', body.join('\n  '))).toBe(2);
+    expect(mainGives('Int', body.join('\n  '))).toBe(2);
   });
 });
 
 describe('a spread', () => {
   it.each([
-    ['a range, then an item', 'Array<int>', '[...0..3, 9]', [0, 1, 2, 9]],
+    ['a range, then an item', 'Array<Int>', '[...0..3, 9]', [0, 1, 2, 9]],
     [
       'an array, a string and a map into an array',
-      'Array<string>',
+      'Array<String>',
       '[...["x"], ..."ab", ...[for k, _ in ["m": 1]: k]]',
       ['x', 'a', 'b', 'm'],
     ],
-    ["a map's entries into an array", 'Array<(string, int)>', '[...["m": 1]]', [['m', 1]]],
+    ["a map's entries into an array", 'Array<(String, Int)>', '[...["m": 1]]', [['m', 1]]],
     [
       'a map and tuples into a map',
-      'Map<string, int>',
+      'Map<String, Int>',
       '["a": 0, ...["b": 1], ...[("c", 2)], "a": 3]',
       { a: 3, b: 1, c: 2 },
     ],

@@ -12,15 +12,15 @@ const { expected, misplacedReference, unclosedBracket } = parserDiagnostics;
 
 describe('type forms', () => {
   it.each([
-    ['int', int],
+    ['Int', int],
     ['Self', named('Self')],
     ['Pair<A, B>', `(NamedType [Pair] [${named('A')} ${named('B')}])`],
     ['Map<K, V,>', `(NamedType [Map] [${named('K')} ${named('V')}])`],
     ['time.Duration', '(NamedType [time Duration] [])'],
-    ['Array<Array<int>>', `(NamedType [Array] [(NamedType [Array] [${int}])])`],
+    ['Array<Array<Int>>', `(NamedType [Array] [(NamedType [Array] [${int}])])`],
     ['T?', `(OptionalType ${named('T')})`],
     ['T??', `(OptionalType (OptionalType ${named('T')}))`],
-    ['Future<unit>?', `(OptionalType (NamedType [Future] [${named('unit')}]))`],
+    ['Future<Unit>?', `(OptionalType (NamedType [Future] [${named('Unit')}]))`],
     ['(A, B)', `(TupleType [${named('A')} ${named('B')}])`],
     ['(A,)', `(TupleType [${named('A')}])`],
     ['()', '(TupleType [])'],
@@ -31,30 +31,30 @@ describe('type forms', () => {
       'async fn(async fn(E))',
       `(FunctionType isAsync [(FunctionType isAsync [${named('E')}] _)] _)`,
     ],
-    ['fn() -> int?', `(FunctionType [] (OptionalType ${int}))`],
-    ['(fn() -> int)?', `(OptionalType (ParenthesizedType (FunctionType [] ${int})))`],
-    ['fn(&Array<int>)', `(FunctionType [(ReferenceType (NamedType [Array] [${int}]))] _)`],
+    ['fn() -> Int?', `(FunctionType [] (OptionalType ${int}))`],
+    ['(fn() -> Int)?', `(OptionalType (ParenthesizedType (FunctionType [] ${int})))`],
+    ['fn(&Array<Int>)', `(FunctionType [(ReferenceType (NamedType [Array] [${int}]))] _)`],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('type', text)).toBe(tree);
   });
 });
 
 describe('anonymous struct types', () => {
-  const skuQty = `(StructType [${field('sku', named('string'))} ${field('qty', int)}])`;
+  const skuQty = `(StructType [${field('sku', named('String'))} ${field('qty', int)}])`;
 
   it.each([
-    '{ sku: string; qty: int }',
-    'struct { sku: string; qty: int }',
-    '{ sku: string; qty: int; }',
-    '{\n  sku: string\n  qty: int\n}',
-    '{\n  sku: string;\n\n  qty: int\n}',
+    '{ sku: String; qty: Int }',
+    'struct { sku: String; qty: Int }',
+    '{ sku: String; qty: Int; }',
+    '{\n  sku: String\n  qty: Int\n}',
+    '{\n  sku: String;\n\n  qty: Int\n}',
   ])('parses %j, separated by semicolons or line breaks (§2)', (text) => {
     expect(dumpClean('type', text)).toBe(skuQty);
   });
 
   it('parses an empty struct and one nested in type arguments', () => {
     expect(dumpClean('type', '{}')).toBe('(StructType [])');
-    expect(dumpClean('type', 'Array<{ sku: string; qty: int }>')).toBe(
+    expect(dumpClean('type', 'Array<{ sku: String; qty: Int }>')).toBe(
       `(NamedType [Array] [${skuQty}])`,
     );
   });
@@ -68,17 +68,17 @@ describe('references (§3.7)', () => {
   });
 
   it("reports '&T' anywhere else", () => {
-    expect(reported('type', '&int')).toEqual(reportedOnce(misplacedReference.code, '&int'));
+    expect(reported('type', '&Int')).toEqual(reportedOnce(misplacedReference.code, '&Int'));
   });
 });
 
 describe('malformed types', () => {
   it.each([
     [',', expected.code, ','],
-    ['Map<string, int', unclosedBracket.code, '<'],
-    ['{ a int }', expected.code, 'int'],
-    ['{ a: int b: int }', expected.code, 'b'],
-    ['fn int', expected.code, 'int'],
+    ['Map<String, int', unclosedBracket.code, '<'],
+    ['{ a Int }', expected.code, 'Int'],
+    ['{ a: Int b: Int }', expected.code, 'b'],
+    ['fn Int', expected.code, 'Int'],
     ['struct', expected.code, ''],
     ['(A, B', unclosedBracket.code, '('],
   ])('reports %j once', (text, code, spanText) => {
@@ -99,12 +99,12 @@ describe('`any` and rest parameters', () => {
     ['any A & B?', `(OptionalType (AnyType [${named('A')} ${named('B')}]))`],
     ['any', named('any')],
     [
-      'fn(int, ...Array<string>) -> R',
-      `(FunctionType [${int} (RestType (NamedType [Array] [${named('string')}]))] ${named('R')})`,
+      'fn(Int, ...Array<String>) -> R',
+      `(FunctionType [${int} (RestType (NamedType [Array] [${named('String')}]))] ${named('R')})`,
     ],
     ['fn(...A) -> R', `(FunctionType [(RestType ${named('A')})] ${named('R')})`],
     [
-      'Map<K, Array<Array<int>>>',
+      'Map<K, Array<Array<Int>>>',
       `(NamedType [Map] [${named('K')} (NamedType [Array] [(NamedType [Array] [${int}])])])`,
     ],
   ])('parses %s', (text, tree) => {

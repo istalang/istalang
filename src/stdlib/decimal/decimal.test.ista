@@ -12,20 +12,20 @@ struct Invoice:
   total: Decimal
 
 # The number `text` writes; a test's own text is always one.
-fn d(text: string) -> Decimal:
+fn d(text: String) -> Decimal:
   match Decimal.parse(text):
     case Ok{value}: value
     case Err{error}: panic(error.message)
 
-fn parsed<T is Parsable>(text: string) -> Result<T>: T.parse(text)
+fn parsed<T is Parsable>(text: String) -> Result<T>: T.parse(text)
 
-fn textOf(result: Result<Decimal>) -> string:
+fn textOf(result: Result<Decimal>) -> String:
   match result:
-    case Ok{value}: string(value)
+    case Ok{value}: String(value)
     case Err{error}: error.code + ": " + error.message
 
 # Rounding 2.5, -2.5, 1.005, 1.015 and -0.001 to two places, then 2.5 and -2.5 to none, in each mode.
-fn roundings() -> Array<(Rounding, Array<string>)>: [
+fn roundings() -> Array<(Rounding, Array<String>)>: [
   (Rounding.Floor, ["2.5", "-2.5", "1", "1.01", "-0.01", "2", "-3"]),
   (Rounding.Ceiling, ["2.5", "-2.5", "1.01", "1.02", "0", "3", "-2"]),
   (Rounding.TowardZero, ["2.5", "-2.5", "1", "1.01", "0", "2", "-2"]),
@@ -34,15 +34,15 @@ fn roundings() -> Array<(Rounding, Array<string>)>: [
   (Rounding.HalfAwayFromZero, ["2.5", "-2.5", "1.01", "1.02", "0", "3", "-3"]),
 ]
 
-fn rounded(mode: Rounding) -> Array<string>:
+fn rounded(mode: Rounding) -> Array<String>:
   const twoPlaces = [
-    for x in ["2.5", "-2.5", "1.005", "1.015", "-0.001"]: string(d(x).round(2, mode))
+    for x in ["2.5", "-2.5", "1.005", "1.015", "-0.001"]: String(d(x).round(2, mode))
   ]
-  const whole = [for x in ["2.5", "-2.5"]: string(d(x).round(0, mode))]
+  const whole = [for x in ["2.5", "-2.5"]: String(d(x).round(0, mode))]
   [...twoPlaces, ...whole]
 
 # Dividing a by b to `places` in `mode`.
-fn divisions() -> Array<(string, string, int, Rounding, string)>: [
+fn divisions() -> Array<(String, String, Int, Rounding, String)>: [
   ("1", "3", 2, Rounding.HalfEven, "0.33"),
   ("2", "3", 2, Rounding.HalfEven, "0.67"),
   ("1", "8", 2, Rounding.HalfEven, "0.12"),
@@ -131,26 +131,26 @@ fn suite() -> Array<Test>: [
     test("+, - and * are exact, with an int on either side", fn(): {
       assertEq(
         [
-          string(d("0.1") + d("0.2")),
-          string(d("1.5") + 1),
-          string(1 - d("0.25")),
-          string(d("1.25") * 3),
-          string(-d("2.5")),
+          String(d("0.1") + d("0.2")),
+          String(d("1.5") + 1),
+          String(1 - d("0.25")),
+          String(d("1.25") * 3),
+          String(-d("2.5")),
         ],
         ["0.3", "2.5", "0.75", "3.75", "-2.5"],
       )
       assertEq(
-        string(d("123456789.123456789") * d("987654321.987654321")),
+        String(d("123456789.123456789") * d("987654321.987654321")),
         "121932631356500531.347203169112635269",
       )
     }),
     test("/ rounds half to even to 34 significant digits", fn(): {
       assertEq(
         [
-          string(d("1") / 3),
-          string(2 / d("3")),
-          string(d("10") / 4),
-          string(d("1") / d("1000000")),
+          String(d("1") / 3),
+          String(2 / d("3")),
+          String(d("10") / 4),
+          String(d("1") / d("1000000")),
         ],
         [
           "0.3333333333333333333333333333333333",
@@ -163,11 +163,11 @@ fn suite() -> Array<Test>: [
     test("divide rounds the exact quotient to places in every mode", fn(): {
       for a, b, places, mode, expected in divisions():
         assertEq(
-          (a, b, places, string(decimal.divide(d(a), d(b), places, mode))),
+          (a, b, places, String(decimal.divide(d(a), d(b), places, mode))),
           (a, b, places, expected),
         )
-      assertEq(string(decimal.divide(d("1"), 3, 2)), "0.33")
-      assertEq(string(decimal.divide(2, d("3"), 1)), "0.7")
+      assertEq(String(decimal.divide(d("1"), 3, 2)), "0.33")
+      assertEq(String(decimal.divide(2, d("3"), 1)), "0.7")
     }),
     test("// floors and % takes the divisor's sign, so a == (a // b) * b + a % b", fn(): {
       for a, b, quotient, remainder in [
@@ -177,15 +177,15 @@ fn suite() -> Array<Test>: [
         ("-7.5", "2", "-4", "0.5"),
         ("0.3", "0.1", "3", "0"),
       ]:
-        assertEq((a, b, string(d(a) // d(b)), string(d(a) % d(b))), (a, b, quotient, remainder))
+        assertEq((a, b, String(d(a) // d(b)), String(d(a) % d(b))), (a, b, quotient, remainder))
         assert(d(a) == (d(a) // d(b)) * d(b) + d(a) % d(b))
-      assertEq([string(d("7.5") // 2), string(-7 % d("2.5"))], ["3", "0.5"])
+      assertEq([String(d("7.5") // 2), String(-7 % d("2.5"))], ["3", "0.5"])
     }),
     test("compares with an int on either side", fn(): {
       assert(d("1.5") < 2 and 2 > d("1.5") and d("2.0") <= 2 and d("-0.1") < d("0"))
       let values = [d("2"), d("-1.5"), d("0.25")]
       values.sort()
-      assertEq([for x in values: string(x)], ["-1.5", "0.25", "2"])
+      assertEq([for x in values: String(x)], ["-1.5", "0.25", "2"])
     }),
     test("every division by zero panics", async fn(): {
       assertEq(await expectPanic(dividedByZero), "Division by zero.")
@@ -199,7 +199,7 @@ fn suite() -> Array<Test>: [
       for mode, expected in roundings(): assertEq(rounded(mode), expected)
     }),
     test("round goes to a whole number, half to even, when given nothing", fn(): {
-      assertEq([string(d("2.5").round()), string(d("3.5").round()), string(d("-2.5").round())], [
+      assertEq([String(d("2.5").round()), String(d("3.5").round()), String(d("-2.5").round())], [
         "2",
         "4",
         "-2",
@@ -208,11 +208,11 @@ fn suite() -> Array<Test>: [
     test("floor, ceil and abs", fn(): {
       assertEq(
         [
-          string(d("2.7").floor()),
-          string(d("-2.2").floor()),
-          string(d("2.2").ceil()),
-          string(d("-2.7").ceil()),
-          string(d("-3.5").abs()),
+          String(d("2.7").floor()),
+          String(d("-2.2").floor()),
+          String(d("2.2").ceil()),
+          String(d("-2.7").ceil()),
+          String(d("-3.5").abs()),
         ],
         ["2", "-3", "3", "-2", "3.5"],
       )
@@ -236,14 +236,14 @@ fn suite() -> Array<Test>: [
     test("is exact for an exponent of at least 0, and divides as / does below it", fn(): {
       assertEq(
         [
-          string(d("1.5") ** 3),
-          string(d("1.5") ** 0),
-          string(d("-0.1") ** 3),
-          string(d("10") ** 30),
+          String(d("1.5") ** 3),
+          String(d("1.5") ** 0),
+          String(d("-0.1") ** 3),
+          String(d("10") ** 30),
         ],
         ["3.375", "1", "-0.001", "1000000000000000000000000000000"],
       )
-      assertEq([string(d("2") ** -1), string(d("3") ** -1), string(d("0.5") ** -2)], [
+      assertEq([String(d("2") ** -1), String(d("3") ** -1), String(d("0.5") ** -2)], [
         "0.5",
         "0.3333333333333333333333333333333333",
         "4",
@@ -266,16 +266,16 @@ fn suite() -> Array<Test>: [
     }),
   ]),
   test("converts from and to ints and floats", fn(): {
-    assertEq([string(Decimal(5)), string(Decimal(-100000000000000000000))], [
+    assertEq([String(Decimal(5)), String(Decimal(-100000000000000000000))], [
       "5",
       "-100000000000000000000",
     ])
-    assertEq([int(d("-2.7")), int(d("2.7")), int(d("12345678901234567890.5"))], [
+    assertEq([Int(d("-2.7")), Int(d("2.7")), Int(d("12345678901234567890.5"))], [
       -2,
       2,
       12345678901234567890,
     ])
-    assertEq([float(d("0.1")), float(d("-2.5"))], [0.1, -2.5])
+    assertEq([Float(d("0.1")), Float(d("-2.5"))], [0.1, -2.5])
   }),
   group("traits", [
     test("is Stringable and Parsable", fn(): {
@@ -293,9 +293,9 @@ fn suite() -> Array<Test>: [
     test("is Comparable, so math orders it", fn(): {
       assertEq(
         [
-          string(math.min(d("1.5"), d("1.25"))),
-          string(math.max(d("1.5"), d("1.25"))),
-          string(math.clamp(d("7"), d("0"), d("5.5"))),
+          String(math.min(d("1.5"), d("1.25"))),
+          String(math.max(d("1.5"), d("1.25"))),
+          String(math.clamp(d("7"), d("0"), d("5.5"))),
         ],
         ["1.25", "1.5", "5.5"],
       )

@@ -4,8 +4,8 @@
 # before the first waiting take yields it, and that take empties the slot; a put waiting on a full
 # slot fills it once a take empties it.
 
-async fn main() -> Future<string>:
-  const s = Slot.create<int>()
+async fn main() -> Future<String>:
+  const s = Slot.create<Int>()
   await s.put(1)
   const first = await s.take()
   const early = s.read()
@@ -13,10 +13,10 @@ async fn main() -> Future<string>:
   const taking = s.take()
   await s.put(2)
   const second = await taking
-  const readTwice = string(await early) + string(await later)
+  const readTwice = String(await early) + String(await later)
   _ = s.put(3)
   const waitingPut = s.put(4)
   const third = await s.take()
   await waitingPut
   const fourth = await s.take()
-  string(first) + " " + readTwice + string(second) + " " + string(third) + string(fourth)
+  String(first) + " " + readTwice + String(second) + " " + String(third) + String(fourth)

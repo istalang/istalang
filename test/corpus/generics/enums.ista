@@ -6,16 +6,16 @@
 enum Color { Red; Green; Blue }
 
 enum Shape:
-  Circle { radius: int }
-  Square { side: int }
+  Circle { radius: Int }
+  Square { side: Int }
 
 fn favorite() -> Color:
   Green
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const color: Color = Red
   const shape = Shape.Circle{radius: 2}
   const same: Shape = Circle{radius: 2}
   const result = Result.Ok{value: 1}
-  const expected: Result<int> = Ok{value: 1}
-  string(color == Color.Red) + " " + string(favorite() == Color.Blue) + " " + string(shape == same) + " " + string(result == expected) + " " + string(favorite() == Green)
+  const expected: Result<Int> = Ok{value: 1}
+  String(color == Color.Red) + " " + String(favorite() == Color.Blue) + " " + String(shape == same) + " " + String(result == expected) + " " + String(favorite() == Green)

@@ -25,7 +25,7 @@ const extension = new URL('../../../.vscode/extensions/ista/', import.meta.url);
 const readJson = (name: string) => JSON.parse(readFileSync(new URL(name, extension), 'utf8'));
 const defaults = () => readJson('package.json').contributes.configurationDefaults['[ista]'];
 
-const body = 'struct Pair:\n  first: int\n\nfn g(p: Pair) -> int:\n  p.\n  0\n';
+const body = 'struct Pair:\n  first: Int\n\nfn g(p: Pair) -> Int:\n  p.\n  0\n';
 const afterDot = body.indexOf('p.\n  0') + 2;
 const positionAfterDot = (text: string) => {
   const lines = text.slice(0, afterDot).split('\n');

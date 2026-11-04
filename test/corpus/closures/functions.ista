@@ -7,39 +7,39 @@
 # type is called as `x.f(…)` when no method shares its name, or as `(x.f)(…)`, and through `?.`
 # as a link of the chain; an async function value's call is awaited.
 
-struct Op { run: fn(int) -> int }
+struct Op { run: fn(Int) -> Int }
 
-fn twice(f: fn(int) -> int, x: int) -> int: f(f(x))
+fn twice(f: fn(Int) -> Int, x: Int) -> Int: f(f(x))
 
 fn apply<T, U>(value: T, f: fn(T) -> U) -> U: f(value)
 
-fn inc(n: int) -> int: n + 1
+fn inc(n: Int) -> Int: n + 1
 
-fn pick(n: int) -> int: n * 3
+fn pick(n: Int) -> Int: n * 3
 
-fn pick(s: string) -> string: s
+fn pick(s: String) -> String: s
 
 fn Op.identity() -> Op: Op{run: fn(n): n}
 
-fn Op.scale(n: int) -> int: n * 10
+fn Op.scale(n: Int) -> Int: n * 10
 
-fn Op.scale(s: string) -> string: s
+fn Op.scale(s: String) -> String: s
 
-async fn later(n: int) -> Future<int>: n + 1
+async fn later(n: Int) -> Future<Int>: n + 1
 
-fn viaChain(op: Op?) -> int: op?.run(5) ?? 0
+fn viaChain(op: Op?) -> Int: op?.run(5) ?? 0
 
 async fn main():
   const a = twice(fn x: x * 2, 2)
   const b = twice(inc, 4)
   const c = apply(6, fn n: n + 1)
-  const fact: fn(int) -> int = fn f(n): if n < 2: 1 else: n * f(n - 1)
-  fn sumTo(n: int) -> int:
+  const fact: fn(Int) -> Int = fn f(n): if n < 2: 1 else: n * f(n - 1)
+  fn sumTo(n: Int) -> Int:
     if n == 0: 0 else: n + sumTo(n - 1)
   const make = Op.identity
   const op = make()
-  const thrice: fn(int) -> int = pick
+  const thrice: fn(Int) -> Int = pick
   const step = later
   const d = await step(2)
   const e = twice(Op.scale, 1)
-  string(a) + " " + string(b) + " " + string(c) + " " + string(fact(5)) + " " + string(sumTo(5)) + " " + string((op.run)(0)) + " " + string(op.run(1)) + " " + string(thrice(3)) + " " + string(d) + " " + string(e) + " " + string(viaChain(op)) + " " + string(viaChain(none))
+  String(a) + " " + String(b) + " " + String(c) + " " + String(fact(5)) + " " + String(sumTo(5)) + " " + String((op.run)(0)) + " " + String(op.run(1)) + " " + String(thrice(3)) + " " + String(d) + " " + String(e) + " " + String(viaChain(op)) + " " + String(viaChain(none))

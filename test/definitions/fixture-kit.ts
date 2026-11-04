@@ -31,9 +31,9 @@ export function sourceModule(id: string, source = ''): Tables['modules'][number]
   return { id, lineStarts: [...new LineMap(source).lineStarts] };
 }
 
-export const int = { kind: 'primitive', name: 'int' } as const satisfies TypeReference;
-export const string = { kind: 'primitive', name: 'string' } as const satisfies TypeReference;
-export const unit = { kind: 'primitive', name: 'unit' } as const satisfies TypeReference;
+export const int = { kind: 'primitive', name: 'Int' } as const satisfies TypeReference;
+export const string = { kind: 'primitive', name: 'String' } as const satisfies TypeReference;
+export const unit = { kind: 'primitive', name: 'Unit' } as const satisfies TypeReference;
 
 export function named(type: number): TypeReference {
   return { kind: 'named', type };

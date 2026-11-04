@@ -18,7 +18,7 @@ shared struct Bus<M>:
 
 struct _Link<M>:
   message: M
-  retracted: Shared<bool>
+  retracted: Shared<Bool>
   next: Slot<_Link<M>>
 
 fn create<M>() -> Bus<M>: new Bus<M>{}
@@ -33,7 +33,7 @@ fn sendRevertible<M>(self: Bus<M>, message: M) -> Revertible<M>:
 
 # Runs `handler` for each message sent from now on, in the order they were sent, one at a time,
 # until the future it returns is disposed, or the bus is and every message sent before is handled.
-fn subscribe<M>(self: Bus<M>, handler: async fn(M) -> unit) -> Future<unit>:
+fn subscribe<M>(self: Bus<M>, handler: async fn(M) -> Unit) -> Future<Unit>:
   _follow(self->_end, WeakRef(self), handler)
 
 # Disposing a bus (§7) lets go of the end of its chain. Declaring `dispose` is what makes a bus
@@ -41,8 +41,8 @@ fn subscribe<M>(self: Bus<M>, handler: async fn(M) -> unit) -> Future<unit>:
 fn dispose<M>(self: Bus<M>): ()
 
 # Appends `message` to the stream: the flag that retracts it.
-fn _publish<M>(bus: Bus<M>, message: M) -> Shared<bool>:
-  const retracted = new Shared<bool>{value: false}
+fn _publish<M>(bus: Bus<M>, message: M) -> Shared<Bool>:
+  const retracted = new Shared<Bool>{value: false}
   const next = Slot.create<_Link<M>>()
   drop bus->_end.put(_Link{message, retracted, next})
   bus->_end = next
@@ -51,8 +51,8 @@ fn _publish<M>(bus: Bus<M>, message: M) -> Shared<bool>:
 async fn _follow<M>(
   start: Slot<_Link<M>>,
   bus: WeakRef<Bus<M>>,
-  handler: async fn(M) -> unit,
-) -> Future<unit>:
+  handler: async fn(M) -> Unit,
+) -> Future<Unit>:
   let at = start
   while true:
     const link = await select:

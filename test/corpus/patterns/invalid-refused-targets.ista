@@ -11,7 +11,7 @@ const [a, b] = [1, 2]
 const (c, 0) | (0, c) = (1, 0)
 const everything = [a, b, c]
 
-fn body(xs: Array<int>, pair: (int, int), maybe: int?) -> int:
+fn body(xs: Array<Int>, pair: (Int, Int), maybe: Int?) -> Int:
   const [first, ...rest] = xs
   const Some{value} = maybe
   let (x, 1..=5) = pair

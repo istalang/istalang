@@ -15,9 +15,9 @@ fn identity<T>(value: T) -> T:
 fn empty<T>() -> T?:
   none
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const pair = swap(Pair{first: "x", second: 3})
-  const explicit = identity<int>(7)
-  const nothing: int? = empty()
+  const explicit = identity<Int>(7)
+  const nothing: Int? = empty()
   const kept = identity(true)
-  string(pair.first) + " " + pair.second + " " + string(explicit) + " " + string(nothing == none) + " " + string(kept)
+  String(pair.first) + " " + pair.second + " " + String(explicit) + " " + String(nothing == none) + " " + String(kept)

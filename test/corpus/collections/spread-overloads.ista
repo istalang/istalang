@@ -1,11 +1,11 @@
 # outcome: [3,3]
 # A spread's items take part in choosing the overload an array literal is passed to, as its
-# elements do (§3.5): `int` items with `none` fit only `Array<int?>`.
+# elements do (§3.5): `Int` items with `none` fit only `Array<Int?>`.
 
-fn take(ys: Array<int?>) -> int:
+fn take(ys: Array<Int?>) -> Int:
   ys.length()
 
-fn take(ys: Array<string?>) -> int:
+fn take(ys: Array<String?>) -> Int:
   0 - ys.length()
 
 async fn main():

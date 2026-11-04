@@ -10,12 +10,12 @@
 # passed by `&` is a copy for the call (§3.7): never to an async function, and never beside
 # another place reached through a shared struct, since two handles may be one.
 
-struct Counter { n: int }
+struct Counter { n: Int }
 
-fn both(a: &int, b: &int):
+fn both(a: &Int, b: &Int):
   a += b
 
-async fn later(n: &int):
+async fn later(n: &Int):
   n += 1
 
 async fn subject():

@@ -4,21 +4,21 @@
 # binds that value, of its own type.
 
 trait Named:
-  fn name(self: Self) -> string
+  fn name(self: Self) -> String
 
-struct Email { to: string }
-struct Sms { number: string }
+struct Email { to: String }
+struct Sms { number: String }
 struct Marker {}
 enum Decision:
-  Approved { by: string }
+  Approved { by: String }
   Expired
 
-fn name(self: Email) -> string: self.to
-fn name(self: Sms) -> string: self.number
-fn name(self: Marker) -> string: "marker"
-fn name(self: Decision) -> string: "decision"
+fn name(self: Email) -> String: self.to
+fn name(self: Sms) -> String: self.number
+fn name(self: Marker) -> String: "marker"
+fn name(self: Decision) -> String: "decision"
 
-fn describe(x: any Named) -> string:
+fn describe(x: any Named) -> String:
   match x:
     case Email{to}:
       "email to " + to

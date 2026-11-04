@@ -1,6 +1,6 @@
 /**
  * `if` as an expression (§4): its branches agree on its type (rules/branches.ts). An `if` without
- * `else` produces nothing, so its branches must be `unit`.
+ * `else` produces nothing, so its branches must be `Unit`.
  */
 
 import type { If } from '../../syntax/expressions/index.ts';

@@ -1,7 +1,7 @@
 /**
  * The branches of a branching expression (§4): `if`, `match` and, with its slice, `select`. Every
  * branch must have the same type, and that is the expression's type; a branch that leaves
- * (`return`, `break`, `continue`, `panic`) has type `never`, which fits any.
+ * (`return`, `break`, `continue`, `panic`) has type `Never`, which fits any.
  *
  * The branches agree on a type as every producer of one value does (agreement.ts): the expected
  * type decides when there is one, else the first branch with a value. Without an expected type,

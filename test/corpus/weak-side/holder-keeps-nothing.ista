@@ -5,14 +5,14 @@
 
 import Inbox from 'inbox'
 
-async fn watch(w: WeakRef<Inbox<int>>, seen: Inbox<string>) -> Future<unit>:
+async fn watch(w: WeakRef<Inbox<Int>>, seen: Inbox<String>) -> Future<Unit>:
   await w.disposed()
   seen.send("signal")
 
-async fn main() -> Future<string>:
-  const seen = Inbox.create<string>()
+async fn main() -> Future<String>:
+  const seen = Inbox.create<String>()
   const holder = {
-    const box = Inbox.create<int>()
+    const box = Inbox.create<Int>()
     box.send(1)
     box.send(2)
     const rev = box.sendRevertible(3)

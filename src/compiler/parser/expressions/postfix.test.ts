@@ -18,7 +18,7 @@ describe('calls', () => {
     ['f(&value)', '(Call f [] [(Reference value)])'],
     ['f(&s.items, x)', '(Call f [] [(Reference (MemberAccess s items)) x])'],
     ['log("info", "a", ...more)', '(Call log [] ["info" "a" (Spread more)])'],
-    ['float(3)', '(Call float [] [3])'],
+    ['Float(3)', '(Call Float [] [3])'],
     ['f(a)(b)', '(Call (Call f [] [a]) [] [b])'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
@@ -56,15 +56,15 @@ describe('calls', () => {
 
 describe('type arguments (§3.5)', () => {
   it.each([
-    ['swap<int, string>(p)', `(Call swap [${named('int')} ${named('string')}] [p])`],
+    ['swap<Int, String>(p)', `(Call swap [${named('Int')} ${named('String')}] [p])`],
     ['Slot.create<Verdict>()', `(Call (MemberAccess Slot create) [${named('Verdict')}] [])`],
     [
-      'Shared<Future<unit>?>(x)',
-      `(Call Shared [(OptionalType (NamedType [Future] [${named('unit')}]))] [x])`,
+      'Shared<Future<Unit>?>(x)',
+      `(Call Shared [(OptionalType (NamedType [Future] [${named('Unit')}]))] [x])`,
     ],
     ['a < b > (c)', `(Call a [${named('b')}] [c])`],
     ['a + f<T>(x)', `(Binary a + (Call f [${named('T')}] [x]))`],
-    ['xs.map<int>(f)', `(Call (MemberAccess xs map) [${named('int')}] [f])`],
+    ['xs.map<Int>(f)', `(Call (MemberAccess xs map) [${named('Int')}] [f])`],
   ])('reads %s as type arguments', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
@@ -81,7 +81,7 @@ describe('type arguments (§3.5)', () => {
   });
 
   it('parses the call after type arguments for real, so its errors are reported', () => {
-    expect(reported('expression', 'f<int>(a b)')).toEqual(
+    expect(reported('expression', 'f<Int>(a b)')).toEqual(
       reportedOnce(parserDiagnostics.expected.code, 'b'),
     );
   });
@@ -187,7 +187,7 @@ describe('`!`, named arguments and `spawn`', () => {
       'spawn w.run(job).result()',
       '(Call (MemberAccess (Spawn (Call (MemberAccess w run) [] [job])) result) [] [])',
     ],
-    ['spawn f<int>(x)', '(Spawn (Call f [(NamedType [int] [])] [x]))'],
+    ['spawn f<Int>(x)', '(Spawn (Call f [(NamedType [Int] [])] [x]))'],
     [
       'await spawn f(x).result()',
       '(Await (Call (MemberAccess (Spawn (Call f [] [x])) result) [] []))',

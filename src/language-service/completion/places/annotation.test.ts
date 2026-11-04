@@ -10,12 +10,12 @@ import { completionsAt } from '../index.ts';
 const declarations = [
   "import * as json from 'json'",
   'struct Pair:',
-  '  first: int',
-  '  second: int',
+  '  first: Int',
+  '  second: Int',
   'shared struct Lease:',
-  '  name: string',
+  '  name: String',
   'enum Color { Red; Green }',
-  'fn plus(a: int) -> int: a',
+  'fn plus(a: Int) -> Int: a',
   '',
 ];
 
@@ -26,7 +26,7 @@ function names(...lines: readonly string[]): readonly string[] {
 
 describe('completion in an annotation', () => {
   it("offers a declaration's or a field's every struct, and the namespaces reaching more", () => {
-    for (const offered of [names('@‸', 'fn g(): 1'), names('struct S:', '  a: int @‸')]) {
+    for (const offered of [names('@‸', 'fn g(): 1'), names('struct S:', '  a: Int @‸')]) {
       expect(offered).toEqual(expect.arrayContaining(['Pair', 'Waypoint', 'json']));
       for (const other of ['Lease', 'Color', 'plus', 'let']) {
         expect(offered).not.toContain(other);
@@ -42,7 +42,7 @@ describe('completion in an annotation', () => {
   });
 
   it('offers nothing where no annotation can stand: among cases, after a bare `return`', () => {
-    expect(names('fn t(n: int) -> int:', '  match n:', '    @‸', '    case 1: 2', '  0')).toEqual(
+    expect(names('fn t(n: Int) -> Int:', '  match n:', '    @‸', '    case 1: 2', '  0')).toEqual(
       [],
     );
     expect(names('async fn t():', '  return @‸')).toEqual([]);
@@ -65,15 +65,15 @@ describe('completion in an annotation', () => {
 
   it("offers a one-field struct's value unnamed too, its struct qualified or given types", () => {
     expect(names('@json.JsonName{‸')).toEqual(expect.arrayContaining(['...', 'plus']));
-    const box = names('struct Box<T>:', '  value: T', '@Box<Array<int>>{‸');
+    const box = names('struct Box<T>:', '  value: T', '@Box<Array<Int>>{‸');
     expect(box).toEqual(expect.arrayContaining(['value', 'plus']));
     const { program, module, offset } = programAt(
       ...declarations,
       'struct Box<T>:',
       '  value: T',
-      '@Box<Array<int>>{‸',
+      '@Box<Array<Int>>{‸',
     );
     const value = completionsAt(program, module, offset).find(({ name }) => name === 'value');
-    expect(value?.detail).toBe('Array<int>');
+    expect(value?.detail).toBe('Array<Int>');
   });
 });

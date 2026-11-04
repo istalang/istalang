@@ -9,85 +9,90 @@ function hover(...lines: readonly string[]) {
 
 describe('hover', () => {
   it("shows a variable's type, at its uses and where it is declared", () => {
-    expect(hover('fn f() -> int:', '  let co‸unt = 1', '  count')?.code).toEqual([
-      '(variable) count: int',
+    expect(hover('fn f() -> Int:', '  let co‸unt = 1', '  count')?.code).toEqual([
+      '(variable) count: Int',
     ]);
-    expect(hover('fn f() -> int:', '  let count = 1', '  count‸')?.code).toEqual([
-      '(variable) count: int',
+    expect(hover('fn f() -> Int:', '  let count = 1', '  count‸')?.code).toEqual([
+      '(variable) count: Int',
     ]);
   });
 
   it("shows a function's signature and its docstring", () => {
     const shown = hover(
-      'fn twice(n: int, by: int = 2) -> int:',
+      'fn twice(n: Int, by: Int = 2) -> Int:',
       '  """Doubles `n`."""',
       '  n * by',
       '',
-      'fn main() -> int: tw‸ice(1)',
+      'fn main() -> Int: tw‸ice(1)',
     );
-    expect(shown?.code).toEqual(['fn twice(n: int, by: int = …) -> int']);
+    expect(shown?.code).toEqual(['fn twice(n: Int, by: Int = …) -> Int']);
     expect(shown?.doc).toBe('Doubles `n`.');
   });
 
   it('shows the field and the variable a shorthand names', () => {
     const shown = hover(
       'struct Pair:',
-      '  first: int',
+      '  first: Int',
       '',
-      'fn f(first: int) -> Pair: Pair{fi‸rst}',
+      'fn f(first: Int) -> Pair: Pair{fi‸rst}',
     );
-    expect(shown?.code).toEqual(['(field) first: int', '(variable) first: int']);
+    expect(shown?.code).toEqual(['(field) first: Int', '(variable) first: Int']);
   });
 
   it('shows the type of an expression no name stands for', () => {
-    expect(hover('fn f() -> int: 1 ‸+ 2')?.code).toEqual(['int']);
+    expect(hover('fn f() -> Int: 1 ‸+ 2')?.code).toEqual(['Int']);
     expect(
       hover(
         'struct P:',
-        '  a: int',
+        '  a: Int',
         '',
-        'fn size(self: P) -> int: self.a',
+        'fn size(self: P) -> Int: self.a',
         '',
-        'fn g(p: P) -> int: p.size‸() + 1',
+        'fn g(p: P) -> Int: p.size‸() + 1',
       )?.code,
-    ).toEqual(['int']);
+    ).toEqual(['Int']);
   });
 
   it("shows a construct's type on its own keywords, braces and text", () => {
-    expect(hover('fn f(c: bool) -> int: i‸f c: 1 else: 2')?.code).toEqual(['int']);
-    expect(hover('fn f(c: bool) -> int: if c: 1 el‸se: 2')?.code).toEqual(['int']);
-    expect(hover('fn f() -> int: ‸{ const a = 1; a }')?.code).toEqual(['int']);
-    expect(hover('fn f() -> string: "he‸llo"')?.code).toEqual(['string']);
+    expect(hover('fn f(c: Bool) -> Int: i‸f c: 1 else: 2')?.code).toEqual(['Int']);
+    expect(hover('fn f(c: Bool) -> Int: if c: 1 el‸se: 2')?.code).toEqual(['Int']);
+    expect(hover('fn f() -> Int: ‸{ const a = 1; a }')?.code).toEqual(['Int']);
+    expect(hover('fn f() -> String: "he‸llo"')?.code).toEqual(['String']);
   });
 
   it('shows the member a `->` reads, not the value behind the shared struct', () => {
-    const counter = ['shared struct Counter:', '  count: int', ''];
-    expect(hover(...counter, 'fn f(c: Counter?) -> int?: c?‸->count')?.code).toEqual(['int?']);
+    const counter = ['shared struct Counter:', '  count: Int', ''];
+    expect(hover(...counter, 'fn f(c: Counter?) -> Int?: c?‸->count')?.code).toEqual(['Int?']);
   });
 
   it("shows a local function's docstring", () => {
-    const local = ['fn f() -> int:', '  fn next() -> int:', '    """One more."""', '    1'];
+    const local = ['fn f() -> Int:', '  fn next() -> Int:', '    """One more."""', '    1'];
     expect(hover(...local, '  nex‸t()')?.doc).toBe('One more.');
   });
 
   it('shows an async function as declared', () => {
-    expect(hover('async fn lat‸er() -> Future<int>: 1')?.code).toEqual([
-      'async fn later() -> Future<int>',
+    expect(hover('async fn lat‸er() -> Future<Int>: 1')?.code).toEqual([
+      'async fn later() -> Future<Int>',
     ]);
   });
 
   it('shows the arguments of a call being typed after a named argument', () => {
-    const connect = 'fn connect(host: string, port: int) -> int: port';
-    expect(hover(connect, 'fn f() -> int: connect(host: "x‸", po')?.code).toEqual(['string']);
+    const connect = 'fn connect(host: String, port: Int) -> Int: port';
+    expect(hover(connect, 'fn f() -> Int: connect(host: "x‸", po')?.code).toEqual(['String']);
+  });
+
+  it("shows a type pattern's binding with the type it names", () => {
+    const matched = ['fn f(x: any Stringable) -> Int:', '  match x:', '    case Int as ‸n: n'];
+    expect(hover(...matched, '    case _: 0')?.code).toEqual(['(variable) n: Int']);
   });
 
   it('shows a written type with its type arguments', () => {
     const pair = ['struct Pair<A, B>:', '  first: A', '  second: B', ''];
-    expect(hover(...pair, 'fn f(p: Pa‸ir<int, string>) -> int: 1')?.code).toEqual([
-      '(type) Pair<int, string>',
+    expect(hover(...pair, 'fn f(p: Pa‸ir<Int, String>) -> Int: 1')?.code).toEqual([
+      '(type) Pair<Int, String>',
     ]);
-    expect(hover('fn f(p: (int‸, string)) -> int: 1')?.code).toEqual(['(int, string)']);
-    expect(hover('fn f(g: fn(int) ‸-> bool) -> int: 1')?.code).toEqual(['fn(int) -> bool']);
+    expect(hover('fn f(p: (Int‸, String)) -> Int: 1')?.code).toEqual(['(Int, String)']);
+    expect(hover('fn f(g: fn(Int) ‸-> Bool) -> Int: 1')?.code).toEqual(['fn(Int) -> Bool']);
   });
 
   it("shows a variant's enum wherever the variant is named", () => {
@@ -98,23 +103,23 @@ describe('hover', () => {
     expect(
       hover(
         ...color,
-        'fn f(c: Color) -> int:',
+        'fn f(c: Color) -> Int:',
         '  match c:',
         '    case R‸ed: 1',
         '    case Green: 2',
       )?.code,
     ).toEqual([shown]);
     const opt = ['enum Opt<T>:', '  Some { value: T }', '  None', ''];
-    expect(hover(...opt, 'fn f() -> Opt<int>: So‸me{value: 1}')?.code).toEqual([
-      '(variant) Some: Opt<int>',
+    expect(hover(...opt, 'fn f() -> Opt<Int>: So‸me{value: 1}')?.code).toEqual([
+      '(variant) Some: Opt<Int>',
     ]);
-    expect(hover(...opt, 'fn f() -> Opt<int>: Opt.So‸me{value: 1}')?.code).toEqual([
-      '(variant) Some: Opt<int>',
+    expect(hover(...opt, 'fn f() -> Opt<Int>: Opt.So‸me{value: 1}')?.code).toEqual([
+      '(variant) Some: Opt<Int>',
     ]);
     expect(
       hover(
         ...opt,
-        'fn f(o: Opt<int>) -> int:',
+        'fn f(o: Opt<Int>) -> Int:',
         '  match o:',
         '    case So‸me{value}: value',
         '    case None: 0',
@@ -123,6 +128,6 @@ describe('hover', () => {
   });
 
   it('shows nothing where nothing has a type', () => {
-    expect(hover('fn f() -> int:', '  le‸t x = 1', '  x')).toBeUndefined();
+    expect(hover('fn f() -> Int:', '  le‸t x = 1', '  x')).toBeUndefined();
   });
 });

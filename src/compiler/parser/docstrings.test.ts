@@ -37,11 +37,11 @@ describe('where a docstring stands', () => {
 
   it.each([
     ['a function', lines('fn f():', `    ${q3}Does f.${q3}`, '    1'), 'FunctionDeclaration'],
-    ['a struct', lines('struct P:', `    ${q3}A point.${q3}`, '    x: int'), 'StructDeclaration'],
+    ['a struct', lines('struct P:', `    ${q3}A point.${q3}`, '    x: Int'), 'StructDeclaration'],
     ['an enum', lines('enum C:', `    ${q3}A color.${q3}`, '    Red'), 'EnumDeclaration'],
     [
       'a trait',
-      lines('trait T:', `    ${q3}Has f.${q3}`, '    fn f(self: Self) -> int'),
+      lines('trait T:', `    ${q3}Has f.${q3}`, '    fn f(self: Self) -> Int'),
       'TraitDeclaration',
     ],
   ])('documents %s from the first line of its body', (_, text, kind) => {
@@ -49,15 +49,15 @@ describe('where a docstring stands', () => {
   });
 
   it.each([
-    ['an extern function', lines('extern fn now() -> int', `    ${q3}The time.${q3}`)],
+    ['an extern function', lines('extern fn now() -> Int', `    ${q3}The time.${q3}`)],
     ['an extern struct', lines('extern sendable struct D', `    ${q3}A decimal.${q3}`)],
-    ['a struct in braces', lines('struct P { x: int }', `    ${q3}A point.${q3}`)],
+    ['a struct in braces', lines('struct P { x: Int }', `    ${q3}A point.${q3}`)],
   ])('documents %s from the line below it', (_, text) => {
     expect(docsOf(text)?.[1]?.[1]).toMatch(sentence);
   });
 
   it("documents a trait's requirement from the line below it", () => {
-    const text = lines('trait T:', '    fn f(self: Self) -> int', `        ${q3}Gives f.${q3}`);
+    const text = lines('trait T:', '    fn f(self: Self) -> Int', `        ${q3}Gives f.${q3}`);
     const [trait] = (parseAs('module', text).node as Module).items;
     expect(reported('module', text)).toEqual(reportedNothing);
     expect(trait?.kind === 'TraitDeclaration' && trait.members[0]).toMatchObject({

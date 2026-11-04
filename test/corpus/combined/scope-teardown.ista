@@ -3,7 +3,7 @@
 import Inbox, Revertible from 'inbox'
 import * as time from 'time'
 
-async fn worker(log: Inbox<string>, jobs: Inbox<int>, done: Inbox<int>):
+async fn worker(log: Inbox<String>, jobs: Inbox<Int>, done: Inbox<Int>):
     while true:
         await select:
             case jobs.receive() as j:
@@ -13,13 +13,13 @@ async fn worker(log: Inbox<string>, jobs: Inbox<int>, done: Inbox<int>):
                 log.send("worker disposing")
                 return
 
-async fn watcher(log: Inbox<string>, w: WeakRef<Inbox<int>>):
+async fn watcher(log: Inbox<String>, w: WeakRef<Inbox<Int>>):
     await w.disposed()
     log.send("inbox gone")
 
-async fn scope(log: Inbox<string>) -> Future<int>:
-    const jobs = Inbox.create<int>()
-    const done = Inbox.create<int>()
+async fn scope(log: Inbox<String>) -> Future<Int>:
+    const jobs = Inbox.create<Int>()
+    const done = Inbox.create<Int>()
     const wk = WeakRef(jobs)
     _ = watcher(log, wk)
     defer fn(): log.send("defer1")
@@ -32,14 +32,14 @@ async fn scope(log: Inbox<string>) -> Future<int>:
     log.send(if wk.deref() is none: "dead" else: "alive")
     3
 
-async fn main() -> Future<Array<string>>:
-    const log = Inbox.create<string>()
+async fn main() -> Future<Array<String>>:
+    const log = Inbox.create<String>()
     const r = await scope(log)
     log.send("scope " + r.toString())
     await time.delay(10ms)
-    let out: Array<string> = []
+    let out: Array<String> = []
     while true:
-        const more: bool = select:
+        const more: Bool = select:
             case log.receive() as s:
                 out.push(s)
                 true

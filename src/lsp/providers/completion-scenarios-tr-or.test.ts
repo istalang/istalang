@@ -170,7 +170,7 @@ const scenarios: readonly Scenario[] = [
     src: ['  ‸'],
     expect: {
       detail: [
-        ['xs', 'Array<int>'],
+        ['xs', 'Array<Int>'],
         ['p', 'Pair'],
       ],
     },
@@ -186,7 +186,7 @@ const scenarios: readonly Scenario[] = [
     id: 'OR-06',
     place: 'grammar',
     title: 'Docs on resolve',
-    src: ['fn twice(n: int) -> int:\n  """Doubles `n`."""\n  n * 2\nfn g() -> int:\n  ‸'],
+    src: ['fn twice(n: Int) -> Int:\n  """Doubles `n`."""\n  n * 2\nfn g() -> Int:\n  ‸'],
     where: 'top',
     tail: '\n  0\n',
     expect: { docs: 'twice' },

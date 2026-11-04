@@ -6,23 +6,23 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-async fn worker(name: string, jobs: Inbox<int>, results: Inbox<string>):
+async fn worker(name: String, jobs: Inbox<Int>, results: Inbox<String>):
   const job = await jobs.receive()
-  results.send(name + ":" + string(job))
+  results.send(name + ":" + String(job))
 
-async fn sendLater(box: Inbox<string>, wait: time.Duration, message: string):
+async fn sendLater(box: Inbox<String>, wait: time.Duration, message: String):
   await time.delay(wait)
   box.send(message)
 
-async fn collect(box: Inbox<string>, count: int) -> Future<string>:
-  let received: Array<string> = []
+async fn collect(box: Inbox<String>, count: Int) -> Future<String>:
+  let received: Array<String> = []
   while received.length() < count:
     received.push(await box.receive())
   received.join(" ")
 
-async fn main() -> Future<string>:
-  const jobs = Inbox.create<int>()
-  const results = Inbox.create<string>()
+async fn main() -> Future<String>:
+  const jobs = Inbox.create<Int>()
+  const results = Inbox.create<String>()
   _ = worker("a", jobs, results)
   _ = worker("b", jobs, results)
   _ = worker("c", jobs, results)
@@ -30,12 +30,12 @@ async fn main() -> Future<string>:
   jobs.send(2)
   jobs.send(3)
   const workers = await collect(results, 3)
-  const ordered = Inbox.create<string>()
+  const ordered = Inbox.create<String>()
   ordered.send("x")
   ordered.send("y")
   ordered.send("z")
   const backlog = await collect(ordered, 3)
-  const timed = Inbox.create<string>()
+  const timed = Inbox.create<String>()
   _ = sendLater(timed, 4ms, "second")
   _ = sendLater(timed, 1ms, "first")
   workers + " | " + backlog + " | " + await collect(timed, 2)

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-10-29
+last_updated: 2026-11-04
 tags: [reuse, values, equality, maps, json, natives, runtime]
 ---
 

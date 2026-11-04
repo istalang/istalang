@@ -7,21 +7,21 @@ import * as futures from 'futures'
 import * as time from 'time'
 
 struct Pending:
-  label: string
-  done: Future<int>
+  label: String
+  done: Future<Int>
 
-async fn after(wait: time.Duration, value: int) -> Future<int>:
+async fn after(wait: time.Duration, value: Int) -> Future<Int>:
   await time.delay(wait)
   value
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const slow = after(6ms, 1)
   const fast = after(2ms, 2)
   const pending = Pending{label: "slow", done: slow}
   const raced = await futures.first([slow, fast])
   const once = await pending.done
   const twice = await slow
-  const ready = Slot.create<int>()
+  const ready = Slot.create<Int>()
   await ready.put(9)
   const both = await futures.first([ready.read(), ready.read()])
-  string(raced.0) + " " + string(raced.1) + " | " + string(once) + " " + string(twice) + " | " + string(both.0) + " " + string(both.1)
+  String(raced.0) + " " + String(raced.1) + " | " + String(once) + " " + String(twice) + " | " + String(both.0) + " " + String(both.1)

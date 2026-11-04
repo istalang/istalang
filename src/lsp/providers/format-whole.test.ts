@@ -9,7 +9,7 @@ it('formats an unformatted CRLF document with one edit ending at the text end', 
   const root = tempProject({ 'main.ista': '' });
   const uri = pathToFileURL(join(root, 'main.ista')).href;
   const client = await connectedClient(root);
-  const text = 'fn   main( ) -> int: 1\r\n\r\n\r\n\r\n# é𝒳 end';
+  const text = 'fn   main( ) -> Int: 1\r\n\r\n\r\n\r\n# é𝒳 end';
   await client.open(uri, text);
   const edits = await client.connection.sendRequest(DocumentFormattingRequest.type, {
     textDocument: { uri },

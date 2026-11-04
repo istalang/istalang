@@ -3,9 +3,9 @@
 # passed by `&`, or changed by a method taking `&self`, it is copied in and written back when the
 # call returns. A whole `*x` is written alone, assigned on its own or among other targets.
 
-struct Counter { n: int; items: Array<string> }
+struct Counter { n: Int; items: Array<String> }
 
-fn bump(n: &int):
+fn bump(n: &Int):
   n += 1
 
 async fn main():
@@ -20,4 +20,4 @@ async fn main():
   meter->value = 7
   let a = 0
   a, meter->value = (1, 8)
-  string(c->value.n) + " " + c->value.items.join(",") + " | " + string(read) + " | " + string(meter->value) + " " + string(a)
+  String(c->value.n) + " " + c->value.items.join(",") + " | " + String(read) + " | " + String(meter->value) + " " + String(a)

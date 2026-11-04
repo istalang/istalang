@@ -110,58 +110,58 @@ describe('call argument completion', () => {
     );
   }, 60_000);
 
-  const plus = 'fn plus(a: int, b = 1) -> int: a + b';
+  const plus = 'fn plus(a: Int, b = 1) -> Int: a + b';
 
   it('offers the names left to give, positional ones counted, named ones by name', () => {
-    expect(offered(plus, 'fn f() -> int: plus(‸')).toEqual(expect.arrayContaining(['a:', 'b:']));
-    expect(offered(plus, 'fn f() -> int: plus(1, ‸')).not.toContain('a:');
-    expect(offered(plus, 'fn f() -> int: plus(‸, 2)')).not.toContain('b:');
+    expect(offered(plus, 'fn f() -> Int: plus(‸')).toEqual(expect.arrayContaining(['a:', 'b:']));
+    expect(offered(plus, 'fn f() -> Int: plus(1, ‸')).not.toContain('a:');
+    expect(offered(plus, 'fn f() -> Int: plus(‸, 2)')).not.toContain('b:');
   });
 
   it('offers names alone once an argument is named, for positional ones go first (§3.3)', () => {
-    expect(offered(plus, 'fn f(n: int) -> int: plus(b: 2, ‸')).toEqual(['a:']);
+    expect(offered(plus, 'fn f(n: Int) -> Int: plus(b: 2, ‸')).toEqual(['a:']);
   });
 
   it("never names a method's self", () => {
-    const method = ['struct P { x: int }', 'fn add(self: P, n: int) -> int: self.x + n'];
-    expect(offered(...method, 'fn f(p: P) -> int: p.add(‸')).toContain('n:');
-    expect(offered(...method, 'fn f(p: P) -> int: add(p, ‸')).not.toContain('self:');
+    const method = ['struct P { x: Int }', 'fn add(self: P, n: Int) -> Int: self.x + n'];
+    expect(offered(...method, 'fn f(p: P) -> Int: p.add(‸')).toContain('n:');
+    expect(offered(...method, 'fn f(p: P) -> Int: add(p, ‸')).not.toContain('self:');
   });
 
   it('names what a call left open before more code leaves to give', () => {
-    expect(offered(plus, 'fn f() -> int:', '  plus(1, ‸', '  return 1')).toContain('b:');
+    expect(offered(plus, 'fn f() -> Int:', '  plus(1, ‸', '  return 1')).toContain('b:');
   });
 
   it("names the innermost call's parameters", () => {
-    const one = 'fn one(m: int) -> int: m';
-    expect(offered(plus, one, 'fn f() -> int: plus(one(‸')).toContain('m:');
-    expect(offered(plus, one, 'fn f() -> int: plus(one(1), ‸')).toContain('b:');
+    const one = 'fn one(m: Int) -> Int: m';
+    expect(offered(plus, one, 'fn f() -> Int: plus(one(‸')).toContain('m:');
+    expect(offered(plus, one, 'fn f() -> Int: plus(one(1), ‸')).toContain('b:');
   });
 
   it('names nothing in a call of a function value or of a callee no function was found for', () => {
     const names = (labels: readonly string[]) => labels.filter((label) => label.endsWith(':'));
-    expect(names(offered('fn f(g: fn(int) -> int) -> int: g(‸'))).toEqual([]);
-    expect(names(offered('fn f(q: int) -> int: nope(‸'))).toEqual([]);
+    expect(names(offered('fn f(g: fn(Int) -> Int) -> Int: g(‸'))).toEqual([]);
+    expect(names(offered('fn f(q: Int) -> Int: nope(‸'))).toEqual([]);
   });
 
   it('offers a spread where the argument lands in a rest parameter', () => {
-    const log = 'fn log(level: string, ...parts: Array<string>) -> int: 1';
-    expect(offered(log, 'fn f() -> int: log(‸')).not.toContain('...');
-    expect(offered(log, 'fn f() -> int: log("a", ‸')).toEqual(
+    const log = 'fn log(level: String, ...parts: Array<String>) -> Int: 1';
+    expect(offered(log, 'fn f() -> Int: log(‸')).not.toContain('...');
+    expect(offered(log, 'fn f() -> Int: log("a", ‸')).toEqual(
       expect.arrayContaining(['...', 'parts:']),
     );
   });
 
   it('inserts the name with its colon, and `&` for a parameter taking a reference', () => {
     const { program, module, offset } = programAt(
-      'fn bump(by: int, target: &int):',
+      'fn bump(by: Int, target: &Int):',
       '  target = target + by',
-      'fn f() -> int: bump(‸',
+      'fn f() -> Int: bump(‸',
     );
     const items = completionsAt(program, module, offset);
     expect(items.find(({ name }) => name === 'by:')).toMatchObject({
       kind: 'variable',
-      detail: 'int',
+      detail: 'Int',
       insert: { kind: 'text', text: 'by: ' },
       next: 'completion',
     });

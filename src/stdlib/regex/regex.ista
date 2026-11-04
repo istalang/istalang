@@ -8,35 +8,35 @@
 import * as json from 'json'
 
 struct Regex:
-  pattern: string
+  pattern: String
 
 # One match: the text matched, where it starts, and what each capture group took. Group `n` is
 # `captures[n - 1]`, none when it took no part; `named` holds the named groups that took part.
 struct Match:
-  text: string
-  index: int
-  captures: Array<string?>
-  named: Map<string, string>
+  text: String
+  index: Int
+  captures: Array<String?>
+  named: Map<String, String>
 
-extern fn Regex.parse(text: string) -> Result<Regex>
+extern fn Regex.parse(text: String) -> Result<Regex>
 
-fn toString(self: Regex) -> string: self.pattern
+fn toString(self: Regex) -> String: self.pattern
 
 fn toJson(self: Regex) -> json.Json: json.encodeText(self)
 
-fn Regex.fromJson(value: json.Json, path: string) -> Result<Regex>: json.decodeText(value, path)
+fn Regex.fromJson(value: json.Json, path: String) -> Result<Regex>: json.decodeText(value, path)
 
 # Whether the regex matches anywhere in `s`.
-extern fn test(self: Regex, s: string) -> bool
-extern fn find(self: Regex, s: string) -> Match?
-extern fn findAll(self: Regex, s: string) -> Array<Match>
+extern fn test(self: Regex, s: String) -> Bool
+extern fn find(self: Regex, s: String) -> Match?
+extern fn findAll(self: Regex, s: String) -> Array<Match>
 
 # `replacement` expands `$1`, `$<name>`, `$&` and `$$` as JavaScript's does.
-extern fn replace(self: Regex, s: string, replacement: string) -> string
-extern fn replaceAll(self: Regex, s: string, replacement: string) -> string
+extern fn replace(self: Regex, s: String, replacement: String) -> String
+extern fn replaceAll(self: Regex, s: String, replacement: String) -> String
 
 # `s` split around each match, as JavaScript's `split` does without capture groups.
-extern fn split(self: Regex, s: string) -> Array<string>
+extern fn split(self: Regex, s: String) -> Array<String>
 
 # The pattern matching `text` literally.
-extern fn escape(text: string) -> string
+extern fn escape(text: String) -> String

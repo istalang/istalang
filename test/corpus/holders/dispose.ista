@@ -6,27 +6,27 @@
 # disposed after the lease holding it, however old it is.
 
 shared struct Lease:
-  name: string
-  log: Shared<Array<string>>
+  name: String
+  log: Shared<Array<String>>
   partner: Lease? = none
 
 fn dispose(self: Lease):
   note(self->log, "disposed " + self->name)
 
-fn note(log: Shared<Array<string>>, text: string):
+fn note(log: Shared<Array<String>>, text: String):
   log->value.push(text)
 
-fn lease(name: string, log: Shared<Array<string>>) -> Lease:
+fn lease(name: String, log: Shared<Array<String>>) -> Lease:
   new Lease{name, log}
 
-fn cycle(log: Shared<Array<string>>):
+fn cycle(log: Shared<Array<String>>):
   const a = lease("a", log)
   const b = lease("b", log)
   b->partner = a
   a->partner = b
   note(log, "made")
 
-fn nesting(log: Shared<Array<string>>):
+fn nesting(log: Shared<Array<String>>):
   const outer = lease("outer", log)
   const inner = lease("inner", log)
   outer->partner = inner
@@ -35,8 +35,8 @@ fn nesting(log: Shared<Array<string>>):
   drop outer
   note(log, "after nesting")
 
-async fn main() -> Future<string>:
-  const empty: Array<string> = []
+async fn main() -> Future<String>:
+  const empty: Array<String> = []
   const log = new Shared{value: empty}
   cycle(log)
   note(log, "after cycle")

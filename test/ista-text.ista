@@ -1,2 +1,2 @@
 # A module embedded as text: "quoted" and \ escaped characters survive.
-fn sample() -> string: 'text'
+fn sample() -> String: 'text'

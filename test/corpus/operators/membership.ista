@@ -3,15 +3,15 @@
 # int a range reaches, and a program's own type through `Container`.
 
 struct Evens:
-  below: int
+  below: Int
 
-fn includes(self: Evens, value: int) -> bool:
+fn includes(self: Evens, value: Int) -> Bool:
   value % 2 == 0 and 0 <= value < self.below
 
-fn holdsOne<C is Container<int>>(container: C) -> bool:
+fn holdsOne<C is Container<Int>>(container: C) -> Bool:
   1 in container
 
-async fn main() -> Future<(bool, bool, bool, bool, bool, bool, bool, bool)>:
+async fn main() -> Future<(Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool)>:
   const ages = ["ada": 36]
   (2 in [1, 2, 3], 4 in [1, 2, 3], "bob" not in ages, "ada" in ages, "bc" in "abc", 3 in 0..3,
     4 in Evens{10}, holdsOne([1]))

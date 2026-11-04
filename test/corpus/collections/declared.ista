@@ -3,16 +3,16 @@
 # `default()` and assigns each entry with its `setIndex`, a spread's items included; `for` runs the
 # cursor its `iterate` gives; and its elements are places, also inside an array of them.
 
-struct Bag { keys: Array<string>; values: Array<int> }
+struct Bag { keys: Array<String>; values: Array<Int> }
 
 fn Bag.default() -> Bag:
   Bag{keys: [], values: []}
 
-fn index(self: Bag, key: string) -> int:
+fn index(self: Bag, key: String) -> Int:
   const position = self.keys.indexOf(key)
   if position < 0: panic("No " + key + " in the bag.") else: self.values[position]
 
-fn setIndex(self: &Bag, key: string, value: int):
+fn setIndex(self: &Bag, key: String, value: Int):
   const position = self.keys.indexOf(key)
   if position < 0:
     self.keys.push(key)
@@ -20,16 +20,16 @@ fn setIndex(self: &Bag, key: string, value: int):
   else:
     self.values[position] = value
 
-fn iterate(self: Bag) -> fn() -> (string, int)?:
+fn iterate(self: Bag) -> fn() -> (String, Int)?:
   let position = 0
-  fn next() -> (string, int)?:
+  fn next() -> (String, Int)?:
     if position == self.keys.length():
       return none
     position += 1
     (self.keys[position - 1], self.values[position - 1])
   next
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let bag: Bag = ["a": 1, "b": 2]
   bag["a"] = 10
   bag["b"] += 5
@@ -44,10 +44,10 @@ async fn main() -> Future<string>:
   const empty: Bag = []
   const parts = [
     text,
-    string(total),
-    string(copy.keys.length()),
-    string(shelves[0]["a"]),
-    string(empty.keys.length()),
-    string(["x": 1].size()),
+    String(total),
+    String(copy.keys.length()),
+    String(shelves[0]["a"]),
+    String(empty.keys.length()),
+    String(["x": 1].size()),
   ]
   parts.join(" ")

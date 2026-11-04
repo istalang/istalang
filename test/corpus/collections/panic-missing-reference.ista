@@ -2,10 +2,10 @@
 # An element passed by `&` is read before its call (§3.7), so a key the map doesn't hold panics
 # even when the callee only writes it; assigning `m[k] = v` adds the key instead.
 
-fn reset(value: &int):
+fn reset(value: &Int):
   value = 0
 
-async fn main() -> Future<int>:
+async fn main() -> Future<Int>:
   let m = ["a": 1]
   reset(&m["b"])
   m["b"]

@@ -15,13 +15,13 @@ describe('a value crossing to its host', () => {
       [
         "import Json from 'json'",
         'struct Name:',
-        '  text: string',
+        '  text: String',
         'fn toJson(self: Name) -> Json:',
         '  Text{value: self.text}',
-        'fn Name.fromJson(json: Json, path: string) -> Result<Name>:',
-        '  Ok{(Name{text: string.fromJson(json, path)?})}',
+        'fn Name.fromJson(json: Json, path: String) -> Result<Name>:',
+        '  Ok{(Name{text: String.fromJson(json, path)?})}',
         'extern fn greet(name: Name) -> Name',
-        'async fn main() -> Future<string>:',
+        'async fn main() -> Future<String>:',
         '  greet(Name{text: "ada"}).text',
       ].join('\n'),
     );
@@ -45,9 +45,9 @@ describe('a value crossing to its host', () => {
       {
         shapes: [
           "import Json from 'json'",
-          'struct Point { x: int }',
+          'struct Point { x: Int }',
           'fn toJson(self: Point) -> Json:',
-          '  Text{value: "point " + string(self.x)}',
+          '  Text{value: "point " + String(self.x)}',
         ].join('\n'),
         queue: "import Encodable from 'json'\nextern fn send<T is Encodable>(value: T)",
       },
@@ -70,11 +70,11 @@ describe('a value crossing to its host', () => {
         'extern struct Lease',
         'extern fn openAll() -> Array<Lease>',
         'extern fn find() -> Lease?',
-        'extern fn describeAll(leases: Array<Lease>, found: Lease?) -> string',
+        'extern fn describeAll(leases: Array<Lease>, found: Lease?) -> String',
         'extern fn release(lease: Lease)',
         'fn dispose(self: Lease):',
         '  release(self)',
-        'async fn main() -> Future<string>:',
+        'async fn main() -> Future<String>:',
         '  describeAll(openAll(), find())',
       ].join('\n'),
     );

@@ -1,0 +1,56 @@
+# outcome: ["a number, 3","mail to a","2.5","true","HI","4","whole 7","cents 5","other","marker","mail to b","mail to c","mail to d","any 6"]
+# A bare PascalCase name in a pattern tests a value's type (§3.11): against an `any` value, a
+# primitive, a whole struct or an alias of a type, matched by its own type (§3.10); against a
+# value of that very type, every value, as `_` does, so it covers the type alone. An alias names
+# what it stands for in braces too, and an `any` type's own alias matches every value of it.
+
+import toUpperCase from 'strings'
+
+struct Email { to: String }
+struct Marker {}
+
+fn toString(self: Email) -> String: "mail to " + self.to
+fn toString(self: Marker) -> String: "marker"
+
+type Cents = Int
+type Mail = Email
+type Text = any Stringable
+
+fn describe(x: any Stringable) -> String:
+  match x:
+    case Int as n: `a number, ${n}`
+    case Email as e: `mail to ${e.to}`
+    case _: String(x)
+
+fn shout(x: any Stringable) -> String:
+  if x is String as s: s.toUpperCase() else: String(x)
+
+fn whole(n: Int) -> String:
+  match n:
+    case Int as m: `whole ${m}`
+
+fn cents(x: any Stringable) -> String:
+  match x:
+    case Cents as c: `cents ${c}`
+    case Marker: "marker"
+    case _: "other"
+
+fn mailInside(x: any Stringable) -> String:
+  match x:
+    case Mail{to}: "mail to " + to
+    case _: "other"
+
+fn mail(e: Email) -> String:
+  match e:
+    case Mail{to}: "mail to " + to
+
+fn mailTarget(e: Email) -> String:
+  const Mail{to} = e
+  "mail to " + to
+
+fn text(x: Text) -> String:
+  match x:
+    case Text as t: "any " + String(t)
+
+async fn main() -> Future<Array<String>>:
+  [describe(3), describe(Email{to: "a"}), describe(2.5), describe(true), shout("hi"), shout(4), whole(7), cents(5), cents("x"), cents(Marker), mailInside(Email{to: "b"}), mail(Email{to: "c"}), mailTarget(Email{to: "d"}), text(6)]

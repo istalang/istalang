@@ -3,7 +3,7 @@
  *
  * - With a declared result, the tail and every `return` must fit it.
  * - Without one, the body produces the type its tail and its `return`s agree on, as every set of
- *   producers of one value does (rules/agreement.ts); `never` (a `return`, `break` or `continue`)
+ *   producers of one value does (rules/agreement.ts); `Never` (a `return`, `break` or `continue`)
  *   agrees with anything.
  * - `e?` returns an `Err` early (§3.12), so the function must produce a `Result` whose error type
  *   is the same type as `e`'s. Its `Ok` type is the function's own business, so a `?` doesn't

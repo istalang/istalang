@@ -4,12 +4,12 @@
 # search without end rather than as a function Badge lacks.
 
 trait Show:
-  fn show(value: Self) -> string
+  fn show(value: Self) -> String
 
 struct Badge:
-  label: string
+  label: String
 
-fn show<T is Show>(value: T) -> string:
+fn show<T is Show>(value: T) -> String:
   "?"
 
 async fn main():

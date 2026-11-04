@@ -22,26 +22,26 @@ struct Boxed<...A>:
 
 fn constrained<...A is Sendable>(...args: A): ()
 
-fn defaulted<...A = (int,)>(...args: A): ()
+fn defaulted<...A = (Int,)>(...args: A): ()
 
-fn arrayRest(f: fn(int, ...Array<int>)): ()
+fn arrayRest(f: fn(Int, ...Array<Int>)): ()
 
 fn call<...A, R>(f: fn(...A) -> R, ...args: A) -> R: f(...args)
 
-fn plus(x: int, y: int) -> int: x + y
+fn plus(x: Int, y: Int) -> Int: x + y
 
-fn opaque<...A>(f: fn(...A) -> int, ...args: A) -> int:
+fn opaque<...A>(f: fn(...A) -> Int, ...args: A) -> Int:
   f(1, 2)
 
-fn mixed<...A>(f: fn(...A) -> int, ...args: A) -> int:
+fn mixed<...A>(f: fn(...A) -> Int, ...args: A) -> Int:
   call(f, 1, ...args)
 
 fn main():
   drop call(plus, args: (1, 2))
   drop call(plus, ...[1, 2])
-  drop call<int, int>(plus, 1)
+  drop call<Int, Int>(plus, 1)
   drop call(plus, 1, "two")
-  const lambda = fn(...xs: Array<int>): xs
+  const lambda = fn(...xs: Array<Int>): xs
 
 fn spread<...A>(...xs: A): ()
 fn spread<...B>(...ys: B): ()
@@ -49,4 +49,4 @@ fn spread<...B>(...ys: B): ()
 fn either<T>(...xs: Array<T>): ()
 fn either<...A>(...xs: A): ()
 
-fn misplaced<...A>(f: fn(...A, int), g: fn(...A, ...A)): ()
+fn misplaced<...A>(f: fn(...A, Int), g: fn(...A, ...A)): ()

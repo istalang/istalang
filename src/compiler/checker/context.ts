@@ -27,7 +27,6 @@ import type {
   DeclaredStruct,
   EnumDeclaration,
   FunctionDeclaration,
-  TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
 import type {
@@ -178,8 +177,6 @@ export interface CheckerContext extends Checker {
   ) => readonly FunctionDeclaration[];
   /** Annotations, as later phases read them and as declarations check them (§3.16). */
   readonly annotations: AnnotationChecks;
-  /** The type an alias stands for, its own type parameters left open (§3.17). */
-  readonly aliasedType: (alias: TypeAliasDeclaration) => Type;
   /**
    * Notes that the argument `typeArguments` gives `parameter` at `at` in `module` must meet the
    * parameter's constraints (§3.5), which may name the declaration's other parameters. Types
@@ -379,7 +376,7 @@ export interface FunctionFrame {
 /** One function's result: declared, or gathered from its `return`s (closures/returns.ts). */
 export interface Returns {
   readonly declared: Type | undefined;
-  /** Checks a `return` and what it returns: its value, or `unit` for a bare one. */
+  /** Checks a `return` and what it returns: its value, or `Unit` for a bare one. */
   readonly check: (context: BodyContext, node: Return) => void;
   /** Notes a `?` at `span` that would return an `Err` of `error` (§3.12). */
   readonly propagate: (context: BodyContext, error: Type, span: AnchoredSpan) => void;

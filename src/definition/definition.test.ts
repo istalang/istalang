@@ -311,7 +311,7 @@ describe('definition format', () => {
         (at(json, 'types') as unknown as unknown[]).push({
           kind: 'extern',
           name: 'prelude.Shared',
-          arguments: [{ kind: 'primitive', name: 'int' }],
+          arguments: [{ kind: 'primitive', name: 'Int' }],
           sendable: false,
           disposal: { kind: 'function', function: 99 },
           role: 'cell',
@@ -323,7 +323,7 @@ describe('definition format', () => {
     [
       "a start whose encoder can't encode an outcome",
       (json) => {
-        json.body.starts = [{ key: 'main.fib(int)', function: 3, encoder: 4 }];
+        json.body.starts = [{ key: 'main.fib(Int)', function: 3, encoder: 4 }];
       },
       "main.main can't encode an outcome",
       'starts[0].encoder',

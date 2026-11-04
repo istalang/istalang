@@ -4,31 +4,31 @@
 # the caller's place: a variable, a field of one, or a tuple element. A copy of a top-level
 # constant changes without changing the constant.
 
-struct Point { x: int; y: int }
+struct Point { x: Int; y: Int }
 
-struct Box { point: Point; label: string }
+struct Box { point: Point; label: String }
 
 const origin = Point{x: 1, y: 1}
 
-fn movedCopy(p: Point) -> int:
+fn movedCopy(p: Point) -> Int:
   let own = p
   own.x = 100
   own.x
 
-fn moveTo(p: &Point, x: int):
+fn moveTo(p: &Point, x: Int):
   p.x = x
 
-fn bump(n: &int):
+fn bump(n: &Int):
   n += 1
 
-fn bumpTwice(n: &int):
+fn bumpTwice(n: &Int):
   bump(&n)
   bump(&n)
 
-fn grow(self: &Point, by: int):
+fn grow(self: &Point, by: Int):
   self.x += by
 
-fn total(self: Point) -> int:
+fn total(self: Point) -> Int:
   self.x + self.y
 
 async fn main():

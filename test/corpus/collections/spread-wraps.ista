@@ -3,19 +3,19 @@
 # wrapped into `T?` as an element would be (§2): an array's items, which are otherwise copied
 # whole, a string's characters and a range's ints alike, as often as the optionals nest.
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const xs = [1, 2]
-  const ys: Array<int?> = [0, ...xs, none]
-  const letters: Array<string?> = [..."ab"]
+  const ys: Array<Int?> = [0, ...xs, none]
+  const letters: Array<String?> = [..."ab"]
   const range = 0..2
-  const steps: Array<int?> = [...range]
-  const nested: Array<int??> = [...xs]
+  const steps: Array<Int?> = [...range]
+  const nested: Array<Int??> = [...xs]
   const parts = [
-    string(ys.length()),
-    string(ys[1] ?? -1),
-    string(ys[3] ?? -1),
+    String(ys.length()),
+    String(ys[1] ?? -1),
+    String(ys[3] ?? -1),
     letters[1] ?? "-",
-    string(steps[1] ?? -1),
-    string((nested[0] ?? none) ?? -1),
+    String(steps[1] ?? -1),
+    String((nested[0] ?? none) ?? -1),
   ]
   parts.join(" ")

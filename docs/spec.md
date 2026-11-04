@@ -9,7 +9,7 @@ The whole language at a glance; each line is explained in the sections below.
 **Values, variables and types**
 
 ```python fragment
-const limit: int = 50_000          # immutable, deeply
+const limit: Int = 50_000          # immutable, deeply
 let count = 0                      # mutable; type inferred
 let a, b = (1, "x")                # tuple destructuring
 _ = startSomething()               # unnamed variable: held until the block ends
@@ -22,9 +22,9 @@ u->value.name = "x"                # read or write behind it with -> and *
 "text"  'text'  `a ${x}`  42  1_000  0x1F  3.14  true  false  none  5d  30s
 [1, 2]   ["a": 1]   [:]   [...xs, 3]   (1, "x")   0..10   0..=10
 
-int  float  bool  string  unit  never  T?  (A, B)
+Int  Float  Bool  String  Unit  Never  T?  (A, B)
 Array<T>  Map<K, V>  Range  Future<T>  Slot<T>  Shared<T>  WeakRef<T>  Instance<T>
-fn(A) -> R    async fn(A) -> R    sendable fn(A) -> R    { sku: string; qty: int }    # anonymous struct type
+fn(A) -> R    async fn(A) -> R    sendable fn(A) -> R    { sku: String; qty: Int }    # anonymous struct type
 ```
 
 **Structs, enums and annotations**
@@ -34,9 +34,9 @@ struct Pair<A, B>:
     first: A
     second: B
     meta:                          # inline anonymous struct
-        tag: string
-struct Req { id: int; value: string }
-struct Retry { times: int = 3; backoff = times * 2 }   # defaults, each seeing the fields before it
+        tag: String
+struct Req { id: Int; value: String }
+struct Retry { times: Int = 3; backoff = times * 2 }   # defaults, each seeing the fields before it
 
 enum Result<T, E = Error>:
     Ok { value: T }
@@ -47,25 +47,25 @@ Pair{first: 1, second: 2, meta: struct{tag: "x"}}
 Pair{first, second}                # short for first: first, second: second
 Ok{42}    Ok{(receipt)}            # single field, positional; a bare name needs ( )
 Req{...req, value: "new"}          # updated copy
-userId: int @JsonName{"user_id"}   # annotation on a field
+userId: Int @JsonName{"user_id"}   # annotation on a field
 ```
 
 **Functions, traits and generics**
 
 ```python fragment
-fn add(a: int, b = 1):             # default parameter, types inferred
+fn add(a: Int, b = 1):             # default parameter, types inferred
     a + b                          # the last expression is the value
-fn log(level: string, ...parts: Array<string>): ...    # rest parameter
+fn log(level: String, ...parts: Array<String>): ...    # rest parameter
 log("info", ...parts)                                  # spread into the rest
 add(1, b: 2)                                           # named argument
 fn call<...A, R>(f: fn(...A) -> R, ...args: A) -> R: ... # a pack: any parameters
 fn push<T>(self: &Stack<T>, item: T): ...             # method, reference receiver
 fn Duration.zero() -> Duration: ...                    # static function
-async fn approve(req: Req) -> Future<string>: ...
+async fn approve(req: Req) -> Future<String>: ...
 
 fn(x): x * 2    fn x: x > 0    fn(msg): { log(msg); save(msg) }   # lambdas
-const fact = fn f(n: int) -> int: { ... }             # named lambda: f calls itself
-g(&value)    float(3)    a[1..3]    m["a"] = 2         # reference, conversion, slice, index
+const fact = fn f(n: Int) -> Int: { ... }             # named lambda: f calls itself
+g(&value)    Float(3)    a[1..3]    m["a"] = 2         # reference, conversion, slice, index
 
 trait Addable<T = Self>:
     fn add(left: T, right: T) -> T
@@ -105,8 +105,8 @@ if r is Ok{value as y} and y > 0: use(y)
 user?.name    name ?? "anonymous"    found!    chargeCard(id)?    # optional chaining, fallback, unwrap or panic, propagate Err
 { const t = a * b; t + 1 }                        # block expression
 x = 1; y = 2                                      # two statements on one line
-type UserId = string                              # type alias
-shared struct Counter { n: int }                  # a struct whose values are handles to a cell
+type UserId = String                              # type alias
+shared struct Counter { n: Int }                  # a struct whose values are handles to a cell
 ```
 
 **Concurrency, persistence and the host**
@@ -122,7 +122,7 @@ select:                            # non-blocking
     case box.receive() as msg: ...
     else: ...
 
-const s = Slot.create<int>()       # await s.put(1), s.take(), s.read()
+const s = Slot.create<Int>()       # await s.put(1), s.take(), s.read()
 box.send(m)    _ = box.sendRevertible(m)    await box.receive()
 spawn purchase(req)                # a new, independent instance
 defer fn(): log("exited")          # runs when this block ends, however it ends
@@ -131,7 +131,7 @@ await runtime.commit()             # commit without waiting
 panic("bug")                       # freeze the instance for an operator
 
 import Inbox from 'inbox'          # names starting with _ are private
-extern fn chargeCard(id: string) -> Result<string>
+extern fn chargeCard(id: String) -> Result<String>
 extern purchaseRequests: Queue<Req>
 ```
 
@@ -157,20 +157,20 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 
 - **Indentation** uses spaces only: a tab in a line's leading whitespace is a compile error. Any consistent width works.
 - **Line breaks** are `\n`, `\r\n` or a lone `\r`. A byte order mark at the start of a file is ignored.
-- **Continuation.** A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal, so a call or literal may span lines. Inside braces that list fields or variants, as in `{ sku: string; qty: int }`, a line break separates entries just as `;` does. There is no backslash continuation.
+- **Continuation.** A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal, so a call or literal may span lines. Inside braces that list fields or variants, as in `{ sku: String; qty: Int }`, a line break separates entries just as `;` does. There is no backslash continuation.
 - **Trailing commas** are allowed in every comma-separated list.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
-- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Eight more words are keywords only in one position and ordinary names elsewhere: `type` before an alias's name, `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, `any` before a trait's name in a type (§3.10), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` (§9) and a function named `hold` are valid.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Eight more words are keywords only where the grammar expects them and ordinary names elsewhere: `type` before an alias's name, `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, `any` before a trait's name in a type (§3.10), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` (§9) and a function named `hold` are valid. The built-in types' names, `Int`, `Float`, `Bool`, `String`, `Unit`, `Never` and `Self` (§3.10), are no keywords, but no type, variant or type parameter is declared with them, since every module sees them.
 
 Every expression has a static type; a value whose type is known only when the program runs has a trait's, `any T` (§3.10). There are no implicit conversions, with four exceptions: a `T` is wrapped into `T?` wherever an optional is expected (§3.11), a value is converted into an `any` type wherever one is expected (§3.10), a plain function fits where an async one of its parameters and result is expected (§3.14), and a one-element tuple and its element each fit where the other is expected (§3.15).
 
 | Type | Meaning |
 | --- | --- |
-| `int`, `float`, `bool`, `string` | Primitives: language built-ins, not structs. Booleans are `true` / `false`. |
-| `unit` | The type of statements and of blocks that end in a statement. It is the empty tuple `()`. |
-| `never` | The type of `return`, `break`, `continue` and `panic`. It fits wherever any type is expected. |
+| `Int`, `Float`, `Bool`, `String` | Primitives: language built-ins, not structs. Booleans are `true` / `false`. |
+| `Unit` | The type of statements and of blocks that end in a statement. It is the empty tuple `()`. |
+| `Never` | The type of `return`, `break`, `continue` and `panic`. It fits wherever any type is expected. |
 | `T?` | Sugar for `Optional<T>`, an ordinary enum (§3.11). The empty value is `none`. |
-| `Time`, `Duration` | Standard-library structs wrapping an `int` of milliseconds (§3.8). |
+| `Time`, `Duration` | Standard-library structs wrapping an `Int` of milliseconds (§3.8). |
 | `Array<T>`, `Map<K, V>` | Generic collections (§3.8). They are values and are copied like structs. |
 | `Range` | A span of integers written `a..b`, half-open (§3.8). |
 | `Slot<T>` | Handle to a slot shared by the concurrent executions of one instance: empty or full (§6). |
@@ -186,15 +186,15 @@ Every expression has a static type; a value whose type is known only when the pr
 | Tuple types | `(A, B)`: a fixed number of values, by position (§3.15). |
 | `any` types | `any T`, `any A & B`: a value of any type conforming to the traits (§3.10). |
 
-Primitive types are lowercase language built-ins and are always sendable. Every other type name, built-in or user-defined, is PascalCase. The other built-in types are ordinary declarations in the prelude and standard library (§3.8).
+Every type name is PascalCase; the primitives are language built-ins, declared in no module and always sendable. The other built-in types are ordinary declarations in the prelude and standard library (§3.8).
 
 Duration literals are sugar for the standard library's `Duration`: an integer plus a unit, with no space between (`500ms`, `30s`, `15m`, `2h`, `5d`). For example, `5d` means `Duration{value: 5 * 24 * 60 * 60 * 1000}`. A fractional duration such as `1.5h` is a compile error; write `90m`. Every program loads the `time` module, so a duration literal works in any module, while the name `Duration` is visible only where `time` is imported.
 
 **Literals:**
 
 - **Strings:** `"…"` or `'…'` on a single line, with the escapes `\n`, `\t`, `\\`, `\"`, `\'`, `` \` ``, `\$` and `\u{…}`, which takes 1 to 6 hex digits naming a Unicode scalar value. Any other escape is a compile error.
-- **Templates:** `` `Purchase ${req.id} awaits ${who}` `` is a `string`. Each `${…}` holds an expression, whose value is written as text by its `toString`, found as an operator's function is (§3.9), so a program's own type, a type parameter that is `Stringable` and an `any Stringable` all work; a value with no such `toString` is a compile error. A template takes a string's escapes: `\${` writes `${`, and a `$` not before `{` is plain text. Inside `${…}` line breaks are ignored, as inside brackets, and a `#` comment runs to the end of its line. A template without values is a constant, as a string literal is. For text whose shape comes from data, `strings.format` remains (§3.8).
-- **Tagged templates:** `` tag`a ${x} b` `` is the call `tag(["a ", " b"], x)`: the texts, one more than the values, then each value. It is an ordinary call, so `tag` is any function, method or function value, and its parameters decide what the values must be, as `fn sql(parts: Array<string>, ...values: Array<any Stringable>)` takes any text-writable ones. A tag stands on the template's line, as a call's `(` does.
+- **Templates:** `` `Purchase ${req.id} awaits ${who}` `` is a `String`. Each `${…}` holds an expression, whose value is written as text by its `toString`, found as an operator's function is (§3.9), so a program's own type, a type parameter that is `Stringable` and an `any Stringable` all work; a value with no such `toString` is a compile error. A template takes a String's escapes: `\${` writes `${`, and a `$` not before `{` is plain text. Inside `${…}` line breaks are ignored, as inside brackets, and a `#` comment runs to the end of its line. A template without values is a constant, as a String literal is. For text whose shape comes from data, `strings.format` remains (§3.8).
+- **Tagged templates:** `` tag`a ${x} b` `` is the call `tag(["a ", " b"], x)`: the texts, one more than the values, then each value. It is an ordinary call, so `tag` is any function, method or function value, and its parameters decide what the values must be, as `fn sql(parts: Array<String>, ...values: Array<any Stringable>)` takes any text-writable ones. A tag stands on the template's line, as a call's `(` does.
 - **Multi-line text:** a template, and a docstring (below), may span lines. A line break in it is `\n`, whichever the source uses. If the opening delimiter ends its line, that line break goes, and so does the one before a closing delimiter alone on its line, with the spaces before it. Then every line after the first loses the leading spaces they all share; blank lines don't count. Indentation is read before escapes are, so an escaped `\n` or `\t` is never a line break or indentation. A template, a `${…}` or a docstring left open runs to the end of the file, as in JavaScript; the error points at its opening delimiter:
 
 ```python statements
@@ -204,12 +204,12 @@ const message = `
     `
 # "Dear Ada,\n  your order 42 has shipped."
 ```
-- **Numbers:** `42`, `1_000_000`, `0x1F` and `0b1010` for `int`; `3.14`, `1e9`, `2E6` and `2.5e-3` for `float`. A `_` stands only between digits, radix prefixes are lowercase, and there are no octal literals. A float has digits on both sides of its `.`, so `2.toString()` calls a method on the `int` `2`, and `0..10` is a range.
+- **Numbers:** `42`, `1_000_000`, `0x1F` and `0b1010` for `Int`; `3.14`, `1e9`, `2E6` and `2.5e-3` for `Float`. A `_` stands only between digits, radix prefixes are lowercase, and there are no octal literals. A float has digits on both sides of its `.`, so `2.toString()` calls a method on the `Int` `2`, and `0..10` is a range.
 - **`true`, `false` and `none`.**
 - **Arrays:** `[1, 2, 3]`, and `[]` when empty.
 - **Maps:** `["legal": 1, "cfo": 2]`, and `[:]` when empty. Keys are expressions.
 - **Spread:** `[...xs, 4]` and `[...m, "a": 2]` build a new array or map from an existing one plus more elements or entries. A spread takes anything iterable (§3.10) and spreads the items its cursor gives: an array its elements, a map its `(key, value)` entries, a string its characters, a range its ints. In a map literal the items must be `(key, value)` tuples. A literal is a map literal only when it has a `key: value` entry or is `[:]`, so `[...m]` is an array of `m`'s entries.
-- **Tuples:** `(1, "x")`, and `()` for `unit`.
+- **Tuples:** `(1, "x")`, and `()` for `Unit`.
 - **Ranges:** `3..5` covers 3 and 4 (half-open), `3..=5` includes 5, and either end may be left out: `..5`, `3..`. `by` gives a step: `0..10 by 2`, `10..=0 by -1`.
 - **Structs and enum variants:** `Pair{first: 1, second: 2}`, `Rejected{by: "legal"}`, and `Ok{42}` for a type with a single field. A type without fields is just its name. `struct{value: 1}` is a struct literal whose type comes from context (§3.1).
 - **Lambdas:** `fn(x): x * 2` (§3.14).
@@ -219,10 +219,10 @@ const message = `
 ```python
 trait Notifier:
     """Sends a message to whoever a value stands for."""
-    fn notify(self: Self, text: string) -> unit
+    fn notify(self: Self, text: String) -> Unit
         """Delivers `text`; nothing waits for an answer."""
 
-fn greet(name: string) -> string:
+fn greet(name: String) -> String:
     """
     A greeting for `name`,
     in one line.
@@ -232,7 +232,7 @@ fn greet(name: string) -> string:
 
 **What each kind of bracket means.** `[…]` is for collections: array and map literals, indexing and slicing. `{…}` is for structured values and blocks: right after a name, a qualified name, type arguments or `struct` it constructs a value, in a type position it lists fields, and any other `{…}` in an expression is a block (§4). No construct puts a block right after a name, so the parser never needs to know what a name means; the compiler reports a name before `{` that isn't a struct or variant. `(…)` is for calls and conversions (§3.10), tuples and grouping. A map literal works for any type that satisfies `IndexAssignable<K, V>` and `Default` (§3.10), given an expected type `C`: `[k1: v1, k2: v2]` builds `C.default()` and assigns each entry with `c[k] = v`, and an empty `[]` or `[:]` builds just `C.default()`; a spread's entries are assigned the same way. Where a `Map` is expected, `[]` is an empty map. Without an expected type, `[k: v]` makes a `Map<K, V>`. An array literal's elements, and a map literal's keys and its values, each have one type, as the branches of an `if` do (§4): the expected type's decides when there is one, otherwise the first item's, so an empty `[]` or `[:]` needs an expected type. Of two equal keys in one map literal, the later one's value wins.
 
-**Numbers.** `int` has arbitrary precision, as in Python, so it never overflows. `float` is an IEEE 754 double. `/` always yields a `float` and divides as IEEE 754 does, so dividing by zero gives an infinity or NaN; `//` is floor division on `int`s, and `//` or `%` by zero panics (§3.12). For exact decimal arithmetic, such as money, the standard library has `Decimal`.
+**Numbers.** `Int` has arbitrary precision, as in Python, so it never overflows. `Float` is an IEEE 754 double. `/` always yields a `Float` and divides as IEEE 754 does, so dividing by zero gives an infinity or NaN; `//` is floor division on `Int`s, and `//` or `%` by zero panics (§3.12). For exact decimal arithmetic, such as money, the standard library has `Decimal`.
 
 Type annotations are required on the parameters of declared functions and on struct fields. A lambda may omit parameter types when the expected function type gives them (§3.14), and a parameter with a default value may omit its type, which is then inferred from the default. Return types may always be omitted, on any function, exported or not, and are then inferred from the body; a recursive function writes its own, since its body refers to it, unless it is a lambda taking its result from the function type it is expected as (§3.14). A local `let` or `const` may omit its annotation when the initializer's type is unambiguous. Type parameters are written in angle brackets (§3.5).
 
@@ -246,26 +246,26 @@ A struct is a named record with typed fields, one per line. Structs are ordinary
 
 ```python
 struct ReviewRequest:
-    purchaseId: string
-    amount: int
+    purchaseId: String
+    amount: Int
     replyTo: Inbox<Verdict>
 ```
 
 Construction lists the fields in braces after the type's name: `ReviewRequest{purchaseId: "P-1", amount: 900, replyTo: replies}`. As in JavaScript, a bare name is always short for a field of the same name: `Pair{first, second}` means `Pair{first: first, second: second}`. A struct with exactly one field may take its value without the field's name, as long as that value isn't a bare name: `UserId{"u-1"}` and `UserId{prefix + id}` are positional, while `UserId{id}` always means the field `id`. To pass a variable positionally, wrap it in parentheses: `UserId{(id)}`. Both a reader and the parser can therefore tell the forms apart without knowing the struct's fields. A struct with no fields is written bare, its name alone being its value (`struct Marker` makes the value `Marker`); braces after it are a compile error. An updated copy spreads an existing value and overrides some fields: `Req{...req, amount: 0}` is `req` with `amount` changed, and `req` itself is untouched; `struct{...req, amount: 0}` does the same, taking the type from `req`. The spread comes first and only once, its value has the literal's type, and the fields named after it override it; `Req{...req}` is a plain copy. Structs can be destructured in `match` patterns, and by the targets of declarations and assignments (§3.15). Fields have no visibility modifiers: any code can read them, since any module could declare a method on the struct anyway. Names of functions, methods, variables and fields are camelCase, preferring JavaScript's names where one exists (`push`, `indexOf`). A name that breaks these conventions, or the PascalCase rule for types (§2), is a compile error.
 
-**Field defaults.** A field of a struct or a variant may have a default after its type: `times: int = 3`. As a parameter's default does (§3.3), it runs at every literal that leaves the field out, in the declaring module's scope, and it may use the fields before it, as in `backoff: int = times * 2`. A field with a default may omit its type, which is then the default's: `backoff = times * 2`. A literal written with names alone may leave out any field with a default, wherever the field stands; a spread gives every field, so it runs no default. A default runs as code of its own called from the literal, so it can't `await`, and a panic in it names it. A top-level `const` computes a default when compile time computes its expression (§3). JSON reads none: a field missing from an object fails as any missing field does (§9). Only a declaration's fields have defaults, not an anonymous struct type's or a trait's.
+**Field defaults.** A field of a struct or a variant may have a default after its type: `times: Int = 3`. As a parameter's default does (§3.3), it runs at every literal that leaves the field out, in the declaring module's scope, and it may use the fields before it, as in `backoff: Int = times * 2`. A field with a default may omit its type, which is then the default's: `backoff = times * 2`. A literal written with names alone may leave out any field with a default, wherever the field stands; a spread gives every field, so it runs no default. A default runs as code of its own called from the literal, so it can't `await`, and a panic in it names it. A top-level `const` computes a default when compile time computes its expression (§3). JSON reads none: a field missing from an object fails as any missing field does (§9). Only a declaration's fields have defaults, not an anonymous struct type's or a trait's.
 
-**Anonymous structs.** `struct { … }` is a struct type without a name, usable anywhere a type is. In a type position the keyword may be left out, since a `{` there can only be a field list: `Array<struct { sku: string; qty: int }>` and `Array<{ sku: string; qty: int }>` are the same type, and a formatter can pick one style. An indented block under a field is sugar for one, and any struct declaration may use braces on a single line, as in `struct Req { id: int; value: string }`.
+**Anonymous structs.** `struct { … }` is a struct type without a name, usable anywhere a type is. In a type position the keyword may be left out, since a `{` there can only be a field list: `Array<struct { sku: String; qty: Int }>` and `Array<{ sku: String; qty: Int }>` are the same type, and a formatter can pick one style. An indented block under a field is sugar for one, and any struct declaration may use braces on a single line, as in `struct Req { id: Int; value: String }`.
 
 ```python
 struct Response:
-    id: string
-    data:                          # sugar for  data: { value: int; result: string }
-        value: int
-        result: string
-    items: Array<{ sku: string; qty: int }>
+    id: String
+    data:                          # sugar for  data: { value: Int; result: String }
+        value: Int
+        result: String
+    items: Array<{ sku: String; qty: Int }>
 
-struct Req { id: int; value: string }
+struct Req { id: Int; value: String }
 
 const value = 1
 const r = Response{
@@ -277,7 +277,7 @@ const r = Response{
 
 A `struct{…}` literal takes its type from context: the expected type where there is one, such as the field or array element above, and otherwise a fresh anonymous type, whose fields are the literal's named items. In an `if`, a later branch takes the first branch's type as its expected type, so `if c: struct{a: 1} else: struct{a: 2}` is one anonymous type, and assigned to a variable of a struct type, both build that struct. An anonymous struct has no name to mention elsewhere: when a shape is needed in more than one place, declare a named struct. Two anonymous structs are always different types, even with identical fields, so the type checker never compares shapes.
 
-**Recursive types.** A struct or enum may refer to itself, directly or through other types: `struct Node { value: int; children: Array<Node> }`. A field whose type is the struct itself must be optional (`next: Node?`) or sit inside a collection, so that every value stays finite. The rule follows fields through other structs, tuples and anonymous structs, so `struct A { b: B }` with `struct B { a: A }` is an error at both fields, while an optional, an enum or a collection on the way ends the chain.
+**Recursive types.** A struct or enum may refer to itself, directly or through other types: `struct Node { value: Int; children: Array<Node> }`. A field whose type is the struct itself must be optional (`next: Node?`) or sit inside a collection, so that every value stays finite. The rule follows fields through other structs, tuples and anonymous structs, so `struct A { b: B }` with `struct B { a: A }` is an error at both fields, while an optional, an enum or a collection on the way ends the chain.
 
 **Shared structs.** `shared struct Inbox<T>: …` declares a struct whose values are handles to one cell holding its fields, built with `new` and read through with `->` (§3.18).
 
@@ -302,13 +302,13 @@ Handles, such as futures, slots, `Shared` values, inboxes and weak references, a
 ### 3.3 Functions
 
 ```python
-fn total(items: Array<int>) -> int:                        # may not await
+fn total(items: Array<Int>) -> Int:                        # may not await
     ...
 
-async fn approve(req: PurchaseRequest) -> Future<string>:  # may await
+async fn approve(req: PurchaseRequest) -> Future<String>:  # may await
     ...
 
-extern fn chargeCard(id: string, amount: int) -> Result<string>  # implemented by the host
+extern fn chargeCard(id: String, amount: Int) -> Result<String>  # implemented by the host
 ```
 
 - A function's value is the value of its body's last expression, or the value given to `return`. Its return type may be omitted and is then inferred (§2).
@@ -319,12 +319,12 @@ extern fn chargeCard(id: string, amount: int) -> Result<string>  # implemented b
 - **Parameters are immutable,** as if declared `const` (§3.4): a by-value parameter can't be reassigned, changed in part or passed by `&`. Only a reference parameter (`&T`, §3.7) changes, and what it changes is the caller's place.
 
 ```python statements
-fn retry(times: int = 3, backoff: Duration = 1s): ...
+fn retry(times: Int = 3, backoff: Duration = 1s): ...
 retry()                      # retry(3, 1s)
 retry(5)                     # retry(5, 1s)
 retry(backoff: 2s)           # retry(3, 2s)
 
-fn log(level: string, ...parts: Array<string>): ...
+fn log(level: String, ...parts: Array<String>): ...
 log("info", "a", "b")        # log("info", ["a", "b"])
 log("info", "a", ...more)    # parts is "a" followed by the elements of more
 log(level: "info", parts: more)
@@ -332,7 +332,7 @@ log(level: "info", parts: more)
 
 **Arguments.** A call fills its function's parameters as a struct literal fills fields (§3.1): by position, then by name, and each parameter it leaves out takes its default.
 
-- **Defaults.** Parameters with defaults come after the others. A default is an expression evaluated at every call that leaves its parameter out, and it may use earlier parameters, as in `fn window(start: int, end: int = start + 10)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A struct's fields have defaults the same way (§3.1).
+- **Defaults.** Parameters with defaults come after the others. A default is an expression evaluated at every call that leaves its parameter out, and it may use earlier parameters, as in `fn window(start: Int, end: Int = start + 10)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A struct's fields have defaults the same way (§3.1).
 - **Named arguments.** `f(name: value)` gives the parameter of that name, so a call can leave out a default before one it gives: `retry(backoff: 2s)`. Named arguments follow the positional ones, in any order. A positional argument or a spread after a named one is a compile error, and so is a parameter given twice. A `&` parameter is named with its `&`: `f(target: &x)`. A method's `self` is given before the dot, never by name.
 - **Order.** Arguments are evaluated in the order they are written, then each default left out, in parameter order, so a default sees the parameters before it however they were given. A spawned call's defaults are computed by the new instance, which runs the function (§9).
 - **Rest parameters** are sugar for an array. The last parameter, written `...name: Array<T>`, comes after any parameters with defaults and collects the remaining positional arguments. `...xs` at a call spreads anything iterable into them, as in an array literal (§2), mixed freely with single arguments; a spread anywhere else is a compile error. Named, the rest parameter takes a whole array: `log(level: "info", parts: more)`. An extern function's rest parameter reaches its host as an array (§9). A rest parameter may instead be a pack, `...args: A`, which collects the arguments into a tuple (§3.5).
@@ -341,8 +341,8 @@ log(level: "info", parts: more)
 ### 3.4 Variables
 
 ```python statements
-const limit: int = 50_000          # immutable
-let count = 0                      # mutable; inferred: int
+const limit: Int = 50_000          # immutable
+let count = 0                      # mutable; inferred: Int
 count = count + 1
 
 const roles = ["legal", "finance"]
@@ -360,7 +360,7 @@ for role in roles:
     hold _ = reviewQueue(role).sendRevertible(request) # revertible until the function returns
 ```
 
-A block takes a label only so that a `hold` can name it: the label ends its line, and the block is indented below it. It is a statement of type `unit`, and `break` and `continue` never name it.
+A block takes a label only so that a `hold` can name it: the label ends its line, and the block is indented below it. It is a statement of type `Unit`, and `break` and `continue` never name it.
 
 ```python statements
 batch:
@@ -382,23 +382,23 @@ fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
     Pair{first: p.second, second: p.first}
 ```
 
-- **Explicit type arguments** use the same brackets everywhere: `swap<int, string>(p)`, `Slot.create<Verdict>()`. Trailing ones that have defaults may be left out.
+- **Explicit type arguments** use the same brackets everywhere: `swap<Int, String>(p)`, `Slot.create<Verdict>()`. Trailing ones that have defaults may be left out.
 - **Defaults.** Any type parameter may have a default, on a struct, enum, trait, alias or function alike: `enum Result<T, E = Error>`. A default fills a type argument that is neither written nor inferred.
-- **Parsing.** In an expression, `name<...>` takes type arguments when the part inside the brackets parses as a list of types and is followed by `(` or `{`, the same rule C# uses: `swap<int, string>(p)`, `Pair<int, string>{first: 1, second: "x"}`. A comparison that happens to look like that needs parentheses: `(a < b) > c`.
-- **When inference has nothing to go on,** give the type arguments or annotate the variable: `let xs: Array<int> = []`.
+- **Parsing.** In an expression, `name<...>` takes type arguments when the part inside the brackets parses as a list of types and is followed by `(` or `{`, the same rule C# uses: `swap<Int, String>(p)`, `Pair<Int, String>{first: 1, second: "x"}`. A comparison that happens to look like that needs parentheses: `(a < b) > c`.
+- **When inference has nothing to go on,** give the type arguments or annotate the variable: `let xs: Array<Int> = []`.
 - **Constraints.** A type parameter can be constrained by traits (§3.10) with `is`: `T is Sendable`. Several traits are joined with `&`: `T is Sendable & Comparable`. Every type argument, written or inferred, is checked against its parameter's constraints wherever it appears: in a call, an annotation or a literal.
 - **Checked once.** A generic body is checked once, not per instantiation: inside it, a value of a type parameter supports only what the parameter's constraints require, plus `==`. Using a generic function therefore never reports an error inside its body.
-- **Packs.** A function's type parameter written `<...A>` stands for a tuple of types, so one declaration takes any number of arguments of any types. It is used as a rest parameter, `...args: A`, as the rest of a function type, `fn(int, ...A) -> R`, and anywhere a tuple type can stand, such as `Array<A>`. Substituting a tuple for it flattens a rest: `fn(...A)` with `A` as `(int, string)` is `fn(int, string)`, and with `()` is `fn()`. A pack is inferred from the arguments its rest parameter collects, as the tuple of their types, or from a function argument's parameters (`logged(area)` binds `A` to `(int, int)`); written, it is a tuple type: `logged<(int, int), int>(area)`. Inside its function a pack is opaque: a value of it can be passed, kept and compared with `==` as any type parameter's, and spread with `...` only where a rest of the same pack takes it, as `f(...args)` does. The arguments a pack's rest collects are single values by position, or one such spread; nothing names them. A pack takes no constraint and no default, a struct, enum, trait or alias takes none, and a function has one rest, an array or a pack.
+- **Packs.** A function's type parameter written `<...A>` stands for a tuple of types, so one declaration takes any number of arguments of any types. It is used as a rest parameter, `...args: A`, as the rest of a function type, `fn(Int, ...A) -> R`, and anywhere a tuple type can stand, such as `Array<A>`. Substituting a tuple for it flattens a rest: `fn(...A)` with `A` as `(Int, String)` is `fn(Int, String)`, and with `()` is `fn()`. A pack is inferred from the arguments its rest parameter collects, as the tuple of their types, or from a function argument's parameters (`logged(area)` binds `A` to `(Int, Int)`); written, it is a tuple type: `logged<(Int, Int), Int>(area)`. Inside its function a pack is opaque: a value of it can be passed, kept and compared with `==` as any type parameter's, and spread with `...` only where a rest of the same pack takes it, as `f(...args)` does. The arguments a pack's rest collects are single values by position, or one such spread; nothing names them. A pack takes no constraint and no default, a struct, enum, trait or alias takes none, and a function has one rest, an array or a pack.
 - **Compiled per instantiation.** A generic function or type is compiled once for each set of concrete type arguments it is used with, so every call has a fixed target and the runtime never needs types to make one (§3.10). A generic function or type that would need endlessly many instantiations, such as `f<T>` calling `f<Array<T>>`, or `struct W<T>` with a field of type `W<(T,)>?`, is therefore a compile error.
 
 ```python
 fn logged<...A, R>(f: fn(...A) -> R) -> fn(...A) -> R:
     fn(...args: A) -> R: f(...args)          # wraps a function of any parameters
 
-fn area(width: int, height: int) -> int: width * height
+fn area(width: Int, height: Int) -> Int: width * height
 
-fn measured() -> int:
-    const measure = logged(area)             # A is (int, int): fn(int, int) -> int
+fn measured() -> Int:
+    const measure = logged(area)             # A is (Int, Int): fn(Int, Int) -> Int
     measure(3, 4)
 ```
 
@@ -407,7 +407,7 @@ fn measured() -> int:
 `extern` marks a top-level declaration whose implementation lives in the host, outside any workflow instance. It applies to functions, which have no body, to constants, written `extern name: Type` with no initializer, and to struct types the host implements, such as `extern sendable struct Queue<T>`. Their values cross as JSON (§9), so the parameters of extern functions must be `Encodable`, and their results and extern constants `Decodable` (§3.10), which makes all of them sendable (§3.1). The one exception is sendability: what crosses to the host crosses as JSON, so a disposable host type, below, which isn't sendable, still crosses to its own host, alone or inside other values. An extern function may also return a `Future<T>`, which the runtime creates and the host fills. A host object with operations of its own is an extern type with extern functions taking it, and one whose release the host must learn of is a disposable host type, below: a queue the host provides gives a revertible send as one, which the `inbox` module's `Revertible.holding` keeps until its holder is released (§6, §12.1).
 
 ```python
-extern fn chargeCard(purchaseId: string, amount: int) -> Result<string>
+extern fn chargeCard(purchaseId: String, amount: Int) -> Result<String>
 extern approvalDeadline: Duration
 extern purchaseRequests: Queue<PurchaseRequest>     # a queue the host provides
 ```
@@ -439,7 +439,7 @@ fn top<T>(self: Stack<T>) -> T?:          # takes a copy
 **References.** A parameter of type `&T` refers to the caller's variable instead of a copy. Changes made through it are visible to the caller, including to other concurrent executions of the same instance:
 
 ```python
-async fn collectSignature(sigs: &Array<Signature>, signer: string):
+async fn collectSignature(sigs: &Array<Signature>, signer: String):
     _ = signQueue(signer).sendRevertible(SignRequest{signer: signer})
     sigs.push(await signatures(signer).receive())
 
@@ -466,14 +466,14 @@ The rules:
 **Overloading.** A function is identified by its name and its parameter types, so several functions can share a name:
 
 ```python
-fn area(self: Circle) -> float: ...
-fn area(self: Rect) -> float: ...
-fn scale(self: &Rect, factor: float): ...
-fn scale(self: &Rect, factor: int): ...
+fn area(self: Circle) -> Float: ...
+fn area(self: Rect) -> Float: ...
+fn scale(self: &Rect, factor: Float): ...
+fn scale(self: &Rect, factor: Int): ...
 ```
 
 - Calls are resolved statically from the argument types and any explicit type arguments. Return types play no part.
-- A generic function is chosen through inference only when it is the single function that matches. When a concrete function matches as well, the concrete one wins: given `fn show<T>(x: T)` and `fn show(x: int)`, the call `show(5)` uses the concrete one, while `show<int>(5)` uses the generic one.
+- A generic function is chosen through inference only when it is the single function that matches. When a concrete function matches as well, the concrete one wins: given `fn show<T>(x: T)` and `fn show(x: Int)`, the call `show(5)` uses the concrete one, while `show<Int>(5)` uses the generic one.
 - With explicit type arguments, only generic functions that take that many type arguments are considered.
 - When a call fits both a function with a rest parameter and one without, the one without wins, after a concrete function has beaten a generic one (§3.3); a pack is a rest parameter, so a function of fixed arity beats one taking a pack. After that, a function taking every argument as it is beats one that makes a plain function argument async (§3.14) or converts between a one-element tuple and its element (§3.15), so `fn mock(target: fn(...A) -> R, …)` and `fn mock(target: async fn(...A) -> R, …)` each keep their target's own type.
 - A named argument rules out every function without a parameter of that name (§3.3); names tell functions apart in no other way.
@@ -508,58 +508,58 @@ extern sendable struct Instance<T>          # compared by identity, never Encoda
 shared struct Shared<T> { value: T }        # not sendable (§3.18)
 
 extern fn Slot.create<T>() -> Slot<T>                       # starts empty
-extern fn put<T>(self: Slot<T>, value: T) -> Future<unit>   # waits until empty, then fills
+extern fn put<T>(self: Slot<T>, value: T) -> Future<Unit>   # waits until empty, then fills
 extern fn take<T>(self: Slot<T>) -> Future<T>               # waits until full, then empties
 extern fn read<T>(self: Slot<T>) -> Future<T>               # waits until full, keeps the value
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>   # WeakRef(x): the one weak handle to x
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
-extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<unit>
+extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit>
 extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>>   # its first end (§9)
 ```
 
-The prelude also contains `Optional`, `Result`, `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `int`, `float`, `bool` and `string` satisfy), the `Waypoint` annotation (§10) and `panic`.
+The prelude also contains `Optional`, `Result`, `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `Int`, `Float`, `Bool` and `String` satisfy), the `Waypoint` annotation (§10) and `panic`.
 
 The **standard library** is a set of modules, imported explicitly, for example `import * as time from 'time'`. Pure modules are plain code in the language; runtime-backed ones declare externs the runtime implements. Nothing in it reaches a file system, shell, environment, network or reflection: a workflow affects the outside world only through externs its operator provides.
 
 | Module | Contents |
 | --- | --- |
-| `time` | `Time`, `Duration`, `now()`, `at(t)` (the runtime's only time primitive) and `delay(d)`, which is `at(now() + d)`; `t + d`, `d + d` and `d * n` for an `int` `n`; both types are `Comparable`, as the milliseconds they hold, and `Stringable` and `Parsable` in ISO 8601, `Time` as JavaScript's `Date.toJSON` writes it (`2026-10-25T12:00:00.000Z`) and `Duration` as `Temporal.Duration` does (`PT1H30M`), and cross as JSON as that text. Time zones: `Zone`, an IANA zone, a type the runtime implements that holds the zone's canonical id, so `==` and map keys compare zones, read by `Zone.parse(id)` in any case, given by `utc()`, and crossing as its id; `DateTime`, a wall-clock reading with no zone, `Stringable` and `Parsable` as `2026-10-25T13:00:00`, with `weekday()` (1 is Monday, 7 Sunday) and `addDays(n)` (calendar days, so a wall-clock time survives a change of offset); `t.inZone(z)`, the reading of `t` in `z`; `Time.of(dt, z)`, the instant `dt` reads in `z`, the earlier of two where a change of offset repeats `dt` and moved forward by the gap where one skips it, which panics on a date that doesn't exist; and `t.format(z)`, ISO 8601 with `z`'s offset (`2026-10-25T13:00:00.000+01:00`), which `Time.parse` reads. Zone rules are the host's time-zone data, so two hosts with different data can disagree |
-| `math` | `abs(x)` of an `int` or a `float`; `floor(x)`, `ceil(x)` and `round(x, mode = Rounding.HalfEven)` of a `float`, which keep its type, so `int(math.floor(x))` is the int at or below `x`; `sqrt(x)` of an `int` or a `float`, a `float`, NaN for a negative number as IEEE 754 gives; `min(a, b)`, `max(a, b)` and `clamp(self, low, high)` of any `Comparable` type, each giving the first of equal arguments, and `clamp` panicking when `low > high`; `Rounding`, the rounding modes `math` and `decimal` share: `Floor`, `Ceiling`, `TowardZero`, `AwayFromZero`, `HalfEven` (a tie goes to the even neighbour) and `HalfAwayFromZero`. Each function takes its number as `self`, so one imported by name is also a method: `x.abs()`, `x.round()`. Powers are the `**` operator (§3.9) |
-| `decimal` | `Decimal`, an exact decimal number of any size, for arithmetic such as money. `Decimal(i)` converts an `int`, and `Decimal.parse(s)` reads an optional `-`, digits and an optional fraction, such as `-12.50`, and nothing else. A value has one form, so `==` and map keys compare numbers: `toString` writes it with no exponent, no trailing zeros after the point and no `-0` (`-12.5`), and `toFixed(places, mode = Rounding.HalfEven)` with exactly `places` digits after the point (`-12.50`); it crosses as JSON as its `toString` text (§9). Every function of two numbers takes a `Decimal` or an `int` on either side, never a `float`, whose rounding is what `Decimal` avoids (`==` is built in and compares two values of one type, so `d == Decimal(1)`, §3.9): `+`, `-` and `*` are exact; `/` rounds half to even to 34 significant digits, as IEEE 754's decimal128 does, and `divide(a, b, places, mode = Rounding.HalfEven)` rounds to `places` digits after the point; `//` and `%` are related as on `int`s (§3.9); a division by zero panics, there being no infinite `Decimal`. `int(d)` truncates toward zero and `float(d)` is the nearest float. `abs`, `floor`, `ceil` and `round(places = 0, mode = Rounding.HalfEven)` give a `Decimal`, and `d ** n` is exact for an `int` exponent of at least 0 and divides as `/` does for a negative one, so a `Decimal` is `Powerable<int>`. A negative `places` panics |
+| `time` | `Time`, `Duration`, `now()`, `at(t)` (the runtime's only time primitive) and `delay(d)`, which is `at(now() + d)`; `t + d`, `d + d` and `d * n` for an `Int` `n`; both types are `Comparable`, as the milliseconds they hold, and `Stringable` and `Parsable` in ISO 8601, `Time` as JavaScript's `Date.toJSON` writes it (`2026-10-25T12:00:00.000Z`) and `Duration` as `Temporal.Duration` does (`PT1H30M`), and cross as JSON as that text. Time zones: `Zone`, an IANA zone, a type the runtime implements that holds the zone's canonical id, so `==` and map keys compare zones, read by `Zone.parse(id)` in any case, given by `utc()`, and crossing as its id; `DateTime`, a wall-clock reading with no zone, `Stringable` and `Parsable` as `2026-10-25T13:00:00`, with `weekday()` (1 is Monday, 7 Sunday) and `addDays(n)` (calendar days, so a wall-clock time survives a change of offset); `t.inZone(z)`, the reading of `t` in `z`; `Time.of(dt, z)`, the instant `dt` reads in `z`, the earlier of two where a change of offset repeats `dt` and moved forward by the gap where one skips it, which panics on a date that doesn't exist; and `t.format(z)`, ISO 8601 with `z`'s offset (`2026-10-25T13:00:00.000+01:00`), which `Time.parse` reads. Zone rules are the host's time-zone data, so two hosts with different data can disagree |
+| `math` | `abs(x)` of an `Int` or a `Float`; `floor(x)`, `ceil(x)` and `round(x, mode = Rounding.HalfEven)` of a `Float`, which keep its type, so `Int(math.floor(x))` is the int at or below `x`; `sqrt(x)` of an `Int` or a `Float`, a `Float`, NaN for a negative number as IEEE 754 gives; `min(a, b)`, `max(a, b)` and `clamp(self, low, high)` of any `Comparable` type, each giving the first of equal arguments, and `clamp` panicking when `low > high`; `Rounding`, the rounding modes `math` and `decimal` share: `Floor`, `Ceiling`, `TowardZero`, `AwayFromZero`, `HalfEven` (a tie goes to the even neighbour) and `HalfAwayFromZero`. Each function takes its number as `self`, so one imported by name is also a method: `x.abs()`, `x.round()`. Powers are the `**` operator (§3.9) |
+| `decimal` | `Decimal`, an exact decimal number of any size, for arithmetic such as money. `Decimal(i)` converts an `Int`, and `Decimal.parse(s)` reads an optional `-`, digits and an optional fraction, such as `-12.50`, and nothing else. A value has one form, so `==` and map keys compare numbers: `toString` writes it with no exponent, no trailing zeros after the point and no `-0` (`-12.5`), and `toFixed(places, mode = Rounding.HalfEven)` with exactly `places` digits after the point (`-12.50`); it crosses as JSON as its `toString` text (§9). Every function of two numbers takes a `Decimal` or an `Int` on either side, never a `Float`, whose rounding is what `Decimal` avoids (`==` is built in and compares two values of one type, so `d == Decimal(1)`, §3.9): `+`, `-` and `*` are exact; `/` rounds half to even to 34 significant digits, as IEEE 754's decimal128 does, and `divide(a, b, places, mode = Rounding.HalfEven)` rounds to `places` digits after the point; `//` and `%` are related as on `Int`s (§3.9); a division by zero panics, there being no infinite `Decimal`. `Int(d)` truncates toward zero and `Float(d)` is the nearest float. `abs`, `floor`, `ceil` and `round(places = 0, mode = Rounding.HalfEven)` give a `Decimal`, and `d ** n` is exact for an `Int` exponent of at least 0 and divides as `/` does for a negative one, so a `Decimal` is `Powerable<Int>`. A negative `places` panics |
 | `strings` | String methods, with JavaScript's names and counting code points as `s[i]` does (`includes` is the prelude's, since `in` calls it, §3.9): `indexOf(search, from = 0)` (`-1` when absent), `lastIndexOf`, `startsWith`, `endsWith`, `slice(start = 0, end = none)` (clamping, a negative index counted from the end), `split(separator)` (an empty one splits into code points), `trim`, `trimStart`, `trimEnd`, `padStart(length, fill = " ")`, `padEnd`, `repeat(n)` (panics on a negative `n`), `replace(search, replacement)` and `replaceAll`, which match plain text; `toUpperCase` and `toLowerCase`, by Unicode's default case mapping and never a locale, so a re-run segment always computes the same; `format(template, ...values)`, where `{}` takes the next value, `{n}` value `n` and `{{` and `}}` write a brace, and a placeholder without a value or a stray brace panics; `graphemes(s)` for user-perceived characters and `utf16Length(s)` for the length JavaScript counts. Called as `strings.trim(s)`, or as `s.trim()` where `trim` is imported |
 | `json` | `Encodable` and `Decodable`, the traits of types that cross as JSON (§3.10, §9), with their `toJson` and `fromJson` for every primitive, `Json`, `Array`, `T?` and `Map`; `stringify(v)` and a typed `parse<T>(s) -> Result<T>`, through them; `Json`, an enum holding JSON of any shape, with `encode(v) -> Json` and `decode<T>(j) -> Result<T>` between it and typed values; `encodeText(v)` and `decodeText<T>(j, path)`, the codecs of a type that crosses as the text its `toString` writes; the `JsonName`, `JsonSkip` and `JsonBigInt` annotations (§3.16) |
-| `regex` | Regular expressions with RE2's linear-time engine and syntax: flags inline (`(?i)`, `(?m)`, `(?s)`), named groups `(?P<name>…)` or `(?<name>…)`, and no backreferences or lookaround. `Regex{pattern}` is a plain struct, so `Regex{"\\d+"}` is a literal one, which panics where it is used if the pattern is invalid; `Regex.parse(text) -> Result<Regex>` checks a pattern from outside. It is `Stringable` and `Parsable` as its pattern, and crosses as JSON as that text. `test(s)` (a match anywhere), `find(s) -> Match?`, `findAll(s) -> Array<Match>`, `replace(s, replacement)` and `replaceAll`, which expand `$1`, `$<name>`, `$&` and `$$` as JavaScript does, `split(s)`, and `escape(s)`, the pattern matching `s` literally. A `Match` has the `text` matched, the `index` it starts at in code points, `captures: Array<string?>` (group `n` is `captures[n - 1]`, `none` when it took no part) and `named: Map<string, string>`, the named groups that took part |
-| `crypto` | `hash(algorithm, data, encoding = Encoding.Hex)` and `hmac(algorithm, key, data, encoding = Encoding.Hex)`, with `algorithm` a `Hash` (`Sha1`, for interop with older systems only, `Sha256`, `Sha384` or `Sha512`); `timingSafeEqual(a, b)`, which takes the same time whatever two strings of one length hold, and is `false` for strings of different lengths; `encode(text, encoding)` and `decode(text, encoding) -> Result<string>`, with `encoding` an `Encoding` (`Hex`, `Base64`, or `Base64Url`, unpadded). There is no bytes type, so text goes in as its UTF-8, a key included, and digests come out as text; `decode` fails on text that isn't the encoding's canonical form, or whose bytes aren't UTF-8 |
+| `regex` | Regular expressions with RE2's linear-time engine and syntax: flags inline (`(?i)`, `(?m)`, `(?s)`), named groups `(?P<name>…)` or `(?<name>…)`, and no backreferences or lookaround. `Regex{pattern}` is a plain struct, so `Regex{"\\d+"}` is a literal one, which panics where it is used if the pattern is invalid; `Regex.parse(text) -> Result<Regex>` checks a pattern from outside. It is `Stringable` and `Parsable` as its pattern, and crosses as JSON as that text. `test(s)` (a match anywhere), `find(s) -> Match?`, `findAll(s) -> Array<Match>`, `replace(s, replacement)` and `replaceAll`, which expand `$1`, `$<name>`, `$&` and `$$` as JavaScript does, `split(s)`, and `escape(s)`, the pattern matching `s` literally. A `Match` has the `text` matched, the `index` it starts at in code points, `captures: Array<String?>` (group `n` is `captures[n - 1]`, `none` when it took no part) and `named: Map<String, String>`, the named groups that took part |
+| `crypto` | `hash(algorithm, data, encoding = Encoding.Hex)` and `hmac(algorithm, key, data, encoding = Encoding.Hex)`, with `algorithm` a `Hash` (`Sha1`, for interop with older systems only, `Sha256`, `Sha384` or `Sha512`); `timingSafeEqual(a, b)`, which takes the same time whatever two strings of one length hold, and is `false` for strings of different lengths; `encode(text, encoding)` and `decode(text, encoding) -> Result<String>`, with `encoding` an `Encoding` (`Hex`, `Base64`, or `Base64Url`, unpadded). There is no bytes type, so text goes in as its UTF-8, a key included, and digests come out as text; `decode` fails on text that isn't the encoding's canonical form, or whose bytes aren't UTF-8 |
 | `random` | `integer(range)`, uniform over the ints a range with both ends reaches, its step included (`random.integer(1..=6)`, `random.integer(0..100 by 5)`), which panics on an empty or open one; `fraction()`, a float uniform from 0 up to 1, written over `integer`; and `uuid()`, a version 4 UUID (RFC 9562) in lowercase. The draws come from a secret seed and a count kept in the snapshot, so a segment that runs again draws the same values (§5), and they are unpredictable enough to serve as tokens. A spawned instance's seed is drawn from its parent's (§9) |
-| `log` | `debug`, `info`, `warn` and `error`, each taking a message and optionally `fields` of any `Encodable` type, as in `log.info("charged", struct{amount, card})`, all through one extern, `write(level: Level, message: string, fields: json.Json)`, so mocking `write` captures every log (§10). A record, holding its level, message, fields, instance and its segment's start time, reaches the host when its segment commits (§9); a segment that is discarded logged nothing |
+| `log` | `debug`, `info`, `warn` and `error`, each taking a message and optionally `fields` of any `Encodable` type, as in `log.info("charged", struct{amount, card})`, all through one extern, `write(level: Level, message: String, fields: json.Json)`, so mocking `write` captures every log (§10). A record, holding its level, message, fields, instance and its segment's start time, reaches the host when its segment commits (§9); a segment that is discarded logged nothing |
 | `runtime` | `id()`, the instance's name as its host gave it (§9); `version()`, the content hash of the program it runs, which is fixed for its life (§5); `commit()`, an already-resolved future: `await runtime.commit()` commits without waiting; and `isolate(f)`, which runs `f`, a sendable function taking nothing, as an instance of its own and gives a `Future<Result<T>>`: `f`'s result, or its panic as an `Err` (§9) |
 | `inbox` | `Inbox<T>`, a FIFO message queue built on slots, with `send`, `sendRevertible`, `receive` and `pending`, and `Revertible<T>`, the holder of a revertible message (§6) |
 | `collections` | `WeakMap<K is Disposable, V>`, a shared struct keeping an entry only while its key is alive, with `WeakMap.create<K, V>()`, `get(k) -> V?`, `set(k, v)`, `has(k)`, `includes(k)`, the same test, which `in` calls, and `delete(k)` (whether it held `k`). It is built on `WeakRef` and `disposed()`: each entry holds a future that waits for its key's `disposed()` and then deletes the entry, so the entry and its value are released when that future resumes, after the segment that disposed the key. Like JavaScript's, it can't be listed or counted |
-| `futures` | Combinators written in the language over one runtime primitive, `first<T>(fs: Array<Future<T>>) -> Future<(int, T)>`, which races a list of futures: it resolves with the position and value of the first to resolve, the lowest position among futures that resolved together, panics on an empty list, and disposes none of them. A failure is a `Result`, so the combinators that stop early read `Ok` and `Err`: `all(fs)` gives every `Ok` value in position order, or the first `Err` as soon as it arrives (`Result<Array<T>, E>`); `allSettled(fs)` every value in position order, once all resolved; `race(fs)` the first value, and panics on an empty list; `any(fs)` the first `Ok`, or every error in position order once all failed (`Result<T, Array<E>>`); `quorum(n, fs)` the first `n` `Ok` values in the order they arrived, or the errors once `n` can't be reached (`Result<Array<T>, Array<E>>`), and panics unless `0 <= n <= fs.length()`; `timeout(f, d)` the value, or `none` if `d` passes first (`T?`); `retry(attempt, times = 3, backoff = 1s)` calls `attempt`, a plain or `async` function returning a `Result`, up to `times` times, waiting `backoff` before the first retry and twice as long before each next one, and gives the first `Ok` or the last `Err`; it panics when `times < 1`. Like `first`, none disposes a future it is given: it lets go of them when it returns, so a loser nothing else holds, such as one created in the call's own statement, is disposed once that statement has ended and the combinator returned, while one held in a variable lives on (§7) |
+| `futures` | Combinators written in the language over one runtime primitive, `first<T>(fs: Array<Future<T>>) -> Future<(Int, T)>`, which races a list of futures: it resolves with the position and value of the first to resolve, the lowest position among futures that resolved together, panics on an empty list, and disposes none of them. A failure is a `Result`, so the combinators that stop early read `Ok` and `Err`: `all(fs)` gives every `Ok` value in position order, or the first `Err` as soon as it arrives (`Result<Array<T>, E>`); `allSettled(fs)` every value in position order, once all resolved; `race(fs)` the first value, and panics on an empty list; `any(fs)` the first `Ok`, or every error in position order once all failed (`Result<T, Array<E>>`); `quorum(n, fs)` the first `n` `Ok` values in the order they arrived, or the errors once `n` can't be reached (`Result<Array<T>, Array<E>>`), and panics unless `0 <= n <= fs.length()`; `timeout(f, d)` the value, or `none` if `d` passes first (`T?`); `retry(attempt, times = 3, backoff = 1s)` calls `attempt`, a plain or `async` function returning a `Result`, up to `times` times, waiting `backoff` before the first retry and twice as long before each next one, and gives the first `Ok` or the last `Err`; it panics when `times < 1`. Like `first`, none disposes a future it is given: it lets go of them when it returns, so a loser nothing else holds, such as one created in the call's own statement, is disposed once that statement has ended and the combinator returned, while one held in a variable lives on (§7) |
 | `rpc` | `create<P, R>()` makes a `Method<P, R>`. `m.call(msg)` returns a `Future<Result<R>>`: the reply, or an `Err` with code `unanswered` when the call is let go without one, because the server handling it is disposed or the method dies with the call still queued. A call is sent revertibly and held while its caller waits, so one whose caller lets go of it before a server takes it, such as a loser of a `select` (§8), is withdrawn; waiting callers don't keep the method alive. `m.onMessage(handler)`, for a plain or `async` handler from `P` to `R`, serves calls one at a time in the order they arrived, the handler's return value being the reply, until the future it returns is disposed. Several servers of one method share its calls, each call going to one of them. Calls queue in an inbox, and each reply travels in a one-shot slot. |
-| `fanout` | `create<M>()` makes a `Bus<M>`, disposable like an inbox. `bus.subscribe(handler)`, for a plain or `async` handler of `M`, returns a `Future<unit>` that runs the handler for each message sent after the call, in the order they were sent, one at a time, until it is disposed, or until the bus is disposed and it has handled every message sent before; a subscription doesn't keep the bus alive. `bus.send(msg)` delivers a message to every subscriber, and `bus.sendRevertible(msg)` returns a `Revertible<M>` (§6) whose release retracts the message from every subscriber that hasn't read it yet. Messages form one stream of slots that every subscriber reads. |
+| `fanout` | `create<M>()` makes a `Bus<M>`, disposable like an inbox. `bus.subscribe(handler)`, for a plain or `async` handler of `M`, returns a `Future<Unit>` that runs the handler for each message sent after the call, in the order they were sent, one at a time, until it is disposed, or until the bus is disposed and it has handled every message sent before; a subscription doesn't keep the bus alive. `bus.send(msg)` delivers a message to every subscriber, and `bus.sendRevertible(msg)` returns a `Revertible<M>` (§6) whose release retracts the message from every subscriber that hasn't read it yet. Messages form one stream of slots that every subscriber reads. |
 | `testing` | Test modules only (§10): the `Suite` annotation and `Test`; `mock` and `Mock<F>`; `spawnCrashingEveryAwait`, an `Instance`'s inspection (`idle`, `reaches`, `waitingAt`, `state`) and `InstanceState`; `handle<T>()`; and the test library: `test`, `group`, `skip`, `only`, `Setup`, `setups`, `FakeClock`, `FakeQueue`, `assert`, `assertEq` and `expectPanic` |
 
 ```python
 # from the time module
 struct Duration:
-    value: int              # milliseconds
+    value: Int              # milliseconds
 
 struct Time:
-    value: int              # milliseconds since the Unix epoch
+    value: Int              # milliseconds since the Unix epoch
 
 fn add(left: Time, right: Duration) -> Time:     # Time + Duration
     Time{value: left.value + right.value}
 ```
 
-- **`string`** is a sequence of Unicode code points, as in Python. `s.length()`, `s[i]` (a one-code-point string that panics out of range), `s.at(i)` (a `string?`, counting a negative index from the end), slicing and `for ch in s` all count code points, so a single emoji code point is never split. Some emoji are several code points; `strings.graphemes(s)` splits a string into user-perceived characters.
-- **`Array<T>`** is an ordered, growable sequence indexed from 0, like a JavaScript array, with JavaScript's method names: `length()`, `push(x)`, `pop()` (a `T?`), `at(i)`, `slice(start = 0, end = none)`, `indexOf(x)` (`-1` when absent), `includes(x)`, `lastIndexOf(x)`, `reverse()` (in place), `flat()` on an `Array<Array<T>>`, and `join(separator)` on an `Array<string>`. Methods taking a function are `map`, `filter`, `flatMap`, `find` and `findLast` (a `T?`), `findIndex` and `findLastIndex` (`-1` when absent), `some`, `every`, `reduce(f, initial)`, and `sort()` on a `Comparable` `T` or `sort(order: fn(T, T) -> int)`, which sort in place and keep equal elements in order. Since `for` iterates, a spread concatenates and assigning to a range splices, arrays have no `forEach`, `concat` or `splice`. `xs[i]` panics unless `0 <= i < xs.length()`; `xs.at(i)` returns `T?` and, as in JavaScript, accepts negative indexes counted from the end. Indexing with a range slices it (§3.9); `xs.slice(start, end)` is the clamping, JavaScript-style variant.
+- **`String`** is a sequence of Unicode code points, as in Python. `s.length()`, `s[i]` (a one-code-point string that panics out of range), `s.at(i)` (a `String?`, counting a negative index from the end), slicing and `for ch in s` all count code points, so a single emoji code point is never split. Some emoji are several code points; `strings.graphemes(s)` splits a string into user-perceived characters.
+- **`Array<T>`** is an ordered, growable sequence indexed from 0, like a JavaScript array, with JavaScript's method names: `length()`, `push(x)`, `pop()` (a `T?`), `at(i)`, `slice(start = 0, end = none)`, `indexOf(x)` (`-1` when absent), `includes(x)`, `lastIndexOf(x)`, `reverse()` (in place), `flat()` on an `Array<Array<T>>`, and `join(separator)` on an `Array<String>`. Methods taking a function are `map`, `filter`, `flatMap`, `find` and `findLast` (a `T?`), `findIndex` and `findLastIndex` (`-1` when absent), `some`, `every`, `reduce(f, initial)`, and `sort()` on a `Comparable` `T` or `sort(order: fn(T, T) -> Int)`, which sort in place and keep equal elements in order. Since `for` iterates, a spread concatenates and assigning to a range splices, arrays have no `forEach`, `concat` or `splice`. `xs[i]` panics unless `0 <= i < xs.length()`; `xs.at(i)` returns `T?` and, as in JavaScript, accepts negative indexes counted from the end. Indexing with a range slices it (§3.9); `xs.slice(start, end)` is the clamping, JavaScript-style variant.
 - **`Map<K, V>`** maps keys to values and compares keys with the built-in `==`, so a key holding a NaN can be stored but is never found again. `m[k]` panics on a missing key; `m.get(k)` returns `V?`. Its methods are `size()`, `get(k)`, `has(k)` and `includes(k)`, the same test, which `in` calls (§3.9), `delete(k)` (whether it held `k`), `keys()`, `values()` and `entries()`, and `Map.groupBy(items, key: fn(T) -> K) -> Map<K, Array<T>>` groups an array's items by key, keeping their order. The order in which a map stores and iterates its entries is unspecified, so implementations are free to use hashing or sorting, and two maps are `==` when they hold equal values for equal keys, whatever their order.
-- **`Range`** is a plain, sendable struct with an optional `start` and `end` and a `step` (1 unless `by` gives one), built by `..` (and by `..=`, which stores the end one past the written one in the step's direction, so a range is always half-open). It reaches its start and every step from it before its end, the step's sign giving the direction, as Python's `range` does: a range whose end lies the other way reaches nothing, so iterating `5..2` gives nothing and `10..=0 by -2` gives 10, 8, 6, 4, 2 and 0. A step of 0 would reach its start forever, so using such a range panics. It is `Iterable<int>` when both ends are given, and iterating a range without an end panics, since whether it has one is known only when it runs. `x in r` is whether `r` reaches `x`, an open end reaching without bound; with an open start, only a step of 1 or -1 has a meaning, and any other panics.
+- **`Range`** is a plain, sendable struct with an optional `start` and `end` and a `step` (1 unless `by` gives one), built by `..` (and by `..=`, which stores the end one past the written one in the step's direction, so a range is always half-open). It reaches its start and every step from it before its end, the step's sign giving the direction, as Python's `range` does: a range whose end lies the other way reaches nothing, so iterating `5..2` gives nothing and `10..=0 by -2` gives 10, 8, 6, 4, 2 and 0. A step of 0 would reach its start forever, so using such a range panics. It is `Iterable<Int>` when both ends are given, and iterating a range without an end panics, since whether it has one is known only when it runs. `x in r` is whether `r` reaches `x`, an open end reaching without bound; with an open start, only a step of 1 or -1 has a meaning, and any other panics.
 - **`Array<T>`**, **`Map<K, V>`** and **`T?`** satisfy `Default`: `Array.default()` and `Map.default()` are empty, and `Optional.default()` is `none`.
 - An `extern struct` is not sendable unless it says `sendable`.
-- A sendable generic struct is sendable only when its type arguments are sendable: `Array<int>` is sendable, `Array<Future<int>>` is not.
-- Primitives are always sendable. `Time` and `Duration` are plain structs of `int`, so they are sendable by derivation.
+- A sendable generic struct is sendable only when its type arguments are sendable: `Array<Int>` is sendable, `Array<Future<Int>>` is not.
+- Primitives are always sendable. `Time` and `Duration` are plain structs of `Int`, so they are sendable by derivation.
 - Methods on primitives are ordinary functions whose `self` is a primitive, such as `"abc".indexOf("b")` or `2.toString()`.
 - **`Shared<T>`** is a shared struct of one mutable value in the instance's own memory (§3.18), created with `new Shared{value: v}`. Copying a `Shared` copies the handle, so every copy sees the same value, which `x->value` reads and writes (§3.9). It is not sendable, and it lives as long as it is reachable (§5).
 - **`WeakRef<T>`** refers to a disposable value without holding it (§7).
@@ -594,33 +594,33 @@ u->name = "Ares K"          # writes through: every alias sees it
 const snapshot = *u         # a plain copy of the fields
 const alias = u             # the same handle; alias == u
 accounts[0]->name = "Y"     # -> works on any expression
-const next = head->next?->value   # int?: none when head->next is none
+const next = head->next?->value   # Int?: none when head->next is none
 ```
 
-All four comparisons go through a single `compare(left, right) -> int` (negative, zero or positive), so they can never contradict each other.
+All four comparisons go through a single `compare(left, right) -> Int` (negative, zero or positive), so they can never contradict each other.
 
-**Chains.** Comparisons in a row chain as in Python: `a < b <= c` is `a < b and b <= c`, and any mix of `<`, `<=`, `>`, `>=`, `==`, `!=`, `in` and `not in` chains the same way, each operand compared with the next, so `0 < x in xs` is `0 < x and x in xs`. Every operand is evaluated at most once, in order, and evaluation stops at the first comparison that fails. An operand between two comparisons is compared on both sides, so it is never wrapped into an optional for one of them. A misreading of `x < y == flag` as `(x < y) == flag` fails to check, since it compares `y` with a `bool`; parenthesize to mean that. `is` doesn't chain, since a pattern follows it.
+**Chains.** Comparisons in a row chain as in Python: `a < b <= c` is `a < b and b <= c`, and any mix of `<`, `<=`, `>`, `>=`, `==`, `!=`, `in` and `not in` chains the same way, each operand compared with the next, so `0 < x in xs` is `0 < x and x in xs`. Every operand is evaluated at most once, in order, and evaluation stops at the first comparison that fails. An operand between two comparisons is compared on both sides, so it is never wrapped into an optional for one of them. A misreading of `x < y == flag` as `(x < y) == flag` fails to check, since it compares `y` with a `Bool`; parenthesize to mean that. `is` doesn't chain, since a pattern follows it.
 
-**Membership.** `x in c` calls `includes(c, x)`, and `x not in c` is `not (x in c)`. An `Array` includes its elements, compared by `==`; a `Map` its keys, as `has` says; a `string` its substrings; and a `Range` the ints it reaches (§3.8).
+**Membership.** `x in c` calls `includes(c, x)`, and `x not in c` is `not (x in c)`. An `Array` includes its elements, compared by `==`; a `Map` its keys, as `has` says; a `String` its substrings; and a `Range` the ints it reaches (§3.8).
 
 ```python
 fn add(left: Duration, right: Duration) -> Duration:
     Duration{value: left.value + right.value}
 
-fn multiply(left: Duration, factor: int) -> Duration:
+fn multiply(left: Duration, factor: Int) -> Duration:
     Duration{value: left.value * factor}
 ```
 
 - **Fixed syntax.** Precedence and associativity are fixed by the language (table below). Overloads can't change them, and no new operator symbols can be defined, so parsing never depends on types.
-- **Indexing.** `x[k]` calls `index(x, k)`, and `x[k] = v` calls `setIndex(&x, k, v)`, so assigning through an index needs a `let` binding. `x[k] += 1` is sugar for `x[k] = x[k] + 1`. An element is a place like a field (§3.7): `a[i].b = v`, `a[i][j] = v` and `&m[k]` read it with `index` and write it back with `setIndex`. `index` is the panicking form; a type can offer a separate safe `get(k)` that returns an optional, as `Array` and `Map` do. A `string` has no `setIndex`, so `s[i] = x` is a compile error. An element is read with `index` and written back with `setIndex` around the change made to it, and a map literal is built by `default` and `setIndex` before it has a value, so none of them may be `async`.
+- **Indexing.** `x[k]` calls `index(x, k)`, and `x[k] = v` calls `setIndex(&x, k, v)`, so assigning through an index needs a `let` binding. `x[k] += 1` is sugar for `x[k] = x[k] + 1`. An element is a place like a field (§3.7): `a[i].b = v`, `a[i][j] = v` and `&m[k]` read it with `index` and write it back with `setIndex`. `index` is the panicking form; a type can offer a separate safe `get(k)` that returns an optional, as `Array` and `Map` do. A `String` has no `setIndex`, so `s[i] = x` is a compile error. An element is read with `index` and written back with `setIndex` around the change made to it, and a map literal is built by `default` and `setIndex` before it has a value, so none of them may be `async`.
 - **Slicing** is indexing with a `Range`, through ordinary `index` and `setIndex` overloads. `a[3..5]` returns a copy, so changing it never affects `a`. `a[3..5] = xs` replaces that span of `a` in place, even with a different length. A range's open start means 0 and its open end the length, so `a[..]` copies `a`; a range outside the bounds, or ending before it starts, panics, and `a.slice(start, end)` clamps instead. Strings slice the same way: `s[1..3]`. A stepped range selects every step-th item, as Python's extended slices do: `a[.. by 2]` gives the items at even positions, and a negative step runs backward, its open ends defaulting to the last item and to before the first, so `a[.. by -1]` is `a` reversed. Writing a stepped slice replaces each item it selects, so it needs exactly as many, and panics otherwise.
 - **Equality is built in.** `==` and `!=` work on every type and can't be overloaded: values compare structurally, handles by identity (§3.1). This keeps `Map` keys consistent.
 - **Floor division and remainder share a trait,** because they are defined together: `a == (a // b) * b + a % b` always holds. A type can thus offer exact division, floor division, or both.
-- **Powers.** `**` groups to the right, `2 ** 3 ** 2` being `2 ** 9`, and binds tighter than a prefix operator on its right, so `2 ** -1` reads as written. A prefix operator directly on its left (`-x ** 2`) is a syntax error, since languages disagree on whether the sign applies first: write `(-x) ** 2` or `-(x ** 2)`. An `int` to an `int` power is an exact `int`, which a negative exponent can't be, so it panics; any `float` operand makes a `float`. `Powerable<E = Self, T = Self>` lets the exponent have a type of its own, as a `Decimal`'s `int` does.
-- **Bitwise operators** work on `int` only, as on a two's complement of unbounded width, as in Python: `~x` is `-x - 1`, and `>>` rounds toward negative infinity, so `-9 >> 1` is `-5`. A negative shift count panics. A type of a program's own takes `&`, `|`, `^` and `~` through `Bitwise`, and the shifts through `Shiftable`, which a set of flags has no use for.
+- **Powers.** `**` groups to the right, `2 ** 3 ** 2` being `2 ** 9`, and binds tighter than a prefix operator on its right, so `2 ** -1` reads as written. A prefix operator directly on its left (`-x ** 2`) is a syntax error, since languages disagree on whether the sign applies first: write `(-x) ** 2` or `-(x ** 2)`. An `Int` to an `Int` power is an exact `Int`, which a negative exponent can't be, so it panics; any `Float` operand makes a `Float`. `Powerable<E = Self, T = Self>` lets the exponent have a type of its own, as a `Decimal`'s `Int` does.
+- **Bitwise operators** work on `Int` only, as on a two's complement of unbounded width, as in Python: `~x` is `-x - 1`, and `>>` rounds toward negative infinity, so `-9 >> 1` is `-5`. A negative shift count panics. A type of a program's own takes `&`, `|`, `^` and `~` through `Bitwise`, and the shifts through `Shiftable`, which a set of flags has no use for.
 - **Not overloadable:** `and`, `or` and `not` (they short-circuit, and a function call would evaluate both sides), `=`, `.`, `->`, prefix `*` and `&`. `await` and `select` aren't overloaded either; they work on futures (§6).
 - **Compound assignment.** `x += y` is sugar for `x = x + y`.
-- **No implicit conversions.** Mixed-type operators work only through overloads, for primitives as for a program's own types. The prelude declares them for `int` and `float`, such as `add(int, float) -> float`, and `Decimal` declares its own beside it for `int` only: mixing it with `float` would bring back the rounding it exists to avoid. Any `Stringable` value appends to a string, on either side, through `add<T is Stringable>(left: string, right: T)` and its mirror, so `"Total: " + count` and `count + " items"` just work. Anything else converts explicitly with `T(x)` (§3.10).
+- **No implicit conversions.** Mixed-type operators work only through overloads, for primitives as for a program's own types. The prelude declares them for `Int` and `Float`, such as `add(Int, Float) -> Float`, and `Decimal` declares its own beside it for `Int` only: mixing it with `Float` would bring back the rounding it exists to avoid. Any `Stringable` value appends to a string, on either side, through `add<T is Stringable>(left: String, right: T)` and its mirror, so `"Total: " + count` and `count + " items"` just work. Anything else converts explicitly with `T(x)` (§3.10).
 
 | Precedence, tightest first | Operators |
 | --- | --- |
@@ -651,7 +651,7 @@ trait Addable<T = Self>:
     fn add(left: T, right: T) -> T
 
 trait Comparable<T = Self>:
-    fn compare(left: T, right: T) -> int
+    fn compare(left: T, right: T) -> Int
 
 trait Monoid:
     fn Self.zero() -> Self
@@ -671,7 +671,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 - **Several traits.** `T is X & Y` requires both. In this position `&` joins traits; it never means a reference.
 - **Structural conformance.** A type satisfies a trait when functions with the required signatures exist for it. There are no `impl` blocks. The required functions must be declared beside the types they take or beside the trait: in the module declaring one of those types (the prelude, for a primitive), for a static function also its own type's, or in the trait's own module. Only the types themselves count, not their type arguments, as in argument-dependent lookup (§3.13). So a module declaring a trait can declare its functions for types it doesn't own, such as primitives, and no caller has to import them.
 - **Coherence.** Where a type meets a constraint, such as a generic call, never decides how: the functions found are the same in every module, and they are the ones every instantiation calls. Two modules therefore can't disagree about one value, as when one sorts an array that another searches, or one writes a value that another parses back. A module owning neither the type nor the trait can't make the one meet the other; it passes a function value instead (§3.14). A function's parameters must take the type as it is: one taking it only wrapped into an optional, such as `fn add<T>(left: T?, right: T?) -> T`, is a function for `T?`, not for `T`.
-- **Fields.** A trait may require fields, written like struct fields: `value: int`. A struct satisfies one with a field of the same name and type. Generic code reads a field its type parameter's trait requires but can't change it, since the parameter may be an `any` type, through which only the value's own type has the field.
+- **Fields.** A trait may require fields, written like struct fields: `value: Int`. A struct satisfies one with a field of the same name and type. Generic code reads a field its type parameter's trait requires but can't change it, since the parameter may be an `any` type, through which only the value's own type has the field.
 - **Static functions.** A trait may require a static function, declared on `Self`, such as `fn Self.zero() -> Self`. Generic code calls it through the type parameter: `T.zero()` (§3.7).
 - **Generic requirements.** A required function may have type parameters of its own, such as `fn map<U>(self: Self, f: fn(T) -> U) -> Array<U>`. A function satisfies it when it is generic in the same way, up to the names of its type parameters.
 - **Calls through a requirement.** A call through a constraint or an `any` value binds its arguments against the required function's own parameters (§3.3): names are its parameters', and its rest parameter reaches the function meeting it as one array. A required function has no defaults, since each type meeting the trait could give another; the function meeting it may have more parameters, each with a default, which it computes when called through the trait.
@@ -680,7 +680,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 
 ```python fragment
 trait Notifier:
-    fn send(self: Self, text: string)
+    fn send(self: Self, text: String)
 
 const notifiers: Array<any Notifier> = [Email{to: "cfo"}, Sms{number: "555"}]
 for notifier in notifiers:
@@ -688,10 +688,10 @@ for notifier in notifiers:
 ```
 
 - **Conversion.** A value converts into an `any` type wherever one is expected and its type meets every trait, as a `T` is wrapped into `T?` (§2); an `any` type converts into another whose traits are among its own. The traits are a set: their order doesn't matter, and naming one twice is an error.
-- **Calls.** A function a trait requires is called on an `any` value like any other, `notifier.send(text)`, and runs the one the value's own type meets the trait with. An `any` type meets its own traits, so its values pass where `T is Notifier` is expected, and `string(x)` takes an `any Stringable`. A field a trait requires is read the same way and can't be written through the `any` value; a method taking `&self` changes the value inside it.
-- **Object safety.** A trait can follow `any` only when each function it requires takes `Self` first, as its receiver, by value or `&`, and nowhere else, and none is static; and no field it requires is built from `Self`. So `any Stringable` and `any Iterable<int>` are types, but `any Comparable`, whose `compare` takes a second `Self`, and `any Default`, whose `default` is static, are errors.
+- **Calls.** A function a trait requires is called on an `any` value like any other, `notifier.send(text)`, and runs the one the value's own type meets the trait with. An `any` type meets its own traits, so its values pass where `T is Notifier` is expected, and `String(x)` takes an `any Stringable`. A field a trait requires is read the same way and can't be written through the `any` value; a method taking `&self` changes the value inside it.
+- **Object safety.** A trait can follow `any` only when each function it requires takes `Self` first, as its receiver, by value or `&`, and nowhere else, and none is static; and no field it requires is built from `Self`. So `any Stringable` and `any Iterable<Int>` are types, but `any Comparable`, whose `compare` takes a second `Self`, and `any Default`, whose `default` is static, are errors.
 - **Values.** `==` compares the values' types, then the values, so an `any` value can be a map key. An `any` type is sendable only when one of its traits is `Sendable`, or `Encodable` or `Decodable`, which imply it, as in `any Notifier & Sendable`, and a value converted into one must be sendable. JSON derives no form for an `any` type and decodes nothing into one; `any Encodable` writes the JSON of the value inside.
-- **Matching.** A pattern naming a type matches an `any` value holding one: a struct pattern (`case Email{to}`), a struct without fields by its name, or a variant qualified by its enum (`case Decision.Approved{by}`). The rest of the pattern then matches the value inside, and `as` binds that value with its own type. A pattern gives no type arguments, so it can't name a generic type, and it can't name a type that doesn't meet the traits. The types an `any` type holds are an open set, so a `match` on one ends with `case _`.
+- **Matching.** A pattern naming a type matches an `any` value holding one, primitives included: a bare type name (`case Int as n`, `case Email as e`, §3.11), a struct pattern (`case Email{to}`), or a variant qualified by its enum (`case Decision.Approved{by}`). An alias names the type it stands for. The rest of the pattern then matches the value inside, and `as` binds that value with its own type. A pattern gives no type arguments, so it can't name a generic type, and it can't name a type that doesn't meet the traits. The types an `any` type holds are an open set, so a `match` on one ends with `case _`.
 - **Running.** A value keeps its own type inside an `any` value, in snapshots and messages too, so the interpreter knows the type at every call through a trait. Which types an `any` type holds is decided over the whole program; an `any` value has no JSON form, so it reaches only instances of the same program, whose code is fixed for their whole lifetime (§5).
 
 **Built-in traits:**
@@ -705,15 +705,15 @@ for notifier in notifiers:
 | `IndexAssignable<K, V, C = Self>` | `setIndex(self: &C, key, value)` | `x[k] = v` |
 | `Convertible<From, T = Self>` | `fn Self.from(value: From) -> Self` | `T(x)` |
 | `Default` | `fn Self.default() -> Self` | map literals for other types (§2); what a `@JsonSkip` field reads back as (§9) |
-| `Stringable` | `toString(self) -> string` | `string(x)`; appending to a string with `+` (§3.9); map keys in JSON, and `json.encodeText` (§9) |
-| `Parsable` | `fn Self.parse(text: string) -> Result<Self>` | reading map keys from JSON, and `json.decodeText` (§9) |
-| `Encodable`, `Decodable` | `toJson(self) -> json.Json`, and `fn Self.fromJson(json: json.Json, path: string) -> Result<Self>`, the codecs that write and read a type as JSON (§9); each implies `Sendable`, since a value written as JSON and read back is a copy, as sending makes one. Declared in the `json` module, so code naming them imports them; derived for a struct, an enum, a tuple or a host type declaring neither function | extern parameters, and extern results and constants (§3.6); `json` |
-| `Container<T, C = Self>` | `includes(self: C, item: T) -> bool` | `x in c`, `x not in c` (§3.9) |
+| `Stringable` | `toString(self) -> String` | `String(x)`; appending to a string with `+` (§3.9); map keys in JSON, and `json.encodeText` (§9) |
+| `Parsable` | `fn Self.parse(text: String) -> Result<Self>` | reading map keys from JSON, and `json.decodeText` (§9) |
+| `Encodable`, `Decodable` | `toJson(self) -> json.Json`, and `fn Self.fromJson(json: json.Json, path: String) -> Result<Self>`, the codecs that write and read a type as JSON (§9); each implies `Sendable`, since a value written as JSON and read back is a copy, as sending makes one. Declared in the `json` module, so code naming them imports them; derived for a struct, an enum, a tuple or a host type declaring neither function | extern parameters, and extern results and constants (§3.6); `json` |
+| `Container<T, C = Self>` | `includes(self: C, item: T) -> Bool` | `x in c`, `x not in c` (§3.9) |
 | `Addable`, `Subtractable`, `Multipliable`, `Divisible`, `FloorDivisible`, `Negatable`, `Powerable`, `Bitwise`, `Shiftable`, `Comparable` | the functions in §3.9 | operators in generic code |
 
-**Iterable.** `for x in c` calls `iterate(c)` once, for a cursor: a function that gives the next item each time it is called, and `none` once there are no more. The loop calls it until then, so any type can support `for` by declaring `iterate`, and a cursor that never gives `none` runs for as long as the loop does. A cursor holds what it runs over as `iterate` was given it, a copy (§3.1), so changing `c` inside the loop doesn't affect the iteration. It is a plain function value (§3.14), kept in snapshots like any other, so a loop that waits mid-way keeps only the cursor's own state: a range's few ints, never its items. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), a `string` gives its characters, and a `Range` with both ends is `Iterable<int>` (so `for i in 0..10:` works). A type's `iterate` can hand over another's cursor, such as `self.items.iterate()`. `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
+**Iterable.** `for x in c` calls `iterate(c)` once, for a cursor: a function that gives the next item each time it is called, and `none` once there are no more. The loop calls it until then, so any type can support `for` by declaring `iterate`, and a cursor that never gives `none` runs for as long as the loop does. A cursor holds what it runs over as `iterate` was given it, a copy (§3.1), so changing `c` inside the loop doesn't affect the iteration. It is a plain function value (§3.14), kept in snapshots like any other, so a loop that waits mid-way keeps only the cursor's own state: a range's few ints, never its items. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), a `String` gives its characters, and a `Range` with both ends is `Iterable<Int>` (so `for i in 0..10:` works). A type's `iterate` can hand over another's cursor, such as `self.items.iterate()`. `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `Int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
 
-**Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction, which uses braces. Only conversions that can't fail are written this way: `float(3)`, `int(3.7)` (which truncates toward zero) and `string(42)`. `string(x)` converts any `Stringable` value through its `toString`, the one place a type says how it is written. A float that is no number, NaN or an infinity, has no int, so `int(x)` of one is a bug and panics (§3.12). Fallible ones are ordinary functions returning `Result`, such as `int.parse("42")`, the `Parsable` requirement.
+**Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction, which uses braces. Only conversions that can't fail are written this way: `Float(3)`, `Int(3.7)` (which truncates toward zero) and `String(42)`. `String(x)` converts any `Stringable` value through its `toString`, the one place a type says how it is written. A float that is no number, NaN or an infinity, has no int, so `Int(x)` of one is a bug and panics (§3.12). Fallible ones are ordinary functions returning `Result`, such as `Int.parse("42")`, the `Parsable` requirement.
 
 ### 3.11 Enums
 
@@ -721,11 +721,11 @@ An enum is a type whose value is exactly one of several named variants, each wit
 
 ```python fragment
 enum Decision:
-    Approved { by: string }
-    Rejected { by: string; reason: string }
+    Approved { by: String }
+    Rejected { by: String; reason: String }
     Expired
 
-const text: string = match decision:
+const text: String = match decision:
     case Approved{by}:
         "approved by " + by
     case Rejected{by, reason}:
@@ -734,7 +734,7 @@ const text: string = match decision:
         "expired"
 ```
 
-- **Construction.** Variants are declared with a field list, as in `Rejected { by: string; reason: string }`, and built like structs: `Rejected{by: "legal", reason: "missing contract"}`. A variant without fields is written bare: `Expired`. A variant with exactly one field may take its value without the field's name, under the same rule as structs (§3.1): `Ok{42}` and `Ok{(receipt)}` are positional, while `Ok{value}` means the field `value`. Like a struct, an enum may be declared on one line: `enum Color { Red; Green; Blue }`.
+- **Construction.** Variants are declared with a field list, as in `Rejected { by: String; reason: String }`, and built like structs: `Rejected{by: "legal", reason: "missing contract"}`. A variant without fields is written bare: `Expired`. A variant with exactly one field may take its value without the field's name, under the same rule as structs (§3.1): `Ok{42}` and `Ok{(receipt)}` are positional, while `Ok{value}` means the field `value`. Like a struct, an enum may be declared on one line: `enum Color { Red; Green; Blue }`.
 - **Qualified names.** Where an enum type is expected (in a `match`, an annotated variable, an argument, a field or a `return`), bare variant names are enough. Elsewhere they are qualified: `Decision.Expired`. A bare variant with no enum type expected is a compile error.
 - **Generics and defaults.** Enums and structs take type parameters like functions, and may give them defaults (§3.5): `enum Result<T, E = Error>`.
 - **Exhaustive `match`.** A `match` on an enum must cover every variant or end with `case _:`.
@@ -747,17 +747,36 @@ const text: string = match decision:
 - **`field == expr`**, or any other comparison, tests it: `case Verdict{ok == false}`, `case Order{amount > 1000}`.
 - **`field is Pattern`** matches the field against a nested pattern: `case Some{value is Verdict{ok == false} as v}`. Only a pattern may follow `is`.
 
-A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns (`case (a, _):`), `_`, or a bare name. A camelCase bare name binds a new variable, as `a` does in `case (a, _):`, while a PascalCase one refers to a variant or a struct without fields, as in `case Expired:` or `case Marker:`; a qualified name (`case Decision.Expired:`, `case limits.max:`) always refers. A constant, being camelCase, is therefore compared through a qualified name or a guard (`case n if n == limit:`). There is no positional binding in struct patterns, not even for a type with a single field: a bare name always binds the field of that name, and `as` renames it, as in `case Ok{value as receipt}`. An anonymous struct is matched with `case struct{…}`.
+A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns (`case (a, _):`), `_`, or a bare name. A camelCase bare name binds a new variable, as `a` does in `case (a, _):`, while a PascalCase one refers to a variant, a struct without fields or a type, as in `case Expired:`, `case Marker:` or `case Int:`; a qualified name (`case Decision.Expired:`, `case limits.max:`) always refers. A constant, being camelCase, is therefore compared through a qualified name or a guard (`case n if n == limit:`). There is no positional binding in struct patterns, not even for a type with a single field: a bare name always binds the field of that name, and `as` renames it, as in `case Ok{value as receipt}`. An anonymous struct is matched with `case struct{…}`.
 
-- **Literals** are compared with `==`, so a literal pattern has the matched value's own type: a pattern is never wrapped into an optional, and against an `int?` you write `case Some{value == 1}`, not `case 1`. `none` is `None`, and a negative number is written `-1`.
+- **Literals** are compared with `==`, so a literal pattern has the matched value's own type: a pattern is never wrapped into an optional, and against an `Int?` you write `case Some{value == 1}`, not `case 1`. `none` is `None`, and a negative number is written `-1`.
 - **Alternatives.** `A | B` matches what either matches, anywhere a pattern stands: `case 1 | 2:`, `case (0, x) | (x, 0):`, `x is Circle{radius as n} | Square{side as n}`. Every alternative binds the same names, of the same types, and the first alternative that matches gives their values. `A | B as x` binds the whole value, as `(A | B) as x`.
 - **Arrays.** `[a, b]` matches an `Array` of exactly two items, and a rest takes any number between the items before and after it: `[first, ...rest]`, `[first, ...middle, last]`, `[..._, last]`. `...rest` binds a new array of those items, and `..._` binds nothing. A pattern has one rest at most.
-- **Ranges.** `1..=5`, `0..10`, `..0` and `90..` match an `int` between their bounds, which are int literals, a negative one included: `..` leaves its end out and `..=` takes it in, and either end may be left open. A range that holds no int, such as `5..1`, is an error.
+- **Ranges.** `1..=5`, `0..10`, `..0` and `90..` match an `Int` between their bounds, which are int literals, a negative one included: `..` leaves its end out and `..=` takes it in, and either end may be left open. A range that holds no int, such as `5..1`, is an error.
 - **Targets must always match.** A declaration's or loop's target (§3.15) can't hold an alternative, an array pattern or a range, since each can fail; they belong in `match` and `is`.
-- **Referring names** name a variant or a struct without fields, or a top-level constant through a qualified name. A variant with fields is written with braces, as when it is built; a struct without fields matches every value of its type; a constant is compared with `==`.
+- **Referring names** name a variant, a type, or a top-level constant through a qualified name. A variant with fields is written with braces, as when it is built; a constant is compared with `==`.
+- **Type patterns.** A bare type name tests a value's type, and `as` binds the value with that type: `case Int as n`, `x is String as s`. Against an `any` value it matches the values of that type inside (§3.10), so it names a type meeting the `any` type's traits, and, giving no type arguments, no generic one. Against any other value it names that value's own type only, a generic one by its bare name whatever its type arguments (`case Box` against a `Box<Int>`), and matches every value of it, as `_` does, so it covers the type for exhaustiveness. A struct without fields is such a pattern, its one value matched by its name. An alias names the type it stands for, before braces too (`case Mail{to}`); a generic alias stands for no one type, and `Never`, which no value has, names none. An `any` value's own type is never an `any` type, so an alias of one names only the subject's own type. A variant isn't a type, so one with fields is still written with braces.
+
+```python
+import toUpperCase from 'strings'
+
+struct Email { to: String }
+
+fn toString(self: Email) -> String: "mail to " + self.to
+
+fn describe(x: any Stringable) -> String:
+    match x:
+        case Int as n: `a number, ${n}`
+        case Email as e: `mail to ${e.to}`
+        case _: String(x)
+
+fn shout(x: any Stringable) -> String:
+    if x is String as s: s.toUpperCase() else: String(x)
+```
+
 - **`as`** binds the whole matched part with its own type. Variants aren't types, so in `case Approved{by} as d`, `d` is a `Decision`.
 
-**Exhaustiveness.** A `match` covers its subject's type when every value of it matches a case without a guard. A type is made of its constructors: an enum of its variants, `bool` of `true` and `false`, a tuple or a struct of its one shape, field by field, and an `Array` of its lengths, so `[]`, `[x]` and `[x, y, ...rest]` cover every array. An alternative covers what any of its alternatives covers, and a range acts like a guard. `int`, `float`, `string` and the other types have no such list, so their literals never cover them; only a pattern taking anything does. `==` against a literal or an enum variant counts as a pattern, while other comparisons, and `==` against a constant, act like guards (§4) and don't count. Nested patterns count by the same rules. A missing case is reported with examples of what isn't handled, and a case no value can reach, given the cases before it, is warned about.
+**Exhaustiveness.** A `match` covers its subject's type when every value of it matches a case without a guard. A type is made of its constructors: an enum of its variants, `Bool` of `true` and `false`, a tuple or a struct of its one shape, field by field, and an `Array` of its lengths, so `[]`, `[x]` and `[x, y, ...rest]` cover every array. An alternative covers what any of its alternatives covers, and a range acts like a guard. `Int`, `Float`, `String` and the other types have no such list, so their literals never cover them; only a pattern taking anything does, or one naming the type. `==` against a literal or an enum variant counts as a pattern, while other comparisons, and `==` against a constant, act like guards (§4) and don't count. Nested patterns count by the same rules. A missing case is reported with examples of what isn't handled, and a case no value can reach, given the cases before it, is warned about.
 
 **`is` outside `match`.** `x is Pattern` is a boolean expression. Its bindings exist only where the match is known to have succeeded: in the body of an `if` or `while`, and on the right-hand side of an `and`. `or` can't introduce bindings, because afterwards it isn't known which side matched.
 
@@ -776,13 +795,13 @@ enum Result<T, E = Error>:
     Err { error: E }
 
 struct Error:
-    message: string
-    code: string
-    trace: string = _trace()   # the frames where the Error is built
+    message: String
+    code: String
+    trace: String = _trace()   # the frames where the Error is built
 ```
 
 ```python statements
-async fn pay(req: PurchaseRequest) -> Future<Result<string>>:
+async fn pay(req: PurchaseRequest) -> Future<Result<String>>:
     const receipt = chargeCard(req.id, req.amount)?    # returns early on Err
     Ok{(receipt)}
 
@@ -799,7 +818,7 @@ match await pay(req):
 - **Results are data.** A `Result` of sendable types is sendable, so a service can reply with one into a `replyTo` inbox.
 - **Bugs panic; expected failures return `Result`.** Network, parsing and business failures return `Result`. Programming errors such as an out-of-range index, integer division by zero (`//` or `%`) or a missing map key panic. The safe variants return optionals: `xs.at(i)` returns `T?`, and `m.get(k)` returns `V?`.
 
-**Panic.** `panic(message: string) -> never` stops the instance at once:
+**Panic.** `panic(message: String) -> Never` stops the instance at once:
 
 - **Nothing is committed.** The current segment is discarded, so the instance stays at its last snapshot. Effects of `extern fn` calls already made in that segment remain (§5).
 - **The instance is frozen,** marked as panicked. Nothing it holds is disposed and no deferred function runs: its revertible messages stay in their inboxes, and the instances it spawned keep running.
@@ -815,7 +834,7 @@ A program is made of modules, one per file; source files use the `.ista` extensi
 import approve, Verdict from 'purchase/approve'
 import * as runtime from 'runtime'
 
-fn _normalize(id: string) -> string:     # private to this module
+fn _normalize(id: String) -> String:     # private to this module
     ...
 ```
 
@@ -831,18 +850,18 @@ fn _normalize(id: string) -> string:     # private to this module
 
 ### 3.14 Function types and closures
 
-A function type is written `fn(int, string) -> bool` or `async fn(string) -> Result<string>`; its last parameter may be a pack, `fn(...A) -> R` (§3.5), but not an array's rest, which a function value takes as one array. A value of a function type refers to a named function or a closure, and calling it runs that function.
+A function type is written `fn(Int, String) -> Bool` or `async fn(String) -> Result<String>`; its last parameter may be a pack, `fn(...A) -> R` (§3.5), but not an array's rest, which a function value takes as one array. A value of a function type refers to a named function or a closure, and calling it runs that function.
 
 ```python
-fn twice(f: fn(int) -> int, x: int) -> int:
+fn twice(f: fn(Int) -> Int, x: Int) -> Int:
     f(f(x))
 
 const limit = 50_000
-const isLarge = fn(amount: int): amount > limit     # limit is copied
+const isLarge = fn(amount: Int): amount > limit     # limit is copied
 
-fn makeCounter(start: int) -> fn() -> int:
+fn makeCounter(start: Int) -> fn() -> Int:
     let count = start
-    fn next() -> int:                               # count is shared with next
+    fn next() -> Int:                               # count is shared with next
         count += 1
         count
     next
@@ -855,8 +874,8 @@ fn makeCounter(start: int) -> fn() -> int:
 - **No `&` references** can be captured, because references can't be stored.
 - **Copying a closure shares its state.** The struct is copied, but the cells inside it are the same storage, so `const g = next` is a second name for the same counter.
 - **Calling through a `const` binding is allowed,** since immutability stops at handles (§3.4).
-- **Lambdas** are written with `fn` and no name: `fn(x): x * 2`, `fn(x: int, y: int) -> int: x * y`, `async fn(msg): await handle(msg)`. With exactly one untyped parameter, the parentheses may be dropped, as in Python's `lambda`: `xs.filter(fn a: a > 0)`. Parameter types may be omitted when the expected function type gives them. The body after `:` is an expression, which ends at the next `,` or `)`.
-- **Named lambdas.** A lambda may carry a name that is visible only inside its own body, so it can call itself: in `const fact = fn f(n: int) -> int: { … }`, the body can call `f`, while outside it the function is only `fact`.
+- **Lambdas** are written with `fn` and no name: `fn(x): x * 2`, `fn(x: Int, y: Int) -> Int: x * y`, `async fn(msg): await handle(msg)`. With exactly one untyped parameter, the parentheses may be dropped, as in Python's `lambda`: `xs.filter(fn a: a > 0)`. Parameter types may be omitted when the expected function type gives them. The body after `:` is an expression, which ends at the next `,` or `)`.
+- **Named lambdas.** A lambda may carry a name that is visible only inside its own body, so it can call itself: in `const fact = fn f(n: Int) -> Int: { … }`, the body can call `f`, while outside it the function is only `fact`.
 - **Several statements** go in a block expression (§4): `fn(msg): { log(msg); save(msg); msg.id }`, or the same block spread over several indented lines. There is no brace-less form with `;`.
 - **Overloaded names** passed as values, like `xs.map(add)`, need an expected function type to choose the overload; otherwise they are a compile error.
 
@@ -887,7 +906,7 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 - **Its own function.** `return` in a lambda returns from the lambda, `break` and `continue` can't leave it, and `await` needs an `async fn` lambda.
 - **Captures.** A by-value parameter is immutable (§3.3), so it is captured as a copy, like a `const`.
 - **Async function types.** Calling an `async fn(A) -> R` yields a `Future<R>`, and `await` gives the `R`. A declared `async fn f(x: A) -> Future<R>` is therefore the value `async fn(A) -> R`. A plain function fits where an async one of the same parameters and result is expected, `fn(A) -> R` where `async fn(A) -> R` is and `sendable fn(A) -> R` where `sendable async fn(A) -> R` is: calling it yields a future that is already resolved, and the call never suspends. As with the wrap into `T?` (§2), this fits the value passed or assigned, not one inside another type: an `Array<fn()>` isn't an `Array<async fn()>`.
-- **Functions named as values.** A top-level or static function named as a value, as in `xs.map(inc)` or `Duration.zero`, is a closure that captures nothing. A method is called, never named as a value: `s.push` without a call is a compile error; wrap the call in a lambda. A function with defaults also fits a function type that leaves trailing ones out, and computes them at each call; one with a rest parameter takes it as one array, so `log` is a `fn(string, Array<string>)`.
+- **Functions named as values.** A top-level or static function named as a value, as in `xs.map(inc)` or `Duration.zero`, is a closure that captures nothing. A method is called, never named as a value: `s.push` without a call is a compile error; wrap the call in a lambda. A function with defaults also fits a function type that leaves trailing ones out, and computes them at each call; one with a rest parameter takes it as one array, so `log` is a `fn(String, Array<String>)`.
 - **Fields of function types.** `x.f(…)` calls a field `f` of a function type when `x`'s type has no method `f`. When it has both, the call is ambiguous, which is a compile error; `(x.f)(…)` calls the field.
 - **Equality.** Two function values are equal when they run the same function with equal captures. A captured `let` is a cell, so it compares by identity (§3.1).
 
@@ -900,10 +919,10 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 
 ### 3.15 Tuples
 
-A tuple groups a fixed number of values by position. Its type is written `(int, string)`, and a tuple is built with parentheses: `(5, "x")`.
+A tuple groups a fixed number of values by position. Its type is written `(Int, String)`, and a tuple is built with parentheses: `(5, "x")`.
 
 ```python statements
-fn minMax(xs: Array<int>) -> (int, int):
+fn minMax(xs: Array<Int>) -> (Int, Int):
     (xs.min(), xs.max())
 
 const lo, hi = minMax(scores)
@@ -915,7 +934,7 @@ for key, verdict in answered.entries():
 ```
 
 - **Tuples are values.** They are copied like structs, sendable when all their elements are, and compared structurally by `==`.
-- **`unit` is the empty tuple** `()`.
+- **`Unit` is the empty tuple** `()`.
 - **Building needs parentheses:** `(5, 7)`, including in `return (5, 7)`. A one-element tuple is written `(x,)`; `(x)` is just a parenthesized expression.
 - **A one-element tuple converts.** A `(T,)` fits where a `T` is expected, giving its element, and a `T` fits where a `(T,)` is, as a one-element tuple, so a pack of one (§3.5) reads as its value. The conversion applies to a whole value, once, before any wrap into `T?` (§2), never inside a collection or a function type: an `Array<(T,)>` is no `Array<T>`.
 - **Elements by position:** `t.0`, `t.1`, as a decimal number after the dot. `t.0 = v` assigns one and `&t.0` passes one by reference. `t.0.1` reads an element of an element.
@@ -932,18 +951,18 @@ An annotation attaches a compile-time value to a declaration. It is a struct val
 import JsonName, JsonSkip from 'json'
 
 struct Deprecated:
-    reason: string
+    reason: String
 
 struct GithubUser:
-    login: string
-    userId: int @JsonName{"user_id"}
+    login: String
+    userId: Int @JsonName{"user_id"}
     @JsonName{"avatar_url"}
     @Deprecated{"use avatar instead"}
-    avatarUrl: string?
-    cache: Map<string, int> @JsonSkip
+    avatarUrl: String?
+    cache: Map<String, Int> @JsonSkip
 ```
 
-- **Annotations are ordinary structs.** Any struct can be used as one, so libraries and tools declare their own. The `json` module declares `JsonName` (a single `string` field), `JsonSkip` and `JsonBigInt` (no fields), and the prelude declares `Waypoint` (a single `string` field).
+- **Annotations are ordinary structs.** Any struct can be used as one, so libraries and tools declare their own. The `json` module declares `JsonName` (a single `String` field), `JsonSkip` and `JsonBigInt` (no fields), and the prelude declares `Waypoint` (a single `String` field).
 - **Short forms come from the struct rules (§3.1):** a single-field struct takes its value without a field name, as in `@JsonName{"user_id"}`, and a struct without fields is written bare, as in `@JsonSkip`.
 - **Checked at compile time.** An unknown annotation, a misspelled field or a wrong value type is a compile error. Annotation values must be computable at compile time, the same rule as top-level `const`.
 - **Where.** `JsonName`, `JsonSkip` and `JsonBigInt` apply to fields of structs and enum variants (§9 says which fields), `@Suite` to functions (§10), and `@Waypoint` to a statement that awaits or selects (§10). Any other struct may annotate fields and functions, for tools to read, and statements take only `@Waypoint`. Using an annotation anywhere else, or the same one twice on one item, is a compile error.
@@ -951,7 +970,7 @@ struct GithubUser:
 
 ### 3.17 Type aliases
 
-`type` gives an existing type another name: `type UserId = string`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(string, T)>`. A static function declared on an alias is the aliased type's, so `fn Entries.empty<T>() -> Entries<T>` gives `Array<(string, T)>` an `empty`. An alias can't refer to itself, directly or through other aliases; a recursive type is a struct or an enum (§3.1). A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: string }`, which the type checker keeps apart from `string`, and a type with an identity of its own is a shared struct (§3.18).
+`type` gives an existing type another name: `type UserId = String`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(String, T)>`. A static function declared on an alias is the aliased type's, so `fn Entries.empty<T>() -> Entries<T>` gives `Array<(String, T)>` an `empty`. An alias can't refer to itself, directly or through other aliases; a recursive type is a struct or an enum (§3.1). A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: String }`, which the type checker keeps apart from `String`, and a type with an identity of its own is a shared struct (§3.18).
 
 ### 3.18 Shared structs
 
@@ -959,8 +978,8 @@ A `shared struct` is a struct whose values are handles to a cell of the instance
 
 ```python
 shared struct Lease:
-    name: string
-    renewals: int = 0
+    name: String
+    renewals: Int = 0
 
 fn renew(self: Lease):
     self->renewals += 1        # every copy of the handle sees it
@@ -975,7 +994,7 @@ fn renew(self: Lease):
 
 ## 4. Expressions and control flow
 
-Every block is an expression whose value is its last expression. A block that ends in a statement has type `unit`. All branching constructs (`if`, `match`, `select`) are expressions. **All their branches must have the same type, and the compiler checks this.** A branch that ends in `return`, `break` or `continue` has type `never`, which fits any expected type.
+Every block is an expression whose value is its last expression. A block that ends in a statement has type `Unit`. All branching constructs (`if`, `match`, `select`) are expressions. **All their branches must have the same type, and the compiler checks this.** A branch that ends in `return`, `break` or `continue` has type `Never`, which fits any expected type.
 
 **Block expressions.** A bare `{ … }` in an expression position is always a block expression: its statements run in order, its variables are scoped to it, and its value is its last expression. Indentation still applies inside the braces. Written on one line, a block must contain at least one `;`, since braces around a single expression add nothing: write `if urgent: alert(msg)` rather than `if urgent: { alert(msg) }`.
 
@@ -991,7 +1010,7 @@ Braces always mean one of three things, told apart by what comes before them: af
 
 ```python statements
 const size = if n < 10: "small" elif n < 100: "medium" else: "large"
-const fact = fn f(n: int) -> int: if n < 2: 1 else: n * f(n - 1)
+const fact = fn f(n: Int) -> Int: if n < 2: 1 else: n * f(n - 1)
 if urgent: alert(msg)
 ```
 
@@ -1012,12 +1031,12 @@ const values = [for r in results if r is Ok{value}: value]   # filter and destru
 - **It works on any `Iterable` (§3.10)** and builds the whole array at once. A plain `for` without brackets stays a statement and builds nothing.
 
 ```python fragment
-const label: string = if amount > 50_000:
+const label: String = if amount > 50_000:
     "large"
 else:
     "normal"
 
-const verdictText: string = match v:
+const verdictText: String = match v:
     case Verdict{ok == true}:
         "approved by " + v.role
     case Verdict{ok == false}:
@@ -1026,11 +1045,11 @@ const verdictText: string = match v:
 
 The rules:
 
-- `if` without `else` must have type `unit`.
+- `if` without `else` must have type `Unit`.
 - `match` must be exhaustive. Use `case _:` for the rest. Patterns are described in §3.11.
 - A `case` may have a guard: `case Verdict{ok == false} as v if v.role == "cfo":`. A guarded case matches only when its condition is true, so guarded cases don't count toward exhaustiveness.
 - `x is Pattern` tests a value against a pattern outside `match`, as in `if r is Ok{value as y}:` (§3.11).
-- `while` and `for x in xs` are statements of type `unit`. `for` works on any type that satisfies `Iterable` (§3.10). `break` and `continue` work as in Python, on the innermost loop.
+- `while` and `for x in xs` are statements of type `Unit`. `for` works on any type that satisfies `Iterable` (§3.10). `break` and `continue` work as in Python, on the innermost loop.
 - **Labels.** A label stands before a loop, `outer: for x in xs:`, and `break outer` and `continue outer` leave or go on with that loop from any depth inside it, as in Java or JavaScript. A label also names a block for `hold` (§3.4). A label belongs to its function: a nested function never sees it, and it may not repeat a label around it nor take the function's own name, so a name means one loop or block. A label nothing names is warned about.
 - `return expr` exits the enclosing function; `expr` must have the function's return type.
 
@@ -1045,8 +1064,8 @@ All three work only on optionals; using one on any other value is an error. A `?
 `??` can't be mixed with `and` or `or` without parentheses, as in JavaScript. Neither operator is related to the postfix `?` on `Result`, which propagates errors (§3.12).
 
 ```python fragment
-const limit: int = m.get("limit") ?? 50_000
-const role: string? = verdict?.role
+const limit: Int = m.get("limit") ?? 50_000
+const role: String? = verdict?.role
 ```
 
 ## 5. Persistence
@@ -1062,7 +1081,7 @@ const role: string? = verdict?.role
 - **Extern effects aren't transactional.** The runtime doesn't make `extern fn` calls atomic with the segment. If a segment is discarded, the effects of extern calls it made remain, and a re-run calls them again. Idempotency is the developer's responsibility; an extern can, for example, return its own commit and abort handles for the workflow to call once it decides. Slot operations are exactly-once; anything the host provides is the host's responsibility.
 
 ```python
-async fn remindLater(role: string):
+async fn remindLater(role: String):
     await time.delay(1d)              # persisted; resumes after a day
     notifications(role).send(Notice{text: "Reminder"})
 ```
@@ -1105,12 +1124,12 @@ const next: Verdict = await box.receive()
 
 - **Order.** Messages come out in commit order: the order in which the senders' segments committed. Sends within one segment keep their program order.
 - **Receivers.** Each message goes to exactly one receiver. When several are waiting, the one that has waited longest gets the next message.
-- **Capacity.** An inbox is unbounded, so `send` never waits; it returns `unit`.
+- **Capacity.** An inbox is unbounded, so `send` never waits; it returns `Unit`.
 - **A receive is a wait on a slot.** `receive()` returns the future of a `take`, not of an async call, so a receive that loses a `select` and is released consumes nothing.
 - **Durable messages** live until they are received, or until the inbox is disposed.
 - **Revertible messages** last as long as the `Revertible<T>` holder that `sendRevertible` returns: kept in `_`, it lasts until the sending block ends, with `hold _` until the sending function ends, and stored elsewhere, as long as it is held there. When the holder is released while the message is still unread, the message is retracted. The holder doesn't keep the inbox alive.
 - **Receiving a revertible message** makes it final, so once received, it can't be retracted. A retracted message is removed, and everything else keeps its order.
-- **`Revertible<T>`** is written in the language too: `shared struct Revertible<T> { retract: fn() -> unit }`, made disposable by the `inbox` module's `dispose`, which calls its `retract`. Whatever queue makes a holder supplies its own retraction, so an inbox, a fan-out and a queue the host provides all hand out the same type. A host's revertible send is a disposable host type (§3.6), and `Revertible.holding(sent)` makes a holder whose retraction lets go of it, which disposes it and so tells the host (§12.1).
+- **`Revertible<T>`** is written in the language too: `shared struct Revertible<T> { retract: fn() -> Unit }`, made disposable by the `inbox` module's `dispose`, which calls its `retract`. Whatever queue makes a holder supplies its own retraction, so an inbox, a fan-out and a queue the host provides all hand out the same type. A host's revertible send is a disposable host type (§3.6), and `Revertible.holding(sent)` makes a holder whose retraction lets go of it, which disposes it and so tells the host (§12.1).
 
 **Lifetimes.** A slot or inbox is disposed when its last holder releases it, together with the values in it. Every handle holds it; code that shouldn't keep it alive holds a `WeakRef` instead (§7). Queues the host provides live as long as the host keeps them.
 
@@ -1176,19 +1195,19 @@ In the common case nothing is stored anywhere else, so a disposable lives exactl
 
 In every case, each `disposed()` future watching the value resolves afterwards.
 
-**Weak references.** `WeakRef<T is Disposable>` refers to a value without holding it. Its `deref()` returns `T?`, which is `none` once the last holder has released the value. Its `disposed()` returns a `Future<unit>` that resolves at that moment, already resolved if it has passed, and waiting on it holds nothing. `WeakRef(x)` gives the one weak reference to `x`, so two weak references are `==` exactly when they refer to the same value, also after it is disposed. Weak references aren't sendable.
+**Weak references.** `WeakRef<T is Disposable>` refers to a value without holding it. Its `deref()` returns `T?`, which is `none` once the last holder has released the value. Its `disposed()` returns a `Future<Unit>` that resolves at that moment, already resolved if it has passed, and waiting on it holds nothing. `WeakRef(x)` gives the one weak reference to `x`, so two weak references are `==` exactly when they refer to the same value, also after it is disposed. Weak references aren't sendable.
 
 **Disposing early.** To dispose something you hold before its block ends, `drop` it. A value is disposed only when its last holder releases it, so a disposed value is never observable. To stop something that other code may also need to reach, keep the only holder in a `Shared` and share that. Setting its value to `none` releases the holder, and everyone else then sees `none` rather than a disposed value:
 
 ```python statements
-const sub = new Shared<Future<unit>?>{value: bus.subscribe(fn msg: show(msg))}
+const sub = new Shared<Future<Unit>?>{value: bus.subscribe(fn msg: show(msg))}
 ...
 sub->value = none         # the subscription is disposed here
 ```
 
 Code that copies the future out (`const f = sub->value`) becomes a holder itself, and keeps it alive.
 
-**Graceful disposal.** Inside an `async fn`, the function's own name gives the current call's context. `worker.disposing()` returns a `Future<unit>` that resolves when the call is disposed, which gives the call a chance to clean up:
+**Graceful disposal.** Inside an `async fn`, the function's own name gives the current call's context. `worker.disposing()` returns a `Future<Unit>` that resolves when the call is disposed, which gives the call a chance to clean up:
 
 ```python
 async fn worker(jobs: Inbox<Job>):
@@ -1207,7 +1226,7 @@ async fn worker(jobs: Inbox<Job>):
 - **Lexical.** `worker.disposing()` always refers to the enclosing call of `worker`, also from a nested local function, so nested functions are never ambiguous. It is a compile error outside an `async fn` of that name, and for `main`, which nothing holds.
 - **Calls nothing can dispose.** An instance's root call, such as a spawned function, and a call that has already returned are never disposed, so their `disposing()` never resolves.
 
-**Defer.** `defer f` runs the function `f` when the current block ends, whether it finishes, is left through `return`, `break` or `continue`, or is disposed at an `await`. `f` is a lambda or a function reference of type `fn() -> unit`, as in `defer fn(): log("exited")` or `defer cleanup`, so it can't await. Several deferred functions run in reverse order, last first, and a `defer` in a loop body runs at the end of each iteration, as in Swift. `defer` is sugar for holding a disposable guard in a hidden local, so it needs no new machinery. Unlike `disposing()`, it also runs on a normal exit; to act only on disposal, check a flag:
+**Defer.** `defer f` runs the function `f` when the current block ends, whether it finishes, is left through `return`, `break` or `continue`, or is disposed at an `await`. `f` is a lambda or a function reference of type `fn() -> Unit`, as in `defer fn(): log("exited")` or `defer cleanup`, so it can't await. Several deferred functions run in reverse order, last first, and a `defer` in a loop body runs at the end of each iteration, as in Swift. `defer` is sugar for holding a disposable guard in a hidden local, so it needs no new machinery. Unlike `disposing()`, it also runs on a normal exit; to act only on disposal, check a flag:
 
 ```python
 async fn reserveAndShip(item: Item):
@@ -1266,7 +1285,7 @@ The rules:
 **Future reuse.** A future resolves once and stays resolved. Create a deadline once, outside a loop, and every iteration races against the same deadline:
 
 ```python statements
-const deadline: Future<unit> = time.delay(5d)    # created once
+const deadline: Future<Unit> = time.delay(5d)    # created once
 while not done:
     await select:
         case work.receive() as w:
@@ -1278,7 +1297,7 @@ while not done:
 **Non-blocking form.** A `select` without `await` must have an `else:` case. If no future has resolved at evaluation time, `else` runs. It never waits, so it may stand in a plain `fn` too. It replaces a separate "try receive" operation:
 
 ```python statements
-const cancelled: bool = select:
+const cancelled: Bool = select:
     case cancels(id).receive():
         true
     else:
@@ -1313,7 +1332,7 @@ async fn main():
 - **Learn of spawned instances:** advancing an instance tells the host which instances it spawned, so the host runs them too.
 - **Receive logs:** advancing an instance also gives the log records its committed segments wrote, in order (§3.8). They aren't kept in the snapshot, so a host that crashes before taking them loses them.
 
-A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(string, int)`, `purchase.dispose(purchase.Sent)` or `purchase.approvalDeadline`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `int` keeps every digit and reads apart from a `float`; it may give back a `bigint` or a whole number for one. What it gives back is read as `JSON.stringify` would write it, so `undefined` is `null`, or a missing field inside an object: a function returning nothing gives `unit` or `none`.
+A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(String, Int)`, `purchase.dispose(purchase.Sent)` or `purchase.approvalDeadline`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `Int` keeps every digit and reads apart from a `Float`; it may give back a `bigint` or a whole number for one. What it gives back is read as `JSON.stringify` would write it, so `undefined` is `null`, or a missing field inside an object: a function returning nothing gives `Unit` or `none`.
 
 Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`: the host names the new future with a token of its own choosing and fills it later. An extern's result, or a value an extern constant gives, that doesn't fit its declared type panics the instance; a future filled, or an instance started, with JSON that doesn't fit fails the host's call instead. Filling a future nothing waits on any more, because it was disposed (§7) or its instance ended, changes nothing; filling one of a panicked instance fails until the instance is retried.
 
@@ -1323,7 +1342,7 @@ Communication across this boundary takes only three forms: the workflow calls an
 
 **Values at the boundary.** Every value that crosses between the host and an instance has a declared type: extern constants, extern function parameters and results, and the arguments of an instance the host starts. Each crosses through its type's codecs, the `toJson` that `Encodable` requires and the `fromJson` that `Decodable` does (§3.10), so workflow code needs no reflection. Inbound JSON is validated before it enters the instance; a mismatch fails the host's call, so malformed data never reaches workflow code. `json.parse<T>(s)` and `json.stringify(v)` go through the same codecs for JSON held in strings.
 
-- **Declared codecs.** The `json` module declares them for the types the language has, and a module may declare them beside its own types, as the `time` module does for `Time` and `Duration`. A type that crosses as text declares each with one call: `fn toJson(self: Money) -> Json: json.encodeText(self)` writes its `toString`, and `fn Money.fromJson(j: Json, path: string) -> Result<Money>: json.decodeText(j, path)` reads it back through its `parse`. A `fromJson` names the `path` of what it reads in an `Err`, as `$.items[2].amount`.
+- **Declared codecs.** The `json` module declares them for the types the language has, and a module may declare them beside its own types, as the `time` module does for `Time` and `Duration`. A type that crosses as text declares each with one call: `fn toJson(self: Money) -> Json: json.encodeText(self)` writes its `toString`, and `fn Money.fromJson(j: Json, path: String) -> Result<Money>: json.decodeText(j, path)` reads it back through its `parse`. A `fromJson` names the `path` of what it reads in an `Err`, as `$.items[2].amount`.
 - **Derived codecs.** A struct, an enum, a tuple or a host type that declares neither function, in its own module or the `json` module, gets both from the compiler. A derived codec writes and reads each part through that part's own codecs, found as every trait's functions are (§3.10), so it is the same wherever the type is used. A type that declares one codec has the other neither derived nor otherwise, so it is never written one way and read another.
 
 The mapping follows JavaScript's `JSON.stringify`:
@@ -1333,15 +1352,15 @@ The mapping follows JavaScript's `JSON.stringify`:
 | struct, named or anonymous, deriving its codecs | object keyed by field name, or by the name given with `@JsonName`; fields marked `@JsonSkip` are left out, and read back as their type's `default()` (§3.10), so only a field whose type is `Default` may be skipped |
 | `Array<T>`, tuple | array; a tuple's has exactly its length |
 | `Map<K, V>` | object keyed by each key's `toString`, so `K` must be `Stringable` (and `Parsable` to be read) |
-| `int` | number, parsed and printed exactly at any size; a string of its digits with `@JsonBigInt` |
-| `float` | number; NaN and ±Infinity are written as `null`, as JavaScript does, so they can't be read back: a `float` that may be missing is a `float?` |
+| `Int` | number, parsed and printed exactly at any size; a string of its digits with `@JsonBigInt` |
+| `Float` | number; NaN and ±Infinity are written as `null`, as JavaScript does, so they can't be read back: a `Float` that may be missing is a `Float?` |
 | `Decimal` | string |
-| `bool`, `string` | boolean, string |
+| `Bool`, `String` | boolean, string |
 | `T?` | `null`, or a missing field, for `none` |
 | enum deriving its codecs | object with a `"type"` field naming the variant, plus the variant's fields |
 | `Time`, `Duration` | ISO 8601, their `toString` (§3.8): `"2026-10-25T12:00:00.000Z"`, `"PT1H30M"` |
 | `json.Json` | the JSON it holds |
-| `unit` | `null` |
+| `Unit` | `null` |
 | extern type | whatever JSON its host gives it, handed back unchanged, by `json` too. A disposable one keeps that JSON while the instance holds it (§3.6) |
 
 Every object's keys are emitted sorted, in UTF-16 order as JavaScript sorts strings, so equal values always produce the same JSON, whatever order a struct declares its fields in or a map stores its entries in. Unknown fields in inbound objects are ignored, so producers can add fields without breaking consumers. A missing field that isn't optional fails validation, even one with a default (§3.1). A type that isn't `Encodable`, or `Decodable`, can't cross that way, at the boundary or through `json`, which is a compile error where it would: a function type, a handle (§3.1), a nested optional `T??`, whose `none`s JSON can't tell apart, a map whose keys aren't `Stringable`, or a type with a part that can't cross. So is an enum deriving its codecs with a variant field named `type`, which would collide with the tag.
@@ -1386,14 +1405,14 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
 
 `setups(a, b)` combines several environments into one, with overloads for up to six: `setups(withPurchaseEnv, withFakeHost)` is a `Setup<(PurchaseEnv, HostEnv)>`, whose test receives both as a tuple. The first setup is the outermost: it prepares first and tears down last.
 
-**Mocking.** `mock(target, replacement)` replaces any named function (an extern, a standard-library function or one of the program's own) while the `Mock<F>` it returns is held, `F` being the function's type, so a mock follows block lifetimes like every other resource. `mock` takes a pack (§3.5), one declaration for plain functions and one for async ones: `mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>`, and explicit type arguments name the parameters as a tuple, then the result. It applies to everything the test runs, including instances it spawns. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace. A host type's `dispose`, which the runtime calls (§7), may be a mock's target, the one place it may be named. Spawning an instance isn't a call, so an instance runs the function it was spawned with, whatever mocks it. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(string, int)>` for `chargeCard`, `Array<(string,)>` for a function of one parameter, and a `unit`, the empty tuple, per call of one of none.
+**Mocking.** `mock(target, replacement)` replaces any named function (an extern, a standard-library function or one of the program's own) while the `Mock<F>` it returns is held, `F` being the function's type, so a mock follows block lifetimes like every other resource. `mock` takes a pack (§3.5), one declaration for plain functions and one for async ones: `mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>`, and explicit type arguments name the parameters as a tuple, then the result. It applies to everything the test runs, including instances it spawns. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace. A host type's `dispose`, which the runtime calls (§7), may be a mock's target, the one place it may be named. Spawning an instance isn't a call, so an instance runs the function it was spawned with, whatever mocks it. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(String, Int)>` for `chargeCard`, `Array<(String,)>` for a function of one parameter, and a `Unit`, the empty tuple, per call of one of none.
 
 - **Mocking twice.** Mocking a target that is already mocked replaces it while the new handle is held; releasing that handle brings back the mock before it.
 - **Across instances.** A mock applies to the instance holding it and to every instance spawned from it. Such an instance calls the replacement in the instance holding the mock, as a host's extern is called (§9): the arguments and the result are copied between the two, so they must be sendable, or the call panics. A future the replacement returns is followed across as well. The instance answering plays the host, so a host value it receives or hands back isn't its to dispose: only the instance that got it from the call owns it (§7).
 
 **Time.** `time.at(t)` is the runtime's only time primitive, and `delay(d)` is library code for `at(now() + d)`. Mocking `time.now` and `time.at` therefore controls all time. The library's `FakeClock` is made for that: `FakeClock{start}` stands still at `start`, and its fields `now` and `at` are the replacements, as above. `clock.advance(d)` moves it forward by `d` at once and fills every deadline it passes, the earliest first, and deadlines that tie in the order `at` was called. A deadline already reached resolves at once, and advancing by a negative duration panics.
 
-**Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one: each call gives a value equal to no other, and a `T` that isn't an extern type is a compile error. The library's `FakeQueue<Q, T, K = string>` fakes a host's queues of type `Q` carrying `T`, with an ordinary inbox behind each: `FakeQueue<Queue<Verdict>, Verdict>{make: handle}`. Its fields are replacements for the program's externs: `open`, for a queue factory such as `verdicts`, gives the queue of a key of type `K`, made with `make` the first time; `send` and `receive` use that queue's inbox. A mock's target must name a function, so the test mocks the program's externs with them itself:
+**Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one: each call gives a value equal to no other, and a `T` that isn't an extern type is a compile error. The library's `FakeQueue<Q, T, K = String>` fakes a host's queues of type `Q` carrying `T`, with an ordinary inbox behind each: `FakeQueue<Queue<Verdict>, Verdict>{make: handle}`. Its fields are replacements for the program's externs: `open`, for a queue factory such as `verdicts`, gives the queue of a key of type `K`, made with `make` the first time; `send` and `receive` use that queue's inbox. A mock's target must name a function, so the test mocks the program's externs with them itself:
 
 ```python statements
 const verdictQueues = FakeQueue<Queue<Verdict>, Verdict>{make: handle}
@@ -1408,16 +1427,16 @@ For the test, `pending(key)` gives the messages waiting in a key's queue, oldest
 
 | Member | Meaning |
 | --- | --- |
-| `idle() -> Future<unit>` | resolves once every execution of the instance is waiting, or it has finished, so everything so far has committed |
-| `reaches(label: string) -> Future<unit>` | resolves once an execution of the instance is suspended at that waypoint |
-| `waitingAt() -> Array<string>` | the waypoint of every `await` or `select` the instance is suspended at, or its source location (`module:line:column`) where it has none |
+| `idle() -> Future<Unit>` | resolves once every execution of the instance is waiting, or it has finished, so everything so far has committed |
+| `reaches(label: String) -> Future<Unit>` | resolves once an execution of the instance is suspended at that waypoint |
+| `waitingAt() -> Array<String>` | the waypoint of every `await` or `select` the instance is suspended at, or its source location (`module:line:column`) where it has none |
 | `state() -> InstanceState` | `Running`, `Waiting`, `Panicked`, `Finished` or `Terminated`, as its last commit says |
 
 `testing.spawnCrashingEveryAwait(f)` spawns `f`, a sendable function taking nothing such as `fn(): purchase(req)`, and returns its `Instance`, but the instance discards and re-runs every segment once before committing it, which catches extern calls that aren't idempotent and anything that differs between two runs of the same segment.
 
 **Waypoints.** `@Waypoint{"approval"}` on a statement that awaits gives that suspension point a name, for `reaches` and `waitingAt`, and for the host's operator view, which can show an instance as waiting at `approval`.
 
-**Failures.** The library's `assert` and `assertEq` panic on failure, and a panic in the test or in an instance it spawned fails the test at once, with that instance's message and trace, unless some instance waits for that instance's end through `result()`, which then gives the panic as an `Err`. `assert(condition)` and `assert(condition, message)` take a `bool`; `assertEq(actual, expected)` takes any `Encodable` type, every struct, enum and tuple deriving it (§9), and its message shows both as JSON: `expected "expired", found "approved"`. Other values are compared with `assert(a == b)`.
+**Failures.** The library's `assert` and `assertEq` panic on failure, and a panic in the test or in an instance it spawned fails the test at once, with that instance's message and trace, unless some instance waits for that instance's end through `result()`, which then gives the panic as an `Err`. `assert(condition)` and `assert(condition, message)` take a `Bool`; `assertEq(actual, expected)` takes any `Encodable` type, every struct, enum and tuple deriving it (§9), and its message shows both as JSON: `expected "expired", found "approved"`. Other values are compared with `assert(a == b)`.
 
 `await expectPanic(f)` passes only if `f` panics, and gives the panic's message. A panic freezes the instance it happens in (§5), so `f`, a sendable plain or `async` function taking nothing, is spawned as an instance of its own, and `expectPanic` waits for its `result()`, so that panic doesn't fail the test. `expectPanic` panics when `f` returns instead.
 
@@ -1457,29 +1476,29 @@ import Inbox, Revertible from 'inbox'
 import Encodable, Decodable from 'json'
 
 struct PurchaseRequest:
-    id: string
-    item: string
-    amount: int
+    id: String
+    item: String
+    amount: Int
 
 struct ReviewRequest:
-    purchaseId: string
-    item: string
-    amount: int
+    purchaseId: String
+    item: String
+    amount: Int
 
 struct Verdict:
-    role: string
-    ok: bool
-    comment: string
+    role: String
+    ok: Bool
+    comment: String
 
 struct Notice:
-    text: string
+    text: String
 
 struct Cancel:
-    reason: string
+    reason: String
 
 struct ChargeResult:
-    ok: bool
-    receipt: string
+    ok: Bool
+    receipt: String
 
 # a queue type the host provides, and a message sent into one revertibly, which the host
 # retracts when it is disposed, unless it was received
@@ -1494,12 +1513,12 @@ fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:
     Revertible.holding(_sendRevertible(self, msg))
 
 extern purchaseRequests: Queue<PurchaseRequest>
-extern fn reviewQueue(role: string) -> Queue<ReviewRequest>
-extern fn verdicts(purchaseId: string) -> Queue<Verdict>
-extern fn notifications(role: string) -> Queue<Notice>
-extern fn cancels(purchaseId: string) -> Queue<Cancel>
+extern fn reviewQueue(role: String) -> Queue<ReviewRequest>
+extern fn verdicts(purchaseId: String) -> Queue<Verdict>
+extern fn notifications(role: String) -> Queue<Notice>
+extern fn cancels(purchaseId: String) -> Queue<Cancel>
 
-extern fn chargeCard(purchaseId: string, amount: int) -> Result<string>
+extern fn chargeCard(purchaseId: String, amount: Int) -> Result<String>
 ```
 
 **Entry point.** Each purchase is spawned as its own instance, so it finishes on the version it started with:
@@ -1514,16 +1533,16 @@ async fn main():
 **One purchase instance.** This shows a non-blocking `select` before the irreversible step:
 
 ```python
-async fn purchase(req: PurchaseRequest) -> Future<string>:
-    let roles: Array<string> = ["legal", "finance"]
+async fn purchase(req: PurchaseRequest) -> Future<String>:
+    let roles: Array<String> = ["legal", "finance"]
     if req.amount > 50_000:
         roles.push("cfo")
 
-    const outcome: string = await approve(req, roles)
+    const outcome: String = await approve(req, roles)
     if outcome != "approved":
         return outcome
 
-    const cancelled: bool = select:
+    const cancelled: Bool = select:
         case cancels(req.id).receive():
             true
         else:
@@ -1548,14 +1567,14 @@ fn charge(req: PurchaseRequest) -> ChargeResult:
 **Parallel approval.** Fan-out uses revertible sends into the reviewers' queues, kept with `hold _` so they stay revertible until `approve` returns, although they are sent inside loops. Verdicts come back through the host-provided `verdicts` queue, because the reviewers' side runs in separate instances (§6). The join is a `select` loop that reuses the deadline and reminder futures.
 
 ```python
-async fn approve(req: PurchaseRequest, roles: Array<string>) -> Future<string>:
+async fn approve(req: PurchaseRequest, roles: Array<String>) -> Future<String>:
     for role in roles:
         hold _ = reviewQueue(role).sendRevertible(
                 ReviewRequest{purchaseId: req.id, item: req.item, amount: req.amount})
 
-    const deadline: Future<unit> = time.delay(5d)
-    let reminder: Future<unit> = time.delay(1d)
-    let answered: Map<string, Verdict> = [:]
+    const deadline: Future<Unit> = time.delay(5d)
+    let reminder: Future<Unit> = time.delay(1d)
+    let answered: Map<String, Verdict> = [:]
 
     while answered.size() < roles.length():
         await select:
@@ -1583,7 +1602,7 @@ When `approve` returns by any path, everything it holds is disposed: unclaimed r
 The task-list UI shows the reviews waiting in `reviewQueue(role)`; how the host reads and claims them is up to the host. On submit, the host starts this function on the purchase's version. The verdict goes into the host-provided `verdicts` queue, because a host-started instance is separate from the purchase (§6).
 
 ```python
-fn submitReview(task: ReviewRequest, role: string, ok: bool, comment: string):
+fn submitReview(task: ReviewRequest, role: String, ok: Bool, comment: String):
     verdicts(task.purchaseId).send(Verdict{role: role, ok: ok, comment: comment})
 ```
 
@@ -1595,11 +1614,11 @@ Each subscriber gets its own copy. The revertible sends give the announcement a 
 import * as time from 'time'
 
 struct Announcement:
-    text: string
+    text: String
 
-extern fn announcements(user: string) -> Queue<Announcement>   # Queue as declared in §12.1
+extern fn announcements(user: String) -> Queue<Announcement>   # Queue as declared in §12.1
 
-async fn announce(text: string, users: Array<string>, visibleFor: time.Duration):
+async fn announce(text: String, users: Array<String>, visibleFor: time.Duration):
     for user in users:
         hold _ = announcements(user).sendRevertible(Announcement{text: text})
     await time.delay(visibleFor)

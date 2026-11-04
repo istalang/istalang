@@ -14,28 +14,28 @@ import { checkerDiagnostics as reports } from './diagnostics/index.ts';
 const shapes = [
   'enum Color { Red; Green; Blue }',
   'enum Shape:',
-  '  Circle { radius: int }',
-  '  Square { side: int }',
-  'struct Point { x: int; y: int }',
-  'struct Box { opt: int? }',
+  '  Circle { radius: Int }',
+  '  Square { side: Int }',
+  'struct Point { x: Int; y: Int }',
+  'struct Box { opt: Int? }',
   '',
 ].join('\n');
 
 /** A `match` on `value: type` with `cases`, in a function after the shapes above. */
 function matching(type: string, cases: string): string {
-  return `${shapes}\nfn f(value: ${type}) -> string:\n${indent(`match value:\n${indent(cases)}`)}\n`;
+  return `${shapes}\nfn f(value: ${type}) -> String:\n${indent(`match value:\n${indent(cases)}`)}\n`;
 }
 
 describe('exhaustiveness', () => {
   it.each([
     ['every variant', 'Color', 'case Red: "r"\ncase Green: "g"\ncase Blue: "b"'],
     ['a wildcard', 'Color', 'case Red: "r"\ncase _: "other"'],
-    ['true and false', 'bool', 'case true: "t"\ncase false: "f"'],
-    ['Some and none', 'int?', 'case Some{value}: "some"\ncase none: "none"'],
-    ['a binding name', 'int', 'case n: string(n)'],
+    ['true and false', 'Bool', 'case true: "t"\ncase false: "f"'],
+    ['Some and none', 'Int?', 'case Some{value}: "some"\ncase none: "none"'],
+    ['a binding name', 'Int', 'case n: String(n)'],
     [
       'a tuple of enums, by product',
-      '(bool, bool)',
+      '(Bool, Bool)',
       ['case (true, true): "a"', 'case (true, false): "b"', 'case (false, _): "c"'].join('\n'),
     ],
     ['fields of a variant', 'Shape', 'case Circle{radius}: "c"\ncase Square{}: "s"'],
@@ -54,17 +54,17 @@ describe('exhaustiveness', () => {
     ['alternatives', 'Color', 'case Red | Green: "warm"\ncase Blue: "cold"'],
     [
       'alternatives nested in a tuple',
-      '(bool, bool)',
+      '(Bool, Bool)',
       'case (true | false, true): "t"\ncase (_, false): "f"',
     ],
     [
       'arrays by length',
-      'Array<int>',
+      'Array<Int>',
       'case []: "none"\ncase [x]: "one"\ncase [x, y, ...rest]: "more"',
     ],
     [
       'a rest at either end',
-      'Array<bool>',
+      'Array<Bool>',
       'case [..._, true]: "t"\ncase [false, ..._]: "f"\ncase [true, ...middle, false]: "tf"\ncase []: "e"',
     ],
   ])('is met by %s', (_case, type, cases) => {
@@ -73,13 +73,13 @@ describe('exhaustiveness', () => {
 
   it.each([
     ['a missing variant', 'Color', 'case Red: "r"\ncase Green: "g"'],
-    ['literals of int, never all of them', 'int', 'case 0: "zero"\ncase 1: "one"'],
+    ['literals of int, never all of them', 'Int', 'case 0: "zero"\ncase 1: "one"'],
     ['a guarded case', 'Color', 'case c if c == Red: "r"\ncase Green: "g"\ncase Blue: "b"'],
     ['a comparison acting as a guard', 'Point', 'case Point{x > 0}: "right"'],
-    ['a missing combination', '(bool, bool)', 'case (true, _): "a"\ncase (_, true): "b"'],
-    ['arrays of only some lengths', 'Array<int>', 'case []: "none"\ncase [x]: "one"'],
+    ['a missing combination', '(Bool, Bool)', 'case (true, _): "a"\ncase (_, true): "b"'],
+    ['arrays of only some lengths', 'Array<Int>', 'case []: "none"\ncase [x]: "one"'],
     ['an alternative acting as a guard', 'Point', 'case Point{x > 0} | Point{y > 0}: "q"'],
-    ['ranges, which act as guards', 'int', 'case ..0: "n"\ncase 0..: "p"'],
+    ['ranges, which act as guards', 'Int', 'case ..0: "n"\ncase 0..: "p"'],
   ])('reports %s', (_case, type, cases) => {
     expect(reported(matching(type, cases))).toEqual(
       reportedOnce(reports.nonExhaustiveMatch.code, 'value'),
@@ -89,12 +89,12 @@ describe('exhaustiveness', () => {
   it.each([
     ['a case after every value', 'Color', 'case _: "any"\ncase Red: "r"', 'Red'],
     ['a variant listed twice', 'Color', 'case Red: "r"\ncase Red: "again"\ncase _: "o"', 'Red'],
-    ['a guarded case covered before it', 'bool', 'case _: "any"\ncase b if b: "t"', 'b'],
-    ['an array no length is left for', 'Array<int>', 'case [..._]: "any"\ncase [x]: "one"', '[x]'],
-    ['a negated zero after zero', 'int', 'case 0: "z"\ncase -0: "again"\ncase _: "o"', '-0'],
+    ['a guarded case covered before it', 'Bool', 'case _: "any"\ncase b if b: "t"', 'b'],
+    ['an array no length is left for', 'Array<Int>', 'case [..._]: "any"\ncase [x]: "one"', '[x]'],
+    ['a negated zero after zero', 'Int', 'case 0: "z"\ncase -0: "again"\ncase _: "o"', '-0'],
     [
       'a negated float zero after zero',
-      'float',
+      'Float',
       'case 0.0: "z"\ncase -0.0: "again"\ncase _: "o"',
       '-0.0',
     ],
@@ -114,29 +114,29 @@ describe('exhaustiveness', () => {
 describe("'?' on a Result", () => {
   it('passes on an Err from a function whose result is inferred as a Result', () => {
     const text = [
-      'fn parse(text: string) -> Result<int>: Result.Ok{1}',
-      'fn twice(text: string):',
+      'fn parse(text: String) -> Result<Int>: Result.Ok{1}',
+      'fn twice(text: String):',
       '  const n = parse(text)?',
       '  Result.Ok{n * 2}',
-      'async fn main() -> Future<Result<int>>:',
+      'async fn main() -> Future<Result<Int>>:',
       '  const n = (await later())?',
       '  Ok{(n)}',
-      'async fn later() -> Future<Result<int>>: parse("1")',
+      'async fn later() -> Future<Result<Int>>: parse("1")',
     ].join('\n');
     expect(reported(text)).toEqual(reportedNothing);
   });
 
   it('is refused outside any function', () => {
-    const text = 'fn parse() -> Result<int>: Result.Ok{1}\nfn f(n: int = parse()?) -> int: n\n';
+    const text = 'fn parse() -> Result<Int>: Result.Ok{1}\nfn f(n: Int = parse()?) -> Int: n\n';
     expect(reported(text)).toEqual(reportedOnce(reports.propagateOutsideFunction.code, 'parse()?'));
   });
 });
 
 describe('a Result that must be used', () => {
   const declarations = [
-    'struct Form { name: string }',
-    'fn validate(self: Form) -> Result<int>: Result.Ok{1}',
-    'fn twice(r: Result<int>) -> (Result<int>, int): (r, 2)',
+    'struct Form { name: String }',
+    'fn validate(self: Form) -> Result<Int>: Result.Ok{1}',
+    'fn twice(r: Result<Int>) -> (Result<Int>, Int): (r, 2)',
     'fn f(form: Form?):',
   ];
 
@@ -165,42 +165,42 @@ describe('a Result that must be used', () => {
 
 describe('optional operators', () => {
   const chained = [
-    'struct Inner { zip: int?; code: int }',
+    'struct Inner { zip: Int?; code: Int }',
     'struct Outer { inner: Inner? }',
     'struct Plain { inner: Inner }',
     'fn f(outer: Outer?, plain: Plain?):',
   ];
 
   it.each([
-    ["'?.' wraps a plain value once", 'const v: int? = outer?.inner?.code'],
-    ["'?.' keeps an optional value as it is", 'const v: int? = outer?.inner?.zip'],
-    ['a chain carries on through a plain link', 'const v: int? = plain?.inner.code'],
-    ["'??' with a plain right side gives the plain type", 'const v: int = outer?.inner?.code ?? 0'],
+    ["'?.' wraps a plain value once", 'const v: Int? = outer?.inner?.code'],
+    ["'?.' keeps an optional value as it is", 'const v: Int? = outer?.inner?.zip'],
+    ['a chain carries on through a plain link', 'const v: Int? = plain?.inner.code'],
+    ["'??' with a plain right side gives the plain type", 'const v: Int = outer?.inner?.code ?? 0'],
     [
       "'??' with an optional right side gives an optional",
-      'const v: int? = outer?.inner?.zip ?? none',
+      'const v: Int? = outer?.inner?.zip ?? none',
     ],
   ])('%s', (_case, line) => {
     expect(reported([...chained, `  ${line}`, '  v'].join('\n'))).toEqual(reportedNothing);
   });
 
   it("refuses '??' giving a plain value where its right side is optional", () => {
-    const lines = ['  const fallback: int? = 1', '  const v: int = outer?.inner?.zip ?? fallback'];
+    const lines = ['  const fallback: Int? = 1', '  const v: Int = outer?.inner?.zip ?? fallback'];
     expect(reported([...chained, ...lines, '  v'].join('\n')).codes).toEqual([
       reports.typeMismatch.code,
     ]);
   });
 
   it.each([
-    ["'!' gives the value inside", 'const v: int = outer!.inner!.code', 'outer!.inner!'],
+    ["'!' gives the value inside", 'const v: Int = outer!.inner!.code', 'outer!.inner!'],
     [
       "'!' unwraps the whole chain before it",
-      'const v: int = (outer?.inner?.zip)!',
+      'const v: Int = (outer?.inner?.zip)!',
       '(outer?.inner?.zip)!',
     ],
     [
       "'!' after a chain without parentheses",
-      'const v: int = outer?.inner?.code!',
+      'const v: Int = outer?.inner?.code!',
       'outer?.inner?.code!',
     ],
   ])('warns at every %s', (_case, line, spanText) => {
@@ -230,11 +230,11 @@ describe('optional operators', () => {
 
 describe('comparison and membership resolution', () => {
   const ambiguous = [
-    'struct P { x: int }',
-    'fn compare<T>(a: P, b: T) -> int: 0',
-    'fn compare<T>(a: T, b: P) -> int: 0',
+    'struct P { x: Int }',
+    'fn compare<T>(a: P, b: T) -> Int: 0',
+    'fn compare<T>(a: T, b: P) -> Int: 0',
     'struct Holder { item: P }',
-    'fn f(p: P, h: Holder) -> bool:',
+    'fn f(p: P, h: Holder) -> Bool:',
   ];
 
   it.each([
@@ -248,11 +248,11 @@ describe('comparison and membership resolution', () => {
   });
 
   const unmetConstraint = [
-    'struct P { x: int }',
+    'struct P { x: Int }',
     'struct Wrap<T> { inner: T }',
-    'fn compare<T is Comparable>(a: Wrap<T>, b: Wrap<T>) -> int: compare(a.inner, b.inner)',
+    'fn compare<T is Comparable>(a: Wrap<T>, b: Wrap<T>) -> Int: compare(a.inner, b.inner)',
     'struct Holder { item: Wrap<P> }',
-    'fn f(w: Wrap<P>, h: Holder) -> bool:',
+    'fn f(w: Wrap<P>, h: Holder) -> Bool:',
   ];
 
   it.each([
@@ -269,7 +269,7 @@ describe('comparison and membership resolution', () => {
 describe("an Error's trace", () => {
   it('may be left out of an Error only', () => {
     const text = [
-      'struct Note { message: string; trace: string }',
+      'struct Note { message: String; trace: String }',
       'fn f():',
       '  const e = Error{message: "m", code: "c"}',
       '  const n = Note{message: "m"}',
@@ -281,8 +281,8 @@ describe("an Error's trace", () => {
 describe('a pattern naming nothing', () => {
   const named = [
     'trait Named:',
-    '  fn name(self: Self) -> string',
-    'fn name(self: Point) -> string: "p"',
+    '  fn name(self: Self) -> String',
+    'fn name(self: Point) -> String: "p"',
   ];
 
   it.each([
@@ -292,7 +292,7 @@ describe('a pattern naming nothing', () => {
     ['a downcast to a name cut short', 'any Named', 'case Point.: 1\ncase _: 0', ':'],
   ])('reports %s at the missing name only', (_case, type, body, spanText) => {
     const cases = body.startsWith('case') ? `match value:\n${indent(body)}` : body;
-    const text = [shapes, ...named, `fn f(value: ${type}) -> int:`, indent(cases), ''].join('\n');
+    const text = [shapes, ...named, `fn f(value: ${type}) -> Int:`, indent(cases), ''].join('\n');
     expect(reported(text)).toEqual(reportedOnce(2001, spanText));
   });
 
@@ -301,7 +301,7 @@ describe('a pattern naming nothing', () => {
     ['a destructuring', 'const Pont{x} = value\nx'],
   ])('reports %s whose name is undeclared at the name only', (_case, body) => {
     const cases = body.startsWith('case') ? `match value:\n${indent(body)}` : body;
-    const text = [shapes, 'fn f(value: Point) -> int:', indent(cases), ''].join('\n');
+    const text = [shapes, 'fn f(value: Point) -> Int:', indent(cases), ''].join('\n');
     expect(reported(text)).toEqual(reportedOnce(4000, 'Pont'));
   });
 });

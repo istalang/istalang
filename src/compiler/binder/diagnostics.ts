@@ -14,6 +14,11 @@ export const binderDiagnostics = defineDiagnostics('binder', {
     code: 4000,
     message: (name: string) => `'${name}' is not declared.`,
   },
+  lowercasePrimitive: {
+    code: 4020,
+    message: (name: string, primitive: string) =>
+      `'${name}' is not declared; type names are PascalCase, so did you mean '${primitive}'?`,
+  },
   assignmentToUndeclared: {
     code: 4001,
     message: (name: string) => `'${name}' is not declared; declare it with 'let' first.`,
@@ -63,6 +68,11 @@ export const binderDiagnostics = defineDiagnostics('binder', {
   typeNameConvention: {
     code: 4012,
     message: (name: string) => `Type names are PascalCase: '${name}'.`,
+  },
+  builtInTypeName: {
+    code: 4019,
+    message: (name: string) =>
+      `'${name}' names a built-in type, so nothing else can be declared with it.`,
   },
   valueNameConvention: {
     code: 4013,

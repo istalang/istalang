@@ -31,9 +31,9 @@ describe('prelude natives', () => {
   it('keep integer arithmetic exact at any size', () => {
     fc.assert(
       fc.property(fc.bigInt(), fc.bigInt(), (left, right) => {
-        expect(call(keys.of('add', 'int', 'int'), left, right)).toBe(left + right);
-        expect(call(keys.of('subtract', 'int', 'int'), left, right)).toBe(left - right);
-        expect(call(keys.of('multiply', 'int', 'int'), left, right)).toBe(left * right);
+        expect(call(keys.of('add', 'Int', 'Int'), left, right)).toBe(left + right);
+        expect(call(keys.of('subtract', 'Int', 'Int'), left, right)).toBe(left - right);
+        expect(call(keys.of('multiply', 'Int', 'Int'), left, right)).toBe(left * right);
       }),
     );
   });
@@ -41,8 +41,8 @@ describe('prelude natives', () => {
   it('floor and take the divisor sign, so a == (a // b) * b + a % b', () => {
     fc.assert(
       fc.property(fc.bigInt(), nonZero, (dividend, divisor) => {
-        const quotient = call(keys.of('floorDivide', 'int', 'int'), dividend, divisor) as bigint;
-        const rest = call(keys.of('remainder', 'int', 'int'), dividend, divisor) as bigint;
+        const quotient = call(keys.of('floorDivide', 'Int', 'Int'), dividend, divisor) as bigint;
+        const rest = call(keys.of('remainder', 'Int', 'Int'), dividend, divisor) as bigint;
         expect(quotient * divisor + rest).toBe(dividend);
         expect(rest === 0n || rest < 0n === divisor < 0n).toBe(true);
         expect(rest < 0n ? -rest : rest).toBeLessThan(divisor < 0n ? -divisor : divisor);
@@ -54,7 +54,7 @@ describe('prelude natives', () => {
     fc.assert(
       fc.property(fc.bigInt(), (dividend) => {
         for (const name of ['floorDivide', 'remainder']) {
-          expect(() => call(keys.of(name, 'int', 'int'), dividend, 0n)).toThrow(Panic);
+          expect(() => call(keys.of(name, 'Int', 'Int'), dividend, 0n)).toThrow(Panic);
         }
       }),
     );
@@ -64,10 +64,10 @@ describe('prelude natives', () => {
     fc.assert(
       fc.property(fc.bigInt({ min: -(2n ** 50n), max: 2n ** 50n }), finite, (whole, fraction) => {
         const cases = [
-          [keys.of('divide', 'int', 'int'), whole, 0n, Number(whole) / 0],
-          [keys.of('divide', 'int', 'float'), whole, -0, Number(whole) / -0],
-          [keys.of('divide', 'float', 'int'), fraction, 0n, fraction / 0],
-          [keys.of('divide', 'float', 'float'), fraction, 0, fraction / 0],
+          [keys.of('divide', 'Int', 'Int'), whole, 0n, Number(whole) / 0],
+          [keys.of('divide', 'Int', 'Float'), whole, -0, Number(whole) / -0],
+          [keys.of('divide', 'Float', 'Int'), fraction, 0n, fraction / 0],
+          [keys.of('divide', 'Float', 'Float'), fraction, 0, fraction / 0],
         ] as const;
         for (const [key, dividend, zero, quotient] of cases) {
           expect(call(key, dividend, zero)).toBe(quotient);
@@ -79,15 +79,15 @@ describe('prelude natives', () => {
   it('mix ints into floats, and always divide as floats', () => {
     fc.assert(
       fc.property(fc.bigInt({ min: -(2n ** 50n), max: 2n ** 50n }), finite, (whole, fraction) => {
-        expect(call(keys.of('add', 'int', 'float'), whole, fraction)).toBe(
+        expect(call(keys.of('add', 'Int', 'Float'), whole, fraction)).toBe(
           Number(whole) + fraction,
         );
-        expect(call(keys.of('multiply', 'float', 'int'), fraction, whole)).toBe(
+        expect(call(keys.of('multiply', 'Float', 'Int'), fraction, whole)).toBe(
           fraction * Number(whole),
         );
       }),
     );
-    expect(call(keys.of('divide', 'int', 'int'), 7n, 2n)).toBe(3.5);
+    expect(call(keys.of('divide', 'Int', 'Int'), 7n, 2n)).toBe(3.5);
   });
 
   it('compare consistently with the order of the values', () => {
@@ -99,22 +99,22 @@ describe('prelude natives', () => {
     };
     fc.assert(
       fc.property(fc.bigInt(), fc.bigInt(), (left, right) => {
-        consistent(keys.of('compare', 'int', 'int'), left, right, left < right);
+        consistent(keys.of('compare', 'Int', 'Int'), left, right, left < right);
       }),
     );
     fc.assert(
       fc.property(finite, finite, (left, right) => {
-        consistent(keys.of('compare', 'float', 'float'), left, right, left < right);
+        consistent(keys.of('compare', 'Float', 'Float'), left, right, left < right);
       }),
     );
     fc.assert(
       fc.property(fc.string(), fc.string(), (left, right) => {
-        consistent(keys.of('compare', 'string', 'string'), left, right, left < right);
+        consistent(keys.of('compare', 'String', 'String'), left, right, left < right);
       }),
     );
   });
 
   it('panic with the message panic was given', () => {
-    expect(() => call('prelude.panic(string)', 'bug')).toThrow(new Panic('bug'));
+    expect(() => call('prelude.panic(String)', 'bug')).toThrow(new Panic('bug'));
   });
 });

@@ -3,34 +3,34 @@
 # `get`, `&self` methods, assignment through an index, iteration in the order keys were first
 # set, and `==` that ignores that order.
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let m = ["a": 1, "b": 2]
   const size = m.size()
   m["c"] = 3
   m["c"] = 30
   const more = [...m, "d": 7, "d": 7]
-  const seven: int? = more.get("d")
+  const seven: Int? = more.get("d")
   const removed = m.delete("d")
   let text = ""
   for key, value in m:
     text = text + key + "=" + value + ";"
-  let empty: Map<string, int> = [:]
+  let empty: Map<String, Int> = [:]
   empty["x"] = 1
   const pairs = [("b", 2), ("a", 1)]
   const parts = [
-    string(size),
-    string(more["d"]),
-    string(m.has("a")),
-    string(removed),
-    string(m.size()),
+    String(size),
+    String(more["d"]),
+    String(m.has("a")),
+    String(removed),
+    String(m.size()),
     m.keys().join(","),
-    [for v in m.values(): string(v)].join(","),
+    [for v in m.values(): String(v)].join(","),
     text,
-    string(seven == 7),
-    string(empty.size() + 1),
-    string(["a": 1, "b": 2] == ["b": 2, "a": 1]),
-    string([...pairs, "z": 0].size()),
-    string(["a": 1] == ["a": 2]),
-    string(m.get("z") == none),
+    String(seven == 7),
+    String(empty.size() + 1),
+    String(["a": 1, "b": 2] == ["b": 2, "a": 1]),
+    String([...pairs, "z": 0].size()),
+    String(["a": 1] == ["a": 2]),
+    String(m.get("z") == none),
   ]
   parts.join(" ")

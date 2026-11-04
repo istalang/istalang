@@ -30,16 +30,16 @@ function pathsAt(
 
 describe('an unsaved buffer', () => {
   it("is no path a project file's import may name", () => {
-    const root = tempProject({ 'lib.ista': 'fn one() -> int: 1\n', 'main.ista': '' });
+    const root = tempProject({ 'lib.ista': 'fn one() -> Int: 1\n', 'main.ista': '' });
     const main = moduleIdOfFile(join(root, 'main.ista'));
-    const open = new Map([[buffer, 'fn two() -> int: 2\n']]);
+    const open = new Map([[buffer, 'fn two() -> Int: 2\n']]);
     const offered = pathsAt(root, main, "import x from '‸'\n", open);
     expect(offered).toContain('lib');
     expect(offered).not.toContain('Untitled-1');
   });
 
   it('names the project root, never a relative folder, in its own imports', () => {
-    const root = tempProject({ 'lib.ista': 'fn one() -> int: 1\n' });
+    const root = tempProject({ 'lib.ista': 'fn one() -> Int: 1\n' });
     expect(pathsAt(root, buffer, "import x from '‸'\n", new Map())).toContain('lib');
     expect(pathsAt(root, buffer, "import x from './‸'\n", new Map())).toEqual([]);
   });

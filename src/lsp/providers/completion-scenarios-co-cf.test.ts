@@ -68,7 +68,7 @@ const scenarios: readonly Scenario[] = [
     place: 'type',
     title: 'Lambda annotation',
     src: ['  const f = fn(q: ‸'],
-    expect: { has: ['int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
+    expect: { has: ['Int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
   },
   {
     id: 'CO-07',

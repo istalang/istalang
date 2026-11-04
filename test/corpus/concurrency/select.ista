@@ -6,25 +6,25 @@
 
 import * as time from 'time'
 
-async fn priority() -> Future<string>:
-  const a = Slot.create<int>()
-  const b = Slot.create<int>()
+async fn priority() -> Future<String>:
+  const a = Slot.create<Int>()
+  const b = Slot.create<Int>()
   await a.put(1)
   await b.put(2)
   await select:
     case b.read() as fromB:
-      "b" + string(fromB)
+      "b" + String(fromB)
     case a.read() as fromA:
-      "a" + string(fromA)
+      "a" + String(fromA)
 
-fn tryTake(s: Slot<int>) -> string:
+fn tryTake(s: Slot<Int>) -> String:
   select:
     case s.read() as value:
-      string(value)
+      String(value)
     else:
       "none"
 
-async fn passesBefore(deadline: Future<unit>, stop: Slot<unit>) -> Future<int>:
+async fn passesBefore(deadline: Future<Unit>, stop: Slot<Unit>) -> Future<Int>:
   let passes = 0
   while true:
     const done = await select:
@@ -39,25 +39,25 @@ async fn passesBefore(deadline: Future<unit>, stop: Slot<unit>) -> Future<int>:
       await stop.put(())
   passes
 
-async fn leaving(s: Slot<string>) -> Future<string>:
-  const got: string? = await select:
+async fn leaving(s: Slot<String>) -> Future<String>:
+  const got: String? = await select:
     case s.take() as message:
       message
     case time.delay(1ms):
       return "late"
   got ?? "none"
 
-async fn main() -> Future<string>:
-  const ready = Slot.create<int>()
-  const empty = Slot.create<int>()
+async fn main() -> Future<String>:
+  const ready = Slot.create<Int>()
+  const empty = Slot.create<Int>()
   await ready.put(1)
   const quick = tryTake(empty) + " " + tryTake(ready)
-  const stop = Slot.create<unit>()
+  const stop = Slot.create<Unit>()
   const passes = await passesBefore(stop.read(), stop)
-  const late = await leaving(Slot.create<string>())
-  const nothing: int? = select:
+  const late = await leaving(Slot.create<String>())
+  const nothing: Int? = select:
     case empty.read() as value:
       value
     else:
       none
-  await priority() + " | " + quick +  " | passes " + string(passes) + " | " + late + " | " + string(nothing ?? 0)
+  await priority() + " | " + quick +  " | passes " + String(passes) + " | " + late + " | " + String(nothing ?? 0)

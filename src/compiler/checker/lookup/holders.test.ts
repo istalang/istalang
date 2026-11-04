@@ -7,13 +7,13 @@ import { checkedMain } from './lookup.test-kit.ts';
 
 const text = `const zero = 0
 const two = zero + 2
-struct Tag { text: string }
-struct Point { x: int; y: int = zero }
+struct Tag { text: String }
+struct Point { x: Int; y: Int = zero }
 enum Shape:
-  Dot { size: int = zero }
+  Dot { size: Int = zero }
 const label = "x"
 @Tag{label}
-fn f(a: int, b: int = zero) -> int: a + b
+fn f(a: Int, b: Int = zero) -> Int: a + b
 `;
 
 describe('the body holding a node', () => {
@@ -62,16 +62,16 @@ describe('the body holding a node', () => {
 describe('an annotation nothing takes', () => {
   it('denotes the field a name in it gives, asked before anything else', () => {
     const { checker, module, named } = checkedMain(
-      'struct Tag { text: string }\nfn f(): 1\n@Tag{text: "x"}\n',
+      'struct Tag { text: String }\nfn f(): 1\n@Tag{text: "x"}\n',
     );
     const [denoted] = checker.lookup.denotationsOf(module, named('text', 1));
     expect(denoted?.declared.kind).toBe('field');
-    expect(denoted?.type && typeText(denoted.type)).toBe('string');
+    expect(denoted?.type && typeText(denoted.type)).toBe('String');
   });
 
   it('denotes its names among the cases of a match', () => {
     const { checker, module, named } = checkedMain(
-      'struct Tag { text: string }\nfn f(n: int) -> int:\n  match n:\n    @Tag{"a"}\n    case 1: 2\n    case _: 3\n',
+      'struct Tag { text: String }\nfn f(n: Int) -> Int:\n  match n:\n    @Tag{"a"}\n    case 1: 2\n    case _: 3\n',
     );
     const [denoted] = checker.lookup.denotationsOf(module, named('Tag', 1));
     expect(denoted?.declared.kind).toBe('type');

@@ -19,6 +19,7 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { primitiveOnceSpelled } from '../../../language/primitives.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
@@ -229,7 +230,12 @@ function explainNone(
   if (candidates.length === 1 && reasons.length === 1 && reason !== undefined) {
     explain(context, request, reason);
   } else if (candidates.length === 0 && request.form === 'call') {
-    context.report(checkerDiagnostics.noFunctionNamed(site.span, name));
+    const primitive = primitiveOnceSpelled(name);
+    context.report(
+      primitive === undefined
+        ? checkerDiagnostics.noFunctionNamed(site.span, name)
+        : checkerDiagnostics.lowercaseConversion(site.span, name, primitive),
+    );
   } else if (request.form === 'operator') {
     context.report(
       checkerDiagnostics.operatorTypes(

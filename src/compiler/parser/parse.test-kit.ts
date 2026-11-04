@@ -129,7 +129,7 @@ export function named(name: string): string {
   return `(NamedType [${name}] [])`;
 }
 
-export const int = named('int');
+export const int = named('Int');
 
 /** What a parse reported: each diagnostic's code and the text its span covers. */
 export function reported(category: Category, text: string): Reported {

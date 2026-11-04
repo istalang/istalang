@@ -7,8 +7,8 @@ of their bodies, or from the line below a declaration without one (§2).
 
 struct Point:
   """A point on the plane."""
-  x: int
-  y: int
+  x: Int
+  y: Int
 
 enum Shape:
   """
@@ -19,13 +19,13 @@ enum Shape:
 
 trait Named:
   """Has a name."""
-  fn name(self: Self) -> string
+  fn name(self: Self) -> String
     """The name, as people read it."""
 
-struct Empty { x: int }
+struct Empty { x: Int }
   """A struct in braces, documented below."""
 
-fn name(self: Point) -> string:
+fn name(self: Point) -> String:
   """Points are named by their coordinates."""
   `${self.x},${self.y}`
 

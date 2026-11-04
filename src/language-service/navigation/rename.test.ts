@@ -5,7 +5,7 @@ import { spanOfUse } from './declarations.ts';
 import { edited, navigable } from './navigation.test-kit.ts';
 import { renameEdits, renamingAt } from './rename.ts';
 
-const pair = 'struct Pair:\n  first: int\n  second: int\n';
+const pair = 'struct Pair:\n  first: Int\n  second: Int\n';
 
 /** The texts renaming `use` to `newName` makes, or why it is refused. */
 function renamed(program: Program, use: NamePlace, newName: string) {
@@ -21,47 +21,47 @@ function refusalOf(program: Program, use: NamePlace): string | undefined {
 describe('renaming', () => {
   it('spells every name of a declaration anew, in every module', () => {
     const { program, named } = navigable({
-      main: "import tally from 'lib'\nfn main() -> int: tally(1)\n",
-      lib: 'fn tally(x: int) -> int: x\n',
+      main: "import tally from 'lib'\nfn main() -> Int: tally(1)\n",
+      lib: 'fn tally(x: Int) -> Int: x\n',
     });
     expect(renamed(program, named('main', 'tally', 1), 'count')).toEqual({
-      main: "import count from 'lib'\nfn main() -> int: count(1)\n",
-      lib: 'fn count(x: int) -> int: x\n',
+      main: "import count from 'lib'\nfn main() -> Int: count(1)\n",
+      lib: 'fn count(x: Int) -> Int: x\n',
     });
   });
 
   it("spells a literal's shorthand out, for its field or its variable", () => {
     const { program, named } = navigable({
-      main: `${pair}fn f(first: int) -> Pair: Pair{first, second: 2}\n`,
+      main: `${pair}fn f(first: Int) -> Pair: Pair{first, second: 2}\n`,
     });
     expect(renamed(program, named('main', 'first'), 'head')).toEqual({
-      main: 'struct Pair:\n  head: int\n  second: int\nfn f(first: int) -> Pair: Pair{head: first, second: 2}\n',
+      main: 'struct Pair:\n  head: Int\n  second: Int\nfn f(first: Int) -> Pair: Pair{head: first, second: 2}\n',
     });
     expect(renamed(program, named('main', 'first', 2), 'head')).toEqual({
-      main: `${pair}fn f(head: int) -> Pair: Pair{first: head, second: 2}\n`,
+      main: `${pair}fn f(head: Int) -> Pair: Pair{first: head, second: 2}\n`,
     });
   });
 
   it("spells a pattern's shorthand out, for its field or its variable", () => {
     const { program, named } = navigable({
-      main: `${pair}fn f(p: Pair) -> int:\n  match p:\n    case Pair{first}: first\n`,
+      main: `${pair}fn f(p: Pair) -> Int:\n  match p:\n    case Pair{first}: first\n`,
     });
     expect(renamed(program, named('main', 'first'), 'head')).toEqual({
-      main: 'struct Pair:\n  head: int\n  second: int\nfn f(p: Pair) -> int:\n  match p:\n    case Pair{head as first}: first\n',
+      main: 'struct Pair:\n  head: Int\n  second: Int\nfn f(p: Pair) -> Int:\n  match p:\n    case Pair{head as first}: first\n',
     });
     expect(renamed(program, named('main', 'first', 1), 'head')).toEqual({
-      main: `${pair}fn f(p: Pair) -> int:\n  match p:\n    case Pair{first as head}: head\n`,
+      main: `${pair}fn f(p: Pair) -> Int:\n  match p:\n    case Pair{first as head}: head\n`,
     });
   });
 
   it('refuses what std declares', () => {
-    const { program, named } = navigable({ main: 'fn f() -> int?: Some{value: 1}\n' });
+    const { program, named } = navigable({ main: 'fn f() -> Int?: Some{value: 1}\n' });
     expect(refusalOf(program, named('main', 'Some'))).toContain('std:prelude');
   });
 
   it('refuses a name a type may meet a trait by, or the language calls', () => {
     const { program, named } = navigable({
-      main: 'trait Shows:\n  label: string\n  fn show(self: Self) -> string\nstruct Point:\n  label: string\nfn show(self: Point) -> string: self.label\nfn main(): 0\n',
+      main: 'trait Shows:\n  label: String\n  fn show(self: Self) -> String\nstruct Point:\n  label: String\nfn show(self: Point) -> String: self.label\nfn main(): 0\n',
     });
     for (const use of [
       named('main', 'show'),
@@ -75,7 +75,7 @@ describe('renaming', () => {
 
   it("refuses renaming a method's receiver, or to a name the language reads", () => {
     const { program, named } = navigable({
-      main: 'struct Box:\n  value: int\nfn get(self: Box) -> int: self.value\nfn put(box: Box) -> int: box.value\n',
+      main: 'struct Box:\n  value: Int\nfn get(self: Box) -> Int: self.value\nfn put(box: Box) -> Int: box.value\n',
     });
     expect(refusalOf(program, named('main', 'self'))).toContain('method');
     for (const newName of ['toString', 'main', 'iterate']) {
@@ -83,21 +83,32 @@ describe('renaming', () => {
     }
     expect(renamed(program, named('main', 'box'), 'self')).toMatchObject({ kind: 'refused' });
     expect(renamed(program, named('main', 'box'), 'toString')).toEqual({
-      main: 'struct Box:\n  value: int\nfn get(self: Box) -> int: self.value\nfn put(toString: Box) -> int: toString.value\n',
+      main: 'struct Box:\n  value: Int\nfn get(self: Box) -> Int: self.value\nfn put(toString: Box) -> Int: toString.value\n',
     });
   });
 
   it('refuses a new name that is none, or changes privacy or case', () => {
-    const { program, named } = navigable({ main: 'fn tally(x: int) -> int: x\n' });
+    const { program, named } = navigable({ main: 'fn tally(x: Int) -> Int: x\n' });
     const tally = named('main', 'tally');
     for (const newName of ['', 'a b', 'if', '_', '1x', '_tally', 'Tally', 'tal-ly']) {
       expect(renamed(program, tally, newName)).toMatchObject({ kind: 'refused' });
     }
-    expect(renamed(program, tally, 'count')).toEqual({ main: 'fn count(x: int) -> int: x\n' });
+    expect(renamed(program, tally, 'count')).toEqual({ main: 'fn count(x: Int) -> Int: x\n' });
+  });
+
+  it("refuses a built-in type's name for a type or a variant", () => {
+    const { program, named } = navigable({ main: 'struct Foo {}\nenum Shade { Dark; Light }\n' });
+    for (const newName of ['Int', 'Never', 'Self']) {
+      expect(renamed(program, named('main', 'Foo'), newName)).toMatchObject({ kind: 'refused' });
+    }
+    expect(renamed(program, named('main', 'Dark'), 'Bool')).toMatchObject({ kind: 'refused' });
+    expect(renamed(program, named('main', 'Foo'), 'Bar')).toEqual({
+      main: 'struct Bar {}\nenum Shade { Dark; Light }\n',
+    });
   });
 
   it('has nothing to rename where no name stands', () => {
-    const { program, named } = navigable({ main: 'fn tally(x: int) -> int: x\n' });
+    const { program, named } = navigable({ main: 'fn tally(x: Int) -> Int: x\n' });
     expect(renamingAt(program, named('main', 'tally').module, 0)).toBeUndefined();
   });
 });
@@ -105,8 +116,8 @@ describe('renaming', () => {
 describe('renaming what is named together with another declaration', () => {
   it('refuses one overload of a name imported or called with another', () => {
     const { program, named } = navigable({
-      main: "import scale from 'lib'\nfn main() -> int: scale(1) + int(scale(2.0))\n",
-      lib: 'fn scale(x: int) -> int: x\nfn scale(x: float) -> float: x\n',
+      main: "import scale from 'lib'\nfn main() -> Int: scale(1) + Int(scale(2.0))\n",
+      lib: 'fn scale(x: Int) -> Int: x\nfn scale(x: Float) -> Float: x\n',
     });
     expect(renamed(program, named('lib', 'scale'), 'scaleInt')).toMatchObject({ kind: 'refused' });
     expect(renamed(program, named('main', 'scale', 1), 'scaleInt')).toMatchObject({
@@ -116,7 +127,7 @@ describe('renaming what is named together with another declaration', () => {
 
   it("judges an async function's own call as the function it names", () => {
     const { program, named } = navigable({
-      main: 'trait Runner:\n  async fn run(self: Self)\nstruct Worker:\n  n: int\nasync fn run(self: Worker):\n  await run.disposing()\nasync fn work():\n  await work.disposing()\nfn main(): 0\n',
+      main: 'trait Runner:\n  async fn run(self: Self)\nstruct Worker:\n  n: Int\nasync fn run(self: Worker):\n  await run.disposing()\nasync fn work():\n  await work.disposing()\nfn main(): 0\n',
     });
     expect(refusalOf(program, named('main', 'run', 2))).toContain('trait');
     expect(renamed(program, named('main', 'work', 1), 'toJson')).toMatchObject({
@@ -126,10 +137,10 @@ describe('renaming what is named together with another declaration', () => {
 
   it('renames the function a shorthand reads, spelling the shorthand out', () => {
     const { program, named } = navigable({
-      main: 'struct Handler:\n  run: fn(int) -> int\nfn run(x: int) -> int: x\nfn handler() -> Handler: Handler{run}\n',
+      main: 'struct Handler:\n  run: fn(Int) -> Int\nfn run(x: Int) -> Int: x\nfn handler() -> Handler: Handler{run}\n',
     });
     expect(renamed(program, named('main', 'run', 2), 'step')).toEqual({
-      main: 'struct Handler:\n  run: fn(int) -> int\nfn step(x: int) -> int: x\nfn handler() -> Handler: Handler{run: step}\n',
+      main: 'struct Handler:\n  run: fn(Int) -> Int\nfn step(x: Int) -> Int: x\nfn handler() -> Handler: Handler{run: step}\n',
     });
   });
 });

@@ -6,31 +6,31 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-struct Job { id: int; wait: time.Duration }
+struct Job { id: Int; wait: time.Duration }
 
-fn note(log: Shared<Array<string>>, text: string):
+fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
-async fn runJob(job: Job, results: Inbox<string>, log: Shared<Array<string>>):
-  defer fn(): note(log, "end " + string(job.id))
+async fn runJob(job: Job, results: Inbox<String>, log: Shared<Array<String>>):
+  defer fn(): note(log, "end " + String(job.id))
   await time.delay(job.wait)
-  results.send("done " + string(job.id))
+  results.send("done " + String(job.id))
 
 async fn processFirst(
   jobs: Array<Job>,
-  needed: int,
-  log: Shared<Array<string>>,
-) -> Future<Array<string>>:
-  const results = Inbox.create<string>()
+  needed: Int,
+  log: Shared<Array<String>>,
+) -> Future<Array<String>>:
+  const results = Inbox.create<String>()
   for job in jobs:
     hold _ = runJob(job, results, log)
-  let outcomes: Array<string> = []
+  let outcomes: Array<String> = []
   while outcomes.length() < needed:
     outcomes.push(await results.receive())
   outcomes
 
-async fn main() -> Future<string>:
-  const empty: Array<string> = []
+async fn main() -> Future<String>:
+  const empty: Array<String> = []
   const log = new Shared{value: empty}
   const jobs = [Job{id: 1, wait: 1ms}, Job{id: 2, wait: 1h}, Job{id: 3, wait: 2ms}]
   const outcomes = await processFirst(jobs, 2, log)

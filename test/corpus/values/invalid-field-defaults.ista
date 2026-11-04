@@ -16,18 +16,18 @@
 # called, which is reported once, for itself.
 
 struct Typed:
-  n: int = "x"
+  n: Int = "x"
 
 struct Ordered:
-  a: int = b
-  b: int = 1
+  a: Int = b
+  b: Int = 1
 
 struct Looping:
   x = Looping{}.x
 
 struct Doubled:
-  base: int = 2
-  twice: int = base * 2
+  base: Int = 2
+  twice: Int = base * 2
 
 const doubled = Doubled{}
 
@@ -35,7 +35,7 @@ struct Nested:
   inner: Nested? = Nested{}
 
 struct Ping:
-  n: int = 1
+  n: Int = 1
   pong: Pong? = Pong{}
 
 struct Pong:
@@ -45,26 +45,26 @@ const nested = Nested{}
 const ping = Ping{}
 
 struct Returning:
-  x: int = { return "r"; 4 }
+  x: Int = { return "r"; 4 }
 
-fn early(n: int = { return 1; 2 }) -> int:
+fn early(n: Int = { return 1; 2 }) -> Int:
   n
 
 struct Plain:
-  x: int
+  x: Int
 
 struct Defaulting<T is Default>:
   items: T = T.default()
-  size: int
+  size: Int
 
 struct Referencing:
-  x: &int = 1
-  y: int = x
+  x: &Int = 1
+  y: Int = x
 
-fn plainBox() -> int:
+fn plainBox() -> Int:
   Defaulting<Plain>{size: 1}.size
 
-fn referencing() -> int:
+fn referencing() -> Int:
   Referencing{}.y
 
 async fn main(): 0

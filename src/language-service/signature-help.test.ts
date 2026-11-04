@@ -14,9 +14,9 @@ function help(...lines: readonly string[]) {
 
 describe('signature help', () => {
   it('marks the parameter the argument under the cursor gives', () => {
-    expect(help('fn add(a: int, b: int) -> int: a + b', 'fn f() -> int: add(1, ‸2)')).toEqual({
-      label: 'fn add(a: int, b: int) -> int',
-      parameter: 'b: int',
+    expect(help('fn add(a: Int, b: Int) -> Int: a + b', 'fn f() -> Int: add(1, ‸2)')).toEqual({
+      label: 'fn add(a: Int, b: Int) -> Int',
+      parameter: 'b: Int',
     });
   });
 
@@ -24,69 +24,69 @@ describe('signature help', () => {
     expect(
       help(
         'struct P:',
-        '  a: int',
-        'fn plus(self: P, n: int) -> int: self.a + n',
-        'fn f(p: P) -> int: p.plus(‸1)',
+        '  a: Int',
+        'fn plus(self: P, n: Int) -> Int: self.a + n',
+        'fn f(p: P) -> Int: p.plus(‸1)',
       ),
-    ).toEqual({ label: 'fn plus(self: P, n: int) -> int', parameter: 'n: int' });
+    ).toEqual({ label: 'fn plus(self: P, n: Int) -> Int', parameter: 'n: Int' });
   });
 
   it('marks a named argument by its name, and a rest argument by its rest parameter', () => {
-    const declared = 'fn g(a: int, b: int = 0, ...rest: Array<int>) -> int: a';
-    expect(help(declared, 'fn f() -> int: g(1, b: ‸2)')?.parameter).toBe('b: int = …');
-    expect(help(declared, 'fn f() -> int: g(1, 2, 3, ‸4)')?.parameter).toBe('...rest: Array<int>');
+    const declared = 'fn g(a: Int, b: Int = 0, ...rest: Array<Int>) -> Int: a';
+    expect(help(declared, 'fn f() -> Int: g(1, b: ‸2)')?.parameter).toBe('b: Int = …');
+    expect(help(declared, 'fn f() -> Int: g(1, 2, 3, ‸4)')?.parameter).toBe('...rest: Array<Int>');
   });
 
   it('helps with a call being typed, before it resolves', () => {
-    const add = 'fn add(a: int, b: int, c: int) -> int: a + b + c';
-    expect(help(add, 'fn f() -> int: add(1, ‸')).toEqual({
-      label: 'fn add(a: int, b: int, c: int) -> int',
-      parameter: 'b: int',
+    const add = 'fn add(a: Int, b: Int, c: Int) -> Int: a + b + c';
+    expect(help(add, 'fn f() -> Int: add(1, ‸')).toEqual({
+      label: 'fn add(a: Int, b: Int, c: Int) -> Int',
+      parameter: 'b: Int',
     });
-    expect(help(add, 'fn f() -> int: add(1, ‸, 3)')?.parameter).toBe('b: int');
-    expect(help(add, 'fn f() -> int: add( ‸, 2)')?.parameter).toBe('a: int');
-    expect(help(add, 'fn f() -> int: add(1 ‸, 2, 3)')?.parameter).toBe('a: int');
+    expect(help(add, 'fn f() -> Int: add(1, ‸, 3)')?.parameter).toBe('b: Int');
+    expect(help(add, 'fn f() -> Int: add( ‸, 2)')?.parameter).toBe('a: Int');
+    expect(help(add, 'fn f() -> Int: add(1 ‸, 2, 3)')?.parameter).toBe('a: Int');
   });
 
   it('helps with a call left open after an argument ending in a parenthesis', () => {
-    const declared = ['fn pair(a: int, b: int) -> int: a + b', 'fn one(n: int) -> int: n'];
-    expect(help(...declared, 'fn f() -> int: pair(one(1)‸')).toEqual({
-      label: 'fn pair(a: int, b: int) -> int',
-      parameter: 'a: int',
+    const declared = ['fn pair(a: Int, b: Int) -> Int: a + b', 'fn one(n: Int) -> Int: n'];
+    expect(help(...declared, 'fn f() -> Int: pair(one(1)‸')).toEqual({
+      label: 'fn pair(a: Int, b: Int) -> Int',
+      parameter: 'a: Int',
     });
-    expect(help(...declared, 'fn f() -> int: pair(one(1) ‸')?.parameter).toBe('a: int');
-    expect(help(...declared, 'fn f() -> int: pair((1)‸')?.parameter).toBe('a: int');
+    expect(help(...declared, 'fn f() -> Int: pair(one(1) ‸')?.parameter).toBe('a: Int');
+    expect(help(...declared, 'fn f() -> Int: pair((1)‸')?.parameter).toBe('a: Int');
   });
 
   it('helps with a name being typed after a named argument', () => {
-    const connect = 'fn connect(host: string, port: int) -> int: port';
-    expect(help(connect, 'fn f() -> int: connect(host: "x", po‸')).toEqual({
-      label: 'fn connect(host: string, port: int) -> int',
-      parameter: 'port: int',
+    const connect = 'fn connect(host: String, port: Int) -> Int: port';
+    expect(help(connect, 'fn f() -> Int: connect(host: "x", po‸')).toEqual({
+      label: 'fn connect(host: String, port: Int) -> Int',
+      parameter: 'port: Int',
     });
   });
 
   it("starts a generic call's help at its `(`, not at its type arguments", () => {
-    expect(help('fn id<T>(x: T) -> T: x', 'fn f() -> int: id<int>‸(1)')).toBeUndefined();
+    expect(help('fn id<T>(x: T) -> T: x', 'fn f() -> Int: id<Int>‸(1)')).toBeUndefined();
   });
 
   it("marks no parameter of a function value's type past its last", () => {
-    const { program, module, offset } = programAt('fn f(g: fn(int) -> int) -> int: g(1, ‸2)');
+    const { program, module, offset } = programAt('fn f(g: fn(Int) -> Int) -> Int: g(1, ‸2)');
     const [signature] = signatureHelpAt(program, module, offset)?.signatures ?? [];
-    expect(signature?.label).toBe('fn(int) -> int');
+    expect(signature?.label).toBe('fn(Int) -> Int');
     expect(signature?.activeParameter).toBeUndefined();
   });
 
   it("shows a function value's type", () => {
-    expect(help('fn f(g: fn(int, string) -> int) -> int: g(1, ‸"s")')).toEqual({
-      label: 'fn(int, string) -> int',
-      parameter: 'string',
+    expect(help('fn f(g: fn(Int, String) -> Int) -> Int: g(1, ‸"s")')).toEqual({
+      label: 'fn(Int, String) -> Int',
+      parameter: 'String',
     });
   });
 
   it("offers nothing outside a call's parentheses", () => {
-    const add = 'fn add(a: int, b: int) -> int: a + b';
-    expect(help(add, 'fn f() -> int: add(1, 2)‸')).toBeUndefined();
-    expect(help(add, 'fn f(a: Array<int>) -> int: add(a[0, 2)‸')).toBeUndefined();
+    const add = 'fn add(a: Int, b: Int) -> Int: a + b';
+    expect(help(add, 'fn f() -> Int: add(1, 2)‸')).toBeUndefined();
+    expect(help(add, 'fn f(a: Array<Int>) -> Int: add(a[0, 2)‸')).toBeUndefined();
   });
 });

@@ -40,52 +40,52 @@ const cursor = '‸';
 const fixture = `import * as time from 'time'
 
 struct Pair:
-  first: int
-  second: int
+  first: Int
+  second: Int
 
-struct UserId { id: string }
+struct UserId { id: String }
 
 shared struct Lease:
-  name: string
-  renewals: int = 0
+  name: String
+  renewals: Int = 0
 
 enum Color { Red; Green; Blue }
 
 enum Decision:
-  Approved { by: string }
-  Rejected { by: string; reason: string }
+  Approved { by: String }
+  Rejected { by: String; reason: String }
   Expired
 
 struct Cfg:
   color: Color
-  n: int
-  note: string?
+  n: Int
+  note: String?
 
 struct Box<T>:
   value: T
-  tag: string
+  tag: String
 
 trait Shape:
-  fn area(self: Self) -> float
+  fn area(self: Self) -> Float
 
 trait Zero:
   fn Self.zero() -> Self
 
-fn plus(a: int, b = 1): a + b
-fn paint(c: Color, n: int) -> int: n
+fn plus(a: Int, b = 1): a + b
+fn paint(c: Color, n: Int) -> Int: n
 fn Pair.make() -> Pair: Pair{first: 1, second: 2}
-fn sum(self: Pair) -> int: self.first + self.second
-async fn fetch(id: string) -> Future<string>: id
-async fn work(n: int) -> Future<int>: n
-fn logAll(level: string, ...parts: Array<string>): 1
-fn _hidden() -> int: 1
-type Id = string
-struct Opts { zeta: int; alpha: int = 1 }
+fn sum(self: Pair) -> Int: self.first + self.second
+async fn fetch(id: String) -> Future<String>: id
+async fn work(n: Int) -> Future<Int>: n
+fn logAll(level: String, ...parts: Array<String>): 1
+fn _hidden() -> Int: 1
+type Id = String
+struct Opts { zeta: Int; alpha: Int = 1 }
 
 `;
 
 const header =
-  'fn t(xs: Array<int>, p: Pair, po: Pair?, cfg: Cfg, d: Decision, o: int?, l: Lease, u: UserId, m: Map<string, int>, n: int, col: Color, r: Result<int>) -> int:\n';
+  'fn t(xs: Array<Int>, p: Pair, po: Pair?, cfg: Cfg, d: Decision, o: Int?, l: Lease, u: UserId, m: Map<String, Int>, n: Int, col: Color, r: Result<Int>) -> Int:\n';
 
 type Variant = string | { readonly src: string; readonly trigger?: string };
 

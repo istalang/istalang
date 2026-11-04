@@ -11,12 +11,12 @@ import Time, Duration, Zone, DateTime from 'time'
 # 2026-10-25T12:00:00.000Z
 const noon = Time{value: 1_792_929_600_000}
 
-fn parsed<T is Parsable>(text: string) -> T:
+fn parsed<T is Parsable>(text: String) -> T:
   match T.parse(text):
     case Ok{value}: value
     case Err{error}: panic(error.message)
 
-fn instant(text: string) -> Time: parsed<Time>(text)
+fn instant(text: String) -> Time: parsed<Time>(text)
 
 fn berlin() -> Zone: parsed<Zone>("Europe/Berlin")
 
@@ -36,9 +36,9 @@ fn suite() -> Array<Test>: [
   group("Zone", [
     test("parses IANA names in any case, as one zone with its canonical id", fn(): {
       assertEq(Zone.parse("europe/berlin"), Ok{value: berlin()})
-      assertEq(string(parsed<Zone>("europe/berlin")), "Europe/Berlin")
+      assertEq(String(parsed<Zone>("europe/berlin")), "Europe/Berlin")
       assertEq(Zone.parse("utc"), Ok{value: time.utc()})
-      assertEq(string(time.utc()), "UTC")
+      assertEq(String(time.utc()), "UTC")
     }),
     test("crosses as JSON as its canonical id", fn(): {
       assertEq(json.stringify(berlin()), "\"Europe/Berlin\"")
@@ -53,7 +53,7 @@ fn suite() -> Array<Test>: [
   group("DateTime", [
     test("is written and read as ISO 8601 without a zone", fn(): {
       const dateTime = DateTime{year: 2026, month: 10, day: 25, hour: 13}
-      assertEq(string(dateTime), "2026-10-25T13:00:00")
+      assertEq(String(dateTime), "2026-10-25T13:00:00")
       assertEq(
         DateTime.parse("2026-10-25T13:00:00.5"),
         Ok{value: DateTime{...dateTime, millisecond: 500}},

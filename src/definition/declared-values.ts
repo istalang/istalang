@@ -56,7 +56,7 @@ function inDeclaredOrder(
 ): Value[] {
   return declared.map(({ name }) => {
     const given = Object.hasOwn(fields, name) ? fields[name] : undefined;
-    // A `unit` field holds `null`, so only a field left out is missing.
+    // A `Unit` field holds `null`, so only a field left out is missing.
     return given === undefined ? unreachable(`No field '${name}' is given.`) : given;
   });
 }

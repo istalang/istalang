@@ -30,7 +30,7 @@ import type { NamedType } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../denotation.ts';
-import { entityType } from '../resolution/named.ts';
+import { entityType } from '../types/named-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { type FieldMember, nominalType, type Type } from '../types/type.ts';
 import { ancestorsOf, bodyHolding } from './holders.ts';

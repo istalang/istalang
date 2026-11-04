@@ -14,18 +14,18 @@
  *   behind a shared struct (§3.18) is one too, whose origin is the shared struct's declaration.
  * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
  *   so one mistake is reported once instead of at every use that follows.
- * - `never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
+ * - `Never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
  *   is expected.
  * - A type parameter is keyed by its declaration. A trait's `Self` is the trait's own implicit
  *   parameter, keyed by the trait declaration, so substituting the constrained type for it is the
  *   same operation as for any other parameter.
  * - `any A & B` (§3.10) is a value of any type meeting each of its constraints, a set: their order
  *   and the way they were written don't make two types. A constraint's arguments may name its
- *   trait's `Self` (`any Iterable<int>` is `Iterable<int, Self>`), which stands for each value's own
+ *   trait's `Self` (`any Iterable<Int>` is `Iterable<Int, Self>`), which stands for each value's own
  *   type. The `any` type binds it, so substituting from outside never replaces it, and no type
  *   mentioning it is open.
  * - An alias names no type of its own (§3.17): a type written through one carries it only so its
- *   text can read as written (`Entries<int>`), which messages and hovers show. Exact relations and
+ *   text can read as written (`Entries<Int>`), which messages and hovers show. Exact relations and
  *   type keys look through it. Only substitution keeps it, substituting its arguments too, since
  *   that rewrites the alias's own parameters alike; any other change of a type leaves a type the
  *   alias didn't write, so widening, the one other, drops it.
@@ -171,7 +171,7 @@ export const packRestSlot: RestSlot = { kind: 'pack' };
 
 /**
  * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters
- * may end in a pack (`fn(int, ...A) -> R`, §3.5), which stands for the parameters a tuple
+ * may end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple
  * substituted for it flattens into (`withPack`), so a type with a pack is always generic.
  */
 export interface FunctionType extends WrittenThrough {
@@ -222,12 +222,12 @@ export function primitiveType(name: PrimitiveName): PrimitiveType {
   return { kind: 'primitive', name };
 }
 
-export const intType = primitiveType('int');
-export const floatType = primitiveType('float');
-export const boolType = primitiveType('bool');
-export const stringType = primitiveType('string');
-export const unitType = primitiveType('unit');
-export const neverType = primitiveType('never');
+export const intType = primitiveType('Int');
+export const floatType = primitiveType('Float');
+export const boolType = primitiveType('Bool');
+export const stringType = primitiveType('String');
+export const unitType = primitiveType('Unit');
+export const neverType = primitiveType('Never');
 export const errorType: ErrorType = { kind: 'error' };
 
 /**
@@ -244,17 +244,17 @@ export function isPrimitive(type: Type, name: PrimitiveName): boolean {
   return type.kind === 'primitive' && type.name === name;
 }
 
-/** The tuple of `elements`: `unit` for none, the empty tuple (§3.15). */
+/** The tuple of `elements`: `Unit` for none, the empty tuple (§3.15). */
 export function tupleType(elements: readonly Type[]): Type {
   return elements.length === 0 ? unitType : { kind: 'tuple', elements };
 }
 
-/** The elements of a tuple type, none of `unit`; undefined for any other type. */
+/** The elements of a tuple type, none of `Unit`; undefined for any other type. */
 export function tupleElements(type: Type): readonly Type[] | undefined {
   if (type.kind === 'tuple') {
     return type.elements;
   }
-  return isPrimitive(type, 'unit') ? [] : undefined;
+  return isPrimitive(type, 'Unit') ? [] : undefined;
 }
 
 /** Whether `type` is a pack, a type parameter standing for a tuple of types (§3.5). */
@@ -266,13 +266,13 @@ export function isPack(type: Type): type is TypeParameterType {
   );
 }
 
-/** Whether `type` can stand for a pack: a tuple, `unit` (the empty tuple), or a pack (§3.5). */
+/** Whether `type` can stand for a pack: a tuple, `Unit` (the empty tuple), or a pack (§3.5). */
 export function fillsPack(type: Type): boolean {
   return type.kind === 'error' || isPack(type) || tupleElements(type) !== undefined;
 }
 
 /**
- * `type` ending in `pack`: a pack it keeps, a tuple it flattens into parameters by value, `unit`
+ * `type` ending in `pack`: a pack it keeps, a tuple it flattens into parameters by value, `Unit`
  * into none (§3.5); anything else was refused where it was bound to a pack, so it leaves the error
  * type.
  */
@@ -388,7 +388,7 @@ export function sameShape(
 
 /**
  * `type`'s parameters from `start` on as one pack: its own pack when none are left, otherwise the
- * tuple of those, `unit` of none; undefined when they can't be one, since one takes a `&`.
+ * tuple of those, `Unit` of none; undefined when they can't be one, since one takes a `&`.
  */
 function restOf(type: FunctionType, start: number): Type | undefined {
   const rest = type.parameters.slice(start);
@@ -408,7 +408,7 @@ export function isAssignable(source: Type, target: Type): boolean {
   return (
     source.kind === 'error' ||
     target.kind === 'error' ||
-    isPrimitive(source, 'never') ||
+    isPrimitive(source, 'Never') ||
     sameType(source, target) ||
     (source.kind === 'function' &&
       target.kind === 'function' &&

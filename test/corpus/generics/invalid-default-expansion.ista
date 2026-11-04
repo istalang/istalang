@@ -9,32 +9,32 @@
 # reported too, at the field.
 
 struct Node<T>:
-  depth: int = 0
+  depth: Int = 0
   seed: Array<T> = []
   next: Array<Node<Array<T>>> = grow(depth, seed)
 
 struct W<T>:
   v: T
-  k: int
-  n: int = viaField(v, k)
+  k: Int
+  n: Int = viaField(v, k)
 
-fn grow<T>(depth: int, seed: Array<T>) -> Array<Node<Array<T>>>:
+fn grow<T>(depth: Int, seed: Array<T>) -> Array<Node<Array<T>>>:
   if depth > 2:
     return []
   [Node<Array<T>>{depth: depth + 1, seed: [seed]}]
 
-fn viaField<T>(x: T, k: int) -> int:
+fn viaField<T>(x: T, k: Int) -> Int:
   if k == 0:
     return 0
   W<Array<T>>{v: [x], k: k - 1}.n
 
-fn viaParameter<T>(x: T, k: int) -> int:
+fn viaParameter<T>(x: T, k: Int) -> Int:
   if k == 0:
     return 0
   defaulted(x, k)
 
-fn defaulted<T>(x: T, k: int, n: int = viaParameter([x], k - 1)) -> int:
+fn defaulted<T>(x: T, k: Int, n: Int = viaParameter([x], k - 1)) -> Int:
   n
 
-async fn main() -> Future<int>:
-  string(Node<int>{}.next.length()).length() + viaField(1, 2) + viaParameter(1, 2)
+async fn main() -> Future<Int>:
+  String(Node<Int>{}.next.length()).length() + viaField(1, 2) + viaParameter(1, 2)

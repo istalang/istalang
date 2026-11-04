@@ -4,9 +4,9 @@
  * of its parameters and result is expected, a one-element tuple and its element each where the
  * other is expected, or a `T` wrapped into `T?`. These are the language's implicit conversions.
  *
- * - The wrap applies as often as the expected type nests optionals, so an `int` fits an `int??` by
- *   two wraps. A value that is already optional fits its own optional type without one: `int?`
- *   fits `int?`, never `int??` by wrapping `int?` when an exact fit exists.
+ * - The wrap applies as often as the expected type nests optionals, so an `Int` fits an `Int??` by
+ *   two wraps. A value that is already optional fits its own optional type without one: `Int?`
+ *   fits `Int?`, never `Int??` by wrapping `Int?` when an exact fit exists.
  * - A value is converted into an `any` type, made async, or converted between a one-element tuple
  *   and its element, only where that type itself is expected, so the conversion comes first and at
  *   most once: an `Email` fits `(any Notifier)?` by a conversion, then a wrap, and an
@@ -80,7 +80,7 @@ export function matchConversion(
   expected: Type,
   rules: ConversionRules,
 ): Fit | undefined {
-  if (found.kind === 'error' || isPrimitive(found, 'never') || rules.exact(expected, found)) {
+  if (found.kind === 'error' || isPrimitive(found, 'Never') || rules.exact(expected, found)) {
     return exactFit;
   }
   if (fitsAsync(found, expected, rules.exact)) {

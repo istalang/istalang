@@ -2,7 +2,7 @@
 # and `decimal` share.
 #
 # Rounding keeps a float a float, so NaN and the infinities pass through as IEEE 754 has them and
-# `int(x)` converts the result exactly; `floor` and `ceil` are `round` in one mode. `min`, `max` and
+# `Int(x)` converts the result exactly; `floor` and `ceil` are `round` in one mode. `min`, `max` and
 # `clamp` are written once, over `Comparable`, so every ordered type has them: a `Decimal`, a `Time`
 # or a program's own. Each function takes its number as `self`, so once imported by name it is also
 # a method: `x.abs()`, `x.round()`. Powers are the `**` operator (§3.9).
@@ -15,16 +15,16 @@ enum Rounding:
   HalfEven # a tie goes to the even neighbour
   HalfAwayFromZero
 
-extern fn abs(self: int) -> int
-extern fn abs(self: float) -> float
+extern fn abs(self: Int) -> Int
+extern fn abs(self: Float) -> Float
 
-extern fn round(self: float, mode: Rounding = Rounding.HalfEven) -> float
+extern fn round(self: Float, mode: Rounding = Rounding.HalfEven) -> Float
 
-fn floor(self: float) -> float: self.round(Rounding.Floor)
-fn ceil(self: float) -> float: self.round(Rounding.Ceiling)
+fn floor(self: Float) -> Float: self.round(Rounding.Floor)
+fn ceil(self: Float) -> Float: self.round(Rounding.Ceiling)
 
-extern fn sqrt(self: int) -> float
-extern fn sqrt(self: float) -> float
+extern fn sqrt(self: Int) -> Float
+extern fn sqrt(self: Float) -> Float
 
 fn min<T is Comparable>(self: T, other: T) -> T:
   if other < self: other

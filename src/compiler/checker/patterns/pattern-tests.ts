@@ -45,7 +45,7 @@ export interface PatternTests {
   readonly literal: (node: LiteralPattern, part: ValuePart) => Leaf;
   /** `amount > 1000`, `ok == false`, on the part of the field. */
   readonly comparison: (item: CompareFieldPattern, part: ValuePart) => Leaf;
-  /** A name that refers: a variant or a struct without fields, or a constant. */
+  /** A name that refers: a variant, a type, or a constant. */
   readonly reference: (node: NamePattern, part: ValuePart) => Leaf;
   /** The variant `naming` names in a struct pattern; undefined after a report. */
   readonly variant: (

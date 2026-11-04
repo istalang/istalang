@@ -16,6 +16,6 @@ export const rangeNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     const iterated = bounded(rangeOf(context, value), 'Iterating');
     return { kind: 'tuple', elements: [iterated.start, iterated.step, countOf(iterated)] };
   },
-  [keys.of('includes', range, 'int')]: ([value, item], context) =>
+  [keys.of('includes', range, 'Int')]: ([value, item], context) =>
     reaches(rangeOf(context, value), int(item)),
 });

@@ -5,13 +5,13 @@ struct Pair<A, B>:
   first: A
   second: B
 
-type Cents = int
-type Labeled<T> = Pair<string, T>
+type Cents = Int
+type Labeled<T> = Pair<String, T>
 
-fn label<T>(name: string, value: T) -> Labeled<T>:
+fn label<T>(name: String, value: T) -> Labeled<T>:
   Pair{first: name, second: value}
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const price: Cents = 250
   const tagged = label("x", 3)
-  string(price) + " " + tagged.first + " " + string(tagged.second)
+  String(price) + " " + tagged.first + " " + String(tagged.second)

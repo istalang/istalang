@@ -2,15 +2,15 @@
 # Comprehensions (§4): over any iterable, kept by a condition, taking items apart like `for`, and
 # nested; the expected array's element type, through optionals around the array, guides the body.
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const doubled = [for i in 1..5: 5 * i]
-  const small = [for x in doubled if x > 5 and x < 20: string(x)]
+  const small = [for x in doubled if x > 5 and x < 20: String(x)]
   const big = [for key, value in ["a": 1, "b": 2] if value > 1: key]
   const pairs = [for position in 0..3: (position, position + 1)]
-  const labels = [for (left, right) in pairs: string(left) + ":" + string(right)]
+  const labels = [for (left, right) in pairs: String(left) + ":" + String(right)]
   const grid = [for row in 0..2: [for column in 0..row: column]]
-  const optional: Array<int?> = [for x in [1, 0]: x]
-  const wrapped: Array<int?>? = [for x in [1]: x]
+  const optional: Array<Int?> = [for x in [1, 0]: x]
+  const wrapped: Array<Int?>? = [for x in [1]: x]
   let flat = 0
   for row in grid:
     flat += row.length()
@@ -18,8 +18,8 @@ async fn main() -> Future<string>:
     small.join(","),
     big.join(","),
     labels.join(","),
-    string(flat + 2),
+    String(flat + 2),
     [for x in optional: if x == 1: "1" else: "0"].join(","),
-    string(wrapped == [1]),
+    String(wrapped == [1]),
   ]
   parts.join(" ")

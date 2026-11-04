@@ -10,8 +10,8 @@ import { reported } from '../check.test-kit.ts';
 
 describe('a parameter written by reference', () => {
   it('stays one in parentheses, where only the parser refuses its &', () => {
-    expect(reported('fn bump(n: (&int)):\n  n += 1')).toEqual(
-      reportedOnce(parserDiagnostics.misplacedReference.code, '&int'),
+    expect(reported('fn bump(n: (&Int)):\n  n += 1')).toEqual(
+      reportedOnce(parserDiagnostics.misplacedReference.code, '&Int'),
     );
   });
 });

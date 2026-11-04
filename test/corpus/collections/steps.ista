@@ -3,21 +3,21 @@
 # lands on it, a range whose end lies the other way is empty, and slicing steps through the items,
 # its open ends defaulting by the direction.
 
-fn show(xs: Array<int>) -> string:
-  "[" + [for x in xs: string(x)].join(", ") + "]"
+fn show(xs: Array<Int>) -> String:
+  "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let xs = [0, 1, 2, 3, 4]
   xs[0..5 by 2] = [9, 9, 9]
   const members = [4 in 0..10 by 2, 5 in 0..10 by 2, 10 in 10..=0 by -5]
   const parts = [
-    [for i in 0..10 by 3: string(i)].join(" "),
-    [for i in 10..=0 by -2: string(i)].join(" "),
+    [for i in 0..10 by 3: String(i)].join(" "),
+    [for i in 10..=0 by -2: String(i)].join(" "),
     show([for i in 0..5 by -1: i]),
     show([0, 1, 2, 3, 4, 5][.. by 2]),
     show([0, 1, 2, 3, 4][.. by -1]),
     show(xs),
-    [for member in members: string(member)].join(" "),
+    [for member in members: String(member)].join(" "),
     "abcde"[.. by 2],
   ]
   parts.join("|")

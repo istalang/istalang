@@ -18,7 +18,7 @@ function reportedCodes(argumentsText: readonly string[]): readonly number[] {
     [
       'fn same<T>(a: T, b: T, c: T) -> T: a',
       'async fn main():',
-      '  const maybe: int? = 3',
+      '  const maybe: Int? = 3',
       `  const result = same(${argumentsText.join(', ')})`,
     ].join('\n'),
   );
@@ -52,7 +52,7 @@ describe('a type found where a value must have it exactly', () => {
   const declarations = [
     'fn setFirst<T>(a: &T, b: T): a = b',
     'fn setLast<T>(b: T, a: &T): a = b',
-    'fn collect<T>(first: T, ...rest: Array<T>) -> int: rest.length()',
+    'fn collect<T>(first: T, ...rest: Array<T>) -> Int: rest.length()',
   ];
 
   it.each([
@@ -63,7 +63,7 @@ describe('a type found where a value must have it exactly', () => {
     const main = [
       ...declarations,
       'async fn main():',
-      '  const maybe: int? = 3',
+      '  const maybe: Int? = 3',
       '  const ns = [1, 2]',
       '  let n = 1',
       `  ${call}`,
@@ -81,13 +81,13 @@ describe('never where a value must have its type exactly', () => {
     ["a function's result alone", 'runAlone(failing)'],
   ])('binds only what nothing else does, for %s', (_case, call) => {
     const main = [
-      'fn gather<T>(...items: Array<T>) -> int: items.length()',
+      'fn gather<T>(...items: Array<T>) -> Int: items.length()',
       'fn runFirst<T>(f: fn() -> T, fallback: T) -> T: fallback',
       'fn runLast<T>(fallback: T, f: fn() -> T) -> T: fallback',
-      'fn runAlone<T>(f: fn() -> T) -> int: 0',
-      'fn fail() -> never: panic("x")',
+      'fn runAlone<T>(f: fn() -> T) -> Int: 0',
+      'fn fail() -> Never: panic("x")',
       'async fn main():',
-      '  const empty: Array<never> = []',
+      '  const empty: Array<Never> = []',
       '  const failing = fail',
       `  drop ${call}`,
     ].join('\n');
@@ -97,13 +97,13 @@ describe('never where a value must have its type exactly', () => {
 
 describe('a parameter only never gives', () => {
   it.each([
-    ['takes the type the result is expected to have', 'const xs: Array<int> = wrapped(failing)'],
-    ['takes it before its constraints are checked', 'const x: int = shown(failing)'],
+    ['takes the type the result is expected to have', 'const xs: Array<Int> = wrapped(failing)'],
+    ['takes it before its constraints are checked', 'const x: Int = shown(failing)'],
   ])('%s', (_case, statement) => {
     const main = [
       'fn wrapped<T>(f: fn() -> T) -> Array<T>: [f()]',
       'fn shown<T is Stringable>(f: fn() -> T) -> T: f()',
-      'fn fail() -> never: panic("x")',
+      'fn fail() -> Never: panic("x")',
       'async fn main():',
       '  const failing = fail',
       `  ${statement}`,

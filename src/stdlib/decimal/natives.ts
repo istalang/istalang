@@ -3,7 +3,7 @@
  *
  * A `Decimal` is a value of an extern type whose payload is its canonical text, the one form
  * `toString` writes and a snapshot keeps: every native reads its operands from that text and writes
- * its result back as text, so no other form can reach `==`. An `int` operand reads as its digits.
+ * its result back as text, so no other form can reach `==`. An `Int` operand reads as its digits.
  */
 
 import type { KeyType, NativeParameter } from '../../definition/extern-key.ts';
@@ -56,18 +56,18 @@ export const decimalNatives = (keys: NativeKeys, mathKeys: NativeKeys): Natives<
   const rounding = roundingType(mathKeys);
   const mixed = mixedOverloads(keys, decimal);
   return {
-    [keys.ofStatic(typeName, conversionFunction, 'int')]: ([value], context) =>
+    [keys.ofStatic(typeName, conversionFunction, 'Int')]: ([value], context) =>
       decimalResult(context, decimalOf(int(value))),
-    [keys.ofStatic('int', conversionFunction, decimal)]: ([value]) => truncatedInt(operand(value)),
-    [keys.ofStatic('float', conversionFunction, decimal)]: ([value]) =>
+    [keys.ofStatic('Int', conversionFunction, decimal)]: ([value]) => truncatedInt(operand(value)),
+    [keys.ofStatic('Float', conversionFunction, decimal)]: ([value]) =>
       nearestFloat(operand(value)),
     [keys.of('toString', decimal)]: ([value]) => textPayloadOf(value),
-    [keys.ofStatic(typeName, 'parse', 'string')]: ([source], context) => {
+    [keys.ofStatic(typeName, 'parse', 'String')]: ([source], context) => {
       const read = readDecimal(text(source));
       const value = read && okExtern(context, canonicalText(read));
       return parseResult(context, text(source), 'a decimal number', value);
     },
-    [keys.of('toFixed', decimal, 'int', rounding)]: ([value, places, mode], context) =>
+    [keys.of('toFixed', decimal, 'Int', rounding)]: ([value, places, mode], context) =>
       fixedText(operand(value), int(places), modeOf(context, mode)),
     ...mixed('add', (left, right, context) => decimalResult(context, left.plus(right))),
     ...mixed('subtract', (left, right, context) => decimalResult(context, left.minus(right))),
@@ -77,7 +77,7 @@ export const decimalNatives = (keys: NativeKeys, mathKeys: NativeKeys): Natives<
       'divide',
       (left, right, context, [places, mode]) =>
         decimalResult(context, dividedTo(left, right, int(places), modeOf(context, mode))),
-      'int',
+      'Int',
       rounding,
     ),
     ...mixed('floorDivide', (left, right, context) =>
@@ -90,9 +90,9 @@ export const decimalNatives = (keys: NativeKeys, mathKeys: NativeKeys): Natives<
     [keys.of('negate', decimal)]: ([value], context) =>
       decimalResult(context, operand(value).neg()),
     [keys.of('abs', decimal)]: ([value], context) => decimalResult(context, operand(value).abs()),
-    [keys.of('round', decimal, 'int', rounding)]: ([value, places, mode], context) =>
+    [keys.of('round', decimal, 'Int', rounding)]: ([value, places, mode], context) =>
       decimalResult(context, roundedTo(operand(value), int(places), modeOf(context, mode))),
-    [keys.of('power', decimal, 'int')]: ([value, exponent], context) =>
+    [keys.of('power', decimal, 'Int')]: ([value, exponent], context) =>
       decimalResult(context, power(operand(value), int(exponent))),
   };
 };
@@ -104,8 +104,8 @@ export const decimalNatives = (keys: NativeKeys, mathKeys: NativeKeys): Natives<
 function mixedOverloads(keys: NativeKeys, decimal: KeyType) {
   const pairs = [
     [decimal, decimal],
-    [decimal, 'int'],
-    ['int', decimal],
+    [decimal, 'Int'],
+    ['Int', decimal],
   ] as const;
   return (
     name: string,

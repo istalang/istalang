@@ -7,11 +7,11 @@
 # struct's own spread does.
 
 shared struct Counter:
-  count: int
-  label: string = "counted"
+  count: Int
+  label: String = "counted"
 
 shared struct Node:
-  value: int
+  value: Int
   next: Node? = none
 
 struct Spot { node: Node }
@@ -22,7 +22,7 @@ shared struct Box<T>:
 fn bump(self: Counter):
   self->count = self->count + 1
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const a = new Counter{count: 1}
   const b = a
   a.bump()
@@ -30,28 +30,28 @@ async fn main() -> Future<string>:
   const other = new Counter{...*a}
   *other = struct{...*other, count: 8}
   [
-    string(a->count),
-    string(a == b),
-    string(a == other),
-    string(other->count),
+    String(a->count),
+    String(a == b),
+    String(a == other),
+    String(other->count),
     b->label,
     nodes(),
     boxes(),
   ].join(" ")
 
-fn nodes() -> string:
+fn nodes() -> String:
   const head = new Node{value: 1, next: new Node{value: 2}}
   const second = head->next?->value ?? 0
   const third = head->next?->next?->value ?? 0
   const spot: Spot? = Spot{node: head}
   const fromSpot = spot?.node->next?->value ?? 0
-  const kept: Shared<Array<int>>? = new Shared{value: [4, 5]}
+  const kept: Shared<Array<Int>>? = new Shared{value: [4, 5]}
   const size = kept?->value.length() ?? 0
-  [string(head->value), string(second), string(third), string(fromSpot), string(size)].join(" ")
+  [String(head->value), String(second), String(third), String(fromSpot), String(size)].join(" ")
 
-fn boxes() -> string:
+fn boxes() -> String:
   const b = new Box{value: 1}
   const c = new Box{...*b}
   const s = new Shared{value: 1}
   const d = new Shared{...*s}
-  string(c->value + d->value)
+  String(c->value + d->value)

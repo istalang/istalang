@@ -7,15 +7,15 @@
 # async (§10). A rest overload clashes with another one when a call fits both alike (§3.7).
 import * as testing from 'testing'
 
-fn plain() -> int: 1
-async fn later() -> Future<int>: 1
+fn plain() -> Int: 1
+async fn later() -> Future<Int>: 1
 
-fn sum(first: int, ...more: Array<int>) -> int: first
-fn sum(...all: Array<int>) -> int: 0
+fn sum(first: Int, ...more: Array<Int>) -> Int: first
+fn sum(...all: Array<Int>) -> Int: 0
 
 fn main():
-  const wanted: fn() -> int = later
-  const plains: Array<fn() -> int> = [plain]
-  const many: Array<async fn() -> int> = plains
+  const wanted: fn() -> Int = later
+  const plains: Array<fn() -> Int> = [plain]
+  const many: Array<async fn() -> Int> = plains
   drop(many)
   drop(testing.mock(plain, later))

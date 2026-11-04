@@ -9,17 +9,17 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 
 /** Signatures of `f`, as written after its name. */
 const signatures = [
-  '(a: int)',
-  '(a: string)',
-  '(a: int?)',
-  '(a: &int)',
+  '(a: Int)',
+  '(a: String)',
+  '(a: Int?)',
+  '(a: &Int)',
   '<T>(a: T)',
   '<U>(a: U)',
   '<T>(a: T?)',
   '<T>(a: T, b: T)',
   '<T, U>(a: T, b: U)',
-  '(a: int, b: int = 1)',
-  '(a: int, b: string)',
+  '(a: Int, b: Int = 1)',
+  '(a: Int, b: String)',
   '(self: Point)',
   '(self: &Point)',
 ] as const;
@@ -28,7 +28,7 @@ type Signature = (typeof signatures)[number];
 
 /** Whether declaring `f` with `first`, then with `second`, reports a clash. */
 function clashes(first: Signature, second: Signature): boolean {
-  const text = `struct Point { x: int }\nfn f${first} -> int: 1\nfn f${second} -> int: 2\n`;
+  const text = `struct Point { x: Int }\nfn f${first} -> Int: 1\nfn f${second} -> Int: 2\n`;
   return reported(text).codes.includes(checkerDiagnostics.overloadClash.code);
 }
 
@@ -42,16 +42,16 @@ describe('overload clashes', () => {
   });
 
   it.each<[Signature, Signature, boolean]>([
-    ['(a: int)', '(a: int)', true],
-    ['(a: int)', '(a: string)', false],
-    ['(a: int)', '(a: int?)', true],
-    ['(a: int)', '(a: &int)', false],
+    ['(a: Int)', '(a: Int)', true],
+    ['(a: Int)', '(a: String)', false],
+    ['(a: Int)', '(a: Int?)', true],
+    ['(a: Int)', '(a: &Int)', false],
     ['<T>(a: T)', '<U>(a: U)', true],
     ['<T>(a: T)', '<T>(a: T?)', true],
-    ['<T>(a: T)', '(a: int)', false],
+    ['<T>(a: T)', '(a: Int)', false],
     ['<T>(a: T, b: T)', '<T, U>(a: T, b: U)', false],
-    ['(a: int, b: int = 1)', '(a: int)', true],
-    ['(a: int, b: int = 1)', '(a: int, b: string)', false],
+    ['(a: Int, b: Int = 1)', '(a: Int)', true],
+    ['(a: Int, b: Int = 1)', '(a: Int, b: String)', false],
     ['(self: Point)', '(self: &Point)', true],
   ])('%s and %s clash: %s', (first, second, clash) => {
     expect(clashes(first, second)).toBe(clash);

@@ -2,10 +2,10 @@
 # Replacing a span of an array with an array of another length, longer or empty (§3.9); a copy taken
 # before is untouched (§3.1), and an open end means the start or the length.
 
-fn show(xs: Array<int>) -> string:
-  "[" + [for x in xs: string(x)].join(", ") + "]"
+fn show(xs: Array<Int>) -> String:
+  "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   let a = [0, 1, 2, 3, 4, 5, 6]
   const before = a
   a[3..5] = [9, 9, 9, 9]

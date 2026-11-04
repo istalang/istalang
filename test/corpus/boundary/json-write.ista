@@ -9,37 +9,37 @@ import * as time from 'time'
 import JsonName, JsonSkip, JsonBigInt, Json, encodeText from 'json'
 
 struct Item:
-  sku: string
-  qty: int
+  sku: String
+  qty: Int
 
 enum Shape:
-  Circle { radius: float }
+  Circle { radius: Float }
   Dot
 
 struct Money:
-  cents: int
-  currency: string
+  cents: Int
+  currency: String
 
-fn toString(self: Money) -> string:
-  string(self.cents // 100) + "." + string(self.cents % 100) + " " + self.currency
+fn toString(self: Money) -> String:
+  String(self.cents // 100) + "." + String(self.cents % 100) + " " + self.currency
 
 fn toJson(self: Money) -> Json:
   encodeText(self)
 
 struct Order:
-  id: string @JsonName{"order_id"}
+  id: String @JsonName{"order_id"}
   items: Array<Item>
-  note: string?
-  tags: Map<int, int>
+  note: String?
+  tags: Map<Int, Int>
   shape: Shape
-  pair: (int, bool)
+  pair: (Int, Bool)
   due: time.Duration
   at: time.Time
-  big: int @JsonBigInt
-  ratio: float
+  big: Int @JsonBigInt
+  ratio: Float
   price: Money
   raw: Json
-  cache: Map<string, int> @JsonSkip
+  cache: Map<String, Int> @JsonSkip
 
 async fn main() -> Future<Order>:
   Order{

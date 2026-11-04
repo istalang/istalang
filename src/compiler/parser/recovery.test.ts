@@ -173,7 +173,7 @@ describe('a bracket never closed', () => {
   });
 
   it.each([
-    ['entry braces', lines('struct Broken { a: int', '', 'fn g(): 2', '')],
+    ['entry braces', lines('struct Broken { a: Int', '', 'fn g(): 2', '')],
     ['block braces', lines('fn broken():', '  const x = {', '', 'fn g(): 2', '')],
     [
       'a bracket closed inside one never closed',
@@ -242,7 +242,7 @@ describe('a bracket never closed', () => {
     ],
     [
       'a struct’s fields',
-      lines('struct S {', '  a: (int,', '  b: int', '}', ''),
+      lines('struct S {', '  a: (Int,', '  b: Int', '}', ''),
       declaredField('b', int),
     ],
   ])('ends at that line inside %s whose braces close later', (_, text, after) => {

@@ -12,7 +12,7 @@ export const lifetimeTemplates = {
   disposeSignature: {
     code: 5701,
     message: () =>
-      "'dispose' takes its value as its one parameter, returns unit and can't be async (§7).",
+      "'dispose' takes its value as its one parameter, returns Unit and can't be async (§7).",
   },
   disposeSelfEscapes: {
     code: 5702,

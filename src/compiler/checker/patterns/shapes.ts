@@ -2,12 +2,12 @@
  * Patterns' shapes over the checker's types (§3.11): the constructors each type is made of, the
  * shape a literal gives, and how a shape no case matches is written back as a pattern.
  *
- * - An enum is made of its variants, `bool` of `true` and `false`, and a tuple, a struct and
- *   `unit` of one constructor each; an array of its lengths (exhaustiveness.ts). Any other type
- *   (`int`, `string`, a handle, a type parameter) has no finite set, so only a pattern taking
+ * - An enum is made of its variants, `Bool` of `true` and `false`, and a tuple, a struct and
+ *   `Unit` of one constructor each; an array of its lengths (exhaustiveness.ts). Any other type
+ *   (`Int`, `String`, a handle, a type parameter) has no finite set, so only a pattern taking
  *   anything covers it.
- * - `==` against a literal counts as a pattern, but only a literal of `bool`, `int`, `float` or
- *   `string` has a shape of its own; any other literal acts as a guard.
+ * - `==` against a literal counts as a pattern, but only a literal of `Bool`, `Int`, `Float` or
+ *   `String` has a shape of its own; any other literal acts as a guard.
  * - A witness is written as a pattern would be, with `_` for anything and `{…}` for fields no case
  *   looked into.
  */
@@ -35,13 +35,13 @@ export function signatureOf(checker: ShapeChecker): Signature<Type> {
     if (items !== undefined) {
       return { items };
     }
-    if (isPrimitive(type, 'bool')) {
+    if (isPrimitive(type, 'Bool')) {
       return [
         { key: 'true', arguments: [] },
         { key: 'false', arguments: [] },
       ];
     }
-    if (isPrimitive(type, 'unit')) {
+    if (isPrimitive(type, 'Unit')) {
       return [{ key: tupleKey, arguments: [] }];
     }
     if (type.kind === 'tuple') {

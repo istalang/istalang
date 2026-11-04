@@ -2,15 +2,15 @@
 # A `T` is wrapped into `T?` wherever an optional is expected (§2, §3.11): in a declaration, an
 # argument, a branch, a comparison and a return.
 
-fn find(flag: bool) -> int?:
+fn find(flag: Bool) -> Int?:
   if flag: 1 else: none
 
-fn orZero(value: int?) -> bool:
+fn orZero(value: Int?) -> Bool:
   value == none
 
-fn nested() -> int??:
+fn nested() -> Int??:
   5
 
-async fn main() -> Future<string>:
-  const maybe: int? = 5
-  string(maybe == 5) + " " + string(find(true) == 1) + " " + string(orZero(3)) + " " + string(orZero(none)) + " " + string(nested() == 5)
+async fn main() -> Future<String>:
+  const maybe: Int? = 5
+  String(maybe == 5) + " " + String(find(true) == 1) + " " + String(orZero(3)) + " " + String(orZero(none)) + " " + String(nested() == 5)

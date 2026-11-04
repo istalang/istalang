@@ -3,23 +3,23 @@
 # `iterate` that `Iterable` requires, and indexing the `index` that `Indexable` requires. Map keys
 # that are equal (§3.9) find each other whatever order their maps were built in.
 
-fn total<C is Iterable<int>>(collection: C) -> int:
+fn total<C is Iterable<Int>>(collection: C) -> Int:
   let sum = 0
   for x in collection:
     sum += x
   sum
 
-fn first<C is Indexable<int, string>>(collection: C) -> string:
+fn first<C is Indexable<Int, String>>(collection: C) -> String:
   collection[0]
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const forward = ["\u{e9}": 1, "e\u{301}": 1]
   const backward = ["e\u{301}": 1, "\u{e9}": 1]
   const nested = [forward: 7]
   const parts = [
-    string(total([1, 2, 3])),
-    string(total(1..4)),
+    String(total([1, 2, 3])),
+    String(total(1..4)),
     first(["a", "b"]),
-    string(if nested.has(backward): 2 else: 0),
+    String(if nested.has(backward): 2 else: 0),
   ]
   parts.join(" ")

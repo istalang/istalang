@@ -38,7 +38,7 @@ export const packTemplates = {
   packTypeArgument: {
     code: 5085,
     message: (name: string, type: string) =>
-      `'${type}' can't fill the pack '${name}': a pack takes a tuple type, such as '(int, string)', '(int,)' or '()' (§3.5).`,
+      `'${type}' can't fill the pack '${name}': a pack takes a tuple type, such as '(Int, String)', '(Int,)' or '()' (§3.5).`,
   },
   packMismatch: {
     code: 5086,

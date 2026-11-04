@@ -11,10 +11,10 @@
  *   integers kept exact (lossless-json); a key given twice with different values is refused rather
  *   than resolved by position, since the two readers of such text could disagree.
  * - A host sees what `JSON.parse` of the text would give it, except that every integer is a
- *   `bigint`, so none loses digits and a host can tell an `int` from a `float`. Coming back, a
+ *   `bigint`, so none loses digits and a host can tell an `Int` from a `Float`. Coming back, a
  *   bigint or a whole number is an `Integer`, any other number a `Number`, so a host need not say
  *   which it means; and `undefined` reads as `JSON.stringify` writes it, `null`, or a field left
- *   out of an object, so a host function returning nothing gives `unit` or `none`.
+ *   out of an object, so a host function returning nothing gives `Unit` or `none`.
  * - `Json` nests no deeper than a persisted value may (`maximumDepth`), checked before either
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
@@ -101,7 +101,7 @@ export function plainOfJson(json: Value, shape: JsonType, depth = 0): unknown {
   switch (variant) {
     case 'Null':
       return null;
-    case 'Bool':
+    case 'Boolean':
     case 'Integer':
     case 'Text':
       return field;
@@ -131,7 +131,7 @@ export function jsonOfPlain(plain: unknown, shape: JsonType, depth = 0): Value {
   });
   switch (typeof plain) {
     case 'boolean':
-      return variant('Bool', [plain]);
+      return variant('Boolean', [plain]);
     case 'string':
       return variant('Text', [plain]);
     case 'undefined':
@@ -198,7 +198,7 @@ function written(json: Value, shape: JsonType, depth: number): string {
   switch (variant) {
     case 'Null':
       return 'null';
-    case 'Bool':
+    case 'Boolean':
     case 'Integer':
       return String(field);
     case 'Number':

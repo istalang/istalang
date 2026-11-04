@@ -33,13 +33,13 @@ function messagesOf(lines: readonly string[]): readonly string[] {
 
 describe('typeText', () => {
   it.each([
-    'int?',
-    'Array<int?>',
-    'fn(int) -> int?',
-    '(fn(int) -> int)?',
-    '(fn() -> int)??',
-    'Array<(sendable fn() -> int)?>',
-    'fn() -> (fn() -> int)?',
+    'Int?',
+    'Array<Int?>',
+    'fn(Int) -> Int?',
+    '(fn(Int) -> Int)?',
+    '(fn() -> Int)??',
+    'Array<(sendable fn() -> Int)?>',
+    'fn() -> (fn() -> Int)?',
   ])('spells %s as written', (written) => {
     expect(spelled(written)).toBe(written);
   });
@@ -47,9 +47,9 @@ describe('typeText', () => {
   it('spells the value behind a shared struct as *Name with its type arguments', () => {
     const program = stdProgramOf({
       'main.ista': [
-        'shared struct Counter { count: int }',
+        'shared struct Counter { count: Int }',
         'shared struct Box<K, V> { key: K }',
-        'fn f(c: Counter, b: Box<int, string>):',
+        'fn f(c: Counter, b: Box<Int, String>):',
         '  const a = *c',
         '  const d = *b',
       ].join('\n'),
@@ -65,20 +65,20 @@ describe('typeText', () => {
       return type && typeText(type);
     };
     expect(typeAt(a)).toBe('*Counter');
-    expect(typeAt(d)).toBe('*Box<int, string>');
+    expect(typeAt(d)).toBe('*Box<Int, String>');
   });
 
   describe('a type written through an alias (§3.17)', () => {
     const aliases = [
       'struct Pair<A, B> { first: A; second: B }',
-      'type Cents = int',
-      'type Labeled<T> = Pair<string, T>',
-      'type Job = sendable fn() -> int',
+      'type Cents = Int',
+      'type Labeled<T> = Pair<String, T>',
+      'type Job = sendable fn() -> Int',
       'fn label<T>(value: T) -> Labeled<T>:',
       '  Pair{first: "x", second: value}',
     ];
 
-    it.each(['Cents', 'Labeled<int>', 'Labeled<Cents>?', 'Array<Labeled<Cents>>', 'Job', 'Job?'])(
+    it.each(['Cents', 'Labeled<Int>', 'Labeled<Cents>?', 'Array<Labeled<Cents>>', 'Job', 'Job?'])(
       'spells %s as written',
       (written) => {
         expect(spelled(written, aliases)).toBe(written);
@@ -86,8 +86,8 @@ describe('typeText', () => {
     );
 
     it('spells an instance of a generic signature by the alias, its arguments substituted', () => {
-      expect(messagesOf([...aliases, 'fn g():', '  const n: int = label(3)'])).toEqual([
-        'Expected int, found Labeled<int>.',
+      expect(messagesOf([...aliases, 'fn g():', '  const n: Int = label(3)'])).toEqual([
+        'Expected Int, found Labeled<Int>.',
       ]);
     });
 
@@ -96,9 +96,9 @@ describe('typeText', () => {
         'fn g():',
         '  let tagged = label(3)',
         '  tagged = label(4)',
-        '  const n: int = tagged',
+        '  const n: Int = tagged',
       ];
-      expect(messagesOf([...aliases, ...body])).toEqual(['Expected int, found Labeled<int>.']);
+      expect(messagesOf([...aliases, ...body])).toEqual(['Expected Int, found Labeled<Int>.']);
     });
 
     it('spells an alias named as a value by its name, with no arguments', () => {
@@ -114,19 +114,19 @@ describe('typeText', () => {
         'fn g(job: Job):',
         '  let plain = job',
         '  plain = job',
-        '  const n: int = plain',
+        '  const n: Int = plain',
       ];
-      expect(messagesOf([...aliases, ...body])).toEqual(['Expected int, found fn() -> int.']);
+      expect(messagesOf([...aliases, ...body])).toEqual(['Expected Int, found fn() -> Int.']);
     });
   });
 
   it('spells a non-prelude Optional declaration as Optional<T>, not T?', () => {
     const program = programOf({
-      'main.ista': 'struct Optional<T> { value: T }\nfn f(x: Optional<int>):\n  ()\n',
+      'main.ista': 'struct Optional<T> { value: T }\nfn f(x: Optional<Int>):\n  ()\n',
     });
     const checker = checkProgram(program);
     const f = program.modules.get(idOf('main.ista'))?.tree.root.items[1] as FunctionDeclaration;
     const [x] = checker.parametersOf(f);
-    expect(x && typeText(x.type)).toBe('Optional<int>');
+    expect(x && typeText(x.type)).toBe('Optional<Int>');
   });
 });

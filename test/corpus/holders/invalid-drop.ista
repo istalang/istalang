@@ -13,15 +13,15 @@
 
 const limit = 3
 
-fn size(text: string) -> int:
+fn size(text: String) -> Int:
   text.length()
 
-fn later() -> int:
+fn later() -> Int:
   const text = "a"
   drop text
   size(text)
 
-fn branch(flag: bool) -> int:
+fn branch(flag: Bool) -> Int:
   let text = "a"
   if flag:
     drop text
@@ -38,12 +38,12 @@ fn captured():
   const text = "a"
   const f = fn(): { drop text; () }
 
-fn reference(text: &string):
+fn reference(text: &String):
   drop text
 
 fn top():
   drop limit
 
 fn unused():
-  Slot.create<int>()
+  Slot.create<Int>()
   defer fn(): 1

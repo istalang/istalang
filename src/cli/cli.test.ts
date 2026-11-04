@@ -16,7 +16,7 @@ const versionNumber = /^\d+\.\d+\.\d+/u;
 
 const valid = {
   'main.ista': "import helper from 'lib/helper'\n\nasync fn main(): helper()\n",
-  'lib/helper.ista': "import main from '../main'\n\nfn helper() -> int: 1\n",
+  'lib/helper.ista': "import main from '../main'\n\nfn helper() -> Int: 1\n",
 };
 
 describe('ista check', () => {
@@ -25,11 +25,11 @@ describe('ista check', () => {
   });
 
   it('fails on a syntax error in an imported module, showing where', async () => {
-    const root = project({ ...valid, 'lib/helper.ista': 'fn helper() -> int: 1 +\n' });
+    const root = project({ ...valid, 'lib/helper.ista': 'fn helper() -> Int: 1 +\n' });
     const run = await ista(root, 'check', 'main.ista');
     expect(run.code).toBe(1);
     expect(run.out).toContain('lib/helper.ista:1:24: error 2001: ');
-    expect(run.out).toContain(' 1 | fn helper() -> int: 1 +\n');
+    expect(run.out).toContain(' 1 | fn helper() -> Int: 1 +\n');
     expect(run.out).toMatch(summaryOfOneError);
   });
 

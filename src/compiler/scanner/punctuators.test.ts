@@ -30,7 +30,7 @@ describe('punctuators', () => {
     ['[...xs]', ['[', '...', 'identifier', ']']],
     ['x //= 2', ['identifier', '//=', 'integer']],
     ['a//b', ['identifier', '//', 'identifier']],
-    ['fn f() -> int', ['fn', 'identifier', '(', ')', '->', 'identifier']],
+    ['fn f() -> Int', ['fn', 'identifier', '(', ')', '->', 'identifier']],
     ['u->name', ['identifier', '->', 'identifier']],
     ['u?->name', ['identifier', '?->', 'identifier']],
     ['r? ->name', ['identifier', '?', '->', 'identifier']],
@@ -41,7 +41,7 @@ describe('punctuators', () => {
   });
 
   it('scans >> as one shift, which the parser splits where it closes type arguments', () => {
-    expect(kindsAndTexts(scanText('Array<Array<int>>')).map(([kind]) => kind)).toEqual([
+    expect(kindsAndTexts(scanText('Array<Array<Int>>')).map(([kind]) => kind)).toEqual([
       'identifier',
       '<',
       'identifier',

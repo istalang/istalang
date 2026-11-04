@@ -12,12 +12,12 @@
 
 import * as time from 'time'
 
-extern fn first<T>(futures: Array<Future<T>>) -> Future<(int, T)>
+extern fn first<T>(futures: Array<Future<T>>) -> Future<(Int, T)>
 
 # Every `Ok` value in position order, or the first `Err` as soon as it arrives.
 async fn all<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<Array<T>, E>>:
   const race = _race(futures)
-  let values: Map<int, T> = [:]
+  let values: Map<Int, T> = [:]
   while _racing(race):
     match await _next(race):
       case (position, Ok{value}): values[position] = value
@@ -36,7 +36,7 @@ async fn race<T>(futures: Array<Future<T>>) -> Future<T>: (await first(futures))
 # The first `Ok` to arrive, or every error in position order once all failed.
 async fn any<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<T, Array<E>>>:
   const race = _race(futures)
-  let errors: Map<int, E> = [:]
+  let errors: Map<Int, E> = [:]
   while _racing(race):
     match await _next(race):
       case (_, Ok{value}): return Ok{(value)}
@@ -46,14 +46,14 @@ async fn any<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<T, Arr
 # The first `n` `Ok` values in the order they arrived, or the errors in position order once `n`
 # can't be reached.
 async fn quorum<T, E>(
-  n: int,
+  n: Int,
   futures: Array<Future<Result<T, E>>>,
 ) -> Future<Result<Array<T>, Array<E>>>:
   if n < 0 or n > futures.length():
     panic("A quorum of " + n + " can't be reached among " + futures.length() + " futures.")
   const race = _race(futures)
   let values: Array<T> = []
-  let errors: Map<int, E> = [:]
+  let errors: Map<Int, E> = [:]
   while values.length() < n:
     match await _next(race):
       case (_, Ok{value}): values.push(value)
@@ -72,7 +72,7 @@ async fn timeout<T>(future: Future<T>, limit: time.Duration) -> Future<T?>:
 # retry and twice as long before each next one: the first `Ok`, or the last `Err`.
 async fn retry<T, E>(
   attempt: async fn() -> Result<T, E>,
-  times: int = 3,
+  times: Int = 3,
   backoff: time.Duration = 1s,
 ) -> Future<Result<T, E>>:
   if times < 1: panic("retry needs at least one attempt, not " + times + ".")
@@ -87,21 +87,21 @@ async fn retry<T, E>(
 # A list of futures raced until each has arrived: the positions of those that haven't.
 shared struct _Race<T>:
   futures: Array<Future<T>>
-  waiting: Array<int> = [for position in 0..futures.length(): position]
+  waiting: Array<Int> = [for position in 0..futures.length(): position]
 
 fn _race<T>(futures: Array<Future<T>>) -> _Race<T>: new _Race<T>{futures}
 
 # Whether some future of `race` hasn't arrived yet.
-fn _racing<T>(race: _Race<T>) -> bool: race->waiting.length() > 0
+fn _racing<T>(race: _Race<T>) -> Bool: race->waiting.length() > 0
 
 # The next future of `race` to arrive, taken out of it: its position and value.
-async fn _next<T>(race: _Race<T>) -> Future<(int, T)>:
+async fn _next<T>(race: _Race<T>) -> Future<(Int, T)>:
   const (index, value) = await first([for position in race->waiting: race->futures[position]])
   const position = race->waiting[index]
   race->waiting = [...race->waiting[..index], ...race->waiting[index + 1..]]
   (position, value)
 
 # The values of `byPosition` in position order, among the positions below `count`.
-fn _inOrder<T>(byPosition: Map<int, T>, count: int) -> Array<T>: [
+fn _inOrder<T>(byPosition: Map<Int, T>, count: Int) -> Array<T>: [
   for position in 0..count if byPosition.has(position): byPosition[position]
 ]

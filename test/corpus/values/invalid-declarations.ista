@@ -8,13 +8,13 @@
 # choose (§3.7). A struct never holds itself, directly, through a tuple, or through another
 # struct (§3.1), and one growing its own type argument is endless (§3.5).
 
-struct P { x: int }
+struct P { x: Int }
 fn f(self: P): 1
 fn f(self: &P): 2
 
 struct Node { next: Node }
-struct Cell { pair: (int, Cell) }
+struct Cell { pair: (Int, Cell) }
 struct A { b: B }
 struct B { a: A }
 struct Expanding<T> { next: Expanding<(T,)> }
-struct HoldsExpanding { item: Expanding<int> }
+struct HoldsExpanding { item: Expanding<Int> }

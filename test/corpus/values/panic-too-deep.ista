@@ -5,7 +5,7 @@ import * as runtime from 'runtime'
 
 struct Tree { children: Array<Tree> }
 
-async fn main() -> Future<int>:
+async fn main() -> Future<Int>:
   let tree = Tree{children: []}
   for _ in 0..3000:
     tree = Tree{children: [tree]}

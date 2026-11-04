@@ -7,13 +7,13 @@
 
 # A uniform integer among those the range reaches, its step included; panics on an empty range or
 # an open one.
-extern fn integer(range: Range) -> int
+extern fn integer(range: Range) -> Int
 
 # A version 4 UUID (RFC 9562), in lowercase.
-extern fn uuid() -> string
+extern fn uuid() -> String
 
 # 2^53: every multiple of 1 / 2^53 below 1 is a float exactly, so each is equally likely.
 const _floatSteps = 9_007_199_254_740_992
 
 # A uniform float from 0 up to 1.
-fn fraction() -> float: float(integer(0.._floatSteps)) / float(_floatSteps)
+fn fraction() -> Float: Float(integer(0.._floatSteps)) / Float(_floatSteps)

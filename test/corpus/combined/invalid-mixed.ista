@@ -4,19 +4,19 @@
 # Mixed errors from three slices in one module: a `match` missing a variant, a comprehension body
 # capturing a `&`, and an unused Result.
 enum Shape:
-  Circle { r: int }
-  Rect { w: int; h: int }
+  Circle { r: Int }
+  Rect { w: Int; h: Int }
 
-fn area(s: Shape) -> int:
+fn area(s: Shape) -> Int:
   match s:
     case Circle{r}: r
     case Rect{w, h} if w > 0: w * h
 
-fn captures(x: &int) -> Array<int>:
+fn captures(x: &Int) -> Array<Int>:
   [for i in 0..3: (fn(): x + i)()]
 
-fn parse() -> Result<int>: Ok{(1)}
+fn parse() -> Result<Int>: Ok{(1)}
 
-async fn main() -> Future<int>:
+async fn main() -> Future<Int>:
   parse()
   1

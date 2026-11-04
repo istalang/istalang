@@ -33,8 +33,10 @@ const corpus = { 'names/main': namesMain, 'names/lib': namesLib };
 
 describe('binding reports, once and at the name', () => {
   it.each([
-    ['an undeclared value', 'fn f() -> int: missing', d.undeclared, 'missing'],
+    ['an undeclared value', 'fn f() -> Int: missing', d.undeclared, 'missing'],
     ['an undeclared type', 'fn f(x: Missing): x', d.undeclared, 'Missing'],
+    ['a primitive spelled lowercase', 'fn f(x: int): x', d.lowercasePrimitive, 'int'],
+    ['a lowercase static owner', 'fn f() -> Int: int.parse("1")!', d.lowercasePrimitive, 'int'],
     ['Self outside a trait', 'fn f(x: Self): x', d.undeclared, 'Self'],
     ['assigning to an undeclared name', 'fn f():\n  total = 1', d.assignmentToUndeclared, 'total'],
     [
@@ -45,25 +47,25 @@ describe('binding reports, once and at the name', () => {
     ],
     [
       'a variable used before it',
-      'fn f() -> int:\n  const y = x\n  const x = 1\n  y',
+      'fn f() -> Int:\n  const y = x\n  const x = 1\n  y',
       d.usedBeforeDeclaration,
       'x',
     ],
     [
       'a name after its block ended',
-      'fn f() -> int:\n  if true:\n    const x = 1\n  x',
+      'fn f() -> Int:\n  if true:\n    const x = 1\n  x',
       d.blockEnded,
       'x',
     ],
     [
       'a loop variable after the loop',
-      'fn f(xs: Array<int>) -> int:\n  for x in xs:\n    drop x\n  x',
+      'fn f(xs: Array<Int>) -> Int:\n  for x in xs:\n    drop x\n  x',
       d.blockEnded,
       'x',
     ],
     [
       'a binding under or',
-      'fn f(r: Result<int>) -> int:\n  if r is Ok{value} or false:\n    value\n  else:\n    0',
+      'fn f(r: Result<Int>) -> Int:\n  if r is Ok{value} or false:\n    value\n  else:\n    0',
       d.boundUnderOr,
       'value',
     ],
@@ -79,43 +81,43 @@ describe('binding reports, once and at the name', () => {
       d.duplicateDeclaration,
       'g',
     ],
-    ['a repeated parameter', 'fn f(a: int, a: int): a', d.duplicateDeclaration, 'a'],
+    ['a repeated parameter', 'fn f(a: Int, a: Int): a', d.duplicateDeclaration, 'a'],
     [
       'a repeated binding in a pattern',
-      'fn f(p: (int, int)) -> int:\n  match p:\n    case (a, a): a',
+      'fn f(p: (Int, Int)) -> Int:\n  match p:\n    case (a, a): a',
       d.duplicateDeclaration,
       'a',
     ],
-    ['a repeated field', 'struct P { x: int; x: int }', d.duplicateDeclaration, 'x'],
+    ['a repeated field', 'struct P { x: Int; x: Int }', d.duplicateDeclaration, 'x'],
     [
       'a repeated top-level type',
-      'struct A { x: int }\nstruct A { y: int }',
+      'struct A { x: Int }\nstruct A { y: Int }',
       d.duplicateDeclaration,
       'A',
     ],
     ['a constant named like a function', 'fn a(): 1\nconst a = 2', d.duplicateDeclaration, 'a'],
-    ['a prelude type redeclared', 'struct Result { value: int }', d.preludeClash, 'Result'],
+    ['a prelude type redeclared', 'struct Result { value: Int }', d.preludeClash, 'Result'],
     [
       'a variant an enum lacks, in a pattern',
-      'fn f(o: int?) -> int:\n  match o:\n    case Optional.Nothing: 0\n    case _: 1',
+      'fn f(o: Int?) -> Int:\n  match o:\n    case Optional.Nothing: 0\n    case _: 1',
       d.missingVariant,
       'Nothing',
     ],
     [
       'a name after a struct, in a pattern',
-      'struct P { x: int }\nfn f(p: P) -> int:\n  match p:\n    case P.Q{x}: x\n    case _: 0',
+      'struct P { x: Int }\nfn f(p: P) -> Int:\n  match p:\n    case P.Q{x}: x\n    case _: 0',
       d.qualifiesNothing,
       'Q',
     ],
     [
       'a name after a struct, in a literal',
-      'struct P { x: int }\nfn f() -> P:\n  P.Q{x: 1}',
+      'struct P { x: Int }\nfn f() -> P:\n  P.Q{x: 1}',
       d.qualifiesNothing,
       'Q',
     ],
     [
       'a name after a struct, in a type',
-      'struct P { x: int }\nconst p: P.Q = P{x: 1}',
+      'struct P { x: Int }\nconst p: P.Q = P{x: 1}',
       d.qualifiesNothing,
       'Q',
     ],
@@ -127,32 +129,36 @@ describe('binding reports, once and at the name', () => {
     ],
     [
       'a name after a local, in a pattern',
-      'fn f(n: int) -> int:\n  match n:\n    case n.Q: 1\n    case _: 0',
+      'fn f(n: Int) -> Int:\n  match n:\n    case n.Q: 1\n    case _: 0',
       d.qualifiesNothing,
       'Q',
     ],
     [
       'an is binding after the expression that bound it',
-      'fn f(r: Result<int>) -> int:\n  const ok = r is Ok{value} and value > 0\n  value',
+      'fn f(r: Result<Int>) -> Int:\n  const ok = r is Ok{value} and value > 0\n  value',
       d.blockEnded,
       'value',
     ],
     [
       'an is binding after its if',
-      'fn f(r: Result<int>) -> int:\n  if r is Ok{value}:\n    drop value\n  value',
+      'fn f(r: Result<Int>) -> Int:\n  if r is Ok{value}:\n    drop value\n  value',
       d.blockEnded,
       'value',
     ],
-    ['a lowercase type', 'struct point { x: int }', d.typeNameConvention, 'point'],
+    ['a lowercase type', 'struct point { x: Int }', d.typeNameConvention, 'point'],
     ['a lowercase type parameter', 'fn f<t>(x: t): x', d.typeNameConvention, 't'],
     ['a lowercase variant', 'enum Color { red; Green }', d.typeNameConvention, 'red'],
+    ['a struct named as a primitive', 'struct String { x: Int }', d.builtInTypeName, 'String'],
+    ['an alias named Self', 'type Self = Int', d.builtInTypeName, 'Self'],
+    ['a type parameter named as a primitive', 'fn f<Bool>(): 1', d.builtInTypeName, 'Bool'],
+    ['a variant named as a primitive', 'enum Json { Bool; Text }', d.builtInTypeName, 'Bool'],
     ['a PascalCase function', 'fn Compute(): 1', d.valueNameConvention, 'Compute'],
-    ['a PascalCase field', 'struct Point { X: int }', d.valueNameConvention, 'X'],
+    ['a PascalCase field', 'struct Point { X: Int }', d.valueNameConvention, 'X'],
     ['a snake_case variable', 'fn f():\n  const user_id = 1', d.valueNameConvention, 'user_id'],
     ['reading _', 'fn f():\n  _ = 1\n  drop _', d.unnamedRead, '_'],
     [
       'a PascalCase destructuring target',
-      'fn f(t: (int, int)):\n  const Lo, _ = t',
+      'fn f(t: (Int, Int)):\n  const Lo, _ = t',
       d.valueNameConvention,
       'Lo',
     ],
@@ -193,7 +199,7 @@ describe('binding reports, once and at the name', () => {
     ],
     [
       'an imported type the prelude has',
-      { main: "import Error from 'lib'", lib: 'struct Error { text: string }' },
+      { main: "import Error from 'lib'", lib: 'struct Error { text: String }' },
       d.preludeClash,
       'Error',
     ],
@@ -252,7 +258,7 @@ describe('valid programs bind without diagnostics', () => {
 
   it('a top-level function extends the prelude function of its name', () => {
     expect(
-      boundReport({ main: 'struct Book { title: string }\nfn read(self: Book): self.title' }),
+      boundReport({ main: 'struct Book { title: String }\nfn read(self: Book): self.title' }),
     ).toEqual(reportedNothing);
   });
 });
@@ -326,7 +332,7 @@ describe('moduleOf', () => {
 
   it('answers for an unnamed parameter, a repeated declaration and an own call', () => {
     const program = preludeProgramOf({
-      main: 'const a = 1\nconst a = 2\nfn f(_: int): 1\nasync fn g() -> int:\n  g.disposing()\n  1\n',
+      main: 'const a = 1\nconst a = 2\nfn f(_: Int): 1\nasync fn g() -> Int:\n  g.disposing()\n  1\n',
     });
     const bindings = bindProgram(program);
     const entities = [
@@ -342,7 +348,7 @@ describe('moduleOf', () => {
 
   it('answers for locals too, which alone are not top-level', () => {
     const program = preludeProgramOf({
-      main: 'const limit = 3\nfn f<T>(x: T, n: int) -> int:\n  let y = n + limit\n  y\n',
+      main: 'const limit = 3\nfn f<T>(x: T, n: Int) -> Int:\n  let y = n + limit\n  y\n',
     });
     const bindings = bindProgram(program);
     const named = (text: string) =>
@@ -356,8 +362,8 @@ describe('moduleOf', () => {
   });
 
   it('answers nothing for a primitive type', () => {
-    const program = preludeProgramOf({ main: 'fn f(n: int): n' });
-    const int = entityOfName(program, 'main', 'int', 0) ?? unreachable('No int.');
+    const program = preludeProgramOf({ main: 'fn f(n: Int): n' });
+    const int = entityOfName(program, 'main', 'Int', 0) ?? unreachable('No int.');
     expect(bindProgram(program).moduleOf(int)).toBeUndefined();
   });
 });

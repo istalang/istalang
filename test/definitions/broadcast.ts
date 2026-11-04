@@ -33,13 +33,13 @@ const broadcastSource = `import * as time from 'time'
 import Revertible from 'inbox'
 
 struct Announcement:
-  text: string
+  text: String
 
 extern sendable struct Queue<T is Sendable>
 extern fn sendRevertible<T is Sendable>(self: Queue<T>, msg: T) -> Revertible<T>
-extern fn announcements(user: string) -> Queue<Announcement>
+extern fn announcements(user: String) -> Queue<Announcement>
 
-async fn announce(text: string, users: Array<string>, visibleFor: Duration):
+async fn announce(text: String, users: Array<String>, visibleFor: Duration):
   for user in users:
     hold _ = announcements(user).sendRevertible(Announcement{text: text})
   await time.delay(visibleFor)
@@ -145,7 +145,7 @@ export const broadcastDefinition: Definition = {
   functions: [
     externFunction({
       module: main,
-      key: 'main.announcements(string)',
+      key: 'main.announcements(String)',
       parameters: [string],
       result: named(queue),
     }),
@@ -165,20 +165,20 @@ export const broadcastDefinition: Definition = {
     }),
     externFunction({
       module: prelude,
-      key: 'prelude.index(Array<T>, int)',
+      key: 'prelude.index(Array<T>, Int)',
       parameters: [named(stringArray), int],
       result: string,
       typeArguments: [string],
     }),
     externFunction({
       module: prelude,
-      key: 'prelude.compare(int, int)',
+      key: 'prelude.compare(Int, Int)',
       parameters: [int, int],
       result: int,
     }),
     externFunction({
       module: prelude,
-      key: 'prelude.add(int, int)',
+      key: 'prelude.add(Int, Int)',
       parameters: [int, int],
       result: int,
     }),
@@ -221,7 +221,7 @@ export const broadcastDefinition: Definition = {
       kind: 'code',
       name: 'main.announce',
       module: main,
-      span: at('async fn announce(text: string, users: Array<string>, visibleFor: Duration)'),
+      span: at('async fn announce(text: String, users: Array<String>, visibleFor: Duration)'),
       async: true,
       givesDefault: false,
       parameters: [{ reference: false }, { reference: false }, { reference: false }],

@@ -132,7 +132,7 @@ describe('completion asks what encloses a position', () => {
     ['an async lambda', ['fn f():', '  const g = async fn(): ‸', '  1'], ['await'], []],
     [
       'a lambda in an async body',
-      ['async fn f() -> Future<int>:', '  const g = fn(): ‸', '  1'],
+      ['async fn f() -> Future<Int>:', '  const g = fn(): ‸', '  1'],
       [],
       ['await'],
     ],
@@ -168,24 +168,24 @@ describe('completion asks what encloses a position', () => {
 });
 
 const infix = ['or', 'and', 'in', 'not', 'is'];
-const pair = ['struct Pair:', '  first: int', ''];
+const pair = ['struct Pair:', '  first: Int', ''];
 
 describe('completion offers the words that go on after what is written', () => {
   it.each([
-    ['a header before its `:`', ['fn f(n: bool):', '  if n ‸:', '    1']],
-    ['a loop header before its `:`', ['fn f(n: bool):', '  while n ‸:', '    1']],
-    ["a match's subject before its `:`", ['fn f(n: int):', '  match n ‸:', '    case _: 1']],
-    ['a guard', ['fn f(n: int, a: bool):', '  match n:', '    case x if a ‸: 1']],
+    ['a header before its `:`', ['fn f(n: Bool):', '  if n ‸:', '    1']],
+    ['a loop header before its `:`', ['fn f(n: Bool):', '  while n ‸:', '    1']],
+    ["a match's subject before its `:`", ['fn f(n: Int):', '  match n ‸:', '    case _: 1']],
+    ['a guard', ['fn f(n: Int, a: Bool):', '  match n:', '    case x if a ‸: 1']],
     [
       "a comprehension's condition",
-      ['fn f(xs: Array<int>):', '  const e = [for x in xs if x ‸: x]'],
+      ['fn f(xs: Array<Int>):', '  const e = [for x in xs if x ‸: x]'],
     ],
-    ["a comprehension's value", ['fn f(xs: Array<int>):', '  const e = [for x in xs: x ‸]']],
-    ["a template's value", ['fn f(n: int):', '  const s = `id ${n ‸}`']],
-    ["a call's argument", ['fn plus(a: int) -> int: a', 'fn f(n: int):', '  plus(n ‸)']],
-    ["a call's named argument", ['fn plus(a: int) -> int: a', 'fn f(n: int):', '  plus(a: n ‸)']],
-    ['a name that is no modifier', ['fn f(sendable: int):', '  let x = sendable ‸', '  1']],
-    ['a block, a name spelled `shared`', ['fn f(shared: int) -> int:', '  shared ‸', '  0']],
+    ["a comprehension's value", ['fn f(xs: Array<Int>):', '  const e = [for x in xs: x ‸]']],
+    ["a template's value", ['fn f(n: Int):', '  const s = `id ${n ‸}`']],
+    ["a call's argument", ['fn plus(a: Int) -> Int: a', 'fn f(n: Int):', '  plus(n ‸)']],
+    ["a call's named argument", ['fn plus(a: Int) -> Int: a', 'fn f(n: Int):', '  plus(a: n ‸)']],
+    ['a name that is no modifier', ['fn f(sendable: Int):', '  let x = sendable ‸', '  1']],
+    ['a block, a name spelled `shared`', ['fn f(shared: Int) -> Int:', '  shared ‸', '  0']],
     ["a broken item's later word spelled `shared`", ['x( shared ‸']],
   ])('after an operand in %s', (_title, lines) => {
     expect(names(...lines)).toEqual(infix);
@@ -196,13 +196,13 @@ describe('completion offers the words that go on after what is written', () => {
     ['`hold` after a `;`', ['fn f():', '  const a = 1; hold ‸', '  1'], ['let', 'const']],
     ['`hold` in a block', ['fn f():', '  const a = { hold ‸ }', '  1'], ['let', 'const']],
     ['`hold` and its label', ['fn f():', '  batch:', '    hold(batch) ‸', '  1'], ['let', 'const']],
-    ['`not` after an operand', ['fn f(n: int):', '  let x = n not ‸', '  1'], ['in']],
+    ['`not` after an operand', ['fn f(n: Int):', '  let x = n not ‸', '  1'], ['in']],
     ['`sendable` in a type', ['type F = sendable ‸'], ['fn', 'async']],
     ["`sendable` in a parameter's type", ['fn f(cb: sendable ‸'], ['fn', 'async']],
     ['`shared` below an annotation', ['@Ann', 'shared ‸'], ['struct']],
     ['`sendable` with `fn` begun', ['type F = sendable fn‸'], ['fn', 'async']],
     ['`sendable` with `async` begun', ['type F = sendable async‸'], ['fn', 'async']],
-    ["a comprehension's target", ['fn f(xs: Array<int>):', '  const e = [for x ‸]'], ['in']],
+    ["a comprehension's target", ['fn f(xs: Array<Int>):', '  const e = [for x ‸]'], ['in']],
     ['`extern sendable`', ['extern sendable ‸'], ['struct']],
     ['a range', ['fn f():', '  let r = 0..10 ‸', '  1'], ['or', 'and', 'in', 'not', 'is', 'by']],
     [
@@ -218,7 +218,7 @@ describe('completion offers the words that go on after what is written', () => {
 describe('completion where a name is declared', () => {
   it.each([
     ['a local function', ['fn f():', '  fn ‸', '  1'], []],
-    ["a function's later parameter", ['fn g(a: int, ‸'], []],
+    ["a function's later parameter", ['fn g(a: Int, ‸'], []],
     ["a lambda's first parameter", ['fn f():', '  const g = fn(‸'], []],
     ["a function's first parameter", ['fn g(‸'], ['self']],
     ["a trait's function's first parameter", ['trait T:', '  fn g(‸'], ['self']],
@@ -232,44 +232,44 @@ describe('completion where a name is declared', () => {
 });
 
 it("completion offers types, not traits, in a bound's type arguments", () => {
-  const offers = names('trait Shape:', '  fn area(self: Self) -> float', 'fn g<T is Array<‸');
-  expect(offers).toEqual(expect.arrayContaining(['int', 'Array']));
+  const offers = names('trait Shape:', '  fn area(self: Self) -> Float', 'fn g<T is Array<‸');
+  expect(offers).toEqual(expect.arrayContaining(['Int', 'Array']));
   expect(offers).not.toContain('Shape');
 });
 
 it("completion offers a static's types where its type is written before its name", () => {
-  const offers = names(...pair, 'fn first(p: Pair) -> int: p.first', 'fn Pa‸ir.zero() -> int: 1');
-  expect(offers).toEqual(expect.arrayContaining(['Pair', 'int']));
+  const offers = names(...pair, 'fn first(p: Pair) -> Int: p.first', 'fn Pa‸ir.zero() -> Int: 1');
+  expect(offers).toEqual(expect.arrayContaining(['Pair', 'Int']));
   expect(offers).not.toContain('first');
 });
 
 it("completion offers an operand after a comprehension's `in` inside a template's value", () => {
-  const offers = names('fn f(xs: Array<int>):', '  const s = `${[for x in ‸: x]}`', '  1');
+  const offers = names('fn f(xs: Array<Int>):', '  const s = `${[for x in ‸: x]}`', '  1');
   expect(offers).toEqual(expect.arrayContaining(['xs', 'not']));
   expect(offers).not.toContain('in');
 });
 
 describe('completion offers `elif` and `else` after an `if` chain still open', () => {
   it.each([
-    ['a declared value', ['fn f(n: bool) -> int:', '  const x = if n:', '    1', '  ‸', '  0']],
-    ['a returned value', ['fn f(n: bool) -> int:', '  return if n:', '    1', '  ‸', '  0']],
+    ['a declared value', ['fn f(n: Bool) -> Int:', '  const x = if n:', '    1', '  ‸', '  0']],
+    ['a returned value', ['fn f(n: Bool) -> Int:', '  return if n:', '    1', '  ‸', '  0']],
     [
       'an assigned value',
-      ['fn f(n: bool) -> int:', '  let x = 0', '  x = if n:', '    1', '  ‸', '  0'],
+      ['fn f(n: Bool) -> Int:', '  let x = 0', '  x = if n:', '    1', '  ‸', '  0'],
     ],
   ])('ending %s', (_title, lines) => {
     expect(names(...lines)).toEqual(expect.arrayContaining(['elif', 'else']));
   });
 
   it("but not after one inside a block's last statement", () => {
-    const nested = ['fn f(n: bool) -> int:', '  if n:', '    1', '  else:', '    if n:', '      2'];
+    const nested = ['fn f(n: Bool) -> Int:', '  if n:', '    1', '  else:', '    if n:', '      2'];
     expect(names(...nested, '  ‸', '  0')).not.toContain('else');
   });
 });
 
 describe('completion after `&` offers what may be referenced', () => {
   it('a reference parameter, its `&` written in parentheses too', () => {
-    const offered = names('fn bump(n: &int):', '  n += 1', 'fn f(m: (&int)):', '  bump(&‸');
+    const offered = names('fn bump(n: &Int):', '  n += 1', 'fn f(m: (&Int)):', '  bump(&‸');
     expect(offered).toContain('m');
   });
 });

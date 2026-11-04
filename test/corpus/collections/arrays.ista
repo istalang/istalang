@@ -2,30 +2,30 @@
 # Arrays (§2, §3.8): literals with spreads, indexing, `at` from the end, methods taking `&self`,
 # clamping `slice`, and `==`-based search. Spreading an array copies it (§3.1).
 
-fn show(xs: Array<int>) -> string:
+fn show(xs: Array<Int>) -> String:
   let text = "["
   for x in xs:
     text = if text == "[": text + x else: text + ", " + x
   text + "]"
 
-async fn main() -> Future<string>:
+async fn main() -> Future<String>:
   const base = [1, 2, 3]
   let xs = [9, ...base, 4]
   const sum = base[0] + base[1] + base[2]
-  const popped: int? = xs.pop()
+  const popped: Int? = xs.pop()
   xs.push(4)
-  const missing: int? = xs.at(10)
+  const missing: Int? = xs.at(10)
   const words = ["a", "b", "c"]
   const parts = [
-    string(sum),
+    String(sum),
     show(xs),
-    string(base.length()),
-    string(xs.at(-1) == 4),
-    string(popped == 4),
+    String(base.length()),
+    String(xs.at(-1) == 4),
+    String(popped == 4),
     if missing == none: "none" else: "some",
-    string(xs.indexOf(2)),
-    string(xs.includes(9)),
-    string(base.indexOf(7)),
+    String(xs.indexOf(2)),
+    String(xs.includes(9)),
+    String(base.indexOf(7)),
     words.join("-"),
     show(base.slice(1)),
     show(base.slice(-5, 2)),

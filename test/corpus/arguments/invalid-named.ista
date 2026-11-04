@@ -6,12 +6,12 @@
 # error: 5122 at 24:13
 # A named argument must name a parameter, once, and every parameter without a default must be
 # given; a method's self is given before the dot, and a function value takes no names (§3.3).
-fn f(a: int, b: int = 2) -> int:
+fn f(a: Int, b: Int = 2) -> Int:
   a + b
 
-struct S { n: int }
+struct S { n: Int }
 
-fn total(self: S, extra: int = 0) -> int:
+fn total(self: S, extra: Int = 0) -> Int:
   self.n + extra
 
 fn main():

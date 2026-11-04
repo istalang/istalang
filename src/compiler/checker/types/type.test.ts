@@ -34,7 +34,7 @@ const packDeclaration: TypeParameter = {
 };
 const pack = { kind: 'parameter', declaration: packDeclaration } as const;
 
-/** `fn(...fixed, ...A) -> unit`. */
+/** `fn(...fixed, ...A) -> Unit`. */
 function packed(fixed: readonly Type[]): FunctionType {
   return {
     kind: 'function',
@@ -46,7 +46,7 @@ function packed(fixed: readonly Type[]): FunctionType {
   };
 }
 
-/** `fn(...parameters) -> unit`, every parameter by value. */
+/** `fn(...parameters) -> Unit`, every parameter by value. */
 function plain(parameters: readonly Type[]): FunctionType {
   return { ...packed(parameters), pack: undefined };
 }

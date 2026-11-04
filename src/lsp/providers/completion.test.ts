@@ -85,7 +85,7 @@ describe('completion a typed character asks for', () => {
   it('offers fields alone after a `{` or `,` in a literal, and nothing after one elsewhere', async () => {
     const own = await connectedClient(corpusDirectory);
     const uri = pathToFileURL(`${corpusDirectory}typed-literal.ista`).href;
-    const lines = ['struct Pair:', '  first: int', '  second: int', '', 'fn f(a: int) -> Pair:'];
+    const lines = ['struct Pair:', '  first: Int', '  second: Int', '', 'fn f(a: Int) -> Pair:'];
     await own.open(uri, [...lines, '  const b = [a, a]', '  Pair{first: a, }', ''].join('\n'));
     const labels = async (line: number, character: number, triggerCharacter: string) => {
       const items = await own.connection.sendRequest(CompletionRequest.type, {

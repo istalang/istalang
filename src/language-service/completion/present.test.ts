@@ -12,11 +12,11 @@ import { type Completion, ranksBefore } from './item.ts';
 const declarations = [
   "import JsonSkip from 'json'",
   'enum Color { Red; Green; Blue }',
-  'enum Decision { Approved; Rejected { by: string } }',
+  'enum Decision { Approved; Rejected { by: String } }',
   'struct Note:',
-  '  reason: string',
+  '  reason: String',
   'fn Color.mixed() -> Color: Color.Red',
-  'fn pl(a: int) -> int: a',
+  'fn pl(a: Int) -> Int: a',
   '',
 ];
 
@@ -50,7 +50,7 @@ describe('the item a list opens on', () => {
   it('is none where only prelude or imported items fit', () => {
     expect(preselected('fn t() -> Note:', '  Note{reason: ‸}')).toBeUndefined();
     expect(
-      preselected('fn t(r: Result<int, string>) -> int:', '  if r is ‸', '  0'),
+      preselected('fn t(r: Result<Int, String>) -> Int:', '  if r is ‸', '  0'),
     ).toBeUndefined();
   });
 });
@@ -63,9 +63,9 @@ describe("an enum's variants", () => {
       'Blue',
     ]);
     expect(
-      namesAmong(['Ok', 'Err'], 'fn t(r: Result<int, string>) -> int:', '  if r is ‸', '  0'),
+      namesAmong(['Ok', 'Err'], 'fn t(r: Result<Int, String>) -> Int:', '  if r is ‸', '  0'),
     ).toEqual(['Ok', 'Err']);
-    expect(namesAmong(['Some', 'None'], 'fn t(o: int?) -> int:', '  if o is ‸', '  0')).toEqual([
+    expect(namesAmong(['Some', 'None'], 'fn t(o: Int?) -> Int:', '  if o is ‸', '  0')).toEqual([
       'Some',
       'None',
     ]);

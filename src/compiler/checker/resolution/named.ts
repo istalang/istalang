@@ -1,8 +1,8 @@
 /**
  * What a name in value position names, where the binder alone can't tell (§3.1, §3.11): a type, as
  * the owner of a static call or a conversion's target; a variant, which a bare name picks by the
- * enum expected; or a struct without fields, the one type a bare name makes a value of. Expressions
- * and patterns name them the same way.
+ * enum expected; or a struct without fields, the one type a bare name makes a value of. Patterns
+ * name a variant the same way; the type a name names is types/named-types.ts's.
  */
 
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
@@ -13,8 +13,8 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { enumsExpected } from '../types/fit.ts';
-import { parameterType } from '../types/resolve-type.ts';
-import { aliasedAs, expectsError, nominalType, primitiveType, type Type } from '../types/type.ts';
+import { entityType } from '../types/named-types.ts';
+import { expectsError, type Type } from '../types/type.ts';
 
 /**
  * The type a type named in value position denotes, as the owner of a static call or the target
@@ -23,30 +23,6 @@ import { aliasedAs, expectsError, nominalType, primitiveType, type Type } from '
 export function namedType(context: BodyContext, node: Expression): Type | undefined {
   const name = nameNodeOf(node);
   return entityType(context.checker, name === undefined ? undefined : context.entityOf(name));
-}
-
-/** The type `entity` names, a trait's none: a declared type with no type arguments given. */
-export function entityType(
-  checker: Pick<CheckerContext, 'aliasedType'>,
-  entity: Entity | undefined,
-): Type | undefined {
-  if (entity?.kind === 'primitive') {
-    return primitiveType(entity.name);
-  }
-  if (entity?.kind !== 'type') {
-    return undefined;
-  }
-  const { declaration } = entity;
-  switch (declaration.kind) {
-    case 'TypeParameter':
-      return parameterType(declaration);
-    case 'TypeAliasDeclaration':
-      return aliasedAs(checker.aliasedType(declaration), { declaration, arguments: [] });
-    case 'TraitDeclaration':
-      return undefined;
-    default:
-      return nominalType(entity, []);
-  }
 }
 
 /** The identifier naming what `node` names: itself, or the member of a qualified name. */

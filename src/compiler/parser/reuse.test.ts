@@ -98,8 +98,8 @@ describe('a tree parsed after an edit', () => {
   );
 
   it('keeps an item moved or repeated, and gives the edited copy new nodes', () => {
-    const before = parsed('fn f() -> int: 1\n\nfn g() -> int: 2\n');
-    const after = parsed('fn g() -> int: 2\n\nfn f() -> int: 1\n\nfn f() -> int: 3\n', before);
+    const before = parsed('fn f() -> Int: 1\n\nfn g() -> Int: 2\n');
+    const after = parsed('fn g() -> Int: 2\n\nfn f() -> Int: 1\n\nfn f() -> Int: 3\n', before);
     const [g, f, other] = after.root.items;
     expect(f).toBe(before.root.items[0]);
     expect(g).toBe(before.root.items[1]);
@@ -107,8 +107,8 @@ describe('a tree parsed after an edit', () => {
   });
 
   it('keeps a header whose body changed, with the new body', () => {
-    const before = parsed('fn f() -> int:\n  const x = 1\n  x\n');
-    const after = parsed('fn f() -> int:\n  const x = 2\n  x\n', before);
+    const before = parsed('fn f() -> Int:\n  const x = 1\n  x\n');
+    const after = parsed('fn f() -> Int:\n  const x = 2\n  x\n', before);
     const [f] = after.root.items;
     expect(f).toBe(before.root.items[0]);
     expect(f?.kind === 'FunctionDeclaration' && bodyOf(after, f)).not.toBe(
@@ -117,8 +117,8 @@ describe('a tree parsed after an edit', () => {
   });
 
   it('parses an item again when the indentation its line begins with changed', () => {
-    const before = parsed('fn f() -> int:\n  1\n');
-    const after = parsed(' fn f() -> int:\n  1\n', before);
+    const before = parsed('fn f() -> Int:\n  1\n');
+    const after = parsed(' fn f() -> Int:\n  1\n', before);
     expect(after.root.items[0]).not.toBe(before.root.items[0]);
   });
 });

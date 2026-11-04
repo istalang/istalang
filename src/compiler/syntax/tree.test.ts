@@ -78,7 +78,7 @@ function parseText(text: string): SyntaxTree {
 
 describe('childrenOf', () => {
   it("gives a function's body, which no field holds, after its other children", () => {
-    const tree = parseText('fn f(a: int) -> int:\n  a\n');
+    const tree = parseText('fn f(a: Int) -> Int:\n  a\n');
     const [f] = tree.root.items;
     if (f?.kind !== 'FunctionDeclaration') {
       throw new Error('Expected a function.');
@@ -91,7 +91,7 @@ describe('childrenOf', () => {
   });
 
   it('gives a function written without a body none', () => {
-    const tree = parseText('extern fn host(x: int) -> int\n');
+    const tree = parseText('extern fn host(x: Int) -> Int\n');
     const [host] = tree.root.items;
     expect(host?.kind === 'FunctionDeclaration' && bodyOf(tree, host)).toBe(undefined);
   });
@@ -149,7 +149,7 @@ const anyText = fc.string({ unit: 'grapheme-ascii', maxLength: 80 }).map(parseTe
 
 describe('segments', () => {
   const tree = parseText(
-    '@A\nfn f(x: int) -> int:\n  """Doc."""\n  fn g(): x\n  g()\ntrait T:\n  fn m()\n  n: int\ntrait B { fn m() }\n',
+    '@A\nfn f(x: Int) -> Int:\n  """Doc."""\n  fn g(): x\n  g()\ntrait T:\n  fn m()\n  n: Int\ntrait B { fn m() }\n',
   );
   const [f, t, b] = tree.root.items;
   if (f?.kind !== 'FunctionDeclaration' || t?.kind !== 'TraitDeclaration' || b === undefined) {
@@ -168,7 +168,7 @@ describe('segments', () => {
   });
 
   it("end a function's span with its header, docstring included, where its body's begins", () => {
-    expect(textAt(f)).toBe('@A\nfn f(x: int) -> int:\n  """Doc."""');
+    expect(textAt(f)).toBe('@A\nfn f(x: Int) -> Int:\n  """Doc."""');
     expect(body?.span.segment.kind).toBe('body');
     expect(body && tree.bases.get(body.span.segment)).toBe(spanIn(tree, f.span).end);
     expect(extentText(f)).toBe(`${textAt(f)}\n  fn g(): x\n  g()`);
@@ -189,7 +189,7 @@ describe('segments', () => {
     expect(textAt(t)).toBe('trait T:');
     expect(t.members.map((member) => member.span.segment.kind)).toEqual(['header', 'header']);
     expect(new Set([t, ...t.members].map((node) => node.span.segment)).size).toBe(3);
-    expect(extentText(t)).toBe('trait T:\n  fn m()\n  n: int');
+    expect(extentText(t)).toBe('trait T:\n  fn m()\n  n: Int');
   });
 
   it("keep a trait's members on its line inside it", () => {
