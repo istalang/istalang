@@ -1,0 +1,34 @@
+# outcome: "5 25 7 3 db | v 1 copy 2"
+# A shape is its fields, written anywhere and in any order (§3.1): an alias names one, a
+# `struct{…}` literal with nothing to take a type from has one, and the value behind a shared
+# struct is the shape of its fields (§3.18), which any value of that shape writes or spreads into.
+
+type Point = { x: Int; y: Int }
+
+fn sum(p: { y: Int; x: Int }) -> Int:
+  p.x + p.y
+
+fn norm(p: Point) -> Int:
+  p.x * p.x + p.y * p.y
+
+fn first(points: Array<{ x: Int; y: Int }>) -> Point:
+  points[0]
+
+shared struct Lease:
+  name: String
+  renewals: Int = 0
+
+fn named(value: { renewals: Int; name: String }) -> String:
+  value.name
+
+async fn main():
+  const a: Point = struct{x: 2, y: 3}
+  const b = struct{y: 4, x: 3}
+  const c: Array<Point> = [b]
+  const lease = new Lease{name: "db"}
+  const before = "" + sum(a) + " " + norm(b) + " " + sum(first(c)) + " " + first([a]).y + " " + named(*lease)
+  const v: { renewals: Int; name: String } = struct{name: "v", renewals: 1}
+  *lease = v
+  const shape = struct{renewals: 2, name: "copy"}
+  const copy = new Lease{...shape}
+  before + " | " + lease->name + " " + lease->renewals + " " + copy->name + " " + copy->renewals

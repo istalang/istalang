@@ -20,8 +20,8 @@
  *   signature records the reference.
  * - Fields, of a struct, an enum's variant or an anonymous struct type, resolve in the module
  *   writing them (`declaredFields`).
- * - A `{…}` type is an anonymous struct, a type of its own (§3.1), whose fields resolve here, and
- *   whose fields' annotations are checked here, since nothing declares it elsewhere (§3.16).
+ * - A `{…}` type is a shape (§3.1), whose fields resolve here, and whose fields' annotations are
+ *   checked here, since nothing declares it elsewhere (§3.16).
  * - A trait names no type of its own; after `any` it names the traits of one (§3.10).
  */
 
@@ -58,6 +58,7 @@ import {
   type PackType,
   type ParameterKey,
   primitiveType,
+  shapeType,
   type Type,
   tupleType,
   unitType,
@@ -91,7 +92,7 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   StructType: ({ checker, module }, node) => {
     const fields = declaredFields(checker, module, node.fields);
     checker.annotations.checkFields(fields);
-    return { kind: 'anonymous', origin: node, fields };
+    return shapeType(node, fields);
   },
   AnyType: ({ checker, module }, node) => checker.anyTypeOf(module, node.traits),
   Missing: () => errorType,

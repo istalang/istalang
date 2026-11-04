@@ -16,7 +16,8 @@ import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall, preludeCall } from '../resolution/implicit.ts';
-import { sameType, stringType, type Type } from '../types/type.ts';
+import { sameType } from '../types/identity.ts';
+import { stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayOf } from '../types/well-known.ts';
 

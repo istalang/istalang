@@ -285,19 +285,21 @@ describe('lowering', () => {
     );
   });
 
-  it('gives each anonymous struct an unnamed entry of its own, shared by its uses', () => {
+  it('gives each shape one unnamed entry, shared by every place writing it (§3.1)', () => {
     const program = stdProgramOf({
       main: [
         'async fn main():',
         '  const a = struct{x: 1}',
         '  const b = struct{x: 2}',
-        '  const c = if a.x > 0: struct{y: 3} else: struct{y: 4}',
+        '  const c = if a.x > 0: struct{y: 3, x: 0} else: struct{x: 4, y: 0}',
         '  a.x + b.x + c.y',
       ].join('\n'),
     });
     const { types } = compiledDefinition(program, 'main');
     const anonymous = types.filter((type) => type.kind === 'struct' && type.name === '');
-    expect(anonymous).toHaveLength(3);
+    expect(
+      anonymous.map((type) => type.kind === 'struct' && type.fields.map((f) => f.name)),
+    ).toEqual([['x'], ['x', 'y']]);
   });
 
   it('lowers a select with only an else to its else body', () => {

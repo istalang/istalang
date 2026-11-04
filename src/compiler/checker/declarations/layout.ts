@@ -5,7 +5,7 @@
  *
  * A shared struct's fields are its value's, behind the handle that is the struct's value: they are
  * no fields of the struct type itself, so `x.f` and patterns never see them, and `*x` reads them as
- * an anonymous struct of its own, the one value type of that declaration.
+ * the shape of those fields (§3.18), the same type as any shape of them.
  *
  * - As declared: field types resolved in the declaring module, once per declaration; a field that
  *   would make the type's instantiation endless reads as the error type (type-expansion.ts).
@@ -35,6 +35,7 @@ import {
   errorType,
   type FieldMember,
   type NominalType,
+  shapeType,
   type Type,
 } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
@@ -115,7 +116,7 @@ export class Layouts {
       return undefined;
     }
     const fields = instantiated(this.declaredFieldsOf(declaration), substitutionOf(type));
-    return { kind: 'anonymous', origin: declaration, arguments: type.arguments, fields };
+    return shapeType(declaration, fields);
   }
 
   /** The variants of an enum type, substituted for its type arguments; undefined for another type. */

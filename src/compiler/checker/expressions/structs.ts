@@ -49,11 +49,13 @@ import { fieldOf } from '../traits/constraints.ts';
 import { optionalInner, withoutOptionals } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import {
+  byFieldName,
   errorType,
   type FieldMember,
   isNominalEntity,
   type NominalEntity,
   type NominalType,
+  shapeType,
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -204,23 +206,29 @@ function declaredShape(
 }
 
 /**
- * A `struct{…}` with nothing to take a type from: a type of its own, typed by its values. Only
- * named items can name its fields.
+ * A `struct{…}` with nothing to take a type from: the shape of its named items, typed by their
+ * values (§3.1). Its fields keep the shape's name order, and so do the sources recorded for them.
  */
 function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
-  const fields: FieldMember[] = [];
-  const sources: FieldSource[] = [];
+  const given: {
+    readonly name: string;
+    readonly field: FieldMember;
+    readonly source: FieldSource;
+  }[] = [];
   let fits = true;
   for (const item of node.items) {
     if (item.kind === 'FieldInitializer') {
       const value = itemValue(item);
       const type = context.expression(value);
-      if (fields.some((field) => field.name === item.name.text)) {
+      if (given.some((each) => each.name === item.name.text)) {
         context.report(checkerDiagnostics.repeatedField(item.name.span, item.name.text));
         fits = false;
       } else {
-        fields.push({ name: item.name.text, type });
-        sources.push({ kind: 'value', value });
+        given.push({
+          name: item.name.text,
+          field: { name: item.name.text, type },
+          source: { kind: 'value', value },
+        });
       }
     } else if (item.kind !== 'Invalid') {
       context.report(checkerDiagnostics.unnamedAnonymousField(item.span));
@@ -228,10 +236,17 @@ function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
       fits = false;
     }
   }
+  const ordered = given.toSorted(byFieldName);
   if (fits) {
-    context.literals.record(node, sources);
+    context.literals.record(
+      node,
+      ordered.map((each) => each.source),
+    );
   }
-  return { kind: 'anonymous', origin: node, fields };
+  return shapeType(
+    node,
+    ordered.map((each) => each.field),
+  );
 }
 
 /** Checks every value of a literal whose type is unknown, so each is still recorded. */

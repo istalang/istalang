@@ -7,8 +7,8 @@
  * - Every nominal type can be laid out: a struct by its fields, an enum by its variants, an extern
  *   type by who disposes it, which the checker derives from the `dispose` declared for it
  *   (checker/rules/disposal.ts).
- * - An anonymous struct is a struct entry without a name, one per type, so two never share an
- *   entry (§3.1).
+ * - A shape is a struct entry without a name, one per shape: every place writing equal fields
+ *   shares it (§3.1), its fields in the name order the shape keeps.
  * - An `any` type (§3.10) is an enum the program closes: one variant per type a value of it is
  *   converted from, each holding that value as its one field. A variant is added the first time
  *   lowering converts from its type, so a variant's index never changes once code names it;
@@ -31,13 +31,13 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
-import {
-  type AnonymousStructType,
-  type AnyType,
-  type FieldMember,
-  type NominalType,
-  sameType,
-  type Type,
+import { sameType } from '../checker/types/identity.ts';
+import type {
+  AnonymousStructType,
+  AnyType,
+  FieldMember,
+  NominalType,
+  Type,
 } from '../checker/types/type.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { closeFunctionCall, type FunctionInstance } from './instances.ts';

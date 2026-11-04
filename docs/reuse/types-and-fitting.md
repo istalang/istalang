@@ -16,9 +16,10 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - get built-in primitive types → `intType`, `floatType`, `boolType`, `stringType`, `unitType`, `neverType` (`src/compiler/checker/types/type.ts`)
 - get `errorType`, build a primitive type, or test for a primitive → `errorType`, `primitiveType`, `isPrimitive` (`src/compiler/checker/types/type.ts`); a value expected of the error type reports nothing more → `expectsError`
 - build or inspect tuple types → `tupleType`, `tupleElements` (`src/compiler/checker/types/type.ts`)
-- build or inspect nominal or shared-value types → `nominalType`, `isNominalEntity`, `isSharedValueType` (`src/compiler/checker/types/type.ts`)
+- build or inspect nominal types → `nominalType`, `isNominalEntity` (`src/compiler/checker/types/type.ts`)
+- build a shape (an anonymous struct type, the value behind a shared struct included), its fields in name order → `shapeType`, `byFieldName` (`src/compiler/checker/types/type.ts`); never write `{ kind: 'anonymous', … }` by hand
 - inspect or attach variadic type packs on function types → `isPack`, `fillsPack`, `withPack`, `packRestSlot` (`src/compiler/checker/types/type.ts`)
-- compare two types or constraints for equality or fit → `sameType`, `sameConstraint`, `sameShape`, `isAssignable` (`src/compiler/checker/types/type.ts`)
+- compare two types or constraints for equality or fit → `sameType` (key equality, the one definition of identity), `sameConstraint`, `isAssignable` (`src/compiler/checker/types/identity.ts`); two function types' parameters and results, or a function fitting another's header → `sameShape`, `functionFits` (`src/compiler/checker/types/type.ts`)
 - inspect or map a type's direct child types → `typeChildren`, `mapChildren` (`src/compiler/checker/types/type-parts.ts`)
 - list type parameters, nominal or `any` types in a `Type` → `parametersIn`, `nominalsIn`, `anyTypesIn`, `mentionsError` (`src/compiler/checker/types/type-parts.ts`)
 - decide whether generic uses would instantiate endlessly (§3.5): build edges, find expanding ones on a cycle → `argumentEdges`, `endlessEdges` (`src/compiler/checker/types/expansion-edges.ts`)

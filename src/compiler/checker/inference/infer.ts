@@ -7,6 +7,7 @@
  *   conversion applies to a whole value, never inside a collection or a function type.
  * - A pack binds only what can stand for one, a tuple, `Unit` or a pack (§3.5); a function type's
  *   pack binds to the parameters past the fixed ones (types/type.ts, `sameShape`).
+ * - A shape matches a shape of the same field names, field by field, in the name order both keep.
  * - The types found for a parameter must agree, whatever order the arguments come in: a later
  *   one fits the bound type (a conversion included), or the bound type fits it, which then binds, so
  *   `same(o, 2)` and `same(2, o)` both bind `T` to `Int?` for `o: Int?`. Two types neither fits
@@ -22,18 +23,19 @@
  */
 
 import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
+import { sameType } from '../types/identity.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import {
+  type AnonymousStructType,
   type AnyType,
   type FunctionType,
   fillsPack,
+  functionFits,
   isPack,
   isPrimitive,
   neverType,
   type ParameterKey,
-  sameShape,
-  sameType,
   type Type,
 } from '../types/type.ts';
 import { parametersIn, typeChildren } from '../types/type-parts.ts';
@@ -145,7 +147,7 @@ export class Inference {
       case 'anonymous':
         return (
           given.kind === 'anonymous' &&
-          given.origin === declared.origin &&
+          sameFieldNames(declared, given) &&
           this.#matchAll(typeChildren(declared), typeChildren(given))
         );
       case 'tuple':
@@ -165,15 +167,11 @@ export class Inference {
   }
 
   #matchFunction(declared: FunctionType, given: FunctionType): boolean {
-    return (
-      given.isAsync === declared.isAsync &&
-      (given.isSendable || !declared.isSendable) &&
-      sameShape(
-        declared,
-        given,
-        (part, other) => this.#matchExact(part, other),
-        (part, other) => this.#matchExact(part, other) || isPrimitive(other, 'Never'),
-      )
+    return functionFits(
+      declared,
+      given,
+      (part, other) => this.#matchExact(part, other),
+      (part, other) => this.#matchExact(part, other) || isPrimitive(other, 'Never'),
     );
   }
 
@@ -250,4 +248,12 @@ export class Inference {
     this.#conflicts.add(parameter);
     return false;
   }
+}
+
+/** Whether two shapes name the same fields; both keep them in name order (types/type.ts). */
+function sameFieldNames(first: AnonymousStructType, second: AnonymousStructType): boolean {
+  return (
+    first.fields.length === second.fields.length &&
+    first.fields.every((field, index) => field.name === second.fields[index]?.name)
+  );
 }

@@ -16,8 +16,9 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
+import { sameType } from '../../../compiler/checker/types/identity.ts';
 import { downcastTargetOf, namesOwnType } from '../../../compiler/checker/types/named-types.ts';
-import { boolType, sameType, type Type } from '../../../compiler/checker/types/type.ts';
+import { boolType, type Type } from '../../../compiler/checker/types/type.ts';
 import { optionalArgument } from '../../../compiler/checker/types/well-known.ts';
 import { casesOf } from '../../../compiler/syntax/expressions/index.ts';
 import { lastName } from '../../../compiler/syntax/node.ts';

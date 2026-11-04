@@ -54,6 +54,16 @@ describe('renaming', () => {
     });
   });
 
+  it("refuses a shape's field, and a struct's whose field names a shape has (§3.1)", () => {
+    const { program, named } = navigable({
+      main: 'type Point = { x: Int; y: Int }\nstruct Pixel { y: Int; x: Int }\nshared struct Lease { name: String }\nfn f(v: { name: String }) -> String: v.name\nstruct Size { width: Int }\n',
+    });
+    for (const use of [named('main', 'x'), named('main', 'x', 1), named('main', 'name')]) {
+      expect(refusalOf(program, use)).toContain('shape');
+    }
+    expect(refusalOf(program, named('main', 'width'))).toBeUndefined();
+  });
+
   it('refuses what std declares', () => {
     const { program, named } = navigable({ main: 'fn f() -> Int?: Some{value: 1}\n' });
     expect(refusalOf(program, named('main', 'Some'))).toContain('std:prelude');

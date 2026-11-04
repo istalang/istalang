@@ -5,8 +5,9 @@
  * evaluated once, or else computed by the call to its default the checker recorded, given the
  * fields before it, in declaration order. A field read names the field by its index.
  *
- * `new X{…}` builds the value behind a shared struct the same way, as the anonymous struct its
- * fields make, and puts it in a new cell, whose handle is the shared struct's value (§3.18).
+ * `new X{…}` builds the value behind a shared struct the same way, as the shape its fields make,
+ * each field placed by name since a shape keeps them in name order, and puts it in a new cell,
+ * whose handle is the shared struct's value (§3.18).
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -38,7 +39,7 @@ export function lowerNewStructLiteral(context: FunctionContext, node: NewStructL
       `'new' at ${node.span.from} builds no shared struct; the checker should have said so.`,
     );
   }
-  const value = construct(context, sharedValue, literalFields(context, node), node.span);
+  const value = constructByName(context, sharedValue, namedLiteralFields(context, node), node.span);
   const dst = context.code.allocate();
   const cellType = context.tables.types.index(type);
   context.code.emit({ kind: 'newCell', span: node.span, dst, type: cellType, value });
@@ -69,6 +70,17 @@ export function literalFields(context: FunctionContext, node: FieldsLiteral): Re
     fields.push(fieldOf(context, { node, values }, source, fields));
   }
   return fields;
+}
+
+/**
+ * The registers of a literal's fields by name: a shared struct's literal gives its declaration's
+ * fields, in declaration order for its defaults, while the value behind it is their shape, in name
+ * order (§3.18).
+ */
+function namedLiteralFields(context: FunctionContext, node: FieldsLiteral): Map<string, Register> {
+  const declared = context.body.literalFieldsOf(node) ?? [];
+  const registers = literalFields(context, node);
+  return new Map(declared.map((field, index) => [field.name, registers[index] as Register]));
 }
 
 /** A literal with its items' values evaluated, which its fields are taken from. */
@@ -155,6 +167,19 @@ export function construct(
   const index = context.tables.types.index(type);
   context.code.emit({ kind: 'struct', span, dst, type: index, fields: [...fields] });
   return dst;
+}
+
+/** Builds a struct of `type`, each of its fields taken by name from `named`. */
+function constructByName(
+  context: FunctionContext,
+  type: NominalType | AnonymousStructType,
+  named: ReadonlyMap<string, Register>,
+  span: AnchoredSpan,
+): Register {
+  const fields = (context.checker.fieldsOf(type) ?? []).map(
+    ({ name }) => named.get(name) ?? unreachable(`No register holds the field '${name}'.`),
+  );
+  return construct(context, type, fields, span);
 }
 
 /** The struct type the checker gave `node`, declared or anonymous. */

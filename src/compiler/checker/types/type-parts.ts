@@ -4,15 +4,8 @@
  * the error type.
  */
 
-import {
-  type AnyType,
-  isSharedValueType,
-  type NominalType,
-  type ParameterKey,
-  sameType,
-  type Type,
-  withPack,
-} from './type.ts';
+import { sameType } from './identity.ts';
+import { type AnyType, type NominalType, type ParameterKey, type Type, withPack } from './type.ts';
 
 /** The types `type` is built from, one level down. */
 export function typeChildren(type: Type): readonly Type[] {
@@ -20,9 +13,7 @@ export function typeChildren(type: Type): readonly Type[] {
     case 'nominal':
       return type.arguments;
     case 'anonymous':
-      return isSharedValueType(type)
-        ? [...type.arguments, ...type.fields.map((field) => field.type)]
-        : type.fields.map((field) => field.type);
+      return type.fields.map((field) => field.type);
     case 'tuple':
       return type.elements;
     case 'function':
@@ -46,8 +37,8 @@ export function typeChildren(type: Type): readonly Type[] {
 
 /**
  * Whether two types are alike in every part: `sameType` at every level, alias arguments included,
- * with the same alias by its declaration and an `any`'s constraints in the same order, which
- * `sameType` overlooks. A checker result computed again is the one before only if its types are alike so
+ * with the same alias by its declaration, an `any`'s constraints in the same order and a shape
+ * written at the same node, which `sameType` overlooks. A checker result computed again is the one before only if its types are alike so
  * (incremental-checking.md §1), since a taken-over result keeps every node its types name.
  */
 export function sameTypeSpelled(first: Type, second: Type): boolean {
@@ -61,6 +52,7 @@ export function sameTypeSpelled(first: Type, second: Type): boolean {
       (sameType(one, other) &&
         one.alias?.declaration === other.alias?.declaration &&
         sameConstraintOrder(one, other) &&
+        sameOrigin(one, other) &&
         parts.length === others.length);
     if (!alike) {
       return false;
@@ -86,6 +78,11 @@ function sameConstraintOrder(one: Type, other: Type): boolean {
         (constraint, index) => constraint.trait === other.constraints[index]?.trait,
       ))
   );
+}
+
+/** Whether two types that are shapes were written at the same node, which tools locate them by. */
+function sameOrigin(one: Type, other: Type): boolean {
+  return one.kind !== 'anonymous' || (other.kind === 'anonymous' && one.origin === other.origin);
 }
 
 /**
@@ -141,12 +138,8 @@ export function mapChildren(type: Type, map: (child: Type) => Type): Type {
       return type;
     case 'nominal':
       return { ...type, arguments: type.arguments.map(map) };
-    case 'anonymous': {
-      const fields = type.fields.map((field) => ({ ...field, type: map(field.type) }));
-      return isSharedValueType(type)
-        ? { ...type, arguments: type.arguments.map(map), fields }
-        : { ...type, fields };
-    }
+    case 'anonymous':
+      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':

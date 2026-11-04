@@ -44,7 +44,7 @@ describe('typeText', () => {
     expect(spelled(written)).toBe(written);
   });
 
-  it('spells the value behind a shared struct as *Name with its type arguments', () => {
+  it('spells the value behind a shared struct as the shape of its fields (§3.18)', () => {
     const program = stdProgramOf({
       'main.ista': [
         'shared struct Counter { count: Int }',
@@ -64,8 +64,8 @@ describe('typeText', () => {
       const type = declaration && body?.typeOf(declaration.initializer);
       return type && typeText(type);
     };
-    expect(typeAt(a)).toBe('*Counter');
-    expect(typeAt(d)).toBe('*Box<Int, String>');
+    expect(typeAt(a)).toBe('struct { count: Int }');
+    expect(typeAt(d)).toBe('struct { key: Int }');
   });
 
   describe('a type written through an alias (§3.17)', () => {

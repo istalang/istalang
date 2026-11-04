@@ -7,7 +7,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { sameType } from '../../checker/types/type.ts';
+import { sameType } from '../../checker/types/identity.ts';
 import type { Binary } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { branchOnVariant, isEnum, payloadOf, variantTestOf } from './variants.ts';

@@ -18,6 +18,7 @@
 import { type Entity, typeEntity } from '../../binder/entities.ts';
 import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
+import { sameType } from './identity.ts';
 import { parameterType } from './resolve-type.ts';
 import {
   type AnyType,
@@ -26,7 +27,6 @@ import {
   type NominalDeclaration,
   nominalType,
   primitiveType,
-  sameType,
   type Type,
 } from './type.ts';
 

@@ -244,7 +244,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `sameTypes` in `type.ts` re-implements `sameItems(sameType)` (`src/structures/equality.ts`).
   - `sameType`'s `'anonymous'` branch manually compares `isSharedValueType(first) ? first.arguments : []` and `first.fields.map((field) => field.type)` instead of comparing `typeChildren` (`type-parts.ts`), which `Inference.#matchExact` (`inference/infer.ts`) uses.
   - `isAssignable` (`type.ts`) and `Inference.#matchFunction` (`inference/infer.ts`) duplicate the function-header check `given.isAsync === declared.isAsync && (given.isSendable || !declared.isSendable) && sameShape(...)`.
-  - **Done** (`fast-wins`): `sameTypes` is `sameItems(sameType)`. The anonymous-struct and function-header bullets stay open.
+  - **Done** (`fast-wins`): `sameTypes` is `sameItems(sameType)`.
+  - **Done** (`p2-structural`): `sameType` is key equality (`types/identity.ts`), with no structural walk left, and the shared value's arguments are gone from shapes; `functionFits` (`types/type.ts`) is the one function-header rule, which `isAssignable` and `Inference.#matchFunction` both call.
 - **`heldType` hand-rolls a visited set instead of using `TypeCycle` (`src/compiler/checker/types/held.ts`, `type-cycle.ts`; widens `Q7`):**
   - `heldType` maintains `const walked = new Set<string>()` keyed by `checker.typeKeys.typeKey(part)` instead of using `TypeCycle` (`type-cycle.ts`).
   - **Done** (`fast-wins`): `heldType` guards its walk with `TypeCycle`. A type reached on two branches is walked on each (the visited set walked it once); the answer is the same.

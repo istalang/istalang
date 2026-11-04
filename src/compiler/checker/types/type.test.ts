@@ -8,13 +8,13 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
+import { sameType } from './identity.ts';
 import { substitute } from './substitution.ts';
 import {
   boolType,
   type FunctionType,
   intType,
   sameShape,
-  sameType,
   stringType,
   type Type,
   tupleType,

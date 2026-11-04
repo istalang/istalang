@@ -8,7 +8,8 @@
 import { type MapOf, ValueSemantics } from '../../language/values.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
-import { type NominalType, type StructValueType, sameType } from './types/type.ts';
+import { sameType } from './types/identity.ts';
+import type { NominalType, StructValueType } from './types/type.ts';
 import { sameTypeSpelled } from './types/type-parts.ts';
 
 /**

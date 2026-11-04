@@ -14,6 +14,10 @@
  *   name (`main`, the JSON codecs): a type meets a trait through such names (§3.10), so renaming
  *   one could change which traits a type meets; and a parameter named `self`, which makes its
  *   function a method (§3.7). A new name of that kind is refused for the same reason;
+ * - a field of a shape, which is one type with every shape of its fields wherever written (§3.1),
+ *   and a field of a struct whose field names a shape of the program also has, which its value or
+ *   `*x` may fit: renaming one place would part it from the others, so the names say no more than
+ *   what fields a shape has, and a field of either kind is renamed nowhere;
  * - a new name that isn't one, is the unnamed `_` or a built-in type's (§2), or changes the old
  *   name's privacy (§3.13) or case (§2), which also decides what a bare name in a pattern does
  *   (§3.11).
@@ -26,9 +30,10 @@ import {
   programModule,
 } from '../../compiler/program/program.ts';
 import { identifierRunEnd, isIdentifierStart } from '../../compiler/scanner/characters.ts';
-import type { Identifier } from '../../compiler/syntax/node.ts';
+import type { Field } from '../../compiler/syntax/declarations.ts';
+import type { Identifier, Invalid } from '../../compiler/syntax/node.ts';
 import { isKeyword } from '../../compiler/syntax/tokens.ts';
-import { parentOf } from '../../compiler/syntax/tree.ts';
+import { childrenOf, parentOf, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {
   bindsInPattern,
   type Convention,
@@ -140,6 +145,9 @@ function targetRefusal(program: Program, { declared, at }: DeclaredAt): string |
   if (meansMore(program, declared, text)) {
     return meaningRefusal(text);
   }
+  if (declared.kind === 'field' && sharesShape(program, at)) {
+    return `\`${text}\` names a field of a shape, which is one type wherever its fields are written (§3.1); renaming it here would part this place from the others.`;
+  }
   const isNamedWithOthers = namesDenoting(program, at).some(
     (use) => (nameAt(program, use.module, spanOfUse(program, use).start)?.targets.length ?? 0) > 1,
   );
@@ -233,6 +241,60 @@ function namesCalledByName(program: Program): ReadonlySet<string> {
         ),
       ]),
   );
+}
+
+/**
+ * Whether the field declared at `at` belongs to a shape, or to a struct whose field names a shape or
+ * `struct{…}` literal of the program also has (§3.1, §3.18).
+ */
+function sharesShape(program: Program, at: NamePlace): boolean {
+  const { tree } = programModule(program, at.module);
+  const field = parentOf(tree, at.name);
+  const holder = field === undefined ? undefined : parentOf(tree, field);
+  if (holder?.kind === 'StructType') {
+    return true;
+  }
+  return (
+    (holder?.kind === 'StructDeclaration' || holder?.kind === 'SharedStructDeclaration') &&
+    shapesWritten(program).has(fieldsKey(holder.fields))
+  );
+}
+
+const writtenShapes = new WeakMap<Program, ReadonlySet<string>>();
+
+/** The field names of every shape a program writes, a `{…}` type or a `struct{…}` literal, as keys. */
+function shapesWritten(program: Program): ReadonlySet<string> {
+  return memo(writtenShapes, program, () => {
+    const keys = new Set<string>();
+    for (const { tree } of program.modules.values()) {
+      const pending: SyntaxNode[] = [tree.root];
+      for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+        if (node.kind === 'StructType') {
+          keys.add(fieldsKey(node.fields));
+        } else if (node.kind === 'StructLiteral' && node.type === undefined) {
+          keys.add(
+            namesKey(
+              node.items.flatMap((item) =>
+                item.kind === 'FieldInitializer' ? [item.name.text] : [],
+              ),
+            ),
+          );
+        }
+        pending.push(...childrenOf(tree, node));
+      }
+    }
+    return keys;
+  });
+}
+
+/** The names of written fields as one key, as `namesKey` makes it. */
+function fieldsKey(fields: readonly (Field | Invalid)[]): string {
+  return namesKey(fields.flatMap((each) => (each.kind === 'Invalid' ? [] : [each.name.text])));
+}
+
+/** A set of field names as one key, in the name order a shape keeps them. */
+function namesKey(names: readonly string[]): string {
+  return names.toSorted().join(',');
 }
 
 /** How `use` is spelled once its target is renamed to `newName`: a shorthand spelled out. */

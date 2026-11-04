@@ -19,9 +19,9 @@
  */
 
 import type { EnumDeclaration } from '../../syntax/declarations.ts';
+import { isAssignable } from './identity.ts';
 import {
   type AnyType,
-  isAssignable,
   isPrimitive,
   type NominalEntity,
   type NominalType,

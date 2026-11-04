@@ -25,7 +25,8 @@ import type { BodyContext, Chains } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { preludeCall } from '../resolution/implicit.ts';
 import { optionalInner } from '../types/fit.ts';
-import { errorType, isAssignable, stringType, type Type } from '../types/type.ts';
+import { isAssignable } from '../types/identity.ts';
+import { errorType, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /**

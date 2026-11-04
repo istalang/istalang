@@ -7,11 +7,12 @@
  *   across Program snapshots that keep the declaring module.
  * - A nominal type carries its type arguments; field and variant types are derived on demand by
  *   substituting them (the checker's `fieldsOf` and `variantsOf`), never stored per instantiation.
- * - An anonymous struct (§3.1) is a type of its own wherever one is written: two are never the
- *   same type, even with identical fields, so its identity is the node that introduced it. It
- *   carries its fields, since it has no declaration to derive them from; instantiating a generic
- *   declaration substitutes them, so identity is the origin plus the fields' types. The value
- *   behind a shared struct (§3.18) is one too, whose origin is the shared struct's declaration.
+ * - An anonymous struct (§3.1) is its shape: its field names and their types, wherever and in
+ *   whatever order it is written, so two with the same fields are one type. It carries its fields,
+ *   since it has no declaration to derive them from, always in name order (`shapeType`), the one
+ *   order a shape has. Where it was written (`origin`) is only its spelling, for tools to locate it:
+ *   the value behind a shared struct (§3.18) is the shape of the shared struct's fields, written at
+ *   its declaration.
  * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
  *   so one mistake is reported once instead of at every use that follows.
  * - `Never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
@@ -29,12 +30,12 @@
  *   type keys look through it. Only substitution keeps it, substituting its arguments too, since
  *   that rewrites the alias's own parameters alike; any other change of a type leaves a type the
  *   alias didn't write, so widening, the one other, drops it.
- * - Exact relations live here; fitting with the implicit wrap into `T?` needs to know which type
- *   is `Optional`, so it lives in fit.ts.
+ * - Identity and the exact relations live in identity.ts, through type keys (type-keys.ts); fitting
+ *   with the implicit conversions needs to know which type is `Optional`, so it lives in fit.ts.
  */
 
+import { compareOrdered } from '../../../language/order.ts';
 import type { PrimitiveName } from '../../../language/primitives.ts';
-import { type Equality, sameItems } from '../../../structures/equality.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
@@ -131,30 +132,27 @@ export interface FieldMember {
 }
 
 /**
- * A struct without a name (§3.1): introduced by a `{…}` type, by a `struct{…}` literal with
- * nothing to take a type from, or by a shared struct as the value behind it (§3.18), carrying that
- * shared struct's type arguments.
+ * A struct without a name, its shape (§3.1): introduced by a `{…}` type, by a `struct{…}` literal
+ * with nothing to take a type from, or by a shared struct as the value behind it (§3.18). Its
+ * fields are in name order; `origin` is where it was written, which no relation reads.
  */
-export type AnonymousStructType = WrittenThrough &
-  (
-    | {
-        readonly kind: 'anonymous';
-        readonly origin: StructType | StructLiteral;
-        readonly fields: readonly FieldMember[];
-      }
-    | {
-        readonly kind: 'anonymous';
-        readonly origin: SharedStructDeclaration;
-        readonly arguments: readonly Type[];
-        readonly fields: readonly FieldMember[];
-      }
-  );
+export interface AnonymousStructType extends WrittenThrough {
+  readonly kind: 'anonymous';
+  readonly origin: StructType | StructLiteral | SharedStructDeclaration;
+  readonly fields: readonly FieldMember[];
+}
 
-/** Whether `type` is the anonymous struct value behind a shared struct (`*x`, §3.18). */
-export function isSharedValueType(
-  type: AnonymousStructType,
-): type is Extract<AnonymousStructType, { readonly origin: SharedStructDeclaration }> {
-  return type.origin.kind === 'SharedStructDeclaration';
+/** Fields in name order, as JSON orders keys (§3.1, §9): the one order a shape keeps them in. */
+export function byFieldName(first: { readonly name: string }, second: { readonly name: string }) {
+  return compareOrdered(first.name, second.name);
+}
+
+/** The shape of `fields`, written at `origin`: its fields in name order (§3.1). */
+export function shapeType(
+  origin: AnonymousStructType['origin'],
+  fields: readonly FieldMember[],
+): AnonymousStructType {
+  return { kind: 'anonymous', origin, fields: [...fields].sort(byFieldName) };
 }
 
 /** A parameter of a function type: its type, and whether it takes a reference (§3.7). */
@@ -291,63 +289,6 @@ export function withPack(type: FunctionType, pack: Type | undefined): FunctionTy
   return { ...type, parameters: [...type.parameters, ...flattened], pack: undefined };
 }
 
-/** Whether two types are the same type. */
-export function sameType(first: Type, second: Type): boolean {
-  switch (first.kind) {
-    case 'primitive':
-      return second.kind === 'primitive' && first.name === second.name;
-    case 'nominal':
-      return (
-        second.kind === 'nominal' &&
-        first.entity === second.entity &&
-        sameTypes(first.arguments, second.arguments)
-      );
-    case 'anonymous':
-      return (
-        second.kind === 'anonymous' &&
-        first.origin === second.origin &&
-        sameTypes(
-          isSharedValueType(first) ? first.arguments : [],
-          isSharedValueType(second) ? second.arguments : [],
-        ) &&
-        sameTypes(
-          first.fields.map((field) => field.type),
-          second.fields.map((field) => field.type),
-        )
-      );
-    case 'tuple':
-      return second.kind === 'tuple' && sameTypes(first.elements, second.elements);
-    case 'function':
-      return (
-        second.kind === 'function' &&
-        first.isSendable === second.isSendable &&
-        first.isAsync === second.isAsync &&
-        sameShape(first, second, sameType)
-      );
-    case 'parameter':
-      return second.kind === 'parameter' && first.declaration === second.declaration;
-    case 'any':
-      return (
-        second.kind === 'any' &&
-        first.constraints.length === second.constraints.length &&
-        first.constraints.every((constraint) =>
-          second.constraints.some((other) => sameConstraint(constraint, other)),
-        )
-      );
-    case 'error':
-      return second.kind === 'error';
-    default: {
-      const unhandled: never = first;
-      return unhandled;
-    }
-  }
-}
-
-/** Whether two constraints are one trait with the same arguments. */
-export function sameConstraint(first: Constraint, second: Constraint): boolean {
-  return first.trait === second.trait && sameTypes(first.arguments, second.arguments);
-}
-
 /**
  * Whether two function types take the same parameters, each by value or by `&` alike, and give the
  * same result, their types compared by `parts`: exactly (`sameType`), or as inference matches a
@@ -398,22 +339,20 @@ function restOf(type: FunctionType, start: number): Type | undefined {
   return rest.some((slot) => slot.reference) ? undefined : tupleType(rest.map((slot) => slot.type));
 }
 
-const sameTypes: Equality<readonly Type[]> = sameItems(sameType);
-
 /**
- * Whether a value of type `source` fits where `target` is expected: the same type, or a function
- * whose sendability is at least `target`'s and whose result fits `target`'s (§2, §3.14).
+ * Whether a function of type `given` fits where `declared` is expected: async alike, sendable
+ * where `declared` is (§3.14), and of the same shape (`sameShape`), its parts and results compared
+ * as the caller says.
  */
-export function isAssignable(source: Type, target: Type): boolean {
+export function functionFits(
+  declared: FunctionType,
+  given: FunctionType,
+  parts: (declared: Type, given: Type) => boolean,
+  results: (declared: Type, given: Type) => boolean = parts,
+): boolean {
   return (
-    source.kind === 'error' ||
-    target.kind === 'error' ||
-    isPrimitive(source, 'Never') ||
-    sameType(source, target) ||
-    (source.kind === 'function' &&
-      target.kind === 'function' &&
-      source.isAsync === target.isAsync &&
-      (source.isSendable || !target.isSendable) &&
-      sameShape(target, source, sameType, (declared, given) => isAssignable(given, declared)))
+    given.isAsync === declared.isAsync &&
+    (given.isSendable || !declared.isSendable) &&
+    sameShape(declared, given, parts, results)
   );
 }

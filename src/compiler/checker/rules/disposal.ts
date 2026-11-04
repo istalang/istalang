@@ -30,7 +30,8 @@ import { callCandidates, namedInModule } from '../resolution/candidates.ts';
 import { silentCall } from '../resolution/silent-choice.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../resolved-call.ts';
 import { knownConstraints, requiredFunctions } from '../traits/constraints.ts';
-import { type NominalType, sameType, type Type, unitType } from '../types/type.ts';
+import { sameType } from '../types/identity.ts';
+import { type NominalType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 const none: Disposal = { kind: 'none' };

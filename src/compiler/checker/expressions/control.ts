@@ -7,7 +7,8 @@ import type { If } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
-import { boolType, isAssignable, type Type, unitType } from '../types/type.ts';
+import { isAssignable } from '../types/identity.ts';
+import { boolType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 export function checkIf(context: BodyContext, node: If, expected: Type | undefined): Type {

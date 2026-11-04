@@ -62,7 +62,8 @@ src/
       checked-field.ts host-externs.ts struct-items.ts           how field reads reach their fields, the externs a host implements,
                                                                  which field a struct item gives
                                                                  folders, lowest layer first (Layers):
-      diagnostics/ types/                                        the catalog; the type model, written types resolved, rules over types and the
+      diagnostics/ types/                                        the catalog; the type model, identity as key equality (identity.ts: a shape
+                                                                 is its fields in name order), written types resolved, rules over types and the
                                                                  diagnostics they make, a checked body read through a substitution, the type a
                                                                  name names in a value's place or a pattern (named-types.ts)
       inference/ traits/                                         inference of type arguments; constraints, the derived `Sendable`, and
@@ -153,7 +154,7 @@ text · diagnostics                      foundation; the runtime may use text/ f
 language · structures                   beneath every layer; they import nothing
 ```
 
-- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `struct-items.ts`, `denotation.ts`, `host-externs.ts`, `types/type.ts`, `types/named-types.ts`, `types/substitution.ts`, `types/fit.ts`, `types/type-keys.ts`, `types/type-text.ts`, `types/well-known.ts`, `types/instantiation.ts`), which lowering reads module by module.
+- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `struct-items.ts`, `denotation.ts`, `host-externs.ts`, `types/type.ts`, `types/identity.ts`, `types/named-types.ts`, `types/substitution.ts`, `types/fit.ts`, `types/type-keys.ts`, `types/type-text.ts`, `types/well-known.ts`, `types/instantiation.ts`), which lowering reads module by module.
 - Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types`, `inference`, `traits`, `resolution`, `calls`, `patterns`, `flow`, `rules`, `declarations`, `closures`, `expressions`, `statements`, `lookup`. A folder imports only those beneath it, so engines never import constructs. Its root modules are its entry, contexts and contracts, which every folder may import, except the classes that wire a body and a program together (`body-checker.ts`, `program-checker.ts`).
 - `syntax/` and `definition/` are contracts with high fan-in. Change them deliberately, and update every caller in the same change.
 - Mechanisms:

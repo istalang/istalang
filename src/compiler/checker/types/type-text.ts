@@ -4,18 +4,17 @@
  *
  * Nominal types print their declared name without a module: inside a message the source location
  * already says where. A type written through an alias reads as the alias, with its arguments
- * (§3.17), as the programmer wrote it.
+ * (§3.17), as the programmer wrote it; any other shape reads as its fields, never as a key.
  */
 
 import { selfType, wellKnown } from '../../../language/well-known.ts';
-import {
-  type AnonymousStructType,
-  type Constraint,
-  type FunctionType,
-  isSharedValueType,
-  type NominalType,
-  type ParameterSlot,
-  type Type,
+import type {
+  AnonymousStructType,
+  Constraint,
+  FunctionType,
+  NominalType,
+  ParameterSlot,
+  Type,
 } from './type.ts';
 
 /**
@@ -110,14 +109,8 @@ function nominalTypeText(type: NominalType): string {
   return parameterizedText(declaration.name.text, type.arguments);
 }
 
-/**
- * An anonymous struct as written: `*Name<Arguments>` for the value behind a shared struct (§3.18),
- * or `struct { … }` for any other.
- */
+/** A shape as written, its fields in the name order it keeps them in (§3.1). */
 function anonymousText(type: AnonymousStructType): string {
-  if (isSharedValueType(type)) {
-    return `*${parameterizedText(type.origin.name.text, type.arguments)}`;
-  }
   return `struct { ${type.fields.map((field) => `${field.name}: ${typeText(field.type)}`).join('; ')} }`;
 }
 
