@@ -69,7 +69,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
     - **§3.9 vs. §3.10 (`docs/spec.md:571–587`, `docs/spec.md:616`, `docs/spec.md:694–713`):** §3.10's Built-in traits table omits `Container`, `Powerable`, `Bitwise`, and `Shiftable` from §3.9, and §3.9 writes `Powerable<E = Self>` (1 type parameter) where `prelude.ista:281` declares `Powerable<E = Self, T = Self>`.
     - **§9 (`docs/spec.md:1293`):** Writes `Err(Error{message, code: "panic", trace})` with parentheses instead of braces (`Err{Error{...}}`), violating §3.11.
     - **§3.11 vs. §3.15 (`docs/spec.md:752`, `docs/spec.md:919`):** Splits the list of refutable patterns across two partial lists (`alternative, array pattern, range` in §3.11 vs. `literal, comparison, enum variant` in §3.15, with neither mentioning `any` downcast patterns from §3.10).
-   - **Done** (`fast-wins`): §3.7 says a `&` parameter; §3.9 writes `Powerable<E = Self, T = Self>`; §3.10's table gains `Container`, `Powerable`, `Bitwise` and `Shiftable`; §9 writes `Err{Error{…}}`. The refutable-pattern split (§3.11 vs §3.15) stays open.
+   - **Done** (`fast-wins`): §3.7 says a `&` parameter; §3.9 writes `Powerable<E = Self, T = Self>`; §3.10's table gains `Container`, `Powerable`, `Bitwise` and `Shiftable`; §9 writes `Err{Error{…}}`.
+   - **Done** (`p3-unions`): the refutable-pattern split: §3.11's "Patterns that can fail" is the one list (with the `any` type pattern), and §3.15 refers to it.
 
 ## Checklist
 
@@ -484,11 +485,13 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - §3.11 (`docs/spec.md:752`) states: *"Targets must always match. A declaration's or loop's target (§3.15) can't hold an alternative, an array pattern or a range, since each can fail; they belong in `match` and `is`."*
   - §3.15 (`docs/spec.md:919`) states: *"A pattern that could fail (a literal, a comparison, an enum variant) is a compile error here; it belongs in `match` or `is`."*
   - Each section lists only half of the refutable pattern forms, and neither mentions a type-narrowing pattern on an `any` value (§3.10). Defining irrefutable vs. refutable patterns in one place (§3.11) and referencing it from §3.15 removes the split enumeration.
+  - **Done** (`p3-unions`): §3.11's "Patterns that can fail" holds the list; §3.15 refers to it.
 
 ### 37. `docs/spec.md` — §4 Expressions and control flow, §5 Persistence, §6 Slots and inboxes, §7 Lifetimes and disposal, §8 `select`
 
 - **Restated must-use rules across §3.3 (`docs/spec.md:358`), §3.12 (`docs/spec.md:786`), §7 (`docs/spec.md:1141`), and §8 (`docs/spec.md:1265`):**
   - The rule for what types must be used (`Future`, `Result`, and `Disposable`) and how to consume or discard them (`_ = expr`, `hold _ = expr`, `drop expr`) is stated in full in §7 (`docs/spec.md:1141`) and repeated for `Future` in §3.3 (`docs/spec.md:358`) and for `Result` in §3.12 (`docs/spec.md:786`). Cross-referencing §7 as the single list of must-use types keeps the rule in one home.
+  - **Done** (`p3-unions`): §7's "Unnamed and dropped values" lists the must-use types; §3.3, §3.12 and §8 refer to it.
 
 ### 38. `docs/spec.md` — §9 Program structure, §10 Testing, §11 Packages, §12 Examples, §13 Open questions, §14 Future work
 
@@ -497,6 +500,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`fast-wins`): Now `Err{Error{message, code: "panic", trace}}`.
 - **Partial overlap between §3.8 stdlib JSON codecs (`docs/spec.md:505–510`) and §9's JSON mapping table (`docs/spec.md:1360–1375`):**
   - §9's JSON mapping table (`docs/spec.md:1360–1375`) includes `Decimal | string` and `Time, Duration | ISO 8601, their toString (§3.8)` alongside language primitives and compiler-derived codecs, but omits `Zone`, `DateTime` (from `time`, which §3.8 says cross as text), and `Regex` (from `regex`, which §3.8 says crosses as its pattern text) — all of which use the exact same `json.encodeText` / `json.decodeText` mechanism described at `docs/spec.md:1352`. Grouping all text-codec stdlib types (`Decimal`, `Time`, `Duration`, `Zone`, `DateTime`, `Regex`) under one row in §9's table avoids two out-of-sync lists between §3.8 and §9.
+  - **Done** (`p3-unions`): §9's table has one row for the std types that cross as their text (`Decimal`, `Regex`, `Time`, `Duration`, `Zone`, `DateTime`); §3.8 refers to it.
 
 
 
