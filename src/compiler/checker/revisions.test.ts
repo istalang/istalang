@@ -11,6 +11,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
+import { addToGroup } from '../../structures/groups.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import {
   applied,
@@ -169,9 +170,9 @@ function answeredBothWays(sequence: Edited) {
 
 /** The bodies each revision checked, by revision. */
 function bodiesChecked(sequence: Edited) {
-  const checked: FunctionDeclaration[][] = [];
+  const checked = new Map<number, FunctionDeclaration[]>();
   const checkers = checkedRevisions(sequence, everyModule, (revision, body) => {
-    checked[revision] = [...(checked[revision] ?? []), body];
+    addToGroup(checked, revision, body);
   });
   return { checkers, checked };
 }
@@ -232,7 +233,9 @@ describe('a checker made after an earlier one', () => {
           const elsewhere = checkers
             .slice(1)
             .flatMap((checker, index) =>
-              (checked[index + 1] ?? []).filter((each) => checker.moduleOf(each) !== idOf(edited)),
+              (checked.get(index + 1) ?? []).filter(
+                (each) => checker.moduleOf(each) !== idOf(edited),
+              ),
             );
           expect(elsewhere.map((each) => each.name.text)).toEqual([]);
         }),
@@ -374,7 +377,7 @@ describe('a checker made after an earlier one', () => {
       edited: 'main.ista',
       edits: [{ kind: 'append', item: 0 }],
     });
-    expect(checked.flat().map(({ name }) => name.text)).not.toContain('host');
+    expect([...checked.values()].flat().map(({ name }) => name.text)).not.toContain('host');
   });
 
   it('checks bodies in a first revision, and the edited one in the next', () => {
@@ -383,7 +386,7 @@ describe('a checker made after an earlier one', () => {
       edited: 'names/main',
       edits: [{ kind: 'append', item: 0 }],
     });
-    expect(checked[0]?.length).toBeGreaterThan(0);
-    expect(checked[1]?.map((each) => each.name.text)).toContain('appended');
+    expect(checked.get(0)?.length).toBeGreaterThan(0);
+    expect(checked.get(1)?.map((each) => each.name.text)).toContain('appended');
   });
 });

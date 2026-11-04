@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Location } from 'vscode-languageserver/node';
 import { spanIn } from '../../compiler/syntax/positions.ts';
+import { addToGroup } from '../../structures/groups.ts';
 import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
 import type { TestClient } from '../server.test-kit.ts';
 import {
@@ -34,7 +35,7 @@ async function namesByDeclaration(): Promise<ReadonlyMap<string, readonly string
   const byDeclaration = new Map<string, string[]>();
   for (const { declaration, use } of landings.flat()) {
     const key = placeOf(declaration);
-    byDeclaration.set(key, [...(byDeclaration.get(key) ?? []), use]);
+    addToGroup(byDeclaration, key, use);
   }
   return byDeclaration;
 }

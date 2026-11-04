@@ -28,6 +28,7 @@ import {
   StreamMessageReader,
   StreamMessageWriter,
 } from 'vscode-languageserver/node';
+import { addToGroup } from '../structures/groups.ts';
 import { serveLanguage } from './server.ts';
 
 const shutdowns: (() => Promise<void>)[] = [];
@@ -112,7 +113,7 @@ export async function connectedClient(root: string): Promise<TestClient> {
       }),
     nextDiagnostics: (uri) =>
       new Promise((resolve) => {
-        waiting.set(uri, [...(waiting.get(uri) ?? []), resolve]);
+        addToGroup(waiting, uri, resolve);
       }),
     highlighted: async (uri) => {
       const tokens = await connection.sendRequest(SemanticTokensRequest.type, {

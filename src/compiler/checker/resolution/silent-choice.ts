@@ -46,13 +46,10 @@ export function callWithTypes(
   typeArguments: readonly Type[],
 ): FunctionCall | undefined {
   const written = typeArguments.length === 0 ? undefined : typeArguments;
-  const byArity = new Map<number, Candidate[]>();
-  for (const candidate of candidates) {
-    const arity = checker.parametersOf(candidate.declaration).length;
-    const group = byArity.get(arity) ?? [];
-    group.push(candidate);
-    byArity.set(arity, group);
-  }
+  const byArity = Map.groupBy(
+    candidates,
+    (candidate) => checker.parametersOf(candidate.declaration).length,
+  );
   const applications: Application[] = [];
   for (const [arity, group] of byArity) {
     const decided = Array.from({ length: arity }, () => ({

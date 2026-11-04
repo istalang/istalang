@@ -1,3 +1,8 @@
+/**
+ * Groups filled one item at a time end up as a whole list grouped by `Map.groupBy` does: the same
+ * keys in the same order, each with its items in arrival order.
+ */
+
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { addToGroup } from './groups.ts';
