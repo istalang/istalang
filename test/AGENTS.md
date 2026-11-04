@@ -8,3 +8,6 @@ Inputs that tests across phases share. Unit tests live beside their code (`src/*
 - `definitions/`: hand-written Definitions (the M2.4 subset program, spec §12.3), so runtime tests can run without the compiler. `fixture-kit.ts` keeps them short and finds spans in each fixture's own source.
 - Hand-written `.ista` cases, valid and invalid, go under `corpus/`. Never copy spec text there.
 - `spec-suites/`: hand-written test modules for spec examples whose tests the spec elides, each run by an end-to-end test against the spec's own example code, written beside it at run time.
+
+Principles:
+ - Test commutation across transformations. Where the pipeline transforms a representation (generic → instantiated, fresh → incremental, in-memory → persisted), assert the commute law as a property: transforming then running must agree with substituting first and running directly, including degenerate inputs that collapse cases into one.
