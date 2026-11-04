@@ -384,6 +384,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `unbracketedChildren` (`bodies.ts`) and `inBracketsUnder` (`brackets.ts`) independently list which node kinds (`ArrayLiteral`, `MapLiteral`, `Comprehension`, `Tuple`, `Parenthesized`, `StructLiteral`, `NewStructLiteral`) and which child positions (`Call.callee`, `Index.target`) stand inside vs. outside brackets.
 - **Literal `?.`, `->`, and `?->` strings in `formatter/expressions.ts` instead of `linkOperator` (`src/formatter/expressions.ts`, `src/compiler/syntax/expressions/chains.ts`):**
   - Violating the one-way rule in `docs/reuse/syntax-and-trees.md` (*"its operator is spelled by `linkOperator`/`optionalOperatorOf` (`chains.ts`), never as a literal"*), `link(...)` and the `Dereference` printer in `formatter/expressions.ts` spell `'?.` and `node.isOptional ? '?->' : '->'` as string literals.
+  - **Done** (`fast-wins`): Member links and `Dereference` print `linkOperator`; an optional call's or index's `?.` before its bracket is `optionalOperatorOf('.')`.
 - **Double printing of call arguments in `callArguments` (`src/formatter/expressions.ts`):**
   - `callArguments` first builds `const expanded = bracketed(printer, node, ['(', ')'], node.arguments)` (which calls `printer.print` on every argument) and then, when the last argument is huggable, calls `front.map((argument) => printer.print(argument))` and `printer.print(last)` a second time ($O(2^d)$ work on nested huggable calls).
   - **Done** (`fast-wins`): See ranked summary #9: `TreePrinter.print` keeps each node's doc.
@@ -400,8 +401,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `parse(source, scanned)` (`src/compiler/parser/parse.ts`) receives `scanned: ScanResult` and keeps `scanned.comments` and `scanned.diagnostics` on `SyntaxTree`, but drops `scanned.tokens`. As a result, `scannedOf(tree)` in `language-service/tokens.ts` has to re-run `scan(tree.source)` from scratch whenever any language-service feature requests tokens or bracket pairs. Memoizing `scan(source)` on the branded, immutable `SourceText` (as `lineMapOf(source)` does in `src/text/line-map.ts`) eliminates the duplicate scan.
 - **Manual `Owner.name` string formatting in `symbols.ts` and `signatures.ts` instead of `staticName` (`src/language-service/symbols.ts`, `src/language-service/signatures.ts`, `src/language/static-names.ts`):**
   - Violating the one-way rule in `docs/reuse/modules-and-names.md` (*"Spell `Owner.name` with `staticName`"*), `symbolsOfDeclaration.FunctionDeclaration` (`symbols.ts`) formats `` `${owner.text}.${name.text}` `` directly, and `signatureOf` (`signatures.ts`) formats ``owner === undefined ? '' : `${owner.text}.` `` directly.
+  - **Done** (`fast-wins`): Both spell it with `staticName`.
 - **`isName(text)` in `rename.ts` runs `createSourceText` + `scan` to validate an identifier (`src/language-service/navigation/rename.ts`, `src/compiler/scanner/characters.ts`):**
   - `isName` constructs a `SourceText` and runs the full scanner instead of checking `isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)`.
+  - **Done** (`fast-wins`): `isName` checks `isIdentifierStart`, `identifierRunEnd` and `isKeyword`.
 - **Rename missing JSON-codec fields and externs (`B19`), and inlay hints checking `type.kind !== 'error'` instead of `!mentionsError(type)` (`B20`) (`src/language-service/navigation/rename.ts`, `inlay-hints.ts`; tracked in `tracker.md`).**
 
 ### 32. `src/language-service/completion/` (including `grammar/` and `places/`)
@@ -410,6 +413,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/declarations/statics.ts`).
 - **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/language/well-known.ts`):**
   - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/language/well-known.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
+  - **Done** (`fast-wins`): `receiver` names `receiverParameter`.
 - **Duplicate `isChangeable` in `completion/places/grammar.ts` vs. `VariableScope.isChangeable` / `writtenByReference` (`src/language-service/completion/places/grammar.ts`, `src/compiler/checker/statements/variables.ts`, `declarations/signatures.ts`):**
   - `isChangeable` in `completion/places/grammar.ts` re-implements `owner.kind === 'VariableDeclaration' && owner.isMutable` and `owner.kind === 'Parameter' && owner.type?.kind === 'ReferenceType'` (missing lambda parameters whose `&` reference comes from an expected function type).
 - **Duplicate inline-whitespace check between `goesOn` (`src/language-service/completion/triggers.ts`) and `adjoins` (`src/language-service/completion/grammar/position.ts`):**

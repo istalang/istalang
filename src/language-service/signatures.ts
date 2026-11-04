@@ -12,6 +12,7 @@ import type { Checker, SignatureParameter } from '../compiler/checker/check.ts';
 import type { FunctionType } from '../compiler/checker/types/type.ts';
 import { functionTypeParts, slotText, typeText } from '../compiler/checker/types/type-text.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../compiler/syntax/declarations.ts';
+import { staticName } from '../language/static-names.ts';
 
 /** A signature's text, and where each parameter's text stands in it. */
 export interface Signature {
@@ -31,8 +32,7 @@ export function signatureOf(checker: Checker, declaration: FunctionDeclaration):
   const head = [
     isAsync ? 'async ' : '',
     'fn ',
-    owner === undefined ? '' : `${owner.text}.`,
-    name.text,
+    owner === undefined ? name.text : staticName(owner.text, name.text),
     generics.length === 0 ? '' : `<${generics.join(', ')}>`,
   ].join('');
   const parameters = checker.parametersOf(declaration).map(parameterText);

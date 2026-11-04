@@ -13,6 +13,7 @@
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import { receiverParameter } from '../../../language/well-known.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { holderIn } from '../grammar/chain.ts';
@@ -76,7 +77,7 @@ function mayTakeSelf(declaration: FunctionDeclaration, holder: SyntaxNode | unde
 const externWords: readonly Word[] = ['fn', 'struct', 'sendable'];
 
 /** A method's receiver is the parameter named `self`, a name the language gives a role, like a word. */
-const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } };
+const receiver: Candidate = { name: receiverParameter, subject: { kind: 'keyword' } };
 
 /** The types a function declared in `holder` may be a static of. */
 function staticOwners(cursor: Cursor, holder: SyntaxNode | undefined): readonly Candidate[] {

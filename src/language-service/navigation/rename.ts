@@ -24,8 +24,9 @@ import {
   type Program,
   programModule,
 } from '../../compiler/program/program.ts';
-import { scan } from '../../compiler/scanner/scan.ts';
+import { identifierRunEnd, isIdentifierStart } from '../../compiler/scanner/characters.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
+import { isKeyword } from '../../compiler/syntax/tokens.ts';
 import { parentOf } from '../../compiler/syntax/tree.ts';
 import {
   bindsInPattern,
@@ -37,7 +38,6 @@ import {
 import { codecFunctions, entryFunction, receiverParameter } from '../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { memo } from '../../structures/memo.ts';
-import { createSourceText } from '../../text/source-text.ts';
 import type { Span } from '../../text/span.ts';
 import { type DeclaredAt, isSamePlace, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
 import { namesDenoting } from './references.ts';
@@ -173,14 +173,8 @@ function newNameRefusal(
 
 /** Whether `text` scans as one identifier and nothing else. */
 function isName(text: string): boolean {
-  const { tokens, diagnostics } = scan(createSourceText('', text));
-  const [first, ...rest] = tokens;
   return (
-    diagnostics.length === 0 &&
-    first?.kind === 'identifier' &&
-    first.span.start === 0 &&
-    first.span.end === text.length &&
-    rest.every((token) => token.kind === 'end')
+    isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)
   );
 }
 

@@ -7,6 +7,7 @@
  */
 
 import { builders, utils } from 'prettier/doc';
+import { linkOperator, optionalOperatorOf } from '../compiler/syntax/expressions/chains.ts';
 import type {
   Binary,
   Call,
@@ -46,13 +47,15 @@ type ExpressionKind = Exclude<
   }
 >;
 
-/** `?.` where a link reads through an optional (§4); nothing after `->`, which is its own link. */
-function link(target: Expression, isOptional: boolean, plain: string): string {
-  if (target.kind === 'Dereference' && target.operator === '->') {
-    return '';
-  }
-  return isOptional ? '?.' : plain;
+/** A member link's `.`, or `?.` through an optional (§4); nothing after `->`, which is its own link. */
+function memberLink(target: Expression, isOptional: boolean): string {
+  return target.kind === 'Dereference' && target.operator === '->'
+    ? ''
+    : linkOperator('.', isOptional);
 }
+
+/** What an optional call or index writes before the bracket its printer writes: `?.(`, `?.[`. */
+const optionalPrefix = optionalOperatorOf('.');
 
 /** An operator and the operand after it. */
 type Operation = readonly [string, Expression];
@@ -217,7 +220,7 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   ],
   Call: (printer, node) => [
     printer.print(node.callee),
-    node.isOptional ? '?.' : '',
+    node.isOptional ? optionalPrefix : '',
     angled(printer, node.typeArguments),
     callArguments(printer, node),
   ],
@@ -226,17 +229,17 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   Reference: (printer, node) => ['&', printer.print(node.expression)],
   MemberAccess: (printer, node) => [
     printer.print(node.target),
-    link(node.target, node.isOptional, '.'),
+    memberLink(node.target, node.isOptional),
     printer.print(node.member),
   ],
   TupleElement: (printer, node) => [
     printer.print(node.target),
-    link(node.target, node.isOptional, '.'),
+    memberLink(node.target, node.isOptional),
     String(node.element),
   ],
   Index: (printer, node) => [
     printer.print(node.target),
-    node.isOptional ? '?.' : '',
+    node.isOptional ? optionalPrefix : '',
     enclosed(printer, node, ['[', ']'], node.index),
   ],
   Propagate: (printer, node) => [printer.print(node.operand), '?'],
@@ -245,7 +248,7 @@ export const expressionPrinters: Printers<ExpressionKind> = {
     if (node.operator === '*') {
       return ['*', printer.print(node.operand)];
     }
-    return [printer.print(node.operand), node.isOptional ? '?->' : '->'];
+    return [printer.print(node.operand), linkOperator('->', node.isOptional)];
   },
   Unary: (printer, node) => [
     node.operator,

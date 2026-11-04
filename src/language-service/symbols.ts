@@ -19,6 +19,7 @@ import { targetNames } from '../compiler/syntax/patterns.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import { extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import type { FieldDeclaration } from '../compiler/syntax/types.ts';
+import { staticName } from '../language/static-names.ts';
 import type { Span } from '../text/span.ts';
 
 export type SymbolKind =
@@ -129,7 +130,13 @@ const symbolsOfDeclaration: SymbolsOf = {
     }
     // A static function is named as it is called (`Owner.name`), and selected by its own name.
     return [
-      { name: `${owner.text}.${name.text}`, kind, node: declaration, nameNode: name, children: [] },
+      {
+        name: staticName(owner.text, name.text),
+        kind,
+        node: declaration,
+        nameNode: name,
+        children: [],
+      },
     ];
   },
   VariableDeclaration: (declaration) =>
