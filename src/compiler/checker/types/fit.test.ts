@@ -1,13 +1,15 @@
 /**
- * Fitting by the implicit conversions (§2, §3.14, §3.15): a `T` fits `T?`, `T??` and so on by one
- * wrap per level, never the other way round, and only into optionals of the same `T`; a plain
- * function fits an async one of its parameters and result, made async, and a one-element tuple
- * and its element each other, but never inside another type.
+ * Fitting by the implicit conversions (§2, §3.1, §3.14, §3.15): a `T` fits `T?`, `T??` and so on
+ * by one wrap per level, never the other way round, and only into optionals of the same `T`; a
+ * plain function fits an async one of its parameters and result, made async, a one-element tuple
+ * and its element each other, and a struct's value its shape, whatever order either writes its
+ * fields in, but never inside another type, from a shape, or for a struct with an annotated field.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { reported } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
 import { fitOf, optionalInner } from './fit.ts';
 import {
@@ -201,6 +203,61 @@ describe('fitting between a one-element tuple and its element', () => {
         expect(fitOf(type, single(single(type)), fitting)).toBeUndefined();
         expect(fitOf(single(single(type)), type, fitting)).toBeUndefined();
         expect(fitOf(wrapped(single(type), 1), wrapped(type, 1), fitting)).toBeUndefined();
+      }),
+    );
+  });
+});
+
+describe("a struct's value where its shape is expected (§3.1)", () => {
+  const fieldTypes = ['Int', 'String', 'Bool', 'Array<Int>', '(Int, String)'];
+  /** Distinct fields, each a name and a type, and the same fields in another order. */
+  const fields = fc
+    .uniqueArray(fc.constantFrom('a', 'b', 'id', 'x', 'y', 'value'), { minLength: 1, maxLength: 5 })
+    .chain((names) =>
+      fc.record({
+        written: fc.tuple(
+          ...names.map((name) =>
+            fc.constantFrom(...fieldTypes).map((written) => [name, written] as const),
+          ),
+        ),
+        order: fc.shuffledSubarray(names, { minLength: names.length, maxLength: names.length }),
+      }),
+    );
+  const listed = (written: readonly (readonly [string, string])[]) =>
+    written.map(([name, spelled]) => `${name}: ${spelled}`).join('; ');
+
+  it('converts, whatever order the struct and the shape write the fields in', () => {
+    fc.assert(
+      fc.property(fields, ({ written, order }) => {
+        const typeOf = new Map(written);
+        const reordered = order.map((name) => [name, typeOf.get(name) ?? 'Int'] as const);
+        const text = [
+          `struct S { ${listed(written)} }`,
+          `fn f(p: { ${listed(reordered)} }) -> Int: 0`,
+          'fn g(s: S) -> Int: f(s)',
+        ].join('\n');
+        expect(reported(text).codes).toEqual([]);
+      }),
+    );
+  });
+
+  it('refuses it inside a collection, from a shape, and for an annotated field', () => {
+    fc.assert(
+      fc.property(fields, ({ written }) => {
+        const declared = `struct S { ${listed(written)} }`;
+        const shape = `{ ${listed(written)} }`;
+        const [first, ...rest] = written;
+        const annotated = `struct A { ${[`${first?.[0]}: ${first?.[1]} @Mark`, ...rest.map(([name, type]) => `${name}: ${type}`)].join('; ')} }`;
+        const text = [
+          'struct Mark',
+          declared,
+          annotated,
+          `fn all(p: Array<${shape}>) -> Int: 0`,
+          'fn one(s: S) -> Int: 0',
+          `fn shape(p: ${shape}) -> Int: 0`,
+          `fn g(s: Array<S>, p: ${shape}, a: A) -> Int: all(s) + one(p) + shape(a)`,
+        ].join('\n');
+        expect(reported(text).codes).toEqual([5001, 5001, 5001]);
       }),
     );
   });

@@ -28,7 +28,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F16, P20, Q39, B27. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F17, P20, Q39, B27. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -51,6 +51,7 @@ Language or toolchain features deferred by decision, not defects.
 | F11 | The language server doesn't watch the disk (`workspace/didChangeWatchedFiles`): a file changed outside the editor is seen at the next edit. It serves only the first workspace folder. | medium | — | phase 7.1 report 2026-10-29 |
 | F14 | Completion ranks by a kind of value as well as a type: arrays first after `...` (CO-02), futures first after `await` (EX-04). The checker expects no type there, and ranking fits by type only. Both scenarios stay `it.fails`. | small | none; can be done now | completion C2a report 2026-10-30 |
 | F15 | After `&` in a call argument, completion offers only lets and reference parameters; a shared struct's handle or an indexable value may start the place too (spec §3.7), which needs types. | small | none; can be done now | completion C2a report 2026-10-30 |
+| F16 | Rename refuses a shape's field, and a struct's whose field names a shape of the program also has (navigation/rename.ts): a shape is one type wherever written (§3.1), so renaming one writer would part it from the others. Renaming every writer of the shape, and every read through any of them, would lift the refusal. | medium | none; can be done now | p2-structural 2026-11-04 |
 
 ### Performance (P)
 
